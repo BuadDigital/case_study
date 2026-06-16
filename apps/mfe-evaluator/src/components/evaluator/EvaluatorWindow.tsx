@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Input, Label, cn } from "@platform/design-system";
+import { Button, Input, Label, cn, formControlClassName } from "@platform/design-system";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowTask } from "@case-study/mfe";
 import { inspectionGateForAppraisal } from "../../lib/evaluator/evaluator-inspection-gate";
@@ -213,7 +213,7 @@ export function EvaluatorWindow({
       ) : null}
 
       {submitSuccess ? (
-        <div className="mb-3 rounded-[var(--radius-DEFAULT)] border border-success border-e-[3px] border-e-success bg-success-bg px-3.5 py-2.5 text-xs leading-relaxed text-success">
+        <div className="mb-3 rounded-[var(--radius-DEFAULT)] border border-success border-e-[3px] border-e-success bg-success-bg px-3.5 py-2.5 text-xs leading-relaxed text-success-text">
           تم الإرسال لأخصائي دراسة الحالة — يمكنك إغلاق الشاشة أو العودة للقائمة.
         </div>
       ) : null}
@@ -227,17 +227,10 @@ export function EvaluatorWindow({
         </div>
       ) : null}
 
-      <section className="mb-0 w-full overflow-hidden rounded-none border-none bg-surface shadow-none">
-        <header className="mb-0 flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3.5">
-          <div className="min-w-0 flex-1">
-            <h3 className="m-0 mb-1 text-base font-bold text-text">رفع التقييم</h3>
-            <p className="m-0 text-xs text-text-3">
-              تقرير المقياس وسعر العقار — يُعرض للأخصائي للاسترشاد فقط
-            </p>
-          </div>
-        </header>
-
-        <div className="flex flex-col gap-4 px-6 pb-[18px]">
+      <section className="flex flex-col gap-4">
+          <p className="m-0 text-xs text-text-3">
+            تقرير المقياس وسعر العقار — يُعرض للأخصائي للاسترشاد فقط
+          </p>
           <div
             className={cn(
               "flex flex-col gap-1.5",
@@ -313,16 +306,16 @@ export function EvaluatorWindow({
               </div>
             </div>
             {uploadError ? (
-              <span className="text-[11px] text-danger">{uploadError}</span>
+              <span className="text-[11px] text-danger-text">{uploadError}</span>
             ) : null}
             {fieldErrors.evaluator_report_file ? (
-              <span className="text-[11px] text-danger">
+              <span className="text-[11px] text-danger-text">
                 {fieldErrors.evaluator_report_file}
               </span>
             ) : null}
           </div>
 
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="evaluator_price" className="text-xs font-semibold text-text-2">
                 سعر التقييم
@@ -357,35 +350,41 @@ export function EvaluatorWindow({
                 </span>
               ) : null}
               {fieldErrors.evaluator_price ? (
-                <span className="text-[11px] text-danger">
+                <span className="text-[11px] text-danger-text">
                   {fieldErrors.evaluator_price}
                 </span>
               ) : null}
             </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="evaluator_notes" className="text-xs font-semibold text-text-2">
+                ملاحظات (اختياري)
+              </Label>
+              <textarea
+                id="evaluator_notes"
+                className={cn(
+                  formControlClassName,
+                  "min-h-[88px] resize-y rounded-[10px] py-2 leading-relaxed",
+                )}
+                rows={3}
+                disabled={formDisabled}
+                placeholder="أي ملاحظات على العقار…"
+                value={draft.evaluatorNotes}
+                onChange={(e) => {
+                  const evaluatorNotes = e.target.value;
+                  setDraft((prev) => ({ ...prev, evaluatorNotes }));
+                  scheduleAutosave({ evaluatorNotes });
+                }}
+              />
+            </div>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="evaluator_notes" className="text-xs font-semibold text-text-2">
-              ملاحظات (اختياري)
-            </Label>
-            <textarea
-              id="evaluator_notes"
-              className="min-h-[88px] w-full resize-y rounded-[10px] border border-border bg-surface px-2.5 py-2 text-xs leading-relaxed text-text outline-none focus:border-primary focus:ring-[3px] focus:ring-primary/12"
-              rows={3}
-              disabled={formDisabled}
-              placeholder="أي ملاحظات على العقار…"
-              value={draft.evaluatorNotes}
-              onChange={(e) => {
-                const evaluatorNotes = e.target.value;
-                setDraft((prev) => ({ ...prev, evaluatorNotes }));
-                scheduleAutosave({ evaluatorNotes });
-              }}
-            />
-          </div>
-
-          <div>
-            <h4 className="mb-3 text-xs font-semibold text-primary">بيانات الرفع لإنفاذ (المقيّم)</h4>
-            <div className="grid grid-cols-1 gap-4">
+          <div className="border-t border-border pt-4">
+            <h4 className="mb-3 text-xs font-semibold text-primary">
+              بيانات الرفع لإنفاذ (المقيّم)
+            </h4>
+            <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="inf-appraisal-date" className="text-xs font-semibold text-text-2">
                   تاريخ التقييم
@@ -527,7 +526,10 @@ export function EvaluatorWindow({
               </Label>
               <textarea
                 id="inf-search"
-                className="min-h-[88px] w-full resize-y rounded-[10px] border border-border bg-surface px-2.5 py-2 text-xs leading-relaxed text-text outline-none focus:border-primary focus:ring-[3px] focus:ring-primary/12"
+                className={cn(
+                formControlClassName,
+                "min-h-[88px] resize-y rounded-[10px] py-2 leading-relaxed",
+              )}
                 rows={3}
                 disabled={formDisabled}
                 value={draft.searchScopeNotes}
@@ -588,8 +590,8 @@ export function EvaluatorWindow({
                 }}
               />
             </div>
+            </div>
           </div>
-        </div>
       </section>
 
       {formError ? (

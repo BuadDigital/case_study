@@ -15,7 +15,7 @@ import { usePoRecordQuery, useWorkflowTasksQuery } from "../../query/case-study-
 
 const linkButtonClass = (variant: "default" | "primary" = "default") =>
   cn(
-    "inline-flex items-center justify-center gap-1.5 rounded-[var(--radius-DEFAULT)] border font-normal whitespace-nowrap no-underline transition-colors px-2 py-1 text-[11px]",
+    "inline-flex items-center justify-center gap-[5px] rounded-[var(--radius-DEFAULT)] border-[0.5px] border-solid font-normal whitespace-nowrap no-underline transition-[background,border-color] duration-150 px-2 py-1 text-[11px]",
     variant === "primary"
       ? "border-primary bg-primary text-white hover:border-primary-mid hover:bg-primary-mid"
       : "border-border-md bg-surface text-text hover:bg-surface-2",

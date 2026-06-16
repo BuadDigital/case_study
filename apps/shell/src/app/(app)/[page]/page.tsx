@@ -1,11 +1,10 @@
 import type { ReactNode } from "react";
 import { Suspense } from "react";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import {
   ActiveCaseStudyView,
   ActiveDistributionView,
   BourseInquiryView,
-  FieldFormDemoView,
   GovernmentReviewView,
   MyTasksView,
   SuspendedTransactionsView,
@@ -19,6 +18,7 @@ import {
   CaseStudyInfoRolesView,
   CourtsView,
   SystemFieldsCatalogView,
+  SystemScreenCatalogView,
   UsersView,
 } from "@settings/mfe";
 import { SurveyView } from "@survey/mfe";
@@ -69,7 +69,6 @@ const VIEWS: Partial<Record<PageId, ReactNode>> = {
   failures: <FailuresView />,
   "suspended-transactions": <SuspendedTransactionsView />,
   "valuation-requests": <ValuationRequestsView />,
-  "field-form": <FieldFormDemoView />,
   ...Object.fromEntries(
     PARTY_TASK_PAGE_IDS.filter((pageId) => pageId !== "government-review").map(
       (pageId) => [
@@ -99,6 +98,7 @@ const VIEWS: Partial<Record<PageId, ReactNode>> = {
     </Suspense>
   ),
   "system-fields-catalog": <SystemFieldsCatalogView />,
+  "system-screen-catalog": <SystemScreenCatalogView />,
   financial: <FinancialView />,
   kpi: <KpiView />,
   users: <UsersView />,
@@ -113,9 +113,6 @@ export default async function PrototypePage({
   params: Promise<{ page: string }>;
 }) {
   const { page: raw } = await params;
-  if (raw === "properties" || raw === "po") redirect("/po");
-  if (raw === "my-tasks") redirect("/active-primary-data");
-  if (raw === "assignment") redirect("/dashboard");
   if (!VALID_PAGE_IDS.has(raw as PageId)) notFound();
   const page = raw as PageId;
   const node = VIEWS[page];

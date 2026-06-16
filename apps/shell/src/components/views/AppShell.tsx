@@ -45,6 +45,10 @@ import {
   SYSTEM_FIELDS_CATALOG_NAV_ITEM,
   isSystemFieldsCatalogPage,
 } from "@platform/app-shared/prototype/system-fields-catalog-nav";
+import {
+  SYSTEM_SCREEN_CATALOG_NAV_ITEM,
+  isSystemScreenCatalogPage,
+} from "@platform/app-shared/prototype/system-screen-catalog-nav";
 import { isPartyTaskPage } from "@platform/app-shared/prototype/party-task-pages";
 import { decodeTaskParam, isPartyTaskWorkPath } from "@case-study/mfe";
 import { findPropertyForTask } from "@case-study/mfe";
@@ -91,7 +95,7 @@ function navItemClasses({
   toggle?: boolean;
 } = {}) {
   return cn(
-    "relative flex cursor-pointer items-center gap-[9px] rounded-none border-e-[3px] border-transparent py-[9px] px-3.5 text-[12.5px] text-sidebar-muted no-underline transition-[background,color] duration-150",
+    "relative flex cursor-pointer items-center gap-[9px] rounded-none border-e-[3px] border-transparent py-[9px] px-3.5 text-[12.5px] text-sidebar-muted no-underline outline-none transition-[background,color] duration-150",
     "hover:bg-white/5 hover:text-sidebar-muted-strong",
     "[&>svg]:size-4 [&>svg]:shrink-0",
     sub && "gap-[7px] ps-8 text-[11px] [&>svg]:size-3",
@@ -426,7 +430,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const showSystemFieldsCatalog = rolePages.includes(
     SYSTEM_FIELDS_CATALOG_NAV_ITEM.id,
   );
-  const showGeneralGroup = showSystemFieldsCatalog;
+  const showSystemScreenCatalog = rolePages.includes(
+    SYSTEM_SCREEN_CATALOG_NAV_ITEM.id,
+  );
+  const showGeneralGroup = showSystemFieldsCatalog || showSystemScreenCatalog;
 
   const showSystemFieldsGroup = systemFieldsNavItems.some((i) => i.available);
   const showSettingsGroup = settingsNavItems.some((i) => i.available);
@@ -691,7 +698,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const opt = ROLE_OPTIONS.find((o) => o.id === id);
     const nextRole = opt?.value ?? role;
     const nextPages = pagesForPrototypeRole(nextRole);
-    if (!nextPages.includes(currentPage) && currentPage !== "my-tasks") {
+    if (!nextPages.includes(currentPage)) {
       router.push("/dashboard");
     }
   }
@@ -836,6 +843,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         />,
                       );
                     }
+                    if (showSystemScreenCatalog) {
+                      nodes.push(
+                        <NavRow
+                          key={SYSTEM_SCREEN_CATALOG_NAV_ITEM.id}
+                          item={SYSTEM_SCREEN_CATALOG_NAV_ITEM}
+                          active={isSystemScreenCatalogPage(currentPage)}
+                          onPrefetch={prefetchPage}
+                        />,
+                      );
+                    }
                   }
                   nodes.push(
                     <NavRow
@@ -902,6 +919,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   onPrefetch={prefetchPage}
                 />
               ) : null}
+              {showSystemScreenCatalog ? (
+                <NavRow
+                  key={SYSTEM_SCREEN_CATALOG_NAV_ITEM.id}
+                  item={SYSTEM_SCREEN_CATALOG_NAV_ITEM}
+                  active={isSystemScreenCatalogPage(currentPage)}
+                  onPrefetch={prefetchPage}
+                />
+              ) : null}
             </>
           ) : null}
         </nav>
@@ -936,7 +961,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div id="main" className="flex min-w-0 flex-1 flex-col overflow-hidden bg-bg">
         <div
           id="topbar"
-          className="flex h-topbar shrink-0 items-center justify-between gap-3 border-b border-border/50 bg-surface px-6"
+          className="flex h-topbar shrink-0 items-center justify-between gap-3 border-b-[0.5px] border-border bg-surface px-6"
         >
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <AppBreadcrumb segments={displayBreadcrumbSegments} />
@@ -974,7 +999,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {onActiveSurveyPropertyDetail ? (
               <EngineeringSurveyTopbarActions />
             ) : null}
-            <div className="flex items-center gap-[7px] rounded-[20px] border border-border bg-surface-2 py-1 ps-1.5 pe-2.5">
+            <div className="flex items-center gap-[7px] rounded-[20px] border-[0.5px] border-border-md bg-surface-2 py-1 ps-1.5 pe-2.5">
               <div
                 className="flex size-[26px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
                 id="uav"

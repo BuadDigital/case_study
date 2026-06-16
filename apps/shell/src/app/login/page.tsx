@@ -101,7 +101,7 @@ export default function LoginPage() {
 
         {error ? (
           <div
-            className="mb-4 rounded-lg border-e-[3px] border-e-danger bg-danger-bg px-3 py-2.5 text-sm leading-relaxed text-danger"
+            className="mb-4 rounded-lg border-e-[3px] border-e-danger bg-danger-bg px-3 py-2.5 text-sm leading-relaxed text-danger-text"
             role="alert"
           >
             {error}
@@ -118,7 +118,6 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="text-base py-2.5"
             />
           </div>
           <div>
@@ -131,7 +130,6 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className="text-base py-2.5"
             />
           </div>
           <Button

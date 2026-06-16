@@ -48,7 +48,7 @@ export function TypePills({
         })}
       </div>
       {error ? (
-        <p className="mt-1 text-[10.5px] leading-snug text-danger" role="alert">
+        <p className="mt-1 text-[10.5px] leading-snug text-danger-text" role="alert">
           {error}
         </p>
       ) : null}

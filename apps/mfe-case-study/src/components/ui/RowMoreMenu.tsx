@@ -37,8 +37,8 @@ function KebabIcon() {
 
 const moreBtnClass = (open: boolean) =>
   cn(
-    "inline-flex h-[30px] w-[30px] items-center justify-center rounded-[var(--radius-DEFAULT)] border border-border bg-surface text-text-2 transition-colors hover:bg-info-bg hover:border-info hover:text-info",
-    open && "bg-info-bg border-info text-info",
+    "inline-flex h-[30px] w-[30px] items-center justify-center rounded-[var(--radius-DEFAULT)] border border-border bg-surface text-text-2 outline-none transition-colors hover:bg-info-bg hover:border-info hover:text-info-text",
+    open && "bg-info-bg border-info text-info-text",
   );
 
 export function RowMoreMenu({
@@ -127,7 +127,7 @@ export function RowMoreMenu({
           role="menuitem"
           className={cn(
             "block w-full cursor-pointer border-none bg-transparent px-3 py-2 text-start text-xs whitespace-nowrap text-text hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-45",
-            item.danger && "text-danger",
+            item.danger && "text-danger-text",
           )}
           disabled={item.disabled}
           onClick={() => {

@@ -8,7 +8,7 @@ import { ROLES } from "@platform/app-shared/prototype/constants";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import type { RoleId } from "@platform/types";
-import { Badge, Button, cn } from "@platform/design-system";
+import { Badge, Button, cn, formControlClassName } from "@platform/design-system";
 import { StatValue } from "@case-study/mfe";
 import { formatDateAr, formatPoDisplay } from "@case-study/mfe";
 import { poPropertyPath } from "@case-study/mfe/lib/po-routes";
@@ -34,8 +34,8 @@ const noteBase =
   "mb-3 rounded-[var(--radius-DEFAULT)] border border-e-[3px] px-3.5 py-2.5 text-xs leading-relaxed";
 
 const fieldTextareaClass = cn(
-  "min-h-[72px] w-full resize-y rounded-[var(--radius-DEFAULT)] border border-border bg-surface px-2.5 py-2 text-xs text-text outline-none",
-  "focus:border-primary focus:ring-[3px] focus:ring-primary/12",
+  formControlClassName,
+  "min-h-[72px] resize-y py-2 leading-relaxed",
 );
 
 export function FailuresView() {
@@ -165,7 +165,7 @@ export function FailuresView() {
       </div>
 
       {!ce && !ca ? (
-        <div className={cn(noteBase, "border-info bg-info-bg text-info")}>
+        <div className={cn(noteBase, "border-info bg-info-bg text-info-text")}>
           {role === "general-manager"
             ? "أنت في وضع الاطلاع — صلاحية التعديل للمشرف والأخصائي"
             : role === "cdo"
@@ -174,7 +174,7 @@ export function FailuresView() {
         </div>
       ) : null}
       {ca ? (
-        <div className={cn(noteBase, "border-success bg-success-bg text-success")}>
+        <div className={cn(noteBase, "border-success bg-success-bg text-success-text")}>
           مسار التعذر: رفع (احتمال / داخلي) → معالجة الأخصائي → مراجعة المشرف
           مع أخصائي الإسناد → اعتماد التعذر أو تعليق المعاملة.
         </div>

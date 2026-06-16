@@ -17,7 +17,6 @@ export { MyTasksView } from "./views/MyTasksView";
 export { ActiveDistributionView } from "./views/ActiveDistributionView";
 export { ActiveCaseStudyView } from "./views/ActiveCaseStudyView";
 export { FieldFormView } from "./views/FieldFormView";
-export { FieldFormDemoView } from "./views/FieldFormDemoView";
 export { GovernmentReviewView } from "./views/GovernmentReviewView";
 export { PartyActiveTaskView } from "./views/PartyActiveTaskView";
 export { PartyActiveTaskWorkPage } from "./views/PartyActiveTaskWorkPage";

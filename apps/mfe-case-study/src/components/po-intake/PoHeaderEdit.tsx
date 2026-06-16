@@ -41,7 +41,7 @@ function CountDisplay({
         </span>
         {unit ? <span className="text-xs text-text-2">{unit}</span> : null}
         {tag ? (
-          <span className="ms-auto whitespace-nowrap rounded-[10px] bg-info-bg px-2.5 py-0.5 text-[10px] font-semibold text-info">
+          <span className="ms-auto whitespace-nowrap rounded-[10px] bg-info-bg px-2.5 py-0.5 text-[10px] font-semibold text-info-text">
             {tag}
           </span>
         ) : null}

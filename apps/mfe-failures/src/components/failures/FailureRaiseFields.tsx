@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo } from "react";
-import { Label, Select, cn } from "@platform/design-system";
+import { Label, Select, cn, formControlClassName } from "@platform/design-system";
 import type { FailureSeverity } from "../../lib/failures-types";
 import { useFailureTypesQuery } from "../../query/failure-types-queries";
 
 const fieldTextareaClass = cn(
-  "min-h-[72px] w-full resize-y rounded-[var(--radius-DEFAULT)] border border-border bg-surface px-2.5 py-2 text-xs text-text outline-none",
-  "focus:border-primary focus:ring-[3px] focus:ring-primary/12",
+  formControlClassName,
+  "min-h-[72px] resize-y py-2 leading-relaxed",
 );
 
 export function FailureRaiseFields({

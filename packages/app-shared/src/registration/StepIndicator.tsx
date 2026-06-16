@@ -31,7 +31,7 @@ export function StepIndicator({
                 <div
                   className={cn(
                     "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-border-md bg-surface text-[10px] font-bold text-text-3 transition-all",
-                    done && "border-success bg-success-bg text-success text-[0]",
+                    done && "border-success bg-success-bg text-success-text text-[0]",
                     active && theme.stepActive,
                   )}
                 >

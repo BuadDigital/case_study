@@ -157,7 +157,7 @@ export function PropertyTransactionTimeline({
       <div className="mt-0.5 flex flex-col gap-1.5">
         <div className="flex justify-between text-[11px] text-text-2">
           <span>الاستحقاق</span>
-          <span className="font-medium text-danger">
+          <span className="font-medium text-danger-text">
             {record.dueDateAt ? (
               <bdi dir="ltr" className={ltrValueClass}>
                 {formatDateAr(record.dueDateAt)}

@@ -11,7 +11,9 @@ import {
   Table,
   TBody,
   Td,
+  TdAction,
   Th,
+  ThAction,
   THead,
   Tr,
   type BadgeTone,
@@ -385,70 +387,36 @@ export function ActiveTransactionQueueView({
             <>
               <div
                 className={cn(
-                  "w-full px-6",
+                  "w-full",
                   isDistributionTable && "overflow-x-auto",
                 )}
               >
                 {isDistributionTable ? (
                   <Table
                     className={cn(
-                      "table-fixed",
+                      "w-full",
                       showPartyColumns ? "min-w-0" : "min-w-[720px]",
                     )}
                     pending={isLoading}
                   >
-                    <colgroup>
-                      <col
-                        className={
-                          showPartyColumns ? "w-[4.25rem]" : "w-[12%]"
-                        }
-                      />
-                      <col
-                        className={showPartyColumns ? "w-[6.75rem]" : "w-[14%]"}
-                      />
-                      <col
-                        className={showPartyColumns ? "w-[3.75rem]" : "w-[14%]"}
-                      />
-                      <col
-                        className={showPartyColumns ? "w-[5rem]" : "w-[14%]"}
-                      />
-                      <col
-                        className={showPartyColumns ? "w-[4.25rem]" : "w-[15%]"}
-                      />
-                      <col
-                        className={showPartyColumns ? "w-[4.25rem]" : "w-[15%]"}
-                      />
-                      <col
-                        className={showPartyColumns ? "w-[3.75rem]" : "w-[16%]"}
-                      />
-                      {showPartyColumns ? (
-                        <>
-                          <col className="w-[7.5rem]" />
-                          <col className="w-[7.5rem]" />
-                          <col className="w-[7.5rem]" />
-                          <col className="w-[7.5rem]" />
-                        </>
-                      ) : null}
-                      <col className="w-10" />
-                    </colgroup>
                     <THead>
                       <Tr hoverable={false}>
-                        <Th className="text-center">رقم الصك</Th>
-                        <Th className="text-center">أمر العمل</Th>
-                        <Th className="text-center">المدينة</Th>
-                        <Th className="text-center">الحي</Th>
-                        <Th className="text-center">نوع العقار</Th>
-                        <Th className="text-center">التصنيف</Th>
-                        <Th className="text-center">المساحة</Th>
+                        <Th>رقم الصك</Th>
+                        <Th>أمر العمل</Th>
+                        <Th>المدينة</Th>
+                        <Th>الحي</Th>
+                        <Th>نوع العقار</Th>
+                        <Th>التصنيف</Th>
+                        <Th>المساحة</Th>
                         {showPartyColumns ? (
                           <>
-                            <Th className="text-center">المعاين</Th>
-                            <Th className="text-center">المراجع الحكومي</Th>
-                            <Th className="text-center">المقيم</Th>
-                            <Th className="text-center">المكتب الهندسي</Th>
+                            <Th>المعاين</Th>
+                            <Th>المراجع الحكومي</Th>
+                            <Th>المقيم</Th>
+                            <Th>المكتب الهندسي</Th>
                           </>
                         ) : null}
-                        <Th className="w-10 px-1.5" aria-label="المزيد" />
+                        <ThAction aria-label="المزيد" />
                       </Tr>
                     </THead>
                     <TBody>
@@ -474,7 +442,7 @@ export function ActiveTransactionQueueView({
                               handleDistributionRowClick(task, property?.id)
                             }
                           >
-                            <Td className="text-center">
+                            <Td>
                               {property?.id ? (
                                 <Link
                                   href={poPropertyDetailPath(
@@ -497,52 +465,34 @@ export function ActiveTransactionQueueView({
                                 </span>
                               )}
                             </Td>
-                            <Td className="text-center text-text-2">
+                            <Td className="text-text-2">
                               <PoNumber value={task.poNumber} link />
                             </Td>
-                            <Td className="text-center text-text-2">
-                              {row.city}
-                            </Td>
-                            <Td className="text-center text-text-2">
-                              {row.district}
-                            </Td>
-                            <Td className="text-center text-text-2">
-                              {row.propertyType}
-                            </Td>
-                            <Td className="text-center text-text-2">
-                              {row.classification}
-                            </Td>
-                            <Td className="text-center text-text-2">
-                              {row.area}
-                            </Td>
+                            <Td className="text-text-2">{row.city}</Td>
+                            <Td className="text-text-2">{row.district}</Td>
+                            <Td className="text-text-2">{row.propertyType}</Td>
+                            <Td className="text-text-2">{row.classification}</Td>
+                            <Td className="text-text-2">{row.area}</Td>
                             {showPartyColumns
                               ? parties.map((party) => (
                                   <Td
                                     key={party.trackId}
-                                    className="overflow-hidden text-ellipsis text-center text-text-2"
+                                    className="max-w-0 overflow-hidden text-ellipsis text-text-2"
                                   >
                                     <PartyAssigneeCell party={party} />
                                   </Td>
                                 ))
                               : null}
-                            <Td className="w-10 px-1 text-center">
+                            <TdAction>
                               <RowMoreMenu items={moreItems} />
-                            </Td>
+                            </TdAction>
                           </Tr>
                         );
                       })}
                     </TBody>
                   </Table>
                 ) : (
-                  <Table className="w-full table-fixed" pending={isLoading}>
-                    <colgroup>
-                      <col className="w-[12%]" />
-                      <col className="w-[14%]" />
-                      <col className="w-[16%]" />
-                      <col className="w-[28%]" />
-                      <col className="w-[14%]" />
-                      <col className="w-10" />
-                    </colgroup>
+                  <Table className="w-full" pending={isLoading}>
                     <THead>
                       <Tr hoverable={false}>
                         <Th>رقم الصك</Th>
@@ -550,7 +500,7 @@ export function ActiveTransactionQueueView({
                         <Th>نوع الإسناد</Th>
                         <Th>أخصائي الإسناد</Th>
                         <Th>{config.statusColumnLabel ?? "المدة المتبقية"}</Th>
-                        <Th className="w-10 px-1.5 text-center" aria-label="المزيد" />
+                        <ThAction aria-label="المزيد" />
                       </Tr>
                     </THead>
                     <TBody>
@@ -590,12 +540,12 @@ export function ActiveTransactionQueueView({
                             >
                               {row.assignmentSpecialist}
                             </Td>
-                            <Td className="align-middle">
+                            <Td>
                               {renderStatusOrRemaining(task, row.remainingTime)}
                             </Td>
-                            <Td className="w-10 px-1 text-center">
+                            <TdAction>
                               <RowMoreMenu items={moreItems} />
-                            </Td>
+                            </TdAction>
                           </Tr>
                         );
                       })}
@@ -603,7 +553,7 @@ export function ActiveTransactionQueueView({
                   </Table>
                 )}
               </div>
-              <p className="px-6 py-2 pb-3 text-[11px] text-text-3">
+              <p className="px-4 py-2 pb-3 text-[11px] text-text-3">
                 {config.tableHint ??
                   (useFullPage
                     ? "اضغط الصف لفتح دراسة الحالة."

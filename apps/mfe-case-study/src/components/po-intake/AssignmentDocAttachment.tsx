@@ -27,7 +27,7 @@ export function AssignmentDocAttachment({
   const displayName = fileName?.trim() || cached?.fileName || "";
   if (!displayName) {
     return (
-      <span className="text-xs font-semibold text-danger">غير مرفق</span>
+      <span className="text-xs font-semibold text-danger-text">غير مرفق</span>
     );
   }
 
@@ -159,7 +159,7 @@ function AttachmentPreview({
     <div
       className={cn(
         "flex h-12 w-12 items-center justify-center rounded-[var(--radius-DEFAULT)] border border-border bg-surface-2 text-[11px] font-bold text-text-3",
-        isPdf && "bg-danger-bg text-danger",
+        isPdf && "bg-danger-bg text-danger-text",
       )}
       aria-hidden
     >

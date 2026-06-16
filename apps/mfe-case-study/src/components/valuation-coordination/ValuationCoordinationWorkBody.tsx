@@ -261,7 +261,7 @@ export function ValuationCoordinationWorkBody({
               <span>أؤكد استلام المعاملة في قسم التقييم العقاري</span>
             </label>
             {fieldErrors.receiptConfirmed ? (
-              <p className="mt-1 text-[10px] text-danger" role="alert">
+              <p className="mt-1 text-[10px] text-danger-text" role="alert">
                 {fieldErrors.receiptConfirmed}
               </p>
             ) : null}
@@ -284,7 +284,7 @@ export function ValuationCoordinationWorkBody({
                 className="bg-surface-3 text-xs"
               />
               {fieldErrors.inspectorName ? (
-                <p className="mt-1 text-[10px] text-danger" role="alert">
+                <p className="mt-1 text-[10px] text-danger-text" role="alert">
                   {fieldErrors.inspectorName}
                 </p>
               ) : (
@@ -307,7 +307,7 @@ export function ValuationCoordinationWorkBody({
                 className="bg-surface-3 text-xs"
               />
               {fieldErrors.appraiserName ? (
-                <p className="mt-1 text-[10px] text-danger" role="alert">
+                <p className="mt-1 text-[10px] text-danger-text" role="alert">
                   {fieldErrors.appraiserName}
                 </p>
               ) : (

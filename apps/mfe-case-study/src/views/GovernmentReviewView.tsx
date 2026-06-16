@@ -337,23 +337,15 @@ export function GovernmentReviewView() {
           ) : (
             <>
               <div className="w-full overflow-x-auto">
-                <Table className="table-fixed">
-                  <colgroup>
-                    <col className="w-28" />
-                    <col className="w-28" />
-                    <col />
-                    <col className="w-20" />
-                    <col className="w-24" />
-                    <col className="w-24" />
-                  </colgroup>
+                <Table>
                   <THead>
                     <Tr hoverable={false}>
-                      <Th className="text-center">أمر العمل</Th>
-                      <Th className="text-center">نوع الإسناد</Th>
-                      <Th className="text-center">المحاكم</Th>
-                      <Th className="text-center">العقارات</Th>
-                      <Th className="text-center">مهام مفتوحة</Th>
-                      <Th className="text-center">البيانات الأولية</Th>
+                      <Th>أمر العمل</Th>
+                      <Th>نوع الإسناد</Th>
+                      <Th>المحاكم</Th>
+                      <Th>العقارات</Th>
+                      <Th>مهام مفتوحة</Th>
+                      <Th>البيانات الأولية</Th>
                     </Tr>
                   </THead>
                   <TBody>
@@ -366,28 +358,24 @@ export function GovernmentReviewView() {
                           className={cn(ROW, active && ROW_ACTIVE)}
                           onClick={() => handleRowClick(row.poNumber)}
                         >
-                          <Td className="text-center">
+                          <Td>
                             <PoNumber value={row.poNumber} />
                           </Td>
-                          <Td className="text-center text-text-2">
-                            {row.assignmentType}
-                          </Td>
-                          <Td className="text-center text-text-2">
+                          <Td className="text-text-2">{row.assignmentType}</Td>
+                          <Td className="text-text-2">
                             {row.courts.length > 0
                               ? row.courts.join(" · ")
                               : "—"}
                           </Td>
-                          <Td className="text-center text-text-2">
-                            {row.propertyCount}
-                          </Td>
-                          <Td className="text-center">
+                          <Td className="text-text-2">{row.propertyCount}</Td>
+                          <Td>
                             {row.openCount > 0 ? (
                               <Badge tone="warning">{row.openCount}</Badge>
                             ) : (
                               <Badge tone="success">0</Badge>
                             )}
                           </Td>
-                          <Td className="text-center">
+                          <Td>
                             {row.primaryDataReady ? (
                               <Badge tone="success">مكتمل</Badge>
                             ) : (

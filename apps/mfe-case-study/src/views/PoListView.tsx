@@ -18,7 +18,9 @@ import {
   Table,
   TBody,
   Td,
+  TdAction,
   Th,
+  ThAction,
   THead,
   Tr,
   cn,
@@ -45,6 +47,9 @@ import {
 type SortKey = "po" | "received" | "due";
 type SortDir = "asc" | "desc";
 type StatusFilter = "" | "progress" | "done" | "under_study";
+
+const PO_LIST_TOOLBAR_FIELD =
+  "!h-8 !py-0 !leading-8 border-border-md bg-surface px-2.5 text-xs shadow-none";
 
 function isDueSoon(iso: string): boolean {
   if (!iso) return false;
@@ -395,13 +400,13 @@ export function PoListView() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2.5">
-              <div className="relative min-w-40 max-w-[260px] flex-1">
+            <div className="flex flex-wrap items-center gap-2 border-b border-border bg-surface-2/50 px-4 py-2.5">
+              <div className="relative min-w-[min(100%,220px)] flex-1 basis-[200px] max-w-[280px]">
                 <span className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-text-3">
                   <SearchIcon />
                 </span>
                 <Input
-                  className="h-8 bg-surface-2 pe-8 text-[12.5px]"
+                  className={cn(PO_LIST_TOOLBAR_FIELD, "pe-8 text-[12.5px]")}
                   type="search"
                   placeholder="بحث برقم PO أو نوع الإسناد…"
                   value={search}
@@ -409,33 +414,41 @@ export function PoListView() {
                   aria-label="بحث أوامر العمل"
                 />
               </div>
-              <Select
-                className="h-8 w-auto min-w-[130px] bg-surface-2 text-xs"
-                value={statusFilter}
-                onChange={(e) =>
-                  setStatusFilter(e.target.value as StatusFilter)
-                }
-                aria-label="تصفية الحالة"
-              >
-                <option value="">جميع الحالات</option>
-                <option value="progress">قيد التنفيذ</option>
-                <option value="done">مكتمل</option>
-                <option value="under_study">معلق</option>
-              </Select>
-              <Select
-                className="h-8 w-auto min-w-[130px] bg-surface-2 text-xs"
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                aria-label="تصفية نوع الإسناد"
-              >
-                <option value="">جميع أنواع الإسناد</option>
-                {assignmentTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </Select>
-              <span className="ms-auto text-[11.5px] text-text-3">
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:flex-none">
+                <Select
+                  className={cn(
+                    PO_LIST_TOOLBAR_FIELD,
+                    "!w-auto min-w-[148px] max-w-full shrink-0 sm:w-[148px]",
+                  )}
+                  value={statusFilter}
+                  onChange={(e) =>
+                    setStatusFilter(e.target.value as StatusFilter)
+                  }
+                  aria-label="تصفية الحالة"
+                >
+                  <option value="">جميع الحالات</option>
+                  <option value="progress">قيد التنفيذ</option>
+                  <option value="done">مكتمل</option>
+                  <option value="under_study">معلق</option>
+                </Select>
+                <Select
+                  className={cn(
+                    PO_LIST_TOOLBAR_FIELD,
+                    "!w-auto min-w-[168px] max-w-full shrink-0 sm:w-[168px]",
+                  )}
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  aria-label="تصفية نوع الإسناد"
+                >
+                  <option value="">جميع أنواع الإسناد</option>
+                  {assignmentTypes.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <span className="w-full text-[11.5px] text-text-3 sm:ms-auto sm:w-auto">
                 {statsReady ? `${filtered.length} نتيجة` : "—"}
               </span>
             </div>
@@ -480,7 +493,7 @@ export function PoListView() {
                       </button>
                     </Th>
                     <Th>الأخصائي</Th>
-                    <Th aria-label="إجراءات" />
+                    <ThAction aria-label="إجراءات" />
                   </Tr>
                 </THead>
                 <TBody>
@@ -573,11 +586,8 @@ export function PoListView() {
                           <Td className="whitespace-nowrap text-[12.5px] text-text-2">
                             {p.specialist}
                           </Td>
-                          <Td
-                            className="w-px px-2"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                          <TdAction onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                               {showEdit ? (
                                 <Button
                                   type="button"
@@ -603,7 +613,7 @@ export function PoListView() {
                                 })}
                               />
                             </div>
-                          </Td>
+                          </TdAction>
                         </Tr>
                       );
                     })

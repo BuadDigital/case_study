@@ -78,7 +78,7 @@ function taskBadgeTone(task: {
 }
 
 const linkButtonSmClass = cn(
-  "inline-flex items-center justify-center gap-1.5 rounded-[var(--radius-DEFAULT)] border font-normal whitespace-nowrap transition-colors",
+  "inline-flex items-center justify-center gap-[5px] rounded-[var(--radius-DEFAULT)] border-[0.5px] border-solid font-normal whitespace-nowrap no-underline transition-[background,border-color] duration-150",
   "px-2 py-1 text-[11px]",
   "border-border-md bg-surface text-text hover:bg-surface-2",
 );

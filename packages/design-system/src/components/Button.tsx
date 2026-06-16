@@ -11,18 +11,18 @@ const variantClasses = {
   accent:
     "border-primary bg-primary text-white hover:border-primary-mid hover:bg-primary-mid",
   danger:
-    "border-red/30 bg-danger-bg text-danger hover:brightness-95",
+    "border-red/30 bg-danger-bg text-danger-text hover:bg-[#f9dcdc]",
   success:
     "border-primary bg-primary text-white hover:border-primary-mid hover:bg-primary-mid",
   dangerOutline:
-    "border-red/30 bg-transparent text-danger hover:bg-danger-bg",
+    "border-red/30 bg-transparent text-danger-text hover:bg-danger-bg",
   ghost:
     "border-transparent bg-transparent text-text-2 hover:bg-surface-2",
 } as const;
 
 const sizeClasses = {
   default: "px-3.5 py-1.5 text-[12.5px]",
-  sm: "px-2 py-1 text-[11px]",
+  sm: "px-[9px] py-1 text-[11px]",
   lg: "px-4 py-2.5 text-sm",
 } as const;
 
@@ -45,7 +45,7 @@ export function Button({
     <button
       type={type}
       className={cn(
-        "inline-flex items-center justify-center gap-1.5 rounded-[var(--radius-DEFAULT)] border font-normal whitespace-nowrap transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-65",
+        "inline-flex items-center justify-center gap-[5px] rounded-[var(--radius-DEFAULT)] border-[0.5px] border-solid font-normal whitespace-nowrap outline-none transition-[background,border-color] duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-65",
         variantClasses[variant],
         sizeClasses[size],
         className,

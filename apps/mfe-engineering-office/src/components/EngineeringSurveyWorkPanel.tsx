@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Input, Label, cn } from "@platform/design-system";
+import { Button, Input, Label, cn, formControlClassName } from "@platform/design-system";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import type { WorkflowTask } from "@case-study/mfe";
 import {
@@ -263,7 +263,7 @@ export function EngineeringSurveyWorkPanel({
       <div className="mb-3 grid grid-cols-[1fr_1fr_auto] items-end gap-2.5">
         <div className="mb-3.5">
           <Label htmlFor="eng-lat" className="text-xs">
-            خط العرض (Latitude) <span className="text-danger">*</span>
+            خط العرض (Latitude) <span className="text-danger-text">*</span>
           </Label>
           <Input
             id="eng-lat"
@@ -281,12 +281,12 @@ export function EngineeringSurveyWorkPanel({
             }}
           />
           {fieldErrors.latitude ? (
-            <p className="mt-1 text-[11px] text-danger">{fieldErrors.latitude}</p>
+            <p className="mt-1 text-[11px] text-danger-text">{fieldErrors.latitude}</p>
           ) : null}
         </div>
         <div className="mb-3.5">
           <Label htmlFor="eng-lng" className="text-xs">
-            خط الطول (Longitude) <span className="text-danger">*</span>
+            خط الطول (Longitude) <span className="text-danger-text">*</span>
           </Label>
           <Input
             id="eng-lng"
@@ -304,7 +304,7 @@ export function EngineeringSurveyWorkPanel({
             }}
           />
           {fieldErrors.longitude ? (
-            <p className="mt-1 text-[11px] text-danger">{fieldErrors.longitude}</p>
+            <p className="mt-1 text-[11px] text-danger-text">{fieldErrors.longitude}</p>
           ) : null}
         </div>
         <Button
@@ -377,8 +377,8 @@ export function EngineeringSurveyWorkPanel({
         <textarea
           id="eng-survey-notes"
           className={cn(
-            "min-h-[72px] w-full resize-y rounded-[var(--radius-DEFAULT)] border border-border bg-surface px-2.5 py-2 text-xs text-text outline-none",
-            "focus:border-primary focus:ring-[3px] focus:ring-primary/12",
+            formControlClassName,
+            "min-h-[72px] resize-y py-2 leading-relaxed",
           )}
           rows={3}
           disabled={formDisabled}
@@ -421,7 +421,7 @@ export function EngineeringSurveyWorkPanel({
         </div>
       ) : null}
       {fieldErrors.survey_report ? (
-        <p className="mt-1 text-[11px] text-danger">{fieldErrors.survey_report}</p>
+        <p className="mt-1 text-[11px] text-danger-text">{fieldErrors.survey_report}</p>
       ) : null}
 
       <SectionDivider />
@@ -477,10 +477,10 @@ export function EngineeringSurveyWorkPanel({
         </span>
       </label>
       {fieldErrors.site_confirmed ? (
-        <p className="mt-1 text-[11px] text-danger">{fieldErrors.site_confirmed}</p>
+        <p className="mt-1 text-[11px] text-danger-text">{fieldErrors.site_confirmed}</p>
       ) : null}
       {fieldErrors.site_letter ? (
-        <p className="mt-1 text-[11px] text-danger">{fieldErrors.site_letter}</p>
+        <p className="mt-1 text-[11px] text-danger-text">{fieldErrors.site_letter}</p>
       ) : null}
 
       <SectionDivider />
@@ -499,7 +499,7 @@ export function EngineeringSurveyWorkPanel({
         }}
       />
       {fieldErrors.checklist ? (
-        <p className="mt-1 text-[11px] text-danger">{fieldErrors.checklist}</p>
+        <p className="mt-1 text-[11px] text-danger-text">{fieldErrors.checklist}</p>
       ) : null}
 
       <SectionDivider />
@@ -544,7 +544,7 @@ export function EngineeringSurveyWorkPanel({
         >
           التعذرات
           {activeFailureCount > 0 ? (
-            <span className="rounded-[10px] bg-danger-bg px-1.5 py-px text-[10px] font-medium text-danger">
+            <span className="rounded-[10px] bg-danger-bg px-1.5 py-px text-[10px] font-medium text-danger-text">
               {activeFailureCount}
             </span>
           ) : null}

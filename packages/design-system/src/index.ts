@@ -1,4 +1,8 @@
 export { cn, type ClassValue } from "./lib/cn";
+export {
+  formControlClassName,
+  formControlErrorClassName,
+} from "./lib/form-control-classes";
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from "./components/Button";
 export { Input, type InputProps } from "./components/Input";
 export { Textarea, type TextareaProps } from "./components/Textarea";
@@ -16,6 +20,8 @@ export {
   Tr,
   Th,
   Td,
+  ThAction,
+  TdAction,
 } from "./components/Table";
 export { TabBar, Tab, TabCount, TabPanel, type TabProps } from "./components/Tabs";
 export {

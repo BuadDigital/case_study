@@ -24,8 +24,8 @@ function EyeIcon() {
 
 const eyeBtnClass = (active?: boolean) =>
   cn(
-    "inline-flex h-[30px] w-[30px] items-center justify-center rounded-[var(--radius-DEFAULT)] border border-border bg-surface text-text-2 transition-colors hover:bg-info-bg hover:border-info hover:text-info",
-    active && "bg-info-bg border-info text-info",
+    "inline-flex h-[30px] w-[30px] items-center justify-center rounded-[var(--radius-DEFAULT)] border border-border bg-surface text-text-2 outline-none transition-colors hover:bg-info-bg hover:border-info hover:text-info-text",
+    active && "bg-info-bg border-info text-info-text",
   );
 
 export function EyeIconButton({

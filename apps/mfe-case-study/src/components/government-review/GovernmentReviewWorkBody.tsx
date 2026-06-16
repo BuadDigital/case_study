@@ -188,7 +188,7 @@ export function GovernmentReviewWorkBody({
               ))}
             </div>
             {fieldErrors.visitStatus ? (
-              <p className="mt-1 text-[10px] text-danger" role="alert">
+              <p className="mt-1 text-[10px] text-danger-text" role="alert">
                 {fieldErrors.visitStatus}
               </p>
             ) : null}
@@ -251,7 +251,7 @@ export function GovernmentReviewWorkBody({
               ))}
             </div>
             {fieldErrors.keysStatus ? (
-              <p className="mt-1 text-[10px] text-danger" role="alert">
+              <p className="mt-1 text-[10px] text-danger-text" role="alert">
                 {fieldErrors.keysStatus}
               </p>
             ) : null}
@@ -343,7 +343,7 @@ export function GovernmentReviewWorkBody({
               <span>أؤكد اكتمال المراجعة الحكومية لهذا العقار</span>
             </label>
             {fieldErrors.confirmed ? (
-              <p className="mt-1 text-[10px] text-danger" role="alert">
+              <p className="mt-1 text-[10px] text-danger-text" role="alert">
                 {fieldErrors.confirmed}
               </p>
             ) : null}

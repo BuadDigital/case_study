@@ -101,7 +101,6 @@ export function prefetchPrototypePage(
     case "valuation-coordination":
     case "property-appraisal":
     case "active-survey":
-    case "field-form":
     case "valuation-requests":
       prefetchActiveTransactionsSituation();
       break;

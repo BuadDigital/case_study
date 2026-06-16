@@ -28,7 +28,7 @@ export function Tab({ className, active, type = "button", ...props }: TabProps) 
       role="tab"
       aria-selected={active}
       className={cn(
-        "mb-[-1px] flex items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 text-xs text-text-2 whitespace-nowrap transition-colors cursor-pointer font-[inherit]",
+        "mb-[-1px] flex items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 text-xs text-text-2 whitespace-nowrap outline-none transition-colors cursor-pointer font-[inherit]",
         "hover:text-text",
         active && "border-b-primary font-medium text-primary",
         className,
@@ -47,7 +47,7 @@ export function TabCount({
 }) {
   const toneClasses = {
     teal: "bg-teal-light text-teal-text",
-    red: "bg-danger-bg text-danger",
+    red: "bg-danger-bg text-danger-text",
     gray: "bg-surface-2 text-text-2",
   } as const;
 

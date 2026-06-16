@@ -1,5 +1,5 @@
 "use client";
-
+import type { ReactNode } from "react";
 import { Button, Card, Note, cn } from "@platform/design-system";
 import {
   CASE_STUDY_SECTION_QUESTIONS,
@@ -141,11 +141,14 @@ function OfficialAnswerCell({
       <button
         type="button"
         className={cn(
-          "inline-flex h-[22px] w-[22px] shrink-0 cursor-pointer items-center justify-center rounded-[5px] border-2 border-[#B8CDE0] bg-white p-0 transition-colors",
-          on && target === "Y" && "border-[#1ABC9C] bg-[#1ABC9C] text-white",
-          on && target === "N" && "border-[#E74C3C] bg-[#E74C3C] text-white",
+          "inline-flex h-[22px] w-[22px] shrink-0 cursor-pointer items-center justify-center rounded-[5px] border-2 p-0 transition-colors",
+          on
+            ? target === "Y"
+              ? "border-[#1ABC9C] bg-[#1ABC9C] text-white"
+              : "border-[#E74C3C] bg-[#E74C3C] text-white"
+            : "border-[#B8CDE0] bg-white",
           disabled && "cursor-not-allowed opacity-45",
-          !disabled && "hover:border-[#2E86C1]",
+          !disabled && !on && "hover:border-[#2E86C1]",
         )}
         aria-pressed={on}
         aria-label={target === "Y" ? "نعم" : "لا"}
@@ -184,6 +187,7 @@ export function CaseStudyMatrixTable({
   showPartyColumn = true,
   partyContribCount = 0,
   onRefreshParty,
+  footer,
 }: {
   section: CaseStudyQuestionSection;
   sectionTitle: string;
@@ -197,6 +201,7 @@ export function CaseStudyMatrixTable({
   showPartyColumn?: boolean;
   partyContribCount?: number;
   onRefreshParty?: () => void;
+  footer?: ReactNode;
 }) {
   const questions = CASE_STUDY_SECTION_QUESTIONS[section];
   const visibleRows = questions
@@ -277,19 +282,19 @@ export function CaseStudyMatrixTable({
           </colgroup>
           <thead>
             <tr>
-              <th className="border-b border-border bg-blue-light px-3 py-2.5 text-right align-middle text-[11px] font-semibold text-text-2">
+              <th className="border-b border-border bg-blue-light px-4 py-2.5 text-right align-middle text-[11px] font-semibold text-text-2">
                 السؤال
               </th>
               {showPartyColumn ? (
-                <th className="border-b border-border bg-blue-light px-3 py-2.5 text-right align-middle text-[11px] font-semibold text-text-2">
+                <th className="border-b border-border bg-blue-light px-4 py-2.5 text-right align-middle text-[11px] font-semibold text-text-2">
                   إجابات الأطراف{" "}
                   <span className="font-normal text-[#8FA8BC]">(استدلال)</span>
                 </th>
               ) : null}
-              <th className="w-[155px] min-w-[155px] max-w-[155px] border-b border-border bg-blue-light px-2 py-2.5 text-center align-middle text-[11px] font-semibold text-primary">
+              <th className="w-[155px] min-w-[155px] max-w-[155px] border-b border-border bg-blue-light px-4 py-2.5 text-center align-middle text-[11px] font-semibold text-primary">
                 نعم
               </th>
-              <th className="w-[155px] min-w-[155px] max-w-[155px] border-b border-border bg-blue-light px-2 py-2.5 text-center align-middle text-[11px] font-semibold text-primary">
+              <th className="w-[155px] min-w-[155px] max-w-[155px] border-b border-border bg-blue-light px-4 py-2.5 text-center align-middle text-[11px] font-semibold text-primary">
                 لا
               </th>
             </tr>
@@ -313,17 +318,19 @@ export function CaseStudyMatrixTable({
                 onAnswer(key, ynToAnswer(next));
               };
 
+              const rowCellBg = cn(
+                "transition-colors",
+                status === "conflict"
+                  ? "bg-[#FFF6F4] group-hover:bg-[#FFF0ED]"
+                  : "bg-surface group-hover:bg-surface-2",
+              );
+
               return (
-                <tr
-                  key={key}
-                  className={cn(
-                    "hover:bg-[#FAFCFF]",
-                    status === "conflict" && "bg-[#FFF6F4]",
-                  )}
-                >
+                <tr key={key} className="group align-top">
                   <td
                     className={cn(
-                      "border-b border-border px-3 py-2.5 align-top text-xs leading-snug text-text",
+                      rowCellBg,
+                      "border-b border-border px-4 py-2.5 align-top text-xs leading-snug text-text",
                       status === "pending" &&
                         showPartyColumn &&
                         "shadow-[inset_3px_0_0_#F39C12]",
@@ -349,7 +356,12 @@ export function CaseStudyMatrixTable({
                   </td>
 
                   {showPartyColumn ? (
-                    <td className="border-b border-border px-3 py-2.5 align-middle">
+                    <td
+                      className={cn(
+                        rowCellBg,
+                        "border-b border-border px-4 py-2.5 align-middle",
+                      )}
+                    >
                       {hasPartyAnswers ? (
                         <div className="flex flex-wrap items-center gap-1.5">
                           {PARTY_MATRIX_ORDER.filter((k) => partyAnswers[k]).map(
@@ -370,7 +382,12 @@ export function CaseStudyMatrixTable({
                     </td>
                   ) : null}
 
-                  <td className="w-[155px] min-w-[155px] max-w-[155px] overflow-hidden border-b border-border bg-[#FBFDFF] px-2 py-2.5 text-center align-top">
+                  <td
+                    className={cn(
+                      rowCellBg,
+                      "w-[155px] min-w-[155px] max-w-[155px] overflow-hidden border-b border-border px-4 py-2.5 text-center align-top",
+                    )}
+                  >
                     <OfficialAnswerCell
                       value={official}
                       target="Y"
@@ -385,7 +402,12 @@ export function CaseStudyMatrixTable({
                       onAdopt={() => setOfficial("Y")}
                     />
                   </td>
-                  <td className="w-[155px] min-w-[155px] max-w-[155px] overflow-hidden border-b border-border bg-[#FBFDFF] px-2 py-2.5 text-center align-top">
+                  <td
+                    className={cn(
+                      rowCellBg,
+                      "w-[155px] min-w-[155px] max-w-[155px] overflow-hidden border-b border-border px-4 py-2.5 text-center align-top",
+                    )}
+                  >
                     <OfficialAnswerCell
                       value={official}
                       target="N"
@@ -406,6 +428,7 @@ export function CaseStudyMatrixTable({
           </tbody>
         </table>
       </div>
+      {footer ? <div className="px-4 pb-3">{footer}</div> : null}
     </Card>
   );
 }

@@ -134,7 +134,7 @@ export function PropertyDetailHero({
           <div
             className={cn(
               "text-[13px] font-medium text-text",
-              dueUrgent && "text-danger",
+              dueUrgent && "text-danger-text",
             )}
           >
             {record.dueDateAt ? (

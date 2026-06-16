@@ -41,9 +41,9 @@ const MGR_ROLES = new Set(["cdo", "general-manager", "section-supervisor"]);
 const TEAM_LOAD_ROLES = new Set([...MGR_ROLES, "cdo"]);
 
 function teamTint(t: TeamKind): { bg: string; fg: string } {
-  if (t === "internal") return { bg: "bg-info-bg", fg: "text-info" };
+  if (t === "internal") return { bg: "bg-info-bg", fg: "text-info-text" };
   if (t === "freelance") return { bg: "bg-warning-bg", fg: "text-warning" };
-  return { bg: "bg-success-bg", fg: "text-success" };
+  return { bg: "bg-success-bg", fg: "text-success-text" };
 }
 
 export function DashboardView() {

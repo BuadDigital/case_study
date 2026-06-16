@@ -14,7 +14,9 @@ import {
   Table,
   TBody,
   Td,
+  TdAction,
   Th,
+  ThAction,
   THead,
   Tr,
 } from "@platform/design-system";
@@ -215,23 +217,15 @@ export function SuspendedTransactionsView() {
           ) : (
             <>
               <div className="w-full overflow-x-auto">
-                <Table className="table-fixed" pending={isLoading}>
-                  <colgroup>
-                    <col className="w-[4.5rem]" />
-                    <col className="w-[7rem]" />
-                    <col className="w-[6rem]" />
-                    <col />
-                    <col className="w-[8rem]" />
-                    <col className="w-10" />
-                  </colgroup>
+                <Table pending={isLoading}>
                   <THead>
                     <Tr hoverable={false}>
-                      <Th className="text-center">رقم الصك</Th>
-                      <Th className="text-center">أمر العمل</Th>
-                      <Th className="text-center">نوع الإسناد</Th>
-                      <Th className="text-center">أخصائي الإسناد</Th>
-                      <Th className="text-center">الحالة</Th>
-                      <Th className="w-10 px-1.5 text-center" aria-label="المزيد" />
+                      <Th>رقم الصك</Th>
+                      <Th>أمر العمل</Th>
+                      <Th>نوع الإسناد</Th>
+                      <Th>أخصائي الإسناد</Th>
+                      <Th>الحالة</Th>
+                      <ThAction aria-label="المزيد" />
                     </Tr>
                   </THead>
                   <TBody>
@@ -261,7 +255,7 @@ export function SuspendedTransactionsView() {
                             )
                           }
                         >
-                          <Td className="whitespace-nowrap text-center">
+                          <Td className="whitespace-nowrap">
                             <span
                               dir="ltr"
                               className="inline-block text-[11px] font-semibold text-primary"
@@ -269,24 +263,22 @@ export function SuspendedTransactionsView() {
                               {deedLabel(item, record)}
                             </span>
                           </Td>
-                          <Td className="text-center text-text-2">
+                          <Td className="text-text-2">
                             <PoNumber value={item.poNumber} link />
                           </Td>
-                          <Td className="text-center text-text-2">
-                            {assignmentType}
-                          </Td>
+                          <Td className="text-text-2">{assignmentType}</Td>
                           <Td
-                            className="overflow-hidden text-ellipsis text-center text-text-2"
+                            className="max-w-0 overflow-hidden text-ellipsis text-text-2"
                             title={assignmentSpecialist}
                           >
                             {assignmentSpecialist}
                           </Td>
-                          <Td className="text-center align-middle">
+                          <Td>
                             <RemainingTimeCell state={remaining} />
                           </Td>
-                          <Td className="w-10 px-1 text-center">
+                          <TdAction>
                             <RowMoreMenu items={moreItems} />
-                          </Td>
+                          </TdAction>
                         </Tr>
                       );
                     })}

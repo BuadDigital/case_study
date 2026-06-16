@@ -1,10 +1,8 @@
 import fs from "fs";
 import { execSync } from "child_process";
 
-const css = fs.readFileSync(
-  "packages/design-system/src/styles/prototype.css",
-  "utf8",
-);
+const cssPath = "packages/design-system/src/styles/tokens.css";
+const css = fs.readFileSync(cssPath, "utf8");
 const classDefs = new Set();
 for (const m of css.matchAll(/\.([a-zA-Z][a-zA-Z0-9_-]*)/g)) {
   classDefs.add(m[1]);

@@ -26,7 +26,6 @@ export { CASE_STUDY_READY_NAV };
 
 export const CASE_STUDY_READY_PAGE_IDS: ReadonlySet<PageId> = new Set([
   "po",
-  "properties",
   "active-primary-data",
   "bourse-inquiry",
   "active-distribution",

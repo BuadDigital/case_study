@@ -24,7 +24,7 @@ function FieldWrap({
     <div className={className}>
       <Label htmlFor={fieldId} className="mb-1 text-[11px] font-semibold text-text-2">
         {label}
-        {required ? <span className="text-danger"> *</span> : null}
+        {required ? <span className="text-danger-text"> *</span> : null}
       </Label>
       {children}
       {hint ? (
@@ -34,7 +34,7 @@ function FieldWrap({
       ) : null}
       {error ? (
         <p
-          className="mt-1 text-[10px] text-danger"
+          className="mt-1 text-[10px] text-danger-text"
           role="alert"
           id={fieldId ? `${fieldId}-error` : undefined}
         >

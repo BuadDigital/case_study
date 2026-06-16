@@ -334,7 +334,7 @@ export function PoPropertyEnfathForm({
           }}
         />
         {fieldErrors.delegationLetterFileName ? (
-          <p className="mt-1 text-[10px] text-danger" role="alert">
+          <p className="mt-1 text-[10px] text-danger-text" role="alert">
             {fieldErrors.delegationLetterFileName}
           </p>
         ) : property.delegationLetterFileName ? (
@@ -361,7 +361,7 @@ export function PoPropertyEnfathForm({
             }}
           />
           {fieldErrors.realEstateRegFileName ? (
-            <p className="mt-1 text-[10px] text-danger" role="alert">
+            <p className="mt-1 text-[10px] text-danger-text" role="alert">
               {fieldErrors.realEstateRegFileName}
             </p>
           ) : property.realEstateRegFileName ? (
@@ -399,7 +399,7 @@ export function PoPropertyEnfathForm({
               variant="inline"
             />
           ) : fieldErrors.assignmentDocFileName ? (
-            <p className="mt-1 text-[10px] text-danger" role="alert">
+            <p className="mt-1 text-[10px] text-danger-text" role="alert">
               {fieldErrors.assignmentDocFileName}
             </p>
           ) : null}

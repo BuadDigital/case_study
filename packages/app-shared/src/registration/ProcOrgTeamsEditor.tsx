@@ -164,7 +164,7 @@ export function ProcOrgTeamsEditor({
             className="mb-2.5 overflow-hidden rounded-lg border border-border"
           >
             <div className="flex items-center gap-2 border-b border-border bg-surface-2 px-3 py-2">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-info-bg text-[10px] font-bold text-info">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-info-bg text-[10px] font-bold text-info-text">
                 {unitIndex + 1}
               </span>
               <span className="flex-1 text-[12.5px] font-bold">

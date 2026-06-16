@@ -14,7 +14,7 @@ import {
 
 const PORTAL_ICON: Record<RegistrationSource, string> = {
   hr: "bg-success-bg text-primary",
-  proc: "bg-info-bg text-info",
+  proc: "bg-info-bg text-info-text",
   crm: "bg-amber-light text-amber-text",
 };
 

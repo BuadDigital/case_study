@@ -20,11 +20,6 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: "/welcome", destination: "/dashboard", permanent: true },
-      {
-        source: "/my-tasks/:taskId",
-        destination: "/active-primary-data?task=:taskId",
-        permanent: true,
-      },
     ];
   },
   async rewrites() {

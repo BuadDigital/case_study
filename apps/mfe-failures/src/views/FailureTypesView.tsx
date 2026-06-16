@@ -90,13 +90,13 @@ export function FailureTypesView() {
   return (
     <>
       {toast ? (
-        <div className={cn(noteBase, "border-success bg-success-bg text-success")}>
+        <div className={cn(noteBase, "border-success bg-success-bg text-success-text")}>
           {toast}
         </div>
       ) : null}
 
       {!canEdit ? (
-        <div className={cn(noteBase, "border-info bg-info-bg text-info")}>
+        <div className={cn(noteBase, "border-info bg-info-bg text-info-text")}>
           وضع الاطلاع — صلاحية التعديل للمشرف ومسؤول النظام.
         </div>
       ) : null}

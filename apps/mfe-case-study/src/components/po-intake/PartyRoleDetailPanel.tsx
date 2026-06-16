@@ -92,7 +92,7 @@ export function PartyRoleDetailPanel({
                     <div className="text-xs leading-snug text-text">
                       {row.question}
                     </div>
-                    <div className="whitespace-nowrap text-xs font-medium text-success">
+                    <div className="whitespace-nowrap text-xs font-medium text-success-text">
                       {row.answer}
                     </div>
                   </div>

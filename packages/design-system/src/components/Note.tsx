@@ -19,7 +19,7 @@ export function Note({
   return (
     <div
       className={cn(
-        "mb-3 rounded-[var(--radius-DEFAULT)] border-r-[3px] border-solid px-3.5 py-2.5 text-xs leading-relaxed",
+        "mb-3 rounded-[var(--radius-DEFAULT)] border-r-[3px] border-solid px-3.5 py-2.5 text-[12px] leading-relaxed",
         toneClasses[tone],
         className,
       )}

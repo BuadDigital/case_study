@@ -1,7 +1,6 @@
 "use client";
-
 import { useMemo, useState } from "react";
-import { Badge, Input, Label } from "@platform/design-system";
+import { Badge, Input, Label, formControlClassName } from "@platform/design-system";
 import {
   PROPERTY_FIELDS_CATALOG,
   PROPERTY_FIELDS_SOURCE_ROLES,
@@ -125,7 +124,7 @@ export function PropertyFieldsCatalogTab() {
             <Label htmlFor="prop-fields-role">الدور</Label>
             <select
               id="prop-fields-role"
-              className="w-full rounded-[var(--radius-DEFAULT)] border border-border bg-surface px-2.5 py-2 text-sm text-text outline-none focus:border-primary focus:ring-[3px] focus:ring-primary/12"
+              className={formControlClassName}
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
             >

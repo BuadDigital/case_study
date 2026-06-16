@@ -3,8 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Button,
-  Card,
-  CardBody,
   FormGroup,
   Input,
   Label,
@@ -644,24 +642,23 @@ export function CaseStudyForm({
       ) : null}
 
       {step === 0 && sectionHasVisibleQuestions("deed") ? (
-        <Card>
-          <CardBody className="flex flex-col gap-3">
-          <RegistrationFormCard>
-            <CaseStudyMatrixTable
-              section="deed"
-              sectionTitle="بيانات الصك والعقار"
-              answers={draft.answers}
-              onAnswer={setAnswer}
-              {...matrixTableProps}
-            />
-            {!isParty ? (
-              <RemarksBlock
-                label="في حال وجود اختلاف في البيانات أعلاه يتم التوضيح في الملاحظات ادناه"
-                value={draft.deedRemarks}
-                onChange={(v) => patch("deedRemarks", v)}
-              />
-            ) : null}
-          </RegistrationFormCard>
+        <div className="flex flex-col gap-3">
+          <CaseStudyMatrixTable
+            section="deed"
+            sectionTitle="بيانات الصك والعقار"
+            answers={draft.answers}
+            onAnswer={setAnswer}
+            {...matrixTableProps}
+            footer={
+              !isParty ? (
+                <RemarksBlock
+                  label="في حال وجود اختلاف في البيانات أعلاه يتم التوضيح في الملاحظات ادناه"
+                  value={draft.deedRemarks}
+                  onChange={(v) => patch("deedRemarks", v)}
+                />
+              ) : undefined
+            }
+          />
           {!isParty && isLastVisibleStep ? (
             <SpecialistClosingCards reportModel={reportModel} />
           ) : null}
@@ -675,29 +672,27 @@ export function CaseStudyForm({
               </Button>
             )}
           </div>
-          </CardBody>
-        </Card>
+        </div>
       ) : null}
 
       {step === 1 && sectionHasVisibleQuestions("survey") ? (
-        <Card>
-          <CardBody className="flex flex-col gap-3">
-          <RegistrationFormCard>
-            <CaseStudyMatrixTable
-              section="survey"
-              sectionTitle="الرفع المساحي والطبيعة"
-              answers={draft.answers}
-              onAnswer={setAnswer}
-              {...matrixTableProps}
-            />
-            {!isParty ? (
-              <RemarksBlock
-                label="في حال وجود اختلاف في البيانات أعلاه يتم التوضيح في الملاحظات ادناه"
-                value={draft.surveyRemarks}
-                onChange={(v) => patch("surveyRemarks", v)}
-              />
-            ) : null}
-          </RegistrationFormCard>
+        <div className="flex flex-col gap-3">
+          <CaseStudyMatrixTable
+            section="survey"
+            sectionTitle="الرفع المساحي والطبيعة"
+            answers={draft.answers}
+            onAnswer={setAnswer}
+            {...matrixTableProps}
+            footer={
+              !isParty ? (
+                <RemarksBlock
+                  label="في حال وجود اختلاف في البيانات أعلاه يتم التوضيح في الملاحظات ادناه"
+                  value={draft.surveyRemarks}
+                  onChange={(v) => patch("surveyRemarks", v)}
+                />
+              ) : undefined
+            }
+          />
           {!isParty && isLastVisibleStep ? (
             <SpecialistClosingCards reportModel={reportModel} />
           ) : null}
@@ -717,68 +712,66 @@ export function CaseStudyForm({
               </Button>
             )}
           </div>
-          </CardBody>
-        </Card>
+        </div>
       ) : null}
 
       {step === 2 && sectionHasVisibleQuestions("comp") ? (
-        <Card>
-          <CardBody className="flex flex-col gap-3">
-          <RegistrationFormCard>
-            <CaseStudyMatrixTable
-              section="comp"
-              sectionTitle="مكونات العقار"
-              answers={draft.answers}
-              onAnswer={setAnswer}
-              {...matrixTableProps}
-            />
-            {!isParty ? (
-              <>
-                <div className="flex flex-wrap items-center gap-1.5 border-t border-border py-3 text-sm text-text">
-                  <span className="font-semibold text-text-2">عداد الكهرباء رقم (</span>
-                  <Input
-                    className="w-[5.5rem] rounded-none border-0 border-b bg-transparent px-0.5 shadow-none focus:ring-0"
-                    placeholder="رقم"
-                    aria-label="رقم العداد"
-                    value={draft.meterNumber}
-                    onChange={(e) => patch("meterNumber", e.target.value)}
+        <div className="flex flex-col gap-3">
+          <CaseStudyMatrixTable
+            section="comp"
+            sectionTitle="مكونات العقار"
+            answers={draft.answers}
+            onAnswer={setAnswer}
+            {...matrixTableProps}
+            footer={
+              !isParty ? (
+                <>
+                  <div className="flex flex-wrap items-center gap-1.5 border-t border-border py-3 text-sm text-text">
+                    <span className="font-semibold text-text-2">عداد الكهرباء رقم (</span>
+                    <Input
+                      className="w-[5.5rem] rounded-none border-0 border-b bg-transparent px-0.5 shadow-none focus:ring-0"
+                      placeholder="رقم"
+                      aria-label="رقم العداد"
+                      value={draft.meterNumber}
+                      onChange={(e) => patch("meterNumber", e.target.value)}
+                    />
+                    <span className="font-semibold text-text-2">)</span>
+                    <span className="ms-2 inline-flex flex-wrap items-center gap-3">
+                      {(
+                        [
+                          ["electronic", "إلكتروني"],
+                          ["analog", "مؤرشف"],
+                          ["none", "لا يوجد"],
+                        ] as const
+                      ).map(([val, label]) => (
+                        <label
+                          key={val}
+                          className="inline-flex cursor-pointer items-center gap-1.5 text-sm font-normal text-text-2"
+                        >
+                          <input
+                            type="radio"
+                            name={`meter-${taskId}`}
+                            checked={draft.meterType === val}
+                            onChange={() => {
+                              patch("meterType", val as CaseStudyMeterType);
+                              if (val === "none") patch("meterNumber", "");
+                            }}
+                          />
+                          {label}
+                        </label>
+                      ))}
+                    </span>
+                  </div>
+                  <RemarksBlock
+                    label="ملاحظات"
+                    value={draft.componentsRemarks}
+                    onChange={(v) => patch("componentsRemarks", v)}
+                    rows={2}
                   />
-                  <span className="font-semibold text-text-2">)</span>
-                  <span className="ms-2 inline-flex flex-wrap items-center gap-3">
-                    {(
-                      [
-                        ["electronic", "إلكتروني"],
-                        ["analog", "مؤرشف"],
-                        ["none", "لا يوجد"],
-                      ] as const
-                    ).map(([val, label]) => (
-                      <label
-                        key={val}
-                        className="inline-flex cursor-pointer items-center gap-1.5 text-sm font-normal text-text-2"
-                      >
-                        <input
-                          type="radio"
-                          name={`meter-${taskId}`}
-                          checked={draft.meterType === val}
-                          onChange={() => {
-                            patch("meterType", val as CaseStudyMeterType);
-                            if (val === "none") patch("meterNumber", "");
-                          }}
-                        />
-                        {label}
-                      </label>
-                    ))}
-                  </span>
-                </div>
-                <RemarksBlock
-                  label="ملاحظات"
-                  value={draft.componentsRemarks}
-                  onChange={(v) => patch("componentsRemarks", v)}
-                  rows={2}
-                />
-              </>
-            ) : null}
-          </RegistrationFormCard>
+                </>
+              ) : undefined
+            }
+          />
           {!isParty && isLastVisibleStep ? (
             <SpecialistClosingCards reportModel={reportModel} />
           ) : null}
@@ -798,42 +791,40 @@ export function CaseStudyForm({
               </Button>
             )}
           </div>
-          </CardBody>
-        </Card>
+        </div>
       ) : null}
 
       {step === 3 && sectionHasVisibleQuestions("occ") ? (
-        <Card>
-          <CardBody className="flex flex-col gap-3">
-          <RegistrationFormCard>
-            <CaseStudyMatrixTable
-              section="occ"
-              sectionTitle="الإشغال والإيجار"
-              answers={draft.answers}
-              onAnswer={setAnswer}
-              {...matrixTableProps}
-            />
-            {!isParty ? (
-              <div>
-                <RegField
-                  id="cs-hoa"
-                  label="قيمة اشتراك اتحاد الملاك"
-                  type="number"
-                  placeholder="القيمة"
-                  value={draft.hoaFee}
-                  onChange={(v) => patch("hoaFee", v)}
-                  className="inline-block max-w-[200px]"
-                />
-                <span className="me-2 text-xs text-text-2">ريال سعودي</span>
-                <RemarksBlock
-                  label="ملاحظات"
-                  value={draft.occupancyRemarks}
-                  onChange={(v) => patch("occupancyRemarks", v)}
-                  rows={2}
-                />
-              </div>
-            ) : null}
-          </RegistrationFormCard>
+        <div className="flex flex-col gap-3">
+          <CaseStudyMatrixTable
+            section="occ"
+            sectionTitle="الإشغال والإيجار"
+            answers={draft.answers}
+            onAnswer={setAnswer}
+            {...matrixTableProps}
+            footer={
+              !isParty ? (
+                <div className="border-t border-border pt-3">
+                  <RegField
+                    id="cs-hoa"
+                    label="قيمة اشتراك اتحاد الملاك"
+                    type="number"
+                    placeholder="القيمة"
+                    value={draft.hoaFee}
+                    onChange={(v) => patch("hoaFee", v)}
+                    className="inline-block max-w-[200px]"
+                  />
+                  <span className="me-2 text-xs text-text-2">ريال سعودي</span>
+                  <RemarksBlock
+                    label="ملاحظات"
+                    value={draft.occupancyRemarks}
+                    onChange={(v) => patch("occupancyRemarks", v)}
+                    rows={2}
+                  />
+                </div>
+              ) : undefined
+            }
+          />
           {!isParty && isLastVisibleStep ? (
             <SpecialistClosingCards reportModel={reportModel} />
           ) : null}
@@ -853,22 +844,18 @@ export function CaseStudyForm({
               </Button>
             )}
           </div>
-          </CardBody>
-        </Card>
+        </div>
       ) : null}
 
       {step === 4 && sectionHasVisibleQuestions("extra") ? (
-        <Card>
-          <CardBody className="flex flex-col gap-3">
-          <RegistrationFormCard>
-            <CaseStudyMatrixTable
-              section="extra"
-              sectionTitle="ملاحظات إضافية"
-              answers={draft.answers}
-              onAnswer={setAnswer}
-              {...matrixTableProps}
-            />
-          </RegistrationFormCard>
+        <div className="flex flex-col gap-3">
+          <CaseStudyMatrixTable
+            section="extra"
+            sectionTitle="ملاحظات إضافية"
+            answers={draft.answers}
+            onAnswer={setAnswer}
+            {...matrixTableProps}
+          />
 
           {!isParty && isLastVisibleStep ? (
             <SpecialistClosingCards reportModel={reportModel} />
@@ -883,8 +870,7 @@ export function CaseStudyForm({
             )}
             {isLastVisibleStep ? (showStepFooterActions ? formFooterActions : null) : null}
           </div>
-          </CardBody>
-        </Card>
+        </div>
       ) : null}
 
       {!isParty ? (

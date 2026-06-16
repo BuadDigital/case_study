@@ -207,7 +207,7 @@ function CopyButton({
       variant="default"
       className={cn(
         "h-8 w-8 shrink-0 p-0",
-        done && "border-success bg-success-bg text-success hover:bg-success-bg",
+        done && "border-success bg-success-bg text-success-text hover:bg-success-bg",
       )}
       title={title}
       aria-label={title}
@@ -660,7 +660,7 @@ export function PropertyDetailEnfathUpload({
 
       <div
         className={cn(
-          "pointer-events-none fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 translate-y-4 items-center gap-2 rounded-full border border-success/30 bg-success-bg px-4 py-2 text-xs font-medium text-success opacity-0 shadow-lg transition-all",
+          "pointer-events-none fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 translate-y-4 items-center gap-2 rounded-full border border-success/30 bg-success-bg px-4 py-2 text-xs font-medium text-success-text opacity-0 shadow-lg transition-all",
           toast && "pointer-events-auto translate-y-0 opacity-100",
         )}
         role="status"

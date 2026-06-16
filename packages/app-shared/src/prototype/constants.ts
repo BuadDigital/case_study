@@ -3,6 +3,7 @@ import { ACTIVE_TRANSACTIONS_NAV } from "./active-transactions";
 import { SETTINGS_NAV } from "@platform/app-shared/prototype/settings-nav";
 import { SYSTEM_FIELDS_NAV } from "@platform/app-shared/prototype/system-fields-nav";
 import { SYSTEM_FIELDS_CATALOG_NAV_ITEM } from "@platform/app-shared/prototype/system-fields-catalog-nav";
+import { SYSTEM_SCREEN_CATALOG_NAV_ITEM } from "@platform/app-shared/prototype/system-screen-catalog-nav";
 
 export type { NavItem, PageId, RoleDef, RoleId };
 
@@ -54,7 +55,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "آق",
     bg: "var(--info-bg)",
     tc: "var(--info)",
-    pages: ["dashboard", "users", "system-fields-catalog"],
+    pages: ["dashboard", "users", "system-fields-catalog", "system-screen-catalog"],
   },
   "proc-admin": {
     name: "علي الأمين",
@@ -62,7 +63,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "عل",
     bg: "var(--warning-bg)",
     tc: "var(--warning)",
-    pages: ["dashboard", "users", "system-fields-catalog"],
+    pages: ["dashboard", "users", "system-fields-catalog", "system-screen-catalog"],
   },
   "crm-admin": {
     name: "شهد العماري",
@@ -70,7 +71,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "شع",
     bg: "var(--success-bg)",
     tc: "var(--success)",
-    pages: ["dashboard", "users", "system-fields-catalog"],
+    pages: ["dashboard", "users", "system-fields-catalog", "system-screen-catalog"],
   },
   "general-manager": {
     name: "سالم الغريب",
@@ -91,6 +92,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
       "suspended-transactions",
       "valuation-requests",
       "system-fields-catalog",
+      "system-screen-catalog",
       "financial",
       "kpi",
       "users",
@@ -117,6 +119,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
       "suspended-transactions",
       "failure-types",
       "system-fields-catalog",
+      "system-screen-catalog",
     ],
   },
   "case-specialist": {
@@ -135,6 +138,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
       "failures",
       "suspended-transactions",
       "system-fields-catalog",
+      "system-screen-catalog",
     ],
   },
   "valuation-coordinator": {
@@ -143,7 +147,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "مد",
     bg: "var(--purple-bg)",
     tc: "var(--purple)",
-    pages: ["dashboard", "valuation-coordination", "system-fields-catalog"],
+    pages: ["dashboard", "valuation-coordination", "system-fields-catalog", "system-screen-catalog"],
   },
   "real-estate-appraiser": {
     name: "عبدالله الكثيري",
@@ -151,7 +155,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "عك",
     bg: "var(--info-bg)",
     tc: "var(--info)",
-    pages: ["dashboard", "po", "property-appraisal", "suspended-transactions", "system-fields-catalog"],
+    pages: ["dashboard", "po", "property-appraisal", "suspended-transactions", "system-fields-catalog", "system-screen-catalog"],
   },
   "field-inspector": {
     name: "أحمد سعيد",
@@ -159,7 +163,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "أس",
     bg: "var(--info-bg)",
     tc: "var(--info)",
-    pages: ["dashboard", "property-inspection", "system-fields-catalog"],
+    pages: ["dashboard", "property-inspection", "system-fields-catalog", "system-screen-catalog"],
   },
   "government-reviewer": {
     name: "فراس كمرين",
@@ -167,7 +171,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "فك",
     bg: "var(--orange-bg)",
     tc: "var(--orange)",
-    pages: ["dashboard", "government-review", "keys", "system-fields-catalog"],
+    pages: ["dashboard", "government-review", "keys", "system-fields-catalog", "system-screen-catalog"],
   },
   "engineering-office": {
     name: "مكتب جدة للمساحة",
@@ -175,7 +179,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "جد",
     bg: "var(--purple-bg)",
     tc: "var(--purple)",
-    pages: ["dashboard", "active-survey", "system-fields-catalog"],
+    pages: ["dashboard", "active-survey", "system-fields-catalog", "system-screen-catalog"],
   },
   "financial-officer": {
     name: "إيمان النهدي",
@@ -183,7 +187,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "إن",
     bg: "var(--danger-bg)",
     tc: "var(--danger)",
-    pages: ["dashboard", "financial", "system-fields-catalog"],
+    pages: ["dashboard", "financial", "system-fields-catalog", "system-screen-catalog"],
   },
 };
 
@@ -252,8 +256,7 @@ export const ALL_PROTOTYPE_PAGES: PageId[] = [
     ...SETTINGS_NAV.map((n) => n.id),
     ...SYSTEM_FIELDS_NAV.map((n) => n.id),
     SYSTEM_FIELDS_CATALOG_NAV_ITEM.id,
-    "my-tasks",
-    "properties",
+    SYSTEM_SCREEN_CATALOG_NAV_ITEM.id,
   ]),
 ];
 
@@ -261,25 +264,23 @@ ROLES.cdo.pages = ALL_PROTOTYPE_PAGES;
 
 export const PAGE_TITLES: Record<PageId, string> = {
   dashboard: "لوحة التحكم",
-  "my-tasks": "تنفيذ المعاملة",
   "active-primary-data": "البيانات الأولية",
   "active-distribution": "توزيع المعاملات",
-  "active-case-study": "",
+  "active-case-study": "دراسة حالة العقارات",
   po: "أوامر العمل",
   "bourse-inquiry": "استعلام بورصة",
-  properties: "العقارات",
   survey: "الرفع المساحي",
   keys: "إدارة المفاتيح",
   failures: "إدارة التعذرات",
   "suspended-transactions": "المعاملات المعلقة",
   "valuation-requests": "طلبات التقييم",
-  "field-form": "نموذج المعاين",
   "property-inspection": "معاينة العقار",
   "government-review": "المراجعة الحكومية",
   "valuation-coordination": "استلام التقييم",
   "property-appraisal": "تقييم العقار",
   "active-survey": "الرفع المساحي",
-  "system-fields-catalog": "حقول النظام",
+  "system-fields-catalog": "قاموس الحقول المركزي",
+  "system-screen-catalog": "دليل الشاشات",
   financial: "التقارير المالية",
   kpi: "مؤشرات الأداء",
   users: "إدارة المستخدمين",
@@ -290,25 +291,23 @@ export const PAGE_TITLES: Record<PageId, string> = {
 
 export const PAGE_BREADCRUMB: Record<PageId, string> = {
   dashboard: "الرئيسية",
-  "my-tasks": "دراسة الحالة / المعاملات النشطة",
   "active-primary-data": "دراسة الحالة / المعاملات النشطة / البيانات الأولية",
   "active-distribution": "دراسة الحالة / المعاملات النشطة / توزيع المعاملات",
   "active-case-study": "دراسة الحالة / المعاملات النشطة / دراسة حالة العقارات",
   po: "دراسة الحالة / أوامر العمل",
   "bourse-inquiry": "دراسة الحالة / المعاملات النشطة / استعلام بورصة",
-  properties: "دراسة الحالة",
   survey: "دراسة الحالة",
   keys: "دراسة الحالة",
   failures: "دراسة الحالة",
   "suspended-transactions": "دراسة الحالة",
   "valuation-requests": "التقييم العقاري",
-  "field-form": "التقييم العقاري",
   "property-inspection": "المعاملات النشطة / معاينة العقار",
   "government-review": "المعاملات النشطة / المراجعة الحكومية",
   "valuation-coordination": "المعاملات النشطة / استلام التقييم",
   "property-appraisal": "المعاملات النشطة / تقييم العقار",
   "active-survey": "المعاملات النشطة / الرفع المساحي",
-  "system-fields-catalog": "عام / حقول النظام",
+  "system-fields-catalog": "عام / قاموس الحقول المركزي",
+  "system-screen-catalog": "عام / دليل الشاشات",
   financial: "المالية",
   kpi: "الإدارة",
   users: "الإدارة",
@@ -433,7 +432,7 @@ export const VALID_PAGE_IDS = new Set<PageId>([
   ...SETTINGS_NAV.map((n) => n.id),
   ...SYSTEM_FIELDS_NAV.map((n) => n.id),
   SYSTEM_FIELDS_CATALOG_NAV_ITEM.id,
-  "my-tasks",
+  SYSTEM_SCREEN_CATALOG_NAV_ITEM.id,
 ]);
 
 export const ROLE_OPTIONS: RoleOption[] = [

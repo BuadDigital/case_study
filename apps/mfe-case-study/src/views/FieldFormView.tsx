@@ -36,7 +36,7 @@ const RADIO_OPT =
   "inline-flex cursor-pointer items-center gap-1.5 text-xs text-text-2";
 const PHOTO_GRID = "mt-2 grid grid-cols-4 gap-2";
 const PHOTO_PH =
-  "flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded border-2 border-dashed border-border-2 bg-surface-3 text-[10px] text-text-3 transition-colors hover:border-primary-light hover:text-primary-light disabled:cursor-not-allowed disabled:opacity-60";
+  "flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded border-2 border-dashed border-border-md bg-surface-3 text-[10px] text-text-3 transition-colors hover:border-primary-light hover:text-primary-light disabled:cursor-not-allowed disabled:opacity-60";
 
 export type FieldFormViewProps = {
   embedded?: boolean;

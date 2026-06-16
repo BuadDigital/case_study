@@ -9,8 +9,7 @@ import {
   Textarea,
   cn,
 } from "@platform/design-system";
-import {
-  CASE_STUDY_INFO_PARTIES,
+import { CASE_STUDY_INFO_PARTIES,
   CASE_STUDY_INFO_ROLE_TYPES,
   CASE_STUDY_INFO_SECTIONS,
   CASE_STUDY_QUESTION_CATALOG,
@@ -163,7 +162,7 @@ export function CaseStudyInfoRolesView() {
           <span className="mt-0.5 text-[10px] text-text-3">إجمالي الأسئلة</span>
         </div>
         <div className="min-w-16 text-center">
-          <span className="block text-[22px] font-bold text-success">{summary.done}</span>
+          <span className="block text-[22px] font-bold text-success-text">{summary.done}</span>
           <span className="mt-0.5 text-[10px] text-text-3">مكتملة</span>
         </div>
         <div className="min-w-16 text-center">

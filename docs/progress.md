@@ -62,7 +62,6 @@ property_study/
 │   ├── mfe-keys/            # @keys/mfe — mock keys
 │   ├── mfe-financial/       # @financial/mfe — mock financial
 │   ├── mfe-kpi/             # @kpi/mfe — mock KPI
-│   ├── mfe-messages/        # @messages/mfe — mock messages
 │   ├── mfe-valuation/       # @valuation/mfe — mock valuation requests list
 │   └── plan/                # Frontend planning notes (FRONTEND.md)
 ├── backend/
@@ -117,7 +116,7 @@ property_study/
 
 **Platform domain packages (F4b — logical split, single deploy)**
 
-- **`@dashboard/mfe`**, **`@survey/mfe`**, **`@keys/mfe`**, **`@financial/mfe`**, **`@kpi/mfe`**, **`@messages/mfe`**, **`@valuation/mfe`** — each owns its `*View.tsx`; shell `[page]/page.tsx` imports from `@*/mfe` only.
+- **`@dashboard/mfe`**, **`@survey/mfe`**, **`@keys/mfe`**, **`@financial/mfe`**, **`@kpi/mfe`**, **`@valuation/mfe`** — each owns its `*View.tsx`; shell `[page]/page.tsx` imports from `@*/mfe` only.
 - **`@evaluator/mfe`** — appraiser work panel, advisory panel, submission storage.
 - **`@engineering-office/mfe`** — engineering survey queue extensions, work panel, Google Maps, 13-item checklist, submit/reopen.
 - **F4c:** Removed legacy orphan `*View.tsx` copies from shell (layout-only: `AppShell`, `AppBreadcrumb`, `NavIcon`). Documented in `FRONTEND.md`.
@@ -1068,7 +1067,7 @@ Each party queue row opens a dedicated full-page task (mirrors engineering patte
 30. **Docs (9 Jun 2026):** `apps/plan/FRONTEND.md` — F3 marked complete; packages table updated.
 31. **`@settings/mfe` + `@failures/mfe`:** settings (users, courts, info-roles, system-tools) and failures (إدارة التعذرات) split into own packages; failures repository port + `FAILURES_CHANGED_EVENT`; dummy data unchanged (`evalFailureRecords`).
 32. **Cleanup pass:** removed duplicate API helpers from case-study `work-orders-api-config`, dead evaluator checklist validation, stale doc paths (`README`, `progress`, PM review).
-33. **F4b platform MFEs (Jun 2026):** `@dashboard`, `@survey`, `@keys`, `@financial`, `@kpi`, `@messages`, `@valuation` — views moved out of shell; `[page]/page.tsx` imports `@*/mfe` only.
+33. **F4b platform MFEs (Jun 2026):** `@dashboard`, `@survey`, `@keys`, `@financial`, `@kpi`, `@valuation` — views moved out of shell; `[page]/page.tsx` imports `@*/mfe` only.
 34. **`@evaluator/mfe` + `@engineering-office/mfe`:** appraiser and engineering survey packages; party extensions wired into case-study queues and shell full-page routes.
 35. **F4c shell cleanup:** orphan platform `*View.tsx` removed from shell (layout components only); `FRONTEND.md` checklist marked complete.
 36. **F4d dashboard decoupling:** `@dashboard/mfe` reads work orders via `work-orders-read` + api-client (no import from `@case-study/mfe`).

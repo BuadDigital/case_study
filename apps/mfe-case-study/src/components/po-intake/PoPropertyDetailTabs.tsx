@@ -97,7 +97,7 @@ function DocumentRow({ doc }: { doc: PropertyDetailDocumentEntry }) {
         <span
           className={cn(
             "min-w-7 shrink-0 text-center text-xs font-bold",
-            isPdf ? "text-danger" : "text-success",
+            isPdf ? "text-danger-text" : "text-success-text",
           )}
           aria-hidden
         >
@@ -158,9 +158,9 @@ function logIconGlyph(tone: string): string {
 }
 
 function logIconClass(tone: string): string {
-  if (tone === "done") return "bg-success-bg text-success";
+  if (tone === "done") return "bg-success-bg text-success-text";
   if (tone === "active") return "bg-warning-bg text-warning";
-  if (tone === "warn") return "bg-danger-bg text-danger";
+  if (tone === "warn") return "bg-danger-bg text-danger-text";
   return "bg-surface-2 text-text-2";
 }
 
@@ -684,7 +684,7 @@ export function PoPropertyDetailTabs({
                 {[1, 2, 3, 4].map((n) => (
                   <div
                     key={n}
-                    className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1.5 rounded-[var(--radius-DEFAULT)] border-[1.5px] border-dashed border-border bg-surface-2 text-[11px] text-text-3 transition-colors hover:border-success hover:bg-success-bg hover:text-success"
+                    className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1.5 rounded-[var(--radius-DEFAULT)] border-[1.5px] border-dashed border-border bg-surface-2 text-[11px] text-text-3 transition-colors hover:border-success hover:bg-success-bg hover:text-success-text"
                   >
                     <span className="text-[22px] leading-none" aria-hidden>
                       +

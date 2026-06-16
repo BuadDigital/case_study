@@ -42,7 +42,7 @@ export function PoEditShell({
             variant === "detail" && "bg-surface",
           )}
         >
-          <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-surface px-6 py-2.5">
+          <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-surface px-4 py-2.5">
             <div className="flex min-w-0 flex-1 items-center gap-3">
               <Button type="button" size="sm" onClick={handleBack}>
                 {REG_BACK}
@@ -57,11 +57,11 @@ export function PoEditShell({
               </div>
             </div>
           </header>
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 pb-4">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-4">
             {children}
           </div>
           {variant !== "detail" ? (
-            <footer className="flex shrink-0 justify-start border-t border-border bg-surface px-6 py-3">
+            <footer className="flex shrink-0 justify-start border-t border-border bg-surface px-4 py-3">
               <div className="flex flex-row flex-wrap items-center gap-2">
                 {footerExtra}
                 <Button

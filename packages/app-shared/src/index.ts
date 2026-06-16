@@ -7,4 +7,6 @@ export * from "./prototype/prototype-role-access";
 export * from "./prototype/settings-nav";
 export * from "./prototype/system-fields-nav";
 export * from "./prototype/property-fields-catalog";
+export * from "./prototype/field-dictionary";
+export * from "./prototype/screen-catalog";
 export { prototypeKeys } from "./query/prototype-keys";

@@ -18,10 +18,8 @@ export const CASE_STUDY_FORM_STEPS = [
 ] as const;
 
 export const CASE_STUDY_PROVIDER_NAME = "شركة إجادة المهنية للتقييم";
-
 /** معتمد التقرير — ثابت في التقرير (ليس أخصائي الإسناد من أمر العمل). */
 export const CASE_STUDY_REPORT_APPROVER_NAME = "عماد رشيد الرشيد";
-
 export const CASE_STUDY_SIGNATURE_IMAGE = "/case-study/emad-signature.png";
 export const CASE_STUDY_STAMP_IMAGE = "/case-study/ejadah-stamp.png";
 

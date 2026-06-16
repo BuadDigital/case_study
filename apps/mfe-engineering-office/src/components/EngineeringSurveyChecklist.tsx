@@ -19,16 +19,16 @@ export function EngineeringSurveyChecklist({
       <table className="w-full border-collapse text-[11px]">
         <thead>
           <tr>
-            <th className="w-7 bg-surface-2 px-3 py-2 text-center text-[11px] font-medium text-text-2">
+            <th className="w-7 bg-surface-2 px-4 py-2 text-center text-[11px] font-medium text-text-2">
               #
             </th>
-            <th className="bg-surface-2 px-3 py-2 text-start text-[11px] font-medium text-text-2">
+            <th className="bg-surface-2 px-4 py-2 text-start text-[11px] font-medium text-text-2">
               البند
             </th>
-            <th className="w-[90px] bg-surface-2 px-3 py-2 text-start text-[11px] font-medium text-text-2">
+            <th className="w-[90px] bg-surface-2 px-4 py-2 text-start text-[11px] font-medium text-text-2">
               نعم / لا
             </th>
-            <th className="w-40 bg-surface-2 px-3 py-2 text-start text-[11px] font-medium text-text-2">
+            <th className="w-40 bg-surface-2 px-4 py-2 text-start text-[11px] font-medium text-text-2">
               ملاحظة
             </th>
           </tr>
@@ -38,13 +38,13 @@ export function EngineeringSurveyChecklist({
             const row = rows[index] ?? { answer: null, note: "" };
             return (
               <tr key={label} className="hover:bg-surface-2">
-                <td className="border-b border-border px-3 py-2 text-center align-middle text-text-3">
+                <td className="border-b border-border px-4 py-2 text-center align-middle text-text-3">
                   {index + 1}
                 </td>
-                <td className="min-w-[200px] border-b border-border px-3 py-2 align-middle leading-snug text-text">
+                <td className="min-w-[200px] border-b border-border px-4 py-2 align-middle leading-snug text-text">
                   {label}
                 </td>
-                <td className="border-b border-border px-3 py-2 align-middle">
+                <td className="border-b border-border px-4 py-2 align-middle">
                   <div className="flex justify-center gap-2.5">
                     {(["yes", "no"] as const).map((value) => (
                       <label
@@ -67,7 +67,7 @@ export function EngineeringSurveyChecklist({
                     ))}
                   </div>
                 </td>
-                <td className="border-b border-border px-3 py-2 align-middle">
+                <td className="border-b border-border px-4 py-2 align-middle">
                   <textarea
                     className={cn(
                       "min-h-11 w-full resize-y rounded-[5px] border border-border bg-surface-2 px-1.5 py-1 font-inherit text-[11px] outline-none",

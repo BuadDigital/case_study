@@ -147,7 +147,7 @@ export function RegRemoveButton({
     <button
       type="button"
       className={cn(
-        "cursor-pointer rounded p-1 text-text-3 transition-colors hover:bg-danger-bg hover:text-danger",
+        "cursor-pointer rounded p-1 text-text-3 transition-colors hover:bg-danger-bg hover:text-danger-text",
         className,
       )}
       aria-label={label}
@@ -168,7 +168,7 @@ export function RegAddMemberButton({
   return (
     <button
       type="button"
-      className="mt-1.5 flex w-full cursor-pointer items-center justify-center gap-1 rounded border border-dashed border-border-md bg-transparent px-3 py-1.5 text-xs font-semibold text-info transition-colors hover:bg-info-bg"
+      className="mt-1.5 flex w-full cursor-pointer items-center justify-center gap-1 rounded border border-dashed border-border-md bg-transparent px-3 py-1.5 text-xs font-semibold text-info-text transition-colors hover:bg-info-bg"
       onClick={onClick}
     >
       {children}
@@ -188,7 +188,7 @@ export function RegStepBadge({
       className={cn(
         "shrink-0 whitespace-nowrap rounded-[10px] border px-2.5 py-0.5 text-[10.5px] font-semibold",
         done
-          ? "border-transparent bg-success-bg text-success"
+          ? "border-transparent bg-success-bg text-success-text"
           : "border-border bg-surface-2 text-primary",
       )}
     >

@@ -79,8 +79,8 @@ export function PoPropertyStackCard({
               <span
                 className={cn(
                   property.assignmentDocFileName.trim()
-                    ? "text-success"
-                    : "font-semibold text-danger",
+                    ? "text-success-text"
+                    : "font-semibold text-danger-text",
                 )}
               >
                 قرار الإسناد:{" "}

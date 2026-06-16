@@ -13,7 +13,9 @@ import {
   Table,
   TBody,
   Td,
+  TdAction,
   Th,
+  ThAction,
   THead,
   Tr,
   cn,
@@ -309,15 +311,7 @@ export function PoPropertiesPage({
         ) : (
           <>
             <div className="w-full overflow-x-auto">
-              <Table className="table-fixed">
-                <colgroup>
-                  <col className="w-[10%] min-w-[5.25rem]" />
-                  <col className="w-[19%]" />
-                  <col className="w-[24%]" />
-                  <col className="w-[11%]" />
-                  <col className="w-[13%]" />
-                  {showRowMenu ? <col className="w-10" /> : null}
-                </colgroup>
+              <Table>
                 <THead>
                   <Tr hoverable={false}>
                     <Th>رقم الصك</Th>
@@ -326,7 +320,7 @@ export function PoPropertiesPage({
                     <Th>حالة الصك</Th>
                     <Th>الحالة</Th>
                     {showRowMenu ? (
-                      <Th className="w-10 px-1.5" aria-label="المزيد" />
+                      <ThAction aria-label="المزيد" />
                     ) : null}
                   </Tr>
                 </THead>
@@ -362,7 +356,7 @@ export function PoPropertiesPage({
                         onClick={() => router.push(detailHref)}
                       >
                         <Td>
-                          <span className="inline-flex min-w-0 items-center gap-2">
+                          <span className="inline-flex min-w-0 items-center justify-end gap-2">
                             <span
                               className="inline-flex h-[22px] min-w-[22px] shrink-0 items-center justify-center rounded-md bg-surface-3 text-[10px] font-semibold text-text-3"
                               aria-hidden
@@ -390,12 +384,9 @@ export function PoPropertiesPage({
                           )}
                         </Td>
                         {showRowMenu ? (
-                          <Td
-                            className="w-10 px-1 text-center"
-                            onClick={(e) => e.stopPropagation()}
-                          >
+                          <TdAction onClick={(e) => e.stopPropagation()}>
                             <RowMoreMenu items={resolveRowMoreItems(prop)} />
-                          </Td>
+                          </TdAction>
                         ) : null}
                       </Tr>
                     );

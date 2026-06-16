@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
-import { Button, Label, cn } from "@platform/design-system";
+import { Button, Label, cn, formControlClassName } from "@platform/design-system";
 import type { WorkflowTask } from "@case-study/mfe";
 import { findSurveyChildForParent } from "../lib/engineering-survey-task";
 import type { EngineeringSurveySubmission } from "../lib/engineering-survey-data";
@@ -175,13 +175,13 @@ export function EngineeringSurveyAdvisoryPanel({
           ) : (
             <div className="w-full">
               <Label htmlFor="eng-return-note" className="text-xs">
-                سبب الإرجاع للتصحيح <span className="text-danger">*</span>
+                سبب الإرجاع للتصحيح <span className="text-danger-text">*</span>
               </Label>
               <textarea
                 id="eng-return-note"
                 className={cn(
-                  "mt-1 min-h-[72px] w-full resize-y rounded-[var(--radius-DEFAULT)] border border-border bg-surface px-2.5 py-2 text-xs text-text outline-none",
-                  "focus:border-primary focus:ring-[3px] focus:ring-primary/12",
+                  formControlClassName,
+                  "mt-1 min-h-[72px] resize-y py-2 leading-relaxed",
                 )}
                 rows={3}
                 value={returnNote}
@@ -192,7 +192,7 @@ export function EngineeringSurveyAdvisoryPanel({
                 }}
               />
               {returnError ? (
-                <p className="mt-1.5 text-[11px] text-danger">{returnError}</p>
+                <p className="mt-1.5 text-[11px] text-danger-text">{returnError}</p>
               ) : null}
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <Button

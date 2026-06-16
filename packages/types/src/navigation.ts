@@ -1,25 +1,23 @@
 /** Shell navigation contract — shared when splitting MFE remotes later. */
 export type PageId =
   | "dashboard"
-  | "my-tasks"
   | "active-primary-data"
   | "active-distribution"
   | "active-case-study"
   | "po"
   | "bourse-inquiry"
-  | "properties"
   | "survey"
   | "keys"
   | "failures"
   | "suspended-transactions"
   | "valuation-requests"
-  | "field-form"
   | "property-inspection"
   | "government-review"
   | "valuation-coordination"
   | "property-appraisal"
   | "active-survey"
   | "system-fields-catalog"
+  | "system-screen-catalog"
   | "financial"
   | "kpi"
   | "users"
@@ -84,25 +82,23 @@ const ROLE_ID_SET: Record<RoleId, true> = {
 export function isPageId(value: string): value is PageId {
   return (
     value === "dashboard" ||
-    value === "my-tasks" ||
     value === "active-primary-data" ||
     value === "active-distribution" ||
     value === "active-case-study" ||
     value === "po" ||
     value === "bourse-inquiry" ||
-    value === "properties" ||
     value === "survey" ||
     value === "keys" ||
     value === "failures" ||
     value === "suspended-transactions" ||
     value === "valuation-requests" ||
-    value === "field-form" ||
     value === "property-inspection" ||
     value === "government-review" ||
     value === "valuation-coordination" ||
     value === "property-appraisal" ||
     value === "active-survey" ||
     value === "system-fields-catalog" ||
+    value === "system-screen-catalog" ||
     value === "financial" ||
     value === "kpi" ||
     value === "users" ||

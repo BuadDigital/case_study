@@ -113,7 +113,7 @@ const infoBoxTone: Record<
   default: "bg-surface-2 text-text-2",
   teal: "bg-teal-light text-teal-text",
   amber: "bg-amber-light text-amber-text",
-  red: "bg-danger-bg text-danger",
+  red: "bg-danger-bg text-danger-text",
 };
 
 export function InfoBox({
@@ -212,8 +212,8 @@ export function DocIconButton({
     <button
       type="button"
       className={cn(
-        "flex h-[30px] w-[30px] items-center justify-center rounded-[var(--radius-DEFAULT)] border border-border bg-surface p-0 text-sm text-text-2 transition-colors hover:bg-border hover:text-text",
-        danger && "text-danger",
+        "flex h-[30px] w-[30px] items-center justify-center rounded-[var(--radius-DEFAULT)] border border-border bg-surface p-0 text-sm text-text-2 outline-none transition-colors hover:bg-border hover:text-text",
+        danger && "text-danger-text",
       )}
       title={label}
       aria-label={label}

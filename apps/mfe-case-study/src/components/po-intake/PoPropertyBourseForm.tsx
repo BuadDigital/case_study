@@ -66,7 +66,7 @@ export function PoPropertyBourseForm({
       {showDeedVitalityFlow ? (
         <div className="col-span-full w-full">
           <Label className="mb-1 text-[11px]">
-            حالة الصك <span className="text-danger">*</span>
+            حالة الصك <span className="text-danger-text">*</span>
           </Label>
           <div className="mb-2 flex flex-wrap gap-1.5">
             <button

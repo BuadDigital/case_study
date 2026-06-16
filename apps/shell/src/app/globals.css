@@ -1,92 +1,233 @@
-@import "tailwindcss";
-@import "@platform/design-system/tokens.css";
-
-/* Scan all MFE + shared packages for utility classes */
-@source "../../../../apps/**/*.{ts,tsx}";
-@source "../../../../packages/**/*.{ts,tsx}";
-
-/**
- * Theme must live in the entry CSS file so Tailwind v4 registers utilities
- * (bg-sidebar, text-text, etc.). Keep in sync with tailwind-theme.css.
- */
-@theme inline {
-  --font-sans:
-    var(--font-arabic), "IBM Plex Sans Arabic", "Segoe UI", Tahoma, system-ui,
-    sans-serif;
-
-  --color-bg: #f7f8fa;
-  --color-surface: #ffffff;
-  --color-surface-2: #f2f4f7;
-  --color-surface-3: #eaedf2;
-  --color-border: rgba(0, 0, 0, 0.08);
-  --color-border-md: rgba(0, 0, 0, 0.14);
-
-  --color-text: #111827;
-  --color-text-2: #6b7280;
-  --color-text-3: #9ca3af;
-
-  --color-primary: #1d9e75;
-  --color-primary-mid: #188f69;
-  --color-teal-light: #e1f5ee;
-  --color-teal-text: #0f6e56;
-
-  --color-amber: #ef9f27;
-  --color-amber-light: #faeeda;
-  --color-amber-text: #854f0b;
-
-  --color-danger: #a32d2d;
-  --color-danger-bg: #fcebeb;
-  --color-red: #e24b4a;
-
-  --color-info: #185fa5;
-  --color-info-bg: #e6f1fb;
-  --color-blue: #378add;
-
-  --color-sidebar: #1a2232;
-  --color-sidebar-muted: rgba(255, 255, 255, 0.55);
-  --color-sidebar-muted-strong: rgba(255, 255, 255, 0.85);
-  --color-sidebar-label: rgba(255, 255, 255, 0.35);
-  --color-sidebar-border: rgba(255, 255, 255, 0.07);
-  --color-success: #0f6e56;
-  --color-success-bg: #e1f5ee;
-
-  --color-warning: #ef9f27;
-  --color-warning-bg: #faeeda;
-
-  --color-purple: #8e44ad;
-  --color-purple-bg: #ebd9f7;
-
-  --color-orange: #d35400;
-  --color-orange-bg: #fae5d3;
-
-  --color-primary-light: #1d9e75;
-  --color-teal: #1d9e75;
-
-  --radius-DEFAULT: 8px;
-  --radius-lg: 12px;
-  --radius-sm: 6px;
-
-  --spacing-topbar: 52px;
-  --spacing-sidebar: 200px;
-  --spacing-tabs: 42px;
-
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.1);
-  --shadow-modal: 0 8px 32px rgba(15, 52, 96, 0.18);
-}
-
-@layer base {
-  html {
-    @apply font-sans antialiased;
-  }
-
-  body {
-    @apply min-h-full bg-bg text-text text-sm;
-  }
-
-  /* Native <select> in dark sidebar — avoid OS light chrome + invisible text */
-  #sidebar select {
-    color-scheme: dark;
-  }
-}
-
+@import "tailwindcss";
+
+@import "@platform/design-system/tokens.css";
+
+
+
+/* Scan all MFE + shared packages for utility classes */
+
+@source "../../../../apps/**/*.{ts,tsx}";
+
+@source "../../../../packages/**/*.{ts,tsx}";
+
+
+
+/**
+
+ * Theme must live in the entry CSS file so Tailwind v4 registers utilities.
+
+ * Values reference tokens.css — keep in sync with tailwind-theme.css.
+
+ */
+
+@theme inline {
+
+  --font-sans:
+
+    var(--font-arabic), "IBM Plex Sans Arabic", "Segoe UI", Tahoma, system-ui,
+
+    sans-serif;
+
+
+
+  --color-bg: var(--bg);
+
+  --color-surface: var(--surface);
+
+  --color-surface-2: var(--surface-2);
+
+  --color-surface-3: var(--surface3);
+
+  --color-border: var(--border);
+
+  --color-border-md: var(--border-md);
+
+
+
+  --color-text: var(--text-1);
+
+  --color-text-2: var(--text-2);
+
+  --color-text-3: var(--text-3);
+
+
+
+  --color-primary: var(--teal);
+
+  --color-primary-mid: var(--primary-mid);
+
+  --color-teal-light: var(--teal-light);
+
+  --color-teal-text: var(--teal-text);
+
+
+
+  --color-amber: var(--amber);
+
+  --color-amber-light: var(--amber-light);
+
+  --color-amber-text: var(--amber-text);
+
+
+
+  --color-danger: var(--red);
+
+  --color-danger-text: var(--red-text);
+
+  --color-danger-bg: var(--red-light);
+
+  --color-red: var(--red);
+
+
+
+  --color-info: var(--blue);
+
+  --color-info-text: var(--blue-text);
+
+  --color-info-bg: var(--blue-light);
+
+
+
+  --color-sidebar: var(--sidebar);
+
+  --color-sidebar-muted: rgba(255, 255, 255, 0.55);
+
+  --color-sidebar-muted-strong: rgba(255, 255, 255, 0.85);
+
+  --color-sidebar-label: rgba(255, 255, 255, 0.35);
+
+  --color-sidebar-border: rgba(255, 255, 255, 0.07);
+
+
+
+  --color-success: var(--success);
+
+  --color-success-text: var(--teal-text);
+
+  --color-success-bg: var(--success-bg);
+
+
+
+  --color-warning: var(--warning);
+
+  --color-warning-bg: var(--warning-bg);
+
+
+
+  --color-purple: var(--purple);
+
+  --color-purple-bg: var(--purple-bg);
+
+
+
+  --color-orange: var(--orange);
+
+  --color-orange-bg: var(--orange-bg);
+
+
+
+  --color-primary-light: var(--primary-light);
+
+  --color-teal: var(--teal);
+
+
+
+  --radius-DEFAULT: var(--radius);
+
+  --radius-lg: var(--radius-lg);
+
+  --radius-sm: var(--radius-sm);
+
+
+
+  --spacing-topbar: var(--topbar-h);
+
+  --spacing-sidebar: var(--sidebar-w);
+
+  --spacing-tabs: var(--tabs-h);
+
+
+
+  --shadow-card: var(--shadow);
+
+  --shadow-lg: var(--shadow-lg);
+
+  --shadow-modal: 0 8px 32px rgba(15, 52, 96, 0.18);
+
+
+
+  --default-border-color: var(--color-border);
+
+}
+
+
+
+@layer base {
+
+  html {
+
+    @apply font-sans antialiased text-sm;
+
+  }
+
+
+
+  body {
+
+    @apply min-h-full bg-bg text-text text-sm;
+
+  }
+
+
+
+  a:focus,
+
+  button:focus,
+
+  [role="tab"]:focus {
+
+    outline: none;
+
+  }
+
+
+
+  a:focus-visible,
+
+  button:focus-visible,
+
+  [role="tab"]:focus-visible {
+
+    outline: 2px solid color-mix(in srgb, var(--color-primary) 55%, transparent);
+
+    outline-offset: 2px;
+
+  }
+
+
+
+  /* Native <select> in dark sidebar — avoid OS light popup + invisible text */
+  #sidebar select {
+    color-scheme: dark;
+  }
+
+  #sidebar select option,
+  #sidebar select optgroup {
+    background-color: var(--sidebar);
+    color: #fff;
+  }
+
+  #sidebar select optgroup {
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.55);
+    padding: 4px 0;
+  }
+
+  #sidebar select option {
+    color: #fff;
+    padding: 6px 8px;
+  }
+
+}
+
+
