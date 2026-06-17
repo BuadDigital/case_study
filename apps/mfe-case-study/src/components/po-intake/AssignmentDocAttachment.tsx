@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   getCachedAssignmentDoc,
   isImageMime,
+  prefetchPropertyDocAttachments,
   type CachedAssignmentDoc,
 } from "../../lib/prototype/assignment-doc-attachments";
 import { Button, cn } from "@platform/design-system";
@@ -19,9 +20,17 @@ export function AssignmentDocAttachment({
   fileName?: string;
   variant?: "inline" | "detail" | "thumb" | "card" | "panel";
 }) {
+  const [hydrated, setHydrated] = useState(0);
+
+  useEffect(() => {
+    void prefetchPropertyDocAttachments(poNumber, propertyId).then(() => {
+      setHydrated((n) => n + 1);
+    });
+  }, [poNumber, propertyId]);
+
   const cached = useMemo(
     () => getCachedAssignmentDoc(poNumber, propertyId),
-    [poNumber, propertyId],
+    [poNumber, propertyId, hydrated],
   );
 
   const displayName = fileName?.trim() || cached?.fileName || "";

@@ -1,26 +1,45 @@
-/** Browser cache for property document uploads (prototype — filename also saved on API). */
+/**
+ * Property document uploads — persisted via `/api/attachments`.
+ * Filenames are also saved on the work-order property API.
+ */
+
+import {
+  deleteAttachment,
+  downloadAttachmentBlob,
+  listAttachments,
+  uploadAttachment,
+} from "@platform/api-client";
+import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 
 export type PropertyDocKind = "decree" | "delegation" | "other";
 
-const STORAGE_PREFIX: Record<PropertyDocKind, string> = {
-  decree: "evalAssignmentDoc:",
-  delegation: "evalDelegationDoc:",
-  other: "evalOtherDoc:",
+const API_SCOPE: Record<PropertyDocKind, string> = {
+  decree: "property-decree",
+  delegation: "property-delegation",
+  other: "property-other",
 };
+
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 
 export type CachedAssignmentDoc = {
   fileName: string;
   mimeType: string;
   dataUrl?: string;
+  attachmentId?: string;
 };
 
-function storageKey(
+const docCache = new Map<string, CachedAssignmentDoc>();
+
+function cacheKey(
   kind: PropertyDocKind,
   poNumber: string,
   propertyId: string,
 ): string {
-  return `${STORAGE_PREFIX[kind]}${poNumber.trim()}:${propertyId}`;
+  return `${kind}:${poNumber.trim()}:${propertyId}`;
+}
+
+function scopeKey(poNumber: string, propertyId: string): string {
+  return `${poNumber.trim()}:${propertyId}`;
 }
 
 function readAsDataUrl(file: File): Promise<string> {
@@ -32,14 +51,48 @@ function readAsDataUrl(file: File): Promise<string> {
   });
 }
 
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function fileToBase64(file: File): Promise<string> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 1) {
+    binary += String.fromCharCode(bytes[i]!);
+  }
+  return btoa(binary);
+}
+
+async function replaceScopeAttachments(
+  scope: string,
+  key: string,
+): Promise<void> {
+  const config = prototypeModulesApiConfig();
+  if (!config) return;
+
+  const existing = await listAttachments(config, scope, key);
+  if (!existing.ok) return;
+
+  await Promise.all(
+    existing.data.map((meta) => deleteAttachment(config, meta.id)),
+  );
+}
+
 async function writeCachedDoc(
   kind: PropertyDocKind,
   poNumber: string,
   propertyId: string,
   file: File,
 ): Promise<void> {
-  if (typeof window === "undefined" || !poNumber.trim() || !propertyId) return;
+  if (!poNumber.trim() || !propertyId) return;
 
+  const key = cacheKey(kind, poNumber, propertyId);
   const payload: CachedAssignmentDoc = {
     fileName: file.name,
     mimeType: file.type || "application/octet-stream",
@@ -49,19 +102,30 @@ async function writeCachedDoc(
     try {
       payload.dataUrl = await readAsDataUrl(file);
     } catch {
-      /* keep metadata only */
+      /* metadata only */
     }
   }
 
-  const key = storageKey(kind, poNumber, propertyId);
-  try {
-    localStorage.setItem(key, JSON.stringify(payload));
-  } catch {
-    localStorage.setItem(
-      key,
-      JSON.stringify({ fileName: file.name, mimeType: payload.mimeType }),
-    );
+  const config = prototypeModulesApiConfig();
+  if (config) {
+    const scope = API_SCOPE[kind];
+    const sk = scopeKey(poNumber, propertyId);
+    await replaceScopeAttachments(scope, sk);
+
+    const upload = await uploadAttachment(config, {
+      scope,
+      scopeKey: sk,
+      fileName: file.name,
+      contentType: payload.mimeType,
+      contentBase64: await fileToBase64(file),
+    });
+
+    if (upload.ok) {
+      payload.attachmentId = upload.data.id;
+    }
   }
+
+  docCache.set(key, payload);
 }
 
 export async function cacheAssignmentDoc(
@@ -85,14 +149,8 @@ function readCachedDoc(
   poNumber: string,
   propertyId: string,
 ): CachedAssignmentDoc | null {
-  if (typeof window === "undefined" || !poNumber.trim() || !propertyId) return null;
-  try {
-    const raw = localStorage.getItem(storageKey(kind, poNumber, propertyId));
-    if (!raw) return null;
-    return JSON.parse(raw) as CachedAssignmentDoc;
-  } catch {
-    return null;
-  }
+  if (!poNumber.trim() || !propertyId) return null;
+  return docCache.get(cacheKey(kind, poNumber, propertyId)) ?? null;
 }
 
 export function getCachedAssignmentDoc(
@@ -107,6 +165,56 @@ export function getCachedDelegationDoc(
   propertyId: string,
 ): CachedAssignmentDoc | null {
   return readCachedDoc("delegation", poNumber, propertyId);
+}
+
+/** Hydrate in-memory previews from the attachments API (e.g. after page reload). */
+export async function prefetchPropertyDocAttachments(
+  poNumber: string,
+  propertyId: string,
+): Promise<void> {
+  const config = prototypeModulesApiConfig();
+  if (!config || !poNumber.trim() || !propertyId) return;
+
+  const sk = scopeKey(poNumber, propertyId);
+  const kinds: PropertyDocKind[] = ["decree", "delegation"];
+
+  await Promise.all(
+    kinds.map(async (kind) => {
+      const scope = API_SCOPE[kind];
+      const listed = await listAttachments(config, scope, sk);
+      if (!listed.ok || listed.data.length === 0) return;
+
+      const meta = listed.data[0]!;
+      const blobResult = await downloadAttachmentBlob(config, meta.id);
+      if (!blobResult.ok) {
+        docCache.set(cacheKey(kind, poNumber, propertyId), {
+          fileName: meta.fileName,
+          mimeType: meta.contentType,
+          attachmentId: meta.id,
+        });
+        return;
+      }
+
+      const payload: CachedAssignmentDoc = {
+        fileName: meta.fileName,
+        mimeType: meta.contentType,
+        attachmentId: meta.id,
+      };
+
+      if (
+        meta.contentType.startsWith("image/") &&
+        blobResult.data.size <= MAX_IMAGE_BYTES
+      ) {
+        try {
+          payload.dataUrl = await blobToDataUrl(blobResult.data);
+        } catch {
+          /* metadata only */
+        }
+      }
+
+      docCache.set(cacheKey(kind, poNumber, propertyId), payload);
+    }),
+  );
 }
 
 export function isImageMime(mimeType: string): boolean {

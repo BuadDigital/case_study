@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Badge, Input, cn } from "@platform/design-system";
+import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import {
   SCREEN_CATALOG_KIND_LABELS,
   SCREEN_CATALOG_STATUS_LABELS,
@@ -15,6 +17,7 @@ import {
   type SystemScreenEntry,
 } from "@platform/app-shared/prototype/screen-catalog";
 import { ScreenCatalogDetailPanel } from "./ScreenCatalogDetailPanel";
+import { CustomScreenManagementTab } from "./CustomScreenManagementTab";
 
 type FacetKey = "role" | "group" | "kind" | "status";
 
@@ -42,12 +45,16 @@ function statusTone(
 }
 
 export function ScreenCatalogTab() {
+  const { role } = usePrototype();
+  const canManageCustomScreens = isSuperAdmin(role);
   const screens = SYSTEM_SCREEN_CATALOG;
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState(emptyFilters);
   const [openFacet, setOpenFacet] = useState<FacetKey | null>(null);
-  const [viewMode, setViewMode] = useState<"screens" | "roles">("screens");
+  const [viewMode, setViewMode] = useState<"screens" | "roles" | "manage">(
+    "screens",
+  );
 
   const facetOptions = useMemo(
     () => ({
@@ -185,10 +192,28 @@ export function ScreenCatalogTab() {
             >
               حسب الدور
             </button>
+            {canManageCustomScreens ? (
+              <button
+                type="button"
+                className={cn(
+                  "rounded px-2.5 py-1 text-[11px] transition-colors",
+                  viewMode === "manage"
+                    ? "bg-primary text-white"
+                    : "text-text-3 hover:text-text",
+                )}
+                onClick={() => setViewMode("manage")}
+              >
+                إدارة الشاشات
+              </button>
+            ) : null}
           </div>
         </div>
       </header>
 
+      {viewMode === "manage" ? (
+        <CustomScreenManagementTab />
+      ) : (
+        <>
       <div className="shrink-0 border-b border-border px-4 py-3">
         <div className="flex flex-wrap items-center gap-2">
           <div className="min-w-[200px] flex-1">
@@ -339,6 +364,8 @@ export function ScreenCatalogTab() {
             ))}
           </div>
         </div>
+      )}
+        </>
       )}
     </article>
   );

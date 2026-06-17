@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import {
   computeActiveTransactionsSituation,
-  situationVisibilityForRole,
+  situationVisibilityForPages,
   type ActiveTransactionsSituationStats,
 } from "@case-study/mfe";
 import {
@@ -14,8 +14,11 @@ import {
 } from "./case-study-queries";
 
 export function useActiveTransactionsSituation(): ActiveTransactionsSituationStats {
-  const { role } = usePrototype();
-  const statsFlags = useMemo(() => situationVisibilityForRole(role), [role]);
+  const { role, rolePages } = usePrototype();
+  const statsFlags = useMemo(
+    () => situationVisibilityForPages(rolePages),
+    [rolePages],
+  );
 
   const { data: poRows, isFetched: poRowsFetched } = usePoListRowsQuery();
   const { data: poRecords, isFetched: poRecordsFetched } = usePoRecordsQuery();
@@ -25,6 +28,7 @@ export function useActiveTransactionsSituation(): ActiveTransactionsSituationSta
     () =>
       computeActiveTransactionsSituation({
         role,
+        rolePages,
         poRows,
         poRecords,
         tasks,
@@ -34,6 +38,7 @@ export function useActiveTransactionsSituation(): ActiveTransactionsSituationSta
       }),
     [
       role,
+      rolePages,
       poRows,
       poRecords,
       tasks,

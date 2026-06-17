@@ -1,6 +1,6 @@
 # Learning guide: fast apps (frontend + backend + database)
 
-A study file for **perceived performance** and **real performance** — making software feel instant and keeping APIs and PostgreSQL fast under load. This guide matches patterns in **property_study** (`apps/shell`, `backend/RealEstateEval.Api`, PostgreSQL) and general industry practice.
+A study file for **perceived performance** and **real performance** — making software feel instant and keeping APIs and PostgreSQL fast under load. This guide matches patterns in **property_study** (`apps/shell`, `backend/gateway` + domain services, PostgreSQL) and general industry practice.
 
 **Last updated:** June 2026  
 **Language:** English  

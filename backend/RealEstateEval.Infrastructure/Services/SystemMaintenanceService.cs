@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Data;
@@ -9,13 +10,16 @@ public class SystemMaintenanceService : ISystemMaintenanceService
 {
     private readonly ApplicationDbContext _db;
     private readonly IUserRegistrationService _users;
+    private readonly IServiceProvider _services;
 
     public SystemMaintenanceService(
         ApplicationDbContext db,
-        IUserRegistrationService users)
+        IUserRegistrationService users,
+        IServiceProvider services)
     {
         _db = db;
         _users = users;
+        _services = services;
     }
 
     public async Task<SystemResetResultDto> ResetAllOperationalDataAsync(
@@ -27,6 +31,18 @@ public class SystemMaintenanceService : ISystemMaintenanceService
         var courts = await _db.CourtCatalogEntries.CountAsync(cancellationToken);
         var infoRoles = await _db.CaseStudyInfoRolesConfigs.CountAsync(cancellationToken);
         var propertyFailures = await _db.PropertyFailures.CountAsync(cancellationToken);
+        var poIntakeDrafts = await _db.PoIntakeDrafts.CountAsync(cancellationToken);
+        var attachments = await _db.FileAttachments.CountAsync(cancellationToken);
+        var delegationLetterSets = await _db.InternalDelegationLetterSets.CountAsync(cancellationToken);
+        var evaluatorRecalls = await _db.EvaluatorRecallRecords.CountAsync(cancellationToken);
+        var fieldDictionaryConfigs = await _db.FieldDictionaryConfigs.CountAsync(cancellationToken);
+        var failureTypesCatalogConfigs = await _db.FailureTypesCatalogConfigs.CountAsync(cancellationToken);
+        var customAssignedScreens = await _db.CustomAssignedScreens.CountAsync(cancellationToken);
+        var surveyOffices = await _db.SurveyOffices.CountAsync(cancellationToken);
+        var valuationRequests = await _db.ValuationRequests.CountAsync(cancellationToken);
+        var propertyKeyRecords = await _db.PropertyKeyRecords.CountAsync(cancellationToken);
+        var financialReportConfigs = await _db.FinancialReportConfigs.CountAsync(cancellationToken);
+        var outboxMessages = await _db.OutboxMessages.CountAsync(cancellationToken);
 
         await _db.CaseStudyForms.ExecuteDeleteAsync(cancellationToken);
         await _db.PartyTaskSubmissions.ExecuteDeleteAsync(cancellationToken);
@@ -37,8 +53,35 @@ public class SystemMaintenanceService : ISystemMaintenanceService
         await _db.WorkOrders.ExecuteDeleteAsync(cancellationToken);
         await _db.CourtCatalogEntries.ExecuteDeleteAsync(cancellationToken);
         await _db.CaseStudyInfoRolesConfigs.ExecuteDeleteAsync(cancellationToken);
+        await _db.PoIntakeDrafts.ExecuteDeleteAsync(cancellationToken);
+
+        var blobKeys = await _db.FileAttachments.AsNoTracking()
+            .Where(a => a.StorageKey != null && a.StorageKey != "")
+            .Select(a => a.StorageKey!)
+            .ToListAsync(cancellationToken);
+        var blobs = _services.GetService<IBlobStorage>();
+        if (blobs is not null)
+        {
+            foreach (var key in blobKeys)
+                await blobs.DeleteAsync(key, cancellationToken);
+        }
+
+        await _db.FileAttachments.ExecuteDeleteAsync(cancellationToken);
+        await _db.InternalDelegationLetterSets.ExecuteDeleteAsync(cancellationToken);
+        await _db.EvaluatorRecallRecords.ExecuteDeleteAsync(cancellationToken);
+        await _db.FieldDictionaryConfigs.ExecuteDeleteAsync(cancellationToken);
+        await _db.FailureTypesCatalogConfigs.ExecuteDeleteAsync(cancellationToken);
+        await _db.CustomAssignedScreenUsers.ExecuteDeleteAsync(cancellationToken);
+        await _db.CustomAssignedScreens.ExecuteDeleteAsync(cancellationToken);
+        await _db.PropertyKeyRecords.ExecuteDeleteAsync(cancellationToken);
+        await _db.ValuationRequests.ExecuteDeleteAsync(cancellationToken);
+        await _db.SurveyOffices.ExecuteDeleteAsync(cancellationToken);
+        await _db.FinancialReportConfigs.ExecuteDeleteAsync(cancellationToken);
+        await _db.OutboxMessages.ExecuteDeleteAsync(cancellationToken);
 
         var registeredUsersDeleted = await _users.DeleteAllRegisteredAsync(cancellationToken);
+
+        await DataSeeder.ReseedPrototypeModuleDataAsync(_db, cancellationToken);
 
         return new SystemResetResultDto
         {
@@ -49,6 +92,17 @@ public class SystemMaintenanceService : ISystemMaintenanceService
             CaseStudyInfoRolesConfigsDeleted = infoRoles,
             PropertyFailuresDeleted = propertyFailures,
             RegisteredUsersDeleted = registeredUsersDeleted,
+            PoIntakeDraftsDeleted = poIntakeDrafts,
+            AttachmentsDeleted = attachments,
+            InternalDelegationLetterSetsDeleted = delegationLetterSets,
+            EvaluatorRecallsDeleted = evaluatorRecalls,
+            FieldDictionaryConfigsDeleted = fieldDictionaryConfigs,
+            FailureTypesCatalogConfigsDeleted = failureTypesCatalogConfigs,
+            CustomAssignedScreensDeleted = customAssignedScreens,
+            SurveyOfficesDeleted = surveyOffices,
+            ValuationRequestsDeleted = valuationRequests,
+            PropertyKeyRecordsDeleted = propertyKeyRecords,
+            FinancialReportConfigsDeleted = financialReportConfigs,
         };
     }
 }

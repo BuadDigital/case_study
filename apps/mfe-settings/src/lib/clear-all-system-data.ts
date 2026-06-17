@@ -1,66 +1,73 @@
-import { resetSystemData } from "@platform/api-client";
-import { TASKS_CHANGED_EVENT, TASKS_STORAGE_KEY } from "@case-study/mfe";
-import { STORAGE_ROLE_KEY } from "@platform/app-shared/prototype/constants";
+import { resetSystemData, type SystemResetResult } from "@platform/api-client";
+import { resetPoIntakeDraftClientCache, TASKS_CHANGED_EVENT } from "@case-study/mfe";
 import {
   notifyWorkOrdersChanged,
   workOrdersApiConfig,
 } from "@platform/app-shared/prototype/work-orders-api-config";
 
-const EVAL_STORAGE_PREFIX = "eval";
+const EVAL_SESSION_PREFIX = "eval";
 
-/** Wipe every prototype key from browser storage (local + session). */
-export function clearAllEvalBrowserStorage(): void {
+const EMPTY_RESET: SystemResetResult = {
+  workOrdersDeleted: 0,
+  workflowTasksDeleted: 0,
+  caseStudyFormsDeleted: 0,
+  courtCatalogEntriesDeleted: 0,
+  caseStudyInfoRolesConfigsDeleted: 0,
+  propertyFailuresDeleted: 0,
+  registeredUsersDeleted: 0,
+  poIntakeDraftsDeleted: 0,
+  attachmentsDeleted: 0,
+  internalDelegationLetterSetsDeleted: 0,
+  evaluatorRecallsDeleted: 0,
+  fieldDictionaryConfigsDeleted: 0,
+  failureTypesCatalogConfigsDeleted: 0,
+  customAssignedScreensDeleted: 0,
+  surveyOfficesDeleted: 0,
+  valuationRequestsDeleted: 0,
+  propertyKeyRecordsDeleted: 0,
+  financialReportConfigsDeleted: 0,
+};
+
+/** Clear legacy eval* session keys. Operational data lives on the API. */
+export function clearPrototypeSessionStorage(): void {
   if (typeof window === "undefined") return;
-
-  const localKeys: string[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key?.startsWith(EVAL_STORAGE_PREFIX)) localKeys.push(key);
-  }
-  for (const key of localKeys) localStorage.removeItem(key);
 
   const sessionKeys: string[] = [];
   for (let i = 0; i < sessionStorage.length; i++) {
     const key = sessionStorage.key(i);
-    if (key?.startsWith(EVAL_STORAGE_PREFIX)) sessionKeys.push(key);
+    if (key?.startsWith(EVAL_SESSION_PREFIX)) sessionKeys.push(key);
   }
   for (const key of sessionKeys) sessionStorage.removeItem(key);
 
+  try {
+    localStorage.removeItem("evalPoIntakeDraft");
+  } catch {
+    /* ignore */
+  }
+
+  resetPoIntakeDraftClientCache();
   window.dispatchEvent(new Event(TASKS_CHANGED_EVENT));
   notifyWorkOrdersChanged();
 }
 
 export type ClearAllSystemDataResult = {
   apiReset: boolean;
-  workOrdersDeleted: number;
-  workflowTasksDeleted: number;
-  caseStudyFormsDeleted: number;
-  courtCatalogEntriesDeleted: number;
-  registeredUsersDeleted: number;
-  localStorageCleared: boolean;
+  sessionStorageCleared: boolean;
   errors: string[];
-};
+} & SystemResetResult;
 
-/** Delete all operational data on the API and clear all eval* browser storage. */
+/** Delete all operational + prototype config data on the API; clear prototype session storage. */
 export async function clearAllSystemData(): Promise<ClearAllSystemDataResult> {
   const errors: string[] = [];
   let apiReset = false;
-  let workOrdersDeleted = 0;
-  let workflowTasksDeleted = 0;
-  let caseStudyFormsDeleted = 0;
-  let courtCatalogEntriesDeleted = 0;
-  let registeredUsersDeleted = 0;
+  let resetCounts: SystemResetResult = { ...EMPTY_RESET };
 
   const config = workOrdersApiConfig();
   if (config) {
     const result = await resetSystemData(config);
     if (result.ok) {
       apiReset = true;
-      workOrdersDeleted = result.data.workOrdersDeleted;
-      workflowTasksDeleted = result.data.workflowTasksDeleted;
-      caseStudyFormsDeleted = result.data.caseStudyFormsDeleted;
-      courtCatalogEntriesDeleted = result.data.courtCatalogEntriesDeleted;
-      registeredUsersDeleted = result.data.registeredUsersDeleted;
+      resetCounts = result.data;
     } else if (result.kind === "not_found") {
       errors.push(
         "مسح الخادم غير متاح — أعد تشغيل API بعد dotnet build (النقطة DELETE /api/system/data غير موجودة أو البيئة ليست Development)",
@@ -69,7 +76,7 @@ export async function clearAllSystemData(): Promise<ClearAllSystemDataResult> {
       errors.push("لا يوجد جلسة صالحة — سجّل الدخول من جديد");
     } else if (result.kind === "forbidden") {
       errors.push(
-        "صلاحية غير كافية على الخادم — سجّل الدخول بـ s.salhy@gmail.com (CDO) أو admin@local.dev، وليس بحساب تجريبي آخر مع تبديل الدور من القائمة فقط",
+        "صلاحية غير كافية على الخادم — سجّل الدخول بحساب يملك صلاحية manage-system-config (مثل CDO أو admin@local.dev)",
       );
     } else if (result.kind === "server") {
       errors.push(
@@ -84,24 +91,21 @@ export async function clearAllSystemData(): Promise<ClearAllSystemDataResult> {
     errors.push("لا يوجد جلسة — تم مسح التخزين المحلي فقط");
   }
 
-  clearAllEvalBrowserStorage();
+  clearPrototypeSessionStorage();
 
   return {
     apiReset,
-    workOrdersDeleted,
-    workflowTasksDeleted,
-    caseStudyFormsDeleted,
-    courtCatalogEntriesDeleted,
-    registeredUsersDeleted,
-    localStorageCleared: typeof window !== "undefined",
+    sessionStorageCleared: typeof window !== "undefined",
     errors,
+    ...resetCounts,
   };
 }
 
 /** @deprecated Use clearAllSystemData */
 export const clearAllPoData = clearAllSystemData;
 
-/** @deprecated Use clearAllEvalBrowserStorage */
-export const clearPoLocalStorage = clearAllEvalBrowserStorage;
+/** @deprecated Use clearPrototypeSessionStorage */
+export const clearAllEvalBrowserStorage = clearPrototypeSessionStorage;
 
-export { TASKS_STORAGE_KEY, STORAGE_ROLE_KEY };
+/** @deprecated Use clearPrototypeSessionStorage */
+export const clearPoLocalStorage = clearPrototypeSessionStorage;

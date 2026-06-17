@@ -108,3 +108,51 @@ export async function fetchOrganizationOverview(
     return { ok: false, kind: "network" };
   }
 }
+
+export type UpdateUserResult =
+  | { ok: true; user: UserListItem }
+  | { ok: false; kind: "network" | "server" | "not_found" | "forbidden" };
+
+export async function updateUser(
+  config: UsersApiConfig,
+  id: string,
+  body: {
+    displayName?: string;
+    jobTitle?: string;
+    status?: UserListItem["status"];
+  },
+): Promise<UpdateUserResult> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/users/${id}`, {
+      method: "PATCH",
+      headers: headers(config.token),
+      body: JSON.stringify(body),
+    });
+    if (res.status === 403) return { ok: false, kind: "forbidden" };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, user: (await res.json()) as UserListItem };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export async function deactivateUser(
+  config: UsersApiConfig,
+  id: string,
+): Promise<UpdateUserResult> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/users/${id}/deactivate`, {
+      method: "PATCH",
+      headers: headers(config.token),
+    });
+    if (res.status === 403) return { ok: false, kind: "forbidden" };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, user: (await res.json()) as UserListItem };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}

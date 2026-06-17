@@ -18,7 +18,8 @@ import {
   type FieldInspectionSubmissionStatus,
 } from "./field-inspection-data";
 
-const CACHE_PREFIX = "evalFieldInspectionSubmission:";
+/** In-memory cache — persistence is via party task submission API. */
+const inspectionCache = new Map<string, FieldInspectionSubmission>();
 
 export const FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT =
   "field-inspection-submission-changed";
@@ -27,10 +28,6 @@ function notifyChanged(): void {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT));
   }
-}
-
-function cacheKey(taskId: string): string {
-  return `${CACHE_PREFIX}${taskId}`;
 }
 
 function readString(value: unknown): string {
@@ -211,22 +208,16 @@ function submissionToPayload(
 }
 
 function writeCache(submission: FieldInspectionSubmission): void {
-  if (typeof window === "undefined" || !submission.taskId) return;
-  localStorage.setItem(cacheKey(submission.taskId), JSON.stringify(submission));
+  if (!submission.taskId) return;
+  inspectionCache.set(submission.taskId, submission);
   notifyChanged();
 }
 
 export function loadFieldInspectionSubmission(
   taskId: string,
 ): FieldInspectionSubmission | null {
-  if (typeof window === "undefined" || !taskId) return null;
-  try {
-    const raw = localStorage.getItem(cacheKey(taskId));
-    if (!raw) return null;
-    return JSON.parse(raw) as FieldInspectionSubmission;
-  } catch {
-    return null;
-  }
+  if (!taskId) return null;
+  return inspectionCache.get(taskId) ?? null;
 }
 
 export async function fetchFieldInspectionSubmission(

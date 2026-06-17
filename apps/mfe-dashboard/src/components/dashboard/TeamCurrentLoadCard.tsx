@@ -1,3 +1,5 @@
+"use client";
+
 import {
   CardBody,
   KpiRowLabel,
@@ -5,13 +7,7 @@ import {
   SubpageHeader,
   SubpagePanel,
 } from "@platform/design-system";
-
-const TEAM_LOAD_SPECIALISTS: [string, string, number, number, "warning" | "success"][] = [
-  ["أسامة الصالحي", "أخصائي", 14, 20, "warning"],
-  ["عمر الحمراني", "أخصائي", 10, 20, "success"],
-  ["أيمن مجرشي", "أخصائي", 11, 20, "warning"],
-  ["وليد باشماخ", "أخصائي", 8, 20, "success"],
-];
+import { useReportingDashboardQuery } from "../query/reporting-queries";
 
 function LoadRow({
   name,
@@ -24,8 +20,9 @@ function LoadRow({
   roleLabel: string;
   value: number;
   max: number;
-  tone: "warning" | "success";
+  tone: string;
 }) {
+  const barTone = tone === "warning" ? "warning" : "success";
   return (
     <div className="mb-3 last:mb-0">
       <KpiRowLabel>
@@ -36,19 +33,33 @@ function LoadRow({
           {value}/{max}
         </span>
       </KpiRowLabel>
-      <ProgressBar value={value} max={max} tone={tone} />
+      <ProgressBar value={value} max={max} tone={barTone} />
     </div>
   );
 }
 
 export function TeamCurrentLoadCard() {
+  const { data: dashboard } = useReportingDashboardQuery();
+  const rows = dashboard?.specialistLoad ?? [];
+
   return (
     <SubpagePanel className="mb-4">
       <SubpageHeader title="حمل الفريق الحالي" />
       <CardBody>
-        {TEAM_LOAD_SPECIALISTS.map(([n, r, v, m, c]) => (
-          <LoadRow key={n} name={n} roleLabel={r} value={v} max={m} tone={c} />
-        ))}
+        {rows.length === 0 ? (
+          <p className="text-xs text-text-3">لا توجد مهام مفتوحة لأخصائيي دراسة الحالة.</p>
+        ) : (
+          rows.map((row) => (
+            <LoadRow
+              key={row.name}
+              name={row.name}
+              roleLabel={row.roleLabel}
+              value={row.currentLoad}
+              max={row.maxLoad}
+              tone={row.tone}
+            />
+          ))
+        )}
       </CardBody>
     </SubpagePanel>
   );

@@ -29,6 +29,7 @@ import {
 } from "../lib/prototype/government-review-po";
 import {
   delegationLetterForCourt,
+  hydrateInternalDelegationLetters,
   syncInternalDelegationLetters,
 } from "../lib/prototype/internal-delegation-letters";
 import { partyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
@@ -80,8 +81,10 @@ function GovernmentReviewPoPanel({
 
   useEffect(() => {
     if (!record) return;
-    syncInternalDelegationLetters(record);
-    refreshLetters();
+    void hydrateInternalDelegationLetters(record.poNumber).then(() => {
+      syncInternalDelegationLetters(record);
+      refreshLetters();
+    });
   }, [record, refreshLetters]);
 
   const courtGroups = useMemo(
@@ -189,7 +192,7 @@ export function GovernmentReviewView() {
   const searchParams = useSearchParams();
   const selectedPo = searchParams.get("po");
   const selectedTaskId = searchParams.get("task");
-  const { role, viewerEmail: personaEmail } = usePrototype();
+  const { role, viewerEmail } = usePrototype();
   const def = partyTaskPageDef("government-review");
   const reviewerScope = reviewerScopeForRole(role);
 
@@ -227,9 +230,9 @@ export function GovernmentReviewView() {
         role,
         tasks ?? [],
         "government-reviewer",
-        personaEmail ?? getAuthSession()?.user.email,
+        viewerEmail ?? getAuthSession()?.user.email,
       ),
-    [personaEmail, role, tasks],
+    [viewerEmail, role, tasks],
   );
 
   const rows = useMemo(

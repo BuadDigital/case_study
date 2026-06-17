@@ -1,5 +1,16 @@
 <Solution>
-  <Project Path="RealEstateEval.Api/RealEstateEval.Api.csproj" />
+  <Project Path="gateway/RealEstateEval.Gateway/RealEstateEval.Gateway.csproj" />
+  <Project Path="services/identity/RealEstateEval.Identity.Api/RealEstateEval.Identity.Api.csproj" />
+  <Project Path="services/case-study/RealEstateEval.CaseStudy.Api/RealEstateEval.CaseStudy.Api.csproj" />
+  <Project Path="services/operations/RealEstateEval.Operations.Api/RealEstateEval.Operations.Api.csproj" />
+  <Project Path="services/reporting/RealEstateEval.Reporting.Api/RealEstateEval.Reporting.Api.csproj" />
+  <Project Path="services/financial/RealEstateEval.Financial.Api/RealEstateEval.Financial.Api.csproj" />
+  <Project Path="services/valuation/RealEstateEval.Valuation.Api/RealEstateEval.Valuation.Api.csproj" />
+  <Project Path="services/failures/RealEstateEval.Failures.Api/RealEstateEval.Failures.Api.csproj" />
+  <Project Path="services/platform/RealEstateEval.Platform.Api/RealEstateEval.Platform.Api.csproj" />
+  <Project Path="services/attachments/RealEstateEval.Attachments.Api/RealEstateEval.Attachments.Api.csproj" />
+  <Project Path="shared/RealEstateEval.Shared.Contracts/RealEstateEval.Shared.Contracts.csproj" />
+  <Project Path="shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj" />
   <Project Path="RealEstateEval.Application.Tests/RealEstateEval.Application.Tests.csproj" />
   <Project Path="RealEstateEval.Application/RealEstateEval.Application.csproj" />
   <Project Path="RealEstateEval.Domain/RealEstateEval.Domain.csproj" />

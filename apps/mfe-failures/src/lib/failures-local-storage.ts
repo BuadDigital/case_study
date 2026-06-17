@@ -7,10 +7,7 @@ import {
   resolveObstructionForProperty,
 } from "@case-study/mfe/lib/prototype/tasks-storage";
 import { failureProblemTypeLabel } from "./failure-types-data";
-import {
-  FAILURES_STORAGE_KEY,
-  notifyFailuresChanged,
-} from "./failures-events";
+import { notifyFailuresChanged } from "./failures-events";
 import type {
   BourseObstructionInput,
   CreateFailureInput,
@@ -38,20 +35,14 @@ function normalizeFailure(raw: FailureRecord): FailureRecord {
   };
 }
 
+let memoryFailures: FailureRecord[] = [];
+
 function readFailures(): FailureRecord[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(FAILURES_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as FailureRecord[];
-    return Array.isArray(parsed) ? parsed.map(normalizeFailure) : [];
-  } catch {
-    return [];
-  }
+  return memoryFailures;
 }
 
 function writeFailures(list: FailureRecord[]): void {
-  localStorage.setItem(FAILURES_STORAGE_KEY, JSON.stringify(list));
+  memoryFailures = list;
   notifyFailuresChanged();
 }
 

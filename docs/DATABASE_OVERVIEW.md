@@ -35,7 +35,13 @@ The application uses **PostgreSQL** as the system of record. **User management i
 | Password | `Admin` (see `infra/docker-compose.yml`) |
 
 Start Postgres: `docker compose -f infra/docker-compose.yml up -d postgres`  
-Apply migrations: run the API once (`dotnet run` in `backend/RealEstateEval.Api`) or `dotnet ef database update`.
+Apply migrations: start Case Study once (`npm run dev:case-study`) or:
+
+```bash
+dotnet ef database update \
+  --project backend/RealEstateEval.Infrastructure \
+  --startup-project backend/services/case-study/RealEstateEval.CaseStudy.Api
+```
 
 Browse with **pgAdmin**: register server → connect to `realestate_eval_dev` → **Schemas → public → Tables**.
 
@@ -210,7 +216,7 @@ Each will need its own tables and API when that domain is scheduled.
 | `AddUserProfiles` | `UserProfiles`, `HrEmployeeProfiles`, `ProcServiceProviderProfiles`, `CrmClientProfiles` |
 | `RenameIdentityTables` | Renamed `AspNet*` tables to `Users`, `Roles`, `UserRoles`, etc. |
 
-Source: `backend/RealEstateEval.Api/Data/Migrations/`
+Source: `backend/RealEstateEval.Infrastructure/Data/Migrations/`
 
 ---
 

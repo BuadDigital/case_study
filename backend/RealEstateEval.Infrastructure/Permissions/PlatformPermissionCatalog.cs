@@ -1,0 +1,91 @@
+namespace RealEstateEval.Infrastructure.Permissions;
+
+/// <summary>Server-side page + capability catalog (aligned with prototype <c>ROLES</c> in app-shared).</summary>
+public static class PlatformPermissionCatalog
+{
+    public static readonly IReadOnlyList<string> AllPages =
+    [
+        "dashboard", "active-primary-data", "active-distribution", "active-case-study",
+        "po", "bourse-inquiry", "survey", "keys", "failures", "suspended-transactions",
+        "valuation-requests", "property-inspection", "government-review",
+        "valuation-coordination", "property-appraisal", "active-survey",
+        "system-fields-catalog", "system-screen-catalog", "financial", "kpi",
+        "users", "courts", "failure-types", "case-study-info-roles",
+    ];
+
+    private static readonly Dictionary<string, string[]> IdentityRolePages = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["CDO"] = AllPages.ToArray(),
+        ["HrAdmin"] = ["dashboard", "users", "system-fields-catalog", "system-screen-catalog"],
+        ["ProcAdmin"] = ["dashboard", "users", "system-fields-catalog", "system-screen-catalog"],
+        ["CrmAdmin"] = ["dashboard", "users", "system-fields-catalog", "system-screen-catalog"],
+        ["HR"] = ["dashboard", "users"],
+        ["PROC"] = ["dashboard", "users"],
+        ["CRM"] = ["dashboard", "users"],
+    };
+
+    private static readonly Dictionary<string, string[]> PrototypeRolePages = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["cdo"] = AllPages.ToArray(),
+        ["hr-admin"] = ["dashboard", "users", "system-fields-catalog", "system-screen-catalog"],
+        ["proc-admin"] = ["dashboard", "users", "system-fields-catalog", "system-screen-catalog"],
+        ["crm-admin"] = ["dashboard", "users", "system-fields-catalog", "system-screen-catalog"],
+        ["general-manager"] =
+        [
+            "dashboard", "po", "active-primary-data", "bourse-inquiry", "active-distribution",
+            "active-case-study", "survey", "keys", "failures", "suspended-transactions",
+            "valuation-requests", "system-fields-catalog", "system-screen-catalog",
+            "financial", "kpi", "users", "courts", "failure-types", "case-study-info-roles",
+        ],
+        ["section-supervisor"] =
+        [
+            "dashboard", "po", "active-primary-data", "bourse-inquiry", "active-distribution",
+            "active-case-study", "keys", "failures", "suspended-transactions", "failure-types",
+        ],
+        ["case-specialist"] =
+        [
+            "dashboard", "po", "active-primary-data", "bourse-inquiry", "active-distribution",
+            "active-case-study", "failures", "suspended-transactions",
+        ],
+        ["valuation-coordinator"] = ["dashboard", "valuation-requests", "valuation-coordination"],
+        ["real-estate-appraiser"] = ["dashboard", "property-appraisal", "valuation-requests"],
+        ["field-inspector"] = ["dashboard", "property-inspection"],
+        ["government-reviewer"] = ["dashboard", "government-review"],
+        ["engineering-office"] = ["dashboard", "active-survey"],
+        ["financial-officer"] = ["dashboard", "financial", "kpi"],
+    };
+
+    private static readonly Dictionary<string, string[]> IdentityRoleCapabilities = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["CDO"] = ["manage-users", "manage-system-config", "manage-custom-screens", "reset-system-data"],
+        ["HrAdmin"] = ["manage-users"],
+        ["ProcAdmin"] = ["manage-users"],
+        ["CrmAdmin"] = ["manage-users"],
+    };
+
+    private static readonly Dictionary<string, string[]> PrototypeRoleCapabilities = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["cdo"] = ["manage-users", "manage-system-config", "manage-custom-screens", "reset-system-data"],
+        ["hr-admin"] = ["manage-users"],
+        ["proc-admin"] = ["manage-users"],
+        ["crm-admin"] = ["manage-users"],
+        ["general-manager"] = ["manage-valuation-requests", "manage-failures"],
+        ["real-estate-appraiser"] = ["submit-valuation-report"],
+    };
+
+    public static void ApplyIdentityRole(string role, ISet<string> pages, ISet<string> capabilities)
+    {
+        if (IdentityRolePages.TryGetValue(role, out var p))
+            foreach (var page in p) pages.Add(page);
+        if (IdentityRoleCapabilities.TryGetValue(role, out var c))
+            foreach (var cap in c) capabilities.Add(cap);
+    }
+
+    public static void ApplyPrototypeRole(string role, ISet<string> pages, ISet<string> capabilities)
+    {
+        if (PrototypeRolePages.TryGetValue(role, out var p))
+            foreach (var page in p) pages.Add(page);
+        if (PrototypeRoleCapabilities.TryGetValue(role, out var c))
+            foreach (var cap in c) capabilities.Add(cap);
+    }
+}

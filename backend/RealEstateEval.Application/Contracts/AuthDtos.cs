@@ -13,6 +13,15 @@ public class LoginRequest
     public string Password { get; set; } = string.Empty;
 }
 
+/// <summary>Prototype login — username only, no password check.</summary>
+public class UsernameLoginRequest
+{
+    [Required]
+    [MinLength(2)]
+    [MaxLength(64)]
+    public string Username { get; set; } = string.Empty;
+}
+
 public class LoginResponse
 {
     public string Token { get; set; } = string.Empty;

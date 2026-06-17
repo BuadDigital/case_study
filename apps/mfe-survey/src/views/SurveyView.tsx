@@ -2,7 +2,6 @@
 
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
-import { MOCK_SURVEY_OFFICES } from "@platform/app-shared/prototype/constants";
 import {
   Badge,
   Button,
@@ -19,10 +18,12 @@ import {
   THead,
   Tr,
 } from "@platform/design-system";
+import { useSurveyOfficesQuery } from "../query/survey-queries";
 
 export function SurveyView() {
   const { role } = usePrototype();
   const viewOnly = !isSuperAdmin(role) && role === "general-manager";
+  const { data: offices = [] } = useSurveyOfficesQuery();
 
   return (
     <>
@@ -64,7 +65,7 @@ export function SurveyView() {
             </Tr>
           </THead>
           <TBody>
-            {MOCK_SURVEY_OFFICES.map((row) => (
+            {offices.map((row) => (
               <Tr key={row.name} hoverable={false}>
                 <Td className="font-medium">{row.name}</Td>
                 <Td>{row.active}</Td>

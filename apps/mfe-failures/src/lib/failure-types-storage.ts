@@ -1,12 +1,15 @@
 import {
+  getFailureTypesCatalog,
+  saveFailureTypesCatalog,
+} from "@platform/api-client";
+import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
+import {
   FAILURE_PROBLEM_TYPES,
   FAILURE_TYPE_CATEGORIES,
   type FailureProblemType,
   type FailureTypeCategory,
 } from "./failure-types-data";
 import { notifyFailureTypesChanged } from "./failure-types-events";
-
-export const FAILURE_TYPES_STORAGE_KEY = "evalFailureTypesCatalog";
 
 export type FailureTypesCatalog = {
   categories: FailureTypeCategory[];
@@ -20,55 +23,62 @@ function seedCatalog(): FailureTypesCatalog {
   };
 }
 
-function readCatalog(): FailureTypesCatalog {
-  if (typeof window === "undefined") return seedCatalog();
-  try {
-    const raw = localStorage.getItem(FAILURE_TYPES_STORAGE_KEY);
-    if (!raw) {
-      const seeded = seedCatalog();
-      writeCatalog(seeded);
-      return seeded;
-    }
-    const parsed = JSON.parse(raw) as FailureTypesCatalog;
-    if (
-      !parsed ||
-      !Array.isArray(parsed.categories) ||
-      !Array.isArray(parsed.problemTypes)
-    ) {
-      return seedCatalog();
-    }
-    return parsed;
-  } catch {
-    return seedCatalog();
+function notifyAndReturn(catalog: FailureTypesCatalog): FailureTypesCatalog {
+  notifyFailureTypesChanged();
+  return catalog;
+}
+
+async function persistCatalog(catalog: FailureTypesCatalog): Promise<void> {
+  const config = prototypeModulesApiConfig();
+  if (!config) return;
+
+  const result = await saveFailureTypesCatalog(config, catalog);
+  if (!result.ok) {
+    console.warn("Failed to save failure types catalog:", result.kind);
   }
 }
 
-export function loadFailureTypesCatalog(): FailureTypesCatalog {
-  return readCatalog();
+export async function loadFailureTypesCatalog(): Promise<FailureTypesCatalog> {
+  const config = prototypeModulesApiConfig();
+  if (!config) return seedCatalog();
+
+  const result = await getFailureTypesCatalog(config);
+  if (!result.ok) return seedCatalog();
+
+  if (
+    result.data.categories.length === 0 &&
+    result.data.problemTypes.length === 0
+  ) {
+    const seeded = seedCatalog();
+    await persistCatalog(seeded);
+    return seeded;
+  }
+
+  return {
+    categories: result.data.categories as FailureTypeCategory[],
+    problemTypes: result.data.problemTypes as FailureProblemType[],
+  };
 }
 
-function writeCatalog(catalog: FailureTypesCatalog): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(FAILURE_TYPES_STORAGE_KEY, JSON.stringify(catalog));
+export async function saveFailureTypesCatalogState(
+  catalog: FailureTypesCatalog,
+): Promise<void> {
+  await persistCatalog(catalog);
   notifyFailureTypesChanged();
 }
 
-export function saveFailureTypesCatalog(catalog: FailureTypesCatalog): void {
-  writeCatalog(catalog);
-}
-
-export function resetFailureTypesCatalog(): FailureTypesCatalog {
+export async function resetFailureTypesCatalog(): Promise<FailureTypesCatalog> {
   const seeded = seedCatalog();
-  writeCatalog(seeded);
-  return seeded;
+  await persistCatalog(seeded);
+  return notifyAndReturn(seeded);
 }
 
-export function addFailureProblemType(input: {
+export async function addFailureProblemType(input: {
   categoryId: string;
   label: string;
   description?: string;
-}): FailureTypesCatalog {
-  const catalog = readCatalog();
+}): Promise<FailureTypesCatalog> {
+  const catalog = await loadFailureTypesCatalog();
   const maxOrder = catalog.problemTypes.reduce(
     (n, t) => Math.max(n, t.order),
     0,
@@ -87,16 +97,18 @@ export function addFailureProblemType(input: {
       },
     ],
   };
-  writeCatalog(next);
-  return next;
+  await persistCatalog(next);
+  return notifyAndReturn(next);
 }
 
-export function removeFailureProblemType(id: string): FailureTypesCatalog {
-  const catalog = readCatalog();
+export async function removeFailureProblemType(
+  id: string,
+): Promise<FailureTypesCatalog> {
+  const catalog = await loadFailureTypesCatalog();
   const next: FailureTypesCatalog = {
     ...catalog,
     problemTypes: catalog.problemTypes.filter((t) => t.id !== id),
   };
-  writeCatalog(next);
-  return next;
+  await persistCatalog(next);
+  return notifyAndReturn(next);
 }

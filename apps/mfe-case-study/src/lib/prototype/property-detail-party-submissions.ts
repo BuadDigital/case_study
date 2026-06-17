@@ -258,21 +258,11 @@ async function loadEvaluatorSubmissionSnapshot(
   taskId: string,
 ): Promise<EvaluatorSubmissionSnapshot | null> {
   const config = workOrdersApiConfig();
-  if (config) {
-    const result = await getPartyTaskSubmission(config, taskId);
-    if (result.ok) {
-      return parseEvaluatorPayload(result.data);
-    }
-  }
+  if (!config || !taskId) return null;
 
-  if (typeof window === "undefined" || !taskId) return null;
-  try {
-    const raw = localStorage.getItem(`evalEvaluatorSubmission:${taskId}`);
-    if (!raw) return null;
-    return JSON.parse(raw) as EvaluatorSubmissionSnapshot;
-  } catch {
-    return null;
-  }
+  const result = await getPartyTaskSubmission(config, taskId);
+  if (!result.ok) return null;
+  return parseEvaluatorPayload(result.data);
 }
 
 async function loadEngineeringSurveySubmissionSnapshot(

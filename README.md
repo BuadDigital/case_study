@@ -60,7 +60,7 @@
 The project is built on a **modern, production-oriented** stack:
 
 - **Next.js 16** shell app (microfrontend-ready monorepo) for the web UI
-- **ASP.NET Core 10** API with **JWT** + **ASP.NET Identity** (domain services planned)
+- **ASP.NET Core 10** gateway + domain services with **JWT** + **ASP.NET Identity**
 - **PostgreSQL** as the system of record
 - **Docker Compose** local platform: **RabbitMQ**, **Redis**, **Jaeger**, **Prometheus**, **Grafana**, **Elasticsearch**, **Kibana**, **Fluent Bit**
 - Target: **microfrontends** (Module Federation) + **domain microservices** behind an API gateway
@@ -89,7 +89,7 @@ The project is built on a **modern, production-oriented** stack:
 ### 👔 Management & Supervision
 
 - **Executive dashboard** with KPIs, workload, and team overview
-- **Role-based navigation** — each role sees allowed modules only (prototype role switcher today)
+- **Role-based navigation** — sidebar pages from `GET /api/permissions` for the logged-in user
 - **Financial reports** and **performance indicators (KPI)**
 - **View-only mode** for general manager on selected screens (e.g. users, PO)
 
@@ -150,15 +150,14 @@ Future API calls → Authorization: Bearer <token>
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| **Role-based navigation** | ✅ UI | Sidebar shows only pages allowed for current `RoleId` in `ROLES` |
+| **Role-based navigation** | ✅ | Sidebar from `GET /api/permissions` (`pages` + `capabilities`) |
 | **View-only mode (GM)** | ✅ UI | General manager: read-only on PO, users, keys, survey, failures, valuation (no edit buttons) |
 | **Workflow permissions** | ✅ UI | e.g. failures: specialist vs supervisor approve paths in `FailuresView` |
-| **JWT role claims** | ⏳ Backend | Token can include `ClaimTypes.Role`; frontend does **not** use them yet |
+| **JWT role claims** | ⏳ Backend | Token can include `ClaimTypes.Role`; frontend uses permissions API |
 | **Server-side authorization** | ⏳ | Domain endpoints will use `[Authorize(Roles = "...")]` per API |
-| **Remove demo role switcher** | ⏳ | Planned: role from logged-in user only (`docs/DEMO_ROLE_CREDENTIALS.txt`) |
 | **Per-route API policies** | ⏳ | Gateway + service policies when microservices split |
 
-> **Important:** The sidebar **role dropdown** is for **demos only**. Anyone logged in can switch roles in the browser until login is bound to real Identity roles.
+> **Important:** Navigation and capabilities come from the **permissions API** for the logged-in user. To act as another role, log out and sign in with a different account.
 
 ### Application & transport security
 
@@ -187,7 +186,7 @@ Future API calls → Authorization: Bearer <token>
 
 ### JWT configuration (backend)
 
-Set in `backend/RealEstateEval.Api/appsettings.json` (use **user secrets** or environment in production):
+Set in each service `appsettings.json` (gateway, identity, case-study) — use **user secrets** or environment in production:
 
 ```json
 "Jwt": {
@@ -208,7 +207,7 @@ NEXT_PUBLIC_API_URL=http://localhost:5160
 - [ ] Replace dev JWT signing key and rotate regularly
 - [ ] Store connection strings and JWT key in **user secrets** / vault, not in git
 - [ ] Enforce **HTTPS** only; secure cookies if moving token from `sessionStorage`
-- [ ] Seed real users with `@ejadah.dev`; **disable** prototype role switcher
+- [ ] Seed real users with `@ejadah.dev`; permissions from Identity + `UserProfile.PermissionLevel`
 - [ ] Enforce roles on **every** API endpoint (`[Authorize]` + policies)
 - [ ] Stop storing staff passwords in `localStorage`; use Identity `UserManager` only
 - [ ] Add **refresh tokens** or short TTL + re-auth for sensitive actions
@@ -245,7 +244,7 @@ Report vulnerabilities to the project owner / security contact internally — do
 
 ## 🏛️ Architecture
 
-The platform is evolving from a **single shell app + auth API** toward **microfrontends** and **domain microservices**.
+The platform uses **microfrontends** on the frontend and a **gateway + domain microservices** backend (see [backend/README.md](backend/README.md)).
 
 ### Current structure (F3 + F4b — logical MFEs, single deploy)
 
@@ -269,7 +268,9 @@ property_study/
 │   ├── api-client/            # auth, users, work-orders, courts, workflow-tasks, …
 │   └── types/                 # PageId, RoleId, nav types
 ├── backend/
-│   └── RealEstateEval.Api/    # ASP.NET monolith (domain APIs growing)
+│   ├── gateway/               # YARP API gateway (:5160)
+│   ├── services/              # Identity, Case Study, …
+│   └── RealEstateEval.{Domain,Application,Infrastructure}/
 ├── infra/                     # Docker Compose, Prometheus, Fluent Bit, …
 ├── docs/                      # Architecture, LOCAL_INFRA, demo credentials
 └── requirements/              # HTML prototypes (reference only)
@@ -290,16 +291,14 @@ property_study/
 | **@settings/mfe** | `/users`, `/courts`, `/case-study-info-roles`, `/system-fields-catalog` |
 | **@valuation/mfe** | `/valuation-requests` |
 
-### Target backend (planned)
+### Backend (current + planned)
 
 ```text
-Browser → API Gateway (YARP / BFF)
-            → Identity & Access
-            → Case Study Service      → PostgreSQL (case_db)
-            → Valuation Service       → PostgreSQL (valuation_db)
-            → Operations / Financial / Reporting …
-            ↔ RabbitMQ (async events)
-            ↔ Redis (cache)
+Browser → API Gateway (YARP) :5160
+            → Identity Service        → PostgreSQL (shared dev DB)
+            → Case Study Service      → PostgreSQL + RabbitMQ events
+            → Valuation / Operations / Financial … (planned)
+            ↔ Redis (cache, planned)
 ```
 
 ### Observability (target)
@@ -357,11 +356,14 @@ docker compose -f infra/docker-compose.yml ps
 
 ### 2. Backend Setup
 
+From the **repository root** (starts gateway + identity + case-study):
+
 ```bash
-cd backend/RealEstateEval.Api
-dotnet run
-# API: http://localhost:5160 (see launchSettings.json)
+npm run dev:api
+# Gateway: http://localhost:5160
 ```
+
+See [backend/README.md](backend/README.md) for individual services (`dev:gateway`, `dev:identity`, `dev:case-study`).
 
 Default seeded user (after DB migrate/seed): **`admin@local.dev`** / **`Admin123!`**
 
@@ -385,15 +387,11 @@ npm run lint    # ESLint
 
 ## 🔑 Configuration
 
-### Backend — `appsettings.Development.json`
+### Backend — connection strings
 
-```json
-"ConnectionStrings": {
-  "DefaultConnection": "Host=localhost;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin"
-}
-```
+Docker Postgres (`infra/docker-compose.yml`): user `postgres`, password `Admin`, db `realestate_eval_dev`.
 
-Matches Docker Postgres in `infra/docker-compose.yml`.
+Override per service with `REAL_ESTATE_EVAL_PG_CONNECTION_STRING`, or edit `appsettings.Development.json` under `backend/services/identity/` and `backend/services/case-study/`.
 
 ### Frontend — environment (optional)
 
@@ -493,7 +491,7 @@ Use this checklist to see what exists **today** vs what is only planned.
 | **Monorepo F0** | ✅ | `apps/shell` + `packages/*` |
 | **Logical MFEs (F3 + F4b)** | ✅ | Case-study, failures, settings + platform domains (dashboard, survey, keys, financial, KPI) — single deploy |
 | **Module Federation (F5)** | ❌ | Independent deploy URLs not wired yet |
-| **Domain APIs** (PO, properties, courts, users) | ✅ | `RealEstateEval.Api` — see `docs/progress.md` |
+| **Domain APIs** (PO, properties, courts, users) | ✅ | Gateway + Identity / Case Study services — see `backend/README.md` |
 | **Per-role `@ejadah.dev` login** | ❌ | Draft in `docs/DEMO_ROLE_CREDENTIALS.txt` |
 | **Docker platform stack** | ✅ | Postgres, RabbitMQ, Redis, Jaeger, Prometheus, Grafana, ES, Kibana, Fluent Bit |
 | **Apps wired to Redis/RabbitMQ/Jaeger** | ❌ | Infra runs; code not connected |
@@ -531,8 +529,7 @@ docker compose -f infra/docker-compose.yml up -d
 **Terminal 2 — Backend (for login)**
 
 ```bash
-cd backend\RealEstateEval.Api
-dotnet run
+npm run dev:api
 ```
 
 **Terminal 3 — Frontend**
@@ -578,7 +575,7 @@ docker compose -f infra/docker-compose.yml down
 | Auth session helpers | `packages/auth-client/` |
 | API base URL | `packages/api-client/` + `NEXT_PUBLIC_API_URL` |
 | User registration / staff list | `@settings/mfe` + `@platform/app-shared/registration/` |
-| Backend login / users | `backend/RealEstateEval.Api/` |
+| Backend login / users | `backend/services/identity/`, `backend/gateway/` — see `backend/README.md` |
 | Docker / observability | `infra/docker-compose.yml`, `docs/LOCAL_INFRA.md` |
 
 **Add a new menu page (short path):**
@@ -596,11 +593,7 @@ docker compose -f infra/docker-compose.yml down
 3. For new forms, start from `case_study_form 2.html` or `ejada-registration_1.html`, then port HTML/CSS patterns into React + `prototype.css`.
 4. Do **not** copy prototype JS business logic blindly — keep mock data in `constants.ts` until APIs exist.
 
-**Reset prototype role:**
-
-```js
-localStorage.removeItem('evalPrototypeRole');
-```
+**Session reset:** log out from the top bar, or clear the auth token in browser devtools (`sessionStorage` key used by `@platform/auth-client`).
 
 ### Troubleshooting
 
@@ -608,7 +601,7 @@ localStorage.removeItem('evalPrototypeRole');
 |---------|-----|
 | Port 3000 in use | Stop other `npm run dev` or change port in `apps/shell` |
 | Port 5432 in use | Stop local PostgreSQL or change compose port |
-| Login fails | Start Docker + `dotnet run`; check `admin@local.dev` / `Admin123!` |
+| Login fails | Start Docker + `npm run dev:api`; check `admin@local.dev` / `Admin123!` |
 | Elasticsearch OOM | Lower `ES_JAVA_OPTS` in `infra/docker-compose.yml` or give Docker more RAM |
 | TypeScript path `@/` errors | Restart TS server; open repo root; see `tsconfig.json` references |
 | Added users disappeared | They are in `localStorage` — same browser profile only |
@@ -657,7 +650,7 @@ Phase 6            Module Federation + separate deploys per MFE
 
 - All main UI screens with mock data
 - Monorepo F0 (`apps/shell` + `packages/*`)
-- Identity API + PostgreSQL + Docker platform stack
+- Gateway + Identity / Case Study services + PostgreSQL + Docker platform stack
 - Add-user flow (frontend `localStorage`)
 
 ### ⏳ In progress / planned
@@ -665,7 +658,7 @@ Phase 6            Module Federation + separate deploys per MFE
 **Frontend**
 
 - [ ] F1–F5 microfrontends (valuation → case-study → operations → Module Federation)
-- [ ] Login per `@ejadah.dev` role; JWT role claims; remove demo role switcher
+- [ ] Login per `@ejadah.dev` role; JWT + permissions API on all MFEs
 - [ ] Production security hardening (secrets, HTTPS-only, audit log, rate limits)
 - [ ] Wire users API; PO/property detail; case study form (`requirements/case_study_form 2.html`)
 - [ ] Registration flow (`requirements/ejada-registration_1.html`) if in scope
@@ -673,7 +666,7 @@ Phase 6            Module Federation + separate deploys per MFE
 
 **Backend**
 
-- [ ] API gateway, Case Study, Valuation, Operations services
+- [ ] Extract Valuation, Operations, Financial services (gateway + Identity + Case Study done)
 - [ ] RabbitMQ events, Redis cache, OpenTelemetry → Jaeger, `/metrics` → Prometheus
 - [ ] Fluent Bit / Serilog → Elasticsearch → Kibana
 
@@ -691,6 +684,7 @@ Phase 6            Module Federation + separate deploys per MFE
 | [docs/DATABASE_OVERVIEW.md](docs/DATABASE_OVERVIEW.md) | Same content in Markdown |
 | [docs/FRONTEND.md](docs/FRONTEND.md) | Frontend apps, shell, MFE plan |
 | [apps/README.md](apps/README.md) | Short pointer to `docs/FRONTEND.md` |
+| [backend/README.md](backend/README.md) | Gateway, services, `dev:api`, routes |
 | [docs/ARCHITECTURE_MICROFRONTENDS_AND_MICROSERVICES.md](docs/ARCHITECTURE_MICROFRONTENDS_AND_MICROSERVICES.md) | Full architecture & phases |
 | [docs/LOCAL_INFRA.md](docs/LOCAL_INFRA.md) | Docker services, URLs, troubleshooting |
 | [docs/DEMO_ROLE_CREDENTIALS.txt](docs/DEMO_ROLE_CREDENTIALS.txt) | Draft `@ejadah.dev` demo accounts |

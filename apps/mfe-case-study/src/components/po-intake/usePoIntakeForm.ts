@@ -8,7 +8,7 @@ import {
 import {
   buildPoRecord,
   clearPoDraft,
-  loadPoDraft,
+  hydratePoDraft,
   poRecordExists,
   savePoDraft,
   savePoRecord,
@@ -27,23 +27,29 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
 
-  const [poNumber, setPoNumber] = useState(() => loadPoDraft()?.poNumber ?? "");
-  const [promulgationDate, setPromulgationDate] = useState(
-    () => loadPoDraft()?.promulgationDate ?? "",
-  );
-  const [assignmentType, setAssignmentType] = useState<AssignmentType | "">(
-    () => loadPoDraft()?.assignmentType || "",
-  );
-  const [assignmentSpecialist, setAssignmentSpecialist] = useState(
-    () => loadPoDraft()?.assignmentSpecialist ?? "",
-  );
-  const [assignmentSpecialistEmail, setAssignmentSpecialistEmail] = useState(
-    () => loadPoDraft()?.assignmentSpecialistEmail ?? "",
-  );
-  const [expectedPropertyCount, setExpectedPropertyCount] = useState(() => {
-    const count = loadPoDraft()?.expectedPropertyCount;
-    return count && count > 0 ? String(count) : "1";
-  });
+  const [draftReady, setDraftReady] = useState(false);
+
+  const [poNumber, setPoNumber] = useState("");
+  const [promulgationDate, setPromulgationDate] = useState("");
+  const [assignmentType, setAssignmentType] = useState<AssignmentType | "">("");
+  const [assignmentSpecialist, setAssignmentSpecialist] = useState("");
+  const [assignmentSpecialistEmail, setAssignmentSpecialistEmail] = useState("");
+  const [expectedPropertyCount, setExpectedPropertyCount] = useState("1");
+
+  useEffect(() => {
+    void hydratePoDraft().then((draft) => {
+      if (draft) {
+        setPoNumber(draft.poNumber);
+        setPromulgationDate(draft.promulgationDate);
+        setAssignmentType(draft.assignmentType || "");
+        setAssignmentSpecialist(draft.assignmentSpecialist);
+        setAssignmentSpecialistEmail(draft.assignmentSpecialistEmail);
+        const count = draft.expectedPropertyCount;
+        setExpectedPropertyCount(count && count > 0 ? String(count) : "1");
+      }
+      setDraftReady(true);
+    });
+  }, []);
 
   const isDirty = useMemo(
     () =>
@@ -64,6 +70,7 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
   );
 
   useEffect(() => {
+    if (!draftReady) return;
     savePoDraft({
       step: 1,
       poNumber,
@@ -77,6 +84,7 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
       ),
     });
   }, [
+    draftReady,
     poNumber,
     promulgationDate,
     assignmentType,
@@ -149,7 +157,7 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
       return;
     }
 
-    clearPoDraft();
+    await clearPoDraft();
     onComplete(result.data);
   }
 

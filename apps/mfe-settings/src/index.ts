@@ -11,6 +11,7 @@ export { UsersOrganizationView } from "./views/users/UsersOrganizationView";
 export { CaseStudyInfoRolesView } from "./views/CaseStudyInfoRolesView";
 export { SystemFieldsCatalogView } from "./views/SystemFieldsCatalogView";
 export { SystemScreenCatalogView } from "./views/SystemScreenCatalogView";
+export { CustomAssignedScreenView, CustomAssignedScreenPage } from "./views/CustomAssignedScreenView";
 
 export * from "./lib/settings-api-config";
 export * from "./lib/settings-roles";
@@ -21,3 +22,4 @@ export * from "./lib/prototype/case-study-info-roles-data";
 export * from "./lib/prototype/case-study-info-roles-storage";
 export * from "./lib/clear-all-system-data";
 export * from "./query/settings-queries";
+export * from "./query/custom-screens-queries";

@@ -8,9 +8,9 @@ public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<Applicatio
 {
     public ApplicationDbContext CreateDbContext(string[] args)
     {
-        var basePath = Path.Combine(Directory.GetCurrentDirectory(), "..", "RealEstateEval.Api");
+        var apiProject = ResolveCaseStudyApiPath();
         var configuration = new ConfigurationBuilder()
-            .SetBasePath(basePath)
+            .SetBasePath(apiProject)
             .AddJsonFile("appsettings.json", optional: true)
             .AddJsonFile("appsettings.Development.json", optional: true)
             .AddEnvironmentVariables()
@@ -27,5 +27,25 @@ public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<Applicatio
             .Options;
 
         return new ApplicationDbContext(options);
+    }
+
+    private static string ResolveCaseStudyApiPath()
+    {
+        var dir = Directory.GetCurrentDirectory();
+        while (!string.IsNullOrEmpty(dir))
+        {
+            var direct = Path.Combine(dir, "services", "case-study", "RealEstateEval.CaseStudy.Api");
+            if (File.Exists(Path.Combine(direct, "appsettings.json")))
+                return direct;
+
+            var viaBackend = Path.Combine(dir, "backend", "services", "case-study", "RealEstateEval.CaseStudy.Api");
+            if (File.Exists(Path.Combine(viaBackend, "appsettings.json")))
+                return viaBackend;
+
+            dir = Directory.GetParent(dir)?.FullName ?? "";
+        }
+
+        throw new InvalidOperationException(
+            "Could not locate RealEstateEval.CaseStudy.Api appsettings for EF design-time.");
     }
 }

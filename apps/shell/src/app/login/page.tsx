@@ -2,10 +2,12 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getApiBase } from "@platform/api-client";
+import { useQueryClient } from "@tanstack/react-query";
+import { getApiBase, fetchPermissions } from "@platform/api-client";
 import { setAuthSession, type AuthSession } from "@platform/auth-client";
+import { permissionsKeys } from "@platform/app-shared/query/permissions-queries";
+import { setRuntimeCapabilities } from "@platform/app-shared/prototype/runtime-access";
 import { Button, Card, Input, Label } from "@platform/design-system";
-import { applyPrototypeRoleForEmail } from "@/lib/auth-role-map";
 
 type LoginResponse = {
   token: string;
@@ -15,20 +17,25 @@ type LoginResponse = {
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("admin@local.dev");
-  const [password, setPassword] = useState("");
+  const queryClient = useQueryClient();
+  const [username, setUsername] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    const value = username.trim();
+    if (!value) {
+      setError("اكتب اسم المستخدم");
+      return;
+    }
     setLoading(true);
     try {
-      const res = await fetch(`${getApiBase()}/api/auth/login`, {
+      const res = await fetch(`${getApiBase()}/api/auth/login-username`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({ username: value }),
       });
       const data = (await res.json().catch(() => null)) as
         | LoginResponse
@@ -39,7 +46,7 @@ export default function LoginPage() {
         const msg =
           data && "message" in data && typeof data.message === "string"
             ? data.message
-            : "تعذر تسجيل الدخول. تحقق من البيانات أو اتصال الخادم.";
+            : "اسم المستخدم غير موجود.";
         setError(msg);
         return;
       }
@@ -54,7 +61,15 @@ export default function LoginPage() {
         user: data.user,
         expiresAtUtc: data.expiresAtUtc,
       } satisfies AuthSession);
-      applyPrototypeRoleForEmail(data.user.email);
+
+      try {
+        const permissions = await fetchPermissions({ token: data.token });
+        setRuntimeCapabilities(permissions.capabilities);
+        await queryClient.invalidateQueries({ queryKey: permissionsKeys.all });
+      } catch {
+        // Navigation loads permissions again in PrototypeProvider.
+      }
+
       router.push("/dashboard");
     } catch (err) {
       console.error("login failed", err);
@@ -96,7 +111,7 @@ export default function LoginPage() {
 
         <h1 className="mb-1 text-xl font-semibold text-text">تسجيل الدخول</h1>
         <p className="mb-6 text-[15px] leading-relaxed text-text-2">
-          أدخل البريد الإلكتروني وكلمة المرور للمتابعة.
+          أدخل اسم المستخدم للدخول مباشرة — بدون كلمة مرور.
         </p>
 
         {error ? (
@@ -110,26 +125,16 @@ export default function LoginPage() {
 
         <form method="post" action="#" onSubmit={onSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="email">البريد الإلكتروني</Label>
+            <Label htmlFor="username">اسم المستخدم</Label>
             <Input
-              id="email"
-              type="email"
+              id="username"
               autoComplete="username"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="مثال: salam أو abdullah"
               required
-            />
-          </div>
-          <div>
-            <Label htmlFor="password">كلمة المرور</Label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
+              dir="ltr"
+              className="text-start"
             />
           </div>
           <Button
@@ -139,22 +144,9 @@ export default function LoginPage() {
             disabled={loading}
             className="mt-1 w-full"
           >
-            {loading ? "جاري التحقق…" : "دخول"}
+            {loading ? "جاري الدخول…" : "دخول"}
           </Button>
         </form>
-
-        <p className="mt-7 text-[13px] leading-relaxed text-text-3">
-          CDO:{" "}
-          <strong className="text-text-2">s.salhy@gmail.com</strong> /{" "}
-          <strong className="text-text-2">sliman123</strong>
-          <br />
-          إدارة المنظمة: آلاء (HR) · علي (المالية والعقود) · شهد (CRM) — كلمات
-          المرور كما في الإعداد. سليمان (CDO) ينشئ حساباتهم.
-          <br />
-          تجريبي قديم:{" "}
-          <strong className="text-text-2">admin@local.dev</strong> /{" "}
-          <strong className="text-text-2">Admin123!</strong>
-        </p>
       </Card>
     </div>
   );

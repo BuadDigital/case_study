@@ -141,7 +141,7 @@ export function ActiveTransactionQueueView({
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const selectedId = searchParams.get("task");
-  const { role, viewerEmail: personaEmail } = usePrototype();
+  const { role, viewerEmail } = usePrototype();
   const {
     data: tasks,
     refetch: refetchTasks,
@@ -204,11 +204,11 @@ export function ActiveTransactionQueueView({
         role,
         tasks ?? [],
         config.assigneeRole,
-        personaEmail ?? getAuthSession()?.user.email,
+        viewerEmail ?? getAuthSession()?.user.email,
       );
     }
     return tasksForRole(role, tasks ?? []);
-  }, [config.assigneeRole, config.partyAssignee, personaEmail, role, tasks]);
+  }, [config.assigneeRole, config.partyAssignee, viewerEmail, role, tasks]);
 
   const listed = useMemo(
     () =>

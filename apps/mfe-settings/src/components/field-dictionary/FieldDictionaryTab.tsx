@@ -12,13 +12,15 @@ import {
   fieldRoles,
   fieldScreens,
   type FieldDictionaryLayer,
-  loadFieldDictionaryState,
-  resetFieldDictionaryState,
-  saveFieldDictionaryState,
   type FieldDictionaryField,
   type FieldDictionaryState,
   type FieldReliabilityMode,
 } from "@platform/app-shared/prototype/field-dictionary";
+import {
+  loadFieldDictionaryFromApi,
+  resetFieldDictionaryOnApi,
+  saveFieldDictionaryToApi,
+} from "../../lib/prototype/field-dictionary-api";
 import { FieldDictionaryAddModal } from "./FieldDictionaryAddModal";
 import { FieldDictionaryDetailPanel } from "./FieldDictionaryDetailPanel";
 
@@ -53,12 +55,14 @@ export function FieldDictionaryTab() {
   const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
-    setState(loadFieldDictionaryState());
+    void loadFieldDictionaryFromApi().then(setState);
   }, []);
 
   const persist = useCallback((next: FieldDictionaryState) => {
     setState(next);
-    saveFieldDictionaryState(next);
+    void saveFieldDictionaryToApi(next).then((saved) => {
+      if (saved) setState(saved);
+    });
   }, []);
 
   const fields = state?.fields ?? [];
@@ -194,10 +198,11 @@ export function FieldDictionaryTab() {
       )
     )
       return;
-    const next = resetFieldDictionaryState();
-    setState(next);
-    setSelectedId(next.fields[0]?.id ?? null);
-    clearFilters();
+    void resetFieldDictionaryOnApi().then((next) => {
+      setState(next);
+      setSelectedId(next.fields[0]?.id ?? null);
+      clearFilters();
+    });
   }
 
   if (!state) {

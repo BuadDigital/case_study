@@ -1,6 +1,7 @@
 # Project Progress — (نظام إجادة الداخلي)
 
-**Last updated:** 14 June 2026 (property detail tabs, unified documents, failures API scaffold, commit `17a61a8`)  
+**Last updated:** 17 June 2026 (microservices foundation: YARP gateway + Identity + Case Study services; monolith deprecated)
+
 **Repo:** [BuadDigital/case_srudy](https://github.com/BuadDigital/case_srudy) · branch `feature/failures-mfe-and-platform-split` · pushed `17a61a8`  
 **Audience:** Project manager and developers — single handoff document.
 
@@ -12,7 +13,7 @@
 | Layer             | What is real today                                                                                                               | What is prototype-only                                                              |
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | **PostgreSQL**    | Users, profiles (HR/Proc/CRM), work orders, properties, contacts, courts catalog, **workflow tasks**, **case study form drafts**, **info-role matrix**, **party task submissions** (5 kinds), **`PropertyFailures`** (schema + API) | Failures UI still partly **localStorage**; **file bytes** (PDFs / PO attachments), messages/KPI/financial/keys/survey admin data |
-| **ASP.NET API**   | Auth (JWT), users, work orders, courts, **workflow tasks**, **case study forms**, **case-study-info-roles**, **party-task-submissions**, **`/api/failures`** (CRUD + workflow actions) | No messaging, search, **attachments blob**, platform placeholder modules |
+| **ASP.NET API**   | **YARP gateway** (:5160) → **Identity** (auth/users) + **Case Study** (PO, workflow, failures, prototype modules) | Valuation/Operations as separate deployables next |
 | **Next.js shell** | Host + layout; domain MFEs via `[page]/page.tsx`; case study + **full-page party routes**; property detail (documents by source, keys, Enfath tab placeholder, case study report) | Attachment **previews** (browser); sidebar **role switcher** for demo; survey/keys/messages/KPI/financial mock pages; **الرفع على إنفاذ** assistant content deferred |
 
 
@@ -65,7 +66,9 @@ property_study/
 │   ├── mfe-valuation/       # @valuation/mfe — mock valuation requests list
 │   └── plan/                # Frontend planning notes (FRONTEND.md)
 ├── backend/
-│   ├── RealEstateEval.Api/  # ASP.NET Core 10 API
+│   ├── gateway/             # YARP API gateway (:5160)
+│   ├── services/            # Identity, Case Study, Operations, Reporting, Financial, Valuation
+│   ├── RealEstateEval.{Domain,Application,Infrastructure}/
 │   └── plan/                # Backend infra notes (LOCAL_INFRA.md)
 ├── packages/
 │   ├── app-shared/          # PrototypeContext, registration, party-submission-api cache, work-orders-read
@@ -374,7 +377,7 @@ Seeder: `backend/RealEstateEval.Infrastructure/Data/DataSeeder.cs` (runs on API 
 
 ## 4. Backend API reference
 
-**Project:** `backend/RealEstateEval.Api` · **Auth:** JWT Bearer on protected controllers.
+**Projects:** `backend/gateway` + `backend/services/*` · **Auth:** JWT Bearer on protected controllers.
 
 ### 4.1 Auth — `AuthController`
 
@@ -880,7 +883,7 @@ Each party queue row opens a dedicated full-page task (mirrors engineering patte
 
 ### 12.1 Backend ↔ Frontend alignment (how many backends?)
 
-**Short answer:** one API monolith today (`RealEstateEval.Api`) with **9 live domains** (+1 dev-only). You need **~4 more domains** for production-ready current screens, or **~13 total new pieces** for full sidebar alignment (including red placeholder modules).
+**Short answer:** **gateway + 6 domain services** (Identity, Case Study, Operations, Reporting, Financial, Valuation). Case Study still hosts the catch-all for PO/workflow/failures/settings. Further splits (Failures, Platform, Attachments) optional for slimmer boundaries.
 
 **Not 15 separate servers** — extend the same API with new controllers/services until a future split (see `docs/ARCHITECTURE_MICROFRONTENDS_AND_MICROSERVICES.md`).
 

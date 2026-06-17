@@ -23,4 +23,15 @@ public interface IUserRegistrationService
 
     Task<OrganizationOverviewDto> GetOrganizationOverviewAsync(
         CancellationToken cancellationToken = default);
+
+    Task<(UserListItemDto? Result, string? Error)> UpdateUserAsync(
+        string userId,
+        UpdateUserRequest request,
+        RegistrationSource? sourceScope = null,
+        CancellationToken cancellationToken = default);
+
+    Task<(UserListItemDto? Result, string? Error)> DeactivateUserAsync(
+        string userId,
+        RegistrationSource? sourceScope = null,
+        CancellationToken cancellationToken = default);
 }

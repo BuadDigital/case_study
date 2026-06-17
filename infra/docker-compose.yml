@@ -128,6 +128,212 @@ services:
     # volumes:
     #   - /var/lib/docker/containers:/var/lib/docker/containers:ro
 
+  identity:
+    build:
+      context: ..
+      dockerfile: backend/services/identity/RealEstateEval.Identity.Api/Dockerfile
+    container_name: ree-identity
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      Redis__ConnectionString: redis:6379
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
+      Jwt__Issuer: RealEstateEval
+      Jwt__Audience: RealEstateEval
+      Jwt__SigningKey: CHANGE_ME_DEV_ONLY_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256_SIGNING_KEY_0123456789ABCDEF
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8080"
+
+  case-study:
+    build:
+      context: ..
+      dockerfile: backend/services/case-study/RealEstateEval.CaseStudy.Api/Dockerfile
+    container_name: ree-case-study
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      Redis__ConnectionString: redis:6379
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
+      Jwt__Issuer: RealEstateEval
+      Jwt__Audience: RealEstateEval
+      Jwt__SigningKey: CHANGE_ME_DEV_ONLY_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256_SIGNING_KEY_0123456789ABCDEF
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Port: 5672
+      RabbitMQ__UserName: dev
+      RabbitMQ__Password: dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    expose:
+      - "8080"
+
+  operations:
+    build:
+      context: ..
+      dockerfile: backend/services/operations/RealEstateEval.Operations.Api/Dockerfile
+    container_name: ree-operations
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      Redis__ConnectionString: redis:6379
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
+      Jwt__Issuer: RealEstateEval
+      Jwt__Audience: RealEstateEval
+      Jwt__SigningKey: CHANGE_ME_DEV_ONLY_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256_SIGNING_KEY_0123456789ABCDEF
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8080"
+
+  reporting:
+    build:
+      context: ..
+      dockerfile: backend/services/reporting/RealEstateEval.Reporting.Api/Dockerfile
+    container_name: ree-reporting
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      Redis__ConnectionString: redis:6379
+      UpstreamServices__GatewayBaseUrl: http://gateway:5160
+      UpstreamServices__CaseStudyBaseUrl: http://case-study:8080
+      UpstreamServices__ValuationBaseUrl: http://valuation:8080
+      UpstreamServices__FailuresBaseUrl: http://failures:8080
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
+      Jwt__Issuer: RealEstateEval
+      Jwt__Audience: RealEstateEval
+      Jwt__SigningKey: CHANGE_ME_DEV_ONLY_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256_SIGNING_KEY_0123456789ABCDEF
+    depends_on:
+      case-study:
+        condition: service_started
+      valuation:
+        condition: service_started
+      failures:
+        condition: service_started
+    expose:
+      - "8080"
+
+  financial:
+    build:
+      context: ..
+      dockerfile: backend/services/financial/RealEstateEval.Financial.Api/Dockerfile
+    container_name: ree-financial
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      Redis__ConnectionString: redis:6379
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
+      Jwt__Issuer: RealEstateEval
+      Jwt__Audience: RealEstateEval
+      Jwt__SigningKey: CHANGE_ME_DEV_ONLY_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256_SIGNING_KEY_0123456789ABCDEF
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8080"
+
+  valuation:
+    build:
+      context: ..
+      dockerfile: backend/services/valuation/RealEstateEval.Valuation.Api/Dockerfile
+    container_name: ree-valuation
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      Redis__ConnectionString: redis:6379
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
+      Jwt__Issuer: RealEstateEval
+      Jwt__Audience: RealEstateEval
+      Jwt__SigningKey: CHANGE_ME_DEV_ONLY_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256_SIGNING_KEY_0123456789ABCDEF
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8080"
+
+  failures:
+    build:
+      context: ..
+      dockerfile: backend/services/failures/RealEstateEval.Failures.Api/Dockerfile
+    container_name: ree-failures
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      Redis__ConnectionString: redis:6379
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
+      Jwt__Issuer: RealEstateEval
+      Jwt__Audience: RealEstateEval
+      Jwt__SigningKey: CHANGE_ME_DEV_ONLY_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256_SIGNING_KEY_0123456789ABCDEF
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8080"
+
+  platform:
+    build:
+      context: ..
+      dockerfile: backend/services/platform/RealEstateEval.Platform.Api/Dockerfile
+    container_name: ree-platform
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      Redis__ConnectionString: redis:6379
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
+      Jwt__Issuer: RealEstateEval
+      Jwt__Audience: RealEstateEval
+      Jwt__SigningKey: CHANGE_ME_DEV_ONLY_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256_SIGNING_KEY_0123456789ABCDEF
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8080"
+
+  attachments:
+    build:
+      context: ..
+      dockerfile: backend/services/attachments/RealEstateEval.Attachments.Api/Dockerfile
+    container_name: ree-attachments
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      Redis__ConnectionString: redis:6379
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
+      Jwt__Issuer: RealEstateEval
+      Jwt__Audience: RealEstateEval
+      Jwt__SigningKey: CHANGE_ME_DEV_ONLY_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256_SIGNING_KEY_0123456789ABCDEF
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8080"
+
+  gateway:
+    build:
+      context: ..
+      dockerfile: backend/gateway/RealEstateEval.Gateway/Dockerfile
+    container_name: ree-gateway
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+    ports:
+      - "5160:5160"
+    depends_on:
+      - identity
+      - case-study
+      - operations
+      - reporting
+      - financial
+      - valuation
+      - failures
+      - platform
+      - attachments
+
 volumes:
   ree_pgdata:
   ree_prometheus_data:

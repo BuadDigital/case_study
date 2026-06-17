@@ -1,7 +1,6 @@
 "use client";
 
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { MOCK_PROPERTIES } from "@platform/app-shared/prototype/constants";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import {
   Badge,
@@ -20,11 +19,23 @@ import {
   THead,
   Tr,
 } from "@platform/design-system";
+import { markPropertyKeyReceived } from "../lib/keys-api";
+import {
+  useInvalidatePropertyKeys,
+  usePropertyKeysQuery,
+} from "../query/keys-queries";
 
 export function KeysView() {
   const { role } = usePrototype();
   const viewOnly = !isSuperAdmin(role) && role === "general-manager";
-  const kp = MOCK_PROPERTIES.filter((p) => p.key);
+  const { data: kp = [] } = usePropertyKeysQuery();
+  const invalidate = useInvalidatePropertyKeys();
+  const received = kp.filter((p) => p.status === "done").length;
+
+  async function handleReceive(id: string) {
+    const updated = await markPropertyKeyReceived(id);
+    if (updated) invalidate();
+  }
 
   return (
     <>
@@ -35,11 +46,11 @@ export function KeysView() {
         </StatCard>
         <StatCard accent="green">
           <StatLabel>مستلمة</StatLabel>
-          <StatValue value={1} />
+          <StatValue value={received} />
         </StatCard>
         <StatCard accent="warn">
           <StatLabel>بانتظار الاستلام</StatLabel>
-          <StatValue value={Math.max(0, kp.length - 1)} />
+          <StatValue value={Math.max(0, kp.length - received)} />
         </StatCard>
         <StatCard>
           <StatLabel>مندوبو المحكمة</StatLabel>
@@ -67,13 +78,13 @@ export function KeysView() {
             {kp.map((p) => (
               <Tr key={p.id} hoverable={false}>
                 <Td className="text-[11px] font-semibold text-primary-light">
-                  {p.id}
+                  {p.idProp}
                 </Td>
                 <Td className="text-[11px] text-primary-light">{p.po}</Td>
                 <Td>{p.area}</Td>
                 <Td>محكمة {p.area}</Td>
                 <Td>
-                  {p.id === "E-4403" ? (
+                  {p.status === "done" ? (
                     <Badge tone="success" className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal">
                       مستلم
                     </Badge>
@@ -85,10 +96,14 @@ export function KeysView() {
                 </Td>
                 <Td>فراس كمرين</Td>
                 <Td>
-                  {p.id === "E-4403" || viewOnly ? (
+                  {p.status === "done" || viewOnly ? (
                     "—"
                   ) : (
-                    <Button size="sm" variant="primary">
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={() => void handleReceive(p.id)}
+                    >
                       تسجيل الاستلام
                     </Button>
                   )}

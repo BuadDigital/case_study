@@ -50,3 +50,4 @@ yarn-error.log*
 backend/**/bin/
 backend/**/obj/
 backend/**/*.user
+data/blobs/

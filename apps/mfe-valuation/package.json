@@ -7,6 +7,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./routes": "./src/routes.ts",
+    "./query/valuation-queries": "./src/query/valuation-queries.ts",
+    "./lib/*": "./src/lib/*",
     "./views/*": "./src/views/*",
     "./components/*": "./src/components/*"
   },
@@ -14,9 +16,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@platform/api-client": "*",
     "@platform/app-shared": "*",
     "@platform/design-system": "*",
-    "@platform/types": "*"
+    "@platform/types": "*",
+    "@tanstack/react-query": "^5.100.11"
   },
   "peerDependencies": {
     "next": ">=16",

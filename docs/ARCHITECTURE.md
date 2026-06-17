@@ -8,16 +8,19 @@ This repo uses a **pragmatic Clean Architecture** split: domain rules at the cen
 RealEstateEval.Domain/          Entities & enums (WorkOrder, WorkflowTask, …)
 RealEstateEval.Application/     DTOs, service interfaces, validation rules
 RealEstateEval.Infrastructure/  EF Core, service implementations, migrations
-RealEstateEval.Api/             HTTP controllers + Program.cs only
+services/*/RealEstateEval.*.Api/  HTTP controllers + Program.cs per domain service
+gateway/RealEstateEval.Gateway/ YARP reverse proxy (public entry :5160)
 RealEstateEval.Application.Tests/  Unit tests for application rules
 ```
+
+See [backend/README.md](../backend/README.md) for gateway routes and local `dev:api` workflow.
 
 **Dependency rule**
 
 - `Domain` → no project references
 - `Application` → `Domain`
 - `Infrastructure` → `Application`, `Domain`
-- `Api` → `Application`, `Infrastructure`
+- Each `*.Api` service → `Application`, `Infrastructure` (and shared web helpers)
 
 Register services via `Infrastructure.DependencyInjection.AddInfrastructure()`.
 
@@ -26,7 +29,7 @@ Register services via `Infrastructure.DependencyInjection.AddInfrastructure()`.
 ```bash
 dotnet ef migrations add <Name> \
   --project backend/RealEstateEval.Infrastructure \
-  --startup-project backend/RealEstateEval.Api
+  --startup-project backend/services/case-study/RealEstateEval.CaseStudy.Api
 ```
 
 ## Frontend (`apps/shell/`)

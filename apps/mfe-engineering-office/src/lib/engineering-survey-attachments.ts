@@ -1,3 +1,11 @@
+import {
+  clearTaskScopedAttachments,
+  getCachedTaskAttachment,
+  openTaskAttachmentPreview,
+  prefetchTaskAttachment,
+  uploadTaskScopedAttachment,
+  type TaskAttachmentPreview,
+} from "@platform/app-shared/prototype/task-attachments-api";
 import { getCachedPartySubmission } from "@platform/app-shared/prototype/party-submission-api";
 import { persistPartySubmissionPayload } from "@platform/app-shared/prototype/party-submission-api";
 import { ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT } from "./engineering-survey-submission-storage";
@@ -8,6 +16,7 @@ export type CachedEngineeringSurveyFile = {
   mimeType: string;
   dataUrl?: string;
   sizeBytes?: number;
+  attachmentId?: string;
 };
 
 export type EngineeringSurveyDocField = "surveyReport" | "siteLetter";
@@ -20,6 +29,7 @@ const FIELD_META: Record<
   {
     fileNameKey: "surveyReportFileName" | "siteLetterFileName";
     attachmentKey: "surveyReportAttachment" | "siteLetterAttachment";
+    scope: string;
     maxBytes: number;
     title: string;
   }
@@ -27,12 +37,14 @@ const FIELD_META: Record<
   surveyReport: {
     fileNameKey: "surveyReportFileName",
     attachmentKey: "surveyReportAttachment",
+    scope: "engineering-survey-report",
     maxBytes: MAX_SURVEY_REPORT_BYTES,
     title: "تقرير الرفع المساحي",
   },
   siteLetter: {
     fileNameKey: "siteLetterFileName",
     attachmentKey: "siteLetterAttachment",
+    scope: "engineering-site-letter",
     maxBytes: MAX_SITE_LETTER_BYTES,
     title: "خطاب إقرار صحة الموقع",
   },
@@ -42,15 +54,6 @@ function notifyChanged(): void {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT));
   }
-}
-
-function readAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
 }
 
 function attachmentFromPayload(
@@ -73,6 +76,11 @@ export function getEngineeringSurveyAttachment(
   field: EngineeringSurveyDocField,
 ): CachedEngineeringSurveyFile | null {
   if (!taskId) return null;
+
+  const scope = FIELD_META[field].scope;
+  const cached = getCachedTaskAttachment(scope, taskId);
+  if (cached?.fileName) return cached;
+
   const dto = getCachedPartySubmission(taskId);
   if (dto?.payload) {
     return attachmentFromPayload(dto.payload, field);
@@ -82,6 +90,14 @@ export function getEngineeringSurveyAttachment(
   const fileName = sub[FIELD_META[field].fileNameKey].trim();
   if (!fileName) return null;
   return { fileName, mimeType: "application/pdf" };
+}
+
+export async function prefetchEngineeringSurveyAttachment(
+  taskId: string,
+  field: EngineeringSurveyDocField,
+): Promise<CachedEngineeringSurveyFile | null> {
+  if (!taskId) return null;
+  return prefetchTaskAttachment(FIELD_META[field].scope, taskId);
 }
 
 export type EngineeringSurveyDocumentEntry = {
@@ -137,29 +153,28 @@ export async function cacheEngineeringSurveyFile(
     return { ok: false, error: "لا يمكن تعديل الرفع بعد الإرسال." };
   }
 
-  try {
-    const dataUrl = await readAsDataUrl(file);
-    const attachment: CachedEngineeringSurveyFile = {
-      fileName: file.name,
-      mimeType: file.type || "application/pdf",
-      dataUrl,
-      sizeBytes: file.size,
-    };
-    const dto = getCachedPartySubmission(taskId);
-    const payload: Record<string, unknown> = {
-      ...(dto?.payload ?? {}),
-      ...current,
-      [meta.fileNameKey]: file.name,
-      [meta.attachmentKey]: attachment,
-      updatedAtUtc: new Date().toISOString(),
-    };
-    const saved = await persistPartySubmissionPayload(taskId, payload);
-    if (!saved) return { ok: false, error: "تعذّر حفظ الملف." };
-    notifyChanged();
-    return { ok: true };
-  } catch {
-    return { ok: false, error: "تعذّر قراءة الملف." };
-  }
+  const uploaded = await uploadTaskScopedAttachment(meta.scope, taskId, file);
+  if (!uploaded) return { ok: false, error: "تعذّر حفظ الملف." };
+
+  const attachment: CachedEngineeringSurveyFile = {
+    fileName: uploaded.fileName,
+    mimeType: uploaded.mimeType,
+    sizeBytes: uploaded.sizeBytes,
+    attachmentId: uploaded.attachmentId,
+  };
+
+  const dto = getCachedPartySubmission(taskId);
+  const payload: Record<string, unknown> = {
+    ...(dto?.payload ?? {}),
+    ...current,
+    [meta.fileNameKey]: file.name,
+    [meta.attachmentKey]: attachment,
+    updatedAtUtc: new Date().toISOString(),
+  };
+  const saved = await persistPartySubmissionPayload(taskId, payload);
+  if (!saved) return { ok: false, error: "تعذّر حفظ الملف." };
+  notifyChanged();
+  return { ok: true };
 }
 
 export async function clearEngineeringSurveyFile(
@@ -171,6 +186,8 @@ export async function clearEngineeringSurveyFile(
   if (!current || current.status === "submitted") return;
 
   const meta = FIELD_META[field];
+  await clearTaskScopedAttachments(meta.scope, taskId);
+
   const dto = getCachedPartySubmission(taskId);
   const payload: Record<string, unknown> = {
     ...(dto?.payload ?? {}),
@@ -187,7 +204,7 @@ export function openEngineeringSurveyDocumentPreview(
   attachment: CachedEngineeringSurveyFile,
 ): void {
   if (!attachment.dataUrl) return;
-  window.open(attachment.dataUrl, "_blank", "noopener,noreferrer");
+  openTaskAttachmentPreview(attachment as TaskAttachmentPreview);
 }
 
 export function downloadEngineeringSurveyDocument(

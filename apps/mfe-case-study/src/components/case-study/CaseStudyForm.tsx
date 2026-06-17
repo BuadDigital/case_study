@@ -54,9 +54,7 @@ import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../../lib/case-study-evaluat
 
 /** Stable fallback — avoid calling emptyCaseStudyInfoRolesConfig() per render (infinite effect loop). */
 const DEFAULT_INFO_ROLES_CONFIG = emptyCaseStudyInfoRolesConfig();
-
 const STEP_AR_NUMS = ["١", "٢", "٣", "٤", "٥"] as const;
-
 const FORM_STEP_SECTIONS: CaseStudyQuestionSection[] = [
   "deed",
   "survey",

@@ -5,7 +5,7 @@ This document defines **what to implement** when evolving the Real Estate Evalua
 It is grounded in:
 
 - Current UI routes (`dashboard`, `po`, `properties`, `assignment`, `survey`, `keys`, `failures`, `valuation-requests`, `field-form`, `messages`, `financial`, `kpi`, `users`)
-- Current backend: `backend/RealEstateEval.Api` (Identity + JWT only; domain data is mock on the frontend)
+- Current backend: **YARP gateway** (`backend/gateway`) + **domain services** under `backend/services/` (Identity, Case Study, Operations, Reporting, Financial, Valuation). Legacy monolith `RealEstateEval.Api` removed.
 - Reference prototype: `requirment/system_prototype_4.html`
 
 ---
@@ -221,7 +221,7 @@ For each microservice repository (or `backend/services/<name>/`):
 - [ ] Integration tests with Testcontainers (Postgres)
 - [ ] Contract tests (Pact or OpenAPI diff) for consumers
 
-Migrate existing `RealEstateEval.Api` **Identity** code into **Identity & Access** service; retire monolith API when domains are extracted.
+Migrate existing Identity code into **Identity & Access** service (**done**); monolith API retired.
 
 ### 4.6 Messaging & consistency (implement when 2+ services exist)
 
@@ -627,7 +627,7 @@ See **[LOCAL_INFRA.md](./LOCAL_INFRA.md)** for URLs, credentials, and how to con
 
 - [ ] Saga/outbox for cross-service flows
 - [ ] Contract tests, load tests on gateway
-- [ ] Decommission `RealEstateEval.Api` monolith
+- [x] Decommission `RealEstateEval.Api` monolith
 - [ ] Decommission frontend mock constants
 
 ---
@@ -705,7 +705,7 @@ The migration is **architecturally complete** when:
 | Current pages map | `apps/shell/src/app/(app)/[page]/page.tsx` |
 | Nav / roles / mocks | `packages/app-shared/src/prototype/constants.ts` |
 | Shared packages | `packages/design-system`, `packages/auth-client`, `packages/api-client`, `packages/types` |
-| Current API | `backend/RealEstateEval.Api/` |
+| Current API | `backend/gateway/` + `backend/services/*/` |
 
 ---
 

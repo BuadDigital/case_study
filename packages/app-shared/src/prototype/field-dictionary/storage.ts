@@ -2,7 +2,8 @@ import { bootstrapFieldDictionary } from "./bootstrap";
 import { DEFAULT_FIELD_DICTIONARY_TAGS } from "./tags";
 import type { FieldDictionaryField, FieldDictionaryState } from "./types";
 
-const STORAGE_KEY = "evalFieldDictionary_v1";
+/** In-memory only — persistence is via `/api/field-dictionary`. */
+let memoryState: FieldDictionaryState | null = null;
 
 export function emptyFieldDictionaryState(): FieldDictionaryState {
   return {
@@ -12,28 +13,16 @@ export function emptyFieldDictionaryState(): FieldDictionaryState {
 }
 
 export function loadFieldDictionaryState(): FieldDictionaryState {
-  if (typeof window === "undefined") return emptyFieldDictionaryState();
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return emptyFieldDictionaryState();
-    const parsed = JSON.parse(raw) as FieldDictionaryState;
-    if (!Array.isArray(parsed.fields) || !Array.isArray(parsed.tags)) {
-      return emptyFieldDictionaryState();
-    }
-    return parsed;
-  } catch {
-    return emptyFieldDictionaryState();
-  }
+  return memoryState ?? emptyFieldDictionaryState();
 }
 
 export function saveFieldDictionaryState(state: FieldDictionaryState): void {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  memoryState = state;
 }
 
 export function resetFieldDictionaryState(): FieldDictionaryState {
   const state = emptyFieldDictionaryState();
-  saveFieldDictionaryState(state);
+  memoryState = state;
   return state;
 }
 

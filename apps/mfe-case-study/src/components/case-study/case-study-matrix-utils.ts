@@ -1,13 +1,9 @@
 import type { CaseStudyFormAnswer } from "../../lib/prototype/case-study-form-data";
 import type { PartyQuestionContribution } from "../../lib/prototype/case-study-party-answers";
 import type { CaseStudyInfoPartyId } from "@settings/mfe";
-
 export type MatrixYn = "Y" | "N";
-
 export type PartyMatrixKey = "MA" | "EN" | "EV" | "GR";
-
 export const PARTY_MATRIX_ORDER: PartyMatrixKey[] = ["MA", "EN", "EV", "GR"];
-
 const PARTY_ID_TO_MATRIX: Partial<Record<CaseStudyInfoPartyId, PartyMatrixKey>> =
   {
     insp: "MA",

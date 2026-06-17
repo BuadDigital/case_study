@@ -48,20 +48,22 @@ docker compose -f infra/docker-compose.yml ps
 | **Elasticsearch** | http://localhost:9200 | security disabled in dev |
 | **Kibana** | http://localhost:5601 | — |
 
-## Connect the existing API
+## Connect the backend services
 
-`backend/RealEstateEval.Api/appsettings.Development.json` already matches this Postgres:
+Docker Postgres credentials match `infra/docker-compose.yml` (`postgres` / `Admin`, db `realestate_eval_dev`).
 
-```json
-"DefaultConnection": "Host=localhost;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin"
-```
+Override in each service via `REAL_ESTATE_EVAL_PG_CONNECTION_STRING`, or edit:
+
+- `backend/services/identity/RealEstateEval.Identity.Api/appsettings.Development.json`
+- `backend/services/case-study/RealEstateEval.CaseStudy.Api/appsettings.Development.json`
 
 After `docker compose up -d`:
 
 ```bash
-cd backend/RealEstateEval.Api
-dotnet run
+npm run dev:api
 ```
+
+Gateway: http://localhost:5160. See [backend/README.md](../README.md) for individual service commands.
 
 Then start the web app:
 

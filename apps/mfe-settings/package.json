@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./routes": "./src/routes.ts",
     "./query/settings-queries": "./src/query/settings-queries.ts",
+    "./query/custom-screens-queries": "./src/query/custom-screens-queries.ts",
     "./lib/*": "./src/lib/*",
     "./views/*": "./src/views/*"
   },

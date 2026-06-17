@@ -7,7 +7,7 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/backend/RealEstateEval.Api/RealEstateEval.Api.csproj",
+                "${workspaceFolder}/backend/RealEstateEval.slnx",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary;ForceNoAlign"
             ],
@@ -19,7 +19,7 @@
             "type": "process",
             "args": [
                 "publish",
-                "${workspaceFolder}/backend/RealEstateEval.Api/RealEstateEval.Api.csproj",
+                "${workspaceFolder}/backend/gateway/RealEstateEval.Gateway/RealEstateEval.Gateway.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary;ForceNoAlign"
             ],
@@ -27,16 +27,10 @@
         },
         {
             "label": "watch",
-            "command": "dotnet",
+            "command": "node",
             "type": "process",
             "args": [
-                "watch",
-                "run",
-                "--project",
-                "${workspaceFolder}/backend/RealEstateEval.Api/RealEstateEval.Api.csproj",
-                "--launch-profile",
-                "http",
-                "--non-interactive"
+                "${workspaceFolder}/backend/scripts/dev-api.mjs"
             ],
             "problemMatcher": "$msCompile",
             "isBackground": true,

@@ -1,4 +1,7 @@
-export const SUSPENDED_TRANSACTIONS_STORAGE_KEY = "evalSuspendedTransactions";
+import { listSuspendedTransactions } from "@platform/api-client";
+import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
+import { getPropertyFailureFromCache } from "@failures/mfe";
+
 export const SUSPENDED_TRANSACTIONS_CHANGED_EVENT =
   "suspended-transactions-changed";
 
@@ -17,37 +20,57 @@ export type SuspendedTransaction = {
   suspendedBy: string;
 };
 
-function newId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-  return `s-${Date.now()}`;
-}
+let memoryList: SuspendedTransaction[] = [];
 
 function notifyChanged(): void {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent(SUSPENDED_TRANSACTIONS_CHANGED_EVENT));
 }
 
-function readAll(): SuspendedTransaction[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(SUSPENDED_TRANSACTIONS_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as SuspendedTransaction[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+function mapDto(row: {
+  id: string;
+  poNumber: string;
+  propertyId: string;
+  failureId: string;
+  deedNumber: string;
+  title: string;
+  internalNote: string;
+  raisedByRole: string;
+  specialist: string;
+  supervisorNote: string;
+  suspendedAt: string;
+  suspendedBy: string;
+}): SuspendedTransaction {
+  return {
+    id: row.id,
+    poNumber: row.poNumber,
+    propertyId: row.propertyId,
+    failureId: row.failureId,
+    deedNumber: row.deedNumber,
+    title: row.title,
+    internalNote: row.internalNote,
+    raisedByRole: row.raisedByRole,
+    specialist: row.specialist,
+    supervisorNote: row.supervisorNote,
+    suspendedAt:
+      typeof row.suspendedAt === "string"
+        ? row.suspendedAt
+        : new Date(row.suspendedAt).toISOString(),
+    suspendedBy: row.suspendedBy,
+  };
 }
 
-function writeAll(list: SuspendedTransaction[]): void {
-  localStorage.setItem(SUSPENDED_TRANSACTIONS_STORAGE_KEY, JSON.stringify(list));
-  notifyChanged();
-}
+export async function loadSuspendedTransactions(): Promise<
+  SuspendedTransaction[]
+> {
+  const config = prototypeModulesApiConfig();
+  if (!config) return memoryList;
 
-export function loadSuspendedTransactions(): SuspendedTransaction[] {
-  return readAll();
+  const result = await listSuspendedTransactions(config);
+  if (!result.ok) return memoryList;
+
+  memoryList = result.data.map(mapDto);
+  return memoryList;
 }
 
 export function propertySuspensionKey(poNumber: string, propertyId: string): string {
@@ -59,8 +82,10 @@ export function isPropertySuspended(
   propertyId: string | undefined,
 ): boolean {
   if (!propertyId) return false;
+  const failure = getPropertyFailureFromCache(poNumber, propertyId);
+  if (failure?.status === "suspended") return true;
   const key = propertySuspensionKey(poNumber, propertyId);
-  return readAll().some(
+  return memoryList.some(
     (item) => propertySuspensionKey(item.poNumber, item.propertyId) === key,
   );
 }
@@ -79,28 +104,17 @@ export function getSuspendedTransaction(
 ): SuspendedTransaction | null {
   const key = propertySuspensionKey(poNumber, propertyId);
   return (
-    readAll().find(
+    memoryList.find(
       (item) => propertySuspensionKey(item.poNumber, item.propertyId) === key,
     ) ?? null
   );
 }
 
-export function addSuspendedTransaction(
-  input: Omit<SuspendedTransaction, "id" | "suspendedAt">,
-): SuspendedTransaction {
-  const key = propertySuspensionKey(input.poNumber, input.propertyId);
-  const withoutDup = readAll().filter(
-    (item) => propertySuspensionKey(item.poNumber, item.propertyId) !== key,
-  );
-  const record: SuspendedTransaction = {
-    ...input,
-    id: newId(),
-    suspendedAt: new Date().toISOString(),
-  };
-  writeAll([record, ...withoutDup]);
-  return record;
+/** Notifies listeners after `suspendFailure` updates the API. */
+export function notifySuspendedTransactionsChanged(): void {
+  notifyChanged();
 }
 
 export function countSuspendedTransactions(): number {
-  return readAll().length;
+  return memoryList.length;
 }

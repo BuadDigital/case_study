@@ -1,3 +1,11 @@
+import {
+  approveEvaluatorRecallApi,
+  getEvaluatorRecallApi,
+  listEvaluatorRecallsApi,
+  rejectEvaluatorRecallApi,
+  requestEvaluatorRecallApi,
+} from "@platform/api-client";
+import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 import { reopenEvaluatorSubmissionViaApi } from "./evaluator-submission-storage";
 
 export type EvaluatorRecallStatus = "pending" | "approved" | "rejected";
@@ -13,25 +21,30 @@ export type EvaluatorRecallRequest = {
   specialistNote: string;
 };
 
-const STORAGE_KEY = "evalEvaluatorRecallRequests";
+const memoryByTask = new Map<string, EvaluatorRecallRequest>();
 
 export const EVALUATOR_RECALL_CHANGED_EVENT = "evaluator-recall-changed";
 
-function loadAll(): EvaluatorRecallRequest[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as EvaluatorRecallRequest[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveAll(items: EvaluatorRecallRequest[]): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+function mapDto(row: {
+  taskId: string;
+  poNumber: string;
+  propertyId: string;
+  status: string;
+  reason: string;
+  specialistNote: string;
+  requestedAtUtc: string;
+  resolvedAtUtc: string | null;
+}): EvaluatorRecallRequest {
+  return {
+    taskId: row.taskId,
+    poNumber: row.poNumber,
+    propertyId: row.propertyId,
+    status: row.status as EvaluatorRecallStatus,
+    reason: row.reason,
+    requestedAtUtc: row.requestedAtUtc,
+    resolvedAtUtc: row.resolvedAtUtc,
+    specialistNote: row.specialistNote,
+  };
 }
 
 export function notifyEvaluatorRecallChanged(): void {
@@ -40,18 +53,52 @@ export function notifyEvaluatorRecallChanged(): void {
   }
 }
 
+export async function hydrateEvaluatorRecalls(): Promise<void> {
+  const config = prototypeModulesApiConfig();
+  if (!config) return;
+
+  const result = await listEvaluatorRecallsApi(config);
+  if (!result.ok) return;
+
+  memoryByTask.clear();
+  for (const row of result.data) {
+    memoryByTask.set(row.taskId, mapDto(row));
+  }
+  notifyEvaluatorRecallChanged();
+}
+
+export async function hydrateEvaluatorRecallForTask(
+  taskId: string,
+): Promise<EvaluatorRecallRequest | null> {
+  const config = prototypeModulesApiConfig();
+  if (!config || !taskId) return getEvaluatorRecall(taskId);
+
+  const result = await getEvaluatorRecallApi(config, taskId);
+  if (!result.ok) {
+    if (result.kind === "not_found") {
+      memoryByTask.delete(taskId);
+      return null;
+    }
+    return getEvaluatorRecall(taskId);
+  }
+
+  const mapped = mapDto(result.data);
+  memoryByTask.set(taskId, mapped);
+  return mapped;
+}
+
 export function getEvaluatorRecall(
   taskId: string,
 ): EvaluatorRecallRequest | null {
-  return loadAll().find((r) => r.taskId === taskId) ?? null;
+  return memoryByTask.get(taskId) ?? null;
 }
 
 export function listEvaluatorRecalls(): EvaluatorRecallRequest[] {
-  return loadAll();
+  return [...memoryByTask.values()];
 }
 
 export function listPendingEvaluatorRecalls(): EvaluatorRecallRequest[] {
-  return loadAll().filter((r) => r.status === "pending");
+  return listEvaluatorRecalls().filter((r) => r.status === "pending");
 }
 
 export function recallStatusLabel(status: EvaluatorRecallStatus): string {
@@ -61,79 +108,69 @@ export function recallStatusLabel(status: EvaluatorRecallStatus): string {
 }
 
 export function clearEvaluatorRecall(taskId: string): void {
-  const items = loadAll();
-  const next = items.filter((r) => r.taskId !== taskId);
-  if (next.length === items.length) return;
-  saveAll(next);
+  memoryByTask.delete(taskId);
   notifyEvaluatorRecallChanged();
 }
 
-export function requestEvaluatorRecall(input: {
+export async function requestEvaluatorRecall(input: {
   taskId: string;
   poNumber: string;
   propertyId: string;
   reason?: string;
-}): EvaluatorRecallRequest | null {
+}): Promise<EvaluatorRecallRequest | null> {
   const existing = getEvaluatorRecall(input.taskId);
   if (existing?.status === "pending") return existing;
 
-  const next: EvaluatorRecallRequest = {
-    taskId: input.taskId,
-    poNumber: input.poNumber.trim(),
-    propertyId: input.propertyId,
-    status: "pending",
-    reason: input.reason?.trim() ?? "",
-    requestedAtUtc: new Date().toISOString(),
-    resolvedAtUtc: null,
-    specialistNote: "",
-  };
+  const config = prototypeModulesApiConfig();
+  if (!config) return null;
 
-  const items = loadAll().filter((r) => r.taskId !== input.taskId);
-  items.push(next);
-  saveAll(items);
+  const result = await requestEvaluatorRecallApi(config, input);
+  if (!result.ok) return null;
+
+  const mapped = mapDto(result.data);
+  memoryByTask.set(input.taskId, mapped);
   notifyEvaluatorRecallChanged();
-  return next;
+  return mapped;
 }
 
-export function approveEvaluatorRecall(taskId: string): EvaluatorRecallRequest | null {
-  const items = loadAll();
-  const idx = items.findIndex((r) => r.taskId === taskId);
-  if (idx < 0) return null;
+export async function approveEvaluatorRecall(
+  taskId: string,
+): Promise<EvaluatorRecallRequest | null> {
+  const current = getEvaluatorRecall(taskId);
+  if (current?.status !== "pending") return current;
 
-  const current = items[idx]!;
-  if (current.status !== "pending") return current;
+  const config = prototypeModulesApiConfig();
+  if (!config) return null;
 
-  const updated: EvaluatorRecallRequest = {
-    ...current,
-    status: "approved",
-    resolvedAtUtc: new Date().toISOString(),
-  };
-  items[idx] = updated;
-  saveAll(items);
+  const result = await approveEvaluatorRecallApi(config, taskId);
+  if (!result.ok) return null;
+
+  const mapped = mapDto(result.data);
+  memoryByTask.set(taskId, mapped);
   void reopenEvaluatorSubmissionViaApi(taskId, current.reason);
   notifyEvaluatorRecallChanged();
-  return updated;
+  return mapped;
 }
 
-export function rejectEvaluatorRecall(
+export async function rejectEvaluatorRecall(
   taskId: string,
   specialistNote?: string,
-): EvaluatorRecallRequest | null {
-  const items = loadAll();
-  const idx = items.findIndex((r) => r.taskId === taskId);
-  if (idx < 0) return null;
+): Promise<EvaluatorRecallRequest | null> {
+  const current = getEvaluatorRecall(taskId);
+  if (current?.status !== "pending") return current;
 
-  const current = items[idx]!;
-  if (current.status !== "pending") return current;
+  const config = prototypeModulesApiConfig();
+  if (!config) return null;
 
-  const updated: EvaluatorRecallRequest = {
-    ...current,
-    status: "rejected",
-    resolvedAtUtc: new Date().toISOString(),
-    specialistNote: specialistNote?.trim() ?? "",
-  };
-  items[idx] = updated;
-  saveAll(items);
+  const result = await rejectEvaluatorRecallApi(
+    config,
+    taskId,
+    specialistNote,
+  );
+  if (!result.ok) return null;
+
+  const mapped = mapDto(result.data);
+  memoryByTask.set(taskId, mapped);
   notifyEvaluatorRecallChanged();
-  return updated;
+  return mapped;
 }

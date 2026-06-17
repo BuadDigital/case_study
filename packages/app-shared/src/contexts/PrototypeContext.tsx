@@ -1,243 +1,87 @@
 "use client";
 
-
-
-import {
-
-  createContext,
-
-  startTransition,
-
-  useCallback,
-
-  useContext,
-
-  useEffect,
-
-  useMemo,
-
-  useState,
-
-} from "react";
-
+import { createContext, useContext, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-
 import type { PageId, RoleId } from "@platform/types";
-
-import {
-
-  defaultPersonaIdForRole,
-
-  roleOptionById,
-
-  ROLES,
-
-  STORAGE_PERSONA_KEY,
-
-  STORAGE_ROLE_KEY,
-
-} from "@platform/app-shared/prototype/constants";
-
-import { ensureAuthSessionForPersonaId } from "@platform/shell/prototype-auth";
-
+import { getAuthSession } from "@platform/auth-client";
+import { ROLES } from "@platform/app-shared/prototype/constants";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { pagesFromPermissions } from "@platform/app-shared/prototype/permissions-pages";
+import { setRuntimeCapabilities } from "@platform/app-shared/prototype/runtime-access";
+import { usePermissionsQuery } from "@platform/app-shared/query/permissions-queries";
 
-import { pagesForPrototypeRole } from "@platform/app-shared/prototype/prototype-role-access";
-
-
-
-type Ctx = {
-
+type Ctx = {  
   role: RoleId;
-
-  personaId: string;
-
-  setPersona: (personaId: string) => void;
-
-  /** Silent API login finished for the current persona. */
-
   authReady: boolean;
-
-  /** Email of the selected persona — for party task queues when roles repeat. */
-
   viewerEmail: string | null;
-
   rolePages: PageId[];
-
+  capabilities: string[];
+  hasCapability: (capability: string) => boolean;
 };
 
+const AppAccessContext = createContext<Ctx | null>(null);
 
-
-const PrototypeContext = createContext<Ctx | null>(null);
-
-
-
-function readStoredRole(): RoleId {
-
-  if (typeof window === "undefined") return "general-manager";
-
-  const raw = sessionStorage.getItem(STORAGE_ROLE_KEY);
-
-  if (raw && raw in ROLES) return raw as RoleId;
-
+function roleFromPermissions(
+  prototypeRole: string | null | undefined,
+): RoleId {
+  const apiRole = prototypeRole?.trim().toLowerCase();
+  if (apiRole && apiRole in ROLES) return apiRole as RoleId;
   return "general-manager";
-
 }
-
-
-
-function readStoredPersona(role: RoleId): string {
-
-  if (typeof window === "undefined") return defaultPersonaIdForRole(role);
-
-  const raw = sessionStorage.getItem(STORAGE_PERSONA_KEY);
-
-  if (raw && roleOptionById(raw)) return raw;
-
-  return defaultPersonaIdForRole(role);
-
-}
-
-
 
 export function PrototypeProvider({ children }: { children: React.ReactNode }) {
-
   const queryClient = useQueryClient();
+  const session = getAuthSession();
+  const hasSession = Boolean(session?.token);
 
-  const [role, setRoleState] = useState<RoleId>("general-manager");
-
-  const [personaId, setPersonaIdState] = useState("salam@ejadah.dev");
-
-  const [authReady, setAuthReady] = useState(false);
-
-
+  const {
+    data: permissions,
+    isSuccess,
+    isError,
+  } = usePermissionsQuery(hasSession);
 
   useEffect(() => {
+    if (permissions) setRuntimeCapabilities(permissions.capabilities);
+  }, [permissions]);
 
-    startTransition(() => {
-
-      const storedRole = readStoredRole();
-
-      const storedPersona = readStoredPersona(storedRole);
-
-      setRoleState(storedRole);
-
-      setPersonaIdState(storedPersona);
-
-      setAuthReady(false);
-
-      void ensureAuthSessionForPersonaId(storedPersona).then((ok) => {
-
-        setAuthReady(ok);
-
-        if (ok) {
-
-          void queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
-
-        }
-
-      });
-
-    });
-
-  }, [queryClient]);
-
-
-
-  const setPersona = useCallback(
-
-    (id: string) => {
-
-      const opt = roleOptionById(id);
-
-      if (!opt) return;
-
-      setRoleState(opt.value);
-
-      setPersonaIdState(id);
-
-      setAuthReady(false);
-
-      sessionStorage.setItem(STORAGE_ROLE_KEY, opt.value);
-
-      sessionStorage.setItem(STORAGE_PERSONA_KEY, id);
-
-      void ensureAuthSessionForPersonaId(id).then((ok) => {
-
-        setAuthReady(ok);
-
-        if (ok) {
-
-          void queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
-
-        }
-
-      });
-
-    },
-
-    [queryClient],
-
+  const role = useMemo(
+    () => roleFromPermissions(permissions?.prototypeRole),
+    [permissions?.prototypeRole],
   );
 
+  const capabilities = permissions?.capabilities ?? [];
 
+  const rolePages = useMemo(() => {
+    if (permissions?.pages?.length) return pagesFromPermissions(permissions.pages);
+    return ["dashboard"] as PageId[];
+  }, [permissions]);
 
-  const viewerEmail = useMemo(
-
-    () => roleOptionById(personaId)?.email ?? null,
-
-    [personaId],
-
-  );
-
-
+  const authReady = hasSession && (isSuccess || isError);
 
   const value = useMemo<Ctx>(
-
     () => ({
-
       role,
-
-      personaId,
-
-      setPersona,
-
       authReady,
-
-      viewerEmail,
-
-      rolePages: pagesForPrototypeRole(role),
-
+      viewerEmail: session?.user.email ?? null,
+      rolePages,
+      capabilities,
+      hasCapability: (capability) => capabilities.includes(capability),
     }),
-
-    [role, personaId, setPersona, authReady, viewerEmail],
-
+    [role, authReady, session?.user.email, rolePages, capabilities],
   );
 
-
+  useEffect(() => {
+    if (!authReady) return;
+    void queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
+  }, [authReady, queryClient, session?.user.id]);
 
   return (
-
-    <PrototypeContext.Provider value={value}>
-
-      {children}
-
-    </PrototypeContext.Provider>
-
+    <AppAccessContext.Provider value={value}>{children}</AppAccessContext.Provider>
   );
-
 }
-
-
 
 export function usePrototype() {
-
-  const v = useContext(PrototypeContext);
-
+  const v = useContext(AppAccessContext);
   if (!v) throw new Error("usePrototype must be used within PrototypeProvider");
-
   return v;
-
 }
-
-

@@ -2,6 +2,7 @@ import {
   createCrmUser,
   createHrUser,
   createProcUser,
+  deactivateUser,
   getApiBase,
   listUsers,
   type CreateUserResult,
@@ -60,4 +61,24 @@ export async function submitRegistration(
   if (source === "hr") return createHrUser(config, data);
   if (source === "proc") return createProcUser(config, data);
   return createCrmUser(config, data);
+}
+
+export async function deactivateStaffUser(
+  userId: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const config = apiConfig();
+  if (!config) {
+    return { ok: false, message: "يجب تسجيل الدخول أولاً" };
+  }
+  const result = await deactivateUser(config, userId);
+  if (!result.ok) {
+    const message =
+      result.kind === "forbidden"
+        ? "لا تملك صلاحية تعطيل هذا المستخدم"
+        : result.kind === "not_found"
+          ? "المستخدم غير موجود"
+          : "تعذّر تعطيل المستخدم";
+    return { ok: false, message };
+  }
+  return { ok: true };
 }

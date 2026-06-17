@@ -70,7 +70,15 @@ public static class DataSeeder
 
             cancellationToken);
 
+        await EnsurePrototypeModuleDataAsync(db, cancellationToken);
+
     }
+
+    /// <summary>Re-insert demo survey/valuation/key rows after a full system reset.</summary>
+    public static Task ReseedPrototypeModuleDataAsync(
+        ApplicationDbContext db,
+        CancellationToken cancellationToken = default) =>
+        EnsurePrototypeModuleDataAsync(db, cancellationToken);
 
 
 
@@ -79,6 +87,8 @@ public static class DataSeeder
     [
 
         new(
+
+            "sliman",
 
             "s.salhy@gmail.com",
 
@@ -104,6 +114,8 @@ public static class DataSeeder
 
         new(
 
+            "alaa",
+
             "a.alamin@gmail.com",
 
             "ali123",
@@ -127,6 +139,8 @@ public static class DataSeeder
             DepartmentRoles.Hr),
 
         new(
+
+            "ali",
 
             "a.alqadri@gmail.com",
 
@@ -152,6 +166,8 @@ public static class DataSeeder
 
         new(
 
+            "shahd",
+
             "g.abdo@gmail.com",
 
             "gamal123",
@@ -175,6 +191,8 @@ public static class DataSeeder
             DepartmentRoles.Hr),
 
         new(
+
+            "salam",
 
             "salam@ejadah.dev",
 
@@ -200,6 +218,8 @@ public static class DataSeeder
 
         new(
 
+            "abdulrahman",
+
             "abdulrahman@ejadah.dev",
 
             "EjadaSS2025!",
@@ -223,6 +243,8 @@ public static class DataSeeder
             "Supervisor"),
 
         new(
+
+            "osama",
 
             "osama@ejadah.dev",
 
@@ -248,6 +270,8 @@ public static class DataSeeder
 
         new(
 
+            "feras",
+
             "feras@ejadah.dev",
 
             "EjadaCD2025!",
@@ -271,6 +295,8 @@ public static class DataSeeder
             "Editor"),
 
         new(
+
+            "mohammed",
 
             "valuation@ejadah.dev",
 
@@ -296,6 +322,8 @@ public static class DataSeeder
 
         new(
 
+            "abdullah",
+
             "abdullah.kathiri@ejadah.dev",
 
             "EjadaRA2025!",
@@ -319,6 +347,8 @@ public static class DataSeeder
             "Editor"),
 
         new(
+
+            "ahmed",
 
             "ahmed@ejadah.dev",
 
@@ -344,6 +374,8 @@ public static class DataSeeder
 
         new(
 
+            "abdullah_m",
+
             "abdullah.abdulmane@ejadah.dev",
 
             "EjadaFI2025!",
@@ -367,6 +399,8 @@ public static class DataSeeder
             "Editor"),
 
         new(
+
+            "eman",
 
             "eman@ejadah.dev",
 
@@ -396,6 +430,8 @@ public static class DataSeeder
 
     private static readonly ProcProviderSeed JeddahSurveyOfficeSeed = new(
 
+        "jeddah_survey",
+
         "survey.jeddah@ejadah.dev",
 
         "EjadaEO2025!",
@@ -413,6 +449,8 @@ public static class DataSeeder
 
 
     private sealed record HrStaffSeed(
+
+        string LoginUsername,
 
         string Email,
 
@@ -437,6 +475,8 @@ public static class DataSeeder
 
 
     private sealed record ProcProviderSeed(
+
+        string LoginUsername,
 
         string Email,
 
@@ -478,7 +518,7 @@ public static class DataSeeder
 
             {
 
-                UserName = normalizedEmail,
+                UserName = seed.LoginUsername,
 
                 Email = normalizedEmail,
 
@@ -506,13 +546,35 @@ public static class DataSeeder
 
         }
 
-        else if (!string.Equals(user.DisplayName, seed.DisplayName, StringComparison.Ordinal))
+        else
 
         {
 
-            user.DisplayName = seed.DisplayName;
+            var changed = false;
 
-            await userManager.UpdateAsync(user);
+            if (!string.Equals(user.DisplayName, seed.DisplayName, StringComparison.Ordinal))
+
+            {
+
+                user.DisplayName = seed.DisplayName;
+
+                changed = true;
+
+            }
+
+            if (!string.Equals(user.UserName, seed.LoginUsername, StringComparison.Ordinal))
+
+            {
+
+                user.UserName = seed.LoginUsername;
+
+                changed = true;
+
+            }
+
+            if (changed)
+
+                await userManager.UpdateAsync(user);
 
         }
 
@@ -656,7 +718,7 @@ public static class DataSeeder
 
             {
 
-                UserName = normalizedEmail,
+                UserName = seed.LoginUsername,
 
                 Email = normalizedEmail,
 
@@ -684,13 +746,35 @@ public static class DataSeeder
 
         }
 
-        else if (!string.Equals(user.DisplayName, seed.OrganizationName, StringComparison.Ordinal))
+        else
 
         {
 
-            user.DisplayName = seed.OrganizationName;
+            var changed = false;
 
-            await userManager.UpdateAsync(user);
+            if (!string.Equals(user.DisplayName, seed.OrganizationName, StringComparison.Ordinal))
+
+            {
+
+                user.DisplayName = seed.OrganizationName;
+
+                changed = true;
+
+            }
+
+            if (!string.Equals(user.UserName, seed.LoginUsername, StringComparison.Ordinal))
+
+            {
+
+                user.UserName = seed.LoginUsername;
+
+                changed = true;
+
+            }
+
+            if (changed)
+
+                await userManager.UpdateAsync(user);
 
         }
 
@@ -857,6 +941,177 @@ public static class DataSeeder
         await userManager.AddToRoleAsync(user, "Admin");
 
     }
+
+    private static async Task EnsurePrototypeModuleDataAsync(
+        ApplicationDbContext db,
+        CancellationToken cancellationToken)
+    {
+        if (!await db.SurveyOffices.AnyAsync(cancellationToken))
+        {
+            var now = DateTime.UtcNow;
+            db.SurveyOffices.AddRange(
+                new SurveyOffice
+                {
+                    Id = Guid.Parse("a1000001-0000-4000-8000-000000000001"),
+                    Name = "مكتب الرياض الهندسي",
+                    ActiveCount = 12,
+                    DoneMonth = 34,
+                    AvgDaysLabel = "3.2 يوم",
+                    ContractLabel = "اتفاقية سنوية",
+                    StatusBusy = false,
+                    SortOrder = 1,
+                    UpdatedAtUtc = now,
+                },
+                new SurveyOffice
+                {
+                    Id = Guid.Parse("a1000001-0000-4000-8000-000000000002"),
+                    Name = "مكتب جدة للمساحة",
+                    ActiveCount = 8,
+                    DoneMonth = 28,
+                    AvgDaysLabel = "2.8 يوم",
+                    ContractLabel = "اتفاقية سنوية",
+                    StatusBusy = false,
+                    SortOrder = 2,
+                    UpdatedAtUtc = now,
+                },
+                new SurveyOffice
+                {
+                    Id = Guid.Parse("a1000001-0000-4000-8000-000000000003"),
+                    Name = "مكتب مكة الهندسي",
+                    ActiveCount = 7,
+                    DoneMonth = 22,
+                    AvgDaysLabel = "3.5 يوم",
+                    ContractLabel = "اتفاقية سنوية",
+                    StatusBusy = false,
+                    SortOrder = 3,
+                    UpdatedAtUtc = now,
+                },
+                new SurveyOffice
+                {
+                    Id = Guid.Parse("a1000001-0000-4000-8000-000000000004"),
+                    Name = "مكتب الطائف التقني",
+                    ActiveCount = 4,
+                    DoneMonth = 14,
+                    AvgDaysLabel = "4.1 يوم",
+                    ContractLabel = "اتفاقية سنوية",
+                    StatusBusy = true,
+                    SortOrder = 4,
+                    UpdatedAtUtc = now,
+                });
+        }
+
+        if (!await db.ValuationRequests.AnyAsync(cancellationToken))
+        {
+            var now = DateTime.UtcNow;
+            db.ValuationRequests.AddRange(
+                new ValuationRequest
+                {
+                    Id = Guid.Parse("b2000001-0000-4000-8000-000000000001"),
+                    DisplayId = "VR-441",
+                    PropertyId = "E-4401",
+                    Area = "مكة المكرمة",
+                    PropertyType = "أرض",
+                    Appraiser = "عبدالله الكثيري",
+                    Status = "done",
+                    RequestDate = "2025-01-13",
+                    UpdatedAtUtc = now,
+                },
+                new ValuationRequest
+                {
+                    Id = Guid.Parse("b2000001-0000-4000-8000-000000000002"),
+                    DisplayId = "VR-442",
+                    PropertyId = "E-4402",
+                    Area = "مكة المكرمة",
+                    PropertyType = "شقة",
+                    Appraiser = "محمد العساف",
+                    Status = "progress",
+                    RequestDate = "2025-01-14",
+                    UpdatedAtUtc = now,
+                },
+                new ValuationRequest
+                {
+                    Id = Guid.Parse("b2000001-0000-4000-8000-000000000003"),
+                    DisplayId = "VR-443",
+                    PropertyId = "E-4403",
+                    Area = "جدة",
+                    PropertyType = "فيلا",
+                    Appraiser = "عبدالله الكثيري",
+                    Status = "done",
+                    RequestDate = "2025-01-12",
+                    UpdatedAtUtc = now,
+                },
+                new ValuationRequest
+                {
+                    Id = Guid.Parse("b2000001-0000-4000-8000-000000000004"),
+                    DisplayId = "VR-444",
+                    PropertyId = "E-4405",
+                    Area = "الطائف",
+                    PropertyType = "عمارة",
+                    Appraiser = "محمد العساف",
+                    Status = "progress",
+                    RequestDate = "2025-01-14",
+                    UpdatedAtUtc = now,
+                });
+        }
+
+        if (!await db.PropertyKeyRecords.AnyAsync(cancellationToken))
+        {
+            var now = DateTime.UtcNow;
+            db.PropertyKeyRecords.AddRange(
+                new PropertyKeyRecord
+                {
+                    Id = Guid.Parse("c3000001-0000-4000-8000-000000000001"),
+                    PropertyId = "E-4402",
+                    PoNumber = "PO-2024-018",
+                    Area = "مكة المكرمة",
+                    PropertyType = "شقة",
+                    HasKey = true,
+                    Specialist = "أسامة الصالحي",
+                    WorkflowStatus = "progress",
+                    UpdatedAtUtc = now,
+                },
+                new PropertyKeyRecord
+                {
+                    Id = Guid.Parse("c3000001-0000-4000-8000-000000000002"),
+                    PropertyId = "E-4403",
+                    PoNumber = "PO-2024-016",
+                    Area = "جدة",
+                    PropertyType = "فيلا",
+                    HasKey = true,
+                    Specialist = "أيمن مجرشي",
+                    WorkflowStatus = "done",
+                    UpdatedAtUtc = now,
+                },
+                new PropertyKeyRecord
+                {
+                    Id = Guid.Parse("c3000001-0000-4000-8000-000000000003"),
+                    PropertyId = "E-4407",
+                    PoNumber = "PO-2024-016",
+                    Area = "جدة",
+                    PropertyType = "أرض",
+                    HasKey = true,
+                    Specialist = "أيمن مجرشي",
+                    WorkflowStatus = "progress",
+                    UpdatedAtUtc = now,
+                });
+        }
+
+        if (!await db.FinancialReportConfigs.AnyAsync(cancellationToken))
+        {
+            db.FinancialReportConfigs.Add(new FinancialReportConfig
+            {
+                Id = Guid.Parse("f1a2b3c4-d5e6-7890-abcd-ef1234567890"),
+                ReportJson = FinancialReportSeedJson,
+                UpdatedAtUtc = DateTime.UtcNow,
+            });
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    private const string FinancialReportSeedJson = """
+        {"periodLabel":"يناير","revenueTotal":"312,400","externalCostsTotal":"87,600","profitMarginTotal":"224,800","profitMarginPercentLabel":"72% من الإيرادات","pendingPayablesTotal":"43,200","revenueGrandTotal":"55,800 ر","revenueRows":[{"po":"PO-2024-014","billed":8,"excluded":0,"value":"18,400 ر","status":"done"},{"po":"PO-2024-015","billed":1,"excluded":0,"value":"2,200 ر","status":"done"},{"po":"PO-2024-017","billed":3,"excluded":0,"value":"6,600 ر","status":"done"},{"po":"PO-2024-016","billed":13,"excluded":2,"value":"28,600 ر","status":"progress"}],"costRows":[{"name":"مكتب الرياض الهندسي","type":"ext","cost":"18,400 ر","category":"رفع مساحي"},{"name":"عبدالله الكثيري","type":"int","cost":"12,000 ر","category":"تقييم"},{"name":"حسن عطية","type":"free","cost":"3,200 ر","category":"معاينة"}]}
+        """;
 
 }
 

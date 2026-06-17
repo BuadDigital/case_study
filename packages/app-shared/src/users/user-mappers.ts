@@ -25,6 +25,7 @@ export function userListItemToStaff(u: UserListItem): StaffUser {
           : "crm",
     phone: u.phoneNumber,
     createdAt: u.createdAtUtc,
+    status: u.status,
     systemRoles: u.systemRoles ?? [],
     details: (u.details ?? []).map((d) => ({
       section: d.section,

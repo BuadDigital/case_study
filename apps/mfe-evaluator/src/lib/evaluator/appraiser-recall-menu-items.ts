@@ -32,13 +32,12 @@ export function buildAppraiserRecallMenuItems(
       onClick: () => {
         const reason = window.prompt("سبب طلب الاستدعاء (اختياري):", "");
         if (reason === null) return;
-        requestEvaluatorRecall({
+        void requestEvaluatorRecall({
           taskId: task.id,
           poNumber: task.poNumber,
           propertyId: task.propertyId ?? "",
           reason,
-        });
-        refresh();
+        }).then(() => refresh());
       },
     },
   ];

@@ -5,6 +5,7 @@ import {
   type QueryClient,
 } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { getAuthSession } from "@platform/auth-client";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { loadCourtsCatalog } from "../lib/prototype/courts-storage";
 import {
@@ -35,9 +36,10 @@ export function useCaseStudyInfoRolesQuery() {
 }
 
 export function useStaffUsersQuery() {
-  const { personaId, authReady } = usePrototype();
+  const { authReady } = usePrototype();
+  const userId = getAuthSession()?.user.id ?? "anonymous";
   return useQuery({
-    queryKey: [...prototypeKeys.staffUsers(), personaId],
+    queryKey: [...prototypeKeys.staffUsers(), userId],
     queryFn: fetchStaffUsers,
     enabled: authReady,
     ...queryDefaults,

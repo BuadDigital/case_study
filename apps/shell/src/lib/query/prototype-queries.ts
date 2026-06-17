@@ -229,12 +229,6 @@ export function usePrototypeDataSync(): void {
     const onStorage = (e: StorageEvent) => {
       if (e.key === FAILURES_STORAGE_KEY) invalidateFailures();
       if (e.key === TASKS_STORAGE_KEY) invalidateTasks();
-      if (
-        e.key?.startsWith("evalPo") ||
-        e.key === "evalPoIntakeDraft"
-      ) {
-        invalidateWorkOrders();
-      }
     };
     window.addEventListener("storage", onStorage);
     window.addEventListener(FAILURES_CHANGED_EVENT, onFailuresChanged);

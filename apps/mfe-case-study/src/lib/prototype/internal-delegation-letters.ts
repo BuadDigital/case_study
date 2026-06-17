@@ -1,3 +1,8 @@
+import {
+  getInternalDelegationLetters,
+  saveInternalDelegationLetters,
+} from "@platform/api-client";
+import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 import type { PoIntakeRecord, PoPropertyIntake } from "./po-intake-data";
 import { showsCourtFields } from "./po-intake-data";
 import { propertyCourtCity } from "./reviewer-coverage";
@@ -12,24 +17,7 @@ export type InternalDelegationLetter = {
   createdAt: string;
 };
 
-const STORAGE_KEY = "evalInternalDelegationLetters";
-
-function readAll(): InternalDelegationLetter[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as InternalDelegationLetter[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeAll(letters: InternalDelegationLetter[]): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(letters));
-}
+const memoryByPo = new Map<string, InternalDelegationLetter[]>();
 
 function letterId(poNumber: string, court: string): string {
   return `${poNumber.trim()}::${court.trim()}`;
@@ -43,12 +31,44 @@ function propertiesForCourt(
   return record.properties.filter((p) => p.court.trim() === normalized);
 }
 
+async function persistPoLetters(
+  poNumber: string,
+  letters: InternalDelegationLetter[],
+): Promise<void> {
+  const config = prototypeModulesApiConfig();
+  if (!config) return;
+  await saveInternalDelegationLetters(config, poNumber, letters);
+}
+
+export async function hydrateInternalDelegationLetters(
+  poNumber: string,
+): Promise<InternalDelegationLetter[]> {
+  const config = prototypeModulesApiConfig();
+  if (!config) return memoryByPo.get(poNumber.trim()) ?? [];
+
+  const result = await getInternalDelegationLetters(config, poNumber);
+  if (!result.ok) return memoryByPo.get(poNumber.trim()) ?? [];
+
+  const letters = result.data.map((row) => ({
+    id: row.id,
+    poNumber: row.poNumber,
+    city: row.city,
+    court: row.court,
+    circuit: row.circuit,
+    selectedPropertyIds: row.selectedPropertyIds ?? [],
+    createdAt: row.createdAt,
+  }));
+  memoryByPo.set(poNumber.trim(), letters);
+  return letters;
+}
+
 export function syncInternalDelegationLetters(
   record: PoIntakeRecord,
 ): InternalDelegationLetter[] {
   if (!showsCourtFields(record.assignmentType)) return [];
 
-  const existing = readAll();
+  const po = record.poNumber.trim();
+  const existing = memoryByPo.get(po) ?? [];
   const byId = new Map(existing.map((l) => [l.id, l]));
   const next: InternalDelegationLetter[] = [];
   const courts = new Set<string>();
@@ -81,12 +101,13 @@ export function syncInternalDelegationLetters(
     });
   }
 
-  const poPrefix = `${record.poNumber.trim()}::`;
+  const poPrefix = `${po}::`;
   const merged = [
     ...existing.filter((l) => !l.id.startsWith(poPrefix)),
     ...next,
   ];
-  writeAll(merged);
+  memoryByPo.set(po, merged);
+  void persistPoLetters(po, merged);
   return next;
 }
 
@@ -94,18 +115,24 @@ export function loadInternalDelegationLetters(
   poNumber: string,
 ): InternalDelegationLetter[] {
   const prefix = `${poNumber.trim()}::`;
-  return readAll().filter((l) => l.id.startsWith(prefix));
+  return (memoryByPo.get(poNumber.trim()) ?? []).filter((l) =>
+    l.id.startsWith(prefix),
+  );
 }
 
 export function updateDelegationLetterSelection(
   letterIdValue: string,
   selectedPropertyIds: string[],
 ): void {
-  const letters = readAll();
+  const poNumber = letterIdValue.split("::")[0]?.trim() ?? "";
+  if (!poNumber) return;
+
+  const letters = memoryByPo.get(poNumber) ?? [];
   const idx = letters.findIndex((l) => l.id === letterIdValue);
   if (idx < 0) return;
-  letters[idx] = { ...letters[idx], selectedPropertyIds };
-  writeAll(letters);
+  letters[idx] = { ...letters[idx]!, selectedPropertyIds };
+  memoryByPo.set(poNumber, [...letters]);
+  void persistPoLetters(poNumber, letters);
 }
 
 export function delegationLetterForCourt(

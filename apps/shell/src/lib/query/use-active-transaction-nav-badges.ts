@@ -33,8 +33,8 @@ function poRecordsMap(records: PoIntakeRecord[] | undefined) {
 
 /** Red sidebar counts for المعاملات النشطة (open work only). */
 export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>> {
-  const { role, viewerEmail: personaEmail } = usePrototype();
-  const viewerEmail = personaEmail ?? getAuthSession()?.user.email ?? null;
+  const { role, viewerEmail } = usePrototype();
+  const resolvedViewerEmail = viewerEmail ?? getAuthSession()?.user.email ?? null;
   const { data: tasks } = useWorkflowTasksQuery();
   const { data: poRecords } = usePoRecordsQuery();
   const { data: pendingBourse } = usePendingBourseItemsQuery();
@@ -42,7 +42,7 @@ export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>>
   return useMemo(() => {
     const poByNumber = poRecordsMap(poRecords);
     const mine = tasksForRole(role, tasks ?? []);
-    const partyMine = tasksForPartyAssignee(role, tasks ?? [], undefined, viewerEmail);
+    const partyMine = tasksForPartyAssignee(role, tasks ?? [], undefined, resolvedViewerEmail);
 
     const primaryOpen = filterTasksForPrimaryData(mine, poByNumber).filter(
       (t) => t.status === "open" || t.status === "blocked",
@@ -82,5 +82,5 @@ export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>>
     }
 
     return badges;
-  }, [role, viewerEmail, tasks, poRecords, pendingBourse]);
+  }, [role, resolvedViewerEmail, tasks, poRecords, pendingBourse]);
 }

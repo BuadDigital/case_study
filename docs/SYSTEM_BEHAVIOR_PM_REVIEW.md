@@ -32,8 +32,8 @@
 # PostgreSQL
 docker compose -f infra/docker-compose.yml up -d postgres
 
-# API (applies EF migrations + seed)
-cd backend/RealEstateEval.Api && dotnet run
+# API gateway + domain services (applies EF migrations on Case Study start)
+npm run dev:api
 
 # Frontend (monorepo root)
 npm install && npm run dev
@@ -42,7 +42,7 @@ npm install && npm run dev
 | Item | Value |
 |------|--------|
 | Frontend | Typically `http://localhost:3000` |
-| API | See `backend/RealEstateEval.Api/Properties/launchSettings.json` (often `http://localhost:5xxx`) |
+| API gateway | `http://localhost:5160` (routes to Identity, Case Study, Operations, …) |
 | Default admin login | `admin@local.dev` / `Admin123!` |
 | Database | `realestate_eval_dev` on `localhost:5432` |
 
@@ -426,7 +426,7 @@ Columns **مسح / تقييم / دراسة** on any global property table use ru
 | `docs/DATABASE_OVERVIEW.md` / `.html` | User schema (EN / AR) |
 | `docs/ARCHITECTURE_MICROFRONTENDS_AND_MICROSERVICES.md` | Target architecture |
 | `README.md` | Stack, setup, roadmap |
-| `backend/RealEstateEval.Api/RealEstateEval.Api.http` | Sample HTTP calls |
+| Gateway + domain services | Use `npm run dev:api`; gateway at `http://localhost:5160` |
 
 ---
 

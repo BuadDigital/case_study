@@ -23,16 +23,20 @@ import {
   addWorkOrderProperty,
   completePropertyBourseData,
   createWorkOrder,
+  deletePoIntakeDraft,
   deleteWorkOrder,
   deleteWorkOrderProperty,
   findPriorDeed,
+  getPoIntakeDraft,
   getWorkOrder,
   listPendingBourseProperties,
   listWorkOrders,
+  savePoIntakeDraft,
   updateWorkOrderHeader,
   updateWorkOrderProperty,
   workOrderExists,
 } from "@platform/api-client";
+import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 import {
   loadPoListRows,
   loadPropertyListItems,
@@ -46,7 +50,11 @@ import {
   workOrdersApiConfig,
 } from "../work-orders-api-config";
 
-const DRAFT_KEY = "evalPoIntakeDraft";
+const LEGACY_DRAFT_KEY = "evalPoIntakeDraft";
+
+let memoryDraft: PoIntakeDraftPayload | null = null;
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let hydratePromise: Promise<PoIntakeDraftPayload | null> | null = null;
 
 const PROPERTY_DEFAULTS = emptyProperty();
 
@@ -576,10 +584,10 @@ export type PoIntakeDraftPayload = {
   expectedPropertyCount: number;
 };
 
-export function loadPoDraft(): PoIntakeDraftPayload | null {
+function readLegacyLocalDraft(): PoIntakeDraftPayload | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(DRAFT_KEY);
+    const raw = localStorage.getItem(LEGACY_DRAFT_KEY);
     if (!raw) return null;
     return JSON.parse(raw) as PoIntakeDraftPayload;
   } catch {
@@ -587,12 +595,118 @@ export function loadPoDraft(): PoIntakeDraftPayload | null {
   }
 }
 
-export function savePoDraft(draft: PoIntakeDraftPayload): void {
-  localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+function draftToDto(draft: PoIntakeDraftPayload) {
+  return {
+    step: draft.step,
+    poNumber: draft.poNumber,
+    assignmentType: draft.assignmentType,
+    promulgationDate: draft.promulgationDate,
+    assignmentSpecialist: draft.assignmentSpecialist,
+    assignmentSpecialistEmail: draft.assignmentSpecialistEmail,
+    expectedPropertyCount: draft.expectedPropertyCount,
+  };
 }
 
-export function clearPoDraft(): void {
-  localStorage.removeItem(DRAFT_KEY);
+function dtoToDraft(dto: {
+  step?: number;
+  poNumber?: string;
+  assignmentType?: string;
+  promulgationDate?: string;
+  assignmentSpecialist?: string;
+  assignmentSpecialistEmail?: string;
+  expectedPropertyCount?: number;
+}): PoIntakeDraftPayload {
+  return {
+    step: dto.step ?? 1,
+    poNumber: dto.poNumber ?? "",
+    assignmentType: (dto.assignmentType ?? "") as PoIntakeDraftPayload["assignmentType"],
+    promulgationDate: dto.promulgationDate ?? "",
+    assignmentSpecialist: dto.assignmentSpecialist ?? "",
+    assignmentSpecialistEmail: dto.assignmentSpecialistEmail ?? "",
+    expectedPropertyCount:
+      dto.expectedPropertyCount && dto.expectedPropertyCount > 0
+        ? dto.expectedPropertyCount
+        : 1,
+  };
+}
+
+async function persistPoDraft(draft: PoIntakeDraftPayload): Promise<void> {
+  const config = prototypeModulesApiConfig();
+  if (!config) return;
+  await savePoIntakeDraft(config, draftToDto(draft));
+}
+
+/** Load draft from in-memory cache (call hydratePoDraft first). */
+export function loadPoDraft(): PoIntakeDraftPayload | null {
+  return memoryDraft;
+}
+
+/** Fetch server draft (and migrate legacy localStorage once). */
+export async function hydratePoDraft(): Promise<PoIntakeDraftPayload | null> {
+  if (hydratePromise) return hydratePromise;
+
+  hydratePromise = (async () => {
+    const config = prototypeModulesApiConfig();
+    if (!config) {
+      memoryDraft = readLegacyLocalDraft();
+      return memoryDraft;
+    }
+
+    const result = await getPoIntakeDraft(config);
+    if (result.ok && result.data) {
+      memoryDraft = dtoToDraft(result.data);
+      return memoryDraft;
+    }
+
+    const legacy = readLegacyLocalDraft();
+    if (legacy) {
+      memoryDraft = legacy;
+      await persistPoDraft(legacy);
+      try {
+        localStorage.removeItem(LEGACY_DRAFT_KEY);
+      } catch {
+        /* ignore */
+      }
+    }
+    return memoryDraft;
+  })();
+
+  return hydratePromise;
+}
+
+export function savePoDraft(draft: PoIntakeDraftPayload): void {
+  memoryDraft = draft;
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    void persistPoDraft(draft);
+  }, 400);
+}
+
+export async function clearPoDraft(): Promise<void> {
+  memoryDraft = null;
+  hydratePromise = null;
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+
+  const config = prototypeModulesApiConfig();
+  if (config) await deletePoIntakeDraft(config);
+
+  try {
+    localStorage.removeItem(LEGACY_DRAFT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function resetPoIntakeDraftClientCache(): void {
+  memoryDraft = null;
+  hydratePromise = null;
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
 }
 
 export function buildPoRecord(

@@ -1,0 +1,34 @@
+name: Backend CI
+
+on:
+  push:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore RealEstateEval.slnx
+
+      - name: Build
+        run: dotnet build RealEstateEval.slnx --no-restore -c Release
+
+      - name: Verify OpenAPI packages
+        run: dotnet list shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj package | grep -i swashbuckle

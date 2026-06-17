@@ -21,6 +21,7 @@ export type EvaluatorReportMetadata = {
   fileName: string;
   mimeType: string;
   sizeBytes: number;
+  attachmentId?: string;
 };
 
 function notifyEvaluatorSubmissionChanged(): void {

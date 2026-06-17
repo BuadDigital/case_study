@@ -8,7 +8,9 @@ import { findAppraisalChildForParent } from "../../lib/evaluator/evaluator-inspe
 import { openEvaluatorReportPreview } from "../../lib/evaluator/evaluator-report-attachments";
 import {
   approveEvaluatorRecall,
+  EVALUATOR_RECALL_CHANGED_EVENT,
   getEvaluatorRecall,
+  hydrateEvaluatorRecallForTask,
   recallStatusLabel,
   rejectEvaluatorRecall,
 } from "../../lib/evaluator/evaluator-recall-storage";
@@ -45,18 +47,27 @@ export function EvaluatorAdvisoryPanel({
 }) {
   const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
-    const refresh = () => setRefreshKey((k) => k + 1);
-    window.addEventListener(EVALUATOR_SUBMISSION_CHANGED_EVENT, refresh);
-    return () => {
-      window.removeEventListener(EVALUATOR_SUBMISSION_CHANGED_EVENT, refresh);
-    };
-  }, []);
-
   const appraisalTask = useMemo(
     () => findAppraisalChildForParent(parentTask.id, propertyId, tasks),
     [parentTask.id, propertyId, tasks, refreshKey],
   );
+
+  useEffect(() => {
+    const refresh = () => setRefreshKey((k) => k + 1);
+    window.addEventListener(EVALUATOR_SUBMISSION_CHANGED_EVENT, refresh);
+    window.addEventListener(EVALUATOR_RECALL_CHANGED_EVENT, refresh);
+    return () => {
+      window.removeEventListener(EVALUATOR_SUBMISSION_CHANGED_EVENT, refresh);
+      window.removeEventListener(EVALUATOR_RECALL_CHANGED_EVENT, refresh);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!appraisalTask) return;
+    void hydrateEvaluatorRecallForTask(appraisalTask.id).then(() => {
+      setRefreshKey((k) => k + 1);
+    });
+  }, [appraisalTask?.id]);
 
   useEffect(() => {
     if (!appraisalTask) return;
@@ -97,17 +108,19 @@ export function EvaluatorAdvisoryPanel({
 
   function handleApproveRecall() {
     if (!appraisalTask) return;
-    approveEvaluatorRecall(appraisalTask.id);
-    setRefreshKey((k) => k + 1);
-    onReopened?.();
+    void approveEvaluatorRecall(appraisalTask.id).then(() => {
+      setRefreshKey((k) => k + 1);
+      onReopened?.();
+    });
   }
 
   function handleRejectRecall() {
     if (!appraisalTask) return;
     const note = window.prompt("سبب الرفض (اختياري):", "");
     if (note === null) return;
-    rejectEvaluatorRecall(appraisalTask.id, note);
-    setRefreshKey((k) => k + 1);
+    void rejectEvaluatorRecall(appraisalTask.id, note).then(() => {
+      setRefreshKey((k) => k + 1);
+    });
   }
 
   const allQuestions = [

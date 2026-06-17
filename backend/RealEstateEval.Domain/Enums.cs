@@ -17,6 +17,7 @@ public enum RegistrationSource
 public enum UserStatus
 {
     Active = 0,
+    Inactive = 1,
 }
 
 public enum ProcProviderKind

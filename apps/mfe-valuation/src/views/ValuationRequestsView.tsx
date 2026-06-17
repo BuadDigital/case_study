@@ -2,8 +2,9 @@
 
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { StatusBadge, Button, Note, StatCard, StatGrid, StatLabel, StatValue, SubpageHeader, SubpagePanel, Table, TBody, Td, Th, THead, Tr } from "@platform/design-system";
-import { MOCK_VR, type RoleId } from "@platform/app-shared/prototype/constants";
+import type { RoleId } from "@platform/types";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
+import { useValuationRequestsQuery } from "../query/valuation-queries";
 
 function isValuationMgr(role: RoleId) {
   return (
@@ -17,7 +18,7 @@ export function ValuationRequestsView() {
   const { role } = usePrototype();
   const mgr = isValuationMgr(role);
   const isApp = role === "real-estate-appraiser";
-  const vr = MOCK_VR;
+  const { data: vr = [] } = useValuationRequestsQuery();
   const done = vr.filter((v) => v.status === "done").length;
   const prog = vr.filter((v) => v.status === "progress").length;
 

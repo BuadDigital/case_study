@@ -1,3 +1,10 @@
+import {
+  clearTaskScopedAttachments,
+  getCachedTaskAttachment,
+  openTaskAttachmentPreview,
+  prefetchTaskAttachment,
+  uploadTaskScopedAttachment,
+} from "@platform/app-shared/prototype/task-attachments-api";
 import { getCachedPartySubmission } from "@platform/app-shared/prototype/party-submission-api";
 import { MAX_EVALUATOR_PDF_BYTES } from "./evaluator-window-data";
 import {
@@ -6,38 +13,37 @@ import {
   type EvaluatorReportMetadata,
 } from "./evaluator-submission-storage";
 
+const EVALUATOR_REPORT_SCOPE = "evaluator-report";
+
 export type CachedEvaluatorReport = {
   fileName: string;
   mimeType: string;
   dataUrl?: string;
   sizeBytes?: number;
+  attachmentId?: string;
 };
-
-function readAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
 
 export function getCachedEvaluatorReport(
   taskId: string,
 ): CachedEvaluatorReport | null {
-  if (typeof window === "undefined" || !taskId) return null;
+  if (!taskId) return null;
+
+  const cached = getCachedTaskAttachment(EVALUATOR_REPORT_SCOPE, taskId);
+  if (cached?.fileName) return cached;
+
   const dto = getCachedPartySubmission(taskId);
-  if (!dto) return null;
-  const attachment = dto.payload.reportAttachment as CachedEvaluatorReport | undefined;
-  if (attachment?.fileName) return attachment;
-  const metadata = dto.payload.reportMetadata as EvaluatorReportMetadata | undefined;
+  const metadata = dto?.payload.reportMetadata as
+    | EvaluatorReportMetadata
+    | undefined;
   if (metadata?.fileName) {
     return {
       fileName: metadata.fileName,
       mimeType: metadata.mimeType,
       sizeBytes: metadata.sizeBytes,
+      attachmentId: metadata.attachmentId,
     };
   }
+
   const sub = loadEvaluatorSubmission(taskId);
   if (sub?.reportFileName) {
     return { fileName: sub.reportFileName, mimeType: "application/pdf" };
@@ -45,11 +51,18 @@ export function getCachedEvaluatorReport(
   return null;
 }
 
+export async function prefetchEvaluatorReport(
+  taskId: string,
+): Promise<CachedEvaluatorReport | null> {
+  if (!taskId) return null;
+  return prefetchTaskAttachment(EVALUATOR_REPORT_SCOPE, taskId);
+}
+
 export async function cacheEvaluatorReport(
   taskId: string,
   file: File,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (typeof window === "undefined" || !taskId) {
+  if (!taskId) {
     return { ok: false, error: "تعذّر حفظ الملف." };
   }
   if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
@@ -64,42 +77,45 @@ export async function cacheEvaluatorReport(
     return { ok: false, error: "لا توجد مسودة تقييم." };
   }
 
-  try {
-    const dataUrl = await readAsDataUrl(file);
-    const reportAttachment: CachedEvaluatorReport = {
-      fileName: file.name,
-      mimeType: file.type || "application/pdf",
-      dataUrl,
-      sizeBytes: file.size,
-    };
-    const reportMetadata: EvaluatorReportMetadata = {
-      fileName: file.name,
-      mimeType: file.type || "application/pdf",
-      sizeBytes: file.size,
-    };
-    await saveEvaluatorSubmission(
-      {
-        ...current,
-        reportFileName: file.name,
-        reportAttachment,
-      } as typeof current & { reportAttachment: CachedEvaluatorReport },
-      reportMetadata,
-    );
-    return { ok: true };
-  } catch {
-    return { ok: false, error: "تعذّر قراءة الملف." };
+  const uploaded = await uploadTaskScopedAttachment(
+    EVALUATOR_REPORT_SCOPE,
+    taskId,
+    file,
+  );
+  if (!uploaded) {
+    return { ok: false, error: "تعذّر حفظ الملف." };
   }
+
+  const reportMetadata: EvaluatorReportMetadata = {
+    fileName: file.name,
+    mimeType: file.type || "application/pdf",
+    sizeBytes: file.size,
+    attachmentId: uploaded.attachmentId,
+  };
+
+  await saveEvaluatorSubmission(
+    { ...current, reportFileName: file.name },
+    reportMetadata,
+  );
+  return { ok: true };
 }
 
 export async function clearCachedEvaluatorReport(taskId: string): Promise<void> {
-  if (typeof window === "undefined" || !taskId) return;
+  if (!taskId) return;
   const current = loadEvaluatorSubmission(taskId);
   if (!current) return;
+  await clearTaskScopedAttachments(EVALUATOR_REPORT_SCOPE, taskId);
   await saveEvaluatorSubmission({ ...current, reportFileName: null });
 }
 
 export function openEvaluatorReportPreview(taskId: string): void {
   const cached = getCachedEvaluatorReport(taskId);
-  if (!cached?.dataUrl) return;
-  window.open(cached.dataUrl, "_blank", "noopener,noreferrer");
+  if (!cached) return;
+  if (cached.dataUrl) {
+    openTaskAttachmentPreview(cached);
+    return;
+  }
+  void prefetchEvaluatorReport(taskId).then((preview) => {
+    if (preview) openTaskAttachmentPreview(preview);
+  });
 }

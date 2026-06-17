@@ -1,8 +1,8 @@
 import { suspendFailure } from "@failures/mfe";
 import type { FailureRecord } from "@failures/mfe";
 import {
-  addSuspendedTransaction,
   isPropertySuspended,
+  notifySuspendedTransactionsChanged,
 } from "./suspended-transactions-storage";
 import { suspendWorkflowTasksForProperty } from "./tasks-storage";
 
@@ -26,18 +26,6 @@ export async function suspendPropertyTransaction(input: {
     input.supervisorNote.trim() || failure.title,
   );
 
-  addSuspendedTransaction({
-    poNumber: failure.poNumber,
-    propertyId: failure.propertyId,
-    failureId: failure.id,
-    deedNumber: failure.deedNumber,
-    title: failure.title,
-    internalNote: failure.internalNote,
-    raisedByRole: failure.raisedByRole,
-    specialist: failure.specialist,
-    supervisorNote: input.supervisorNote.trim(),
-    suspendedBy: input.suspendedBy,
-  });
-
+  notifySuspendedTransactionsChanged();
   return true;
 }

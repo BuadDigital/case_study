@@ -24,3 +24,8 @@ export type {
   UserListItem,
   UserStatusApi,
 } from "./users";
+export type {
+  CustomAssignedScreen,
+  CustomAssignedScreenUser,
+  SaveCustomAssignedScreenRequest,
+} from "./custom-assigned-screens";

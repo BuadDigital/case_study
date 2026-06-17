@@ -19,7 +19,7 @@ import {
 } from "@platform/design-system";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import type { RegistrationSource } from "@platform/app-shared/prototype/registration-data";
-import { submitRegistration } from "../lib/users-api";
+import { submitRegistration, deactivateStaffUser } from "../lib/users-api";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { UsersOrganizationView } from "./users/UsersOrganizationView";
 import { useStaffUsersQuery } from "../query/settings-queries";
@@ -216,18 +216,19 @@ function UsersStaffListView({
               <Th>المسمى / نوع التوظيف</Th>
               <Th>البريد الإلكتروني</Th>
               <Th>رقم الجوال</Th>
+              {!viewOnly ? <Th>إجراء</Th> : null}
             </Tr>
           </THead>
           <TBody>
             {dataReady && loadError ? (
               <Tr hoverable={false}>
-                <Td colSpan={4} className="text-center text-text-3">
+                <Td colSpan={viewOnly ? 4 : 5} className="text-center text-text-3">
                   —
                 </Td>
               </Tr>
             ) : dataReady && staff.length === 0 ? (
               <Tr hoverable={false}>
-                <Td colSpan={4} className="text-center text-text-3">
+                <Td colSpan={viewOnly ? 4 : 5} className="text-center text-text-3">
                   {usersEmptyForSource(preferredSource)}
                 </Td>
               </Tr>
@@ -237,9 +238,17 @@ function UsersStaffListView({
                   (d) => d.label === "نوع التوظيف",
                 )?.value;
                 const roleLabel = empType ? `${u.role} · ${empType}` : u.role;
+                const inactive = u.status === "Inactive";
                 return (
                 <Tr key={u.id} hoverable={false}>
-                  <Td className="text-[11px] font-semibold">{u.name}</Td>
+                  <Td className="text-[11px] font-semibold">
+                    {u.name}
+                    {inactive ? (
+                      <Badge tone="default" className="ms-2 rounded-[20px] px-2 py-0 text-[10px]">
+                        معطّل
+                      </Badge>
+                    ) : null}
+                  </Td>
                   <Td className="text-[11px] text-text-2">{roleLabel}</Td>
                   <Td className="text-[11px] text-primary-light [direction:ltr] text-right">
                     {u.email}
@@ -247,6 +256,30 @@ function UsersStaffListView({
                   <Td className="text-[11px] text-text-2 [direction:ltr] text-right">
                     {u.phone ?? "—"}
                   </Td>
+                  {!viewOnly ? (
+                    <Td>
+                      {!inactive ? (
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          onClick={() => {
+                            void deactivateStaffUser(u.id).then((result) => {
+                              if (!result.ok) {
+                                setToast(result.message);
+                                return;
+                              }
+                              void refreshList();
+                              setToast(`تم تعطيل «${u.name}».`);
+                            });
+                          }}
+                        >
+                          تعطيل
+                        </Button>
+                      ) : (
+                        "—"
+                      )}
+                    </Td>
+                  ) : null}
                 </Tr>
                 );
               })

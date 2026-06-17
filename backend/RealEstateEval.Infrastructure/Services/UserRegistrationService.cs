@@ -288,6 +288,52 @@ public class UserRegistrationService : IUserRegistrationService
         return deleted;
     }
 
+    public async Task<(UserListItemDto? Result, string? Error)> UpdateUserAsync(
+        string userId,
+        UpdateUserRequest request,
+        RegistrationSource? sourceScope = null,
+        CancellationToken cancellationToken = default)
+    {
+        var profile = await _db.UserProfiles
+            .Include(p => p.User)
+            .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
+        if (profile is null)
+            return (null, "not_found");
+
+        if (sourceScope is not null && profile.RegistrationSource != sourceScope.Value)
+            return (null, "forbidden");
+
+        var roles = await _userManager.GetRolesAsync(profile.User);
+        if (roles.Any(OrgRoles.IsOrgRole))
+            return (null, "forbidden");
+
+        if (!string.IsNullOrWhiteSpace(request.DisplayName))
+            profile.User.DisplayName = request.DisplayName.Trim();
+        if (request.JobTitle is not null)
+            profile.JobTitle = request.JobTitle.Trim();
+        if (request.Status is not null)
+            profile.Status = request.Status.Value;
+
+        var updateResult = await _userManager.UpdateAsync(profile.User);
+        if (!updateResult.Succeeded)
+        {
+            return (null, string.Join("; ", updateResult.Errors.Select(e => e.Description)));
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+        return (RegistrationMapper.ToListItem(profile.User, profile, roles.ToList()), null);
+    }
+
+    public Task<(UserListItemDto? Result, string? Error)> DeactivateUserAsync(
+        string userId,
+        RegistrationSource? sourceScope = null,
+        CancellationToken cancellationToken = default) =>
+        UpdateUserAsync(
+            userId,
+            new UpdateUserRequest { Status = UserStatus.Inactive },
+            sourceScope,
+            cancellationToken);
+
     private static string Get(RegistrationPayloadDto data, string key) =>
         data.TryGetValue(key, out var v) ? v : "";
 }

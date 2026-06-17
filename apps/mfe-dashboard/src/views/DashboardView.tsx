@@ -27,20 +27,18 @@ import {
   cn,
 } from "@platform/design-system";
 import {
-  DASHBOARD_TEAM_ROWS,
-  MOCK_VR,
-  type TeamKind,
-} from "@platform/app-shared/prototype/constants";
-import { assignmentTypeBadgeTone } from "../lib/po-display";
+  assignmentTypeBadgeTone,
+} from "../lib/po-display";
 import {
   usePoListRowsQuery,
   usePropertyListItemsQuery,
 } from "../query/dashboard-queries";
+import { useReportingDashboardQuery } from "../query/reporting-queries";
 
 const MGR_ROLES = new Set(["cdo", "general-manager", "section-supervisor"]);
 const TEAM_LOAD_ROLES = new Set([...MGR_ROLES, "cdo"]);
 
-function teamTint(t: TeamKind): { bg: string; fg: string } {
+function teamTint(t: string): { bg: string; fg: string } {
   if (t === "internal") return { bg: "bg-info-bg", fg: "text-info-text" };
   if (t === "freelance") return { bg: "bg-warning-bg", fg: "text-warning" };
   return { bg: "bg-success-bg", fg: "text-success-text" };
@@ -54,6 +52,7 @@ export function DashboardView() {
   const showTeamLoad = TEAM_LOAD_ROLES.has(role);
   const { data: poRows } = usePoListRowsQuery();
   const { data: propertyItems } = usePropertyListItemsQuery();
+  const { data: reporting } = useReportingDashboardQuery();
 
   const propertyStats = useMemo(() => {
     if (!mounted || !propertyItems) return undefined;
@@ -187,15 +186,15 @@ export function DashboardView() {
                 </Tr>
               </THead>
               <TBody>
-                {MOCK_VR.map((v) => (
-                  <Tr key={v.id} hoverable={false}>
+                {(reporting?.recentValuationRequests ?? []).map((v) => (
+                  <Tr key={v.displayId} hoverable={false}>
                     <Td className="text-[11px] font-semibold text-primary-light">
-                      {v.id}
+                      {v.displayId}
                     </Td>
                     <Td>{v.propId}</Td>
                     <Td className="text-[11px]">{v.appraiser}</Td>
                     <Td>
-                      <StatusBadge status={v.status} />
+                      <StatusBadge status={v.status === "done" ? "done" : "progress"} />
                     </Td>
                   </Tr>
                 ))}
@@ -212,27 +211,27 @@ export function DashboardView() {
         المعاينون والمقيمون يتبعون قسم التقييم العقاري ويخدمون القسمين كمورد
         مشترك
       </Note>
-      {DASHBOARD_TEAM_ROWS.length === 0 ? (
+      {(reporting?.teamFieldMembers ?? []).length === 0 ? (
         <p className="text-xs text-text-3">لا توجد بيانات فريق ميداني بعد.</p>
       ) : (
         <div className="grid grid-cols-3 gap-2.5">
-          {DASHBOARD_TEAM_ROWS.map(([init, name, roleLine, t, count]) => {
-            const tint = teamTint(t);
+          {(reporting?.teamFieldMembers ?? []).map((member) => {
+            const tint = teamTint(member.teamKind);
             return (
               <div
-                key={name}
+                key={member.name}
                 className="flex items-center gap-2.5 rounded-[var(--radius-lg)] border border-border bg-surface p-3"
               >
                 <div
                   className={`flex size-[34px] shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${tint.bg} ${tint.fg}`}
                 >
-                  {init}
+                  {member.initials}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium text-text">{name}</div>
-                  <div className="text-[11px] text-text-2">{roleLine}</div>
+                  <div className="text-sm font-medium text-text">{member.name}</div>
+                  <div className="text-[11px] text-text-2">{member.roleLine}</div>
                 </div>
-                <div className="text-lg font-bold text-text">{count}</div>
+                <div className="text-lg font-bold text-text">{member.activeCount}</div>
               </div>
             );
           })}

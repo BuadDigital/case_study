@@ -1,8 +1,8 @@
-import type { RoleId } from "@platform/types";
+import type { PageId, RoleId } from "@platform/types";
 import { activeTransactionNavForRole } from "@platform/app-shared/prototype/active-transactions";
 import type { PoIntakeRecord } from "./po-intake-data";
 import { PARTY_TASK_PAGES } from "@platform/app-shared/prototype/party-task-pages";
-import { isSuperAdmin , pagesForPrototypeRole } from "@platform/app-shared/prototype/prototype-role-access";
+import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import type { PoRow } from "@platform/app-shared/prototype/constants";
 import {
   tasksForPartyAssignee,
@@ -95,12 +95,11 @@ export type ActiveTransactionsSituationFlags = {
   showTransactionMetrics: boolean;
 };
 
-export function situationVisibilityForRole(
-  role: RoleId,
+export function situationVisibilityForPages(
+  pages: readonly PageId[],
 ): ActiveTransactionsSituationFlags {
-  const pages = pagesForPrototypeRole(role);
   const showPoMetrics = pages.includes("po");
-  const showTransactionMetrics = activeTransactionNavForRole(pages).some(
+  const showTransactionMetrics = activeTransactionNavForRole([...pages]).some(
     (item) => item.available && !item.placeholder,
   );
   return { showPoMetrics, showTransactionMetrics };
@@ -117,6 +116,7 @@ export type ActiveTransactionsSituationStats = {
 
 export function computeActiveTransactionsSituation(input: {
   role: RoleId;
+  rolePages?: readonly PageId[];
   poRows: PoRow[] | undefined;
   poRecords: PoIntakeRecord[] | undefined;
   tasks: WorkflowTask[] | undefined;
@@ -125,7 +125,9 @@ export function computeActiveTransactionsSituation(input: {
   tasksReady: boolean;
   now?: Date;
 }): ActiveTransactionsSituationStats {
-  const flags = situationVisibilityForRole(input.role);
+  const flags = situationVisibilityForPages(
+    input.rolePages?.length ? input.rolePages : ["dashboard"],
+  );
   const now = input.now ?? new Date();
 
   const needPoData = flags.showPoMetrics;

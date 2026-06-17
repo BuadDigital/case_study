@@ -52,7 +52,7 @@ export function FailureTypesView() {
 
   async function handleAdd() {
     if (!canEdit || !categoryId || !label.trim()) return;
-    addFailureProblemType({
+    await addFailureProblemType({
       categoryId,
       label,
       description,
@@ -65,14 +65,14 @@ export function FailureTypesView() {
 
   async function handleRemove(id: string) {
     if (!canEdit) return;
-    removeFailureProblemType(id);
+    await removeFailureProblemType(id);
     await refresh();
     setToast("تم الحذف");
   }
 
   async function handleReset() {
     if (!canEdit) return;
-    resetFailureTypesCatalog();
+    await resetFailureTypesCatalog();
     await refresh();
     setToast("تمت استعادة القائمة الافتراضية");
   }

@@ -1,0 +1,10 @@
+using RealEstateEval.Shared.Web;
+var builder = WebApplication.CreateBuilder(args);
+builder.AddRealEstateEvalObservability("gateway");
+builder.Services.AddReverseProxy().LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+builder.Services.AddRealEstateEvalCors(builder.Environment);
+var app = builder.Build();
+app.UseRealEstateEvalGatewayPipeline();
+app.MapServiceHealth("gateway");
+app.MapReverseProxy();
+app.Run();

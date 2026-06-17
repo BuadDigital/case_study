@@ -6,7 +6,7 @@ import { hasAuthSession } from "@platform/auth-client";
 import { bootstrapPrototypeAuth } from "@/lib/prototype/prototype-auth";
 
 /**
- * Prototype gate: silent login for the selected sidebar persona — no manual logout/login cycle.
+ * App gate: requires a valid JWT from the login page.
  */
 export function PrototypeAppGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
