@@ -4,7 +4,7 @@ This document defines **what to implement** when evolving the Real Estate Evalua
 
 It is grounded in:
 
-- Current UI routes (`dashboard`, `po`, `properties`, `assignment`, `survey`, `keys`, `failures`, `valuation-requests`, `field-form`, `messages`, `financial`, `kpi`, `users`)
+- Current UI routes (`dashboard`, `po`, `properties`, `assignment`, `survey`, `keys`, `failures`, `valuation-requests`, `field-form`, `financial`, `kpi`, `users`)
 - Current backend: **YARP gateway** (`backend/gateway`) + **domain services** under `backend/services/` (Identity, Case Study, Operations, Reporting, Financial, Valuation). Legacy monolith `RealEstateEval.Api` removed.
 - Reference prototype: `requirment/system_prototype_4.html`
 
@@ -48,7 +48,6 @@ flowchart TB
     Survey[Survey / Engineering Offices]
     Keys[Keys & Court Delegate]
     Fin[Financial / Billing]
-    Msg[Messaging]
     Kpi[Reporting & KPI]
     Notify[Notifications - optional]
   end
@@ -68,7 +67,6 @@ flowchart TB
   GW --> Survey
   GW --> Keys
   GW --> Fin
-  GW --> Msg
   GW --> Kpi
   Case --> DB1
   Val --> DB2
@@ -99,7 +97,7 @@ For this stack, prefer **Module Federation** (e.g. `@module-federation/nextjs-mf
 | **case-study** | `dashboard` (case KPIs), `po`, `properties`, `assignment`, `failures`, property/PO detail | `@case-study/*` | Case Study, Assignment (or part of Case), Failures |
 | **valuation** | `valuation-requests`, `field-form`, valuer workflows | `@valuation/*` | Valuation, Field inspection |
 | **operations** | `survey`, `keys` | `@operations/*` | Survey offices, Keys |
-| **platform** | `users`, `messages`, `kpi` | `@platform/admin` | Identity/Users, Messaging, KPI aggregate |
+| **platform** | `users`, `kpi` | `@platform/admin` | Identity/Users, KPI aggregate |
 | **financial** | `financial` | `@financial/*` | Financial / billing |
 
 **Shared packages (not MFEs):**
@@ -176,7 +174,6 @@ For **each** remote MFE:
 | **Survey** | Engineering offices, survey jobs | SurveyOffice, SurveyJob | `operations_db` |
 | **Keys** | Court keys, delegate actions | KeyRequest, KeyReceipt | `operations_db` |
 | **Financial** | Revenue/cost per PO, provider invoices | Invoice, CostLine, POBilling | `financial_db` |
-| **Messaging** | Internal messages (or integrate external later) | Thread, Message | `messaging_db` |
 | **Reporting / KPI** | Read-only aggregates, dashboards | (materialized views / CQRS) | `reporting_db` |
 
 **Start smaller:** merge **Assignment** + **Failures** into **Case Study**; merge **Field Inspection** into **Valuation** until traffic justifies split.
@@ -258,7 +255,6 @@ backend/
 │   ├── valuation/
 │   ├── operations/            # survey + keys
 │   ├── financial/
-│   ├── messaging/
 │   └── reporting/
 ├── shared/
 │   ├── BuildingBlocks/        # optional: common auth, outbox, swagger
@@ -620,7 +616,7 @@ See **[LOCAL_INFRA.md](./LOCAL_INFRA.md)** for URLs, credentials, and how to con
 
 ### Phase D — Operations, financial, platform (parallel)
 
-- [ ] Survey, Keys, Financial, Messaging, KPI/reporting services (thin slices first)
+- [ ] Survey, Keys, Financial, KPI/reporting services (thin slices first)
 - [ ] Matching MFEs or combined `mfe-operations` / `mfe-platform`
 
 ### Phase E — Hardening
@@ -666,8 +662,6 @@ See **[LOCAL_INFRA.md](./LOCAL_INFRA.md)** for URLs, credentials, and how to con
 ### Reporting (`/api/reporting/v1`)
 
 - `GET /dashboard`, `GET /kpi/specialists`, `GET /kpi/providers`
-
-*(Messaging can be v2 if not critical for MVP.)*
 
 ---
 

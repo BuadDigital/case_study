@@ -163,6 +163,24 @@ export async function listWorkOrders(
   }
 }
 
+/** Full work orders with properties — one round-trip (replaces N+1 getWorkOrder calls). */
+export async function listWorkOrdersWithDetails(
+  config: WorkOrdersApiConfig,
+): Promise<ApiOk<WorkOrderDto[]> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/work-orders/details`, {
+      headers: headers(config.token),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    const data = (await res.json()) as WorkOrderDto[];
+    return { ok: true, data: Array.isArray(data) ? data : [] };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
 export async function listPendingBourseProperties(
   config: WorkOrdersApiConfig,
 ): Promise<ApiOk<PendingBoursePropertyDto[]> | ApiErr> {

@@ -149,7 +149,7 @@ export function SuspendedTransactionsView() {
   }, [visibleItems]);
 
   const staff = isCaseStudyStaff(role);
-  const isLoading = !isFetched;
+  const queuePending = !isFetched;
 
   return (
     <>
@@ -195,7 +195,7 @@ export function SuspendedTransactionsView() {
           <header className="grid items-center gap-1 border-b border-border bg-gradient-to-br from-surface-2 to-surface px-4 py-2.5">
             <div className="flex min-w-0 flex-col gap-0.5">
               <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-text-2">
-                {!isLoading && sortedItems.length > 0 ? (
+                {sortedItems.length > 0 ? (
                   <span className="font-medium text-text-2">
                     {sortedItems.length}{" "}
                     {sortedItems.length === 1 ? "معاملة" : "معاملات"}
@@ -205,9 +205,7 @@ export function SuspendedTransactionsView() {
             </div>
           </header>
 
-          {isLoading ? (
-            <p className="px-6 py-5 text-xs text-text-3">جاري تحميل المعاملات…</p>
-          ) : sortedItems.length === 0 ? (
+          {isFetched && sortedItems.length === 0 ? (
             <div className="px-6 py-8 text-center">
               <p className="m-0 text-[13px] text-text-3">لا توجد معاملات معلقة.</p>
               <p className="mt-2 text-[11px] text-text-3">
@@ -217,7 +215,7 @@ export function SuspendedTransactionsView() {
           ) : (
             <>
               <div className="w-full overflow-x-auto">
-                <Table pending={isLoading}>
+                <Table pending={queuePending}>
                   <THead>
                     <Tr hoverable={false}>
                       <Th>رقم الصك</Th>

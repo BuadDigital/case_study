@@ -7,7 +7,7 @@ import {
 } from "@case-study/mfe";
 import {
   loadPoListRows,
-  loadPropertyListItems,
+  loadWorkOrderDtos,
 } from "@platform/app-shared/prototype/work-orders-read";
 import {
   FAILURES_CHANGED_EVENT,
@@ -28,6 +28,9 @@ import {
   TASKS_STORAGE_KEY,
   WORK_ORDERS_CHANGED_EVENT,
 } from "@case-study/mfe/query/case-study-queries";
+import { loadSuspendedTransactions } from "@case-study/mfe/lib/prototype/suspended-transactions-storage";
+import { loadFailureTypesCatalog } from "@failures/mfe/lib/failure-types-storage";
+import { loadReportingDashboard } from "@dashboard/mfe/lib/dashboard-reporting-api";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { useEffect } from "react";
 
@@ -70,6 +73,11 @@ export function prefetchPrototypePage(
 
   switch (page) {
     case "dashboard":
+      void queryClient.prefetchQuery({
+        queryKey: ["reporting", "dashboard"],
+        queryFn: loadReportingDashboard,
+        ...opts,
+      });
     case "po":
       void queryClient.prefetchQuery({
         queryKey: prototypeKeys.poListRows(),
@@ -77,8 +85,8 @@ export function prefetchPrototypePage(
         ...opts,
       });
       void queryClient.prefetchQuery({
-        queryKey: prototypeKeys.propertyListItems(),
-        queryFn: loadPropertyListItems,
+        queryKey: prototypeKeys.workOrderDtos(),
+        queryFn: loadWorkOrderDtos,
         ...opts,
       });
       prefetchTasksAndPos();
@@ -138,6 +146,21 @@ export function prefetchPrototypePage(
         ...opts,
       });
       break;
+    case "suspended-transactions":
+      prefetchActiveTransactionsSituation();
+      void queryClient.prefetchQuery({
+        queryKey: prototypeKeys.suspendedTransactions(),
+        queryFn: loadSuspendedTransactions,
+        ...opts,
+      });
+      break;
+    case "failure-types":
+      void queryClient.prefetchQuery({
+        queryKey: prototypeKeys.failureTypes(),
+        queryFn: loadFailureTypesCatalog,
+        ...opts,
+      });
+      break;
     case "financial":
     case "kpi":
       break;
@@ -155,8 +178,8 @@ export function prefetchCorePrototypeData(queryClient: QueryClient): void {
     ...opts,
   });
   void queryClient.prefetchQuery({
-    queryKey: prototypeKeys.propertyListItems(),
-    queryFn: loadPropertyListItems,
+    queryKey: prototypeKeys.workOrderDtos(),
+    queryFn: loadWorkOrderDtos,
     ...opts,
   });
   void queryClient.prefetchQuery({
@@ -179,6 +202,16 @@ export function prefetchCorePrototypeData(queryClient: QueryClient): void {
     queryFn: loadFailures,
     ...opts,
   });
+  void queryClient.prefetchQuery({
+    queryKey: prototypeKeys.failureTypes(),
+    queryFn: loadFailureTypesCatalog,
+    ...opts,
+  });
+  void queryClient.prefetchQuery({
+    queryKey: ["reporting", "dashboard"],
+    queryFn: loadReportingDashboard,
+    ...opts,
+  });
 }
 
 export function usePrototypeDataSync(): void {
@@ -187,12 +220,6 @@ export function usePrototypeDataSync(): void {
   useEffect(() => {
     const invalidateWorkOrders = () => {
       void queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
-    };
-    const onFocus = () => {
-      void queryClient.invalidateQueries({
-        queryKey: prototypeKeys.all,
-        refetchType: "active",
-      });
     };
 
     const invalidateTasks = () => {
@@ -221,7 +248,6 @@ export function usePrototypeDataSync(): void {
 
     window.addEventListener(WORK_ORDERS_CHANGED_EVENT, invalidateWorkOrders);
     window.addEventListener(TASKS_CHANGED_EVENT, invalidateTasks);
-    window.addEventListener("focus", onFocus);
     const onInfoRolesChanged = () => invalidateInfoRoles();
 
     const onFailuresChanged = () => invalidateFailures();
@@ -237,7 +263,6 @@ export function usePrototypeDataSync(): void {
     return () => {
       window.removeEventListener(WORK_ORDERS_CHANGED_EVENT, invalidateWorkOrders);
       window.removeEventListener(TASKS_CHANGED_EVENT, invalidateTasks);
-      window.removeEventListener("focus", onFocus);
       window.removeEventListener("storage", onStorage);
       window.removeEventListener(FAILURES_CHANGED_EVENT, onFailuresChanged);
       window.removeEventListener(

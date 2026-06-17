@@ -78,7 +78,7 @@ export function BourseInquiryView() {
       failure.status === "resolved"
     );
   });
-  const loading = !isFetched;
+  const queuePending = !isFetched;
   const [selected, setSelected] = useState<PendingBoursePropertyDto | null>(null);
   const [property, setProperty] = useState<PoPropertyIntake>(emptyProperty);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -215,7 +215,7 @@ export function BourseInquiryView() {
   const obstructionPath = deedVitality === "inactive";
 
   const pendingCount = items.length;
-  const showSplit = !!selected || (!loading && items.length > 0);
+  const showSplit = !!selected || (isFetched && items.length > 0);
 
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col bg-bg">
@@ -242,7 +242,7 @@ export function BourseInquiryView() {
                 <span>قائمة الانتظار</span>
               </h2>
               <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-text-2">
-                {!loading && pendingCount > 0 ? (
+                {pendingCount > 0 ? (
                   <span className="font-medium text-text-2">
                     {pendingCount}{" "}
                     {pendingCount === 1 ? "صك" : "صكوك"} بانتظار إكمال البورصة
@@ -255,16 +255,14 @@ export function BourseInquiryView() {
               size="sm"
               variant="default"
               className="shrink-0"
-              disabled={loading}
+              disabled={queuePending}
               onClick={() => void refresh()}
             >
               تحديث
             </Button>
           </header>
 
-          {loading ? (
-            <p className="px-6 py-5 text-xs text-text-3">جاري تحميل قائمة الانتظار…</p>
-          ) : items.length === 0 ? (
+          {isFetched && items.length === 0 ? (
             <div className="px-6 py-8 text-center">
               <p className="m-0 text-[13px] text-text-3">لا توجد صكوك بانتظار البورصة</p>
               <p className="mt-2 text-[11px] text-text-3">
@@ -275,7 +273,7 @@ export function BourseInquiryView() {
           ) : (
             <>
               <div className="w-full overflow-x-auto">
-                <Table pending={loading}>
+                <Table pending={queuePending}>
                   <THead>
                     <Tr hoverable={false}>
                       <Th>رقم الصك</Th>

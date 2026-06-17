@@ -6,6 +6,7 @@ namespace RealEstateEval.Application.Abstractions;
 public interface IWorkOrderService
 {
     Task<IReadOnlyList<WorkOrderListItemDto>> ListAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyList<WorkOrderDto>> ListDetailsAsync(CancellationToken cancellationToken);
     Task<WorkOrderDto?> GetByPoNumberAsync(string poNumber, CancellationToken cancellationToken);
     Task<bool> ExistsAsync(string poNumber, CancellationToken cancellationToken);
     Task<PriorDeedRegistrationDto?> FindPriorDeedAsync(

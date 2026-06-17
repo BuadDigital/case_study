@@ -1,6 +1,7 @@
 export const prototypeKeys = {
   all: ["prototype"] as const,
   poListRows: () => [...prototypeKeys.all, "po-list-rows"] as const,
+  workOrderDtos: () => [...prototypeKeys.all, "work-order-dtos"] as const,
   poRecords: () => [...prototypeKeys.all, "po-records"] as const,
   propertyListItems: () => [...prototypeKeys.all, "property-list-items"] as const,
   poRecord: (poNumber: string) =>

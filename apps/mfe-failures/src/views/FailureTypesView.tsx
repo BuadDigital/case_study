@@ -26,7 +26,7 @@ export function FailureTypesView() {
   const queryClient = useQueryClient();
   const { role } = usePrototype();
   const canEdit = canManageFailureTypes(role);
-  const { data: catalog, refetch } = useFailureTypesQuery();
+  const { data: catalog, isFetched } = useFailureTypesQuery();
   const [categoryId, setCategoryId] = useState("");
   const [label, setLabel] = useState("");
   const [description, setDescription] = useState("");
@@ -36,8 +36,7 @@ export function FailureTypesView() {
     await queryClient.invalidateQueries({
       queryKey: prototypeKeys.failureTypes(),
     });
-    await refetch();
-  }, [queryClient, refetch]);
+  }, [queryClient]);
 
   useEffect(() => {
     if (!catalog?.categories.length) return;
@@ -77,18 +76,12 @@ export function FailureTypesView() {
     setToast("تمت استعادة القائمة الافتراضية");
   }
 
-  if (!catalog) {
-    return (
-      <p className="px-6 pt-4 text-xs text-text-3">جاري التحميل…</p>
-    );
-  }
-
-  const sortedCategories = [...catalog.categories].sort(
+  const sortedCategories = [...(catalog?.categories ?? [])].sort(
     (a, b) => a.order - b.order,
   );
 
   return (
-    <>
+    <div className={cn(!isFetched && "opacity-55")}>
       {toast ? (
         <div className={cn(noteBase, "border-success bg-success-bg text-success-text")}>
           {toast}
@@ -149,7 +142,7 @@ export function FailureTypesView() {
       ) : null}
 
       {sortedCategories.map((category) => {
-        const types = catalog.problemTypes
+        const types = (catalog?.problemTypes ?? [])
           .filter((t) => t.categoryId === category.id)
           .sort((a, b) => a.order - b.order);
         return (
@@ -196,6 +189,6 @@ export function FailureTypesView() {
           </article>
         );
       })}
-    </>
+    </div>
   );
 }

@@ -13,6 +13,21 @@ public static class PlatformPermissionCatalog
         "users", "courts", "failure-types", "case-study-info-roles",
     ];
 
+    public static readonly IReadOnlyList<string> AllCapabilities =
+    [
+        "manage-users",
+        "manage-system-config",
+        "manage-custom-screens",
+        "reset-system-data",
+        "manage-valuation-requests",
+        "manage-failures",
+        "submit-valuation-report",
+    ];
+
+    public static bool IsSuperAdminIdentityRole(string role) =>
+        string.Equals(role, "CDO", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase);
+
     private static readonly Dictionary<string, string[]> IdentityRolePages = new(StringComparer.OrdinalIgnoreCase)
     {
         ["CDO"] = AllPages.ToArray(),
@@ -57,7 +72,7 @@ public static class PlatformPermissionCatalog
 
     private static readonly Dictionary<string, string[]> IdentityRoleCapabilities = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["CDO"] = ["manage-users", "manage-system-config", "manage-custom-screens", "reset-system-data"],
+        ["CDO"] = AllCapabilities.ToArray(),
         ["HrAdmin"] = ["manage-users"],
         ["ProcAdmin"] = ["manage-users"],
         ["CrmAdmin"] = ["manage-users"],
@@ -65,7 +80,7 @@ public static class PlatformPermissionCatalog
 
     private static readonly Dictionary<string, string[]> PrototypeRoleCapabilities = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["cdo"] = ["manage-users", "manage-system-config", "manage-custom-screens", "reset-system-data"],
+        ["cdo"] = AllCapabilities.ToArray(),
         ["hr-admin"] = ["manage-users"],
         ["proc-admin"] = ["manage-users"],
         ["crm-admin"] = ["manage-users"],
@@ -87,5 +102,11 @@ public static class PlatformPermissionCatalog
             foreach (var page in p) pages.Add(page);
         if (PrototypeRoleCapabilities.TryGetValue(role, out var c))
             foreach (var cap in c) capabilities.Add(cap);
+    }
+
+    public static void ApplySuperAdminGrant(ISet<string> pages, ISet<string> capabilities)
+    {
+        foreach (var page in AllPages) pages.Add(page);
+        foreach (var cap in AllCapabilities) capabilities.Add(cap);
     }
 }

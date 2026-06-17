@@ -152,7 +152,7 @@ export function ActiveTransactionQueueView({
     isFetched: poRecordsFetched,
   } = usePoRecordsQuery();
   const queueReady = tasksFetched && poRecordsFetched;
-  const isLoading = !queueReady;
+  const queuePending = !queueReady;
   const [now, setNow] = useState(() => new Date());
   const [panelOpen, setPanelOpen] = useState(() => Boolean(selectedId));
   const advancingRef = useRef(false);
@@ -313,13 +313,13 @@ export function ActiveTransactionQueueView({
 
   useEffect(() => {
     if (advancingRef.current) return;
-    if (!selectedId || isLoading) return;
+    if (!selectedId || queuePending) return;
     if (selectedTask) return;
     const stillExists = (tasks ?? []).some((t) => t.id === selectedId);
     if (!stillExists || listed.every((t) => t.id !== selectedId)) {
       closePanel();
     }
-  }, [selectedId, selectedTask, isLoading, listed, closePanel, tasks]);
+  }, [selectedId, selectedTask, queuePending, listed, closePanel, tasks]);
 
   const isDistributionTable =
     config.tableLayout === "distribution" ||
@@ -339,7 +339,7 @@ export function ActiveTransactionQueueView({
     [showPartyColumns, router, handleRowClick],
   );
 
-  const hasRail = !useFullPage && !isLoading && listed.length > 0 && renderPanel;
+  const hasRail = !useFullPage && queueReady && listed.length > 0 && renderPanel;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg">
@@ -362,7 +362,7 @@ export function ActiveTransactionQueueView({
                 </h1>
               ) : null}
               <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-text-2">
-                {!isLoading && listed.length > 0 ? (
+                {listed.length > 0 ? (
                   <span className="font-medium text-text-2">
                     {listed.length}{" "}
                     {listed.length === 1 ? "معاملة" : "معاملات"}
@@ -372,13 +372,11 @@ export function ActiveTransactionQueueView({
             </div>
           </header>
 
-          {config.renderQueueHeader && !isLoading && listed.length > 0
+          {config.renderQueueHeader && queueReady && listed.length > 0
             ? config.renderQueueHeader(listed)
             : null}
 
-          {isLoading ? (
-            <p className="px-6 py-5 text-xs text-text-3">جاري تحميل المعاملات…</p>
-          ) : listed.length === 0 ? (
+          {queueReady && listed.length === 0 ? (
             <div className="px-6 py-8 text-center">
               <p className="m-0 text-[13px] text-text-3">{config.emptyLine}</p>
               <p className="mt-2 text-[11px] text-text-3">{config.emptyHint}</p>
@@ -397,7 +395,7 @@ export function ActiveTransactionQueueView({
                       "w-full",
                       showPartyColumns ? "min-w-0" : "min-w-[720px]",
                     )}
-                    pending={isLoading}
+                    pending={queuePending}
                   >
                     <THead>
                       <Tr hoverable={false}>
@@ -492,7 +490,7 @@ export function ActiveTransactionQueueView({
                     </TBody>
                   </Table>
                 ) : (
-                  <Table className="w-full" pending={isLoading}>
+                  <Table className="w-full" pending={queuePending}>
                     <THead>
                       <Tr hoverable={false}>
                         <Th>رقم الصك</Th>

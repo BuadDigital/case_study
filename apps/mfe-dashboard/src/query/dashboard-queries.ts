@@ -4,7 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import {
   loadPoListRows,
-  loadPropertyListItems,
+  loadWorkOrderDtos,
+  mapWorkOrderDtosToPropertyListItems,
 } from "@platform/app-shared/prototype/work-orders-read";
 
 const STALE_MS = 60_000;
@@ -20,11 +21,12 @@ export function usePoListRowsQuery() {
   });
 }
 
-/** Property list items for dashboard stats — shared prototype query keys. */
+/** Property list items — derived from shared work-order DTO cache. */
 export function usePropertyListItemsQuery() {
   return useQuery({
-    queryKey: prototypeKeys.propertyListItems(),
-    queryFn: loadPropertyListItems,
+    queryKey: prototypeKeys.workOrderDtos(),
+    queryFn: loadWorkOrderDtos,
+    select: mapWorkOrderDtosToPropertyListItems,
     ...queryDefaults,
   });
 }

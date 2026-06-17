@@ -26,6 +26,13 @@ public class WorkOrdersController : ControllerBase
         return Ok(await _workOrders.ListAsync(cancellationToken));
     }
 
+    [HttpGet("details")]
+    public async Task<ActionResult<IReadOnlyList<WorkOrderDto>>> ListDetails(
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _workOrders.ListDetailsAsync(cancellationToken));
+    }
+
     [HttpGet("exists")]
     public async Task<ActionResult<bool>> Exists(
         [FromQuery] string poNumber,

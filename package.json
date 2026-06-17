@@ -24,6 +24,8 @@
     "dev:lan": "npm run dev:lan -w @platform/shell",
     "dev:stop": "npm run dev:stop -w @platform/shell",
     "dev:api": "node backend/scripts/dev-api.mjs",
+    "dev:api:run": "node backend/scripts/dev-api.mjs --run",
+    "dev:api:stop": "node backend/scripts/stop-api.mjs",
     "dev:gateway": "dotnet watch run --project backend/gateway/RealEstateEval.Gateway/RealEstateEval.Gateway.csproj --launch-profile http --non-interactive",
     "dev:identity": "dotnet watch run --project backend/services/identity/RealEstateEval.Identity.Api/RealEstateEval.Identity.Api.csproj --launch-profile http --non-interactive",
     "dev:case-study": "dotnet watch run --project backend/services/case-study/RealEstateEval.CaseStudy.Api/RealEstateEval.CaseStudy.Api.csproj --launch-profile http --non-interactive",

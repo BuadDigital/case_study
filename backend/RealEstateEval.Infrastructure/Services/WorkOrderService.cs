@@ -27,6 +27,18 @@ public class WorkOrderService : IWorkOrderService
         return list.Select(WorkOrderMapper.ToListItem).ToList();
     }
 
+    public async Task<IReadOnlyList<WorkOrderDto>> ListDetailsAsync(
+        CancellationToken cancellationToken)
+    {
+        var list = await _db.WorkOrders
+            .AsNoTracking()
+            .Include(w => w.Properties)
+            .ThenInclude(p => p.Contacts)
+            .OrderByDescending(w => w.CreatedAtUtc)
+            .ToListAsync(cancellationToken);
+        return list.Select(WorkOrderMapper.ToDto).ToList();
+    }
+
     public async Task<WorkOrderDto?> GetByPoNumberAsync(
         string poNumber,
         CancellationToken cancellationToken)

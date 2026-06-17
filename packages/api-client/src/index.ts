@@ -60,6 +60,7 @@ export {
   getWorkOrder,
   listPendingBourseProperties,
   listWorkOrders,
+  listWorkOrdersWithDetails,
   updateWorkOrderHeader,
   updateWorkOrderProperty,
   workOrderExists,

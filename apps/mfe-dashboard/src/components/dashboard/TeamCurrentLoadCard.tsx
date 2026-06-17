@@ -7,7 +7,7 @@ import {
   SubpageHeader,
   SubpagePanel,
 } from "@platform/design-system";
-import { useReportingDashboardQuery } from "../query/reporting-queries";
+import { useReportingDashboardQuery } from "../../query/reporting-queries";
 
 function LoadRow({
   name,

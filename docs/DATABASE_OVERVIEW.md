@@ -12,7 +12,7 @@
 
 The application uses **PostgreSQL** as the system of record. **User management is implemented end-to-end** in the database and API: login, the three registration flows (employee, service provider, client), and the users list screen.
 
-**All other product modules** (work orders, properties, valuation, messaging, financials, KPIs, etc.) are still **UI prototypes with mock data** — they do not have database tables yet.
+**All other product modules** (work orders, properties, valuation, financials, KPIs, etc.) are still **UI prototypes with mock data** — they do not have database tables yet.
 
 | Area | Database status |
 |------|-----------------|
@@ -187,7 +187,6 @@ These screens exist in the frontend but use **mock data only** — no PostgreSQL
 | Failures / impediments | إدارة التعذرات |
 | Valuation requests | طلبات التقييم |
 | Field inspection | نموذج المعاين |
-| Internal messaging | المراسلة الداخلية |
 | Financial reports | التقارير المالية |
 | KPIs | مؤشرات الأداء |
 

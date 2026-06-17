@@ -20,9 +20,9 @@
 | **Work orders (PO) & properties** | **Real API + PostgreSQL:** Create/list/edit/delete PO; add/edit/delete properties; courts catalog. |
 | **Failures (تعذر)** | **Browser `localStorage` only** — not in PostgreSQL. Can update deed status on property via API when failure is saved. |
 | **Attachments (قرار إسناد / سجل عقاري)** | **Filename in DB**; image preview in **`localStorage`** on the machine that uploaded the file. |
-| **Most other modules** | **Static mock data** in frontend constants (assignment, survey, keys, valuation requests, messages, financial, KPI, dashboard team/VR snippets). |
+| **Most other modules** | **Static mock data** in frontend constants (assignment, survey, keys, valuation requests, financial, KPI, dashboard team/VR snippets). |
 
-**Bottom line for PM:** The case-study path **استلام أمر عمل → تسجيل عقارات → قائمة/تفاصيل/تعديل** is wired end-to-end to the backend. Everything around **توزيع الأحمال، التقييم، المسح، المفاتيح، المراسلة، المالية** is UI demonstration until product defines APIs and persistence.
+**Bottom line for PM:** The case-study path **استلام أمر عمل → تسجيل عقارات → قائمة/تفاصيل/تعديل** is wired end-to-end to the backend. Everything around **توزيع الأحمال، التقييم، المسح، المفاتيح، المالية** is UI demonstration until product defines APIs and persistence.
 
 ---
 
@@ -98,7 +98,6 @@ Dynamic route: `apps/shell/src/app/(app)/[page]/page.tsx`.
 | `/failures` | إدارة التعذرات | `FailuresView` | **`localStorage`** (`evalFailureRecords`) |
 | `/valuation-requests` | طلبات التقييم | `ValuationRequestsView` | **Mock** VR rows |
 | `/field-form` | نموذج المعاين | `FieldFormView` | **Mock** / static form UI |
-| `/messages` | المراسلة الداخلية | `MessagesView` | **Mock** messages |
 | `/financial` | التقارير المالية | `FinancialView` | **Mock** |
 | `/kpi` | مؤشرات الأداء | `KpiView` | **Mock** |
 | `/users` | إدارة المستخدمين | `UsersView` | **API** (+ registration wizards) |
@@ -284,7 +283,6 @@ flowchart TB
     KEYS[المفاتيح]
     VR[طلبات التقييم]
     FIELD[نموذج المعاين]
-    MSG[المراسلة]
     FIN[التقارير المالية]
     KPI[مؤشرات الأداء]
   end

@@ -1,11 +1,9 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import type { PageId, RoleId } from "@platform/types";
 import { getAuthSession } from "@platform/auth-client";
 import { ROLES } from "@platform/app-shared/prototype/constants";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { pagesFromPermissions } from "@platform/app-shared/prototype/permissions-pages";
 import { setRuntimeCapabilities } from "@platform/app-shared/prototype/runtime-access";
 import { usePermissionsQuery } from "@platform/app-shared/query/permissions-queries";
@@ -23,14 +21,23 @@ const AppAccessContext = createContext<Ctx | null>(null);
 
 function roleFromPermissions(
   prototypeRole: string | null | undefined,
+  identityRoles: readonly string[] | undefined,
 ): RoleId {
+  if (
+    identityRoles?.some(
+      (role) =>
+        role.toLowerCase() === "cdo" || role.toLowerCase() === "admin",
+    )
+  ) {
+    return "cdo";
+  }
+
   const apiRole = prototypeRole?.trim().toLowerCase();
   if (apiRole && apiRole in ROLES) return apiRole as RoleId;
   return "general-manager";
 }
 
 export function PrototypeProvider({ children }: { children: React.ReactNode }) {
-  const queryClient = useQueryClient();
   const session = getAuthSession();
   const hasSession = Boolean(session?.token);
 
@@ -45,8 +52,12 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
   }, [permissions]);
 
   const role = useMemo(
-    () => roleFromPermissions(permissions?.prototypeRole),
-    [permissions?.prototypeRole],
+    () =>
+      roleFromPermissions(
+        permissions?.prototypeRole,
+        permissions?.identityRoles,
+      ),
+    [permissions?.prototypeRole, permissions?.identityRoles],
   );
 
   const capabilities = permissions?.capabilities ?? [];
@@ -69,11 +80,6 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
     }),
     [role, authReady, session?.user.email, rolePages, capabilities],
   );
-
-  useEffect(() => {
-    if (!authReady) return;
-    void queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
-  }, [authReady, queryClient, session?.user.id]);
 
   return (
     <AppAccessContext.Provider value={value}>{children}</AppAccessContext.Provider>

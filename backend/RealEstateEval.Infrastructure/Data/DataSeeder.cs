@@ -104,7 +104,7 @@ public static class DataSeeder
 
             null,
 
-            "مدير",
+            "cdo",
 
             ContractType.Internal,
 

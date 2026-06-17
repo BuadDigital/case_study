@@ -326,7 +326,21 @@ export function GovernmentReviewView() {
           </header>
 
           {!queueReady ? (
-            <p className="px-6 py-5 text-xs text-text-3">جاري تحميل أوامر العمل…</p>
+            <div className="w-full overflow-x-auto">
+              <Table pending>
+                <THead>
+                  <Tr hoverable={false}>
+                    <Th>أمر العمل</Th>
+                    <Th>نوع الإسناد</Th>
+                    <Th>المحاكم</Th>
+                    <Th>العقارات</Th>
+                    <Th>مهام مفتوحة</Th>
+                    <Th>البيانات الأولية</Th>
+                  </Tr>
+                </THead>
+                <TBody />
+              </Table>
+            </div>
           ) : rows.length === 0 ? (
             <div className="px-6 py-8 text-center">
               <p className="m-0 text-[13px] text-text-3">

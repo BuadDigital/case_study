@@ -5,7 +5,7 @@ import type {
   WorkOrderListItemDto,
   WorkOrderPropertyDto,
 } from "@platform/api-client";
-import { getWorkOrder, listWorkOrders } from "@platform/api-client";
+import { listWorkOrders, listWorkOrdersWithDetails } from "@platform/api-client";
 import { workOrdersApiConfig } from "./work-orders-api-config";
 
 const INCOMPLETE_CONTACT_MARKER_PHONE = "0500000000";
@@ -114,20 +114,45 @@ function workOrderPropertyToPropertyRow(
   };
 }
 
-async function loadWorkOrderDtos(): Promise<WorkOrderDto[]> {
-  const config = workOrdersApiConfig();
-  if (!config) return [];
+let workOrderDtosInflight: Promise<WorkOrderDto[]> | null = null;
 
-  const list = await listWorkOrders(config);
-  if (!list.ok) return [];
+/** Single API call — shared by PO records, property list, and dashboard stats. */
+export async function loadWorkOrderDtos(): Promise<WorkOrderDto[]> {
+  if (workOrderDtosInflight) return workOrderDtosInflight;
 
-  const details = await Promise.all(
-    list.data.map((item) => getWorkOrder(config, item.poNumber)),
+  workOrderDtosInflight = (async () => {
+    const config = workOrdersApiConfig();
+    if (!config) return [];
+
+    const result = await listWorkOrdersWithDetails(config);
+    if (!result.ok) return [];
+    return result.data;
+  })().finally(() => {
+    workOrderDtosInflight = null;
+  });
+
+  return workOrderDtosInflight;
+}
+
+export function mapWorkOrderDtosToPropertyListItems(
+  records: WorkOrderDto[],
+): PropertyListItem[] {
+  const priorByDeed = new Map<string, string>();
+  for (const record of records) {
+    for (const prop of record.properties) {
+      if (prop.identifierType === "deed" && (prop.deedNumber ?? "").trim()) {
+        priorByDeed.set(prop.deedNumber.trim(), record.poNumber);
+      }
+    }
+  }
+
+  return records.flatMap((record) =>
+    record.properties.map((prop) => ({
+      row: workOrderPropertyToPropertyRow(record, prop, priorByDeed),
+      poNumber: record.poNumber,
+      propertyId: String(prop.id ?? ""),
+    })),
   );
-
-  return details
-    .filter((r): r is { ok: true; data: WorkOrderDto } => r.ok)
-    .map((r) => r.data);
 }
 
 /** PO list rows for dashboard and PO screens — shared prototype read. */
@@ -148,20 +173,5 @@ export type PropertyListItem = {
 /** Property list items for dashboard stats — shared prototype read. */
 export async function loadPropertyListItems(): Promise<PropertyListItem[]> {
   const records = await loadWorkOrderDtos();
-  const priorByDeed = new Map<string, string>();
-  for (const record of records) {
-    for (const prop of record.properties) {
-      if (prop.identifierType === "deed" && (prop.deedNumber ?? "").trim()) {
-        priorByDeed.set(prop.deedNumber.trim(), record.poNumber);
-      }
-    }
-  }
-
-  return records.flatMap((record) =>
-    record.properties.map((prop) => ({
-      row: workOrderPropertyToPropertyRow(record, prop, priorByDeed),
-      poNumber: record.poNumber,
-      propertyId: String(prop.id ?? ""),
-    })),
-  );
+  return mapWorkOrderDtosToPropertyListItems(records);
 }

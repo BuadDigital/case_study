@@ -2,12 +2,11 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
 import { getApiBase, fetchPermissions } from "@platform/api-client";
 import { setAuthSession, type AuthSession } from "@platform/auth-client";
-import { permissionsKeys } from "@platform/app-shared/query/permissions-queries";
+import { PROTOTYPE_LOGIN_USERS } from "@platform/app-shared/prototype/prototype-users";
 import { setRuntimeCapabilities } from "@platform/app-shared/prototype/runtime-access";
-import { Button, Card, Input, Label } from "@platform/design-system";
+import { Button, Card, Label, Select } from "@platform/design-system";
 
 type LoginResponse = {
   token: string;
@@ -17,8 +16,9 @@ type LoginResponse = {
 
 export default function LoginPage() {
   const router = useRouter();
-  const queryClient = useQueryClient();
-  const [username, setUsername] = useState("");
+  const [username, setUsername] = useState(
+    PROTOTYPE_LOGIN_USERS[0]?.username ?? "",
+  );
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -65,9 +65,8 @@ export default function LoginPage() {
       try {
         const permissions = await fetchPermissions({ token: data.token });
         setRuntimeCapabilities(permissions.capabilities);
-        await queryClient.invalidateQueries({ queryKey: permissionsKeys.all });
       } catch {
-        // Navigation loads permissions again in PrototypeProvider.
+        // PrototypeProvider loads permissions again after navigation.
       }
 
       router.push("/dashboard");
@@ -111,7 +110,7 @@ export default function LoginPage() {
 
         <h1 className="mb-1 text-xl font-semibold text-text">تسجيل الدخول</h1>
         <p className="mb-6 text-[15px] leading-relaxed text-text-2">
-          أدخل اسم المستخدم للدخول مباشرة — بدون كلمة مرور.
+          اختر حسابًا تجريبيًا للدخول مباشرة — بدون كلمة مرور.
         </p>
 
         {error ? (
@@ -126,16 +125,23 @@ export default function LoginPage() {
         <form method="post" action="#" onSubmit={onSubmit} className="space-y-4">
           <div>
             <Label htmlFor="username">اسم المستخدم</Label>
-            <Input
+            <Select
               id="username"
               autoComplete="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="مثال: salam أو abdullah"
               required
-              dir="ltr"
-              className="text-start"
-            />
+              dir="rtl"
+            >
+              <option value="" disabled>
+                — اختر مستخدمًا —
+              </option>
+              {PROTOTYPE_LOGIN_USERS.map((user) => (
+                <option key={user.username} value={user.username}>
+                  {user.label}
+                </option>
+              ))}
+            </Select>
           </div>
           <Button
             type="submit"

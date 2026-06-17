@@ -36,11 +36,21 @@ public sealed class PermissionService : IPermissionService
         var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var role in identityRoles)
-            PlatformPermissionCatalog.ApplyIdentityRole(role, pages, capabilities);
+        var isSuperAdmin = identityRoles.Any(PlatformPermissionCatalog.IsSuperAdminIdentityRole);
 
-        if (!string.IsNullOrWhiteSpace(prototypeRole))
-            PlatformPermissionCatalog.ApplyPrototypeRole(prototypeRole, pages, capabilities);
+        if (isSuperAdmin)
+        {
+            PlatformPermissionCatalog.ApplySuperAdminGrant(pages, capabilities);
+            prototypeRole = "cdo";
+        }
+        else
+        {
+            foreach (var role in identityRoles)
+                PlatformPermissionCatalog.ApplyIdentityRole(role, pages, capabilities);
+
+            if (!string.IsNullOrWhiteSpace(prototypeRole))
+                PlatformPermissionCatalog.ApplyPrototypeRole(prototypeRole, pages, capabilities);
+        }
 
         if (pages.Count == 0)
             pages.Add("dashboard");

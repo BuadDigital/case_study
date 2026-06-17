@@ -40,6 +40,7 @@ import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/protot
 import {
   loadPoListRows,
   loadPropertyListItems,
+  loadWorkOrderDtos,
   type PropertyListItem,
 } from "@platform/app-shared/prototype/work-orders-read";
 export { loadPoListRows, loadPropertyListItems, type PropertyListItem };
@@ -216,19 +217,12 @@ function priorSurveyWaived(
 }
 
 export async function loadPoRecords(): Promise<PoIntakeRecord[]> {
-  const config = workOrdersApiConfig();
-  if (!config) return [];
+  const dtos = await loadWorkOrderDtos();
+  return mapWorkOrderDtosToPoRecords(dtos);
+}
 
-  const list = await listWorkOrders(config);
-  if (!list.ok) return [];
-
-  const details = await Promise.all(
-    list.data.map((item) => getWorkOrder(config, item.poNumber)),
-  );
-
-  return details
-    .filter((r): r is { ok: true; data: WorkOrderDto } => r.ok)
-    .map((r) => dtoToRecord(r.data));
+export function mapWorkOrderDtosToPoRecords(dtos: WorkOrderDto[]): PoIntakeRecord[] {
+  return dtos.map(dtoToRecord);
 }
 
 export async function savePoRecord(

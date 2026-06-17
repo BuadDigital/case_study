@@ -10,7 +10,9 @@ import { bootstrapPrototypeAuth } from "@/lib/prototype/prototype-auth";
  */
 export function PrototypeAppGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [ok, setOk] = useState<boolean | null>(null);
+  const [ok, setOk] = useState<boolean | null>(() =>
+    hasAuthSession() ? true : null,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -38,11 +40,7 @@ export function PrototypeAppGate({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   if (ok === null) {
-    return (
-      <div className="flex h-screen items-center justify-center text-text-3">
-        جاري التحميل…
-      </div>
-    );
+    return null;
   }
   if (!ok) return null;
   return <>{children}</>;

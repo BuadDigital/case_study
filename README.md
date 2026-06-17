@@ -55,7 +55,7 @@
 
 ## 🌎 About The Project
 
-**Ejada Internal** (نظام إجادة الداخلي) is an internal **real-estate evaluation and case-study** platform. It supports end-to-end workflows for purchase orders (PO), properties, assignments, survey offices, keys, impediments (تعذرات), valuation requests, field inspection, messaging, financial reporting, and KPIs — with a **premium Arabic RTL** interface aligned to HTML prototypes in `requirements/`.
+**Ejada Internal** (نظام إجادة الداخلي) is an internal **real-estate evaluation and case-study** platform. It supports end-to-end workflows for purchase orders (PO), properties, assignments, survey offices, keys, impediments (تعذرات), valuation requests, field inspection, financial reporting, and KPIs — with a **premium Arabic RTL** interface aligned to HTML prototypes in `requirements/`.
 
 The project is built on a **modern, production-oriented** stack:
 
@@ -65,7 +65,7 @@ The project is built on a **modern, production-oriented** stack:
 - **Docker Compose** local platform: **RabbitMQ**, **Redis**, **Jaeger**, **Prometheus**, **Grafana**, **Elasticsearch**, **Kibana**, **Fluent Bit**
 - Target: **microfrontends** (Module Federation) + **domain microservices** behind an API gateway
 
-**Current phase:** UI screens are **implemented** with **mock data** on the frontend; core business logic and service boundaries are still being defined with product management. Infrastructure is **ready locally**; observability and messaging are **not fully wired in application code yet**.
+**Current phase:** UI screens are **implemented** with **mock data** on the frontend; core business logic and service boundaries are still being defined with product management. Infrastructure is **ready locally**; observability and domain events (RabbitMQ) are **not fully wired in application code yet**.
 
 ### User roles (prototype)
 
@@ -101,7 +101,6 @@ The project is built on a **modern, production-oriented** stack:
 - **Survey (الرفع المساحي)** — engineering offices and jobs
 - **Keys management (إدارة المفاتيح)** — property keys tracking
 - **Impediments (إدارة التعذرات)** — review, pending, approval workflows
-- **Internal messaging** between departments
 
 ### 🏠 Valuation Department
 
