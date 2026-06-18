@@ -44,6 +44,22 @@ async function readApiError(res: Response): Promise<string | undefined> {
   return undefined;
 }
 
+function normalizeAssignableUser(raw: Record<string, unknown>): CustomAssignedScreenUser {
+  const prototypeRoleRaw = raw.prototypeRole ?? raw.PrototypeRole;
+  const prototypeRole =
+    typeof prototypeRoleRaw === "string" && prototypeRoleRaw.trim()
+      ? prototypeRoleRaw.trim().toLowerCase()
+      : null;
+
+  return {
+    id: String(raw.id ?? raw.Id ?? ""),
+    displayName: String(raw.displayName ?? raw.DisplayName ?? ""),
+    email: String(raw.email ?? raw.Email ?? ""),
+    userName: String(raw.userName ?? raw.UserName ?? ""),
+    prototypeRole,
+  };
+}
+
 export async function listMyCustomAssignedScreens(
   config: CustomAssignedScreensApiConfig,
 ): Promise<CustomAssignedScreensResult<CustomAssignedScreen[]>> {
@@ -61,6 +77,20 @@ export async function listMyCustomAssignedScreens(
   }
 }
 
+function normalizeCustomAssignedScreen(
+  raw: Record<string, unknown>,
+): CustomAssignedScreen {
+  const excludedRaw = raw.excludedUserIds ?? raw.ExcludedUserIds;
+  const excludedUserIds = Array.isArray(excludedRaw)
+    ? excludedRaw.map((id) => String(id))
+    : [];
+
+  return {
+    ...(raw as unknown as CustomAssignedScreen),
+    excludedUserIds,
+  };
+}
+
 export async function listAllCustomAssignedScreens(
   config: CustomAssignedScreensApiConfig,
 ): Promise<CustomAssignedScreensResult<CustomAssignedScreen[]>> {
@@ -72,8 +102,13 @@ export async function listAllCustomAssignedScreens(
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return { ok: false, kind: "forbidden" };
     if (!res.ok) return { ok: false, kind: "server" };
-    const data = await parseJson<CustomAssignedScreen[]>(res);
-    return { ok: true, data: Array.isArray(data) ? data : [] };
+    const data = await parseJson<Record<string, unknown>[]>(res);
+    return {
+      ok: true,
+      data: Array.isArray(data)
+        ? data.map((row) => normalizeCustomAssignedScreen(row))
+        : [],
+    };
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -93,8 +128,13 @@ export async function listAssignableUsersForCustomScreens(
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return { ok: false, kind: "forbidden" };
     if (!res.ok) return { ok: false, kind: "server" };
-    const data = await parseJson<CustomAssignedScreenUser[]>(res);
-    return { ok: true, data: Array.isArray(data) ? data : [] };
+    const data = await parseJson<Record<string, unknown>[]>(res);
+    return {
+      ok: true,
+      data: Array.isArray(data)
+        ? data.map((row) => normalizeAssignableUser(row))
+        : [],
+    };
   } catch {
     return { ok: false, kind: "network" };
   }

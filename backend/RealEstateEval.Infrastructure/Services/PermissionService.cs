@@ -63,6 +63,25 @@ public sealed class PermissionService : IPermissionService
         foreach (var pageId in customAssignedPageIds)
             pages.Add(pageId);
 
+        if (!isSuperAdmin)
+        {
+            var linkedScreens = await _db.CustomAssignedScreens
+                .AsNoTracking()
+                .Where(s => s.IsActive && s.TargetPageId != "")
+                .Select(s => new { s.TargetPageId, s.DefinitionJson })
+                .ToListAsync(cancellationToken);
+
+            foreach (var screen in linkedScreens)
+            {
+                if (!LinkedPageAccessMetadata.IsUserExcluded(screen.DefinitionJson, userId))
+                    continue;
+
+                var pageId = screen.TargetPageId.Trim();
+                if (!string.IsNullOrWhiteSpace(pageId))
+                    pages.Remove(pageId);
+            }
+        }
+
         if (pages.Count == 0)
             pages.Add("dashboard");
 

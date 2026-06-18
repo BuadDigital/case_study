@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Permissions;
 using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Platform.Api.Controllers;
@@ -101,16 +102,45 @@ public class CustomAssignedScreensController : ControllerBase
             .AsNoTracking()
             .OrderBy(u => u.DisplayName)
             .ThenBy(u => u.UserName)
-            .Select(u => new CustomAssignedScreenUserDto
-            {
-                Id = u.Id,
-                DisplayName = u.DisplayName,
-                Email = u.Email ?? "",
-                UserName = u.UserName ?? "",
-            })
             .ToListAsync(cancellationToken);
 
-        return Ok(users);
+        var userIds = users.Select(u => u.Id).ToList();
+        var profiles = await _db.UserProfiles
+            .AsNoTracking()
+            .Include(p => p.ProcProvider)
+            .Where(p => userIds.Contains(p.UserId))
+            .ToDictionaryAsync(p => p.UserId, cancellationToken);
+
+        var roleRows = await (
+            from ur in _db.UserRoles.AsNoTracking()
+            join r in _db.Roles.AsNoTracking() on ur.RoleId equals r.Id
+            where userIds.Contains(ur.UserId)
+            select new { ur.UserId, RoleName = r.Name }
+        ).ToListAsync(cancellationToken);
+
+        var rolesByUser = roleRows
+            .GroupBy(x => x.UserId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<string>)g.Select(x => x.RoleName).ToList());
+
+        var dtos = users
+            .Select(u =>
+            {
+                profiles.TryGetValue(u.Id, out var profile);
+                var identityRoles = rolesByUser.GetValueOrDefault(u.Id, []);
+                return new CustomAssignedScreenUserDto
+                {
+                    Id = u.Id,
+                    DisplayName = u.DisplayName,
+                    Email = u.Email ?? "",
+                    UserName = u.UserName ?? "",
+                    PrototypeRole = PrototypeRoleResolver.Resolve(profile, identityRoles),
+                };
+            })
+            .ToList();
+
+        return Ok(dtos);
     }
 
     [HttpGet("{id:guid}")]
@@ -195,7 +225,8 @@ public class CustomAssignedScreensController : ControllerBase
             screen.Code = "";
             screen.OwnerRole = "";
             screen.ScreenStatus = "";
-            screen.DefinitionJson = "{}";
+            screen.DefinitionJson = LinkedPageAccessMetadata.WriteExcludedUserIds(
+                request.ExcludedUserIds);
         }
         else
         {
@@ -259,7 +290,8 @@ public class CustomAssignedScreensController : ControllerBase
             screen.Code = "";
             screen.OwnerRole = "";
             screen.ScreenStatus = "";
-            screen.DefinitionJson = "{}";
+            screen.DefinitionJson = LinkedPageAccessMetadata.WriteExcludedUserIds(
+                request.ExcludedUserIds);
         }
         else if (string.IsNullOrWhiteSpace(screen.DefinitionJson) || screen.DefinitionJson == "{}")
         {
@@ -550,6 +582,9 @@ public class CustomAssignedScreensController : ControllerBase
                 : null,
             AssignedUserIds = assignedUsers.Select(u => u.Id).ToList(),
             AssignedUsers = assignedUsers,
+            ExcludedUserIds = string.IsNullOrWhiteSpace(screen.TargetPageId)
+                ? []
+                : LinkedPageAccessMetadata.ReadExcludedUserIds(screen.DefinitionJson),
         };
     }
 

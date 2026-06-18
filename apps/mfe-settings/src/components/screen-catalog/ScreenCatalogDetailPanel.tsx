@@ -13,7 +13,8 @@ import {
   screenCatalogRoleLabel,
   type SystemScreenEntry,
 } from "@platform/app-shared/prototype/screen-catalog";
-import type { PageId } from "@platform/types";
+import type { PageId, RoleId } from "@platform/types";
+import { permissionsKeys, usePermissionsQuery } from "@platform/app-shared/query/permissions-queries";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   invalidateCustomAssignedScreensQueries,
@@ -26,6 +27,7 @@ import {
   assignedUsersForPage,
   customScreenIdFromCatalogEntry,
   customScreensForPage,
+  excludedUserIdsForPage,
   linkedScreenDisplayName,
   primaryCustomScreenForPage,
 } from "../../lib/screen-catalog-access";
@@ -42,6 +44,7 @@ export function ScreenCatalogDetailPanel({
   const router = useRouter();
   const queryClient = useQueryClient();
   const { role } = usePrototype();
+  const { data: permissions } = usePermissionsQuery();
   const customScreenId = customScreenIdFromCatalogEntry(screen.id);
   const isCustomScreen = Boolean(customScreenId);
   const pageId = screen.pageId as PageId | undefined;
@@ -73,6 +76,10 @@ export function ScreenCatalogDetailPanel({
     }
     return pageId ? assignedUserIdsForPage(customScreens, pageId) : [];
   }, [customScreen, customScreens, pageId]);
+  const excludedUserIds = useMemo(() => {
+    if (customScreen || !pageId) return [];
+    return excludedUserIdsForPage(customScreens, pageId);
+  }, [customScreen, customScreens, pageId]);
 
   const rolesByGroup = screen.roles.reduce<
     Record<string, typeof screen.roles>
@@ -85,8 +92,15 @@ export function ScreenCatalogDetailPanel({
 
   async function handleSaveAccess(
     assignedUserIds: string[],
-    successMessage?: string,
+    options?: {
+      closeModal?: boolean;
+      successMessage?: string;
+      excludedUserIds?: string[];
+    },
   ): Promise<void> {
+    const closeModal = options?.closeModal !== false;
+    const excludedIds = options?.excludedUserIds ?? [];
+    const successMessage = options?.successMessage;
     setBusy(true);
 
     if (customScreen) {
@@ -105,7 +119,7 @@ export function ScreenCatalogDetailPanel({
         showToast(result.error, "error");
         return;
       }
-      setAccessModalOpen(false);
+      if (closeModal) setAccessModalOpen(false);
       showToast(successMessage ?? "تم تحديث المستخدمين المسندين.", "success");
       invalidateCustomAssignedScreensQueries(queryClient);
       return;
@@ -119,7 +133,7 @@ export function ScreenCatalogDetailPanel({
     const linked = customScreensForPage(customScreens, pageId);
     const primary = primaryCustomScreenForPage(customScreens, pageId);
 
-    if (assignedUserIds.length === 0) {
+    if (assignedUserIds.length === 0 && excludedIds.length === 0) {
       for (const screen of linked) {
         const result = await removeCustomAssignedScreen(screen.id);
         if (!result.ok) {
@@ -129,9 +143,10 @@ export function ScreenCatalogDetailPanel({
         }
       }
       setBusy(false);
-      setAccessModalOpen(false);
+      if (closeModal) setAccessModalOpen(false);
       showToast(successMessage ?? "تم إلغاء إسناد المستخدمين الإضافيين.", "success");
       invalidateCustomAssignedScreensQueries(queryClient);
+      void queryClient.invalidateQueries({ queryKey: permissionsKeys.all });
       return;
     }
 
@@ -141,6 +156,7 @@ export function ScreenCatalogDetailPanel({
       iconPath: DEFAULT_ICON,
       isActive: true,
       assignedUserIds,
+      excludedUserIds: excludedIds,
     };
 
     const firstResult = await saveCustomAssignedScreen(
@@ -158,7 +174,7 @@ export function ScreenCatalogDetailPanel({
     }
 
     setBusy(false);
-    setAccessModalOpen(false);
+    if (closeModal) setAccessModalOpen(false);
     showToast(
       successMessage ??
         (assignedUserIds.length
@@ -167,16 +183,17 @@ export function ScreenCatalogDetailPanel({
       "success",
     );
     invalidateCustomAssignedScreensQueries(queryClient);
+    void queryClient.invalidateQueries({ queryKey: permissionsKeys.all });
   }
 
   async function handleRemoveUser(userId: string, displayName: string): Promise<void> {
     const next = extraUserIds.filter((id) => id !== userId);
-    await handleSaveAccess(
-      next,
-      next.length
+    await handleSaveAccess(next, {
+      excludedUserIds: excludedUserIds,
+      successMessage: next.length
         ? `تم إزالة «${displayName}» من الإسناد.`
         : "تم إلغاء إسناد جميع المستخدمين.",
-    );
+    });
   }
 
   async function handleDeleteCustomScreen(): Promise<void> {
@@ -367,13 +384,26 @@ export function ScreenCatalogDetailPanel({
 
       {accessModalOpen && (pageId || customScreen) ? (
         <ScreenCatalogUserAccessModal
-          key={`${pageId ?? customScreenId}-${extraUserIds.join(",")}`}
+          key={`${pageId ?? customScreenId}-${extraUserIds.join(",")}-${excludedUserIds.join(",")}`}
           screenName={screen.name}
           users={assignableUsers}
+          assignedUsers={extraUsers}
+          screenRoleIds={screen.roles as RoleId[]}
+          isCustomScreen={isCustomScreen}
           initialUserIds={extraUserIds}
+          initialExcludedUserIds={excludedUserIds}
+          currentUserId={permissions?.userId ?? null}
           busy={busy}
-          onSave={(assignedUserIds) => void handleSaveAccess(assignedUserIds)}
-          onClearAll={() => void handleSaveAccess([])}
+          onSave={(assignedUserIds, saveOptions) =>
+            void handleSaveAccess(assignedUserIds, {
+              successMessage: saveOptions?.successMessage,
+              closeModal: !saveOptions?.keepOpen,
+              excludedUserIds: saveOptions?.excludedUserIds ?? excludedUserIds,
+            })
+          }
+          onClearAll={() =>
+            void handleSaveAccess([], { excludedUserIds: [] })
+          }
           onClose={() => {
             if (busy) return;
             setAccessModalOpen(false);

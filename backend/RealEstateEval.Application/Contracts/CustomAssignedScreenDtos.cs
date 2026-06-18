@@ -8,6 +8,8 @@ public class CustomAssignedScreenUserDto
     public required string DisplayName { get; init; }
     public required string Email { get; init; }
     public required string UserName { get; init; }
+    /// <summary>Prototype role id (e.g. case-specialist) for grouping in CDO assignment UI.</summary>
+    public string? PrototypeRole { get; init; }
 }
 
 public class CustomAssignedScreenDto
@@ -25,6 +27,8 @@ public class CustomAssignedScreenDto
     public DynamicScreenDefinitionDto? Definition { get; init; }
     public IReadOnlyList<string> AssignedUserIds { get; init; } = [];
     public IReadOnlyList<CustomAssignedScreenUserDto> AssignedUsers { get; init; } = [];
+    /// <summary>Role holders hidden from this linked system page.</summary>
+    public IReadOnlyList<string> ExcludedUserIds { get; init; } = [];
 }
 
 public class SaveCustomAssignedScreenRequest
@@ -44,4 +48,7 @@ public class SaveCustomAssignedScreenRequest
     public int SortOrder { get; init; }
 
     public IReadOnlyList<string> AssignedUserIds { get; init; } = [];
+
+    /// <summary>Hide this linked page from users who would see it via their role.</summary>
+    public IReadOnlyList<string> ExcludedUserIds { get; init; } = [];
 }

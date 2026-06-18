@@ -3,6 +3,8 @@ export type CustomAssignedScreenUser = {
   displayName: string;
   email: string;
   userName: string;
+  /** Prototype role id for grouping in assignment UI (e.g. case-specialist). */
+  prototypeRole?: string | null;
 };
 
 import type { DynamicScreenDefinition } from "./dynamic-screen-definition";
@@ -21,6 +23,8 @@ export type CustomAssignedScreen = {
   definition?: DynamicScreenDefinition | null;
   assignedUserIds?: string[];
   assignedUsers?: CustomAssignedScreenUser[];
+  /** Users hidden from a linked system page despite role access. */
+  excludedUserIds?: string[];
 };
 
 export type SaveCustomAssignedScreenRequest = {
@@ -30,4 +34,5 @@ export type SaveCustomAssignedScreenRequest = {
   isActive?: boolean;
   sortOrder?: number;
   assignedUserIds: string[];
+  excludedUserIds?: string[];
 };

@@ -76,6 +76,19 @@ export function assignedUserIdsForPage(
   return assignedUsersForPage(screens, pageId).map((user) => user.id);
 }
 
+export function excludedUserIdsForPage(
+  screens: readonly CustomAssignedScreen[],
+  pageId: PageId,
+): string[] {
+  const byId = new Set<string>();
+  for (const screen of customScreensForPage(screens, pageId)) {
+    for (const userId of screen.excludedUserIds ?? []) {
+      if (userId.trim()) byId.add(userId.trim());
+    }
+  }
+  return [...byId];
+}
+
 export function linkedScreenDisplayName(pageId: PageId): string {
   return PAGE_TITLES[pageId] ?? pageId;
 }
