@@ -25,10 +25,11 @@ export function EngineeringSurveyTopbarActions() {
         type="button"
         size="sm"
         variant="primary"
+        loading={topbar.saving}
         disabled={topbar.saving}
         onClick={topbar.onSave}
       >
-        {topbar.saving ? "جاري الإرسال…" : topbar.saveLabel}
+        {topbar.saveLabel}
       </Button>
     </div>
   );

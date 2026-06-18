@@ -10,7 +10,7 @@ import {
 import type { PropertyDetailPartySubmission } from "../../lib/prototype/property-detail-party-submissions";
 import type { PropertyDetailPartyCard } from "../../lib/prototype/property-detail-parties";
 import type { PoPropertyIntake } from "../../lib/prototype/po-intake-data";
-import { Badge, type BadgeTone } from "@platform/design-system";
+import { Badge, InlineLoadingSkeleton, type BadgeTone } from "@platform/design-system";
 
 function keysStatusBadgeTone(
   submission: PropertyDetailPartySubmission | null,
@@ -62,7 +62,7 @@ export function PropertyDetailPropertyKeys({
       <SectionHeader>مفاتيح العقار</SectionHeader>
 
       {loading ? (
-        <p className="m-0 text-xs text-text-3">جاري تحميل بيانات المفاتيح…</p>
+        <InlineLoadingSkeleton />
       ) : !governmentCard?.enabled ? (
         <EmptyState
           icon="🔑"

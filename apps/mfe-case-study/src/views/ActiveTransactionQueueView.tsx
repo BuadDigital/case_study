@@ -8,6 +8,7 @@ import {
   Badge,
   cn,
   PageShell,
+  SkeletonTableRows,
   Table,
   TBody,
   Td,
@@ -27,6 +28,7 @@ import { buildActiveQueueRowMoreItems } from "../lib/prototype/active-queue-row-
 import { buildCaseStudyPartyAssignees } from "../lib/prototype/case-study-tracks";
 import { getAuthSession } from "@platform/auth-client";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useMyCustomAssignedScreensQuery } from "@settings/mfe/query/custom-screens-queries";
 import type { RoleId } from "@platform/types";
 import { poPropertyDetailPath } from "../lib/po-routes";
 import {
@@ -37,11 +39,8 @@ import {
 } from "../lib/prototype/my-task-row";
 import type { PoIntakeRecord } from "../lib/prototype/po-intake-data";
 import { isTaskOnSuspendedProperty } from "../lib/prototype/suspended-transactions-storage";
-import {
-  tasksForPartyAssignee,
-  tasksForRole,
-  type WorkflowTask,
-} from "../lib/prototype/tasks-storage";
+import { type WorkflowTask } from "../lib/prototype/tasks-storage";
+import { resolveQueueTasksForViewer } from "../lib/prototype/viewer-task-access";
 import {
   usePoRecordsQuery,
   useWorkflowTasksQuery,
@@ -67,6 +66,8 @@ export type ActiveTransactionQueueConfig = {
   tableHint?: string;
   /** Filter by prototype assignee id from توزيع المعاملات. */
   partyAssignee?: boolean;
+  /** Page id for custom-assigned full-queue access (CDO linked screens). */
+  pageId?: PageId;
   /** Role whose queue is shown (party pages); CDO uses this to see all assignees. */
   assigneeRole?: RoleId;
   getBasePath: () => string;
@@ -142,6 +143,7 @@ export function ActiveTransactionQueueView({
   const queryClient = useQueryClient();
   const selectedId = searchParams.get("task");
   const { role, viewerEmail } = usePrototype();
+  const { data: customAssignedScreens = [] } = useMyCustomAssignedScreensQuery();
   const {
     data: tasks,
     refetch: refetchTasks,
@@ -199,16 +201,24 @@ export function ActiveTransactionQueueView({
   }, [poRecords]);
 
   const mine = useMemo(() => {
-    if (config.partyAssignee) {
-      return tasksForPartyAssignee(
-        role,
-        tasks ?? [],
-        config.assigneeRole,
-        viewerEmail ?? getAuthSession()?.user.email,
-      );
-    }
-    return tasksForRole(role, tasks ?? []);
-  }, [config.assigneeRole, config.partyAssignee, viewerEmail, role, tasks]);
+    return resolveQueueTasksForViewer({
+      role,
+      tasks: tasks ?? [],
+      pageId: config.pageId,
+      customAssignedScreens,
+      partyAssignee: config.partyAssignee,
+      assigneeRole: config.assigneeRole,
+      viewerEmail: viewerEmail ?? getAuthSession()?.user.email,
+    });
+  }, [
+    config.assigneeRole,
+    config.pageId,
+    config.partyAssignee,
+    customAssignedScreens,
+    viewerEmail,
+    role,
+    tasks,
+  ]);
 
   const listed = useMemo(
     () =>
@@ -325,6 +335,8 @@ export function ActiveTransactionQueueView({
     config.tableLayout === "distribution" ||
     config.tableLayout === "case-study";
   const showPartyColumns = config.tableLayout === "case-study";
+  const distributionSkeletonCols = 8 + (showPartyColumns ? 4 : 0);
+  const primarySkeletonCols = 6;
 
   const handleDistributionRowClick = useCallback(
     (task: WorkflowTask, propertyId: string | undefined) => {
@@ -418,7 +430,13 @@ export function ActiveTransactionQueueView({
                       </Tr>
                     </THead>
                     <TBody>
-                      {listed.map((task) => {
+                      {queuePending && listed.length === 0 ? (
+                        <SkeletonTableRows
+                          rows={6}
+                          cols={distributionSkeletonCols}
+                        />
+                      ) : (
+                        listed.map((task) => {
                         const record = poByNumber.get(task.poNumber.trim());
                         const property = findPropertyForTask(record, task);
                         const row = buildDistributionTableRow(
@@ -486,7 +504,8 @@ export function ActiveTransactionQueueView({
                             </TdAction>
                           </Tr>
                         );
-                      })}
+                      })
+                      )}
                     </TBody>
                   </Table>
                 ) : (
@@ -502,7 +521,10 @@ export function ActiveTransactionQueueView({
                       </Tr>
                     </THead>
                     <TBody>
-                      {listed.map((task) => {
+                      {queuePending && listed.length === 0 ? (
+                        <SkeletonTableRows rows={6} cols={primarySkeletonCols} />
+                      ) : (
+                        listed.map((task) => {
                         const record = poByNumber.get(task.poNumber.trim());
                         const property = findPropertyForTask(record, task);
                         const row = buildPrimaryDataTableRow(
@@ -546,7 +568,8 @@ export function ActiveTransactionQueueView({
                             </TdAction>
                           </Tr>
                         );
-                      })}
+                      })
+                      )}
                     </TBody>
                   </Table>
                 )}

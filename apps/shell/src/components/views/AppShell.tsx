@@ -113,11 +113,11 @@ function navBadgeClasses(teal?: boolean) {
 
 type NavRun = { label: string | null; items: (typeof NAV)[number][] };
 
-function buildNavRuns(): NavRun[] {
+// Computed once at module load — NAV is a constant so this never changes.
+const ALL_NAV_RUNS: NavRun[] = (() => {
   const runs: NavRun[] = [];
   let lastGrp: string | null = null;
   let cur: NavRun | null = null;
-
   for (const item of NAV) {
     if (item.grp && item.grp !== lastGrp) {
       lastGrp = item.grp;
@@ -130,18 +130,15 @@ function buildNavRuns(): NavRun[] {
       runs.push(cur);
       cur.items.push(item);
     } else {
-      if (!cur) {
-        cur = { label: null, items: [] };
-        runs.push(cur);
-      }
+      if (!cur) { cur = { label: null, items: [] }; runs.push(cur); }
       cur.items.push(item);
     }
   }
   return runs;
-}
+})();
 
 function navRunsForRole(rolePages: PageId[]): NavRun[] {
-  return buildNavRuns()
+  return ALL_NAV_RUNS
     .map((run) => ({
       ...run,
       items: run.items.filter((item) => rolePages.includes(item.id)),
@@ -455,7 +452,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { role, rolePages } = usePrototype();
-  const sessionUser = getAuthSession()?.user;
+  // Read sessionStorage once per render cycle, not multiple times.
+  const sessionUser = useMemo(() => getAuthSession()?.user, []);
 
   const navPages = useMemo(() => rolePages, [rolePages]);
 
@@ -498,55 +496,42 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     [queryClient],
   );
 
-  const currentPage = useMemo(() => {
-    const seg = pathname?.split("/").filter(Boolean)[0];
-    return (seg ?? "dashboard") as PageId;
-  }, [pathname]);
+  const searchParams = useSearchParams();
+
+  // Parse path parts once so the workspace/taskId derivations below don't
+  // each call split+filter separately.
+  const pathParts = useMemo(
+    () => pathname?.split("/").filter(Boolean) ?? [],
+    [pathname],
+  );
+
+  const currentPage = useMemo(
+    () => ((pathParts[0] ?? "dashboard") as PageId),
+    [pathParts],
+  );
 
   useEffect(() => {
-    prefetchPrototypePage(queryClient, currentPage);
+    const run = () => prefetchPrototypePage(queryClient, currentPage);
+    if (typeof requestIdleCallback !== "undefined") {
+      const id = requestIdleCallback(run, { timeout: 2_000 });
+      return () => cancelIdleCallback(id);
+    }
+    const timer = setTimeout(run, 250);
+    return () => clearTimeout(timer);
   }, [queryClient, currentPage]);
 
-  const searchParams = useSearchParams();
   const onCaseStudyWorkspace = pathname?.startsWith("/case-study/") ?? false;
-  const onActiveSurveyWorkspace =
-    (pathname?.startsWith("/active-survey/") &&
-      pathname.split("/").filter(Boolean).length >= 2) ??
-    false;
-  const onPropertyAppraisalWorkspace =
-    (pathname?.startsWith("/property-appraisal/") &&
-      pathname.split("/").filter(Boolean).length >= 2) ??
-    false;
-  const onPropertyInspectionWorkspace =
-    (pathname?.startsWith("/property-inspection/") &&
-      pathname.split("/").filter(Boolean).length >= 2) ??
-    false;
-  const onGovernmentReviewWorkspace =
-    (pathname?.startsWith("/government-review/") &&
-      pathname.split("/").filter(Boolean).length >= 2) ??
-    false;
-  const onValuationCoordinationWorkspace =
-    (pathname?.startsWith("/valuation-coordination/") &&
-      pathname.split("/").filter(Boolean).length >= 2) ??
-    false;
-  const caseStudyTaskId = onCaseStudyWorkspace
-    ? pathname.split("/").filter(Boolean)[1] ?? null
-    : null;
-  const activeSurveyTaskId = onActiveSurveyWorkspace
-    ? pathname.split("/").filter(Boolean)[1] ?? null
-    : null;
-  const propertyAppraisalTaskId = onPropertyAppraisalWorkspace
-    ? pathname.split("/").filter(Boolean)[1] ?? null
-    : null;
-  const propertyInspectionTaskId = onPropertyInspectionWorkspace
-    ? pathname.split("/").filter(Boolean)[1] ?? null
-    : null;
-  const governmentReviewTaskId = onGovernmentReviewWorkspace
-    ? pathname.split("/").filter(Boolean)[1] ?? null
-    : null;
-  const valuationCoordinationTaskId = onValuationCoordinationWorkspace
-    ? pathname.split("/").filter(Boolean)[1] ?? null
-    : null;
+  const onActiveSurveyWorkspace = pathParts[0] === "active-survey" && pathParts.length >= 2;
+  const onPropertyAppraisalWorkspace = pathParts[0] === "property-appraisal" && pathParts.length >= 2;
+  const onPropertyInspectionWorkspace = pathParts[0] === "property-inspection" && pathParts.length >= 2;
+  const onGovernmentReviewWorkspace = pathParts[0] === "government-review" && pathParts.length >= 2;
+  const onValuationCoordinationWorkspace = pathParts[0] === "valuation-coordination" && pathParts.length >= 2;
+  const caseStudyTaskId = onCaseStudyWorkspace ? (pathParts[1] ?? null) : null;
+  const activeSurveyTaskId = onActiveSurveyWorkspace ? (pathParts[1] ?? null) : null;
+  const propertyAppraisalTaskId = onPropertyAppraisalWorkspace ? (pathParts[1] ?? null) : null;
+  const propertyInspectionTaskId = onPropertyInspectionWorkspace ? (pathParts[1] ?? null) : null;
+  const governmentReviewTaskId = onGovernmentReviewWorkspace ? (pathParts[1] ?? null) : null;
+  const valuationCoordinationTaskId = onValuationCoordinationWorkspace ? (pathParts[1] ?? null) : null;
 
   const { data: workflowTasks } = useWorkflowTasksQuery();
 
@@ -620,21 +605,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [onCaseStudyWorkspace, caseStudyTask, caseStudyDeedLabel]);
 
   const poPropertyDetailContext = useMemo(() => {
-    if (!pathname) return null;
-    const parts = pathname.split("/").filter(Boolean);
     if (
-      parts[0] !== "po" ||
-      parts[2] !== PO_PROPERTY_SEGMENT ||
-      parts.length !== 4 ||
-      parts[3] === "new"
+      pathParts[0] !== "po" ||
+      pathParts[2] !== PO_PROPERTY_SEGMENT ||
+      pathParts.length !== 4 ||
+      pathParts[3] === "new"
     ) {
       return null;
     }
     return {
-      poNumber: decodePoParam(parts[1]),
-      propertyId: decodePoParam(parts[3]),
+      poNumber: decodePoParam(pathParts[1]!),
+      propertyId: decodePoParam(pathParts[3]!),
     };
-  }, [pathname]);
+  }, [pathParts]);
 
   const { data: poPropertyDetailRecord } = usePoRecordQuery(
     poPropertyDetailContext?.poNumber ?? null,
@@ -740,6 +723,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     router.replace("/login");
   }
 
+  // These are reset to false at the start of each render, which is correct —
+  // they track sidebar insertion within the current JSX pass only.
+  // Declared outside JSX (not inside .map) so React Strict Mode double-invoking
+  // the render function still gives the right result.
   let activeTransactionsInserted = false;
   let generalNavInserted = false;
 
@@ -768,7 +755,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     PAGE_TITLES[currentPage] ??
     "";
 
-  const displayBreadcrumbSegments = (() => {
+  const displayBreadcrumbSegments = useMemo(() => {
     if (
       onPoPropertyDetail ||
       onActiveSurveyPropertyDetail ||
@@ -783,7 +770,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       return breadcrumbSegments.slice(0, -1);
     }
     return breadcrumbSegments;
-  })();
+  }, [onPoPropertyDetail, onActiveSurveyPropertyDetail, breadcrumbSegments, resolvedPageTitle, poChrome?.titlePo]);
 
   return (
     <div id="app" className="flex h-svh bg-bg">

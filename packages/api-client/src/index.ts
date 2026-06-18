@@ -132,10 +132,13 @@ export {
 export {
   createCustomAssignedScreen,
   deleteCustomAssignedScreen,
+  getMyDynamicScreenSubmission,
   listAllCustomAssignedScreens,
   listAssignableUsersForCustomScreens,
   getCustomAssignedScreen,
   listMyCustomAssignedScreens,
+  saveDynamicScreenDefinition,
+  saveMyDynamicScreenSubmission,
   updateCustomAssignedScreen,
   type CustomAssignedScreensApiConfig,
   type CustomAssignedScreensResult,

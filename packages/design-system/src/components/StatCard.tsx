@@ -1,5 +1,47 @@
-import type { HTMLAttributes } from "react";
+"use client";
+
+import { useEffect, useState, type HTMLAttributes } from "react";
 import { cn } from "../lib/cn";
+
+function useCountUp(target: number | undefined, enabled: boolean): number | undefined {
+  const [display, setDisplay] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (target === undefined) {
+      setDisplay(undefined);
+      return;
+    }
+    if (!enabled) {
+      setDisplay(target);
+      return;
+    }
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      setDisplay(target);
+      return;
+    }
+
+    const start = performance.now();
+    const duration = 600;
+    let frame = 0;
+
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - start) / duration);
+      setDisplay(Math.round(target * progress));
+      if (progress < 1) {
+        frame = requestAnimationFrame(tick);
+      }
+    };
+
+    setDisplay(0);
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [target, enabled]);
+
+  return display;
+}
 
 const accentClasses = {
   default: "border-t-primary",
@@ -71,11 +113,19 @@ export function StatLabel({
 export function StatValue({
   value,
   className,
+  countUp = false,
 }: {
   value?: number | string;
   className?: string;
+  /** Animate numeric values from 0 on first load (dashboard KPIs). */
+  countUp?: boolean;
 }) {
+  const numeric = typeof value === "number" ? value : undefined;
+  const animated = useCountUp(numeric, countUp && numeric !== undefined);
+  const display =
+    countUp && numeric !== undefined ? (animated ?? 0) : value;
   const ready = value !== undefined;
+
   return (
     <div
       className={cn(
@@ -85,10 +135,12 @@ export function StatValue({
       )}
       aria-hidden={!ready}
     >
-      {ready ? value : "\u00a0"}
+      {ready ? display : "\u00a0"}
     </div>
   );
 }
+
+export { StatSkeleton } from "./Skeleton";
 
 export function StatSub({
   className,

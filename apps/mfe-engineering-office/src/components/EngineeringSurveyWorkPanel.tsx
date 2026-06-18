@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Input, Label, cn, formControlClassName } from "@platform/design-system";
+import { Button, InlineLoadingSkeleton, Input, Label, cn, formControlClassName, useToast } from "@platform/design-system";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import type { WorkflowTask } from "@case-study/mfe";
 import {
@@ -69,6 +69,7 @@ export function EngineeringSurveyWorkPanel({
   onFailureSubmitted?: () => void;
 }) {
   const propertyId = task.propertyId ?? "";
+  const { showToast } = useToast();
   const { data: record } = usePoRecordQuery(task.poNumber);
   const property = record?.properties.find((p) => p.id === propertyId);
   const { data: failures = [] } = useFailuresQuery();
@@ -154,7 +155,9 @@ export function EngineeringSurveyWorkPanel({
     const errors = validateEngineeringSurveySubmission(draft);
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
-      setFormError(firstEngineeringSurveyError(errors));
+      const message = firstEngineeringSurveyError(errors);
+      setFormError(message);
+      showToast(message, "error");
       return false;
     }
 
@@ -168,8 +171,11 @@ export function EngineeringSurveyWorkPanel({
       hostRef.current?.onSubmitted?.();
       return true;
     }
+    const message = "تعذر إتمام الرفع المساحي — حاول مرة أخرى";
+    setFormError(message);
+    showToast(message, "error");
     return false;
-  }, [draft, locked, hostRef, task.id]);
+  }, [draft, locked, hostRef, task.id, showToast]);
 
   useEffect(() => {
     if (!hostRef.current) return;
@@ -199,6 +205,7 @@ export function EngineeringSurveyWorkPanel({
     void cacheEngineeringSurveyFile(draft.taskId, docField, file).then((result) => {
       if (!result.ok) {
         setFormError(result.error);
+        showToast(result.error, "error");
         return;
       }
       const next = loadEngineeringSurveySubmission(draft.taskId);
@@ -230,13 +237,15 @@ export function EngineeringSurveyWorkPanel({
         persist({ latitude: lat, longitude: lng });
       },
       () => {
-        setFormError("تعذر الحصول على الموقع الحالي — أدخل الإحداثيات يدوياً");
+        const message = "تعذر الحصول على الموقع الحالي — أدخل الإحداثيات يدوياً";
+        setFormError(message);
+        showToast(message, "error");
       },
     );
   }
 
   if (!draft) {
-    return <p className="my-2 text-xs text-text-3">جاري تحميل نموذج الرفع…</p>;
+    return <InlineLoadingSkeleton className="my-2" />;
   }
 
   const surveyBody = (

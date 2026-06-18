@@ -1,6 +1,6 @@
 "use client";
 
-import { Note } from "@platform/design-system";
+import { InlineLoadingSkeleton, Note } from "@platform/design-system";
 import { useMemo } from "react";
 import { CaseStudyForm } from "./CaseStudyForm";
 import { partyIdForRoleId } from "@settings/mfe";
@@ -64,7 +64,7 @@ export function PartyCaseStudyFormTab({
   }
 
   if (recordLoading && !record) {
-    return <p className="my-2 text-xs text-text-3">جاري التحميل…</p>;
+    return <InlineLoadingSkeleton className="my-2" />;
   }
 
   if (!parentTask) {

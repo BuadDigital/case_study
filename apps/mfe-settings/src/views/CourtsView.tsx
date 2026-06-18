@@ -13,6 +13,7 @@ import {
   PageGutter,
   SubpageHeader,
   SubpagePanel,
+  useToast,
 } from "@platform/design-system";
 import { canManageCourts } from "../lib/settings-roles";
 import { saveCourtsCatalog } from "../lib/prototype/courts-storage";
@@ -33,7 +34,8 @@ export function CourtsView() {
   const [city, setCity] = useState<string>(CITY_OPTIONS[0]);
   const [court, setCourt] = useState("");
   const [circuitInput, setCircuitInput] = useState("");
-  const [toast, setToast] = useState<string | null>(null);
+  const { showToast } = useToast();
+  const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
     await queryClient.invalidateQueries({
@@ -42,25 +44,19 @@ export function CourtsView() {
     await refetch();
   }, [queryClient, refetch]);
 
-  useEffect(() => {
-    if (!toast) return;
-    const t = window.setTimeout(() => setToast(null), 4000);
-    return () => window.clearTimeout(t);
-  }, [toast]);
-
   async function handleAdd() {
-    if (!canEdit) return;
+    if (!canEdit || busy) return;
     const courtName = court.trim();
     const circuit = circuitInput.trim();
     if (!courtName || !circuit) {
-      setToast("أدخل اسم المحكمة والدائرة");
+      showToast("أدخل اسم المحكمة والدائرة", "error");
       return;
     }
     const list = [...entries];
     const existing = list.find((e) => e.city === city && e.court === courtName);
     if (existing) {
       if (existing.circuits.includes(circuit)) {
-        setToast("هذه الدائرة مسجّلة مسبقاً");
+        showToast("هذه الدائرة مسجّلة مسبقاً", "error");
         return;
       }
       existing.circuits.push(circuit);
@@ -72,19 +68,21 @@ export function CourtsView() {
         circuits: [circuit],
       });
     }
+    setBusy(true);
     const ok = await saveCourtsCatalog(list);
+    setBusy(false);
     if (!ok) {
-      setToast("تعذّر الحفظ — تحقق من تسجيل الدخول والخادم");
+      showToast("تعذّر الحفظ — تحقق من تسجيل الدخول والخادم", "error");
       return;
     }
     await refresh();
     setCourt("");
     setCircuitInput("");
-    setToast("تمت الإضافة");
+    showToast("تمت الإضافة", "success");
   }
 
   async function handleRemove(id: string, circuit?: string) {
-    if (!canEdit) return;
+    if (!canEdit || busy) return;
     const list = [...entries];
     const idx = list.findIndex((e) => e.id === id);
     if (idx < 0) return;
@@ -97,13 +95,15 @@ export function CourtsView() {
     } else {
       list.splice(idx, 1);
     }
+    setBusy(true);
     const ok = await saveCourtsCatalog(list);
+    setBusy(false);
     if (!ok) {
-      setToast("تعذّر الحفظ");
+      showToast("تعذّر الحفظ", "error");
       return;
     }
     await refresh();
-    setToast("تم الحذف");
+    showToast("تم الحذف", "success");
   }
 
   const grouped = CITY_OPTIONS.map((c) => ({
@@ -113,12 +113,6 @@ export function CourtsView() {
 
   return (
     <>
-      {toast ? (
-        <Note tone="success" role="status">
-          {toast}
-        </Note>
-      ) : null}
-
       {!canEdit ? (
         <Note tone="info" className="mb-4">
           عرض فقط — إدارة القائمة للمشرف.
@@ -151,6 +145,8 @@ export function CourtsView() {
                 type="button"
                 variant="primary"
                 size="sm"
+                loading={busy}
+                disabled={busy}
                 onClick={() => void handleAdd()}
               >
                 + إضافة
@@ -186,6 +182,8 @@ export function CourtsView() {
                         type="button"
                         size="sm"
                         variant="dangerOutline"
+                        loading={busy}
+                        disabled={busy}
                         onClick={() => void handleRemove(row.id)}
                       >
                         حذف المحكمة

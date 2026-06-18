@@ -5,9 +5,11 @@ import {
   StatCard,
   StatGrid,
   StatLabel,
+  StatSkeleton,
   StatValue,
   SubpageHeader,
   SubpagePanel,
+  SkeletonTableRows,
   Table,
   TBody,
   Td,
@@ -28,38 +30,47 @@ function ContractBadge({ type }: { type: string }) {
 }
 
 export function FinancialView() {
-  const { data: summary } = useFinancialSummaryQuery();
+  const { data: summary, isPending } = useFinancialSummaryQuery();
+  const ready = !isPending && summary !== undefined;
+
+  const statCards = ready
+    ? [
+        <StatCard key="revenue" accent="blue">
+          <StatLabel>إيرادات {summary.periodLabel}</StatLabel>
+          <StatValue value={summary.revenueTotal} className="text-xl" countUp />
+          <div className="mt-1 text-[10px] text-text-3">ريال سعودي</div>
+        </StatCard>,
+        <StatCard key="costs" accent="red">
+          <StatLabel>تكاليف خارجية</StatLabel>
+          <StatValue value={summary.externalCostsTotal} className="text-xl" countUp />
+          <div className="mt-1 text-[10px] text-text-3">مكاتب + متعاونون</div>
+        </StatCard>,
+        <StatCard key="margin" accent="green">
+          <StatLabel>هامش الربح</StatLabel>
+          <StatValue value={summary.profitMarginTotal} className="text-xl" countUp />
+          <div className="mt-1 text-[10px] text-text-3">
+            {summary.profitMarginPercentLabel}
+          </div>
+        </StatCard>,
+        <StatCard key="pending" accent="warn">
+          <StatLabel>مستحقات معلقة</StatLabel>
+          <StatValue value={summary.pendingPayablesTotal} className="text-xl" countUp />
+          <div className="mt-1 text-[10px] text-text-3">ريال سعودي</div>
+        </StatCard>,
+      ]
+    : Array.from({ length: 4 }, (_, index) => (
+        <StatCard key={index} accent="gray">
+          <StatSkeleton />
+        </StatCard>
+      ));
 
   return (
     <>
-      <StatGrid>
-        <StatCard accent="blue">
-          <StatLabel>إيرادات {summary?.periodLabel ?? "—"}</StatLabel>
-          <StatValue value={summary?.revenueTotal} className="text-xl" />
-          <div className="mt-1 text-[10px] text-text-3">ريال سعودي</div>
-        </StatCard>
-        <StatCard accent="red">
-          <StatLabel>تكاليف خارجية</StatLabel>
-          <StatValue value={summary?.externalCostsTotal} className="text-xl" />
-          <div className="mt-1 text-[10px] text-text-3">مكاتب + متعاونون</div>
-        </StatCard>
-        <StatCard accent="green">
-          <StatLabel>هامش الربح</StatLabel>
-          <StatValue value={summary?.profitMarginTotal} className="text-xl" />
-          <div className="mt-1 text-[10px] text-text-3">
-            {summary?.profitMarginPercentLabel ?? "—"}
-          </div>
-        </StatCard>
-        <StatCard accent="warn">
-          <StatLabel>مستحقات معلقة</StatLabel>
-          <StatValue value={summary?.pendingPayablesTotal} className="text-xl" />
-          <div className="mt-1 text-[10px] text-text-3">ريال سعودي</div>
-        </StatCard>
-      </StatGrid>
+      <StatGrid>{statCards}</StatGrid>
       <div className="grid grid-cols-2 gap-3">
         <SubpagePanel>
           <SubpageHeader title="إيرادات إنفاذ" />
-          <Table>
+          <Table pending={!ready}>
             <THead>
               <Tr hoverable={false}>
                 <Th>PO</Th>
@@ -70,6 +81,10 @@ export function FinancialView() {
               </Tr>
             </THead>
             <TBody>
+              {!ready ? (
+                <SkeletonTableRows rows={4} cols={5} />
+              ) : (
+                <>
               {(summary?.revenueRows ?? []).map((r) => (
                 <Tr key={r.po} hoverable={false}>
                   <Td className="text-[11px] font-semibold text-primary-light">{r.po}</Td>
@@ -94,12 +109,14 @@ export function FinancialView() {
                 <Td>{summary?.revenueGrandTotal ?? "—"}</Td>
                 <Td />
               </Tr>
+                </>
+              )}
             </TBody>
           </Table>
         </SubpagePanel>
         <SubpagePanel>
           <SubpageHeader title="تكاليف مزودي الخدمة" />
-          <Table>
+          <Table pending={!ready}>
             <THead>
               <Tr hoverable={false}>
                 <Th>المزود</Th>
@@ -109,7 +126,10 @@ export function FinancialView() {
               </Tr>
             </THead>
             <TBody>
-              {(summary?.costRows ?? []).map((r) => (
+              {!ready ? (
+                <SkeletonTableRows rows={4} cols={4} />
+              ) : (
+              (summary?.costRows ?? []).map((r) => (
                 <Tr key={r.name} hoverable={false}>
                   <Td className="font-medium">{r.name}</Td>
                   <Td>
@@ -118,7 +138,8 @@ export function FinancialView() {
                   <Td>{r.cost}</Td>
                   <Td>{r.category}</Td>
                 </Tr>
-              ))}
+              ))
+              )}
             </TBody>
           </Table>
         </SubpagePanel>

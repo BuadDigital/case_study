@@ -41,10 +41,11 @@ export function TaskWorkChrome({
               <Button
                 type="button"
                 variant="primary"
+                loading={saving}
                 disabled={saving}
                 onClick={onSave}
               >
-                {saving ? "جاري الحفظ…" : saveLabel}
+                {saveLabel}
               </Button>
             </div>
           ) : null}

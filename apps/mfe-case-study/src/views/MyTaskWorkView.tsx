@@ -67,7 +67,7 @@ import {
   usePoRecordQuery,
   useWorkflowTasksQuery,
 } from "@case-study/mfe/query/case-study-queries";
-import { Button, Note, cn } from "@platform/design-system";
+import { Button, InlineLoadingSkeleton, Note, cn, useToast } from "@platform/design-system";
 import { useQueryClient } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 
@@ -102,6 +102,7 @@ export function CaseStudyTaskWork({
   const queryClient = useQueryClient();
   const exit = onClose ?? (() => router.push(myTasksPath()));
   const { role } = usePrototype();
+  const { showToast } = useToast();
   const [assignmentType, setAssignmentType] = useState<AssignmentType>("تنفيذ");
   const [property, setProperty] = useState<PoPropertyIntake>(emptyProperty);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -236,6 +237,7 @@ export function CaseStudyTaskWork({
     if (!result.ok) {
       setFormError(result.error);
       if (result.errors) setFieldErrors(result.errors);
+      showToast(result.error, "error");
       return;
     }
 
@@ -253,6 +255,7 @@ export function CaseStudyTaskWork({
       } else {
         onRefresh();
       }
+      showToast("تم حفظ بيانات إنفاذ.", "success");
     }
   }
 
@@ -292,6 +295,7 @@ export function CaseStudyTaskWork({
         queryKey: prototypeKeys.workflowTasks(),
       });
       onRefresh();
+      showToast("تم إرسال التعذر للمشرف.", "success");
       return;
     }
 
@@ -372,11 +376,13 @@ export function CaseStudyTaskWork({
     if (!result.ok) {
       setFormError(result.error);
       if (result.errors) setFieldErrors(result.errors);
+      showToast(result.error, "error");
       return;
     }
 
     await advanceTaskAfterBourse(task.id, result.data);
     onRefresh();
+    showToast("تم حفظ بيانات البورصة.", "success");
   }
 
   async function confirmDistribution() {
@@ -396,6 +402,7 @@ export function CaseStudyTaskWork({
       formatPropertyDeedDisplay(property),
     );
     onRefresh();
+    showToast("تم تأكيد التوزيع وإرسال المهام.", "success");
   }
 
   async function patchDistribution(patch: Partial<TaskDistributionDraft>) {
@@ -430,15 +437,11 @@ export function CaseStudyTaskWork({
     task.status !== "completed";
 
   const saveLabel = showEnfathStep
-    ? saving
-      ? "جاري الحفظ…"
-      : "حفظ"
+    ? "حفظ"
     : showBourseStep
-      ? saving
-        ? "جاري الحفظ…"
-        : bourseObstructionPath
-          ? "إرسال للمشرف — إدارة التعذرات"
-          : "حفظ والانتقال للتوزيع"
+      ? bourseObstructionPath
+        ? "إرسال للمشرف — إدارة التعذرات"
+        : "حفظ والانتقال للتوزيع"
       : showDistribution
         ? "تأكيد التوزيع وإرسال المهام"
         : "حفظ";
@@ -469,7 +472,7 @@ export function CaseStudyTaskWork({
         saveLabel="رجوع"
         showFooter={false}
       >
-        <p className={LOADING_TEXT}>جاري التحميل…</p>
+        <InlineLoadingSkeleton className={LOADING_TEXT} />
       </TaskWorkChrome>
     );
   }

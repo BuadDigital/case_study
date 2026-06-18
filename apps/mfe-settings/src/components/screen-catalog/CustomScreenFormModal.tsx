@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { PageId } from "@platform/types";
 import type { CustomAssignedScreen } from "@platform/types";
 import {
   Button,
@@ -24,7 +23,7 @@ import type { CustomAssignedScreenUser } from "@platform/types";
 const DEFAULT_ICON =
   "M4 5h16v4H4zM4 13h10v6H4zM16 13h4v6h-4z";
 
-const EMPTY_PAGE_VALUE = "";
+const DYNAMIC_PAGE_VALUE = "";
 
 const PAGE_OPTIONS = [...ALL_PROTOTYPE_PAGES]
   .sort((a, b) =>
@@ -35,9 +34,15 @@ const PAGE_OPTIONS = [...ALL_PROTOTYPE_PAGES]
     label: PAGE_TITLES[pageId] ?? pageId,
   }));
 
+function linkedScreenDisplayName(pageId: string): string {
+  return PAGE_TITLES[pageId as keyof typeof PAGE_TITLES] ?? pageId;
+}
+
 type Props = {
   users: CustomAssignedScreenUser[];
   initial?: CustomAssignedScreen | null;
+  /** Pre-select a system page when creating a new assignment. */
+  defaultTargetPageId?: string;
   onSave: (payload: {
     name: string;
     targetPageId: string | null;
@@ -46,19 +51,25 @@ type Props = {
     assignedUserIds: string[];
   }) => void;
   onClose: () => void;
+  busy?: boolean;
 };
 
 export function CustomScreenFormModal({
   users,
   initial,
+  defaultTargetPageId,
   onSave,
   onClose,
+  busy = false,
 }: Props) {
   const isEdit = Boolean(initial);
   const [name, setName] = useState(initial?.name ?? "");
   const [targetPageId, setTargetPageId] = useState(
-    initial?.targetPageId?.trim() ?? EMPTY_PAGE_VALUE,
+    initial?.targetPageId?.trim()
+      ?? defaultTargetPageId?.trim()
+      ?? DYNAMIC_PAGE_VALUE,
   );
+  const isLinkedScreen = targetPageId.trim().length > 0;
   const [isActive, setIsActive] = useState(initial?.isActive ?? true);
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(
     () => new Set(initial?.assignedUserIds ?? []),
@@ -87,18 +98,19 @@ export function CustomScreenFormModal({
   }
 
   function handleSubmit(): void {
-    const trimmed = name.trim();
-    if (!trimmed) {
-      setError("اسم الشاشة مطلوب.");
-      return;
-    }
-    if (selectedUsers.size === 0) {
-      setError("اختر مستخدماً واحداً على الأقل.");
+    if (busy) return;
+    const resolvedName = isLinkedScreen
+      ? linkedScreenDisplayName(targetPageId.trim())
+      : name.trim();
+    if (!resolvedName) {
+      setError(
+        isLinkedScreen ? "اختر شاشة نظام من القائمة." : "اسم الشاشة مطلوب.",
+      );
       return;
     }
     setError(null);
     onSave({
-      name: trimmed,
+      name: resolvedName,
       targetPageId: targetPageId.trim() || null,
       iconPath: DEFAULT_ICON,
       isActive,
@@ -107,7 +119,7 @@ export function CustomScreenFormModal({
   }
 
   return (
-    <ModalOverlay onClick={onClose}>
+    <ModalOverlay onClick={busy ? undefined : onClose}>
       <ModalCard
         className="max-w-lg"
         onClick={(event) => event.stopPropagation()}
@@ -119,38 +131,36 @@ export function CustomScreenFormModal({
         </ModalHeader>
         <div className="space-y-4 px-5 py-4">
           <div>
-            <Label htmlFor="custom-screen-name">اسم الشاشة في القائمة</Label>
-            <Input
-              id="custom-screen-name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="مثال: تقارير الأداء"
-            />
-          </div>
-          {!isEdit ? (
-            <p className="rounded border border-border bg-surface-2 px-3 py-2 text-[11px] text-text-3">
-              تُنشأ الشاشة فارغة. يمكن ربطها بصفحة لاحقاً من «تعديل».
+            <Label htmlFor="custom-screen-target">نوع الشاشة</Label>
+            <Select
+              id="custom-screen-target"
+              value={targetPageId}
+              onChange={(event) => setTargetPageId(event.target.value)}
+            >
+              <option value={DYNAMIC_PAGE_VALUE}>شاشة ديناميكية جديدة</option>
+              {PAGE_OPTIONS.map((option) => (
+                <option key={option.pageId} value={option.pageId}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+            <p className="mt-1.5 text-[11px] text-text-3">
+              {isLinkedScreen
+                ? `سيظهر في القائمة باسم «${linkedScreenDisplayName(targetPageId)}» — نفس اسم شاشة النظام.`
+                : "تُنشأ فارغة. بعد الحفظ استخدم «تصميم» لإضافة الحقول والتخطيط."}
             </p>
-          ) : (
+          </div>
+          {!isLinkedScreen ? (
             <div>
-              <Label htmlFor="custom-screen-target">الصفحة المرتبطة (اختياري)</Label>
-              <Select
-                id="custom-screen-target"
-                value={targetPageId}
-                onChange={(event) => setTargetPageId(event.target.value)}
-              >
-                <option value={EMPTY_PAGE_VALUE}>فارغة — بدون محتوى</option>
-                {PAGE_OPTIONS.map((option) => (
-                  <option key={option.pageId} value={option.pageId}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
-              <p className="mt-1 text-[11px] text-text-3">
-                اتركها فارغة حتى يُبنى محتوى الشاشة لاحقاً.
-              </p>
+              <Label htmlFor="custom-screen-name">اسم الشاشة في القائمة</Label>
+              <Input
+                id="custom-screen-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="مثال: تقارير الأداء"
+              />
             </div>
-          )}
+          ) : null}
           <label className="flex cursor-pointer items-center gap-2 text-xs text-text">
             <input
               type="checkbox"
@@ -160,7 +170,7 @@ export function CustomScreenFormModal({
             نشطة (تظهر في القائمة الجانبية)
           </label>
           <div>
-            <Label>المستخدمون المسند إليهم</Label>
+            <Label>المستخدمون المسند إليهم (اختياري)</Label>
             <Input
               value={userQuery}
               onChange={(event) => setUserQuery(event.target.value)}
@@ -210,10 +220,16 @@ export function CustomScreenFormModal({
           ) : null}
         </div>
         <ModalFooter>
-          <Button type="button" variant="outline" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
             إلغاء
           </Button>
-          <Button type="button" variant="primary" onClick={handleSubmit}>
+          <Button
+            type="button"
+            variant="primary"
+            loading={busy}
+            disabled={busy}
+            onClick={handleSubmit}
+          >
             {isEdit ? "حفظ التعديلات" : "إضافة الشاشة"}
           </Button>
         </ModalFooter>

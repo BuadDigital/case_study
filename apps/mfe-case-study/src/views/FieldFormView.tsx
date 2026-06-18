@@ -406,14 +406,16 @@ export function FieldFormView({
           <Button
             type="button"
             variant="primary"
+            loading={saving}
             disabled={disabled || saving}
             onClick={onSubmit}
           >
-            {saving ? "جاري الإرسال…" : "حفظ وإرسال"}
+            حفظ وإرسال
           </Button>
           <Button
             type="button"
             variant="default"
+            loading={saving}
             disabled={disabled || saving}
             onClick={onSaveDraft}
           >

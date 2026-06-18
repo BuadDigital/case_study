@@ -6,3 +6,4 @@ export * from "./logic";
 export * from "./tags";
 export * from "./bootstrap";
 export * from "./storage";
+export * from "./sync";

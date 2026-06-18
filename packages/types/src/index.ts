@@ -29,3 +29,14 @@ export type {
   CustomAssignedScreenUser,
   SaveCustomAssignedScreenRequest,
 } from "./custom-assigned-screens";
+export type {
+  DynamicScreenDefinition,
+  DynamicScreenField,
+  DynamicScreenFieldBinding,
+  DynamicScreenFieldType,
+  DynamicScreenLayoutCell,
+  DynamicScreenStatus,
+  DynamicScreenSubmission,
+  SaveDynamicScreenDefinitionRequest,
+  SaveDynamicScreenSubmissionRequest,
+} from "./dynamic-screen-definition";

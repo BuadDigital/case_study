@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Badge, Button, Input, cn } from "@platform/design-system";
+import { Badge, Button, Input, Skeleton, cn, useToast } from "@platform/design-system";
 import {
   FIELD_TYPE_LABELS,
   FIELD_DICTIONARY_LAYER_LABELS,
@@ -17,6 +17,7 @@ import {
   type FieldReliabilityMode,
 } from "@platform/app-shared/prototype/field-dictionary";
 import {
+  FIELD_DICTIONARY_CHANGED_EVENT,
   loadFieldDictionaryFromApi,
   resetFieldDictionaryOnApi,
   saveFieldDictionaryToApi,
@@ -47,6 +48,7 @@ function emptyFilters(): Record<FacetKey, Set<string>> {
 }
 
 export function FieldDictionaryTab() {
+  const { showToast } = useToast();
   const [state, setState] = useState<FieldDictionaryState | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -56,6 +58,14 @@ export function FieldDictionaryTab() {
 
   useEffect(() => {
     void loadFieldDictionaryFromApi().then(setState);
+  }, []);
+
+  useEffect(() => {
+    const refresh = (): void => {
+      void loadFieldDictionaryFromApi().then(setState);
+    };
+    window.addEventListener(FIELD_DICTIONARY_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(FIELD_DICTIONARY_CHANGED_EVENT, refresh);
   }, []);
 
   const persist = useCallback((next: FieldDictionaryState) => {
@@ -164,6 +174,7 @@ export function FieldDictionaryTab() {
     persist({ ...state, fields: [field, ...state.fields] });
     setSelectedId(field.id);
     setAddOpen(false);
+    showToast("تمت إضافة الحقل.", "success");
   }
 
   function handleDeleteField(field: FieldDictionaryField): void {
@@ -174,6 +185,7 @@ export function FieldDictionaryTab() {
       fields: state.fields.filter((item) => item.id !== field.id),
     });
     setSelectedId(null);
+    showToast("تم حذف الحقل.", "success");
   }
 
   function handleUpdateField(field: FieldDictionaryField): void {
@@ -184,6 +196,7 @@ export function FieldDictionaryTab() {
         item.id === field.id ? field : item,
       ),
     });
+    showToast("تم حفظ التعديلات.", "success");
   }
 
   function handleAddTag(tag: string): void {
@@ -194,7 +207,7 @@ export function FieldDictionaryTab() {
   function handleReset(): void {
     if (
       !window.confirm(
-        "إعادة بناء القاموس من حقول النظام الحالية؟ ستُفقد التعديلات المحلية.",
+        "إعادة فهرسة القاموس من حقول النظام والشاشات الديناميكية؟ ستُحفظ التعديلات اليدوية على الحقول الموجودة.",
       )
     )
       return;
@@ -202,13 +215,19 @@ export function FieldDictionaryTab() {
       setState(next);
       setSelectedId(next.fields[0]?.id ?? null);
       clearFilters();
+      showToast("تمت إعادة فهرسة القاموس.", "success");
     });
   }
 
   if (!state) {
     return (
-      <article className="flex min-h-0 flex-1 items-center justify-center bg-surface text-xs text-text-3">
-        جاري تحميل القاموس…
+      <article className="flex min-h-0 flex-1 flex-col gap-3 bg-surface p-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-10 w-full" />
+        <div className="grid flex-1 grid-cols-2 gap-3">
+          <Skeleton className="h-full min-h-[240px]" />
+          <Skeleton className="h-full min-h-[240px]" />
+        </div>
       </article>
     );
   }
@@ -223,7 +242,8 @@ export function FieldDictionaryTab() {
         <div>
           <h2 className="text-sm font-semibold text-text">قاموس الحقول المركزي</h2>
           <p className="mt-1 text-[11px] text-text-3">
-            كل حقل يُعرَّف مرة واحدة — الإسناد والموثوقية حسب دور النظام والشاشة
+            فهرس تلقائي لحقول النظام — يُحدَّث عند إضافة حقول في الكود أو الشاشات
+            الديناميكية
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -231,7 +251,7 @@ export function FieldDictionaryTab() {
             {visibleFields.length}/{fields.length} حقلاً
           </Badge>
           <Button type="button" variant="outline" size="sm" onClick={handleReset}>
-            إعادة الجلب
+            إعادة الفهرسة
           </Button>
           <Button type="button" size="sm" onClick={() => setAddOpen(true)}>
             ＋ حقل جديد

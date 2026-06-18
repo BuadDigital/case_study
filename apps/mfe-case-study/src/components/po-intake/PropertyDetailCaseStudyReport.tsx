@@ -21,7 +21,7 @@ import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 import { caseStudyWorkspacePath } from "../../lib/my-task-routes";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { EmptyState, InfoBox } from "./PropertyDetailFields";
-import { cn } from "@platform/design-system";
+import { cn, InlineLoadingSkeleton } from "@platform/design-system";
 
 const DEFAULT_INFO_ROLES = emptyCaseStudyInfoRolesConfig();
 
@@ -109,7 +109,7 @@ export function PropertyDetailCaseStudyReport({
 
   if (loading) {
     return (
-      <p className="m-0 text-xs text-text-3">جاري تحميل نموذج دراسة الحالة…</p>
+      <InlineLoadingSkeleton />
     );
   }
 

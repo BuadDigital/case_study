@@ -7,6 +7,7 @@ import {
   loadGoogleMapsApi,
   parseCoord,
 } from "../lib/google-maps-loader";
+import { Skeleton } from "@platform/design-system";
 import { JEDDAH_DEFAULT_CENTER } from "../lib/jeddah-default-coords";
 
 const DEFAULT_CENTER = JEDDAH_DEFAULT_CENTER;
@@ -146,8 +147,8 @@ export function EngineeringSurveyMap({
     <div className="relative overflow-hidden rounded-[var(--radius-DEFAULT)] border border-border bg-surface-2">
       <div ref={containerRef} className="h-[280px] w-full" aria-label="خريطة Google" />
       {!mapReady ? (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-white/85 text-xs text-text-3">
-          جاري تحميل الخريطة…
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-white/85 p-6">
+          <Skeleton className="h-full w-full max-h-[200px]" />
         </div>
       ) : null}
       {!hasPin && mapReady ? (

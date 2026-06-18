@@ -2,15 +2,17 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, type ReactNode } from "react";
-import { Button, Note, PageGutter, PageShell } from "@platform/design-system";
+import { Button, Note, PageGutter, PageShell, PanelSkeleton } from "@platform/design-system";
 import { CaseStudyForm } from "../components/case-study/CaseStudyForm";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
 import { PropertyTransactionTimeline } from "../components/po-intake/PropertyTransactionTimeline";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
+import { taskMatchesCaseStudy } from "@platform/app-shared/prototype/active-transactions";
+import { useMyCustomAssignedScreensQuery } from "@settings/mfe/query/custom-screens-queries";
 import { activeCaseStudyPath } from "../lib/my-task-routes";
 import { findPropertyForTask } from "../lib/prototype/my-task-row";
-import { tasksForRole, type WorkflowTask } from "../lib/prototype/tasks-storage";
+import { canViewWorkflowTask } from "../lib/prototype/viewer-task-access";
+import type { WorkflowTask } from "../lib/prototype/tasks-storage";
 import {
   usePoRecordQuery,
   useWorkflowTasksQuery,
@@ -33,6 +35,7 @@ export function CaseStudyWorkspaceView({
 }) {
   const router = useRouter();
   const { role } = usePrototype();
+  const { data: customAssignedScreens = [] } = useMyCustomAssignedScreensQuery();
   const {
     data: tasks,
     isFetched: tasksFetched,
@@ -45,9 +48,15 @@ export function CaseStudyWorkspaceView({
 
   const canAccess = useMemo(() => {
     if (!task) return false;
-    if (isSuperAdmin(role)) return true;
-    return tasksForRole(role, tasks ?? []).some((t) => t.id === taskId);
-  }, [task, role, tasks, taskId]);
+    return canViewWorkflowTask({
+      role,
+      task,
+      tasks: tasks ?? [],
+      pageId: "active-case-study",
+      customAssignedScreens,
+      matchesPage: taskMatchesCaseStudy,
+    });
+  }, [task, role, tasks, customAssignedScreens]);
 
   const { data: record, isPending: recordLoading } = usePoRecordQuery(
     task?.poNumber ?? null,
@@ -91,7 +100,7 @@ export function CaseStudyWorkspaceView({
   if (loading || !task) {
     return (
       <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg">
-        <p className="p-6 text-xs text-text-3">جاري تحميل دراسة الحالة…</p>
+        <PanelSkeleton />
       </div>
     );
   }

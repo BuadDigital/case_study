@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Badge, Button, cn } from "@platform/design-system";
+import { Badge, Button, cn, InlineLoadingSkeleton, useToast } from "@platform/design-system";
 import { EmptyState, ltrValueClass, SectionHeader } from "./PropertyDetailFields";
 import {
   buildInfathUploadModel,
@@ -436,8 +436,7 @@ export function PropertyDetailEnfathUpload({
     () => new Set(),
   );
   const [copiedKeys, setCopiedKeys] = useState<Set<CopyKey>>(() => new Set());
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { showToast } = useToast();
   const initializedCollapseRef = useRef(false);
 
   useEffect(() => {
@@ -449,12 +448,6 @@ export function PropertyDetailEnfathUpload({
       ),
     );
   }, [model.sections]);
-
-  const showToast = useCallback((message: string) => {
-    setToast(message);
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = setTimeout(() => setToast(null), 1900);
-  }, []);
 
   const markCopied = useCallback(
     (key: CopyKey, text: string) => {
@@ -558,7 +551,7 @@ export function PropertyDetailEnfathUpload({
     return (
       <>
         <SectionHeader>الرفع على إنفاذ</SectionHeader>
-        <p className="m-0 text-xs text-text-3">جاري تحميل بيانات الرفع…</p>
+        <InlineLoadingSkeleton />
       </>
     );
   }
@@ -656,18 +649,6 @@ export function PropertyDetailEnfathUpload({
             onDownloadFile={handleDownloadFile}
           />
         ))}
-      </div>
-
-      <div
-        className={cn(
-          "pointer-events-none fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 translate-y-4 items-center gap-2 rounded-full border border-success/30 bg-success-bg px-4 py-2 text-xs font-medium text-success-text opacity-0 shadow-lg transition-all",
-          toast && "pointer-events-auto translate-y-0 opacity-100",
-        )}
-        role="status"
-        aria-live="polite"
-      >
-        <InfazIcon name="check" />
-        <span>{toast ?? ""}</span>
       </div>
     </div>
   );

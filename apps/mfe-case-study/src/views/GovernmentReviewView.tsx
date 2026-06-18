@@ -10,6 +10,8 @@ import {
   cn,
   Note,
   PageShell,
+  PanelSkeleton,
+  SkeletonTableRows,
   Table,
   TBody,
   Td,
@@ -291,9 +293,7 @@ export function GovernmentReviewView() {
   const hasRail = !queueReady ? false : rows.length > 0;
 
   if (selectedTaskId) {
-    return (
-      <p className="p-4 text-xs text-text-3">جاري فتح مهمة المراجعة…</p>
-    );
+    return <PanelSkeleton className="p-4" />;
   }
 
   return (
@@ -338,7 +338,9 @@ export function GovernmentReviewView() {
                     <Th>البيانات الأولية</Th>
                   </Tr>
                 </THead>
-                <TBody />
+                <TBody>
+                  <SkeletonTableRows rows={5} cols={6} />
+                </TBody>
               </Table>
             </div>
           ) : rows.length === 0 ? (

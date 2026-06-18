@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { cn } from "@platform/design-system";
+import { cn, InlineLoadingSkeleton } from "@platform/design-system";
 import { CaseStudyForm, findPropertyForTask } from "@case-study/mfe";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import type { WorkflowTask } from "@case-study/mfe";
@@ -71,7 +71,7 @@ export function AppraiserUploadTab({
   }
 
   if (recordLoading && !record) {
-    return <p className="my-2 text-xs text-text-3">جاري التحميل…</p>;
+    return <InlineLoadingSkeleton className="my-2" />;
   }
 
   if (!parentTask) {

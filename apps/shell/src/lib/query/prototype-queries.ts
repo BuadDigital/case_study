@@ -169,49 +169,27 @@ export function prefetchPrototypePage(
   }
 }
 
-/** Warm cache on app boot — covers most sidebar routes. */
+/**
+ * Warm cache on app boot in two tiers so the most-needed data (work orders,
+ * tasks) loads first without competing with the dashboard's reporting call and
+ * secondary data.
+ */
 export function prefetchCorePrototypeData(queryClient: QueryClient): void {
   const opts = prefetchOpts(queryClient);
-  void queryClient.prefetchQuery({
-    queryKey: prototypeKeys.poListRows(),
-    queryFn: loadPoListRows,
-    ...opts,
-  });
-  void queryClient.prefetchQuery({
-    queryKey: prototypeKeys.workOrderDtos(),
-    queryFn: loadWorkOrderDtos,
-    ...opts,
-  });
-  void queryClient.prefetchQuery({
-    queryKey: prototypeKeys.poRecords(),
-    queryFn: loadPoRecordsWithTaskSync,
-    ...opts,
-  });
-  void queryClient.prefetchQuery({
-    queryKey: prototypeKeys.workflowTasks(),
-    queryFn: loadWorkflowTasks,
-    ...opts,
-  });
-  void queryClient.prefetchQuery({
-    queryKey: prototypeKeys.pendingBourseItems(),
-    queryFn: loadPendingBourseItems,
-    ...opts,
-  });
-  void queryClient.prefetchQuery({
-    queryKey: prototypeKeys.failures(),
-    queryFn: loadFailures,
-    ...opts,
-  });
-  void queryClient.prefetchQuery({
-    queryKey: prototypeKeys.failureTypes(),
-    queryFn: loadFailureTypesCatalog,
-    ...opts,
-  });
-  void queryClient.prefetchQuery({
-    queryKey: ["reporting", "dashboard"],
-    queryFn: loadReportingDashboard,
-    ...opts,
-  });
+
+  // Tier 1 — data needed by the sidebar badges and most pages.
+  void queryClient.prefetchQuery({ queryKey: prototypeKeys.poListRows(), queryFn: loadPoListRows, ...opts });
+  void queryClient.prefetchQuery({ queryKey: prototypeKeys.workOrderDtos(), queryFn: loadWorkOrderDtos, ...opts });
+  void queryClient.prefetchQuery({ queryKey: prototypeKeys.poRecords(), queryFn: loadPoRecordsWithTaskSync, ...opts });
+  void queryClient.prefetchQuery({ queryKey: prototypeKeys.workflowTasks(), queryFn: loadWorkflowTasks, ...opts });
+  void queryClient.prefetchQuery({ queryKey: prototypeKeys.failures(), queryFn: loadFailures, ...opts });
+
+  // Tier 2 — secondary data that can wait until the UI has settled.
+  setTimeout(() => {
+    void queryClient.prefetchQuery({ queryKey: prototypeKeys.pendingBourseItems(), queryFn: loadPendingBourseItems, ...opts });
+    void queryClient.prefetchQuery({ queryKey: prototypeKeys.failureTypes(), queryFn: loadFailureTypesCatalog, ...opts });
+    void queryClient.prefetchQuery({ queryKey: ["reporting", "dashboard"], queryFn: loadReportingDashboard, ...opts });
+  }, 1_500);
 }
 
 export function usePrototypeDataSync(): void {

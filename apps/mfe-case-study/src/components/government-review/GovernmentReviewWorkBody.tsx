@@ -1,7 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState, type RefObject } from "react";
-import { FormGroup, FormRow, Label, Note } from "@platform/design-system";
+import {
+  FormGroup,
+  FormRow,
+  InlineLoadingSkeleton,
+  Label,
+  Note,
+  useToast,
+} from "@platform/design-system";
 import {
   RegField,
   RegTextarea,
@@ -69,6 +76,7 @@ export function GovernmentReviewWorkBody({
   hostRef: RefObject<GovernmentReviewWorkHostRef | null>;
 }) {
   void def;
+  const { showToast } = useToast();
   const propertyId = task.propertyId ?? "";
   const { data: record } = usePoRecordQuery(task.poNumber);
   const property = record?.properties.find((p) => p.id === propertyId);
@@ -114,7 +122,9 @@ export function GovernmentReviewWorkBody({
     const errors = validateGovernmentReviewSubmission(draft);
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
-      setFormError(firstGovernmentReviewError(errors));
+      const message = firstGovernmentReviewError(errors);
+      setFormError(message);
+      showToast(message, "error");
       return false;
     }
 
@@ -128,9 +138,11 @@ export function GovernmentReviewWorkBody({
       hostRef.current?.onSubmitted?.();
       return true;
     }
-    setFormError("تعذر إتمام المراجعة — حاول مرة أخرى");
+    const message = "تعذر إتمام المراجعة — حاول مرة أخرى";
+    setFormError(message);
+    showToast(message, "error");
     return false;
-  }, [draft, locked, hostRef, task.id]);
+  }, [draft, locked, hostRef, task.id, showToast]);
 
   useEffect(() => {
     if (!hostRef.current) return;
@@ -138,7 +150,7 @@ export function GovernmentReviewWorkBody({
   }, [hostRef, submit]);
 
   if (!draft) {
-    return <p className="text-xs text-text-3">جاري تحميل نموذج المراجعة…</p>;
+    return <InlineLoadingSkeleton />;
   }
 
   const showVisitDate = draft.visitStatus === "completed";

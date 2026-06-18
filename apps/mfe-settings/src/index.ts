@@ -12,6 +12,10 @@ export { CaseStudyInfoRolesView } from "./views/CaseStudyInfoRolesView";
 export { SystemFieldsCatalogView } from "./views/SystemFieldsCatalogView";
 export { SystemScreenCatalogView } from "./views/SystemScreenCatalogView";
 export { CustomAssignedScreenView, CustomAssignedScreenPage } from "./views/CustomAssignedScreenView";
+export {
+  CustomScreenBuilder,
+  CustomScreenBuilderPage,
+} from "./views/CustomScreenBuilderView";
 
 export * from "./lib/settings-api-config";
 export * from "./lib/settings-roles";

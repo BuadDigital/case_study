@@ -4,10 +4,12 @@ import { useCallback, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Button,
+  InlineLoadingSkeleton,
   Note,
   ProgressBar,
   Textarea,
   cn,
+  useToast,
 } from "@platform/design-system";
 import { CASE_STUDY_INFO_PARTIES,
   CASE_STUDY_INFO_ROLE_TYPES,
@@ -64,11 +66,11 @@ function questionStatus(
 export function CaseStudyInfoRolesView() {
   const queryClient = useQueryClient();
   const { data: config, isFetched } = useCaseStudyInfoRolesQuery();
+  const { showToast } = useToast();
   const [openId, setOpenId] = useState<string | null>(
     CASE_STUDY_QUESTION_CATALOG[0]?.key ?? null,
   );
   const [activeSec, setActiveSec] = useState(CASE_STUDY_INFO_SECTIONS[0]?.id);
-  const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -79,14 +81,15 @@ export function CaseStudyInfoRolesView() {
       const savedConfig = await saveCaseStudyInfoRolesConfig(next);
       setSaving(false);
       if (!savedConfig) {
-        setSaveError(apiErrorMessage("server", "تعذّر حفظ المصفوفة"));
+        const message = apiErrorMessage("server", "تعذّر حفظ المصفوفة");
+        setSaveError(message);
+        showToast(message, "error");
         return;
       }
       setCaseStudyInfoRolesCache(queryClient, savedConfig);
-      setSaved(true);
-      window.setTimeout(() => setSaved(false), 2500);
+      showToast("تم الحفظ.", "success");
     },
-    [queryClient],
+    [queryClient, showToast],
   );
 
   const summary = useMemo(() => {
@@ -106,7 +109,7 @@ export function CaseStudyInfoRolesView() {
   }, [config]);
 
   if (!isFetched || !config) {
-    return <p className="my-2 text-xs text-text-3">جاري التحميل…</p>;
+    return <InlineLoadingSkeleton className="my-2" />;
   }
 
   const secQuestions = CASE_STUDY_QUESTION_CATALOG.filter(
@@ -127,16 +130,6 @@ export function CaseStudyInfoRolesView() {
           </p>
         </div>
         <div className="flex items-center gap-2.5">
-          {saving ? (
-            <Note tone="info" className="m-0 px-2.5 py-1.5 text-[11px]">
-              جاري الحفظ…
-            </Note>
-          ) : null}
-          {saved ? (
-            <Note tone="success" className="m-0 px-2.5 py-1.5 text-[11px]">
-              تم الحفظ
-            </Note>
-          ) : null}
           {saveError ? (
             <Note tone="warn" className="m-0 px-2.5 py-1.5 text-[11px]">
               {saveError}

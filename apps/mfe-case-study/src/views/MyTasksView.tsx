@@ -21,6 +21,7 @@ import {
 } from "../lib/prototype/po-intake-data";
 
 const PRIMARY_DATA_QUEUE: ActiveTransactionQueueConfig = {
+  pageId: "active-primary-data",
   pageTitle: "البيانات الأولية",
   hidePageTitle: true,
   emptyLine: "لا توجد معاملات في «البيانات الأولية».",

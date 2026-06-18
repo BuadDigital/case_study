@@ -8,6 +8,7 @@ import {
   Badge,
   Button,
   Note,
+  SkeletonTableRows,
   SubpageHeader,
   SubpagePanel,
   Table,
@@ -16,6 +17,7 @@ import {
   Th,
   THead,
   Tr,
+  useToast,
 } from "@platform/design-system";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import type { RegistrationSource } from "@platform/app-shared/prototype/registration-data";
@@ -26,15 +28,6 @@ import { useStaffUsersQuery } from "../query/settings-queries";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 
 type UsersMode = "list" | "portal" | "register";
-
-function UsersToast({ message }: { message: string | null }) {
-  if (!message) return null;
-  return (
-    <Note tone="success" role="status">
-      {message}
-    </Note>
-  );
-}
 
 function preferredSourceForRole(
   role: ReturnType<typeof usePrototype>["role"],
@@ -97,10 +90,11 @@ function UsersStaffListView({
   const staff = useMemo(() => staffResult?.users ?? [], [staffResult?.users]);
   const loadError = staffResult?.loadError ?? null;
   const dataReady = staffResult !== undefined;
+  const { showToast } = useToast();
   const [mode, setMode] = useState<UsersMode>("list");
   const [registerSource, setRegisterSource] =
     useState<RegistrationSource | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
 
   const refreshList = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: prototypeKeys.staffUsers() });
@@ -114,16 +108,10 @@ function UsersStaffListView({
   const handleAdd = useCallback(
     (user: StaffUser) => {
       void refreshList();
-      setToast(`تمت إضافة «${user.name}» بنجاح.`);
+      showToast(`تمت إضافة «${user.name}» بنجاح.`, "success");
     },
-    [refreshList],
+    [refreshList, showToast],
   );
-
-  useEffect(() => {
-    if (!toast) return;
-    const t = window.setTimeout(() => setToast(null), 5000);
-    return () => window.clearTimeout(t);
-  }, [toast]);
 
   useEffect(() => {
     // Department admins should never enter source-selector mode.
@@ -136,24 +124,19 @@ function UsersStaffListView({
 
   if (mode === "portal") {
     return (
-      <>
-        <UsersToast message={toast} />
-        <RegistrationPortal
+      <RegistrationPortal
           onSelect={(source) => {
             setRegisterSource(source);
             setMode("register");
           }}
           onBack={() => setMode("list")}
         />
-      </>
     );
   }
 
   if (mode === "register" && registerSource) {
     return (
-      <>
-        <UsersToast message={toast} />
-        <RegisterUserFlow
+      <RegisterUserFlow
           source={registerSource}
           existingEmails={existingEmails}
           submitRegistration={submitRegistration}
@@ -163,7 +146,6 @@ function UsersStaffListView({
             setMode("list");
           }}
           onAddAnother={() => {
-            setToast(null);
             if (preferredSource) {
               setRegisterSource(preferredSource);
               setMode("register");
@@ -172,15 +154,11 @@ function UsersStaffListView({
             }
           }}
         />
-      </>
     );
   }
 
   return (
-    <>
-      <UsersToast message={toast} />
-
-      <SubpagePanel>
+    <SubpagePanel>
         <SubpageHeader title={`${usersTitleForSource(preferredSource)}${dataReady ? ` (${staff.length})` : ""}`}>
           {!viewOnly ? (
             <Button
@@ -220,7 +198,9 @@ function UsersStaffListView({
             </Tr>
           </THead>
           <TBody>
-            {dataReady && loadError ? (
+            {!dataReady ? (
+              <SkeletonTableRows rows={6} cols={viewOnly ? 4 : 5} />
+            ) : loadError ? (
               <Tr hoverable={false}>
                 <Td colSpan={viewOnly ? 4 : 5} className="text-center text-text-3">
                   —
@@ -262,14 +242,18 @@ function UsersStaffListView({
                         <Button
                           size="sm"
                           variant="danger"
+                          loading={deactivatingId === u.id}
+                          disabled={deactivatingId !== null}
                           onClick={() => {
+                            setDeactivatingId(u.id);
                             void deactivateStaffUser(u.id).then((result) => {
+                              setDeactivatingId(null);
                               if (!result.ok) {
-                                setToast(result.message);
+                                showToast(result.message, "error");
                                 return;
                               }
                               void refreshList();
-                              setToast(`تم تعطيل «${u.name}».`);
+                              showToast(`تم تعطيل «${u.name}».`, "success");
                             });
                           }}
                         >
@@ -287,7 +271,6 @@ function UsersStaffListView({
           </TBody>
         </Table>
       </SubpagePanel>
-    </>
   );
 }
 

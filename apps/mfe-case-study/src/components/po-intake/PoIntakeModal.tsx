@@ -42,10 +42,11 @@ export function PoIntakeModal({
           <Button
             type="button"
             variant="primary"
+            loading={form.saving}
             disabled={form.saving}
             onClick={() => void form.save()}
           >
-            {form.saving ? "جارٍ الحفظ..." : "حفظ أمر العمل"}
+            حفظ أمر العمل
           </Button>
         </>
       }

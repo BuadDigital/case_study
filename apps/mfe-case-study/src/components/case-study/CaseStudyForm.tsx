@@ -4,21 +4,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Button,
   FormGroup,
+  InlineLoadingSkeleton,
   Input,
   Label,
   Note,
   Textarea,
   cn,
+  useToast,
 } from "@platform/design-system";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import { RegField } from "@platform/app-shared/registration/FormFields";
-import {
-  CASE_STUDY_FORM_STEPS,
-  CASE_STUDY_SECTION_QUESTIONS,
-  caseStudyAnswerKey,
-  type CaseStudyFormAnswer,
-  type CaseStudyQuestionSection,
-} from "../../lib/prototype/case-study-form-data";
+import { CASE_STUDY_FORM_STEPS, CASE_STUDY_SECTION_QUESTIONS, caseStudyAnswerKey,type CaseStudyFormAnswer,type CaseStudyQuestionSection} from "../../lib/prototype/case-study-form-data";
 import { CaseStudyReportActions } from "./CaseStudyReportActions";
 import { CaseStudyProgressDonut } from "./CaseStudyProgressDonut";
 import { CaseStudyMatrixTable } from "./CaseStudyMatrixTable";
@@ -257,7 +253,7 @@ export function CaseStudyForm({
     emptyCaseStudyFormDraft(storageTaskId, seed),
   );
   const [hydrated, setHydrated] = useState(false);
-  const [saveNotice, setSaveNotice] = useState<string | null>(null);
+  const { showToast } = useToast();
   const [partyRevision, setPartyRevision] = useState(0);
   const { data: workflowTasks } = useWorkflowTasksQuery();
   const [partyAnswersByKey, setPartyAnswersByKey] = useState<
@@ -501,15 +497,13 @@ export function CaseStudyForm({
 
   const saveDraft = () => {
     persist({ ...draft, status: "draft" });
-    setSaveNotice("تم حفظ المسودة — يمكنك مواصلة التعبئة لاحقاً");
-    window.setTimeout(() => setSaveNotice(null), 4000);
+    showToast("تم حفظ المسودة — يمكنك مواصلة التعبئة لاحقاً", "success");
   };
 
   const submitForm = () => {
     if (isParty) {
       persist({ ...draft, status: "draft" });
-      setSaveNotice("تم حفظ إجاباتك في نموذج الدراسة");
-      window.setTimeout(() => setSaveNotice(null), 4000);
+      showToast("تم حفظ إجاباتك في نموذج الدراسة", "success");
       return;
     }
     const { answered, total, pct } = summary;
@@ -520,12 +514,11 @@ export function CaseStudyForm({
       if (!ok) return;
     }
     persist({ ...draft, status: "submitted" });
-    setSaveNotice("تم رفع نموذج دراسة الحالة للنظام بنجاح");
-    window.setTimeout(() => setSaveNotice(null), 5000);
+    showToast("تم رفع نموذج دراسة الحالة للنظام بنجاح", "success");
   };
 
   if (!hydrated || !infoRolesReady) {
-    return <p className="my-2 text-xs text-text-3">جاري تحميل النموذج…</p>;
+    return <InlineLoadingSkeleton className="my-2" />;
   }
 
   if (visibleStepIndices.length === 0) {
@@ -626,8 +619,6 @@ export function CaseStudyForm({
           <FormProgressRings summary={summary} />
         </div>
       ) : null}
-
-      {saveNotice ? <Note tone="success">{saveNotice}</Note> : null}
 
       {isParty ? (
         <CaseStudyMatrixBanner

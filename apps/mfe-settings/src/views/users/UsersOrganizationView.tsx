@@ -5,6 +5,7 @@ import {
   Badge,
   Note,
   PageGutter,
+  PanelSkeleton,
   SubpageHeader,
   SubpagePanel,
 } from "@platform/design-system";
@@ -113,7 +114,7 @@ export function UsersOrganizationView() {
       </div>
       {isPending && !overview ? (
         <SubpagePanel>
-          <p className="px-6 py-4 text-xs text-text-3">جاري التحميل…</p>
+          <PanelSkeleton />
         </SubpagePanel>
       ) : (
         overview?.departments.map((dept) => (

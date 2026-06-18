@@ -13,8 +13,10 @@ import {
   StatCard,
   StatGrid,
   StatLabel,
+  StatSkeleton,
   StatSub,
   StatValue,
+  SkeletonTableRows,
   Table,
   TBody,
   Td,
@@ -24,6 +26,7 @@ import {
   THead,
   Tr,
   cn,
+  useToast,
   type BadgeTone,
 } from "@platform/design-system";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
@@ -214,10 +217,7 @@ export function PoListView() {
   const showIntake = canReceivePo(role);
   const showEdit = canEditPoHeader(role);
   const showDelete = canDeletePo(role);
-  const [toast, setToast] = useState<{
-    message: string;
-    kind: "success" | "error";
-  } | null>(null);
+  const { showToast } = useToast();
   const [deletingPo, setDeletingPo] = useState<string | null>(null);
   const [intakeOpen, setIntakeOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -322,21 +322,12 @@ export function PoListView() {
     const result = await deletePoRecord(poNumber);
     setDeletingPo(null);
     if (!result.ok) {
-      setToast({ message: result.error, kind: "error" });
+      showToast(result.error, "error");
       return;
     }
     await queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
-    setToast({
-      message: `تم حذف أمر العمل «${poNumber}» وعقاراته.`,
-      kind: "success",
-    });
+    showToast(`تم حذف أمر العمل «${poNumber}» وعقاراته.`, "success");
   }
-
-  useEffect(() => {
-    if (!toast) return;
-    const t = window.setTimeout(() => setToast(null), 5000);
-    return () => window.clearTimeout(t);
-  }, [toast]);
 
   return (
     <>
@@ -352,20 +343,6 @@ export function PoListView() {
         />
       ) : null}
 
-      {toast ? (
-        <div
-          className={cn(
-            "fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-lg border-s-[3px] px-3.5 py-2.5 text-xs leading-relaxed shadow-lg",
-            toast.kind === "success"
-              ? "border-primary bg-teal-light text-teal-text"
-              : "border-amber bg-amber-light text-amber-text",
-          )}
-          role="status"
-        >
-          {toast.message}
-        </div>
-      ) : null}
-
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg">
         <PageBody className="flex flex-col gap-5">
           <div className="flex items-start justify-between gap-3">
@@ -373,28 +350,36 @@ export function PoListView() {
           </div>
 
           <StatGrid cols={4} className="mb-0">
-            <StatCard accent="default">
-              <StatLabel>إجمالي أوامر العمل</StatLabel>
-              <StatValue value={stats?.total} />
-              <StatSub>PO نشط</StatSub>
-            </StatCard>
-            <StatCard accent="amber">
-              <StatLabel>عقارات نشطة</StatLabel>
-              <StatValue value={stats?.propertyCount} />
-              <StatSub>قيد المعالجة</StatSub>
-            </StatCard>
-            <StatCard accent="blue">
-              <StatLabel>متوسط العقارات / PO</StatLabel>
-              <StatValue value={stats?.avgPerPo} />
-              <StatSub>عقار لكل أمر</StatSub>
-            </StatCard>
-            <StatCard accent="gray">
-              <StatLabel>مكتملة هذا الشهر</StatLabel>
-              <StatValue value={stats?.doneMonth} />
-              <StatSub>
-                {statsReady ? `من ${stats?.total ?? 0} إجمالي` : "\u00a0"}
-              </StatSub>
-            </StatCard>
+            {statsReady ? (
+              <>
+                <StatCard accent="default">
+                  <StatLabel>إجمالي أوامر العمل</StatLabel>
+                  <StatValue value={stats?.total} countUp />
+                  <StatSub>PO نشط</StatSub>
+                </StatCard>
+                <StatCard accent="amber">
+                  <StatLabel>عقارات نشطة</StatLabel>
+                  <StatValue value={stats?.propertyCount} countUp />
+                  <StatSub>قيد المعالجة</StatSub>
+                </StatCard>
+                <StatCard accent="blue">
+                  <StatLabel>متوسط العقارات / PO</StatLabel>
+                  <StatValue value={stats?.avgPerPo} />
+                  <StatSub>عقار لكل أمر</StatSub>
+                </StatCard>
+                <StatCard accent="gray">
+                  <StatLabel>مكتملة هذا الشهر</StatLabel>
+                  <StatValue value={stats?.doneMonth} countUp />
+                  <StatSub>{`من ${stats?.total ?? 0} إجمالي`}</StatSub>
+                </StatCard>
+              </>
+            ) : (
+              Array.from({ length: 4 }, (_, index) => (
+                <StatCard key={index} accent="gray">
+                  <StatSkeleton />
+                </StatCard>
+              ))
+            )}
           </StatGrid>
 
           <div className="overflow-hidden rounded-lg border border-border bg-surface">
@@ -524,7 +509,9 @@ export function PoListView() {
                   </Tr>
                 </THead>
                 <TBody>
-                  {statsReady && filtered.length === 0 ? (
+                  {!statsReady ? (
+                    <SkeletonTableRows rows={8} cols={10} />
+                  ) : filtered.length === 0 ? (
                     <Tr hoverable={false}>
                       <Td
                         colSpan={10}
@@ -540,7 +527,7 @@ export function PoListView() {
                           : "لا توجد نتائج مطابقة"}
                       </Td>
                     </Tr>
-                  ) : statsReady ? (
+                  ) : (
                     pageRows.map((p) => {
                       const pct =
                         p.count > 0
@@ -644,7 +631,7 @@ export function PoListView() {
                         </Tr>
                       );
                     })
-                  ) : null}
+                  )}
                 </TBody>
               </Table>
             </div>

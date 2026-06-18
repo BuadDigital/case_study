@@ -5,7 +5,7 @@ import { addPropertyToPo, deedExistsInPo } from "../../lib/prototype/po-intake-s
 import { usePoRecordQuery } from "@case-study/mfe/query/case-study-queries";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import { hasFieldErrors,type FieldErrors,} from "@platform/app-shared/registration/registration-utils";
-import { Button, Label, Note, cn } from "@platform/design-system";
+import { Button, InlineLoadingSkeleton, Label, Note, cn } from "@platform/design-system";
 import { PoIntakeWizardShell } from "./PoIntakeWizardShell";
 import { PoPropertyEnfathForm } from "./PoPropertyEnfathForm";
 import { PoPropertyStackCard } from "./PoPropertyStackCard";
@@ -252,7 +252,7 @@ export function PoPropertyCreate({ poNumber, onBackAction,onSavedAction,}: {
         onPrev={() => {}}
         onNext={onBackAction}
       >
-        <p className="text-xs text-text-3">جاري التحميل…</p>
+        <InlineLoadingSkeleton />
       </PoIntakeWizardShell>
     );
   }

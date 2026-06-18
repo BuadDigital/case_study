@@ -8,9 +8,11 @@ import {
   StatCard,
   StatGrid,
   StatLabel,
+  StatSkeleton,
   StatValue,
   SubpageHeader,
   SubpagePanel,
+  SkeletonTableRows,
   Table,
   TBody,
   Td,
@@ -23,27 +25,38 @@ import { useSurveyOfficesQuery } from "../query/survey-queries";
 export function SurveyView() {
   const { role } = usePrototype();
   const viewOnly = !isSuperAdmin(role) && role === "general-manager";
-  const { data: offices = [] } = useSurveyOfficesQuery();
+  const { data: offices = [], isPending } = useSurveyOfficesQuery();
+  const ready = !isPending;
 
   return (
     <>
       <StatGrid>
+        {ready ? (
+          <>
         <StatCard accent="blue">
           <StatLabel>إجمالي طلبات الرفع</StatLabel>
-          <StatValue value={43} />
+          <StatValue value={43} countUp />
         </StatCard>
         <StatCard accent="green">
           <StatLabel>مكتملة</StatLabel>
-          <StatValue value={18} />
+          <StatValue value={18} countUp />
         </StatCard>
         <StatCard accent="warn">
           <StatLabel>قيد التنفيذ</StatLabel>
-          <StatValue value={21} />
+          <StatValue value={21} countUp />
         </StatCard>
         <StatCard accent="red">
           <StatLabel>لم تُسند</StatLabel>
-          <StatValue value={4} />
+          <StatValue value={4} countUp />
         </StatCard>
+          </>
+        ) : (
+          Array.from({ length: 4 }, (_, index) => (
+            <StatCard key={index} accent="gray">
+              <StatSkeleton />
+            </StatCard>
+          ))
+        )}
       </StatGrid>
       <SubpagePanel>
         <SubpageHeader title="المكاتب الهندسية المعتمدة">
@@ -53,7 +66,7 @@ export function SurveyView() {
             </Button>
           ) : null}
         </SubpageHeader>
-        <Table>
+        <Table pending={!ready}>
           <THead>
             <Tr hoverable={false}>
               <Th>اسم المكتب</Th>
@@ -65,7 +78,10 @@ export function SurveyView() {
             </Tr>
           </THead>
           <TBody>
-            {offices.map((row) => (
+            {!ready ? (
+              <SkeletonTableRows rows={4} cols={6} />
+            ) : (
+              offices.map((row) => (
               <Tr key={row.name} hoverable={false}>
                 <Td className="font-medium">{row.name}</Td>
                 <Td>{row.active}</Td>
@@ -88,7 +104,8 @@ export function SurveyView() {
                   )}
                 </Td>
               </Tr>
-            ))}
+            ))
+            )}
           </TBody>
         </Table>
       </SubpagePanel>

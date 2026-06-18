@@ -43,7 +43,14 @@ import type {
   PartyEngineeringSurveyExtensions,
   PartyEngineeringSurveyWorkHostRef,
 } from "../lib/party-engineering-survey-extensions";
-import { cn, Note, PageShell } from "@platform/design-system";
+import {
+  cn,
+  InlineLoadingSkeleton,
+  Note,
+  PageShell,
+  PanelSkeleton,
+  useToast,
+} from "@platform/design-system";
 import { FailureRaisePanel } from "@failures/mfe";
 import { failureRaiserRoleForParty } from "@failures/mfe/lib/failure-party-roles";
 import { setSurveyWorkTopbarState } from "@platform/app-shared/prototype/survey-work-topbar-bridge";
@@ -147,6 +154,7 @@ export function PartyActiveTaskWork({
   engineeringSurveyExtensions?: PartyEngineeringSurveyExtensions;
 }) {
   const router = useRouter();
+  const { showToast } = useToast();
 
   const exit = () => {
     if (hostRef.current?.onClose) {
@@ -248,6 +256,7 @@ export function PartyActiveTaskWork({
     const ok = (await hostRef.current?.submit?.()) ?? false;
     setSaving(false);
     if (ok) {
+      showToast(def.completeMessage, "success");
       setSubmitSuccess(true);
       refresh();
       window.setTimeout(() => exit(), 1800);
@@ -266,6 +275,7 @@ export function PartyActiveTaskWork({
     setSaving(true);
     await completeChildTask(task.id);
     setSaving(false);
+    showToast(def.completeMessage, "success");
     refresh();
     exit();
   }
@@ -279,6 +289,10 @@ export function PartyActiveTaskWork({
     const ok = (await evaluatorHostRef.current.submit?.()) ?? false;
     setSaving(false);
     if (ok) {
+      showToast(
+        "تم إرسال التقييم وإجابات الاستدلال لأخصائي دراسة الحالة.",
+        "success",
+      );
       setSubmitSuccess(true);
       refresh();
       window.setTimeout(() => exit(), 1800);
@@ -294,6 +308,7 @@ export function PartyActiveTaskWork({
     const ok = (await surveyHostRef.current.submit?.()) ?? false;
     setSaving(false);
     if (ok) {
+      showToast(def.completeMessage, "success");
       setSubmitSuccess(true);
       refresh();
       window.setTimeout(() => exit(), 1800);
@@ -309,6 +324,7 @@ export function PartyActiveTaskWork({
     const ok = (await fieldInspectionHostRef.current.submit?.()) ?? false;
     setSaving(false);
     if (ok) {
+      showToast(def.completeMessage, "success");
       setSubmitSuccess(true);
       refresh();
       window.setTimeout(() => exit(), 1800);
@@ -331,7 +347,7 @@ export function PartyActiveTaskWork({
     }
     setSurveyWorkTopbarState({
       saving,
-      saveLabel: saving ? "جاري الإرسال…" : def.saveLabel,
+      saveLabel: def.saveLabel,
       onSave: () => {
         void submitSurvey();
       },
@@ -350,7 +366,7 @@ export function PartyActiveTaskWork({
     if (recordLoading && !record) {
       return (
         <div className={PAGE_WRAP}>
-          <p className={cn(LOADING_TEXT, "p-6")}>جاري التحميل…</p>
+          <PanelSkeleton />
         </div>
       );
     }
@@ -400,7 +416,7 @@ export function PartyActiveTaskWork({
           onFailureSubmitted: refresh,
         })
       ) : (
-        <p className={LOADING_TEXT}>جاري تحميل نموذج الرفع المساحي…</p>
+        <InlineLoadingSkeleton className={LOADING_TEXT} />
       ),
     );
   }
@@ -415,7 +431,7 @@ export function PartyActiveTaskWork({
         saveLabel="رجوع"
         showFooter={false}
       >
-        <p className={LOADING_TEXT}>جاري التحميل…</p>
+        <InlineLoadingSkeleton className={LOADING_TEXT} />
       </TaskWorkChrome>
     );
   }
@@ -472,11 +488,7 @@ export function PartyActiveTaskWork({
         onClose={exit}
         onSave={submitAppraisal}
         saveLabel={
-          saving
-            ? "جاري الإرسال…"
-            : evaluatorLocked
-              ? "رجوع"
-              : "إرسال للأخصائي"
+          evaluatorLocked ? "رجوع" : "إرسال للأخصائي"
         }
         showFooter
       >
@@ -487,7 +499,7 @@ export function PartyActiveTaskWork({
             hostRef: evaluatorHostRef,
           })
         ) : (
-          <p className={LOADING_TEXT}>جاري تحميل نموذج التقييم…</p>
+          <InlineLoadingSkeleton className={LOADING_TEXT} />
         )}
         <PartyTaskFailureRaise
           def={def}
@@ -529,11 +541,7 @@ export function PartyActiveTaskWork({
         onClose={exit}
         onSave={submitFieldInspection}
         saveLabel={
-          saving
-            ? "جاري الإرسال…"
-            : fieldInspectionLocked
-              ? "رجوع"
-              : def.saveLabel
+          fieldInspectionLocked ? "رجوع" : def.saveLabel
         }
         showFooter
       >
@@ -599,9 +607,7 @@ export function PartyActiveTaskWork({
         saving={saving}
         onClose={exit}
         onSave={onSave}
-        saveLabel={
-          saving ? "جاري الإرسال…" : locked ? "رجوع" : def.saveLabel
-        }
+        saveLabel={locked ? "رجوع" : def.saveLabel}
         showFooter
       >
         <PartyWorkTabs
@@ -649,7 +655,7 @@ export function PartyActiveTaskWork({
       saving={saving}
       onClose={exit}
       onSave={submitWork}
-      saveLabel={saving ? "جاري الإرسال…" : def.saveLabel}
+      saveLabel={def.saveLabel}
     >
       <PartyWorkTabs
         workTab={workTab}

@@ -2,6 +2,7 @@
 
 import {
   CardBody,
+  InlineLoadingSkeleton,
   KpiRowLabel,
   ProgressBar,
   SubpageHeader,
@@ -39,14 +40,16 @@ function LoadRow({
 }
 
 export function TeamCurrentLoadCard() {
-  const { data: dashboard } = useReportingDashboardQuery();
+  const { data: dashboard, isPending } = useReportingDashboardQuery();
   const rows = dashboard?.specialistLoad ?? [];
 
   return (
     <SubpagePanel className="mb-4">
       <SubpageHeader title="حمل الفريق الحالي" />
       <CardBody>
-        {rows.length === 0 ? (
+        {isPending ? (
+          <InlineLoadingSkeleton />
+        ) : rows.length === 0 ? (
           <p className="text-xs text-text-3">لا توجد مهام مفتوحة لأخصائيي دراسة الحالة.</p>
         ) : (
           rows.map((row) => (

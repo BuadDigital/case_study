@@ -22,6 +22,9 @@ export function pageIdFromPathname(pathname: string): PageId | null {
       return "valuation-coordination";
     case "custom-screen":
       return null;
+    case "settings":
+      if (parts[1] === "custom-screen") return "system-screen-catalog";
+      return null;
     case "login":
       return null;
     default:

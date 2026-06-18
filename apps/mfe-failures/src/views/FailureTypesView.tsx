@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
-import { Button, cn } from "@platform/design-system";
+import { Button, cn, InlineLoadingSkeleton, useToast } from "@platform/design-system";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import type { RoleId } from "@platform/types";
@@ -30,7 +30,8 @@ export function FailureTypesView() {
   const [categoryId, setCategoryId] = useState("");
   const [label, setLabel] = useState("");
   const [description, setDescription] = useState("");
-  const [toast, setToast] = useState<string | null>(null);
+  const { showToast } = useToast();
+  const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
     await queryClient.invalidateQueries({
@@ -43,14 +44,9 @@ export function FailureTypesView() {
     if (!categoryId) setCategoryId(catalog.categories[0].id);
   }, [catalog, categoryId]);
 
-  useEffect(() => {
-    if (!toast) return;
-    const t = window.setTimeout(() => setToast(null), 4000);
-    return () => window.clearTimeout(t);
-  }, [toast]);
-
   async function handleAdd() {
-    if (!canEdit || !categoryId || !label.trim()) return;
+    if (!canEdit || !categoryId || !label.trim() || busy) return;
+    setBusy(true);
     await addFailureProblemType({
       categoryId,
       label,
@@ -59,21 +55,26 @@ export function FailureTypesView() {
     await refresh();
     setLabel("");
     setDescription("");
-    setToast("تمت إضافة نوع التعذر");
+    setBusy(false);
+    showToast("تمت إضافة نوع التعذر", "success");
   }
 
   async function handleRemove(id: string) {
-    if (!canEdit) return;
+    if (!canEdit || busy) return;
+    setBusy(true);
     await removeFailureProblemType(id);
     await refresh();
-    setToast("تم الحذف");
+    setBusy(false);
+    showToast("تم الحذف", "success");
   }
 
   async function handleReset() {
-    if (!canEdit) return;
+    if (!canEdit || busy) return;
+    setBusy(true);
     await resetFailureTypesCatalog();
     await refresh();
-    setToast("تمت استعادة القائمة الافتراضية");
+    setBusy(false);
+    showToast("تمت استعادة القائمة الافتراضية", "success");
   }
 
   const sortedCategories = [...(catalog?.categories ?? [])].sort(
@@ -82,11 +83,7 @@ export function FailureTypesView() {
 
   return (
     <div className={cn(!isFetched && "opacity-55")}>
-      {toast ? (
-        <div className={cn(noteBase, "border-success bg-success-bg text-success-text")}>
-          {toast}
-        </div>
-      ) : null}
+      {!isFetched ? <InlineLoadingSkeleton className="mb-3" /> : null}
 
       {!canEdit ? (
         <div className={cn(noteBase, "border-info bg-info-bg text-info-text")}>
@@ -131,10 +128,10 @@ export function FailureTypesView() {
             />
           </div>
           <div className="flex gap-2 px-6 pb-4">
-            <Button type="button" variant="primary" size="sm" onClick={() => void handleAdd()}>
+            <Button type="button" variant="primary" size="sm" loading={busy} disabled={busy} onClick={() => void handleAdd()}>
               إضافة
             </Button>
-            <Button type="button" size="sm" onClick={() => void handleReset()}>
+            <Button type="button" size="sm" loading={busy} disabled={busy} onClick={() => void handleReset()}>
               استعادة القائمة الافتراضية
             </Button>
           </div>
@@ -177,6 +174,8 @@ export function FailureTypesView() {
                         type="button"
                         size="sm"
                         variant="danger"
+                        loading={busy}
+                        disabled={busy}
                         onClick={() => void handleRemove(type.id)}
                       >
                         حذف

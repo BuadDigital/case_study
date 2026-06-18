@@ -11,7 +11,7 @@ export function Table({
       data-pending={pending ? "true" : undefined}
       className={cn(
         "w-full border-collapse",
-        pending && "[&_tbody]:opacity-55",
+        pending && "[&_tbody]:opacity-55 [&_tbody]:transition-opacity [&_tbody]:duration-200",
         className,
       )}
       {...props}
@@ -35,7 +35,7 @@ export function Tr({
   return (
     <tr
       className={cn(
-        hoverable && "[&_td]:transition-colors [&:hover_td]:bg-surface-2 [&:hover_td]:cursor-pointer",
+        hoverable && "[&_td]:transition-colors [&_td]:duration-200 [&:hover_td]:bg-surface-2 [&:hover_td]:cursor-pointer",
         "[&:last-child_td]:border-b-0",
         className,
       )}

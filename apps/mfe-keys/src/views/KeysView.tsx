@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import {
@@ -9,15 +10,18 @@ import {
   StatCard,
   StatGrid,
   StatLabel,
+  StatSkeleton,
   StatValue,
   SubpageHeader,
   SubpagePanel,
+  SkeletonTableRows,
   Table,
   TBody,
   Td,
   Th,
   THead,
   Tr,
+  useToast,
 } from "@platform/design-system";
 import { markPropertyKeyReceived } from "../lib/keys-api";
 import {
@@ -26,43 +30,61 @@ import {
 } from "../query/keys-queries";
 
 export function KeysView() {
+  const { showToast } = useToast();
   const { role } = usePrototype();
   const viewOnly = !isSuperAdmin(role) && role === "general-manager";
-  const { data: kp = [] } = usePropertyKeysQuery();
+  const { data: kp = [], isPending } = usePropertyKeysQuery();
   const invalidate = useInvalidatePropertyKeys();
+  const [receivingId, setReceivingId] = useState<string | null>(null);
   const received = kp.filter((p) => p.status === "done").length;
+  const ready = !isPending;
 
   async function handleReceive(id: string) {
+    setReceivingId(id);
     const updated = await markPropertyKeyReceived(id);
-    if (updated) invalidate();
+    setReceivingId(null);
+    if (updated) {
+      invalidate();
+      showToast("تم تسجيل استلام المفتاح.", "success");
+    } else {
+      showToast("تعذّر تسجيل الاستلام.", "error");
+    }
   }
+
+  const statCards = ready
+    ? [
+        <StatCard key="total" accent="blue">
+          <StatLabel>إجمالي المفاتيح</StatLabel>
+          <StatValue value={kp.length} countUp />
+        </StatCard>,
+        <StatCard key="received" accent="green">
+          <StatLabel>مستلمة</StatLabel>
+          <StatValue value={received} countUp />
+        </StatCard>,
+        <StatCard key="pending" accent="warn">
+          <StatLabel>بانتظار الاستلام</StatLabel>
+          <StatValue value={Math.max(0, kp.length - received)} countUp />
+        </StatCard>,
+        <StatCard key="delegates">
+          <StatLabel>مندوبو المحكمة</StatLabel>
+          <StatValue value={2} />
+        </StatCard>,
+      ]
+    : Array.from({ length: 4 }, (_, index) => (
+        <StatCard key={index} accent="gray">
+          <StatSkeleton />
+        </StatCard>
+      ));
 
   return (
     <>
-      <StatGrid>
-        <StatCard accent="blue">
-          <StatLabel>إجمالي المفاتيح</StatLabel>
-          <StatValue value={kp.length} />
-        </StatCard>
-        <StatCard accent="green">
-          <StatLabel>مستلمة</StatLabel>
-          <StatValue value={received} />
-        </StatCard>
-        <StatCard accent="warn">
-          <StatLabel>بانتظار الاستلام</StatLabel>
-          <StatValue value={Math.max(0, kp.length - received)} />
-        </StatCard>
-        <StatCard>
-          <StatLabel>مندوبو المحكمة</StatLabel>
-          <StatValue value={2} />
-        </StatCard>
-      </StatGrid>
+      <StatGrid>{statCards}</StatGrid>
       <Note tone="warn" className="mb-4">
         مندوبا المحكمة المعتمدان: فراس كمرين — خالد الشريف
       </Note>
       <SubpagePanel>
         <SubpageHeader title="العقارات التي تحتاج مفاتيح" />
-        <Table>
+        <Table pending={!ready}>
           <THead>
             <Tr hoverable={false}>
               <Th>رقم العقار</Th>
@@ -75,7 +97,10 @@ export function KeysView() {
             </Tr>
           </THead>
           <TBody>
-            {kp.map((p) => (
+            {!ready ? (
+              <SkeletonTableRows rows={5} cols={7} />
+            ) : (
+              kp.map((p) => (
               <Tr key={p.id} hoverable={false}>
                 <Td className="text-[11px] font-semibold text-primary-light">
                   {p.idProp}
@@ -102,6 +127,8 @@ export function KeysView() {
                     <Button
                       size="sm"
                       variant="primary"
+                      loading={receivingId === p.id}
+                      disabled={receivingId !== null}
                       onClick={() => void handleReceive(p.id)}
                     >
                       تسجيل الاستلام
@@ -109,7 +136,8 @@ export function KeysView() {
                   )}
                 </Td>
               </Tr>
-            ))}
+            ))
+            )}
           </TBody>
         </Table>
       </SubpagePanel>

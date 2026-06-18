@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Platform.Api.Controllers;
 
@@ -50,6 +51,9 @@ public class CustomAssignedScreensController : ControllerBase
                 IsActive = s.IsActive,
                 SortOrder = s.SortOrder,
                 UpdatedAtUtc = s.UpdatedAtUtc,
+                Code = string.IsNullOrWhiteSpace(s.Code) ? null : s.Code,
+                OwnerRole = string.IsNullOrWhiteSpace(s.OwnerRole) ? null : s.OwnerRole,
+                ScreenStatus = string.IsNullOrWhiteSpace(s.ScreenStatus) ? null : s.ScreenStatus,
             })
             .ToListAsync(cancellationToken);
 
@@ -146,9 +150,21 @@ public class CustomAssignedScreensController : ControllerBase
         if (userId is null)
             return Unauthorized();
 
-        var validation = await ValidateRequest(request, null, cancellationToken);
+        var validation = ValidateRequest(request);
         if (validation is not null)
             return BadRequest(new { error = validation });
+
+        var linkedPageId = NormalizeTargetPageIdForStorage(request.TargetPageId);
+        if (!string.IsNullOrWhiteSpace(linkedPageId))
+        {
+            var existingId = await _db.CustomAssignedScreens
+                .AsNoTracking()
+                .Where(s => s.TargetPageId == linkedPageId)
+                .Select(s => s.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (existingId != Guid.Empty)
+                return await Update(existingId, request, cancellationToken);
+        }
 
         var now = DateTime.UtcNow;
         var sortOrder = request.SortOrder;
@@ -159,12 +175,11 @@ public class CustomAssignedScreensController : ControllerBase
                 cancellationToken) ?? 0;
             sortOrder = maxSort + 1;
         }
-
         var screen = new CustomAssignedScreen
         {
             Id = Guid.NewGuid(),
             Name = request.Name.Trim(),
-            TargetPageId = NormalizeTargetPageIdForStorage(request.TargetPageId),
+            TargetPageId = linkedPageId,
             IconPath = string.IsNullOrWhiteSpace(request.IconPath)
                 ? null
                 : request.IconPath.Trim(),
@@ -174,6 +189,24 @@ public class CustomAssignedScreensController : ControllerBase
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         };
+
+        if (!string.IsNullOrWhiteSpace(linkedPageId))
+        {
+            screen.Code = "";
+            screen.OwnerRole = "";
+            screen.ScreenStatus = "";
+            screen.DefinitionJson = "{}";
+        }
+        else
+        {
+            screen.Code = await DynamicScreenDefinitionMapper.NextScreenCodeAsync(
+                _db.CustomAssignedScreens,
+                cancellationToken);
+            screen.OwnerRole = "";
+            screen.ScreenStatus = "مخططة";
+            screen.DefinitionJson = DynamicScreenDefinitionMapper.Serialize(
+                DynamicScreenDefinitionMapper.Empty(screen.Code));
+        }
 
         await ApplyAssignments(screen, request.AssignedUserIds, now, cancellationToken);
         _db.CustomAssignedScreens.Add(screen);
@@ -205,13 +238,14 @@ public class CustomAssignedScreensController : ControllerBase
         if (screen is null)
             return NotFound();
 
-        var validation = await ValidateRequest(request, id, cancellationToken);
+        var validation = ValidateRequest(request);
         if (validation is not null)
             return BadRequest(new { error = validation });
 
         var now = DateTime.UtcNow;
+        var linkedPageId = NormalizeTargetPageIdForStorage(request.TargetPageId);
         screen.Name = request.Name.Trim();
-        screen.TargetPageId = NormalizeTargetPageIdForStorage(request.TargetPageId);
+        screen.TargetPageId = linkedPageId;
         screen.IconPath = string.IsNullOrWhiteSpace(request.IconPath)
             ? null
             : request.IconPath.Trim();
@@ -219,6 +253,25 @@ public class CustomAssignedScreensController : ControllerBase
         if (request.SortOrder > 0)
             screen.SortOrder = request.SortOrder;
         screen.UpdatedAtUtc = now;
+
+        if (!string.IsNullOrWhiteSpace(linkedPageId))
+        {
+            screen.Code = "";
+            screen.OwnerRole = "";
+            screen.ScreenStatus = "";
+            screen.DefinitionJson = "{}";
+        }
+        else if (string.IsNullOrWhiteSpace(screen.DefinitionJson) || screen.DefinitionJson == "{}")
+        {
+            screen.Code = string.IsNullOrWhiteSpace(screen.Code)
+                ? await DynamicScreenDefinitionMapper.NextScreenCodeAsync(
+                    _db.CustomAssignedScreens,
+                    cancellationToken)
+                : screen.Code;
+            screen.ScreenStatus = "مخططة";
+            screen.DefinitionJson = DynamicScreenDefinitionMapper.Serialize(
+                DynamicScreenDefinitionMapper.Empty(screen.Code));
+        }
 
         _db.CustomAssignedScreenUsers.RemoveRange(screen.Assignments);
         screen.Assignments.Clear();
@@ -236,6 +289,157 @@ public class CustomAssignedScreensController : ControllerBase
         return Ok(ToDto(updated, usersById));
     }
 
+    /// <summary>CDO — save dynamic screen definition (fields + layout).</summary>
+    [HttpPut("{id:guid}/definition")]
+    public async Task<ActionResult<CustomAssignedScreenDto>> SaveDefinition(
+        Guid id,
+        [FromBody] SaveDynamicScreenDefinitionRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!IsCdo())
+            return Forbid();
+
+        var screen = await _db.CustomAssignedScreens
+            .Include(s => s.Assignments)
+            .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+        if (screen is null)
+            return NotFound();
+
+        var bindings = request.Bindings ?? [];
+        var fields = request.Fields ?? [];
+        var status = DynamicScreenDefinitionMapper.ResolveStatus(bindings.Count);
+        var code = string.IsNullOrWhiteSpace(request.Code)
+            ? (string.IsNullOrWhiteSpace(screen.Code)
+                ? await DynamicScreenDefinitionMapper.NextScreenCodeAsync(
+                    _db.CustomAssignedScreens,
+                    cancellationToken)
+                : screen.Code)
+            : request.Code.Trim();
+
+        var definition = new DynamicScreenDefinitionDto
+        {
+            Code = code,
+            OwnerRole = "",
+            Status = status,
+            Fields = fields,
+            Bindings = bindings,
+        };
+
+        var now = DateTime.UtcNow;
+        screen.Code = code;
+        screen.OwnerRole = "";
+        screen.ScreenStatus = status;
+        screen.DefinitionJson = DynamicScreenDefinitionMapper.Serialize(definition);
+        screen.TargetPageId = "";
+        screen.UpdatedAtUtc = now;
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        var userIds = screen.Assignments.Select(a => a.UserId).ToList();
+        var usersById = await _users.Users
+            .AsNoTracking()
+            .Where(u => userIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, cancellationToken);
+
+        return Ok(ToDto(screen, usersById));
+    }
+
+    /// <summary>Assigned user — load their submission for a dynamic screen.</summary>
+    [HttpGet("{id:guid}/submission/mine")]
+    public async Task<ActionResult<DynamicScreenSubmissionDto>> GetMySubmission(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var userId = CurrentUserId();
+        if (userId is null)
+            return Unauthorized();
+
+        if (!await CanAccessScreen(id, userId, cancellationToken))
+            return Forbid();
+
+        var row = await _db.CustomScreenSubmissions
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                s => s.ScreenId == id && s.UserId == userId,
+                cancellationToken);
+
+        if (row is null)
+        {
+            return Ok(new DynamicScreenSubmissionDto
+            {
+                Id = Guid.Empty,
+                ScreenId = id,
+                UserId = userId,
+                Answers = new Dictionary<string, object?>(),
+                IsDraft = true,
+                UpdatedAtUtc = DateTime.UtcNow,
+                SubmittedAtUtc = null,
+            });
+        }
+
+        return Ok(DynamicScreenDefinitionMapper.ToSubmissionDto(row));
+    }
+
+    /// <summary>Assigned user — save draft or final submission.</summary>
+    [HttpPut("{id:guid}/submission/mine")]
+    public async Task<ActionResult<DynamicScreenSubmissionDto>> SaveMySubmission(
+        Guid id,
+        [FromBody] SaveDynamicScreenSubmissionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = CurrentUserId();
+        if (userId is null)
+            return Unauthorized();
+
+        if (!await CanAccessScreen(id, userId, cancellationToken))
+            return Forbid();
+
+        var screen = await _db.CustomAssignedScreens
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+        if (screen is null)
+            return NotFound();
+
+        if (!string.IsNullOrWhiteSpace(screen.TargetPageId))
+            return BadRequest(new { error = "screen is not dynamic" });
+
+        var validationError = ValidateSubmission(screen, request);
+        if (validationError is not null)
+            return BadRequest(new { error = validationError });
+
+        var now = DateTime.UtcNow;
+        var row = await _db.CustomScreenSubmissions
+            .FirstOrDefaultAsync(
+                s => s.ScreenId == id && s.UserId == userId,
+                cancellationToken);
+
+        if (row is null)
+        {
+            row = new CustomScreenSubmission
+            {
+                Id = Guid.NewGuid(),
+                ScreenId = id,
+                UserId = userId,
+                AnswersJson = DynamicScreenDefinitionMapper.SerializeAnswers(request.Answers),
+                IsDraft = request.IsDraft,
+                UpdatedAtUtc = now,
+                SubmittedAtUtc = request.IsDraft ? null : now,
+            };
+            _db.CustomScreenSubmissions.Add(row);
+        }
+        else
+        {
+            row.AnswersJson = DynamicScreenDefinitionMapper.SerializeAnswers(request.Answers);
+            row.IsDraft = request.IsDraft;
+            row.UpdatedAtUtc = now;
+            if (!request.IsDraft)
+                row.SubmittedAtUtc = now;
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+        return Ok(DynamicScreenDefinitionMapper.ToSubmissionDto(row));
+    }
+
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
@@ -246,6 +450,11 @@ public class CustomAssignedScreensController : ControllerBase
             .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
         if (screen is null)
             return NotFound();
+
+        var hasSubmissions = await _db.CustomScreenSubmissions
+            .AnyAsync(s => s.ScreenId == id, cancellationToken);
+        if (hasSubmissions)
+            return BadRequest(new { error = "cannot delete screen with saved submissions" });
 
         _db.CustomAssignedScreens.Remove(screen);
         await _db.SaveChangesAsync(cancellationToken);
@@ -295,16 +504,10 @@ public class CustomAssignedScreensController : ControllerBase
         }
     }
 
-    private async Task<string?> ValidateRequest(
-        SaveCustomAssignedScreenRequest request,
-        Guid? excludeId,
-        CancellationToken cancellationToken)
+    private static string? ValidateRequest(SaveCustomAssignedScreenRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Name))
             return "name is required";
-
-        if (request.AssignedUserIds is null || request.AssignedUserIds.Count == 0)
-            return "at least one user must be assigned";
 
         return null;
     }
@@ -337,9 +540,63 @@ public class CustomAssignedScreensController : ControllerBase
             IsActive = screen.IsActive,
             SortOrder = screen.SortOrder,
             UpdatedAtUtc = screen.UpdatedAtUtc,
+            Code = string.IsNullOrWhiteSpace(screen.Code) ? null : screen.Code,
+            OwnerRole = string.IsNullOrWhiteSpace(screen.OwnerRole) ? null : screen.OwnerRole,
+            ScreenStatus = string.IsNullOrWhiteSpace(screen.ScreenStatus)
+                ? null
+                : screen.ScreenStatus,
+            Definition = HasDynamicDefinition(screen)
+                ? DynamicScreenDefinitionMapper.Parse(screen)
+                : null,
             AssignedUserIds = assignedUsers.Select(u => u.Id).ToList(),
             AssignedUsers = assignedUsers,
         };
+    }
+
+    private static bool HasDynamicDefinition(CustomAssignedScreen screen) =>
+        string.IsNullOrWhiteSpace(screen.TargetPageId)
+        && !string.IsNullOrWhiteSpace(screen.DefinitionJson)
+        && screen.DefinitionJson != "{}";
+
+    private async Task<bool> CanAccessScreen(
+        Guid screenId,
+        string userId,
+        CancellationToken cancellationToken)
+    {
+        if (IsCdo())
+            return true;
+
+        return await _db.CustomAssignedScreenUsers
+            .AsNoTracking()
+            .AnyAsync(
+                a => a.ScreenId == screenId && a.UserId == userId,
+                cancellationToken);
+    }
+
+    private static string? ValidateSubmission(
+        CustomAssignedScreen screen,
+        SaveDynamicScreenSubmissionRequest request)
+    {
+        if (request.IsDraft)
+            return null;
+
+        var definition = DynamicScreenDefinitionMapper.Parse(screen);
+        var fieldById = definition.Fields.ToDictionary(f => f.Id, StringComparer.Ordinal);
+        foreach (var binding in definition.Bindings)
+        {
+            if (!string.Equals(binding.Mode, "input", StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (!binding.Required)
+                continue;
+            if (!fieldById.TryGetValue(binding.FieldId, out var field))
+                continue;
+
+            request.Answers.TryGetValue(field.Id, out var value);
+            if (value is null || (value is string s && string.IsNullOrWhiteSpace(s)))
+                return $"required field missing: {field.Name}";
+        }
+
+        return null;
     }
 
     private static string NormalizeTargetPageIdForStorage(string? value) =>
@@ -352,5 +609,6 @@ public class CustomAssignedScreensController : ControllerBase
         User.FindFirstValue(ClaimTypes.NameIdentifier)
         ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
 
-    private bool IsCdo() => User.IsInRole(OrgRoles.Cdo);
+    private bool IsCdo() =>
+        User.IsInRole(OrgRoles.Cdo) || User.IsInRole("Admin");
 }

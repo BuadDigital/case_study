@@ -5,6 +5,8 @@ export type CustomAssignedScreenUser = {
   userName: string;
 };
 
+import type { DynamicScreenDefinition } from "./dynamic-screen-definition";
+
 export type CustomAssignedScreen = {
   id: string;
   name: string;
@@ -13,6 +15,10 @@ export type CustomAssignedScreen = {
   isActive: boolean;
   sortOrder: number;
   updatedAtUtc: string;
+  code?: string | null;
+  ownerRole?: string | null;
+  screenStatus?: string | null;
+  definition?: DynamicScreenDefinition | null;
   assignedUserIds?: string[];
   assignedUsers?: CustomAssignedScreenUser[];
 };

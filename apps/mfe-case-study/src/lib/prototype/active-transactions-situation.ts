@@ -1,17 +1,13 @@
 import type { PageId, RoleId } from "@platform/types";
-import { activeTransactionNavForRole } from "@platform/app-shared/prototype/active-transactions";
+import { activeTransactionNavForRole, filterTasksForCaseStudy } from "@platform/app-shared/prototype/active-transactions";
 import type { PoIntakeRecord } from "./po-intake-data";
 import { PARTY_TASK_PAGES } from "@platform/app-shared/prototype/party-task-pages";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import type { PoRow } from "@platform/app-shared/prototype/constants";
-import {
-  tasksForPartyAssignee,
-  tasksForRole,
-  type WorkflowTask,
-} from "./tasks-storage";
+import { filterTasksForDistribution,filterTasksForPrimaryData } from "./transaction-filters";
+import { tasksForPartyAssignee,tasksForRole,type WorkflowTask } from "./tasks-storage";
 
 const RIYADH_TZ = "Asia/Riyadh";
-
 const PARTY_ROLE_IDS = new Set(
   Object.values(PARTY_TASK_PAGES).map((d) => d.roleId),
 );
@@ -47,16 +43,36 @@ export function isPoRegisteredToday(
   return isDateOnlyTodayInRiyadh(record.receivedFromEnfathAt, now);
 }
 
-/** Tasks assigned to the signed-in prototype user (role / party assignee). */
+/** Tasks assigned to the signed-in prototype user (role / party assignee / custom grant). */
 export function tasksAssignedToViewer(
   role: RoleId,
   tasks: WorkflowTask[],
   viewerEmail?: string | null,
+  customGrantedPages?: readonly PageId[],
 ): WorkflowTask[] {
   if (isSuperAdmin(role)) return tasks;
-  if (PARTY_ROLE_IDS.has(role))
-    return tasksForPartyAssignee(role, tasks, undefined, viewerEmail);
-  return tasksForRole(role, tasks);
+
+  const roleTasks = PARTY_ROLE_IDS.has(role)
+    ? tasksForPartyAssignee(role, tasks, undefined, viewerEmail)
+    : tasksForRole(role, tasks);
+
+  const granted = customGrantedPages ?? [];
+  if (granted.length === 0) return roleTasks;
+
+  const extra: WorkflowTask[] = [];
+  if (granted.includes("active-case-study")) {
+    extra.push(...filterTasksForCaseStudy(tasks));
+  }
+  if (granted.includes("active-distribution")) {
+    extra.push(...filterTasksForDistribution(tasks));
+  }
+  if (granted.includes("active-primary-data")) {
+    extra.push(...filterTasksForPrimaryData(tasks, new Map()));
+  }
+
+  const byId = new Map<string, WorkflowTask>();
+  for (const task of [...roleTasks, ...extra]) byId.set(task.id, task);
+  return [...byId.values()];
 }
 
 export function countIncompleteWorkOrders(rows: PoRow[]): number {
@@ -98,8 +114,9 @@ export type ActiveTransactionsSituationFlags = {
 export function situationVisibilityForPages(
   pages: readonly PageId[],
 ): ActiveTransactionsSituationFlags {
-  const showPoMetrics = pages.includes("po");
-  const showTransactionMetrics = activeTransactionNavForRole([...pages]).some(
+  const merged = [...new Set(pages)];
+  const showPoMetrics = merged.includes("po");
+  const showTransactionMetrics = activeTransactionNavForRole(merged).some(
     (item) => item.available && !item.placeholder,
   );
   return { showPoMetrics, showTransactionMetrics };
@@ -117,6 +134,7 @@ export type ActiveTransactionsSituationStats = {
 export function computeActiveTransactionsSituation(input: {
   role: RoleId;
   rolePages?: readonly PageId[];
+  customGrantedPages?: readonly PageId[];
   poRows: PoRow[] | undefined;
   poRecords: PoIntakeRecord[] | undefined;
   tasks: WorkflowTask[] | undefined;
@@ -125,14 +143,17 @@ export function computeActiveTransactionsSituation(input: {
   tasksReady: boolean;
   now?: Date;
 }): ActiveTransactionsSituationStats {
-  const flags = situationVisibilityForPages(
-    input.rolePages?.length ? input.rolePages : ["dashboard"],
-  );
-  const now = input.now ?? new Date();
+  const effectivePages = [
+    ...new Set([
+      ...(input.rolePages?.length ? input.rolePages : (["dashboard"] as PageId[])),
+      ...(input.customGrantedPages ?? []),
+    ]),
+  ] as PageId[];
 
+  const flags = situationVisibilityForPages(effectivePages);
+  const now = input.now ?? new Date();
   const needPoData = flags.showPoMetrics;
   const needTasks = flags.showTransactionMetrics;
-
   const poReady = !needPoData || (input.poRowsReady && input.poRecordsReady);
   const tasksReady = !needTasks || input.tasksReady;
   const ready = poReady && tasksReady;
@@ -149,7 +170,12 @@ export function computeActiveTransactionsSituation(input: {
   }
 
   const mine = needTasks
-    ? tasksAssignedToViewer(input.role, input.tasks ?? [])
+    ? tasksAssignedToViewer(
+        input.role,
+        input.tasks ?? [],
+        undefined,
+        input.customGrantedPages,
+      )
     : [];
 
   return {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type RefObject } from "react";
-import { FormGroup, FormRow, Input, Label, Note, Select } from "@platform/design-system";
+import { FormGroup, FormRow, InlineLoadingSkeleton, Input, Label, Note, Select, useToast } from "@platform/design-system";
 import {
   RegField,
   RegTextarea,
@@ -61,6 +61,7 @@ export function ValuationCoordinationWorkBody({
   hostRef: RefObject<ValuationCoordinationWorkHostRef | null>;
 }) {
   void def;
+  const { showToast } = useToast();
   const propertyId = task.propertyId ?? "";
   const { data: record } = usePoRecordQuery(task.poNumber);
   const { data: allTasks } = useWorkflowTasksQuery();
@@ -148,7 +149,9 @@ export function ValuationCoordinationWorkBody({
     const errors = validateValuationCoordinationSubmission(withAssignees);
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
-      setFormError(firstValuationCoordinationError(errors));
+      const message = firstValuationCoordinationError(errors);
+      setFormError(message);
+      showToast(message, "error");
       return false;
     }
 
@@ -165,9 +168,11 @@ export function ValuationCoordinationWorkBody({
       hostRef.current?.onSubmitted?.();
       return true;
     }
-    setFormError("تعذر تأكيد الاستلام — حاول مرة أخرى");
+    const message = "تعذر تأكيد الاستلام — حاول مرة أخرى";
+    setFormError(message);
+    showToast(message, "error");
     return false;
-  }, [draft, locked, hostRef, task.id, inspectorName, appraiserName]);
+  }, [draft, locked, hostRef, task.id, inspectorName, appraiserName, showToast]);
 
   useEffect(() => {
     if (!hostRef.current) return;
@@ -175,7 +180,7 @@ export function ValuationCoordinationWorkBody({
   }, [hostRef, submit]);
 
   if (!draft) {
-    return <p className="text-xs text-text-3">جاري تحميل نموذج الاستلام…</p>;
+    return <InlineLoadingSkeleton />;
   }
 
   return (

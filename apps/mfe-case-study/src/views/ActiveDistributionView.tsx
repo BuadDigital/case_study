@@ -12,6 +12,7 @@ import {
 import { filterTasksForDistribution } from "@case-study/mfe/lib/prototype/transaction-filters";
 
 const DISTRIBUTION_QUEUE: ActiveTransactionQueueConfig = {
+  pageId: "active-distribution",
   pageTitle: "توزيع المعاملات",
   hidePageTitle: true,
   tableLayout: "distribution",

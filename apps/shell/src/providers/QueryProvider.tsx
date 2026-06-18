@@ -19,7 +19,7 @@ function makeQueryClient() {
         staleTime: 60_000,
         gcTime: 10 * 60_000,
         refetchOnWindowFocus: false,
-        retry: 1,
+        retry: 0,
       },
     },
   });
@@ -29,7 +29,13 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
   const [client] = useState(makeQueryClient);
 
   useEffect(() => {
-    prefetchCorePrototypeData(client);
+    const run = () => prefetchCorePrototypeData(client);
+    if (typeof requestIdleCallback !== "undefined") {
+      const id = requestIdleCallback(run, { timeout: 2_000 });
+      return () => cancelIdleCallback(id);
+    }
+    const timer = setTimeout(run, 250);
+    return () => clearTimeout(timer);
   }, [client]);
 
   return (

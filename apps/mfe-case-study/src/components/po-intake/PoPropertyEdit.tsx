@@ -19,7 +19,7 @@ import {
   mergeFieldErrors,
   type FieldErrors,
 } from "@platform/app-shared/registration/registration-utils";
-import { Button, Note } from "@platform/design-system";
+import { Button, InlineLoadingSkeleton, Note, useToast } from "@platform/design-system";
 import { PoEditShell } from "./PoEditShell";
 import { PoPropertyBourseForm } from "./PoPropertyBourseForm";
 import { PoPropertyEnfathForm } from "./PoPropertyEnfathForm";
@@ -56,6 +56,7 @@ export function PoPropertyEdit({
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     let cancelled = false;
@@ -151,7 +152,7 @@ export function PoPropertyEdit({
         onSave={onBackAction}
         saveLabel="رجوع"
       >
-        <p className="text-xs text-text-3">جاري التحميل…</p>
+        <InlineLoadingSkeleton />
       </PoEditShell>
     );
   }
@@ -211,10 +212,12 @@ export function PoPropertyEdit({
       setSaving(false);
       setFormError(result.error);
       if (result.errors) setFieldErrors(result.errors);
+      showToast(result.error, "error");
       return;
     }
 
     setSaving(false);
+    showToast("تم حفظ التعديلات.", "success");
     onSavedAction();
   }
 
@@ -231,8 +234,10 @@ export function PoPropertyEdit({
     setSaving(false);
     if (!result.ok) {
       setFormError(result.error);
+      showToast(result.error, "error");
       return;
     }
+    showToast("تم حذف العقار.", "success");
     if (onDeletedAction) onDeletedAction();
     else onSavedAction();
   }
@@ -251,6 +256,7 @@ export function PoPropertyEdit({
             size="sm"
             variant="danger"
             className="border-red/30 bg-transparent hover:bg-danger-bg/60"
+            loading={saving}
             disabled={saving}
             onClick={() => void handleDelete()}
           >

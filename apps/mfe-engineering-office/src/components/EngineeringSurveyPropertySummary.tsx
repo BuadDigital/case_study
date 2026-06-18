@@ -8,7 +8,7 @@ import {
   showsCourtFields,
   type PoIntakeRecord,
 } from "@case-study/mfe";
-import { Badge } from "@platform/design-system";
+import { Badge, InlineLoadingSkeleton } from "@platform/design-system";
 import {
   FieldBox,
   FieldsGrid,
@@ -25,9 +25,7 @@ export function EngineeringSurveyPropertySummary({
   record?: PoIntakeRecord;
 }) {
   if (!property) {
-    return (
-      <InfoBox icon="ℹ">جاري تحميل بيانات الصك…</InfoBox>
-    );
+    return <InlineLoadingSkeleton />;
   }
 
   const deedLabel = formatPropertyDeedDisplay(property);

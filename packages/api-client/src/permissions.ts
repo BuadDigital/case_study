@@ -29,11 +29,18 @@ function headers(token: string): HeadersInit {
 
 export async function fetchPermissions(config: PermissionsApiConfig): Promise<PermissionsDto> {
   const base = config.baseUrl ?? getApiBase();
-  const res = await fetch(`${base}/api/permissions`, {
-    headers: headers(config.token),
-  });
-  if (!res.ok) throw new Error(`permissions ${res.status}`);
-  return res.json() as Promise<PermissionsDto>;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const res = await fetch(`${base}/api/permissions`, {
+      headers: headers(config.token),
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(`permissions ${res.status}`);
+    return res.json() as Promise<PermissionsDto>;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function fetchMe(

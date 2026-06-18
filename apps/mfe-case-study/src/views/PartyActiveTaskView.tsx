@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { PanelSkeleton } from "@platform/design-system";
 import { ActiveTransactionQueueView, type ActiveTransactionQueueConfig } from "./ActiveTransactionQueueView";
 import { PartyActiveTaskWorkPanel } from "./PartyActiveTaskWorkPanel";
 import { filterTasksForPartyKind } from "@platform/app-shared/prototype/party-task-pages";
@@ -48,6 +49,7 @@ function queueConfig(
   ) => filterTasksForPartyKind(mine, def.kind);
 
   const base: ActiveTransactionQueueConfig = {
+    pageId: def.pageId,
     pageTitle: def.pageTitle,
     emptyLine: def.emptyLine,
     emptyHint: def.emptyHint,
@@ -148,33 +150,23 @@ export function PartyActiveTaskView({
   }, [def?.kind, legacyTask, router]);
 
   if (def?.kind === "engineering-survey" && legacyTask) {
-    return (
-      <p className="p-4 text-xs text-text-3">جاري فتح مهمة الرفع المساحي…</p>
-    );
+    return <PanelSkeleton className="p-4" />;
   }
 
   if (def?.kind === "property-appraisal" && legacyTask) {
-    return (
-      <p className="p-4 text-xs text-text-3">جاري فتح مهمة التقييم…</p>
-    );
+    return <PanelSkeleton className="p-4" />;
   }
 
   if (def?.kind === "field-inspection" && legacyTask) {
-    return (
-      <p className="p-4 text-xs text-text-3">جاري فتح مهمة المعاينة…</p>
-    );
+    return <PanelSkeleton className="p-4" />;
   }
 
   if (def?.kind === "government-review" && legacyTask) {
-    return (
-      <p className="p-4 text-xs text-text-3">جاري فتح مهمة المراجعة…</p>
-    );
+    return <PanelSkeleton className="p-4" />;
   }
 
   if (def?.kind === "valuation-coordination" && legacyTask) {
-    return (
-      <p className="p-4 text-xs text-text-3">جاري فتح مهمة الاستلام…</p>
-    );
+    return <PanelSkeleton className="p-4" />;
   }
 
   if (!def) {

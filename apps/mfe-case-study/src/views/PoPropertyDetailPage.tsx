@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Button, Note, PageGutter, PageShell } from "@platform/design-system";
+import { Button, Note, PageGutter, PageShell, PanelSkeleton } from "@platform/design-system";
 import { PoDetailPropertyCard } from "@case-study/mfe/components/po-intake/PoDetailPropertyCard";
 import { PropertyDetailHero } from "@case-study/mfe/components/po-intake/PropertyDetailHero";
 import {
@@ -29,7 +29,7 @@ export function PoPropertyDetailPage({
   if (isPending && !record) {
     return (
       <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg">
-        <p className="p-6 text-xs text-text-3">جاري التحميل…</p>
+        <PanelSkeleton />
       </div>
     );
   }

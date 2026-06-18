@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./tokens.css": "./src/styles/tokens.css",
+    "./animations.css": "./src/styles/animations.css",
     "./tailwind-theme.css": "./src/styles/tailwind-theme.css"
   },
   "peerDependencies": {

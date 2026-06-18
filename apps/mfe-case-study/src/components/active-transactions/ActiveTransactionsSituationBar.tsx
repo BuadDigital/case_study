@@ -35,7 +35,7 @@ function SituationCard({
   const inner = (
     <>
       <StatLabel>{label}</StatLabel>
-      <StatValue value={value} />
+      <StatValue value={value} countUp />
       <StatSub>{sub}</StatSub>
     </>
   );

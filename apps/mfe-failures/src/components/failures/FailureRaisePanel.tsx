@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Card, CardBody, CardHeader, Button, cn } from "@platform/design-system";
+import { Card, CardBody, CardHeader, Button, cn, useToast } from "@platform/design-system";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { failureProblemTypeLabel } from "../../lib/failure-types-data";
 import { createFailure } from "../../lib/failures-repository";
@@ -37,6 +37,7 @@ export function FailureRaisePanel({
   onSubmitted?: () => void;
 }) {
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const { data: failures = [] } = useFailuresQuery();
   const [open, setOpen] = useState(false);
   const [severity, setSeverity] = useState<FailureSeverity>("internal");
@@ -70,6 +71,7 @@ export function FailureRaisePanel({
       setOpen(false);
       setProblemTypeId("");
       setNote("");
+      showToast("تم تسجيل التعذر.", "success");
       onSubmitted?.();
     });
   }

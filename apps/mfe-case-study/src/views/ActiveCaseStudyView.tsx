@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { filterTasksForCaseStudy } from "@platform/app-shared/prototype/active-transactions";
+import { PanelSkeleton } from "@platform/design-system";
 import {
   ActiveTransactionQueueView,
   type ActiveTransactionQueueConfig,
@@ -16,6 +17,7 @@ import {
 } from "../lib/my-task-routes";
 
 const CASE_STUDY_QUEUE: ActiveTransactionQueueConfig = {
+  pageId: "active-case-study",
   pageTitle: "دراسة حالة العقارات",
   hidePageTitle: true,
   tableLayout: "case-study",
@@ -42,9 +44,7 @@ export function ActiveCaseStudyView() {
   }, [legacyTask, router]);
 
   if (legacyTask) {
-    return (
-      <p className="my-2 text-xs text-text-3">جاري فتح دراسة الحالة…</p>
-    );
+    return <PanelSkeleton className="my-2" />;
   }
 
   return <ActiveTransactionQueueView config={CASE_STUDY_QUEUE} />;

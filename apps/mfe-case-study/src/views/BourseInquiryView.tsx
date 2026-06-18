@@ -11,12 +11,14 @@ import {
   Note,
   PageGutter,
   PageShell,
+  SkeletonTableRows,
   Table,
   TBody,
   Td,
   Th,
   THead,
   Tr,
+  useToast,
 } from "@platform/design-system";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { ROLES } from "@platform/app-shared/prototype/constants";
@@ -79,6 +81,7 @@ export function BourseInquiryView() {
     );
   });
   const queuePending = !isFetched;
+  const { showToast } = useToast();
   const [selected, setSelected] = useState<PendingBoursePropertyDto | null>(null);
   const [property, setProperty] = useState<PoPropertyIntake>(emptyProperty);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -183,6 +186,7 @@ export function BourseInquiryView() {
         queryKey: prototypeKeys.workflowTasks(),
       });
       await refresh();
+      showToast("تم إرسال التعذر للمشرف.", "success");
       return;
     }
 
@@ -205,11 +209,13 @@ export function BourseInquiryView() {
     if (!result.ok) {
       setFormError(result.error);
       if (result.errors) setFieldErrors(result.errors);
+      showToast(result.error, "error");
       return;
     }
 
     closeForm();
     await refresh();
+    showToast("تم حفظ بيانات البورصة.", "success");
   }
 
   const obstructionPath = deedVitality === "inactive";
@@ -285,7 +291,10 @@ export function BourseInquiryView() {
                     </Tr>
                   </THead>
                   <TBody>
-                    {items.map((item) => {
+                    {queuePending && items.length === 0 ? (
+                      <SkeletonTableRows rows={5} cols={6} />
+                    ) : (
+                      items.map((item) => {
                       const active =
                         selected?.poNumber === item.poNumber &&
                         selected?.propertyId === item.propertyId;
@@ -330,7 +339,8 @@ export function BourseInquiryView() {
                           </Td>
                         </Tr>
                       );
-                    })}
+                    })
+                    )}
                   </TBody>
                 </Table>
               </div>
@@ -400,14 +410,13 @@ export function BourseInquiryView() {
                 <Button
                   type="button"
                   variant="primary"
+                  loading={saving}
                   disabled={saving}
                   onClick={() => void handleSubmit()}
                 >
-                  {saving
-                    ? "جاري الحفظ…"
-                    : obstructionPath
-                      ? "إرسال للمشرف — إدارة التعذرات"
-                      : "حفظ وإكمال البورصة"}
+                  {obstructionPath
+                    ? "إرسال للمشرف — إدارة التعذرات"
+                    : "حفظ وإكمال البورصة"}
                 </Button>
               </div>
             </CardBody>

@@ -10,7 +10,9 @@ import {
   StatCard,
   StatGrid,
   StatLabel,
+  StatSkeleton,
   StatValue,
+  SkeletonTableRows,
   Table,
   TBody,
   Td,
@@ -155,22 +157,32 @@ export function SuspendedTransactionsView() {
     <>
       <PageGutter className="mb-4 grid grid-cols-2 gap-2.5 pt-4 md:grid-cols-4">
         <StatGrid cols={4} className="col-span-full mb-0">
+          {!isFetched ? (
+            Array.from({ length: 4 }, (_, index) => (
+              <StatCard key={index} accent="gray">
+                <StatSkeleton />
+              </StatCard>
+            ))
+          ) : (
+            <>
           <StatCard accent="red">
             <StatLabel>معاملات معلقة</StatLabel>
-            <StatValue value={isFetched ? stats.suspended : undefined} />
+            <StatValue value={stats.suspended} countUp />
           </StatCard>
           <StatCard accent="amber">
             <StatLabel>متأخرة عن الاستحقاق</StatLabel>
-            <StatValue value={isFetched ? stats.overdue : undefined} />
+            <StatValue value={stats.overdue} countUp />
           </StatCard>
           <StatCard accent="default">
             <StatLabel>ضمن المهلة</StatLabel>
-            <StatValue value={isFetched ? stats.onTime : undefined} />
+            <StatValue value={stats.onTime} countUp />
           </StatCard>
           <StatCard accent="gray">
             <StatLabel>الإجمالي</StatLabel>
-            <StatValue value={isFetched ? stats.total : undefined} />
+            <StatValue value={stats.total} countUp />
           </StatCard>
+            </>
+          )}
         </StatGrid>
       </PageGutter>
 
@@ -227,7 +239,10 @@ export function SuspendedTransactionsView() {
                     </Tr>
                   </THead>
                   <TBody>
-                    {sortedItems.map((item) => {
+                    {queuePending && sortedItems.length === 0 ? (
+                      <SkeletonTableRows rows={5} cols={6} />
+                    ) : (
+                      sortedItems.map((item) => {
                       const record = poByNumber.get(item.poNumber.trim());
                       const remaining = resolveRemainingTime(
                         record?.dueDateAt ?? "",
@@ -279,7 +294,8 @@ export function SuspendedTransactionsView() {
                           </TdAction>
                         </Tr>
                       );
-                    })}
+                    })
+                    )}
                   </TBody>
                 </Table>
               </div>

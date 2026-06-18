@@ -19,6 +19,10 @@ public class CustomAssignedScreenDto
     public bool IsActive { get; init; }
     public int SortOrder { get; init; }
     public DateTime UpdatedAtUtc { get; init; }
+    public string? Code { get; init; }
+    public string? OwnerRole { get; init; }
+    public string? ScreenStatus { get; init; }
+    public DynamicScreenDefinitionDto? Definition { get; init; }
     public IReadOnlyList<string> AssignedUserIds { get; init; } = [];
     public IReadOnlyList<CustomAssignedScreenUserDto> AssignedUsers { get; init; } = [];
 }

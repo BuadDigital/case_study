@@ -138,10 +138,11 @@ export function PoIntakeWizardShell({
                     <Button
                       type="button"
                       variant="primary"
+                      loading={saving}
                       disabled={saving}
                       onClick={onNext}
                     >
-                      {saving ? "جارٍ الحفظ..." : nextLabel}
+                      {nextLabel}
                     </Button>
                   </div>
                 </footer>

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
-import { Button, Label, cn, formControlClassName } from "@platform/design-system";
+import { Button, InlineLoadingSkeleton, Label, cn, formControlClassName } from "@platform/design-system";
 import type { WorkflowTask } from "@case-study/mfe";
 import { findSurveyChildForParent } from "../lib/engineering-survey-task";
 import type { EngineeringSurveySubmission } from "../lib/engineering-survey-data";
@@ -98,9 +98,7 @@ export function EngineeringSurveyAdvisoryPanel({
   if (loadingSubmission) {
     return (
       <RegistrationFormCard title="بيانات المكتب الهندسي (استرشادي)">
-        <p className="text-xs leading-relaxed text-text-3">
-          جاري تحميل بيانات الرفع المساحي…
-        </p>
+        <InlineLoadingSkeleton />
       </RegistrationFormCard>
     );
   }

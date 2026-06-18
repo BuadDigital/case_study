@@ -19,6 +19,7 @@ import {
   THead,
   Tr,
   cn,
+  PanelSkeleton,
   type BadgeTone,
 } from "@platform/design-system";
 import { RowMoreMenu } from "@case-study/mfe/components/ui/RowMoreMenu";
@@ -156,7 +157,7 @@ export function PoPropertiesPage({
   if (isPending && !record) {
     return (
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg">
-        <p className="m-2 text-xs text-text-3">جاري التحميل…</p>
+        <PanelSkeleton className="m-2" />
       </div>
     );
   }

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
-import { useHasMounted } from "../hooks/use-has-mounted";
 import { TeamCurrentLoadCard } from "../components/dashboard/TeamCurrentLoadCard";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import {
@@ -13,11 +12,14 @@ import {
   StatCard,
   StatGrid,
   StatLabel,
+  StatSkeleton,
   StatSub,
   StatValue,
   StatusBadge,
   SubpageHeader,
   SubpagePanel,
+  SkeletonTableRows,
+  Skeleton,
   Table,
   TBody,
   Td,
@@ -46,16 +48,17 @@ function teamTint(t: string): { bg: string; fg: string } {
 
 export function DashboardView() {
   const router = useRouter();
-  const mounted = useHasMounted();
   const { role } = usePrototype();
   const mgr = MGR_ROLES.has(role);
   const showTeamLoad = TEAM_LOAD_ROLES.has(role);
-  const { data: poRows } = usePoListRowsQuery();
-  const { data: propertyItems } = usePropertyListItemsQuery();
-  const { data: reporting } = useReportingDashboardQuery();
+  const { data: poRows, isPending: poPending } = usePoListRowsQuery();
+  const { data: propertyItems, isPending: propertyPending } =
+    usePropertyListItemsQuery();
+  const { data: reporting, isPending: reportingPending } = useReportingDashboardQuery();
+  const reportingReady = !reportingPending && reporting !== undefined;
 
   const propertyStats = useMemo(() => {
-    if (!mounted || !propertyItems) return undefined;
+    if (!propertyItems) return undefined;
     const rows = propertyItems.map((item) => item.row);
     const total = rows.length;
     const done = rows.filter((r) => r.status === "done").length;
@@ -66,39 +69,47 @@ export function DashboardView() {
       fail: rows.filter((r) => r.status === "fail").length,
       donePct: total > 0 ? `${Math.round((done / total) * 100)}% من الإجمالي` : "—",
     };
-  }, [mounted, propertyItems]);
+  }, [propertyItems]);
 
   const poActive = (poRows ?? []).filter((p) => p.status === "progress");
-  const poReady = mounted && poRows !== undefined;
+  const poReady = !poPending && poRows !== undefined;
 
-  return (
-    <>
-      <StatGrid>
-        <StatCard accent="blue">
+  const statCards = propertyPending
+    ? Array.from({ length: 4 }, (_, index) => (
+        <StatCard key={index} accent="gray">
+          <StatSkeleton />
+        </StatCard>
+      ))
+    : [
+        <StatCard key="total" accent="blue">
           <StatLabel>عقارات مسجّلة</StatLabel>
-          <StatValue value={propertyStats?.total} />
+          <StatValue value={propertyStats?.total} countUp />
           <StatSub>من استلام أوامر العمل</StatSub>
-        </StatCard>
-        <StatCard accent="warn">
+        </StatCard>,
+        <StatCard key="progress" accent="warn">
           <StatLabel>قيد التنفيذ</StatLabel>
-          <StatValue value={propertyStats?.progress} />
+          <StatValue value={propertyStats?.progress} countUp />
           <StatSub>بما فيها قيد التحقق</StatSub>
-        </StatCard>
-        <StatCard accent="green">
+        </StatCard>,
+        <StatCard key="done" accent="green">
           <StatLabel>مكتملة</StatLabel>
-          <StatValue value={propertyStats?.done} />
+          <StatValue value={propertyStats?.done} countUp />
           <StatSub>{propertyStats?.donePct ?? "—"}</StatSub>
-        </StatCard>
-        <StatCard accent="red">
+        </StatCard>,
+        <StatCard key="fail" accent="red">
           <StatLabel>تعذرات</StatLabel>
-          <StatValue value={propertyStats?.fail} />
+          <StatValue value={propertyStats?.fail} countUp />
           <StatSub>
             {propertyStats && propertyStats.fail > 0
               ? "تحتاج مراجعة"
               : "لا تعذرات مسجّلة"}
           </StatSub>
-        </StatCard>
-      </StatGrid>
+        </StatCard>,
+      ];
+
+  return (
+    <>
+      <StatGrid>{statCards}</StatGrid>
 
       {showTeamLoad ? <TeamCurrentLoadCard /> : null}
 
@@ -125,15 +136,16 @@ export function DashboardView() {
                 </Tr>
               </THead>
               <TBody>
-                {poReady && poActive.length === 0 ? (
+                {!poReady ? (
+                  <SkeletonTableRows rows={4} cols={4} />
+                ) : poActive.length === 0 ? (
                   <Tr hoverable={false}>
                     <Td colSpan={4} className="text-center text-text-3">
                       لا توجد أوامر عمل نشطة
                     </Td>
                   </Tr>
-                ) : null}
-                {poReady
-                  ? poActive.map((p) => (
+                ) : (
+                  poActive.map((p) => (
                       <Tr key={p.id} onClick={() => router.push("/po")}>
                         <Td className="text-[11px] font-semibold text-primary-light">
                           {p.id}
@@ -161,7 +173,7 @@ export function DashboardView() {
                         </Td>
                       </Tr>
                     ))
-                  : null}
+                )}
               </TBody>
             </Table>
           </SubpagePanel>
@@ -176,7 +188,7 @@ export function DashboardView() {
                 عرض الكل
               </Link>
             </SubpageHeader>
-            <Table>
+            <Table pending={!reportingReady}>
               <THead>
                 <Tr hoverable={false}>
                   <Th>الطلب</Th>
@@ -186,7 +198,10 @@ export function DashboardView() {
                 </Tr>
               </THead>
               <TBody>
-                {(reporting?.recentValuationRequests ?? []).map((v) => (
+                {!reportingReady ? (
+                  <SkeletonTableRows rows={4} cols={4} />
+                ) : (
+                  (reporting?.recentValuationRequests ?? []).map((v) => (
                   <Tr key={v.displayId} hoverable={false}>
                     <Td className="text-[11px] font-semibold text-primary-light">
                       {v.displayId}
@@ -197,7 +212,8 @@ export function DashboardView() {
                       <StatusBadge status={v.status === "done" ? "done" : "progress"} />
                     </Td>
                   </Tr>
-                ))}
+                ))
+                )}
               </TBody>
             </Table>
           </SubpagePanel>
@@ -211,7 +227,20 @@ export function DashboardView() {
         المعاينون والمقيمون يتبعون قسم التقييم العقاري ويخدمون القسمين كمورد
         مشترك
       </Note>
-      {(reporting?.teamFieldMembers ?? []).length === 0 ? (
+      {reportingPending ? (
+        <div className="mb-4 grid grid-cols-3 gap-2.5">
+          {Array.from({ length: 3 }, (_, index) => (
+            <div
+              key={index}
+              className="rounded-[var(--radius-lg)] border border-border bg-surface p-3"
+            >
+              <Skeleton className="mb-2 size-[34px] rounded-full" />
+              <Skeleton className="mb-1 h-4 w-24" />
+              <Skeleton className="h-3 w-32" />
+            </div>
+          ))}
+        </div>
+      ) : (reporting?.teamFieldMembers ?? []).length === 0 ? (
         <p className="text-xs text-text-3">لا توجد بيانات فريق ميداني بعد.</p>
       ) : (
         <div className="grid grid-cols-3 gap-2.5">

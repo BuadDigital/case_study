@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Badge, Input, cn } from "@platform/design-system";
+import { useQueryClient } from "@tanstack/react-query";
+import { Badge, Button, Input, Skeleton, cn, useToast } from "@platform/design-system";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import {
   SCREEN_CATALOG_KIND_LABELS,
   SCREEN_CATALOG_STATUS_LABELS,
   SYSTEM_SCREEN_CATALOG,
-  screenCatalogGroups,
   screenCatalogLocationLabel,
   screenCatalogRoleIds,
   screenCatalogRoleLabel,
@@ -17,7 +17,17 @@ import {
   type SystemScreenEntry,
 } from "@platform/app-shared/prototype/screen-catalog";
 import { ScreenCatalogDetailPanel } from "./ScreenCatalogDetailPanel";
-import { CustomScreenManagementTab } from "./CustomScreenManagementTab";
+import { CustomScreenFormModal } from "./CustomScreenFormModal";
+import {
+  invalidateCustomAssignedScreensQueries,
+  useAssignableUsersForCustomScreensQuery,
+  useCustomAssignedScreensManageQuery,
+} from "../../query/custom-screens-queries";
+import { saveCustomAssignedScreen } from "../../lib/custom-screens-api";
+import {
+  customCatalogEntryId,
+  dynamicCustomCatalogEntries,
+} from "../../lib/screen-catalog-access";
 
 type FacetKey = "role" | "group" | "kind" | "status";
 
@@ -45,25 +55,39 @@ function statusTone(
 }
 
 export function ScreenCatalogTab() {
+  const queryClient = useQueryClient();
   const { role } = usePrototype();
   const canManageCustomScreens = isSuperAdmin(role);
-  const screens = SYSTEM_SCREEN_CATALOG;
+  const { data: manageResult } = useCustomAssignedScreensManageQuery();
+  const { data: usersResult } = useAssignableUsersForCustomScreensQuery();
+  const customScreens = manageResult?.screens ?? [];
+
+  const screens = useMemo(
+    () => [
+      ...SYSTEM_SCREEN_CATALOG,
+      ...dynamicCustomCatalogEntries(customScreens),
+    ],
+    [customScreens],
+  );
+
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState(emptyFilters);
   const [openFacet, setOpenFacet] = useState<FacetKey | null>(null);
-  const [viewMode, setViewMode] = useState<"screens" | "roles" | "manage">(
-    "screens",
-  );
+  const { showToast } = useToast();
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [addBusy, setAddBusy] = useState(false);
 
   const facetOptions = useMemo(
     () => ({
       role: screenCatalogRoleIds(),
-      group: screenCatalogGroups(),
+      group: [...new Set(screens.map((screen) => screen.group))].sort((a, b) =>
+        a.localeCompare(b, "ar"),
+      ),
       kind: Object.keys(SCREEN_CATALOG_KIND_LABELS) as ScreenCatalogKind[],
       status: Object.keys(SCREEN_CATALOG_STATUS_LABELS) as ScreenCatalogStatus[],
     }),
-    [],
+    [screens],
   );
 
   const visibleScreens = useMemo(() => {
@@ -80,7 +104,7 @@ export function ScreenCatalogTab() {
       }
       if (
         filters.role.size &&
-        !screen.roles.some((role) => filters.role.has(role))
+        !screen.roles.some((roleId) => filters.role.has(roleId))
       ) {
         return false;
       }
@@ -97,28 +121,7 @@ export function ScreenCatalogTab() {
     [screens, selectedId],
   );
 
-  const roleSummaries = useMemo(() => {
-    return screenCatalogRoleIds()
-      .map((roleId) => {
-        const roleScreens = screens.filter((screen) =>
-          screen.roles.includes(roleId),
-        );
-        const visible = roleScreens.filter((screen) =>
-          visibleScreens.some((item) => item.id === screen.id),
-        );
-        return {
-          roleId,
-          label: screenCatalogRoleLabel(roleId),
-          total: roleScreens.length,
-          visible: visible.length,
-          screens: roleScreens,
-        };
-      })
-      .filter((row) => row.visible > 0 || filters.role.has(row.roleId));
-  }, [screens, visibleScreens, filters.role]);
-
   useEffect(() => {
-    if (viewMode !== "screens") return;
     if (!selectedId && visibleScreens[0]) setSelectedId(visibleScreens[0].id);
     if (
       selectedId &&
@@ -126,7 +129,7 @@ export function ScreenCatalogTab() {
     ) {
       setSelectedId(visibleScreens[0]?.id ?? null);
     }
-  }, [selectedId, visibleScreens, viewMode]);
+  }, [selectedId, visibleScreens]);
 
   function toggleFilter(facet: FacetKey, value: string): void {
     setFilters((current) => {
@@ -154,6 +157,38 @@ export function ScreenCatalogTab() {
     [...filters[facet]].map((value) => ({ facet, value })),
   );
 
+  const assignableUsers = usersResult?.users ?? [];
+
+  async function handleAddScreen(payload: {
+    name: string;
+    targetPageId: string | null;
+    iconPath: string | null;
+    isActive: boolean;
+    assignedUserIds: string[];
+  }): Promise<void> {
+    setAddBusy(true);
+    const result = await saveCustomAssignedScreen({
+      name: payload.name,
+      targetPageId: payload.targetPageId,
+      iconPath: payload.iconPath,
+      isActive: payload.isActive,
+      assignedUserIds: payload.assignedUserIds,
+    });
+    setAddBusy(false);
+    if (!result.ok) {
+      showToast(result.error, "error");
+      return;
+    }
+    setAddModalOpen(false);
+    showToast("تمت إضافة الشاشة.", "success");
+    invalidateCustomAssignedScreensQueries(queryClient);
+    if (payload.targetPageId?.trim()) {
+      setSelectedId(`page:${payload.targetPageId.trim()}`);
+    } else {
+      setSelectedId(customCatalogEntryId(result.screen.id));
+    }
+  }
+
   return (
     <article className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface max-lg:overflow-visible">
       <header className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3.5">
@@ -164,56 +199,24 @@ export function ScreenCatalogTab() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {canManageCustomScreens ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="primary"
+              loading={addBusy}
+              disabled={addBusy}
+              onClick={() => setAddModalOpen(true)}
+            >
+              إضافة شاشة
+            </Button>
+          ) : null}
           <Badge tone="info">
             {visibleScreens.length}/{screens.length} شاشة
           </Badge>
-          <div className="inline-flex rounded-[var(--radius-DEFAULT)] border border-border p-0.5">
-            <button
-              type="button"
-              className={cn(
-                "rounded px-2.5 py-1 text-[11px] transition-colors",
-                viewMode === "screens"
-                  ? "bg-primary text-white"
-                  : "text-text-3 hover:text-text",
-              )}
-              onClick={() => setViewMode("screens")}
-            >
-              حسب الشاشة
-            </button>
-            <button
-              type="button"
-              className={cn(
-                "rounded px-2.5 py-1 text-[11px] transition-colors",
-                viewMode === "roles"
-                  ? "bg-primary text-white"
-                  : "text-text-3 hover:text-text",
-              )}
-              onClick={() => setViewMode("roles")}
-            >
-              حسب الدور
-            </button>
-            {canManageCustomScreens ? (
-              <button
-                type="button"
-                className={cn(
-                  "rounded px-2.5 py-1 text-[11px] transition-colors",
-                  viewMode === "manage"
-                    ? "bg-primary text-white"
-                    : "text-text-3 hover:text-text",
-                )}
-                onClick={() => setViewMode("manage")}
-              >
-                إدارة الشاشات
-              </button>
-            ) : null}
-          </div>
         </div>
       </header>
 
-      {viewMode === "manage" ? (
-        <CustomScreenManagementTab />
-      ) : (
-        <>
       <div className="shrink-0 border-b border-border px-4 py-3">
         <div className="flex flex-wrap items-center gap-2">
           <div className="min-w-[200px] flex-1">
@@ -284,89 +287,56 @@ export function ScreenCatalogTab() {
         ) : null}
       </div>
 
-      {viewMode === "screens" ? (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden max-lg:min-h-0 max-lg:flex-none max-lg:overflow-visible lg:flex-row">
-          <div className="flex min-h-[240px] min-w-0 flex-1 flex-col overflow-hidden border-border max-lg:max-h-none max-lg:overflow-visible lg:max-w-[62%] lg:border-e">
-            <div className="grid shrink-0 grid-cols-[1.1fr_1.1fr_.75fr_.55fr] gap-2 border-b border-border bg-surface-2 px-3 py-2 text-[10px] text-text-3">
-              <span>اسم الشاشة</span>
-              <span>أين تُجد في النظام</span>
-              <span>النوع</span>
-              <span>الحالة</span>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain max-lg:max-h-none max-lg:overflow-visible lg:min-h-0">
-              {visibleScreens.length === 0 ? (
-                <p className="py-10 text-center text-xs text-text-3">
-                  لا توجد شاشات مطابقة
-                </p>
-              ) : (
-                visibleScreens.map((screen) => (
-                  <ScreenListRow
-                    key={screen.id}
-                    screen={screen}
-                    selected={selectedId === screen.id}
-                    onSelect={() => setSelectedId(screen.id)}
-                  />
-                ))
-              )}
-            </div>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden max-lg:min-h-0 max-lg:flex-none max-lg:overflow-visible lg:flex-row">
+        <div className="flex min-h-[240px] min-w-0 flex-1 flex-col overflow-hidden border-border max-lg:max-h-none max-lg:overflow-visible lg:max-w-[62%] lg:border-e">
+          <div className="grid shrink-0 grid-cols-[1.1fr_1.1fr_.75fr_.55fr] gap-2 border-b border-border bg-surface-2 px-3 py-2 text-[10px] text-text-3">
+            <span>اسم الشاشة</span>
+            <span>أين تُجد في النظام</span>
+            <span>النوع</span>
+            <span>الحالة</span>
           </div>
-
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface max-lg:overflow-visible">
-            {selectedScreen ? (
-              <ScreenCatalogDetailPanel screen={selectedScreen} />
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain max-lg:max-h-none max-lg:overflow-visible lg:min-h-0">
+            {visibleScreens.length === 0 ? (
+              <p className="py-10 text-center text-xs text-text-3">
+                لا توجد شاشات مطابقة
+              </p>
             ) : (
-              <div className="flex h-full items-center justify-center p-6 text-xs text-text-3">
-                اختر شاشة من القائمة لعرض تفاصيلها
-              </div>
+              visibleScreens.map((screen) => (
+                <ScreenListRow
+                  key={screen.id}
+                  screen={screen}
+                  selected={selectedId === screen.id}
+                  onSelect={() => setSelectedId(screen.id)}
+                />
+              ))
             )}
           </div>
         </div>
-      ) : (
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
-          <div className="grid gap-3 lg:grid-cols-2">
-            {roleSummaries.map((row) => (
-              <section
-                key={row.roleId}
-                className="rounded-[var(--radius-DEFAULT)] border border-border bg-surface"
-              >
-                <header className="flex items-center justify-between gap-2 border-b border-border px-3 py-2.5">
-                  <h3 className="text-xs font-semibold text-text">
-                    {row.label}
-                  </h3>
-                  <Badge tone="info">{row.visible} شاشة</Badge>
-                </header>
-                <ul className="divide-y divide-border">
-                  {row.screens
-                    .filter((screen) =>
-                      visibleScreens.some((item) => item.id === screen.id),
-                    )
-                    .map((screen) => (
-                      <li key={screen.id}>
-                        <button
-                          type="button"
-                          className="flex w-full flex-col gap-0.5 px-3 py-2 text-start text-xs hover:bg-surface-2"
-                          onClick={() => {
-                            setViewMode("screens");
-                            setSelectedId(screen.id);
-                          }}
-                        >
-                          <span className="font-medium text-text">
-                            {screen.name}
-                          </span>
-                          <span className="text-[11px] text-text-3">
-                            {screenCatalogLocationLabel(screen)}
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                </ul>
-              </section>
-            ))}
-          </div>
+
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface max-lg:overflow-visible">
+          {selectedScreen ? (
+            <ScreenCatalogDetailPanel screen={selectedScreen} />
+          ) : (
+            <div className="flex h-full items-center justify-center p-6 text-xs text-text-3">
+              اختر شاشة من القائمة لعرض تفاصيلها
+            </div>
+          )}
         </div>
-      )}
-        </>
-      )}
+      </div>
+
+      {addModalOpen ? (
+        <CustomScreenFormModal
+          key={selectedScreen?.pageId ?? "new"}
+          users={assignableUsers}
+          busy={addBusy}
+          defaultTargetPageId={selectedScreen?.pageId}
+          onSave={(payload) => void handleAddScreen(payload)}
+          onClose={() => {
+            if (addBusy) return;
+            setAddModalOpen(false);
+          }}
+        />
+      ) : null}
     </article>
   );
 }

@@ -40,7 +40,7 @@ export async function fetchAllCustomAssignedScreens(): Promise<{
   if (!result.ok) {
     const message =
       result.kind === "forbidden"
-        ? "هذه الصفحة متاحة لسليمان (المسؤول) فقط."
+        ? "صلاحية غير كافية على الخادم — أعد تسجيل الدخول بحساب CDO أو Admin."
         : "تعذر تحميل الشاشات المخصصة.";
     return { screens: [], error: message };
   }
@@ -72,7 +72,13 @@ export async function saveCustomAssignedScreen(
     : await createCustomAssignedScreen(config, request);
 
   if (!result.ok) {
-    return { ok: false, error: "تعذر حفظ الشاشة. تحقق من البيانات وحاول مجدداً." };
+    const message =
+      result.kind === "forbidden"
+        ? "صلاحية غير كافية — سجّل الدخول بحساب CDO أو Admin."
+        : result.kind === "auth"
+          ? "انتهت الجلسة — سجّل الدخول مجدداً."
+          : result.error ?? "تعذر حفظ الشاشة. تحقق من البيانات وحاول مجدداً.";
+    return { ok: false, error: message };
   }
   return { ok: true, screen: result.data };
 }

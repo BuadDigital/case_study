@@ -8,7 +8,7 @@ export function ModalOverlay({
   return (
     <div
       className={cn(
-        "fixed inset-0 z-[1000] flex items-center justify-center bg-[rgba(10,33,56,0.45)] p-5",
+        "fixed inset-0 z-[1000] flex items-center justify-center bg-[rgba(10,33,56,0.45)] p-5 ui-animate-modal-overlay",
         className,
       )}
       {...props}

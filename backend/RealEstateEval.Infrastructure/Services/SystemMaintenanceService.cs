@@ -71,6 +71,7 @@ public class SystemMaintenanceService : ISystemMaintenanceService
         await _db.EvaluatorRecallRecords.ExecuteDeleteAsync(cancellationToken);
         await _db.FieldDictionaryConfigs.ExecuteDeleteAsync(cancellationToken);
         await _db.FailureTypesCatalogConfigs.ExecuteDeleteAsync(cancellationToken);
+        await _db.CustomScreenSubmissions.ExecuteDeleteAsync(cancellationToken);
         await _db.CustomAssignedScreenUsers.ExecuteDeleteAsync(cancellationToken);
         await _db.CustomAssignedScreens.ExecuteDeleteAsync(cancellationToken);
         await _db.PropertyKeyRecords.ExecuteDeleteAsync(cancellationToken);

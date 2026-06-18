@@ -1,6 +1,6 @@
 "use client";
 
-import { Note } from "@platform/design-system";
+import { InlineLoadingSkeleton, Note, useToast } from "@platform/design-system";
 import { useCallback, useEffect, useState, type RefObject } from "react";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import {
@@ -41,6 +41,7 @@ export function FieldInspectionWorkBody({
   hostRef: RefObject<FieldInspectionWorkHostRef | null>;
 }) {
   void def;
+  const { showToast } = useToast();
   const propertyId = task.propertyId ?? "";
   const { data: record } = usePoRecordQuery(task.poNumber);
   const property = record?.properties.find((p) => p.id === propertyId);
@@ -108,11 +109,14 @@ export function FieldInspectionWorkBody({
     if (next) {
       setDraft(next);
       setFormError(null);
+      showToast("تم حفظ مسودة المعاينة.", "success");
       return true;
     }
-    setFormError("تعذّر حفظ المسودة — حاول مرة أخرى");
+    const message = "تعذّر حفظ المسودة — حاول مرة أخرى";
+    setFormError(message);
+    showToast(message, "error");
     return false;
-  }, [draft, locked, hostRef, task.id]);
+  }, [draft, locked, hostRef, task.id, showToast]);
 
   const submit = useCallback(async (): Promise<boolean> => {
     if (!draft || locked) return false;
@@ -120,7 +124,9 @@ export function FieldInspectionWorkBody({
     const errors = validateFieldInspectionSubmission(draft);
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
-      setFormError(firstFieldInspectionError(errors));
+      const message = firstFieldInspectionError(errors);
+      setFormError(message);
+      showToast(message, "error");
       return false;
     }
 
@@ -139,8 +145,9 @@ export function FieldInspectionWorkBody({
       setFieldErrors(result.errors as FieldInspectionFieldErrors);
     }
     setFormError(result.message);
+    showToast(result.message, "error");
     return false;
-  }, [draft, locked, hostRef, task.id]);
+  }, [draft, locked, hostRef, task.id, showToast]);
 
   useEffect(() => {
     if (!hostRef.current) return;
@@ -149,7 +156,7 @@ export function FieldInspectionWorkBody({
   }, [hostRef, submit, saveDraft]);
 
   if (!draft) {
-    return <p className="text-xs text-text-3">جاري تحميل نموذج المعاينة…</p>;
+    return <InlineLoadingSkeleton />;
   }
 
   return (

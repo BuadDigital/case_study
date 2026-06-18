@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useRef } from "react";
-import { Button, PageGutter, PageShell } from "@platform/design-system";
+import { Button, PageGutter, PageShell, PanelSkeleton } from "@platform/design-system";
 import { partyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import type { PageId } from "@platform/types";
 import type { PartyAppraisalExtensions } from "../lib/party-appraisal-extensions";
@@ -38,7 +38,7 @@ export function PartyActiveTaskWorkPage({
   }
 
   if (!isFetched) {
-    return <p className="p-4 text-xs text-text-3">جاري تحميل المهمة…</p>;
+    return <PanelSkeleton className="p-4" />;
   }
 
   if (!task) {

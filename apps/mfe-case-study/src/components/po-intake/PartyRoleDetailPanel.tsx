@@ -9,7 +9,7 @@ import {
 } from "./PropertyDetailFields";
 import type { PropertyDetailPartySubmission } from "../../lib/prototype/property-detail-party-submissions";
 import type { PropertyDetailPartyCard } from "../../lib/prototype/property-detail-parties";
-import { cn } from "@platform/design-system";
+import { cn, InlineLoadingSkeleton } from "@platform/design-system";
 
 export function PartyRoleDetailPanel({
   card,
@@ -34,7 +34,7 @@ export function PartyRoleDetailPanel({
       </SectionHeader>
 
       {loading ? (
-        <p className="m-0 text-xs text-text-3">جاري التحميل…</p>
+        <InlineLoadingSkeleton />
       ) : !submission || !submission.hasData ? (
         <EmptyState
           icon="📋"

@@ -1,11 +1,10 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getApiBase, fetchPermissions } from "@platform/api-client";
+import { getApiBase } from "@platform/api-client";
 import { setAuthSession, type AuthSession } from "@platform/auth-client";
 import { PROTOTYPE_LOGIN_USERS } from "@platform/app-shared/prototype/prototype-users";
-import { setRuntimeCapabilities } from "@platform/app-shared/prototype/runtime-access";
 import { Button, Card, Label, Select } from "@platform/design-system";
 
 type LoginResponse = {
@@ -21,6 +20,9 @@ export default function LoginPage() {
   );
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Start compiling the dashboard bundle while the user is still on this page.
+  useEffect(() => { router.prefetch("/dashboard"); }, [router]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -62,14 +64,7 @@ export default function LoginPage() {
         expiresAtUtc: data.expiresAtUtc,
       } satisfies AuthSession);
 
-      try {
-        const permissions = await fetchPermissions({ token: data.token });
-        setRuntimeCapabilities(permissions.capabilities);
-      } catch {
-        // PrototypeProvider loads permissions again after navigation.
-      }
-
-      router.push("/dashboard");
+      router.replace("/dashboard");
     } catch (err) {
       console.error("login failed", err);
       setError(
@@ -147,10 +142,11 @@ export default function LoginPage() {
             type="submit"
             variant="primary"
             size="lg"
+            loading={loading}
             disabled={loading}
             className="mt-1 w-full"
           >
-            {loading ? "جاري الدخول…" : "دخول"}
+            دخول
           </Button>
         </form>
       </Card>

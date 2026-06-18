@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Input, Label, cn, formControlClassName } from "@platform/design-system";
+import { Button, InlineLoadingSkeleton, Input, Label, cn, formControlClassName, useToast } from "@platform/design-system";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowTask } from "@case-study/mfe";
 import { inspectionGateForAppraisal } from "../../lib/evaluator/evaluator-inspection-gate";
@@ -42,6 +42,7 @@ export function EvaluatorWindow({
     () => inspectionGateForAppraisal(task, tasks),
     [task, tasks],
   );
+  const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [draft, setDraft] = useState<EvaluatorSubmission>(() =>
@@ -138,6 +139,7 @@ export function EvaluatorWindow({
     if (locked) return false;
     if (!gate.ready) {
       setFormError(gate.reason);
+      showToast(gate.reason, "error");
       return false;
     }
 
@@ -147,7 +149,10 @@ export function EvaluatorWindow({
     });
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
-      setFormError(firstEvaluatorError(errors));
+      const message =
+        firstEvaluatorError(errors) ?? "تحقق من الحقول المطلوبة";
+      setFormError(message);
+      showToast(message, "error");
       return false;
     }
 
@@ -162,8 +167,9 @@ export function EvaluatorWindow({
       return true;
     }
     setFormError(result.message);
+    showToast(result.message, "error");
     return false;
-  }, [locked, gate, task.id, draft.evaluatorPrice, hostRef]);
+  }, [locked, gate, task.id, draft.evaluatorPrice, hostRef, showToast]);
 
   useEffect(() => {
     if (!hostRef.current) return;
@@ -178,9 +184,11 @@ export function EvaluatorWindow({
     setUploading(false);
     if (!result.ok) {
       setUploadError(result.error);
+      showToast(result.error, "error");
       return;
     }
     setReportName(file.name);
+    showToast("تم رفع تقرير التقييم.", "success");
     persistDraft(
       { reportFileName: file.name },
       {
@@ -199,7 +207,7 @@ export function EvaluatorWindow({
   if (draftLoading) {
     return (
       <div className="flex flex-col gap-3.5">
-        <p className="my-2 text-xs text-text-3">جاري تحميل مسودة التقييم…</p>
+        <InlineLoadingSkeleton className="my-2" />
       </div>
     );
   }
@@ -283,14 +291,11 @@ export function EvaluatorWindow({
                     type="button"
                     size="sm"
                     variant="primary"
+                    loading={uploading}
                     disabled={uploading}
                     onClick={() => fileInputRef.current?.click()}
                   >
-                    {uploading
-                      ? "جاري الرفع…"
-                      : hasReport
-                        ? "تغيير الملف"
-                        : "رفع الملف"}
+                    {hasReport ? "تغيير الملف" : "رفع الملف"}
                   </Button>
                 ) : null}
                 {getCachedEvaluatorReport(task.id)?.dataUrl ? (

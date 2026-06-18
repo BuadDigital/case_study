@@ -446,6 +446,11 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -453,6 +458,10 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(450)
                         .HasColumnType("character varying(450)");
+
+                    b.Property<string>("DefinitionJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
 
                     b.Property<string>("IconPath")
                         .HasMaxLength(512)
@@ -466,6 +475,16 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<string>("OwnerRole")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ScreenStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
 
@@ -478,6 +497,8 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Code");
 
                     b.HasIndex("SortOrder");
 
@@ -509,6 +530,41 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("CustomAssignedScreenUsers", "platform");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Domain.CustomScreenSubmission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AnswersJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<bool>("IsDraft")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("ScreenId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("SubmittedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ScreenId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("CustomScreenSubmissions", "platform");
                 });
 
             modelBuilder.Entity("RealEstateEval.Domain.EvaluatorRecallRecord", b =>
@@ -1494,6 +1550,17 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Navigation("Screen");
                 });
 
+            modelBuilder.Entity("RealEstateEval.Domain.CustomScreenSubmission", b =>
+                {
+                    b.HasOne("RealEstateEval.Domain.CustomAssignedScreen", "Screen")
+                        .WithMany("Submissions")
+                        .HasForeignKey("ScreenId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Screen");
+                });
+
             modelBuilder.Entity("RealEstateEval.Domain.HrEmployeeProfile", b =>
                 {
                     b.HasOne("RealEstateEval.Domain.UserProfile", "Profile")
@@ -1552,6 +1619,8 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
             modelBuilder.Entity("RealEstateEval.Domain.CustomAssignedScreen", b =>
                 {
                     b.Navigation("Assignments");
+
+                    b.Navigation("Submissions");
                 });
 
             modelBuilder.Entity("RealEstateEval.Domain.UserProfile", b =>
