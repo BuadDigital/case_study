@@ -245,6 +245,61 @@ export function boundariesAvailabilityLabel(value: string): string {
   );
 }
 
+/** موضحة في الصك / البورصة / مستند خارجي — تفاصيل الحدود اختيارية. */
+export function boundariesDetailFieldsOptional(value: string): boolean {
+  const v = value.trim().toLowerCase();
+  return v === "deed" || v === "bourse" || v === "doc";
+}
+
+export function boundariesMarkedUnavailable(value: string): boolean {
+  return value.trim().toLowerCase() === "no";
+}
+
+/** صفوف إدخال الحدود والأطوال — مرحلة البورصة (الأخصائي). */
+export const PROPERTY_BOUNDARY_ROWS = [
+  {
+    descKey: "northBoundary",
+    lenKey: "northBoundaryLengthM",
+    label: "الحد الشمالي",
+  },
+  {
+    descKey: "southBoundary",
+    lenKey: "southBoundaryLengthM",
+    label: "الحد الجنوبي",
+  },
+  {
+    descKey: "eastBoundary",
+    lenKey: "eastBoundaryLengthM",
+    label: "الحد الشرقي",
+  },
+  {
+    descKey: "westBoundary",
+    lenKey: "westBoundaryLengthM",
+    label: "الحد الغربي",
+  },
+] as const;
+
+export type PropertyBoundaryDescKey =
+  (typeof PROPERTY_BOUNDARY_ROWS)[number]["descKey"];
+export type PropertyBoundaryLenKey =
+  (typeof PROPERTY_BOUNDARY_ROWS)[number]["lenKey"];
+
+export function clearPropertyBoundaryFields(): Pick<
+  PoPropertyIntake,
+  PropertyBoundaryDescKey | PropertyBoundaryLenKey
+> {
+  return {
+    northBoundary: "",
+    northBoundaryLengthM: "",
+    southBoundary: "",
+    southBoundaryLengthM: "",
+    eastBoundary: "",
+    eastBoundaryLengthM: "",
+    westBoundary: "",
+    westBoundaryLengthM: "",
+  };
+}
+
 /** Any field filled on استعلام بورصة (even before حفظ وإكمال). */
 export function hasBourseDetailFields(
   property: Pick<
@@ -258,6 +313,8 @@ export function hasBourseDetailFields(
     | "restrictionsPresent"
     | "boundariesAvailability"
     | "boundariesExternalDocName"
+    | PropertyBoundaryDescKey
+    | PropertyBoundaryLenKey
   >,
 ): boolean {
   return Boolean(
@@ -269,7 +326,15 @@ export function hasBourseDetailFields(
       property.deedStatus.trim() ||
       property.restrictionsPresent.trim() ||
       property.boundariesAvailability.trim() ||
-      property.boundariesExternalDocName.trim(),
+      property.boundariesExternalDocName.trim() ||
+      property.northBoundary.trim() ||
+      property.northBoundaryLengthM.trim() ||
+      property.southBoundary.trim() ||
+      property.southBoundaryLengthM.trim() ||
+      property.eastBoundary.trim() ||
+      property.eastBoundaryLengthM.trim() ||
+      property.westBoundary.trim() ||
+      property.westBoundaryLengthM.trim(),
   );
 }
 
@@ -306,6 +371,14 @@ export type PoPropertyIntake = {
   restrictionsPresent: string;
   boundariesAvailability: string;
   boundariesExternalDocName: string;
+  northBoundary: string;
+  northBoundaryLengthM: string;
+  southBoundary: string;
+  southBoundaryLengthM: string;
+  eastBoundary: string;
+  eastBoundaryLengthM: string;
+  westBoundary: string;
+  westBoundaryLengthM: string;
   city: string;
   district: string;
   deedStatus: string;
@@ -358,6 +431,7 @@ export function emptyProperty(): PoPropertyIntake {
     restrictionsPresent: "",
     boundariesAvailability: "",
     boundariesExternalDocName: "",
+    ...clearPropertyBoundaryFields(),
     city: "",
     district: "",
     deedStatus: "",

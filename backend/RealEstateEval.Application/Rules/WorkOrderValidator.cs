@@ -139,8 +139,6 @@ public static class WorkOrderValidator
             var b = dto.BoundariesAvailability.Trim().ToLowerInvariant();
             if (b is not "deed" and not "bourse" and not "doc" and not "no")
                 errors["boundariesAvailability"] = "قيمة توفر الحدود غير صالحة";
-            if (b == "doc" && string.IsNullOrWhiteSpace(dto.BoundariesExternalDocName))
-                errors["boundariesExternalDocName"] = "اسم المستند الخارجي مطلوب";
         }
 
         return errors;

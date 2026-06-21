@@ -29,6 +29,14 @@ export type WorkOrderPropertyDto = {
   restrictionsPresent?: string;
   boundariesAvailability?: string;
   boundariesExternalDocName?: string;
+  northBoundary?: string;
+  northBoundaryLengthM?: string;
+  southBoundary?: string;
+  southBoundaryLengthM?: string;
+  eastBoundary?: string;
+  eastBoundaryLengthM?: string;
+  westBoundary?: string;
+  westBoundaryLengthM?: string;
   city?: string;
   district?: string;
   deedStatus?: string;
@@ -103,6 +111,14 @@ export type UpdatePropertyBourseRequest = {
   restrictionsPresent?: string;
   boundariesAvailability?: string;
   boundariesExternalDocName?: string;
+  northBoundary?: string;
+  northBoundaryLengthM?: string;
+  southBoundary?: string;
+  southBoundaryLengthM?: string;
+  eastBoundary?: string;
+  eastBoundaryLengthM?: string;
+  westBoundary?: string;
+  westBoundaryLengthM?: string;
 };
 
 export type PriorDeedRegistrationDto = {
@@ -119,6 +135,14 @@ export type PriorDeedRegistrationDto = {
   restrictionsPresent?: string;
   boundariesAvailability?: string;
   boundariesExternalDocName?: string;
+  northBoundary?: string;
+  northBoundaryLengthM?: string;
+  southBoundary?: string;
+  southBoundaryLengthM?: string;
+  eastBoundary?: string;
+  eastBoundaryLengthM?: string;
+  westBoundary?: string;
+  westBoundaryLengthM?: string;
 };
 
 export type PendingBoursePropertyDto = {

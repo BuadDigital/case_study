@@ -63,13 +63,15 @@ export function PartyActiveTaskWorkPage({
   }
 
   return (
-    <PartyActiveTaskWork
-      def={def}
-      task={task}
-      hostRef={hostRef}
-      layout="page"
-      appraisalExtensions={appraisalExtensions}
-      engineeringSurveyExtensions={engineeringSurveyExtensions}
-    />
+    <div className="flex min-h-0 flex-1 flex-col">
+      <PartyActiveTaskWork
+        def={def}
+        task={task}
+        hostRef={hostRef}
+        layout="page"
+        appraisalExtensions={appraisalExtensions}
+        engineeringSurveyExtensions={engineeringSurveyExtensions}
+      />
+    </div>
   );
 }

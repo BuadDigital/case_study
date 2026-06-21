@@ -352,8 +352,8 @@ export function BourseInquiryView() {
         </PageShell>
 
         {selected ? (
-          <Card className="sticky top-3 self-start overflow-hidden rounded-none border-none shadow-none lg:border-s lg:border-border">
-            <CardHeader className="px-4 py-3">
+          <Card className="sticky top-3 flex max-h-[calc(100dvh-5.5rem)] flex-col self-start overflow-hidden rounded-none border-none shadow-none lg:border-s lg:border-border">
+            <CardHeader className="shrink-0 px-4 py-3">
               <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-text">
                 بيانات البورصة
                 <span
@@ -367,46 +367,48 @@ export function BourseInquiryView() {
                 إغلاق
               </Button>
             </CardHeader>
-            <CardBody className="px-4">
-              <div className="mb-3.5 flex flex-wrap gap-x-5 gap-y-2 rounded-lg border border-border bg-surface-2 px-3 py-2.5 text-xs text-text-2">
-                <span>
-                  أمر العمل:{" "}
-                  <strong dir="ltr">{formatPoDisplay(selected.poNumber)}</strong>
-                </span>
-                {selected.ownerName ? (
+            <CardBody className="flex min-h-0 flex-1 flex-col overflow-hidden px-0 pb-0">
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3">
+                <div className="mb-3.5 flex flex-wrap gap-x-5 gap-y-2 rounded-lg border border-border bg-surface-2 px-3 py-2.5 text-xs text-text-2">
                   <span>
-                    المالك: <strong>{selected.ownerName}</strong>
+                    أمر العمل:{" "}
+                    <strong dir="ltr">{formatPoDisplay(selected.poNumber)}</strong>
                   </span>
+                  {selected.ownerName ? (
+                    <span>
+                      المالك: <strong>{selected.ownerName}</strong>
+                    </span>
+                  ) : null}
+                </div>
+
+                {formError ? (
+                  <Note tone="warn" className="mb-3">
+                    {formError}
+                  </Note>
                 ) : null}
+
+                <RegistrationFormCard
+                  title="بيانات البورصة"
+                  subtitle="المدينة · التصنيف · نوع العقار · الحدود"
+                >
+                  <PoPropertyBourseForm
+                    property={property}
+                    fieldErrors={fieldErrors}
+                    onPatch={patchProperty}
+                    showDeedVitalityFlow
+                    deedVitality={deedVitality}
+                    onDeedVitalityChange={setDeedVitality}
+                    obstructionReason={obstructionReason}
+                    onObstructionReasonChange={(v) => {
+                      setObstructionReason(v);
+                      setObstructionReasonError(undefined);
+                    }}
+                    obstructionReasonError={obstructionReasonError}
+                  />
+                </RegistrationFormCard>
               </div>
 
-              {formError ? (
-                <Note tone="warn" className="mb-3">
-                  {formError}
-                </Note>
-              ) : null}
-
-              <RegistrationFormCard
-                title="بيانات البورصة"
-                subtitle="المدينة · التصنيف · نوع العقار · الحدود"
-              >
-                <PoPropertyBourseForm
-                  property={property}
-                  fieldErrors={fieldErrors}
-                  onPatch={patchProperty}
-                  showDeedVitalityFlow
-                  deedVitality={deedVitality}
-                  onDeedVitalityChange={setDeedVitality}
-                  obstructionReason={obstructionReason}
-                  onObstructionReasonChange={(v) => {
-                    setObstructionReason(v);
-                    setObstructionReasonError(undefined);
-                  }}
-                  obstructionReasonError={obstructionReasonError}
-                />
-              </RegistrationFormCard>
-
-              <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
+              <div className="shrink-0 border-t border-border bg-surface px-4 py-4 shadow-[0_-4px_16px_rgba(15,52,96,0.08)]">
                 <Button
                   type="button"
                   variant="primary"

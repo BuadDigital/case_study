@@ -14,6 +14,9 @@ import {
   type ValuationCoordinationWorkHostRef,
 } from "../components/valuation-coordination/ValuationCoordinationWorkBody";
 import {
+  FieldInspectionWorkPanel,
+} from "../components/field-inspection/FieldInspectionWorkPanel";
+import {
   FieldInspectionWorkBody,
   type FieldInspectionWorkHostRef,
 } from "../components/field-inspection/FieldInspectionWorkBody";
@@ -362,7 +365,7 @@ export function PartyActiveTaskWork({
     def.saveLabel,
   ]);
 
-  function renderSurveyPropertyShell(body: ReactNode) {
+  function renderPropertyTaskShell(body: ReactNode) {
     if (recordLoading && !record) {
       return (
         <div className={PAGE_WRAP}>
@@ -392,6 +395,41 @@ export function PartyActiveTaskWork({
           {body}
         </PageShell>
       </div>
+    );
+  }
+
+  function renderSurveyPropertyShell(body: ReactNode) {
+    return renderPropertyTaskShell(body);
+  }
+
+  if (isFieldInspection && layout === "page") {
+    if (task.status === "completed" || submitSuccess) {
+      return renderPropertyTaskShell(
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className={TAB_CONTENT}>
+            <RegistrationFormCard title={submitSuccess ? "تم الإرسال" : def.completeTitle}>
+              <Note tone="success">{def.completeMessage}</Note>
+            </RegistrationFormCard>
+          </div>
+        </div>,
+      );
+    }
+
+    return renderPropertyTaskShell(
+      record && surveyProperty ? (
+        <FieldInspectionWorkPanel
+          def={def}
+          task={task}
+          hostRef={fieldInspectionHostRef}
+          record={record}
+          property={surveyProperty}
+          deedNumber={deedLabel}
+          submitting={saving}
+          onFailureSubmitted={refresh}
+        />
+      ) : (
+        <InlineLoadingSkeleton className={LOADING_TEXT} />
+      ),
     );
   }
 
@@ -540,35 +578,29 @@ export function PartyActiveTaskWork({
         saving={saving}
         onClose={exit}
         onSave={submitFieldInspection}
-        saveLabel={
-          fieldInspectionLocked ? "رجوع" : def.saveLabel
-        }
-        showFooter
+        saveLabel={fieldInspectionLocked ? "رجوع" : def.saveLabel}
+        showFooter={false}
+        scrollMode="viewport"
       >
-        <PartyWorkTabs
-          workTab={workTab}
-          workTitle={def.workTitle}
-          onSelect={setWorkTab}
+        <Note tone="info" className="mb-4">
+          {def.workIntro}
+        </Note>
+        <FieldInspectionWorkBody
+          def={def}
+          task={task}
+          hostRef={fieldInspectionHostRef}
+          submitting={saving}
+          beforeSubmitFooter={
+            <div id="inspector-failure-raise" className="scroll-mt-4">
+              <PartyTaskFailureRaise
+                def={def}
+                task={task}
+                deedNumber={deedLabel}
+                onSubmitted={refresh}
+              />
+            </div>
+          }
         />
-
-        {workTab === "task" ? (
-          <>
-            <Note tone="info">{def.workIntro}</Note>
-            <FieldInspectionWorkBody
-              def={def}
-              task={task}
-              hostRef={fieldInspectionHostRef}
-            />
-            <PartyTaskFailureRaise
-              def={def}
-              task={task}
-              deedNumber={deedLabel}
-              onSubmitted={refresh}
-            />
-          </>
-        ) : (
-          <PartyCaseStudyFormTab def={def} childTask={task} />
-        )}
       </TaskWorkChrome>
     );
   }

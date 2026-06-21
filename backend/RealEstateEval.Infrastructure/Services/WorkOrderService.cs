@@ -349,6 +349,14 @@ public class WorkOrderService : IWorkOrderService
         existing.RestrictionsPresent = request.RestrictionsPresent?.Trim();
         existing.BoundariesAvailability = request.BoundariesAvailability?.Trim();
         existing.BoundariesExternalDocName = request.BoundariesExternalDocName?.Trim();
+        existing.NorthBoundary = NormalizeOptionalText(request.NorthBoundary);
+        existing.NorthBoundaryLengthM = NormalizeOptionalText(request.NorthBoundaryLengthM);
+        existing.SouthBoundary = NormalizeOptionalText(request.SouthBoundary);
+        existing.SouthBoundaryLengthM = NormalizeOptionalText(request.SouthBoundaryLengthM);
+        existing.EastBoundary = NormalizeOptionalText(request.EastBoundary);
+        existing.EastBoundaryLengthM = NormalizeOptionalText(request.EastBoundaryLengthM);
+        existing.WestBoundary = NormalizeOptionalText(request.WestBoundary);
+        existing.WestBoundaryLengthM = NormalizeOptionalText(request.WestBoundaryLengthM);
         existing.BourseDataCompleted = true;
 
         await _db.SaveChangesAsync(cancellationToken);

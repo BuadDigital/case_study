@@ -182,7 +182,7 @@ public class WorkOrderValidatorTests
     }
 
     [Fact]
-    public void ValidatePropertyBourse_requires_external_doc_when_boundaries_doc_selected()
+    public void ValidatePropertyBourse_allows_empty_external_doc_when_boundaries_doc_selected()
     {
         var errors = WorkOrderValidator.ValidatePropertyBourse(new UpdatePropertyBourseRequest
         {
@@ -193,7 +193,7 @@ public class WorkOrderValidatorTests
             BoundariesAvailability = "doc",
         });
 
-        Assert.Equal("اسم المستند الخارجي مطلوب", errors["boundariesExternalDocName"]);
+        Assert.DoesNotContain("boundariesExternalDocName", errors.Keys);
     }
 
     private static CreateWorkOrderRequest ValidCreateRequest() => new()

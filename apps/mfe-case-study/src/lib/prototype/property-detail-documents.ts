@@ -10,10 +10,11 @@ import {
 } from "./assignment-doc-attachments";
 import type { PoPropertyIntake } from "./po-intake-data";
 import {
-  FIELD_INSPECTION_PHOTO_SLOTS,
-  type FieldInspectionSubmission,
-} from "./field-inspection-data";
-import { loadFieldInspectionSubmission } from "./field-inspection-submission-storage";
+  INSPECTOR_DEFINED_PHOTOS,
+  type InspectorWorkspaceDraft,
+} from "./inspector-workspace-data";
+import { getInspectorPhotoDataUrl } from "./inspector-photo-upload";
+import { loadInspectorWorkspace } from "./inspector-workspace-storage";
 
 export type PropertyDetailDocumentEntry = {
   id: string;
@@ -160,40 +161,92 @@ export function collectFieldInspectionDocuments(
   inspectionTaskId: string | null | undefined,
 ): PropertyDetailDocumentEntry[] {
   if (!inspectionTaskId) return [];
-  const submission = loadFieldInspectionSubmission(inspectionTaskId);
+  const submission = loadInspectorWorkspace(inspectionTaskId);
   if (!submission) return [];
   return collectFieldInspectionDocumentsFromSubmission(submission);
 }
 
 export function collectFieldInspectionDocumentsFromSubmission(
-  submission: FieldInspectionSubmission,
+  submission: InspectorWorkspaceDraft,
 ): PropertyDetailDocumentEntry[] {
   const docs: PropertyDetailDocumentEntry[] = [];
   const source = "المعاين الميداني";
+  const taskId = submission.taskId;
 
-  submission.signedDocumentPhotos.forEach((fileName, i) => {
-    const trimmed = fileName.trim();
-    if (!trimmed) return;
-    pushEntry(docs, {
-      id: `inspection-signed-${i}`,
-      name: `مستند موقّع ${i + 1}`,
-      fileName: trimmed,
-      source,
-      kind: fileKind(trimmed),
+  for (const def of INSPECTOR_DEFINED_PHOTOS) {
+    const slot = submission.definedPhotos[def.id];
+    if (!slot || slot.none) continue;
+    slot.photos
+      .filter((photo) => photo.approved)
+      .forEach((photo, i) => {
+        const photoRef = `slot:${def.id}:${photo.id}`;
+        pushEntry(docs, {
+          id: `inspection-photo-${def.id}-${photo.id}`,
+          name: slot.photos.length > 1 ? `${def.name} ${i + 1}` : def.name,
+          fileName: photo.fileName,
+          source,
+          kind: fileKind(photo.fileName, photo.mimeType),
+          dataUrl: getInspectorPhotoDataUrl(taskId, photoRef),
+        });
+      });
+  }
+
+  submission.freePhotos
+    .filter((photo) => photo.approved)
+    .forEach((photo) => {
+      const photoRef = `free:${photo.id}`;
+      pushEntry(docs, {
+        id: `inspection-free-${photo.id}`,
+        name: photo.category?.trim() || "صورة إضافية",
+        fileName: photo.fileName,
+        source,
+        kind: fileKind(photo.fileName, photo.mimeType),
+        dataUrl: getInspectorPhotoDataUrl(taskId, photoRef),
+      });
     });
-  });
 
-  for (const slot of FIELD_INSPECTION_PHOTO_SLOTS) {
-    const fileName = submission.propertyPhotos[slot.key]?.trim() ?? "";
-    if (!fileName) continue;
+  for (const [key, attachment] of Object.entries(
+    submission.featurePhotoAttachments,
+  )) {
+    if (!attachment?.fileName) continue;
+    const photoRef = `feature:${key}`;
     pushEntry(docs, {
-      id: `inspection-photo-${slot.key}`,
-      name: slot.label,
-      fileName,
+      id: `inspection-feature-${key}`,
+      name: `صورة توثيقية — ${key}`,
+      fileName: attachment.fileName,
       source,
-      kind: fileKind(fileName),
+      kind: fileKind(attachment.fileName, attachment.mimeType),
+      dataUrl: getInspectorPhotoDataUrl(taskId, photoRef),
     });
   }
+
+  for (const [key, attachment] of Object.entries(
+    submission.componentPhotoAttachments,
+  )) {
+    if (!attachment?.fileName) continue;
+    const photoRef = `component:${key}`;
+    pushEntry(docs, {
+      id: `inspection-component-${key}`,
+      name: key === "showroom" ? "صورة المعرض" : "صورة البئر",
+      fileName: attachment.fileName,
+      source,
+      kind: fileKind(attachment.fileName, attachment.mimeType),
+      dataUrl: getInspectorPhotoDataUrl(taskId, photoRef),
+    });
+  }
+
+  submission.observations.forEach((obs) => {
+    if (!obs.photo?.fileName) return;
+    const photoRef = `observation:${obs.id}`;
+    pushEntry(docs, {
+      id: `inspection-observation-${obs.id}`,
+      name: obs.category.trim() || obs.text.trim() || "ملاحظة موثّقة",
+      fileName: obs.photo.fileName,
+      source,
+      kind: fileKind(obs.photo.fileName, obs.photo.mimeType),
+      dataUrl: getInspectorPhotoDataUrl(taskId, photoRef),
+    });
+  });
 
   return docs;
 }

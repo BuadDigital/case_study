@@ -11,9 +11,13 @@ import {
   DEED_STATUS_OPTIONS,
   PROPERTY_CLASSIFICATIONS,
   RESTRICTIONS_PRESENT_OPTIONS,
+  boundariesDetailFieldsOptional,
+  boundariesMarkedUnavailable,
+  clearPropertyBoundaryFields,
   type BourseDeedVitality,
   type PoPropertyIntake,
 } from "../../lib/prototype/po-intake-data";
+import { PoPropertyBoundariesEntrySection } from "./PoPropertyBoundariesEntrySection";
 import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
 import type { FieldErrors } from "@platform/app-shared/registration/registration-utils";
 import { cn, FormRow, Label, Note } from "@platform/design-system";
@@ -227,23 +231,54 @@ export function PoPropertyBourseForm({
                   className={pillClass(
                     property.boundariesAvailability === opt.value,
                   )}
-                  onClick={() => onPatch("boundariesAvailability", opt.value)}
+                  onClick={() => {
+                    onPatch("boundariesAvailability", opt.value);
+                    if (opt.value === "no") {
+                      onPatch("boundariesExternalDocName", "");
+                      const cleared = clearPropertyBoundaryFields();
+                      (
+                        Object.entries(cleared) as [
+                          keyof PoPropertyIntake,
+                          string,
+                        ][]
+                      ).forEach(([key, value]) => onPatch(key, value));
+                    }
+                  }}
                 >
                   {opt.label}
                 </button>
               ))}
             </div>
+            {boundariesMarkedUnavailable(property.boundariesAvailability) ? (
+              <Note tone="default" className="mt-3 border border-border bg-surface-2">
+                الحدود <strong>غير متوفرة</strong> — لا يُطلب إدخال تفاصيل الحدود
+                ويمكن الحفظ مباشرة.
+              </Note>
+            ) : boundariesDetailFieldsOptional(
+                property.boundariesAvailability,
+              ) ? (
+              <Note tone="info" className="mt-3">
+                عند اختيار مصدر للحدود، الحقول التفصيلية{" "}
+                <strong>اختيارية</strong> ولا تمنع «حفظ وإكمال البورصة».
+              </Note>
+            ) : null}
             {property.boundariesAvailability === "doc" ? (
               <div className="mt-3">
                 <RegField
                   id="boundaries_external"
-                  label="اسم المستند الخارجي"
-                  required
+                  label="اسم المستند الخارجي (اختياري)"
                   value={property.boundariesExternalDocName}
                   error={fieldErrors.boundariesExternalDocName}
                   onChange={(v) => onPatch("boundariesExternalDocName", v)}
                 />
               </div>
+            ) : null}
+            {boundariesDetailFieldsOptional(property.boundariesAvailability) ? (
+              <PoPropertyBoundariesEntrySection
+                property={property}
+                fieldErrors={fieldErrors}
+                onPatch={onPatch}
+              />
             ) : null}
           </div>
         </>

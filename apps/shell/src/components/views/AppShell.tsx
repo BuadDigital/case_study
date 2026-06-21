@@ -650,13 +650,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     onValuationCoordinationWorkspace ||
     (pathname ? isPartyTaskWorkPath(pathname) && Boolean(taskQuery) : false);
 
-  const showActiveTransactionsSituation =
-    isInActiveTransactionsSection(currentPage, onTaskWork) ||
-    onActiveSurveyWorkspace ||
+  const onPartyTaskFullPageWorkspace =
     onPropertyAppraisalWorkspace ||
     onPropertyInspectionWorkspace ||
     onGovernmentReviewWorkspace ||
     onValuationCoordinationWorkspace;
+
+  const showActiveTransactionsSituation =
+    isInActiveTransactionsSection(currentPage, onTaskWork) ||
+    onActiveSurveyWorkspace ||
+    onPartyTaskFullPageWorkspace;
 
   const def = ROLES[role];
   const chipName = sessionUser?.displayName?.trim() || def.name;
@@ -716,10 +719,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [onPoPropertyDetail, onActiveSurveyPropertyDetail, breadcrumbSegments, resolvedPageTitle, poChrome?.titlePo]);
 
   return (
-    <div id="app" className="flex h-svh bg-bg">
+    <div id="app" className="flex h-svh overflow-hidden bg-bg">
       <div
         id="sidebar"
-        className="flex w-sidebar shrink-0 flex-col overflow-hidden border-s border-white/[0.06] bg-sidebar text-white [color-scheme:dark]"
+        className="flex h-svh w-sidebar shrink-0 flex-col overflow-hidden border-s border-white/[0.06] bg-sidebar text-white [color-scheme:dark]"
       >
         <div className="flex items-center gap-2 border-b border-sidebar-border px-3.5 py-4">
           <div
@@ -748,11 +751,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             إجادة للتقييم
           </span>
         </div>
-        <nav
-          id="nav"
-          className="min-h-0 flex-1 overflow-y-auto pb-1"
-          aria-label="التنقل الرئيسي"
-        >
+        <div className="flex min-h-0 flex-1 flex-col justify-between overflow-hidden">
+          <nav
+            id="nav"
+            className="min-h-0 shrink pb-1"
+            aria-label="التنقل الرئيسي"
+          >
           {navRuns.map((run, ri) => {
             const blocks: React.ReactNode[] = [];
             blocks.push(
@@ -875,11 +879,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               ) : null}
             </>
           ) : null}
-        </nav>
-        <div
-          className="shrink-0 border-t border-sidebar-border bg-sidebar px-0 py-1.5 pb-2.5"
-          aria-label="قوائم النظام"
-        >
+          </nav>
+          <div
+            className="shrink-0 border-t border-sidebar-border bg-sidebar px-0 py-1.5 pb-2.5"
+            aria-label="قوائم النظام"
+          >
           {showSystemFieldsGroup ? (
             <FooterNavDropdown
               groupLabel={SYSTEM_FIELDS_GROUP}
@@ -902,6 +906,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onPrefetch={prefetchPage}
             />
           ) : null}
+          </div>
         </div>
       </div>
       <div id="main" className="flex min-w-0 flex-1 flex-col overflow-hidden bg-bg">
@@ -973,12 +978,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         <div
           id="content"
-          className="flex min-h-0 flex-1 flex-col items-stretch overflow-y-auto bg-bg p-0"
+          data-workspace-scroll={
+            onPropertyInspectionWorkspace ? "locked" : undefined
+          }
+          className={cn(
+            "flex min-h-0 flex-1 flex-col items-stretch bg-bg p-0",
+            onPropertyInspectionWorkspace ? "overflow-hidden" : "overflow-y-auto",
+          )}
         >
           {showActiveTransactionsSituation &&
           currentPage !== "active-survey" &&
           !onActiveSurveyWorkspace &&
-          !onCaseStudyWorkspace ? (
+          !onCaseStudyWorkspace &&
+          !onPropertyInspectionWorkspace ? (
             <ActiveTransactionsSituationBar />
           ) : null}
           {children}

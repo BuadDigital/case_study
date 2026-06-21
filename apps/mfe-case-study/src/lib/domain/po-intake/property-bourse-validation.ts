@@ -33,10 +33,6 @@ export function validatePropertyBourseFields(
     errors.boundariesAvailability = "قيمة توفر الحدود غير صالحة";
   }
 
-  if (boundaries === "doc" && !p.boundariesExternalDocName.trim()) {
-    errors.boundariesExternalDocName = "اسم المستند الخارجي مطلوب";
-  }
-
   return errors;
 }
 

@@ -20,6 +20,14 @@ public class WorkOrderPropertyDto
     public string? RestrictionsPresent { get; set; }
     public string? BoundariesAvailability { get; set; }
     public string? BoundariesExternalDocName { get; set; }
+    public string? NorthBoundary { get; set; }
+    public string? NorthBoundaryLengthM { get; set; }
+    public string? SouthBoundary { get; set; }
+    public string? SouthBoundaryLengthM { get; set; }
+    public string? EastBoundary { get; set; }
+    public string? EastBoundaryLengthM { get; set; }
+    public string? WestBoundary { get; set; }
+    public string? WestBoundaryLengthM { get; set; }
     public string City { get; set; } = "";
     public string District { get; set; } = "";
     public string? DeedStatus { get; set; }
@@ -104,6 +112,14 @@ public class UpdatePropertyBourseRequest
     public string? RestrictionsPresent { get; set; }
     public string? BoundariesAvailability { get; set; }
     public string? BoundariesExternalDocName { get; set; }
+    public string? NorthBoundary { get; set; }
+    public string? NorthBoundaryLengthM { get; set; }
+    public string? SouthBoundary { get; set; }
+    public string? SouthBoundaryLengthM { get; set; }
+    public string? EastBoundary { get; set; }
+    public string? EastBoundaryLengthM { get; set; }
+    public string? WestBoundary { get; set; }
+    public string? WestBoundaryLengthM { get; set; }
 }
 
 public class WorkOrderListItemDto
@@ -137,6 +153,14 @@ public class PriorDeedRegistrationDto
     public string? RestrictionsPresent { get; set; }
     public string? BoundariesAvailability { get; set; }
     public string? BoundariesExternalDocName { get; set; }
+    public string? NorthBoundary { get; set; }
+    public string? NorthBoundaryLengthM { get; set; }
+    public string? SouthBoundary { get; set; }
+    public string? SouthBoundaryLengthM { get; set; }
+    public string? EastBoundary { get; set; }
+    public string? EastBoundaryLengthM { get; set; }
+    public string? WestBoundary { get; set; }
+    public string? WestBoundaryLengthM { get; set; }
 }
 
 public class PendingBoursePropertyDto

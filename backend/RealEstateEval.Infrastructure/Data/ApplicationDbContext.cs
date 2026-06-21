@@ -113,6 +113,14 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.OtherDocumentFileNames).HasMaxLength(2000);
             e.Property(x => x.BoundariesAvailability).HasMaxLength(32);
             e.Property(x => x.BoundariesExternalDocName).HasMaxLength(512);
+            e.Property(x => x.NorthBoundary).HasMaxLength(512);
+            e.Property(x => x.NorthBoundaryLengthM).HasMaxLength(32);
+            e.Property(x => x.SouthBoundary).HasMaxLength(512);
+            e.Property(x => x.SouthBoundaryLengthM).HasMaxLength(32);
+            e.Property(x => x.EastBoundary).HasMaxLength(512);
+            e.Property(x => x.EastBoundaryLengthM).HasMaxLength(32);
+            e.Property(x => x.WestBoundary).HasMaxLength(512);
+            e.Property(x => x.WestBoundaryLengthM).HasMaxLength(32);
             e.Property(x => x.RestrictionsPresent).HasMaxLength(8);
             e.Property(x => x.City).HasMaxLength(128);
             e.Property(x => x.District).HasMaxLength(128);

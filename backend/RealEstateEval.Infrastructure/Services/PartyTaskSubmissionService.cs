@@ -221,8 +221,14 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                     break;
 
                 case "field-inspection":
-                    if (!HasNonEmpty(root, "propertyType"))
-                        errors["propertyType"] = "نوع العقار مطلوب";
+                    if (!HasNonEmpty(root, "inspectionDate"))
+                        errors["inspectionDate"] = "تاريخ المعاينة مطلوب";
+                    if (!HasNonEmpty(root, "inspectionTime"))
+                        errors["inspectionTime"] = "وقت المعاينة مطلوب";
+                    if (!HasNonEmpty(root, "mapLatitude") || !HasNonEmpty(root, "mapLongitude"))
+                        errors["mapLatitude"] = "يجب تحديد موقع العقار (GPS)";
+                    if (!GetBool(root, "inspectionConfirmed"))
+                        errors["inspectionConfirmed"] = "يجب التأشير على إقرار المعاينة";
                     break;
             }
         }

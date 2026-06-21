@@ -231,4 +231,25 @@
 
 }
 
+/* App shell fills the viewport — one scroll surface only (inside task forms). */
+html:has(#app),
+html:has(#app) body {
+  overflow: hidden;
+  height: 100%;
+  max-height: 100svh;
+}
+
+#app {
+  max-height: 100svh;
+}
+
+#sidebar,
+#main {
+  max-height: 100svh;
+}
+
+#content[data-workspace-scroll="locked"] {
+  overflow: hidden;
+}
+
 

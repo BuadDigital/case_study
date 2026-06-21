@@ -15,6 +15,9 @@ export function PoEditShell({
   saveLabel = "حفظ التعديلات",
   footerExtra,
   variant = "edit",
+  showFooter = true,
+  fillViewport = false,
+  scrollMode = "viewport",
   children,
 }: {
   title: string;
@@ -26,6 +29,11 @@ export function PoEditShell({
   saveLabel?: string;
   footerExtra?: ReactNode;
   variant?: "edit" | "detail";
+  showFooter?: boolean;
+  /** يملأ ارتفاع منطقة المحتوى — تمرير واحد داخل النموذج. */
+  fillViewport?: boolean;
+  /** document = تمرير الصفحة بالكامل (مناسب لـ /property-inspection/[taskId]). */
+  scrollMode?: "viewport" | "document";
   children: ReactNode;
 }) {
   function handleBack() {
@@ -33,13 +41,35 @@ export function PoEditShell({
     onBack();
   }
 
+  const showShellFooter = showFooter && variant !== "detail";
+  const documentScroll = scrollMode === "document";
+  const viewportScroll = fillViewport && !documentScroll;
+
   return (
-    <div className="flex min-h-0 w-full flex-col overflow-hidden">
-      <div className="flex min-h-0 flex-1 items-stretch">
+    <div
+      className={cn(
+        "flex w-full flex-col overflow-hidden",
+        viewportScroll ? "min-h-0 flex-1" : "min-h-0",
+      )}
+    >
+      <div
+        className={cn(
+          "flex items-stretch",
+          documentScroll ? "min-h-0 w-full flex-col" : "min-h-0 flex-1",
+        )}
+      >
         <div
           className={cn(
-            "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface",
-            variant === "detail" && "bg-surface",
+            "flex min-w-0 flex-col",
+            viewportScroll
+              ? "min-h-0 flex-1 overflow-hidden bg-bg"
+              : cn(
+                  "bg-surface",
+                  documentScroll
+                    ? "w-full"
+                    : "min-h-0 flex-1 overflow-hidden",
+                ),
+            variant === "detail" && !viewportScroll && "bg-surface",
           )}
         >
           <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-surface px-4 py-2.5">
@@ -57,10 +87,19 @@ export function PoEditShell({
               </div>
             </div>
           </header>
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-4">
-            {children}
+          <div
+            className={cn(
+              documentScroll
+                ? "px-4 py-4 pb-6"
+                : "inspector-work-scroll min-h-0 flex-1 overflow-y-auto bg-bg px-4 pb-4",
+            )}
+            dir="rtl"
+          >
+            <div dir="rtl" className={documentScroll ? undefined : "min-h-0"}>
+              {children}
+            </div>
           </div>
-          {variant !== "detail" ? (
+          {showShellFooter ? (
             <footer className="flex shrink-0 justify-start border-t border-border bg-surface px-4 py-3">
               <div className="flex flex-row flex-wrap items-center gap-2">
                 {footerExtra}

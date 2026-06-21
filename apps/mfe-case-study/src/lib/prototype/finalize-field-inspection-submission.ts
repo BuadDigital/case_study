@@ -1,17 +1,15 @@
-import type { FieldInspectionSubmission } from "./field-inspection-data";
-import { notifyTasksChanged } from "./tasks-storage";
-import { submitFieldInspectionSubmission } from "./field-inspection-submission-storage";
+import type { InspectorWorkspaceDraft } from "./inspector-workspace-data";
+import { submitInspectorWorkspace } from "./inspector-workspace-storage";
 
 /** يُنهي المعاينة الميدانية عبر API (يُكمل المهمة على الخادم). */
-export async function finalizeFieldInspectionSubmission(
+export async function finalizeInspectorWorkspace(
   taskId: string,
 ): Promise<
-  | { ok: true; submission: FieldInspectionSubmission }
+  | { ok: true; draft: InspectorWorkspaceDraft }
   | { ok: false; message: string; errors?: Record<string, string> }
 > {
-  const result = await submitFieldInspectionSubmission(taskId);
-  if (result.ok) {
-    notifyTasksChanged();
-  }
-  return result;
+  return submitInspectorWorkspace(taskId);
 }
+
+/** @deprecated */
+export const finalizeFieldInspectionSubmission = finalizeInspectorWorkspace;

@@ -8,14 +8,13 @@ import { loadCaseStudyFormDraft, loadPartyCaseStudyFormDraft,
 } from "./case-study-form-storage";
 import { childTasksForCaseStudyParent } from "./case-study-party-answers";
 import {
-  fieldInspectionRentalStatusLabel,
-  fieldInspectionStatusLabel,
-  fieldInspectionYesNoLabel,
-} from "./field-inspection-data";
+  INSPECTOR_FEATURE_FIELDS,
+  inspectorWorkspaceStatusLabel,
+} from "./inspector-workspace-data";
 import {
-  loadFieldInspectionSubmissionSnapshot,
-  type FieldInspectionSubmissionSnapshot,
-} from "./field-inspection-submission-storage";
+  loadInspectorWorkspaceSnapshot,
+  type InspectorWorkspaceSnapshot,
+} from "./inspector-workspace-storage";
 import type { PropertyDetailPartyRoleKey } from "./property-detail-parties";
 import {
   migrateDistribution,
@@ -781,85 +780,15 @@ function buildFromEvaluator(
 }
 
 function buildFromFieldInspection(
-  submission: FieldInspectionSubmissionSnapshot,
+  submission: InspectorWorkspaceSnapshot,
   childTask?: WorkflowTask | null,
 ): PropertyDetailPartySubmission {
   const fields: PropertyDetailPartySubmission["fields"] = [
     {
       label: "حالة المعاينة",
-      value: fieldInspectionStatusLabel(submission.status),
+      value: inspectorWorkspaceStatusLabel(submission.status),
     },
   ];
-
-  if (submission.propertyType.trim()) {
-    fields.push({ label: "نوع العقار", value: submission.propertyType.trim() });
-  }
-  if (submission.areaDistrict.trim()) {
-    fields.push({ label: "المنطقة / الحي", value: submission.areaDistrict.trim() });
-  }
-  if (submission.actualAreaSqm.trim()) {
-    fields.push({
-      label: "المساحة الفعلية",
-      value: `${submission.actualAreaSqm.trim()} م²`,
-      ltr: true,
-    });
-  }
-  if (submission.structuralCondition.trim()) {
-    fields.push({
-      label: "الحالة الإنشائية",
-      value: submission.structuralCondition.trim(),
-    });
-  }
-  if (submission.hasMovableItems !== null) {
-    fields.push({
-      label: "منقولات داخل العقار",
-      value: fieldInspectionYesNoLabel(submission.hasMovableItems),
-    });
-  }
-  if (submission.isCurrentlyRented) {
-    fields.push({
-      label: "العقار مؤجر",
-      value: fieldInspectionRentalStatusLabel(submission.isCurrentlyRented),
-    });
-  }
-  if (submission.accessDifficulty.trim()) {
-    fields.push({
-      label: "إمكانية الوصول",
-      value: submission.accessDifficulty.trim(),
-    });
-  }
-  if (submission.avgPricePerSqm.trim()) {
-    fields.push({
-      label: "متوسط سعر م²",
-      value: `${submission.avgPricePerSqm.trim()} ر.س`,
-      ltr: true,
-    });
-  }
-  if (submission.marketActivityLevel.trim()) {
-    fields.push({
-      label: "نشاط السوق",
-      value: submission.marketActivityLevel.trim(),
-    });
-  }
-  if (submission.responsiblePersonName.trim()) {
-    fields.push({
-      label: "المسؤول عن التوقيع",
-      value: submission.responsiblePersonName.trim(),
-    });
-  }
-  if (submission.responsiblePersonRole.trim()) {
-    fields.push({
-      label: "صفة المسؤول",
-      value: submission.responsiblePersonRole.trim(),
-    });
-  }
-  if (submission.submittedAtUtc) {
-    fields.push({
-      label: "تاريخ الإرسال",
-      value: formatDateAr(submission.submittedAtUtc.slice(0, 10)),
-      ltr: true,
-    });
-  }
 
   const pushInspectionField = (label: string, value: string, ltr?: boolean) => {
     const v = value.trim();
@@ -873,13 +802,7 @@ function buildFromFieldInspection(
       true,
     );
   }
-  pushInspectionField(INFATH_FIELD_LABELS.assetSubject, submission.propertyType);
-  pushInspectionField(INFATH_FIELD_LABELS.facade, submission.facade);
-  pushInspectionField(INFATH_FIELD_LABELS.streetWidth, submission.streetWidthM, true);
-  pushInspectionField(INFATH_FIELD_LABELS.builtArea, submission.builtAreaSqm, true);
-  pushInspectionField(INFATH_FIELD_LABELS.propertyUsage, submission.propertyUsage);
-  pushInspectionField(INFATH_FIELD_LABELS.streetName, submission.streetName);
-  pushInspectionField(INFATH_FIELD_LABELS.mainStreet, submission.mainStreetName);
+  pushInspectionField("وقت المعاينة", submission.inspectionTime, true);
   if (submission.mapLatitude.trim() || submission.mapLongitude.trim()) {
     pushInspectionField(
       INFATH_FIELD_LABELS.mapCoords,
@@ -887,41 +810,49 @@ function buildFromFieldInspection(
       true,
     );
   }
+
+  for (const field of INSPECTOR_FEATURE_FIELDS) {
+    pushInspectionField(field.label, submission.featureValues[field.key] ?? "");
+  }
+
+  pushInspectionField(INFATH_FIELD_LABELS.streetName, submission.streetName);
+  pushInspectionField(INFATH_FIELD_LABELS.mainStreet, submission.mainStreetName);
+  pushInspectionField(INFATH_FIELD_LABELS.streetWidth, submission.streetWidthM, true);
   pushInspectionField(INFATH_FIELD_LABELS.roomCount, submission.roomCount, true);
   pushInspectionField(INFATH_FIELD_LABELS.hallCount, submission.hallCount, true);
   pushInspectionField(INFATH_FIELD_LABELS.unitCount, submission.unitCount, true);
-  pushInspectionField(INFATH_FIELD_LABELS.bathroomCount, submission.bathroomCount, true);
-  pushInspectionField(INFATH_FIELD_LABELS.propertyAge, submission.propertyAgeYears, true);
-  pushInspectionField(INFATH_FIELD_LABELS.showroomCount, submission.showroomCount, true);
-  pushInspectionField(INFATH_FIELD_LABELS.towerCount, submission.towerCount, true);
+  pushInspectionField(
+    INFATH_FIELD_LABELS.bathroomCount,
+    submission.bathroomCount,
+    true,
+  );
+  pushInspectionField(
+    INFATH_FIELD_LABELS.propertyAge,
+    submission.propertyAgeYears,
+    true,
+  );
+  pushInspectionField(
+    INFATH_FIELD_LABELS.showroomCount,
+    submission.showroomCount,
+    true,
+  );
   pushInspectionField(INFATH_FIELD_LABELS.wellCount, submission.wellCount, true);
-  pushInspectionField(INFATH_FIELD_LABELS.kitchen, infathYesNoLabel(submission.hasKitchen));
-  pushInspectionField(INFATH_FIELD_LABELS.carEntrance, infathYesNoLabel(submission.hasCarEntrance));
-  pushInspectionField(INFATH_FIELD_LABELS.hasBasement, infathYesNoLabel(submission.hasBasement));
-  pushInspectionField(INFATH_FIELD_LABELS.hasElevator, infathYesNoLabel(submission.hasElevator));
-  pushInspectionField(INFATH_FIELD_LABELS.hasPool, infathYesNoLabel(submission.hasPool));
-  pushInspectionField(INFATH_FIELD_LABELS.buildState, submission.structuralCondition);
-  if (submission.isCurrentlyRented) {
-    pushInspectionField(
-      INFATH_FIELD_LABELS.occupancyState,
-      fieldInspectionRentalStatusLabel(submission.isCurrentlyRented),
-    );
+  pushInspectionField(
+    INFATH_FIELD_LABELS.services,
+    submission.services.join("، "),
+  );
+  pushInspectionField(
+    INFATH_FIELD_LABELS.amenities,
+    submission.amenities.join("، "),
+  );
+
+  if (submission.submittedAtUtc) {
+    fields.push({
+      label: "تاريخ الإرسال",
+      value: formatDateAr(submission.submittedAtUtc.slice(0, 10)),
+      ltr: true,
+    });
   }
-  pushInspectionField(INFATH_FIELD_LABELS.districtState, submission.districtState);
-  if (submission.hasMovableItems !== null) {
-    pushInspectionField(
-      INFATH_FIELD_LABELS.movables,
-      fieldInspectionYesNoLabel(submission.hasMovableItems),
-    );
-  }
-  pushInspectionField(INFATH_FIELD_LABELS.services, submission.availableServices);
-  pushInspectionField(INFATH_FIELD_LABELS.amenities, submission.surroundingAmenities);
-  pushInspectionField(INFATH_FIELD_LABELS.buildingFloors, submission.buildingFloors, true);
-  pushInspectionField(INFATH_FIELD_LABELS.basementTotal, submission.basementTotalSqm, true);
-  pushInspectionField(INFATH_FIELD_LABELS.annexTotal, submission.annexTotalSqm, true);
-  pushInspectionField(INFATH_FIELD_LABELS.buildingsTotal, submission.buildingsTotalSqm, true);
-  pushInspectionField(INFATH_FIELD_LABELS.exteriorPhotos, submission.exteriorPhotosPdf);
-  pushInspectionField(INFATH_FIELD_LABELS.interiorPhotos, submission.interiorPhotosPdf);
 
   if (childTask) {
     fields.push({
@@ -931,12 +862,6 @@ function buildFromFieldInspection(
   }
 
   const remarks: PropertyDetailPartySubmission["remarks"] = [];
-  if (submission.marketNotes.trim()) {
-    remarks.push({ label: "ملاحظات سوقية", value: submission.marketNotes.trim() });
-  }
-  if (submission.generalNotes.trim()) {
-    remarks.push({ label: "ملاحظات عامة", value: submission.generalNotes.trim() });
-  }
   if (submission.propertyDescription.trim()) {
     remarks.push({
       label: INFATH_FIELD_LABELS.propertyDescription,
@@ -962,35 +887,24 @@ function buildFromFieldInspection(
     });
   }
 
-  const signedPhotos = submission.signedDocumentPhotos.filter((p) => p.trim());
-  if (signedPhotos.length > 0) {
+  for (const obs of submission.observations) {
+    if (!obs.text.trim()) continue;
     remarks.push({
-      label: "صور المستندات",
-      value: signedPhotos.join("، "),
-    });
-  }
-
-  const propertyPhotos = Object.values(submission.propertyPhotos).filter((p) =>
-    p.trim(),
-  );
-  if (propertyPhotos.length > 0) {
-    remarks.push({
-      label: "صور العقار",
-      value: propertyPhotos.join("، "),
+      label: obs.category.trim() || "ملاحظة موثّقة",
+      value: obs.text.trim(),
     });
   }
 
   const hasData =
     submission.status !== "draft" ||
-    Boolean(submission.propertyType.trim()) ||
-    Boolean(submission.structuralCondition.trim()) ||
+    fields.length > 1 ||
     remarks.length > 0;
 
   return {
     roleKey: "inspection",
     hasData,
     emptyReason: hasData ? undefined : "لم يُقدَّم بعد",
-    statusLabel: fieldInspectionStatusLabel(submission.status),
+    statusLabel: inspectorWorkspaceStatusLabel(submission.status),
     taskStatusLabel: childTask
       ? workflowStatusLabel(childTask.status)
       : undefined,
@@ -1358,7 +1272,7 @@ export async function loadPropertyDetailPartySubmission(input: {
   }
 
   if (roleKey === "inspection") {
-    const submission = await loadFieldInspectionSubmissionSnapshot(child.id);
+    const submission = await loadInspectorWorkspaceSnapshot(child.id);
     if (!submission) {
       return emptySubmission(roleKey, "لم يُقدَّم بعد");
     }

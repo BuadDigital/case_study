@@ -8,9 +8,9 @@ import { fetchEvaluatorSubmission } from "@evaluator/mfe";
 import { useEffect, useState } from "react";
 import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-evaluator-events";
 import {
-  fetchFieldInspectionSubmission,
+  fetchInspectorWorkspace,
   FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
-} from "../lib/prototype/field-inspection-submission-storage";
+} from "../lib/prototype/inspector-workspace-storage";
 import {
   collectPropertyDetailDocumentSections,
   type PropertyDetailDocumentSection,
@@ -67,7 +67,7 @@ export function usePropertyDetailDocuments(input: {
         ? fetchEvaluatorSubmission(appraisalTaskId)
         : Promise.resolve(null),
       inspectionTaskId
-        ? fetchFieldInspectionSubmission(inspectionTaskId)
+        ? fetchInspectorWorkspace(inspectionTaskId)
         : Promise.resolve(null),
     ]).then(refresh);
 

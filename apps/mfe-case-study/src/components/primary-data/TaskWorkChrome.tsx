@@ -1,6 +1,6 @@
 "use client";
 import type { ReactNode } from "react";
-import { Button, Card, CardBody } from "@platform/design-system";
+import { Button, Card, CardBody, cn } from "@platform/design-system";
 import { PoEditShell } from "@case-study/mfe/components/po-intake/PoEditShell";
 
 export function TaskWorkChrome({
@@ -15,6 +15,7 @@ export function TaskWorkChrome({
   showFooter = true,
   variant = "edit",
   footerExtra,
+  scrollMode = "viewport",
   children,
 }: {
   layout?: "page" | "panel";
@@ -28,6 +29,7 @@ export function TaskWorkChrome({
   showFooter?: boolean;
   variant?: "edit" | "detail";
   footerExtra?: ReactNode;
+  scrollMode?: "viewport" | "document";
   children: ReactNode;
 }) {
   if (layout === "panel") {
@@ -54,18 +56,25 @@ export function TaskWorkChrome({
     );
   }
 
+  const useDocumentScroll = scrollMode === "document";
+
   return (
-    <PoEditShell
-      title={title}
-      subtitle={subtitle}
-      saving={saving}
-      onBack={onClose}
-      onSave={onSave}
-      saveLabel={saveLabel}
-      footerExtra={footerExtra}
-      variant={variant}
-    >
-      {children}
-    </PoEditShell>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <PoEditShell
+        title={title}
+        subtitle={subtitle}
+        saving={saving}
+        onBack={onClose}
+        onSave={onSave}
+        saveLabel={saveLabel}
+        footerExtra={footerExtra}
+        variant={variant}
+        showFooter={showFooter}
+        fillViewport={!useDocumentScroll}
+        scrollMode={scrollMode}
+      >
+        {children}
+      </PoEditShell>
+    </div>
   );
 }
