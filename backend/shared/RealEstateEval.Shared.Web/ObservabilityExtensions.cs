@@ -5,6 +5,7 @@ using Microsoft.Extensions.Hosting;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using RealEstateEval.Shared.Web.Middleware;
 
 namespace RealEstateEval.Shared.Web;
 
@@ -37,6 +38,7 @@ public static class ServicePipelineExtensions
 {
     public static WebApplication UseRealEstateEvalServicePipeline(this WebApplication app)
     {
+        app.UseGlobalExceptionHandler();
         app.UseResponseCompression();
         app.UseCorrelationId();
         if (!app.Environment.IsDevelopment())

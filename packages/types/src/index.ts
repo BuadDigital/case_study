@@ -24,19 +24,3 @@ export type {
   UserListItem,
   UserStatusApi,
 } from "./users";
-export type {
-  CustomAssignedScreen,
-  CustomAssignedScreenUser,
-  SaveCustomAssignedScreenRequest,
-} from "./custom-assigned-screens";
-export type {
-  DynamicScreenDefinition,
-  DynamicScreenField,
-  DynamicScreenFieldBinding,
-  DynamicScreenFieldType,
-  DynamicScreenLayoutCell,
-  DynamicScreenStatus,
-  DynamicScreenSubmission,
-  SaveDynamicScreenDefinitionRequest,
-  SaveDynamicScreenSubmissionRequest,
-} from "./dynamic-screen-definition";

@@ -1,10 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { Badge, Button, Input, Skeleton, cn, useToast } from "@platform/design-system";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
+import { Badge, Input, cn } from "@platform/design-system";
 import {
   SCREEN_CATALOG_KIND_LABELS,
   SCREEN_CATALOG_STATUS_LABELS,
@@ -17,17 +14,6 @@ import {
   type SystemScreenEntry,
 } from "@platform/app-shared/prototype/screen-catalog";
 import { ScreenCatalogDetailPanel } from "./ScreenCatalogDetailPanel";
-import { CustomScreenFormModal } from "./CustomScreenFormModal";
-import {
-  invalidateCustomAssignedScreensQueries,
-  useAssignableUsersForCustomScreensQuery,
-  useCustomAssignedScreensManageQuery,
-} from "../../query/custom-screens-queries";
-import { saveCustomAssignedScreen } from "../../lib/custom-screens-api";
-import {
-  customCatalogEntryId,
-  dynamicCustomCatalogEntries,
-} from "../../lib/screen-catalog-access";
 
 type FacetKey = "role" | "group" | "kind" | "status";
 
@@ -55,28 +41,12 @@ function statusTone(
 }
 
 export function ScreenCatalogTab() {
-  const queryClient = useQueryClient();
-  const { role } = usePrototype();
-  const canManageCustomScreens = isSuperAdmin(role);
-  const { data: manageResult } = useCustomAssignedScreensManageQuery();
-  const { data: usersResult } = useAssignableUsersForCustomScreensQuery();
-  const customScreens = manageResult?.screens ?? [];
-
-  const screens = useMemo(
-    () => [
-      ...SYSTEM_SCREEN_CATALOG,
-      ...dynamicCustomCatalogEntries(customScreens),
-    ],
-    [customScreens],
-  );
+  const screens = SYSTEM_SCREEN_CATALOG;
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState(emptyFilters);
   const [openFacet, setOpenFacet] = useState<FacetKey | null>(null);
-  const { showToast } = useToast();
-  const [addModalOpen, setAddModalOpen] = useState(false);
-  const [addBusy, setAddBusy] = useState(false);
 
   const facetOptions = useMemo(
     () => ({
@@ -157,38 +127,6 @@ export function ScreenCatalogTab() {
     [...filters[facet]].map((value) => ({ facet, value })),
   );
 
-  const assignableUsers = usersResult?.users ?? [];
-
-  async function handleAddScreen(payload: {
-    name: string;
-    targetPageId: string | null;
-    iconPath: string | null;
-    isActive: boolean;
-    assignedUserIds: string[];
-  }): Promise<void> {
-    setAddBusy(true);
-    const result = await saveCustomAssignedScreen({
-      name: payload.name,
-      targetPageId: payload.targetPageId,
-      iconPath: payload.iconPath,
-      isActive: payload.isActive,
-      assignedUserIds: payload.assignedUserIds,
-    });
-    setAddBusy(false);
-    if (!result.ok) {
-      showToast(result.error, "error");
-      return;
-    }
-    setAddModalOpen(false);
-    showToast("تمت إضافة الشاشة.", "success");
-    invalidateCustomAssignedScreensQueries(queryClient);
-    if (payload.targetPageId?.trim()) {
-      setSelectedId(`page:${payload.targetPageId.trim()}`);
-    } else {
-      setSelectedId(customCatalogEntryId(result.screen.id));
-    }
-  }
-
   return (
     <article className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface max-lg:overflow-visible">
       <header className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3.5">
@@ -198,23 +136,9 @@ export function ScreenCatalogTab() {
             الشاشات الفعلية في النظام — أين تجدها ومن يصل إليها
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {canManageCustomScreens ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="primary"
-              loading={addBusy}
-              disabled={addBusy}
-              onClick={() => setAddModalOpen(true)}
-            >
-              إضافة شاشة
-            </Button>
-          ) : null}
-          <Badge tone="info">
-            {visibleScreens.length}/{screens.length} شاشة
-          </Badge>
-        </div>
+        <Badge tone="info">
+          {visibleScreens.length}/{screens.length} شاشة
+        </Badge>
       </header>
 
       <div className="shrink-0 border-b border-border px-4 py-3">
@@ -323,20 +247,6 @@ export function ScreenCatalogTab() {
           )}
         </div>
       </div>
-
-      {addModalOpen ? (
-        <CustomScreenFormModal
-          key={selectedScreen?.pageId ?? "new"}
-          users={assignableUsers}
-          busy={addBusy}
-          defaultTargetPageId={selectedScreen?.pageId}
-          onSave={(payload) => void handleAddScreen(payload)}
-          onClose={() => {
-            if (addBusy) return;
-            setAddModalOpen(false);
-          }}
-        />
-      ) : null}
     </article>
   );
 }

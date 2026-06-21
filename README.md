@@ -129,7 +129,7 @@ Security is layered across the **browser app**, **API**, and **planned platform*
 | **Token expiry** | JWT (8 hours dev) | `expiresAtUtc` returned to client; validated on each API call |
 | **Protected API route** | `GET /api/auth/me` | Requires `[Authorize]` — Bearer JWT |
 | **Client session store** | `@platform/auth-client` | Token + user profile in **`sessionStorage`** (cleared on tab close) |
-| **App auth gate** | `AppAuthGate` | Unauthenticated users redirected to `/login` |
+| **App auth gate** | `PrototypeAppGate` (`apps/shell`) | Unauthenticated users redirected to `/login` |
 | **Logout** | `AppShell` | Clears session and full navigation to `/login` |
 | **HTTPS redirection** | API `Program.cs` | `UseHttpsRedirection()` on backend |
 | **Password policy (Identity)** | `Program.cs` | Min **8** chars, upper, lower, digit, non-alphanumeric |
@@ -141,7 +141,7 @@ Security is layered across the **browser app**, **API**, and **planned platform*
 Browser → POST /api/auth/login (email, password)
        ← JWT + user + expiresAtUtc
        → sessionStorage["auth"]
-       → App routes allowed under AppAuthGate
+       → App routes allowed under PrototypeAppGate
 Future API calls → Authorization: Bearer <token>
 ```
 
@@ -263,8 +263,8 @@ property_study/
 ├── packages/
 │   ├── app-shared/            # PrototypeContext, registration, nav/constants
 │   ├── design-system/         # prototype.css, badges
-│   ├── auth-client/           # session, AppAuthGate
-│   ├── api-client/            # auth, users, work-orders, courts, workflow-tasks, …
+│   ├── auth-client/           # sessionStorage helpers (JWT session)
+│   ├── api-client/            # users, work-orders, courts, workflow-tasks, …
 │   └── types/                 # PageId, RoleId, nav types
 ├── backend/
 │   ├── gateway/               # YARP API gateway (:5160)
@@ -548,7 +548,7 @@ npm run dev
 | Jaeger | http://localhost:16686 |
 | Kibana | http://localhost:5601 |
 
-**Login without API:** screens work with mock data, but `/login` needs the API for JWT. For UI-only work, use session after one successful login or adjust `AppAuthGate` temporarily during design reviews.
+**Login without API:** screens work with mock data, but `/login` needs the API for JWT. For UI-only work, use session after one successful login or temporarily bypass `PrototypeAppGate` during design reviews.
 
 **Stop everything:**
 

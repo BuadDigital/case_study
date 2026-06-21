@@ -13,7 +13,6 @@ export function pagesFromPermissions(apiPages: readonly string[]): PageId[] {
   for (const page of apiPages) {
     if (ALL_PAGE_SET.has(page)) merged.add(page as PageId);
   }
-  for (const page of SYSTEM_FIELDS_PAGE_IDS) merged.add(page);
   if (merged.size === 0) merged.add("dashboard");
   return [...merged];
 }

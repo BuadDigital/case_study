@@ -6,7 +6,6 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./routes": "./src/routes.ts",
     "./query/survey-queries": "./src/query/survey-queries.ts",
     "./lib/*": "./src/lib/*",
     "./views/*": "./src/views/*",

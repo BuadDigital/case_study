@@ -16,15 +16,18 @@ public class AuthController : ControllerBase
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IPermissionService _permissions;
+    private readonly IWebHostEnvironment _environment;
 
     public AuthController(
         UserManager<ApplicationUser> userManager,
         IJwtTokenService jwtTokenService,
-        IPermissionService permissions)
+        IPermissionService permissions,
+        IWebHostEnvironment environment)
     {
         _userManager = userManager;
         _jwtTokenService = jwtTokenService;
         _permissions = permissions;
+        _environment = environment;
     }
 
     [HttpPost("login-username")]
@@ -33,16 +36,20 @@ public class AuthController : ControllerBase
         [FromBody] UsernameLoginRequest request,
         CancellationToken cancellationToken)
     {
+        if (!_environment.IsDevelopment())
+            return NotFound();
+
         if (!ModelState.IsValid)
             return ValidationProblem(ModelState);
-
         var username = request.Username.Trim();
         var user = await _userManager.FindByNameAsync(username);
         if (user is null)
             return Unauthorized(new { message = "اسم المستخدم غير موجود" });
 
         var roles = await _userManager.GetRolesAsync(user);
-        var (token, expiresAtUtc) = _jwtTokenService.CreateToken(user, roles);
+        var permissions = await _permissions.GetForUserIdAsync(user.Id, cancellationToken);
+        var capabilities = permissions?.Capabilities ?? [];
+        var (token, expiresAtUtc) = _jwtTokenService.CreateToken(user, roles, capabilities);
 
         return Ok(new LoginResponse
         {
@@ -71,7 +78,9 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = "بيانات الدخول غير صحيحة" });
 
         var roles = await _userManager.GetRolesAsync(user);
-        var (token, expiresAtUtc) = _jwtTokenService.CreateToken(user, roles);
+        var permissions = await _permissions.GetForUserIdAsync(user.Id, cancellationToken);
+        var capabilities = permissions?.Capabilities ?? [];
+        var (token, expiresAtUtc) = _jwtTokenService.CreateToken(user, roles, capabilities);
 
         return Ok(new LoginResponse
         {

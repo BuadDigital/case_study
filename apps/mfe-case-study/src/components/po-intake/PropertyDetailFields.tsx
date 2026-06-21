@@ -225,45 +225,6 @@ export function DocIconButton({
   );
 }
 
-/** @deprecated Use FieldBox inside FieldsGrid */
-export function DetailField({
-  label,
-  value,
-  ltr,
-}: {
-  label: string;
-  value: string;
-  ltr?: boolean;
-}) {
-  if (!value || value === "—") return null;
-  return <FieldBox label={label} value={value} ltr={ltr} />;
-}
-
-/** @deprecated Use SectionHeader + FieldsGrid */
-export function DetailSection({
-  title,
-  children,
-  badge,
-}: {
-  title: string;
-  children: ReactNode;
-  badge?: ReactNode;
-}) {
-  return (
-    <section className="border-b border-border pb-4 last:border-b-0 last:pb-0">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="m-0 text-[11px] font-medium tracking-wide text-text-3 uppercase">
-          {title}
-        </h2>
-        {badge}
-      </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {children}
-      </div>
-    </section>
-  );
-}
-
 /** Small status badge used across property detail panels. */
 export function DetailBadge({
   tone = "teal",

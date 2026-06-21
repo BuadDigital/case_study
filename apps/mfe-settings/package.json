@@ -6,9 +6,7 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./routes": "./src/routes.ts",
     "./query/settings-queries": "./src/query/settings-queries.ts",
-    "./query/custom-screens-queries": "./src/query/custom-screens-queries.ts",
     "./lib/*": "./src/lib/*",
     "./views/*": "./src/views/*"
   },
@@ -22,9 +20,7 @@
     "@platform/auth-client": "*",
     "@platform/design-system": "*",
     "@platform/types": "*",
-    "@tanstack/react-query": "^5.100.11",
-    "@types/react-grid-layout": "^1.3.6",
-    "react-grid-layout": "^2.2.3"
+    "@tanstack/react-query": "^5.100.11"
   },
   "peerDependencies": {
     "next": ">=16",

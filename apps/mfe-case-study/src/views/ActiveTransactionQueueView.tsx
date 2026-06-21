@@ -28,8 +28,7 @@ import { buildActiveQueueRowMoreItems } from "../lib/prototype/active-queue-row-
 import { buildCaseStudyPartyAssignees } from "../lib/prototype/case-study-tracks";
 import { getAuthSession } from "@platform/auth-client";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { useMyCustomAssignedScreensQuery } from "@settings/mfe/query/custom-screens-queries";
-import type { RoleId } from "@platform/types";
+import type { PageId, RoleId } from "@platform/types";
 import { poPropertyDetailPath } from "../lib/po-routes";
 import {
   buildDistributionTableRow,
@@ -66,7 +65,7 @@ export type ActiveTransactionQueueConfig = {
   tableHint?: string;
   /** Filter by prototype assignee id from توزيع المعاملات. */
   partyAssignee?: boolean;
-  /** Page id for custom-assigned full-queue access (CDO linked screens). */
+  /** Page id for queue context (e.g. party pages). */
   pageId?: PageId;
   /** Role whose queue is shown (party pages); CDO uses this to see all assignees. */
   assigneeRole?: RoleId;
@@ -143,7 +142,6 @@ export function ActiveTransactionQueueView({
   const queryClient = useQueryClient();
   const selectedId = searchParams.get("task");
   const { role, viewerEmail } = usePrototype();
-  const { data: customAssignedScreens = [] } = useMyCustomAssignedScreensQuery();
   const {
     data: tasks,
     refetch: refetchTasks,
@@ -205,7 +203,6 @@ export function ActiveTransactionQueueView({
       role,
       tasks: tasks ?? [],
       pageId: config.pageId,
-      customAssignedScreens,
       partyAssignee: config.partyAssignee,
       assigneeRole: config.assigneeRole,
       viewerEmail: viewerEmail ?? getAuthSession()?.user.email,
@@ -214,7 +211,6 @@ export function ActiveTransactionQueueView({
     config.assigneeRole,
     config.pageId,
     config.partyAssignee,
-    customAssignedScreens,
     viewerEmail,
     role,
     tasks,

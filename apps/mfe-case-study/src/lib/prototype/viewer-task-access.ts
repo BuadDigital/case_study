@@ -1,5 +1,5 @@
-import type { CustomAssignedScreen, PageId, RoleId } from "@platform/types";
-import { viewerSeesFullPageData } from "@platform/app-shared/prototype/custom-assigned-page-access";
+import type { PageId, RoleId } from "@platform/types";
+import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import {
   compareWorkflowTasks,
   tasksForPartyAssignee,
@@ -11,17 +11,13 @@ export function resolveQueueTasksForViewer(input: {
   role: RoleId;
   tasks: WorkflowTask[];
   pageId?: PageId;
-  customAssignedScreens: readonly CustomAssignedScreen[];
   partyAssignee?: boolean;
   assigneeRole?: RoleId;
   viewerEmail?: string | null;
 }): WorkflowTask[] {
   const all = input.tasks;
 
-  if (
-    input.pageId &&
-    viewerSeesFullPageData(input.pageId, input.role, input.customAssignedScreens)
-  ) {
+  if (input.pageId && isSuperAdmin(input.role)) {
     return [...all].sort(compareWorkflowTasks);
   }
 
@@ -42,10 +38,9 @@ export function canViewWorkflowTask(input: {
   task: WorkflowTask;
   tasks: WorkflowTask[];
   pageId: PageId;
-  customAssignedScreens: readonly CustomAssignedScreen[];
   matchesPage: (task: WorkflowTask) => boolean;
 }): boolean {
-  if (viewerSeesFullPageData(input.pageId, input.role, input.customAssignedScreens)) {
+  if (isSuperAdmin(input.role)) {
     return input.matchesPage(input.task);
   }
   return tasksForRole(input.role, input.tasks).some((t) => t.id === input.task.id);

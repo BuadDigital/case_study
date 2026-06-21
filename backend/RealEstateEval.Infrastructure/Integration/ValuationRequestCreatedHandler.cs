@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Shared.Contracts;
 
@@ -64,8 +65,8 @@ public sealed class ValuationRequestCreatedHandler
             .AnyAsync(
                 t => t.Kind == "property-appraisal"
                      && t.PropertyId == propertyId
-                     && t.Status != "completed"
-                     && t.Status != "cancelled",
+                     && t.Status != WorkflowTaskStatus.Completed
+                     && t.Status != WorkflowTaskStatus.Cancelled,
                 cancellationToken);
 
         if (!hasOpenAppraisal)

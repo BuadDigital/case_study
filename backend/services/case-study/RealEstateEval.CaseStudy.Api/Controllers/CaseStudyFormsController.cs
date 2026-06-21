@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
@@ -28,6 +29,7 @@ public class CaseStudyFormsController : ControllerBase
     }
 
     [HttpPut("{taskId:guid}")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<CaseStudyFormDto>> Save(
         Guid taskId,
         [FromBody] SaveCaseStudyFormRequest request,
@@ -48,6 +50,7 @@ public class CaseStudyFormsController : ControllerBase
     }
 
     [HttpPut("party/{taskId:guid}")]
+    [Authorize(Policy = CapabilityPolicyNames.SubmitPartyWork)]
     public async Task<ActionResult<CaseStudyFormDto>> SaveParty(
         Guid taskId,
         [FromBody] SaveCaseStudyFormRequest request,

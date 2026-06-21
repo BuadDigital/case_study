@@ -15,7 +15,6 @@ public class SystemResetResultDto
     public int EvaluatorRecallsDeleted { get; set; }
     public int FieldDictionaryConfigsDeleted { get; set; }
     public int FailureTypesCatalogConfigsDeleted { get; set; }
-    public int CustomAssignedScreensDeleted { get; set; }
     public int SurveyOfficesDeleted { get; set; }
     public int ValuationRequestsDeleted { get; set; }
     public int PropertyKeyRecordsDeleted { get; set; }

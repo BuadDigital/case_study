@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Application.Authorization;
 using RealEstateEval.Domain;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -17,7 +18,10 @@ public class JwtTokenService : IJwtTokenService
         _configuration = configuration;
     }
 
-    public (string token, DateTime expiresAtUtc) CreateToken(ApplicationUser user, IEnumerable<string> roles)
+    public (string token, DateTime expiresAtUtc) CreateToken(
+        ApplicationUser user,
+        IEnumerable<string> roles,
+        IEnumerable<string>? capabilities = null)
     {
         var issuer = _configuration["Jwt:Issuer"] ?? throw new InvalidOperationException("Jwt:Issuer missing");
         var audience = _configuration["Jwt:Audience"] ?? throw new InvalidOperationException("Jwt:Audience missing");
@@ -31,8 +35,11 @@ public class JwtTokenService : IJwtTokenService
             new("displayName", user.DisplayName),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
-        // Short "role" claim so ASP.NET IsInRole() resolves department scopes from JWT.
         claims.AddRange(roles.Select(r => new Claim("role", r)));
+        if (capabilities is not null)
+        {
+            claims.AddRange(capabilities.Select(c => new Claim(PlatformCapabilities.ClaimType, c)));
+        }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

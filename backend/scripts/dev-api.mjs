@@ -4,6 +4,7 @@
  * Usage:
  *   node backend/scripts/dev-api.mjs          # dotnet watch run (hot reload)
  *   node backend/scripts/dev-api.mjs --run    # dotnet run (no watch)
+ *   node backend/scripts/dev-api.mjs --run --skip-build
  */
 import { spawn } from "node:child_process";
 import { execSync } from "node:child_process";
@@ -34,6 +35,7 @@ function run(command, args) {
 const services = [
   {
     name: "identity",
+    readyUrl: "http://127.0.0.1:5161/ready",
     project: "backend/services/identity/RealEstateEval.Identity.Api/RealEstateEval.Identity.Api.csproj",
   },
   {
@@ -70,6 +72,7 @@ const services = [
   },
   {
     name: "gateway",
+    readyUrl: "http://127.0.0.1:5160/health",
     project: "backend/gateway/RealEstateEval.Gateway/RealEstateEval.Gateway.csproj",
   },
 ];
@@ -97,6 +100,29 @@ function shutdown(code = 0) {
   process.exit(code);
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForReady(url, label, timeoutMs = 120_000) {
+  const started = Date.now();
+  process.stdout.write(`[dev-api] waiting for ${label} (${url})…`);
+  while (Date.now() - started < timeoutMs) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(2_000) });
+      if (res.ok) {
+        console.log(" ready");
+        return true;
+      }
+    } catch {
+      // service still starting
+    }
+    await sleep(500);
+  }
+  console.warn(`\n[dev-api] timed out waiting for ${label} — continuing anyway`);
+  return false;
+}
+
 process.on("SIGINT", () => shutdown(0));
 process.on("SIGTERM", () => shutdown(0));
 
@@ -108,5 +134,26 @@ if (!useWatch && !skipBuild) {
   await run("dotnet", ["build", "backend/RealEstateEval.slnx"]);
 }
 
-for (const svc of services.slice(0, -1)) startService(svc);
-setTimeout(() => startService(services[services.length - 1]), 5000);
+const identity = services.find((s) => s.name === "identity");
+const caseStudy = services.find((s) => s.name === "case-study");
+const gateway = services.find((s) => s.name === "gateway");
+const others = services.filter(
+  (s) => s.name !== "identity" && s.name !== "gateway" && s.name !== "case-study",
+);
+
+// case-study applies EF migrations to the shared DB; identity serves login.
+startService(caseStudy);
+startService(identity);
+await waitForReady("http://127.0.0.1:5162/ready", "case-study");
+await waitForReady(identity.readyUrl, "identity");
+
+startService(gateway);
+await waitForReady(gateway.readyUrl, "gateway");
+
+// Remaining services.
+for (const svc of others) startService(svc);
+
+console.log("");
+console.log("[dev-api] login-ready: http://127.0.0.1:5160");
+console.log("[dev-api] other services still starting in the background…");
+console.log("");

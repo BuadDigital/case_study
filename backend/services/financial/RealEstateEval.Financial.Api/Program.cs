@@ -21,6 +21,7 @@ var connectionString = ServiceCollectionExtensions.RequireConnectionString(
     ServiceDatabaseNames.Financial);
 builder.Services.AddPersistence(builder.Configuration, connectionString);
 builder.Services.AddIdentityInfrastructure();
+builder.Services.AddFinancialInfrastructure();
 builder.Services.AddRealEstateEvalJwt(builder.Configuration);
 builder.Services.AddRealEstateEvalCors(builder.Environment);
 builder.Services.AddRealEstateEvalOpenApi("Financial API");
@@ -34,3 +35,5 @@ app.MapDatabaseReady("financial");
 app.MapControllers();
 
 app.Run();
+
+public partial class Program;

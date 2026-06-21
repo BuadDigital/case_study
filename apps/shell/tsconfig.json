@@ -33,8 +33,7 @@
       "@valuation/mfe": ["../mfe-valuation/src/index.ts"],
       "@valuation/mfe/*": ["../mfe-valuation/src/*"],
       "@platform/app-shared": ["../../packages/app-shared/src/index.ts"],
-      "@platform/app-shared/*": ["../../packages/app-shared/src/*"],
-      "@platform/shell/prototype-auth": ["./src/lib/prototype/prototype-auth.ts"]
+      "@platform/app-shared/*": ["../../packages/app-shared/src/*"]
     }
   },
   "include": [

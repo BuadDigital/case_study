@@ -92,25 +92,103 @@ public static class DependencyInjection
         return services;
     }
 
-    public static IServiceCollection AddCaseStudyInfrastructure(this IServiceCollection services)
+    /// <summary>Work orders, workflow tasks, and case-study / party forms.</summary>
+    public static IServiceCollection AddCaseStudyCoreInfrastructure(this IServiceCollection services)
     {
         services.AddScoped<IWorkOrderService, WorkOrderService>();
         services.AddScoped<IWorkflowTaskService, WorkflowTaskService>();
         services.AddScoped<ICaseStudyFormService, CaseStudyFormService>();
         services.AddScoped<IPartyTaskSubmissionService, PartyTaskSubmissionService>();
-        services.AddScoped<IFailureService, FailureService>();
+        return services;
+    }
+
+    /// <summary>PO intake drafts, delegation letters, suspended-transaction reads.</summary>
+    public static IServiceCollection AddCaseStudyAuxiliaryInfrastructure(this IServiceCollection services)
+    {
+        services.AddScoped<IPoIntakeDraftService, PoIntakeDraftService>();
+        services.AddScoped<IInternalDelegationLettersService, InternalDelegationLettersService>();
+        services.AddScoped<ISuspendedTransactionsService, SuspendedTransactionsService>();
+        return services;
+    }
+
+    public static IServiceCollection AddCaseStudyInfrastructure(this IServiceCollection services)
+    {
+        services.AddCaseStudyCoreInfrastructure();
+        services.AddCaseStudyAuxiliaryInfrastructure();
         services.AddScoped<ISystemMaintenanceService, SystemMaintenanceService>();
         return services;
     }
 
-    public static IServiceCollection AddIntegrationMessaging(
+    public static IServiceCollection AddFailuresInfrastructure(this IServiceCollection services)
+    {
+        services.AddScoped<IFailureService, FailureService>();
+        services.AddScoped<IFailureTypesCatalogService, FailureTypesCatalogService>();
+        return services;
+    }
+
+    public static IServiceCollection AddAttachmentsInfrastructure(this IServiceCollection services)
+    {
+        services.AddScoped<IAttachmentService, AttachmentService>();
+        return services;
+    }
+
+    public static IServiceCollection AddFinancialInfrastructure(this IServiceCollection services)
+    {
+        services.AddScoped<IFinancialReportService, FinancialReportService>();
+        return services;
+    }
+
+    public static IServiceCollection AddOperationsInfrastructure(this IServiceCollection services)
+    {
+        services.AddScoped<ISurveyOfficesService, SurveyOfficesService>();
+        services.AddScoped<IPropertyKeysService, PropertyKeysService>();
+        return services;
+    }
+
+    public static IServiceCollection AddPlatformInfrastructure(this IServiceCollection services)
+    {
+        services.AddScoped<IFieldDictionaryService, FieldDictionaryService>();
+        services.AddScoped<ICourtsCatalogService, CourtsCatalogService>();
+        services.AddScoped<ICaseStudyInfoRolesConfigService, CaseStudyInfoRolesConfigService>();
+        return services;
+    }
+
+    public static IServiceCollection AddValuationInfrastructure(this IServiceCollection services)
+    {
+        services.AddScoped<IValuationRequestService, ValuationRequestService>();
+        services.AddScoped<IEvaluatorRecallsService, EvaluatorRecallsService>();
+        return services;
+    }
+
+    /// <summary>
+    /// Transactional outbox writer — use on any service that publishes integration events.
+    /// Does not start a background dispatcher.
+    /// </summary>
+    public static IServiceCollection AddIntegrationEventPublishing(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.Configure<RabbitMqOptions>(configuration.GetSection("RabbitMQ"));
+        services.AddScoped<IIntegrationEventPublisher, OutboxIntegrationEventPublisher>();
+        return services;
+    }
+
+    /// <summary>
+    /// Polls <c>OutboxMessages</c> and publishes to RabbitMQ. Register on <b>one</b> service only (case-study).
+    /// </summary>
+    public static IServiceCollection AddOutboxDispatcher(
         this IServiceCollection services,
         IConfiguration configuration)
     {
         services.Configure<RabbitMqOptions>(configuration.GetSection("RabbitMQ"));
         services.AddSingleton<RabbitMqMessagePublisher>();
-        services.AddScoped<IIntegrationEventPublisher, OutboxIntegrationEventPublisher>();
         services.AddHostedService<OutboxDispatcherHostedService>();
+        return services;
+    }
+
+    /// <summary>RabbitMQ event handlers for <c>ValuationIntegrationEventConsumer</c> (case-study).</summary>
+    public static IServiceCollection AddValuationIntegrationHandlers(this IServiceCollection services)
+    {
         services.AddScoped<ValuationReportWorkflowHandler>();
         services.AddScoped<ValuationRequestCreatedHandler>();
         return services;

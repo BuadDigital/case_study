@@ -152,7 +152,7 @@ public class WorkflowTaskService : IWorkflowTaskService
         }
 
         parent.Phase = "case-study";
-        parent.Status = "open";
+        parent.Status = WorkflowTaskStatus.Open;
         parent.Title = $"دراسة حالة — {(string.IsNullOrEmpty(deed) ? parent.PoNumber : deed)}";
         parent.DistributionJson = WorkflowTaskMapper.SerializeDistribution(distribution);
         parent.UpdatedAtUtc = now;
@@ -291,7 +291,7 @@ public class WorkflowTaskService : IWorkflowTaskService
 
             linked.PropertyId = null;
             linked.Phase = "enfath";
-            linked.Status = "open";
+            linked.Status = WorkflowTaskStatus.Open;
             linked.Title = SlotTaskTitle(nPo, linked.PropertyOrdinal, Math.Max(1, expectedPropertyCount));
             linked.DistributionJson = WorkflowTaskMapper.SerializeDistribution(
                 WorkflowTaskMapper.DefaultDistribution());
@@ -419,7 +419,7 @@ public class WorkflowTaskService : IWorkflowTaskService
             Phase = "enfath",
             AssigneeRole = "case-specialist",
             AssigneeName = "أخصائي دراسة الحالة",
-            Status = "open",
+            Status = WorkflowTaskStatus.Open,
             DistributionJson = WorkflowTaskMapper.SerializeDistribution(
                 WorkflowTaskMapper.DefaultDistribution()),
             AssignmentType = assignmentType,
@@ -460,7 +460,7 @@ public class WorkflowTaskService : IWorkflowTaskService
             AssigneeName = defaultName,
             AssigneeId = string.IsNullOrWhiteSpace(assigneeId) ? null : assigneeId.Trim(),
             ParentTaskId = parent.Id,
-            Status = "open",
+            Status = WorkflowTaskStatus.Open,
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         };

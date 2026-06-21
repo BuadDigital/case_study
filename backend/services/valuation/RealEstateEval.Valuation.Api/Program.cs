@@ -21,8 +21,8 @@ var connectionString = ServiceCollectionExtensions.RequireConnectionString(
     ServiceDatabaseNames.Valuation);
 builder.Services.AddPersistence(builder.Configuration, connectionString);
 builder.Services.AddIdentityInfrastructure();
-builder.Services.AddCaseStudyInfrastructure();
-builder.Services.AddIntegrationMessaging(builder.Configuration);
+builder.Services.AddValuationInfrastructure();
+builder.Services.AddIntegrationEventPublishing(builder.Configuration);
 builder.Services.AddRealEstateEvalJwt(builder.Configuration);
 builder.Services.AddRealEstateEvalCors(builder.Environment);
 builder.Services.AddRealEstateEvalOpenApi("Valuation API");

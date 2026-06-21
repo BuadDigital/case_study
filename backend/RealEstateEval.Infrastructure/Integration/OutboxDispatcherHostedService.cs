@@ -7,8 +7,11 @@ namespace RealEstateEval.Infrastructure.Integration;
 
 public sealed class OutboxDispatcherHostedService : BackgroundService
 {
+    private static readonly int[] EmptyBackoffSeconds = [2, 5, 10, 20, 30];
+
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<OutboxDispatcherHostedService> _logger;
+    private int _emptyBackoffIndex;
 
     public OutboxDispatcherHostedService(
         IServiceScopeFactory scopeFactory,
@@ -22,20 +25,33 @@ public sealed class OutboxDispatcherHostedService : BackgroundService
     {
         while (!stoppingToken.IsCancellationRequested)
         {
+            var delaySeconds = EmptyBackoffSeconds[_emptyBackoffIndex];
+
             try
             {
-                await DispatchBatchAsync(stoppingToken);
+                var dispatched = await DispatchBatchAsync(stoppingToken);
+                if (dispatched > 0)
+                {
+                    _emptyBackoffIndex = 0;
+                    delaySeconds = EmptyBackoffSeconds[0];
+                }
+                else if (_emptyBackoffIndex < EmptyBackoffSeconds.Length - 1)
+                {
+                    _emptyBackoffIndex++;
+                    delaySeconds = EmptyBackoffSeconds[_emptyBackoffIndex];
+                }
             }
             catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
             {
-                _logger.LogWarning(ex, "Outbox dispatch batch failed; retrying in 5s");
+                _logger.LogWarning(ex, "Outbox dispatch batch failed; retrying in {DelaySeconds}s", delaySeconds);
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
+            await Task.Delay(TimeSpan.FromSeconds(delaySeconds), stoppingToken);
         }
     }
 
-    private async Task DispatchBatchAsync(CancellationToken stoppingToken)
+    /// <returns>Number of outbox rows processed in this batch (0 when idle).</returns>
+    private async Task<int> DispatchBatchAsync(CancellationToken stoppingToken)
     {
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<Data.ApplicationDbContext>();
@@ -48,7 +64,7 @@ public sealed class OutboxDispatcherHostedService : BackgroundService
             .ToListAsync(stoppingToken);
 
         if (pending.Count == 0)
-            return;
+            return 0;
 
         foreach (var message in pending)
         {
@@ -67,5 +83,6 @@ public sealed class OutboxDispatcherHostedService : BackgroundService
 
         await db.SaveChangesAsync(stoppingToken);
         _logger.LogInformation("Dispatched {Count} outbox message(s)", pending.Count);
+        return pending.Count;
     }
 }

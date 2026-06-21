@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
@@ -28,6 +29,7 @@ public class PartyTaskSubmissionsController : ControllerBase
     }
 
     [HttpPut("{taskId:guid}")]
+    [Authorize(Policy = CapabilityPolicyNames.SubmitPartyWork)]
     public async Task<ActionResult<PartyTaskSubmissionDto>> SaveDraft(
         Guid taskId,
         [FromBody] SavePartyTaskSubmissionRequest request,
@@ -39,6 +41,7 @@ public class PartyTaskSubmissionsController : ControllerBase
     }
 
     [HttpPost("{taskId:guid}/submit")]
+    [Authorize(Policy = CapabilityPolicyNames.SubmitPartyWork)]
     public async Task<ActionResult<PartyTaskSubmissionDto>> Submit(
         Guid taskId,
         CancellationToken cancellationToken)
@@ -49,6 +52,7 @@ public class PartyTaskSubmissionsController : ControllerBase
     }
 
     [HttpPost("{taskId:guid}/reopen")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<PartyTaskSubmissionDto>> Reopen(
         Guid taskId,
         [FromBody] ReopenPartyTaskSubmissionRequest request,

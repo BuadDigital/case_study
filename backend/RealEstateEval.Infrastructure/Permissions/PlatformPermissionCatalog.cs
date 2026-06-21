@@ -17,11 +17,15 @@ public static class PlatformPermissionCatalog
     [
         "manage-users",
         "manage-system-config",
-        "manage-custom-screens",
         "reset-system-data",
         "manage-valuation-requests",
         "manage-failures",
         "submit-valuation-report",
+        "manage-work-orders",
+        "submit-party-work",
+        "manage-attachments",
+        "manage-financial",
+        "manage-operations",
     ];
 
     public static bool IsSuperAdminIdentityRole(string role) =>
@@ -56,18 +60,44 @@ public static class PlatformPermissionCatalog
         [
             "dashboard", "po", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "keys", "failures", "suspended-transactions", "failure-types",
+            "system-fields-catalog", "system-screen-catalog",
         ],
         ["case-specialist"] =
         [
             "dashboard", "po", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "failures", "suspended-transactions",
+            "system-fields-catalog", "system-screen-catalog",
         ],
-        ["valuation-coordinator"] = ["dashboard", "valuation-requests", "valuation-coordination"],
-        ["real-estate-appraiser"] = ["dashboard", "property-appraisal", "valuation-requests"],
-        ["field-inspector"] = ["dashboard", "property-inspection"],
-        ["government-reviewer"] = ["dashboard", "government-review"],
-        ["engineering-office"] = ["dashboard", "active-survey"],
-        ["financial-officer"] = ["dashboard", "financial", "kpi"],
+        ["valuation-coordinator"] =
+        [
+            "dashboard", "valuation-coordination",
+            "system-fields-catalog", "system-screen-catalog",
+        ],
+        ["real-estate-appraiser"] =
+        [
+            "dashboard", "po", "property-appraisal", "suspended-transactions",
+            "system-fields-catalog", "system-screen-catalog",
+        ],
+        ["field-inspector"] =
+        [
+            "dashboard", "property-inspection",
+            "system-fields-catalog", "system-screen-catalog",
+        ],
+        ["government-reviewer"] =
+        [
+            "dashboard", "government-review", "keys",
+            "system-fields-catalog", "system-screen-catalog",
+        ],
+        ["engineering-office"] =
+        [
+            "dashboard", "active-survey",
+            "system-fields-catalog", "system-screen-catalog",
+        ],
+        ["financial-officer"] =
+        [
+            "dashboard", "financial",
+            "system-fields-catalog", "system-screen-catalog",
+        ],
     };
 
     private static readonly Dictionary<string, string[]> IdentityRoleCapabilities = new(StringComparer.OrdinalIgnoreCase)
@@ -84,8 +114,32 @@ public static class PlatformPermissionCatalog
         ["hr-admin"] = ["manage-users"],
         ["proc-admin"] = ["manage-users"],
         ["crm-admin"] = ["manage-users"],
-        ["general-manager"] = ["manage-valuation-requests", "manage-failures"],
-        ["real-estate-appraiser"] = ["submit-valuation-report"],
+        ["general-manager"] =
+        [
+            "manage-valuation-requests", "manage-failures", "manage-work-orders",
+            "submit-party-work", "manage-attachments", "manage-financial", "manage-operations",
+        ],
+        ["section-supervisor"] =
+        [
+            "manage-failures", "manage-work-orders", "submit-party-work",
+            "manage-attachments", "manage-operations",
+        ],
+        ["case-specialist"] =
+        [
+            "manage-failures", "manage-work-orders", "submit-party-work", "manage-attachments",
+        ],
+        ["valuation-coordinator"] = ["submit-party-work", "manage-attachments"],
+        ["real-estate-appraiser"] =
+        [
+            "submit-valuation-report", "submit-party-work", "manage-attachments",
+        ],
+        ["field-inspector"] = ["submit-party-work", "manage-attachments"],
+        ["government-reviewer"] =
+        [
+            "submit-party-work", "manage-attachments", "manage-operations",
+        ],
+        ["engineering-office"] = ["submit-party-work", "manage-attachments"],
+        ["financial-officer"] = ["manage-financial", "manage-attachments"],
     };
 
     public static void ApplyIdentityRole(string role, ISet<string> pages, ISet<string> capabilities)

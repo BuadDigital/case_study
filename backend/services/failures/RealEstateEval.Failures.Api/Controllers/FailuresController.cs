@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.Failures.Api.Controllers;
 
@@ -36,6 +37,7 @@ public class FailuresController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = CapabilityPolicyNames.ManageFailures)]
     public async Task<ActionResult<FailureRecordDto>> Create(
         [FromBody] CreateFailureRequest request,
         CancellationToken cancellationToken)
@@ -46,6 +48,7 @@ public class FailuresController : ControllerBase
     }
 
     [HttpPost("bourse-obstruction")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageFailures)]
     public async Task<ActionResult<FailureRecordDto>> ReportBourseObstruction(
         [FromBody] BourseObstructionRequest request,
         CancellationToken cancellationToken)
@@ -56,6 +59,7 @@ public class FailuresController : ControllerBase
     }
 
     [HttpPost("{id:guid}/upgrade")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageFailures)]
     public async Task<ActionResult<FailureRecordDto>> Upgrade(
         Guid id,
         CancellationToken cancellationToken)
@@ -66,6 +70,7 @@ public class FailuresController : ControllerBase
     }
 
     [HttpPost("{id:guid}/submit")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageFailures)]
     public async Task<ActionResult<FailureRecordDto>> Submit(
         Guid id,
         CancellationToken cancellationToken)
@@ -76,6 +81,7 @@ public class FailuresController : ControllerBase
     }
 
     [HttpPost("{id:guid}/suspend")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageFailures)]
     public async Task<ActionResult<FailureRecordDto>> Suspend(
         Guid id,
         [FromBody] FailureNoteRequest request,
@@ -87,6 +93,7 @@ public class FailuresController : ControllerBase
     }
 
     [HttpPost("{id:guid}/resolve")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageFailures)]
     public async Task<ActionResult<FailureRecordDto>> Resolve(
         Guid id,
         [FromBody] ResolveFailureRequest request,
@@ -98,6 +105,7 @@ public class FailuresController : ControllerBase
     }
 
     [HttpPost("{id:guid}/approve")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageFailures)]
     public async Task<ActionResult<FailureRecordDto>> Approve(
         Guid id,
         [FromBody] FailureNoteRequest request,
@@ -109,6 +117,7 @@ public class FailuresController : ControllerBase
     }
 
     [HttpPost("{id:guid}/return")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageFailures)]
     public async Task<ActionResult<FailureRecordDto>> Return(
         Guid id,
         [FromBody] FailureNoteRequest request,
@@ -120,6 +129,7 @@ public class FailuresController : ControllerBase
     }
 
     [HttpDelete("by-po/{poNumber}")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageFailures)]
     public async Task<IActionResult> DeleteForPo(
         string poNumber,
         CancellationToken cancellationToken)

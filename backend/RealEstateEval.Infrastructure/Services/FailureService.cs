@@ -10,10 +10,7 @@ public class FailureService : IFailureService
 {
     private const string CaseStudyPropertyKind = "case-study-property";
 
-    private static readonly HashSet<string> ActiveStatuses =
-    [
-        "internal", "review", "approved", "returned",
-    ];
+    private static readonly HashSet<string> ActiveStatuses = PropertyFailureStatus.Active;
 
     private readonly ApplicationDbContext _db;
     private readonly IWorkflowTaskService _tasks;
@@ -65,7 +62,7 @@ public class FailureService : IFailureService
                 ? "الأخصائي"
                 : request.RaisedByRole.Trim(),
             InternalNote = request.InternalNote?.Trim() ?? "",
-            Status = "internal",
+            Status = PropertyFailureStatus.Internal,
             Specialist = request.Specialist.Trim(),
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
@@ -112,7 +109,7 @@ public class FailureService : IFailureService
     {
         var entity = await _db.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
         if (entity is null) return null;
-        if (entity.Status != "internal" || entity.Severity != "suspected") return null;
+        if (entity.Status != PropertyFailureStatus.Internal || entity.Severity != "suspected") return null;
 
         entity.Severity = "internal";
         entity.UpdatedAtUtc = DateTime.UtcNow;
@@ -127,9 +124,9 @@ public class FailureService : IFailureService
     {
         var entity = await _db.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
         if (entity is null) return null;
-        if (entity.Status is not ("internal" or "returned")) return null;
+        if (entity.Status is not (PropertyFailureStatus.Internal or PropertyFailureStatus.Returned)) return null;
 
-        entity.Status = "review";
+        entity.Status = PropertyFailureStatus.Review;
         entity.UpdatedAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
         await EscalateTaskObstructionAsync(
@@ -145,9 +142,9 @@ public class FailureService : IFailureService
         CancellationToken cancellationToken = default)
     {
         var entity = await _db.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
-        if (entity is null || entity.Status != "review") return null;
+        if (entity is null || entity.Status != PropertyFailureStatus.Review) return null;
 
-        entity.Status = "suspended";
+        entity.Status = PropertyFailureStatus.Suspended;
         entity.FinalNote = note.Trim();
         entity.UpdatedAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
@@ -160,9 +157,9 @@ public class FailureService : IFailureService
         CancellationToken cancellationToken = default)
     {
         var entity = await _db.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
-        if (entity is null || !IsActiveStatus(entity.Status) || entity.Status == "approved") return null;
+        if (entity is null || !IsActiveStatus(entity.Status) || entity.Status == PropertyFailureStatus.Approved) return null;
 
-        entity.Status = "resolved";
+        entity.Status = PropertyFailureStatus.Resolved;
         entity.ResolutionReason = request.ResolutionReason.Trim();
         entity.ContinueInstructions = request.ContinueInstructions.Trim();
         entity.UpdatedAtUtc = DateTime.UtcNow;
@@ -179,9 +176,9 @@ public class FailureService : IFailureService
         CancellationToken cancellationToken = default)
     {
         var entity = await _db.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
-        if (entity is null || entity.Status != "review") return null;
+        if (entity is null || entity.Status != PropertyFailureStatus.Review) return null;
 
-        entity.Status = "approved";
+        entity.Status = PropertyFailureStatus.Approved;
         entity.FinalNote = finalNote.Trim();
         entity.UpdatedAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
@@ -196,9 +193,9 @@ public class FailureService : IFailureService
         CancellationToken cancellationToken = default)
     {
         var entity = await _db.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
-        if (entity is null || entity.Status != "review") return null;
+        if (entity is null || entity.Status != PropertyFailureStatus.Review) return null;
 
-        entity.Status = "returned";
+        entity.Status = PropertyFailureStatus.Returned;
         entity.FinalNote = finalNote.Trim();
         entity.UpdatedAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
@@ -233,7 +230,7 @@ public class FailureService : IFailureService
         CancellationToken cancellationToken)
     {
         var task = await FindCaseStudyTaskAsync(failure.PoNumber, failure.PropertyId, cancellationToken);
-        if (task is null || task.Status == "completed") return;
+        if (task is null || task.Status == WorkflowTaskStatus.Completed) return;
 
         await _tasks.PatchAsync(
             task.Id,
@@ -243,7 +240,7 @@ public class FailureService : IFailureService
                 ObstructionPriorPhase = task.Phase,
                 AssigneeRole = "section-supervisor",
                 AssigneeName = "مشرف دراسة الحالة",
-                Status = "blocked",
+                Status = WorkflowTaskStatus.Blocked,
                 ObstructionReason = reason.Trim(),
             },
             cancellationToken);
@@ -267,7 +264,7 @@ public class FailureService : IFailureService
                 Phase = resumePhase,
                 AssigneeRole = "case-specialist",
                 AssigneeName = "أخصائي دراسة الحالة",
-                Status = "open",
+                Status = WorkflowTaskStatus.Open,
                 ObstructionReason = "",
                 ObstructionPriorPhase = "",
             },
@@ -287,7 +284,7 @@ public class FailureService : IFailureService
             t =>
                 t.PoNumber == po &&
                 t.Kind == CaseStudyPropertyKind &&
-                t.Status != "completed" &&
+                t.Status != WorkflowTaskStatus.Completed &&
                 t.PropertyId == propertyGuid,
             cancellationToken);
     }
@@ -347,7 +344,7 @@ public class FailureService : IFailureService
     }
 
     private static bool IsActiveStatus(string status) =>
-        status is not ("resolved" or "suspended");
+        PropertyFailureStatus.IsActive(status);
 
     private static string NormalizeSeverity(string severity) =>
         severity.Trim().ToLowerInvariant() == "suspected" ? "suspected" : "internal";

@@ -1,7 +1,5 @@
 /** @evaluator/mfe — مقيم عقاري (property appraisal upload, advisory, recall). */
 
-export { EVALUATOR_MFE_PAGE_IDS, isEvaluatorMfePage } from "./routes";
-
 export { partyAppraisalExtensions } from "./extensions/party-appraisal-extensions";
 
 export { EvaluatorWindow } from "./components/evaluator/EvaluatorWindow";

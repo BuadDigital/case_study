@@ -12,6 +12,7 @@
   <Project Path="shared/RealEstateEval.Shared.Contracts/RealEstateEval.Shared.Contracts.csproj" />
   <Project Path="shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj" />
   <Project Path="RealEstateEval.Application.Tests/RealEstateEval.Application.Tests.csproj" />
+  <Project Path="RealEstateEval.Api.IntegrationTests/RealEstateEval.Api.IntegrationTests.csproj" />
   <Project Path="RealEstateEval.Application/RealEstateEval.Application.csproj" />
   <Project Path="RealEstateEval.Domain/RealEstateEval.Domain.csproj" />
   <Project Path="RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj" />

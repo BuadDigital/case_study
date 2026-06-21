@@ -126,7 +126,7 @@ export function FieldInspectionWorkBody({
     if (Object.keys(errors).length > 0) {
       const message = firstFieldInspectionError(errors);
       setFormError(message);
-      showToast(message, "error");
+      showToast(message ?? "يرجى تصحيح الحقول", "error");
       return false;
     }
 

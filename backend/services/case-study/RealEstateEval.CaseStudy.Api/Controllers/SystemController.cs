@@ -2,13 +2,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
-using RealEstateEval.Domain;
+using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
 [ApiController]
 [Route("api/system")]
-[Authorize(Roles = $"{OrgRoles.Cdo},Admin")]
+[Authorize(Policy = CapabilityPolicyNames.ResetSystemData)]
 public class SystemController : ControllerBase
 {
     private readonly ISystemMaintenanceService _maintenance;

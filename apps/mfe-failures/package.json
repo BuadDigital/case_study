@@ -6,7 +6,6 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./routes": "./src/routes.ts",
     "./query/failures-queries": "./src/query/failures-queries.ts",
     "./query/failure-types-queries": "./src/query/failure-types-queries.ts",
     "./lib/*": "./src/lib/*",

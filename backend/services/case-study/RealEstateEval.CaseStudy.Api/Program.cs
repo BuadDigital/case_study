@@ -25,7 +25,9 @@ var connectionString = ServiceCollectionExtensions.RequireConnectionString(
 builder.Services.AddPersistence(builder.Configuration, connectionString);
 builder.Services.AddIdentityInfrastructure();
 builder.Services.AddCaseStudyInfrastructure();
-builder.Services.AddIntegrationMessaging(builder.Configuration);
+builder.Services.AddIntegrationEventPublishing(builder.Configuration);
+builder.Services.AddOutboxDispatcher(builder.Configuration);
+builder.Services.AddValuationIntegrationHandlers();
 builder.Services.AddBlobStorage(builder.Configuration);
 builder.Services.AddRealEstateEvalJwt(builder.Configuration);
 builder.Services.AddRealEstateEvalCors(builder.Environment);
@@ -45,7 +47,6 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     await db.Database.MigrateAsync();
-    await DataSeeder.SeedAsync(scope.ServiceProvider);
 }
 
 app.Run();

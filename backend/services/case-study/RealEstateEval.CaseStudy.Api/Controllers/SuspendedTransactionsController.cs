@@ -1,8 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
-using RealEstateEval.Infrastructure.Data;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
@@ -11,35 +10,12 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 [Authorize]
 public class SuspendedTransactionsController : ControllerBase
 {
-    private readonly ApplicationDbContext _db;
+    private readonly ISuspendedTransactionsService _suspended;
 
-    public SuspendedTransactionsController(ApplicationDbContext db) => _db = db;
+    public SuspendedTransactionsController(ISuspendedTransactionsService suspended)
+        => _suspended = suspended;
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<SuspendedTransactionDto>>> List(
-        CancellationToken ct)
-    {
-        var rows = await _db.PropertyFailures.AsNoTracking()
-            .Where(x => x.Status == "suspended")
-            .OrderByDescending(x => x.UpdatedAtUtc)
-            .ToListAsync(ct);
-
-        var dtos = rows.Select(x => new SuspendedTransactionDto
-        {
-            Id = x.Id,
-            PoNumber = x.PoNumber,
-            PropertyId = x.PropertyId,
-            FailureId = x.Id.ToString(),
-            DeedNumber = x.DeedNumber,
-            Title = x.Title,
-            InternalNote = x.InternalNote,
-            RaisedByRole = x.RaisedByRole,
-            Specialist = x.Specialist,
-            SupervisorNote = x.FinalNote,
-            SuspendedAt = x.UpdatedAtUtc,
-            SuspendedBy = x.RaisedByRole,
-        }).ToList();
-
-        return Ok(dtos);
-    }
+    public async Task<ActionResult<IReadOnlyList<SuspendedTransactionDto>>> List(CancellationToken ct)
+        => Ok(await _suspended.ListAsync(ct));
 }

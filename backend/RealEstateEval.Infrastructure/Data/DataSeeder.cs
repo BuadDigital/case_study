@@ -34,6 +34,12 @@ public static class DataSeeder
 
 
 
+        if (await IsAlreadySeededAsync(services, cancellationToken))
+
+            return;
+
+
+
         foreach (var role in LegacyRoles.Concat(OrgRoles.All).Concat(DepartmentRoles.All))
 
         {
@@ -72,6 +78,23 @@ public static class DataSeeder
 
         await EnsurePrototypeModuleDataAsync(db, cancellationToken);
 
+    }
+
+    /// <summary>
+    /// Quick check used on startup to skip the full demo seed when data already exists.
+    /// </summary>
+    public static async Task<bool> IsAlreadySeededAsync(
+        IServiceProvider services,
+        CancellationToken cancellationToken = default)
+    {
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var db = services.GetRequiredService<ApplicationDbContext>();
+
+        var markerUser = await userManager.FindByNameAsync("sliman");
+        if (markerUser is null)
+            return false;
+
+        return await db.SurveyOffices.AnyAsync(cancellationToken);
     }
 
     /// <summary>Re-insert demo survey/valuation/key rows after a full system reset.</summary>

@@ -6,7 +6,6 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./routes": "./src/routes.ts",
     "./query/financial-queries": "./src/query/financial-queries.ts",
     "./lib/*": "./src/lib/*",
     "./views/*": "./src/views/*",

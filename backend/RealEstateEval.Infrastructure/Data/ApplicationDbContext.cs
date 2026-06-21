@@ -20,9 +20,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<CaseStudyInfoRolesConfig> CaseStudyInfoRolesConfigs => Set<CaseStudyInfoRolesConfig>();
     public DbSet<PartyTaskSubmission> PartyTaskSubmissions => Set<PartyTaskSubmission>();
     public DbSet<PropertyFailure> PropertyFailures => Set<PropertyFailure>();
-    public DbSet<CustomAssignedScreen> CustomAssignedScreens => Set<CustomAssignedScreen>();
-    public DbSet<CustomAssignedScreenUser> CustomAssignedScreenUsers => Set<CustomAssignedScreenUser>();
-    public DbSet<CustomScreenSubmission> CustomScreenSubmissions => Set<CustomScreenSubmission>();
     public DbSet<FieldDictionaryConfig> FieldDictionaryConfigs => Set<FieldDictionaryConfig>();
     public DbSet<FailureTypesCatalogConfig> FailureTypesCatalogConfigs => Set<FailureTypesCatalogConfig>();
     public DbSet<SurveyOffice> SurveyOffices => Set<SurveyOffice>();
@@ -225,45 +222,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.SpecialistReviewApprovedJson).HasColumnType("jsonb");
             e.Property(x => x.PoNumber).HasMaxLength(64);
             e.HasIndex(x => new { x.TaskId, x.IsPartyForm }).IsUnique();
-        });
-
-        builder.Entity<CustomAssignedScreen>(e =>
-        {
-            e.ToTable("CustomAssignedScreens", DatabaseSchemas.Platform);
-            e.Property(x => x.Name).HasMaxLength(256);
-            e.Property(x => x.TargetPageId).HasMaxLength(128);
-            e.Property(x => x.IconPath).HasMaxLength(512);
-            e.Property(x => x.CreatedByUserId).HasMaxLength(450);
-            e.Property(x => x.Code).HasMaxLength(32);
-            e.Property(x => x.OwnerRole).HasMaxLength(64);
-            e.Property(x => x.ScreenStatus).HasMaxLength(32);
-            e.Property(x => x.DefinitionJson).HasColumnType("jsonb");
-            e.HasIndex(x => x.SortOrder);
-            e.HasIndex(x => x.Code);
-            e.HasMany(x => x.Assignments)
-                .WithOne(x => x.Screen)
-                .HasForeignKey(x => x.ScreenId)
-                .OnDelete(DeleteBehavior.Cascade);
-            e.HasMany(x => x.Submissions)
-                .WithOne(x => x.Screen)
-                .HasForeignKey(x => x.ScreenId)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        builder.Entity<CustomScreenSubmission>(e =>
-        {
-            e.ToTable("CustomScreenSubmissions", DatabaseSchemas.Platform);
-            e.Property(x => x.UserId).HasMaxLength(450);
-            e.Property(x => x.AnswersJson).HasColumnType("jsonb");
-            e.HasIndex(x => new { x.ScreenId, x.UserId }).IsUnique();
-        });
-
-        builder.Entity<CustomAssignedScreenUser>(e =>
-        {
-            e.ToTable("CustomAssignedScreenUsers", DatabaseSchemas.Platform);
-            e.Property(x => x.UserId).HasMaxLength(450);
-            e.HasIndex(x => x.UserId);
-            e.HasIndex(x => new { x.ScreenId, x.UserId }).IsUnique();
         });
 
         builder.Entity<FieldDictionaryConfig>(e =>

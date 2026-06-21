@@ -180,6 +180,3 @@ export function partyAccountForViewer(
   }
   return partyAccountForRole(roleId);
 }
-
-/** @deprecated Use DISTRIBUTION_PARTY_ACCOUNTS */
-export const DEFAULT_DISTRIBUTION_PARTY_ACCOUNTS = DISTRIBUTION_PARTY_ACCOUNTS;

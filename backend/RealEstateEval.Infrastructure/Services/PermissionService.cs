@@ -27,11 +27,14 @@ public sealed class PermissionService : IPermissionService
             return null;
 
         var identityRoles = await _users.GetRolesAsync(user);
-        var profile = await _db.UserProfiles.AsNoTracking().FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
-        var prototypeRole = NormalizePrototypeRole(profile?.PermissionLevel);
+        var profile = await _db.UserProfiles
+            .AsNoTracking()
+            .Include(p => p.ProcProvider)
+            .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
         var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var isSuperAdmin = identityRoles.Any(PlatformPermissionCatalog.IsSuperAdminIdentityRole);
+        string? prototypeRole;
 
         if (isSuperAdmin)
         {
@@ -43,43 +46,9 @@ public sealed class PermissionService : IPermissionService
             foreach (var role in identityRoles)
                 PlatformPermissionCatalog.ApplyIdentityRole(role, pages, capabilities);
 
+            prototypeRole = PrototypeRoleResolver.Resolve(profile, identityRoles.ToList());
             if (!string.IsNullOrWhiteSpace(prototypeRole))
                 PlatformPermissionCatalog.ApplyPrototypeRole(prototypeRole, pages, capabilities);
-        }
-
-        var customAssignedPageIds = await _db.CustomAssignedScreenUsers
-            .AsNoTracking()
-            .Where(a => a.UserId == userId)
-            .Join(
-                _db.CustomAssignedScreens.AsNoTracking().Where(s => s.IsActive),
-                a => a.ScreenId,
-                s => s.Id,
-                (_, screen) => screen.TargetPageId)
-            .Where(targetPageId => !string.IsNullOrWhiteSpace(targetPageId))
-            .Select(targetPageId => targetPageId.Trim())
-            .Distinct()
-            .ToListAsync(cancellationToken);
-
-        foreach (var pageId in customAssignedPageIds)
-            pages.Add(pageId);
-
-        if (!isSuperAdmin)
-        {
-            var linkedScreens = await _db.CustomAssignedScreens
-                .AsNoTracking()
-                .Where(s => s.IsActive && s.TargetPageId != "")
-                .Select(s => new { s.TargetPageId, s.DefinitionJson })
-                .ToListAsync(cancellationToken);
-
-            foreach (var screen in linkedScreens)
-            {
-                if (!LinkedPageAccessMetadata.IsUserExcluded(screen.DefinitionJson, userId))
-                    continue;
-
-                var pageId = screen.TargetPageId.Trim();
-                if (!string.IsNullOrWhiteSpace(pageId))
-                    pages.Remove(pageId);
-            }
         }
 
         if (pages.Count == 0)
@@ -97,10 +66,4 @@ public sealed class PermissionService : IPermissionService
         };
     }
 
-    private static string? NormalizePrototypeRole(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return null;
-        return value.Trim().ToLowerInvariant();
-    }
 }

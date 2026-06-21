@@ -7,7 +7,7 @@ public class EvaluatorRecallRecord
     public string PoNumber { get; set; } = "";
     public string PropertyId { get; set; } = "";
     /// <summary>pending | approved | rejected</summary>
-    public string Status { get; set; } = "pending";
+    public string Status { get; set; } = EvaluatorRecallStatus.Pending;
     public string Reason { get; set; } = "";
     public string SpecialistNote { get; set; } = "";
     public DateTime RequestedAtUtc { get; set; }

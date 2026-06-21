@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
@@ -35,6 +36,7 @@ public class WorkflowTasksController : ControllerBase
     }
 
     [HttpPost("sync")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<IReadOnlyList<WorkflowTaskDto>>> Sync(
         CancellationToken cancellationToken)
     {
@@ -42,6 +44,7 @@ public class WorkflowTasksController : ControllerBase
     }
 
     [HttpPatch("{id:guid}/distribution")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<WorkflowTaskDto>> PatchDistribution(
         Guid id,
         [FromBody] PatchWorkflowTaskDistributionRequest request,
@@ -56,6 +59,7 @@ public class WorkflowTasksController : ControllerBase
     }
 
     [HttpPost("{id:guid}/confirm-distribution")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<ConfirmTaskDistributionResponseDto>> ConfirmDistribution(
         Guid id,
         [FromBody] ConfirmTaskDistributionRequest request,
@@ -65,6 +69,7 @@ public class WorkflowTasksController : ControllerBase
     }
 
     [HttpPost("{id:guid}/advance-after-enfath")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<WorkflowTaskDto>> AdvanceAfterEnfath(
         Guid id,
         [FromBody] AdvanceTaskAfterEnfathRequest request,
@@ -76,6 +81,7 @@ public class WorkflowTasksController : ControllerBase
     }
 
     [HttpPost("{id:guid}/advance-after-bourse")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<WorkflowTaskDto>> AdvanceAfterBourse(
         Guid id,
         [FromBody] AdvanceTaskAfterBourseRequest request,
@@ -87,6 +93,7 @@ public class WorkflowTasksController : ControllerBase
     }
 
     [HttpPatch("{id:guid}")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<WorkflowTaskDto>> Patch(
         Guid id,
         [FromBody] PatchWorkflowTaskRequest request,
@@ -98,6 +105,7 @@ public class WorkflowTasksController : ControllerBase
     }
 
     [HttpDelete("by-po/{poNumber}")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<IActionResult> DeleteForPo(
         string poNumber,
         CancellationToken cancellationToken)
@@ -107,6 +115,7 @@ public class WorkflowTasksController : ControllerBase
     }
 
     [HttpDelete("by-po/{poNumber}/properties/{propertyId:guid}")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<IActionResult> DeleteForProperty(
         string poNumber,
         Guid propertyId,

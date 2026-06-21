@@ -7,14 +7,12 @@ import {
 import {
   emptyFieldDictionaryState,
   fieldDictionaryHasNewKeys,
-  fieldsFromCustomAssignedScreens,
   syncFieldDictionaryState,
   type FieldDictionaryAssignment,
   type FieldDictionaryField,
   type FieldDictionaryState,
 } from "@platform/app-shared/prototype/field-dictionary";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
-import { fetchAllCustomAssignedScreens } from "../custom-screens-api";
 import { apiErrorMessage } from "../settings-api-config";
 
 export const FIELD_DICTIONARY_CHANGED_EVENT = "field-dictionary-changed";
@@ -62,13 +60,7 @@ export function notifyFieldDictionaryChanged(): void {
   }
 }
 
-async function discoverDynamicFields(): Promise<FieldDictionaryField[]> {
-  const result = await fetchAllCustomAssignedScreens();
-  if (result.error || result.screens.length === 0) return [];
-  return fieldsFromCustomAssignedScreens(result.screens);
-}
-
-/** يبني فهرس القاموس من حقول النظام + الشاشات الديناميكية + المحفوظ. */
+/** يبني فهرس القاموس من حقول النظام + المحفوظ. */
 export async function buildSyncedFieldDictionaryState(): Promise<FieldDictionaryState> {
   const baseline = emptyFieldDictionaryState();
   let stored: FieldDictionaryState | null = null;
@@ -84,10 +76,8 @@ export async function buildSyncedFieldDictionaryState(): Promise<FieldDictionary
     }
   }
 
-  const dynamicFields = await discoverDynamicFields();
   return syncFieldDictionaryState({
     catalogFields: baseline.fields,
-    dynamicFields,
     stored,
     defaultTags: baseline.tags,
   });
@@ -112,10 +102,8 @@ export async function loadFieldDictionaryFromApi(): Promise<FieldDictionaryState
     }
   }
 
-  const dynamicFields = await discoverDynamicFields();
   const synced = syncFieldDictionaryState({
     catalogFields: baseline.fields,
-    dynamicFields,
     stored,
     defaultTags: baseline.tags,
   });
@@ -160,10 +148,8 @@ export async function saveFieldDictionaryToApi(
 
 export async function resetFieldDictionaryOnApi(): Promise<FieldDictionaryState> {
   const baseline = emptyFieldDictionaryState();
-  const dynamicFields = await discoverDynamicFields();
   const synced = syncFieldDictionaryState({
     catalogFields: baseline.fields,
-    dynamicFields,
     stored: null,
     defaultTags: baseline.tags,
   });

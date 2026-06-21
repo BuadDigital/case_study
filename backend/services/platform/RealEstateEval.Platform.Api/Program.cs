@@ -18,11 +18,10 @@ builder.Services
 
 builder.Services.AddResponseCompression(options => options.EnableForHttps = true);
 
-var connectionString = ServiceCollectionExtensions.RequireConnectionString(
-    builder.Configuration,
-    ServiceDatabaseNames.Platform);
+var connectionString = ServiceCollectionExtensions.RequireConnectionString(builder.Configuration,ServiceDatabaseNames.Platform);
 builder.Services.AddPersistence(builder.Configuration, connectionString);
 builder.Services.AddIdentityInfrastructure();
+builder.Services.AddPlatformInfrastructure();
 builder.Services.AddRealEstateEvalJwt(builder.Configuration);
 builder.Services.AddRealEstateEvalCors(builder.Environment);
 builder.Services.AddRealEstateEvalOpenApi("Platform API");

@@ -34,11 +34,19 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
-      const res = await fetch(`${getApiBase()}/api/auth/login-username`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: value }),
-      });
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 10_000);
+      let res: Response;
+      try {
+        res = await fetch(`${getApiBase()}/api/auth/login-username`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: value }),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timer);
+      }
       const data = (await res.json().catch(() => null)) as
         | LoginResponse
         | { message?: string }
@@ -67,8 +75,12 @@ export default function LoginPage() {
       router.replace("/dashboard");
     } catch (err) {
       console.error("login failed", err);
+      const timedOut =
+        err instanceof DOMException && err.name === "AbortError";
       setError(
-        "تعذر الاتصال بالخادم. تأكد أن dotnet run يعمل على هذا الجهاز (المنفذ 5160).",
+        timedOut
+          ? "انتهت مهلة الاتصال. تأكد أن الخادم يعمل (npm run dev:api:run) وانتظر حتى يظهر login-ready."
+          : "تعذر الاتصال بالخادم. تأكد أن dotnet run يعمل على هذا الجهاز (المنفذ 5160).",
       );
     } finally {
       setLoading(false);

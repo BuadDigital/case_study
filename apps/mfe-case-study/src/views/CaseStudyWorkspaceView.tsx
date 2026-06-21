@@ -8,7 +8,6 @@ import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
 import { PropertyTransactionTimeline } from "../components/po-intake/PropertyTransactionTimeline";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { taskMatchesCaseStudy } from "@platform/app-shared/prototype/active-transactions";
-import { useMyCustomAssignedScreensQuery } from "@settings/mfe/query/custom-screens-queries";
 import { activeCaseStudyPath } from "../lib/my-task-routes";
 import { findPropertyForTask } from "../lib/prototype/my-task-row";
 import { canViewWorkflowTask } from "../lib/prototype/viewer-task-access";
@@ -35,7 +34,6 @@ export function CaseStudyWorkspaceView({
 }) {
   const router = useRouter();
   const { role } = usePrototype();
-  const { data: customAssignedScreens = [] } = useMyCustomAssignedScreensQuery();
   const {
     data: tasks,
     isFetched: tasksFetched,
@@ -53,10 +51,9 @@ export function CaseStudyWorkspaceView({
       task,
       tasks: tasks ?? [],
       pageId: "active-case-study",
-      customAssignedScreens,
       matchesPage: taskMatchesCaseStudy,
     });
-  }, [task, role, tasks, customAssignedScreens]);
+  }, [task, role, tasks]);
 
   const { data: record, isPending: recordLoading } = usePoRecordQuery(
     task?.poNumber ?? null,

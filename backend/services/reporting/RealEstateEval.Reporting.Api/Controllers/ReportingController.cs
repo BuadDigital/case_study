@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Caching;
 using RealEstateEval.Reporting.Api.Services;
 
@@ -53,7 +54,7 @@ public class ReportingController : ControllerBase
         var allTasks = await _upstream.GetWorkflowTasksAsync(ct);
 
         var openPartyTasks = allTasks
-            .Where(t => t.Status != "completed" && t.Status != "cancelled")
+            .Where(t => !WorkflowTaskStatus.IsTerminal(t.Status))
             .Where(t =>
                 t.Kind == "property-inspection"
                 || t.Kind == "property-appraisal"
@@ -86,7 +87,7 @@ public class ReportingController : ControllerBase
 
         var specialistLoad = allTasks
             .Where(t => t.AssigneeRole == "case-specialist")
-            .Where(t => t.Status != "completed" && t.Status != "cancelled")
+            .Where(t => !WorkflowTaskStatus.IsTerminal(t.Status))
             .GroupBy(t => t.AssigneeName)
             .Select(g => new ReportingSpecialistLoadDto
             {
@@ -112,13 +113,13 @@ public class ReportingController : ControllerBase
         var failures = await _upstream.GetFailureCountAsync(ct);
         var properties = await _upstream.GetPropertyCountAsync(ct);
 
-        var completed = tasks.Count(t => t.Status == "completed");
+        var completed = tasks.Count(t => t.Status == WorkflowTaskStatus.Completed);
         var total = tasks.Count;
         var onTime = total > 0 ? (int)Math.Round(completed * 100.0 / total) : 0;
 
         var today = DateTime.UtcNow.Date;
         var completedToday = tasks.Count(t =>
-            t.Status == "completed"
+            t.Status == WorkflowTaskStatus.Completed
             && DateTime.TryParse(t.UpdatedAt, out var updated)
             && updated.Date == today);
 
@@ -131,7 +132,7 @@ public class ReportingController : ControllerBase
             .GroupBy(t => t.AssigneeName)
             .Select(g =>
             {
-                var done = g.Count(t => t.Status == "completed");
+                var done = g.Count(t => t.Status == WorkflowTaskStatus.Completed);
                 var score = g.Any()
                     ? (int)Math.Round(done * 100.0 / g.Count())
                     : 0;
@@ -149,7 +150,7 @@ public class ReportingController : ControllerBase
             .GroupBy(t => t.AssigneeName)
             .Select(g =>
             {
-                var done = g.Count(t => t.Status == "completed");
+                var done = g.Count(t => t.Status == WorkflowTaskStatus.Completed);
                 var score = g.Any()
                     ? (int)Math.Round(done * 100.0 / g.Count())
                     : 0;

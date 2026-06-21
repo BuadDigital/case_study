@@ -20,14 +20,17 @@ export function pageIdFromPathname(pathname: string): PageId | null {
       return "government-review";
     case "valuation-coordination":
       return "valuation-coordination";
-    case "custom-screen":
-      return null;
-    case "settings":
-      if (parts[1] === "custom-screen") return "system-screen-catalog";
-      return null;
     case "login":
       return null;
     default:
       return parts[0] as PageId;
   }
+}
+
+export function canAccessPage(
+  pageId: PageId,
+  rolePages: readonly PageId[],
+): boolean {
+  if (pageId === "dashboard") return true;
+  return rolePages.includes(pageId);
 }

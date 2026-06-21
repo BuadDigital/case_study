@@ -21,11 +21,9 @@ function formatCoordsDisplay(lat: string, lng: string): string {
   return latTrim || lngTrim;
 }
 
-const noteWarnClass =
-  "mb-3 rounded-[var(--radius-DEFAULT)] border border-amber border-e-[3px] border-e-amber bg-amber-light px-3.5 py-2.5 text-xs leading-relaxed text-amber-text";
+const noteWarnClass = "mb-3 rounded-[var(--radius-DEFAULT)] border border-amber border-e-[3px] border-e-amber bg-amber-light px-3.5 py-2.5 text-xs leading-relaxed text-amber-text";
 
-const infoRowClass =
-  "flex items-baseline justify-between gap-3 border-b border-border py-2 text-xs last:border-b-0";
+const infoRowClass = "flex items-baseline justify-between gap-3 border-b border-border py-2 text-xs last:border-b-0";
 
 export function EngineeringSurveyAdvisoryPanel({
   parentTask,

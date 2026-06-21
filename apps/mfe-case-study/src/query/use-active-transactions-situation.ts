@@ -2,8 +2,6 @@
 
 import { useMemo } from "react";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { pageIdsFromCustomAssignedScreens } from "@platform/app-shared/prototype/custom-assigned-page-access";
-import { useMyCustomAssignedScreensQuery } from "@settings/mfe/query/custom-screens-queries";
 import {
   computeActiveTransactionsSituation,
   situationVisibilityForPages,
@@ -17,18 +15,9 @@ import {
 
 export function useActiveTransactionsSituation(): ActiveTransactionsSituationStats {
   const { role, rolePages } = usePrototype();
-  const { data: customAssignedScreens = [] } = useMyCustomAssignedScreensQuery();
-  const customGrantedPages = useMemo(
-    () => pageIdsFromCustomAssignedScreens(customAssignedScreens),
-    [customAssignedScreens],
-  );
-  const effectivePages = useMemo(
-    () => [...new Set([...rolePages, ...customGrantedPages])],
-    [rolePages, customGrantedPages],
-  );
   const statsFlags = useMemo(
-    () => situationVisibilityForPages(effectivePages),
-    [effectivePages],
+    () => situationVisibilityForPages(rolePages),
+    [rolePages],
   );
 
   const { data: poRows, isFetched: poRowsFetched } = usePoListRowsQuery();
@@ -40,7 +29,7 @@ export function useActiveTransactionsSituation(): ActiveTransactionsSituationSta
       computeActiveTransactionsSituation({
         role,
         rolePages,
-        customGrantedPages,
+        customGrantedPages: [],
         poRows,
         poRecords,
         tasks,
@@ -51,7 +40,6 @@ export function useActiveTransactionsSituation(): ActiveTransactionsSituationSta
     [
       role,
       rolePages,
-      customGrantedPages,
       poRows,
       poRecords,
       tasks,

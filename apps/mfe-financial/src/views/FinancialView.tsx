@@ -31,7 +31,7 @@ function ContractBadge({ type }: { type: string }) {
 
 export function FinancialView() {
   const { data: summary, isPending } = useFinancialSummaryQuery();
-  const ready = !isPending && summary !== undefined;
+  const ready = !isPending && summary != null;
 
   const statCards = ready
     ? [

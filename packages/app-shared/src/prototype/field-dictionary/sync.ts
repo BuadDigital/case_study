@@ -1,9 +1,7 @@
-import type { CustomAssignedScreen } from "@platform/types";
 import { nextFieldRef } from "./logic";
 import type {
   FieldDictionaryAssignment,
   FieldDictionaryField,
-  FieldDictionaryFieldType,
   FieldDictionaryState,
 } from "./types";
 
@@ -91,48 +89,6 @@ function ensureUniqueRefs(fields: FieldDictionaryField[]): FieldDictionaryField[
   }
 
   return allocated.sort((a, b) => a.ref.localeCompare(b.ref));
-}
-
-/** يستخرج حقول الشاشات الديناميكية المحفوظة لإدراجها في الفهرس. */
-export function fieldsFromCustomAssignedScreens(
-  screens: readonly CustomAssignedScreen[],
-): FieldDictionaryField[] {
-  const fields: FieldDictionaryField[] = [];
-
-  for (const screen of screens) {
-    const definition = screen.definition;
-    if (!definition?.fields?.length) continue;
-
-    const screenCode = screen.code?.trim() || screen.id;
-    const screenLabel = screen.name?.trim() || screenCode;
-    const screenKey = `custom-screen:${screen.id}`;
-
-    for (const field of definition.fields) {
-      const required = definition.bindings?.some(
-        (binding) => binding.fieldId === field.id && binding.required,
-      );
-      fields.push({
-        id: field.id,
-        ref: field.ref,
-        key: `dynamic:${screenCode}:${field.ref}`,
-        name: field.name,
-        type: field.type as FieldDictionaryFieldType,
-        tags: ["شاشة ديناميكية", screenLabel],
-        source: screenLabel,
-        persisted: true,
-        assignments: [
-          {
-            role: (screen.ownerRole?.trim() || "cdo") as FieldDictionaryAssignment["role"],
-            screens: [screenKey],
-            mode: "input",
-            required,
-          },
-        ],
-      });
-    }
-  }
-
-  return fields;
 }
 
 export function syncFieldDictionaryState(input: {

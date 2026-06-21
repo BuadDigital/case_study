@@ -22,12 +22,6 @@ export const prototypeKeys = {
     [...prototypeKeys.all, "case-study-info-roles"] as const,
   staffUsers: () => [...prototypeKeys.all, "staff-users"] as const,
   organization: () => [...prototypeKeys.all, "organization"] as const,
-  customAssignedScreensMine: () =>
-    [...prototypeKeys.all, "custom-assigned-screens-mine"] as const,
-  customAssignedScreensManage: () =>
-    [...prototypeKeys.all, "custom-assigned-screens-manage"] as const,
-  customAssignedScreensUsers: () =>
-    [...prototypeKeys.all, "custom-assigned-screens-users"] as const,
   propertyDetailPartySubmissions: (parentTaskId: string) =>
     [...prototypeKeys.all, "property-detail-party-submissions", parentTaskId] as const,
 };

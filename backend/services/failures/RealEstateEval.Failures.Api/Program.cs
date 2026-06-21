@@ -21,7 +21,7 @@ var connectionString = ServiceCollectionExtensions.RequireConnectionString(
     ServiceDatabaseNames.Failures);
 builder.Services.AddPersistence(builder.Configuration, connectionString);
 builder.Services.AddIdentityInfrastructure();
-builder.Services.AddCaseStudyInfrastructure();
+builder.Services.AddFailuresInfrastructure();
 builder.Services.AddRealEstateEvalJwt(builder.Configuration);
 builder.Services.AddRealEstateEvalCors(builder.Environment);
 builder.Services.AddRealEstateEvalOpenApi("Failures API");

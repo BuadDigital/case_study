@@ -52,7 +52,6 @@ import { decodeTaskParam, isPartyTaskWorkPath } from "@case-study/mfe";
 import { findPropertyForTask } from "@case-study/mfe";
 import {
   formatPropertyDeedDisplay,
-  PoListTopbarActions,
   PoPropertyDetailTopbarActions,
   PO_PROPERTY_SEGMENT,
   decodePoParam,
@@ -64,15 +63,9 @@ import { EngineeringSurveyTopbarActions } from "@engineering-office/mfe";
 import { ActiveTransactionsSituationBar } from "@case-study/mfe";
 import { useActiveTransactionNavBadges } from "@/lib/query/use-active-transaction-nav-badges";
 import { useFailuresNavBadge } from "@/lib/query/use-failures-nav-badge";
-import { useMyCustomAssignedScreensQuery } from "@settings/mfe/query/custom-screens-queries";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import { cn, Button } from "@platform/design-system";
 import { clearAuthSession, getAuthSession } from "@platform/auth-client";
-import type { CustomAssignedScreen } from "@platform/types";
-
-const CUSTOM_ASSIGNED_SCREEN_ICON =
-  "M4 5h16v4H4zM4 13h10v6H4zM16 13h4v6h-4z";
-
 
 function navItemClasses({
   active = false,
@@ -179,54 +172,6 @@ function NavRow({
       <NavIcon d={item.icon} size={16} />
       <span>{item.label}</span>
       {badge}
-    </Link>
-  );
-}
-
-function customAssignedScreenHref(screen: CustomAssignedScreen): string {
-  const target = screen.targetPageId?.trim();
-  if (target) return `/${target}`;
-  return `/custom-screen/${screen.id}`;
-}
-
-function isCustomAssignedScreenActive(
-  screen: CustomAssignedScreen,
-  pathname: string | null,
-  currentPage: PageId,
-): boolean {
-  const target = screen.targetPageId?.trim();
-  if (target) return currentPage === target;
-  return pathname === `/custom-screen/${screen.id}`;
-}
-
-function CustomAssignedNavRow({
-  screen,
-  active,
-  onPrefetch,
-}: {
-  screen: CustomAssignedScreen;
-  active: boolean;
-  onPrefetch: (page: PageId) => void;
-}) {
-  const target = screen.targetPageId?.trim() as PageId | undefined;
-  const href = customAssignedScreenHref(screen);
-  return (
-    <Link
-      href={href}
-      className={navItemClasses({ active, sub: true })}
-      prefetch
-      onMouseEnter={() => {
-        if (target) onPrefetch(target);
-      }}
-      onFocus={() => {
-        if (target) onPrefetch(target);
-      }}
-    >
-      <NavIcon
-        d={screen.iconPath?.trim() || CUSTOM_ASSIGNED_SCREEN_ICON}
-        size={12}
-      />
-      <span>{screen.name}</span>
     </Link>
   );
 }
@@ -488,7 +433,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const showActiveTransactionsGroup = activeTransactionItems.length > 0;
   const activeTxBadges = useActiveTransactionNavBadges();
   const failuresNavBadge = useFailuresNavBadge();
-  const { data: customAssignedScreens = [] } = useMyCustomAssignedScreensQuery();
   const insertActiveTxAfterPo = rolePages.includes("po");
 
   const prefetchPage = useMemo(
@@ -732,7 +676,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const onPoPropertyDetail = Boolean(poChrome?.propertyDetail);
   const onActiveSurveyPropertyDetail = onActiveSurveyWorkspace;
-  const onPoList = pathname === "/po";
   const breadcrumbSegments =
     poChrome?.segments ??
     activeSurveyBreadcrumb ??
@@ -932,25 +875,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               ) : null}
             </>
           ) : null}
-          {customAssignedScreens.length > 0 ? (
-            <div key="custom-assigned-screens">
-              <div className="px-3.5 pb-1.5 pt-3.5 text-[10px] font-medium uppercase tracking-wider text-sidebar-label">
-                شاشات مخصصة
-              </div>
-              {customAssignedScreens.map((screen) => (
-                <CustomAssignedNavRow
-                  key={screen.id}
-                  screen={screen}
-                  active={isCustomAssignedScreenActive(
-                    screen,
-                    pathname,
-                    currentPage,
-                  )}
-                  onPrefetch={prefetchPage}
-                />
-              ))}
-            </div>
-          ) : null}
         </nav>
         <div
           className="shrink-0 border-t border-sidebar-border bg-sidebar px-0 py-1.5 pb-2.5"
@@ -1011,7 +935,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               : null}
           </div>
           <div className="flex shrink-0 items-center gap-2.5">
-            {onPoList ? <PoListTopbarActions /> : null}
             {poChrome?.propertyDetail ? (
               <PoPropertyDetailTopbarActions
                 poNumber={poChrome.propertyDetail.poNumber}

@@ -14,8 +14,7 @@
       "@platform/auth-client": ["../auth-client/src/index.ts"],
       "@platform/auth-client/*": ["../auth-client/src/*"],
       "@case-study/mfe": ["../../apps/mfe-case-study/src/index.ts"],
-      "@case-study/mfe/*": ["../../apps/mfe-case-study/src/*"],
-      "@platform/shell/prototype-auth": ["../../apps/shell/src/lib/prototype/prototype-auth.ts"]
+      "@case-study/mfe/*": ["../../apps/mfe-case-study/src/*"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],

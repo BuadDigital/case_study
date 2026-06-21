@@ -1,12 +1,42 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
+using RealEstateEval.Application.Authorization;
+using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.Shared.Web;
+
+public static class AuthorizationExtensions
+{
+    public static IServiceCollection AddRealEstateEvalCapabilityAuthorization(
+        this IServiceCollection services)
+    {
+        services.AddSingleton<IAuthorizationHandler, CapabilityAuthorizationHandler>();
+
+        services.AddAuthorization(options =>
+        {
+            foreach (var capability in PlatformCapabilities.All)
+            {
+                options.AddPolicy(
+                    CapabilityPolicyNames.For(capability),
+                    policy => policy.AddRequirements(new CapabilityRequirement(capability)));
+            }
+
+            // Back-compat with existing controllers.
+            options.AddPolicy(
+                "CanManageUsers",
+                policy => policy.AddRequirements(
+                    new CapabilityRequirement(PlatformCapabilities.ManageUsers)));
+        });
+
+        return services;
+    }
+}
 
 public static class ServiceCollectionExtensions
 {
@@ -42,11 +72,7 @@ public static class ServiceCollectionExtensions
                 };
             });
 
-        services.AddAuthorization(options =>
-        {
-            options.AddPolicy("CanManageUsers", policy =>
-                policy.RequireAuthenticatedUser());
-        });
+        services.AddRealEstateEvalCapabilityAuthorization();
 
         return services;
     }

@@ -6,7 +6,6 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./routes": "./src/routes.ts",
     "./query/evaluator-queries": "./src/query/evaluator-queries.ts",
     "./lib/*": "./src/lib/*",
     "./components/*": "./src/components/*",

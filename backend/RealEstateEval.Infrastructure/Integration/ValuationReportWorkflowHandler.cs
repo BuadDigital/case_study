@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Shared.Contracts;
 
@@ -66,7 +67,7 @@ public sealed class ValuationReportWorkflowHandler
         var task = await _db.WorkflowTasks
             .Where(t => t.Kind == "property-appraisal")
             .Where(t => t.PropertyId == propertyId)
-            .Where(t => t.Status != "completed" && t.Status != "cancelled")
+            .Where(t => t.Status != WorkflowTaskStatus.Completed && t.Status != WorkflowTaskStatus.Cancelled)
             .OrderByDescending(t => t.UpdatedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -80,7 +81,7 @@ public sealed class ValuationReportWorkflowHandler
 
         await _tasks.PatchAsync(
             task.Id,
-            new PatchWorkflowTaskRequest { Status = "completed", Phase = "done" },
+            new PatchWorkflowTaskRequest { Status = WorkflowTaskStatus.Completed, Phase = "done" },
             cancellationToken);
 
         _logger.LogInformation(

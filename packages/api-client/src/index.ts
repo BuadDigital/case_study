@@ -15,20 +15,6 @@ export function getApiBase(): string {
   return `http://127.0.0.1:${port}`;
 }
 
-// Server session validation (disabled for now):
-
-// export {
-
-//   fetchCurrentUser,
-
-//   type AuthApiConfig,
-
-//   type FetchCurrentUserResult,
-
-//   type UserInfoDto,
-
-// } from "./auth";
-
 export {
   createCrmUser,
   createHrUser,
@@ -42,13 +28,6 @@ export {
   type OrganizationOverviewResult,
   type UsersApiConfig,
 } from "./users";
-
-export {
-  resetSystemData,
-  type ResetSystemDataResult,
-  type SystemApiConfig,
-  type SystemResetResult,
-} from "./system";
 
 export {
   addWorkOrderProperty,
@@ -128,21 +107,6 @@ export {
   type CaseStudyInfoRolesResult,
   type SaveCaseStudyInfoRolesRequest,
 } from "./case-study-info-roles";
-
-export {
-  createCustomAssignedScreen,
-  deleteCustomAssignedScreen,
-  getMyDynamicScreenSubmission,
-  listAllCustomAssignedScreens,
-  listAssignableUsersForCustomScreens,
-  getCustomAssignedScreen,
-  listMyCustomAssignedScreens,
-  saveDynamicScreenDefinition,
-  saveMyDynamicScreenSubmission,
-  updateCustomAssignedScreen,
-  type CustomAssignedScreensApiConfig,
-  type CustomAssignedScreensResult,
-} from "./custom-assigned-screens";
 
 export {
   approveFailure,

@@ -1,9 +1,8 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
@@ -70,6 +69,7 @@ public class WorkOrdersController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<WorkOrderDto>> Create(
         [FromBody] CreateWorkOrderRequest request,
         CancellationToken cancellationToken)
@@ -83,6 +83,7 @@ public class WorkOrdersController : ControllerBase
     }
 
     [HttpPut("{poNumber}")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<WorkOrderDto>> UpdateHeader(
         string poNumber,
         [FromBody] UpdateWorkOrderHeaderRequest request,
@@ -99,6 +100,7 @@ public class WorkOrdersController : ControllerBase
     }
 
     [HttpDelete("{poNumber}")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<IActionResult> Delete(string poNumber, CancellationToken cancellationToken)
     {
         var (ok, error) = await _workOrders.DeleteAsync(poNumber, cancellationToken);
@@ -107,6 +109,7 @@ public class WorkOrdersController : ControllerBase
     }
 
     [HttpPost("{poNumber}/properties")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<WorkOrderPropertyDto>> AddProperty(
         string poNumber,
         [FromBody] WorkOrderPropertyDto property,
@@ -123,6 +126,7 @@ public class WorkOrdersController : ControllerBase
     }
 
     [HttpPut("{poNumber}/properties/{propertyId:guid}/bourse")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<WorkOrderPropertyDto>> CompleteBourseData(
         string poNumber,
         Guid propertyId,
@@ -141,6 +145,7 @@ public class WorkOrdersController : ControllerBase
     }
 
     [HttpPut("{poNumber}/properties/{propertyId:guid}")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<WorkOrderPropertyDto>> UpdateProperty(
         string poNumber,
         Guid propertyId,
@@ -159,6 +164,7 @@ public class WorkOrdersController : ControllerBase
     }
 
     [HttpDelete("{poNumber}/properties/{propertyId:guid}")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<IActionResult> DeleteProperty(
         string poNumber,
         Guid propertyId,
@@ -171,8 +177,4 @@ public class WorkOrdersController : ControllerBase
         if (!ok) return BadRequest(new { message = error });
         return NoContent();
     }
-
-    private string? UserId() =>
-        User.FindFirstValue(ClaimTypes.NameIdentifier)
-        ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
 }

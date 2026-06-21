@@ -84,16 +84,6 @@ export function isValuationCoordinationWorkspacePath(pathname: string): boolean 
   return parts[0] === "valuation-coordination" && parts.length >= 2;
 }
 
-/** @deprecated Use partyTaskPath("property-inspection") */
-export function propertyInspectionPath(): string {
-  return partyTaskPath("property-inspection");
-}
-
-/** @deprecated Use partyTaskTaskPath("property-inspection", taskId) */
-export function propertyInspectionTaskPath(taskId: string): string {
-  return partyTaskTaskPath("property-inspection", taskId);
-}
-
 export function isPartyTaskWorkPath(pathname: string): boolean {
   const page = pathname.split("/").filter(Boolean)[0] ?? "";
   return isPartyTaskPage(page as PageId);

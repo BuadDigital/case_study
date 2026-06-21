@@ -59,7 +59,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         var entity = await _db.PartyTaskSubmissions
             .FirstOrDefaultAsync(s => s.WorkflowTaskId == taskId, cancellationToken);
 
-        if (entity is not null && entity.Status is "submitted")
+        if (entity is not null && entity.Status is PartyTaskSubmissionStatus.Submitted)
             return (null, new Dictionary<string, string> { ["_"] = "لا يمكن تعديل إرسال مُكتمل" });
 
         var now = DateTime.UtcNow;
@@ -82,11 +82,13 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             : request.Payload.GetRawText();
 
         var status = ExtractStatus(payloadJson) ?? entity.Status;
-        if (status is "submitted")
+        if (status is PartyTaskSubmissionStatus.Submitted)
             return (null, new Dictionary<string, string> { ["_"] = "استخدم نقطة الإرسال لتقديم العمل" });
 
         entity.PayloadJson = payloadJson;
-        entity.Status = status is "reopened" ? "reopened" : "draft";
+        entity.Status = status is PartyTaskSubmissionStatus.Reopened
+            ? PartyTaskSubmissionStatus.Reopened
+            : PartyTaskSubmissionStatus.Draft;
         entity.PropertyId = task.PropertyId;
         entity.PoNumber = task.PoNumber;
         entity.UpdatedAtUtc = now;
@@ -114,7 +116,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (entity is null)
             return (null, new Dictionary<string, string> { ["_"] = "لا يوجد مسودة للإرسال" });
 
-        if (entity.Status is "submitted")
+        if (entity.Status is PartyTaskSubmissionStatus.Submitted)
             return (ToDto(entity), null);
 
         var validationErrors = ValidateForSubmit(entity);
@@ -122,16 +124,16 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             return (null, validationErrors);
 
         var now = DateTime.UtcNow;
-        entity.Status = "submitted";
+        entity.Status = PartyTaskSubmissionStatus.Submitted;
         entity.SubmittedAtUtc = now;
         entity.UpdatedAtUtc = now;
-        entity.PayloadJson = SetPayloadStatus(entity.PayloadJson, "submitted", now);
+        entity.PayloadJson = SetPayloadStatus(entity.PayloadJson, PartyTaskSubmissionStatus.Submitted, now);
 
         await _db.SaveChangesAsync(cancellationToken);
 
         await _tasks.PatchAsync(
             taskId,
-            new PatchWorkflowTaskRequest { Status = "completed", Phase = "done" },
+            new PatchWorkflowTaskRequest { Status = WorkflowTaskStatus.Completed, Phase = "done" },
             cancellationToken);
 
         return (ToDto(entity), null);
@@ -158,11 +160,11 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         var entity = await _db.PartyTaskSubmissions
             .FirstOrDefaultAsync(s => s.WorkflowTaskId == taskId, cancellationToken);
 
-        if (entity is null || entity.Status != "submitted")
+        if (entity is null || entity.Status != PartyTaskSubmissionStatus.Submitted)
             return (null, new Dictionary<string, string> { ["_"] = "لا يوجد إرسال مُكتمل لإعادته" });
 
         var now = DateTime.UtcNow;
-        entity.Status = "reopened";
+        entity.Status = PartyTaskSubmissionStatus.Reopened;
         entity.ReturnNote = returnNote;
         entity.SubmittedAtUtc = null;
         entity.UpdatedAtUtc = now;
@@ -172,7 +174,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
         await _tasks.PatchAsync(
             taskId,
-            new PatchWorkflowTaskRequest { Status = "open", Phase = "done" },
+            new PatchWorkflowTaskRequest { Status = WorkflowTaskStatus.Open, Phase = "done" },
             cancellationToken);
 
         return (ToDto(entity), null);
@@ -295,7 +297,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             var mutable = dict.ToDictionary(
                 kv => kv.Key,
                 kv => (object?)DeserializeElement(kv.Value));
-            mutable["status"] = "reopened";
+            mutable["status"] = PartyTaskSubmissionStatus.Reopened;
             mutable["returnNote"] = returnNote;
             mutable["submittedAtUtc"] = null;
             mutable["updatedAtUtc"] = now.ToString("O");

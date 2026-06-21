@@ -22,6 +22,7 @@ var connectionString = ServiceCollectionExtensions.RequireConnectionString(
 builder.Services.AddPersistence(builder.Configuration, connectionString);
 builder.Services.AddIdentityInfrastructure();
 builder.Services.AddBlobStorage(builder.Configuration);
+builder.Services.AddAttachmentsInfrastructure();
 builder.Services.AddRealEstateEvalJwt(builder.Configuration);
 builder.Services.AddRealEstateEvalCors(builder.Environment);
 builder.Services.AddRealEstateEvalOpenApi("Attachments API");

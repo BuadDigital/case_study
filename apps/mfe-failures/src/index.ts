@@ -1,7 +1,5 @@
 /** @failures/mfe — إدارة التعذرات (failure queue + property failure reports). */
 
-export { FAILURES_MFE_PAGE_IDS, isFailuresMfePage } from "./routes";
-
 export { FailuresView } from "./views/FailuresView";
 export { FailureTypesView } from "./views/FailureTypesView";
 export { FailureReportForm } from "./components/failures/FailureReportForm";

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { DistributionPartiesForm } from "@case-study/mfe/components/distribution/DistributionPartiesForm";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import { TaskWorkChrome } from "@case-study/mfe/components/primary-data/TaskWorkChrome";
-import { PoEditShell } from "@case-study/mfe/components/po-intake/PoEditShell";
 import { PoPropertyEnfathForm } from "@case-study/mfe/components/po-intake/PoPropertyEnfathForm";
 import { PoPropertyBourseForm } from "@case-study/mfe/components/po-intake/PoPropertyBourseForm";
 import {
@@ -50,7 +49,6 @@ import { poPropertyFailurePath } from "../lib/po-routes";
 import {
   advanceTaskAfterBourse,
   advanceTaskAfterEnfath,
-  completeChildTask,
   confirmTaskDistribution,
   defaultDistribution,
   distributionValidationError,
@@ -59,27 +57,17 @@ import {
   patchTaskDistribution,
   resolveTaskObstruction,
   taskDisplayPropertyLabel,
-  taskKindLabel,
   type TaskDistributionDraft,
   type WorkflowTask,
 } from "../lib/prototype/tasks-storage";
 import {
   usePoRecordQuery,
-  useWorkflowTasksQuery,
 } from "@case-study/mfe/query/case-study-queries";
 import { Button, InlineLoadingSkeleton, Note, cn, useToast } from "@platform/design-system";
 import { useQueryClient } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 
 const LOADING_TEXT = "text-xs text-text-3";
-
-function useWorkflowTask(taskId: string): WorkflowTask | null {
-  const { data: tasks } = useWorkflowTasksQuery();
-  return useMemo(
-    () => tasks?.find((t) => t.id === taskId) ?? null,
-    [tasks, taskId],
-  );
-}
 
 export function CaseStudyTaskWork({
   task,
@@ -710,60 +698,4 @@ export function CaseStudyTaskWork({
       ) : null}
     </TaskWorkChrome>
   );
-}
-
-export function MyTaskWorkView({ taskId }: { taskId: string }) {
-  const router = useRouter();
-  const task = useWorkflowTask(taskId);
-  const [, bump] = useState(0);
-  const refresh = useCallback(() => bump((n) => n + 1), []);
-
-  if (!task) {
-    return (
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg">
-        <Note tone="warn" className="m-6">
-          لم تُعثر على المهمة.
-          <div className="mt-3">
-            <Button
-              type="button"
-              size="sm"
-              variant="default"
-              onClick={() => router.push(myTasksPath())}
-            >
-              رجوع للمعاملات النشطة
-            </Button>
-          </div>
-        </Note>
-      </div>
-    );
-  }
-
-  if (task.kind !== "case-study-property") {
-    return (
-      <PoEditShell
-        title={task.title}
-        subtitle={`${taskKindLabel(task.kind)} · ${formatPoDisplay(task.poNumber)}`}
-        onBack={() => router.push(myTasksPath())}
-        onSave={() => {
-          if (task.status !== "completed") void completeChildTask(task.id);
-          router.push(myTasksPath());
-        }}
-        saveLabel={
-          task.status === "completed" ? "رجوع للمهام" : "تأشير كمكتملة"
-        }
-      >
-        <RegistrationFormCard title={task.title}>
-          {task.status === "completed" ? (
-            <Note tone="success">تم إنجاز هذه المهمة.</Note>
-          ) : (
-            <p className="m-0 text-[13px] text-text-2">
-              أكمل الإجراء المطلوب ثم احفظ لتأشير المهمة كمكتملة.
-            </p>
-          )}
-        </RegistrationFormCard>
-      </PoEditShell>
-    );
-  }
-
-  return <CaseStudyTaskWork task={task} onRefresh={refresh} />;
 }
