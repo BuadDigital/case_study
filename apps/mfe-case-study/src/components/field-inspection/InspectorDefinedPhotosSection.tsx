@@ -35,6 +35,7 @@ import {
 } from "../../lib/prototype/inspector-photo-upload";
 import { InspectorPhotoFilePicker } from "./InspectorPhotoFilePicker";
 import { InspectorStampedPhotoThumb } from "./InspectorStampedPhotoThumb";
+import { InspectorToggleSwitch } from "./InspectorToggleSwitch";
 
 type PreviewRef =
   | { kind: "slot"; slotId: string; photoId: number }
@@ -405,15 +406,15 @@ export function InspectorDefinedPhotosSection({
               <div
                 key={def.id}
                 className={cn(
-                  "rounded-lg border bg-surface p-3",
+                  "rounded-lg border bg-surface-2 p-3.5",
                   incompleteRequired
-                    ? "border-danger/40"
+                    ? "border-[#F5CBA7]"
                     : "border-border",
                 )}
               >
                 <div className="mb-2.5 flex items-center justify-between gap-2">
                   <span className="flex items-center gap-1.5 text-xs font-semibold text-text">
-                    <i className={`ti ${def.icon} text-primary`} aria-hidden />
+                    <i className={`ti ${def.icon} text-primary-light text-base`} aria-hidden />
                     {def.name}
                   </span>
                   <Badge tone={def.required ? "danger" : "default"}>
@@ -422,12 +423,12 @@ export function InspectorDefinedPhotosSection({
                 </div>
 
                 {slot.none ? (
-                  <div className="mb-2 flex items-center gap-1.5 rounded-md bg-surface-2 px-2.5 py-2 text-[11px] text-text-3">
+                  <div className="mb-2 flex items-center gap-1.5 rounded-md bg-surface-3 px-3 py-2 text-xs font-semibold text-text-2">
                     <i className="ti ti-circle-minus" aria-hidden />
                     لا يوجد في هذا العقار
                   </div>
                 ) : slot.photos.length > 0 ? (
-                  <div className="mb-2 flex flex-wrap gap-2">
+                  <div className="mb-2 flex flex-wrap gap-1.5">
                     {slot.photos.map((photo) => (
                       <MiniPhotoThumb
                         key={photo.id}
@@ -458,23 +459,24 @@ export function InspectorDefinedPhotosSection({
                     }
                     disabled={disabled || uploading}
                     multiple
+                    className={slot.photos.length === 0 ? "w-full justify-center" : undefined}
                     onFilesSelected={(files) =>
                       uploadSlotPhotos(def.id, files)
                     }
                   />
                 ) : null}
 
-                <label className="mt-2.5 flex cursor-pointer items-center justify-between gap-2 text-[11px] text-text-2">
-                  <span className="inline-flex items-center gap-1">
+                <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-dashed border-border pt-2.5">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-text-2">
                     <i className="ti ti-ban text-sm" aria-hidden /> لا يوجد
                   </span>
-                  <input
-                    type="checkbox"
+                  <InspectorToggleSwitch
                     checked={slot.none}
                     disabled={disabled}
-                    onChange={(e) => toggleSlotNone(def.id, e.target.checked)}
+                    ariaLabel={`لا يوجد — ${def.name}`}
+                    onChange={(none) => toggleSlotNone(def.id, none)}
                   />
-                </label>
+                </div>
               </div>
             );
           })}
