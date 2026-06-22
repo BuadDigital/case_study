@@ -1,6 +1,10 @@
-/** Domain types for الرفع المساحي — expand when operations/survey API exists. */
-export type SurveyOfficeRow = {
+/** Survey office row from `/api/survey-offices`. */
+export type SurveyOfficeListRow = {
   id: string;
   name: string;
-  city: string;
+  active: number;
+  doneMonth: number;
+  avgDays: string;
+  contract: string;
+  statusBusy: boolean;
 };

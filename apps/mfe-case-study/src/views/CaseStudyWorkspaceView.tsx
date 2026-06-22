@@ -135,7 +135,7 @@ export function CaseStudyWorkspaceView({
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div className="flex min-h-0 flex-1 flex-row items-stretch overflow-hidden max-lg:flex-col">
-            <div className="min-w-0 flex-1 overflow-y-auto p-5">
+            <div className="min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:p-5">
               <CaseStudyForm
                 taskId={taskId}
                 task={task}

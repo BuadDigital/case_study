@@ -1,7 +1,7 @@
 "use client";
 
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { StatusBadge, Button, Note, StatCard, StatGrid, StatLabel, StatSkeleton, StatValue, SubpageHeader, SubpagePanel, SkeletonTableRows, Table, TBody, Td, Th, THead, Tr } from "@platform/design-system";
+import { StatusBadge, Button, Note, ReportPageBody, StatCard, StatGrid, StatLabel, StatSkeleton, StatValue, SubpageHeader, SubpagePanel, SkeletonTableRows, Table, TBody, Td, Th, THead, Tr } from "@platform/design-system";
 import type { RoleId } from "@platform/types";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import { useValuationRequestsQuery } from "../query/valuation-queries";
@@ -49,7 +49,7 @@ export function ValuationRequestsView() {
       ));
 
   return (
-    <>
+    <ReportPageBody>
       <StatGrid>{statCards}</StatGrid>
       <Note tone="info">
         هذه الطلبات واردة من قسم دراسة الحالة — يتولى منسق التقييم توزيعها على المقيمين المؤهلين
@@ -107,6 +107,6 @@ export function ValuationRequestsView() {
           </TBody>
         </Table>
       </SubpagePanel>
-    </>
+    </ReportPageBody>
   );
 }

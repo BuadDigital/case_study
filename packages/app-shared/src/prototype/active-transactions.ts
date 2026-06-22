@@ -9,7 +9,7 @@ export type ActiveTransactionNavItem = {
   label: string;
   icon: string;
   available: boolean;
-  /** Placeholder route — shown in red in the sidebar until implemented */
+  /** Placeholder route — used by screen catalog until fully implemented */
   placeholder?: boolean;
 };
 

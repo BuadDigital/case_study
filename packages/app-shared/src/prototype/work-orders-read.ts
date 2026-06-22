@@ -1,11 +1,16 @@
 import { getPropertyFailure } from "@failures/mfe";
 import type { PoRow, PropertyRow } from "./constants";
 import type {
+  PropertyListItemDto,
   WorkOrderDto,
   WorkOrderListItemDto,
   WorkOrderPropertyDto,
 } from "@platform/api-client";
-import { listWorkOrders, listWorkOrdersWithDetails } from "@platform/api-client";
+import {
+  listPropertyListItems,
+  listWorkOrders,
+  listWorkOrdersWithDetails,
+} from "@platform/api-client";
 import { workOrdersApiConfig } from "./work-orders-api-config";
 
 const INCOMPLETE_CONTACT_MARKER_PHONE = "0500000000";
@@ -114,9 +119,38 @@ function workOrderPropertyToPropertyRow(
   };
 }
 
-let workOrderDtosInflight: Promise<WorkOrderDto[]> | null = null;
+function apiPropertyListItemToPropertyListItem(
+  item: PropertyListItemDto,
+): PropertyListItem {
+  const failure = getPropertyFailure(item.poNumber, item.propertyId);
+  const row = item.row;
+  const status =
+    failure?.status === "approved" && row.status !== "fail"
+      ? "fail"
+      : (row.status as PropertyRow["status"]);
 
-/** Single API call — shared by PO records, property list, and dashboard stats. */
+  return {
+    poNumber: item.poNumber,
+    propertyId: item.propertyId,
+    row: {
+      id: row.id,
+      po: row.po,
+      area: row.area,
+      type: row.type,
+      key: row.key,
+      survey: row.survey as PropertyRow["survey"],
+      val: row.val as PropertyRow["val"],
+      study: row.study as PropertyRow["study"],
+      status,
+      specialist: row.specialist,
+    },
+  };
+}
+
+let workOrderDtosInflight: Promise<WorkOrderDto[]> | null = null;
+let propertyListItemsInflight: Promise<PropertyListItem[]> | null = null;
+
+/** Single API call — shared by PO records and legacy detail consumers. */
 export async function loadWorkOrderDtos(): Promise<WorkOrderDto[]> {
   if (workOrderDtosInflight) return workOrderDtosInflight;
 
@@ -170,8 +204,20 @@ export type PropertyListItem = {
   propertyId: string;
 };
 
-/** Property list items for dashboard stats — shared prototype read. */
+/** Property list items for dashboard stats — slim API payload. */
 export async function loadPropertyListItems(): Promise<PropertyListItem[]> {
-  const records = await loadWorkOrderDtos();
-  return mapWorkOrderDtosToPropertyListItems(records);
+  if (propertyListItemsInflight) return propertyListItemsInflight;
+
+  propertyListItemsInflight = (async () => {
+    const config = workOrdersApiConfig();
+    if (!config) return [];
+
+    const result = await listPropertyListItems(config);
+    if (!result.ok) return [];
+    return result.data.map(apiPropertyListItemToPropertyListItem);
+  })().finally(() => {
+    propertyListItemsInflight = null;
+  });
+
+  return propertyListItemsInflight;
 }

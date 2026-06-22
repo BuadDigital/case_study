@@ -226,6 +226,7 @@ export function InspectorDefinedPhotosSection({
         draft.taskId,
         ref,
         file,
+        { stampText: inspectorPhotoStampText(workingDraft) },
       );
       if (!result.ok) {
         showToast(result.error, "error");
@@ -238,7 +239,7 @@ export function InspectorDefinedPhotosSection({
       };
       const nextPhoto: InspectorSlotPhoto = {
         id: nextId,
-        approved: false,
+        approved: true,
         ...result.attachment,
       };
       workingDraft = {
@@ -256,7 +257,7 @@ export function InspectorDefinedPhotosSection({
 
     if (added > 0) {
       onPatch({ definedPhotos: workingDraft.definedPhotos });
-      showToast("تم رفع الصورة — راجِعها ثم اعتمِدها");
+      showToast("تم رفع الصورة واعتمادها");
     }
     setUploading(false);
   }
@@ -296,6 +297,7 @@ export function InspectorDefinedPhotosSection({
         draft.taskId,
         ref,
         file,
+        { stampText: inspectorPhotoStampText(workingDraft) },
       );
       if (!result.ok) {
         showToast(result.error, "error");
@@ -325,7 +327,9 @@ export function InspectorDefinedPhotosSection({
   function tagFreePhoto(photoId: number, category: string) {
     onPatch({
       freePhotos: draft.freePhotos.map((photo) =>
-        photo.id === photoId ? { ...photo, category } : photo,
+        photo.id === photoId
+          ? { ...photo, category, approved: true }
+          : photo,
       ),
     });
     const label =
@@ -570,7 +574,7 @@ export function InspectorDefinedPhotosSection({
               </ModalClose>
             </ModalHeader>
             <ModalBody>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 {INSPECTOR_FREE_PHOTO_CATEGORIES.map((cat) => (
                   <button
                     key={cat.key}

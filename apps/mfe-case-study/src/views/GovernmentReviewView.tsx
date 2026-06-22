@@ -7,10 +7,11 @@ import {
   Button,
   Card,
   CardBody,
-  cn,
+  EmptyState,
   Note,
-  PageShell,
+  OperationalPanel,
   PanelSkeleton,
+  QueueTableHint,
   SkeletonTableRows,
   Table,
   TBody,
@@ -18,6 +19,10 @@ import {
   Th,
   THead,
   Tr,
+  cn,
+  queueTableRowActiveClassName,
+  queueTableRowClassName,
+  queueTableWrapClassName,
 } from "@platform/design-system";
 import { InternalDelegationLetterPanel } from "../components/government-review/InternalDelegationLetterPanel";
 import { PoNumber } from "../components/ui/PoNumber";
@@ -45,7 +50,6 @@ import {
 } from "../lib/prototype/tasks-storage";
 import { formatPoDisplay } from "../lib/prototype/po-intake-data";
 import {
-  reviewerCoverageLabel,
   reviewerScopeForRole,
 } from "../lib/prototype/reviewer-coverage";
 import {
@@ -53,10 +57,8 @@ import {
   useWorkflowTasksQuery,
 } from "../query/case-study-queries";
 
-const ROW =
-  "cursor-pointer transition-colors hover:bg-[color-mix(in_srgb,var(--info-bg)_40%,var(--surface))]";
-const ROW_ACTIVE =
-  "bg-[color-mix(in_srgb,var(--warning-bg)_45%,var(--surface))]";
+const ROW = queueTableRowClassName;
+const ROW_ACTIVE = queueTableRowActiveClassName;
 
 function governmentReviewPoPath(poNumber: string): string {
   return `/government-review?po=${encodeURIComponent(poNumber)}`;
@@ -95,7 +97,7 @@ function GovernmentReviewPoPanel({
   );
 
   return (
-    <Card className="sticky top-3 self-start overflow-hidden rounded-none border-none shadow-none lg:border-s lg:border-border">
+    <Card className="max-lg:static max-lg:self-stretch self-start overflow-hidden rounded-none border-none shadow-none lg:sticky lg:top-3 lg:border-s lg:border-border">
       <CardBody className="px-4 py-3">
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
@@ -300,33 +302,19 @@ export function GovernmentReviewView() {
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg">
       <div
         className={cn(
-          "grid min-h-0 flex-1 items-stretch gap-0",
+          "grid min-h-0 flex-1 items-stretch gap-3 bg-bg",
           hasRail && panelOpen && selectedRow
             ? "grid-cols-1 lg:grid-cols-[minmax(0,1.05fr)_minmax(300px,1fr)]"
             : "grid-cols-1",
         )}
       >
-        <PageShell>
-          <header className="grid items-center gap-1 border-b border-border bg-gradient-to-br from-surface-2 to-surface px-4 py-2.5">
-            <div className="flex min-w-0 flex-col gap-0.5">
-              <h1 className="m-0 text-base font-bold text-text">
-                <span>{def?.pageTitle ?? "المراجعة الحكومية"}</span>
-              </h1>
-              <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-text-2">
-                <span className="font-medium text-text-2">
-                  نطاق التغطية: {reviewerCoverageLabel(reviewerScope)}
-                </span>
-                {!queueReady ? null : (
-                  <span className="font-medium text-text-2">
-                    {rows.length} {rows.length === 1 ? "أمر عمل" : "أوامر عمل"}
-                  </span>
-                )}
-              </div>
-            </div>
-          </header>
-
+        <OperationalPanel
+          className={cn(
+            hasRail && panelOpen && selectedRow ? "min-h-0 flex-1" : "flex-none",
+          )}
+        >
           {!queueReady ? (
-            <div className="w-full overflow-x-auto">
+            <div className={queueTableWrapClassName}>
               <Table pending>
                 <THead>
                   <Tr hoverable={false}>
@@ -344,18 +332,16 @@ export function GovernmentReviewView() {
               </Table>
             </div>
           ) : rows.length === 0 ? (
-            <div className="px-6 py-8 text-center">
-              <p className="m-0 text-[13px] text-text-3">
-                {def?.emptyLine ?? "لا توجد مهام مراجعة حكومية."}
-              </p>
-              <p className="mt-2 text-[11px] text-text-3">
-                {def?.emptyHint ??
-                  "تظهر هنا بعد تأكيد التوزيع عند تفعيل المراجع الحكومي."}
-              </p>
-            </div>
+            <EmptyState
+              line={def?.emptyLine ?? "لا توجد مهام مراجعة حكومية."}
+              hint={
+                def?.emptyHint ??
+                "تظهر هنا بعد تأكيد التوزيع عند تفعيل المراجع الحكومي."
+              }
+            />
           ) : (
             <>
-              <div className="w-full overflow-x-auto">
+              <div className={queueTableWrapClassName}>
                 <Table>
                   <THead>
                     <Tr hoverable={false}>
@@ -407,22 +393,20 @@ export function GovernmentReviewView() {
                   </TBody>
                 </Table>
               </div>
-              <p className="px-6 py-2 pb-3 text-[11px] text-text-3">
+              <QueueTableHint>
                 اضغط صف أمر العمل لفتح مهام المراجعة وخطابات التفويض — اختر
                 مهمة عقار لفتحها في صفحة مستقلة.
-              </p>
+              </QueueTableHint>
             </>
           )}
-        </PageShell>
+        </OperationalPanel>
 
         {hasRail ? (
-          <div
+          <OperationalPanel
             id="government-review-panel"
             className={cn(
-              "min-w-0 self-stretch overflow-hidden opacity-0 invisible",
-              panelOpen &&
-                selectedRow &&
-                "visible overflow-visible border-s border-border opacity-100",
+              "min-h-0 min-w-0 self-stretch opacity-0 invisible",
+              panelOpen && selectedRow && "visible opacity-100",
             )}
           >
             {panelOpen && selectedRow ? (
@@ -433,7 +417,7 @@ export function GovernmentReviewView() {
                 onOpenTask={(taskId) => openTask(selectedRow.poNumber, taskId)}
               />
             ) : null}
-          </div>
+          </OperationalPanel>
         ) : null}
       </div>
     </div>

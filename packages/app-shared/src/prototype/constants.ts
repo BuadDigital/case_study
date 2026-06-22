@@ -168,7 +168,7 @@ export const NAV: NavItem[] = [
   },
   {
     id: "survey",
-    label: "الرفع المساحي",
+    label: "مكاتب الرفع الهندسي",
     icon: "M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z",
     grp: null,
     placeholder: true,
@@ -236,7 +236,7 @@ export const PAGE_TITLES: Record<PageId, string> = {
   "active-case-study": "دراسة حالة العقارات",
   po: "أوامر العمل",
   "bourse-inquiry": "استعلام بورصة",
-  survey: "الرفع المساحي",
+  survey: "مكاتب الرفع الهندسي",
   keys: "إدارة المفاتيح",
   failures: "إدارة التعذرات",
   "suspended-transactions": "المعاملات المعلقة",

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
-import { Button, cn, InlineLoadingSkeleton, useToast } from "@platform/design-system";
+import { Button, cn, InlineLoadingSkeleton, pageGutterClassName, PageShell, PageShellHeader, PageGutter, useToast } from "@platform/design-system";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import type { RoleId } from "@platform/types";
@@ -82,7 +82,10 @@ export function FailureTypesView() {
   );
 
   return (
-    <div className={cn(!isFetched && "opacity-55")}>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg">
+      <PageShell className="min-h-0 flex-1">
+        <PageShellHeader title="أنواع التعذرات" />
+        <PageGutter className={cn("pt-4 pb-4", !isFetched && "opacity-55")}>
       {!isFetched ? <InlineLoadingSkeleton className="mb-3" /> : null}
 
       {!canEdit ? (
@@ -103,7 +106,7 @@ export function FailureTypesView() {
               <h2 className="m-0 mb-1 text-base font-bold text-text">إضافة نوع تعذر</h2>
             </div>
           </header>
-          <div className="grid gap-3 px-6 pb-3">
+          <div className="grid gap-3 px-4 pb-3 sm:px-6">
             <RegSelect
               id="failure_type_category"
               label="التصنيف"
@@ -127,7 +130,7 @@ export function FailureTypesView() {
               onChange={setDescription}
             />
           </div>
-          <div className="flex gap-2 px-6 pb-4">
+          <div className="flex flex-wrap gap-2 px-4 pb-4 sm:px-6">
             <Button type="button" variant="primary" size="sm" loading={busy} disabled={busy} onClick={() => void handleAdd()}>
               إضافة
             </Button>
@@ -152,7 +155,7 @@ export function FailureTypesView() {
                 <h2 className="m-0 mb-1 text-base font-bold text-text">{category.label}</h2>
               </div>
             </header>
-            <div className="px-6 py-3">
+            <div className="px-4 py-3 sm:px-6">
               {types.length === 0 ? (
                 <p className="text-[13px] text-text-3">لا أنواع.</p>
               ) : (
@@ -188,6 +191,8 @@ export function FailureTypesView() {
           </article>
         );
       })}
+        </PageGutter>
+      </PageShell>
     </div>
   );
 }

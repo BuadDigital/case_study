@@ -7,7 +7,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   Badge,
   cn,
-  PageShell,
+  EmptyState,
+  OperationalPanel,
+  PageShellHeader,
+  QueueTableHint,
   SkeletonTableRows,
   Table,
   TBody,
@@ -17,6 +20,9 @@ import {
   ThAction,
   THead,
   Tr,
+  queueTableRowActiveClassName,
+  queueTableRowClassName,
+  queueTableWrapClassName,
   type BadgeTone,
 } from "@platform/design-system";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
@@ -115,10 +121,8 @@ type PanelRenderProps = {
   onClose: () => void;
 };
 
-const ROW =
-  "cursor-pointer transition-colors hover:bg-[color-mix(in_srgb,var(--info-bg)_40%,var(--surface))]";
-const ROW_ACTIVE =
-  "bg-[color-mix(in_srgb,var(--warning-bg)_45%,var(--surface))]";
+const ROW = queueTableRowClassName;
+const ROW_ACTIVE = queueTableRowActiveClassName;
 
 function legacyBadgeTone(className: string): BadgeTone {
   if (className.includes("done")) return "success";
@@ -353,47 +357,30 @@ export function ActiveTransactionQueueView({
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg">
       <div
         className={cn(
-          "grid min-h-0 flex-1 gap-0",
+          "grid min-h-0 flex-1 gap-3 bg-bg",
           hasRail && panelOpen
-            ? "grid-cols-[minmax(0,1.05fr)_minmax(300px,1fr)] items-stretch"
+            ? "grid-cols-1 lg:grid-cols-[minmax(0,1.05fr)_minmax(300px,1fr)] lg:items-stretch"
             : "grid-cols-1 items-start content-start",
         )}
       >
-        <PageShell
-          className={cn(hasRail && panelOpen ? "flex-1" : "flex-none")}
+        <OperationalPanel
+          className={cn(hasRail && panelOpen ? "min-h-0 flex-1" : "flex-none")}
         >
-          <header className="grid items-center gap-1 border-b border-border bg-gradient-to-br from-surface-2 to-surface px-6 py-2.5">
-            <div className="flex min-w-0 flex-col gap-0.5">
-              {!config.hidePageTitle ? (
-                <h1 className="m-0 text-base font-bold text-text">
-                  <span>{config.pageTitle}</span>
-                </h1>
-              ) : null}
-              <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-text-2">
-                {listed.length > 0 ? (
-                  <span className="font-medium text-text-2">
-                    {listed.length}{" "}
-                    {listed.length === 1 ? "معاملة" : "معاملات"}
-                  </span>
-                ) : null}
-              </div>
-            </div>
-          </header>
+          {!config.hidePageTitle && config.pageTitle ? (
+            <PageShellHeader title={config.pageTitle} />
+          ) : null}
 
           {config.renderQueueHeader && queueReady && listed.length > 0
             ? config.renderQueueHeader(listed)
             : null}
 
           {queueReady && listed.length === 0 ? (
-            <div className="px-6 py-8 text-center">
-              <p className="m-0 text-[13px] text-text-3">{config.emptyLine}</p>
-              <p className="mt-2 text-[11px] text-text-3">{config.emptyHint}</p>
-            </div>
+            <EmptyState line={config.emptyLine} hint={config.emptyHint} />
           ) : (
             <>
               <div
                 className={cn(
-                  "w-full",
+                  queueTableWrapClassName,
                   isDistributionTable && "overflow-x-auto",
                 )}
               >
@@ -570,23 +557,22 @@ export function ActiveTransactionQueueView({
                   </Table>
                 )}
               </div>
-              <p className="px-4 py-2 pb-3 text-[11px] text-text-3">
+              <QueueTableHint>
                 {config.tableHint ??
                   (useFullPage
                     ? "اضغط الصف لفتح دراسة الحالة."
                     : "اضغط الصف لفتح التوزيع — اضغط نفس الصف مرة أخرى للإغلاق.")}
-              </p>
+              </QueueTableHint>
             </>
           )}
-        </PageShell>
+        </OperationalPanel>
 
         {hasRail && renderPanel ? (
-          <div
+          <OperationalPanel
             id={config.panelId}
             className={cn(
-              "min-w-0 self-stretch overflow-hidden opacity-0 invisible",
-              panelOpen &&
-                "visible overflow-visible border-s border-border opacity-100",
+              "min-h-0 min-w-0 self-stretch opacity-0 invisible",
+              panelOpen && "visible opacity-100",
             )}
           >
             {panelOpen && selectedTask
@@ -596,7 +582,7 @@ export function ActiveTransactionQueueView({
                   onClose: closePanel,
                 })
               : null}
-          </div>
+          </OperationalPanel>
         ) : null}
       </div>
     </div>

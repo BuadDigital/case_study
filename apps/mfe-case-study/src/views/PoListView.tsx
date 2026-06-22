@@ -8,7 +8,10 @@ import {
   Badge,
   Button,
   Input,
-  PageBody,
+  OperationalPanel,
+  PageGutter,
+  PageShell,
+  PageToolbar,
   Select,
   StatCard,
   StatGrid,
@@ -26,6 +29,7 @@ import {
   THead,
   Tr,
   cn,
+  queueTableRowClassName,
   useToast,
   type BadgeTone,
 } from "@platform/design-system";
@@ -343,31 +347,26 @@ export function PoListView() {
         />
       ) : null}
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg">
-        <PageBody className="flex flex-col gap-5">
-          <div className="flex items-start justify-between gap-3">
-            <h1 className="text-lg font-bold text-text">أوامر العمل الواردة من إنفاذ</h1>
-          </div>
-
-          <StatGrid cols={4} className="mb-0">
+      <PageShell variant="canvas" className="min-h-0 flex-1">
+        <StatGrid cols={4} flush className="mb-0">
             {statsReady ? (
               <>
-                <StatCard accent="default">
+                <StatCard accent="default" flush>
                   <StatLabel>إجمالي أوامر العمل</StatLabel>
                   <StatValue value={stats?.total} countUp />
                   <StatSub>PO نشط</StatSub>
                 </StatCard>
-                <StatCard accent="amber">
+                <StatCard accent="amber" flush>
                   <StatLabel>عقارات نشطة</StatLabel>
                   <StatValue value={stats?.propertyCount} countUp />
                   <StatSub>قيد المعالجة</StatSub>
                 </StatCard>
-                <StatCard accent="blue">
+                <StatCard accent="blue" flush>
                   <StatLabel>متوسط العقارات / PO</StatLabel>
                   <StatValue value={stats?.avgPerPo} />
                   <StatSub>عقار لكل أمر</StatSub>
                 </StatCard>
-                <StatCard accent="gray">
+                <StatCard accent="gray" flush>
                   <StatLabel>مكتملة هذا الشهر</StatLabel>
                   <StatValue value={stats?.doneMonth} countUp />
                   <StatSub>{`من ${stats?.total ?? 0} إجمالي`}</StatSub>
@@ -375,44 +374,27 @@ export function PoListView() {
               </>
             ) : (
               Array.from({ length: 4 }, (_, index) => (
-                <StatCard key={index} accent="gray">
+                <StatCard key={index} accent="gray" flush>
                   <StatSkeleton />
                 </StatCard>
               ))
             )}
-          </StatGrid>
+        </StatGrid>
 
-          <div className="overflow-hidden rounded-lg border border-border bg-surface">
-            <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3.5">
-              <div className="flex items-center gap-1.5 text-[13px] font-medium text-text">
-                <ListIcon />
-                قائمة أوامر العمل
-              </div>
-              <div className="flex items-center gap-1.5">
-                {showIntake ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="primary"
-                    onClick={() => setIntakeOpen(true)}
-                  >
-                    <PlusIcon />
-                    أمر عمل جديد
-                  </Button>
-                ) : null}
+        <OperationalPanel className="min-h-0 flex-1">
+          <PageToolbar className="shrink-0 border-b-0 bg-surface-2">
+              {showIntake ? (
                 <Button
                   type="button"
                   size="sm"
-                  variant="default"
-                  title="تغيير العرض"
-                  disabled
+                  variant="primary"
+                  className="shrink-0"
+                  onClick={() => setIntakeOpen(true)}
                 >
-                  <GridIcon />
+                  <PlusIcon />
+                  أمر عمل جديد
                 </Button>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 border-b border-border bg-surface-2/50 px-4 py-2.5">
+              ) : null}
               <div className="relative min-w-[min(100%,220px)] flex-1 basis-[200px] max-w-[280px]">
                 <span className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-text-3">
                   <SearchIcon />
@@ -463,10 +445,9 @@ export function PoListView() {
               <span className="w-full text-[11.5px] text-text-3 sm:ms-auto sm:w-auto">
                 {statsReady ? `${filtered.length} نتيجة` : "—"}
               </span>
-            </div>
+          </PageToolbar>
 
-            <div className="overflow-x-auto">
-              <Table pending={!statsReady}>
+          <Table pending={!statsReady}>
                 <THead>
                   <Tr hoverable={false}>
                     <Th>
@@ -538,7 +519,7 @@ export function PoListView() {
                         <Tr
                           key={p.id}
                           hoverable={false}
-                          className="group cursor-pointer transition-colors hover:bg-[#f5f7fb]"
+                          className={cn("group", queueTableRowClassName)}
                           onClick={() => router.push(poPropertiesPath(p.id))}
                         >
                           <Td>
@@ -634,9 +615,8 @@ export function PoListView() {
                   )}
                 </TBody>
               </Table>
-            </div>
 
-            <div className="flex items-center justify-between border-t border-border px-4 py-2.5">
+          <PageGutter className="flex shrink-0 items-center justify-between border-t border-border py-2.5">
               <span className="text-xs text-text-3">
                 {statsReady
                   ? `عرض ${rangeStart}–${rangeEnd} من ${filtered.length} نتيجة`
@@ -676,10 +656,9 @@ export function PoListView() {
                   ‹
                 </Button>
               </div>
-            </div>
-          </div>
-        </PageBody>
-      </div>
+          </PageGutter>
+        </OperationalPanel>
+      </PageShell>
     </>
   );
 }

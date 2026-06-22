@@ -4,7 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   cn,
+  EmptyState,
   Note,
+  OperationalPanel,
   PageGutter,
   PageShell,
   StatCard,
@@ -154,76 +156,62 @@ export function SuspendedTransactionsView() {
   const queuePending = !isFetched;
 
   return (
-    <>
-      <PageGutter className="mb-4 grid grid-cols-2 gap-2.5 pt-4 md:grid-cols-4">
-        <StatGrid cols={4} className="col-span-full mb-0">
-          {!isFetched ? (
-            Array.from({ length: 4 }, (_, index) => (
-              <StatCard key={index} accent="gray">
-                <StatSkeleton />
-              </StatCard>
-            ))
-          ) : (
-            <>
-          <StatCard accent="red">
-            <StatLabel>معاملات معلقة</StatLabel>
-            <StatValue value={stats.suspended} countUp />
-          </StatCard>
-          <StatCard accent="amber">
-            <StatLabel>متأخرة عن الاستحقاق</StatLabel>
-            <StatValue value={stats.overdue} countUp />
-          </StatCard>
-          <StatCard accent="default">
-            <StatLabel>ضمن المهلة</StatLabel>
-            <StatValue value={stats.onTime} countUp />
-          </StatCard>
-          <StatCard accent="gray">
-            <StatLabel>الإجمالي</StatLabel>
-            <StatValue value={stats.total} countUp />
-          </StatCard>
-            </>
-          )}
-        </StatGrid>
-      </PageGutter>
+    <PageShell variant="canvas" className="min-h-0 flex-1">
+      <StatGrid cols={4} flush className="mb-0">
+        {!isFetched ? (
+          Array.from({ length: 4 }, (_, index) => (
+            <StatCard key={index} accent="gray" flush>
+              <StatSkeleton />
+            </StatCard>
+          ))
+        ) : (
+          <>
+            <StatCard accent="red" flush>
+              <StatLabel>معاملات معلقة</StatLabel>
+              <StatValue value={stats.suspended} countUp />
+            </StatCard>
+            <StatCard accent="amber" flush>
+              <StatLabel>متأخرة عن الاستحقاق</StatLabel>
+              <StatValue value={stats.overdue} countUp />
+            </StatCard>
+            <StatCard accent="default" flush>
+              <StatLabel>ضمن المهلة</StatLabel>
+              <StatValue value={stats.onTime} countUp />
+            </StatCard>
+            <StatCard accent="gray" flush>
+              <StatLabel>الإجمالي</StatLabel>
+              <StatValue value={stats.total} countUp />
+            </StatCard>
+          </>
+        )}
+      </StatGrid>
 
-      {!staff ? (
-        <Note tone="info" className="mx-6">
-          المعاملة معلّقة — لا يمكن متابعة العمل حتى رفع التعليق من مشرف دراسة
-          الحالة.
-        </Note>
-      ) : null}
-      {staff ? (
-        <Note
-          tone="default"
-          className="mx-6 border-r-primary bg-teal-light text-teal-text"
-        >
-          مسار التعليق: مراجعة المشرف → تعليق المعاملة → إيقاف جميع الأطراف —
-          المؤقت يستمر حتى موعد الاستحقاق.
-        </Note>
-      ) : null}
+      <OperationalPanel className="min-h-0 flex-1">
+        {!staff ? (
+          <PageGutter className="pb-0 pt-4">
+            <Note tone="info" className="mb-0">
+              المعاملة معلّقة — لا يمكن متابعة العمل حتى رفع التعليق من مشرف دراسة
+              الحالة.
+            </Note>
+          </PageGutter>
+        ) : null}
+        {staff ? (
+          <PageGutter className="pb-0 pt-4">
+            <Note
+              tone="default"
+              className="mb-0 border-r-primary bg-teal-light text-teal-text"
+            >
+              مسار التعليق: مراجعة المشرف → تعليق المعاملة → إيقاف جميع الأطراف —
+              المؤقت يستمر حتى موعد الاستحقاق.
+            </Note>
+          </PageGutter>
+        ) : null}
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-t border-border bg-bg">
-        <PageShell>
-          <header className="grid items-center gap-1 border-b border-border bg-gradient-to-br from-surface-2 to-surface px-4 py-2.5">
-            <div className="flex min-w-0 flex-col gap-0.5">
-              <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-text-2">
-                {sortedItems.length > 0 ? (
-                  <span className="font-medium text-text-2">
-                    {sortedItems.length}{" "}
-                    {sortedItems.length === 1 ? "معاملة" : "معاملات"}
-                  </span>
-                ) : null}
-              </div>
-            </div>
-          </header>
-
-          {isFetched && sortedItems.length === 0 ? (
-            <div className="px-6 py-8 text-center">
-              <p className="m-0 text-[13px] text-text-3">لا توجد معاملات معلقة.</p>
-              <p className="mt-2 text-[11px] text-text-3">
-                تظهر هنا بعد تعليق المعاملة من إدارة التعذرات.
-              </p>
-            </div>
+        {isFetched && sortedItems.length === 0 ? (
+            <EmptyState
+              line="لا توجد معاملات معلقة."
+              hint="تظهر هنا بعد تعليق المعاملة من إدارة التعذرات."
+            />
           ) : (
             <>
               <div className="w-full overflow-x-auto">
@@ -299,14 +287,13 @@ export function SuspendedTransactionsView() {
                   </TBody>
                 </Table>
               </div>
-              <p className="px-6 py-2 pb-3 text-[11px] text-text-3">
+              <p className="px-4 py-2 pb-3 text-[11px] text-text-3 sm:px-6">
                 اضغط الصف لعرض تفاصيل العقار — ⋮ عقارات أمر العمل · تفاصيل
                 العقار.
               </p>
             </>
           )}
-        </PageShell>
-      </div>
-    </>
+      </OperationalPanel>
+    </PageShell>
   );
 }

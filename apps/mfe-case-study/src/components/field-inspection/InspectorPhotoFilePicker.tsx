@@ -1,10 +1,15 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, type ChangeEvent } from "react";
 import { cn } from "@platform/design-system";
 
 const UPLOAD_BTN =
   "inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border-md bg-surface px-2.5 py-2 text-[11px] text-text-2 hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60";
+
+function useCoarsePointer(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(pointer: coarse)").matches;
+}
 
 export function InspectorPhotoFilePicker({
   label,
@@ -19,8 +24,61 @@ export function InspectorPhotoFilePicker({
   className?: string;
   onFilesSelected: (files: File[]) => void | Promise<void>;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const isMobile = useCoarsePointer();
 
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (files.length > 0) {
+      void onFilesSelected(files);
+    }
+  };
+
+  if (isMobile) {
+    return (
+      <div className={cn("flex flex-col gap-1.5", className)}>
+        <button
+          type="button"
+          className={UPLOAD_BTN}
+          disabled={disabled}
+          onClick={() => cameraRef.current?.click()}
+        >
+          <i className="ti ti-camera" aria-hidden /> تصوير بالكاميرا
+        </button>
+        <button
+          type="button"
+          className={UPLOAD_BTN}
+          disabled={disabled}
+          onClick={() => galleryRef.current?.click()}
+        >
+          <i className="ti ti-photo" aria-hidden /> اختيار من المعرض
+        </button>
+        <input
+          ref={cameraRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          multiple={multiple}
+          disabled={disabled}
+          className="sr-only"
+          onChange={handleChange}
+        />
+        <input
+          ref={galleryRef}
+          type="file"
+          accept="image/*"
+          multiple={multiple}
+          disabled={disabled}
+          className="sr-only"
+          onChange={handleChange}
+        />
+      </div>
+    );
+  }
+
+  const inputRef = galleryRef;
   return (
     <>
       <button
@@ -35,17 +93,10 @@ export function InspectorPhotoFilePicker({
         ref={inputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         multiple={multiple}
         disabled={disabled}
         className="sr-only"
-        onChange={(e) => {
-          const files = Array.from(e.target.files ?? []);
-          e.target.value = "";
-          if (files.length > 0) {
-            void onFilesSelected(files);
-          }
-        }}
+        onChange={handleChange}
       />
     </>
   );

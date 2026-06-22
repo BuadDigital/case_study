@@ -1,0 +1,155 @@
+name: Release CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - "backend/**"
+      - "apps/**"
+      - "packages/**"
+      - "e2e/**"
+      - "playwright.config.ts"
+      - "package.json"
+      - ".github/workflows/release-ci.yml"
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore RealEstateEval.slnx
+
+      - name: Build
+        run: dotnet build RealEstateEval.slnx --no-restore -c Release
+
+      - name: Test
+        run: dotnet test RealEstateEval.slnx --no-build -c Release --verbosity normal
+
+  frontend-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck MFEs
+        run: npm run typecheck:mfes
+
+  e2e-smoke:
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-typecheck]
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: Admin
+          POSTGRES_DB: realestate_eval_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d realestate_eval_dev"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      rabbitmq:
+        image: rabbitmq:3.13-management-alpine
+        env:
+          RABBITMQ_DEFAULT_USER: dev
+          RABBITMQ_DEFAULT_PASS: dev
+        ports:
+          - 5672:5672
+          - 15672:15672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install chromium --with-deps
+
+      - name: Build backend
+        run: dotnet build backend/RealEstateEval.slnx -c Release
+
+      - name: Start APIs
+        run: |
+          node backend/scripts/dev-api.mjs --run &
+          echo $! > api.pid
+          for i in $(seq 1 120); do
+            if curl -sf http://127.0.0.1:5160/health >/dev/null; then
+              echo "gateway ready"
+              break
+            fi
+            sleep 2
+          done
+          curl -sf http://127.0.0.1:5160/health
+          curl -sf http://127.0.0.1:5162/ready
+
+      - name: Build shell
+        run: npm run build -w @platform/shell
+        env:
+          NEXT_PUBLIC_API_HOST: 127.0.0.1
+          NEXT_PUBLIC_API_PORT: "5160"
+
+      - name: Start shell
+        run: |
+          npm run start -w @platform/shell -- -p 3000 &
+          echo $! > shell.pid
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:3000/login >/dev/null; then
+              echo "shell ready"
+              break
+            fi
+            sleep 2
+          done
+          curl -sf http://127.0.0.1:3000/login
+
+      - name: Release verify
+        run: node backend/scripts/release-verify.mjs
+
+      - name: E2E smoke
+        run: npx playwright test e2e/tests/smoke/login.spec.ts e2e/tests/smoke/api-health.spec.ts e2e/tests/journeys/critical-paths.spec.ts --grep-invert "API field inspection reporting"
+        env:
+          SHELL_BASE_URL: http://127.0.0.1:3000
+
+      - name: Stop processes
+        if: always()
+        run: |
+          if [ -f shell.pid ]; then kill "$(cat shell.pid)" 2>/dev/null || true; fi
+          if [ -f api.pid ]; then kill "$(cat api.pid)" 2>/dev/null || true; fi
+          node backend/scripts/stop-api.mjs || true

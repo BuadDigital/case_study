@@ -4,6 +4,7 @@ import {
 } from "@platform/api-client";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 import type { InspectorPhotoAttachment } from "./inspector-workspace-data";
+import { burnInspectorPhotoStamp } from "./inspector-photo-stamp";
 
 const SCOPE = "field-inspection-photo";
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
@@ -94,6 +95,7 @@ export async function uploadInspectorPhotoFromFile(
   taskId: string,
   photoRef: string,
   file: File,
+  options?: { stampText?: string },
 ): Promise<
   | { ok: true; attachment: InspectorPhotoAttachment }
   | { ok: false; error: string }
@@ -108,14 +110,23 @@ export async function uploadInspectorPhotoFromFile(
     return { ok: false, error: "الحجم الأقصى للصورة 8 ميجابايت." };
   }
 
+  const stamp = options?.stampText?.trim() ?? "";
+  let uploadFile = file;
+  try {
+    if (stamp) {
+      uploadFile = await burnInspectorPhotoStamp(file, stamp);
+    }
+  } catch {
+  }
+
   const attachment: InspectorPhotoAttachment = {
-    fileName: file.name,
-    mimeType: file.type || "image/jpeg",
-    sizeBytes: file.size,
+    fileName: uploadFile.name,
+    mimeType: uploadFile.type || "image/jpeg",
+    sizeBytes: uploadFile.size,
   };
 
   try {
-    const dataUrl = await readAsDataUrl(file);
+    const dataUrl = await readAsDataUrl(uploadFile);
     setInspectorPhotoDataUrl(taskId, photoRef, dataUrl);
   } catch {
     /* preview optional */
@@ -126,9 +137,9 @@ export async function uploadInspectorPhotoFromFile(
     const upload = await uploadAttachment(config, {
       scope: SCOPE,
       scopeKey: `${taskId}:${photoRef}`,
-      fileName: file.name,
+      fileName: uploadFile.name,
       contentType: attachment.mimeType,
-      contentBase64: await fileToBase64(file),
+      contentBase64: await fileToBase64(uploadFile),
     });
     if (upload.ok) {
       attachment.attachmentId = upload.data.id;

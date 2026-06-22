@@ -5,6 +5,7 @@ public class ReportingDashboardDto
     public IReadOnlyList<ValuationRequestDto> RecentValuationRequests { get; init; } = [];
     public IReadOnlyList<ReportingTeamMemberDto> TeamFieldMembers { get; init; } = [];
     public IReadOnlyList<ReportingSpecialistLoadDto> SpecialistLoad { get; init; } = [];
+    public FieldInspectionWorkspaceSummaryDto? FieldInspectionProgress { get; init; }
 }
 
 public class ReportingTeamMemberDto

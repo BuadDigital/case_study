@@ -7,7 +7,7 @@ import {
 } from "@case-study/mfe";
 import {
   loadPoListRows,
-  loadWorkOrderDtos,
+  loadPropertyListItems,
 } from "@platform/app-shared/prototype/work-orders-read";
 import {
   FAILURES_CHANGED_EVENT,
@@ -31,6 +31,9 @@ import {
 import { loadSuspendedTransactions } from "@case-study/mfe/lib/prototype/suspended-transactions-storage";
 import { loadFailureTypesCatalog } from "@failures/mfe/lib/failure-types-storage";
 import { loadReportingDashboard } from "@dashboard/mfe/lib/dashboard-reporting-api";
+import { loadSurveyOffices } from "@survey/mfe/lib/survey-api";
+import { loadSurveyRequestStats } from "@survey/mfe/lib/survey-request-stats";
+import { loadPropertyKeysPage } from "@keys/mfe/lib/keys-api";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { useEffect } from "react";
 
@@ -85,8 +88,8 @@ export function prefetchPrototypePage(
         ...opts,
       });
       void queryClient.prefetchQuery({
-        queryKey: prototypeKeys.workOrderDtos(),
-        queryFn: loadWorkOrderDtos,
+        queryKey: prototypeKeys.propertyListItems(),
+        queryFn: loadPropertyListItems,
         ...opts,
       });
       prefetchTasksAndPos();
@@ -100,7 +103,13 @@ export function prefetchPrototypePage(
       prefetchTasksAndPos();
       break;
     case "keys":
-    case "survey":
+      prefetchActiveTransactionsSituation();
+      void queryClient.prefetchQuery({
+        queryKey: prototypeKeys.propertyKeys(),
+        queryFn: loadPropertyKeysPage,
+        ...opts,
+      });
+      break;
     case "active-primary-data":
     case "active-distribution":
     case "active-case-study":
@@ -111,6 +120,19 @@ export function prefetchPrototypePage(
     case "active-survey":
     case "valuation-requests":
       prefetchActiveTransactionsSituation();
+      break;
+    case "survey":
+      prefetchActiveTransactionsSituation();
+      void queryClient.prefetchQuery({
+        queryKey: prototypeKeys.surveyOffices(),
+        queryFn: loadSurveyOffices,
+        ...opts,
+      });
+      void queryClient.prefetchQuery({
+        queryKey: [...prototypeKeys.surveyOffices(), "request-stats"] as const,
+        queryFn: loadSurveyRequestStats,
+        ...opts,
+      });
       break;
     case "bourse-inquiry":
       prefetchActiveTransactionsSituation();
@@ -179,7 +201,7 @@ export function prefetchCorePrototypeData(queryClient: QueryClient): void {
 
   // Tier 1 — data needed by the sidebar badges and most pages.
   void queryClient.prefetchQuery({ queryKey: prototypeKeys.poListRows(), queryFn: loadPoListRows, ...opts });
-  void queryClient.prefetchQuery({ queryKey: prototypeKeys.workOrderDtos(), queryFn: loadWorkOrderDtos, ...opts });
+  void queryClient.prefetchQuery({ queryKey: prototypeKeys.propertyListItems(), queryFn: loadPropertyListItems, ...opts });
   void queryClient.prefetchQuery({ queryKey: prototypeKeys.poRecords(), queryFn: loadPoRecordsWithTaskSync, ...opts });
   void queryClient.prefetchQuery({ queryKey: prototypeKeys.workflowTasks(), queryFn: loadWorkflowTasks, ...opts });
   void queryClient.prefetchQuery({ queryKey: prototypeKeys.failures(), queryFn: loadFailures, ...opts });

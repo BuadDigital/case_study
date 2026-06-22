@@ -8,7 +8,12 @@ import {
   submitPartyTaskSubmission,
   type PartyTaskSubmissionDto,
 } from "@platform/api-client";
+import { reopenPartySubmission } from "@platform/app-shared/prototype/party-submission-api";
 import { resolveApiError, workOrdersApiConfig } from "../work-orders-api-config";
+import {
+  applyEnfathPrefillToInspectorDraft,
+  inspectorDraftNeedsEnfathPrefill,
+} from "./inspector-enfath-prefill";
 import {
   createInspectorWorkspaceDraft,
   INSPECTOR_DEFINED_PHOTOS,
@@ -321,7 +326,12 @@ function payloadToDraft(
     inspectionConfirmed: readBool(payload.inspectionConfirmed),
     status: (dto.status === "submitted"
       ? "submitted"
-      : "draft") as InspectorWorkspaceStatus,
+      : dto.status === "reopened"
+        ? "reopened"
+        : "draft") as InspectorWorkspaceStatus,
+    returnNote:
+      readString(payload.returnNote) ||
+      (typeof dto.returnNote === "string" ? dto.returnNote : undefined),
     submittedAtUtc: dto.submittedAtUtc ?? null,
     updatedAtUtc: dto.updatedAtUtc || draft.updatedAtUtc,
   };
@@ -363,6 +373,7 @@ function draftToPayload(
     observations: draft.observations,
     inspectionConfirmed: draft.inspectionConfirmed,
     status: draft.status,
+    returnNote: draft.returnNote ?? "",
     submittedAtUtc: draft.submittedAtUtc,
     updatedAtUtc: draft.updatedAtUtc,
   };
@@ -408,6 +419,7 @@ export async function getOrCreateInspectorWorkspace(input: {
   propertyId: string;
   poNumber: string;
   propertyDisplayId?: string;
+  property?: import("./po-intake-data").PoPropertyIntake | null;
 }): Promise<InspectorWorkspaceDraft | null> {
   let existing = await fetchInspectorWorkspace(input.taskId);
   if (existing) {
@@ -420,7 +432,10 @@ export async function getOrCreateInspectorWorkspace(input: {
     return existing;
   }
 
-  const draft = createInspectorWorkspaceDraft(input);
+  let draft = createInspectorWorkspaceDraft(input);
+  if (input.property && inspectorDraftNeedsEnfathPrefill(draft)) {
+    draft = applyEnfathPrefillToInspectorDraft(draft, input.property);
+  }
   return saveInspectorWorkspaceDraft(draft);
 }
 
@@ -432,7 +447,12 @@ export async function saveInspectorWorkspaceDraft(
 
   const payload = draftToPayload({
     ...draft,
-    status: draft.status === "submitted" ? "submitted" : "draft",
+    status:
+      draft.status === "submitted"
+        ? "submitted"
+        : draft.status === "reopened"
+          ? "reopened"
+          : "draft",
     updatedAtUtc: new Date().toISOString(),
   });
 
@@ -480,7 +500,7 @@ export async function updateInspectorWorkspace(
       patch.componentPhotoAttachments ?? current.componentPhotoAttachments,
     services: patch.services ?? current.services,
     amenities: patch.amenities ?? current.amenities,
-    status: "draft",
+    status: current.status === "reopened" ? "reopened" : "draft",
     updatedAtUtc: new Date().toISOString(),
   };
   return saveInspectorWorkspaceDraft(next);
@@ -523,6 +543,17 @@ export async function submitInspectorWorkspace(
   const draft = payloadToDraft(result.data, saved);
   writeCache(draft);
   return { ok: true, draft };
+}
+
+export async function reopenInspectorWorkspace(
+  taskId: string,
+  returnNote: string,
+): Promise<InspectorWorkspaceDraft | null> {
+  const dto = await reopenPartySubmission(taskId, returnNote);
+  if (!dto) return null;
+  const next = payloadToDraft(dto);
+  writeCache(next);
+  return next;
 }
 
 export type InspectorWorkspaceSnapshot = InspectorWorkspaceDraft;

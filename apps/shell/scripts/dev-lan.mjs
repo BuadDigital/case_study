@@ -107,7 +107,7 @@ const child = spawn(
     cwd: appDir,
     env: {
       ...process.env,
-      ...(lan ? { ALLOWED_DEV_ORIGINS: lan } : {}),
+      ...(lan ? { ALLOWED_DEV_ORIGINS: `${lan},${lan}:${port}` } : {}),
     },
   },
 );

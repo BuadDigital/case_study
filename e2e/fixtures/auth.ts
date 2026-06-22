@@ -1,0 +1,214 @@
+import { expect, type Page } from "@playwright/test";
+
+const AUTH_STORAGE_KEY = "auth";
+const API_HOST = process.env.API_HOST ?? "127.0.0.1";
+
+/** Prototype users used in role-based module smoke tests. */
+export const RELEASE_USERS = {
+  cdo: "sliman",
+  caseSpecialist: "osama",
+  fieldInspector: "ahmed",
+  valuationCoordinator: "mohammed",
+  appraiser: "abdullah",
+  governmentReviewer: "feras",
+  engineeringOffice: "jeddah_survey",
+  financialOfficer: "eman",
+} as const;
+
+type LoginResponse = {
+  token: string;
+  expiresAtUtc: string;
+  user: { id: string; email: string; displayName: string };
+};
+
+function normalizeLoginResponse(raw: Record<string, unknown>): LoginResponse {
+  const userRaw = (raw.user ?? raw.User) as Record<string, unknown> | undefined;
+  return {
+    token: String(raw.token ?? raw.Token ?? ""),
+    expiresAtUtc: String(raw.expiresAtUtc ?? raw.ExpiresAtUtc ?? ""),
+    user: {
+      id: String(userRaw?.id ?? userRaw?.Id ?? ""),
+      email: String(userRaw?.email ?? userRaw?.Email ?? ""),
+      displayName: String(userRaw?.displayName ?? userRaw?.DisplayName ?? ""),
+    },
+  };
+}
+
+async function fetchLoginSession(username: string): Promise<LoginResponse> {
+  const res = await fetch(
+    `http://${API_HOST}:5160/api/auth/login-username`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username }),
+    },
+  );
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(
+      `API login failed for "${username}" (HTTP ${res.status}): ${body}`,
+    );
+  }
+  const raw = (await res.json()) as Record<string, unknown>;
+  const session = normalizeLoginResponse(raw);
+  if (!session.token) {
+    throw new Error(`API login for "${username}" returned no token`);
+  }
+  return session;
+}
+
+async function seedBrowserSession(
+  page: Page,
+  session: LoginResponse,
+): Promise<void> {
+  const payload = JSON.stringify(session);
+  await page.addInitScript(
+    ([key, value]) => {
+      sessionStorage.setItem(key, value);
+    },
+    [AUTH_STORAGE_KEY, payload] as const,
+  );
+}
+
+/** Fast, reliable login for module/journey tests (API + sessionStorage). */
+export async function loginAs(page: Page, username: string) {
+  const session = await fetchLoginSession(username);
+  await seedBrowserSession(page, session);
+  await page.goto("/dashboard", { waitUntil: "commit" });
+  await waitForPageTitle(page, "لوحة التحكم");
+}
+
+/** Exercises the real login form — used only by login.spec.ts. */
+export async function loginViaUi(page: Page, username: string) {
+  await page.goto("/login", { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("button", { name: "دخول" })).toBeVisible();
+  await page.locator("#username").selectOption(username);
+  await expect(page.locator("#username")).toHaveValue(username);
+
+  const [response] = await Promise.all([
+    page.waitForResponse(
+      (res) =>
+        res.url().includes("/api/auth/login-username") &&
+        res.request().method() === "POST",
+      { timeout: 60_000 },
+    ),
+    page.locator("form").evaluate((form) => {
+      (form as HTMLFormElement).requestSubmit();
+    }),
+  ]);
+
+  if (!response.ok()) {
+    const alertText =
+      (await page.getByRole("alert").textContent().catch(() => "")) ?? "";
+    throw new Error(
+      `UI login failed (HTTP ${response.status()}): ${alertText.trim()}`,
+    );
+  }
+
+  await page.waitForFunction(
+    () => /\/dashboard/.test(window.location.pathname),
+    undefined,
+    { timeout: 60_000 },
+  );
+  await waitForPageTitle(page, "لوحة التحكم");
+}
+
+export function pagePath(pageId: string): string {
+  return pageId === "po" ? "/po" : `/${pageId}`;
+}
+
+/** Wait for AppShell title — avoids Next dev "navigation never finishes" hangs. */
+export async function waitForPageTitle(page: Page, text: string) {
+  await page.waitForFunction(
+    (expected) => {
+      const title = document.querySelector("#page-title");
+      return Boolean(title?.textContent?.includes(expected));
+    },
+    text,
+    { timeout: 90_000 },
+  );
+}
+
+/** Every shell module route — mirrors ALL_PROTOTYPE_PAGES. */
+export const MODULE_PAGES: { id: string; title: string }[] = [
+  { id: "dashboard", title: "لوحة التحكم" },
+  { id: "active-primary-data", title: "البيانات الأولية" },
+  { id: "active-distribution", title: "توزيع المعاملات" },
+  { id: "active-case-study", title: "دراسة حالة العقارات" },
+  { id: "po", title: "أوامر العمل" },
+  { id: "bourse-inquiry", title: "استعلام بورصة" },
+  { id: "survey", title: "مكاتب الرفع الهندسي" },
+  { id: "keys", title: "إدارة المفاتيح" },
+  { id: "failures", title: "إدارة التعذرات" },
+  { id: "suspended-transactions", title: "المعاملات المعلقة" },
+  { id: "valuation-requests", title: "طلبات التقييم" },
+  { id: "property-inspection", title: "معاينة العقار" },
+  { id: "government-review", title: "المراجعة الحكومية" },
+  { id: "valuation-coordination", title: "استلام التقييم" },
+  { id: "property-appraisal", title: "تقييم العقار" },
+  { id: "active-survey", title: "الرفع المساحي" },
+  { id: "system-fields-catalog", title: "قاموس الحقول المركزي" },
+  { id: "system-screen-catalog", title: "دليل الشاشات" },
+  { id: "financial", title: "التقارير المالية" },
+  { id: "kpi", title: "مؤشرات الأداء" },
+  { id: "users", title: "إدارة المستخدمين" },
+  { id: "courts", title: "المحاكم و الدوائر" },
+  { id: "failure-types", title: "أنواع التعذرات" },
+  { id: "case-study-info-roles", title: "علاقة المستخدم بالمعلومة" },
+];
+
+/** Role → pages each persona should reach without server errors. */
+export const ROLE_MODULE_PAGES: Record<string, string[]> = {
+  [RELEASE_USERS.cdo]: MODULE_PAGES.map((p) => p.id),
+  [RELEASE_USERS.caseSpecialist]: [
+    "dashboard",
+    "po",
+    "active-primary-data",
+    "bourse-inquiry",
+    "active-distribution",
+    "active-case-study",
+    "failures",
+    "suspended-transactions",
+    "system-fields-catalog",
+    "system-screen-catalog",
+  ],
+  [RELEASE_USERS.fieldInspector]: [
+    "dashboard",
+    "property-inspection",
+    "system-fields-catalog",
+    "system-screen-catalog",
+  ],
+  [RELEASE_USERS.valuationCoordinator]: [
+    "dashboard",
+    "valuation-coordination",
+    "system-fields-catalog",
+    "system-screen-catalog",
+  ],
+  [RELEASE_USERS.appraiser]: [
+    "dashboard",
+    "po",
+    "property-appraisal",
+    "suspended-transactions",
+    "system-fields-catalog",
+    "system-screen-catalog",
+  ],
+  [RELEASE_USERS.governmentReviewer]: [
+    "dashboard",
+    "government-review",
+    "keys",
+    "system-fields-catalog",
+    "system-screen-catalog",
+  ],
+  [RELEASE_USERS.engineeringOffice]: [
+    "dashboard",
+    "active-survey",
+    "system-fields-catalog",
+    "system-screen-catalog",
+  ],
+  [RELEASE_USERS.financialOfficer]: [
+    "dashboard",
+    "financial",
+    "system-fields-catalog",
+    "system-screen-catalog",
+  ],
+};

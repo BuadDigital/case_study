@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Badge, Button, Input, Skeleton, cn, useToast } from "@platform/design-system";
+import { Badge, Button, Input, PageShellHeader, Skeleton, cn, pageGutterClassName, useToast } from "@platform/design-system";
 import {
   FIELD_TYPE_LABELS,
   FIELD_DICTIONARY_LAYER_LABELS,
@@ -224,7 +224,7 @@ export function FieldDictionaryTab() {
       <article className="flex min-h-0 flex-1 flex-col gap-3 bg-surface p-4">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-10 w-full" />
-        <div className="grid flex-1 grid-cols-2 gap-3">
+        <div className="grid flex-1 grid-cols-1 gap-3 lg:grid-cols-2">
           <Skeleton className="h-full min-h-[240px]" />
           <Skeleton className="h-full min-h-[240px]" />
         </div>
@@ -238,30 +238,31 @@ export function FieldDictionaryTab() {
 
   return (
     <article className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface max-lg:overflow-visible">
-      <header className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3.5">
-        <div>
-          <h2 className="text-sm font-semibold text-text">قاموس الحقول المركزي</h2>
-          <p className="mt-1 text-[11px] text-text-3">
-            فهرس تلقائي لحقول النظام — يُحدَّث عند إضافة حقول في الكود أو الشاشات
-            الديناميكية
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge tone="info">
-            {visibleFields.length}/{fields.length} حقلاً
-          </Badge>
-          <Button type="button" variant="outline" size="sm" onClick={handleReset}>
-            إعادة الفهرسة
-          </Button>
-          <Button type="button" size="sm" onClick={() => setAddOpen(true)}>
-            ＋ حقل جديد
-          </Button>
-        </div>
-      </header>
+      <PageShellHeader
+        title="قاموس الحقول المركزي"
+        actions={
+          <>
+            <Badge tone="info">
+              {visibleFields.length}/{fields.length} حقلاً
+            </Badge>
+            <Button type="button" variant="outline" size="sm" onClick={handleReset}>
+              إعادة الفهرسة
+            </Button>
+            <Button type="button" size="sm" onClick={() => setAddOpen(true)}>
+              ＋ حقل جديد
+            </Button>
+          </>
+        }
+      >
+        <p className="m-0 text-[11px] text-text-3">
+          فهرس تلقائي لحقول النظام — يُحدَّث عند إضافة حقول في الكود أو الشاشات
+          الديناميكية
+        </p>
+      </PageShellHeader>
 
-      <div className="shrink-0 border-b border-border px-4 py-3">
+      <div className={cn("shrink-0 border-b border-border py-3", pageGutterClassName)}>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="min-w-[200px] flex-1">
+          <div className="min-w-0 flex-1 basis-[200px]">
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -341,13 +342,14 @@ export function FieldDictionaryTab() {
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden max-lg:min-h-0 max-lg:flex-none max-lg:overflow-visible lg:flex-row">
         <div className="flex min-h-[240px] min-w-0 flex-1 flex-col overflow-hidden border-border max-lg:max-h-none max-lg:overflow-visible lg:max-w-[62%] lg:border-e">
+          <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto overscroll-contain max-lg:max-h-none max-lg:overflow-visible lg:min-h-0">
+            <div className="min-w-[520px]">
           <div className="grid shrink-0 grid-cols-[.55fr_1.4fr_.8fr_1fr] gap-2 border-b border-border bg-surface-2 px-3 py-2 text-[10px] text-text-3">
             <span>#</span>
             <span>الحقل</span>
             <span>النوع</span>
             <span>الوضع / الوسوم</span>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain max-lg:max-h-none max-lg:overflow-visible lg:min-h-0">
             {visibleFields.length === 0 ? (
               <p className="py-10 text-center text-xs text-text-3">
                 لا توجد حقول مطابقة
@@ -389,6 +391,7 @@ export function FieldDictionaryTab() {
                 );
               })
             )}
+            </div>
           </div>
         </div>
 

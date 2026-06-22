@@ -26,7 +26,7 @@ export function RegistrationSuccess({
     data.hr_username || data.pc_username || data.crm_username || "—";
 
   return (
-    <div className="w-full max-w-[480px] px-6 py-10 text-center">
+    <div className="w-full max-w-[480px] px-4 py-8 text-center sm:px-6 sm:py-10">
       <div
         className="relative mx-auto mb-4 h-[60px] w-[60px] rounded-full border-2 border-success bg-success-bg after:absolute after:left-1/2 after:top-[46%] after:h-[18px] after:w-[10px] after:-translate-x-1/2 after:rotate-45 after:border-b-[3px] after:border-r-[3px] after:border-solid after:border-success"
         aria-hidden

@@ -32,6 +32,14 @@ public class WorkOrdersController : ControllerBase
         return Ok(await _workOrders.ListDetailsAsync(cancellationToken));
     }
 
+    [HttpGet("property-rows")]
+    public async Task<ActionResult<IReadOnlyList<PropertyListItemDto>>> ListPropertyRows(
+        CancellationToken cancellationToken)
+    {
+        Response.Headers.CacheControl = "private, max-age=60";
+        return Ok(await _workOrders.ListPropertyListItemsAsync(cancellationToken));
+    }
+
     [HttpGet("exists")]
     public async Task<ActionResult<bool>> Exists(
         [FromQuery] string poNumber,

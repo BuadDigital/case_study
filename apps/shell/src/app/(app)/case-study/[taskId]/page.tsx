@@ -7,6 +7,7 @@ import {
 } from "@case-study/mfe";
 import { EngineeringSurveyAdvisoryPanel } from "@engineering-office/mfe";
 import { EvaluatorAdvisoryPanel } from "@evaluator/mfe";
+import { FieldInspectionAdvisoryPanel } from "@case-study/mfe";
 
 export default function CaseStudyWorkspacePage({
   params,
@@ -21,6 +22,11 @@ export default function CaseStudyWorkspacePage({
         property?.id ? (
           <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 16 }}>
             <EngineeringSurveyAdvisoryPanel
+              parentTask={task}
+              propertyId={property.id}
+              tasks={tasks}
+            />
+            <FieldInspectionAdvisoryPanel
               parentTask={task}
               propertyId={property.id}
               tasks={tasks}

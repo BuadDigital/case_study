@@ -60,6 +60,7 @@ public static class GatewayPipelineExtensions
 {
     public static WebApplication UseRealEstateEvalGatewayPipeline(this WebApplication app)
     {
+        app.UseResponseCompression();
         app.UseCorrelationId();
         app.UseCors();
         return app;

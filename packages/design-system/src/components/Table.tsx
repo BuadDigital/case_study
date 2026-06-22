@@ -7,15 +7,17 @@ export function Table({
   ...props
 }: TableHTMLAttributes<HTMLTableElement> & { pending?: boolean }) {
   return (
-    <table
-      data-pending={pending ? "true" : undefined}
-      className={cn(
-        "w-full border-collapse",
-        pending && "[&_tbody]:opacity-55 [&_tbody]:transition-opacity [&_tbody]:duration-200",
-        className,
-      )}
-      {...props}
-    />
+    <div className="min-w-0 overflow-x-auto [-webkit-overflow-scrolling:touch]">
+      <table
+        data-pending={pending ? "true" : undefined}
+        className={cn(
+          "w-full border-collapse",
+          pending && "[&_tbody]:opacity-55 [&_tbody]:transition-opacity [&_tbody]:duration-200",
+          className,
+        )}
+        {...props}
+      />
+    </div>
   );
 }
 

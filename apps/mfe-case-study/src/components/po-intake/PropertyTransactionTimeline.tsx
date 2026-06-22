@@ -85,7 +85,7 @@ export function PropertyTransactionTimeline({
 
   return (
     <aside
-      className="order-2 min-w-0 w-full max-w-[240px] shrink-0 overflow-x-hidden overflow-y-auto border-s border-border bg-surface px-3.5 py-4 max-[960px]:max-h-[360px] max-[960px]:w-full max-[960px]:border-s-0 max-[960px]:border-t"
+      className="order-2 min-w-0 w-full max-w-[240px] shrink-0 overflow-x-hidden overflow-y-auto border-s border-border bg-surface px-3.5 py-4 max-lg:max-h-[360px] max-lg:w-full max-lg:border-s-0 max-lg:border-t"
       aria-label="الجدول الزمني للمعاملة"
     >
       <div className="mb-4 flex items-center justify-between">

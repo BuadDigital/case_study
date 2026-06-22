@@ -109,7 +109,7 @@ export function UsersOrganizationView() {
         </PageGutter>
       </SubpagePanel>
 
-      <div className="px-6 pb-2 text-[11px] font-semibold uppercase tracking-wide text-text-3">
+      <div className="px-4 pb-2 text-[11px] font-semibold uppercase tracking-wide text-text-3 sm:px-6">
         الإدارات الفرعية
       </div>
       {isPending && !overview ? (

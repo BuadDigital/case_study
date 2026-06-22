@@ -1,4 +1,5 @@
 "use client";
+
 import type { ReactNode } from "react";
 import Link from "next/link";
 import {
@@ -48,12 +49,18 @@ function SituationCard({
           "block text-inherit no-underline transition-[box-shadow,transform] duration-150 hover:-translate-y-px hover:shadow-[0_2px_10px_rgba(0,0,0,0.08)]",
         )}
       >
-        <StatCard accent={toneAccent[tone]}>{inner}</StatCard>
+        <StatCard accent={toneAccent[tone]} flush>
+          {inner}
+        </StatCard>
       </Link>
     );
   }
 
-  return <StatCard accent={toneAccent[tone]}>{inner}</StatCard>;
+  return (
+    <StatCard accent={toneAccent[tone]} flush>
+      {inner}
+    </StatCard>
+  );
 }
 
 const SUB_ASSIGNED_TO_YOU = "المسندة إليك";
@@ -110,10 +117,12 @@ export function ActiveTransactionsSituationBar() {
 
   return (
     <section
-      className="shrink-0 bg-bg px-6 pt-4 pb-0"
+      className="shrink-0 border-b border-border bg-bg"
       aria-label="ملخص وضع المعاملات"
     >
-      <StatGrid cols={gridCols}>{cards}</StatGrid>
+      <StatGrid cols={gridCols} flush className="mb-0">
+        {cards}
+      </StatGrid>
     </section>
   );
 }

@@ -2,6 +2,7 @@
 
 import {
   Badge,
+  ReportPageBody,
   StatCard,
   StatGrid,
   StatLabel,
@@ -65,9 +66,9 @@ export function FinancialView() {
       ));
 
   return (
-    <>
+    <ReportPageBody>
       <StatGrid>{statCards}</StatGrid>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <SubpagePanel>
           <SubpageHeader title="إيرادات إنفاذ" />
           <Table pending={!ready}>
@@ -144,6 +145,6 @@ export function FinancialView() {
           </Table>
         </SubpagePanel>
       </div>
-    </>
+    </ReportPageBody>
   );
 }

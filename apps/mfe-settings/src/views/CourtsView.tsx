@@ -120,7 +120,7 @@ export function CourtsView() {
       ) : (
         <SubpagePanel className="mb-0">
           <SubpageHeader title="إضافة محكمة / دائرة" />
-          <div className="grid grid-cols-2 gap-3 px-6 pb-4">
+          <div className="grid grid-cols-1 gap-3 px-4 pb-4 sm:grid-cols-2 sm:px-6">
             <RegSelect
               id="court_city"
               label="المدينة"
@@ -159,7 +159,7 @@ export function CourtsView() {
       <SubpagePanel>
         <SubpageHeader title="قائمة المحاكم والدوائر" />
         {grouped.length === 0 ? (
-          <p className="px-6 pb-4 text-xs text-text-3">
+          <p className="px-4 pb-4 text-xs text-text-3 sm:px-6">
             لا توجد محاكم — يبدأ النظام بقائمة افتراضية عند أول فتح.
           </p>
         ) : (

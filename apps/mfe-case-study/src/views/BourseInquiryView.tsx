@@ -7,10 +7,12 @@ import {
   Card,
   CardBody,
   CardHeader,
-  cn,
+  EmptyState,
   Note,
-  PageGutter,
-  PageShell,
+  OperationalPanel,
+  PageShellHeader,
+  PageToolbar,
+  QueueTableHint,
   SkeletonTableRows,
   Table,
   TBody,
@@ -18,6 +20,10 @@ import {
   Th,
   THead,
   Tr,
+  cn,
+  queueTableRowActiveClassName,
+  queueTableRowClassName,
+  queueTableWrapClassName,
   useToast,
 } from "@platform/design-system";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
@@ -54,10 +60,8 @@ import {
 } from "@case-study/mfe/components/po-intake/po-property-bourse-validation";
 import type { PendingBoursePropertyDto } from "@platform/api-client";
 
-const ROW =
-  "cursor-pointer transition-colors hover:bg-[color-mix(in_srgb,var(--info-bg)_40%,var(--surface))]";
-const ROW_ACTIVE =
-  "bg-[color-mix(in_srgb,var(--warning-bg)_45%,var(--surface))]";
+const ROW = queueTableRowClassName;
+const ROW_ACTIVE = queueTableRowActiveClassName;
 
 export function BourseInquiryView() {
   const { role } = usePrototype();
@@ -220,65 +224,52 @@ export function BourseInquiryView() {
 
   const obstructionPath = deedVitality === "inactive";
 
-  const pendingCount = items.length;
   const showSplit = !!selected || (isFetched && items.length > 0);
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col bg-bg">
-      <PageGutter className="mt-4 shrink-0">
-        <Note tone="info">
-          <strong>مسار العمل:</strong> اختر صكاً من قائمة الانتظار، أكمل المدينة
-          والتصنيف ونوع العقار وبيانات الحدود من البورصة، ثم احفظ — يُزال الصك
-          من القائمة ويُحدَّث في شاشة العقارات.
-        </Note>
-      </PageGutter>
-
+    <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg">
       <div
         className={cn(
-          "grid min-h-0 flex-1 items-stretch gap-0",
+          "grid min-h-0 flex-1 items-stretch gap-3 bg-bg",
           showSplit
             ? "grid-cols-1 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]"
             : "grid-cols-1",
         )}
       >
-        <PageShell>
-          <header className="flex items-center justify-between gap-3 border-b border-border bg-gradient-to-br from-surface-2 to-surface px-4 py-3">
-            <div className="flex min-w-0 flex-col gap-0.5">
-              <h2 className="m-0 text-base font-bold text-text">
-                <span>قائمة الانتظار</span>
-              </h2>
-              <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-text-2">
-                {pendingCount > 0 ? (
-                  <span className="font-medium text-text-2">
-                    {pendingCount}{" "}
-                    {pendingCount === 1 ? "صك" : "صكوك"} بانتظار إكمال البورصة
-                  </span>
-                ) : null}
-              </div>
-            </div>
-            <Button
-              type="button"
-              size="sm"
-              variant="default"
-              className="shrink-0"
-              disabled={queuePending}
-              onClick={() => void refresh()}
-            >
-              تحديث
-            </Button>
-          </header>
+        <OperationalPanel className={cn(showSplit ? "min-h-0 flex-1" : "flex-none")}>
+          <PageShellHeader
+            hideTitle
+            title="استعلام بورصة"
+            actions={
+              <Button
+                type="button"
+                size="sm"
+                variant="default"
+                className="shrink-0"
+                disabled={queuePending}
+                onClick={() => void refresh()}
+              >
+                تحديث
+              </Button>
+            }
+          />
+
+          <PageToolbar className="border-b-0 bg-surface-2/50">
+            <Note tone="info" className="m-0 flex-1">
+              <strong>مسار العمل:</strong> اختر صكاً من قائمة الانتظار، أكمل المدينة
+              والتصنيف ونوع العقار وبيانات الحدود من البورصة، ثم احفظ — يُزال الصك
+              من القائمة ويُحدَّث في شاشة العقارات.
+            </Note>
+          </PageToolbar>
 
           {isFetched && items.length === 0 ? (
-            <div className="px-6 py-8 text-center">
-              <p className="m-0 text-[13px] text-text-3">لا توجد صكوك بانتظار البورصة</p>
-              <p className="mt-2 text-[11px] text-text-3">
-                عند تسجيل عقار جديد من إنفاذ دون إكمال بيانات البورصة، يظهر هنا
-                تلقائياً.
-              </p>
-            </div>
+            <EmptyState
+              line="لا توجد صكوك بانتظار البورصة"
+              hint="عند تسجيل عقار جديد من إنفاذ دون إكمال بيانات البورصة، يظهر هنا تلقائياً."
+            />
           ) : (
             <>
-              <div className="w-full overflow-x-auto">
+              <div className={queueTableWrapClassName}>
                 <Table pending={queuePending}>
                   <THead>
                     <Tr hoverable={false}>
@@ -344,15 +335,16 @@ export function BourseInquiryView() {
                   </TBody>
                 </Table>
               </div>
-              <p className="px-6 py-2 pb-3 text-[11px] text-text-3">
+              <QueueTableHint>
                 اضغط الصف لفتح نموذج إكمال البورصة.
-              </p>
+              </QueueTableHint>
             </>
           )}
-        </PageShell>
+        </OperationalPanel>
 
         {selected ? (
-          <Card className="sticky top-3 flex max-h-[calc(100dvh-5.5rem)] flex-col self-start overflow-hidden rounded-none border-none shadow-none lg:border-s lg:border-border">
+          <OperationalPanel className="flex max-h-none flex-col self-start max-lg:static max-lg:max-h-none lg:sticky lg:top-3 lg:max-h-[calc(100dvh-5.5rem)]">
+            <Card className="flex max-h-none flex-col overflow-hidden rounded-none border-none bg-transparent shadow-none">
             <CardHeader className="shrink-0 px-4 py-3">
               <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-text">
                 بيانات البورصة
@@ -423,9 +415,10 @@ export function BourseInquiryView() {
               </div>
             </CardBody>
           </Card>
+          </OperationalPanel>
         ) : items.length > 0 ? (
-          <aside className="hidden min-h-[280px] items-center justify-center border-s border-border bg-surface lg:flex">
-            <div className="max-w-[280px] px-6 py-7 text-center">
+          <OperationalPanel className="hidden min-h-[280px] items-center justify-center lg:flex">
+            <div className="max-w-[280px] px-4 py-7 text-center sm:px-6">
               <div
                 className="mx-auto mb-3.5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-surface-2 text-primary"
                 aria-hidden
@@ -461,7 +454,7 @@ export function BourseInquiryView() {
                 <li className="py-1">3 — احفظ لإزالة الصك من القائمة</li>
               </ul>
             </div>
-          </aside>
+          </OperationalPanel>
         ) : null}
       </div>
     </div>

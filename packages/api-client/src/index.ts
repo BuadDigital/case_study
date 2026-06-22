@@ -40,6 +40,7 @@ export {
   listPendingBourseProperties,
   listWorkOrders,
   listWorkOrdersWithDetails,
+  listPropertyListItems,
   updateWorkOrderHeader,
   updateWorkOrderProperty,
   workOrderExists,
@@ -53,6 +54,8 @@ export {
   type UpdateWorkOrderHeaderRequest,
   type WorkOrderDto,
   type WorkOrderListItemDto,
+  type PropertyListItemDto,
+  type PropertyListRowDto,
   type WorkOrderPropertyDto,
   type WorkOrdersApiConfig,
 } from "./work-orders";

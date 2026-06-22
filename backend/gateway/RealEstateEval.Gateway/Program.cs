@@ -2,6 +2,7 @@ using RealEstateEval.Shared.Web;
 var builder = WebApplication.CreateBuilder(args);
 builder.AddRealEstateEvalObservability("gateway");
 builder.Services.AddReverseProxy().LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+builder.Services.AddResponseCompression(options => options.EnableForHttps = true);
 builder.Services.AddRealEstateEvalCors(builder.Environment);
 var app = builder.Build();
 app.UseRealEstateEvalGatewayPipeline();

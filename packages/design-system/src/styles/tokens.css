@@ -24,6 +24,11 @@
   --sidebar-w: 200px;
   --topbar-h: 52px;
   --tabs-h: 42px;
+  --page-gutter-x: 1rem;
+  --page-gutter-x-sm: 1.5rem;
+  --page-body-y: 1rem;
+  --page-body-y-sm: 1.25rem;
+  --panel-header-y: 0.875rem;
   --radius: 8px;
   --radius-lg: 12px;
   --radius-sm: 6px;

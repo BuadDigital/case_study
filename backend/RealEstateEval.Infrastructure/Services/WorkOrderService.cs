@@ -39,6 +39,29 @@ public class WorkOrderService : IWorkOrderService
         return list.Select(WorkOrderMapper.ToDto).ToList();
     }
 
+    public async Task<IReadOnlyList<PropertyListItemDto>> ListPropertyListItemsAsync(
+        CancellationToken cancellationToken)
+    {
+        var list = await _db.WorkOrders
+            .AsNoTracking()
+            .Include(w => w.Properties)
+            .ThenInclude(p => p.Contacts)
+            .OrderByDescending(w => w.CreatedAtUtc)
+            .ToListAsync(cancellationToken);
+
+        var approvedFailures = await _db.PropertyFailures
+            .AsNoTracking()
+            .Where(f => f.Status == PropertyFailureStatus.Approved)
+            .Select(f => new { f.PoNumber, f.PropertyId })
+            .ToListAsync(cancellationToken);
+
+        var failureKeys = approvedFailures
+            .Select(f => $"{f.PoNumber.Trim()}|{f.PropertyId.Trim()}")
+            .ToHashSet(StringComparer.Ordinal);
+
+        return PropertyListRowBuilder.Build(list, failureKeys);
+    }
+
     public async Task<WorkOrderDto?> GetByPoNumberAsync(
         string poNumber,
         CancellationToken cancellationToken)
@@ -223,7 +246,22 @@ public class WorkOrderService : IWorkOrderService
                 .Where(s => s.PoNumber == n || taskIds.Contains(s.WorkflowTaskId))
                 .ToListAsync(cancellationToken);
             if (partySubs.Count > 0)
+            {
+                var inspectionTaskIds = partySubs
+                    .Where(s => s.Kind == "field-inspection")
+                    .Select(s => s.WorkflowTaskId)
+                    .ToList();
+                if (inspectionTaskIds.Count > 0)
+                {
+                    var workspaces = await _db.FieldInspectionWorkspaces
+                        .Where(w => inspectionTaskIds.Contains(w.WorkflowTaskId))
+                        .ToListAsync(cancellationToken);
+                    if (workspaces.Count > 0)
+                        _db.FieldInspectionWorkspaces.RemoveRange(workspaces);
+                }
+
                 _db.PartyTaskSubmissions.RemoveRange(partySubs);
+            }
             _db.WorkflowTasks.RemoveRange(tasks);
         }
         else

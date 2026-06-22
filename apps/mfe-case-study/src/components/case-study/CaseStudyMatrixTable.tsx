@@ -210,7 +210,7 @@ export function CaseStudyMatrixTable({
 
   if (visibleRows.length === 0) {
     return (
-      <p className="m-0 border-t border-border bg-surface px-6 py-2.5 pb-3.5 text-[11px] leading-relaxed text-text-3">
+      <p className="m-0 border-t border-border bg-surface px-4 py-2.5 pb-3.5 text-[11px] leading-relaxed text-text-3 sm:px-6">
         لا توجد أسئلة مسندة لدورك في هذا القسم.
       </p>
     );
@@ -218,7 +218,7 @@ export function CaseStudyMatrixTable({
 
   return (
     <Card className="overflow-hidden shadow-none">
-      <div className="flex items-center gap-2.5 border-b border-border bg-blue-light px-4 py-3">
+      <div className="flex flex-wrap items-center gap-2.5 border-b border-border bg-blue-light px-4 py-3">
         <span
           className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary text-white"
           aria-hidden="true"
@@ -228,7 +228,7 @@ export function CaseStudyMatrixTable({
         <h3 className="m-0 min-w-0 flex-1 text-sm font-semibold text-text">
           {sectionTitle}
         </h3>
-        <span className="text-[11px] whitespace-nowrap text-text-2">
+        <span className="text-[11px] text-text-2 max-sm:w-full sm:whitespace-nowrap">
           {visibleRows.length} سؤالاً · القسم {sectionIndex} من {sectionTotal}
         </span>
       </div>

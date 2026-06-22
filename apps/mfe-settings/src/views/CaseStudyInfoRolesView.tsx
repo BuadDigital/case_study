@@ -6,6 +6,9 @@ import {
   Button,
   InlineLoadingSkeleton,
   Note,
+  PageGutter,
+  PageShell,
+  PageShellHeader,
   ProgressBar,
   Textarea,
   cn,
@@ -117,37 +120,39 @@ export function CaseStudyInfoRolesView() {
   );
 
   return (
-    <div className="flex flex-col gap-4">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h2 className="mb-1.5 text-base font-semibold text-primary">
-            علاقة المستخدم بالمعلومة
-          </h2>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg">
+      <PageShell className="min-h-0 flex-1 overflow-y-auto">
+        <PageShellHeader
+          title="علاقة المستخدم بالمعلومة"
+          actions={
+            <>
+              {saveError ? (
+                <Note tone="warn" className="m-0 px-2.5 py-1.5 text-[11px]">
+                  {saveError}
+                </Note>
+              ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (!window.confirm("إعادة تعيين جميع الاختيارات؟")) return;
+                  persist(emptyCaseStudyInfoRolesConfig());
+                }}
+              >
+                إعادة تعيين
+              </Button>
+            </>
+          }
+        >
           <p className="m-0 max-w-[640px] text-xs leading-snug text-text-2">
             حدّد لكل سؤال في نموذج دراسة الحالة: من الأطراف المعنيين وما دوره (أصيل /
             ثانوي / معتمد). تُطبَّق القواعد على تبويب «نموذج الدراسة» في معاملات
             الأطراف.
           </p>
-        </div>
-        <div className="flex items-center gap-2.5">
-          {saveError ? (
-            <Note tone="warn" className="m-0 px-2.5 py-1.5 text-[11px]">
-              {saveError}
-            </Note>
-          ) : null}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              if (!window.confirm("إعادة تعيين جميع الاختيارات؟")) return;
-              persist(emptyCaseStudyInfoRolesConfig());
-            }}
-          >
-            إعادة تعيين
-          </Button>
-        </div>
-      </header>
+        </PageShellHeader>
+
+        <PageGutter className="flex flex-col gap-4 py-4">
 
       <div className="flex flex-wrap items-center gap-4 rounded-[var(--radius-lg)] border border-border bg-surface px-4 py-3.5">
         <div className="min-w-16 text-center">
@@ -166,7 +171,7 @@ export function CaseStudyInfoRolesView() {
           <span className="block text-[22px] font-bold text-primary">{summary.empty}</span>
           <span className="mt-0.5 text-[10px] text-text-3">فارغة</span>
         </div>
-        <div className="min-w-[200px] flex-1">
+        <div className="min-w-0 flex-1 basis-[200px]">
           <div className="mb-1.5 flex justify-between text-[11px] text-text-2">
             <span>نسبة الاكتمال</span>
             <span>{summary.pct}%</span>
@@ -175,8 +180,8 @@ export function CaseStudyInfoRolesView() {
         </div>
       </div>
 
-      <div className="grid items-start gap-4 [grid-template-columns:240px_1fr]">
-        <aside className="sticky top-3 rounded-[var(--radius-lg)] border border-border bg-surface py-0">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[240px_1fr]">
+        <aside className="rounded-[var(--radius-lg)] border border-border bg-surface py-0 max-lg:static lg:sticky lg:top-3">
           <div className="mb-3 border-b border-border px-3.5 pb-3 pt-0">
             <p className="mb-2 text-[11px] font-semibold text-text-2">الأطراف</p>
             {CASE_STUDY_INFO_PARTIES.map((p) => (
@@ -300,7 +305,7 @@ export function CaseStudyInfoRolesView() {
                     <p className="mb-2.5 text-[11px] font-semibold text-text-2">
                       حدّد دور كل طرف في هذه المعلومة:
                     </p>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                       {CASE_STUDY_INFO_PARTIES.map((party) => (
                         <div
                           key={party.id}
@@ -376,6 +381,8 @@ export function CaseStudyInfoRolesView() {
           })}
         </div>
       </div>
+        </PageGutter>
+      </PageShell>
     </div>
   );
 }

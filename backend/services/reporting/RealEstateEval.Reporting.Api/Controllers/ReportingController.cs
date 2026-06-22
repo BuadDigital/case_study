@@ -104,6 +104,7 @@ public class ReportingController : ControllerBase
             RecentValuationRequests = valuationRows,
             TeamFieldMembers = teamField,
             SpecialistLoad = specialistLoad,
+            FieldInspectionProgress = await _upstream.GetFieldInspectionSummaryAsync(ct),
         };
     }
 

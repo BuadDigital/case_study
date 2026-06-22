@@ -269,7 +269,7 @@ export function EngineeringSurveyWorkPanel({
         يُستخدم الموقع للتحقق من زيارة المكتب الهندسي. يجب أن تتطابق الإحداثيات
         مع موقع العقار الفعلي.
       </InfoBox>
-      <div className="mb-3 grid grid-cols-[1fr_1fr_auto] items-end gap-2.5">
+      <div className="mb-3 grid grid-cols-1 items-end gap-2.5 sm:grid-cols-[1fr_1fr_auto]">
         <div className="mb-3.5">
           <Label htmlFor="eng-lat" className="text-xs">
             خط العرض (Latitude) <span className="text-danger-text">*</span>
@@ -336,7 +336,7 @@ export function EngineeringSurveyWorkPanel({
 
       <SectionDivider />
       <SectionHeader>الحدود والأطوال (إنفاذ)</SectionHeader>
-      <div className="mb-3.5 grid grid-cols-2 gap-2.5">
+      <div className="mb-3.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         <div className="mb-3.5">
           <Label htmlFor="eng-on-site-area" className="text-xs">
             المساحة على الطبيعة (م²)
@@ -358,7 +358,7 @@ export function EngineeringSurveyWorkPanel({
           ["westBoundary", "westBoundaryLengthM", "الحد الغربي", "طول الحد الغربي التقريبي (م)"],
         ] as const
       ).map(([boundKey, lenKey, boundLabel, lenLabel]) => (
-        <div key={boundKey} className="mb-3.5 grid grid-cols-2 gap-2.5">
+        <div key={boundKey} className="mb-3.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           <div className="mb-3.5">
             <Label className="text-xs">{boundLabel}</Label>
             <Input
@@ -520,7 +520,7 @@ export function EngineeringSurveyWorkPanel({
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <nav
-        className="flex shrink-0 gap-0 overflow-x-auto border-b border-border bg-surface px-6 [&::-webkit-scrollbar]:h-0"
+        className="flex shrink-0 gap-0 overflow-x-auto border-b border-border bg-surface px-4 sm:px-6 [&::-webkit-scrollbar]:h-0"
         aria-label="أقسام المهمة"
       >
         <button
@@ -560,8 +560,8 @@ export function EngineeringSurveyWorkPanel({
         </button>
       </nav>
 
-      <div className="flex min-h-0 flex-1 flex-row items-stretch overflow-hidden">
-        <div className="order-1 min-h-0 min-w-0 flex-1 overflow-y-auto px-6 py-5">
+      <div className="flex min-h-0 flex-1 flex-col items-stretch overflow-hidden lg:flex-row">
+        <div className="order-1 min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
           {workTab === "property" ? (
             <EngineeringSurveyPropertySummary
               property={property}

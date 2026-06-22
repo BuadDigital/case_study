@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Badge, cn } from "@platform/design-system";
+import { Badge, cn, emptyStateClassName } from "@platform/design-system";
 
 /** LTR-isolated value display for deeds, dates, phones, etc. */
 export const ltrValueClass = "inline [direction:ltr] [unicode-bidi:isolate]";
@@ -36,9 +36,9 @@ export function FieldBox({
     <div
       className={cn(
         "min-w-0 rounded-[var(--radius-DEFAULT)] bg-surface-2 px-3 py-2.5",
-        span === 2 && "col-span-2",
-        span === 3 && "col-span-3",
-        span === 4 && "col-span-4",
+        span === 2 && "col-span-1 sm:col-span-2",
+        span === 3 && "col-span-1 sm:col-span-3",
+        span === 4 && "col-span-1 sm:col-span-4",
       )}
     >
       <div className="mb-0.5 text-[11px] text-text-2">{label}</div>
@@ -73,10 +73,7 @@ export function FieldsGrid({
 }) {
   return (
     <div
-      className={cn(
-        "grid grid-cols-1 gap-2 max-[560px]:grid-cols-1",
-        fieldsGridCols[cols],
-      )}
+      className={cn("grid grid-cols-1 gap-2", fieldsGridCols[cols])}
     >
       {children}
     </div>
@@ -152,7 +149,7 @@ export function EmptyState({
   icon?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 px-5 py-10 text-center text-text-3">
+    <div className={cn("flex flex-col items-center justify-center gap-2 text-text-3", emptyStateClassName)}>
       {icon ? (
         <span className="mb-1 text-4xl leading-none" aria-hidden>
           {icon}

@@ -31,7 +31,7 @@ export function InspectorSubmitFooter({
   }
 
   return (
-    <div className="mt-4 rounded-[var(--radius-lg)] border border-border bg-surface p-4 shadow-[0_-4px_16px_rgba(15,52,96,0.08)]">
+    <div className="mt-4 rounded-[var(--radius-lg)] border border-border bg-surface p-4 shadow-[0_-4px_16px_rgba(15,52,96,0.08)] max-lg:sticky max-lg:bottom-0 max-lg:z-10">
       <p className="mb-3 flex items-start gap-1.5 text-[11px] leading-relaxed text-text-3">
         <i className="ti ti-info-circle mt-0.5 shrink-0 text-sm" aria-hidden />
         يجب التقاط الموقع (GPS)، وإكمال صور العقار الموثّقة، وإرفاق صورة لكل

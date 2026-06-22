@@ -3,6 +3,7 @@
 import {
   KpiRowLabel,
   ProgressBar,
+  ReportPageBody,
   StatCard,
   StatGrid,
   StatLabel,
@@ -39,7 +40,7 @@ export function KpiView() {
   const { data: kpi } = useReportingKpiQuery();
 
   return (
-    <>
+    <ReportPageBody>
       <StatGrid>
         <StatCard accent="green">
           <StatLabel>معدل الإنجاز في الموعد</StatLabel>
@@ -62,7 +63,7 @@ export function KpiView() {
           <StatSub>هدف: 40-50</StatSub>
         </StatCard>
       </StatGrid>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <SubpagePanel>
           <SubpageHeader title="أداء أخصائيي دراسة الحالة" />
           <div className="p-4">
@@ -76,6 +77,6 @@ export function KpiView() {
           </div>
         </SubpagePanel>
       </div>
-    </>
+    </ReportPageBody>
   );
 }

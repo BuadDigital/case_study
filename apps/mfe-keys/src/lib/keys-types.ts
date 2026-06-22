@@ -1,6 +1,18 @@
-/** Domain types for إدارة المفاتيح — expand when operations/keys API exists. */
-export type KeyCustodyRow = {
+/** Property key row for إدارة المفاتيح list. */
+export type PropertyKeyRow = {
   id: string;
+  idProp: string;
+  po: string;
+  area: string;
+  type: string;
+  key: boolean;
+  specialist: string;
+  status: string;
   court: string;
-  status: "held" | "released" | "pending";
+  delegate: string;
+};
+
+export type PropertyKeysPageData = {
+  keys: PropertyKeyRow[];
+  courtDelegates: string[];
 };

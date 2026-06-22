@@ -50,7 +50,9 @@ import {
   INSPECTOR_FEATURE_FIELDS,
   INSPECTOR_OBSERVATION_CATEGORIES,
   INSPECTOR_SERVICE_OPTIONS,
+  inspectorFeatureRequiresPhoto,
   inspectorPhotoStampText,
+  inspectorWorkspaceStatusLabel,
   isInspectorWorkspaceLocked,
   newObservationId,
   parseInspectorCount,
@@ -61,6 +63,7 @@ import {
 import { finalizeInspectorWorkspace } from "../../lib/prototype/finalize-field-inspection-submission";
 import {
   getOrCreateInspectorWorkspace,
+  saveInspectorWorkspaceDraft,
   updateInspectorWorkspace,
 } from "../../lib/prototype/inspector-workspace-storage";
 import {
@@ -190,6 +193,7 @@ export function FieldInspectionWorkBody({
         property != null
           ? formatPropertyDeedDisplay(property)
           : `خانة ${task.propertyOrdinal}`,
+      property: property ?? null,
     }).then((next) => {
       if (!cancelled && next) setDraft(next);
     });
@@ -216,7 +220,7 @@ export function FieldInspectionWorkBody({
   const saveDraft = useCallback(async (): Promise<boolean> => {
     if (!draft || locked) return false;
     hostRef.current?.onSavingChange?.(true);
-    const next = await updateInspectorWorkspace(task.id, {});
+    const next = await saveInspectorWorkspaceDraft(draft);
     hostRef.current?.onSavingChange?.(false);
     if (next) {
       setDraft(next);
@@ -306,6 +310,13 @@ export function FieldInspectionWorkBody({
       {locked ? (
         <Note tone="success" className="mb-4">
           تم إرسال المعاينة — النموذج للقراءة فقط.
+        </Note>
+      ) : null}
+
+      {draft.status === "reopened" && draft.returnNote?.trim() ? (
+        <Note tone="warn" className="mb-4">
+          <strong>{inspectorWorkspaceStatusLabel("reopened")}</strong> —{" "}
+          {draft.returnNote.trim()}
         </Note>
       ) : null}
 
@@ -447,7 +458,7 @@ export function FieldInspectionWorkBody({
                   <th className={cn(TABLE_TH, "w-8")}>#</th>
                   <th className={cn(TABLE_TH, "text-right")}>الحقل</th>
                   <th className={cn(TABLE_TH, "w-[180px]")}>القيمة</th>
-                  <th className={cn(TABLE_TH, "w-[140px]")}>توثيق (نعم→صورة)</th>
+                  <th className={cn(TABLE_TH, "w-[140px]")}>صورة توثيقية</th>
                 </tr>
               </thead>
               <tbody>
@@ -484,12 +495,12 @@ export function FieldInspectionWorkBody({
                               featurePhotoAttachments: {
                                 ...draft.featurePhotoAttachments,
                                 [field.key]:
-                                  field.photoOnYes && next === "نعم"
+                                  inspectorFeatureRequiresPhoto(field, next)
                                     ? draft.featurePhotoAttachments[field.key]
                                     : null,
                               },
                             });
-                            if (field.photoOnYes && next !== "نعم") {
+                            if (!inspectorFeatureRequiresPhoto(field, next)) {
                               clearInspectorPhotoDataUrl(draft.taskId, photoRef);
                             }
                           }}
@@ -504,7 +515,7 @@ export function FieldInspectionWorkBody({
                         </Select>
                       </td>
                       <td className={cn(TABLE_TD, "text-center")}>
-                        {field.photoOnYes && value === "نعم" ? (
+                        {inspectorFeatureRequiresPhoto(field, value) ? (
                           attachment?.fileName ? (
                             <InspectorStampedPhotoThumb
                               compact
@@ -540,6 +551,7 @@ export function FieldInspectionWorkBody({
                                     draft.taskId,
                                     photoRef,
                                     file,
+                                    { stampText: photoStamp },
                                   );
                                 if (!result.ok) {
                                   showToast(result.error, "error");
@@ -736,6 +748,7 @@ export function FieldInspectionWorkBody({
                               draft.taskId,
                               photoRef,
                               file,
+                              { stampText: photoStamp },
                             );
                             if (!result.ok) {
                               showToast(result.error, "error");
@@ -959,9 +972,9 @@ export function FieldInspectionWorkBody({
             return (
             <div
               key={obs.id}
-              className="mb-2.5 flex items-stretch gap-3.5 rounded-lg border border-border bg-surface-2 p-3"
+              className="relative mb-2.5 flex flex-col items-stretch gap-3.5 rounded-lg border border-border bg-surface-2 p-3 sm:flex-row"
             >
-              <div className="flex w-[116px] shrink-0 flex-col items-center justify-center">
+              <div className="flex w-full shrink-0 flex-col items-center justify-center sm:w-[116px]">
                 {obs.photo?.fileName ? (
                   <InspectorStampedPhotoThumb
                     stamp={photoStamp}
@@ -994,6 +1007,7 @@ export function FieldInspectionWorkBody({
                         draft.taskId,
                         obsPhotoRef,
                         file,
+                        { stampText: photoStamp },
                       );
                       if (!result.ok) {
                         showToast(result.error, "error");
@@ -1011,7 +1025,7 @@ export function FieldInspectionWorkBody({
                   />
                 )}
               </div>
-              <div className="flex min-w-0 flex-1 flex-col gap-2">
+              <div className="flex min-w-0 flex-1 flex-col gap-2 pe-8 sm:pe-0">
                 <Select
                   value={obs.category}
                   onChange={(e) =>
@@ -1048,7 +1062,7 @@ export function FieldInspectionWorkBody({
               </div>
               <button
                 type="button"
-                className="self-start text-text-3 hover:text-danger-text"
+                className="absolute end-3 top-3 text-text-3 hover:text-danger-text sm:static sm:self-start"
                 title="حذف"
                 onClick={() =>
                   persist({
@@ -1130,6 +1144,7 @@ export function FieldInspectionWorkBody({
                 partyId={partyId}
                 partyChildTaskId={task.id}
                 parentFormTaskId={parentTask.id}
+                partyAdvisory
               />
             </InspectorCard>
           </div>

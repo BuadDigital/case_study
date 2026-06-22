@@ -23,13 +23,6 @@ export function inspectionGateForAppraisal(
   appraisalTask: WorkflowTask,
   tasks: WorkflowTask[],
 ): InspectionGateState {
-  // TODO: فعّل هذا الشرط بعد اكتمال مسار المعاين الميداني.
-  // حالياً نسمح للمقيم بالإرسال دون انتظار اكتمال المعاينة (للتطوير/الاختبار).
-  void appraisalTask;
-  void tasks;
-  return { ready: true };
-
-  /*
   const inspection = findSiblingInspectionTask(appraisalTask, tasks);
   if (!inspection) {
     return {
@@ -44,7 +37,6 @@ export function inspectionGateForAppraisal(
     };
   }
   return { ready: true };
-  */
 }
 
 export function findAppraisalChildForParent(

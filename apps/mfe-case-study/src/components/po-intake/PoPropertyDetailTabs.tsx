@@ -92,7 +92,7 @@ function DocumentRow({ doc }: { doc: PropertyDetailDocumentEntry }) {
   const isPdf = doc.kind === "pdf";
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-[var(--radius-DEFAULT)] bg-surface-2 px-3 py-2.5 transition-colors hover:bg-[#eaedf2]">
+    <div className="flex flex-col gap-2 rounded-[var(--radius-DEFAULT)] bg-surface-2 px-3 py-2.5 transition-colors hover:bg-[#eaedf2] sm:flex-row sm:items-center sm:justify-between sm:gap-3">
       <div className="flex min-w-0 items-center gap-2.5">
         <span
           className={cn(
@@ -196,25 +196,27 @@ function BasicTab({
 
   return (
     <>
-      <SectionHeader>بيانات الصك</SectionHeader>
-      <FieldsGrid>
-        <FieldBox label="رقم الصك" value={property.deedNumber} ltr />
-        <FieldBox label="تاريخ الصك" value={property.deedDate} ltr />
-        <FieldBox label="حالة الصك">
-          {property.deedStatus.trim() ? (
-            <DetailBadge tone="teal">{property.deedStatus}</DetailBadge>
-          ) : null}
-        </FieldBox>
-        <FieldBox label="اسم المالك" value={property.ownerName} />
-        <FieldBox label="حالة الملك" value={property.deedStatus} />
-        <FieldBox
-          label="القيود على العقار"
-          value={restrictions}
-          emptyLabel="لا توجد قيود"
-        />
-      </FieldsGrid>
+      <div className="max-lg:hidden">
+        <SectionHeader>بيانات الصك</SectionHeader>
+        <FieldsGrid>
+          <FieldBox label="رقم الصك" value={property.deedNumber} ltr />
+          <FieldBox label="تاريخ الصك" value={property.deedDate} ltr />
+          <FieldBox label="حالة الصك">
+            {property.deedStatus.trim() ? (
+              <DetailBadge tone="teal">{property.deedStatus}</DetailBadge>
+            ) : null}
+          </FieldBox>
+          <FieldBox label="اسم المالك" value={property.ownerName} />
+          <FieldBox label="حالة الملك" value={property.deedStatus} />
+          <FieldBox
+            label="القيود على العقار"
+            value={restrictions}
+            emptyLabel="لا توجد قيود"
+          />
+        </FieldsGrid>
 
-      <SectionDivider />
+        <SectionDivider />
+      </div>
       <SectionHeader>بيانات الموقع</SectionHeader>
       <FieldsGrid>
         <FieldBox label="المدينة" value={property.city} />
@@ -418,7 +420,10 @@ export function PoPropertyDetailTabs({
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <TabBar aria-label="أقسام تفاصيل العقار">
+      <TabBar
+        className="sticky top-0 z-10 bg-surface max-lg:border-b max-lg:border-border/60"
+        aria-label="أقسام تفاصيل العقار"
+      >
         {TABS.map((t) => {
           let count: number | null = null;
           let countTone: "teal" | "red" | "gray" = "gray";
@@ -464,8 +469,8 @@ export function PoPropertyDetailTabs({
         })}
       </TabBar>
 
-      <div className="flex min-h-0 flex-1 flex-row items-stretch overflow-hidden max-[960px]:flex-col">
-        <TabPanel>
+      <div className="flex min-h-0 flex-1 flex-col items-stretch overflow-hidden lg:flex-row">
+        <TabPanel className="order-1">
           {tab === "basic" ? (
             <BasicTab record={record} property={property} />
           ) : null}
@@ -511,7 +516,7 @@ export function PoPropertyDetailTabs({
                 <SectionHeader>التعذرات المسجلة</SectionHeader>
                 <div
                   className={cn(
-                    "mb-1.5 flex items-start justify-between gap-3 rounded-[var(--radius-DEFAULT)] bg-surface-2 px-3.5 py-3 border-e-[3px]",
+                    "mb-1.5 flex flex-col gap-2 rounded-[var(--radius-DEFAULT)] bg-surface-2 px-3.5 py-3 border-e-[3px] sm:flex-row sm:items-start sm:justify-between sm:gap-3",
                     failure.status === "approved"
                       ? "border-e-success"
                       : "border-e-warning",
@@ -680,7 +685,7 @@ export function PoPropertyDetailTabs({
             <>
               <SectionHeader>صور العقار</SectionHeader>
               <InfoBox icon="ℹ">لا توجد صور مرفوعة لهذا العقار بعد.</InfoBox>
-              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 {[1, 2, 3, 4].map((n) => (
                   <div
                     key={n}
@@ -765,7 +770,9 @@ export function PoPropertyDetailTabs({
           ) : null}
         </TabPanel>
 
-        <PropertyTransactionTimeline record={record} property={property} />
+        <div className="max-lg:hidden">
+          <PropertyTransactionTimeline record={record} property={property} />
+        </div>
       </div>
     </div>
   );

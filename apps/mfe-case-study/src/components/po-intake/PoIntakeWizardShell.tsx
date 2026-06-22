@@ -8,7 +8,7 @@ import {
   REG_PREV,
 } from "@platform/app-shared/registration/registration-labels";
 import { UNSAVED_CONFIRM_MSG } from "@platform/app-shared/registration/registration-utils";
-import { Badge, Button, cn } from "@platform/design-system";
+import { Badge, Button, cn, pageGutterClassName } from "@platform/design-system";
 
 export function PoIntakeWizardShell({
   steps,
@@ -62,7 +62,7 @@ export function PoIntakeWizardShell({
     <div
       className={cn(
         "flex min-h-0 w-full flex-col overflow-hidden",
-        inWizard && "-mx-2 -mt-2.5 w-[calc(100%+16px)]",
+        inWizard && "max-sm:mx-0 max-sm:mt-0 max-sm:w-full sm:-mx-2 sm:-mt-2.5 sm:w-[calc(100%+16px)]",
       )}
     >
       <div className="flex min-h-0 flex-1 items-stretch">
@@ -74,7 +74,7 @@ export function PoIntakeWizardShell({
           )}
         >
           {!inWizard ? (
-            <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-surface px-6 py-2.5">
+            <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-surface px-4 py-2.5 sm:px-6">
               <div className="flex min-w-0 flex-1 items-center gap-3">
                 <Button type="button" size="sm" onClick={handleBack}>
                   {REG_BACK}
@@ -92,9 +92,9 @@ export function PoIntakeWizardShell({
           ) : null}
 
           {inWizard ? (
-            <div className="flex min-h-0 flex-1 justify-center overflow-y-auto bg-surface-2 px-6 py-2 pb-5">
+            <div className="flex min-h-0 flex-1 justify-center overflow-y-auto bg-surface-2 px-4 py-2 pb-5 sm:px-6">
               <div className="flex max-h-[calc(100vh-132px)] w-full max-w-[680px] shrink-0 flex-col overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-card">
-                <header className="flex shrink-0 items-center justify-between gap-2.5 border-b border-border bg-surface px-5 py-2.5">
+                <header className={cn("flex shrink-0 items-center justify-between gap-2.5 border-b border-border bg-surface py-2.5", pageGutterClassName)}>
                   <div className="flex min-w-0 flex-1 items-center gap-3">
                     <Button type="button" size="sm" onClick={handleBack}>
                       {REG_BACK}
@@ -120,14 +120,14 @@ export function PoIntakeWizardShell({
                   <StepIndicator steps={[...steps]} current={step} />
                 )}
                 {!hideWizardChrome && hint ? (
-                  <p className="m-0 px-5 py-2 text-start text-xs font-semibold leading-snug text-text-2">
+                  <p className={cn("m-0 py-2 text-start text-xs font-semibold leading-snug text-text-2", pageGutterClassName)}>
                     {hint}
                   </p>
                 ) : null}
-                <div className="min-h-0 flex-1 overflow-y-auto px-5 py-1.5">
+                <div className={cn("min-h-0 flex-1 overflow-y-auto py-1.5", pageGutterClassName)}>
                   {children}
                 </div>
-                <footer className="shrink-0 border-t border-border bg-surface-2 px-5 py-2.5">
+                <footer className={cn("shrink-0 border-t border-border bg-surface-2 py-2.5", pageGutterClassName)}>
                   {footerExtra}
                   <div className="flex w-full justify-end gap-2">
                     {showPrev ? (
@@ -151,7 +151,7 @@ export function PoIntakeWizardShell({
           ) : (
             <div
               className={cn(
-                "mx-auto min-h-0 w-full max-w-[880px] flex-1 overflow-y-auto px-6 py-5",
+                "mx-auto min-h-0 w-full max-w-[880px] flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5",
                 success && "flex items-start justify-center bg-surface pt-8 pb-10",
               )}
             >

@@ -99,6 +99,7 @@ public static class DependencyInjection
         services.AddScoped<IWorkflowTaskService, WorkflowTaskService>();
         services.AddScoped<ICaseStudyFormService, CaseStudyFormService>();
         services.AddScoped<IPartyTaskSubmissionService, PartyTaskSubmissionService>();
+        services.AddScoped<IFieldInspectionAttachmentVerifier, FieldInspectionAttachmentVerifier>();
         return services;
     }
 
@@ -121,6 +122,7 @@ public static class DependencyInjection
 
     public static IServiceCollection AddFailuresInfrastructure(this IServiceCollection services)
     {
+        services.AddScoped<IWorkflowTaskService, WorkflowTaskService>();
         services.AddScoped<IFailureService, FailureService>();
         services.AddScoped<IFailureTypesCatalogService, FailureTypesCatalogService>();
         return services;

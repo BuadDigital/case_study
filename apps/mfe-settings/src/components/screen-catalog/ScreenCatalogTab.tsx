@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Badge, Input, cn } from "@platform/design-system";
+import { Badge, Input, PageShellHeader, cn, pageGutterClassName } from "@platform/design-system";
 import {
   SCREEN_CATALOG_KIND_LABELS,
   SCREEN_CATALOG_STATUS_LABELS,
@@ -129,21 +129,22 @@ export function ScreenCatalogTab() {
 
   return (
     <article className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface max-lg:overflow-visible">
-      <header className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3.5">
-        <div>
-          <h2 className="text-sm font-semibold text-text">دليل الشاشات</h2>
-          <p className="mt-1 text-[11px] text-text-3">
-            الشاشات الفعلية في النظام — أين تجدها ومن يصل إليها
-          </p>
-        </div>
-        <Badge tone="info">
-          {visibleScreens.length}/{screens.length} شاشة
-        </Badge>
-      </header>
+      <PageShellHeader
+        title="دليل الشاشات"
+        actions={
+          <Badge tone="info">
+            {visibleScreens.length}/{screens.length} شاشة
+          </Badge>
+        }
+      >
+        <p className="m-0 text-[11px] text-text-3">
+          الشاشات الفعلية في النظام — أين تجدها ومن يصل إليها
+        </p>
+      </PageShellHeader>
 
-      <div className="shrink-0 border-b border-border px-4 py-3">
+      <div className={cn("shrink-0 border-b border-border py-3", pageGutterClassName)}>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="min-w-[200px] flex-1">
+          <div className="min-w-0 flex-1 basis-[200px]">
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -213,13 +214,14 @@ export function ScreenCatalogTab() {
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden max-lg:min-h-0 max-lg:flex-none max-lg:overflow-visible lg:flex-row">
         <div className="flex min-h-[240px] min-w-0 flex-1 flex-col overflow-hidden border-border max-lg:max-h-none max-lg:overflow-visible lg:max-w-[62%] lg:border-e">
+          <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto overscroll-contain max-lg:max-h-none max-lg:overflow-visible lg:min-h-0">
+            <div className="min-w-[520px]">
           <div className="grid shrink-0 grid-cols-[1.1fr_1.1fr_.75fr_.55fr] gap-2 border-b border-border bg-surface-2 px-3 py-2 text-[10px] text-text-3">
             <span>اسم الشاشة</span>
             <span>أين تُجد في النظام</span>
             <span>النوع</span>
             <span>الحالة</span>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain max-lg:max-h-none max-lg:overflow-visible lg:min-h-0">
             {visibleScreens.length === 0 ? (
               <p className="py-10 text-center text-xs text-text-3">
                 لا توجد شاشات مطابقة
@@ -234,6 +236,7 @@ export function ScreenCatalogTab() {
                 />
               ))
             )}
+            </div>
           </div>
         </div>
 

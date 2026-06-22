@@ -21,8 +21,11 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Start compiling the dashboard bundle while the user is still on this page.
-  useEffect(() => { router.prefetch("/dashboard"); }, [router]);
+  // Warm the dashboard route after paint — avoids RSC fetch races during HMR on LAN.
+  useEffect(() => {
+    const timer = window.setTimeout(() => router.prefetch("/dashboard"), 2000);
+    return () => window.clearTimeout(timer);
+  }, [router]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -129,7 +132,7 @@ export default function LoginPage() {
           </div>
         ) : null}
 
-        <form method="post" action="#" onSubmit={onSubmit} className="space-y-4">
+        <form onSubmit={onSubmit} className="space-y-4" suppressHydrationWarning>
           <div>
             <Label htmlFor="username">اسم المستخدم</Label>
             <Select
@@ -139,6 +142,7 @@ export default function LoginPage() {
               onChange={(e) => setUsername(e.target.value)}
               required
               dir="rtl"
+              suppressHydrationWarning
             >
               <option value="" disabled>
                 — اختر مستخدمًا —

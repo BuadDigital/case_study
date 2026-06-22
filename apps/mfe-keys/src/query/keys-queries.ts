@@ -2,7 +2,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { loadPropertyKeys } from "../lib/keys-api";
+import { loadPropertyKeysPage } from "../lib/keys-api";
 
 const STALE_MS = 60_000;
 const GC_MS = 10 * 60_000;
@@ -10,7 +10,7 @@ const GC_MS = 10 * 60_000;
 export function usePropertyKeysQuery() {
   return useQuery({
     queryKey: prototypeKeys.propertyKeys(),
-    queryFn: loadPropertyKeys,
+    queryFn: loadPropertyKeysPage,
     staleTime: STALE_MS,
     gcTime: GC_MS,
   });

@@ -7,6 +7,8 @@ public interface IWorkOrderService
 {
     Task<IReadOnlyList<WorkOrderListItemDto>> ListAsync(CancellationToken cancellationToken);
     Task<IReadOnlyList<WorkOrderDto>> ListDetailsAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyList<PropertyListItemDto>> ListPropertyListItemsAsync(
+        CancellationToken cancellationToken);
     Task<WorkOrderDto?> GetByPoNumberAsync(string poNumber, CancellationToken cancellationToken);
     Task<bool> ExistsAsync(string poNumber, CancellationToken cancellationToken);
     Task<PriorDeedRegistrationDto?> FindPriorDeedAsync(

@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 
@@ -25,11 +26,16 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
     private readonly ApplicationDbContext _db;
     private readonly IWorkflowTaskService _tasks;
+    private readonly IFieldInspectionAttachmentVerifier _fieldInspectionAttachments;
 
-    public PartyTaskSubmissionService(ApplicationDbContext db, IWorkflowTaskService tasks)
+    public PartyTaskSubmissionService(
+        ApplicationDbContext db,
+        IWorkflowTaskService tasks,
+        IFieldInspectionAttachmentVerifier fieldInspectionAttachments)
     {
         _db = db;
         _tasks = tasks;
+        _fieldInspectionAttachments = fieldInspectionAttachments;
     }
 
     public async Task<PartyTaskSubmissionDto?> GetAsync(
@@ -93,7 +99,11 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         entity.PoNumber = task.PoNumber;
         entity.UpdatedAtUtc = now;
 
+        if (task.Kind == "field-inspection")
+            await SyncFieldInspectionWorkspaceAsync(entity, cancellationToken);
+
         await _db.SaveChangesAsync(cancellationToken);
+
         return (ToDto(entity), null);
     }
 
@@ -119,7 +129,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (entity.Status is PartyTaskSubmissionStatus.Submitted)
             return (ToDto(entity), null);
 
-        var validationErrors = ValidateForSubmit(entity);
+        var validationErrors = await ValidateForSubmitAsync(entity, cancellationToken);
         if (validationErrors.Count > 0)
             return (null, validationErrors);
 
@@ -128,6 +138,9 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         entity.SubmittedAtUtc = now;
         entity.UpdatedAtUtc = now;
         entity.PayloadJson = SetPayloadStatus(entity.PayloadJson, PartyTaskSubmissionStatus.Submitted, now);
+
+        if (entity.Kind == "field-inspection")
+            await SyncFieldInspectionWorkspaceAsync(entity, cancellationToken);
 
         await _db.SaveChangesAsync(cancellationToken);
 
@@ -150,11 +163,11 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (task is null)
             return (null, new Dictionary<string, string> { ["_"] = "المهمة غير موجودة" });
 
-        if (task.Kind is not ("engineering-survey" or "property-appraisal"))
+        if (task.Kind is not ("engineering-survey" or "property-appraisal" or "field-inspection"))
             return (null, new Dictionary<string, string> { ["_"] = "إعادة الفتح غير مدعومة لهذا النوع" });
 
         var returnNote = request.ReturnNote?.Trim() ?? "";
-        if (task.Kind == "engineering-survey" && string.IsNullOrWhiteSpace(returnNote))
+        if (task.Kind is "engineering-survey" or "field-inspection" && string.IsNullOrWhiteSpace(returnNote))
             return (null, new Dictionary<string, string> { ["returnNote"] = "ملاحظة الإرجاع مطلوبة" });
 
         var entity = await _db.PartyTaskSubmissions
@@ -170,6 +183,9 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         entity.UpdatedAtUtc = now;
         entity.PayloadJson = SetPayloadReopened(entity.PayloadJson, returnNote, now);
 
+        if (task.Kind == "field-inspection")
+            await SyncFieldInspectionWorkspaceAsync(entity, cancellationToken);
+
         await _db.SaveChangesAsync(cancellationToken);
 
         await _tasks.PatchAsync(
@@ -178,6 +194,52 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             cancellationToken);
 
         return (ToDto(entity), null);
+    }
+
+    private async Task<Dictionary<string, string>> ValidateForSubmitAsync(
+        PartyTaskSubmission entity,
+        CancellationToken cancellationToken)
+    {
+        var errors = ValidateForSubmit(entity);
+        if (errors.Count > 0 || entity.Kind != "field-inspection")
+            return errors;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(entity.PayloadJson);
+            var attachmentErrors = await _fieldInspectionAttachments.VerifyAsync(
+                entity.WorkflowTaskId,
+                doc.RootElement,
+                cancellationToken);
+            foreach (var (key, message) in attachmentErrors)
+                errors[key] = message;
+        }
+        catch
+        {
+            errors["_"] = "بيانات الإرسال غير صالحة";
+        }
+
+        return errors;
+    }
+
+    private async Task SyncFieldInspectionWorkspaceAsync(
+        PartyTaskSubmission entity,
+        CancellationToken cancellationToken)
+    {
+        using var doc = JsonDocument.Parse(entity.PayloadJson);
+        var projected = FieldInspectionWorkspaceProjector.Project(entity, doc.RootElement);
+        var existing = await _db.FieldInspectionWorkspaces
+            .FirstOrDefaultAsync(x => x.WorkflowTaskId == entity.WorkflowTaskId, cancellationToken);
+
+        if (existing is null)
+        {
+            _db.FieldInspectionWorkspaces.Add(projected);
+            return;
+        }
+
+        var createdAtUtc = existing.CreatedAtUtc;
+        _db.Entry(existing).CurrentValues.SetValues(projected);
+        existing.CreatedAtUtc = createdAtUtc;
     }
 
     private static Dictionary<string, string> ValidateForSubmit(PartyTaskSubmission entity)
@@ -221,14 +283,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                     break;
 
                 case "field-inspection":
-                    if (!HasNonEmpty(root, "inspectionDate"))
-                        errors["inspectionDate"] = "تاريخ المعاينة مطلوب";
-                    if (!HasNonEmpty(root, "inspectionTime"))
-                        errors["inspectionTime"] = "وقت المعاينة مطلوب";
-                    if (!HasNonEmpty(root, "mapLatitude") || !HasNonEmpty(root, "mapLongitude"))
-                        errors["mapLatitude"] = "يجب تحديد موقع العقار (GPS)";
-                    if (!GetBool(root, "inspectionConfirmed"))
-                        errors["inspectionConfirmed"] = "يجب التأشير على إقرار المعاينة";
+                    foreach (var (key, message) in FieldInspectionSubmissionValidator.Validate(root))
+                        errors[key] = message;
                     break;
             }
         }

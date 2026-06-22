@@ -8,8 +8,20 @@ import { ROLES } from "@platform/app-shared/prototype/constants";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import type { RoleId } from "@platform/types";
-import { Badge, Button, cn, formControlClassName } from "@platform/design-system";
-import { StatValue } from "@case-study/mfe";
+import {
+  Badge,
+  Button,
+  cn,
+  EmptyState,
+  formControlClassName,
+  OperationalPanel,
+  PageGutter,
+  PageShell,
+  StatCard,
+  StatGrid,
+  StatLabel,
+  StatValue,
+} from "@platform/design-system";
 import { formatDateAr, formatPoDisplay } from "@case-study/mfe";
 import { poPropertyPath } from "@case-study/mfe/lib/po-routes";
 import { suspendPropertyTransaction } from "@case-study/mfe/lib/prototype/suspend-property-transaction";
@@ -140,54 +152,54 @@ export function FailuresView() {
   }
 
   return (
-    <>
-      <div className="mb-[18px] grid grid-cols-4 gap-2.5">
-        <div className="flex flex-col items-start rounded-lg border border-border border-t-[3px] border-t-danger bg-surface px-4 py-3.5">
-          <div className="mb-[7px] w-full text-start text-[11px] text-text-3">تعذرات مفتوحة</div>
+    <PageShell variant="canvas" className="min-h-0 flex-1">
+      <StatGrid cols={4} flush className="mb-0">
+        <StatCard accent="red" flush>
+          <StatLabel>تعذرات مفتوحة</StatLabel>
           <StatValue value={isFetched ? stats.open : undefined} />
-        </div>
-        <div className="flex flex-col items-start rounded-lg border border-border border-t-[3px] border-t-amber bg-surface px-4 py-3.5">
-          <div className="mb-[7px] w-full text-start text-[11px] text-text-3">عند مشرف دراسة الحالة</div>
+        </StatCard>
+        <StatCard accent="amber" flush>
+          <StatLabel>عند مشرف دراسة الحالة</StatLabel>
           <StatValue value={isFetched ? stats.review : undefined} />
-        </div>
-        <div className="flex flex-col items-start rounded-lg border border-border border-t-[3px] border-t-success bg-surface px-4 py-3.5">
-          <div className="mb-[7px] w-full text-start text-[11px] text-text-3">معتمدة / تم الحل</div>
+        </StatCard>
+        <StatCard accent="green" flush>
+          <StatLabel>معتمدة / تم الحل</StatLabel>
           <StatValue
             value={
               isFetched ? stats.approved + stats.resolved : undefined
             }
           />
-        </div>
-        <div className="flex flex-col items-start rounded-lg border border-border border-t-[3px] border-t-primary bg-surface px-4 py-3.5">
-          <div className="mb-[7px] w-full text-start text-[11px] text-text-3">الإجمالي</div>
+        </StatCard>
+        <StatCard accent="default" flush>
+          <StatLabel>الإجمالي</StatLabel>
           <StatValue value={isFetched ? items.length : undefined} />
-        </div>
-      </div>
+        </StatCard>
+      </StatGrid>
 
-      {!ce && !ca ? (
-        <div className={cn(noteBase, "border-info bg-info-bg text-info-text")}>
-          {role === "general-manager"
-            ? "أنت في وضع الاطلاع — صلاحية التعديل للمشرف والأخصائي"
-            : role === "cdo"
-              ? "صلاحيات كاملة — يمكنك اعتماد التعذرات وإنشاؤها"
-              : "أنت في وضع المراقبة — لا تملك صلاحية تعديل التعذرات"}
-        </div>
-      ) : null}
-      {ca ? (
-        <div className={cn(noteBase, "border-success bg-success-bg text-success-text")}>
-          مسار التعذر: رفع (احتمال / داخلي) → معالجة الأخصائي → مراجعة المشرف
-          مع أخصائي الإسناد → اعتماد التعذر أو تعليق المعاملة.
-        </div>
-      ) : null}
+      <OperationalPanel className="min-h-0 flex-1">
+        <PageGutter className="pt-4">
+          {!ce && !ca ? (
+            <div className={cn(noteBase, "border-info bg-info-bg text-info-text")}>
+              {role === "general-manager"
+                ? "أنت في وضع الاطلاع — صلاحية التعديل للمشرف والأخصائي"
+                : role === "cdo"
+                  ? "صلاحيات كاملة — يمكنك اعتماد التعذرات وإنشاؤها"
+                  : "أنت في وضع المراقبة — لا تملك صلاحية تعديل التعذرات"}
+            </div>
+          ) : null}
+          {ca ? (
+            <div className={cn(noteBase, "border-success bg-success-bg text-success-text")}>
+              مسار التعذر: رفع (احتمال / داخلي) → معالجة الأخصائي → مراجعة المشرف
+              مع أخصائي الإسناد → اعتماد التعذر أو تعليق المعاملة.
+            </div>
+          ) : null}
+        </PageGutter>
 
-      {sortedItems.length === 0 ? (
-        <article className="mb-0 w-full overflow-hidden rounded-none border-none bg-surface shadow-none">
-          <p className="px-6 py-6 text-center text-text-3">
-            لا توجد تعذرات — سجّل تعذراً من شاشة العقارات.
-          </p>
-        </article>
-      ) : (
-        sortedItems.map((f) => {
+        {sortedItems.length === 0 ? (
+          <EmptyState line="لا توجد تعذرات — سجّل تعذراً من شاشة العقارات." />
+        ) : (
+          <PageGutter className="flex flex-col gap-2.5 pb-4">
+            {sortedItems.map((f) => {
           const active = isActiveFailureStatus(f.status);
           const displayTitle = failureProblemTypeLabel(f.problemTypeId, f.title);
           const canSpecialistAct =
@@ -396,8 +408,10 @@ export function FailuresView() {
               ) : null}
             </div>
           );
-        })
-      )}
-    </>
+            })}
+          </PageGutter>
+        )}
+      </OperationalPanel>
+    </PageShell>
   );
 }

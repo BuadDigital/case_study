@@ -35,12 +35,21 @@ function BreadcrumbLabel({ segment }: { segment: BreadcrumbSegment }) {
   return segment.label;
 }
 
-export function AppBreadcrumb({ segments }: { segments: BreadcrumbSegment[] }) {
+export function AppBreadcrumb({
+  segments,
+  className,
+}: {
+  segments: BreadcrumbSegment[];
+  className?: string;
+}) {
   if (segments.length === 0) return null;
 
   return (
     <nav
-      className="flex min-w-0 shrink-0 flex-wrap items-center gap-[5px] text-[12.5px] text-text-2"
+      className={cn(
+        "flex min-w-0 shrink-0 flex-wrap items-center gap-[5px] text-[12.5px] text-text-2",
+        className,
+      )}
       id="tb-bc"
       aria-label="مسار التنقل"
     >

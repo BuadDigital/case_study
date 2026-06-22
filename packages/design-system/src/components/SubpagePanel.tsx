@@ -29,7 +29,7 @@ export function SubpageHeader({
   return (
     <header
       className={cn(
-        "mb-0 flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3.5",
+        "mb-0 flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-2.5",
         className,
       )}
       {...props}

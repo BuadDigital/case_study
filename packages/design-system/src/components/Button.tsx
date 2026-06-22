@@ -34,6 +34,10 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
   size?: ButtonSize;
   loading?: boolean;
+  /** Explicit label for the global progress toast. */
+  actionLabel?: string;
+  /** Set on the element to skip the global progress toast. */
+  showActionToast?: boolean;
 };
 
 export function Button({
@@ -44,6 +48,8 @@ export function Button({
   loading = false,
   disabled,
   children,
+  actionLabel,
+  showActionToast = true,
   ...props
 }: ButtonProps) {
   return (
@@ -51,6 +57,9 @@ export function Button({
       type={type}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
+      data-button-variant={variant}
+      data-action-label={actionLabel}
+      data-no-action-toast={showActionToast ? undefined : true}
       className={cn(
         "inline-flex items-center justify-center gap-[5px] rounded-[var(--radius-DEFAULT)] border-[0.5px] border-solid font-normal whitespace-nowrap outline-none transition-[background,border-color,opacity] duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-65",
         variantClasses[variant],

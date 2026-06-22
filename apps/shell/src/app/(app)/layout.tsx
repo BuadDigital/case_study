@@ -6,7 +6,6 @@ import { PageAccessGate } from "@/components/PageAccessGate";
 import { AppShell } from "@/components/views/AppShell";
 import { PrototypeProvider } from "@platform/app-shared/contexts/PrototypeContext";
 import { QueryProvider } from "@/providers/QueryProvider";
-import { ToastProvider } from "@platform/design-system";
 
 export default function AppSectionLayout({
   children,
@@ -15,8 +14,7 @@ export default function AppSectionLayout({
 }) {
   return (
     <QueryProvider>
-      <ToastProvider>
-        <Suspense fallback={null}>
+      <Suspense fallback={null}>
           <PrototypeAppGate>
             <PrototypeProvider>
               <PageAccessGate>
@@ -25,7 +23,6 @@ export default function AppSectionLayout({
             </PrototypeProvider>
           </PrototypeAppGate>
         </Suspense>
-      </ToastProvider>
     </QueryProvider>
   );
 }

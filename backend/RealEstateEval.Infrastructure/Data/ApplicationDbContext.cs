@@ -19,6 +19,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<CaseStudyForm> CaseStudyForms => Set<CaseStudyForm>();
     public DbSet<CaseStudyInfoRolesConfig> CaseStudyInfoRolesConfigs => Set<CaseStudyInfoRolesConfig>();
     public DbSet<PartyTaskSubmission> PartyTaskSubmissions => Set<PartyTaskSubmission>();
+    public DbSet<FieldInspectionWorkspace> FieldInspectionWorkspaces => Set<FieldInspectionWorkspace>();
     public DbSet<PropertyFailure> PropertyFailures => Set<PropertyFailure>();
     public DbSet<FieldDictionaryConfig> FieldDictionaryConfigs => Set<FieldDictionaryConfig>();
     public DbSet<FailureTypesCatalogConfig> FailureTypesCatalogConfigs => Set<FailureTypesCatalogConfig>();
@@ -187,6 +188,21 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.ReturnNote).HasMaxLength(4000);
             e.HasIndex(x => x.WorkflowTaskId).IsUnique();
             e.HasIndex(x => x.PoNumber);
+        });
+
+        builder.Entity<FieldInspectionWorkspace>(e =>
+        {
+            e.ToTable("FieldInspectionWorkspaces", DatabaseSchemas.CaseStudy);
+            e.HasKey(x => x.WorkflowTaskId);
+            e.Property(x => x.PoNumber).HasMaxLength(64);
+            e.Property(x => x.InspectionTime).HasMaxLength(16);
+            e.Property(x => x.Status).HasMaxLength(32);
+            e.Property(x => x.MapLatitude).HasPrecision(10, 6);
+            e.Property(x => x.MapLongitude).HasPrecision(10, 6);
+            e.HasIndex(x => x.PoNumber);
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.PropertyId);
+            e.HasIndex(x => x.PartyTaskSubmissionId).IsUnique();
         });
 
         builder.Entity<PropertyFailure>(e =>

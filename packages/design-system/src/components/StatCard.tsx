@@ -2,6 +2,10 @@
 
 import { useEffect, useState, type HTMLAttributes } from "react";
 import { cn } from "../lib/cn";
+import {
+  statCardFlushClassName,
+  statGridFlushClassName,
+} from "../lib/page-layout-classes";
 
 function useCountUp(target: number | undefined, enabled: boolean): number | undefined {
   const [display, setDisplay] = useState<number | undefined>(undefined);
@@ -58,12 +62,13 @@ export type StatAccent = keyof typeof accentClasses;
 export function StatGrid({
   className,
   cols = 4,
+  flush = false,
   ...props
-}: HTMLAttributes<HTMLDivElement> & { cols?: 2 | 3 | 4 }) {
+}: HTMLAttributes<HTMLDivElement> & { cols?: 2 | 3 | 4; flush?: boolean }) {
   const colClasses = {
     2: "grid-cols-2",
-    3: "grid-cols-3",
-    4: "grid-cols-4",
+    3: "grid-cols-2 lg:grid-cols-3",
+    4: "grid-cols-2 lg:grid-cols-4",
   } as const;
 
   return (
@@ -71,6 +76,7 @@ export function StatGrid({
       className={cn(
         "mb-[18px] grid gap-2.5",
         colClasses[cols],
+        flush && statGridFlushClassName,
         className,
       )}
       {...props}
@@ -81,13 +87,15 @@ export function StatGrid({
 export function StatCard({
   className,
   accent = "default",
+  flush = false,
   ...props
-}: HTMLAttributes<HTMLDivElement> & { accent?: StatAccent }) {
+}: HTMLAttributes<HTMLDivElement> & { accent?: StatAccent; flush?: boolean }) {
   return (
     <div
       className={cn(
         "flex flex-col items-start rounded-[var(--radius-lg)] border border-border border-t-[3px] bg-surface px-4 py-3.5",
         accentClasses[accent],
+        flush && statCardFlushClassName,
         className,
       )}
       {...props}

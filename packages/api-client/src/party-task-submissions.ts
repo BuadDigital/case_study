@@ -1,6 +1,6 @@
 /**
  * Party task submissions API — persists party work (survey, appraisal, gov review, coordination, field inspection).
- * GET/PUT /api/party-task-submissions/{taskId}; POST .../submit completes the workflow child task; POST .../reopen (engineering only).
+ * GET/PUT /api/party-task-submissions/{taskId}; POST .../submit completes the workflow child task; POST .../reopen (engineering, appraisal, field-inspection).
  */
 import { parseFieldErrorsFromResponse } from "./field-errors";
 import { getApiBase } from "./index";

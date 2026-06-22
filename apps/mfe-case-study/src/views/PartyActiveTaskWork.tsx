@@ -69,7 +69,7 @@ const PARTY_FAILURE_RAISE_KINDS = new Set([
 const LOADING_TEXT = "text-xs text-text-3";
 const PAGE_WRAP =
   "flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg";
-const TAB_CONTENT = "min-w-0 flex-1 overflow-y-auto p-5";
+const TAB_CONTENT = "min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:p-5";
 
 function PartyWorkTabs({
   workTab,
@@ -84,6 +84,7 @@ function PartyWorkTabs({
     <nav
       className="mb-3 overflow-hidden rounded-xl border border-border"
       aria-label="أقسام المهمة"
+      role="tablist"
     >
       <div className="flex flex-wrap border-b border-border bg-surface">
         <button

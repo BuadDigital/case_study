@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans_Arabic } from "next/font/google";
+import { ToastRootProvider } from "@/providers/ToastRootProvider";
 import "./globals.css";
 
 const arabic = IBM_Plex_Sans_Arabic({
@@ -12,6 +13,11 @@ const arabic = IBM_Plex_Sans_Arabic({
 export const metadata: Metadata = {
   title: "نظام إجادة الداخلي",
   description: "تسجيل الدخول",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -30,7 +36,7 @@ export default function RootLayout({
         className="min-h-full font-sans antialiased"
         suppressHydrationWarning
       >
-        {children}
+        <ToastRootProvider>{children}</ToastRootProvider>
       </body>
     </html>
   );

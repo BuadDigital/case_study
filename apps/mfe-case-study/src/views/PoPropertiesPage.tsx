@@ -9,6 +9,8 @@ import {
   Note,
   PageGutter,
   PageShell,
+  PageShellHeader,
+  EmptyState,
   StatusBadge,
   Table,
   TBody,
@@ -194,37 +196,9 @@ export function PoPropertiesPage({
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg">
       <PageShell>
-        <header className="flex flex-col items-stretch gap-0 border-b border-border bg-gradient-to-br from-surface-2 to-surface px-5 py-4">
-          <div className="mb-2.5 flex items-start justify-between gap-4">
-            <div className="flex min-w-0 flex-col gap-2">
-              <Link
-                href={poListPath()}
-                className="inline-flex w-fit items-center gap-1.5 py-1 text-[11px] font-medium text-text-2 no-underline transition-colors hover:text-primary [&_svg]:-scale-x-100"
-              >
-                <BackIcon />
-                <span>أوامر العمل</span>
-              </Link>
-              <h1 className="m-0 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-lg font-bold leading-snug text-text">
-                <span>عقارات</span>
-                <PoNumber
-                  value={record.poNumber}
-                  className="text-[17px] text-primary"
-                />
-              </h1>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-text-2">
-                <Badge tone={assignmentTypeBadgeTone(record.assignmentType)}>
-                  {record.assignmentType}
-                </Badge>
-                <span className="select-none text-text-3" aria-hidden>
-                  ·
-                </span>
-                <span className="font-medium text-text-2">
-                  {count} من {expected}{" "}
-                  {expected === 1 ? "عقار" : "عقارات"}
-                </span>
-              </div>
-            </div>
-            {showEdit ? (
+        <PageShellHeader
+          actions={
+            showEdit ? (
               <Button
                 type="button"
                 size="sm"
@@ -234,11 +208,37 @@ export function PoPropertiesPage({
               >
                 + إضافة عقار
               </Button>
-            ) : null}
+            ) : null
+          }
+        >
+          <Link
+            href={poListPath()}
+            className="mb-2 inline-flex w-fit items-center gap-1.5 py-1 text-[11px] font-medium text-text-2 no-underline transition-colors hover:text-primary [&_svg]:-scale-x-100"
+          >
+            <BackIcon />
+            <span>أوامر العمل</span>
+          </Link>
+          <h1 className="m-0 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-base font-bold leading-snug text-text">
+            <span>عقارات</span>
+            <PoNumber
+              value={record.poNumber}
+              className="text-primary"
+            />
+          </h1>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-text-2">
+            <Badge tone={assignmentTypeBadgeTone(record.assignmentType)}>
+              {record.assignmentType}
+            </Badge>
+            <span className="select-none text-text-3" aria-hidden>
+              ·
+            </span>
+            <span className="font-medium text-text-2">
+              {count} من {expected}{" "}
+              {expected === 1 ? "عقار" : "عقارات"}
+            </span>
           </div>
-
           <div
-            className="flex flex-nowrap gap-0 overflow-x-auto pb-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:h-0"
+            className="mt-3 flex flex-nowrap gap-0 overflow-x-auto pb-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:h-0"
             aria-label="ملخص أمر العمل"
           >
             <div className="shrink-0 pe-4 ps-0">
@@ -290,25 +290,23 @@ export function PoPropertiesPage({
                 {formatDeliveryRemainingLabel(record.dueDateAt)}
               </div>
             </div>
-          </div>
-        </header>
+            </div>
+        </PageShellHeader>
 
         {count === 0 ? (
-          <div className="px-5 py-8 text-center">
-            <p className="m-0 mb-3.5 text-[13px] text-text-3">
-              لا توجد عقارات في هذا الأمر.
-            </p>
+          <EmptyState line="لا توجد عقارات في هذا الأمر.">
             {showEdit ? (
               <Button
                 type="button"
                 size="sm"
                 variant="primary"
+                className="mt-3"
                 onClick={() => router.push(poPropertyNewPath(poNumber))}
               >
                 إضافة أول عقار
               </Button>
             ) : null}
-          </div>
+          </EmptyState>
         ) : (
           <>
             <div className="w-full overflow-x-auto">
@@ -396,14 +394,14 @@ export function PoPropertiesPage({
               </Table>
             </div>
             {showDecree ? (
-              <p className="px-6 py-2 pb-3 text-[11px] text-text-3">
+              <p className="px-4 py-2 pb-3 text-[11px] text-text-3 sm:px-6">
                 مسار التنفيذ — قرار إسناد مستقل لكل صك.
                 {showRowMenu
                   ? " اضغط الصف للتفاصيل أو ⋮ للإجراءات."
                   : " اضغط الصف للتفاصيل."}
               </p>
             ) : (
-              <p className="px-6 py-2 pb-3 text-[11px] text-text-3">
+              <p className="px-4 py-2 pb-3 text-[11px] text-text-3 sm:px-6">
                 {showRowMenu
                   ? "اضغط الصف لمعاينة العقار أو ⋮ للإجراءات (تفاصيل · استدعاء المعاملة…)."
                   : "اضغط الصف لمعاينة تفاصيل العقار."}

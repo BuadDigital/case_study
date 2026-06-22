@@ -205,6 +205,43 @@ export async function listWorkOrdersWithDetails(
   }
 }
 
+export type PropertyListRowDto = {
+  id: string;
+  po: string;
+  area: string;
+  type: string;
+  key: boolean;
+  survey: string;
+  val: string;
+  study: string;
+  status: string;
+  specialist: string;
+};
+
+export type PropertyListItemDto = {
+  row: PropertyListRowDto;
+  poNumber: string;
+  propertyId: string;
+};
+
+/** Flat property rows for dashboard tables — avoids the full work-order details payload. */
+export async function listPropertyListItems(
+  config: WorkOrdersApiConfig,
+): Promise<ApiOk<PropertyListItemDto[]> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/work-orders/property-rows`, {
+      headers: headers(config.token),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    const data = (await res.json()) as PropertyListItemDto[];
+    return { ok: true, data: Array.isArray(data) ? data : [] };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
 export async function listPendingBourseProperties(
   config: WorkOrdersApiConfig,
 ): Promise<ApiOk<PendingBoursePropertyDto[]> | ApiErr> {

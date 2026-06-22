@@ -15,7 +15,7 @@ import { usePoRecordQuery, useWorkflowTasksQuery } from "../../query/case-study-
 
 const linkButtonClass = (variant: "default" | "primary" = "default") =>
   cn(
-    "inline-flex items-center justify-center gap-[5px] rounded-[var(--radius-DEFAULT)] border-[0.5px] border-solid font-normal whitespace-nowrap no-underline transition-[background,border-color] duration-150 px-2 py-1 text-[11px]",
+    "inline-flex items-center justify-center gap-[5px] rounded-[var(--radius-DEFAULT)] border-[0.5px] border-solid px-2.5 py-1.5 text-xs font-normal no-underline transition-[background,border-color] duration-150 sm:whitespace-nowrap",
     variant === "primary"
       ? "border-primary bg-primary text-white hover:border-primary-mid hover:bg-primary-mid"
       : "border-border-md bg-surface text-text hover:bg-surface-2",
@@ -50,7 +50,7 @@ export function PoPropertyDetailTopbarActions({
 
   return (
     <div
-      className="flex shrink-0 flex-wrap items-center justify-end gap-2"
+      className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-1.5 sm:gap-2"
       aria-label="إجراءات العقار"
     >
       {showEdit ? (
@@ -59,12 +59,14 @@ export function PoPropertyDetailTopbarActions({
           size="sm"
           onClick={() => router.push(poPropertyEditPath(poNumber, property.id))}
         >
-          تعديل العقار
+          <span className="sm:hidden">تعديل</span>
+          <span className="max-sm:hidden">تعديل العقار</span>
         </Button>
       ) : null}
       {needsBourse ? (
         <Link href="/bourse-inquiry" className={linkButtonClass()}>
-          استعلام البورصة
+          <span className="sm:hidden">البورصة</span>
+          <span className="max-sm:hidden">استعلام البورصة</span>
         </Link>
       ) : null}
       {task ? (
@@ -72,7 +74,8 @@ export function PoPropertyDetailTopbarActions({
           href={caseStudyWorkspacePath(task.id)}
           className={linkButtonClass("primary")}
         >
-          فتح دراسة الحالة
+          <span className="sm:hidden">دراسة الحالة</span>
+          <span className="max-sm:hidden">فتح دراسة الحالة</span>
         </Link>
       ) : null}
     </div>

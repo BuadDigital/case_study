@@ -5,13 +5,15 @@ import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-acce
 import {
   Badge,
   Button,
+  EmptyState,
+  OperationalPanel,
+  PageShell,
+  PageShellHeader,
   StatCard,
   StatGrid,
   StatLabel,
   StatSkeleton,
   StatValue,
-  SubpageHeader,
-  SubpagePanel,
   SkeletonTableRows,
   Table,
   TBody,
@@ -20,52 +22,62 @@ import {
   THead,
   Tr,
 } from "@platform/design-system";
-import { useSurveyOfficesQuery } from "../query/survey-queries";
+import {
+  useSurveyOfficesQuery,
+  useSurveyRequestStatsQuery,
+} from "../query/survey-queries";
 
 export function SurveyView() {
   const { role } = usePrototype();
   const viewOnly = !isSuperAdmin(role) && role === "general-manager";
-  const { data: offices = [], isPending } = useSurveyOfficesQuery();
-  const ready = !isPending;
+  const { data: offices = [], isPending: officesPending } = useSurveyOfficesQuery();
+  const { data: stats, isPending: statsPending } = useSurveyRequestStatsQuery();
+  const ready = !officesPending && !statsPending;
 
   return (
-    <>
-      <StatGrid>
+    <PageShell variant="canvas" className="min-h-0 flex-1">
+      <StatGrid cols={4} flush className="mb-0">
         {ready ? (
           <>
-        <StatCard accent="blue">
-          <StatLabel>إجمالي طلبات الرفع</StatLabel>
-          <StatValue value={43} countUp />
-        </StatCard>
-        <StatCard accent="green">
-          <StatLabel>مكتملة</StatLabel>
-          <StatValue value={18} countUp />
-        </StatCard>
-        <StatCard accent="warn">
-          <StatLabel>قيد التنفيذ</StatLabel>
-          <StatValue value={21} countUp />
-        </StatCard>
-        <StatCard accent="red">
-          <StatLabel>لم تُسند</StatLabel>
-          <StatValue value={4} countUp />
-        </StatCard>
+            <StatCard accent="blue" flush>
+              <StatLabel>إجمالي طلبات الرفع</StatLabel>
+              <StatValue value={stats?.total ?? 0} countUp />
+            </StatCard>
+            <StatCard accent="green" flush>
+              <StatLabel>مكتملة</StatLabel>
+              <StatValue value={stats?.completed ?? 0} countUp />
+            </StatCard>
+            <StatCard accent="warn" flush>
+              <StatLabel>قيد التنفيذ</StatLabel>
+              <StatValue value={stats?.inProgress ?? 0} countUp />
+            </StatCard>
+            <StatCard accent="red" flush>
+              <StatLabel>لم تُسند</StatLabel>
+              <StatValue value={stats?.unassigned ?? 0} countUp />
+            </StatCard>
           </>
         ) : (
           Array.from({ length: 4 }, (_, index) => (
-            <StatCard key={index} accent="gray">
+            <StatCard key={index} accent="gray" flush>
               <StatSkeleton />
             </StatCard>
           ))
         )}
       </StatGrid>
-      <SubpagePanel>
-        <SubpageHeader title="المكاتب الهندسية المعتمدة">
-          {!viewOnly ? (
-            <Button size="sm" variant="primary">
-              + إضافة مكتب
-            </Button>
-          ) : null}
-        </SubpageHeader>
+
+      <OperationalPanel className="min-h-0 flex-1">
+        {!viewOnly ? (
+          <PageShellHeader
+            hideTitle
+            title="مكاتب الرفع الهندسي"
+            actions={
+              <Button size="sm" variant="primary">
+                + إضافة مكتب
+              </Button>
+            }
+          />
+        ) : null}
+
         <Table pending={!ready}>
           <THead>
             <Tr hoverable={false}>
@@ -80,35 +92,50 @@ export function SurveyView() {
           <TBody>
             {!ready ? (
               <SkeletonTableRows rows={4} cols={6} />
-            ) : (
-              offices.map((row) => (
-              <Tr key={row.name} hoverable={false}>
-                <Td className="font-medium">{row.name}</Td>
-                <Td>{row.active}</Td>
-                <Td>{row.doneMonth}</Td>
-                <Td>{row.avgDays}</Td>
-                <Td>
-                  <Badge tone="default" className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal">
-                    {row.contract}
-                  </Badge>
-                </Td>
-                <Td>
-                  {row.statusBusy ? (
-                    <Badge tone="warning" className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal">
-                      مشغول
-                    </Badge>
-                  ) : (
-                    <Badge tone="success" className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal">
-                      نشط
-                    </Badge>
-                  )}
+            ) : offices.length === 0 ? (
+              <Tr hoverable={false}>
+                <Td colSpan={6}>
+                  <EmptyState line="لا توجد مكاتب مسجّلة" />
                 </Td>
               </Tr>
-            ))
+            ) : (
+              offices.map((row) => (
+                <Tr key={row.id} hoverable={false}>
+                  <Td className="font-medium">{row.name}</Td>
+                  <Td>{row.active}</Td>
+                  <Td>{row.doneMonth}</Td>
+                  <Td>{row.avgDays}</Td>
+                  <Td>
+                    <Badge
+                      tone="default"
+                      className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal"
+                    >
+                      {row.contract}
+                    </Badge>
+                  </Td>
+                  <Td>
+                    {row.statusBusy ? (
+                      <Badge
+                        tone="warning"
+                        className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal"
+                      >
+                        مشغول
+                      </Badge>
+                    ) : (
+                      <Badge
+                        tone="success"
+                        className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal"
+                      >
+                        نشط
+                      </Badge>
+                    )}
+                  </Td>
+                </Tr>
+              ))
             )}
           </TBody>
         </Table>
-      </SubpagePanel>
-    </>
+      </OperationalPanel>
+    </PageShell>
   );
 }

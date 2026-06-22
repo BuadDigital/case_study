@@ -55,6 +55,7 @@ import {
   PoPropertyDetailTopbarActions,
   PO_PROPERTY_SEGMENT,
   decodePoParam,
+  poPropertiesPath,
 } from "@case-study/mfe";
 import { AppBreadcrumb } from "@/components/views/AppBreadcrumb";
 import { resolvePoChrome, buildPoPropertyDetailSegments } from "@/lib/po-chrome";
@@ -67,17 +68,90 @@ import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import { cn, Button } from "@platform/design-system";
 import { clearAuthSession, getAuthSession } from "@platform/auth-client";
 
+function TopbarSvgIcon({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex size-5 shrink-0 items-center justify-center [&>svg]:size-5">
+      {children}
+    </span>
+  );
+}
+
+function MenuIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <path d="M4 7h16M4 12h16M4 17h16" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  );
+}
+
+function LogoutIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+      <path d="M10 17l5-5-5-5M15 12H3" />
+    </svg>
+  );
+}
+
+function BackChevronIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-4 shrink-0 text-text-3"
+      aria-hidden
+    >
+      <path d="M9 18l6-6-6-6" />
+    </svg>
+  );
+}
+
+const mobileTopbarIconBtn =
+  "flex size-10 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-surface text-text shadow-[0_1px_2px_rgba(15,52,96,0.06)] transition-colors hover:bg-surface-2 active:scale-[0.98] lg:hidden";
+
 function navItemClasses({
   active = false,
   sub = false,
   locked = false,
-  dummy = false,
   toggle = false,
 }: {
   active?: boolean;
   sub?: boolean;
   locked?: boolean;
-  dummy?: boolean;
   toggle?: boolean;
 } = {}) {
   return cn(
@@ -87,20 +161,14 @@ function navItemClasses({
     sub && "gap-[7px] ps-8 text-[11px] [&>svg]:size-3",
     toggle && "w-full border-0 bg-transparent font-inherit",
     active &&
-      !dummy &&
       "bg-primary/18 font-medium text-white before:absolute before:inset-y-0 before:start-0 before:w-[3px] before:rounded-e-sm before:bg-primary before:content-['']",
-    dummy && "text-red-400 hover:bg-red-400/10",
-    dummy &&
-      active &&
-      "bg-red-500/14 font-medium text-red-300 before:bg-red",
     locked && "cursor-default opacity-35",
   );
 }
 
-function navBadgeClasses(teal?: boolean) {
+function navBadgeClasses() {
   return cn(
-    "ms-auto inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full px-[5px] text-[10px] font-semibold text-white",
-    teal ? "bg-primary" : "bg-red",
+    "ms-auto inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-primary px-[5px] text-[10px] font-semibold text-white",
   );
 }
 
@@ -154,16 +222,14 @@ function NavRow({
     badgeCount != null && badgeCount > 0
       ? String(badgeCount)
       : item.badge;
-  const badgeTeal = item.id === "po";
   const badge = badgeValue ? (
-    <span className={navBadgeClasses(badgeTeal)}>{badgeValue}</span>
+    <span className={navBadgeClasses()}>{badgeValue}</span>
   ) : null;
   return (
     <Link
       href={`/${item.id}`}
       className={navItemClasses({
         active,
-        dummy: item.placeholder,
       })}
       prefetch
       onMouseEnter={() => onPrefetch(item.id)}
@@ -181,7 +247,6 @@ function ActiveTransactionNavRow({
   label,
   icon,
   available,
-  placeholder,
   badgeCount,
   active,
   onPrefetch,
@@ -190,7 +255,6 @@ function ActiveTransactionNavRow({
   label: string;
   icon: string;
   available: boolean;
-  placeholder?: boolean;
   badgeCount?: number;
   active: boolean;
   onPrefetch: (page: PageId) => void;
@@ -199,7 +263,6 @@ function ActiveTransactionNavRow({
     active,
     sub: true,
     locked: !available,
-    dummy: placeholder,
   });
   const inner = (
     <>
@@ -311,7 +374,6 @@ function ActiveTransactionsNavDropdown({
               label={tx.label}
               icon={tx.icon}
               available={tx.available}
-              placeholder={tx.placeholder}
               badgeCount={badges[tx.id]}
               active={childActive(tx)}
               onPrefetch={onPrefetch}
@@ -376,7 +438,6 @@ function FooterNavDropdown({
               label={item.label}
               icon={item.icon}
               available={item.available}
-              placeholder={item.placeholder}
               badgeCount={
                 "badge" in item && item.badge
                   ? Number(item.badge) || undefined
@@ -397,6 +458,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { role, rolePages } = usePrototype();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   // Read sessionStorage once per render cycle, not multiple times.
   const sessionUser = useMemo(() => getAuthSession()?.user, []);
 
@@ -463,6 +525,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const timer = setTimeout(run, 250);
     return () => clearTimeout(timer);
   }, [queryClient, currentPage]);
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [pathname]);
 
   const onCaseStudyWorkspace = pathname?.startsWith("/case-study/") ?? false;
   const onActiveSurveyWorkspace = pathParts[0] === "active-survey" && pathParts.length >= 2;
@@ -720,9 +786,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div id="app" className="flex h-svh overflow-hidden bg-bg">
+      {mobileNavOpen ? (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          aria-label="إغلاق القائمة"
+          onClick={() => setMobileNavOpen(false)}
+        />
+      ) : null}
       <div
         id="sidebar"
-        className="flex h-svh w-sidebar shrink-0 flex-col overflow-hidden border-s border-white/[0.06] bg-sidebar text-white [color-scheme:dark]"
+        className={cn(
+          "flex h-svh w-sidebar shrink-0 flex-col overflow-hidden border-s border-white/[0.06] bg-sidebar text-white [color-scheme:dark]",
+          "max-lg:fixed max-lg:inset-y-0 max-lg:start-0 max-lg:z-50 max-lg:shadow-xl max-lg:transition-transform max-lg:duration-200 max-lg:ease-out",
+          mobileNavOpen ? "max-lg:translate-x-0" : "max-lg:translate-x-full",
+          "lg:translate-x-0",
+        )}
       >
         <div className="flex items-center gap-2 border-b border-sidebar-border px-3.5 py-4">
           <div
@@ -747,9 +826,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16" />
             </svg>
           </div>
-          <span className="text-[13px] font-semibold leading-snug text-white">
+          <span className="min-w-0 flex-1 text-[13px] font-semibold leading-snug text-white">
             إجادة للتقييم
           </span>
+          <button
+            type="button"
+            className="flex size-9 shrink-0 items-center justify-center rounded-lg text-white/70 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
+            aria-label="إغلاق القائمة"
+            onClick={() => setMobileNavOpen(false)}
+          >
+            <TopbarSvgIcon>
+              <CloseIcon />
+            </TopbarSvgIcon>
+          </button>
         </div>
         <div className="flex min-h-0 flex-1 flex-col justify-between overflow-hidden">
           <nav
@@ -912,16 +1001,41 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div id="main" className="flex min-w-0 flex-1 flex-col overflow-hidden bg-bg">
         <div
           id="topbar"
-          className="flex h-topbar shrink-0 items-center justify-between gap-3 border-b-[0.5px] border-border bg-surface px-6"
+          className="flex h-topbar shrink-0 items-center justify-between gap-2 border-b-[0.5px] border-border bg-surface px-4 sm:gap-3 sm:px-6"
         >
-          <div className="flex min-w-0 flex-1 items-center gap-3">
-            <AppBreadcrumb segments={displayBreadcrumbSegments} />
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              className={cn(mobileTopbarIconBtn, "text-text-2")}
+              aria-label="فتح القائمة"
+              onClick={() => setMobileNavOpen(true)}
+            >
+              <TopbarSvgIcon>
+                <MenuIcon />
+              </TopbarSvgIcon>
+            </button>
+            {onPoPropertyDetail && poChrome?.propertyDetail ? (
+              <Link
+                href={poPropertiesPath(poChrome.propertyDetail.poNumber)}
+                className="flex min-w-0 flex-1 items-center gap-1 truncate text-[13px] font-medium text-text no-underline transition-colors hover:text-primary lg:hidden"
+              >
+                <BackChevronIcon />
+                <PoNumber value={poChrome.propertyDetail.poNumber} />
+              </Link>
+            ) : null}
+            <AppBreadcrumb
+              segments={displayBreadcrumbSegments}
+              className={cn(
+                "max-lg:min-w-0 max-lg:flex-1 max-lg:flex-nowrap max-lg:overflow-x-auto max-lg:[&::-webkit-scrollbar]:hidden",
+                onPoPropertyDetail && "max-lg:hidden",
+              )}
+            />
             {!onPoPropertyDetail && !onActiveSurveyPropertyDetail
               ? (() => {
                   if (!resolvedPageTitle && !poChrome?.titlePo) return null;
                   return (
                     <div
-                      className="text-sm font-semibold text-text"
+                      className="hidden text-sm font-semibold text-text sm:block"
                       id="page-title"
                     >
                       {poChrome?.titlePo ? (
@@ -939,25 +1053,41 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 })()
               : null}
           </div>
-          <div className="flex shrink-0 items-center gap-2.5">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2.5">
             {poChrome?.propertyDetail ? (
-              <PoPropertyDetailTopbarActions
-                poNumber={poChrome.propertyDetail.poNumber}
-                propertyId={poChrome.propertyDetail.propertyId}
-              />
+              <div className="max-lg:hidden">
+                <PoPropertyDetailTopbarActions
+                  poNumber={poChrome.propertyDetail.poNumber}
+                  propertyId={poChrome.propertyDetail.propertyId}
+                />
+              </div>
             ) : null}
             {onActiveSurveyPropertyDetail ? (
               <EngineeringSurveyTopbarActions />
             ) : null}
+            <button
+              type="button"
+              className={cn(
+                mobileTopbarIconBtn,
+                "text-text-2 hover:border-danger/25 hover:bg-danger-bg hover:text-danger-text",
+              )}
+              onClick={handleLogout}
+              aria-label="تسجيل الخروج"
+            >
+              <TopbarSvgIcon>
+                <LogoutIcon />
+              </TopbarSvgIcon>
+            </button>
             <Button
               type="button"
               variant="outline"
               size="sm"
+              className="max-lg:hidden"
               onClick={handleLogout}
             >
               تسجيل الخروج
             </Button>
-            <div className="flex items-center gap-[7px] rounded-[20px] border-[0.5px] border-border-md bg-surface-2 py-1 ps-1.5 pe-2.5">
+            <div className="hidden items-center gap-[7px] rounded-[20px] border-[0.5px] border-border-md bg-surface-2 py-1 ps-1.5 pe-1.5 sm:flex sm:pe-2.5">
               <div
                 className="flex size-[26px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
                 id="uav"
@@ -965,11 +1095,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               >
                 {def.init}
               </div>
-              <div>
-                <div className="text-xs font-medium" id="uname">
+              <div className="hidden min-w-0 sm:block">
+                <div className="truncate text-xs font-medium" id="uname">
                   {chipName}
                 </div>
-                <div className="text-[10px] text-text-3" id="udept">
+                <div className="truncate text-[10px] text-text-3" id="udept">
                   {def.dept}
                 </div>
               </div>

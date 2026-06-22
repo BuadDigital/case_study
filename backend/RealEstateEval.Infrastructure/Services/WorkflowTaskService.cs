@@ -259,7 +259,20 @@ public class WorkflowTaskService : IWorkflowTaskService
                 .Where(s => taskIds.Contains(s.WorkflowTaskId))
                 .ToListAsync(cancellationToken);
             if (subs.Count > 0)
+            {
+                var inspectionTaskIds = subs
+                    .Where(s => s.Kind == "field-inspection")
+                    .Select(s => s.WorkflowTaskId)
+                    .ToList();
+                if (inspectionTaskIds.Count > 0)
+                {
+                    await _db.FieldInspectionWorkspaces
+                        .Where(w => inspectionTaskIds.Contains(w.WorkflowTaskId))
+                        .ExecuteDeleteAsync(cancellationToken);
+                }
+
                 _db.PartyTaskSubmissions.RemoveRange(subs);
+            }
         }
         _db.WorkflowTasks.RemoveRange(tasks);
         await _db.SaveChangesAsync(cancellationToken);
@@ -521,6 +534,9 @@ public class WorkflowTaskService : IWorkflowTaskService
         CancellationToken cancellationToken)
     {
         if (taskIds.Count == 0) return;
+        await _db.FieldInspectionWorkspaces
+            .Where(w => taskIds.Contains(w.WorkflowTaskId))
+            .ExecuteDeleteAsync(cancellationToken);
         var subs = await _db.PartyTaskSubmissions
             .Where(s => taskIds.Contains(s.WorkflowTaskId))
             .ToListAsync(cancellationToken);

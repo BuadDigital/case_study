@@ -40,8 +40,9 @@ export function FieldInspectionWorkPanel({
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <nav
-        className="flex shrink-0 gap-0 overflow-x-auto border-b border-border bg-surface px-6 [&::-webkit-scrollbar]:h-0"
+        className="flex shrink-0 gap-0 overflow-x-auto border-b border-border bg-surface px-4 sm:px-6 [&::-webkit-scrollbar]:h-0"
         aria-label="أقسام المهمة"
+        role="tablist"
       >
         <button
           type="button"
@@ -76,7 +77,7 @@ export function FieldInspectionWorkPanel({
       </nav>
 
       <div className="flex min-h-0 flex-1 flex-row items-stretch overflow-hidden max-lg:flex-col">
-        <div className="order-1 min-h-0 min-w-0 flex-1 overflow-y-auto px-6 py-5">
+        <div className="order-1 min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
           {workTab === "property" ? (
             <EngineeringSurveyPropertySummary
               property={property}

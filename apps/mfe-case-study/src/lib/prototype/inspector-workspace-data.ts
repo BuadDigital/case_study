@@ -1,6 +1,6 @@
 /** Inspector workspace draft — replaces legacy FieldInspectionSubmission. */
 
-export type InspectorWorkspaceStatus = "draft" | "submitted";
+export type InspectorWorkspaceStatus = "draft" | "submitted" | "reopened";
 
 export type InspectorBoundaryKey = "north" | "south" | "east" | "west";
 
@@ -263,6 +263,7 @@ export type InspectorWorkspaceDraft = {
   observations: InspectorObservation[];
   inspectionConfirmed: boolean;
   status: InspectorWorkspaceStatus;
+  returnNote?: string;
   submittedAtUtc: string | null;
   updatedAtUtc: string;
 };
@@ -343,6 +344,14 @@ export function isInspectorWorkspaceLocked(
   return status === "submitted";
 }
 
+export function inspectorWorkspaceStatusLabel(
+  status: InspectorWorkspaceStatus,
+): string {
+  if (status === "submitted") return "مُرسَل";
+  if (status === "reopened") return "مُعاد للتصحيح";
+  return "قيد العمل";
+}
+
 export function nextInspectorPhotoId(draft: InspectorWorkspaceDraft): number {
   let max = 0;
   for (const slot of Object.values(draft.definedPhotos)) {
@@ -405,15 +414,26 @@ export function parseInspectorCount(value: string): number {
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
+export function inspectorFeatureRequiresPhoto(
+  field: InspectorFeatureField,
+  value: string,
+): boolean {
+  if (!field.photoOnYes) return false;
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (field.options.includes("نعم")) return trimmed === "نعم";
+  return true;
+}
+
 export function listInspectorPhotoValidationIssues(
   draft: InspectorWorkspaceDraft,
 ): string[] {
   const issues: string[] = [];
 
   for (const field of INSPECTOR_FEATURE_FIELDS) {
+    const value = draft.featureValues[field.key] ?? "";
     if (
-      field.photoOnYes &&
-      draft.featureValues[field.key] === "نعم" &&
+      inspectorFeatureRequiresPhoto(field, value) &&
       !draft.featurePhotoAttachments[field.key]?.fileName
     ) {
       issues.push(`يجب إرفاق صورة توثيقية: ${field.label}`);
@@ -450,13 +470,6 @@ export function listInspectorPhotoValidationIssues(
   }
 
   return issues;
-}
-
-export function inspectorWorkspaceStatusLabel(
-  status: InspectorWorkspaceStatus,
-): string {
-  if (status === "submitted") return "مُرسَل";
-  return "قيد العمل";
 }
 
 export function newObservationId(): string {

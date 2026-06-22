@@ -528,6 +528,82 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.ToTable("FieldDictionaryConfigs", "platform");
                 });
 
+            modelBuilder.Entity("RealEstateEval.Domain.FieldInspectionWorkspace", b =>
+                {
+                    b.Property<Guid>("WorkflowTaskId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AttachmentCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CompletedPhotoSlots")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly?>("InspectionDate")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("InspectionConfirmed")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("InspectionTime")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<decimal?>("MapLatitude")
+                        .HasPrecision(10, 6)
+                        .HasColumnType("numeric(10,6)");
+
+                    b.Property<decimal?>("MapLongitude")
+                        .HasPrecision(10, 6)
+                        .HasColumnType("numeric(10,6)");
+
+                    b.Property<int>("ObservationCount")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("PartyTaskSubmissionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("PendingPhotoApprovals")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PoNumber")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid?>("PropertyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("RequiredPhotoSlots")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTime?>("SubmittedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("WorkflowTaskId");
+
+                    b.HasIndex("PartyTaskSubmissionId")
+                        .IsUnique();
+
+                    b.HasIndex("PoNumber");
+
+                    b.HasIndex("PropertyId");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("FieldInspectionWorkspaces", "case_study");
+                });
+
             modelBuilder.Entity("RealEstateEval.Domain.FileAttachment", b =>
                 {
                     b.Property<Guid>("Id")

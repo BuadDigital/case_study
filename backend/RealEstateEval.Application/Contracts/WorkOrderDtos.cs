@@ -122,6 +122,27 @@ public class UpdatePropertyBourseRequest
     public string? WestBoundaryLengthM { get; set; }
 }
 
+public class PropertyListRowDto
+{
+    public string Id { get; set; } = "";
+    public string Po { get; set; } = "";
+    public string Area { get; set; } = "";
+    public string Type { get; set; } = "";
+    public bool Key { get; set; }
+    public string Survey { get; set; } = "new";
+    public string Val { get; set; } = "new";
+    public string Study { get; set; } = "new";
+    public string Status { get; set; } = "new";
+    public string Specialist { get; set; } = "";
+}
+
+public class PropertyListItemDto
+{
+    public PropertyListRowDto Row { get; set; } = new();
+    public string PoNumber { get; set; } = "";
+    public string PropertyId { get; set; } = "";
+}
+
 public class WorkOrderListItemDto
 {
     public string PoNumber { get; set; } = "";
