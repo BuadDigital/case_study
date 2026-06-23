@@ -39,6 +39,8 @@ export type ListInspectorFeesQuery = {
   assigneeId?: string;
   workflowTaskId?: string;
   submittedOnly?: boolean;
+  /** field-inspection | engineering-survey */
+  taskKind?: string;
 };
 
 function headers(token: string): HeadersInit {
@@ -87,6 +89,7 @@ function queryString(query: ListInspectorFeesQuery): string {
     params.set("workflowTaskId", query.workflowTaskId.trim());
   if (query.submittedOnly !== undefined)
     params.set("submittedOnly", String(query.submittedOnly));
+  if (query.taskKind?.trim()) params.set("taskKind", query.taskKind.trim());
   const qs = params.toString();
   return qs ? `?${qs}` : "";
 }

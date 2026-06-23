@@ -163,7 +163,7 @@ public class WorkflowTaskService : IWorkflowTaskService
         await _db.SaveChangesAsync(cancellationToken);
 
         await _inspectorFees.EnsureLedgersForTasksAsync(
-            children.Where(c => c.Kind == "field-inspection"),
+            children.Where(c => c.Kind is "field-inspection" or "engineering-survey"),
             cancellationToken);
 
         return new ConfirmTaskDistributionResponseDto

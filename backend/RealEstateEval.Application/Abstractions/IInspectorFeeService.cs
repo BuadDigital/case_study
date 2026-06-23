@@ -6,13 +6,14 @@ namespace RealEstateEval.Application.Abstractions;
 public interface IInspectorFeeService
 {
     Task EnsureLedgersForTasksAsync(
-        IEnumerable<WorkflowTask> fieldInspectionTasks,
+        IEnumerable<WorkflowTask> tasks,
         CancellationToken cancellationToken = default);
 
     Task<InspectorFeesSummaryDto> GetSummaryAsync(
         string? assigneeId,
         string? workflowTaskId,
         bool submittedOnly,
+        string? taskKind = null,
         CancellationToken cancellationToken = default);
 
     Task<InspectorFeeRowDto?> GetByWorkflowTaskIdAsync(

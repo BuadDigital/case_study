@@ -25,6 +25,7 @@ import {
   queueTableWrapClassName,
 } from "@platform/design-system";
 import { InternalDelegationLetterPanel } from "../components/government-review/InternalDelegationLetterPanel";
+import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
 import { PoNumber } from "../components/ui/PoNumber";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import { getAuthSession } from "@platform/auth-client";
@@ -302,19 +303,11 @@ export function GovernmentReviewView() {
     return <PanelSkeleton className="p-4" />;
   }
 
-  return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg">
-      <div
-        className={cn(
-          "grid min-h-0 flex-1 items-stretch gap-3 bg-bg px-4 py-4 sm:py-5",
-          hasRail && panelOpen && selectedRow
-            ? "grid-cols-1 lg:grid-cols-[minmax(0,1.05fr)_minmax(300px,1fr)]"
-            : "grid-cols-1",
-        )}
-      >
+  const queuePanel = (
         <OperationalPanel
           className={cn(
-            hasRail && panelOpen && selectedRow ? "min-h-0 flex-1" : "flex-none",
+            "min-h-0 flex-1",
+            hasRail && panelOpen && selectedRow ? undefined : "flex-none",
           )}
         >
           {!queueReady ? (
@@ -404,26 +397,35 @@ export function GovernmentReviewView() {
             </>
           )}
         </OperationalPanel>
+  );
 
-        {hasRail ? (
-          <OperationalPanel
-            id="government-review-panel"
-            className={cn(
-              "min-h-0 min-w-0 self-stretch opacity-0 invisible",
-              panelOpen && selectedRow && "visible opacity-100",
-            )}
-          >
-            {panelOpen && selectedRow ? (
-              <GovernmentReviewPoPanel
-                row={selectedRow}
-                onClose={closePanel}
-                onRefresh={refreshWork}
-                onOpenTask={(taskId) => openTask(selectedRow.poNumber, taskId)}
-              />
-            ) : null}
-          </OperationalPanel>
+  const sidePanel =
+    hasRail ? (
+      <OperationalPanel
+        id="government-review-panel"
+        className={cn(
+          "min-h-0 min-w-0 self-stretch opacity-0 invisible",
+          panelOpen && selectedRow && "visible opacity-100",
+        )}
+      >
+        {panelOpen && selectedRow ? (
+          <GovernmentReviewPoPanel
+            row={selectedRow}
+            onClose={closePanel}
+            onRefresh={refreshWork}
+            onOpenTask={(taskId) => openTask(selectedRow.poNumber, taskId)}
+          />
         ) : null}
-      </div>
-    </div>
+      </OperationalPanel>
+    ) : null;
+
+  return (
+    <ActiveTransactionPageLayout
+      pageId="government-review"
+      hasRail={hasRail}
+      panelOpen={panelOpen && Boolean(selectedRow)}
+      queuePanel={queuePanel}
+      sidePanel={sidePanel}
+    />
   );
 }

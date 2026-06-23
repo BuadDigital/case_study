@@ -11,9 +11,11 @@ import {
   cn,
   type StatAccent,
 } from "@platform/design-system";
-import { useActiveTransactionsSituation } from "@case-study/mfe/query/use-active-transactions-situation";
+import type { PageId } from "@platform/types";
+import { useActiveTransactionPageSituation } from "@case-study/mfe/query/use-active-transaction-page-situation";
+import type { SituationTone } from "@case-study/mfe/lib/prototype/active-transaction-page-situation";
 
-const toneAccent: Record<"blue" | "warn" | "green" | "red", StatAccent> = {
+const toneAccent: Record<SituationTone, StatAccent> = {
   blue: "blue",
   warn: "amber",
   green: "green",
@@ -30,7 +32,7 @@ function SituationCard({
   label: string;
   value: number | undefined;
   sub: string;
-  tone: "blue" | "warn" | "green" | "red";
+  tone: SituationTone;
   href?: string;
 }) {
   const inner = (
@@ -57,64 +59,28 @@ function SituationCard({
   return <StatCard accent={toneAccent[tone]}>{inner}</StatCard>;
 }
 
-const SUB_ASSIGNED_TO_YOU = "المسندة إليك";
+/** ملخص وضع الصفحة — أعلى شاشات المعاملات النشطة (أرقام خاصة بكل تبويب). */
+export function ActiveTransactionsSituationBar({
+  pageId,
+}: {
+  pageId: PageId;
+}) {
+  const situation = useActiveTransactionPageSituation(pageId);
+  if (!situation) return null;
 
-/** ملخص «وضعي» — أعلى كل شاشات المعاملات النشطة (أرقام فقط). */
-export function ActiveTransactionsSituationBar() {
-  const stats = useActiveTransactionsSituation();
-  const { showPoMetrics, showTransactionMetrics } = stats.flags;
-
-  if (!showPoMetrics && !showTransactionMetrics) return null;
-
-  const cards: ReactNode[] = [];
-
-  if (showPoMetrics) {
-    cards.push(
-      <SituationCard
-        key="po"
-        label="أوامر العمل النشطة"
-        value={stats.incompletePo}
-        sub={SUB_ASSIGNED_TO_YOU}
-        tone="blue"
-        href="/po"
-      />,
-      <SituationCard
-        key="props"
-        label="عقارات وردت اليوم"
-        value={stats.propertiesToday}
-        sub={SUB_ASSIGNED_TO_YOU}
-        tone="warn"
-      />,
-    );
-  }
-
-  if (showTransactionMetrics) {
-    cards.push(
-      <SituationCard
-        key="in"
-        label="كل المعاملات"
-        value={stats.transactionsArrivedToday}
-        sub={SUB_ASSIGNED_TO_YOU}
-        tone="green"
-      />,
-      <SituationCard
-        key="done"
-        label="أنجزت اليوم"
-        value={stats.transactionsDoneToday}
-        sub={SUB_ASSIGNED_TO_YOU}
-        tone="red"
-      />,
-    );
-  }
-
+  const { cards, values } = situation;
   const gridCols = cards.length as 2 | 3 | 4;
 
-  return (
-    <section
-      className="shrink-0 bg-bg px-4 pt-4"
-      aria-label="ملخص وضع المعاملات"
-    >
-      <StatGrid cols={gridCols}>{cards}</StatGrid>
-    </section>
-  );
+  const rendered: ReactNode[] = cards.map((card) => (
+    <SituationCard
+      key={card.key}
+      label={card.label}
+      value={values[card.key]}
+      sub={card.sub}
+      tone={card.tone}
+      href={card.href}
+    />
+  ));
+
+  return <StatGrid cols={gridCols}>{rendered}</StatGrid>;
 }

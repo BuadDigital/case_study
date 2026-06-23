@@ -498,14 +498,14 @@ export function PoListView() {
                         colSpan={10}
                         className="cursor-default py-10 text-center text-[13px] text-text-3"
                       >
-                        <InboxIcon />
-                        {list.length === 0
-                          ? viewOnly
-                            ? "لا توجد أوامر عمل."
-                            : showIntake
-                              ? "لا توجد أوامر عمل — استلم أمر عمل جديداً من إنفاذ."
-                              : "لا توجد أوامر عمل."
-                          : "لا توجد نتائج مطابقة"}
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <InboxIcon />
+                          <span>
+                            {list.length === 0
+                              ? "لا توجد أوامر عمل."
+                              : "لا توجد نتائج مطابقة"}
+                          </span>
+                        </div>
                       </Td>
                     </Tr>
                   ) : (

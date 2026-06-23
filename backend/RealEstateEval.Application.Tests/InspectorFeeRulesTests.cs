@@ -18,10 +18,25 @@ public class InspectorFeeRulesTests
         Assert.Equal(expectedFee, InspectorFeeRules.DefaultAgreedFee(type));
     }
 
+    [Theory]
+    [InlineData("jeddah_survey", "متعاون", 500)]
+    [InlineData("eo-jeddah", "متعاون", 500)]
+    [InlineData("eo-internal", "موظف", 150)]
+    public void Resolves_engineering_office_type_and_default_fee(
+        string? assigneeId,
+        string expectedType,
+        decimal expectedFee)
+    {
+        var type = EngineeringSurveyFeeRules.ResolveOfficeType(assigneeId);
+        Assert.Equal(expectedType, type);
+        Assert.Equal(expectedFee, EngineeringSurveyFeeRules.DefaultAgreedFee(type));
+    }
+
     [Fact]
     public void Net_fee_never_goes_negative()
     {
         Assert.Equal(350m, InspectorFeeRules.NetFee(400m, 50m));
         Assert.Equal(0m, InspectorFeeRules.NetFee(100m, 200m));
+        Assert.Equal(350m, EngineeringSurveyFeeRules.NetFee(500m, 150m));
     }
 }

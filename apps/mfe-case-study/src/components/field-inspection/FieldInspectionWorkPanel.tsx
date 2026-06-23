@@ -110,7 +110,7 @@ export function FieldInspectionWorkPanel({
             </>
           ) : null}
           {workTab === "fees" ? (
-            <InspectorFeesTab tasks={[task]} />
+            <InspectorFeesTab tasks={[task]} variant="field-inspection" />
           ) : null}
           {workTab === "failures" && task.propertyId ? (
             <div id="inspector-failure-raise" className="scroll-mt-4">

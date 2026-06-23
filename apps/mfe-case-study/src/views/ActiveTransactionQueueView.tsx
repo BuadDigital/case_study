@@ -60,6 +60,7 @@ import {
   useWorkflowTasksQuery,
 } from "@case-study/mfe/query/case-study-queries";
 import { useQueryClient } from "@tanstack/react-query";
+import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 
 export type ActiveTransactionQueueTableLayout =
@@ -415,20 +416,15 @@ export function ActiveTransactionQueueView({
     [showPartyColumns, router, handleRowClick],
   );
 
-  const hasRail = !useFullPage && queueReady && listed.length > 0 && renderPanel;
+  const hasRail =
+    !useFullPage && queueReady && listed.length > 0 && Boolean(renderPanel);
 
-  return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg">
-      <div
-        className={cn(
-          "grid min-h-0 flex-1 gap-3 bg-bg px-4 py-4 sm:py-5",
-          hasRail && panelOpen
-            ? "grid-cols-1 lg:grid-cols-[minmax(0,1.05fr)_minmax(300px,1fr)] lg:items-stretch"
-            : "grid-cols-1 items-start content-start",
-        )}
-      >
+  const queuePanel = (
         <OperationalPanel
-          className={cn(hasRail && panelOpen ? "min-h-0 flex-1" : "flex-none")}
+          className={cn(
+            "min-h-0 flex-1",
+            hasRail && panelOpen ? undefined : "flex-none",
+          )}
         >
           {!config.hidePageTitle && config.pageTitle ? (
             <PageShellHeader title={config.pageTitle} />
@@ -630,25 +626,34 @@ export function ActiveTransactionQueueView({
             </>
           )}
         </OperationalPanel>
+  );
 
-        {hasRail && renderPanel ? (
-          <OperationalPanel
-            id={config.panelId}
-            className={cn(
-              "min-h-0 min-w-0 self-stretch opacity-0 invisible",
-              panelOpen && "visible opacity-100",
-            )}
-          >
-            {panelOpen && selectedTask
-              ? renderPanel({
-                  task: selectedTask,
-                  onRefresh: refreshWork,
-                  onClose: closePanel,
-                })
-              : null}
-          </OperationalPanel>
-        ) : null}
-      </div>
-    </div>
+  const sidePanel =
+    hasRail && renderPanel ? (
+      <OperationalPanel
+        id={config.panelId}
+        className={cn(
+          "min-h-0 min-w-0 self-stretch opacity-0 invisible",
+          panelOpen && "visible opacity-100",
+        )}
+      >
+        {panelOpen && selectedTask
+          ? renderPanel({
+              task: selectedTask,
+              onRefresh: refreshWork,
+              onClose: closePanel,
+            })
+          : null}
+      </OperationalPanel>
+    ) : null;
+
+  return (
+    <ActiveTransactionPageLayout
+      pageId={config.pageId ?? "active-primary-data"}
+      hasRail={hasRail}
+      panelOpen={panelOpen}
+      queuePanel={queuePanel}
+      sidePanel={sidePanel}
+    />
   );
 }

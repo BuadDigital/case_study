@@ -10,8 +10,6 @@ import {
   EmptyState,
   Note,
   OperationalPanel,
-  PageShellHeader,
-  PageToolbar,
   QueueTableHint,
   SkeletonTableRows,
   Table,
@@ -59,6 +57,7 @@ import {
   validatePropertyBourseFields,
 } from "@case-study/mfe/components/po-intake/po-property-bourse-validation";
 import type { PendingBoursePropertyDto } from "@platform/api-client";
+import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
 
 const ROW = queueTableRowClassName;
 const ROW_ACTIVE = queueTableRowActiveClassName;
@@ -224,44 +223,16 @@ export function BourseInquiryView() {
 
   const obstructionPath = deedVitality === "inactive";
 
-  const showSplit = !!selected || (isFetched && items.length > 0);
+  const hasRail = isFetched && items.length > 0;
+  const panelOpen = Boolean(selected);
 
-  return (
-    <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg">
-      <div
-        className={cn(
-          "grid min-h-0 flex-1 items-stretch gap-3 bg-bg px-4 py-4 sm:py-5",
-          showSplit
-            ? "grid-cols-1 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]"
-            : "grid-cols-1",
-        )}
-      >
-        <OperationalPanel className={cn(showSplit ? "min-h-0 flex-1" : "flex-none")}>
-          <PageShellHeader
-            hideTitle
-            title="استعلام بورصة"
-            actions={
-              <Button
-                type="button"
-                size="sm"
-                variant="default"
-                className="shrink-0"
-                disabled={queuePending}
-                onClick={() => void refresh()}
-              >
-                تحديث
-              </Button>
-            }
-          />
-
-          <PageToolbar className="border-b-0 bg-surface-2/50">
-            <Note tone="info" className="m-0 flex-1">
-              <strong>مسار العمل:</strong> اختر صكاً من قائمة الانتظار، أكمل المدينة
-              والتصنيف ونوع العقار وبيانات الحدود من البورصة، ثم احفظ — يُزال الصك
-              من القائمة ويُحدَّث في شاشة العقارات.
-            </Note>
-          </PageToolbar>
-
+  const queuePanel = (
+        <OperationalPanel
+          className={cn(
+            "min-h-0 flex-1",
+            hasRail && panelOpen ? undefined : "flex-none",
+          )}
+        >
           {isFetched && items.length === 0 ? (
             <EmptyState
               line="لا توجد صكوك بانتظار البورصة"
@@ -341,9 +312,11 @@ export function BourseInquiryView() {
             </>
           )}
         </OperationalPanel>
+  );
 
-        {selected ? (
-          <OperationalPanel className="flex max-h-none flex-col self-start max-lg:static max-lg:max-h-none lg:sticky lg:top-3 lg:max-h-[calc(100dvh-5.5rem)]">
+  const sidePanel = hasRail ? (
+        selected ? (
+          <OperationalPanel className="min-h-0 flex-1">
             <Card className="flex max-h-none flex-col overflow-hidden rounded-none border-none bg-transparent shadow-none">
             <CardHeader className="shrink-0 px-4 py-3">
               <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-text">
@@ -416,8 +389,8 @@ export function BourseInquiryView() {
             </CardBody>
           </Card>
           </OperationalPanel>
-        ) : items.length > 0 ? (
-          <OperationalPanel className="hidden min-h-[280px] items-center justify-center lg:flex">
+        ) : (
+          <OperationalPanel className="hidden min-h-0 flex-1 items-center justify-center lg:flex">
             <div className="max-w-[280px] px-4 py-7 text-center sm:px-6">
               <div
                 className="mx-auto mb-3.5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-surface-2 text-primary"
@@ -455,8 +428,16 @@ export function BourseInquiryView() {
               </ul>
             </div>
           </OperationalPanel>
-        ) : null}
-      </div>
-    </div>
+        )
+      ) : null;
+
+  return (
+    <ActiveTransactionPageLayout
+      pageId="bourse-inquiry"
+      hasRail={hasRail}
+      panelOpen={panelOpen}
+      queuePanel={queuePanel}
+      sidePanel={sidePanel}
+    />
   );
 }

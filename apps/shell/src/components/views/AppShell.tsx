@@ -61,7 +61,6 @@ import { AppBreadcrumb } from "@/components/views/AppBreadcrumb";
 import { resolvePoChrome, buildPoPropertyDetailSegments } from "@/lib/po-chrome";
 import { resolveMyTasksChrome } from "@/lib/my-tasks-chrome";
 import { EngineeringSurveyTopbarActions } from "@engineering-office/mfe";
-import { ActiveTransactionsSituationBar } from "@case-study/mfe";
 import { useActiveTransactionNavBadges } from "@/lib/query/use-active-transaction-nav-badges";
 import { useFailuresNavBadge } from "@/lib/query/use-failures-nav-badge";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
@@ -722,11 +721,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     onGovernmentReviewWorkspace ||
     onValuationCoordinationWorkspace;
 
-  const showActiveTransactionsSituation =
-    isInActiveTransactionsSection(currentPage, onTaskWork) ||
-    onActiveSurveyWorkspace ||
-    onPartyTaskFullPageWorkspace;
-
   const def = ROLES[role];
   const chipName = sessionUser?.displayName?.trim() || def.name;
 
@@ -1116,13 +1110,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onPropertyInspectionWorkspace ? "overflow-hidden" : "overflow-y-auto",
           )}
         >
-          {showActiveTransactionsSituation &&
-          currentPage !== "active-survey" &&
-          !onActiveSurveyWorkspace &&
-          !onCaseStudyWorkspace &&
-          !onPropertyInspectionWorkspace ? (
-            <ActiveTransactionsSituationBar />
-          ) : null}
           {children}
         </div>
       </div>

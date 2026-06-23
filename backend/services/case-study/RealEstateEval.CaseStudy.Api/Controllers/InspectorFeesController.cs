@@ -19,16 +19,18 @@ public class InspectorFeesController : ControllerBase
         [FromQuery] string? assigneeId,
         [FromQuery] string? workflowTaskId,
         [FromQuery] bool submittedOnly = true,
+        [FromQuery] string? taskKind = null,
         CancellationToken ct = default) =>
-        Ok(await _fees.GetSummaryAsync(assigneeId, workflowTaskId, submittedOnly, ct));
+        Ok(await _fees.GetSummaryAsync(assigneeId, workflowTaskId, submittedOnly, taskKind, ct));
 
     [HttpGet("summary")]
     public async Task<ActionResult<InspectorFeesSummaryDto>> Summary(
         [FromQuery] string? assigneeId,
         [FromQuery] string? workflowTaskId,
         [FromQuery] bool submittedOnly = true,
+        [FromQuery] string? taskKind = null,
         CancellationToken ct = default) =>
-        Ok(await _fees.GetSummaryAsync(assigneeId, workflowTaskId, submittedOnly, ct));
+        Ok(await _fees.GetSummaryAsync(assigneeId, workflowTaskId, submittedOnly, taskKind, ct));
 
     [HttpGet("{workflowTaskId:guid}")]
     public async Task<ActionResult<InspectorFeeRowDto>> GetByTask(

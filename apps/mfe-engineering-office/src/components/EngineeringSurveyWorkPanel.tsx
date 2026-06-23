@@ -6,6 +6,7 @@ import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task
 import type { WorkflowTask } from "@case-study/mfe";
 import {
   emptyCaseStudyFormDraft,
+  InspectorFeesTab,
   loadPartyCaseStudyFormDraft,
   PartyCaseStudyFormTab,
   savePartyCaseStudyFormDraft,
@@ -53,7 +54,7 @@ import {
   caseStudyAnswersChanged,
 } from "../lib/engineering-survey-checklist-sync";
 
-type WorkTab = "property" | "survey" | "failures";
+type WorkTab = "property" | "survey" | "fees" | "failures";
 
 export function EngineeringSurveyWorkPanel({
   def,
@@ -547,6 +548,16 @@ export function EngineeringSurveyWorkPanel({
           type="button"
           className={cn(
             "mb-[-1px] flex items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 font-inherit text-xs text-text-2 transition-colors hover:text-text",
+            workTab === "fees" && "border-b-primary font-medium text-primary",
+          )}
+          onClick={() => setWorkTab("fees")}
+        >
+          الأتعاب
+        </button>
+        <button
+          type="button"
+          className={cn(
+            "mb-[-1px] flex items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 font-inherit text-xs text-text-2 transition-colors hover:text-text",
             workTab === "failures" && "border-b-primary font-medium text-primary",
           )}
           onClick={() => setWorkTab("failures")}
@@ -569,6 +580,9 @@ export function EngineeringSurveyWorkPanel({
             />
           ) : null}
           {workTab === "survey" ? surveyBody : null}
+          {workTab === "fees" ? (
+            <InspectorFeesTab tasks={[task]} variant="engineering-survey" />
+          ) : null}
           {workTab === "failures" && propertyId ? (
             <div>
               <SectionHeader>التعذرات المسجلة</SectionHeader>

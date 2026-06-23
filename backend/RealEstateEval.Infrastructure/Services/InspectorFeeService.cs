@@ -14,15 +14,15 @@ public class InspectorFeeService : IInspectorFeeService
     public InspectorFeeService(ApplicationDbContext db) => _db = db;
 
     public async Task EnsureLedgersForTasksAsync(
-        IEnumerable<WorkflowTask> fieldInspectionTasks,
+        IEnumerable<WorkflowTask> tasks,
         CancellationToken cancellationToken = default)
     {
-        var tasks = fieldInspectionTasks
-            .Where(t => t.Kind == "field-inspection")
+        var feeTasks = tasks
+            .Where(t => t.Kind is "field-inspection" or "engineering-survey")
             .ToList();
-        if (tasks.Count == 0) return;
+        if (feeTasks.Count == 0) return;
 
-        var taskIds = tasks.Select(t => t.Id).ToList();
+        var taskIds = feeTasks.Select(t => t.Id).ToList();
         var existing = await _db.InspectorFeeLedgers
             .Where(x => taskIds.Contains(x.WorkflowTaskId))
             .Select(x => x.WorkflowTaskId)
@@ -30,11 +30,15 @@ public class InspectorFeeService : IInspectorFeeService
         var existingSet = existing.ToHashSet();
 
         var now = DateTime.UtcNow;
-        foreach (var task in tasks)
+        foreach (var task in feeTasks)
         {
             if (existingSet.Contains(task.Id)) continue;
 
-            var inspectorType = await ResolveInspectorTypeAsync(task.AssigneeId, cancellationToken);
+            var partyType = await ResolvePartyTypeAsync(task, cancellationToken);
+            var agreedFee = task.Kind == "engineering-survey"
+                ? EngineeringSurveyFeeRules.DefaultAgreedFee(partyType)
+                : InspectorFeeRules.DefaultAgreedFee(partyType);
+
             _db.InspectorFeeLedgers.Add(new InspectorFeeLedger
             {
                 WorkflowTaskId = task.Id,
@@ -42,8 +46,8 @@ public class InspectorFeeService : IInspectorFeeService
                 PropertyId = task.PropertyId,
                 PropertyOrdinal = task.PropertyOrdinal,
                 AssigneeId = task.AssigneeId,
-                InspectorType = inspectorType,
-                AgreedFeeSar = InspectorFeeRules.DefaultAgreedFee(inspectorType),
+                InspectorType = partyType,
+                AgreedFeeSar = agreedFee,
                 SupervisorDiscountSar = 0m,
                 DiscountReason = null,
                 BillingStatus = InspectorFeeBillingStatus.PreBilling,
@@ -59,6 +63,7 @@ public class InspectorFeeService : IInspectorFeeService
         string? assigneeId,
         string? workflowTaskId,
         bool submittedOnly,
+        string? taskKind = null,
         CancellationToken cancellationToken = default)
     {
         await BackfillMissingLedgersAsync(cancellationToken);
@@ -87,16 +92,30 @@ public class InspectorFeeService : IInspectorFeeService
             .Where(t => taskIds.Contains(t.Id))
             .ToDictionaryAsync(t => t.Id, cancellationToken);
 
+        if (!string.IsNullOrWhiteSpace(taskKind))
+        {
+            var kind = taskKind.Trim();
+            ledgers = ledgers
+                .Where(l => tasks.TryGetValue(l.WorkflowTaskId, out var t) && t.Kind == kind)
+                .ToList();
+            if (ledgers.Count == 0) return EmptySummary();
+            taskIds = ledgers.Select(x => x.WorkflowTaskId).ToList();
+        }
+
         var workspaces = await _db.FieldInspectionWorkspaces.AsNoTracking()
             .Where(w => taskIds.Contains(w.WorkflowTaskId))
             .ToDictionaryAsync(w => w.WorkflowTaskId, cancellationToken);
+
+        var submissions = await _db.PartyTaskSubmissions.AsNoTracking()
+            .Where(s => taskIds.Contains(s.WorkflowTaskId))
+            .ToDictionaryAsync(s => s.WorkflowTaskId, cancellationToken);
 
         var propertyLabels = await BuildPropertyLabelsAsync(ledgers, cancellationToken);
 
         var rows = new List<InspectorFeeRowDto>();
         foreach (var ledger in ledgers.OrderBy(x => x.PoNumber, StringComparer.Ordinal))
         {
-            if (submittedOnly && !IsVisible(ledger, tasks, workspaces))
+            if (submittedOnly && !IsVisible(ledger, tasks, workspaces, submissions))
                 continue;
 
             rows.Add(ToRowDto(ledger, propertyLabels.GetValueOrDefault(ledger.WorkflowTaskId, "—")));
@@ -170,17 +189,17 @@ public class InspectorFeeService : IInspectorFeeService
 
     private async Task BackfillMissingLedgersAsync(CancellationToken cancellationToken)
     {
-        var inspectionTasks = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t => t.Kind == "field-inspection")
+        var feeTasks = await _db.WorkflowTasks.AsNoTracking()
+            .Where(t => t.Kind == "field-inspection" || t.Kind == "engineering-survey")
             .ToListAsync(cancellationToken);
-        if (inspectionTasks.Count == 0) return;
+        if (feeTasks.Count == 0) return;
 
-        var taskIds = inspectionTasks.Select(t => t.Id).ToList();
+        var taskIds = feeTasks.Select(t => t.Id).ToList();
         var existing = await _db.InspectorFeeLedgers
             .Where(x => taskIds.Contains(x.WorkflowTaskId))
             .Select(x => x.WorkflowTaskId)
             .ToListAsync(cancellationToken);
-        var missing = inspectionTasks
+        var missing = feeTasks
             .Where(t => !existing.Contains(t.Id))
             .ToList();
         if (missing.Count == 0) return;
@@ -191,16 +210,25 @@ public class InspectorFeeService : IInspectorFeeService
     private static bool IsVisible(
         InspectorFeeLedger ledger,
         IReadOnlyDictionary<Guid, WorkflowTask> tasks,
-        IReadOnlyDictionary<Guid, FieldInspectionWorkspace> workspaces)
+        IReadOnlyDictionary<Guid, FieldInspectionWorkspace> workspaces,
+        IReadOnlyDictionary<Guid, PartyTaskSubmission> submissions)
     {
-        if (tasks.TryGetValue(ledger.WorkflowTaskId, out var task) &&
-            task.Status == WorkflowTaskStatus.Completed)
+        if (!tasks.TryGetValue(ledger.WorkflowTaskId, out var task))
+            return false;
+
+        if (task.Status == WorkflowTaskStatus.Completed)
+            return true;
+
+        if (task.Kind == "field-inspection" &&
+            workspaces.TryGetValue(ledger.WorkflowTaskId, out var workspace) &&
+            workspace.Status == PartyTaskSubmissionStatus.Submitted)
         {
             return true;
         }
 
-        if (workspaces.TryGetValue(ledger.WorkflowTaskId, out var workspace) &&
-            workspace.Status == PartyTaskSubmissionStatus.Submitted)
+        if (task.Kind == "engineering-survey" &&
+            submissions.TryGetValue(ledger.WorkflowTaskId, out var submission) &&
+            submission.Status == PartyTaskSubmissionStatus.Submitted)
         {
             return true;
         }
@@ -289,14 +317,14 @@ public class InspectorFeeService : IInspectorFeeService
         };
     }
 
-    private async Task<string> ResolveInspectorTypeAsync(
-        string? assigneeId,
+    private async Task<string> ResolvePartyTypeAsync(
+        WorkflowTask task,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(assigneeId))
-            return "موظف";
+        if (string.IsNullOrWhiteSpace(task.AssigneeId))
+            return task.Kind == "engineering-survey" ? "موظف" : "موظف";
 
-        var aid = assigneeId.Trim();
+        var aid = task.AssigneeId.Trim();
         var profile = await _db.UserProfiles.AsNoTracking()
             .Include(p => p.HrEmployee)
             .FirstOrDefaultAsync(p => p.DistributionAssigneeId == aid, cancellationToken);
@@ -310,7 +338,9 @@ public class InspectorFeeService : IInspectorFeeService
             return "موظف";
         }
 
-        return InspectorFeeRules.ResolveInspectorType(aid);
+        return task.Kind == "engineering-survey"
+            ? EngineeringSurveyFeeRules.ResolveOfficeType(aid)
+            : InspectorFeeRules.ResolveInspectorType(aid);
     }
 
     private static InspectorFeesSummaryDto EmptySummary() => new()
