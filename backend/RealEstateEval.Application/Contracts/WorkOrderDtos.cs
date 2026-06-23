@@ -41,6 +41,8 @@ public class WorkOrderPropertyDto
     public List<string> OtherDocumentFileNames { get; set; } = [];
     public string? RealEstateRegFileName { get; set; }
     public bool BourseDataCompleted { get; set; }
+    public string? BuildLicenseNumber { get; set; }
+    public string? SubdivisionRecordNumber { get; set; }
     public List<PropertyContactDto> Contacts { get; set; } = [];
 }
 
@@ -120,6 +122,8 @@ public class UpdatePropertyBourseRequest
     public string? EastBoundaryLengthM { get; set; }
     public string? WestBoundary { get; set; }
     public string? WestBoundaryLengthM { get; set; }
+    public string? BuildLicenseNumber { get; set; }
+    public string? SubdivisionRecordNumber { get; set; }
 }
 
 public class PropertyListRowDto
@@ -182,6 +186,8 @@ public class PriorDeedRegistrationDto
     public string? EastBoundaryLengthM { get; set; }
     public string? WestBoundary { get; set; }
     public string? WestBoundaryLengthM { get; set; }
+    public string? BuildLicenseNumber { get; set; }
+    public string? SubdivisionRecordNumber { get; set; }
 }
 
 public class PendingBoursePropertyDto

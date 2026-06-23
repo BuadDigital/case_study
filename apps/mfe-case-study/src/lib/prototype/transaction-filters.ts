@@ -1,7 +1,16 @@
+import { getPropertyFailure } from "@failures/mfe";
 import type { PoIntakeRecord } from "./po-intake-data";
 import { isBourseInquiryIdentifier } from "./po-intake-data";
 import { findPropertyForTask } from "./my-task-row";
 import type { WorkflowTask } from "./tasks-storage";
+
+function hasActiveFailureOnTask(task: WorkflowTask): boolean {
+  const propertyId = task.propertyId?.trim();
+  if (!propertyId) return false;
+  const failure = getPropertyFailure(task.poNumber, propertyId);
+  if (!failure) return false;
+  return failure.status !== "returned" && failure.status !== "resolved";
+}
 
 export function taskMatchesPrimaryData(task: WorkflowTask): boolean {
   if (task.kind !== "case-study-property") return false;
@@ -10,7 +19,10 @@ export function taskMatchesPrimaryData(task: WorkflowTask): boolean {
 
 export function taskMatchesDistribution(task: WorkflowTask): boolean {
   if (task.kind !== "case-study-property") return false;
-  return task.phase === "distribution";
+  if (task.phase === "obstruction") return false;
+  if (task.phase !== "distribution") return false;
+  if (hasActiveFailureOnTask(task)) return false;
+  return true;
 }
 
 export function filterTasksForDistribution(tasks: WorkflowTask[]): WorkflowTask[] {

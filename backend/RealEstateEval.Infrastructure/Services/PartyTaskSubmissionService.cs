@@ -27,15 +27,18 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
     private readonly ApplicationDbContext _db;
     private readonly IWorkflowTaskService _tasks;
     private readonly IFieldInspectionAttachmentVerifier _fieldInspectionAttachments;
+    private readonly IPropertyTimelineService _timeline;
 
     public PartyTaskSubmissionService(
         ApplicationDbContext db,
         IWorkflowTaskService tasks,
-        IFieldInspectionAttachmentVerifier fieldInspectionAttachments)
+        IFieldInspectionAttachmentVerifier fieldInspectionAttachments,
+        IPropertyTimelineService timeline)
     {
         _db = db;
         _tasks = tasks;
         _fieldInspectionAttachments = fieldInspectionAttachments;
+        _timeline = timeline;
     }
 
     public async Task<PartyTaskSubmissionDto?> GetAsync(
@@ -163,6 +166,19 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             taskId,
             new PatchWorkflowTaskRequest { Status = WorkflowTaskStatus.Completed, Phase = "done" },
             cancellationToken);
+
+        if (task.PropertyId is Guid propertyId)
+        {
+            await _timeline.RecordAsync(
+                task.PoNumber,
+                propertyId,
+                $"party:{taskId}:submitted",
+                PartySubmittedTitle(entity.Kind),
+                task.AssigneeName,
+                "done",
+                now,
+                cancellationToken);
+        }
 
         return (ToDto(entity), null);
     }
@@ -422,4 +438,14 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             UpdatedAtUtc = entity.UpdatedAtUtc.ToString("O"),
         };
     }
+
+    private static string PartySubmittedTitle(string kind) => kind switch
+    {
+        "field-inspection" => "إتمام المعاينة الميدانية",
+        "engineering-survey" => "إتمام الرفع المساحي",
+        "property-appraisal" => "إتمام التقييم العقاري",
+        "government-review" => "إتمام المراجعة الحكومية",
+        "valuation-coordination" => "إتمام تنسيق التقييم",
+        _ => "إتمام عمل الطرف",
+    };
 }

@@ -1,10 +1,9 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { RegSelect } from "@platform/app-shared/registration/FormFields";
-import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
-import { Card, CardBody, Note, cn } from "@platform/design-system";
+import { useDistributionAssigneesQuery } from "@settings/mfe/query/settings-queries";
+import { Card, Note, cn } from "@platform/design-system";
 import {
   getEngineeringOffices,
   getFieldInspectors,
@@ -25,17 +24,15 @@ function toOptions(list: DistributionAssignee[]) {
 function PartyBlock({
   enabled,
   title,
-  description,
   onEnabledChange,
   readOnly,
   children,
 }: {
   enabled: boolean;
   title: string;
-  description: string;
   onEnabledChange: (checked: boolean) => void;
   readOnly?: boolean;
-  children: ReactNode;
+  children: React.ReactNode;
 }) {
   return (
     <Card
@@ -53,18 +50,11 @@ function PartyBlock({
           disabled={readOnly}
           onChange={(e) => onEnabledChange(e.target.checked)}
         />
-        <div className="min-w-0 flex-1 text-start">
-          <p className="m-0 mb-1 text-[13px] font-bold leading-snug text-text">
-            {title}
-          </p>
-          <p className="m-0 text-[11px] leading-normal text-text-3">
-            {description}
-          </p>
-        </div>
+        <p className="m-0 text-[13px] font-bold leading-snug text-text">{title}</p>
       </label>
       <div
         className={cn(
-          "border-t border-border bg-surface-2 px-3.5 pb-3.5",
+          "px-3.5 pb-3.5",
           !enabled && "pointer-events-none opacity-55",
         )}
         aria-disabled={!enabled}
@@ -90,8 +80,9 @@ export function DistributionPartiesForm({
   engineeringHint,
   readOnly = false,
 }: Props) {
-  const { data: staffResult } = useStaffUsersQuery();
+  const { data: staffResult } = useDistributionAssigneesQuery();
   const staffUsers = staffResult?.users ?? [];
+  const loadError = staffResult?.loadError ?? null;
   const governmentAuditors = useMemo(
     () => getGovernmentAuditors(staffUsers),
     [staffUsers],
@@ -112,18 +103,16 @@ export function DistributionPartiesForm({
 
   return (
     <div className="flex flex-col gap-3">
-      {!readOnly ? (
-        <p className="m-0 mb-1 text-start text-xs leading-snug text-text-2">
-          فعّل الطرف ثم اختر المسؤول من القائمة. الطرف غير المفعّل لن يُسند إليه
-          أي جزء من المعاملة.
-        </p>
+      {loadError ? (
+        <Note tone="danger" className="border border-border text-[11px]">
+          {loadError}
+        </Note>
       ) : null}
 
       <PartyBlock
         readOnly={readOnly}
         enabled={distribution.governmentAuditor}
         title="المراجع الحكومي"
-        description="زيارة المحكمة وجمع المفاتيح عند التوفر."
         onEnabledChange={(checked) =>
           onPatch({
             governmentAuditor: checked,
@@ -133,25 +122,22 @@ export function DistributionPartiesForm({
           })
         }
       >
-        <div className="pt-3">
-          <RegSelect
-            id="dist_gov_auditor"
-            label="المسؤول"
-            required={distribution.governmentAuditor}
-            disabled={readOnly || !distribution.governmentAuditor}
-            options={toOptions(governmentAuditors)}
-            value={distribution.governmentAuditorId}
-            placeholder="اختر المراجع الحكومي…"
-            onChange={(v) => onPatch({ governmentAuditorId: v })}
-          />
-        </div>
+        <RegSelect
+          id="dist_gov_auditor"
+          label="المسؤول"
+          required={distribution.governmentAuditor}
+          disabled={readOnly || !distribution.governmentAuditor}
+          options={toOptions(governmentAuditors)}
+          value={distribution.governmentAuditorId}
+          placeholder="اختر المراجع الحكومي…"
+          onChange={(v) => onPatch({ governmentAuditorId: v })}
+        />
       </PartyBlock>
 
       <PartyBlock
         readOnly={readOnly}
         enabled={distribution.valuationDepartment}
         title="قسم التقييم العقاري"
-        description="منسق العمليات يستلم المعاملة ثم يُسند للمعاين والمقيم (مستخدمون نشطون في النظام)."
         onEnabledChange={(checked) =>
           onPatch({
             valuationDepartment: checked,
@@ -163,7 +149,7 @@ export function DistributionPartiesForm({
           })
         }
       >
-        <div className="grid grid-cols-1 gap-2.5 pt-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
           <RegSelect
             id="dist_val_coordinator"
             label="منسق عمليات التقييم"
@@ -202,7 +188,6 @@ export function DistributionPartiesForm({
           readOnly={readOnly}
           enabled={distribution.engineeringOffice}
           title="المكتب الهندسي"
-          description="مجموعة مكاتب هندسية لإصدار تقارير الرفع المساحي — حسابات نشطة لإدارة المعاملات الواردة."
           onEnabledChange={(checked) =>
             onPatch({
               engineeringOffice: checked,
@@ -212,18 +197,16 @@ export function DistributionPartiesForm({
             })
           }
         >
-          <div className="pt-3">
-            <RegSelect
-              id="dist_engineering_office"
-              label="المكتب"
-              required={distribution.engineeringOffice}
-              disabled={readOnly || !distribution.engineeringOffice}
-              options={toOptions(engineeringOffices)}
-              value={distribution.engineeringOfficeId}
-              placeholder="اختر المكتب الهندسي…"
-              onChange={(v) => onPatch({ engineeringOfficeId: v })}
-            />
-          </div>
+          <RegSelect
+            id="dist_engineering_office"
+            label="المكتب"
+            required={distribution.engineeringOffice}
+            disabled={readOnly || !distribution.engineeringOffice}
+            options={toOptions(engineeringOffices)}
+            value={distribution.engineeringOfficeId}
+            placeholder="اختر المكتب الهندسي…"
+            onChange={(v) => onPatch({ engineeringOfficeId: v })}
+          />
         </PartyBlock>
       ) : engineeringHint ? (
         <Note tone="default" className="border border-border bg-surface-2 text-[11px]">

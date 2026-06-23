@@ -35,6 +35,54 @@ function KebabIcon() {
   );
 }
 
+const VIEWPORT_MARGIN = 8;
+const MENU_GAP = 4;
+const MENU_MIN_WIDTH_PX = 176;
+const MENU_MAX_WIDTH_PX = 320;
+
+function computeMenuStyle(
+  btn: HTMLElement,
+  menu: HTMLElement,
+): CSSProperties {
+  const rect = btn.getBoundingClientRect();
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const maxWidth = Math.min(MENU_MAX_WIDTH_PX, vw - VIEWPORT_MARGIN * 2);
+  const menuWidth = Math.min(
+    Math.max(menu.offsetWidth, MENU_MIN_WIDTH_PX),
+    maxWidth,
+  );
+  const menuHeight = menu.offsetHeight;
+
+  let left = rect.right - menuWidth;
+  if (left < VIEWPORT_MARGIN) {
+    left = rect.left;
+  }
+  if (left + menuWidth > vw - VIEWPORT_MARGIN) {
+    left = vw - menuWidth - VIEWPORT_MARGIN;
+  }
+  left = Math.max(
+    VIEWPORT_MARGIN,
+    Math.min(left, vw - menuWidth - VIEWPORT_MARGIN),
+  );
+
+  let top = rect.bottom + MENU_GAP;
+  if (menuHeight > 0 && top + menuHeight > vh - VIEWPORT_MARGIN) {
+    const above = rect.top - menuHeight - MENU_GAP;
+    if (above >= VIEWPORT_MARGIN) top = above;
+  }
+
+  return {
+    position: "fixed",
+    top,
+    left,
+    zIndex: 1200,
+    minWidth: "11rem",
+    maxWidth: `${maxWidth}px`,
+    width: "max-content",
+  };
+}
+
 const moreBtnClass = (open: boolean) =>
   cn(
     "inline-flex h-[30px] w-[30px] items-center justify-center rounded-[var(--radius-DEFAULT)] border border-border bg-surface text-text-2 outline-none transition-colors hover:bg-info-bg hover:border-info hover:text-info-text",
@@ -63,31 +111,30 @@ export function RowMoreMenu({
   useLayoutEffect(() => {
     if (!open || !btnRef.current) return;
 
+    let raf = 0;
+
     function placeMenu() {
       const btn = btnRef.current;
-      if (!btn) return;
-      const rect = btn.getBoundingClientRect();
-      const menuWidth = menuRef.current?.offsetWidth ?? 176;
-      const gap = 4;
-      let left = rect.right - menuWidth;
-      left = Math.max(8, Math.min(left, window.innerWidth - menuWidth - 8));
-      setMenuStyle({
-        position: "fixed",
-        top: rect.bottom + gap,
-        left,
-        zIndex: 1200,
-        minWidth: "11rem",
-      });
+      const menu = menuRef.current;
+      if (!btn || !menu) return;
+      setMenuStyle(computeMenuStyle(btn, menu));
     }
 
     placeMenu();
+    raf = requestAnimationFrame(placeMenu);
+
     window.addEventListener("resize", placeMenu);
     window.addEventListener("scroll", placeMenu, true);
     return () => {
+      cancelAnimationFrame(raf);
       window.removeEventListener("resize", placeMenu);
       window.removeEventListener("scroll", placeMenu, true);
     };
   }, [open, items.length]);
+
+  useEffect(() => {
+    if (!open) setMenuStyle({});
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -116,7 +163,7 @@ export function RowMoreMenu({
     <div
       ref={menuRef}
       id={menuId}
-      className="rounded-lg border border-border bg-surface py-1 shadow-[0_8px_24px_rgba(15,23,42,0.14)]"
+      className="w-max max-w-[min(20rem,calc(100vw-1rem))] rounded-lg border border-border bg-surface py-1 shadow-[0_8px_24px_rgba(15,23,42,0.14)]"
       role="menu"
       style={menuStyle}
     >
@@ -126,7 +173,7 @@ export function RowMoreMenu({
           type="button"
           role="menuitem"
           className={cn(
-            "block w-full cursor-pointer border-none bg-transparent px-3 py-2 text-start text-xs whitespace-nowrap text-text hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-45",
+            "block w-full min-w-0 cursor-pointer border-none bg-transparent px-3 py-2 text-start text-xs whitespace-nowrap text-text hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-45",
             item.danger && "text-danger-text",
           )}
           disabled={item.disabled}

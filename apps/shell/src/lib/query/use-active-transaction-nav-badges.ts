@@ -24,6 +24,8 @@ import {
   usePoRecordsQuery,
   useWorkflowTasksQuery,
 } from "@/lib/query/prototype-queries";
+import { useFailuresQuery } from "@/lib/query/prototype-queries";
+import { filterActionablePendingBourseItems } from "@case-study/mfe/lib/prototype/pending-bourse-queue";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 
 function poRecordsMap(records: PoIntakeRecord[] | undefined) {
@@ -39,6 +41,7 @@ export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>>
   const { data: tasks } = useWorkflowTasksQuery();
   const { data: poRecords } = usePoRecordsQuery();
   const { data: pendingBourse } = usePendingBourseItemsQuery();
+  const { data: failures = [] } = useFailuresQuery();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
 
@@ -57,7 +60,10 @@ export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>>
       (t) => t.status === "open" || t.status === "blocked",
     ).length;
 
-    const bourseOpen = pendingBourse?.length ?? 0;
+    const bourseOpen = filterActionablePendingBourseItems(
+      pendingBourse ?? [],
+      failures,
+    ).length;
 
     const distributionOpen = filterTasksForDistribution(mine).filter(
       (t) => t.status === "open" || t.status === "blocked",
@@ -91,5 +97,5 @@ export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>>
     }
 
     return badges;
-  }, [role, resolvedViewerEmail, tasks, poRecords, pendingBourse, staffUsers]);
+  }, [role, resolvedViewerEmail, tasks, poRecords, pendingBourse, failures, staffUsers]);
 }

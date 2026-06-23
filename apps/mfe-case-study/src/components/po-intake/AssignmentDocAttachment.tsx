@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   getCachedAssignmentDoc,
+  getCachedDelegationDoc,
   isImageMime,
   prefetchPropertyDocAttachments,
   type CachedAssignmentDoc,
+  type PropertyDocKind,
 } from "../../lib/prototype/assignment-doc-attachments";
 import { Button, cn } from "@platform/design-system";
 
@@ -14,11 +16,13 @@ export function AssignmentDocAttachment({
   propertyId,
   fileName,
   variant = "detail",
+  docKind = "decree",
 }: {
   poNumber: string;
   propertyId: string;
   fileName?: string;
   variant?: "inline" | "detail" | "thumb" | "card" | "panel";
+  docKind?: PropertyDocKind;
 }) {
   const [hydrated, setHydrated] = useState(0);
 
@@ -28,10 +32,11 @@ export function AssignmentDocAttachment({
     });
   }, [poNumber, propertyId]);
 
-  const cached = useMemo(
-    () => getCachedAssignmentDoc(poNumber, propertyId),
-    [poNumber, propertyId, hydrated],
-  );
+  const cached = useMemo(() => {
+    return docKind === "delegation"
+      ? getCachedDelegationDoc(poNumber, propertyId)
+      : getCachedAssignmentDoc(poNumber, propertyId);
+  }, [poNumber, propertyId, hydrated, docKind]);
 
   const displayName = fileName?.trim() || cached?.fileName || "";
   if (!displayName) {

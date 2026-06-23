@@ -12,7 +12,10 @@ import {
   loadCaseStudyInfoRolesConfig,
   type CaseStudyInfoRolesConfig,
 } from "../lib/prototype/case-study-info-roles-storage";
-import { fetchStaffUsers } from "../lib/users-api";
+import {
+  fetchDistributionAssignees,
+  fetchStaffUsers,
+} from "../lib/users-api";
 import { fetchOrganization } from "../lib/users-org-api";
 
 const STALE_MS = 60_000;
@@ -41,6 +44,17 @@ export function useStaffUsersQuery() {
   return useQuery({
     queryKey: [...prototypeKeys.staffUsers(), userId],
     queryFn: fetchStaffUsers,
+    enabled: authReady,
+    ...queryDefaults,
+  });
+}
+
+export function useDistributionAssigneesQuery() {
+  const { authReady } = usePrototype();
+  const userId = getAuthSession()?.user.id ?? "anonymous";
+  return useQuery({
+    queryKey: [...prototypeKeys.distributionAssignees(), userId],
+    queryFn: fetchDistributionAssignees,
     enabled: authReady,
     ...queryDefaults,
   });

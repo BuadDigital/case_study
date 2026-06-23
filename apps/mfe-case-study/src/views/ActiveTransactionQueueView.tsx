@@ -281,6 +281,13 @@ export function ActiveTransactionQueueView({
     router.replace(config.getBasePath(), { scroll: false });
   }, [router, config]);
 
+  useEffect(() => {
+    if (!selectedId || !queueReady) return;
+    if (!listed.some((t) => t.id === selectedId)) {
+      closePanel();
+    }
+  }, [selectedId, listed, queueReady, closePanel]);
+
   const useFullPage = Boolean(config.fullPageTaskPath);
 
   const openTask = useCallback(

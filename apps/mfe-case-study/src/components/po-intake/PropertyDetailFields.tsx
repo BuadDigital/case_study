@@ -20,6 +20,7 @@ export function FieldBox({
   children,
   emptyLabel = "غير محدد",
   link,
+  href,
 }: {
   label: string;
   value?: string;
@@ -28,9 +29,26 @@ export function FieldBox({
   children?: ReactNode;
   emptyLabel?: string;
   link?: boolean;
+  href?: string;
 }) {
   const trimmed = value?.trim() ?? "";
   const isEmpty = !trimmed && !children;
+  const linkClass =
+    link || href
+      ? "cursor-pointer text-primary underline underline-offset-2"
+      : "";
+
+  const content =
+    children ??
+    (isEmpty ? (
+      emptyLabel
+    ) : ltr ? (
+      <bdi dir="ltr" className={ltrValueClass}>
+        {trimmed}
+      </bdi>
+    ) : (
+      trimmed
+    ));
 
   return (
     <div
@@ -42,24 +60,29 @@ export function FieldBox({
       )}
     >
       <div className="mb-0.5 text-[11px] text-text-2">{label}</div>
-      <div
-        className={cn(
-          "break-words text-[13px] font-medium text-text",
-          isEmpty && "font-normal text-text-3",
-          link && "cursor-pointer text-primary underline underline-offset-2",
-        )}
-      >
-        {children ??
-          (isEmpty ? (
-            emptyLabel
-          ) : ltr ? (
-            <bdi dir="ltr" className={ltrValueClass}>
-              {trimmed}
-            </bdi>
-          ) : (
-            trimmed
-          ))}
-      </div>
+      {href && !isEmpty ? (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            "break-words text-[13px] font-medium text-text no-underline",
+            linkClass,
+          )}
+        >
+          {content}
+        </a>
+      ) : (
+        <div
+          className={cn(
+            "break-words text-[13px] font-medium text-text",
+            isEmpty && "font-normal text-text-3",
+            linkClass,
+          )}
+        >
+          {content}
+        </div>
+      )}
     </div>
   );
 }

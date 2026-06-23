@@ -11,10 +11,14 @@ namespace RealEstateEval.Infrastructure.Services;
 public class WorkOrderService : IWorkOrderService
 {
     private readonly ApplicationDbContext _db;
+    private readonly IPropertyTimelineService _timeline;
 
-    public WorkOrderService(ApplicationDbContext db)
+    public WorkOrderService(
+        ApplicationDbContext db,
+        IPropertyTimelineService timeline)
     {
         _db = db;
+        _timeline = timeline;
     }
 
     public async Task<IReadOnlyList<WorkOrderListItemDto>> ListAsync(CancellationToken cancellationToken)
@@ -179,6 +183,32 @@ public class WorkOrderService : IWorkOrderService
         _db.WorkOrders.Add(workOrder);
         await _db.SaveChangesAsync(cancellationToken);
 
+        var enfathAt = workOrder.ReceivedFromEnfathAt.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var specialistDetail = string.IsNullOrWhiteSpace(workOrder.AssignmentSpecialist)
+            ? null
+            : $"أخصائي الإسناد: {workOrder.AssignmentSpecialist.Trim()}";
+        foreach (var prop in workOrder.Properties)
+        {
+            await _timeline.RecordAsync(
+                po,
+                prop.Id,
+                "enfath",
+                "استلام من إنفاذ",
+                specialistDetail,
+                "done",
+                enfathAt,
+                cancellationToken);
+            await _timeline.RecordAsync(
+                po,
+                prop.Id,
+                "due",
+                "موعد الاستحقاق",
+                null,
+                "muted",
+                workOrder.DueDateAt.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
+                cancellationToken);
+        }
+
         var loaded = await LoadWorkOrderTrackedAsync(po, cancellationToken, asNoTracking: true);
         return (loaded is null ? null : WorkOrderMapper.ToDto(loaded), null);
     }
@@ -274,6 +304,9 @@ public class WorkOrderService : IWorkOrderService
         }
 
         _db.WorkOrders.Remove(entity);
+        await _db.PropertyTimelineEntries
+            .Where(e => e.PoNumber == n)
+            .ExecuteDeleteAsync(cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
         return (true, null);
     }
@@ -336,6 +369,8 @@ public class WorkOrderService : IWorkOrderService
                 RestrictionsPresent = property.RestrictionsPresent,
                 BoundariesAvailability = property.BoundariesAvailability,
                 BoundariesExternalDocName = property.BoundariesExternalDocName,
+                BuildLicenseNumber = property.BuildLicenseNumber,
+                SubdivisionRecordNumber = property.SubdivisionRecordNumber,
             });
             var errors = enfathErrors.Concat(bourseErrors)
                 .GroupBy(kv => kv.Key)
@@ -344,6 +379,7 @@ public class WorkOrderService : IWorkOrderService
             ApplyPropertyEnfath(existing, property, forInsert: false);
             ApplyPropertyBourse(existing, property);
             existing.BourseDataCompleted = true;
+            existing.BourseCompletedAtUtc = DateTime.UtcNow;
         }
         else
         {
@@ -395,9 +431,29 @@ public class WorkOrderService : IWorkOrderService
         existing.EastBoundaryLengthM = NormalizeOptionalText(request.EastBoundaryLengthM);
         existing.WestBoundary = NormalizeOptionalText(request.WestBoundary);
         existing.WestBoundaryLengthM = NormalizeOptionalText(request.WestBoundaryLengthM);
+        existing.BuildLicenseNumber = NormalizeOptionalText(request.BuildLicenseNumber);
+        existing.SubdivisionRecordNumber = NormalizeOptionalText(request.SubdivisionRecordNumber);
         existing.BourseDataCompleted = true;
+        var bourseNow = DateTime.UtcNow;
+        existing.BourseCompletedAtUtc = bourseNow;
 
         await _db.SaveChangesAsync(cancellationToken);
+
+        var location = string.Join(
+            " · ",
+            new[] { existing.City, existing.District }
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s.Trim()));
+        await _timeline.RecordAsync(
+            NormalizePo(poNumber),
+            propertyId,
+            "property-bourse",
+            "بيانات البورصة للعقار",
+            string.IsNullOrEmpty(location) ? null : location,
+            "done",
+            bourseNow,
+            cancellationToken);
+
         return (WorkOrderMapper.ToPropertyDto(existing), null);
     }
 
@@ -413,6 +469,9 @@ public class WorkOrderService : IWorkOrderService
         if (prop is null) return (false, "العقار غير موجود");
 
         _db.WorkOrderProperties.Remove(prop);
+        await _db.PropertyTimelineEntries
+            .Where(e => e.PoNumber == NormalizePo(poNumber) && e.PropertyId == propertyId)
+            .ExecuteDeleteAsync(cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
         return (true, null);
     }
@@ -517,5 +576,7 @@ public class WorkOrderService : IWorkOrderService
         entity.RestrictionsPresent = dto.RestrictionsPresent?.Trim();
         entity.BoundariesAvailability = dto.BoundariesAvailability?.Trim();
         entity.BoundariesExternalDocName = dto.BoundariesExternalDocName?.Trim();
+        entity.BuildLicenseNumber = NormalizeOptionalText(dto.BuildLicenseNumber);
+        entity.SubdivisionRecordNumber = NormalizeOptionalText(dto.SubdivisionRecordNumber);
     }
 }

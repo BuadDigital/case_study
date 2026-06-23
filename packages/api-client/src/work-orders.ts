@@ -50,6 +50,8 @@ export type WorkOrderPropertyDto = {
   otherDocumentFileNames?: string[];
   realEstateRegFileName?: string;
   bourseDataCompleted?: boolean;
+  buildLicenseNumber?: string;
+  subdivisionRecordNumber?: string;
   contacts: PropertyContactDto[];
 };
 
@@ -119,6 +121,8 @@ export type UpdatePropertyBourseRequest = {
   eastBoundaryLengthM?: string;
   westBoundary?: string;
   westBoundaryLengthM?: string;
+  buildLicenseNumber?: string;
+  subdivisionRecordNumber?: string;
 };
 
 export type PriorDeedRegistrationDto = {
@@ -143,6 +147,16 @@ export type PriorDeedRegistrationDto = {
   eastBoundaryLengthM?: string;
   westBoundary?: string;
   westBoundaryLengthM?: string;
+  buildLicenseNumber?: string;
+  subdivisionRecordNumber?: string;
+};
+
+export type PropertyTimelineEventDto = {
+  id: string;
+  at: string;
+  title: string;
+  detail?: string;
+  tone: string;
 };
 
 export type PendingBoursePropertyDto = {
@@ -273,6 +287,29 @@ export async function getWorkOrder(
     if (res.status === 404) return { ok: false, kind: "not_found" };
     if (!res.ok) return { ok: false, kind: "server" };
     return { ok: true, data: (await res.json()) as WorkOrderDto };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export async function getPropertyTimeline(
+  config: WorkOrdersApiConfig,
+  poNumber: string,
+  propertyId: string,
+): Promise<ApiOk<PropertyTimelineEventDto[]> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  const po = encodeURIComponent(poNumber.trim());
+  const prop = encodeURIComponent(propertyId.trim());
+  try {
+    const res = await fetch(
+      `${base}/api/work-orders/${po}/properties/${prop}/timeline`,
+      { headers: headers(config.token) },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    const data = (await res.json()) as PropertyTimelineEventDto[];
+    return { ok: true, data: Array.isArray(data) ? data : [] };
   } catch {
     return { ok: false, kind: "network" };
   }

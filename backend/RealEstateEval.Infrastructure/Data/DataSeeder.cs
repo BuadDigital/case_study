@@ -31,6 +31,7 @@ public static class DataSeeder
         if (await IsAlreadySeededAsync(services, cancellationToken))
         {
             await BackfillReviewerCityCoverageAsync(db, userManager, cancellationToken);
+            await BackfillDistributionAssigneeIdsAsync(db, userManager, cancellationToken);
             return;
         }
 
@@ -553,6 +554,32 @@ public static class DataSeeder
                 continue;
 
             profile.ReviewerCityCoverageJson = JsonSerializer.Serialize(cities);
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task BackfillDistributionAssigneeIdsAsync(
+        ApplicationDbContext db,
+        UserManager<ApplicationUser> userManager,
+        CancellationToken cancellationToken)
+    {
+        foreach (var (email, assigneeId) in DistributionAssigneeIdsByEmail)
+        {
+            var user = await userManager.FindByEmailAsync(email.Trim());
+            if (user is null) continue;
+
+            var profile = await db.UserProfiles
+                .FirstOrDefaultAsync(p => p.UserId == user.Id, cancellationToken);
+            if (profile is null) continue;
+
+            if (string.Equals(
+                    profile.DistributionAssigneeId,
+                    assigneeId,
+                    StringComparison.Ordinal))
+                continue;
+
+            profile.DistributionAssigneeId = assigneeId;
         }
 
         await db.SaveChangesAsync(cancellationToken);

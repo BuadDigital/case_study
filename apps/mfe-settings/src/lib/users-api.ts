@@ -4,6 +4,7 @@ import {
   createProcUser,
   deactivateUser,
   getApiBase,
+  listDistributionAssignees,
   listUsers,
   type CreateUserResult,
   type UsersApiConfig,
@@ -41,6 +42,25 @@ export async function fetchStaffUsers(): Promise<FetchStaffUsersResult> {
       result.kind === "network"
         ? "تعذر تحميل قائمة المستخدمين. تحقق من أن الخادم يعمل."
         : "تعذر تحميل قائمة المستخدمين.";
+    return { users: [], loadError: message };
+  }
+
+  return {
+    users: result.users.map(userListItemToStaff),
+    loadError: null,
+  };
+}
+
+export async function fetchDistributionAssignees(): Promise<FetchStaffUsersResult> {
+  const config = apiConfig();
+  if (!config) return { users: [], loadError: null };
+
+  const result = await listDistributionAssignees(config);
+  if (!result.ok) {
+    const message =
+      result.kind === "network"
+        ? "تعذر تحميل قائمة المسؤولين. تحقق من أن الخادم يعمل."
+        : "تعذر تحميل قائمة المسؤولين.";
     return { users: [], loadError: message };
   }
 

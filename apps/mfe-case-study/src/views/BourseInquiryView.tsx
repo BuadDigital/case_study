@@ -57,6 +57,7 @@ import {
   validatePropertyBourseFields,
 } from "@case-study/mfe/components/po-intake/po-property-bourse-validation";
 import type { PendingBoursePropertyDto } from "@platform/api-client";
+import { filterActionablePendingBourseItems } from "../lib/prototype/pending-bourse-queue";
 import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
 
 const ROW = queueTableRowClassName;
@@ -72,17 +73,7 @@ export function BourseInquiryView() {
   } = usePendingBourseItemsQuery();
   const { data: failures = [] } = useFailuresQuery();
 
-  const items = rawItems.filter((item) => {
-    const failure = failures.find(
-      (f) =>
-        f.poNumber === item.poNumber && f.propertyId === item.propertyId,
-    );
-    return (
-      !failure ||
-      failure.status === "returned" ||
-      failure.status === "resolved"
-    );
-  });
+  const items = filterActionablePendingBourseItems(rawItems, failures);
   const queuePending = !isFetched;
   const { showToast } = useToast();
   const [selected, setSelected] = useState<PendingBoursePropertyDto | null>(null);

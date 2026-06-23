@@ -1,3 +1,4 @@
+import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import {
   assigneeLabel,
   getValuationCoordinators,
@@ -11,6 +12,45 @@ import {
   migrateDistribution,
   type WorkflowTask,
 } from "./tasks-storage";
+
+function valuationCoordinationChild(
+  allTasks: WorkflowTask[],
+  parentTaskId: string | undefined,
+): WorkflowTask | undefined {
+  if (!parentTaskId) return undefined;
+  return allTasks.find(
+    (t) =>
+      t.parentTaskId === parentTaskId && t.kind === "valuation-coordination",
+  );
+}
+
+function coordinatorDisplayName(
+  distribution: ReturnType<typeof migrateDistribution>,
+  staffUsers: StaffUser[],
+  allTasks: WorkflowTask[],
+  parentTaskId: string | undefined,
+): string {
+  const child = valuationCoordinationChild(allTasks, parentTaskId);
+  const childName = child?.assigneeName?.trim();
+  if (childName && childName !== "—") return childName;
+
+  if (!distribution.valuationDepartment) return "";
+  return assigneeLabel(
+    getValuationCoordinators(staffUsers),
+    distribution.operationsCoordinatorId,
+  );
+}
+
+function coordinatorEnabled(
+  distribution: ReturnType<typeof migrateDistribution>,
+  allTasks: WorkflowTask[],
+  parentTaskId: string | undefined,
+): boolean {
+  return (
+    distribution.valuationDepartment ||
+    Boolean(valuationCoordinationChild(allTasks, parentTaskId))
+  );
+}
 
 export type PropertyDetailPartyRoleKey =
   | "specialist"
@@ -60,8 +100,9 @@ export function buildPropertyDetailPartyCards(input: {
   specialistName: string;
   task: WorkflowTask | null;
   allTasks: WorkflowTask[];
+  staffUsers?: StaffUser[];
 }): PropertyDetailPartyCard[] {
-  const { specialistName, task, allTasks } = input;
+  const { specialistName, task, allTasks, staffUsers = [] } = input;
   const distribution = migrateDistribution(task?.distribution);
   const assignees = task ? buildCaseStudyPartyAssignees(task, allTasks) : [];
 
@@ -73,12 +114,12 @@ export function buildPropertyDetailPartyCards(input: {
   const appraisal = byTrack("appraisal");
   const government = byTrack("government");
 
-  const coordinatorName = distribution.valuationDepartment
-    ? assigneeLabel(
-        getValuationCoordinators(),
-        distribution.operationsCoordinatorId,
-      )
-    : "";
+  const coordinatorName = coordinatorDisplayName(
+    distribution,
+    staffUsers,
+    allTasks,
+    task?.id,
+  );
 
   const cards: PropertyDetailPartyCard[] = [
     {
@@ -137,7 +178,7 @@ export function buildPropertyDetailPartyCards(input: {
       name: coordinatorName.trim() || "لم يُعيَّن",
       unassigned: !coordinatorName.trim(),
       state: coordinatorName.trim() ? "progress" : "new",
-      enabled: distribution.valuationDepartment,
+      enabled: coordinatorEnabled(distribution, allTasks, task?.id),
     },
   ];
 
@@ -148,8 +189,9 @@ export function buildPropertyDetailPartyCards(input: {
 export function buildPropertyDetailTimelinePartyRows(input: {
   task: WorkflowTask | null;
   allTasks: WorkflowTask[];
+  staffUsers?: StaffUser[];
 }): PropertyDetailPartyStatusRow[] {
-  const { task, allTasks } = input;
+  const { task, allTasks, staffUsers = [] } = input;
   const distribution = migrateDistribution(task?.distribution);
   const assignees = task ? buildCaseStudyPartyAssignees(task, allTasks) : [];
   const byTrack = (trackId: string) =>
@@ -169,14 +211,18 @@ export function buildPropertyDetailTimelinePartyRows(input: {
 
   return defs.map((def) => {
     if (def.key === "coordinator") {
-      const name = distribution.valuationDepartment
-        ? assigneeLabel(
-            getValuationCoordinators(),
-            distribution.operationsCoordinatorId,
-          )
-        : "";
-      const enabled = distribution.valuationDepartment && Boolean(name.trim());
-      const badge = timelineBadgeForParty(enabled, name ? "progress" : "new", def.key);
+      const name = coordinatorDisplayName(
+        distribution,
+        staffUsers,
+        allTasks,
+        task?.id,
+      );
+      const enabled = coordinatorEnabled(distribution, allTasks, task?.id);
+      const badge = timelineBadgeForParty(
+        enabled,
+        name.trim() ? "progress" : "new",
+        def.key,
+      );
       return { label: def.label, ...badge };
     }
 

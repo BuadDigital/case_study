@@ -21,9 +21,13 @@ export const prototypeKeys = {
   caseStudyInfoRoles: () =>
     [...prototypeKeys.all, "case-study-info-roles"] as const,
   staffUsers: () => [...prototypeKeys.all, "staff-users"] as const,
+  distributionAssignees: () =>
+    [...prototypeKeys.all, "distribution-assignees"] as const,
   organization: () => [...prototypeKeys.all, "organization"] as const,
   propertyDetailPartySubmissions: (parentTaskId: string) =>
     [...prototypeKeys.all, "property-detail-party-submissions", parentTaskId] as const,
+  propertyTimeline: (poNumber: string, propertyId: string) =>
+    [...prototypeKeys.all, "property-timeline", poNumber, propertyId] as const,
   inspectorFees: (query: {
     assigneeId?: string;
     workflowTaskId?: string;

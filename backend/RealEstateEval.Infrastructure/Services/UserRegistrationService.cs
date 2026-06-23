@@ -65,6 +65,17 @@ public class UserRegistrationService : IUserRegistrationService
             .ToList();
     }
 
+    public async Task<IReadOnlyList<UserListItemDto>> ListDistributionAssigneesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var all = await ListAsync(null, cancellationToken);
+        return all
+            .Where(u =>
+                u.Status == UserStatus.Active
+                && !string.IsNullOrWhiteSpace(u.DistributionAssigneeId))
+            .ToList();
+    }
+
     public async Task<OrganizationOverviewDto> GetOrganizationOverviewAsync(
         CancellationToken cancellationToken = default)
     {

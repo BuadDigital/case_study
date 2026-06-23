@@ -334,6 +334,21 @@ export function countPropertyDetailDocuments(
   return sections.reduce((total, section) => total + section.documents.length, 0);
 }
 
+export function listPropertyDetailPhotos(
+  sections: PropertyDetailDocumentSection[],
+): PropertyDetailDocumentEntry[] {
+  return sections
+    .filter((section) => section.id === "inspection")
+    .flatMap((section) => section.documents)
+    .filter((doc) => doc.kind === "image" && Boolean(doc.dataUrl));
+}
+
+export function countPropertyDetailPhotos(
+  sections: PropertyDetailDocumentSection[],
+): number {
+  return listPropertyDetailPhotos(sections).length;
+}
+
 export function sectionTitleForPreviewHint(source: string): boolean {
   return source === SECTION_TITLE_BY_ID.engineering || source === SECTION_TITLE_BY_ID.appraisal;
 }

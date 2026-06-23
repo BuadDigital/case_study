@@ -21,6 +21,8 @@ import {
   SectionDivider,
   SectionHeader,
 } from "./PropertyDetailFields";
+import { PropertyDetailAppraisalTab } from "./PropertyDetailAppraisalTab";
+import { PropertyDetailPhotosTab } from "./PropertyDetailPhotosTab";
 import { PropertyDetailCaseStudyReport } from "./PropertyDetailCaseStudyReport";
 import { PropertyDetailPropertyKeys } from "./PropertyDetailPropertyKeys";
 import { PropertyDetailEnfathUpload } from "./PropertyDetailEnfathUpload";
@@ -28,16 +30,23 @@ import { PropertyTransactionTimeline } from "./PropertyTransactionTimeline";
 import {
   boundariesAvailabilityLabel,
   formatDateAr,
+  formatPropertyBoundaryDimensionsDisplay,
   formatPropertyDeedDisplay,
+  formatPropertyLandFrontagesDisplay,
   formatPropertyLocation,
+  formatPropertyPlotPlanNumber,
   formatPropertyTypeLine,
   hasBourseDetailFields,
+  ownershipStatusLabel,
+  propertyLocationMapUrl,
+  propertySurveyEmptyLabel,
   restrictionsPresentLabel,
   showsCourtFields,
   skipsBourseForIdentifier,
   type PoIntakeRecord,
   type PoPropertyIntake,
 } from "../../lib/prototype/po-intake-data";
+import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { isValidContactEntry } from "./po-property-validation";
 import { PartyRoleDetailPanel } from "./PartyRoleDetailPanel";
 import {
@@ -51,13 +60,16 @@ import {
   buildPropertyDetailTimeline,
   formatTimelineDate,
 } from "../../lib/prototype/property-detail-timeline";
+import { usePropertyTimelineQuery } from "../../query/use-property-timeline-query";
 import {
   caseStudyTaskForProperty,
 } from "../../lib/prototype/tasks-storage";
 import { childTasksForCaseStudyParent } from "../../lib/prototype/case-study-party-answers";
 import {
   countPropertyDetailDocuments,
+  countPropertyDetailPhotos,
   downloadPropertyDetailDocument,
+  listPropertyDetailPhotos,
   type PropertyDetailDocumentEntry,
   type PropertyDetailDocumentSection,
 } from "../../lib/prototype/property-detail-documents";
@@ -190,9 +202,14 @@ function BasicTab({
     .filter(Boolean)
     .join(" · ");
   const primaryContact = validContacts[0];
-  const hasMapTarget = Boolean(
-    property.city.trim() || property.district.trim(),
-  );
+  const mapUrl = propertyLocationMapUrl(property);
+  const boundaryDimensions = formatPropertyBoundaryDimensionsDisplay(property);
+  const landFrontages = formatPropertyLandFrontagesDisplay(property);
+  const plotPlanNumber = formatPropertyPlotPlanNumber(property);
+  const ownershipStatus = ownershipStatusLabel(property);
+  const dimensionsEmpty = propertySurveyEmptyLabel(property, "dimensions");
+  const frontagesEmpty = propertySurveyEmptyLabel(property, "frontages");
+  const plotEmpty = propertySurveyEmptyLabel(property, "plot");
 
   return (
     <>
@@ -207,7 +224,7 @@ function BasicTab({
             ) : null}
           </FieldBox>
           <FieldBox label="اسم المالك" value={property.ownerName} />
-          <FieldBox label="حالة الملك" value={property.deedStatus} />
+          <FieldBox label="حالة الملك" value={ownershipStatus} />
           <FieldBox
             label="القيود على العقار"
             value={restrictions}
@@ -228,8 +245,12 @@ function BasicTab({
           label="توفر الحدود"
           value={boundariesAvailabilityLabel(property.boundariesAvailability)}
         />
-        <FieldBox label="الإحداثيات" span={2} link={hasMapTarget}>
-          {hasMapTarget ? "عرض على الخريطة" : undefined}
+        <FieldBox
+          label="الإحداثيات"
+          span={2}
+          href={mapUrl ?? undefined}
+        >
+          {mapUrl ? "عرض على الخريطة" : undefined}
         </FieldBox>
       </FieldsGrid>
 
@@ -242,10 +263,28 @@ function BasicTab({
           label="المساحة الإجمالية"
           value={property.area.trim() ? `${property.area.trim()} م²` : ""}
         />
-        <FieldBox label="الأطوال والأبعاد" emptyLabel="غير محدد" />
-        <FieldBox label="واجهات الأرض" emptyLabel="غير محدد" />
-        <FieldBox label="رقم القطعة / المخطط" emptyLabel="غير محدد" />
+        <FieldBox
+          label="الأطوال والأبعاد"
+          value={boundaryDimensions}
+          emptyLabel={dimensionsEmpty}
+        />
+        <FieldBox
+          label="واجهات الأرض"
+          value={landFrontages}
+          emptyLabel={frontagesEmpty}
+        />
+        <FieldBox
+          label="رقم القطعة / المخطط"
+          value={plotPlanNumber}
+          emptyLabel={plotEmpty}
+        />
       </FieldsGrid>
+      {property.bourseDataCompleted && !plotPlanNumber.trim() ? (
+        <InfoBox icon="ℹ">
+          لإضافة رقم المحضر أو رخصة البناء، عدّل بيانات البورصة من «استعلام
+          البورصة» في الشريط العلوي.
+        </InfoBox>
+      ) : null}
 
       <SectionDivider />
       <SectionHeader>بيانات الاتصال</SectionHeader>
@@ -292,6 +331,28 @@ function BasicTab({
                   value={property.deedStatus}
                 />
                 <FieldBox
+                  label="رقم محضر التجزئة"
+                  value={property.subdivisionRecordNumber}
+                  emptyLabel={plotEmpty}
+                  ltr
+                />
+                <FieldBox
+                  label="رقم رخصة البناء"
+                  value={property.buildLicenseNumber}
+                  emptyLabel={plotEmpty}
+                  ltr
+                />
+                <FieldBox
+                  label="الأطوال والأبعاد"
+                  value={boundaryDimensions}
+                  emptyLabel={dimensionsEmpty}
+                />
+                <FieldBox
+                  label="واجهات الأرض"
+                  value={landFrontages}
+                  emptyLabel={frontagesEmpty}
+                />
+                <FieldBox
                   label="الفروق / الملاحظات"
                   emptyLabel="لا توجد فروق"
                 />
@@ -331,6 +392,8 @@ export function PoPropertyDetailTabs({
   const [selectedPartyRole, setSelectedPartyRole] =
     useState<PropertyDetailPartyRoleKey | null>(null);
   const { data: tasks = [] } = useWorkflowTasksQuery();
+  const { data: staffResult } = useStaffUsersQuery();
+  const staffUsers = staffResult?.users ?? [];
   const poNumber = record.poNumber.trim();
 
   const task = useMemo(
@@ -390,12 +453,19 @@ export function PoPropertyDetailTabs({
   });
 
   const docCount = countPropertyDetailDocuments(propertyDocumentSections);
+  const photoCount = countPropertyDetailPhotos(propertyDocumentSections);
+  const propertyPhotos = useMemo(
+    () => listPropertyDetailPhotos(propertyDocumentSections),
+    [propertyDocumentSections],
+  );
   const specialistName = task?.assigneeName?.trim() || record.assignmentSpecialist.trim();
   const partyCards = buildPropertyDetailPartyCards({
     specialistName,
     task: task ?? null,
     allTasks: tasks,
+    staffUsers,
   });
+  const appraisalCard = partyCards.find((c) => c.roleKey === "appraisal") ?? null;
   const selectedPartyCard =
     partyCards.find((card) => card.roleKey === selectedPartyRole) ?? null;
   const coordinatorCard = partyCards.find((c) => c.roleKey === "coordinator");
@@ -409,14 +479,23 @@ export function PoPropertyDetailTabs({
     parentTask: task ?? null,
     allTasks: tasks,
     coordinatorName,
-    enabled: tab === "parties" || tab === "keys" || tab === "enfath-upload",
+    enabled:
+      tab === "parties" ||
+      tab === "keys" ||
+      tab === "enfath-upload" ||
+      tab === "appraisal",
   });
 
-  const logEvents = useMemo(
+  const logEventsQuery = usePropertyTimelineQuery(poNumber, property.id);
+  const fallbackLogEvents = useMemo(
     () =>
       [...buildPropertyDetailTimeline({ record, property, tasks })].reverse(),
     [record, property, tasks],
   );
+  const logEvents =
+    logEventsQuery.data && logEventsQuery.data.length > 0
+      ? [...logEventsQuery.data].reverse()
+      : fallbackLogEvents;
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -435,8 +514,9 @@ export function PoPropertyDetailTabs({
             count = 1;
             countTone = "red";
           }
-          if (t.id === "photos") {
-            count = 0;
+          if (t.id === "photos" && photoCount > 0) {
+            count = photoCount;
+            countTone = "teal";
           }
           if (t.id === "keys") {
             const govSubmission = partySubmissionsQuery.data?.government;
@@ -663,47 +743,23 @@ export function PoPropertyDetailTabs({
           ) : null}
 
           {tab === "appraisal" ? (
-            <>
-              <SectionHeader>ملخص التقييم</SectionHeader>
-              <InfoBox icon="ℹ">
-                لم يتم رفع تقرير التقييم بعد. يُستكمل هذا القسم بعد إتمام
-                المقيّم لعمله.
-              </InfoBox>
-              <SectionHeader>قائمة التقييم</SectionHeader>
-              <FieldsGrid>
-                <FieldBox label="سعر التقييم" emptyLabel="—" />
-                <FieldBox label="تاريخ التقييم" emptyLabel="—" />
-                <FieldBox label="جهة التقييم" emptyLabel="—" />
-                <FieldBox label="ملاحظات المقيّم" emptyLabel="—" />
-                <FieldBox label="رقم الشهادة" emptyLabel="—" />
-                <FieldBox label="حالة التقرير" emptyLabel="—" />
-              </FieldsGrid>
-            </>
+            <PropertyDetailAppraisalTab
+              submission={partySubmissionsQuery.data?.appraisal ?? null}
+              loading={
+                partySubmissionsQuery.isLoading ||
+                partySubmissionsQuery.isFetching
+              }
+              appraisalTaskId={appraisalTask?.id ?? null}
+              appraiserName={
+                appraisalCard && !appraisalCard.unassigned
+                  ? appraisalCard.name
+                  : ""
+              }
+            />
           ) : null}
 
           {tab === "photos" ? (
-            <>
-              <SectionHeader>صور العقار</SectionHeader>
-              <InfoBox icon="ℹ">لا توجد صور مرفوعة لهذا العقار بعد.</InfoBox>
-              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                {[1, 2, 3, 4].map((n) => (
-                  <div
-                    key={n}
-                    className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1.5 rounded-[var(--radius-DEFAULT)] border-[1.5px] border-dashed border-border bg-surface-2 text-[11px] text-text-3 transition-colors hover:border-success hover:bg-success-bg hover:text-success-text"
-                  >
-                    <span className="text-[22px] leading-none" aria-hidden>
-                      +
-                    </span>
-                    <span>رفع صورة</span>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-3">
-                <Button type="button" size="sm">
-                  رفع صور متعددة
-                </Button>
-              </p>
-            </>
+            <PropertyDetailPhotosTab photos={propertyPhotos} />
           ) : null}
 
           {tab === "log" ? (

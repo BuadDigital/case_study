@@ -124,8 +124,8 @@ function dtoToProperty(dto: WorkOrderPropertyDto): PoPropertyIntake {
     delegationLetterFileName: dto.delegationLetterFileName ?? "",
     otherDocumentFileNames: dto.otherDocumentFileNames ?? [],
     realEstateRegFileName: dto.realEstateRegFileName ?? "",
-    buildLicenseNumber: "",
-    subdivisionRecordNumber: "",
+    buildLicenseNumber: dto.buildLicenseNumber ?? "",
+    subdivisionRecordNumber: dto.subdivisionRecordNumber ?? "",
     bourseDataCompleted: dto.bourseDataCompleted ?? false,
     contacts: (dto.contacts ?? []).map((c) => ({
       name: c.name ?? "",
@@ -195,6 +195,8 @@ export function propertyToDto(prop: PoPropertyIntake): WorkOrderPropertyDto {
     eastBoundaryLengthM: prop.eastBoundaryLengthM || undefined,
     westBoundary: prop.westBoundary || undefined,
     westBoundaryLengthM: prop.westBoundaryLengthM || undefined,
+    buildLicenseNumber: prop.buildLicenseNumber || undefined,
+    subdivisionRecordNumber: prop.subdivisionRecordNumber || undefined,
     deedStatus: prop.deedStatus || undefined,
     area: prop.area || undefined,
     city: prop.city.trim(),
@@ -225,6 +227,8 @@ export function propertyToBourseRequest(
     eastBoundaryLengthM: prop.eastBoundaryLengthM || undefined,
     westBoundary: prop.westBoundary || undefined,
     westBoundaryLengthM: prop.westBoundaryLengthM || undefined,
+    buildLicenseNumber: prop.buildLicenseNumber || undefined,
+    subdivisionRecordNumber: prop.subdivisionRecordNumber || undefined,
   };
 }
 

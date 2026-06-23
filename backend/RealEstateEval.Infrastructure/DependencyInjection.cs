@@ -101,6 +101,7 @@ public static class DependencyInjection
         services.AddScoped<IPartyTaskSubmissionService, PartyTaskSubmissionService>();
         services.AddScoped<IInspectorFeeService, InspectorFeeService>();
         services.AddScoped<IFieldInspectionAttachmentVerifier, FieldInspectionAttachmentVerifier>();
+        services.AddScoped<IPropertyTimelineService, PropertyTimelineService>();
         return services;
     }
 

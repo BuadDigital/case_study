@@ -12,6 +12,7 @@ import {
   type PageSituationCardDef,
   type PageSituationValues,
 } from "../lib/prototype/active-transaction-page-situation";
+import { filterActionablePendingBourseItems } from "../lib/prototype/pending-bourse-queue";
 import { resolveQueueTasksForViewer } from "../lib/prototype/viewer-task-access";
 import {
   partyTaskPageDef,
@@ -114,34 +115,13 @@ export function useActiveTransactionPageSituation(
 
     const obstructedCount =
       pageId === "bourse-inquiry"
-        ? pendingBourse.filter((item) => {
-            const failure = failures.find(
-              (f) =>
-                f.poNumber === item.poNumber &&
-                f.propertyId === item.propertyId,
-            );
-            return (
-              failure &&
-              failure.status !== "returned" &&
-              failure.status !== "resolved"
-            );
-          }).length
+        ? pendingBourse.length -
+          filterActionablePendingBourseItems(pendingBourse, failures).length
         : 0;
 
     const visiblePendingBourse =
       pageId === "bourse-inquiry"
-        ? pendingBourse.filter((item) => {
-            const failure = failures.find(
-              (f) =>
-                f.poNumber === item.poNumber &&
-                f.propertyId === item.propertyId,
-            );
-            return (
-              !failure ||
-              failure.status === "returned" ||
-              failure.status === "resolved"
-            );
-          })
+        ? filterActionablePendingBourseItems(pendingBourse, failures)
         : pendingBourse;
 
     const inspectionWorkspaceByTaskId = new Map(

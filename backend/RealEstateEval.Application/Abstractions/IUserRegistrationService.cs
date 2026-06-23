@@ -8,6 +8,10 @@ public interface IUserRegistrationService
     Task<IReadOnlyList<UserListItemDto>> ListAsync(
         RegistrationSource? sourceScope = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Active operational users eligible for work-order distribution.</summary>
+    Task<IReadOnlyList<UserListItemDto>> ListDistributionAssigneesAsync(
+        CancellationToken cancellationToken = default);
     Task<(CreateUserResponseDto? Result, Dictionary<string, string>? Errors)> CreateHrAsync(
         RegistrationPayloadDto data,
         CancellationToken cancellationToken = default);

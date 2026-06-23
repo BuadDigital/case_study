@@ -91,9 +91,9 @@ export function FailureRaiseFields({
             </optgroup>
           ))}
         </Select>
-        {selectedType?.description ? (
-          <p className="mt-1.5 text-[10px] text-text-3">{selectedType.description}</p>
-        ) : null}
+        <p className="mt-1.5 min-h-[2.5rem] text-[10px] leading-relaxed text-text-3">
+          {selectedType?.description ?? "\u00a0"}
+        </p>
       </div>
 
       <div className="mb-3">
@@ -110,7 +110,7 @@ export function FailureRaiseFields({
         />
       </div>
 
-      <p className="mb-3 text-[10px] text-text-3">
+      <p className="mb-3 min-h-[2.75rem] text-[10px] leading-relaxed text-text-3">
         {severity === "internal"
           ? "يُضبط حالة الصك إلى «قيد التحقق» ويُوقف العمل على العقار حتى يُعالج التعذر."
           : "احتمال تعذر — إشارة تحذيرية فقط دون إيقاف العمل على العقار."}

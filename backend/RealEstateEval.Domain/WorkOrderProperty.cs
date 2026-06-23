@@ -36,6 +36,9 @@ public class WorkOrderProperty
     public string? OtherDocumentFileNames { get; set; }
     public string? RealEstateRegFileName { get; set; }
     public bool BourseDataCompleted { get; set; }
+    public DateTime? BourseCompletedAtUtc { get; set; }
+    public string? BuildLicenseNumber { get; set; }
+    public string? SubdivisionRecordNumber { get; set; }
 
     public WorkOrder? WorkOrder { get; set; }
     public ICollection<PropertyContact> Contacts { get; set; } = [];

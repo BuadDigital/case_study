@@ -42,6 +42,24 @@ export async function listUsers(
   }
 }
 
+export async function listDistributionAssignees(
+  config: UsersApiConfig,
+): Promise<ListUsersResult> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/users/distribution-assignees`, {
+      headers: headers(config.token),
+    });
+    if (!res.ok) {
+      return { ok: false, kind: "server" };
+    }
+    const users = (await res.json()) as UserListItem[];
+    return { ok: true, users: Array.isArray(users) ? users : [] };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
 export type CreateUserResult =
   | { ok: true; user: UserListItem }
   | { ok: false; errors: Record<string, string> };

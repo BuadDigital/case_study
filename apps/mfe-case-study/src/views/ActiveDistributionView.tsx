@@ -9,6 +9,8 @@ import {
   activeDistributionPath,
   distributionTaskPath,
 } from "../lib/my-task-routes";
+import { FAILURES_CHANGED_EVENT } from "@failures/mfe/lib/failures-events";
+import { TASKS_CHANGED_EVENT } from "@case-study/mfe/lib/prototype/tasks-storage";
 import { filterTasksForDistribution } from "@case-study/mfe/lib/prototype/transaction-filters";
 
 const DISTRIBUTION_QUEUE: ActiveTransactionQueueConfig = {
@@ -23,6 +25,7 @@ const DISTRIBUTION_QUEUE: ActiveTransactionQueueConfig = {
   getBasePath: activeDistributionPath,
   getTaskPath: distributionTaskPath,
   filterListed: (mine) => filterTasksForDistribution(mine),
+  refreshOnWindowEvents: [FAILURES_CHANGED_EVENT, TASKS_CHANGED_EVENT],
 };
 
 export function ActiveDistributionView() {

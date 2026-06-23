@@ -14,11 +14,16 @@ public class FailureService : IFailureService
 
     private readonly ApplicationDbContext _db;
     private readonly IWorkflowTaskService _tasks;
+    private readonly IPropertyTimelineService _timeline;
 
-    public FailureService(ApplicationDbContext db, IWorkflowTaskService tasks)
+    public FailureService(
+        ApplicationDbContext db,
+        IWorkflowTaskService tasks,
+        IPropertyTimelineService timeline)
     {
         _db = db;
         _tasks = tasks;
+        _timeline = timeline;
     }
 
     public async Task<IReadOnlyList<FailureRecordDto>> ListAsync(
@@ -70,6 +75,19 @@ public class FailureService : IFailureService
 
         _db.PropertyFailures.Add(entity);
         await _db.SaveChangesAsync(cancellationToken);
+
+        if (Guid.TryParse(entity.PropertyId, out var propertyId))
+        {
+            await _timeline.RecordAsync(
+                entity.PoNumber,
+                propertyId,
+                $"failure:{entity.Id}:created",
+                "تسجيل تعذر",
+                $"{entity.Title} — {FailureStatusLabel(entity.Status)}",
+                entity.Status == PropertyFailureStatus.Approved ? "warn" : "active",
+                now,
+                cancellationToken);
+        }
 
         if (entity.Severity == "internal")
             await ApplyInternalSideEffectsAsync(entity, cancellationToken);
@@ -148,6 +166,20 @@ public class FailureService : IFailureService
         entity.FinalNote = note.Trim();
         entity.UpdatedAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
+
+        if (Guid.TryParse(entity.PropertyId, out var propertyId))
+        {
+            await _timeline.RecordAsync(
+                entity.PoNumber,
+                propertyId,
+                $"failure:{entity.Id}:suspended",
+                "تعليق المعاملة",
+                entity.FinalNote,
+                "warn",
+                entity.UpdatedAtUtc,
+                cancellationToken);
+        }
+
         return ToDto(entity);
     }
 
@@ -368,6 +400,17 @@ public class FailureService : IFailureService
             errors["specialist"] = "اسم الأخصائي مطلوب";
         return errors;
     }
+
+    private static string FailureStatusLabel(string status) => status switch
+    {
+        PropertyFailureStatus.Internal => "داخلي",
+        PropertyFailureStatus.Review => "قيد المراجعة",
+        PropertyFailureStatus.Approved => "معتمد",
+        PropertyFailureStatus.Returned => "مُعاد",
+        PropertyFailureStatus.Resolved => "محلول",
+        PropertyFailureStatus.Suspended => "معلق",
+        _ => status,
+    };
 
     private static FailureRecordDto ToDto(PropertyFailure entity) => new()
     {

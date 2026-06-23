@@ -76,6 +76,8 @@ public static class WorkOrderMapper
             OtherDocumentFileNames = otherDocs,
             RealEstateRegFileName = p.RealEstateRegFileName,
             BourseDataCompleted = p.BourseDataCompleted,
+            BuildLicenseNumber = p.BuildLicenseNumber,
+            SubdivisionRecordNumber = p.SubdivisionRecordNumber,
             Contacts = p.Contacts
                 .OrderBy(c => c.SortOrder)
                 .Select(c => new PropertyContactDto
@@ -156,6 +158,8 @@ public static class WorkOrderMapper
             EastBoundaryLengthM = p.EastBoundaryLengthM,
             WestBoundary = p.WestBoundary,
             WestBoundaryLengthM = p.WestBoundaryLengthM,
+            BuildLicenseNumber = p.BuildLicenseNumber,
+            SubdivisionRecordNumber = p.SubdivisionRecordNumber,
         };
     }
 

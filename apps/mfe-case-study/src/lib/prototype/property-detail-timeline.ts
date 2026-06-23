@@ -9,6 +9,8 @@ import {
   type WorkflowTask,
 } from "./tasks-storage";
 
+import type { PropertyTimelineEventDto } from "@platform/api-client";
+
 export type PropertyTimelineTone = "done" | "active" | "warn" | "muted";
 
 export type PropertyTimelineEvent = {
@@ -25,6 +27,25 @@ function pushEvent(
 ): void {
   if (list.some((e) => e.id === event.id)) return;
   list.push(event);
+}
+
+export function mapPropertyTimelineDtos(
+  events: PropertyTimelineEventDto[],
+): PropertyTimelineEvent[] {
+  return events
+    .filter((e) => e.at)
+    .map((e) => ({
+      id: e.id,
+      at: e.at,
+      title: e.title,
+      detail: e.detail?.trim() || undefined,
+      tone: normalizeTimelineTone(e.tone),
+    }));
+}
+
+function normalizeTimelineTone(tone: string): PropertyTimelineTone {
+  if (tone === "active" || tone === "warn" || tone === "muted") return tone;
+  return "done";
 }
 
 export function buildPropertyDetailTimeline(input: {
@@ -50,9 +71,12 @@ export function buildPropertyDetailTimeline(input: {
 
   const task = caseStudyTaskForProperty(po, property.id, tasks);
   if (task) {
+    const taskCreatedAt = task.createdAt || task.updatedAt || "";
+    const taskUpdatedAt = task.updatedAt || taskCreatedAt;
+
     pushEvent(events, {
       id: `task-${task.id}`,
-      at: task.updatedAt ?? record.receivedFromEnfathAt ?? "",
+      at: taskCreatedAt || record.receivedFromEnfathAt || "",
       title: "إنشاء مهمة العقار",
       detail: taskPhaseLabel(task.phase),
       tone: task.status === "completed" ? "done" : "active",
@@ -61,7 +85,9 @@ export function buildPropertyDetailTimeline(input: {
     if (task.phase !== "enfath" && task.phase !== "bourse") {
       pushEvent(events, {
         id: "bourse-done",
-        at: task.updatedAt ?? "",
+        at: property.bourseDataCompleted
+          ? record.receivedFromEnfathAt || taskUpdatedAt
+          : taskUpdatedAt,
         title: "اكتمال استعلام البورصة",
         tone: "done",
       });
@@ -74,7 +100,7 @@ export function buildPropertyDetailTimeline(input: {
     ) {
       pushEvent(events, {
         id: "distribution",
-        at: task.updatedAt ?? "",
+        at: taskUpdatedAt,
         title: "توزيع المعاملة",
         tone: task.phase === "distribution" ? "active" : "done",
       });
@@ -83,7 +109,7 @@ export function buildPropertyDetailTimeline(input: {
     if (task.phase === "case-study" || task.phase === "done") {
       pushEvent(events, {
         id: "case-study",
-        at: task.updatedAt ?? "",
+        at: taskUpdatedAt,
         title: "دراسة حالة العقار",
         detail: task.assigneeName,
         tone: task.phase === "case-study" ? "active" : "done",
@@ -154,5 +180,8 @@ export function buildPropertyDetailTimeline(input: {
 export function formatTimelineDate(iso: string): string {
   if (!iso) return "—";
   const day = iso.slice(0, 10);
-  return formatDateAr(day);
+  const datePart = formatDateAr(day);
+  if (iso.length <= 10) return datePart;
+  const timePart = iso.includes("T") ? iso.slice(11, 16) : "";
+  return timePart ? `${datePart} · ${timePart}` : datePart;
 }

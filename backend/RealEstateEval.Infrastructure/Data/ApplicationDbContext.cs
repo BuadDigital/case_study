@@ -22,6 +22,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<FieldInspectionWorkspace> FieldInspectionWorkspaces => Set<FieldInspectionWorkspace>();
     public DbSet<InspectorFeeLedger> InspectorFeeLedgers => Set<InspectorFeeLedger>();
     public DbSet<PropertyFailure> PropertyFailures => Set<PropertyFailure>();
+    public DbSet<PropertyTimelineEntry> PropertyTimelineEntries => Set<PropertyTimelineEntry>();
     public DbSet<FieldDictionaryConfig> FieldDictionaryConfigs => Set<FieldDictionaryConfig>();
     public DbSet<FailureTypesCatalogConfig> FailureTypesCatalogConfigs => Set<FailureTypesCatalogConfig>();
     public DbSet<SurveyOffice> SurveyOffices => Set<SurveyOffice>();
@@ -127,6 +128,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.WestBoundary).HasMaxLength(512);
             e.Property(x => x.WestBoundaryLengthM).HasMaxLength(32);
             e.Property(x => x.RestrictionsPresent).HasMaxLength(8);
+            e.Property(x => x.BuildLicenseNumber).HasMaxLength(128);
+            e.Property(x => x.SubdivisionRecordNumber).HasMaxLength(128);
             e.Property(x => x.City).HasMaxLength(128);
             e.Property(x => x.District).HasMaxLength(128);
             e.Property(x => x.Classification).HasMaxLength(128);
@@ -359,6 +362,18 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         {
             e.ToTable("FinancialReportConfigs", DatabaseSchemas.Financial);
             e.Property(x => x.ReportJson).HasColumnType("jsonb");
+        });
+
+        builder.Entity<PropertyTimelineEntry>(e =>
+        {
+            e.ToTable("PropertyTimelineEntries", DatabaseSchemas.CaseStudy);
+            e.Property(x => x.PoNumber).HasMaxLength(64);
+            e.Property(x => x.EventKey).HasMaxLength(128);
+            e.Property(x => x.Title).HasMaxLength(256);
+            e.Property(x => x.Detail).HasMaxLength(2000);
+            e.Property(x => x.Tone).HasMaxLength(16);
+            e.HasIndex(x => new { x.PoNumber, x.PropertyId, x.EventKey }).IsUnique();
+            e.HasIndex(x => new { x.PoNumber, x.PropertyId, x.OccurredAtUtc });
         });
 
         builder.Entity<OutboxMessage>(e =>

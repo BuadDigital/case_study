@@ -15,6 +15,9 @@ export function RegistrationFormCard({
   children: ReactNode;
 }) {
   const showHeader = Boolean(title || subtitle || headerRight);
+  if (!showHeader) {
+    return <div data-registration-card>{children}</div>;
+  }
   return (
     <Card className="mb-4 overflow-hidden shadow-none" data-registration-card>
       {showHeader ? (

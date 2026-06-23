@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   BOURSE_INQUIRY_IDENTIFIER_STATUS,
   CLASSIFICATION_OPTIONS,
@@ -20,6 +20,7 @@ import { RegField, RegSelect } from "@platform/app-shared/registration/FormField
 import type { FieldErrors } from "@platform/app-shared/registration/registration-utils";
 import {
   Badge,
+  Button,
   Card,
   CardBody,
   cn,
@@ -56,6 +57,92 @@ const pillClass = (selected: boolean) =>
       ? "border-primary bg-primary text-white shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary)_20%,transparent)]"
       : "border-border bg-surface text-text-2 hover:border-primary-light hover:text-primary",
   );
+
+function PropertyFileUploadField({
+  id,
+  label,
+  fileName,
+  error,
+  attachPo,
+  propertyId,
+  docKind,
+  multiple,
+  onUpload,
+  onClear,
+}: {
+  id: string;
+  label: ReactNode;
+  fileName: string;
+  error?: string;
+  attachPo: string;
+  propertyId: string;
+  docKind?: "decree" | "delegation";
+  multiple?: boolean;
+  onUpload: (file: File) => void;
+  onClear: () => void;
+}) {
+  const hasFile = Boolean(fileName.trim());
+
+  if (hasFile) {
+    return (
+      <div className="mt-2 w-full">
+        <Label className="mb-1 text-[11px]">{label}</Label>
+        {docKind && attachPo ? (
+          <AssignmentDocAttachment
+            poNumber={attachPo}
+            propertyId={propertyId}
+            fileName={fileName}
+            docKind={docKind}
+            variant="inline"
+          />
+        ) : (
+          <p className="text-[11px] text-text-2">{fileName}</p>
+        )}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="mt-1.5 h-auto px-0 text-[11px] text-primary"
+          onClick={onClear}
+        >
+          استبدال الملف
+        </Button>
+        {error ? (
+          <p className="mt-1 text-[10px] text-danger-text" role="alert">
+            {error}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-2 w-full">
+      <Label className="mb-1 text-[11px]" htmlFor={id}>
+        {label}
+      </Label>
+      <Input
+        id={id}
+        type="file"
+        accept=".pdf,.jpg,.jpeg,.png"
+        multiple={multiple}
+        className="text-xs"
+        onChange={(e) => {
+          const file = multiple
+            ? Array.from(e.target.files ?? [])[0]
+            : e.target.files?.[0];
+          if (file) onUpload(file);
+          e.target.value = "";
+        }}
+      />
+      {error ? (
+        <p className="mt-1 text-[10px] text-danger-text" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 function selectIdentifierType(
   onPatch: Props["onPatch"],
@@ -316,118 +403,77 @@ export function PoPropertyEnfathForm({
       ) : null}
 
       {!isBourseId && fieldsMode === "all" ? (
-      <div className="mt-2 w-full">
-        <Label className="mb-1 text-[11px]" htmlFor={`delegation_${property.id}`}>
-          خطاب التفويض *
-        </Label>
-        <Input
+        <PropertyFileUploadField
           id={`delegation_${property.id}`}
-          type="file"
-          accept=".pdf,.jpg,.jpeg,.png"
-          className="text-xs"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            onPatch("delegationLetterFileName", file?.name ?? "");
-            if (file && attachPo) {
+          label="خطاب التفويض *"
+          fileName={property.delegationLetterFileName}
+          error={fieldErrors.delegationLetterFileName}
+          attachPo={attachPo}
+          propertyId={property.id}
+          docKind="delegation"
+          onUpload={(file) => {
+            onPatch("delegationLetterFileName", file.name);
+            if (attachPo) {
               void cacheDelegationDoc(attachPo, property.id, file);
             }
           }}
+          onClear={() => onPatch("delegationLetterFileName", "")}
         />
-        {fieldErrors.delegationLetterFileName ? (
-          <p className="mt-1 text-[10px] text-danger-text" role="alert">
-            {fieldErrors.delegationLetterFileName}
-          </p>
-        ) : property.delegationLetterFileName ? (
-          <p className="mt-1 text-[10px] text-text-3">
-            {property.delegationLetterFileName}
-          </p>
-        ) : null}
-      </div>
       ) : null}
 
       {property.identifierType === "real_estate_reg" && fieldsMode === "all" ? (
-        <div className="mt-2 w-full">
-          <Label className="mb-1 text-[11px]" htmlFor={`real_estate_reg_${property.id}`}>
-            السجل العقاري (مرفق) *
-          </Label>
-          <Input
-            id={`real_estate_reg_${property.id}`}
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png"
-            className="text-xs"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              onPatch("realEstateRegFileName", file?.name ?? "");
-            }}
-          />
-          {fieldErrors.realEstateRegFileName ? (
-            <p className="mt-1 text-[10px] text-danger-text" role="alert">
-              {fieldErrors.realEstateRegFileName}
-            </p>
-          ) : property.realEstateRegFileName ? (
-            <p className="mt-1 text-[10px] text-text-3">
-              {property.realEstateRegFileName}
-            </p>
-          ) : null}
-        </div>
+        <PropertyFileUploadField
+          id={`real_estate_reg_${property.id}`}
+          label="السجل العقاري (مرفق) *"
+          fileName={property.realEstateRegFileName}
+          error={fieldErrors.realEstateRegFileName}
+          attachPo={attachPo}
+          propertyId={property.id}
+          onUpload={(file) => onPatch("realEstateRegFileName", file.name)}
+          onClear={() => onPatch("realEstateRegFileName", "")}
+        />
       ) : null}
 
       {showAssignmentDecree && showExtended ? (
-        <div className="mt-2 w-full">
-          <Label className="mb-1 text-[11px]" htmlFor={`assignment_doc_${property.id}`}>
-            قرار الإسناد
-            {propertyOrdinal ? ` (${propertyOrdinal})` : ""} *
-          </Label>
-          <Input
-            id={`assignment_doc_${property.id}`}
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png"
-            className="text-xs"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              onPatch("assignmentDocFileName", file?.name ?? "");
-              if (file && attachPo) {
-                void cacheAssignmentDoc(attachPo, property.id, file);
-              }
-            }}
-          />
-          {property.assignmentDocFileName && attachPo ? (
-            <AssignmentDocAttachment
-              poNumber={attachPo}
-              propertyId={property.id}
-              fileName={property.assignmentDocFileName}
-              variant="inline"
-            />
-          ) : fieldErrors.assignmentDocFileName ? (
-            <p className="mt-1 text-[10px] text-danger-text" role="alert">
-              {fieldErrors.assignmentDocFileName}
-            </p>
-          ) : null}
-        </div>
+        <PropertyFileUploadField
+          id={`assignment_doc_${property.id}`}
+          label={
+            <>
+              قرار الإسناد
+              {propertyOrdinal ? ` (${propertyOrdinal})` : ""} *
+            </>
+          }
+          fileName={property.assignmentDocFileName}
+          error={fieldErrors.assignmentDocFileName}
+          attachPo={attachPo}
+          propertyId={property.id}
+          docKind="decree"
+          onUpload={(file) => {
+            onPatch("assignmentDocFileName", file.name);
+            if (attachPo) {
+              void cacheAssignmentDoc(attachPo, property.id, file);
+            }
+          }}
+          onClear={() => onPatch("assignmentDocFileName", "")}
+        />
       ) : null}
 
       {fieldsMode === "all" ? (
-      <div className="mt-2 w-full">
-        <Label className="mb-1 text-[11px]" htmlFor={`other_docs_${property.id}`}>
-          مستندات أخرى (اختياري)
-        </Label>
-        <Input
+        <PropertyFileUploadField
           id={`other_docs_${property.id}`}
-          type="file"
-          accept=".pdf,.jpg,.jpeg,.png"
+          label="مستندات أخرى (اختياري)"
+          fileName={property.otherDocumentFileNames.join("، ")}
+          attachPo={attachPo}
+          propertyId={property.id}
           multiple
-          className="text-xs"
-          onChange={(e) => {
-            const names = Array.from(e.target.files ?? []).map((f) => f.name);
-            onPatch("otherDocumentFileNames", names);
+          onUpload={(file) => {
+            onPatch("otherDocumentFileNames", [
+              ...property.otherDocumentFileNames,
+              file.name,
+            ]);
           }}
+          onClear={() => onPatch("otherDocumentFileNames", [])}
         />
-        {property.otherDocumentFileNames.length > 0 ? (
-          <p className="mt-1 text-[10px] text-text-3">
-            {property.otherDocumentFileNames.join("، ")}
-          </p>
-        ) : null}
-      </div>
       ) : null}
 
       {showExtended ? (

@@ -12,10 +12,14 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 public class WorkOrdersController : ControllerBase
 {
     private readonly IWorkOrderService _workOrders;
+    private readonly IPropertyTimelineService _timeline;
 
-    public WorkOrdersController(IWorkOrderService workOrders)
+    public WorkOrdersController(
+        IWorkOrderService workOrders,
+        IPropertyTimelineService timeline)
     {
         _workOrders = workOrders;
+        _timeline = timeline;
     }
 
     [HttpGet]
@@ -74,6 +78,15 @@ public class WorkOrdersController : ControllerBase
         var dto = await _workOrders.GetByPoNumberAsync(poNumber, cancellationToken);
         if (dto is null) return NotFound();
         return Ok(dto);
+    }
+
+    [HttpGet("{poNumber}/properties/{propertyId:guid}/timeline")]
+    public async Task<ActionResult<IReadOnlyList<PropertyTimelineEventDto>>> GetPropertyTimeline(
+        string poNumber,
+        Guid propertyId,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _timeline.GetForPropertyAsync(poNumber, propertyId, cancellationToken));
     }
 
     [HttpPost]

@@ -284,6 +284,131 @@ export type PropertyBoundaryDescKey =
 export type PropertyBoundaryLenKey =
   (typeof PROPERTY_BOUNDARY_ROWS)[number]["lenKey"];
 
+function formatBoundaryRow(
+  property: Pick<PoPropertyIntake, PropertyBoundaryDescKey | PropertyBoundaryLenKey>,
+  descKey: PropertyBoundaryDescKey,
+  lenKey: PropertyBoundaryLenKey,
+  label: string,
+): string {
+  const desc = property[descKey].trim();
+  const len = property[lenKey].trim();
+  if (!desc && !len) return "";
+  const lenPart = len ? `${len} م` : "";
+  if (desc && lenPart) return `${label}: ${desc} (${lenPart})`;
+  if (desc) return `${label}: ${desc}`;
+  return `${label}: ${lenPart}`;
+}
+
+/** الأطوال والأبعاد — من حقول الحدود في بيانات البورصة. */
+export function formatPropertyBoundaryDimensions(
+  property: Pick<PoPropertyIntake, PropertyBoundaryDescKey | PropertyBoundaryLenKey>,
+): string {
+  return PROPERTY_BOUNDARY_ROWS.map((row) =>
+    formatBoundaryRow(property, row.descKey, row.lenKey, row.label),
+  )
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/** واجهات الأرض — أوصاف الحدود عند توفرها. */
+export function formatPropertyLandFrontages(
+  property: Pick<PoPropertyIntake, PropertyBoundaryDescKey>,
+): string {
+  return PROPERTY_BOUNDARY_ROWS.map((row) => {
+    const desc = property[row.descKey].trim();
+    return desc ? `${row.label}: ${desc}` : "";
+  })
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/** رقم القطعة / المخطط — من محضر التجزئة أو رخصة البناء. */
+export function formatPropertyPlotPlanNumber(
+  property: Pick<PoPropertyIntake, "subdivisionRecordNumber" | "buildLicenseNumber">,
+): string {
+  const parts = [
+    property.subdivisionRecordNumber.trim()
+      ? `محضر التجزئة: ${property.subdivisionRecordNumber.trim()}`
+      : "",
+    property.buildLicenseNumber.trim()
+      ? `رخصة البناء: ${property.buildLicenseNumber.trim()}`
+      : "",
+  ].filter(Boolean);
+  return parts.join(" · ");
+}
+
+type PropertyBoundarySurveyFields = Pick<
+  PoPropertyIntake,
+  | PropertyBoundaryDescKey
+  | PropertyBoundaryLenKey
+  | "boundariesAvailability"
+  | "boundariesExternalDocName"
+  | "bourseDataCompleted"
+>;
+
+/** Empty-state label for مساحية fields on property detail. */
+export function propertySurveyEmptyLabel(
+  property: Pick<PoPropertyIntake, "bourseDataCompleted" | "boundariesAvailability">,
+  field: "dimensions" | "frontages" | "plot",
+): string {
+  if (field === "plot") {
+    return property.bourseDataCompleted
+      ? "لم يُسجّل في البورصة"
+      : "غير محدد";
+  }
+  if (property.boundariesAvailability === "no") return "غير متوفرة";
+  return property.bourseDataCompleted
+    ? "لم تُدخل التفاصيل بعد"
+    : "غير محدد";
+}
+
+/** الأطوال والأبعاد — مع تلميح عند توفر الحدود دون إدخال تفصيلي. */
+export function formatPropertyBoundaryDimensionsDisplay(
+  property: PropertyBoundarySurveyFields,
+): string {
+  const dims = formatPropertyBoundaryDimensions(property);
+  if (dims) return dims;
+  const avail = property.boundariesAvailability.trim();
+  if (avail === "no") return "غير متوفرة";
+  if (avail === "doc" && property.boundariesExternalDocName.trim()) {
+    return `مستند خارجي: ${property.boundariesExternalDocName.trim()}`;
+  }
+  if (avail) return `حسب «${boundariesAvailabilityLabel(avail)}»`;
+  return "";
+}
+
+/** واجهات الأرض — مع تلميح عند توفر الحدود دون أوصاف. */
+export function formatPropertyLandFrontagesDisplay(
+  property: PropertyBoundarySurveyFields,
+): string {
+  const frontages = formatPropertyLandFrontages(property);
+  if (frontages) return frontages;
+  const avail = property.boundariesAvailability.trim();
+  if (avail === "no") return "غير متوفرة";
+  if (avail) return `حسب «${boundariesAvailabilityLabel(avail)}»`;
+  return "";
+}
+
+/** رابط خريطة تقريبي من المدينة والحي (حتى تتوفر إحداثيات دقيقة). */
+export function propertyLocationMapUrl(
+  property: Pick<PoPropertyIntake, "city" | "district">,
+): string | null {
+  const query = [property.district.trim(), property.city.trim(), "السعودية"]
+    .filter(Boolean)
+    .join("، ");
+  if (!query) return null;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
+/** حالة الملك — مشتقة مؤقتاً حتى يُضاف حقل مستقل في الـ API. */
+export function ownershipStatusLabel(
+  property: Pick<PoPropertyIntake, "ownerName" | "deedStatus">,
+): string {
+  if (property.deedStatus.trim()) return property.deedStatus.trim();
+  if (property.ownerName.trim()) return "مسجّل";
+  return "";
+}
+
 export function clearPropertyBoundaryFields(): Pick<
   PoPropertyIntake,
   PropertyBoundaryDescKey | PropertyBoundaryLenKey
@@ -313,6 +438,8 @@ export function hasBourseDetailFields(
     | "restrictionsPresent"
     | "boundariesAvailability"
     | "boundariesExternalDocName"
+    | "buildLicenseNumber"
+    | "subdivisionRecordNumber"
     | PropertyBoundaryDescKey
     | PropertyBoundaryLenKey
   >,
@@ -327,6 +454,8 @@ export function hasBourseDetailFields(
       property.restrictionsPresent.trim() ||
       property.boundariesAvailability.trim() ||
       property.boundariesExternalDocName.trim() ||
+      property.buildLicenseNumber.trim() ||
+      property.subdivisionRecordNumber.trim() ||
       property.northBoundary.trim() ||
       property.northBoundaryLengthM.trim() ||
       property.southBoundary.trim() ||

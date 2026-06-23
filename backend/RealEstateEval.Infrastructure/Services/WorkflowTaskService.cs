@@ -17,11 +17,16 @@ public class WorkflowTaskService : IWorkflowTaskService
 
     private readonly ApplicationDbContext _db;
     private readonly IInspectorFeeService _inspectorFees;
+    private readonly IPropertyTimelineService _timeline;
 
-    public WorkflowTaskService(ApplicationDbContext db, IInspectorFeeService inspectorFees)
+    public WorkflowTaskService(
+        ApplicationDbContext db,
+        IInspectorFeeService inspectorFees,
+        IPropertyTimelineService timeline)
     {
         _db = db;
         _inspectorFees = inspectorFees;
+        _timeline = timeline;
     }
 
     public async Task<IReadOnlyList<WorkflowTaskDto>> ListAsync(
@@ -162,6 +167,40 @@ public class WorkflowTaskService : IWorkflowTaskService
         _db.WorkflowTasks.AddRange(children);
         await _db.SaveChangesAsync(cancellationToken);
 
+        if (parent.PropertyId is Guid propertyId)
+        {
+            await _timeline.RecordAsync(
+                parent.PoNumber,
+                propertyId,
+                $"task:{parent.Id}:distribution",
+                "توزيع المعاملة",
+                null,
+                "done",
+                now,
+                cancellationToken);
+            await _timeline.RecordAsync(
+                parent.PoNumber,
+                propertyId,
+                $"task:{parent.Id}:case-study",
+                "دراسة حالة العقار",
+                parent.AssigneeName,
+                "active",
+                now,
+                cancellationToken);
+            foreach (var child in children)
+            {
+                await _timeline.RecordAsync(
+                    parent.PoNumber,
+                    propertyId,
+                    $"party:{child.Id}:assigned",
+                    PartyAssignedTitle(child.Kind),
+                    child.AssigneeName,
+                    "done",
+                    child.CreatedAtUtc,
+                    cancellationToken);
+            }
+        }
+
         await _inspectorFees.EnsureLedgersForTasksAsync(
             children.Where(c => c.Kind is "field-inspection" or "engineering-survey"),
             cancellationToken);
@@ -208,6 +247,20 @@ public class WorkflowTaskService : IWorkflowTaskService
         entity.Title = $"توزيع الأطراف — {(string.IsNullOrEmpty(deed) ? po : deed)}";
         entity.UpdatedAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
+
+        if (entity.PropertyId is Guid propertyId)
+        {
+            await _timeline.RecordAsync(
+                entity.PoNumber,
+                propertyId,
+                $"task:{entity.Id}:bourse-complete",
+                "اكتمال استعلام البورصة",
+                null,
+                "done",
+                entity.UpdatedAtUtc,
+                cancellationToken);
+        }
+
         return WorkflowTaskMapper.ToDto(entity);
     }
 
@@ -536,6 +589,16 @@ public class WorkflowTaskService : IWorkflowTaskService
         }
         return string.IsNullOrEmpty(deed) ? "—" : deed;
     }
+
+    private static string PartyAssignedTitle(string kind) => kind switch
+    {
+        "field-inspection" => "تعيين المعاين الميداني",
+        "engineering-survey" => "تعيين المكتب الهندسي",
+        "property-appraisal" => "تعيين المقيّم العقاري",
+        "government-review" => "تعيين المراجع الحكومي",
+        "valuation-coordination" => "تعيين منسق التقييم",
+        _ => "تعيين طرف",
+    };
 
     private async Task RemovePartySubmissionsForTasksAsync(
         List<Guid> taskIds,

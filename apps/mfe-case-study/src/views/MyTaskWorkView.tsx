@@ -45,7 +45,11 @@ import {
   findPriorDeedFull,
   updatePropertyInPo,
 } from "../lib/prototype/po-intake-storage";
-import { poPropertyFailurePath } from "../lib/po-routes";
+import {
+  FAILURE_RAISER_SPECIALIST,
+  FAILURE_RAISER_SUPERVISOR,
+} from "@failures/mfe";
+import { FailureRaiseModal } from "@case-study/mfe/components/failures/FailureRaiseModal";
 import {
   advanceTaskAfterBourse,
   advanceTaskAfterEnfath,
@@ -110,6 +114,7 @@ export function CaseStudyTaskWork({
   const [distribution, setDistribution] = useState<TaskDistributionDraft>(
     () => migrateDistribution(task.distribution),
   );
+  const [failureModalOpen, setFailureModalOpen] = useState(false);
   const { data: poRecord, isPending: poRecordLoading } = usePoRecordQuery(
     task.poNumber,
   );
@@ -121,6 +126,11 @@ export function CaseStudyTaskWork({
 
   const isSupervisor = role === "section-supervisor" || role === "cdo";
   const isSpecialist = role === "case-specialist" || role === "cdo";
+  const failureRaisedByRole =
+    role === "section-supervisor"
+      ? FAILURE_RAISER_SUPERVISOR
+      : FAILURE_RAISER_SPECIALIST;
+  const failureSpecialist = ROLES[role]?.name ?? "أخصائي";
 
   useEffect(() => {
     setDeedVitality(null);
@@ -604,9 +614,7 @@ export function CaseStudyTaskWork({
               type="button"
               variant="dangerOutline"
               size="sm"
-              onClick={() =>
-                router.push(poPropertyFailurePath(task.poNumber, task.propertyId!))
-              }
+              onClick={() => setFailureModalOpen(true)}
             >
               تسجيل تعذر
             </Button>
@@ -684,21 +692,42 @@ export function CaseStudyTaskWork({
       ) : null}
 
       {showDistribution ? (
-        <RegistrationFormCard
-          title={layout === "panel" ? undefined : "توزيع المعاملة على الأطراف"}
-          subtitle={
-            layout === "panel"
-              ? undefined
-              : "فعّل الطرف ثم اختر المسؤول — يمكن الإسناد لأكثر من طرف معاً"
-          }
-        >
+        layout === "panel" ? (
           <DistributionPartiesForm
             distribution={distribution}
             onPatch={patchDistribution}
             showEngineering={showEngineering}
             engineeringHint={engineeringUnavailableHint()}
           />
-        </RegistrationFormCard>
+        ) : (
+          <RegistrationFormCard
+            title="توزيع المعاملة على الأطراف"
+            subtitle="فعّل الطرف ثم اختر المسؤول — يمكن الإسناد لأكثر من طرف معاً"
+          >
+            <DistributionPartiesForm
+              distribution={distribution}
+              onPatch={patchDistribution}
+              showEngineering={showEngineering}
+              engineeringHint={engineeringUnavailableHint()}
+            />
+          </RegistrationFormCard>
+        )
+      ) : null}
+
+      {task.propertyId ? (
+        <FailureRaiseModal
+          open={failureModalOpen}
+          onClose={() => setFailureModalOpen(false)}
+          poNumber={task.poNumber}
+          propertyId={task.propertyId}
+          deedNumber={property.deedNumber?.trim() ?? ""}
+          specialist={failureSpecialist}
+          raisedByRole={failureRaisedByRole}
+          onSubmitted={() => {
+            onRefresh();
+            if (layout === "panel") exit();
+          }}
+        />
       ) : null}
     </TaskWorkChrome>
   );

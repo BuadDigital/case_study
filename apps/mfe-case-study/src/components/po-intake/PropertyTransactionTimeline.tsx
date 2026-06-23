@@ -1,7 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { cn } from "@platform/design-system";
+import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import {
   buildPropertyDetailTimeline,
   formatTimelineDate,
@@ -11,9 +14,11 @@ import { buildPropertyDetailTimelinePartyRows } from "../../lib/prototype/proper
 import { formatDateAr } from "../../lib/prototype/po-intake-data";
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/prototype/po-intake-data";
 import { caseStudyTaskForProperty } from "../../lib/prototype/tasks-storage";
+import { TASKS_CHANGED_EVENT } from "../../query/case-study-queries";
+import { usePropertyTimelineQuery } from "../../query/use-property-timeline-query";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
+import { WORK_ORDERS_CHANGED_EVENT } from "../../lib/work-orders-api-config";
 import { DetailBadge, ltrValueClass } from "./PropertyDetailFields";
-
 function toneToDotClass(tone: PropertyTimelineTone): string {
   if (tone === "done") return "bg-success";
   if (tone === "active") return "bg-warning";
@@ -55,17 +60,25 @@ export function PropertyTransactionTimeline({
   property: PoPropertyIntake;
 }) {
   const { data: tasks = [] } = useWorkflowTasksQuery();
+  const { data: staffResult } = useStaffUsersQuery();
+  const staffUsers = staffResult?.users ?? [];
   const poNumber = record.poNumber.trim();
+  const timelineQuery = usePropertyTimelineQuery(poNumber, property.id);
+  const queryClient = useQueryClient();
 
-  const events = useMemo(
-    () =>
-      buildPropertyDetailTimeline({
-        record,
-        property,
-        tasks,
-      }),
-    [record, property, tasks],
-  );
+  useEffect(() => {
+    const invalidate = () => {
+      void queryClient.invalidateQueries({
+        queryKey: prototypeKeys.propertyTimeline(poNumber, property.id),
+      });
+    };
+    window.addEventListener(TASKS_CHANGED_EVENT, invalidate);
+    window.addEventListener(WORK_ORDERS_CHANGED_EVENT, invalidate);
+    return () => {
+      window.removeEventListener(TASKS_CHANGED_EVENT, invalidate);
+      window.removeEventListener(WORK_ORDERS_CHANGED_EVENT, invalidate);
+    };
+  }, [queryClient, poNumber, property.id]);
 
   const task = useMemo(
     () => caseStudyTaskForProperty(poNumber, property.id, tasks),
@@ -77,11 +90,19 @@ export function PropertyTransactionTimeline({
       buildPropertyDetailTimelinePartyRows({
         task: task ?? null,
         allTasks: tasks,
+        staffUsers,
       }),
-    [task, tasks],
+    [task, tasks, staffUsers],
   );
 
-  const displayEvents = useMemo(() => [...events].reverse(), [events]);
+  const displayEvents = useMemo(() => {
+    const fromApi = timelineQuery.data ?? [];
+    const events =
+      fromApi.length > 0
+        ? fromApi
+        : buildPropertyDetailTimeline({ record, property, tasks });
+    return [...events].reverse();
+  }, [timelineQuery.data, record, property, tasks]);
 
   return (
     <aside
