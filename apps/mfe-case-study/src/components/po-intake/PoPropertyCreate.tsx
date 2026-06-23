@@ -365,7 +365,6 @@ export function PoPropertyCreate({ poNumber, onBackAction,onSavedAction,}: {
           >
             <PoPropertyEnfathForm
               property={currentProperty}
-              propertyOrdinal={propertyOrdinal}
               assignmentType={record.assignmentType}
               fieldErrors={fieldErrors}
               onPatch={patchProperty}

@@ -34,6 +34,7 @@ import {
   validateGovernmentReviewSubmission,
   type GovernmentReviewFieldErrors,
 } from "../../lib/prototype/government-review-work-validation";
+import { GovernmentReviewKeysProofUpload } from "./GovernmentReviewKeysProofUpload";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 
 export type GovernmentReviewWorkHostRef = {
@@ -317,12 +318,19 @@ export function GovernmentReviewWorkBody({
             onChange={(v) => persist({ propertyZoneStatus: v })}
           />
           {showKeysDescription ? (
-            <RegField
-              id="gov-keys-proof"
+            <GovernmentReviewKeysProofUpload
               label="إثبات استلام المفتاح (خطاب أو صورة)"
-              placeholder="اسم الملف المرفوع"
-              value={draft.keysProofFileName}
-              onChange={(v) => persist({ keysProofFileName: v })}
+              files={draft.keysProofFiles}
+              disabled={formDisabled}
+              error={fieldErrors.keysProofFiles}
+              onChange={(keysProofFiles) => {
+                persist({ keysProofFiles });
+                setFieldErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.keysProofFiles;
+                  return next;
+                });
+              }}
             />
           ) : null}
         </RegistrationFormCard>

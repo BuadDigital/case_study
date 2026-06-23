@@ -4,11 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Badge,
-  Button,
-  Card,
-  CardBody,
   EmptyState,
-  Note,
   OperationalPanel,
   PanelSkeleton,
   QueueTableHint,
@@ -24,33 +20,19 @@ import {
   queueTableRowClassName,
   queueTableWrapClassName,
 } from "@platform/design-system";
-import { InternalDelegationLetterPanel } from "../components/government-review/InternalDelegationLetterPanel";
+import { GovernmentReviewPoPanel } from "../components/government-review/GovernmentReviewPoPanel";
 import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
 import { PoNumber } from "../components/ui/PoNumber";
-import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import { getAuthSession } from "@platform/auth-client";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
-import {
-  buildGovernmentReviewPoRows,
-  courtGroupsForPo,
-  type GovernmentReviewPoRow,
-} from "../lib/prototype/government-review-po";
-import {
-  delegationLetterForCourt,
-  hydrateInternalDelegationLetters,
-  syncInternalDelegationLetters,
-} from "../lib/prototype/internal-delegation-letters";
+import { buildGovernmentReviewPoRows } from "../lib/prototype/government-review-po";
 import { partyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import {
   decodeTaskParam,
   governmentReviewWorkspacePath,
 } from "../lib/my-task-routes";
-import {
-  taskDisplayPropertyLabel,
-  tasksForPartyAssignee,
-} from "../lib/prototype/tasks-storage";
-import { formatPoDisplay } from "../lib/prototype/po-intake-data";
+import { tasksForPartyAssignee } from "../lib/prototype/tasks-storage";
 import {
   reviewerScopeForRole,
 } from "../lib/prototype/reviewer-coverage";
@@ -64,133 +46,6 @@ const ROW_ACTIVE = queueTableRowActiveClassName;
 
 function governmentReviewPoPath(poNumber: string): string {
   return `/government-review?po=${encodeURIComponent(poNumber)}`;
-}
-
-function GovernmentReviewPoPanel({
-  row,
-  onClose,
-  onRefresh,
-  onOpenTask,
-}: {
-  row: GovernmentReviewPoRow;
-  onClose: () => void;
-  onRefresh: () => void;
-  onOpenTask: (taskId: string) => void;
-}) {
-  const { data: poRecords = [] } = usePoRecordsQuery();
-  const record = useMemo(
-    () => poRecords.find((r) => r.poNumber.trim() === row.poNumber.trim()),
-    [poRecords, row.poNumber],
-  );
-  const [, bump] = useState(0);
-  const refreshLetters = useCallback(() => bump((n) => n + 1), []);
-
-  useEffect(() => {
-    if (!record) return;
-    void hydrateInternalDelegationLetters(record.poNumber).then(() => {
-      syncInternalDelegationLetters(record);
-      refreshLetters();
-    });
-  }, [record, refreshLetters]);
-
-  const courtGroups = useMemo(
-    () => courtGroupsForPo(record, row.courts),
-    [record, row.courts],
-  );
-
-  return (
-    <Card className="max-lg:static max-lg:self-stretch self-start overflow-hidden rounded-none border-none shadow-none lg:sticky lg:top-3 lg:border-s lg:border-border">
-      <CardBody className="px-4 py-3">
-        <div className="mb-3 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="m-0 mb-1 text-sm font-semibold text-text">
-              {formatPoDisplay(row.poNumber)}
-            </h2>
-            <p className="m-0 text-[10px] text-text-3">
-              {row.assignmentType} · {row.propertyCount} عقار · {row.openCount}{" "}
-              مهمة مفتوحة
-            </p>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={onClose}
-            aria-label="إغلاق"
-          >
-            ✕
-          </Button>
-        </div>
-        <RegistrationFormCard title="ملخص أمر العمل">
-          <Note tone="info">{row.primaryDataLabel}</Note>
-          {row.courts.length > 0 ? (
-            <p className="mt-2 text-[10px] text-text-3">
-              المحاكم: {row.courts.join(" · ")}
-            </p>
-          ) : (
-            <p className="mt-2 text-[10px] text-text-3">
-              لا توجد محاكم مسجّلة بعد في بيانات العقارات.
-            </p>
-          )}
-        </RegistrationFormCard>
-
-        <RegistrationFormCard title="مهام المراجعة (حسب العقار)">
-          {row.tasks.length === 0 ? (
-            <p className="text-[10px] text-text-3">
-              لا توجد مهام مراجعة مرتبطة بهذا الأمر.
-            </p>
-          ) : (
-            <ul className="m-0 flex list-none flex-col gap-1 p-0">
-              {row.tasks.map((task) => (
-                <li key={task.id}>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="h-auto w-full justify-start py-2 text-start"
-                    onClick={() => onOpenTask(task.id)}
-                  >
-                    {taskDisplayPropertyLabel(task)} — {task.title}
-                    {task.status === "open" ? (
-                      <Badge tone="warning" className="ms-2">
-                        مفتوحة
-                      </Badge>
-                    ) : (
-                      <Badge tone="success" className="ms-2">
-                        منجزة
-                      </Badge>
-                    )}
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </RegistrationFormCard>
-
-        {record
-          ? courtGroups.map((group) => {
-              const letter = delegationLetterForCourt(
-                row.poNumber,
-                group.court,
-                record,
-              );
-              if (!letter) return null;
-              return (
-                <InternalDelegationLetterPanel
-                  key={group.court}
-                  letter={letter}
-                  record={record}
-                  onRefresh={() => {
-                    refreshLetters();
-                    onRefresh();
-                  }}
-                />
-              );
-            })
-          : null}
-      </CardBody>
-    </Card>
-  );
 }
 
 export function GovernmentReviewView() {
@@ -400,22 +255,17 @@ export function GovernmentReviewView() {
   );
 
   const sidePanel =
-    hasRail ? (
+    hasRail && panelOpen && selectedRow ? (
       <OperationalPanel
         id="government-review-panel"
-        className={cn(
-          "min-h-0 min-w-0 self-stretch opacity-0 invisible",
-          panelOpen && selectedRow && "visible opacity-100",
-        )}
+        className="flex min-h-0 min-w-0 flex-col self-stretch"
       >
-        {panelOpen && selectedRow ? (
-          <GovernmentReviewPoPanel
-            row={selectedRow}
-            onClose={closePanel}
-            onRefresh={refreshWork}
-            onOpenTask={(taskId) => openTask(selectedRow.poNumber, taskId)}
-          />
-        ) : null}
+        <GovernmentReviewPoPanel
+          row={selectedRow}
+          onClose={closePanel}
+          onRefresh={refreshWork}
+          onOpenTask={(taskId) => openTask(selectedRow.poNumber, taskId)}
+        />
       </OperationalPanel>
     ) : null;
 

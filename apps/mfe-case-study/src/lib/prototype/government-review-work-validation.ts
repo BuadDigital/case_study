@@ -7,7 +7,8 @@ export type GovernmentReviewFieldErrors = Partial<
     | "keysStatus"
     | "keysDescription"
     | "accessBlockReason"
-    | "confirmed",
+    | "confirmed"
+    | "keysProofFiles",
     string
   >
 >;
@@ -44,6 +45,13 @@ export function validateGovernmentReviewSubmission(
   }
 
   if (
+    submission.keysStatus === "received" &&
+    submission.keysProofFiles.length === 0
+  ) {
+    errors.keysProofFiles = "ارفع إثبات استلام المفتاح (صورة أو خطاب)";
+  }
+
+  if (
     submission.keysStatus === "pending" &&
     submission.visitStatus === "completed" &&
     !submission.accessBlockReason.trim()
@@ -67,6 +75,7 @@ export function firstGovernmentReviewError(
     errors.visitDate ??
     errors.keysStatus ??
     errors.keysDescription ??
+    errors.keysProofFiles ??
     errors.accessBlockReason ??
     errors.confirmed ??
     "تحقق من الحقول المطلوبة"

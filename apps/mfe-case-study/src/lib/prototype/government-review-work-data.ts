@@ -10,6 +10,13 @@ export type GovernmentReviewKeysStatus =
 
 export type GovernmentReviewSubmissionStatus = "draft" | "submitted";
 
+export type GovernmentReviewKeysProofFile = {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  dataUrl: string;
+};
+
 export type GovernmentReviewSubmission = {
   taskId: string;
   propertyId: string;
@@ -23,7 +30,9 @@ export type GovernmentReviewSubmission = {
   reviewNotes: string;
   /** حقول الرفع لإنفاذ — المراجع الحكومي */
   propertyZoneStatus: string;
-  keysProofFileName: string;
+  keysProofFiles: GovernmentReviewKeysProofFile[];
+  /** @deprecated migrated to keysProofFiles on load */
+  keysProofFileName?: string;
   confirmed: boolean;
   status: GovernmentReviewSubmissionStatus;
   submittedAtUtc: string | null;
@@ -49,7 +58,7 @@ export function createGovernmentReviewDraft(input: {
     accessBlockReason: "",
     reviewNotes: "",
     propertyZoneStatus: "",
-    keysProofFileName: "",
+    keysProofFiles: [],
     confirmed: false,
     status: "draft",
     submittedAtUtc: null,
@@ -86,4 +95,43 @@ export function governmentReviewStatusLabel(
 ): string {
   if (status === "submitted") return "مُرسَل";
   return "قيد العمل";
+}
+
+export function normalizeGovernmentReviewKeysProofFiles(
+  payload: Partial<GovernmentReviewSubmission>,
+): GovernmentReviewKeysProofFile[] {
+  const files = payload.keysProofFiles ?? [];
+  if (files.length > 0) {
+    return files.filter((f) => f.fileName?.trim());
+  }
+  const legacy = payload.keysProofFileName?.trim();
+  if (legacy) {
+    return [
+      {
+        id: "legacy",
+        fileName: legacy,
+        mimeType: "application/octet-stream",
+        dataUrl: "",
+      },
+    ];
+  }
+  return [];
+}
+
+export function formatGovernmentReviewKeysProofLabel(
+  files: GovernmentReviewKeysProofFile[],
+): string {
+  if (files.length === 0) return "";
+  if (files.length === 1) return files[0]!.fileName;
+  return `${files.length} مرفقات: ${files.map((f) => f.fileName).join("، ")}`;
+}
+
+export function normalizeGovernmentReviewSubmission(
+  payload: Partial<GovernmentReviewSubmission>,
+): Partial<GovernmentReviewSubmission> & {
+  keysProofFiles: GovernmentReviewKeysProofFile[];
+} {
+  const keysProofFiles = normalizeGovernmentReviewKeysProofFiles(payload);
+  const { keysProofFileName: _legacy, ...rest } = payload;
+  return { ...rest, keysProofFiles };
 }
