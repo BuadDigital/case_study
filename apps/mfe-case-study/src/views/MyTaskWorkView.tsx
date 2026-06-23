@@ -66,6 +66,7 @@ import {
 import { Button, InlineLoadingSkeleton, Note, cn, useToast } from "@platform/design-system";
 import { useQueryClient } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 
 const LOADING_TEXT = "text-xs text-text-3";
 
@@ -91,6 +92,8 @@ export function CaseStudyTaskWork({
   const exit = onClose ?? (() => router.push(myTasksPath()));
   const { role } = usePrototype();
   const { showToast } = useToast();
+  const { data: staffResult } = useStaffUsersQuery();
+  const staffUsers = staffResult?.users ?? [];
   const [assignmentType, setAssignmentType] = useState<AssignmentType>("تنفيذ");
   const [property, setProperty] = useState<PoPropertyIntake>(emptyProperty);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -388,6 +391,7 @@ export function CaseStudyTaskWork({
       task.id,
       distribution,
       formatPropertyDeedDisplay(property),
+      staffUsers,
     );
     onRefresh();
     showToast("تم تأكيد التوزيع وإرسال المهام.", "success");

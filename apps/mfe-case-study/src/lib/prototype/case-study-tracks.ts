@@ -1,3 +1,4 @@
+import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import {
   assigneeLabel,
   getEngineeringOffices,
@@ -59,24 +60,25 @@ function findChild(
 function distributionAssignee(
   distribution: TaskDistributionDraft,
   trackId: string,
+  staffUsers: StaffUser[],
 ): string {
   if (trackId === "survey") {
     return assigneeLabel(
-      getEngineeringOffices(),
+      getEngineeringOffices(staffUsers),
       distribution.engineeringOfficeId,
     );
   }
   if (trackId === "government") {
     return assigneeLabel(
-      getGovernmentAuditors(),
+      getGovernmentAuditors(staffUsers),
       distribution.governmentAuditorId,
     );
   }
   if (trackId === "inspection") {
-    return assigneeLabel(getFieldInspectors(), distribution.inspectorId);
+    return assigneeLabel(getFieldInspectors(staffUsers), distribution.inspectorId);
   }
   if (trackId === "appraisal") {
-    return assigneeLabel(getValuators(), distribution.valuatorId);
+    return assigneeLabel(getValuators(staffUsers), distribution.valuatorId);
   }
   return "";
 }
@@ -84,6 +86,7 @@ function distributionAssignee(
 export function buildCaseStudyTracks(
   parent: WorkflowTask,
   allTasks: WorkflowTask[],
+  staffUsers: StaffUser[] = [],
 ): CaseStudyTrack[] {
   const distribution = migrateDistribution(parent.distribution);
   const children = allTasks.filter((t) => t.parentTaskId === parent.id);
@@ -128,7 +131,7 @@ export function buildCaseStudyTracks(
         : trackStateFromTask(child, spawned);
     const assigneeName =
       child?.assigneeName?.trim() ||
-      distributionAssignee(distribution, id) ||
+      distributionAssignee(distribution, id, staffUsers) ||
       (kind === "parent" ? parent.assigneeName : "") ||
       "—";
 

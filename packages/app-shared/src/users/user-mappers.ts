@@ -1,6 +1,11 @@
 import type { UserListItem } from "@platform/types";
 import type { StaffUser } from "../prototype/constants";
 
+function reviewerCityCoverageFromUser(u: UserListItem): string[] {
+  const raw = u.reviewerCityCoverage;
+  return Array.isArray(raw) ? raw.filter((city) => city.trim()) : [];
+}
+
 export function contractTypeToStaffType(
   t: UserListItem["contractType"],
 ): StaffUser["type"] {
@@ -16,6 +21,8 @@ export function userListItemToStaff(u: UserListItem): StaffUser {
     role: u.jobTitle,
     email: u.email,
     userName: u.userName,
+    distributionAssigneeId: u.distributionAssigneeId ?? undefined,
+    reviewerCityCoverage: reviewerCityCoverageFromUser(u),
     type: contractTypeToStaffType(u.contractType),
     source:
       u.registrationSource === "Hr"

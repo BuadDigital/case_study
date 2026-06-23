@@ -325,35 +325,9 @@ export type PropertyRow = {
   specialist: string;
 };
 
-export const MOCK_VR: VrRow[] = [
-  { id: "VR-441", propId: "E-4401", area: "مكة المكرمة", type: "أرض", appraiser: "عبدالله الكثيري", status: "done", date: "2025-01-13" },
-  { id: "VR-442", propId: "E-4402", area: "مكة المكرمة", type: "شقة", appraiser: "محمد العساف", status: "progress", date: "2025-01-14" },
-  { id: "VR-443", propId: "E-4403", area: "جدة", type: "فيلا", appraiser: "عبدالله الكثيري", status: "done", date: "2025-01-12" },
-  { id: "VR-444", propId: "E-4405", area: "الطائف", type: "عمارة", appraiser: "محمد العساف", status: "progress", date: "2025-01-14" },
-];
-
-export const MOCK_PROPERTIES: PropertyRow[] = [
-  { id: "E-4401", po: "PO-2024-018", area: "مكة المكرمة", type: "أرض", key: false, survey: "done", val: "done", study: "progress", status: "progress", specialist: "أسامة الصالحي" },
-  { id: "E-4402", po: "PO-2024-018", area: "مكة المكرمة", type: "شقة", key: true, survey: "progress", val: "progress", study: "new", status: "progress", specialist: "أسامة الصالحي" },
-  { id: "E-4403", po: "PO-2024-016", area: "جدة", type: "فيلا", key: true, survey: "done", val: "done", study: "done", status: "done", specialist: "أيمن مجرشي" },
-  { id: "E-4404", po: "PO-2024-016", area: "جدة", type: "أرض", key: false, survey: "new", val: "new", study: "new", status: "new", specialist: "أيمن مجرشي" },
-  { id: "E-4405", po: "PO-2024-016", area: "الطائف", type: "عمارة", key: false, survey: "progress", val: "progress", study: "new", status: "progress", specialist: "وليد باشماخ" },
-  { id: "E-4406", po: "PO-2024-018", area: "مكة المكرمة", type: "محل", key: false, survey: "done", val: "new", study: "new", status: "progress", specialist: "عمر الحمراني" },
-  { id: "E-4407", po: "PO-2024-016", area: "جدة", type: "أرض", key: true, survey: "new", val: "new", study: "fail", status: "fail", specialist: "أيمن مجرشي" },
-];
-
 export type TeamKind = "internal" | "freelance" | "external";
 
 export type TeamCardRow = [string, string, string, TeamKind, number];
-
-export const DASHBOARD_TEAM_ROWS: TeamCardRow[] = [
-  ["أس", "أحمد سعيد", "معاين — مكة المكرمة", "internal", 9],
-  ["عم", "عبدالله عبدالمانع", "معاين — جدة", "internal", 11],
-  ["حع", "حسن عطية", "معاين — الطائف (متعاون)", "freelance", 7],
-  ["عك", "عبدالله الكثيري", "مقيم عقاري", "internal", 8],
-  ["مع", "محمد العساف", "مقيم عقاري", "internal", 6],
-  ["هـ", "مكاتب هندسية", "4 مكاتب معتمدة", "external", 16],
-];
 
 export type StaffUserDetail = {
   section: string;
@@ -367,6 +341,8 @@ export type StaffUser = {
   role: string;
   email: string;
   userName?: string;
+  distributionAssigneeId?: string;
+  reviewerCityCoverage?: string[];
   password?: string;
   type: "internal" | "freelance" | "external";
   source?: "hr" | "proc" | "crm";
@@ -386,13 +362,6 @@ export type SurveyOfficeRow = {
   contract: string;
   statusBusy: boolean;
 };
-
-export const MOCK_SURVEY_OFFICES: SurveyOfficeRow[] = [
-  { name: "مكتب الرياض الهندسي", active: 12, doneMonth: 34, avgDays: "3.2 يوم", contract: "اتفاقية سنوية", statusBusy: false },
-  { name: "مكتب جدة للمساحة", active: 8, doneMonth: 28, avgDays: "2.8 يوم", contract: "اتفاقية سنوية", statusBusy: false },
-  { name: "مكتب مكة الهندسي", active: 7, doneMonth: 22, avgDays: "3.5 يوم", contract: "اتفاقية سنوية", statusBusy: false },
-  { name: "مكتب الطائف التقني", active: 4, doneMonth: 14, avgDays: "4.1 يوم", contract: "اتفاقية سنوية", statusBusy: true },
-];
 
 export const VALID_PAGE_IDS = new Set<PageId>([
   ...NAV.map((n) => n.id),

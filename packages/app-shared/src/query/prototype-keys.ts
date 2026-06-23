@@ -24,4 +24,11 @@ export const prototypeKeys = {
   organization: () => [...prototypeKeys.all, "organization"] as const,
   propertyDetailPartySubmissions: (parentTaskId: string) =>
     [...prototypeKeys.all, "property-detail-party-submissions", parentTaskId] as const,
+  inspectorFees: (query: {
+    assigneeId?: string;
+    workflowTaskId?: string;
+    submittedOnly?: boolean;
+  }) => [...prototypeKeys.all, "inspector-fees", query] as const,
+  fieldInspectionWorkspaces: () =>
+    [...prototypeKeys.all, "field-inspection-workspaces"] as const,
 };

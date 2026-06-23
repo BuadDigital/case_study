@@ -29,6 +29,7 @@ import { PoNumber } from "../components/ui/PoNumber";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import { getAuthSession } from "@platform/auth-client";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import {
   buildGovernmentReviewPoRows,
   courtGroupsForPo,
@@ -197,8 +198,10 @@ export function GovernmentReviewView() {
   const selectedPo = searchParams.get("po");
   const selectedTaskId = searchParams.get("task");
   const { role, viewerEmail } = usePrototype();
+  const { data: staffResult } = useStaffUsersQuery();
+  const staffUsers = staffResult?.users ?? [];
   const def = partyTaskPageDef("government-review");
-  const reviewerScope = reviewerScopeForRole(role);
+  const reviewerScope = reviewerScopeForRole(role, staffUsers);
 
   const {
     data: tasks,
@@ -235,8 +238,9 @@ export function GovernmentReviewView() {
         tasks ?? [],
         "government-reviewer",
         viewerEmail ?? getAuthSession()?.user.email,
+        staffUsers,
       ),
-    [viewerEmail, role, tasks],
+    [viewerEmail, role, tasks, staffUsers],
   );
 
   const rows = useMemo(
@@ -302,7 +306,7 @@ export function GovernmentReviewView() {
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg">
       <div
         className={cn(
-          "grid min-h-0 flex-1 items-stretch gap-3 bg-bg",
+          "grid min-h-0 flex-1 items-stretch gap-3 bg-bg px-4 py-4 sm:py-5",
           hasRail && panelOpen && selectedRow
             ? "grid-cols-1 lg:grid-cols-[minmax(0,1.05fr)_minmax(300px,1fr)]"
             : "grid-cols-1",

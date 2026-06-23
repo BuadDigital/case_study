@@ -16,10 +16,12 @@ public class WorkflowTaskService : IWorkflowTaskService
     };
 
     private readonly ApplicationDbContext _db;
+    private readonly IInspectorFeeService _inspectorFees;
 
-    public WorkflowTaskService(ApplicationDbContext db)
+    public WorkflowTaskService(ApplicationDbContext db, IInspectorFeeService inspectorFees)
     {
         _db = db;
+        _inspectorFees = inspectorFees;
     }
 
     public async Task<IReadOnlyList<WorkflowTaskDto>> ListAsync(
@@ -160,6 +162,10 @@ public class WorkflowTaskService : IWorkflowTaskService
         _db.WorkflowTasks.AddRange(children);
         await _db.SaveChangesAsync(cancellationToken);
 
+        await _inspectorFees.EnsureLedgersForTasksAsync(
+            children.Where(c => c.Kind == "field-inspection"),
+            cancellationToken);
+
         return new ConfirmTaskDistributionResponseDto
         {
             Parent = WorkflowTaskMapper.ToDto(parent),
@@ -270,6 +276,8 @@ public class WorkflowTaskService : IWorkflowTaskService
                         .Where(w => inspectionTaskIds.Contains(w.WorkflowTaskId))
                         .ExecuteDeleteAsync(cancellationToken);
                 }
+
+                await _inspectorFees.DeleteForWorkflowTaskIdsAsync(taskIds, cancellationToken);
 
                 _db.PartyTaskSubmissions.RemoveRange(subs);
             }
@@ -534,6 +542,7 @@ public class WorkflowTaskService : IWorkflowTaskService
         CancellationToken cancellationToken)
     {
         if (taskIds.Count == 0) return;
+        await _inspectorFees.DeleteForWorkflowTaskIdsAsync(taskIds, cancellationToken);
         await _db.FieldInspectionWorkspaces
             .Where(w => taskIds.Contains(w.WorkflowTaskId))
             .ExecuteDeleteAsync(cancellationToken);

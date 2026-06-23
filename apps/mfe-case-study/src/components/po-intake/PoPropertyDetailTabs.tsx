@@ -8,7 +8,7 @@ import {
 } from "@engineering-office/mfe";
 import { useMemo, useState } from "react";
 import { getPropertyFailure } from "@failures/mfe";
-import { failureStatusLabel } from "@failures/mfe/lib/failures-local-storage";
+import { failureStatusLabel } from "@failures/mfe/lib/failures-labels";
 import { Button, cn, Tab, TabBar, TabCount, TabPanel } from "@platform/design-system";
 import {
   DetailBadge,

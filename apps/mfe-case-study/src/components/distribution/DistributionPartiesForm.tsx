@@ -1,7 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useMemo } from "react";
 import { RegSelect } from "@platform/app-shared/registration/FormFields";
+import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { Card, CardBody, Note, cn } from "@platform/design-system";
 import {
   getEngineeringOffices,
@@ -88,6 +90,26 @@ export function DistributionPartiesForm({
   engineeringHint,
   readOnly = false,
 }: Props) {
+  const { data: staffResult } = useStaffUsersQuery();
+  const staffUsers = staffResult?.users ?? [];
+  const governmentAuditors = useMemo(
+    () => getGovernmentAuditors(staffUsers),
+    [staffUsers],
+  );
+  const valuationCoordinators = useMemo(
+    () => getValuationCoordinators(staffUsers),
+    [staffUsers],
+  );
+  const fieldInspectors = useMemo(
+    () => getFieldInspectors(staffUsers),
+    [staffUsers],
+  );
+  const valuators = useMemo(() => getValuators(staffUsers), [staffUsers]);
+  const engineeringOffices = useMemo(
+    () => getEngineeringOffices(staffUsers),
+    [staffUsers],
+  );
+
   return (
     <div className="flex flex-col gap-3">
       {!readOnly ? (
@@ -117,7 +139,7 @@ export function DistributionPartiesForm({
             label="المسؤول"
             required={distribution.governmentAuditor}
             disabled={readOnly || !distribution.governmentAuditor}
-            options={toOptions(getGovernmentAuditors())}
+            options={toOptions(governmentAuditors)}
             value={distribution.governmentAuditorId}
             placeholder="اختر المراجع الحكومي…"
             onChange={(v) => onPatch({ governmentAuditorId: v })}
@@ -147,7 +169,7 @@ export function DistributionPartiesForm({
             label="منسق عمليات التقييم"
             required={distribution.valuationDepartment}
             disabled={readOnly || !distribution.valuationDepartment}
-            options={toOptions(getValuationCoordinators())}
+            options={toOptions(valuationCoordinators)}
             value={distribution.operationsCoordinatorId}
             placeholder="اختر المنسق…"
             onChange={(v) => onPatch({ operationsCoordinatorId: v })}
@@ -157,7 +179,7 @@ export function DistributionPartiesForm({
             label="المعاين الميداني"
             required={distribution.valuationDepartment}
             disabled={readOnly || !distribution.valuationDepartment}
-            options={toOptions(getFieldInspectors())}
+            options={toOptions(fieldInspectors)}
             value={distribution.inspectorId}
             placeholder="اختر المعاين…"
             onChange={(v) => onPatch({ inspectorId: v })}
@@ -167,7 +189,7 @@ export function DistributionPartiesForm({
             label="المقيم العقاري"
             required={distribution.valuationDepartment}
             disabled={readOnly || !distribution.valuationDepartment}
-            options={toOptions(getValuators())}
+            options={toOptions(valuators)}
             value={distribution.valuatorId}
             placeholder="اختر المقيم…"
             onChange={(v) => onPatch({ valuatorId: v })}
@@ -196,7 +218,7 @@ export function DistributionPartiesForm({
               label="المكتب"
               required={distribution.engineeringOffice}
               disabled={readOnly || !distribution.engineeringOffice}
-              options={toOptions(getEngineeringOffices())}
+              options={toOptions(engineeringOffices)}
               value={distribution.engineeringOfficeId}
               placeholder="اختر المكتب الهندسي…"
               onChange={(v) => onPatch({ engineeringOfficeId: v })}

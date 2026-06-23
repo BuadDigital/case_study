@@ -9,6 +9,7 @@ import {
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import { usePoRecordQuery, useWorkflowTasksQuery } from "../../query/case-study-queries";
+import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { finalizeValuationCoordinationSubmission } from "../../lib/prototype/finalize-valuation-coordination-submission";
 import {
   assigneeLabel,
@@ -65,6 +66,8 @@ export function ValuationCoordinationWorkBody({
   const propertyId = task.propertyId ?? "";
   const { data: record } = usePoRecordQuery(task.poNumber);
   const { data: allTasks } = useWorkflowTasksQuery();
+  const { data: staffResult } = useStaffUsersQuery();
+  const staffUsers = staffResult?.users ?? [];
 
   const parentTask = useMemo(
     () =>
@@ -80,12 +83,12 @@ export function ValuationCoordinationWorkBody({
   );
 
   const inspectorName = useMemo(
-    () => assigneeLabel(getFieldInspectors(), distribution.inspectorId),
-    [distribution.inspectorId],
+    () => assigneeLabel(getFieldInspectors(staffUsers), distribution.inspectorId),
+    [distribution.inspectorId, staffUsers],
   );
   const appraiserName = useMemo(
-    () => assigneeLabel(getValuators(), distribution.valuatorId),
-    [distribution.valuatorId],
+    () => assigneeLabel(getValuators(staffUsers), distribution.valuatorId),
+    [distribution.valuatorId, staffUsers],
   );
 
   const property = record?.properties.find((p) => p.id === propertyId);

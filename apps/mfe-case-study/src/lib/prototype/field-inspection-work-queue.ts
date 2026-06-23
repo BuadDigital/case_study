@@ -1,12 +1,24 @@
+import type { FieldInspectionWorkspaceListItemDto } from "@platform/api-client";
 import {
   inspectorWorkspaceStatusLabel,
   isInspectorWorkspaceLocked,
 } from "./inspector-workspace-data";
-import { loadInspectorWorkspace } from "./inspector-workspace-storage";
+
+function workspaceHasDraftProgress(
+  workspace: FieldInspectionWorkspaceListItemDto,
+): boolean {
+  return (
+    Boolean(workspace.inspectionDate?.trim()) ||
+    workspace.completedPhotoSlots > 0 ||
+    workspace.observationCount > 0 ||
+    workspace.attachmentCount > 0
+  );
+}
 
 export function fieldInspectionTaskStatusBadge(
   taskId: string,
   taskStatus?: string,
+  workspace?: FieldInspectionWorkspaceListItemDto | null,
 ): { label: string; className: string } | null {
   if (taskStatus === "completed") {
     return {
@@ -15,24 +27,34 @@ export function fieldInspectionTaskStatusBadge(
     };
   }
 
-  const sub = loadInspectorWorkspace(taskId);
-  if (sub?.status === "submitted") {
-    return {
-      label: inspectorWorkspaceStatusLabel("submitted"),
-      className: "b-done",
-    };
+  if (workspace) {
+    if (workspace.status === "submitted") {
+      return {
+        label: inspectorWorkspaceStatusLabel("submitted"),
+        className: "b-done",
+      };
+    }
+    if (
+      workspace.status === "draft" ||
+      workspace.status === "reopened" ||
+      workspaceHasDraftProgress(workspace)
+    ) {
+      return { label: "مسودة", className: "b-prog" };
+    }
+    return { label: "جديدة", className: "b-new" };
   }
-  if (
-    sub?.inspectionDate ||
-    sub?.mapLatitude ||
-    (sub?.observations?.length ?? 0) > 0
-  ) {
-    return { label: "مسودة", className: "b-prog" };
-  }
+
   return { label: "جديدة", className: "b-new" };
 }
 
-export function isFieldInspectionLocked(taskId: string): boolean {
-  const sub = loadInspectorWorkspace(taskId);
-  return sub ? isInspectorWorkspaceLocked(sub.status) : false;
+export function isFieldInspectionLocked(
+  _taskId?: string,
+  workspace?: FieldInspectionWorkspaceListItemDto | null,
+): boolean {
+  if (workspace) {
+    return isInspectorWorkspaceLocked(
+      workspace.status as "draft" | "submitted" | "reopened",
+    );
+  }
+  return false;
 }

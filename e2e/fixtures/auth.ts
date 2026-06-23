@@ -99,7 +99,11 @@ export async function loginViaUi(page: Page, username: string) {
 
   if (!response.ok()) {
     const alertText =
-      (await page.getByRole("alert").textContent().catch(() => "")) ?? "";
+      (await page
+        .getByRole("alert")
+        .filter({ hasText: /تعذر|خطأ|فشل|error/i })
+        .textContent()
+        .catch(() => "")) ?? "";
     throw new Error(
       `UI login failed (HTTP ${response.status()}): ${alertText.trim()}`,
     );
@@ -122,7 +126,10 @@ export async function waitForPageTitle(page: Page, text: string) {
   await page.waitForFunction(
     (expected) => {
       const title = document.querySelector("#page-title");
-      return Boolean(title?.textContent?.includes(expected));
+      if (title?.textContent?.includes(expected)) return true;
+      // PO list omits #page-title; the label lives in the breadcrumb only.
+      const breadcrumb = document.querySelector('[aria-label="مسار التنقل"]');
+      return Boolean(breadcrumb?.textContent?.includes(expected));
     },
     text,
     { timeout: 90_000 },

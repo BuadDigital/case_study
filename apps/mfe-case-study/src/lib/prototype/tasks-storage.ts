@@ -17,7 +17,7 @@ import {
   getPrototypeRoleAssigneeId,
   partyAccountForViewer,
 } from "./distribution-parties";
-import { ROLES } from "@platform/app-shared/prototype/constants";
+import { ROLES, type StaffUser } from "@platform/app-shared/prototype/constants";
 import type {
   AssignmentType,
   PoIntakeRecord,
@@ -80,6 +80,7 @@ type LegacyDistribution = {
 
 export function migrateDistribution(
   raw: TaskDistributionDraft | LegacyDistribution | undefined,
+  staffUsers: StaffUser[] = [],
 ): TaskDistributionDraft {
   const base = defaultDistribution();
   if (!raw) return base;
@@ -91,24 +92,26 @@ export function migrateDistribution(
     ...base,
     governmentAuditor: legacy.governmentReviewer ?? false,
     governmentAuditorId:
-      legacy.governmentReviewer && getGovernmentAuditors()[0]
-        ? getGovernmentAuditors()[0].id
+      legacy.governmentReviewer && getGovernmentAuditors(staffUsers)[0]
+        ? getGovernmentAuditors(staffUsers)[0].id
         : "",
     valuationDepartment: legacy.fieldInspector ?? false,
     operationsCoordinatorId:
-      legacy.fieldInspector && getValuationCoordinators()[0]
-        ? getValuationCoordinators()[0].id
+      legacy.fieldInspector && getValuationCoordinators(staffUsers)[0]
+        ? getValuationCoordinators(staffUsers)[0].id
         : "",
     inspectorId:
-      legacy.fieldInspector && getFieldInspectors()[0]
-        ? getFieldInspectors()[0].id
+      legacy.fieldInspector && getFieldInspectors(staffUsers)[0]
+        ? getFieldInspectors(staffUsers)[0].id
         : "",
     valuatorId:
-      legacy.fieldInspector && getValuators()[0] ? getValuators()[0].id : "",
+      legacy.fieldInspector && getValuators(staffUsers)[0]
+        ? getValuators(staffUsers)[0].id
+        : "",
     engineeringOffice: legacy.engineeringOffice ?? false,
     engineeringOfficeId:
-      legacy.engineeringOffice && getEngineeringOffices()[0]
-        ? getEngineeringOffices()[0].id
+      legacy.engineeringOffice && getEngineeringOffices(staffUsers)[0]
+        ? getEngineeringOffices(staffUsers)[0].id
         : "",
   };
 }
@@ -410,31 +413,32 @@ export async function advanceTaskAfterBourseForProperty(
 
 function buildAssigneeNames(
   distribution: TaskDistributionDraft,
+  staffUsers: StaffUser[] = [],
 ): Record<string, string> {
   const names: Record<string, string> = {};
   if (distribution.governmentAuditor) {
     names["government-review"] = assigneeLabel(
-      getGovernmentAuditors(),
+      getGovernmentAuditors(staffUsers),
       distribution.governmentAuditorId,
     );
   }
   if (distribution.valuationDepartment) {
     names["valuation-coordination"] = assigneeLabel(
-      getValuationCoordinators(),
+      getValuationCoordinators(staffUsers),
       distribution.operationsCoordinatorId,
     );
     names["field-inspection"] = assigneeLabel(
-      getFieldInspectors(),
+      getFieldInspectors(staffUsers),
       distribution.inspectorId,
     );
     names["property-appraisal"] = assigneeLabel(
-      getValuators(),
+      getValuators(staffUsers),
       distribution.valuatorId,
     );
   }
   if (distribution.engineeringOffice) {
     names["engineering-survey"] = assigneeLabel(
-      getEngineeringOffices(),
+      getEngineeringOffices(staffUsers),
       distribution.engineeringOfficeId,
     );
   }
@@ -445,15 +449,16 @@ export async function confirmTaskDistribution(
   taskId: string,
   distribution: TaskDistributionDraft,
   deedNumber = "",
+  staffUsers: StaffUser[] = [],
 ): Promise<{ parent: WorkflowTask | null; children: WorkflowTask[] }> {
   const config = workOrdersApiConfig();
   if (!config) return { parent: null, children: [] };
 
-  const normalized = migrateDistribution(distribution);
+  const normalized = migrateDistribution(distribution, staffUsers);
   const result = await confirmWorkflowTaskDistribution(config, taskId, {
     distribution: distributionToDto(normalized)!,
     deedNumber,
-    assigneeNames: buildAssigneeNames(normalized),
+    assigneeNames: buildAssigneeNames(normalized, staffUsers),
   });
   if (!result.ok || !result.data.parent) {
     return { parent: null, children: [] };
@@ -610,15 +615,16 @@ export function tasksForPartyAssignee(
   tasks: WorkflowTask[],
   queueRole?: RoleId,
   viewerEmail?: string | null,
+  staffUsers: StaffUser[] = [],
 ): WorkflowTask[] {
   if (isSuperAdmin(viewerRole) && !queueRole) {
     return [...tasks].sort(compareWorkflowTasks);
   }
   const role =
     isSuperAdmin(viewerRole) && queueRole ? queueRole : viewerRole;
-  const account = partyAccountForViewer(role, viewerEmail);
+  const account = partyAccountForViewer(role, viewerEmail, staffUsers);
   const expectedId =
-    account?.assigneeId ?? getPrototypeRoleAssigneeId()[role];
+    account?.assigneeId ?? getPrototypeRoleAssigneeId(staffUsers)[role];
   const expectedName = account?.name ?? ROLES[role]?.name;
   return tasks
     .filter((t) => t.assigneeRole === role)

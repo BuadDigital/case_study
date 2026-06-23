@@ -604,6 +604,65 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.ToTable("FieldInspectionWorkspaces", "case_study");
                 });
 
+            modelBuilder.Entity("RealEstateEval.Domain.InspectorFeeLedger", b =>
+                {
+                    b.Property<Guid>("WorkflowTaskId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("AgreedFeeSar")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<string>("AssigneeId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("BillingStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DiscountReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("InspectorType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("PoNumber")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid?>("PropertyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("PropertyOrdinal")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("SupervisorDiscountSar")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("WorkflowTaskId");
+
+                    b.HasIndex("AssigneeId");
+
+                    b.HasIndex("BillingStatus");
+
+                    b.HasIndex("PoNumber");
+
+                    b.ToTable("InspectorFeeLedgers", "case_study");
+                });
+
             modelBuilder.Entity("RealEstateEval.Domain.FileAttachment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1123,10 +1182,18 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("DistributionAssigneeId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<string>("JobTitle")
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
+
+                    b.Property<string>("ReviewerCityCoverageJson")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
 
                     b.Property<string>("PermissionLevel")
                         .HasMaxLength(64)
@@ -1139,6 +1206,8 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("UserId");
+
+                    b.HasIndex("DistributionAssigneeId");
 
                     b.ToTable("UserProfiles", "identity");
                 });

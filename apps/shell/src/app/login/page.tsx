@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getApiBase } from "@platform/api-client";
+import { fetchDevLoginUsers, getApiBase } from "@platform/api-client";
 import { setAuthSession, type AuthSession } from "@platform/auth-client";
 import { PROTOTYPE_LOGIN_USERS } from "@platform/app-shared/prototype/prototype-users";
 import { Button, Card, Label, Select } from "@platform/design-system";
@@ -13,19 +13,43 @@ type LoginResponse = {
   user: { id: string; email: string; displayName: string };
 };
 
+type LoginUserOption = {
+  username: string;
+  label: string;
+};
+
 export default function LoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState(
-    PROTOTYPE_LOGIN_USERS[0]?.username ?? "",
-  );
+  const [loginUsers, setLoginUsers] = useState<LoginUserOption[]>([]);
+  const [username, setUsername] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Warm the dashboard route after paint — avoids RSC fetch races during HMR on LAN.
   useEffect(() => {
     const timer = window.setTimeout(() => router.prefetch("/dashboard"), 2000);
     return () => window.clearTimeout(timer);
   }, [router]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchDevLoginUsers(getApiBase()).then((result) => {
+      if (cancelled) return;
+      if (result.ok && result.users.length > 0) {
+        setLoginUsers(result.users);
+        setUsername(result.users[0]?.username ?? "");
+        return;
+      }
+      const fallback = PROTOTYPE_LOGIN_USERS.map((user) => ({
+        username: user.username,
+        label: user.label,
+      }));
+      setLoginUsers(fallback);
+      setUsername(fallback[0]?.username ?? "");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -120,7 +144,7 @@ export default function LoginPage() {
 
         <h1 className="mb-1 text-xl font-semibold text-text">تسجيل الدخول</h1>
         <p className="mb-6 text-[15px] leading-relaxed text-text-2">
-          اختر حسابًا تجريبيًا للدخول مباشرة — بدون كلمة مرور.
+          اختر حسابًا نشطًا من قاعدة البيانات للدخول مباشرة — بدون كلمة مرور.
         </p>
 
         {error ? (
@@ -145,9 +169,11 @@ export default function LoginPage() {
               suppressHydrationWarning
             >
               <option value="" disabled>
-                — اختر مستخدمًا —
+                {loginUsers.length === 0
+                  ? "جاري تحميل المستخدمين…"
+                  : "— اختر مستخدمًا —"}
               </option>
-              {PROTOTYPE_LOGIN_USERS.map((user) => (
+              {loginUsers.map((user) => (
                 <option key={user.username} value={user.username}>
                   {user.label}
                 </option>
@@ -159,7 +185,7 @@ export default function LoginPage() {
             variant="primary"
             size="lg"
             loading={loading}
-            disabled={loading}
+            disabled={loading || loginUsers.length === 0}
             className="mt-1 w-full"
           >
             دخول

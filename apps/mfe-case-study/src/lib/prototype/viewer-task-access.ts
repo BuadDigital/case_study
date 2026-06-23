@@ -1,4 +1,5 @@
 import type { PageId, RoleId } from "@platform/types";
+import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import {
   compareWorkflowTasks,
@@ -14,6 +15,7 @@ export function resolveQueueTasksForViewer(input: {
   partyAssignee?: boolean;
   assigneeRole?: RoleId;
   viewerEmail?: string | null;
+  staffUsers?: StaffUser[];
 }): WorkflowTask[] {
   const all = input.tasks;
 
@@ -27,6 +29,7 @@ export function resolveQueueTasksForViewer(input: {
       all,
       input.assigneeRole,
       input.viewerEmail,
+      input.staffUsers,
     );
   }
 

@@ -9,12 +9,13 @@ import { Note, cn } from "@platform/design-system";
 import { PropertyTransactionTimeline } from "../po-intake/PropertyTransactionTimeline";
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/prototype/po-intake-data";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+import { InspectorFeesTab } from "./InspectorFeesTab";
 import {
   FieldInspectionWorkBody,
   type FieldInspectionWorkHostRef,
 } from "./FieldInspectionWorkBody";
 
-type WorkTab = "property" | "inspection" | "failures";
+type WorkTab = "property" | "inspection" | "fees" | "failures";
 
 export function FieldInspectionWorkPanel({
   def,
@@ -68,6 +69,16 @@ export function FieldInspectionWorkPanel({
           type="button"
           className={cn(
             "mb-[-1px] flex items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 font-inherit text-xs text-text-2 transition-colors hover:text-text",
+            workTab === "fees" && "border-b-primary font-medium text-primary",
+          )}
+          onClick={() => setWorkTab("fees")}
+        >
+          الأتعاب
+        </button>
+        <button
+          type="button"
+          className={cn(
+            "mb-[-1px] flex items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 font-inherit text-xs text-text-2 transition-colors hover:text-text",
             workTab === "failures" && "border-b-primary font-medium text-primary",
           )}
           onClick={() => setWorkTab("failures")}
@@ -97,6 +108,9 @@ export function FieldInspectionWorkPanel({
                 onRegisterFailure={() => setWorkTab("failures")}
               />
             </>
+          ) : null}
+          {workTab === "fees" ? (
+            <InspectorFeesTab tasks={[task]} />
           ) : null}
           {workTab === "failures" && task.propertyId ? (
             <div id="inspector-failure-raise" className="scroll-mt-4">

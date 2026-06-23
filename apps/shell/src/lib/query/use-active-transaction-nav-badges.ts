@@ -24,6 +24,7 @@ import {
   usePoRecordsQuery,
   useWorkflowTasksQuery,
 } from "@/lib/query/prototype-queries";
+import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 
 function poRecordsMap(records: PoIntakeRecord[] | undefined) {
   const map = new Map<string, PoIntakeRecord>();
@@ -38,11 +39,19 @@ export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>>
   const { data: tasks } = useWorkflowTasksQuery();
   const { data: poRecords } = usePoRecordsQuery();
   const { data: pendingBourse } = usePendingBourseItemsQuery();
+  const { data: staffResult } = useStaffUsersQuery();
+  const staffUsers = staffResult?.users ?? [];
 
   return useMemo(() => {
     const poByNumber = poRecordsMap(poRecords);
     const mine = tasksForRole(role, tasks ?? []);
-    const partyMine = tasksForPartyAssignee(role, tasks ?? [], undefined, resolvedViewerEmail);
+    const partyMine = tasksForPartyAssignee(
+      role,
+      tasks ?? [],
+      undefined,
+      resolvedViewerEmail,
+      staffUsers,
+    );
 
     const primaryOpen = filterTasksForPrimaryData(mine, poByNumber).filter(
       (t) => t.status === "open" || t.status === "blocked",
@@ -70,7 +79,7 @@ export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>>
         const open = countGovernmentReviewOpenPos(
           partyMine,
           poByNumber,
-          reviewerScopeForRole(role),
+          reviewerScopeForRole(role, staffUsers),
         );
         if (open > 0) badges[def.pageId] = open;
         continue;
@@ -82,5 +91,5 @@ export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>>
     }
 
     return badges;
-  }, [role, resolvedViewerEmail, tasks, poRecords, pendingBourse]);
+  }, [role, resolvedViewerEmail, tasks, poRecords, pendingBourse, staffUsers]);
 }

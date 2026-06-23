@@ -39,7 +39,6 @@ export * from "./lib/prototype/po-roles";
 export * from "./lib/prototype/tasks-storage";
 export * from "./lib/prototype/transaction-filters";
 export * from "./lib/prototype/distribution-parties";
-export * from "./lib/prototype/distribution-party-accounts";
 export * from "./lib/prototype/my-task-row";
 export * from "./lib/prototype/po-primary-data-readiness";
 export * from "./lib/prototype/active-transactions-situation";

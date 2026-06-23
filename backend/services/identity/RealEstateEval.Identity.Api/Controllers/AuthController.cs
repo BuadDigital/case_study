@@ -3,9 +3,11 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.Infrastructure.Data;
 
 namespace RealEstateEval.Identity.Api.Controllers;
 
@@ -14,20 +16,47 @@ namespace RealEstateEval.Identity.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ApplicationDbContext _db;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IPermissionService _permissions;
     private readonly IWebHostEnvironment _environment;
 
     public AuthController(
         UserManager<ApplicationUser> userManager,
+        ApplicationDbContext db,
         IJwtTokenService jwtTokenService,
         IPermissionService permissions,
         IWebHostEnvironment environment)
     {
         _userManager = userManager;
+        _db = db;
         _jwtTokenService = jwtTokenService;
         _permissions = permissions;
         _environment = environment;
+    }
+
+    [HttpGet("dev-login-users")]
+    [AllowAnonymous]
+    public async Task<ActionResult<IReadOnlyList<DevLoginUserDto>>> DevLoginUsers(
+        CancellationToken cancellationToken)
+    {
+        if (!_environment.IsDevelopment())
+            return NotFound();
+
+        var rows = await (
+            from user in _db.Users.AsNoTracking()
+            join profile in _db.UserProfiles.AsNoTracking() on user.Id equals profile.UserId
+            where profile.Status == UserStatus.Active && user.UserName != null
+            orderby user.DisplayName
+            select new DevLoginUserDto
+            {
+                Username = user.UserName!,
+                Label = string.IsNullOrWhiteSpace(profile.JobTitle)
+                    ? user.DisplayName
+                    : $"{user.DisplayName} — {profile.JobTitle}",
+            }).ToListAsync(cancellationToken);
+
+        return Ok(rows);
     }
 
     [HttpPost("login-username")]

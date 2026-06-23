@@ -1,16 +1,10 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
-
 using Microsoft.EntityFrameworkCore;
-
 using Microsoft.Extensions.DependencyInjection;
-
 using RealEstateEval.Domain;
 
-
-
 namespace RealEstateEval.Infrastructure.Data;
-
-
 
 public static class DataSeeder
 
@@ -35,8 +29,10 @@ public static class DataSeeder
 
 
         if (await IsAlreadySeededAsync(services, cancellationToken))
-
+        {
+            await BackfillReviewerCityCoverageAsync(db, userManager, cancellationToken);
             return;
+        }
 
 
 
@@ -517,6 +513,53 @@ public static class DataSeeder
 
 
 
+    private static readonly Dictionary<string, string> DistributionAssigneeIdsByEmail =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["feras@ejadah.dev"] = "gov-firas",
+            ["valuation@ejadah.dev"] = "vc-mohammed-diab",
+            ["abdullah.kathiri@ejadah.dev"] = "val-abdullah",
+            ["ahmed@ejadah.dev"] = "fi-ahmed",
+            ["abdullah.abdulmane@ejadah.dev"] = "fi-abdullah-abdulmane",
+            ["survey.jeddah@ejadah.dev"] = "eo-jeddah",
+        };
+
+    private static readonly Dictionary<string, string[]> ReviewerCityCoverageByEmail =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["feras@ejadah.dev"] = ["الرياض", "الطائف"],
+        };
+
+    private static void ApplyReviewerCityCoverage(UserProfile profile, string email)
+    {
+        if (!ReviewerCityCoverageByEmail.TryGetValue(email.Trim(), out var cities))
+            return;
+        profile.ReviewerCityCoverageJson = JsonSerializer.Serialize(cities);
+    }
+
+    private static async Task BackfillReviewerCityCoverageAsync(
+        ApplicationDbContext db,
+        UserManager<ApplicationUser> userManager,
+        CancellationToken cancellationToken)
+    {
+        foreach (var (email, cities) in ReviewerCityCoverageByEmail)
+        {
+            var user = await userManager.FindByEmailAsync(email.Trim());
+            if (user is null) continue;
+
+            var profile = await db.UserProfiles
+                .FirstOrDefaultAsync(p => p.UserId == user.Id, cancellationToken);
+            if (profile is null || !string.IsNullOrWhiteSpace(profile.ReviewerCityCoverageJson))
+                continue;
+
+            profile.ReviewerCityCoverageJson = JsonSerializer.Serialize(cities);
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+
+
     private static async Task EnsureHrStaffAsync(
 
         UserManager<ApplicationUser> userManager,
@@ -641,6 +684,8 @@ public static class DataSeeder
 
                 JobTitle = seed.JobTitle,
 
+                DistributionAssigneeId = DistributionAssigneeIdsByEmail.GetValueOrDefault(normalizedEmail),
+
                 PermissionLevel = seed.PermissionLevel,
 
                 Status = UserStatus.Active,
@@ -663,6 +708,7 @@ public static class DataSeeder
 
             };
 
+            ApplyReviewerCityCoverage(profile, normalizedEmail);
             db.UserProfiles.Add(profile);
 
         }
@@ -676,6 +722,11 @@ public static class DataSeeder
             profile.ContractType = seed.ContractType;
 
             profile.JobTitle = seed.JobTitle;
+
+            profile.DistributionAssigneeId =
+                DistributionAssigneeIdsByEmail.GetValueOrDefault(normalizedEmail);
+
+            ApplyReviewerCityCoverage(profile, normalizedEmail);
 
             profile.PermissionLevel = seed.PermissionLevel;
 
@@ -835,6 +886,9 @@ public static class DataSeeder
 
                 JobTitle = "مقدم خدمة — جهة",
 
+                DistributionAssigneeId =
+                    DistributionAssigneeIdsByEmail.GetValueOrDefault(normalizedEmail),
+
                 Status = UserStatus.Active,
 
                 CreatedAtUtc = DateTime.UtcNow,
@@ -872,6 +926,9 @@ public static class DataSeeder
             profile.ContractType = ContractType.ServiceProvider;
 
             profile.JobTitle = "مقدم خدمة — جهة";
+
+            profile.DistributionAssigneeId =
+                DistributionAssigneeIdsByEmail.GetValueOrDefault(normalizedEmail);
 
             profile.Status = UserStatus.Active;
 
@@ -1125,6 +1182,16 @@ public static class DataSeeder
             {
                 Id = Guid.Parse("f1a2b3c4-d5e6-7890-abcd-ef1234567890"),
                 ReportJson = FinancialReportSeedJson,
+                UpdatedAtUtc = DateTime.UtcNow,
+            });
+        }
+
+        if (!await db.FailureTypesCatalogConfigs.AnyAsync(cancellationToken))
+        {
+            db.FailureTypesCatalogConfigs.Add(new FailureTypesCatalogConfig
+            {
+                Id = FailureTypesCatalogSeed.SingletonId,
+                CatalogJson = FailureTypesCatalogSeed.CatalogJson,
                 UpdatedAtUtc = DateTime.UtcNow,
             });
         }

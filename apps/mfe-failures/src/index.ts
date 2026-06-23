@@ -17,7 +17,7 @@ export * from "./lib/failures-repository";
 export {
   failureSeverityLabel,
   failureStatusLabel,
-} from "./lib/failures-local-storage";
+} from "./lib/failures-labels";
 export * from "./lib/failure-types-data";
 export * from "./lib/failure-types-storage";
 export * from "./lib/failures-api";

@@ -48,6 +48,21 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         return entity is null ? null : ToDto(entity);
     }
 
+    public async Task<IReadOnlyList<PartyTaskSubmissionDto>> ListForTasksAsync(
+        IReadOnlyList<Guid> workflowTaskIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (workflowTaskIds.Count == 0) return [];
+
+        var ids = workflowTaskIds.Distinct().Take(500).ToList();
+        var entities = await _db.PartyTaskSubmissions
+            .AsNoTracking()
+            .Where(s => ids.Contains(s.WorkflowTaskId))
+            .ToListAsync(cancellationToken);
+
+        return entities.Select(ToDto).ToList();
+    }
+
     public async Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> SaveDraftAsync(
         Guid taskId,
         SavePartyTaskSubmissionRequest request,

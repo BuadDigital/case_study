@@ -1,4 +1,5 @@
 import type { PageId, RoleId } from "@platform/types";
+import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { activeTransactionNavForRole, filterTasksForCaseStudy } from "@platform/app-shared/prototype/active-transactions";
 import type { PoIntakeRecord } from "./po-intake-data";
 import { PARTY_TASK_PAGES } from "@platform/app-shared/prototype/party-task-pages";
@@ -49,11 +50,12 @@ export function tasksAssignedToViewer(
   tasks: WorkflowTask[],
   viewerEmail?: string | null,
   customGrantedPages?: readonly PageId[],
+  staffUsers: StaffUser[] = [],
 ): WorkflowTask[] {
   if (isSuperAdmin(role)) return tasks;
 
   const roleTasks = PARTY_ROLE_IDS.has(role)
-    ? tasksForPartyAssignee(role, tasks, undefined, viewerEmail)
+    ? tasksForPartyAssignee(role, tasks, undefined, viewerEmail, staffUsers)
     : tasksForRole(role, tasks);
 
   const granted = customGrantedPages ?? [];
@@ -135,6 +137,8 @@ export function computeActiveTransactionsSituation(input: {
   role: RoleId;
   rolePages?: readonly PageId[];
   customGrantedPages?: readonly PageId[];
+  viewerEmail?: string | null;
+  staffUsers?: StaffUser[];
   poRows: PoRow[] | undefined;
   poRecords: PoIntakeRecord[] | undefined;
   tasks: WorkflowTask[] | undefined;
@@ -173,8 +177,9 @@ export function computeActiveTransactionsSituation(input: {
     ? tasksAssignedToViewer(
         input.role,
         input.tasks ?? [],
-        undefined,
+        input.viewerEmail,
         input.customGrantedPages,
+        input.staffUsers ?? [],
       )
     : [];
 

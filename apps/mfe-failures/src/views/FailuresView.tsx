@@ -14,12 +14,16 @@ import {
   cn,
   EmptyState,
   formControlClassName,
+  Note,
   OperationalPanel,
-  PageGutter,
   PageShell,
+  PageToolbar,
+  QueueTableHint,
   StatCard,
   StatGrid,
   StatLabel,
+  StatSkeleton,
+  StatSub,
   StatValue,
 } from "@platform/design-system";
 import { formatDateAr, formatPoDisplay } from "@case-study/mfe";
@@ -28,7 +32,7 @@ import { suspendPropertyTransaction } from "@case-study/mfe/lib/prototype/suspen
 import { usePoRecordsQuery } from "@case-study/mfe/query/case-study-queries";
 import { failureProblemTypeLabel } from "../lib/failure-types-data";
 import { approveFailure, resolveFailure, returnFailure, submitFailureForReview, upgradeFailureToInternal } from "../lib/failures-repository";
-import { failureSeverityLabel, failureStatusLabel } from "../lib/failures-local-storage";
+import { failureSeverityLabel, failureStatusLabel } from "../lib/failures-labels";
 import { countOpenFailures, isActiveFailureStatus } from "../lib/failures-types";
 import { useFailuresQuery } from "../query/failures-queries";
 
@@ -41,9 +45,6 @@ function isSupervisor(role: RoleId) {
 }
 
 type ResolveDraft = { reason: string; instructions: string };
-
-const noteBase =
-  "mb-3 rounded-[var(--radius-DEFAULT)] border border-e-[3px] px-3.5 py-2.5 text-xs leading-relaxed";
 
 const fieldTextareaClass = cn(
   formControlClassName,
@@ -87,7 +88,16 @@ export function FailuresView() {
     const review = items.filter((f) => f.status === "review").length;
     const approved = items.filter((f) => f.status === "approved").length;
     const resolved = items.filter((f) => f.status === "resolved").length;
-    return { open, review, approved, resolved };
+    const closed = approved + resolved;
+    const total = items.filter((f) => f.status !== "suspended").length;
+    return {
+      open,
+      review,
+      closed,
+      total,
+      closedPct:
+        total > 0 ? `${Math.round((closed / total) * 100)}% من الإجمالي` : "—",
+    };
   }, [items]);
 
   const sortedItems = useMemo(() => {
@@ -153,53 +163,68 @@ export function FailuresView() {
 
   return (
     <PageShell variant="canvas" className="min-h-0 flex-1">
-      <StatGrid cols={4} flush className="mb-0">
-        <StatCard accent="red" flush>
-          <StatLabel>تعذرات مفتوحة</StatLabel>
-          <StatValue value={isFetched ? stats.open : undefined} />
-        </StatCard>
-        <StatCard accent="amber" flush>
-          <StatLabel>عند مشرف دراسة الحالة</StatLabel>
-          <StatValue value={isFetched ? stats.review : undefined} />
-        </StatCard>
-        <StatCard accent="green" flush>
-          <StatLabel>معتمدة / تم الحل</StatLabel>
-          <StatValue
-            value={
-              isFetched ? stats.approved + stats.resolved : undefined
-            }
-          />
-        </StatCard>
-        <StatCard accent="default" flush>
-          <StatLabel>الإجمالي</StatLabel>
-          <StatValue value={isFetched ? items.length : undefined} />
-        </StatCard>
+      <StatGrid cols={4}>
+        {!isFetched ? (
+          Array.from({ length: 4 }, (_, index) => (
+            <StatCard key={index} accent="gray">
+              <StatSkeleton />
+            </StatCard>
+          ))
+        ) : (
+          <>
+            <StatCard accent="red">
+              <StatLabel>تعذرات مفتوحة</StatLabel>
+              <StatValue value={stats.open} countUp />
+              <StatSub>
+                {stats.open > 0 ? "تحتاج معالجة" : "لا تعذرات مفتوحة"}
+              </StatSub>
+            </StatCard>
+            <StatCard accent="warn">
+              <StatLabel>عند مشرف دراسة الحالة</StatLabel>
+              <StatValue value={stats.review} countUp />
+              <StatSub>بانتظار اعتماد المشرف</StatSub>
+            </StatCard>
+            <StatCard accent="green">
+              <StatLabel>معتمدة / تم الحل</StatLabel>
+              <StatValue value={stats.closed} countUp />
+              <StatSub>{stats.closedPct}</StatSub>
+            </StatCard>
+            <StatCard accent="blue">
+              <StatLabel>الإجمالي</StatLabel>
+              <StatValue value={stats.total} countUp />
+              <StatSub>سجلات التعذر في النظام</StatSub>
+            </StatCard>
+          </>
+        )}
       </StatGrid>
 
       <OperationalPanel className="min-h-0 flex-1">
-        <PageGutter className="pt-4">
           {!ce && !ca ? (
-            <div className={cn(noteBase, "border-info bg-info-bg text-info-text")}>
-              {role === "general-manager"
-                ? "أنت في وضع الاطلاع — صلاحية التعديل للمشرف والأخصائي"
-                : role === "cdo"
-                  ? "صلاحيات كاملة — يمكنك اعتماد التعذرات وإنشاؤها"
-                  : "أنت في وضع المراقبة — لا تملك صلاحية تعديل التعذرات"}
-            </div>
+            <PageToolbar className="border-b-0 bg-surface-2/50">
+              <Note tone="info" className="m-0 flex-1">
+                {role === "general-manager"
+                  ? "أنت في وضع الاطلاع — صلاحية التعديل للمشرف والأخصائي"
+                  : role === "cdo"
+                    ? "صلاحيات كاملة — يمكنك اعتماد التعذرات وإنشاؤها"
+                    : "أنت في وضع المراقبة — لا تملك صلاحية تعديل التعذرات"}
+              </Note>
+            </PageToolbar>
           ) : null}
           {ca ? (
-            <div className={cn(noteBase, "border-success bg-success-bg text-success-text")}>
-              مسار التعذر: رفع (احتمال / داخلي) → معالجة الأخصائي → مراجعة المشرف
-              مع أخصائي الإسناد → اعتماد التعذر أو تعليق المعاملة.
-            </div>
+            <PageToolbar className="border-b-0 bg-surface-2/50">
+              <Note tone="success" className="m-0 flex-1">
+                مسار التعذر: رفع (احتمال / داخلي) → معالجة الأخصائي → مراجعة
+                المشرف مع أخصائي الإسناد → اعتماد التعذر أو تعليق المعاملة.
+              </Note>
+            </PageToolbar>
           ) : null}
-        </PageGutter>
 
-        {sortedItems.length === 0 ? (
-          <EmptyState line="لا توجد تعذرات — سجّل تعذراً من شاشة العقارات." />
-        ) : (
-          <PageGutter className="flex flex-col gap-2.5 pb-4">
-            {sortedItems.map((f) => {
+          {sortedItems.length === 0 ? (
+            <EmptyState line="لا توجد تعذرات — سجّل تعذراً من شاشة العقارات." />
+          ) : (
+            <>
+              <div className="flex flex-col gap-2.5 px-4 py-4">
+                {sortedItems.map((f) => {
           const active = isActiveFailureStatus(f.status);
           const displayTitle = failureProblemTypeLabel(f.problemTypeId, f.title);
           const canSpecialistAct =
@@ -409,9 +434,13 @@ export function FailuresView() {
             </div>
           );
             })}
-          </PageGutter>
-        )}
-      </OperationalPanel>
+              </div>
+              <QueueTableHint>
+                سجّل تعذراً جديداً من شاشة العقار (⋮ → إبلاغ عن تعذر).
+              </QueueTableHint>
+            </>
+          )}
+        </OperationalPanel>
     </PageShell>
   );
 }

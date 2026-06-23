@@ -36,29 +36,29 @@ export function SurveyView() {
 
   return (
     <PageShell variant="canvas" className="min-h-0 flex-1">
-      <StatGrid cols={4} flush className="mb-0">
+      <StatGrid cols={4}>
         {ready ? (
           <>
-            <StatCard accent="blue" flush>
+            <StatCard accent="blue">
               <StatLabel>إجمالي طلبات الرفع</StatLabel>
               <StatValue value={stats?.total ?? 0} countUp />
             </StatCard>
-            <StatCard accent="green" flush>
+            <StatCard accent="green">
               <StatLabel>مكتملة</StatLabel>
               <StatValue value={stats?.completed ?? 0} countUp />
             </StatCard>
-            <StatCard accent="warn" flush>
+            <StatCard accent="warn">
               <StatLabel>قيد التنفيذ</StatLabel>
               <StatValue value={stats?.inProgress ?? 0} countUp />
             </StatCard>
-            <StatCard accent="red" flush>
+            <StatCard accent="red">
               <StatLabel>لم تُسند</StatLabel>
               <StatValue value={stats?.unassigned ?? 0} countUp />
             </StatCard>
           </>
         ) : (
           Array.from({ length: 4 }, (_, index) => (
-            <StatCard key={index} accent="gray" flush>
+            <StatCard key={index} accent="gray">
               <StatSkeleton />
             </StatCard>
           ))

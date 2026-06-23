@@ -20,6 +20,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<CaseStudyInfoRolesConfig> CaseStudyInfoRolesConfigs => Set<CaseStudyInfoRolesConfig>();
     public DbSet<PartyTaskSubmission> PartyTaskSubmissions => Set<PartyTaskSubmission>();
     public DbSet<FieldInspectionWorkspace> FieldInspectionWorkspaces => Set<FieldInspectionWorkspace>();
+    public DbSet<InspectorFeeLedger> InspectorFeeLedgers => Set<InspectorFeeLedger>();
     public DbSet<PropertyFailure> PropertyFailures => Set<PropertyFailure>();
     public DbSet<FieldDictionaryConfig> FieldDictionaryConfigs => Set<FieldDictionaryConfig>();
     public DbSet<FailureTypesCatalogConfig> FailureTypesCatalogConfigs => Set<FailureTypesCatalogConfig>();
@@ -54,7 +55,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .HasForeignKey<UserProfile>(x => x.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
             e.Property(x => x.JobTitle).HasMaxLength(256);
+            e.Property(x => x.DistributionAssigneeId).HasMaxLength(128);
+            e.Property(x => x.ReviewerCityCoverageJson).HasMaxLength(1024);
             e.Property(x => x.PermissionLevel).HasMaxLength(64);
+            e.HasIndex(x => x.DistributionAssigneeId);
         });
 
         builder.Entity<HrEmployeeProfile>(e =>
@@ -203,6 +207,22 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(x => x.Status);
             e.HasIndex(x => x.PropertyId);
             e.HasIndex(x => x.PartyTaskSubmissionId).IsUnique();
+        });
+
+        builder.Entity<InspectorFeeLedger>(e =>
+        {
+            e.ToTable("InspectorFeeLedgers", DatabaseSchemas.CaseStudy);
+            e.HasKey(x => x.WorkflowTaskId);
+            e.Property(x => x.PoNumber).HasMaxLength(64);
+            e.Property(x => x.AssigneeId).HasMaxLength(128);
+            e.Property(x => x.InspectorType).HasMaxLength(32);
+            e.Property(x => x.DiscountReason).HasMaxLength(2000);
+            e.Property(x => x.BillingStatus).HasMaxLength(32);
+            e.Property(x => x.AgreedFeeSar).HasPrecision(12, 2);
+            e.Property(x => x.SupervisorDiscountSar).HasPrecision(12, 2);
+            e.HasIndex(x => x.PoNumber);
+            e.HasIndex(x => x.AssigneeId);
+            e.HasIndex(x => x.BillingStatus);
         });
 
         builder.Entity<PropertyFailure>(e =>

@@ -49,18 +49,12 @@ function SituationCard({
           "block text-inherit no-underline transition-[box-shadow,transform] duration-150 hover:-translate-y-px hover:shadow-[0_2px_10px_rgba(0,0,0,0.08)]",
         )}
       >
-        <StatCard accent={toneAccent[tone]} flush>
-          {inner}
-        </StatCard>
+        <StatCard accent={toneAccent[tone]}>{inner}</StatCard>
       </Link>
     );
   }
 
-  return (
-    <StatCard accent={toneAccent[tone]} flush>
-      {inner}
-    </StatCard>
-  );
+  return <StatCard accent={toneAccent[tone]}>{inner}</StatCard>;
 }
 
 const SUB_ASSIGNED_TO_YOU = "المسندة إليك";
@@ -117,12 +111,10 @@ export function ActiveTransactionsSituationBar() {
 
   return (
     <section
-      className="shrink-0 border-b border-border bg-bg"
+      className="shrink-0 bg-bg px-4 pt-4"
       aria-label="ملخص وضع المعاملات"
     >
-      <StatGrid cols={gridCols} flush className="mb-0">
-        {cards}
-      </StatGrid>
+      <StatGrid cols={gridCols}>{cards}</StatGrid>
     </section>
   );
 }

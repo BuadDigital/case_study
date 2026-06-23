@@ -18,6 +18,23 @@ public class PartyTaskSubmissionsController : ControllerBase
         _submissions = submissions;
     }
 
+    [HttpGet]
+    public async Task<ActionResult<IReadOnlyList<PartyTaskSubmissionDto>>> List(
+        [FromQuery] string? workflowTaskIds,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(workflowTaskIds))
+            return Ok(Array.Empty<PartyTaskSubmissionDto>());
+
+        var ids = workflowTaskIds
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(s => Guid.TryParse(s, out var id) ? id : Guid.Empty)
+            .Where(id => id != Guid.Empty)
+            .ToList();
+
+        return Ok(await _submissions.ListForTasksAsync(ids, cancellationToken));
+    }
+
     [HttpGet("{taskId:guid}")]
     public async Task<ActionResult<PartyTaskSubmissionDto>> Get(
         Guid taskId,

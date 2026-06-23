@@ -167,8 +167,11 @@ public class FieldInspectionSubmissionIntegrationTests
         return new ApplicationDbContext(options);
     }
 
-    private static PartyTaskSubmissionService CreateService(ApplicationDbContext db) =>
-        new(db, new WorkflowTaskService(db), new FieldInspectionAttachmentVerifier(db));
+    private static PartyTaskSubmissionService CreateService(ApplicationDbContext db)
+    {
+        var fees = new InspectorFeeService(db);
+        return new(db, new WorkflowTaskService(db, fees), new FieldInspectionAttachmentVerifier(db));
+    }
 
     private static void SeedInspectionTask(ApplicationDbContext db)
     {

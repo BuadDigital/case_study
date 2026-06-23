@@ -2,6 +2,8 @@
 
 import { useMemo } from "react";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { getAuthSession } from "@platform/auth-client";
+import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import {
   computeActiveTransactionsSituation,
   situationVisibilityForPages,
@@ -14,7 +16,9 @@ import {
 } from "./case-study-queries";
 
 export function useActiveTransactionsSituation(): ActiveTransactionsSituationStats {
-  const { role, rolePages } = usePrototype();
+  const { role, rolePages, viewerEmail } = usePrototype();
+  const { data: staffResult } = useStaffUsersQuery();
+  const staffUsers = staffResult?.users ?? [];
   const statsFlags = useMemo(
     () => situationVisibilityForPages(rolePages),
     [rolePages],
@@ -30,6 +34,8 @@ export function useActiveTransactionsSituation(): ActiveTransactionsSituationSta
         role,
         rolePages,
         customGrantedPages: [],
+        viewerEmail: viewerEmail ?? getAuthSession()?.user.email,
+        staffUsers,
         poRows,
         poRecords,
         tasks,
@@ -40,6 +46,8 @@ export function useActiveTransactionsSituation(): ActiveTransactionsSituationSta
     [
       role,
       rolePages,
+      viewerEmail,
+      staffUsers,
       poRows,
       poRecords,
       tasks,

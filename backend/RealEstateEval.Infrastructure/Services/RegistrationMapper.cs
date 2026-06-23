@@ -1,3 +1,4 @@
+using System.Text.Json;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -42,6 +43,8 @@ public static class RegistrationMapper
             JobTitle = profile.JobTitle,
             Email = user.Email ?? string.Empty,
             UserName = user.UserName ?? string.Empty,
+            DistributionAssigneeId = profile.DistributionAssigneeId,
+            ReviewerCityCoverage = ParseReviewerCityCoverage(profile.ReviewerCityCoverageJson),
             ContractType = profile.ContractType,
             Status = profile.Status,
             RegistrationSource = profile.RegistrationSource,
@@ -50,6 +53,22 @@ public static class RegistrationMapper
             SystemRoles = systemRoles,
             Details = BuildDetails(user, profile, systemRoles),
         };
+
+    private static IReadOnlyList<string> ParseReviewerCityCoverage(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return [];
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(json)?
+                .Where(c => !string.IsNullOrWhiteSpace(c))
+                .Select(c => c.Trim())
+                .ToList() ?? [];
+        }
+        catch
+        {
+            return [];
+        }
+    }
 
     public static string MapRoleToArabic(string roleName) =>
         roleName switch

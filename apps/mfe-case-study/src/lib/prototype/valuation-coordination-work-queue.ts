@@ -1,13 +1,39 @@
+import type { PartyTaskSubmissionDto } from "@platform/api-client";
 import {
   isValuationCoordinationFormLocked,
   valuationCoordinationStatusLabel,
+  type ValuationCoordinationSubmission,
 } from "./valuation-coordination-work-data";
-import { loadValuationCoordinationSubmission } from "./valuation-coordination-work-storage";
+
+function submissionFromDto(
+  dto: PartyTaskSubmissionDto | null | undefined,
+): ValuationCoordinationSubmission | null {
+  if (!dto) return null;
+  const payload = dto.payload as Partial<ValuationCoordinationSubmission>;
+  return {
+    ...payload,
+    taskId: dto.taskId,
+    propertyId: payload.propertyId ?? dto.propertyId ?? "",
+    poNumber: payload.poNumber ?? dto.poNumber ?? "",
+    receiptConfirmed: payload.receiptConfirmed ?? false,
+    receiptDate: payload.receiptDate ?? "",
+    inspectorName: payload.inspectorName ?? "",
+    appraiserName: payload.appraiserName ?? "",
+    priority: payload.priority ?? "normal",
+    coordinationNotes: payload.coordinationNotes ?? "",
+    inspectorInstructions: payload.inspectorInstructions ?? "",
+    appraiserInstructions: payload.appraiserInstructions ?? "",
+    status: (payload.status ?? dto.status) as ValuationCoordinationSubmission["status"],
+    submittedAtUtc: dto.submittedAtUtc ?? payload.submittedAtUtc ?? null,
+    updatedAtUtc: dto.updatedAtUtc ?? payload.updatedAtUtc ?? "",
+  };
+}
 
 export function valuationCoordinationTaskStatusBadge(
   taskId: string,
+  submissionDto?: PartyTaskSubmissionDto | null,
 ): { label: string; className: string } | null {
-  const sub = loadValuationCoordinationSubmission(taskId);
+  const sub = submissionFromDto(submissionDto);
   if (sub?.status === "submitted") {
     return {
       label: valuationCoordinationStatusLabel("submitted"),
@@ -23,7 +49,10 @@ export function valuationCoordinationTaskStatusBadge(
   return { label: "بانتظار الاستلام", className: "b-new" };
 }
 
-export function isValuationCoordinationLocked(taskId: string): boolean {
-  const sub = loadValuationCoordinationSubmission(taskId);
+export function isValuationCoordinationLocked(
+  taskId: string,
+  submissionDto?: PartyTaskSubmissionDto | null,
+): boolean {
+  const sub = submissionFromDto(submissionDto);
   return sub ? isValuationCoordinationFormLocked(sub.status) : false;
 }

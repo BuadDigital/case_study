@@ -51,8 +51,6 @@ import {
   workOrdersApiConfig,
 } from "../work-orders-api-config";
 
-const LEGACY_DRAFT_KEY = "evalPoIntakeDraft";
-
 let memoryDraft: PoIntakeDraftPayload | null = null;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let hydratePromise: Promise<PoIntakeDraftPayload | null> | null = null;
@@ -602,17 +600,6 @@ export type PoIntakeDraftPayload = {
   expectedPropertyCount: number;
 };
 
-function readLegacyLocalDraft(): PoIntakeDraftPayload | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(LEGACY_DRAFT_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as PoIntakeDraftPayload;
-  } catch {
-    return null;
-  }
-}
-
 function draftToDto(draft: PoIntakeDraftPayload) {
   return {
     step: draft.step,
@@ -659,15 +646,15 @@ export function loadPoDraft(): PoIntakeDraftPayload | null {
   return memoryDraft;
 }
 
-/** Fetch server draft (and migrate legacy localStorage once). */
+/** Fetch server draft into in-memory cache. */
 export async function hydratePoDraft(): Promise<PoIntakeDraftPayload | null> {
   if (hydratePromise) return hydratePromise;
 
   hydratePromise = (async () => {
     const config = prototypeModulesApiConfig();
     if (!config) {
-      memoryDraft = readLegacyLocalDraft();
-      return memoryDraft;
+      memoryDraft = null;
+      return null;
     }
 
     const result = await getPoIntakeDraft(config);
@@ -676,17 +663,8 @@ export async function hydratePoDraft(): Promise<PoIntakeDraftPayload | null> {
       return memoryDraft;
     }
 
-    const legacy = readLegacyLocalDraft();
-    if (legacy) {
-      memoryDraft = legacy;
-      await persistPoDraft(legacy);
-      try {
-        localStorage.removeItem(LEGACY_DRAFT_KEY);
-      } catch {
-        /* ignore */
-      }
-    }
-    return memoryDraft;
+    memoryDraft = null;
+    return null;
   })();
 
   return hydratePromise;
@@ -710,12 +688,6 @@ export async function clearPoDraft(): Promise<void> {
 
   const config = prototypeModulesApiConfig();
   if (config) await deletePoIntakeDraft(config);
-
-  try {
-    localStorage.removeItem(LEGACY_DRAFT_KEY);
-  } catch {
-    /* ignore */
-  }
 }
 
 export function resetPoIntakeDraftClientCache(): void {

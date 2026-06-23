@@ -1,14 +1,12 @@
 import type { RoleId } from "@platform/types";
+import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import {
   COURTS_BY_CITY,
   type PoIntakeRecord,
   type PoPropertyIntake,
 } from "./po-intake-data";
 import type { WorkflowTask } from "./tasks-storage";
-import {
-  getReviewerCityCoverage,
-  partyAccountForRole,
-} from "./distribution-party-accounts";
+import { partyAccountForRole } from "./distribution-parties";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 
 export type ReviewerScope = {
@@ -16,6 +14,16 @@ export type ReviewerScope = {
   cities: string[];
   label: string;
 };
+
+export function getReviewerCityCoverage(
+  assigneeId: string,
+  users: StaffUser[] = [],
+): string[] {
+  const id = assigneeId.trim();
+  if (!id) return [];
+  const staff = users.find((u) => u.distributionAssigneeId?.trim() === id);
+  return staff?.reviewerCityCoverage?.filter((city) => city.trim()) ?? [];
+}
 
 const courtToCity = (() => {
   const map = new Map<string, string>();
@@ -27,13 +35,16 @@ const courtToCity = (() => {
   return map;
 })();
 
-export function reviewerScopeForRole(role: RoleId): ReviewerScope | null {
+export function reviewerScopeForRole(
+  role: RoleId,
+  users: StaffUser[] = [],
+): ReviewerScope | null {
   if (isSuperAdmin(role)) return null;
-  const account = partyAccountForRole(role);
+  const account = partyAccountForRole(role, users);
   if (!account || role !== "government-reviewer") return null;
   return {
     assigneeId: account.assigneeId,
-    cities: getReviewerCityCoverage(account.assigneeId),
+    cities: getReviewerCityCoverage(account.assigneeId, users),
     label: account.name,
   };
 }

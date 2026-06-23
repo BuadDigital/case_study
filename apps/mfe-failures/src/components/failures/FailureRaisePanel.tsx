@@ -11,7 +11,7 @@ import { createFailure } from "../../lib/failures-repository";
 import {
   failureSeverityLabel,
   failureStatusLabel,
-} from "../../lib/failures-local-storage";
+} from "../../lib/failures-labels";
 import type { FailureSeverity } from "../../lib/failures-types";
 import { isActiveFailureStatus } from "../../lib/failures-types";
 import { useFailuresQuery } from "../../query/failures-queries";

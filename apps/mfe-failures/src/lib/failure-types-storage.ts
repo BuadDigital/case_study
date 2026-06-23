@@ -40,19 +40,10 @@ async function persistCatalog(catalog: FailureTypesCatalog): Promise<void> {
 
 export async function loadFailureTypesCatalog(): Promise<FailureTypesCatalog> {
   const config = prototypeModulesApiConfig();
-  if (!config) return seedCatalog();
+  if (!config) return { categories: [], problemTypes: [] };
 
   const result = await getFailureTypesCatalog(config);
-  if (!result.ok) return seedCatalog();
-
-  if (
-    result.data.categories.length === 0 &&
-    result.data.problemTypes.length === 0
-  ) {
-    const seeded = seedCatalog();
-    await persistCatalog(seeded);
-    return seeded;
-  }
+  if (!result.ok) return { categories: [], problemTypes: [] };
 
   return {
     categories: result.data.categories as FailureTypeCategory[],

@@ -230,7 +230,7 @@ export function BourseInquiryView() {
     <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg">
       <div
         className={cn(
-          "grid min-h-0 flex-1 items-stretch gap-3 bg-bg",
+          "grid min-h-0 flex-1 items-stretch gap-3 bg-bg px-4 py-4 sm:py-5",
           showSplit
             ? "grid-cols-1 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]"
             : "grid-cols-1",

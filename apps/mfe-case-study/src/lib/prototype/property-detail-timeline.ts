@@ -1,5 +1,5 @@
 import { getPropertyFailure } from "@failures/mfe";
-import { failureStatusLabel } from "@failures/mfe/lib/failures-local-storage";
+import { failureStatusLabel } from "@failures/mfe/lib/failures-labels";
 import { formatDateAr } from "./po-intake-data";
 import type { PoIntakeRecord, PoPropertyIntake } from "./po-intake-data";
 import { getSuspendedTransaction } from "./suspended-transactions-storage";

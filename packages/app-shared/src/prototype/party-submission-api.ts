@@ -1,5 +1,6 @@
 import {
   getPartyTaskSubmission,
+  listPartyTaskSubmissions,
   reopenPartyTaskSubmission,
   savePartyTaskSubmission,
   submitPartyTaskSubmission,
@@ -87,9 +88,24 @@ export async function prefetchPartySubmissionsForTasks(
 ): Promise<void> {
   const config = workOrdersApiConfig();
   if (!config) return;
-  await Promise.all(
-    taskIds.map(async (taskId) => {
-      await fetchPartySubmission(taskId);
-    }),
-  );
+
+  const ids = taskIds.map((id) => id.trim()).filter(Boolean);
+  if (ids.length === 0) return;
+
+  if (ids.length === 1) {
+    await fetchPartySubmission(ids[0]);
+    return;
+  }
+
+  const result = await listPartyTaskSubmissions(config, ids);
+  if (result.ok) {
+    const returned = new Set(result.data.map((dto) => dto.taskId));
+    for (const dto of result.data) setCachedPartySubmission(dto, dto.taskId);
+    for (const id of ids) {
+      if (!returned.has(id)) setCachedPartySubmission(null, id);
+    }
+    return;
+  }
+
+  await Promise.all(ids.map((taskId) => fetchPartySubmission(taskId)));
 }

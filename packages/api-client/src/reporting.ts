@@ -30,6 +30,16 @@ export type ReportingDashboardDto = {
   }[];
   teamFieldMembers: ReportingTeamMemberDto[];
   specialistLoad: ReportingSpecialistLoadDto[];
+  fieldInspectionProgress?: FieldInspectionWorkspaceSummaryDto;
+};
+
+export type FieldInspectionWorkspaceSummaryDto = {
+  total: number;
+  draft: number;
+  reopened: number;
+  submitted: number;
+  photosPendingApproval: number;
+  incompleteRequiredPhotos: number;
 };
 
 export type ReportingKpiScoreDto = {
@@ -65,7 +75,29 @@ export async function fetchReportingDashboard(
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: (await res.json()) as ReportingDashboardDto };
+    const raw = (await res.json()) as Record<string, unknown>;
+    const progressRaw = (raw.fieldInspectionProgress ??
+      raw.FieldInspectionProgress) as Record<string, unknown> | undefined;
+    const data = raw as ReportingDashboardDto;
+    if (progressRaw) {
+      data.fieldInspectionProgress = {
+        total: Number(progressRaw.total ?? progressRaw.Total ?? 0),
+        draft: Number(progressRaw.draft ?? progressRaw.Draft ?? 0),
+        reopened: Number(progressRaw.reopened ?? progressRaw.Reopened ?? 0),
+        submitted: Number(progressRaw.submitted ?? progressRaw.Submitted ?? 0),
+        photosPendingApproval: Number(
+          progressRaw.photosPendingApproval ??
+            progressRaw.PhotosPendingApproval ??
+            0,
+        ),
+        incompleteRequiredPhotos: Number(
+          progressRaw.incompleteRequiredPhotos ??
+            progressRaw.IncompleteRequiredPhotos ??
+            0,
+        ),
+      };
+    }
+    return { ok: true, data };
   } catch {
     return { ok: false, kind: "network" };
   }

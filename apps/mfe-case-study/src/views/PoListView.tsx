@@ -348,25 +348,25 @@ export function PoListView() {
       ) : null}
 
       <PageShell variant="canvas" className="min-h-0 flex-1">
-        <StatGrid cols={4} flush className="mb-0">
+        <StatGrid cols={4}>
             {statsReady ? (
               <>
-                <StatCard accent="default" flush>
+                <StatCard accent="default">
                   <StatLabel>إجمالي أوامر العمل</StatLabel>
                   <StatValue value={stats?.total} countUp />
                   <StatSub>PO نشط</StatSub>
                 </StatCard>
-                <StatCard accent="amber" flush>
+                <StatCard accent="amber">
                   <StatLabel>عقارات نشطة</StatLabel>
                   <StatValue value={stats?.propertyCount} countUp />
                   <StatSub>قيد المعالجة</StatSub>
                 </StatCard>
-                <StatCard accent="blue" flush>
+                <StatCard accent="blue">
                   <StatLabel>متوسط العقارات / PO</StatLabel>
                   <StatValue value={stats?.avgPerPo} />
                   <StatSub>عقار لكل أمر</StatSub>
                 </StatCard>
-                <StatCard accent="gray" flush>
+                <StatCard accent="gray">
                   <StatLabel>مكتملة هذا الشهر</StatLabel>
                   <StatValue value={stats?.doneMonth} countUp />
                   <StatSub>{`من ${stats?.total ?? 0} إجمالي`}</StatSub>
@@ -374,7 +374,7 @@ export function PoListView() {
               </>
             ) : (
               Array.from({ length: 4 }, (_, index) => (
-                <StatCard key={index} accent="gray" flush>
+                <StatCard key={index} accent="gray">
                   <StatSkeleton />
                 </StatCard>
               ))

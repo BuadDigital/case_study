@@ -3,18 +3,19 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
-  cn,
   EmptyState,
   Note,
   OperationalPanel,
-  PageGutter,
   PageShell,
+  PageToolbar,
+  QueueTableHint,
+  SkeletonTableRows,
   StatCard,
   StatGrid,
   StatLabel,
   StatSkeleton,
+  StatSub,
   StatValue,
-  SkeletonTableRows,
   Table,
   TBody,
   Td,
@@ -23,9 +24,12 @@ import {
   ThAction,
   THead,
   Tr,
+  queueTableRowClassName,
+  queueTableWrapClassName,
 } from "@platform/design-system";
 import { getAuthSession } from "@platform/auth-client";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { PARTY_TASK_PAGES } from "@platform/app-shared/prototype/party-task-pages";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import type { RoleId } from "@platform/types";
@@ -51,8 +55,7 @@ const PARTY_ASSIGNMENT_ROLE_IDS = new Set(
   Object.values(PARTY_TASK_PAGES).map((def) => def.roleId),
 );
 
-const ROW =
-  "cursor-pointer transition-colors hover:bg-[color-mix(in_srgb,var(--info-bg)_40%,var(--surface))]";
+const ROW = queueTableRowClassName;
 
 function isCaseStudyStaff(role: RoleId) {
   return (
@@ -102,6 +105,8 @@ export function SuspendedTransactionsView() {
   const { data: items = [], isFetched } = useSuspendedTransactionsQuery();
   const { data: poRecords = [] } = usePoRecordsQuery();
   const { data: tasks = [] } = useWorkflowTasksQuery();
+  const { data: staffResult } = useStaffUsersQuery();
+  const staffUsers = staffResult?.users ?? [];
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -118,7 +123,7 @@ export function SuspendedTransactionsView() {
   const visibleItems = useMemo(() => {
     if (isSuperAdmin(role) || !PARTY_ASSIGNMENT_ROLE_IDS.has(role)) return items;
     const email = viewerEmail ?? getAuthSession()?.user.email;
-    const mine = tasksForPartyAssignee(role, tasks, undefined, email);
+    const mine = tasksForPartyAssignee(role, tasks, undefined, email, staffUsers);
     const keys = new Set(
       mine
         .filter((t) => t.propertyId)
@@ -127,7 +132,7 @@ export function SuspendedTransactionsView() {
     return items.filter((item) =>
       keys.has(propertySuspensionKey(item.poNumber, item.propertyId)),
     );
-  }, [items, role, tasks, viewerEmail]);
+  }, [items, role, tasks, viewerEmail, staffUsers]);
 
   const stats = useMemo(() => {
     let onTime = 0;
@@ -138,11 +143,14 @@ export function SuspendedTransactionsView() {
       if (remaining.status === "overdue") overdue += 1;
       else if (remaining.status === "active") onTime += 1;
     }
+    const total = visibleItems.length;
     return {
-      suspended: visibleItems.length,
+      suspended: total,
       onTime,
       overdue,
-      total: visibleItems.length,
+      total,
+      onTimePct:
+        total > 0 ? `${Math.round((onTime / total) * 100)}% من الإجمالي` : "—",
     };
   }, [visibleItems, poByNumber, now]);
 
@@ -157,64 +165,70 @@ export function SuspendedTransactionsView() {
 
   return (
     <PageShell variant="canvas" className="min-h-0 flex-1">
-      <StatGrid cols={4} flush className="mb-0">
+      <StatGrid cols={4}>
         {!isFetched ? (
           Array.from({ length: 4 }, (_, index) => (
-            <StatCard key={index} accent="gray" flush>
+            <StatCard key={index} accent="gray">
               <StatSkeleton />
             </StatCard>
           ))
         ) : (
           <>
-            <StatCard accent="red" flush>
+            <StatCard accent="red">
               <StatLabel>معاملات معلقة</StatLabel>
               <StatValue value={stats.suspended} countUp />
+              <StatSub>
+                {stats.suspended > 0
+                  ? "بانتظار رفع التعليق"
+                  : "لا معاملات معلّقة"}
+              </StatSub>
             </StatCard>
-            <StatCard accent="amber" flush>
+            <StatCard accent="warn">
               <StatLabel>متأخرة عن الاستحقاق</StatLabel>
               <StatValue value={stats.overdue} countUp />
+              <StatSub>
+                {stats.overdue > 0 ? "تجاوزت الموعد" : "لا تأخير مسجّل"}
+              </StatSub>
             </StatCard>
-            <StatCard accent="default" flush>
+            <StatCard accent="green">
               <StatLabel>ضمن المهلة</StatLabel>
               <StatValue value={stats.onTime} countUp />
+              <StatSub>{stats.onTimePct}</StatSub>
             </StatCard>
-            <StatCard accent="gray" flush>
+            <StatCard accent="blue">
               <StatLabel>الإجمالي</StatLabel>
               <StatValue value={stats.total} countUp />
+              <StatSub>عقارات موقوفة مؤقتاً</StatSub>
             </StatCard>
           </>
         )}
       </StatGrid>
 
       <OperationalPanel className="min-h-0 flex-1">
-        {!staff ? (
-          <PageGutter className="pb-0 pt-4">
-            <Note tone="info" className="mb-0">
-              المعاملة معلّقة — لا يمكن متابعة العمل حتى رفع التعليق من مشرف دراسة
-              الحالة.
-            </Note>
-          </PageGutter>
-        ) : null}
-        {staff ? (
-          <PageGutter className="pb-0 pt-4">
-            <Note
-              tone="default"
-              className="mb-0 border-r-primary bg-teal-light text-teal-text"
-            >
-              مسار التعليق: مراجعة المشرف → تعليق المعاملة → إيقاف جميع الأطراف —
-              المؤقت يستمر حتى موعد الاستحقاق.
-            </Note>
-          </PageGutter>
-        ) : null}
+          {!staff ? (
+            <PageToolbar className="border-b-0 bg-surface-2/50">
+              <Note tone="info" className="m-0 flex-1">
+                المعاملة معلّقة — لا يمكن متابعة العمل حتى رفع التعليق من مشرف
+                دراسة الحالة.
+              </Note>
+            </PageToolbar>
+          ) : (
+            <PageToolbar className="border-b-0 bg-surface-2/50">
+              <Note tone="info" className="m-0 flex-1">
+                مسار التعليق: مراجعة المشرف → تعليق المعاملة → إيقاف جميع
+                الأطراف — المؤقت يستمر حتى موعد الاستحقاق.
+              </Note>
+            </PageToolbar>
+          )}
 
-        {isFetched && sortedItems.length === 0 ? (
+          {isFetched && sortedItems.length === 0 ? (
             <EmptyState
               line="لا توجد معاملات معلقة."
               hint="تظهر هنا بعد تعليق المعاملة من إدارة التعذرات."
             />
           ) : (
             <>
-              <div className="w-full overflow-x-auto">
+              <div className={queueTableWrapClassName}>
                 <Table pending={queuePending}>
                   <THead>
                     <Tr hoverable={false}>
@@ -231,69 +245,72 @@ export function SuspendedTransactionsView() {
                       <SkeletonTableRows rows={5} cols={6} />
                     ) : (
                       sortedItems.map((item) => {
-                      const record = poByNumber.get(item.poNumber.trim());
-                      const remaining = resolveRemainingTime(
-                        record?.dueDateAt ?? "",
-                        now,
-                      );
-                      const assignmentType =
-                        record?.assignmentType?.trim() || "—";
-                      const assignmentSpecialist =
-                        record?.assignmentSpecialist?.trim() || "—";
-                      const moreItems = buildSuspendedRowMoreItems(item, router);
+                        const record = poByNumber.get(item.poNumber.trim());
+                        const remaining = resolveRemainingTime(
+                          record?.dueDateAt ?? "",
+                          now,
+                        );
+                        const assignmentType =
+                          record?.assignmentType?.trim() || "—";
+                        const assignmentSpecialist =
+                          record?.assignmentSpecialist?.trim() || "—";
+                        const moreItems = buildSuspendedRowMoreItems(
+                          item,
+                          router,
+                        );
 
-                      return (
-                        <Tr
-                          key={item.id}
-                          hoverable={false}
-                          className={ROW}
-                          onClick={() =>
-                            router.push(
-                              poPropertyPath(
-                                item.poNumber,
-                                item.propertyId,
-                              ),
-                            )
-                          }
-                        >
-                          <Td className="whitespace-nowrap">
-                            <span
-                              dir="ltr"
-                              className="inline-block text-[11px] font-semibold text-primary"
-                            >
-                              {deedLabel(item, record)}
-                            </span>
-                          </Td>
-                          <Td className="text-text-2">
-                            <PoNumber value={item.poNumber} link />
-                          </Td>
-                          <Td className="text-text-2">{assignmentType}</Td>
-                          <Td
-                            className="max-w-0 overflow-hidden text-ellipsis text-text-2"
-                            title={assignmentSpecialist}
+                        return (
+                          <Tr
+                            key={item.id}
+                            hoverable={false}
+                            className={ROW}
+                            onClick={() =>
+                              router.push(
+                                poPropertyPath(
+                                  item.poNumber,
+                                  item.propertyId,
+                                ),
+                              )
+                            }
                           >
-                            {assignmentSpecialist}
-                          </Td>
-                          <Td>
-                            <RemainingTimeCell state={remaining} />
-                          </Td>
-                          <TdAction>
-                            <RowMoreMenu items={moreItems} />
-                          </TdAction>
-                        </Tr>
-                      );
-                    })
+                            <Td className="whitespace-nowrap">
+                              <span
+                                dir="ltr"
+                                className="inline-block text-[11px] font-semibold text-primary"
+                              >
+                                {deedLabel(item, record)}
+                              </span>
+                            </Td>
+                            <Td className="text-text-2">
+                              <PoNumber value={item.poNumber} link />
+                            </Td>
+                            <Td className="text-text-2">{assignmentType}</Td>
+                            <Td
+                              className="max-w-0 overflow-hidden text-ellipsis text-text-2"
+                              title={assignmentSpecialist}
+                            >
+                              {assignmentSpecialist}
+                            </Td>
+                            <Td>
+                              <RemainingTimeCell state={remaining} />
+                            </Td>
+                            <TdAction>
+                              <RowMoreMenu items={moreItems} />
+                            </TdAction>
+                          </Tr>
+                        );
+                      })
                     )}
                   </TBody>
                 </Table>
               </div>
-              <p className="px-4 py-2 pb-3 text-[11px] text-text-3 sm:px-6">
+              <QueueTableHint>
                 اضغط الصف لعرض تفاصيل العقار — ⋮ عقارات أمر العمل · تفاصيل
                 العقار.
-              </p>
+              </QueueTableHint>
             </>
           )}
-      </OperationalPanel>
+        </OperationalPanel>
     </PageShell>
   );
 }

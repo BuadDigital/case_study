@@ -16,9 +16,8 @@ test.describe("login journey", () => {
     await page.locator("form").evaluate((form) => {
       (form as HTMLFormElement).requestSubmit();
     });
-    await expect(page.getByRole("alert")).toContainText(
-      /تعذر الاتصال|انتهت مهلة/,
-      { timeout: 15_000 },
-    );
+    await expect(
+      page.getByRole("alert").filter({ hasText: /تعذر الاتصال|انتهت مهلة/ }),
+    ).toBeVisible({ timeout: 15_000 });
   });
 });

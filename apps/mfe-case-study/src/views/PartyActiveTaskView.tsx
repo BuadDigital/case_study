@@ -120,6 +120,24 @@ export function PartyActiveTaskView({
   appraisalExtensions?: PartyAppraisalExtensions;
   engineeringSurveyExtensions?: PartyEngineeringSurveyExtensions;
 }) {
+  return (
+    <PartyActiveTaskViewBody
+      pageId={pageId}
+      appraisalExtensions={appraisalExtensions}
+      engineeringSurveyExtensions={engineeringSurveyExtensions}
+    />
+  );
+}
+
+function PartyActiveTaskViewBody({
+  pageId,
+  appraisalExtensions,
+  engineeringSurveyExtensions,
+}: {
+  pageId: PageId;
+  appraisalExtensions?: PartyAppraisalExtensions;
+  engineeringSurveyExtensions?: PartyEngineeringSurveyExtensions;
+}) {
   const def = partyTaskPageDef(pageId);
   const router = useRouter();
   const searchParams = useSearchParams();

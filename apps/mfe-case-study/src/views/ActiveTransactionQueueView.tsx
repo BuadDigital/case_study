@@ -34,6 +34,7 @@ import { buildActiveQueueRowMoreItems } from "../lib/prototype/active-queue-row-
 import { buildCaseStudyPartyAssignees } from "../lib/prototype/case-study-tracks";
 import { getAuthSession } from "@platform/auth-client";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import type { PageId, RoleId } from "@platform/types";
 import { poPropertyDetailPath } from "../lib/po-routes";
 import {
@@ -46,6 +47,14 @@ import type { PoIntakeRecord } from "../lib/prototype/po-intake-data";
 import { isTaskOnSuspendedProperty } from "../lib/prototype/suspended-transactions-storage";
 import { type WorkflowTask } from "../lib/prototype/tasks-storage";
 import { resolveQueueTasksForViewer } from "../lib/prototype/viewer-task-access";
+import { fieldInspectionTaskStatusBadge } from "../lib/prototype/field-inspection-work-queue";
+import { governmentReviewTaskStatusBadge } from "../lib/prototype/government-review-work-queue";
+import { valuationCoordinationTaskStatusBadge } from "../lib/prototype/valuation-coordination-work-queue";
+import { useFieldInspectionWorkspacesQuery } from "../query/field-inspection-workspaces-queries";
+import {
+  getCachedPartySubmission,
+  prefetchPartySubmissionsForTasks,
+} from "@platform/app-shared/prototype/party-submission-api";
 import {
   usePoRecordsQuery,
   useWorkflowTasksQuery,
@@ -146,6 +155,19 @@ export function ActiveTransactionQueueView({
   const queryClient = useQueryClient();
   const selectedId = searchParams.get("task");
   const { role, viewerEmail } = usePrototype();
+  const { data: staffResult } = useStaffUsersQuery();
+  const staffUsers = staffResult?.users ?? [];
+  const needsInspectionWorkspaces = Boolean(config.getTaskStatusBadge);
+  const needsPartySubmissions = Boolean(config.getTaskStatusBadge);
+  const { data: inspectionWorkspaces = [] } = useFieldInspectionWorkspacesQuery(
+    needsInspectionWorkspaces,
+  );
+  const inspectionWorkspaceByTaskId = useMemo(() => {
+    const map = new Map(
+      inspectionWorkspaces.map((row) => [row.workflowTaskId, row]),
+    );
+    return map;
+  }, [inspectionWorkspaces]);
   const {
     data: tasks,
     refetch: refetchTasks,
@@ -161,20 +183,34 @@ export function ActiveTransactionQueueView({
   const [panelOpen, setPanelOpen] = useState(() => Boolean(selectedId));
   const advancingRef = useRef(false);
   const [, bump] = useState(0);
+  const [submissionCacheGen, setSubmissionCacheGen] = useState(0);
 
   const refreshWork = useCallback(() => {
     bump((n) => n + 1);
+    if (needsPartySubmissions) {
+      setSubmissionCacheGen((n) => n + 1);
+    }
     void refetchTasks();
-  }, [refetchTasks]);
+    if (needsInspectionWorkspaces) {
+      void queryClient.invalidateQueries({
+        queryKey: prototypeKeys.fieldInspectionWorkspaces(),
+      });
+    }
+  }, [refetchTasks, queryClient, needsInspectionWorkspaces, needsPartySubmissions]);
 
   const syncQueue = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: prototypeKeys.poRecords() });
     await queryClient.invalidateQueries({
       queryKey: prototypeKeys.workflowTasks(),
     });
+    if (needsInspectionWorkspaces) {
+      await queryClient.invalidateQueries({
+        queryKey: prototypeKeys.fieldInspectionWorkspaces(),
+      });
+    }
     bump((n) => n + 1);
     await refetchTasks();
-  }, [queryClient, refetchTasks]);
+  }, [queryClient, refetchTasks, needsInspectionWorkspaces]);
 
   useEffect(() => {
     const tick = setInterval(() => setNow(new Date()), 1000);
@@ -210,6 +246,7 @@ export function ActiveTransactionQueueView({
       partyAssignee: config.partyAssignee,
       assigneeRole: config.assigneeRole,
       viewerEmail: viewerEmail ?? getAuthSession()?.user.email,
+      staffUsers,
     });
   }, [
     config.assigneeRole,
@@ -218,6 +255,7 @@ export function ActiveTransactionQueueView({
     viewerEmail,
     role,
     tasks,
+    staffUsers,
   ]);
 
   const listed = useMemo(
@@ -291,12 +329,38 @@ export function ActiveTransactionQueueView({
     [config, handleRowClick, router, refreshWork],
   );
 
+  useEffect(() => {
+    if (!needsPartySubmissions || listed.length === 0) return;
+    void prefetchPartySubmissionsForTasks(listed.map((t) => t.id)).then(() => {
+      setSubmissionCacheGen((n) => n + 1);
+    });
+  }, [listed, needsPartySubmissions]);
+
   const renderStatusOrRemaining = useCallback(
     (
       task: WorkflowTask,
       remainingTime: Parameters<typeof RemainingTimeCell>[0]["state"],
     ) => {
-      const badge = config.getTaskStatusBadge?.(task);
+      let badge: { label: string; className: string } | null = null;
+      if (task.kind === "field-inspection") {
+        badge = fieldInspectionTaskStatusBadge(
+          task.id,
+          task.status,
+          inspectionWorkspaceByTaskId.get(task.id),
+        );
+      } else if (task.kind === "government-review") {
+        badge = governmentReviewTaskStatusBadge(
+          task,
+          getCachedPartySubmission(task.id),
+        );
+      } else if (task.kind === "valuation-coordination") {
+        badge = valuationCoordinationTaskStatusBadge(
+          task.id,
+          getCachedPartySubmission(task.id),
+        );
+      } else {
+        badge = config.getTaskStatusBadge?.(task) ?? null;
+      }
       if (badge) {
         return (
           <Badge tone={legacyBadgeTone(badge.className)}>{badge.label}</Badge>
@@ -304,7 +368,7 @@ export function ActiveTransactionQueueView({
       }
       return <RemainingTimeCell state={remainingTime} />;
     },
-    [config],
+    [config, inspectionWorkspaceByTaskId, submissionCacheGen],
   );
 
   useEffect(() => {
@@ -357,7 +421,7 @@ export function ActiveTransactionQueueView({
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg">
       <div
         className={cn(
-          "grid min-h-0 flex-1 gap-3 bg-bg",
+          "grid min-h-0 flex-1 gap-3 bg-bg px-4 py-4 sm:py-5",
           hasRail && panelOpen
             ? "grid-cols-1 lg:grid-cols-[minmax(0,1.05fr)_minmax(300px,1fr)] lg:items-stretch"
             : "grid-cols-1 items-start content-start",

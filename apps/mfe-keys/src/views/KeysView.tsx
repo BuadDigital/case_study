@@ -114,13 +114,13 @@ export function KeysView() {
 
     <PageShell variant="canvas" className="min-h-0 flex-1">
 
-      <StatGrid cols={4} flush className="mb-0">
+      <StatGrid cols={4}>
 
         {ready ? (
 
           <>
 
-            <StatCard accent="blue" flush>
+            <StatCard accent="blue">
 
               <StatLabel>إجمالي المفاتيح</StatLabel>
 
@@ -128,7 +128,7 @@ export function KeysView() {
 
             </StatCard>
 
-            <StatCard accent="green" flush>
+            <StatCard accent="green">
 
               <StatLabel>مستلمة</StatLabel>
 
@@ -136,7 +136,7 @@ export function KeysView() {
 
             </StatCard>
 
-            <StatCard accent="warn" flush>
+            <StatCard accent="warn">
 
               <StatLabel>بانتظار الاستلام</StatLabel>
 
@@ -144,7 +144,7 @@ export function KeysView() {
 
             </StatCard>
 
-            <StatCard accent="gray" flush>
+            <StatCard accent="gray">
 
               <StatLabel>مندوبو المحكمة</StatLabel>
 
@@ -158,7 +158,7 @@ export function KeysView() {
 
           Array.from({ length: 4 }, (_, index) => (
 
-            <StatCard key={index} accent="gray" flush>
+            <StatCard key={index} accent="gray">
 
               <StatSkeleton />
 

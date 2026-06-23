@@ -14,6 +14,8 @@ export type UserListItem = {
   jobTitle: string;
   email: string;
   userName: string;
+  distributionAssigneeId?: string | null;
+  reviewerCityCoverage?: string[];
   contractType: ContractType;
   status: UserStatusApi;
   registrationSource: RegistrationSourceApi;

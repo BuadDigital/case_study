@@ -35,3 +35,9 @@ public class UserInfoDto
     public string Email { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
 }
+
+public class DevLoginUserDto
+{
+    public string Username { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+}

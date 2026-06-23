@@ -21,6 +21,8 @@ public class UserListItemDto
     public required string JobTitle { get; init; }
     public required string Email { get; init; }
     public required string UserName { get; init; }
+    public string? DistributionAssigneeId { get; init; }
+    public IReadOnlyList<string> ReviewerCityCoverage { get; init; } = [];
     public required ContractType ContractType { get; init; }
     public required UserStatus Status { get; init; }
     public required RegistrationSource RegistrationSource { get; init; }
