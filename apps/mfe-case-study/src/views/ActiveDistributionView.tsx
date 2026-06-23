@@ -4,7 +4,7 @@ import {
   ActiveTransactionQueueView,
   type ActiveTransactionQueueConfig,
 } from "@case-study/mfe/views/ActiveTransactionQueueView";
-import { CaseStudyTaskWork } from "@case-study/mfe/views/MyTaskWorkView";
+import { DistributionTaskWork } from "../components/distribution/DistributionTaskWork";
 import {
   activeDistributionPath,
   distributionTaskPath,
@@ -20,7 +20,9 @@ const DISTRIBUTION_QUEUE: ActiveTransactionQueueConfig = {
   tableLayout: "distribution",
   emptyLine: "لا توجد معاملات بانتظار التوزيع.",
   emptyHint:
-    "تظهر هنا بعد إكمال استعلام البورصة — المدينة والحي ونوع العقار من بيانات الصك.",
+    "تظهر هنا بعد إكمال البيانات الأولية واستعلام البورصة عند الحاجة.",
+  tableHint:
+    "اضغط الصف لفتح توزيع المعاملة على الأطراف — اضغط نفس الصف مرة أخرى للإغلاق.",
   panelId: "distribution-panel",
   getBasePath: activeDistributionPath,
   getTaskPath: distributionTaskPath,
@@ -33,11 +35,10 @@ export function ActiveDistributionView() {
     <ActiveTransactionQueueView
       config={DISTRIBUTION_QUEUE}
       renderPanel={({ task, onRefresh, onClose }) => (
-        <CaseStudyTaskWork
+        <DistributionTaskWork
           key={task.id}
           task={task}
           onRefresh={onRefresh}
-          layout="panel"
           onClose={onClose}
         />
       )}

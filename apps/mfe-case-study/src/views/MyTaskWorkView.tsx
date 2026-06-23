@@ -637,7 +637,6 @@ export function CaseStudyTaskWork({
         >
           <PoPropertyEnfathForm
             property={property}
-            propertyOrdinal={task.propertyOrdinal}
             assignmentType={assignmentType}
             fieldErrors={fieldErrors}
             onPatch={patchProperty}
@@ -663,7 +662,6 @@ export function CaseStudyTaskWork({
           {bourseInquiryFastPath ? (
             <PoPropertyEnfathForm
               property={property}
-              propertyOrdinal={task.propertyOrdinal}
               assignmentType={assignmentType}
               fieldErrors={fieldErrors}
               onPatch={patchProperty}
@@ -692,26 +690,21 @@ export function CaseStudyTaskWork({
       ) : null}
 
       {showDistribution ? (
-        layout === "panel" ? (
+        <RegistrationFormCard
+          title={layout === "panel" ? undefined : "توزيع المعاملة على الأطراف"}
+          subtitle={
+            layout === "panel"
+              ? undefined
+              : "فعّل الطرف ثم اختر المسؤول — يمكن الإسناد لأكثر من طرف معاً"
+          }
+        >
           <DistributionPartiesForm
             distribution={distribution}
             onPatch={patchDistribution}
             showEngineering={showEngineering}
             engineeringHint={engineeringUnavailableHint()}
           />
-        ) : (
-          <RegistrationFormCard
-            title="توزيع المعاملة على الأطراف"
-            subtitle="فعّل الطرف ثم اختر المسؤول — يمكن الإسناد لأكثر من طرف معاً"
-          >
-            <DistributionPartiesForm
-              distribution={distribution}
-              onPatch={patchDistribution}
-              showEngineering={showEngineering}
-              engineeringHint={engineeringUnavailableHint()}
-            />
-          </RegistrationFormCard>
-        )
+        </RegistrationFormCard>
       ) : null}
 
       {task.propertyId ? (

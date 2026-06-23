@@ -32,12 +32,12 @@ export function ActiveTransactionPageLayout({
           className={cn(
             "grid min-h-0 flex-1 gap-3",
             panelOpen
-              ? "grid-cols-1 lg:grid-cols-[minmax(0,1.05fr)_minmax(300px,1fr)] lg:items-stretch"
+              ? "grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)] lg:items-stretch"
               : "grid-cols-1 items-start content-start",
           )}
         >
           {queuePanel}
-          {sidePanel}
+          {panelOpen ? sidePanel : null}
         </div>
       ) : (
         queuePanel

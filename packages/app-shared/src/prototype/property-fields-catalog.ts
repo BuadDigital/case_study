@@ -296,7 +296,7 @@ const governmentFields: PropertyFieldCatalogEntry[] = [
 
 const governmentFormKeyFields: PropertyFieldCatalogEntry[] = [
   { key: "propertyZoneStatus", label: "حالة منطقة العقار — مفتاح النموذج" },
-  { key: "keysProofFileName", label: "إثبات المفتاح — مفتاح النموذج" },
+  { key: "keysProofFiles", label: "إثبات المفتاح — مرفقات النموذج" },
 ];
 
 const caseStudyMetaFields: PropertyFieldCatalogEntry[] = [

@@ -10,6 +10,7 @@ import {
 } from "@platform/app-shared/prototype/party-submission-api";
 import {
   createGovernmentReviewDraft,
+  normalizeGovernmentReviewSubmission,
   type GovernmentReviewSubmission,
 } from "./government-review-work-data";
 
@@ -27,15 +28,16 @@ function dtoToSubmission(
 ): GovernmentReviewSubmission | null {
   if (!dto) return null;
   const payload = payloadFromDto<GovernmentReviewSubmission>(dto);
+  const normalized = normalizeGovernmentReviewSubmission(payload);
   return {
-    ...payload,
+    ...normalized,
     taskId: dto.taskId,
-    propertyId: payload.propertyId ?? dto.propertyId ?? "",
-    poNumber: payload.poNumber ?? dto.poNumber ?? "",
-    status: payload.status ?? (dto.status as GovernmentReviewSubmission["status"]),
-    submittedAtUtc: dto.submittedAtUtc ?? payload.submittedAtUtc ?? null,
-    updatedAtUtc: dto.updatedAtUtc ?? payload.updatedAtUtc,
-  };
+    propertyId: normalized.propertyId ?? dto.propertyId ?? "",
+    poNumber: normalized.poNumber ?? dto.poNumber ?? "",
+    status: normalized.status ?? (dto.status as GovernmentReviewSubmission["status"]),
+    submittedAtUtc: dto.submittedAtUtc ?? normalized.submittedAtUtc ?? null,
+    updatedAtUtc: dto.updatedAtUtc ?? normalized.updatedAtUtc,
+  } as GovernmentReviewSubmission;
 }
 
 export function loadGovernmentReviewSubmission(
@@ -92,7 +94,7 @@ export async function updateGovernmentReviewDraft(
       | "reviewNotes"
       | "confirmed"
       | "propertyZoneStatus"
-      | "keysProofFileName"
+      | "keysProofFiles"
     >
   >,
 ): Promise<GovernmentReviewSubmission | null> {

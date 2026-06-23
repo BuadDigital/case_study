@@ -1,6 +1,6 @@
 "use client";
 import type { ReactNode } from "react";
-import { Button } from "@platform/design-system";
+import { Button, Card, CardBody } from "@platform/design-system";
 import { PoEditShell } from "@case-study/mfe/components/po-intake/PoEditShell";
 
 export function TaskWorkChrome({
@@ -34,23 +34,25 @@ export function TaskWorkChrome({
 }) {
   if (layout === "panel") {
     return (
-      <div className="flex min-h-0 flex-col overflow-y-auto overscroll-contain px-4 pb-4">
-        {children}
-        {showFooter && variant !== "detail" ? (
-          <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
-            {footerExtra}
-            <Button
-              type="button"
-              variant="primary"
-              loading={saving}
-              disabled={saving}
-              onClick={onSave}
-            >
-              {saveLabel}
-            </Button>
-          </div>
-        ) : null}
-      </div>
+      <Card className="m-0 flex h-full min-h-0 w-full flex-col self-stretch overflow-hidden border-0 shadow-none">
+        <CardBody className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain bg-surface">
+          {children}
+          {showFooter && variant !== "detail" ? (
+            <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
+              {footerExtra}
+              <Button
+                type="button"
+                variant="primary"
+                loading={saving}
+                disabled={saving}
+                onClick={onSave}
+              >
+                {saveLabel}
+              </Button>
+            </div>
+          ) : null}
+        </CardBody>
+      </Card>
     );
   }
 

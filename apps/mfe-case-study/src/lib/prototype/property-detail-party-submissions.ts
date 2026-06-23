@@ -30,6 +30,7 @@ import {
 import { getPartyTaskSubmission, type PartyTaskSubmissionDto } from "@platform/api-client";
 import { workOrdersApiConfig } from "../work-orders-api-config";
 import { fetchGovernmentReviewSubmission } from "./government-review-work-storage";
+import { formatGovernmentReviewKeysProofLabel } from "./government-review-work-data";
 import { fetchValuationCoordinationSubmission } from "./valuation-coordination-work-storage";
 
 /** Must match `ENGINEERING_SURVEY_CHECKLIST_ITEMS` in engineering-survey-data (no circular import). */
@@ -138,6 +139,7 @@ type GovernmentReviewSubmissionSnapshot = {
   accessBlockReason: string;
   reviewNotes: string;
   propertyZoneStatus?: string;
+  keysProofFiles?: import("./government-review-work-data").GovernmentReviewKeysProofFile[];
   keysProofFileName?: string;
   submittedAtUtc: string | null;
   updatedAtUtc: string;
@@ -329,6 +331,8 @@ async function loadGovernmentReviewSubmissionSnapshot(
     keysDescription: submission.keysDescription,
     accessBlockReason: submission.accessBlockReason,
     reviewNotes: submission.reviewNotes,
+    propertyZoneStatus: submission.propertyZoneStatus,
+    keysProofFiles: submission.keysProofFiles,
     submittedAtUtc: submission.submittedAtUtc,
     updatedAtUtc: submission.updatedAtUtc,
   };
@@ -973,10 +977,13 @@ function buildFromGovernmentReview(
       value: submission.propertyZoneStatus.trim(),
     });
   }
-  if (submission.keysProofFileName?.trim()) {
+  const keysProofLabel = formatGovernmentReviewKeysProofLabel(
+    submission.keysProofFiles ?? [],
+  );
+  if (keysProofLabel) {
     fields.push({
       label: INFATH_FIELD_LABELS.keysProof,
-      value: submission.keysProofFileName.trim(),
+      value: keysProofLabel,
     });
   }
   if (submission.submittedAtUtc) {

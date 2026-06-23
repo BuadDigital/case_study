@@ -100,6 +100,22 @@ public static class DataSeeder
         CancellationToken cancellationToken = default) =>
         EnsurePrototypeModuleDataAsync(db, cancellationToken);
 
+    /// <summary>Re-create a seeded HR demo account by login username (e.g. ahmed).</summary>
+    public static async Task ReseedHrStaffByLoginAsync(
+        IServiceProvider services,
+        string loginUsername,
+        CancellationToken cancellationToken = default)
+    {
+        var seed = HrStaffSeeds.FirstOrDefault(s =>
+            string.Equals(s.LoginUsername, loginUsername.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (seed is null)
+            throw new InvalidOperationException("Unknown HR seed login: " + loginUsername);
+
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var db = services.GetRequiredService<ApplicationDbContext>();
+        await EnsureHrStaffAsync(userManager, db, seed, cancellationToken);
+    }
+
 
 
     private static readonly HrStaffSeed[] HrStaffSeeds =

@@ -34,7 +34,6 @@ import { PoContactEditor } from "./PoContactEditor";
 
 type Props = {
   property: PoPropertyIntake;
-  propertyOrdinal?: number;
   assignmentType: AssignmentType;
   fieldErrors: FieldErrors;
   onPatch: <K extends keyof PoPropertyIntake>(
@@ -158,7 +157,6 @@ function selectIdentifierType(
 
 export function PoPropertyEnfathForm({
   property,
-  propertyOrdinal,
   assignmentType,
   fieldErrors,
   onPatch,
@@ -437,12 +435,7 @@ export function PoPropertyEnfathForm({
       {showAssignmentDecree && showExtended ? (
         <PropertyFileUploadField
           id={`assignment_doc_${property.id}`}
-          label={
-            <>
-              قرار الإسناد
-              {propertyOrdinal ? ` (${propertyOrdinal})` : ""} *
-            </>
-          }
+          label={<>قرار الإسناد *</>}
           fileName={property.assignmentDocFileName}
           error={fieldErrors.assignmentDocFileName}
           attachPo={attachPo}

@@ -1,8 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Button, Note } from "@platform/design-system";
-import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
+import { Button, cn, Note } from "@platform/design-system";
 import type { InternalDelegationLetter } from "../../lib/prototype/internal-delegation-letters";
 import { updateDelegationLetterSelection } from "../../lib/prototype/internal-delegation-letters";
 import { printInternalDelegationLetter } from "../../lib/prototype/internal-delegation-letter-html";
@@ -51,58 +50,80 @@ export function InternalDelegationLetterPanel({
   }
 
   return (
-    <RegistrationFormCard
-      title={`خطاب تفويض داخلي — ${letter.court}`}
-    >
-      <Note tone="info">
-        {letter.city ? `${letter.city} · ` : ""}
-        {letter.circuit !== "—" ? `الدائرة: ${letter.circuit}` : null}
-      </Note>
-
-      <p className="mb-2.5 text-[10px] text-text-3">
-        اختر العقارات المشمولة في خطاب الزيارة لهذه المحكمة:
-      </p>
-
-      <ul className="m-0 flex list-none flex-col gap-2 p-0">
-        {courtProperties.map((property) => (
-          <li key={property.id}>
-            <label className="flex cursor-pointer items-start gap-2 text-[13px] text-text">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={selected.includes(property.id)}
-                onChange={() => toggleProperty(property.id)}
-              />
-              <span>
-                {formatPropertyDeedDisplay(property) || property.id}
-                {property.ownerName ? ` — ${property.ownerName}` : ""}
-              </span>
-            </label>
-          </li>
-        ))}
-      </ul>
-
-      {!readiness.ready ? (
-        <Note tone="warn" className="mt-3">
-          التصدير متاح بعد اكتمال البيانات الأولية لجميع عقارات أمر العمل (
-          {readiness.label}).
-        </Note>
-      ) : null}
-
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="primary"
-          disabled={!readiness.ready || selected.length === 0}
-          onClick={handlePrint}
-        >
-          طباعة / تصدير الخطاب
-        </Button>
-        <span className="text-[10px] text-text-3">
-          {selected.length} عقار مختار
-        </span>
+    <section className="overflow-hidden rounded-DEFAULT border border-border bg-surface-2/30">
+      <div className="border-b border-border bg-surface px-3.5 py-2.5">
+        <h3 className="m-0 text-[12px] font-semibold text-text">
+          خطاب تفويض داخلي
+        </h3>
       </div>
-    </RegistrationFormCard>
+
+      <div className="px-3.5 py-3">
+        <p className="mb-3 text-[11px] leading-relaxed text-text-2">
+          اختر العقارات المشمولة في خطاب الزيارة لهذه المحكمة:
+        </p>
+
+        <ul className="m-0 flex list-none flex-col gap-2 p-0">
+          {courtProperties.map((property) => {
+            const checked = selected.includes(property.id);
+            const label =
+              formatPropertyDeedDisplay(property) || property.id;
+            return (
+              <li key={property.id}>
+                <label
+                  className={cn(
+                    "flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2.5 transition-colors",
+                    checked
+                      ? "border-primary/50 bg-primary-light/40"
+                      : "border-border bg-surface hover:border-primary/30 hover:bg-surface-2",
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    className="size-4 shrink-0 accent-primary"
+                    checked={checked}
+                    onChange={() => toggleProperty(property.id)}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[12px] font-medium text-text">
+                      {label}
+                    </span>
+                    {property.ownerName ? (
+                      <span className="mt-0.5 block text-[10px] text-text-3">
+                        {property.ownerName}
+                      </span>
+                    ) : null}
+                  </span>
+                </label>
+              </li>
+            );
+          })}
+        </ul>
+
+        {!readiness.ready ? (
+          <Note tone="warn" className="mt-3 text-[11px]">
+            التصدير متاح بعد اكتمال البيانات الأولية لجميع عقارات أمر العمل (
+            {readiness.label}).
+          </Note>
+        ) : null}
+
+        <div className="mt-4 flex flex-col gap-2 border-t border-border pt-3">
+          <Button
+            type="button"
+            size="sm"
+            variant="primary"
+            className="w-full"
+            disabled={!readiness.ready || selected.length === 0}
+            onClick={handlePrint}
+          >
+            طباعة / تصدير الخطاب
+          </Button>
+          <p className="m-0 text-center text-[10px] text-text-3">
+            {selected.length === 0
+              ? "لم يُختر أي عقار بعد"
+              : `${selected.length} ${selected.length === 1 ? "عقار مختار" : "عقارات مختارة"}`}
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }

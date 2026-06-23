@@ -2,6 +2,7 @@ import type { PartyTaskSubmissionDto } from "@platform/api-client";
 import {
   governmentReviewStatusLabel,
   isGovernmentReviewFormLocked,
+  normalizeGovernmentReviewSubmission,
   type GovernmentReviewSubmission,
 } from "./government-review-work-data";
 import type { WorkflowTask } from "./tasks-storage";
@@ -11,25 +12,25 @@ function submissionFromDto(
 ): GovernmentReviewSubmission | null {
   if (!dto) return null;
   const payload = dto.payload as Partial<GovernmentReviewSubmission>;
+  const normalized = normalizeGovernmentReviewSubmission(payload);
   return {
-    ...payload,
+    ...normalized,
     taskId: dto.taskId,
-    propertyId: payload.propertyId ?? dto.propertyId ?? "",
-    poNumber: payload.poNumber ?? dto.poNumber ?? "",
-    visitStatus: payload.visitStatus ?? "",
-    visitDate: payload.visitDate ?? "",
-    courtName: payload.courtName ?? "",
-    keysStatus: payload.keysStatus ?? "",
-    keysDescription: payload.keysDescription ?? "",
-    accessBlockReason: payload.accessBlockReason ?? "",
-    reviewNotes: payload.reviewNotes ?? "",
-    propertyZoneStatus: payload.propertyZoneStatus ?? "",
-    keysProofFileName: payload.keysProofFileName ?? "",
-    confirmed: payload.confirmed ?? false,
-    status: (payload.status ?? dto.status) as GovernmentReviewSubmission["status"],
-    submittedAtUtc: dto.submittedAtUtc ?? payload.submittedAtUtc ?? null,
-    updatedAtUtc: dto.updatedAtUtc ?? payload.updatedAtUtc ?? "",
-  };
+    propertyId: normalized.propertyId ?? dto.propertyId ?? "",
+    poNumber: normalized.poNumber ?? dto.poNumber ?? "",
+    visitStatus: normalized.visitStatus ?? "",
+    visitDate: normalized.visitDate ?? "",
+    courtName: normalized.courtName ?? "",
+    keysStatus: normalized.keysStatus ?? "",
+    keysDescription: normalized.keysDescription ?? "",
+    accessBlockReason: normalized.accessBlockReason ?? "",
+    reviewNotes: normalized.reviewNotes ?? "",
+    propertyZoneStatus: normalized.propertyZoneStatus ?? "",
+    confirmed: normalized.confirmed ?? false,
+    status: (normalized.status ?? dto.status) as GovernmentReviewSubmission["status"],
+    submittedAtUtc: dto.submittedAtUtc ?? normalized.submittedAtUtc ?? null,
+    updatedAtUtc: dto.updatedAtUtc ?? normalized.updatedAtUtc ?? "",
+  } as GovernmentReviewSubmission;
 }
 
 export function governmentReviewTaskStatusBadge(
