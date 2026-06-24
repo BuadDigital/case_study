@@ -26,6 +26,7 @@ import { PropertyDetailPhotosTab } from "./PropertyDetailPhotosTab";
 import { PropertyDetailCaseStudyReport } from "./PropertyDetailCaseStudyReport";
 import { PropertyDetailPropertyKeys } from "./PropertyDetailPropertyKeys";
 import { PropertyDetailEnfathUpload } from "./PropertyDetailEnfathUpload";
+import { PropertyDetailFinanceTab } from "./PropertyDetailFinanceTab";
 import { PropertyTransactionTimeline } from "./PropertyTransactionTimeline";
 import {
   boundariesAvailabilityLabel,
@@ -75,6 +76,7 @@ import {
 } from "../../lib/prototype/property-detail-documents";
 import { usePropertyDetailDocuments } from "../../query/property-detail-documents-query";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
+import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import { usePropertyDetailPartySubmissionsQuery } from "../../query/property-detail-party-submissions-queries";
 
 const TABS = [
@@ -89,6 +91,7 @@ const TABS = [
   { id: "log", label: "السجل والتدقيق" },
   { id: "keys", label: "مفاتيح العقار" },
   { id: "enfath-upload", label: "الرفع على انفاذ" },
+  { id: "finance", label: "المالية" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -497,6 +500,35 @@ export function PoPropertyDetailTabs({
       ? [...logEventsQuery.data].reverse()
       : fallbackLogEvents;
 
+  const propertyFeeTasks = useMemo(
+    () =>
+      tasks.filter(
+        (t) =>
+          t.poNumber.trim() === poNumber &&
+          t.propertyId === property.id &&
+          (t.kind === "field-inspection" || t.kind === "engineering-survey"),
+      ),
+    [tasks, poNumber, property.id],
+  );
+
+  const propertyFeeTaskIds = useMemo(
+    () => new Set(propertyFeeTasks.map((t) => t.id)),
+    [propertyFeeTasks],
+  );
+
+  const { data: propertyFeesSummary } = useInspectorFeesQuery(
+    { submittedOnly: false },
+    { enabled: propertyFeeTaskIds.size > 0 },
+  );
+
+  const propertyFeeRows = useMemo(
+    () =>
+      (propertyFeesSummary?.rows ?? []).filter((row) =>
+        propertyFeeTaskIds.has(row.workflowTaskId),
+      ),
+    [propertyFeesSummary?.rows, propertyFeeTaskIds],
+  );
+
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <TabBar
@@ -517,6 +549,15 @@ export function PoPropertyDetailTabs({
           if (t.id === "photos" && photoCount > 0) {
             count = photoCount;
             countTone = "teal";
+          }
+          if (t.id === "finance" && propertyFeeRows.length > 0) {
+            const pending = propertyFeeRows.filter(
+              (r) =>
+                r.billingStatus === "pre-billing" ||
+                r.billingStatus === "returned",
+            ).length;
+            count = pending > 0 ? pending : propertyFeeRows.length;
+            countTone = pending > 0 ? "gray" : "teal";
           }
           if (t.id === "keys") {
             const govSubmission = partySubmissionsQuery.data?.government;
@@ -822,6 +863,14 @@ export function PoPropertyDetailTabs({
                 partySubmissionsQuery.isLoading ||
                 partySubmissionsQuery.isFetching
               }
+            />
+          ) : null}
+
+          {tab === "finance" ? (
+            <PropertyDetailFinanceTab
+              poNumber={poNumber}
+              property={property}
+              tasks={tasks}
             />
           ) : null}
         </TabPanel>

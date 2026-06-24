@@ -3,6 +3,7 @@
 import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { loadPoListRows } from "@platform/app-shared/prototype/work-orders-read";
+import { loadPropertyListItems } from "@platform/app-shared/prototype/work-orders-read";
 import {
   getPoRecord,
   loadPendingBourseItems,
@@ -63,6 +64,14 @@ export function usePoListRowsQuery() {
   return useQuery({
     queryKey: prototypeKeys.poListRows(),
     queryFn: loadPoListRows,
+    ...queryDefaults,
+  });
+}
+
+export function usePropertyListItemsQuery() {
+  return useQuery({
+    queryKey: prototypeKeys.propertyListItems(),
+    queryFn: loadPropertyListItems,
     ...queryDefaults,
   });
 }

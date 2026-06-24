@@ -61,6 +61,8 @@ public sealed class PermissionService : IPermissionService
             UserId = userId,
             IdentityRoles = identityRoles.ToList(),
             PrototypeRole = prototypeRole,
+            DisplayName = user.DisplayName,
+            DistributionAssigneeId = profile?.DistributionAssigneeId?.Trim(),
             Pages = pages.OrderBy(p => p).ToList(),
             Capabilities = capabilities.OrderBy(c => c).ToList(),
         };

@@ -155,7 +155,7 @@ export function ActiveTransactionQueueView({
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const selectedId = searchParams.get("task");
-  const { role, viewerEmail } = usePrototype();
+  const { role, viewerEmail, distributionAssigneeId } = usePrototype();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
   const needsInspectionWorkspaces = Boolean(config.getTaskStatusBadge);
@@ -247,6 +247,7 @@ export function ActiveTransactionQueueView({
       partyAssignee: config.partyAssignee,
       assigneeRole: config.assigneeRole,
       viewerEmail: viewerEmail ?? getAuthSession()?.user.email,
+      viewerAssigneeId: distributionAssigneeId,
       staffUsers,
     });
   }, [
@@ -254,6 +255,7 @@ export function ActiveTransactionQueueView({
     config.pageId,
     config.partyAssignee,
     viewerEmail,
+    distributionAssigneeId,
     role,
     tasks,
     staffUsers,

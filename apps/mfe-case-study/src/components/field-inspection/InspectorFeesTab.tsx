@@ -4,24 +4,16 @@ import {
   Badge,
   EmptyState,
   OperationalPanel,
+  QueueTableHint,
   StatCard,
   StatGrid,
   StatLabel,
   StatValue,
-  Table,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr,
 } from "@platform/design-system";
-import {
-  inspectorFeeStatusLabel,
-  type InspectorFeeRowDto,
-} from "@platform/api-client";
-import { PoNumber } from "../ui/PoNumber";
+import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+import { InspectorFeesBillingTable } from "./InspectorFeesBillingTable";
 
 export type PartyFeesVariant = "field-inspection" | "engineering-survey";
 
@@ -32,7 +24,9 @@ const COPY: Record<
     intro: string;
     partyTypeColumn: string;
     partyTypeEmployeeHint: string;
+    emptyLine: string;
     emptyHint: string;
+    tableHint: string;
     footer: string;
   }
 > = {
@@ -42,8 +36,11 @@ const COPY: Record<
       "الأتعاب متفق عليها مسبقاً أو تُحدَّد قبل الفوترة — لا تُدخل ضمن المعاينة الميدانية. تُراجَع هنا قبل اعتماد الفاتورة.",
     partyTypeColumn: "نوع المعاين",
     partyTypeEmployeeHint: "(عمولة)",
+    emptyLine: "لا توجد أتعاب مسجّلة بعد.",
     emptyHint:
       "تظهر هنا بعد توزيع مهمة المعاينة وإرسال المعاينة الميدانية.",
+    tableHint:
+      "ملخص أتعاب كل العقارات المسندة إليك — يحددها المشرف قبل الفوترة.",
     footer:
       "المعاين المتعاون له أتعاب لكل عقار؛ المعاين الموظف له عمولة يمنحها المشرف وتكون أقل بكثير. كل حسم يجب أن يكون مصحوباً بسبب موضّح.",
   },
@@ -53,42 +50,99 @@ const COPY: Record<
       "الأتعاب متفق عليها مسبقاً أو تُحدَّد قبل الفوترة — لا تُدخل ضمن الرفع المساحي. تُراجَع هنا قبل اعتماد الفاتورة.",
     partyTypeColumn: "نوع المكتب",
     partyTypeEmployeeHint: "(داخلي)",
+    emptyLine: "لا توجد أتعاب مسجّلة بعد.",
     emptyHint:
       "تظهر هنا بعد توزيع مهمة الرفع المساحي وإرسال التقرير المساحي.",
+    tableHint:
+      "ملخص أتعاب كل العقارات المسندة إليك — يحددها المشرف قبل الفوترة.",
     footer:
       "المكتب المتعاقد له أتعاب لكل عقار؛ المكتب الداخلي له أتعاب أقل يحددها المشرف. كل حسم يجب أن يكون مصحوباً بسبب موضّح.",
   },
 };
 
-function FeeStatusBadge({ row }: { row: InspectorFeeRowDto }) {
-  const label = inspectorFeeStatusLabel(row.billingStatus);
-  return (
-    <Badge tone={row.billingStatus === "invoiced" ? "success" : "warning"}>
-      {label}
-    </Badge>
-  );
-}
+const SUPERVISOR_COPY = {
+  title: "مراجعة الأتعاب والفوترة",
+  intro:
+    "راجع الأتعاب والحسومات لكل العقارات، ثم أرسل الجاهزة للمالية. الاستبعاد المؤقت لا يغيّر حالة الفوترة.",
+  emptyLine: "لا توجد أتعاب مسجّلة بعد.",
+  emptyHint: "تظهر هنا بعد توزيع مهام المعاينة أو الرفع المساحي.",
+  tableHint: "جميع أتعاب المعاينة والرفع المساحي — تعديل الحسم والاستبعاد قبل الإرسال للمالية.",
+  footer:
+    "بعد الإرسال للمالية تُقفل التعديلات حتى يُعاد السجل باعتراض. كل حسم يتطلب سبباً موضحاً.",
+  partyTypeColumn: "نوع الطرف",
+  partyTypeEmployeeHint: "",
+};
 
 export function InspectorFeesTab({
   tasks,
   variant = "field-inspection",
+  assigneeId: assigneeIdProp,
+  standalone = false,
+  supervisorMode = false,
 }: {
   tasks: WorkflowTask[];
   poByNumber?: Map<string, unknown>;
   variant?: PartyFeesVariant;
+  assigneeId?: string | null;
+  standalone?: boolean;
+  supervisorMode?: boolean;
 }) {
-  const copy = COPY[variant];
+  const { hasCapability } = usePrototype();
+  const isSupervisor =
+    supervisorMode || hasCapability("manage-operations");
+  const copy = isSupervisor ? SUPERVISOR_COPY : COPY[variant];
   const singleTask = tasks.length === 1 ? tasks[0] : undefined;
-  const assigneeId = tasks[0]?.assigneeId?.trim() || undefined;
+  const assigneeId = isSupervisor
+    ? undefined
+    : assigneeIdProp?.trim() || tasks[0]?.assigneeId?.trim() || undefined;
 
-  const { data: summary, isLoading } = useInspectorFeesQuery({
-    workflowTaskId: singleTask?.id,
-    assigneeId: singleTask ? undefined : assigneeId,
-    submittedOnly: !singleTask,
-    taskKind: variant,
-  });
+  const { data: summary, isLoading, isFetched } = useInspectorFeesQuery(
+    {
+      workflowTaskId: singleTask?.id,
+      assigneeId: singleTask ? undefined : assigneeId,
+      submittedOnly: !isSupervisor && !standalone && !singleTask,
+      taskKind: isSupervisor ? undefined : variant,
+    },
+    {
+      enabled: isSupervisor || Boolean(singleTask?.id || assigneeId),
+    },
+  );
 
   const rows = summary?.rows ?? [];
+  const queueReady = isFetched;
+  const queuePending = !queueReady;
+  const billingMode = isSupervisor ? "supervisor" : "readonly";
+
+  if (standalone) {
+    return (
+      <div className="flex min-h-0 flex-col gap-3 px-4 py-4">
+        {isSupervisor ? (
+          <div className="rounded-[var(--radius-lg)] border border-border bg-surface-2/50 px-4 py-3">
+            <h2 className="text-sm font-semibold text-text">{copy.title}</h2>
+            <p className="mt-1 text-xs leading-relaxed text-text-3">{copy.intro}</p>
+          </div>
+        ) : null}
+        {queueReady && rows.length === 0 ? (
+          <EmptyState line={copy.emptyLine} hint={copy.emptyHint} />
+        ) : (
+          <InspectorFeesBillingTable
+            rows={rows}
+            mode={billingMode}
+            pending={queuePending}
+            partyTypeColumn={
+              isSupervisor
+                ? SUPERVISOR_COPY.partyTypeColumn
+                : COPY[variant].partyTypeColumn
+            }
+            partyTypeEmployeeHint={
+              isSupervisor ? "" : COPY[variant].partyTypeEmployeeHint
+            }
+          />
+        )}
+        <QueueTableHint>{copy.tableHint}</QueueTableHint>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
@@ -97,11 +151,17 @@ export function InspectorFeesTab({
         <p className="mt-1 text-xs leading-relaxed text-text-3">{copy.intro}</p>
       </div>
 
-      <StatGrid cols={3} flush>
+      <StatGrid cols={isSupervisor ? 4 : 3} flush>
         <StatCard accent="green" flush>
           <StatLabel>صافي قبل الفوترة (ر.س)</StatLabel>
           <StatValue value={summary?.netPreBillingSar ?? 0} countUp />
         </StatCard>
+        {isSupervisor ? (
+          <StatCard accent="blue" flush>
+            <StatLabel>جاهزة للفوترة (ر.س)</StatLabel>
+            <StatValue value={summary?.readyForBillingSar ?? 0} countUp />
+          </StatCard>
+        ) : null}
         <StatCard accent="red" flush>
           <StatLabel>إجمالي الحسومات (ر.س)</StatLabel>
           <StatValue value={summary?.totalDiscountsSar ?? 0} countUp />
@@ -115,72 +175,28 @@ export function InspectorFeesTab({
       <OperationalPanel className="min-h-0 flex-1">
         <div className="mb-3 flex items-center justify-between gap-2">
           <h3 className="text-[13px] font-semibold text-text">أتعاب العقارات</h3>
-          <Badge tone="default">يحددها المشرف</Badge>
+          <Badge tone="default">
+            {isSupervisor ? "مراجعة المشرف" : "يحددها المشرف"}
+          </Badge>
         </div>
 
         {isLoading ? (
           <p className="text-xs text-text-3">جاري تحميل الأتعاب…</p>
         ) : rows.length === 0 ? (
-          <EmptyState
-            line="لا توجد أتعاب مسجّلة بعد."
-            hint={copy.emptyHint}
-          />
+          <EmptyState line={copy.emptyLine} hint={copy.emptyHint} />
         ) : (
-          <div className="overflow-x-auto">
-            <Table className="min-w-[880px] w-full">
-              <THead>
-                <Tr hoverable={false}>
-                  <Th className="text-right">العقار</Th>
-                  <Th>أمر الشراء</Th>
-                  <Th>{copy.partyTypeColumn}</Th>
-                  <Th>الأتعاب المتفق عليها</Th>
-                  <Th>حسم المشرف</Th>
-                  <Th className="text-right">سبب الحسم</Th>
-                  <Th>الصافي</Th>
-                  <Th>الحالة</Th>
-                </Tr>
-              </THead>
-              <TBody>
-                {rows.map((row) => (
-                  <Tr key={row.workflowTaskId} hoverable={false}>
-                    <Td className="text-text">{row.propertyLabel}</Td>
-                    <Td className="text-center text-text-2">
-                      <PoNumber value={row.poNumber} link />
-                    </Td>
-                    <Td className="text-center text-text-2">
-                      {row.inspectorType}
-                      {row.inspectorType === "موظف" ? (
-                        <span className="mr-1 text-[10px] text-text-3">
-                          {copy.partyTypeEmployeeHint}
-                        </span>
-                      ) : null}
-                    </Td>
-                    <Td className="text-center text-text-2">
-                      {row.agreedFeeSar.toLocaleString("ar-SA")} ر.س
-                    </Td>
-                    <Td
-                      className={
-                        row.supervisorDiscountSar > 0
-                          ? "text-center font-medium text-danger"
-                          : "text-center text-text-2"
-                      }
-                    >
-                      {row.supervisorDiscountSar > 0
-                        ? `− ${row.supervisorDiscountSar.toLocaleString("ar-SA")} ر.س`
-                        : "0 ر.س"}
-                    </Td>
-                    <Td className="text-text-2">{row.discountReason ?? "—"}</Td>
-                    <Td className="text-center font-semibold text-text">
-                      {row.netFeeSar.toLocaleString("ar-SA")} ر.س
-                    </Td>
-                    <Td className="text-center">
-                      <FeeStatusBadge row={row} />
-                    </Td>
-                  </Tr>
-                ))}
-              </TBody>
-            </Table>
-          </div>
+          <InspectorFeesBillingTable
+            rows={rows}
+            mode={billingMode}
+            partyTypeColumn={
+              isSupervisor
+                ? SUPERVISOR_COPY.partyTypeColumn
+                : COPY[variant].partyTypeColumn
+            }
+            partyTypeEmployeeHint={
+              isSupervisor ? "" : COPY[variant].partyTypeEmployeeHint
+            }
+          />
         )}
 
         <p className="mt-3.5 text-[11px] leading-relaxed text-text-3">

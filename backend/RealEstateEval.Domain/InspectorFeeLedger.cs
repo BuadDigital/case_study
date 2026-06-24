@@ -16,14 +16,11 @@ public class InspectorFeeLedger
     public decimal AgreedFeeSar { get; set; }
     public decimal SupervisorDiscountSar { get; set; }
     public string? DiscountReason { get; set; }
-    /// <summary>pre-billing | invoiced</summary>
+    /// <summary>pre-billing | ready-for-billing | invoiced | paid | returned</summary>
     public string BillingStatus { get; set; } = InspectorFeeBillingStatus.PreBilling;
+    public bool ExcludedFromBatch { get; set; }
+    public string? ExclusionReason { get; set; }
+    public string? InvoiceNumber { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
-}
-
-public static class InspectorFeeBillingStatus
-{
-    public const string PreBilling = "pre-billing";
-    public const string Invoiced = "invoiced";
 }

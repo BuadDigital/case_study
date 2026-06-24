@@ -223,6 +223,7 @@ export type PropertyKeyRecordDto = {
   key: boolean;
   specialist: string;
   status: string;
+  deedStatus?: string;
 };
 
 export type UpdatePropertyKeyRequest = {

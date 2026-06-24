@@ -79,6 +79,8 @@ export async function loadPropertyKeysPage(): Promise<PropertyKeysPageData> {
     return {
       id: row.id,
       idProp: row.idProp,
+      deedNumber: row.idProp.trim() || "—",
+      deedStatus: row.deedStatus?.trim() || "—",
       po: row.po,
       area: row.area,
       type: row.type,

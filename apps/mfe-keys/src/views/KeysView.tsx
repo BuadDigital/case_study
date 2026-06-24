@@ -58,7 +58,13 @@ import {
 
 } from "../query/keys-queries";
 
-
+function deedStatusTone(status: string): "success" | "warning" | "danger" | "default" {
+  const value = status.trim();
+  if (value === "فعال") return "success";
+  if (value === "قيد التحقق") return "warning";
+  if (value === "موقوف" || value.includes("موقوف")) return "danger";
+  return "default";
+}
 
 export function KeysView() {
 
@@ -180,9 +186,9 @@ export function KeysView() {
 
             <Tr hoverable={false}>
 
-              <Th>رقم العقار</Th>
+              <Th>الصك</Th>
 
-              <Th>PO</Th>
+              <Th>حالة الصك</Th>
 
               <Th>المنطقة</Th>
 
@@ -222,13 +228,20 @@ export function KeysView() {
 
                 <Tr key={p.id} hoverable={false}>
 
-                  <Td className="text-[11px] font-semibold text-primary">
+                  <Td className="text-[11px] font-semibold text-primary">{p.deedNumber}</Td>
 
-                    {p.idProp}
-
+                  <Td>
+                    {p.deedStatus && p.deedStatus !== "—" ? (
+                      <Badge
+                        tone={deedStatusTone(p.deedStatus)}
+                        className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal"
+                      >
+                        {p.deedStatus}
+                      </Badge>
+                    ) : (
+                      <span className="text-text-3">—</span>
+                    )}
                   </Td>
-
-                  <Td className="text-[11px] text-primary-light">{p.po}</Td>
 
                   <Td className="text-text-2">{p.area}</Td>
 
@@ -317,5 +330,4 @@ export function KeysView() {
   );
 
 }
-
 

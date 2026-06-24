@@ -33,6 +33,7 @@ export const prototypeKeys = {
     workflowTaskId?: string;
     submittedOnly?: boolean;
     taskKind?: string;
+    billingStatus?: string;
   }) => [...prototypeKeys.all, "inspector-fees", query] as const,
   fieldInspectionWorkspaces: () =>
     [...prototypeKeys.all, "field-inspection-workspaces"] as const,

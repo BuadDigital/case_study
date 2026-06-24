@@ -11,11 +11,12 @@ import {
 } from "@platform/api-client";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 
-export type PropertyDocKind = "decree" | "delegation" | "other";
+export type PropertyDocKind = "decree" | "delegation" | "keys-proof" | "other";
 
 const API_SCOPE: Record<PropertyDocKind, string> = {
   decree: "property-decree",
   delegation: "property-delegation",
+  "keys-proof": "government-keys-proof",
   other: "property-other",
 };
 
@@ -144,6 +145,14 @@ export async function cacheDelegationDoc(
   return writeCachedDoc("delegation", poNumber, propertyId, file);
 }
 
+export async function cacheKeysProofDoc(
+  poNumber: string,
+  propertyId: string,
+  file: File,
+): Promise<void> {
+  return writeCachedDoc("keys-proof", poNumber, propertyId, file);
+}
+
 function readCachedDoc(
   kind: PropertyDocKind,
   poNumber: string,
@@ -165,6 +174,13 @@ export function getCachedDelegationDoc(
   propertyId: string,
 ): CachedAssignmentDoc | null {
   return readCachedDoc("delegation", poNumber, propertyId);
+}
+
+export function getCachedKeysProofDoc(
+  poNumber: string,
+  propertyId: string,
+): CachedAssignmentDoc | null {
+  return readCachedDoc("keys-proof", poNumber, propertyId);
 }
 
 /** Hydrate in-memory previews from the attachments API (e.g. after page reload). */
@@ -215,6 +231,51 @@ export async function prefetchPropertyDocAttachments(
       docCache.set(cacheKey(kind, poNumber, propertyId), payload);
     }),
   );
+}
+
+/** Hydrate keys-proof preview for government review (after reload). */
+export async function prefetchKeysProofDoc(
+  poNumber: string,
+  propertyId: string,
+): Promise<void> {
+  const config = prototypeModulesApiConfig();
+  if (!config || !poNumber.trim() || !propertyId) return;
+
+  const kind: PropertyDocKind = "keys-proof";
+  const scope = API_SCOPE[kind];
+  const sk = scopeKey(poNumber, propertyId);
+  const listed = await listAttachments(config, scope, sk);
+  if (!listed.ok || listed.data.length === 0) return;
+
+  const meta = listed.data[0]!;
+  const blobResult = await downloadAttachmentBlob(config, meta.id);
+  if (!blobResult.ok) {
+    docCache.set(cacheKey(kind, poNumber, propertyId), {
+      fileName: meta.fileName,
+      mimeType: meta.contentType,
+      attachmentId: meta.id,
+    });
+    return;
+  }
+
+  const payload: CachedAssignmentDoc = {
+    fileName: meta.fileName,
+    mimeType: meta.contentType,
+    attachmentId: meta.id,
+  };
+
+  if (
+    meta.contentType.startsWith("image/") &&
+    blobResult.data.size <= MAX_IMAGE_BYTES
+  ) {
+    try {
+      payload.dataUrl = await blobToDataUrl(blobResult.data);
+    } catch {
+      /* metadata only */
+    }
+  }
+
+  docCache.set(cacheKey(kind, poNumber, propertyId), payload);
 }
 
 export function isImageMime(mimeType: string): boolean {

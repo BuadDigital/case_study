@@ -51,6 +51,9 @@ public class InspectorFeeService : IInspectorFeeService
                 SupervisorDiscountSar = 0m,
                 DiscountReason = null,
                 BillingStatus = InspectorFeeBillingStatus.PreBilling,
+                ExcludedFromBatch = false,
+                ExclusionReason = null,
+                InvoiceNumber = null,
                 CreatedAtUtc = now,
                 UpdatedAtUtc = now,
             });
@@ -64,6 +67,7 @@ public class InspectorFeeService : IInspectorFeeService
         string? workflowTaskId,
         bool submittedOnly,
         string? taskKind = null,
+        string? billingStatus = null,
         CancellationToken cancellationToken = default)
     {
         await BackfillMissingLedgersAsync(cancellationToken);
@@ -79,6 +83,12 @@ public class InspectorFeeService : IInspectorFeeService
         {
             var aid = assigneeId.Trim();
             query = query.Where(x => x.AssigneeId == aid);
+        }
+
+        if (!string.IsNullOrWhiteSpace(billingStatus))
+        {
+            var status = billingStatus.Trim();
+            query = query.Where(x => x.BillingStatus == status);
         }
 
         var ledgers = await query.ToListAsync(cancellationToken);
@@ -147,32 +157,143 @@ public class InspectorFeeService : IInspectorFeeService
             .FirstOrDefaultAsync(x => x.WorkflowTaskId == workflowTaskId, cancellationToken);
         if (ledger is null) return null;
 
+        if (!InspectorFeeBillingRules.IsEditableStatus(ledger.BillingStatus))
+            return null;
+
         if (request.AgreedFeeSar.HasValue)
+        {
+            if (!string.Equals(ledger.InspectorType, "موظف", StringComparison.Ordinal))
+                return null;
             ledger.AgreedFeeSar = Math.Max(0m, request.AgreedFeeSar.Value);
+        }
 
         if (request.SupervisorDiscountSar.HasValue)
             ledger.SupervisorDiscountSar = Math.Max(0m, request.SupervisorDiscountSar.Value);
 
         if (request.DiscountReason is not null)
+        {
             ledger.DiscountReason = string.IsNullOrWhiteSpace(request.DiscountReason)
                 ? null
                 : request.DiscountReason.Trim();
-
-        if (request.BillingStatus is not null)
-        {
-            var status = request.BillingStatus.Trim();
-            if (status is InspectorFeeBillingStatus.PreBilling or InspectorFeeBillingStatus.Invoiced)
-                ledger.BillingStatus = status;
         }
+
+        if (request.ExcludedFromBatch.HasValue)
+        {
+            ledger.ExcludedFromBatch = request.ExcludedFromBatch.Value;
+            if (!ledger.ExcludedFromBatch)
+                ledger.ExclusionReason = null;
+        }
+
+        if (request.ExclusionReason is not null)
+            ledger.ExclusionReason = request.ExclusionReason.Trim();
+
+        if (ledger.ExcludedFromBatch && string.IsNullOrWhiteSpace(ledger.ExclusionReason))
+            return null;
 
         if (ledger.SupervisorDiscountSar <= 0)
             ledger.DiscountReason = null;
+
+        if (!InspectorFeeBillingRules.ValidateDiscount(
+                ledger.SupervisorDiscountSar,
+                ledger.DiscountReason,
+                out _))
+        {
+            return null;
+        }
 
         ledger.UpdatedAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
 
         var labels = await BuildPropertyLabelsAsync([ledger], cancellationToken);
         return ToRowDto(ledger, labels.GetValueOrDefault(ledger.WorkflowTaskId, "—"));
+    }
+
+    public async Task<(InspectorFeeRowDto? Row, string? Error)> TransitionAsync(
+        Guid workflowTaskId,
+        InspectorFeeTransitionRequest request,
+        string actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var ledger = await _db.InspectorFeeLedgers
+            .FirstOrDefaultAsync(x => x.WorkflowTaskId == workflowTaskId, cancellationToken);
+        if (ledger is null)
+            return (null, "سجل الأتعاب غير موجود.");
+
+        var error = await ApplyTransitionAsync(ledger, request, actorUserId, cancellationToken);
+        if (error is not null)
+            return (null, error);
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        var labels = await BuildPropertyLabelsAsync([ledger], cancellationToken);
+        return (ToRowDto(ledger, labels.GetValueOrDefault(ledger.WorkflowTaskId, "—")), null);
+    }
+
+    public async Task<BatchInspectorFeeTransitionResult> BatchTransitionAsync(
+        BatchInspectorFeeTransitionRequest request,
+        string actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var succeeded = new List<InspectorFeeRowDto>();
+        var failed = new List<InspectorFeeTransitionErrorDto>();
+
+        foreach (var rawId in request.WorkflowTaskIds)
+        {
+            if (!Guid.TryParse(rawId.Trim(), out var taskId))
+            {
+                failed.Add(new InspectorFeeTransitionErrorDto
+                {
+                    WorkflowTaskId = rawId,
+                    Error = "معرّف مهمة غير صالح.",
+                });
+                continue;
+            }
+
+            var ledger = await _db.InspectorFeeLedgers
+                .FirstOrDefaultAsync(x => x.WorkflowTaskId == taskId, cancellationToken);
+            if (ledger is null)
+            {
+                failed.Add(new InspectorFeeTransitionErrorDto
+                {
+                    WorkflowTaskId = rawId,
+                    Error = "سجل الأتعاب غير موجود.",
+                });
+                continue;
+            }
+
+            var error = await ApplyTransitionAsync(
+                ledger,
+                new InspectorFeeTransitionRequest
+                {
+                    Action = request.Action,
+                    Reason = request.Reason,
+                    InvoiceNumber = request.InvoiceNumber,
+                },
+                actorUserId,
+                cancellationToken);
+
+            if (error is not null)
+            {
+                failed.Add(new InspectorFeeTransitionErrorDto
+                {
+                    WorkflowTaskId = rawId,
+                    Error = error,
+                });
+                continue;
+            }
+
+            var labels = await BuildPropertyLabelsAsync([ledger], cancellationToken);
+            succeeded.Add(ToRowDto(ledger, labels.GetValueOrDefault(ledger.WorkflowTaskId, "—")));
+        }
+
+        if (succeeded.Count > 0)
+            await _db.SaveChangesAsync(cancellationToken);
+
+        return new BatchInspectorFeeTransitionResult
+        {
+            Succeeded = succeeded,
+            Failed = failed,
+        };
     }
 
     public async Task DeleteForWorkflowTaskIdsAsync(
@@ -182,9 +303,110 @@ public class InspectorFeeService : IInspectorFeeService
         var ids = workflowTaskIds.ToList();
         if (ids.Count == 0) return;
 
+        await _db.InspectorFeeTransitions
+            .Where(x => ids.Contains(x.WorkflowTaskId))
+            .ExecuteDeleteAsync(cancellationToken);
+
         await _db.InspectorFeeLedgers
             .Where(x => ids.Contains(x.WorkflowTaskId))
             .ExecuteDeleteAsync(cancellationToken);
+    }
+
+    private async Task<string?> ApplyTransitionAsync(
+        InspectorFeeLedger ledger,
+        InspectorFeeTransitionRequest request,
+        string actorUserId,
+        CancellationToken cancellationToken)
+    {
+        var action = request.Action.Trim().ToLowerInvariant();
+        var fromStatus = ledger.BillingStatus;
+
+        if (!InspectorFeeBillingRules.TryResolveTransition(
+                fromStatus,
+                action,
+                out var nextStatus,
+                out var transitionError))
+        {
+            return transitionError;
+        }
+
+        if (action == InspectorFeeActions.SubmitToFinance)
+        {
+            if (ledger.ExcludedFromBatch)
+                return "لا يمكن إرسال عقار مستبعد من الفوترة.";
+
+            if (!InspectorFeeBillingRules.ValidateDiscount(
+                    ledger.SupervisorDiscountSar,
+                    ledger.DiscountReason,
+                    out var discountError))
+            {
+                return discountError;
+            }
+
+            if (!await IsLedgerWorkSubmittedAsync(ledger.WorkflowTaskId, cancellationToken))
+                return "لا يمكن إرسال الأتعاب قبل إتمام عمل الطرف.";
+        }
+
+        if (action == InspectorFeeActions.Invoice)
+        {
+            if (string.IsNullOrWhiteSpace(request.InvoiceNumber))
+                return "رقم الفاتورة مطلوب.";
+            ledger.InvoiceNumber = request.InvoiceNumber.Trim();
+        }
+
+        if (action == InspectorFeeActions.Return)
+        {
+            if (string.IsNullOrWhiteSpace(request.Reason))
+                return "سبب الإرجاع مطلوب.";
+            ledger.InvoiceNumber = null;
+        }
+
+        if (action == InspectorFeeActions.RecordPayment && !string.IsNullOrWhiteSpace(request.Reason))
+        {
+            // optional payment note stored in transition reason only
+        }
+
+        ledger.BillingStatus = nextStatus;
+        ledger.UpdatedAtUtc = DateTime.UtcNow;
+
+        _db.InspectorFeeTransitions.Add(new InspectorFeeTransition
+        {
+            Id = Guid.NewGuid(),
+            WorkflowTaskId = ledger.WorkflowTaskId,
+            FromStatus = fromStatus,
+            ToStatus = nextStatus,
+            Reason = string.IsNullOrWhiteSpace(request.Reason) ? null : request.Reason.Trim(),
+            ActorUserId = actorUserId,
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+
+        return null;
+    }
+
+    private async Task<bool> IsLedgerWorkSubmittedAsync(
+        Guid workflowTaskId,
+        CancellationToken cancellationToken)
+    {
+        var task = await _db.WorkflowTasks.AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == workflowTaskId, cancellationToken);
+        if (task is null) return false;
+        if (task.Status == WorkflowTaskStatus.Completed) return true;
+
+        if (task.Kind == "field-inspection")
+        {
+            var workspace = await _db.FieldInspectionWorkspaces.AsNoTracking()
+                .FirstOrDefaultAsync(w => w.WorkflowTaskId == workflowTaskId, cancellationToken);
+            return workspace?.Status == PartyTaskSubmissionStatus.Submitted;
+        }
+
+        if (task.Kind == "engineering-survey")
+        {
+            var submission = await _db.PartyTaskSubmissions.AsNoTracking()
+                .FirstOrDefaultAsync(s => s.WorkflowTaskId == workflowTaskId, cancellationToken);
+            return submission?.Status == PartyTaskSubmissionStatus.Submitted;
+        }
+
+        return false;
     }
 
     private async Task BackfillMissingLedgersAsync(CancellationToken cancellationToken)
@@ -285,6 +507,7 @@ public class InspectorFeeService : IInspectorFeeService
         return new InspectorFeeRowDto
         {
             WorkflowTaskId = ledger.WorkflowTaskId.ToString(),
+            PropertyId = ledger.PropertyId?.ToString(),
             PropertyLabel = propertyLabel,
             PoNumber = ledger.PoNumber,
             InspectorType = ledger.InspectorType,
@@ -295,24 +518,29 @@ public class InspectorFeeService : IInspectorFeeService
                 : null,
             NetFeeSar = InspectorFeeRules.NetFee(ledger.AgreedFeeSar, discount),
             BillingStatus = ledger.BillingStatus,
+            BillingStatusLabel = InspectorFeeBillingRules.StatusLabel(ledger.BillingStatus),
+            ExcludedFromBatch = ledger.ExcludedFromBatch,
+            ExclusionReason = ledger.ExclusionReason,
+            InvoiceNumber = ledger.InvoiceNumber,
+            IsEditable = InspectorFeeBillingRules.IsEditableStatus(ledger.BillingStatus),
         };
     }
 
     private static InspectorFeesSummaryDto Summarize(IReadOnlyList<InspectorFeeRowDto> rows)
     {
-        var netPreBilling = rows
-            .Where(r => r.BillingStatus == InspectorFeeBillingStatus.PreBilling)
-            .Sum(r => r.NetFeeSar);
-        var totalDiscounts = rows.Sum(r => r.SupervisorDiscountSar);
-        var invoiced = rows
-            .Where(r => r.BillingStatus == InspectorFeeBillingStatus.Invoiced)
-            .Sum(r => r.NetFeeSar);
+        decimal SumNet(Func<InspectorFeeRowDto, bool> predicate) =>
+            rows.Where(predicate).Sum(r => r.NetFeeSar);
 
         return new InspectorFeesSummaryDto
         {
-            NetPreBillingSar = netPreBilling,
-            TotalDiscountsSar = totalDiscounts,
-            InvoicedSar = invoiced,
+            NetPreBillingSar = SumNet(r =>
+                r.BillingStatus is InspectorFeeBillingStatus.PreBilling
+                    or InspectorFeeBillingStatus.Returned),
+            ReadyForBillingSar = SumNet(r =>
+                r.BillingStatus == InspectorFeeBillingStatus.ReadyForBilling),
+            TotalDiscountsSar = rows.Sum(r => r.SupervisorDiscountSar),
+            InvoicedSar = SumNet(r => r.BillingStatus == InspectorFeeBillingStatus.Invoiced),
+            PaidSar = SumNet(r => r.BillingStatus == InspectorFeeBillingStatus.Paid),
             Rows = rows,
         };
     }
@@ -322,7 +550,7 @@ public class InspectorFeeService : IInspectorFeeService
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(task.AssigneeId))
-            return task.Kind == "engineering-survey" ? "موظف" : "موظف";
+            return "موظف";
 
         var aid = task.AssigneeId.Trim();
         var profile = await _db.UserProfiles.AsNoTracking()
@@ -346,8 +574,10 @@ public class InspectorFeeService : IInspectorFeeService
     private static InspectorFeesSummaryDto EmptySummary() => new()
     {
         NetPreBillingSar = 0m,
+        ReadyForBillingSar = 0m,
         TotalDiscountsSar = 0m,
         InvoicedSar = 0m,
+        PaidSar = 0m,
         Rows = [],
     };
 }

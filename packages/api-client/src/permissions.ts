@@ -9,6 +9,8 @@ export type PermissionsDto = {
   userId: string;
   identityRoles: string[];
   prototypeRole?: string | null;
+  displayName?: string | null;
+  distributionAssigneeId?: string | null;
   pages: string[];
   capabilities: string[];
 };

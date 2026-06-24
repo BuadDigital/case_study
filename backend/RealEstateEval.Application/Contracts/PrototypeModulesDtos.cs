@@ -135,6 +135,7 @@ public class PropertyKeyRecordDto
     public bool Key { get; init; }
     public required string Specialist { get; init; }
     public required string Status { get; init; }
+    public string DeedStatus { get; init; } = "";
 }
 
 public class UpdatePropertyKeyRequest

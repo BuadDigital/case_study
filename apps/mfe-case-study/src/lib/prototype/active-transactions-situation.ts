@@ -51,11 +51,19 @@ export function tasksAssignedToViewer(
   viewerEmail?: string | null,
   customGrantedPages?: readonly PageId[],
   staffUsers: StaffUser[] = [],
+  viewerAssigneeId?: string | null,
 ): WorkflowTask[] {
   if (isSuperAdmin(role)) return tasks;
 
   const roleTasks = PARTY_ROLE_IDS.has(role)
-    ? tasksForPartyAssignee(role, tasks, undefined, viewerEmail, staffUsers)
+    ? tasksForPartyAssignee(
+        role,
+        tasks,
+        undefined,
+        viewerEmail,
+        staffUsers,
+        viewerAssigneeId,
+      )
     : tasksForRole(role, tasks);
 
   const granted = customGrantedPages ?? [];

@@ -8,7 +8,7 @@ public static class PlatformPermissionCatalog
         "dashboard", "active-primary-data", "active-distribution", "active-case-study",
         "po", "bourse-inquiry", "survey", "keys", "failures", "suspended-transactions",
         "valuation-requests", "property-inspection", "government-review",
-        "valuation-coordination", "property-appraisal", "active-survey",
+        "valuation-coordination", "property-appraisal", "active-survey", "party-fees",
         "system-fields-catalog", "system-screen-catalog", "financial", "kpi",
         "users", "courts", "failure-types", "case-study-info-roles",
     ];
@@ -60,6 +60,7 @@ public static class PlatformPermissionCatalog
         [
             "dashboard", "po", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "keys", "failures", "suspended-transactions", "failure-types",
+            "party-fees",
             "system-fields-catalog", "system-screen-catalog",
         ],
         ["case-specialist"] =
@@ -80,7 +81,7 @@ public static class PlatformPermissionCatalog
         ],
         ["field-inspector"] =
         [
-            "dashboard", "property-inspection",
+            "dashboard", "property-inspection", "party-fees",
             "system-fields-catalog", "system-screen-catalog",
         ],
         ["government-reviewer"] =
@@ -90,7 +91,7 @@ public static class PlatformPermissionCatalog
         ],
         ["engineering-office"] =
         [
-            "dashboard", "active-survey",
+            "dashboard", "active-survey", "party-fees",
             "system-fields-catalog", "system-screen-catalog",
         ],
         ["financial-officer"] =

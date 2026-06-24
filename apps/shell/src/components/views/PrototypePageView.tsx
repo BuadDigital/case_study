@@ -82,6 +82,10 @@ const CaseStudyInfoRolesView = dynamic(
   () => import("@settings/mfe").then((m) => m.CaseStudyInfoRolesView),
   { ssr: false },
 );
+const PartyFeesView = dynamic(
+  () => import("@case-study/mfe").then((m) => m.PartyFeesView),
+  { ssr: false },
+);
 const PartyActiveTaskViewHost = dynamic(
   () =>
     import("@/components/party-tasks/PartyActiveTaskViewHost").then(
@@ -110,6 +114,7 @@ const VIEWS: Partial<Record<PageId, ComponentType>> = {
   courts: CourtsView,
   "failure-types": FailureTypesView,
   "case-study-info-roles": CaseStudyInfoRolesView,
+  "party-fees": PartyFeesView,
 };
 
 for (const pageId of PARTY_TASK_PAGE_IDS) {

@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import {
   getCachedAssignmentDoc,
   getCachedDelegationDoc,
+  getCachedKeysProofDoc,
   isImageMime,
+  prefetchKeysProofDoc,
   prefetchPropertyDocAttachments,
   type CachedAssignmentDoc,
   type PropertyDocKind,
@@ -27,15 +29,23 @@ export function AssignmentDocAttachment({
   const [hydrated, setHydrated] = useState(0);
 
   useEffect(() => {
-    void prefetchPropertyDocAttachments(poNumber, propertyId).then(() => {
+    const load =
+      docKind === "keys-proof"
+        ? prefetchKeysProofDoc(poNumber, propertyId)
+        : prefetchPropertyDocAttachments(poNumber, propertyId);
+    void load.then(() => {
       setHydrated((n) => n + 1);
     });
-  }, [poNumber, propertyId]);
+  }, [poNumber, propertyId, docKind]);
 
   const cached = useMemo(() => {
-    return docKind === "delegation"
-      ? getCachedDelegationDoc(poNumber, propertyId)
-      : getCachedAssignmentDoc(poNumber, propertyId);
+    if (docKind === "delegation") {
+      return getCachedDelegationDoc(poNumber, propertyId);
+    }
+    if (docKind === "keys-proof") {
+      return getCachedKeysProofDoc(poNumber, propertyId);
+    }
+    return getCachedAssignmentDoc(poNumber, propertyId);
   }, [poNumber, propertyId, hydrated, docKind]);
 
   const displayName = fileName?.trim() || cached?.fileName || "";

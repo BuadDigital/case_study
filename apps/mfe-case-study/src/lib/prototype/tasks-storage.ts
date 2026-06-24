@@ -11,6 +11,7 @@ import {
   patchWorkflowTaskDistribution,
   syncWorkflowTasks,
 } from "@platform/api-client";
+import { getAuthSession } from "@platform/auth-client";
 import { workOrdersApiConfig } from "../work-orders-api-config";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import {
@@ -227,8 +228,15 @@ export function taskStatusLabel(status: WorkflowTaskStatus): string {
 }
 
 export function taskDisplayPropertyLabel(task: WorkflowTask): string {
+  const parts = task.title
+    .split(" — ")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (task.parentTaskId && parts.length >= 2) {
+    return parts[parts.length - 1]!;
+  }
   if (task.propertyId) {
-    const part = task.title.split(" — ")[0];
+    const part = parts[0];
     return part || `عقار ${task.propertyOrdinal}`;
   }
   return `خانة ${task.propertyOrdinal}`;
@@ -610,29 +618,86 @@ export function tasksForRole(
 }
 
 /** Party queues — match role and selected person from توزيع المعاملات. */
+function partyAssigneeIdFromDistribution(
+  kind: WorkflowTaskKind,
+  distribution: TaskDistributionDraft,
+): string {
+  switch (kind) {
+    case "government-review":
+      return distribution.governmentAuditorId.trim();
+    case "field-inspection":
+      return distribution.inspectorId.trim();
+    case "property-appraisal":
+      return distribution.valuatorId.trim();
+    case "valuation-coordination":
+      return distribution.operationsCoordinatorId.trim();
+    case "engineering-survey":
+      return distribution.engineeringOfficeId.trim();
+    default:
+      return "";
+  }
+}
+
+function taskMatchesPartyAssignee(
+  task: WorkflowTask,
+  expectedId: string | undefined,
+  expectedName: string | undefined,
+  allTasks: WorkflowTask[],
+): boolean {
+  const id = expectedId?.trim();
+  const name = expectedName?.trim();
+
+  if (id && task.assigneeId?.trim() === id) return true;
+  if (name && task.assigneeName.trim() === name) return true;
+
+  if (id && task.parentTaskId) {
+    const parent = allTasks.find((p) => p.id === task.parentTaskId);
+    const distribution = parent?.distribution
+      ? migrateDistribution(parent.distribution)
+      : undefined;
+    if (distribution) {
+      const fromDistribution = partyAssigneeIdFromDistribution(
+        task.kind,
+        distribution,
+      );
+      if (fromDistribution && fromDistribution === id) return true;
+    }
+  }
+
+  if (!id && !name) return true;
+  return false;
+}
+
 export function tasksForPartyAssignee(
   viewerRole: RoleId,
   tasks: WorkflowTask[],
   queueRole?: RoleId,
   viewerEmail?: string | null,
   staffUsers: StaffUser[] = [],
+  viewerAssigneeId?: string | null,
 ): WorkflowTask[] {
   if (isSuperAdmin(viewerRole) && !queueRole) {
     return [...tasks].sort(compareWorkflowTasks);
   }
   const role =
     isSuperAdmin(viewerRole) && queueRole ? queueRole : viewerRole;
-  const account = partyAccountForViewer(role, viewerEmail, staffUsers);
+  const session = typeof window !== "undefined" ? getAuthSession() : null;
+  const email = viewerEmail?.trim() || session?.user.email?.trim() || null;
+  const account = partyAccountForViewer(role, email, staffUsers);
   const expectedId =
-    account?.assigneeId ?? getPrototypeRoleAssigneeId(staffUsers)[role];
-  const expectedName = account?.name ?? ROLES[role]?.name;
+    account?.assigneeId?.trim() ||
+    viewerAssigneeId?.trim() ||
+    (email ? "" : getPrototypeRoleAssigneeId(staffUsers)[role]?.trim()) ||
+    undefined;
+  const expectedName =
+    account?.name?.trim() ||
+    session?.user.displayName?.trim() ||
+    ROLES[role]?.name;
   return tasks
     .filter((t) => t.assigneeRole === role)
-    .filter((t) => {
-      if (t.assigneeId && expectedId) return t.assigneeId === expectedId;
-      if (expectedName) return t.assigneeName.trim() === expectedName.trim();
-      return true;
-    })
+    .filter((t) =>
+      taskMatchesPartyAssignee(t, expectedId, expectedName, tasks),
+    )
     .sort(compareWorkflowTasks);
 }
 

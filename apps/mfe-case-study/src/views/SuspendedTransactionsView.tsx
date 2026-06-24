@@ -101,7 +101,7 @@ function buildSuspendedRowMoreItems(
 
 export function SuspendedTransactionsView() {
   const router = useRouter();
-  const { role, viewerEmail } = usePrototype();
+  const { role, viewerEmail, distributionAssigneeId } = usePrototype();
   const { data: items = [], isFetched } = useSuspendedTransactionsQuery();
   const { data: poRecords = [] } = usePoRecordsQuery();
   const { data: tasks = [] } = useWorkflowTasksQuery();
@@ -123,7 +123,14 @@ export function SuspendedTransactionsView() {
   const visibleItems = useMemo(() => {
     if (isSuperAdmin(role) || !PARTY_ASSIGNMENT_ROLE_IDS.has(role)) return items;
     const email = viewerEmail ?? getAuthSession()?.user.email;
-    const mine = tasksForPartyAssignee(role, tasks, undefined, email, staffUsers);
+    const mine = tasksForPartyAssignee(
+      role,
+      tasks,
+      undefined,
+      email,
+      staffUsers,
+      distributionAssigneeId,
+    );
     const keys = new Set(
       mine
         .filter((t) => t.propertyId)
@@ -132,7 +139,7 @@ export function SuspendedTransactionsView() {
     return items.filter((item) =>
       keys.has(propertySuspensionKey(item.poNumber, item.propertyId)),
     );
-  }, [items, role, tasks, viewerEmail, staffUsers]);
+  }, [items, role, tasks, viewerEmail, distributionAssigneeId, staffUsers]);
 
   const stats = useMemo(() => {
     let onTime = 0;

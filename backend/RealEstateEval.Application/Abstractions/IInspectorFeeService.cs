@@ -14,6 +14,7 @@ public interface IInspectorFeeService
         string? workflowTaskId,
         bool submittedOnly,
         string? taskKind = null,
+        string? billingStatus = null,
         CancellationToken cancellationToken = default);
 
     Task<InspectorFeeRowDto?> GetByWorkflowTaskIdAsync(
@@ -23,6 +24,17 @@ public interface IInspectorFeeService
     Task<InspectorFeeRowDto?> PatchAsync(
         Guid workflowTaskId,
         PatchInspectorFeeRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<(InspectorFeeRowDto? Row, string? Error)> TransitionAsync(
+        Guid workflowTaskId,
+        InspectorFeeTransitionRequest request,
+        string actorUserId,
+        CancellationToken cancellationToken = default);
+
+    Task<BatchInspectorFeeTransitionResult> BatchTransitionAsync(
+        BatchInspectorFeeTransitionRequest request,
+        string actorUserId,
         CancellationToken cancellationToken = default);
 
     Task DeleteForWorkflowTaskIdsAsync(
