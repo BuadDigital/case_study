@@ -270,8 +270,8 @@ export function EngineeringSurveyWorkPanel({
         يُستخدم الموقع للتحقق من زيارة المكتب الهندسي. يجب أن تتطابق الإحداثيات
         مع موقع العقار الفعلي.
       </InfoBox>
-      <div className="mb-3 grid grid-cols-1 items-end gap-2.5 sm:grid-cols-[1fr_1fr_auto]">
-        <div className="mb-3.5">
+      <div className="mb-3 grid grid-cols-1 gap-2.5 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+        <div>
           <Label htmlFor="eng-lat" className="text-xs">
             خط العرض (Latitude) <span className="text-danger-text">*</span>
           </Label>
@@ -290,11 +290,8 @@ export function EngineeringSurveyWorkPanel({
               });
             }}
           />
-          {fieldErrors.latitude ? (
-            <p className="mt-1 text-[11px] text-danger-text">{fieldErrors.latitude}</p>
-          ) : null}
         </div>
-        <div className="mb-3.5">
+        <div>
           <Label htmlFor="eng-lng" className="text-xs">
             خط الطول (Longitude) <span className="text-danger-text">*</span>
           </Label>
@@ -313,21 +310,28 @@ export function EngineeringSurveyWorkPanel({
               });
             }}
           />
-          {fieldErrors.longitude ? (
-            <p className="mt-1 text-[11px] text-danger-text">{fieldErrors.longitude}</p>
-          ) : null}
         </div>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="h-[34px] whitespace-nowrap"
-          disabled={formDisabled}
-          onClick={useCurrentLocation}
-        >
-          موقعي الحالي
-        </Button>
+        <div className="flex flex-col">
+          <Label className="pointer-events-none text-xs invisible" aria-hidden="true">
+            موقع
+          </Label>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-[34px] whitespace-nowrap"
+            disabled={formDisabled}
+            onClick={useCurrentLocation}
+          >
+            موقعي الحالي
+          </Button>
+        </div>
       </div>
+      {fieldErrors.latitude || fieldErrors.longitude ? (
+        <p className="mb-3 text-[11px] text-danger-text" role="alert">
+          {fieldErrors.latitude ?? fieldErrors.longitude}
+        </p>
+      ) : null}
       <EngineeringSurveyMap
         latitude={draft.latitude}
         longitude={draft.longitude}
