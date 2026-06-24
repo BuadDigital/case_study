@@ -115,6 +115,9 @@ export function CaseStudyTaskWork({
     () => migrateDistribution(task.distribution),
   );
   const [failureModalOpen, setFailureModalOpen] = useState(false);
+  const [phaseOverride, setPhaseOverride] = useState<WorkflowTask["phase"] | null>(
+    null,
+  );
   const { data: poRecord, isPending: poRecordLoading } = usePoRecordQuery(
     task.poNumber,
   );
@@ -123,6 +126,12 @@ export function CaseStudyTaskWork({
   useEffect(() => {
     setDistribution(migrateDistribution(task.distribution));
   }, [task.id, task.distribution]);
+
+  useEffect(() => {
+    setPhaseOverride(null);
+  }, [task.id, task.phase]);
+
+  const effectivePhase = phaseOverride ?? task.phase;
 
   const isSupervisor = role === "section-supervisor" || role === "cdo";
   const isSpecialist = role === "case-specialist" || role === "cdo";
@@ -243,11 +252,12 @@ export function CaseStudyTaskWork({
     }
 
     if (result.ok) {
-      const advanced = skipsBourseForIdentifier(property.identifierType)
+      const savedProperty = skipsBourseForIdentifier(property.identifierType)
         ? { ...result.data, bourseDataCompleted: true }
         : result.data;
       if (task.propertyId) {
-        await advanceTaskAfterEnfath(task.id, advanced);
+        const updatedTask = await advanceTaskAfterEnfath(task.id, savedProperty);
+        if (updatedTask?.phase) setPhaseOverride(updatedTask.phase);
       }
       if (onEnfathSaved) {
         await onEnfathSaved(task.id, {
@@ -381,7 +391,8 @@ export function CaseStudyTaskWork({
       return;
     }
 
-    await advanceTaskAfterBourse(task.id, result.data);
+    const advancedTask = await advanceTaskAfterBourse(task.id, result.data);
+    if (advancedTask?.phase) setPhaseOverride(advancedTask.phase);
     onRefresh();
     showToast("تم حفظ بيانات البورصة.", "success");
   }
@@ -397,12 +408,18 @@ export function CaseStudyTaskWork({
       return;
     }
 
-    await confirmTaskDistribution(
+    const result = await confirmTaskDistribution(
       task.id,
       distribution,
       formatPropertyDeedDisplay(property),
       staffUsers,
     );
+    if (!result.parent) return;
+
+    setPhaseOverride(result.parent.phase);
+    void queryClient.invalidateQueries({
+      queryKey: prototypeKeys.workflowTasks(),
+    });
     onRefresh();
     showToast("تم تأكيد التوزيع وإرسال المهام.", "success");
   }
@@ -419,16 +436,16 @@ export function CaseStudyTaskWork({
   }
 
   const bourseInquiryFastPath =
-    task.phase === "enfath" && isBourseInquiryIdentifier(property.identifierType);
+    effectivePhase === "enfath" && isBourseInquiryIdentifier(property.identifierType);
   /** Primary-data panel: استعلام بورصة fields live on «استعلام بورصة» tab only. */
   const bourseInquiryPanelOnly =
     layout === "panel" && bourseInquiryFastPath;
   const showEnfathStep =
-    task.phase === "enfath" && (!bourseInquiryFastPath || bourseInquiryPanelOnly);
+    effectivePhase === "enfath" && (!bourseInquiryFastPath || bourseInquiryPanelOnly);
   const showBourseStep =
-    (task.phase === "bourse" || bourseInquiryFastPath) && !bourseInquiryPanelOnly;
-  const showDistribution = task.phase === "distribution";
-  const showCaseStudy = task.phase === "case-study";
+    (effectivePhase === "bourse" || bourseInquiryFastPath) && !bourseInquiryPanelOnly;
+  const showDistribution = effectivePhase === "distribution";
+  const showCaseStudy = effectivePhase === "case-study";
   const bourseObstructionPath =
     showBourseStep && deedVitality === "inactive";
   const showPrimarySave =

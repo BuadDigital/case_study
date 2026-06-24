@@ -198,6 +198,7 @@ export {
 export {
   fetchMe,
   fetchPermissions,
+  ApiAuthError,
   type MeDto,
   type PermissionsApiConfig,
   type PermissionsDto,
@@ -215,22 +216,46 @@ export {
 
 export {
   batchTransitionInspectorFees,
+  createDisbursementBatch,
   inspectorFeeStatusLabel,
   inspectorFeeStatusTone,
+  inspectorFeeWorkStatusTone,
   listInspectorFees,
+  listInspectorFeeTransitions,
   patchInspectorFee,
   transitionInspectorFee,
   type BatchInspectorFeeTransitionRequest,
   type BatchInspectorFeeTransitionResult,
+  type CreateDisbursementBatchRequest,
+  type CreateDisbursementBatchResult,
   type InspectorFeeAction,
+  type InspectorFeeAuditEntryDto,
   type InspectorFeeBillingStatus,
   type InspectorFeeRowDto,
   type InspectorFeeTransitionRequest,
+  type InspectorFeeWorkStatus,
   type InspectorFeesApiConfig,
   type InspectorFeesSummaryDto,
   type ListInspectorFeesQuery,
   type PatchInspectorFeeRequest,
 } from "./inspector-fees";
+
+export {
+  getPoEnfazBilling,
+  getPropertyEnfazRevenue,
+  listReadyEnfazPos,
+  listReadyEnfazPoSummaries,
+  savePoEnfazBilling,
+  type EnfazBillingApiConfig,
+  type EnfazReadyPoSummaryDto,
+  type PoEnfazBillingDto,
+  type PoEnfazRevenueLineDto,
+  type EnfazTrackingRowDto,
+  type PropertyEnfazRevenueDto,
+  type SavePoEnfazBillingRequest,
+  listEnfazTracking,
+  issuePoEnfazInvoice,
+} from "./enfaz-billing";
 
 export {
   fetchFieldInspectionWorkspaceSummary,

@@ -1,5 +1,12 @@
 import { getApiBase } from "./index";
 
+export class ApiAuthError extends Error {
+  constructor() {
+    super("auth");
+    this.name = "ApiAuthError";
+  }
+}
+
 export type PermissionsApiConfig = {
   baseUrl?: string;
   token: string;
@@ -38,6 +45,7 @@ export async function fetchPermissions(config: PermissionsApiConfig): Promise<Pe
       headers: headers(config.token),
       signal: controller.signal,
     });
+    if (res.status === 401) throw new ApiAuthError();
     if (!res.ok) throw new Error(`permissions ${res.status}`);
     return res.json() as Promise<PermissionsDto>;
   } finally {
@@ -54,6 +62,7 @@ export async function fetchMe(
   const res = await fetch(`${base}/api/auth/me${q}`, {
     headers: headers(config.token),
   });
+  if (res.status === 401) throw new ApiAuthError();
   if (!res.ok) throw new Error(`me ${res.status}`);
   return res.json() as Promise<MeDto>;
 }

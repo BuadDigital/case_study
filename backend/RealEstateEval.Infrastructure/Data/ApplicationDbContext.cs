@@ -22,6 +22,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<FieldInspectionWorkspace> FieldInspectionWorkspaces => Set<FieldInspectionWorkspace>();
     public DbSet<InspectorFeeLedger> InspectorFeeLedgers => Set<InspectorFeeLedger>();
     public DbSet<InspectorFeeTransition> InspectorFeeTransitions => Set<InspectorFeeTransition>();
+    public DbSet<DisbursementBatch> DisbursementBatches => Set<DisbursementBatch>();
+    public DbSet<PoEnfazRevenueLine> PoEnfazRevenueLines => Set<PoEnfazRevenueLine>();
+    public DbSet<PoEnfazInvoice> PoEnfazInvoices => Set<PoEnfazInvoice>();
     public DbSet<PropertyFailure> PropertyFailures => Set<PropertyFailure>();
     public DbSet<PropertyTimelineEntry> PropertyTimelineEntries => Set<PropertyTimelineEntry>();
     public DbSet<FieldDictionaryConfig> FieldDictionaryConfigs => Set<FieldDictionaryConfig>();
@@ -223,13 +226,43 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.DiscountReason).HasMaxLength(2000);
             e.Property(x => x.BillingStatus).HasMaxLength(32);
             e.Property(x => x.ExclusionReason).HasMaxLength(2000);
-            e.Property(x => x.InvoiceNumber).HasMaxLength(128);
+            e.Property(x => x.ReturnTo).HasMaxLength(32);
+            e.Property(x => x.DisbursementVoucher).HasMaxLength(128);
             e.Property(x => x.AgreedFeeSar).HasPrecision(12, 2);
             e.Property(x => x.SupervisorDiscountSar).HasPrecision(12, 2);
             e.HasIndex(x => x.PoNumber);
             e.HasIndex(x => x.AssigneeId);
             e.HasIndex(x => x.BillingStatus);
             e.HasIndex(x => x.ExcludedFromBatch);
+            e.HasIndex(x => x.DisbursementBatchId);
+        });
+
+        builder.Entity<DisbursementBatch>(e =>
+        {
+            e.ToTable("DisbursementBatches", DatabaseSchemas.CaseStudy);
+            e.HasKey(x => x.Id);
+            e.Property(x => x.AssigneeId).HasMaxLength(128);
+            e.Property(x => x.CreatedByUserId).HasMaxLength(450);
+            e.Property(x => x.TotalNetSar).HasPrecision(14, 2);
+            e.HasIndex(x => x.AssigneeId);
+            e.HasIndex(x => x.CreatedAtUtc);
+        });
+
+        builder.Entity<PoEnfazRevenueLine>(e =>
+        {
+            e.ToTable("PoEnfazRevenueLines", DatabaseSchemas.Financial);
+            e.HasKey(x => x.Id);
+            e.Property(x => x.PoNumber).HasMaxLength(64);
+            e.Property(x => x.EnfazFeeSar).HasPrecision(12, 2);
+            e.HasIndex(x => new { x.PoNumber, x.PropertyId }).IsUnique();
+        });
+
+        builder.Entity<PoEnfazInvoice>(e =>
+        {
+            e.ToTable("PoEnfazInvoices", DatabaseSchemas.Financial);
+            e.HasKey(x => x.PoNumber);
+            e.Property(x => x.PoNumber).HasMaxLength(64);
+            e.Property(x => x.InvoiceNumber).HasMaxLength(128);
         });
 
         builder.Entity<InspectorFeeTransition>(e =>

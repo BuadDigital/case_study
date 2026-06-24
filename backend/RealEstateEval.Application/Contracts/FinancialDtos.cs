@@ -20,6 +20,7 @@ public class FinancialRevenueRowDto
     public int Excluded { get; init; }
     public required string Value { get; init; }
     public required string Status { get; init; }
+    public string? InvoiceNumber { get; init; }
 }
 
 public class FinancialCostRowDto

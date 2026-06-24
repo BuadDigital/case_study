@@ -1,8 +1,7 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// Per-property inspector fee row — created when field-inspection workflow task is spawned.
-/// Supervisor adjusts discount and billing status before invoicing.
+/// Per-property party fee row — created when field-inspection or engineering-survey task is spawned.
 /// </summary>
 public class InspectorFeeLedger
 {
@@ -16,11 +15,14 @@ public class InspectorFeeLedger
     public decimal AgreedFeeSar { get; set; }
     public decimal SupervisorDiscountSar { get; set; }
     public string? DiscountReason { get; set; }
-    /// <summary>pre-billing | ready-for-billing | invoiced | paid | returned</summary>
-    public string BillingStatus { get; set; } = InspectorFeeBillingStatus.PreBilling;
+    /// <summary>draft | sup-review | at-finance | disb-req | disbursed | returned | inquiry</summary>
+    public string BillingStatus { get; set; } = InspectorFeeBillingStatus.Draft;
     public bool ExcludedFromBatch { get; set; }
     public string? ExclusionReason { get; set; }
-    public string? InvoiceNumber { get; set; }
+    /// <summary>supervisor | office — set when status is returned or inquiry.</summary>
+    public string? ReturnTo { get; set; }
+    public Guid? DisbursementBatchId { get; set; }
+    public string? DisbursementVoucher { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 }

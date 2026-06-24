@@ -15,6 +15,7 @@ public interface IInspectorFeeService
         bool submittedOnly,
         string? taskKind = null,
         string? billingStatus = null,
+        string? returnTo = null,
         CancellationToken cancellationToken = default);
 
     Task<InspectorFeeRowDto?> GetByWorkflowTaskIdAsync(
@@ -30,14 +31,57 @@ public interface IInspectorFeeService
         Guid workflowTaskId,
         InspectorFeeTransitionRequest request,
         string actorUserId,
+        string? actorAssigneeId,
+        bool isOperationsManager,
+        bool isFinancialOfficer,
         CancellationToken cancellationToken = default);
 
     Task<BatchInspectorFeeTransitionResult> BatchTransitionAsync(
         BatchInspectorFeeTransitionRequest request,
         string actorUserId,
+        string? actorAssigneeId,
+        bool isOperationsManager,
+        bool isFinancialOfficer,
+        CancellationToken cancellationToken = default);
+
+    Task<CreateDisbursementBatchResult> CreateDisbursementBatchAsync(
+        CreateDisbursementBatchRequest request,
+        string actorUserId,
+        string? actorAssigneeId,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<InspectorFeeAuditEntryDto>> ListTransitionsAsync(
+        Guid workflowTaskId,
         CancellationToken cancellationToken = default);
 
     Task DeleteForWorkflowTaskIdsAsync(
         IEnumerable<Guid> workflowTaskIds,
+        CancellationToken cancellationToken = default);
+}
+
+public interface IPoEnfazBillingService
+{
+    Task<IReadOnlyList<string>> ListReadyPoNumbersAsync(CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<EnfazReadyPoSummaryDto>> ListReadyPoSummariesAsync(
+        CancellationToken cancellationToken = default);
+
+    Task<PoEnfazBillingDto?> GetPoBillingAsync(string poNumber, CancellationToken cancellationToken = default);
+
+    Task<PoEnfazBillingDto?> SavePoBillingAsync(
+        string poNumber,
+        SavePoEnfazBillingRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<PropertyEnfazRevenueDto?> GetPropertyRevenueAsync(
+        string poNumber,
+        Guid propertyId,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<EnfazTrackingRowDto>> ListTrackingAsync(
+        CancellationToken cancellationToken = default);
+
+    Task<PoEnfazBillingDto?> IssueInvoiceAsync(
+        string poNumber,
         CancellationToken cancellationToken = default);
 }

@@ -173,7 +173,7 @@ export function ActiveTransactionQueueView({
     data: tasks,
     refetch: refetchTasks,
     isFetched: tasksFetched,
-  } = useWorkflowTasksQuery();
+  } = useWorkflowTasksQuery({ live: true });
   const {
     data: poRecords = [],
     isFetched: poRecordsFetched,

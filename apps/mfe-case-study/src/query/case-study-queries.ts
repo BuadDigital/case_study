@@ -2,6 +2,8 @@
 
 import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { LIVE_QUEUE_POLL_INTERVAL_MS } from "@platform/app-shared/query/live-query";
+import { isFeatureEnabled } from "@platform/app-shared/feature-flags";
 import { loadPoListRows } from "@platform/app-shared/prototype/work-orders-read";
 import { loadPropertyListItems } from "@platform/app-shared/prototype/work-orders-read";
 import {
@@ -36,11 +38,14 @@ export function prefetchPoRecord(queryClient: QueryClient, poNumber: string): vo
   });
 }
 
-export function useWorkflowTasksQuery() {
+export function useWorkflowTasksQuery(options?: { live?: boolean }) {
+  const live =
+    options?.live === true && isFeatureEnabled("liveQueuePolling");
   return useQuery({
     queryKey: prototypeKeys.workflowTasks(),
     queryFn: loadWorkflowTasks,
     ...queryDefaults,
+    refetchInterval: live ? LIVE_QUEUE_POLL_INTERVAL_MS : false,
   });
 }
 

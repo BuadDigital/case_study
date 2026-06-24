@@ -114,21 +114,21 @@ export const PAGE_SITUATION_CARDS: Partial<Record<PageId, PageSituationCardDef[]
         tone: "blue",
       },
       {
-        key: "preBilling",
-        label: "قبل الفوترة",
-        sub: "بانتظار المراجعة",
+        key: "pendingOffice",
+        label: "مسودة / مُعاد",
+        sub: "لدى المكتب",
         tone: "warn",
       },
       {
-        key: "readyForBilling",
-        label: "جاهزة للفوترة",
-        sub: "لدى المالية",
+        key: "inPipeline",
+        label: "قيد المراجعة",
+        sub: "مشرف أو مالية",
         tone: "blue",
       },
       {
-        key: "invoiced",
-        label: "مفوترة / مدفوعة",
-        sub: "تمت الفوترة أو التحصيل",
+        key: "disbursePath",
+        label: "مسار الصرف",
+        sub: "أمر صرف أو مصروف",
         tone: "green",
       },
     ],
@@ -258,33 +258,37 @@ export function computeFeesPageSituation(
   rows: InspectorFeeRowDto[],
 ): Pick<
   PageSituationValues,
-  "total" | "preBilling" | "readyForBilling" | "invoiced"
+  "total" | "pendingOffice" | "inPipeline" | "disbursePath"
 > {
-  let preBilling = 0;
-  let readyForBilling = 0;
-  let invoiced = 0;
+  let pendingOffice = 0;
+  let inPipeline = 0;
+  let disbursePath = 0;
 
   for (const row of rows) {
     if (
-      row.billingStatus === "pre-billing" ||
-      row.billingStatus === "returned"
+      row.billingStatus === "draft" ||
+      row.billingStatus === "returned" ||
+      row.billingStatus === "inquiry"
     ) {
-      preBilling += 1;
-    } else if (row.billingStatus === "ready-for-billing") {
-      readyForBilling += 1;
+      pendingOffice += 1;
     } else if (
-      row.billingStatus === "invoiced" ||
-      row.billingStatus === "paid"
+      row.billingStatus === "sup-review" ||
+      row.billingStatus === "at-finance"
     ) {
-      invoiced += 1;
+      inPipeline += 1;
+    } else if (
+      row.billingStatus === "disb-req" ||
+      row.billingStatus === "disbursed"
+    ) {
+      disbursePath += 1;
     }
   }
 
   return {
     total: rows.length,
-    preBilling,
-    readyForBilling,
-    invoiced,
+    pendingOffice,
+    inPipeline,
+    disbursePath,
   };
 }
 

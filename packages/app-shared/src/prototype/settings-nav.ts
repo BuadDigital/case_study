@@ -16,6 +16,12 @@ export const SETTINGS_NAV: SettingsNavItem[] = [
     icon: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
     available: true,
   },
+  {
+    id: "audit-log",
+    label: "سجل التدقيق",
+    icon: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8",
+    available: true,
+  },
 ];
 
 export const SETTINGS_GROUP = "الإعدادات";

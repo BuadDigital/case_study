@@ -45,9 +45,14 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:install": "playwright install chromium",
-    "test:release": "dotnet test backend/RealEstateEval.slnx && npm run typecheck:mfes && node backend/scripts/release-verify.mjs && playwright test"
+    "test:unit": "vitest run",
+    "test:release": "dotnet test backend/RealEstateEval.slnx && npm run typecheck:mfes && node backend/scripts/release-verify.mjs && npm run test:unit && playwright test"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.0"
+    "@playwright/test": "^1.61.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "jsdom": "^26.1.0",
+    "vitest": "^3.2.4"
   }
 }

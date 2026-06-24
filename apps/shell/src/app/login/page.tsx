@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { fetchDevLoginUsers, getApiBase } from "@platform/api-client";
-import { setAuthSession, type AuthSession } from "@platform/auth-client";
+import { setAuthSession, type AuthSession, getValidAuthSession } from "@platform/auth-client";
 import { PROTOTYPE_LOGIN_USERS } from "@platform/app-shared/prototype/prototype-users";
 import { Button, Card, Label, Select } from "@platform/design-system";
 
@@ -24,6 +24,14 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const session = getValidAuthSession();
+    if (session) {
+      setAuthSession(session);
+      router.replace("/dashboard");
+    }
+  }, [router]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => router.prefetch("/dashboard"), 2000);

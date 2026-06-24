@@ -5,7 +5,11 @@ namespace RealEstateEval.Application.Rules;
 public static class InspectorFeeBillingRules
 {
     public static bool IsEditableStatus(string? status) =>
-        status is InspectorFeeBillingStatus.PreBilling or InspectorFeeBillingStatus.Returned;
+        status is InspectorFeeBillingStatus.Draft
+            or InspectorFeeBillingStatus.SupReview
+            or InspectorFeeBillingStatus.AtFinance
+            or InspectorFeeBillingStatus.Returned
+            or InspectorFeeBillingStatus.Inquiry;
 
     public static bool ValidateDiscount(decimal discount, string? reason, out string? error)
     {
@@ -23,54 +27,106 @@ public static class InspectorFeeBillingRules
         string currentStatus,
         string action,
         out string nextStatus,
+        out string? returnTo,
         out string? error)
     {
         nextStatus = "";
+        returnTo = null;
         error = null;
         var actionKey = action.Trim().ToLowerInvariant();
 
         switch (actionKey)
         {
-            case InspectorFeeActions.SubmitToFinance:
-                if (currentStatus is InspectorFeeBillingStatus.PreBilling
-                    or InspectorFeeBillingStatus.Returned)
+            case InspectorFeeActions.SubmitToSupervisor:
+                if (currentStatus == InspectorFeeBillingStatus.Draft
+                    || currentStatus == InspectorFeeBillingStatus.Returned
+                    || currentStatus == InspectorFeeBillingStatus.Inquiry)
                 {
-                    nextStatus = InspectorFeeBillingStatus.ReadyForBilling;
+                    nextStatus = InspectorFeeBillingStatus.SupReview;
+                    returnTo = null;
                     return true;
                 }
 
-                error = "لا يمكن إرسال الأتعاب للمالية من هذه الحالة.";
+                error = "لا يمكن رفع الأتعاب للمشرف من هذه الحالة.";
                 return false;
 
-            case InspectorFeeActions.Invoice:
-                if (currentStatus == InspectorFeeBillingStatus.ReadyForBilling)
+            case InspectorFeeActions.ApproveToFinance:
+                if (currentStatus == InspectorFeeBillingStatus.SupReview)
                 {
-                    nextStatus = InspectorFeeBillingStatus.Invoiced;
+                    nextStatus = InspectorFeeBillingStatus.AtFinance;
+                    returnTo = null;
                     return true;
                 }
 
-                error = "لا يمكن إصدار الفاتورة إلا للأتعاب الجاهزة للفوترة.";
+                error = "لا يمكن اعتماد الأتعاب إلا للمعاملات بانتظار الاعتماد.";
                 return false;
 
-            case InspectorFeeActions.RecordPayment:
-                if (currentStatus == InspectorFeeBillingStatus.Invoiced)
+            case InspectorFeeActions.ResendToFinance:
+                if (currentStatus == InspectorFeeBillingStatus.Returned)
                 {
-                    nextStatus = InspectorFeeBillingStatus.Paid;
+                    nextStatus = InspectorFeeBillingStatus.AtFinance;
+                    returnTo = null;
                     return true;
                 }
 
-                error = "لا يمكن تسجيل التحصيل إلا للأتعاب المفوترة.";
+                error = "لا يمكن إعادة الإرسال للمالية من هذه الحالة.";
                 return false;
 
-            case InspectorFeeActions.Return:
-                if (currentStatus is InspectorFeeBillingStatus.ReadyForBilling
-                    or InspectorFeeBillingStatus.Invoiced)
+            case InspectorFeeActions.ReturnToOffice:
+                if (currentStatus == InspectorFeeBillingStatus.Returned)
                 {
                     nextStatus = InspectorFeeBillingStatus.Returned;
+                    returnTo = InspectorFeeReturnTo.Office;
                     return true;
                 }
 
-                error = "لا يمكن الإرجاع من هذه الحالة.";
+                error = "لا يمكن إرجاع المعاملة للمكتب من هذه الحالة.";
+                return false;
+
+            case InspectorFeeActions.CreateDisbursementRequest:
+                if (currentStatus == InspectorFeeBillingStatus.AtFinance)
+                {
+                    nextStatus = InspectorFeeBillingStatus.DisbReq;
+                    returnTo = null;
+                    return true;
+                }
+
+                error = "لا يمكن إنشاء أمر صرف إلا للمعاملات الجاهزة لدى المالية.";
+                return false;
+
+            case InspectorFeeActions.Disburse:
+                if (currentStatus == InspectorFeeBillingStatus.DisbReq)
+                {
+                    nextStatus = InspectorFeeBillingStatus.Disbursed;
+                    returnTo = null;
+                    return true;
+                }
+
+                error = "لا يمكن الصرف إلا للمعاملات ضمن أمر صرف.";
+                return false;
+
+            case InspectorFeeActions.ReturnToSupervisor:
+                if (currentStatus is InspectorFeeBillingStatus.AtFinance
+                    or InspectorFeeBillingStatus.DisbReq)
+                {
+                    nextStatus = InspectorFeeBillingStatus.Returned;
+                    returnTo = InspectorFeeReturnTo.Supervisor;
+                    return true;
+                }
+
+                error = "لا يمكن الإرجاع للمشرف من هذه الحالة.";
+                return false;
+
+            case InspectorFeeActions.InquiryToOffice:
+                if (currentStatus is InspectorFeeBillingStatus.AtFinance
+                    or InspectorFeeBillingStatus.DisbReq)
+                {
+                    nextStatus = InspectorFeeBillingStatus.Inquiry;
+                    returnTo = InspectorFeeReturnTo.Office;
+                    return true;
+                }
+
+                error = "لا يمكن فتح استفسار من هذه الحالة.";
                 return false;
 
             default:
@@ -81,11 +137,20 @@ public static class InspectorFeeBillingRules
 
     public static string StatusLabel(string? status) => status switch
     {
-        InspectorFeeBillingStatus.PreBilling => "قبل الفوترة",
-        InspectorFeeBillingStatus.ReadyForBilling => "جاهزة للفوترة",
-        InspectorFeeBillingStatus.Invoiced => "مفوترة",
-        InspectorFeeBillingStatus.Paid => "مدفوعة",
-        InspectorFeeBillingStatus.Returned => "مُرجعة باعتراض",
+        InspectorFeeBillingStatus.Draft => "مسودة لدى المكتب",
+        InspectorFeeBillingStatus.SupReview => "بانتظار اعتماد المشرف",
+        InspectorFeeBillingStatus.AtFinance => "جاهز للصرف (لدى المالية)",
+        InspectorFeeBillingStatus.DisbReq => "ضمن أمر صرف",
+        InspectorFeeBillingStatus.Disbursed => "مصروف",
+        InspectorFeeBillingStatus.Returned => "مُعاد للتعديل",
+        InspectorFeeBillingStatus.Inquiry => "استفسار مفتوح",
         _ => "—",
+    };
+
+    public static string WorkStatusLabel(string workStatus) => workStatus switch
+    {
+        "done" => "مكتملة",
+        "cancelled" => "ملغاة",
+        _ => "قيد التنفيذ",
     };
 }

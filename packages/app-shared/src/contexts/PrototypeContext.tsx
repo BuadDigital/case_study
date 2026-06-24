@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo } from "react";
 import type { PageId, RoleId } from "@platform/types";
-import { getAuthSession } from "@platform/auth-client";
+import { getValidAuthSession } from "@platform/auth-client";
 import { ROLES } from "@platform/app-shared/prototype/constants";
 import { pagesFromPermissions } from "@platform/app-shared/prototype/permissions-pages";
 import { setRuntimeCapabilities } from "@platform/app-shared/prototype/runtime-access";
@@ -40,7 +40,7 @@ function roleFromPermissions(
 }
 
 export function PrototypeProvider({ children }: { children: React.ReactNode }) {
-  const session = getAuthSession();
+  const session = getValidAuthSession();
   const hasSession = Boolean(session?.token);
 
   const {

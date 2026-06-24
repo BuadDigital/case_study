@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { getAuthSession } from "@platform/auth-client";
 import type { PageId } from "@platform/types";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
@@ -27,6 +29,7 @@ import {
 import { useFailuresQuery } from "@/lib/query/prototype-queries";
 import { filterActionablePendingBourseItems } from "@case-study/mfe/lib/prototype/pending-bourse-queue";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
+import { loadInspectorFeesSummary } from "@platform/app-shared/prototype/inspector-fees-api";
 
 function poRecordsMap(records: PoIntakeRecord[] | undefined) {
   const map = new Map<string, PoIntakeRecord>();
@@ -36,7 +39,8 @@ function poRecordsMap(records: PoIntakeRecord[] | undefined) {
 
 /** Red sidebar counts for المعاملات النشطة (open work only). */
 export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>> {
-  const { role, viewerEmail, distributionAssigneeId } = usePrototype();
+  const { role, viewerEmail, distributionAssigneeId, hasCapability } =
+    usePrototype();
   const resolvedViewerEmail = viewerEmail ?? getAuthSession()?.user.email ?? null;
   const { data: tasks } = useWorkflowTasksQuery();
   const { data: poRecords } = usePoRecordsQuery();
@@ -44,6 +48,18 @@ export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>>
   const { data: failures = [] } = useFailuresQuery();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
+
+  const { data: feeSummary } = useQuery({
+    queryKey: [...prototypeKeys.all, "inspector-fees", "nav-badges", role],
+    queryFn: () =>
+      loadInspectorFeesSummary({
+        assigneeId: hasCapability("manage-financial")
+          ? undefined
+          : distributionAssigneeId ?? undefined,
+        submittedOnly: false,
+      }),
+    staleTime: 30_000,
+  });
 
   return useMemo(() => {
     const poByNumber = poRecordsMap(poRecords);
@@ -97,6 +113,37 @@ export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>>
       if (open > 0) badges[def.pageId] = open;
     }
 
+    const feeRows = feeSummary?.rows ?? [];
+    if (feeRows.length > 0) {
+      const isSupervisor = hasCapability("manage-operations");
+      const feeCount = isSupervisor
+        ? feeRows.filter(
+            (r) =>
+              r.billingStatus === "sup-review" ||
+              (r.billingStatus === "returned" && r.returnTo === "supervisor"),
+          ).length
+        : feeRows.filter(
+            (r) =>
+              r.canSubmitToSupervisor ||
+              r.canCreateDisbursementRequest ||
+              ((r.billingStatus === "returned" ||
+                r.billingStatus === "inquiry") &&
+                r.returnTo === "office"),
+          ).length;
+      if (feeCount > 0) badges["party-fees"] = feeCount;
+    }
+
     return badges;
-  }, [role, resolvedViewerEmail, distributionAssigneeId, tasks, poRecords, pendingBourse, failures, staffUsers]);
+  }, [
+    role,
+    resolvedViewerEmail,
+    distributionAssigneeId,
+    tasks,
+    poRecords,
+    pendingBourse,
+    failures,
+    staffUsers,
+    feeSummary?.rows,
+    hasCapability,
+  ]);
 }

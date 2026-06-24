@@ -4,6 +4,9 @@ export {
   formControlErrorClassName,
 } from "./lib/form-control-classes";
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from "./components/Button";
+export { ErrorBoundary } from "./components/ErrorBoundary";
+export { FormField, type FormFieldProps } from "./components/FormField";
+export { QueryErrorPanel } from "./components/QueryErrorPanel";
 export { Spinner } from "./components/Spinner";
 export { Skeleton, SkeletonTableRows, PanelSkeleton, InlineLoadingSkeleton } from "./components/Skeleton";
 export { ToastProvider, useToast, useOptionalToast, type ToastTone } from "./components/Toast";

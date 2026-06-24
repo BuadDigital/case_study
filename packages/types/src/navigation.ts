@@ -24,7 +24,8 @@ export type PageId =
   | "users"
   | "courts"
   | "failure-types"
-  | "case-study-info-roles";
+  | "case-study-info-roles"
+  | "audit-log";
 
 export type RoleId =
   | "cdo"
@@ -106,6 +107,7 @@ export function isPageId(value: string): value is PageId {
     value === "users" ||
     value === "courts" ||
     value === "failure-types" ||
-    value === "case-study-info-roles"
+    value === "case-study-info-roles" ||
+    value === "audit-log"
   );
 }

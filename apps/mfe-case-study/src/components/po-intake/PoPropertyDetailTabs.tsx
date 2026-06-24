@@ -553,8 +553,9 @@ export function PoPropertyDetailTabs({
           if (t.id === "finance" && propertyFeeRows.length > 0) {
             const pending = propertyFeeRows.filter(
               (r) =>
-                r.billingStatus === "pre-billing" ||
-                r.billingStatus === "returned",
+                r.billingStatus === "draft" ||
+                r.billingStatus === "returned" ||
+                r.billingStatus === "inquiry",
             ).length;
             count = pending > 0 ? pending : propertyFeeRows.length;
             countTone = pending > 0 ? "gray" : "teal";

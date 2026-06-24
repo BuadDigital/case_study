@@ -2,9 +2,12 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Authorization;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Domain;
+using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
@@ -15,8 +18,13 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 public class InspectorFeesController : ControllerBase
 {
     private readonly IInspectorFeeService _fees;
+    private readonly ApplicationDbContext _db;
 
-    public InspectorFeesController(IInspectorFeeService fees) => _fees = fees;
+    public InspectorFeesController(IInspectorFeeService fees, ApplicationDbContext db)
+    {
+        _fees = fees;
+        _db = db;
+    }
 
     [HttpGet]
     public async Task<ActionResult<InspectorFeesSummaryDto>> List(
@@ -25,6 +33,7 @@ public class InspectorFeesController : ControllerBase
         [FromQuery] bool submittedOnly = true,
         [FromQuery] string? taskKind = null,
         [FromQuery] string? billingStatus = null,
+        [FromQuery] string? returnTo = null,
         CancellationToken ct = default) =>
         Ok(await _fees.GetSummaryAsync(
             assigneeId,
@@ -32,6 +41,7 @@ public class InspectorFeesController : ControllerBase
             submittedOnly,
             taskKind,
             billingStatus,
+            returnTo,
             ct));
 
     [HttpGet("summary")]
@@ -41,6 +51,7 @@ public class InspectorFeesController : ControllerBase
         [FromQuery] bool submittedOnly = true,
         [FromQuery] string? taskKind = null,
         [FromQuery] string? billingStatus = null,
+        [FromQuery] string? returnTo = null,
         CancellationToken ct = default) =>
         Ok(await _fees.GetSummaryAsync(
             assigneeId,
@@ -48,6 +59,7 @@ public class InspectorFeesController : ControllerBase
             submittedOnly,
             taskKind,
             billingStatus,
+            returnTo,
             ct));
 
     [HttpGet("{workflowTaskId:guid}")]
@@ -58,6 +70,12 @@ public class InspectorFeesController : ControllerBase
         var row = await _fees.GetByWorkflowTaskIdAsync(workflowTaskId, ct);
         return row is null ? NotFound() : Ok(row);
     }
+
+    [HttpGet("{workflowTaskId:guid}/transitions")]
+    public async Task<ActionResult<IReadOnlyList<InspectorFeeAuditEntryDto>>> ListTransitions(
+        Guid workflowTaskId,
+        CancellationToken ct) =>
+        Ok(await _fees.ListTransitionsAsync(workflowTaskId, ct));
 
     [HttpPatch("{workflowTaskId:guid}")]
     [Authorize(Policy = CapabilityPolicyNames.ManageOperations)]
@@ -79,15 +97,19 @@ public class InspectorFeesController : ControllerBase
         CancellationToken ct)
     {
         var action = request.Action.Trim().ToLowerInvariant();
-        if (IsFinanceAction(action) && !User.HasClaim(PlatformCapabilities.ClaimType, PlatformCapabilities.ManageFinancial))
-            return Forbid();
-        if (IsSupervisorAction(action) && !User.HasClaim(PlatformCapabilities.ClaimType, PlatformCapabilities.ManageOperations))
+        var ctx = await BuildActorContextAsync(ct);
+        if (ctx.UserId is null) return Unauthorized();
+        if (!IsAuthorizedForAction(action, ctx))
             return Forbid();
 
-        var userId = CurrentUserId();
-        if (userId is null) return Unauthorized();
-
-        var (row, error) = await _fees.TransitionAsync(workflowTaskId, request, userId, ct);
+        var (row, error) = await _fees.TransitionAsync(
+            workflowTaskId,
+            request,
+            ctx.UserId,
+            ctx.AssigneeId,
+            ctx.IsOperationsManager,
+            ctx.IsFinancialOfficer,
+            ct);
         if (error is not null)
             return BadRequest(new { error });
         return row is null ? NotFound() : Ok(row);
@@ -99,25 +121,85 @@ public class InspectorFeesController : ControllerBase
         CancellationToken ct)
     {
         var action = request.Action.Trim().ToLowerInvariant();
-        if (IsFinanceAction(action) && !User.HasClaim(PlatformCapabilities.ClaimType, PlatformCapabilities.ManageFinancial))
-            return Forbid();
-        if (IsSupervisorAction(action) && !User.HasClaim(PlatformCapabilities.ClaimType, PlatformCapabilities.ManageOperations))
+        var ctx = await BuildActorContextAsync(ct);
+        if (ctx.UserId is null) return Unauthorized();
+        if (!IsAuthorizedForAction(action, ctx))
             return Forbid();
 
-        var userId = CurrentUserId();
-        if (userId is null) return Unauthorized();
-
-        var result = await _fees.BatchTransitionAsync(request, userId, ct);
+        var result = await _fees.BatchTransitionAsync(
+            request,
+            ctx.UserId,
+            ctx.AssigneeId,
+            ctx.IsOperationsManager,
+            ctx.IsFinancialOfficer,
+            ct);
         return Ok(result);
     }
 
-    private static bool IsFinanceAction(string action) =>
-        action is "invoice" or "record-payment" or "return";
+    [HttpPost("disbursement-batch")]
+    public async Task<ActionResult<CreateDisbursementBatchResult>> CreateDisbursementBatch(
+        [FromBody] CreateDisbursementBatchRequest request,
+        CancellationToken ct)
+    {
+        var ctx = await BuildActorContextAsync(ct);
+        if (ctx.UserId is null) return Unauthorized();
+        if (string.IsNullOrWhiteSpace(ctx.AssigneeId))
+            return Forbid();
 
-    private static bool IsSupervisorAction(string action) =>
-        action is "submit-to-finance";
+        var result = await _fees.CreateDisbursementBatchAsync(
+            request,
+            ctx.UserId,
+            ctx.AssigneeId,
+            ct);
+        return Ok(result);
+    }
 
-    private string? CurrentUserId() =>
-        User.FindFirstValue(ClaimTypes.NameIdentifier)
-        ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+    private static bool IsAuthorizedForAction(string action, ActorContext ctx)
+    {
+        return action switch
+        {
+            InspectorFeeActions.SubmitToSupervisor
+                or InspectorFeeActions.CreateDisbursementRequest =>
+                !string.IsNullOrWhiteSpace(ctx.AssigneeId),
+
+            InspectorFeeActions.ApproveToFinance
+                or InspectorFeeActions.ResendToFinance
+                or InspectorFeeActions.ReturnToOffice => ctx.IsOperationsManager,
+
+            InspectorFeeActions.Disburse
+                or InspectorFeeActions.ReturnToSupervisor
+                or InspectorFeeActions.InquiryToOffice => ctx.IsFinancialOfficer,
+
+            _ => false,
+        };
+    }
+
+    private async Task<ActorContext> BuildActorContextAsync(CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        var isOperationsManager = User.HasClaim(
+            PlatformCapabilities.ClaimType,
+            PlatformCapabilities.ManageOperations);
+        var isFinancialOfficer = User.HasClaim(
+            PlatformCapabilities.ClaimType,
+            PlatformCapabilities.ManageFinancial);
+
+        string? assigneeId = null;
+        if (!string.IsNullOrWhiteSpace(userId))
+        {
+            assigneeId = await _db.UserProfiles.AsNoTracking()
+                .Where(p => p.UserId == userId)
+                .Select(p => p.DistributionAssigneeId)
+                .FirstOrDefaultAsync(ct);
+        }
+
+        return new ActorContext(userId, assigneeId, isOperationsManager, isFinancialOfficer);
+    }
+
+    private sealed record ActorContext(
+        string? UserId,
+        string? AssigneeId,
+        bool IsOperationsManager,
+        bool IsFinancialOfficer);
 }

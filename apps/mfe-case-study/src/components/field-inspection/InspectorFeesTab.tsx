@@ -14,6 +14,7 @@ import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 import { InspectorFeesBillingTable } from "./InspectorFeesBillingTable";
+import { PartyFeeWorkflowTable } from "../fees/PartyFeeWorkflowTable";
 
 export type PartyFeesVariant = "field-inspection" | "engineering-survey";
 
@@ -33,40 +34,40 @@ const COPY: Record<
   "field-inspection": {
     title: "أتعاب المعاين",
     intro:
-      "الأتعاب متفق عليها مسبقاً أو تُحدَّد قبل الفوترة — لا تُدخل ضمن المعاينة الميدانية. تُراجَع هنا قبل اعتماد الفاتورة.",
+      "بعد إنجاز العمل ارفع المعاملة للمشرف. وعند جاهزيتها للصرف أنشئ «أمر صرف» من شاشة الاتعاب.",
     partyTypeColumn: "نوع المعاين",
     partyTypeEmployeeHint: "(عمولة)",
     emptyLine: "لا توجد أتعاب مسجّلة بعد.",
     emptyHint:
       "تظهر هنا بعد توزيع مهمة المعاينة وإرسال المعاينة الميدانية.",
     tableHint:
-      "ملخص أتعاب كل العقارات المسندة إليك — يحددها المشرف قبل الفوترة.",
+      "ملخص أتعاب كل العقارات المسندة إليك — ارفع للمشرف عند الإنجاز.",
     footer:
-      "المعاين المتعاون له أتعاب لكل عقار؛ المعاين الموظف له عمولة يمنحها المشرف وتكون أقل بكثير. كل حسم يجب أن يكون مصحوباً بسبب موضّح.",
+      "المعاين المتعاون له أتعاب لكل عقار؛ المعاين الموظف له عمولة يمنحها المشرف. كل حسم يتطلب سبباً موضحاً.",
   },
   "engineering-survey": {
     title: "أتعاب المكتب الهندسي",
     intro:
-      "الأتعاب متفق عليها مسبقاً أو تُحدَّد قبل الفوترة — لا تُدخل ضمن الرفع المساحي. تُراجَع هنا قبل اعتماد الفاتورة.",
+      "بعد إنجاز الرفع ارفع المعاملة للمشرف. وعند جاهزيتها للصرف أنشئ «أمر صرف» من شاشة الاتعاب.",
     partyTypeColumn: "نوع المكتب",
     partyTypeEmployeeHint: "(داخلي)",
     emptyLine: "لا توجد أتعاب مسجّلة بعد.",
     emptyHint:
       "تظهر هنا بعد توزيع مهمة الرفع المساحي وإرسال التقرير المساحي.",
     tableHint:
-      "ملخص أتعاب كل العقارات المسندة إليك — يحددها المشرف قبل الفوترة.",
+      "ملخص أتعاب كل العقارات المسندة إليك — ارفع للمشرف عند الإنجاز.",
     footer:
-      "المكتب المتعاقد له أتعاب لكل عقار؛ المكتب الداخلي له أتعاب أقل يحددها المشرف. كل حسم يجب أن يكون مصحوباً بسبب موضّح.",
+      "المكتب المتعاقد له أتعاب لكل عقار؛ المكتب الداخلي له أتعاب أقل يحددها المشرف. كل حسم يتطلب سبباً موضحاً.",
   },
 };
 
 const SUPERVISOR_COPY = {
-  title: "مراجعة الأتعاب والفوترة",
+  title: "مراجعة الأتعاب والصرف",
   intro:
-    "راجع الأتعاب والحسومات لكل العقارات، ثم أرسل الجاهزة للمالية. الاستبعاد المؤقت لا يغيّر حالة الفوترة.",
+    "راجع الأتعاب والحسومات لكل العقارات. الاعتماد والإرسال للمالية من تبويب «الأمور المالية» في شاشة الاتعاب.",
   emptyLine: "لا توجد أتعاب مسجّلة بعد.",
   emptyHint: "تظهر هنا بعد توزيع مهام المعاينة أو الرفع المساحي.",
-  tableHint: "جميع أتعاب المعاينة والرفع المساحي — تعديل الحسم والاستبعاد قبل الإرسال للمالية.",
+  tableHint: "جميع أتعاب المعاينة والرفع المساحي — الحسم هنا؛ الاعتماد من «الأمور المالية».",
   footer:
     "بعد الإرسال للمالية تُقفل التعديلات حتى يُعاد السجل باعتراض. كل حسم يتطلب سبباً موضحاً.",
   partyTypeColumn: "نوع الطرف",
@@ -125,19 +126,27 @@ export function InspectorFeesTab({
         {queueReady && rows.length === 0 ? (
           <EmptyState line={copy.emptyLine} hint={copy.emptyHint} />
         ) : (
-          <InspectorFeesBillingTable
-            rows={rows}
-            mode={billingMode}
-            pending={queuePending}
-            partyTypeColumn={
-              isSupervisor
-                ? SUPERVISOR_COPY.partyTypeColumn
-                : COPY[variant].partyTypeColumn
-            }
-            partyTypeEmployeeHint={
-              isSupervisor ? "" : COPY[variant].partyTypeEmployeeHint
-            }
-          />
+          isSupervisor ? (
+            <InspectorFeesBillingTable
+              rows={rows}
+              mode={billingMode}
+              pending={queuePending}
+              partyTypeColumn={
+                isSupervisor
+                  ? SUPERVISOR_COPY.partyTypeColumn
+                  : COPY[variant].partyTypeColumn
+              }
+              partyTypeEmployeeHint={
+                isSupervisor ? "" : COPY[variant].partyTypeEmployeeHint
+              }
+            />
+          ) : (
+            <PartyFeeWorkflowTable
+              rows={rows}
+              role="office"
+              pending={queuePending}
+            />
+          )
         )}
         <QueueTableHint>{copy.tableHint}</QueueTableHint>
       </div>
@@ -153,13 +162,13 @@ export function InspectorFeesTab({
 
       <StatGrid cols={isSupervisor ? 4 : 3} flush>
         <StatCard accent="green" flush>
-          <StatLabel>صافي قبل الفوترة (ر.س)</StatLabel>
-          <StatValue value={summary?.netPreBillingSar ?? 0} countUp />
+          <StatLabel>مسودة / مُعاد (ر.س)</StatLabel>
+          <StatValue value={summary?.netDraftSar ?? 0} countUp />
         </StatCard>
         {isSupervisor ? (
           <StatCard accent="blue" flush>
-            <StatLabel>جاهزة للفوترة (ر.س)</StatLabel>
-            <StatValue value={summary?.readyForBillingSar ?? 0} countUp />
+            <StatLabel>بانتظار الاعتماد (ر.س)</StatLabel>
+            <StatValue value={summary?.supReviewSar ?? 0} countUp />
           </StatCard>
         ) : null}
         <StatCard accent="red" flush>
@@ -167,8 +176,8 @@ export function InspectorFeesTab({
           <StatValue value={summary?.totalDiscountsSar ?? 0} countUp />
         </StatCard>
         <StatCard accent="blue" flush>
-          <StatLabel>مفوتر (ر.س)</StatLabel>
-          <StatValue value={summary?.invoicedSar ?? 0} countUp />
+          <StatLabel>مصروف (ر.س)</StatLabel>
+          <StatValue value={summary?.disbursedSar ?? 0} countUp />
         </StatCard>
       </StatGrid>
 
@@ -184,7 +193,7 @@ export function InspectorFeesTab({
           <p className="text-xs text-text-3">جاري تحميل الأتعاب…</p>
         ) : rows.length === 0 ? (
           <EmptyState line={copy.emptyLine} hint={copy.emptyHint} />
-        ) : (
+        ) : isSupervisor ? (
           <InspectorFeesBillingTable
             rows={rows}
             mode={billingMode}
@@ -197,6 +206,8 @@ export function InspectorFeesTab({
               isSupervisor ? "" : COPY[variant].partyTypeEmployeeHint
             }
           />
+        ) : (
+          <PartyFeeWorkflowTable rows={rows} role="office" />
         )}
 
         <p className="mt-3.5 text-[11px] leading-relaxed text-text-3">

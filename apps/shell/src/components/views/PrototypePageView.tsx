@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import type { PageId } from "@platform/types";
 import { PARTY_TASK_PAGE_IDS } from "@platform/app-shared/prototype/party-task-pages";
+import { PanelSkeleton } from "@platform/design-system";
 
 const DashboardView = dynamic(
   () => import("@dashboard/mfe").then((m) => m.DashboardView),
@@ -86,6 +87,11 @@ const PartyFeesView = dynamic(
   () => import("@case-study/mfe").then((m) => m.PartyFeesView),
   { ssr: false },
 );
+const AuditLogView = dynamic(
+  () =>
+    import("@/components/views/AuditLogView").then((m) => m.AuditLogView),
+  { ssr: false },
+);
 const PartyActiveTaskViewHost = dynamic(
   () =>
     import("@/components/party-tasks/PartyActiveTaskViewHost").then(
@@ -115,6 +121,7 @@ const VIEWS: Partial<Record<PageId, ComponentType>> = {
   "failure-types": FailureTypesView,
   "case-study-info-roles": CaseStudyInfoRolesView,
   "party-fees": PartyFeesView,
+  "audit-log": AuditLogView,
 };
 
 for (const pageId of PARTY_TASK_PAGE_IDS) {
@@ -137,11 +144,15 @@ export function PrototypePageView({ page }: { page: PageId }) {
 
   if (needsSuspense) {
     return (
-      <Suspense fallback={null}>
+      <Suspense fallback={<PanelSkeleton className="p-4" />}>
         <View />
       </Suspense>
     );
   }
 
-  return <View />;
+  return (
+    <Suspense fallback={<PanelSkeleton className="p-4" />}>
+      <View />
+    </Suspense>
+  );
 }

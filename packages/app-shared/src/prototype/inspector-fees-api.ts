@@ -1,9 +1,13 @@
 import {
   batchTransitionInspectorFees,
+  createDisbursementBatch,
   listInspectorFees,
+  listInspectorFeeTransitions,
   patchInspectorFee,
   transitionInspectorFee,
   type BatchInspectorFeeTransitionRequest,
+  type CreateDisbursementBatchRequest,
+  type CreateDisbursementBatchResult,
   type InspectorFeeRowDto,
   type InspectorFeesSummaryDto,
   type InspectorFeeTransitionRequest,
@@ -13,11 +17,12 @@ import {
 import { workOrdersApiConfig } from "./work-orders-api-config";
 
 const EMPTY_SUMMARY: InspectorFeesSummaryDto = {
-  netPreBillingSar: 0,
-  readyForBillingSar: 0,
+  netDraftSar: 0,
+  supReviewSar: 0,
+  atFinanceSar: 0,
+  disbReqSar: 0,
+  disbursedSar: 0,
   totalDiscountsSar: 0,
-  invoicedSar: 0,
-  paidSar: 0,
   rows: [],
 };
 
@@ -62,4 +67,21 @@ export async function runInspectorFeeBatchTransition(
 
   const result = await batchTransitionInspectorFees(config, body);
   return result.ok ? result.data : null;
+}
+
+export async function runCreateDisbursementBatch(
+  body: CreateDisbursementBatchRequest,
+): Promise<CreateDisbursementBatchResult | null> {
+  const config = workOrdersApiConfig();
+  if (!config) return null;
+
+  const result = await createDisbursementBatch(config, body);
+  return result.ok ? result.data : null;
+}
+
+export async function loadInspectorFeeTransitions(workflowTaskId: string) {
+  const config = workOrdersApiConfig();
+  if (!config) return [];
+  const result = await listInspectorFeeTransitions(config, workflowTaskId);
+  return result.ok ? result.data : [];
 }
