@@ -214,11 +214,18 @@ export {
 } from "./reporting";
 
 export {
+  batchTransitionInspectorFees,
   inspectorFeeStatusLabel,
+  inspectorFeeStatusTone,
   listInspectorFees,
   patchInspectorFee,
+  transitionInspectorFee,
+  type BatchInspectorFeeTransitionRequest,
+  type BatchInspectorFeeTransitionResult,
+  type InspectorFeeAction,
   type InspectorFeeBillingStatus,
   type InspectorFeeRowDto,
+  type InspectorFeeTransitionRequest,
   type InspectorFeesApiConfig,
   type InspectorFeesSummaryDto,
   type ListInspectorFeesQuery,

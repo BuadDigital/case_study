@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BOURSE_INQUIRY_IDENTIFIER_STATUS,
   CLASSIFICATION_OPTIONS,
@@ -20,16 +20,14 @@ import { RegField, RegSelect } from "@platform/app-shared/registration/FormField
 import type { FieldErrors } from "@platform/app-shared/registration/registration-utils";
 import {
   Badge,
-  Button,
   Card,
   CardBody,
   cn,
   FormRow,
-  Input,
   Label,
   Note,
 } from "@platform/design-system";
-import { AssignmentDocAttachment } from "./AssignmentDocAttachment";
+import { PropertyFileUploadField } from "./PropertyFileUploadField";
 import { PoContactEditor } from "./PoContactEditor";
 
 type Props = {
@@ -56,92 +54,6 @@ const pillClass = (selected: boolean) =>
       ? "border-primary bg-primary text-white shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary)_20%,transparent)]"
       : "border-border bg-surface text-text-2 hover:border-primary-light hover:text-primary",
   );
-
-function PropertyFileUploadField({
-  id,
-  label,
-  fileName,
-  error,
-  attachPo,
-  propertyId,
-  docKind,
-  multiple,
-  onUpload,
-  onClear,
-}: {
-  id: string;
-  label: ReactNode;
-  fileName: string;
-  error?: string;
-  attachPo: string;
-  propertyId: string;
-  docKind?: "decree" | "delegation";
-  multiple?: boolean;
-  onUpload: (file: File) => void;
-  onClear: () => void;
-}) {
-  const hasFile = Boolean(fileName.trim());
-
-  if (hasFile) {
-    return (
-      <div className="mt-2 w-full">
-        <Label className="mb-1 text-[11px]">{label}</Label>
-        {docKind && attachPo ? (
-          <AssignmentDocAttachment
-            poNumber={attachPo}
-            propertyId={propertyId}
-            fileName={fileName}
-            docKind={docKind}
-            variant="inline"
-          />
-        ) : (
-          <p className="text-[11px] text-text-2">{fileName}</p>
-        )}
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="mt-1.5 h-auto px-0 text-[11px] text-primary"
-          onClick={onClear}
-        >
-          استبدال الملف
-        </Button>
-        {error ? (
-          <p className="mt-1 text-[10px] text-danger-text" role="alert">
-            {error}
-          </p>
-        ) : null}
-      </div>
-    );
-  }
-
-  return (
-    <div className="mt-2 w-full">
-      <Label className="mb-1 text-[11px]" htmlFor={id}>
-        {label}
-      </Label>
-      <Input
-        id={id}
-        type="file"
-        accept=".pdf,.jpg,.jpeg,.png"
-        multiple={multiple}
-        className="text-xs"
-        onChange={(e) => {
-          const file = multiple
-            ? Array.from(e.target.files ?? [])[0]
-            : e.target.files?.[0];
-          if (file) onUpload(file);
-          e.target.value = "";
-        }}
-      />
-      {error ? (
-        <p className="mt-1 text-[10px] text-danger-text" role="alert">
-          {error}
-        </p>
-      ) : null}
-    </div>
-  );
-}
 
 function selectIdentifierType(
   onPatch: Props["onPatch"],

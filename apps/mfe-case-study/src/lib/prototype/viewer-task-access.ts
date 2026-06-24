@@ -15,6 +15,7 @@ export function resolveQueueTasksForViewer(input: {
   partyAssignee?: boolean;
   assigneeRole?: RoleId;
   viewerEmail?: string | null;
+  viewerAssigneeId?: string | null;
   staffUsers?: StaffUser[];
 }): WorkflowTask[] {
   const all = input.tasks;
@@ -30,6 +31,7 @@ export function resolveQueueTasksForViewer(input: {
       input.assigneeRole,
       input.viewerEmail,
       input.staffUsers,
+      input.viewerAssigneeId,
     );
   }
 

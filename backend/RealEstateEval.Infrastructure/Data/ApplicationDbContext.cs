@@ -21,6 +21,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<PartyTaskSubmission> PartyTaskSubmissions => Set<PartyTaskSubmission>();
     public DbSet<FieldInspectionWorkspace> FieldInspectionWorkspaces => Set<FieldInspectionWorkspace>();
     public DbSet<InspectorFeeLedger> InspectorFeeLedgers => Set<InspectorFeeLedger>();
+    public DbSet<InspectorFeeTransition> InspectorFeeTransitions => Set<InspectorFeeTransition>();
     public DbSet<PropertyFailure> PropertyFailures => Set<PropertyFailure>();
     public DbSet<PropertyTimelineEntry> PropertyTimelineEntries => Set<PropertyTimelineEntry>();
     public DbSet<FieldDictionaryConfig> FieldDictionaryConfigs => Set<FieldDictionaryConfig>();
@@ -221,11 +222,26 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.InspectorType).HasMaxLength(32);
             e.Property(x => x.DiscountReason).HasMaxLength(2000);
             e.Property(x => x.BillingStatus).HasMaxLength(32);
+            e.Property(x => x.ExclusionReason).HasMaxLength(2000);
+            e.Property(x => x.InvoiceNumber).HasMaxLength(128);
             e.Property(x => x.AgreedFeeSar).HasPrecision(12, 2);
             e.Property(x => x.SupervisorDiscountSar).HasPrecision(12, 2);
             e.HasIndex(x => x.PoNumber);
             e.HasIndex(x => x.AssigneeId);
             e.HasIndex(x => x.BillingStatus);
+            e.HasIndex(x => x.ExcludedFromBatch);
+        });
+
+        builder.Entity<InspectorFeeTransition>(e =>
+        {
+            e.ToTable("InspectorFeeTransitions", DatabaseSchemas.CaseStudy);
+            e.HasKey(x => x.Id);
+            e.Property(x => x.FromStatus).HasMaxLength(32);
+            e.Property(x => x.ToStatus).HasMaxLength(32);
+            e.Property(x => x.Reason).HasMaxLength(2000);
+            e.Property(x => x.ActorUserId).HasMaxLength(450);
+            e.HasIndex(x => x.WorkflowTaskId);
+            e.HasIndex(x => x.CreatedAtUtc);
         });
 
         builder.Entity<PropertyFailure>(e =>

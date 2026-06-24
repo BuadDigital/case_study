@@ -1,8 +1,11 @@
 import { filterTasksForCaseStudy } from "@platform/app-shared/prototype/active-transactions";
 import { filterTasksForPartyKind } from "@platform/app-shared/prototype/party-task-pages";
 import type { PageId } from "@platform/types";
-import type { FieldInspectionWorkspaceListItemDto } from "@platform/api-client";
-import type { PendingBoursePropertyDto } from "@platform/api-client";
+import type {
+  FieldInspectionWorkspaceListItemDto,
+  InspectorFeeRowDto,
+  PendingBoursePropertyDto,
+} from "@platform/api-client";
 import { getCachedPartySubmission } from "@platform/app-shared/prototype/party-submission-api";
 import { filterEngineeringSurveyListedTasks } from "@engineering-office/mfe/lib/engineering-survey-queue";
 import { filterAppraiserListedTasks } from "@evaluator/mfe/lib/evaluator/evaluator-queue";
@@ -103,6 +106,32 @@ export const PAGE_SITUATION_CARDS: Partial<Record<PageId, PageSituationCardDef[]
     "property-inspection": partyCards("مكتملة"),
     "property-appraisal": partyCards(),
     "active-survey": partyCards(),
+    "party-fees": [
+      {
+        key: "total",
+        label: "إجمالي العقارات",
+        sub: "مسجّلة في الأتعاب",
+        tone: "blue",
+      },
+      {
+        key: "preBilling",
+        label: "قبل الفوترة",
+        sub: "بانتظار المراجعة",
+        tone: "warn",
+      },
+      {
+        key: "readyForBilling",
+        label: "جاهزة للفوترة",
+        sub: "لدى المالية",
+        tone: "blue",
+      },
+      {
+        key: "invoiced",
+        label: "مفوترة / مدفوعة",
+        sub: "تمت الفوترة أو التحصيل",
+        tone: "green",
+      },
+    ],
   };
 
 export function pageSituationCards(pageId: PageId): PageSituationCardDef[] | null {
@@ -225,6 +254,40 @@ export function computeBourseSituation(input: {
   };
 }
 
+export function computeFeesPageSituation(
+  rows: InspectorFeeRowDto[],
+): Pick<
+  PageSituationValues,
+  "total" | "preBilling" | "readyForBilling" | "invoiced"
+> {
+  let preBilling = 0;
+  let readyForBilling = 0;
+  let invoiced = 0;
+
+  for (const row of rows) {
+    if (
+      row.billingStatus === "pre-billing" ||
+      row.billingStatus === "returned"
+    ) {
+      preBilling += 1;
+    } else if (row.billingStatus === "ready-for-billing") {
+      readyForBilling += 1;
+    } else if (
+      row.billingStatus === "invoiced" ||
+      row.billingStatus === "paid"
+    ) {
+      invoiced += 1;
+    }
+  }
+
+  return {
+    total: rows.length,
+    preBilling,
+    readyForBilling,
+    invoiced,
+  };
+}
+
 export function computeGovernmentReviewSituation(
   tasks: WorkflowTask[],
 ): Pick<PageSituationValues, "openPos" | "openTasks" | "submitted" | "returned"> {
@@ -316,6 +379,10 @@ export function computePageSituationValues(
 
   if (pageId === "government-review") {
     return computeGovernmentReviewSituation(scoped);
+  }
+
+  if (pageId === "party-fees") {
+    return null;
   }
 
   if (

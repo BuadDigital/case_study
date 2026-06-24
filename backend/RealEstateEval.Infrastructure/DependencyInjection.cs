@@ -125,6 +125,7 @@ public static class DependencyInjection
     public static IServiceCollection AddFailuresInfrastructure(this IServiceCollection services)
     {
         services.AddScoped<IInspectorFeeService, InspectorFeeService>();
+        services.AddScoped<IPropertyTimelineService, PropertyTimelineService>();
         services.AddScoped<IWorkflowTaskService, WorkflowTaskService>();
         services.AddScoped<IFailureService, FailureService>();
         services.AddScoped<IFailureTypesCatalogService, FailureTypesCatalogService>();

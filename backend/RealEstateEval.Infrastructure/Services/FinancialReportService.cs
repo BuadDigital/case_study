@@ -1,7 +1,8 @@
-using System.Text.Json;
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Caching;
 using RealEstateEval.Infrastructure.Data;
@@ -11,6 +12,8 @@ namespace RealEstateEval.Infrastructure.Services;
 public sealed class FinancialReportService : IFinancialReportService
 {
     private static readonly Guid SingletonId = Guid.Parse("f1a2b3c4-d5e6-7890-abcd-ef1234567890");
+    private static readonly CultureInfo ArCulture = CultureInfo.GetCultureInfo("ar-SA");
+
     private readonly ApplicationDbContext _db;
     private readonly ApiResponseCache _cache;
 
@@ -25,12 +28,7 @@ public sealed class FinancialReportService : IFinancialReportService
         return await _cache.GetOrCreateAsync(
             CacheKeys.FinancialSummary,
             CacheDurations.Financial,
-            async ct =>
-            {
-                var row = await _db.FinancialReportConfigs.AsNoTracking()
-                    .FirstOrDefaultAsync(x => x.Id == SingletonId, ct);
-                return row is null ? DefaultSummary() : Deserialize(row.ReportJson);
-            },
+            BuildFromDatabaseAsync,
             cancellationToken);
     }
 
@@ -38,7 +36,7 @@ public sealed class FinancialReportService : IFinancialReportService
         FinancialSummaryDto request,
         CancellationToken cancellationToken = default)
     {
-        var payload = JsonSerializer.Serialize(request);
+        var payload = System.Text.Json.JsonSerializer.Serialize(request);
         var row = await _db.FinancialReportConfigs
             .FirstOrDefaultAsync(x => x.Id == SingletonId, cancellationToken);
         var now = DateTime.UtcNow;
@@ -61,94 +59,195 @@ public sealed class FinancialReportService : IFinancialReportService
 
         await _db.SaveChangesAsync(cancellationToken);
         await _cache.RemoveAsync(CacheKeys.FinancialSummary, cancellationToken);
-        return Deserialize(row.ReportJson);
+        return request;
     }
 
-    private static FinancialSummaryDto Deserialize(string json)
+    private async Task<FinancialSummaryDto> BuildFromDatabaseAsync(CancellationToken cancellationToken)
     {
-        try
+        var ledgers = await _db.InspectorFeeLedgers.AsNoTracking().ToListAsync(cancellationToken);
+        var taskIds = ledgers.Select(l => l.WorkflowTaskId).Distinct().ToList();
+        var tasks = taskIds.Count == 0
+            ? new Dictionary<Guid, WorkflowTask>()
+            : await _db.WorkflowTasks.AsNoTracking()
+                .Where(t => taskIds.Contains(t.Id))
+                .ToDictionaryAsync(t => t.Id, cancellationToken);
+
+        var assigneeIds = ledgers
+            .Select(l => l.AssigneeId?.Trim())
+            .Where(id => !string.IsNullOrEmpty(id))
+            .Select(id => id!)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        var nameByAssigneeId = await LoadAssigneeNamesAsync(assigneeIds, cancellationToken);
+
+        var costRows = BuildCostRows(ledgers, tasks, nameByAssigneeId);
+        var revenueRows = await BuildRevenueRowsAsync(ledgers, cancellationToken);
+
+        var externalCosts = ledgers
+            .Where(l => !string.Equals(l.InspectorType, "موظف", StringComparison.Ordinal))
+            .Sum(l => NetFee(l));
+        var pendingPayables = ledgers
+            .Where(l => l.BillingStatus is InspectorFeeBillingStatus.ReadyForBilling
+                or InspectorFeeBillingStatus.Invoiced)
+            .Sum(l => NetFee(l));
+
+        var revenueTotal = 0m;
+        var profitMargin = revenueTotal - externalCosts;
+
+        return new FinancialSummaryDto
         {
-            return JsonSerializer.Deserialize<FinancialSummaryDto>(json, JsonOptions)
-                ?? DefaultSummary();
-        }
-        catch
-        {
-            return DefaultSummary();
-        }
+            PeriodLabel = CurrentPeriodLabel(),
+            RevenueTotal = FormatSar(revenueTotal),
+            ExternalCostsTotal = FormatSar(externalCosts),
+            ProfitMarginTotal = FormatSar(profitMargin),
+            ProfitMarginPercentLabel = MarginPercentLabel(revenueTotal, profitMargin),
+            PendingPayablesTotal = FormatSar(pendingPayables),
+            RevenueGrandTotal = FormatSar(revenueTotal),
+            RevenueRows = revenueRows,
+            CostRows = costRows,
+        };
     }
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    private async Task<Dictionary<string, string>> LoadAssigneeNamesAsync(
+        IReadOnlyList<string> assigneeIds,
+        CancellationToken cancellationToken)
     {
-        PropertyNameCaseInsensitive = true,
+        if (assigneeIds.Count == 0)
+            return new Dictionary<string, string>(StringComparer.Ordinal);
+
+        var profiles = await (
+            from profile in _db.UserProfiles.AsNoTracking()
+            join user in _db.Users.AsNoTracking() on profile.UserId equals user.Id
+            where profile.DistributionAssigneeId != null
+            select new
+            {
+                AssigneeId = profile.DistributionAssigneeId!,
+                user.DisplayName,
+            }).ToListAsync(cancellationToken);
+
+        var map = profiles
+            .Where(p => assigneeIds.Contains(p.AssigneeId, StringComparer.Ordinal))
+            .ToDictionary(p => p.AssigneeId, p => p.DisplayName, StringComparer.Ordinal);
+
+        foreach (var id in assigneeIds)
+        {
+            if (map.ContainsKey(id)) continue;
+            map[id] = id;
+        }
+
+        return map;
+    }
+
+    private static List<FinancialCostRowDto> BuildCostRows(
+        IReadOnlyList<InspectorFeeLedger> ledgers,
+        IReadOnlyDictionary<Guid, WorkflowTask> tasks,
+        IReadOnlyDictionary<string, string> nameByAssigneeId)
+    {
+        return ledgers
+            .GroupBy(l => l.AssigneeId?.Trim() ?? "—", StringComparer.Ordinal)
+            .Select(group =>
+            {
+                var assigneeId = group.Key;
+                var name = assigneeId == "—"
+                    ? "غير مسند"
+                    : nameByAssigneeId.GetValueOrDefault(assigneeId, assigneeId);
+                var total = group.Sum(NetFee);
+                var dominantKind = group
+                    .Select(l => tasks.TryGetValue(l.WorkflowTaskId, out var t) ? t.Kind : null)
+                    .Where(k => !string.IsNullOrWhiteSpace(k))
+                    .GroupBy(k => k!)
+                    .OrderByDescending(g => g.Count())
+                    .Select(g => g.Key)
+                    .FirstOrDefault();
+                var inspectorType = group
+                    .GroupBy(l => l.InspectorType)
+                    .OrderByDescending(g => g.Count())
+                    .Select(g => g.Key)
+                    .FirstOrDefault() ?? "موظف";
+
+                return new FinancialCostRowDto
+                {
+                    Name = name,
+                    Type = CostTypeCode(inspectorType),
+                    Cost = FormatSar(total),
+                    Category = CategoryLabel(dominantKind),
+                };
+            })
+            .OrderBy(r => r.Name, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private async Task<List<FinancialRevenueRowDto>> BuildRevenueRowsAsync(
+        IReadOnlyList<InspectorFeeLedger> ledgers,
+        CancellationToken cancellationToken)
+    {
+        var orders = await _db.WorkOrders.AsNoTracking()
+            .Include(w => w.Properties)
+            .OrderBy(w => w.PoNumber)
+            .ToListAsync(cancellationToken);
+
+        if (orders.Count == 0)
+            return [];
+
+        var rows = new List<FinancialRevenueRowDto>();
+        foreach (var order in orders)
+        {
+            var po = order.PoNumber.Trim();
+            var propertyCount = order.Properties.Count;
+            var poLedgers = ledgers.Where(l => l.PoNumber.Trim() == po).ToList();
+            var invoiced = poLedgers.Count(l =>
+                l.BillingStatus == InspectorFeeBillingStatus.Invoiced);
+            var tracked = poLedgers.Count;
+            var excluded = Math.Max(0, propertyCount - tracked);
+
+            rows.Add(new FinancialRevenueRowDto
+            {
+                Po = po,
+                Billed = invoiced,
+                Excluded = excluded,
+                Value = "—",
+                Status = propertyCount > 0 && invoiced >= tracked && tracked > 0
+                    ? "done"
+                    : "progress",
+            });
+        }
+
+        return rows;
+    }
+
+    private static decimal NetFee(InspectorFeeLedger ledger) =>
+        InspectorFeeRules.NetFee(ledger.AgreedFeeSar, ledger.SupervisorDiscountSar);
+
+    private static string CostTypeCode(string inspectorType) =>
+        inspectorType switch
+        {
+            "موظف" => "int",
+            "متعاون" => "free",
+            _ => "ext",
+        };
+
+    private static string CategoryLabel(string? kind) => kind switch
+    {
+        "field-inspection" => "معاينة",
+        "engineering-survey" => "رفع مساحي",
+        "property-appraisal" => "تقييم",
+        _ => "أخرى",
     };
 
-    private static FinancialSummaryDto DefaultSummary() => new()
+    private static string FormatSar(decimal amount) =>
+        $"{amount.ToString("N0", ArCulture)} ر.س";
+
+    private static string MarginPercentLabel(decimal revenue, decimal margin)
     {
-        PeriodLabel = "يناير",
-        RevenueTotal = "312,400",
-        ExternalCostsTotal = "87,600",
-        ProfitMarginTotal = "224,800",
-        ProfitMarginPercentLabel = "72% من الإيرادات",
-        PendingPayablesTotal = "43,200",
-        RevenueGrandTotal = "55,800 ر",
-        RevenueRows =
-        [
-            new FinancialRevenueRowDto
-            {
-                Po = "PO-2024-014",
-                Billed = 8,
-                Excluded = 0,
-                Value = "18,400 ر",
-                Status = "done",
-            },
-            new FinancialRevenueRowDto
-            {
-                Po = "PO-2024-015",
-                Billed = 1,
-                Excluded = 0,
-                Value = "2,200 ر",
-                Status = "done",
-            },
-            new FinancialRevenueRowDto
-            {
-                Po = "PO-2024-017",
-                Billed = 3,
-                Excluded = 0,
-                Value = "6,600 ر",
-                Status = "done",
-            },
-            new FinancialRevenueRowDto
-            {
-                Po = "PO-2024-016",
-                Billed = 13,
-                Excluded = 2,
-                Value = "28,600 ر",
-                Status = "progress",
-            },
-        ],
-        CostRows =
-        [
-            new FinancialCostRowDto
-            {
-                Name = "مكتب الرياض الهندسي",
-                Type = "ext",
-                Cost = "18,400 ر",
-                Category = "رفع مساحي",
-            },
-            new FinancialCostRowDto
-            {
-                Name = "عبدالله الكثيري",
-                Type = "int",
-                Cost = "12,000 ر",
-                Category = "تقييم",
-            },
-            new FinancialCostRowDto
-            {
-                Name = "حسن عطية",
-                Type = "free",
-                Cost = "3,200 ر",
-                Category = "معاينة",
-            },
-        ],
-    };
+        if (revenue <= 0) return "—";
+        var pct = (int)Math.Round(margin / revenue * 100m, MidpointRounding.AwayFromZero);
+        return $"{pct}% من الإيرادات";
+    }
+
+    private static string CurrentPeriodLabel()
+    {
+        var now = DateTime.UtcNow;
+        return now.ToString("MMMM yyyy", ArCulture);
+    }
 }

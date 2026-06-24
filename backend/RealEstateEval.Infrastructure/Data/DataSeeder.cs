@@ -2,7 +2,9 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Infrastructure.Data;
 
@@ -32,6 +34,17 @@ public static class DataSeeder
         {
             await BackfillReviewerCityCoverageAsync(db, userManager, cancellationToken);
             await BackfillDistributionAssigneeIdsAsync(db, userManager, cancellationToken);
+            try
+            {
+                await BackfillPartyChildAssigneeIdsAsync(db, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine(
+                    $"BackfillPartyChildAssigneeIds skipped: {ex.Message}");
+            }
+            await RemoveDemoPropertyKeyRecordsAsync(db, cancellationToken);
+            await RemoveSeededFinancialReportConfigAsync(db, cancellationToken);
             return;
         }
 
@@ -94,7 +107,7 @@ public static class DataSeeder
         return await db.SurveyOffices.AnyAsync(cancellationToken);
     }
 
-    /// <summary>Re-insert demo survey/valuation/key rows after a full system reset.</summary>
+    /// <summary>Re-insert demo survey/valuation rows after a full system reset.</summary>
     public static Task ReseedPrototypeModuleDataAsync(
         ApplicationDbContext db,
         CancellationToken cancellationToken = default) =>
@@ -114,6 +127,30 @@ public static class DataSeeder
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var db = services.GetRequiredService<ApplicationDbContext>();
         await EnsureHrStaffAsync(userManager, db, seed, cancellationToken);
+    }
+
+    private static readonly Guid[] DemoPropertyKeyIds =
+    [
+        Guid.Parse("c3000001-0000-4000-8000-000000000001"),
+        Guid.Parse("c3000001-0000-4000-8000-000000000002"),
+        Guid.Parse("c3000001-0000-4000-8000-000000000003"),
+    ];
+
+    /// <summary>Removes legacy demo rows for إدارة المفاتيح (E-440x / seeded GUIDs).</summary>
+    public static async Task RemoveDemoPropertyKeyRecordsAsync(
+        ApplicationDbContext db,
+        CancellationToken cancellationToken = default)
+    {
+        var demoRows = await db.PropertyKeyRecords
+            .Where(r =>
+                DemoPropertyKeyIds.Contains(r.Id) ||
+                r.PropertyId.StartsWith("E-440"))
+            .ToListAsync(cancellationToken);
+
+        if (demoRows.Count == 0) return;
+
+        db.PropertyKeyRecords.RemoveRange(demoRows);
+        await db.SaveChangesAsync(cancellationToken);
     }
 
 
@@ -601,6 +638,91 @@ public static class DataSeeder
         await db.SaveChangesAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Align party child task <c>AssigneeId</c> with parent distribution (fixes empty/stale ids).
+    /// </summary>
+    private static async Task BackfillPartyChildAssigneeIdsAsync(
+        ApplicationDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var parentIds = await db.WorkflowTasks
+            .AsNoTracking()
+            .Where(t => t.Kind == "case-study-property")
+            .Select(t => t.Id)
+            .ToListAsync(cancellationToken);
+
+        if (parentIds.Count == 0) return;
+
+        var changed = false;
+        var now = DateTime.UtcNow;
+
+        foreach (var parentId in parentIds)
+        {
+            WorkflowTask? parent;
+            try
+            {
+                parent = await db.WorkflowTasks
+                    .AsTracking()
+                    .FirstOrDefaultAsync(t => t.Id == parentId, cancellationToken);
+            }
+            catch (Exception)
+            {
+                continue;
+            }
+
+            if (parent is null || string.IsNullOrWhiteSpace(parent.DistributionJson))
+                continue;
+
+            var distribution = WorkflowTaskMapper.DeserializeDistribution(parent.DistributionJson);
+            if (distribution is null) continue;
+
+            List<WorkflowTask> children;
+            try
+            {
+                children = await db.WorkflowTasks
+                    .AsTracking()
+                    .Where(t => t.ParentTaskId == parentId)
+                    .ToListAsync(cancellationToken);
+            }
+            catch (Exception)
+            {
+                continue;
+            }
+
+            foreach (var child in children)
+            {
+                var expectedId = PartyAssigneeIdFromDistribution(child.Kind, distribution);
+                if (string.IsNullOrWhiteSpace(expectedId)) continue;
+
+                var trimmed = expectedId.Trim();
+                if (string.Equals(child.AssigneeId, trimmed, StringComparison.Ordinal))
+                    continue;
+
+                child.AssigneeId = trimmed;
+                child.UpdatedAtUtc = now;
+                changed = true;
+            }
+        }
+
+        if (changed)
+            await db.SaveChangesAsync(cancellationToken);
+    }
+
+    private static string? PartyAssigneeIdFromDistribution(
+        string kind,
+        TaskDistributionDraftDto distribution)
+    {
+        return kind switch
+        {
+            "government-review" => distribution.GovernmentAuditorId,
+            "field-inspection" => distribution.InspectorId,
+            "property-appraisal" => distribution.ValuatorId,
+            "valuation-coordination" => distribution.OperationsCoordinatorId,
+            "engineering-survey" => distribution.EngineeringOfficeId,
+            _ => null,
+        };
+    }
+
 
 
     private static async Task EnsureHrStaffAsync(
@@ -1069,6 +1191,8 @@ public static class DataSeeder
         ApplicationDbContext db,
         CancellationToken cancellationToken)
     {
+        await RemoveDemoPropertyKeyRecordsAsync(db, cancellationToken);
+
         if (!await db.SurveyOffices.AnyAsync(cancellationToken))
         {
             var now = DateTime.UtcNow;
@@ -1177,58 +1301,6 @@ public static class DataSeeder
                 });
         }
 
-        if (!await db.PropertyKeyRecords.AnyAsync(cancellationToken))
-        {
-            var now = DateTime.UtcNow;
-            db.PropertyKeyRecords.AddRange(
-                new PropertyKeyRecord
-                {
-                    Id = Guid.Parse("c3000001-0000-4000-8000-000000000001"),
-                    PropertyId = "E-4402",
-                    PoNumber = "PO-2024-018",
-                    Area = "مكة المكرمة",
-                    PropertyType = "شقة",
-                    HasKey = true,
-                    Specialist = "أسامة الصالحي",
-                    WorkflowStatus = "progress",
-                    UpdatedAtUtc = now,
-                },
-                new PropertyKeyRecord
-                {
-                    Id = Guid.Parse("c3000001-0000-4000-8000-000000000002"),
-                    PropertyId = "E-4403",
-                    PoNumber = "PO-2024-016",
-                    Area = "جدة",
-                    PropertyType = "فيلا",
-                    HasKey = true,
-                    Specialist = "أيمن مجرشي",
-                    WorkflowStatus = "done",
-                    UpdatedAtUtc = now,
-                },
-                new PropertyKeyRecord
-                {
-                    Id = Guid.Parse("c3000001-0000-4000-8000-000000000003"),
-                    PropertyId = "E-4407",
-                    PoNumber = "PO-2024-016",
-                    Area = "جدة",
-                    PropertyType = "أرض",
-                    HasKey = true,
-                    Specialist = "أيمن مجرشي",
-                    WorkflowStatus = "progress",
-                    UpdatedAtUtc = now,
-                });
-        }
-
-        if (!await db.FinancialReportConfigs.AnyAsync(cancellationToken))
-        {
-            db.FinancialReportConfigs.Add(new FinancialReportConfig
-            {
-                Id = Guid.Parse("f1a2b3c4-d5e6-7890-abcd-ef1234567890"),
-                ReportJson = FinancialReportSeedJson,
-                UpdatedAtUtc = DateTime.UtcNow,
-            });
-        }
-
         if (!await db.FailureTypesCatalogConfigs.AnyAsync(cancellationToken))
         {
             db.FailureTypesCatalogConfigs.Add(new FailureTypesCatalogConfig
@@ -1242,9 +1314,17 @@ public static class DataSeeder
         await db.SaveChangesAsync(cancellationToken);
     }
 
-    private const string FinancialReportSeedJson = """
-        {"periodLabel":"يناير","revenueTotal":"312,400","externalCostsTotal":"87,600","profitMarginTotal":"224,800","profitMarginPercentLabel":"72% من الإيرادات","pendingPayablesTotal":"43,200","revenueGrandTotal":"55,800 ر","revenueRows":[{"po":"PO-2024-014","billed":8,"excluded":0,"value":"18,400 ر","status":"done"},{"po":"PO-2024-015","billed":1,"excluded":0,"value":"2,200 ر","status":"done"},{"po":"PO-2024-017","billed":3,"excluded":0,"value":"6,600 ر","status":"done"},{"po":"PO-2024-016","billed":13,"excluded":2,"value":"28,600 ر","status":"progress"}],"costRows":[{"name":"مكتب الرياض الهندسي","type":"ext","cost":"18,400 ر","category":"رفع مساحي"},{"name":"عبدالله الكثيري","type":"int","cost":"12,000 ر","category":"تقييم"},{"name":"حسن عطية","type":"free","cost":"3,200 ر","category":"معاينة"}]}
-        """;
+    private static readonly Guid SeededFinancialReportConfigId =
+        Guid.Parse("f1a2b3c4-d5e6-7890-abcd-ef1234567890");
+
+    public static async Task RemoveSeededFinancialReportConfigAsync(
+        ApplicationDbContext db,
+        CancellationToken cancellationToken = default)
+    {
+        await db.FinancialReportConfigs
+            .Where(x => x.Id == SeededFinancialReportConfigId)
+            .ExecuteDeleteAsync(cancellationToken);
+    }
 
 }
 

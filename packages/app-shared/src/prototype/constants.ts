@@ -85,6 +85,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
       "failures",
       "suspended-transactions",
       "failure-types",
+      "party-fees",
       "system-fields-catalog",
       "system-screen-catalog",
     ],
@@ -130,7 +131,13 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "أس",
     bg: "var(--info-bg)",
     tc: "var(--info)",
-    pages: ["dashboard", "property-inspection", "system-fields-catalog", "system-screen-catalog"],
+    pages: [
+      "dashboard",
+      "property-inspection",
+      "party-fees",
+      "system-fields-catalog",
+      "system-screen-catalog",
+    ],
   },
   "government-reviewer": {
     name: "فراس كمرين",
@@ -146,7 +153,13 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "جد",
     bg: "var(--purple-bg)",
     tc: "var(--purple)",
-    pages: ["dashboard", "active-survey", "system-fields-catalog", "system-screen-catalog"],
+    pages: [
+      "dashboard",
+      "active-survey",
+      "party-fees",
+      "system-fields-catalog",
+      "system-screen-catalog",
+    ],
   },
   "financial-officer": {
     name: "إيمان النهدي",
@@ -204,7 +217,6 @@ export const NAV: NavItem[] = [
     label: "التقارير المالية",
     icon: "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z",
     grp: null,
-    placeholder: true,
   },
   {
     id: "kpi",
@@ -212,6 +224,12 @@ export const NAV: NavItem[] = [
     icon: "M18 20V10M12 20V4M6 20v-6",
     grp: null,
     placeholder: true,
+  },
+  {
+    id: "party-fees",
+    label: "الاتعاب والفوتره",
+    icon: "M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6",
+    grp: null,
   },
 ];
 
@@ -246,6 +264,7 @@ export const PAGE_TITLES: Record<PageId, string> = {
   "valuation-coordination": "استلام التقييم",
   "property-appraisal": "تقييم العقار",
   "active-survey": "الرفع المساحي",
+  "party-fees": "الاتعاب والفوتره",
   "system-fields-catalog": "قاموس الحقول المركزي",
   "system-screen-catalog": "دليل الشاشات",
   financial: "التقارير المالية",
@@ -273,6 +292,7 @@ export const PAGE_BREADCRUMB: Record<PageId, string> = {
   "valuation-coordination": "المعاملات النشطة / استلام التقييم",
   "property-appraisal": "المعاملات النشطة / تقييم العقار",
   "active-survey": "المعاملات النشطة / الرفع المساحي",
+  "party-fees": "الاتعاب والفوتره",
   "system-fields-catalog": "عام / قاموس الحقول المركزي",
   "system-screen-catalog": "عام / دليل الشاشات",
   financial: "المالية",

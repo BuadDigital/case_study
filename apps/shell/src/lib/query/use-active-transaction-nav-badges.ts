@@ -36,7 +36,7 @@ function poRecordsMap(records: PoIntakeRecord[] | undefined) {
 
 /** Red sidebar counts for المعاملات النشطة (open work only). */
 export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>> {
-  const { role, viewerEmail } = usePrototype();
+  const { role, viewerEmail, distributionAssigneeId } = usePrototype();
   const resolvedViewerEmail = viewerEmail ?? getAuthSession()?.user.email ?? null;
   const { data: tasks } = useWorkflowTasksQuery();
   const { data: poRecords } = usePoRecordsQuery();
@@ -54,6 +54,7 @@ export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>>
       undefined,
       resolvedViewerEmail,
       staffUsers,
+      distributionAssigneeId,
     );
 
     const primaryOpen = filterTasksForPrimaryData(mine, poByNumber).filter(
@@ -97,5 +98,5 @@ export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>>
     }
 
     return badges;
-  }, [role, resolvedViewerEmail, tasks, poRecords, pendingBourse, failures, staffUsers]);
+  }, [role, resolvedViewerEmail, distributionAssigneeId, tasks, poRecords, pendingBourse, failures, staffUsers]);
 }

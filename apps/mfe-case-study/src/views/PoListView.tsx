@@ -40,10 +40,20 @@ import { ltrValueClass } from "../components/po-intake/PropertyDetailFields";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { formatDateAr, isPastDue } from "../lib/prototype/po-intake-data";
 import { deletePoRecord } from "../lib/prototype/po-intake-storage";
-import { poHeaderEditPath, poPropertiesPath } from "../lib/po-routes";
+import { poHeaderEditPath, poPropertiesPath, poPropertyPath } from "../lib/po-routes";
+import {
+  buildPoDeedIndex,
+  buildPoListDisplay,
+  classifyPoListSearch,
+  poListSearchModeLabel,
+  type PoDeedIndexEntry,
+} from "../lib/prototype/po-list-search";
 import { PoIntakeModal } from "@case-study/mfe/components/po-intake/PoIntakeModal";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { usePoListRowsQuery } from "@case-study/mfe/query/case-study-queries";
+import {
+  usePoListRowsQuery,
+  usePropertyListItemsQuery,
+} from "@case-study/mfe/query/case-study-queries";
 import {
   canDeletePo,
   canEditPoHeader,
@@ -93,6 +103,50 @@ function poListStatusMeta(status: PoRow["status"]): {
 function PoListStatusBadge({ status }: { status: PoRow["status"] }) {
   const { tone, label } = poListStatusMeta(status);
   return <Badge tone={tone}>{label}</Badge>;
+}
+
+function DeedColumnCell({
+  deeds,
+  highlightDeed,
+}: {
+  deeds: PoDeedIndexEntry[];
+  highlightDeed?: string;
+}) {
+  if (deeds.length === 0) {
+    return <span className="text-text-3">—</span>;
+  }
+
+  if (highlightDeed) {
+    const hit = deeds.find((d) => d.deedNumber === highlightDeed) ?? deeds[0];
+    return (
+      <div className="flex flex-col gap-0.5">
+        <span className="font-semibold text-text">
+          <bdi dir="ltr" className={ltrValueClass}>
+            {hit.deedNumber}
+          </bdi>
+        </span>
+        {hit.area ? (
+          <span className="text-[10.5px] text-text-3">{hit.area}</span>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (deeds.length === 1) {
+    return (
+      <span className="font-medium text-text-2">
+        <bdi dir="ltr" className={ltrValueClass}>
+          {deeds[0].deedNumber}
+        </bdi>
+      </span>
+    );
+  }
+
+  return (
+    <span className="text-[12px] text-text-2">
+      {deeds.length.toLocaleString("ar-SA")} صكوك
+    </span>
+  );
 }
 
 function SearchIcon() {
@@ -240,7 +294,14 @@ export function PoListView() {
   }, [showIntake, searchParams, router]);
 
   const { data: rows } = usePoListRowsQuery();
+  const { data: propertyItems } = usePropertyListItemsQuery();
   const list = useMemo(() => rows ?? [], [rows]);
+  const deedIndex = useMemo(
+    () => buildPoDeedIndex(propertyItems ?? []),
+    [propertyItems],
+  );
+  const searchMode = useMemo(() => classifyPoListSearch(search), [search]);
+  const searchModeLabel = poListSearchModeLabel(searchMode);
   const statsReady = rows !== undefined;
 
   const stats = useMemo(() => {
@@ -266,31 +327,38 @@ export function PoListView() {
   );
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    let result = list.filter((row) => {
-      const matchQ =
-        !q ||
-        row.id.toLowerCase().includes(q) ||
-        row.type.toLowerCase().includes(q);
+    const q = search.trim();
+    let result = buildPoListDisplay(list, q, deedIndex).filter((entry) => {
+      const row = entry.view === "po" ? entry.item.row : entry.item.row;
       const matchStatus = !statusFilter || row.status === statusFilter;
       const matchType = !typeFilter || row.type === typeFilter;
-      return matchQ && matchStatus && matchType;
+      return matchStatus && matchType;
     });
 
     result = [...result].sort((a, b) => {
+      const rowA = a.view === "po" ? a.item.row : a.item.row;
+      const rowB = b.view === "po" ? b.item.row : b.item.row;
       let cmp = 0;
       if (sortKey === "po") {
-        cmp = a.id.localeCompare(b.id);
+        cmp = rowA.id.localeCompare(rowB.id);
+        if (cmp === 0 && a.view === "property" && b.view === "property") {
+          cmp = a.item.deed.deedNumber.localeCompare(
+            b.item.deed.deedNumber,
+            "ar",
+          );
+        }
       } else if (sortKey === "received") {
-        cmp = (a.date || "").localeCompare(b.date || "");
+        cmp = (rowA.date || "").localeCompare(rowB.date || "");
       } else {
-        cmp = (a.dueDate || "").localeCompare(b.dueDate || "");
+        cmp = (rowA.dueDate || "").localeCompare(rowB.dueDate || "");
       }
       return sortDir === "asc" ? cmp : -cmp;
     });
 
     return result;
-  }, [list, search, statusFilter, typeFilter, sortKey, sortDir]);
+  }, [list, search, deedIndex, statusFilter, typeFilter, sortKey, sortDir]);
+
+  const propertyDeedView = searchMode === "deed" && search.trim().length > 0;
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -395,18 +463,27 @@ export function PoListView() {
                   أمر عمل جديد
                 </Button>
               ) : null}
-              <div className="relative min-w-[min(100%,220px)] flex-1 basis-[200px] max-w-[280px]">
+              <div className="relative min-w-[min(100%,220px)] flex-1 basis-[240px] max-w-[320px]">
                 <span className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-text-3">
                   <SearchIcon />
                 </span>
                 <Input
-                  className={cn(PO_LIST_TOOLBAR_FIELD, "pe-8 text-[12.5px]")}
+                  className={cn(
+                    PO_LIST_TOOLBAR_FIELD,
+                    "pe-8 text-[12.5px]",
+                    search.trim() && searchModeLabel && "ps-[6.25rem]",
+                  )}
                   type="search"
-                  placeholder="بحث برقم PO أو نوع الإسناد…"
+                  placeholder="PO أو رقم الصك أو نوع الإسناد…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   aria-label="بحث أوامر العمل"
                 />
+                {search.trim() && searchModeLabel ? (
+                  <span className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2 rounded-full bg-info-bg px-2 py-0.5 text-[10px] font-medium text-info-text">
+                    {searchModeLabel}
+                  </span>
+                ) : null}
               </div>
               <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:flex-none">
                 <Select
@@ -460,6 +537,7 @@ export function PoListView() {
                         <SortIcon />
                       </button>
                     </Th>
+                    <Th>رقم الصك</Th>
                     <Th>نوع الإسناد</Th>
                     <Th>العقارات</Th>
                     <Th>المكتملة</Th>
@@ -491,11 +569,11 @@ export function PoListView() {
                 </THead>
                 <TBody>
                   {!statsReady ? (
-                    <SkeletonTableRows rows={8} cols={10} />
+                    <SkeletonTableRows rows={8} cols={11} />
                   ) : filtered.length === 0 ? (
                     <Tr hoverable={false}>
                       <Td
-                        colSpan={10}
+                        colSpan={11}
                         className="cursor-default py-10 text-center text-[13px] text-text-3"
                       >
                         <div className="flex flex-col items-center justify-center gap-2">
@@ -509,24 +587,57 @@ export function PoListView() {
                       </Td>
                     </Tr>
                   ) : (
-                    pageRows.map((p) => {
+                    pageRows.map((entry) => {
+                      const p = entry.view === "po" ? entry.item.row : entry.item.row;
+                      const deedEntry =
+                        entry.view === "property" ? entry.item.deed : null;
+                      const poDeeds =
+                        entry.view === "po" ? entry.item.deeds : [entry.item.deed];
+                      const match =
+                        entry.view === "po" ? entry.item.match : entry.item.match;
                       const pct =
                         p.count > 0
                           ? Math.round((p.done / p.count) * 100)
                           : 0;
                       const urgent = isDueUrgent(p.dueDate, p.status);
+                      const target =
+                        deedEntry || match?.propertyId
+                          ? poPropertyPath(
+                              p.id,
+                              deedEntry?.propertyId ?? match!.propertyId!,
+                            )
+                          : poPropertiesPath(p.id);
+                      const rowKey =
+                        entry.view === "property"
+                          ? `${p.id}-${deedEntry!.propertyId}`
+                          : p.id;
+
                       return (
                         <Tr
-                          key={p.id}
+                          key={rowKey}
                           hoverable={false}
-                          className={cn("group", queueTableRowClassName)}
-                          onClick={() => router.push(poPropertiesPath(p.id))}
+                          className={cn(
+                            "group",
+                            queueTableRowClassName,
+                            propertyDeedView && "bg-[color-mix(in_srgb,var(--info-bg)_22%,var(--surface))]",
+                          )}
+                          onClick={() => router.push(target)}
                         >
                           <Td>
                             <PoNumber
                               value={p.id}
                               link
                               className="text-[13px] font-medium text-primary"
+                            />
+                          </Td>
+                          <Td>
+                            <DeedColumnCell
+                              deeds={poDeeds}
+                              highlightDeed={
+                                match?.deedNumber ??
+                                deedEntry?.deedNumber ??
+                                undefined
+                              }
                             />
                           </Td>
                           <Td className="whitespace-nowrap">{p.type}</Td>

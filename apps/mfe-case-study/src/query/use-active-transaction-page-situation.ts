@@ -5,8 +5,9 @@ import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { getAuthSession } from "@platform/auth-client";
 import { prefetchPartySubmissionsForTasks } from "@platform/app-shared/prototype/party-submission-api";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
-import type { PageId } from "@platform/types";
+import type { PageId, RoleId } from "@platform/types";
 import {
+  computeFeesPageSituation,
   computePageSituationValues,
   pageSituationCards,
   type PageSituationCardDef,
@@ -25,6 +26,13 @@ import {
   usePoRecordsQuery,
   useWorkflowTasksQuery,
 } from "./case-study-queries";
+import { useInspectorFeesQuery } from "./inspector-fees-queries";
+
+function feesTaskKindForRole(role: RoleId): string | undefined {
+  if (role === "field-inspector") return "field-inspection";
+  if (role === "engineering-office") return "engineering-survey";
+  return undefined;
+}
 
 const PARTY_PAGE_IDS = new Set(
   Object.values(PARTY_TASK_PAGES).map((def) => def.pageId),
@@ -39,17 +47,35 @@ export type ActiveTransactionPageSituation = {
 export function useActiveTransactionPageSituation(
   pageId: PageId | undefined,
 ): ActiveTransactionPageSituation | null {
-  const { role, viewerEmail } = usePrototype();
+  const { role, viewerEmail, distributionAssigneeId } = usePrototype();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
   const cards = pageId ? pageSituationCards(pageId) : null;
 
-  const needsTasks = Boolean(cards);
-  const needsPo = Boolean(cards && pageId !== "bourse-inquiry");
+  const isFeesPage = pageId === "party-fees";
+  const needsTasks = Boolean(cards && !isFeesPage);
+  const needsPo = Boolean(cards && pageId !== "bourse-inquiry" && !isFeesPage);
   const needsBourse = pageId === "bourse-inquiry";
   const needsFailures = pageId === "bourse-inquiry";
   const needsInspectionWorkspaces = pageId === "property-inspection";
   const needsPartyPrefetch = Boolean(pageId && PARTY_PAGE_IDS.has(pageId));
+
+  const isSupervisorFees =
+    isFeesPage && (role === "section-supervisor" || role === "cdo" || role === "general-manager");
+  const feesTaskKind = isFeesPage && !isSupervisorFees ? feesTaskKindForRole(role) : undefined;
+  const feesAssigneeId =
+    isFeesPage && !isSupervisorFees ? distributionAssigneeId ?? undefined : undefined;
+
+  const { data: feesSummary, isFetched: feesFetched } = useInspectorFeesQuery(
+    {
+      assigneeId: feesAssigneeId,
+      submittedOnly: false,
+      taskKind: feesTaskKind,
+    },
+    {
+      enabled: isFeesPage && (isSupervisorFees || Boolean(feesTaskKind && feesAssigneeId)),
+    },
+  );
 
   const { data: tasks, isFetched: tasksFetched } = useWorkflowTasksQuery();
   const { data: poRecords = [], isFetched: poRecordsFetched } =
@@ -89,6 +115,7 @@ export function useActiveTransactionPageSituation(
   ]);
 
   const ready =
+    (isFeesPage ? feesFetched : true) &&
     (!needsTasks || tasksFetched) &&
     (!needsPo || poRecordsFetched) &&
     (!needsBourse || bourseFetched) &&
@@ -97,6 +124,13 @@ export function useActiveTransactionPageSituation(
 
   return useMemo(() => {
     if (!pageId || !cards) return null;
+
+    if (isFeesPage) {
+      const values = ready
+        ? computeFeesPageSituation(feesSummary?.rows ?? [])
+        : Object.fromEntries(cards.map((card) => [card.key, undefined]));
+      return { cards, values, ready };
+    }
 
     const poByNumber = new Map(
       (poRecords ?? []).map((record) => [record.poNumber.trim(), record]),
@@ -142,7 +176,9 @@ export function useActiveTransactionPageSituation(
   }, [
     pageId,
     cards,
+    isFeesPage,
     ready,
+    feesSummary,
     role,
     tasks,
     poRecords,
