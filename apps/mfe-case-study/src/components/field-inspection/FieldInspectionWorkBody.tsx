@@ -391,7 +391,7 @@ export function FieldInspectionWorkBody({
             يُستخدم الموقع للتحقق من النزول الميداني. يجب أن تتطابق الإحداثيات
             مع موقع العقار الفعلي — اضغط على الخريطة أو اسحب الدبوس لضبطه.
           </p>
-          <div className="mb-3 grid grid-cols-1 items-end gap-2.5 sm:grid-cols-[1fr_1fr_auto]">
+          <div className="mb-3 grid grid-cols-1 gap-2.5 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
             <div>
               <Label htmlFor="ins-lat" className="text-xs">
                 خط العرض (Latitude) <span className="text-danger-text">*</span>
@@ -420,16 +420,21 @@ export function FieldInspectionWorkBody({
                 onChange={(e) => persist({ mapLongitude: e.target.value })}
               />
             </div>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-[34px] whitespace-nowrap"
-              disabled={locked}
-              onClick={captureGps}
-            >
-              <i className="ti ti-current-location" aria-hidden /> موقعي الحالي
-            </Button>
+            <div className="flex flex-col">
+              <Label className="pointer-events-none text-xs invisible" aria-hidden="true">
+                موقع
+              </Label>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-[34px] whitespace-nowrap"
+                disabled={locked}
+                onClick={captureGps}
+              >
+                <i className="ti ti-current-location" aria-hidden /> موقعي الحالي
+              </Button>
+            </div>
           </div>
           {fieldErrors.mapLatitude ? (
             <p className="mb-3 text-[11px] text-danger-text" role="alert">
