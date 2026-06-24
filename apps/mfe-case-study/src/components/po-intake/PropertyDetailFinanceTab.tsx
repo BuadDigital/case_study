@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Badge,
   InlineLoadingSkeleton,
@@ -8,22 +8,27 @@ import {
   StatGrid,
   StatLabel,
   StatValue,
+  Tab,
+  TabBar,
+  TabPanel,
 } from "@platform/design-system";
 import {
   inspectorFeeStatusLabel,
   inspectorFeeStatusTone,
+  inspectorFeeWorkStatusTone,
 } from "@platform/api-client";
+import { loadPropertyEnfazRevenue } from "@platform/app-shared/prototype/enfaz-billing-api";
+import { useQuery } from "@tanstack/react-query";
+import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { EmptyState, InfoBox, SectionHeader } from "./PropertyDetailFields";
+import { PartyFeeWorkflowTable } from "../fees/PartyFeeWorkflowTable";
 import { InspectorFeesBillingTable } from "../field-inspection/InspectorFeesBillingTable";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
+import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import type { PoPropertyIntake } from "../../lib/prototype/po-intake-data";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 
 const FEE_KINDS = new Set(["field-inspection", "engineering-survey"]);
-
-function kindLabel(kind: string): string {
-  return kind === "engineering-survey" ? "الرفع المساحي" : "المعاينة الميدانية";
-}
 
 export function PropertyDetailFinanceTab({
   poNumber,
@@ -34,6 +39,11 @@ export function PropertyDetailFinanceTab({
   property: PoPropertyIntake;
   tasks: WorkflowTask[];
 }) {
+  const { hasCapability } = usePrototype();
+  const isSupervisor = hasCapability("manage-operations");
+  const isFinance = hasCapability("manage-financial");
+  const [sub, setSub] = useState<"out" | "in">("out");
+
   const feeTasks = useMemo(
     () =>
       tasks.filter(
@@ -61,14 +71,20 @@ export function PropertyDetailFinanceTab({
     [summary?.rows, feeTaskIds],
   );
 
-  const preBillingCount = rows.filter(
-    (r) => r.billingStatus === "pre-billing" || r.billingStatus === "returned",
-  ).length;
+  const { data: enfazRevenue } = useQuery({
+    queryKey: [...prototypeKeys.all, "enfaz-billing", poNumber, property.id],
+    queryFn: () => loadPropertyEnfazRevenue(poNumber, property.id),
+    enabled: Boolean(property.id),
+  });
+
+  const netOut = rows.reduce((s, r) => s + r.netFeeSar, 0);
+  const enfazIn = enfazRevenue?.hasEnfazRevenue ? enfazRevenue.enfazFeeSar ?? 0 : null;
+  const margin = enfazIn != null ? enfazIn - netOut : null;
 
   if (feeTasks.length === 0) {
     return (
       <>
-        <SectionHeader>أتعاب العقار</SectionHeader>
+        <SectionHeader>مالية المعاملة</SectionHeader>
         <EmptyState
           icon="💰"
           title="لا توجد مهام أتعاب"
@@ -85,7 +101,7 @@ export function PropertyDetailFinanceTab({
   if (rows.length === 0) {
     return (
       <>
-        <SectionHeader>أتعاب العقار</SectionHeader>
+        <SectionHeader>مالية المعاملة</SectionHeader>
         <InfoBox icon="ℹ">
           جاري تجهيز سجلات الأتعاب — أعد تحميل الصفحة بعد لحظات إن لم تظهر.
         </InfoBox>
@@ -93,69 +109,108 @@ export function PropertyDetailFinanceTab({
     );
   }
 
-  const netTotal = rows.reduce((sum, row) => sum + row.netFeeSar, 0);
-
   return (
     <>
-      <SectionHeader>ملخص الأتعاب والفوترة</SectionHeader>
-      <StatGrid cols={3} flush className="mb-4">
-        <StatCard accent="blue" flush>
-          <StatLabel>صافي الأتعاب (ر.س)</StatLabel>
-          <StatValue value={netTotal} countUp />
-        </StatCard>
-        <StatCard accent="warn" flush>
-          <StatLabel>قبل الفوترة</StatLabel>
-          <StatValue value={preBillingCount} countUp />
-        </StatCard>
-        <StatCard accent="green" flush>
-          <StatLabel>جاهزة / مفوترة</StatLabel>
-          <StatValue
-            value={
-              rows.filter(
-                (r) =>
-                  r.billingStatus === "ready-for-billing" ||
-                  r.billingStatus === "invoiced" ||
-                  r.billingStatus === "paid",
-              ).length
-            }
-            countUp
-          />
-        </StatCard>
-      </StatGrid>
+      <SectionHeader>مالية المعاملة</SectionHeader>
+      {isSupervisor ? (
+        <div className="mb-3">
+          <InfoBox icon="ℹ">
+            المشرف: يطبّق الحسم على أدوار هذه المعاملة فقط. الاعتماد يتم في تبويب
+            «الأمور المالية».
+          </InfoBox>
+        </div>
+      ) : isFinance ? (
+        <div className="mb-3">
+          <InfoBox icon="ℹ">
+            الإدارة المالية: عرض فقط — التنفيذ من سطح المالية.
+          </InfoBox>
+        </div>
+      ) : null}
 
-      {feeTasks.map((task) => {
-        const row = rows.find((r) => r.workflowTaskId === task.id);
-        const statusLabel = row
-          ? row.billingStatusLabel || inspectorFeeStatusLabel(row.billingStatus)
-          : null;
+      <TabBar className="mb-3">
+        <Tab active={sub === "out"} onClick={() => setSub("out")}>
+          {isSupervisor || isFinance
+            ? "التزامات على الشركة (صادرة)"
+            : "أتعابي عن المعاملة"}
+        </Tab>
+        <Tab active={sub === "in"} onClick={() => setSub("in")}>
+          إيراد إنفاذ (وارد)
+        </Tab>
+      </TabBar>
 
-        return (
-          <section key={task.id} className="mb-5 last:mb-0">
-            <div className="mb-2 flex flex-wrap items-center gap-2">
-              <h3 className="text-[13px] font-semibold text-text">
-                {kindLabel(task.kind)}
-              </h3>
-              {row ? (
-                <Badge tone={inspectorFeeStatusTone(row.billingStatus)}>
-                  {statusLabel}
-                </Badge>
-              ) : null}
-              {row?.excludedFromBatch ? (
-                <Badge tone="danger">مستبعد من الفوترة</Badge>
-              ) : null}
-            </div>
-            {!row ? (
-              <InfoBox icon="ℹ">لم يُنشأ سجل الأتعاب بعد.</InfoBox>
-            ) : null}
-          </section>
-        );
-      })}
+      <TabPanel>
+        {sub === "out" ? (
+          <>
+            <StatGrid cols={3} flush className="mb-4">
+              <StatCard accent="blue" flush>
+                <StatLabel>إجمالي الالتزامات (صافي)</StatLabel>
+                <StatValue value={netOut} countUp />
+              </StatCard>
+              <StatCard accent="warn" flush>
+                <StatLabel>إجمالي الحسومات</StatLabel>
+                <StatValue
+                  value={rows.reduce((s, r) => s + r.supervisorDiscountSar, 0)}
+                  countUp
+                />
+              </StatCard>
+              <StatCard accent={margin != null ? "green" : "gray"} flush>
+                <StatLabel>هامش المعاملة</StatLabel>
+                <StatValue value={margin ?? "—"} countUp={margin != null} />
+              </StatCard>
+            </StatGrid>
 
-      <SectionHeader>تفاصيل الأتعاب</SectionHeader>
-      <InspectorFeesBillingTable rows={rows} mode="readonly" />
-      <p className="mt-3 text-[11px] leading-relaxed text-text-3">
-        تعديل الأتعاب والإرسال للمالية من شاشة «الاتعاب والفوتره» للمشرف.
-      </p>
+            {isSupervisor ? (
+              <InspectorFeesBillingTable rows={rows} mode="supervisor" />
+            ) : (
+              <PartyFeeWorkflowTable
+                rows={rows}
+                role={isFinance ? "readonly" : "office"}
+              />
+            )}
+          </>
+        ) : (
+          <>
+            <StatGrid cols={3} flush className="mb-4">
+              <StatCard accent="blue" flush>
+                <StatLabel>إيراد إنفاذ (وارد)</StatLabel>
+                <StatValue value={enfazIn ?? "—"} countUp={enfazIn != null} />
+              </StatCard>
+              <StatCard accent="red" flush>
+                <StatLabel>التزاماتنا (صافي)</StatLabel>
+                <StatValue value={netOut} countUp />
+              </StatCard>
+              <StatCard accent={margin != null ? "green" : "gray"} flush>
+                <StatLabel>هامش المعاملة</StatLabel>
+                <StatValue value={margin ?? "—"} countUp={margin != null} />
+              </StatCard>
+            </StatGrid>
+            {enfazIn != null ? (
+              <InfoBox icon="✓">
+                عُبّئ إيراد إنفاذ لهذه المعاملة من سطح المالية، فظهر الهامش.
+              </InfoBox>
+            ) : (
+              <InfoBox icon="⏱">
+                إيراد إنفاذ يُعبّأ من المالية بعد اكتمال أمر العمل. حتى ذلك
+                يبقى «—» ولا يُحسب هامش.
+              </InfoBox>
+            )}
+          </>
+        )}
+      </TabPanel>
+
+      {rows.some((r) => r.workStatus) ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {rows.map((row) => (
+            <Badge
+              key={row.workflowTaskId}
+              tone={inspectorFeeWorkStatusTone(row.workStatus)}
+            >
+              {row.workStatusLabel} ·{" "}
+              {row.billingStatusLabel || inspectorFeeStatusLabel(row.billingStatus)}
+            </Badge>
+          ))}
+        </div>
+      ) : null}
     </>
   );
 }

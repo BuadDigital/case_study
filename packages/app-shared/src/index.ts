@@ -1,4 +1,18 @@
 export { PrototypeProvider, usePrototype } from "./contexts/PrototypeContext";
+export { Can, useCapability } from "./components/Can";
+export { useAuth } from "./hooks/useAuth";
+export { useQueryErrorState } from "./hooks/useQueryErrorState";
+export { useOnlineStatus } from "./hooks/useOnlineStatus";
+export { useFocusTrap } from "./hooks/useFocusTrap";
+export { useDraftAutosave } from "./hooks/useDraftAutosave";
+export { useBulkSelection } from "./hooks/useBulkSelection";
+export { getAppEnv } from "./env";
+export { isFeatureEnabled, type FeatureFlag } from "./feature-flags";
+export { LIVE_QUEUE_POLL_INTERVAL_MS } from "./query/live-query";
+export { NotificationProvider, useNotifications } from "./notifications/NotificationProvider";
+export { pushNotification } from "./notifications/notification-store";
+export { appendAuditLogEntry, listAuditLogEntries } from "./audit/audit-log-store";
+export { exportRowsToCsv } from "./export/export-csv";
 export * from "./domain/form/field-errors";
 export * from "./prototype/constants";
 export * from "./prototype/active-transactions";

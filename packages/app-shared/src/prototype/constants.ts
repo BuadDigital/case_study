@@ -227,7 +227,7 @@ export const NAV: NavItem[] = [
   },
   {
     id: "party-fees",
-    label: "الاتعاب والفوتره",
+    label: "الاتعاب والصرف",
     icon: "M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6",
     grp: null,
   },
@@ -264,15 +264,16 @@ export const PAGE_TITLES: Record<PageId, string> = {
   "valuation-coordination": "استلام التقييم",
   "property-appraisal": "تقييم العقار",
   "active-survey": "الرفع المساحي",
-  "party-fees": "الاتعاب والفوتره",
+  "party-fees": "الاتعاب والصرف",
   "system-fields-catalog": "قاموس الحقول المركزي",
   "system-screen-catalog": "دليل الشاشات",
-  financial: "التقارير المالية",
+  financial: "الإدارة المالية",
   kpi: "مؤشرات الأداء",
   users: "إدارة المستخدمين",
   courts: "المحاكم و الدوائر",
   "failure-types": "أنواع التعذرات",
   "case-study-info-roles": "علاقة المستخدم بالمعلومة",
+  "audit-log": "سجل التدقيق",
 };
 
 export const PAGE_BREADCRUMB: Record<PageId, string> = {
@@ -292,7 +293,7 @@ export const PAGE_BREADCRUMB: Record<PageId, string> = {
   "valuation-coordination": "المعاملات النشطة / استلام التقييم",
   "property-appraisal": "المعاملات النشطة / تقييم العقار",
   "active-survey": "المعاملات النشطة / الرفع المساحي",
-  "party-fees": "الاتعاب والفوتره",
+  "party-fees": "الاتعاب والصرف",
   "system-fields-catalog": "عام / قاموس الحقول المركزي",
   "system-screen-catalog": "عام / دليل الشاشات",
   financial: "المالية",
@@ -301,6 +302,7 @@ export const PAGE_BREADCRUMB: Record<PageId, string> = {
   courts: "جميع حقول النظام / المحاكم و الدوائر",
   "failure-types": "جميع حقول النظام / أنواع التعذرات",
   "case-study-info-roles": "جميع حقول النظام / علاقة المستخدم بالمعلومة",
+  "audit-log": "الإعدادات / سجل التدقيق",
 };
 
 /** Mock rows aligned with `requirment/system_prototype_4.html` (PO / VR / عقارات). */

@@ -27,10 +27,11 @@ import {
 } from "@platform/api-client";
 import { PoNumber } from "../ui/PoNumber";
 import {
-  runInspectorFeeBatchTransition,
   runInspectorFeeTransition,
   saveInspectorFeePatch,
 } from "@platform/app-shared/prototype/inspector-fees-api";
+import { FeeDiscountModal } from "@platform/app-shared/fees/FeeDiscountModal";
+import { FeeActionReasonModal } from "@platform/app-shared/fees/FeeActionReasonModal";
 
 export type FeesBillingMode = "readonly" | "supervisor" | "finance";
 
@@ -121,7 +122,7 @@ function SupervisorToolbar({
           {total.toLocaleString("ar-SA")} عقار
         </p>
         <p className="text-[11px] text-text-3">
-          {eligibleCount.toLocaleString("ar-SA")} قابل للإرسال للمالية
+          {eligibleCount.toLocaleString("ar-SA")} قابلة للمراجعة
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -140,7 +141,7 @@ function SupervisorToolbar({
           disabled={busy || selectedCount === 0}
           onClick={onBatchSubmit}
         >
-          إرسال المحدد للمالية
+          حفظ المحدد
         </Button>
       </div>
     </div>
@@ -166,6 +167,13 @@ export function InspectorFeesBillingTable({
   const [drafts, setDrafts] = useState<Record<string, RowDraft>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [discountRow, setDiscountRow] = useState<InspectorFeeRowDto | null>(
+    null,
+  );
+  const [reasonModal, setReasonModal] = useState<{
+    row: InspectorFeeRowDto;
+    action: "return-to-supervisor" | "inquiry-to-office";
+  } | null>(null);
 
   const eligibleIds = useMemo(
     () =>
@@ -226,15 +234,15 @@ export function InspectorFeesBillingTable({
 
   const transitionRow = async (
     row: InspectorFeeRowDto,
-    action: "submit-to-finance" | "invoice" | "record-payment" | "return",
-    extra?: { reason?: string; invoiceNumber?: string },
+    action: import("@platform/api-client").InspectorFeeAction,
+    extra?: { reason?: string; disbursementVoucher?: string },
   ) => {
     setBusyId(row.workflowTaskId);
     try {
       const result = await runInspectorFeeTransition(row.workflowTaskId, {
         action,
         reason: extra?.reason,
-        invoiceNumber: extra?.invoiceNumber,
+        disbursementVoucher: extra?.disbursementVoucher,
       });
       if (result) await invalidate();
     } finally {
@@ -242,17 +250,17 @@ export function InspectorFeesBillingTable({
     }
   };
 
-  const batchSubmit = async () => {
+  const batchSave = async () => {
     const ids = [...selected];
     if (ids.length === 0) return;
     setBusyId("batch");
     try {
-      await runInspectorFeeBatchTransition({
-        workflowTaskIds: ids,
-        action: "submit-to-finance",
-      });
+      for (const id of ids) {
+        const row = rows.find((r) => r.workflowTaskId === id);
+        if (!row) continue;
+        await saveRow(row);
+      }
       setSelected(new Set());
-      await invalidate();
     } finally {
       setBusyId(null);
     }
@@ -272,7 +280,7 @@ export function InspectorFeesBillingTable({
           busy={busyId === "batch"}
           onSelectAll={() => setSelected(new Set(eligibleIds))}
           onClear={() => setSelected(new Set())}
-          onBatchSubmit={() => void batchSubmit()}
+          onBatchSubmit={() => void batchSave()}
         />
       ) : null}
 
@@ -427,9 +435,9 @@ export function InspectorFeesBillingTable({
                             مستبعد
                           </Badge>
                         ) : null}
-                        {row.invoiceNumber ? (
+                        {row.disbursementVoucher ? (
                           <span className="text-[10px] text-text-3">
-                            {row.invoiceNumber}
+                            {row.disbursementVoucher}
                           </span>
                         ) : null}
                       </div>
@@ -439,7 +447,7 @@ export function InspectorFeesBillingTable({
                       <Td className="align-top">
                         {editing ? (
                           <div className="flex min-w-[8.5rem] flex-col gap-2">
-                            <div className="flex gap-1">
+                            <div className="flex flex-wrap gap-1">
                               <Button
                                 type="button"
                                 size="sm"
@@ -452,13 +460,11 @@ export function InspectorFeesBillingTable({
                               <Button
                                 type="button"
                                 size="sm"
-                                variant="primary"
-                                disabled={isBusy || draft.excludedFromBatch}
-                                onClick={() =>
-                                  void transitionRow(row, "submit-to-finance")
-                                }
+                                variant="outline"
+                                disabled={isBusy}
+                                onClick={() => setDiscountRow(row)}
                               >
-                                إرسال
+                                حسم
                               </Button>
                             </div>
                             <button
@@ -494,68 +500,47 @@ export function InspectorFeesBillingTable({
                           </div>
                         ) : mode === "finance" ? (
                           <div className="flex flex-col gap-1">
-                            {row.billingStatus === "ready-for-billing" ? (
+                            {row.billingStatus === "disb-req" ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="primary"
+                                disabled={isBusy}
+                                onClick={() => void transitionRow(row, "disburse")}
+                              >
+                                صرف
+                              </Button>
+                            ) : null}
+                            {row.billingStatus === "at-finance" ||
+                            row.billingStatus === "disb-req" ? (
                               <>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="primary"
-                                  disabled={isBusy}
-                                  onClick={() => {
-                                    const invoiceNumber =
-                                      window.prompt("رقم الفاتورة");
-                                    if (!invoiceNumber?.trim()) return;
-                                    void transitionRow(row, "invoice", {
-                                      invoiceNumber: invoiceNumber.trim(),
-                                    });
-                                  }}
-                                >
-                                  فوترة
-                                </Button>
                                 <Button
                                   type="button"
                                   size="sm"
                                   variant="outline"
-                                  disabled={isBusy}
-                                  onClick={() => {
-                                    const reason = window.prompt("سبب الإرجاع");
-                                    if (!reason?.trim()) return;
-                                    void transitionRow(row, "return", {
-                                      reason: reason.trim(),
-                                    });
-                                  }}
-                                >
-                                  إرجاع
-                                </Button>
-                              </>
-                            ) : null}
-                            {row.billingStatus === "invoiced" ? (
-                              <>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="primary"
                                   disabled={isBusy}
                                   onClick={() =>
-                                    void transitionRow(row, "record-payment")
+                                    setReasonModal({
+                                      row,
+                                      action: "return-to-supervisor",
+                                    })
                                   }
                                 >
-                                  تحصيل
+                                  إرجاع للمشرف
                                 </Button>
                                 <Button
                                   type="button"
                                   size="sm"
-                                  variant="outline"
+                                  variant="ghost"
                                   disabled={isBusy}
-                                  onClick={() => {
-                                    const reason = window.prompt("سبب الإرجاع");
-                                    if (!reason?.trim()) return;
-                                    void transitionRow(row, "return", {
-                                      reason: reason.trim(),
-                                    });
-                                  }}
+                                  onClick={() =>
+                                    setReasonModal({
+                                      row,
+                                      action: "inquiry-to-office",
+                                    })
+                                  }
                                 >
-                                  إرجاع
+                                  استفسار للمكتب
                                 </Button>
                               </>
                             ) : null}
@@ -572,6 +557,43 @@ export function InspectorFeesBillingTable({
           </TBody>
         </Table>
       </div>
+      <FeeDiscountModal
+        open={discountRow !== null}
+        row={discountRow}
+        onClose={() => setDiscountRow(null)}
+        onSave={async (patch) => {
+          if (!discountRow) return;
+          setBusyId(discountRow.workflowTaskId);
+          try {
+            const saved = await saveInspectorFeePatch(
+              discountRow.workflowTaskId,
+              patch,
+            );
+            if (saved) await invalidate();
+          } finally {
+            setBusyId(null);
+          }
+        }}
+      />
+      <FeeActionReasonModal
+        open={reasonModal !== null}
+        title={
+          reasonModal?.action === "inquiry-to-office"
+            ? "استفسار للمكتب"
+            : "إرجاع للمشرف"
+        }
+        label={
+          reasonModal?.action === "inquiry-to-office"
+            ? "نص الاستفسار"
+            : "سبب الإرجاع"
+        }
+        confirmLabel="تأكيد"
+        onClose={() => setReasonModal(null)}
+        onConfirm={async (reason) => {
+          if (!reasonModal) return;
+          await transitionRow(reasonModal.row, reasonModal.action, { reason });
+        }}
+      />
     </div>
   );
 }
@@ -579,6 +601,6 @@ export function InspectorFeesBillingTable({
 export function feesStatusFilter(
   mode: FeesBillingMode,
 ): InspectorFeeBillingStatus | undefined {
-  if (mode === "finance") return "ready-for-billing";
+  if (mode === "finance") return "disb-req";
   return undefined;
 }

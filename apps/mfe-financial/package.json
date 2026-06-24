@@ -20,6 +20,7 @@
     "@platform/auth-client": "*",
     "@platform/design-system": "*",
     "@platform/types": "*",
+    "@settings/mfe": "*",
     "@tanstack/react-query": "^5.100.11"
   },
   "peerDependencies": {

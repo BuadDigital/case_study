@@ -1,6 +1,14 @@
 "use client";
 
-import { useMemo, useRef, useState, useEffect, type ReactNode, type RefObject } from "react";
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  useEffect,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { useRouter } from "next/navigation";
 import { PartyCaseStudyFormTab } from "../components/case-study/PartyCaseStudyFormTab";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
@@ -20,6 +28,7 @@ import {
   FieldInspectionWorkBody,
   type FieldInspectionWorkHostRef,
 } from "../components/field-inspection/FieldInspectionWorkBody";
+import { useFieldInspectionWorkspacesQuery } from "../query/field-inspection-workspaces-queries";
 import { isFieldInspectionLocked } from "../lib/prototype/field-inspection-work-queue";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import { isGovernmentReviewLocked } from "../lib/prototype/government-review-work-queue";
@@ -172,6 +181,21 @@ export function PartyActiveTaskWork({
     hostRef.current?.onRefresh?.();
   };
 
+  const completePartyTaskSubmit = useCallback(
+    (toastMessage: string = def.completeMessage) => {
+      showToast(toastMessage, "success");
+      setSubmitSuccess(true);
+      refresh();
+      if (layout === "panel") {
+        window.setTimeout(() => exit(), 1800);
+      }
+    },
+    [def.completeMessage, layout, showToast],
+  );
+
+  const APPRAISAL_SUCCESS_MESSAGE =
+    "تم إرسال التقييم وإجابات الاستدلال لأخصائي دراسة الحالة.";
+
   const { data: record, isPending: recordLoading } = usePoRecordQuery(
     task.poNumber,
   );
@@ -192,15 +216,16 @@ export function PartyActiveTaskWork({
   const governmentHostRef = useRef<GovernmentReviewWorkHostRef>({});
   const coordinationHostRef = useRef<ValuationCoordinationWorkHostRef>({});
   const fieldInspectionHostRef = useRef<FieldInspectionWorkHostRef>({});
-  evaluatorHostRef.current.onSubmitted = refresh;
+  evaluatorHostRef.current.onSubmitted = () =>
+    completePartyTaskSubmit(APPRAISAL_SUCCESS_MESSAGE);
   evaluatorHostRef.current.onSavingChange = setSaving;
-  surveyHostRef.current.onSubmitted = refresh;
+  surveyHostRef.current.onSubmitted = () => completePartyTaskSubmit();
   surveyHostRef.current.onSavingChange = setSaving;
-  governmentHostRef.current.onSubmitted = refresh;
+  governmentHostRef.current.onSubmitted = () => completePartyTaskSubmit();
   governmentHostRef.current.onSavingChange = setSaving;
-  coordinationHostRef.current.onSubmitted = refresh;
+  coordinationHostRef.current.onSubmitted = () => completePartyTaskSubmit();
   coordinationHostRef.current.onSavingChange = setSaving;
-  fieldInspectionHostRef.current.onSubmitted = refresh;
+  fieldInspectionHostRef.current.onSubmitted = () => completePartyTaskSubmit();
   fieldInspectionHostRef.current.onSavingChange = setSaving;
 
   const evaluatorLocked = useMemo(() => {
@@ -223,9 +248,19 @@ export function PartyActiveTaskWork({
     [task.id],
   );
 
+  const isFieldInspectionPage = def.pageId === "property-inspection";
+  const { data: inspectionWorkspaces = [] } = useFieldInspectionWorkspacesQuery(
+    isFieldInspectionPage,
+  );
+  const fieldInspectionWorkspace = useMemo(
+    () =>
+      inspectionWorkspaces.find((w) => w.workflowTaskId === task.id) ?? null,
+    [inspectionWorkspaces, task.id],
+  );
+
   const fieldInspectionLocked = useMemo(
-    () => isFieldInspectionLocked(task.id),
-    [task.id],
+    () => isFieldInspectionLocked(task.id, fieldInspectionWorkspace),
+    [task.id, fieldInspectionWorkspace],
   );
 
   const { deedLabel, location } = useMemo(() => {
@@ -248,23 +283,24 @@ export function PartyActiveTaskWork({
     };
   }, [record, task]);
 
-  async function submitStructuredWork(
+  async function runHostSubmit(
     locked: boolean,
-    hostRef: RefObject<{ submit?: () => Promise<boolean> } | null>,
+    submitHostRef: RefObject<{ submit?: () => Promise<boolean> } | null>,
   ) {
     if (locked) {
       exit();
       return;
     }
     setSaving(true);
-    const ok = (await hostRef.current?.submit?.()) ?? false;
+    await submitHostRef.current?.submit?.();
     setSaving(false);
-    if (ok) {
-      showToast(def.completeMessage, "success");
-      setSubmitSuccess(true);
-      refresh();
-      window.setTimeout(() => exit(), 1800);
-    }
+  }
+
+  async function submitStructuredWork(
+    locked: boolean,
+    submitHostRef: RefObject<{ submit?: () => Promise<boolean> } | null>,
+  ) {
+    await runHostSubmit(locked, submitHostRef);
   }
 
   async function submitGovernmentReview() {
@@ -277,62 +313,23 @@ export function PartyActiveTaskWork({
 
   async function submitWork() {
     setSaving(true);
-    await completeChildTask(task.id);
+    const updated = await completeChildTask(task.id);
     setSaving(false);
-    showToast(def.completeMessage, "success");
-    refresh();
-    exit();
+    if (updated) {
+      completePartyTaskSubmit();
+    }
   }
 
   async function submitAppraisal() {
-    if (evaluatorLocked) {
-      exit();
-      return;
-    }
-    setSaving(true);
-    const ok = (await evaluatorHostRef.current.submit?.()) ?? false;
-    setSaving(false);
-    if (ok) {
-      showToast(
-        "تم إرسال التقييم وإجابات الاستدلال لأخصائي دراسة الحالة.",
-        "success",
-      );
-      setSubmitSuccess(true);
-      refresh();
-      window.setTimeout(() => exit(), 1800);
-    }
+    await runHostSubmit(evaluatorLocked, evaluatorHostRef);
   }
 
   async function submitSurvey() {
-    if (surveyLocked) {
-      exit();
-      return;
-    }
-    setSaving(true);
-    const ok = (await surveyHostRef.current.submit?.()) ?? false;
-    setSaving(false);
-    if (ok) {
-      showToast(def.completeMessage, "success");
-      setSubmitSuccess(true);
-      refresh();
-      window.setTimeout(() => exit(), 1800);
-    }
+    await runHostSubmit(surveyLocked, surveyHostRef);
   }
 
   async function submitFieldInspection() {
-    if (fieldInspectionLocked) {
-      exit();
-      return;
-    }
-    setSaving(true);
-    const ok = (await fieldInspectionHostRef.current.submit?.()) ?? false;
-    setSaving(false);
-    if (ok) {
-      showToast(def.completeMessage, "success");
-      setSubmitSuccess(true);
-      refresh();
-      window.setTimeout(() => exit(), 1800);
-    }
+    await runHostSubmit(fieldInspectionLocked, fieldInspectionHostRef);
   }
 
   const surveyProperty = useMemo(

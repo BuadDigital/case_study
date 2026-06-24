@@ -7,6 +7,7 @@ export type FinancialRevenueRowDto = {
   excluded: number;
   value: string;
   status: string;
+  invoiceNumber?: string | null;
 };
 
 export type FinancialCostRowDto = {

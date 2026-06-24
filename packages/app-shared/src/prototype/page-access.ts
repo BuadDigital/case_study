@@ -22,6 +22,8 @@ export function pageIdFromPathname(pathname: string): PageId | null {
       return "valuation-coordination";
     case "login":
       return null;
+    case "audit-log":
+      return "audit-log";
     default:
       return parts[0] as PageId;
   }

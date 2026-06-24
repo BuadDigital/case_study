@@ -58,6 +58,8 @@ import {
   poPropertiesPath,
 } from "@case-study/mfe";
 import { AppBreadcrumb } from "@/components/views/AppBreadcrumb";
+import { GlobalSearch } from "@/components/GlobalSearch";
+import { NotificationCenter } from "@/components/NotificationCenter";
 import { resolvePoChrome, buildPoPropertyDetailSegments } from "@/lib/po-chrome";
 import { resolveMyTasksChrome } from "@/lib/my-tasks-chrome";
 import { EngineeringSurveyTopbarActions } from "@engineering-office/mfe";
@@ -1048,6 +1050,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               : null}
           </div>
           <div className="flex shrink-0 items-center gap-1 sm:gap-2.5">
+            <GlobalSearch />
+            <NotificationCenter />
             {poChrome?.propertyDetail ? (
               <div className="max-lg:hidden">
                 <PoPropertyDetailTopbarActions

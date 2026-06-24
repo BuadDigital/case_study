@@ -1,10 +1,16 @@
 export {
+  AUTH_COOKIE_NAME,
+  AUTH_EXPIRED_EVENT,
   AUTH_STORAGE_KEY,
   clearAuthSession,
   getAuthDisplayName,
   getAuthSession,
+  getValidAuthSession,
   hasAuthSession,
+  isSessionExpired,
+  notifyAuthExpired,
   setAuthSession,
+  subscribeAuthExpired,
   type AuthSession,
   type AuthUser,
 } from "./session";

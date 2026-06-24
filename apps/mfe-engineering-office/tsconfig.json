@@ -7,6 +7,8 @@
       "@engineering-office/mfe/*": ["./src/*"],
       "@case-study/mfe": ["../mfe-case-study/src/index.ts"],
       "@case-study/mfe/*": ["../mfe-case-study/src/*"],
+      "@evaluator/mfe": ["../mfe-evaluator/src/index.ts"],
+      "@evaluator/mfe/*": ["../mfe-evaluator/src/*"],
       "@failures/mfe": ["../mfe-failures/src/index.ts"],
       "@failures/mfe/*": ["../mfe-failures/src/*"],
       "@settings/mfe": ["../mfe-settings/src/index.ts"],

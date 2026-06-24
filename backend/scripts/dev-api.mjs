@@ -130,8 +130,12 @@ console.log(`[dev-api] mode: ${useWatch ? "dotnet watch run" : "dotnet run"}`);
 
 stopStaleProcesses();
 
+// Shared backend projects must be built once before parallel `dotnet watch` instances
+// compete for the same obj/bin DLLs (especially on Windows + Defender).
+await run("dotnet", ["build", "backend/RealEstateEval.slnx", "-v", "q"]);
+
 if (!useWatch && !skipBuild) {
-  await run("dotnet", ["build", "backend/RealEstateEval.slnx"]);
+  // `--run` uses --no-build below; solution already built above.
 }
 
 const identity = services.find((s) => s.name === "identity");
@@ -142,16 +146,21 @@ const others = services.filter(
 );
 
 // case-study applies EF migrations to the shared DB; identity serves login.
+// Start sequentially so watch processes do not lock the same shared assemblies.
 startService(caseStudy);
-startService(identity);
 await waitForReady("http://127.0.0.1:5162/ready", "case-study");
+
+startService(identity);
 await waitForReady(identity.readyUrl, "identity");
 
 startService(gateway);
 await waitForReady(gateway.readyUrl, "gateway");
 
-// Remaining services.
-for (const svc of others) startService(svc);
+// Remaining services — stagger watch starts to avoid shared-project file locks.
+for (const svc of others) {
+  startService(svc);
+  if (useWatch) await sleep(2_000);
+}
 
 console.log("");
 console.log("[dev-api] login-ready: http://127.0.0.1:5160");

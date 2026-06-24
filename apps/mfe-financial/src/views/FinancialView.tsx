@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Badge,
   EmptyState,
@@ -12,6 +13,9 @@ import {
   SubpageHeader,
   SubpagePanel,
   SkeletonTableRows,
+  Tab,
+  TabBar,
+  TabPanel,
   Table,
   TBody,
   Td,
@@ -20,7 +24,9 @@ import {
   Tr,
 } from "@platform/design-system";
 import { useFinancialSummaryQuery } from "../query/financial-queries";
-import { FinanceBillingQueue } from "../components/FinanceBillingQueue";
+import { FinancePartyDisburse } from "../components/FinancePartyDisburse";
+import { FinanceEnfazPoBilling } from "../components/FinanceEnfazPoBilling";
+import { FinancePartyBrowse } from "../components/FinancePartyBrowse";
 
 function ContractBadge({ type }: { type: string }) {
   const tone = type === "ext" ? "default" : type === "int" ? "info" : "warning";
@@ -33,6 +39,9 @@ function ContractBadge({ type }: { type: string }) {
 }
 
 export function FinancialView() {
+  const [tab, setTab] = useState<"disburse" | "enfaz" | "browse" | "reports">(
+    "disburse",
+  );
   const { data: summary, isPending, isError } = useFinancialSummaryQuery();
   const ready = !isPending && summary != null;
   const revenueRows = summary?.revenueRows ?? [];
@@ -78,118 +87,112 @@ export function FinancialView() {
         />
       ) : (
         <>
-      <StatGrid>{statCards}</StatGrid>
-      <FinanceBillingQueue />
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <SubpagePanel>
-          <SubpageHeader title="إيرادات إنفاذ" />
-          {!ready ? (
-            <Table pending>
-              <THead>
-                <Tr hoverable={false}>
-                  <Th>PO</Th>
-                  <Th>مُفوتَرة</Th>
-                  <Th>مستثنيات</Th>
-                  <Th>القيمة</Th>
-                  <Th>الحالة</Th>
-                </Tr>
-              </THead>
-              <TBody>
-                <SkeletonTableRows rows={4} cols={5} />
-              </TBody>
-            </Table>
-          ) : revenueRows.length === 0 ? (
-            <EmptyState
-              line="لا توجد إيرادات مسجّلة بعد."
-              hint="تظهر هنا أوامر العمل عند ربط فوترة إنفاذ بالنظام."
-            />
-          ) : (
-          <Table>
-            <THead>
-              <Tr hoverable={false}>
-                <Th>PO</Th>
-                <Th>مُفوتَرة</Th>
-                <Th>مستثنيات</Th>
-                <Th>القيمة</Th>
-                <Th>الحالة</Th>
-              </Tr>
-            </THead>
-            <TBody>
-              {revenueRows.map((r) => (
-                <Tr key={r.po} hoverable={false}>
-                  <Td className="text-[11px] font-semibold text-primary-light">{r.po}</Td>
-                  <Td>{r.billed}</Td>
-                  <Td>{r.excluded}</Td>
-                  <Td>{r.value}</Td>
-                  <Td>
-                    {r.status === "done" ? (
-                      <Badge tone="success" className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal">
-                        مُفوتَر
-                      </Badge>
-                    ) : (
-                      <Badge tone="warning" className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal">
-                        جزئي
-                      </Badge>
-                    )}
-                  </Td>
-                </Tr>
-              ))}
-              <Tr hoverable={false} className="bg-surface-2 font-semibold">
-                <Td colSpan={3}>الإجمالي</Td>
-                <Td>{summary?.revenueGrandTotal ?? "—"}</Td>
-                <Td />
-              </Tr>
-            </TBody>
-          </Table>
-          )}
-        </SubpagePanel>
-        <SubpagePanel>
-          <SubpageHeader title="تكاليف مزودي الخدمة" />
-          {!ready ? (
-            <Table pending>
-              <THead>
-                <Tr hoverable={false}>
-                  <Th>المزود</Th>
-                  <Th>النوع</Th>
-                  <Th>التكلفة</Th>
-                  <Th>الفئة</Th>
-                </Tr>
-              </THead>
-              <TBody>
-                <SkeletonTableRows rows={4} cols={4} />
-              </TBody>
-            </Table>
-          ) : costRows.length === 0 ? (
-            <EmptyState
-              line="لا توجد تكاليف مسجّلة بعد."
-              hint="تُجمَع من أتعاب المعاينة والرفع المساحي والتقييم بعد تأكيد التوزيع."
-            />
-          ) : (
-          <Table>
-            <THead>
-              <Tr hoverable={false}>
-                <Th>المزود</Th>
-                <Th>النوع</Th>
-                <Th>التكلفة</Th>
-                <Th>الفئة</Th>
-              </Tr>
-            </THead>
-            <TBody>
-              {costRows.map((r) => (
-                <Tr key={`${r.name}-${r.category}`} hoverable={false}>
-                  <Td className="font-medium">{r.name}</Td>
-                  <Td>
-                    <ContractBadge type={r.type} />
-                  </Td>
-                  <Td>{r.cost}</Td>
-                  <Td>{r.category}</Td>
-                </Tr>
-              ))}
-            </TBody>
-          </Table>
-          )}
-        </SubpagePanel>
-      </div>
+          <StatGrid>{statCards}</StatGrid>
+          <TabBar className="mb-3">
+            <Tab active={tab === "disburse"} onClick={() => setTab("disburse")}>
+              صرف الالتزامات (حسب الطرف)
+            </Tab>
+            <Tab active={tab === "enfaz"} onClick={() => setTab("enfaz")}>
+              أوامر العمل الواردة (إنفاذ)
+            </Tab>
+            <Tab active={tab === "browse"} onClick={() => setTab("browse")}>
+              استعراض حسب الطرف
+            </Tab>
+            <Tab active={tab === "reports"} onClick={() => setTab("reports")}>
+              التقارير
+            </Tab>
+          </TabBar>
+          <TabPanel>
+            {tab === "disburse" ? <FinancePartyDisburse /> : null}
+            {tab === "enfaz" ? <FinanceEnfazPoBilling /> : null}
+            {tab === "browse" ? <FinancePartyBrowse /> : null}
+            {tab === "reports" ? (
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                <SubpagePanel>
+                  <SubpageHeader title="إيرادات إنفاذ" />
+                  {!ready ? (
+                    <Table pending>
+                      <TBody>
+                        <SkeletonTableRows rows={4} cols={6} />
+                      </TBody>
+                    </Table>
+                  ) : revenueRows.length === 0 ? (
+                    <EmptyState line="لا توجد إيرادات مسجّلة بعد." />
+                  ) : (
+                    <Table>
+                      <THead>
+                        <Tr hoverable={false}>
+                          <Th>PO</Th>
+                          <Th>مُفوتَرة</Th>
+                          <Th>مستثنيات</Th>
+                          <Th>القيمة</Th>
+                          <Th>الفاتورة</Th>
+                          <Th>الحالة</Th>
+                        </Tr>
+                      </THead>
+                      <TBody>
+                        {revenueRows.map((r) => (
+                          <Tr key={r.po} hoverable={false}>
+                            <Td className="text-[11px] font-semibold text-primary-light">
+                              {r.po}
+                            </Td>
+                            <Td>{r.billed}</Td>
+                            <Td>{r.excluded}</Td>
+                            <Td>{r.value}</Td>
+                            <Td className="text-[11px] text-text-2">
+                              {r.invoiceNumber ?? "—"}
+                            </Td>
+                            <Td>
+                              <Badge
+                                tone={r.status === "done" ? "success" : "warning"}
+                              >
+                                {r.status === "done" ? "مُفوتَر" : "جزئي"}
+                              </Badge>
+                            </Td>
+                          </Tr>
+                        ))}
+                      </TBody>
+                    </Table>
+                  )}
+                </SubpagePanel>
+                <SubpagePanel>
+                  <SubpageHeader title="تكاليف مزودي الخدمة" />
+                  {!ready ? (
+                    <Table pending>
+                      <TBody>
+                        <SkeletonTableRows rows={4} cols={4} />
+                      </TBody>
+                    </Table>
+                  ) : costRows.length === 0 ? (
+                    <EmptyState line="لا توجد تكاليف مسجّلة بعد." />
+                  ) : (
+                    <Table>
+                      <THead>
+                        <Tr hoverable={false}>
+                          <Th>المزود</Th>
+                          <Th>النوع</Th>
+                          <Th>التكلفة</Th>
+                          <Th>الفئة</Th>
+                        </Tr>
+                      </THead>
+                      <TBody>
+                        {costRows.map((r) => (
+                          <Tr key={`${r.name}-${r.category}`} hoverable={false}>
+                            <Td className="font-medium">{r.name}</Td>
+                            <Td>
+                              <ContractBadge type={r.type} />
+                            </Td>
+                            <Td>{r.cost}</Td>
+                            <Td>{r.category}</Td>
+                          </Tr>
+                        ))}
+                      </TBody>
+                    </Table>
+                  )}
+                </SubpagePanel>
+              </div>
+            ) : null}
+          </TabPanel>
         </>
       )}
     </ReportPageBody>

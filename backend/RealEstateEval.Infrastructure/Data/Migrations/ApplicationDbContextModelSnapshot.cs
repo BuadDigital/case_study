@@ -440,6 +440,38 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.ToTable("CrmClientProfiles", "identity");
                 });
 
+            modelBuilder.Entity("RealEstateEval.Domain.DisbursementBatch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AssigneeId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<decimal>("TotalNetSar")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssigneeId");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.ToTable("DisbursementBatches", "case_study");
+                });
+
             modelBuilder.Entity("RealEstateEval.Domain.EvaluatorRecallRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -729,6 +761,13 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("DisbursementBatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DisbursementVoucher")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<string>("DiscountReason")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
@@ -745,10 +784,6 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
-                    b.Property<string>("InvoiceNumber")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
                     b.Property<string>("PoNumber")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -759,6 +794,10 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
 
                     b.Property<int>("PropertyOrdinal")
                         .HasColumnType("integer");
+
+                    b.Property<string>("ReturnTo")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<decimal>("SupervisorDiscountSar")
                         .HasPrecision(12, 2)
@@ -772,6 +811,8 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.HasIndex("AssigneeId");
 
                     b.HasIndex("BillingStatus");
+
+                    b.HasIndex("DisbursementBatchId");
 
                     b.HasIndex("ExcludedFromBatch");
 
@@ -931,6 +972,57 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("PartyTaskSubmissions", "case_study");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Domain.PoEnfazInvoice", b =>
+                {
+                    b.Property<string>("PoNumber")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("InvoiceNumber")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime>("IssuedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("PoNumber");
+
+                    b.ToTable("PoEnfazInvoices", "financial");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Domain.PoEnfazRevenueLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("EnfazFeeSar")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<bool>("IncludedInBilling")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("PoNumber")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PoNumber", "PropertyId")
+                        .IsUnique();
+
+                    b.ToTable("PoEnfazRevenueLines", "financial");
                 });
 
             modelBuilder.Entity("RealEstateEval.Domain.PoIntakeDraft", b =>

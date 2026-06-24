@@ -13,7 +13,8 @@ services:
       POSTGRES_PASSWORD: Admin
       POSTGRES_DB: realestate_eval_dev
     ports:
-      - "5432:5432"
+      # Host 5433 avoids conflict with a local PostgreSQL install on 5432 (Windows).
+      - "5433:5432"
     volumes:
       - ree_pgdata:/var/lib/postgresql/data
     healthcheck:

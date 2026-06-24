@@ -88,11 +88,14 @@ public sealed class FinancialReportService : IFinancialReportService
             .Where(l => !string.Equals(l.InspectorType, "موظف", StringComparison.Ordinal))
             .Sum(l => NetFee(l));
         var pendingPayables = ledgers
-            .Where(l => l.BillingStatus is InspectorFeeBillingStatus.ReadyForBilling
-                or InspectorFeeBillingStatus.Invoiced)
+            .Where(l => l.BillingStatus is InspectorFeeBillingStatus.AtFinance
+                or InspectorFeeBillingStatus.DisbReq)
             .Sum(l => NetFee(l));
 
-        var revenueTotal = 0m;
+        var enfazLines = await _db.PoEnfazRevenueLines.AsNoTracking().ToListAsync(cancellationToken);
+        var revenueTotal = enfazLines
+            .Where(l => l.IncludedInBilling && l.EnfazFeeSar > 0)
+            .Sum(l => l.EnfazFeeSar);
         var profitMargin = revenueTotal - externalCosts;
 
         return new FinancialSummaryDto
@@ -190,26 +193,45 @@ public sealed class FinancialReportService : IFinancialReportService
         if (orders.Count == 0)
             return [];
 
+        var enfazByPo = await _db.PoEnfazRevenueLines.AsNoTracking()
+            .GroupBy(x => x.PoNumber)
+            .Select(g => new
+            {
+                PoNumber = g.Key,
+                Total = g.Where(x => x.IncludedInBilling).Sum(x => x.EnfazFeeSar),
+                Filled = g.Count(x => x.IncludedInBilling && x.EnfazFeeSar > 0),
+            })
+            .ToDictionaryAsync(x => x.PoNumber.Trim(), x => x, StringComparer.Ordinal, cancellationToken);
+
+        var invoicesByPo = await _db.PoEnfazInvoices.AsNoTracking()
+            .ToDictionaryAsync(x => x.PoNumber.Trim(), x => x.InvoiceNumber, StringComparer.Ordinal, cancellationToken);
+
         var rows = new List<FinancialRevenueRowDto>();
         foreach (var order in orders)
         {
             var po = order.PoNumber.Trim();
             var propertyCount = order.Properties.Count;
             var poLedgers = ledgers.Where(l => l.PoNumber.Trim() == po).ToList();
-            var invoiced = poLedgers.Count(l =>
-                l.BillingStatus == InspectorFeeBillingStatus.Invoiced);
+            var disbursed = poLedgers.Count(l =>
+                l.BillingStatus == InspectorFeeBillingStatus.Disbursed);
             var tracked = poLedgers.Count;
             var excluded = Math.Max(0, propertyCount - tracked);
+            enfazByPo.TryGetValue(po, out var enfaz);
+            var enfazTotal = enfaz?.Total ?? 0m;
+            var enfazFilled = enfaz?.Filled ?? 0;
 
             rows.Add(new FinancialRevenueRowDto
             {
                 Po = po,
-                Billed = invoiced,
+                Billed = enfazFilled > 0 ? enfazFilled : disbursed,
                 Excluded = excluded,
-                Value = "—",
-                Status = propertyCount > 0 && invoiced >= tracked && tracked > 0
+                Value = enfazTotal > 0 ? FormatSar(enfazTotal) : "—",
+                Status = enfazTotal > 0 && enfazFilled >= propertyCount
                     ? "done"
-                    : "progress",
+                    : enfazFilled > 0
+                        ? "progress"
+                        : "progress",
+                InvoiceNumber = invoicesByPo.GetValueOrDefault(po),
             });
         }
 
