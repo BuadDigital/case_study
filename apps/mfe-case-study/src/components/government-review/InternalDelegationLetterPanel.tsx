@@ -53,7 +53,7 @@ export function InternalDelegationLetterPanel({
     <section className="overflow-hidden rounded-DEFAULT border border-border bg-surface-2/30">
       <div className="border-b border-border bg-surface px-3.5 py-2.5">
         <h3 className="m-0 text-[12px] font-semibold text-text">
-          خطاب تفويض داخلي
+          خطاب تفويض الشركة
         </h3>
       </div>
 

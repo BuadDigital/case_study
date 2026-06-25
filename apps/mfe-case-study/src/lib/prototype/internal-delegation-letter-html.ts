@@ -29,7 +29,7 @@ export function printInternalDelegationLetter(
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8" />
-  <title>خطاب تفويض داخلي — ${formatPoDisplay(letter.poNumber)}</title>
+  <title>خطاب تفويض الشركة — ${formatPoDisplay(letter.poNumber)}</title>
   <style>
     body { font-family: Tahoma, Arial, sans-serif; padding: 24px; color: #111; }
     h1 { font-size: 18px; margin-bottom: 8px; }
@@ -40,7 +40,7 @@ export function printInternalDelegationLetter(
   </style>
 </head>
 <body>
-  <h1>خطاب التفويض الداخلي — زيارة المحكمة</h1>
+  <h1>خطاب تفويض الشركة — زيارة المحكمة</h1>
   <div class="meta">
     <div><strong>أمر العمل:</strong> ${formatPoDisplay(letter.poNumber)}</div>
     <div><strong>المدينة:</strong> ${letter.city || "—"}</div>

@@ -28,6 +28,7 @@ import {
   FieldInspectionWorkBody,
   type FieldInspectionWorkHostRef,
 } from "../components/field-inspection/FieldInspectionWorkBody";
+import { PartyCaseStudyFormTab } from "../components/case-study/PartyCaseStudyFormTab";
 import { useFieldInspectionWorkspacesQuery } from "../query/field-inspection-workspaces-queries";
 import { isFieldInspectionLocked } from "../lib/prototype/field-inspection-work-queue";
 import { isGovernmentReviewLocked } from "../lib/prototype/government-review-work-queue";
@@ -647,37 +648,62 @@ export function PartyActiveTaskWork({
         saveLabel={locked ? "رجوع" : def.saveLabel}
         showFooter
       >
-        <PartyWorkTabs
-          workTab={workTab}
-          workTitle={def.workTitle}
-          onSelect={setWorkTab}
-        />
-
-        {workTab === "task" ? (
+        {isGovernmentReview ? (
           <>
-            <Note tone="info">{def.workIntro}</Note>
-            {isGovernmentReview ? (
-              <GovernmentReviewWorkBody
-                def={def}
-                task={task}
-                hostRef={governmentHostRef}
-              />
-            ) : (
-              <ValuationCoordinationWorkBody
-                def={def}
-                task={task}
-                hostRef={coordinationHostRef}
-              />
-            )}
-            <PartyTaskFailureRaise
-              def={def}
-              task={task}
-              deedNumber={deedLabel}
-              onSubmitted={refresh}
-            />
+            <div className="grid min-w-0 gap-4 xl:grid-cols-2">
+              <section className="min-w-0 rounded-xl border border-border bg-surface p-3">
+                <h3 className="m-0 mb-2 text-sm font-semibold text-text">
+                  المراجعة الحكومية
+                </h3>
+                <Note tone="info">{def.workIntro}</Note>
+                <GovernmentReviewWorkBody
+                  def={def}
+                  task={task}
+                  hostRef={governmentHostRef}
+                />
+                <PartyTaskFailureRaise
+                  def={def}
+                  task={task}
+                  deedNumber={deedLabel}
+                  onSubmitted={refresh}
+                />
+              </section>
+
+              <section className="min-w-0 rounded-xl border border-border bg-surface p-3">
+                <h3 className="m-0 mb-2 text-sm font-semibold text-text">
+                  نموذج الدراسة
+                </h3>
+                <PartyCaseStudyFormTab def={def} childTask={task} />
+              </section>
+            </div>
           </>
         ) : (
-          <PartyCaseStudyFormTab def={def} childTask={task} />
+          <>
+            <PartyWorkTabs
+              workTab={workTab}
+              workTitle={def.workTitle}
+              onSelect={setWorkTab}
+            />
+
+            {workTab === "task" ? (
+              <>
+                <Note tone="info">{def.workIntro}</Note>
+                <ValuationCoordinationWorkBody
+                  def={def}
+                  task={task}
+                  hostRef={coordinationHostRef}
+                />
+                <PartyTaskFailureRaise
+                  def={def}
+                  task={task}
+                  deedNumber={deedLabel}
+                  onSubmitted={refresh}
+                />
+              </>
+            ) : (
+              <PartyCaseStudyFormTab def={def} childTask={task} />
+            )}
+          </>
         )}
       </TaskWorkChrome>
     );

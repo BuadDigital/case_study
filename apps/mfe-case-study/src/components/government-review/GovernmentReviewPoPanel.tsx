@@ -5,6 +5,7 @@ import {
   Badge,
   Button,
   cn,
+  workspaceStickyPanelMaxHClassName,
 } from "@platform/design-system";
 import { PoNumber } from "../ui/PoNumber";
 import { InternalDelegationLetterPanel } from "./InternalDelegationLetterPanel";
@@ -126,7 +127,12 @@ export function GovernmentReviewPoPanel({
   }, [record, row.courts]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div
+      className={cn(
+        "flex min-h-0 flex-col",
+        workspaceStickyPanelMaxHClassName,
+      )}
+    >
       <div className="shrink-0 border-b border-border bg-linear-to-b from-surface-2/80 to-surface px-4 py-3.5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">

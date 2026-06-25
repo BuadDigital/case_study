@@ -19,7 +19,7 @@ export function buildPoListRowMoreItems(options: {
     },
     {
       id: "delegation-letter",
-      label: "خطاب التفويض الداخلي",
+      label: "خطاب تفويض الشركة",
       onClick: () =>
         openInternalDelegationLetterPlaceholder({ poNumber: po }),
     },
