@@ -3,6 +3,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Notifications;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -15,15 +16,21 @@ public class FailureService : IFailureService
     private readonly ApplicationDbContext _db;
     private readonly IWorkflowTaskService _tasks;
     private readonly IPropertyTimelineService _timeline;
+    private readonly INotificationService _notifications;
+    private readonly NotificationRecipientResolver _recipients;
 
     public FailureService(
         ApplicationDbContext db,
         IWorkflowTaskService tasks,
-        IPropertyTimelineService timeline)
+        IPropertyTimelineService timeline,
+        INotificationService notifications,
+        NotificationRecipientResolver recipients)
     {
         _db = db;
         _tasks = tasks;
         _timeline = timeline;
+        _notifications = notifications;
+        _recipients = recipients;
     }
 
     public async Task<IReadOnlyList<FailureRecordDto>> ListAsync(
@@ -151,6 +158,7 @@ public class FailureService : IFailureService
             entity,
             entity.Title.Trim().Length > 0 ? entity.Title : entity.InternalNote,
             cancellationToken);
+        await NotifyFailureSubmittedAsync(entity, cancellationToken);
         return ToDto(entity);
     }
 
@@ -216,6 +224,7 @@ public class FailureService : IFailureService
         await _db.SaveChangesAsync(cancellationToken);
 
         await SetPropertyDeedStatusAsync(entity, "موقوف", cancellationToken);
+        await NotifyFailureApprovedAsync(entity, cancellationToken);
         return ToDto(entity);
     }
 
@@ -411,6 +420,61 @@ public class FailureService : IFailureService
         PropertyFailureStatus.Suspended => "معلق",
         _ => status,
     };
+
+    private async Task NotifyFailureSubmittedAsync(
+        PropertyFailure entity,
+        CancellationToken cancellationToken)
+    {
+        var recipientIds = await _recipients.ResolveAssigneeUserIdsForPoAsync(
+            entity.PoNumber,
+            [CaseStudyPropertyKind],
+            cancellationToken);
+
+        if (recipientIds.Count == 0) return;
+
+        await _notifications.CreateForUsersAsync(
+            recipientIds,
+            new CreateUserNotificationRequest
+            {
+                Title = "تعذر بانتظار المراجعة",
+                Body = $"رُفع تعذر للمراجعة على أمر العمل {entity.PoNumber}.",
+                Tone = "warn",
+                Href = "/failures",
+                Category = "failures",
+                EntityType = "failure",
+                EntityId = entity.Id.ToString(),
+                Actor = entity.Specialist,
+                SourceEvent = $"failure-submitted:{entity.Id}",
+            },
+            cancellationToken);
+    }
+
+    private async Task NotifyFailureApprovedAsync(
+        PropertyFailure entity,
+        CancellationToken cancellationToken)
+    {
+        var recipientIds = await _recipients.ResolveAssigneeUserIdsForPoAsync(
+            entity.PoNumber,
+            [CaseStudyPropertyKind],
+            cancellationToken);
+
+        if (recipientIds.Count == 0) return;
+
+        await _notifications.CreateForUsersAsync(
+            recipientIds,
+            new CreateUserNotificationRequest
+            {
+                Title = "اعتماد تعذر",
+                Body = $"اعتُمد تعذر على أمر العمل {entity.PoNumber}.",
+                Tone = "warn",
+                Href = "/failures",
+                Category = "failures",
+                EntityType = "failure",
+                EntityId = entity.Id.ToString(),
+                SourceEvent = $"failure-approved:{entity.Id}",
+            },
+            cancellationToken);
+    }
 
     private static FailureRecordDto ToDto(PropertyFailure entity) => new()
     {

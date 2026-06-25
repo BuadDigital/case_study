@@ -19,7 +19,7 @@ builder.Services.AddResponseCompression(options => options.EnableForHttps = true
 var connectionString = ServiceCollectionExtensions.RequireConnectionString( builder.Configuration, ServiceDatabaseNames.CaseStudy);
 builder.Services.AddPersistence(builder.Configuration, connectionString);
 builder.Services.AddIdentityInfrastructure();
-builder.Services.AddCaseStudyInfrastructure();
+builder.Services.AddCaseStudyInfrastructure(builder.Configuration);
 builder.Services.AddValuationInfrastructure();
 builder.Services.AddIntegrationEventPublishing(builder.Configuration);
 builder.Services.AddOutboxDispatcher(builder.Configuration);

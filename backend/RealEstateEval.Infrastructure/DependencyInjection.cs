@@ -7,6 +7,7 @@ using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Caching;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Integration;
+using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Infrastructure.Storage;
 
@@ -21,7 +22,7 @@ public static class DependencyInjection
     {
         services.AddPersistence(configuration, connectionString);
         services.AddIdentityInfrastructure();
-        services.AddCaseStudyInfrastructure();
+        services.AddCaseStudyInfrastructure(configuration);
         return services;
     }
 
@@ -116,16 +117,22 @@ public static class DependencyInjection
         return services;
     }
 
-    public static IServiceCollection AddCaseStudyInfrastructure(this IServiceCollection services)
+    public static IServiceCollection AddCaseStudyInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
         services.AddCaseStudyCoreInfrastructure();
         services.AddCaseStudyAuxiliaryInfrastructure();
+        services.AddNotificationInfrastructure(configuration);
         services.AddScoped<ISystemMaintenanceService, SystemMaintenanceService>();
         return services;
     }
 
-    public static IServiceCollection AddFailuresInfrastructure(this IServiceCollection services)
+    public static IServiceCollection AddFailuresInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
+        services.AddNotificationInfrastructure(configuration);
         services.AddScoped<IInspectorFeeService, InspectorFeeService>();
         services.AddScoped<IPoEnfazBillingService, PoEnfazBillingService>();
         services.AddScoped<IPropertyTimelineService, PropertyTimelineService>();
@@ -159,6 +166,20 @@ public static class DependencyInjection
         services.AddScoped<IFieldDictionaryService, FieldDictionaryService>();
         services.AddScoped<ICourtsCatalogService, CourtsCatalogService>();
         services.AddScoped<ICaseStudyInfoRolesConfigService, CaseStudyInfoRolesConfigService>();
+        return services;
+    }
+
+    /// <summary>Per-user inbox, SSE hub, recipient resolution, and outbox event publishing.</summary>
+    public static IServiceCollection AddNotificationInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddIntegrationEventPublishing(configuration);
+        services.AddSingleton<NotificationRealtimeHub>();
+        services.AddSingleton<INotificationRealtimePublisher>(sp =>
+            sp.GetRequiredService<NotificationRealtimeHub>());
+        services.AddScoped<NotificationRecipientResolver>();
+        services.AddScoped<INotificationService, NotificationService>();
         return services;
     }
 
@@ -200,6 +221,14 @@ public static class DependencyInjection
     {
         services.AddScoped<ValuationReportWorkflowHandler>();
         services.AddScoped<ValuationRequestCreatedHandler>();
+        return services;
+    }
+
+    /// <summary>RabbitMQ event handlers for <c>NotificationIntegrationEventConsumer</c> (platform).</summary>
+    public static IServiceCollection AddNotificationIntegrationHandlers(this IServiceCollection services)
+    {
+        services.AddScoped<NotificationIntegrationEventHandler>();
+        services.AddScoped<NotificationRealtimePushHandler>();
         return services;
     }
 }

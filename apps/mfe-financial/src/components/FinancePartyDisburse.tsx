@@ -266,6 +266,9 @@ function FinancePartyDetailTable({
             title: "تم الصرف",
             body: `صُرف ${result.succeeded.length} عقار بنجاح.`,
             tone: "success",
+            category: "financial",
+            href: "/financial",
+            sourceEvent: "financial-disburse-success",
           });
         }
         if (result.failed.length > 0) {
@@ -273,6 +276,9 @@ function FinancePartyDetailTable({
             title: "تعذر صرف بعض العقارات",
             body: result.failed.map((f) => f.error).join(" · "),
             tone: "warn",
+            category: "financial",
+            href: "/financial",
+            sourceEvent: "financial-disburse-failed",
           });
         }
         setSelected(new Set());

@@ -38,6 +38,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<PoIntakeDraft> PoIntakeDrafts => Set<PoIntakeDraft>();
     public DbSet<FinancialReportConfig> FinancialReportConfigs => Set<FinancialReportConfig>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+    public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -433,6 +434,24 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.Error).HasMaxLength(2000);
             e.HasIndex(x => x.ProcessedAtUtc);
             e.HasIndex(x => x.CreatedAtUtc);
+        });
+
+        builder.Entity<UserNotification>(e =>
+        {
+            e.ToTable("UserNotifications", DatabaseSchemas.Messaging);
+            e.Property(x => x.UserId).HasMaxLength(450);
+            e.Property(x => x.Title).HasMaxLength(256);
+            e.Property(x => x.Body).HasMaxLength(2000);
+            e.Property(x => x.Href).HasMaxLength(512);
+            e.Property(x => x.Tone).HasMaxLength(16);
+            e.Property(x => x.Category).HasMaxLength(32);
+            e.Property(x => x.EntityType).HasMaxLength(32);
+            e.Property(x => x.EntityId).HasMaxLength(128);
+            e.Property(x => x.Actor).HasMaxLength(256);
+            e.Property(x => x.SourceEvent).HasMaxLength(256);
+            e.HasIndex(x => new { x.UserId, x.CreatedAtUtc });
+            e.HasIndex(x => new { x.UserId, x.ReadAtUtc });
+            e.HasIndex(x => new { x.UserId, x.SourceEvent });
         });
     }
 }

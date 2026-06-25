@@ -94,6 +94,9 @@ export function PartyDisbursementRequest({
             title: "أُنشئ أمر صرف",
             body: `اعتُمد ${result.rows.length} عقار — بانتظار صرف المالية.`,
             tone: "success",
+            category: "financial",
+            href: "/party-fees",
+            sourceEvent: "party-disbursement-created",
           });
         }
         if (result.failed.length > 0) {
@@ -101,6 +104,9 @@ export function PartyDisbursementRequest({
             title: "تعذر تضمين بعض العقارات",
             body: result.failed.map((f) => f.error).join(" · "),
             tone: "warn",
+            category: "financial",
+            href: "/party-fees",
+            sourceEvent: "party-disbursement-failed",
           });
         }
         setSelected(new Set());

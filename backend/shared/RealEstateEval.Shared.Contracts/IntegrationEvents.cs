@@ -12,6 +12,7 @@ public static class IntegrationEventTypes
     public const string PropertyCreated = "case.property.created.v1";
     public const string ValuationRequestCreated = "valuation.request.created.v1";
     public const string ValuationReportSubmitted = "valuation.report.submitted.v1";
+    public const string NotificationUserCreated = "notification.user.created.v1";
 }
 
 public sealed record PropertyCreatedPayload(string PropertyId, string PoNumber);
@@ -26,3 +27,19 @@ public sealed record ValuationReportSubmittedPayload(
     string PropertyId,
     string DisplayId,
     string Appraiser);
+
+/// <summary>Published after a <c>UserNotifications</c> row is committed — fans out to SSE on Platform.</summary>
+public sealed record NotificationUserCreatedPayload(
+    string UserId,
+    Guid Id,
+    string Title,
+    string? Body,
+    string? Href,
+    string? Tone,
+    string? Category,
+    string? EntityType,
+    string? EntityId,
+    string? Actor,
+    string? SourceEvent,
+    DateTime CreatedAtUtc,
+    bool Read);

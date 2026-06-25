@@ -20,6 +20,8 @@ import {
   type AppNotification,
 } from "./notification-store";
 
+const STORAGE_KEY = "ree-notifications";
+
 type NotificationContextValue = {
   items: AppNotification[];
   unreadCount: number;
@@ -44,7 +46,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     refresh();
     const onChange = () => refresh();
     window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, onChange);
-    return () => window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, onChange);
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === STORAGE_KEY) refresh();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, onChange);
+      window.removeEventListener("storage", onStorage);
+    };
   }, [refresh]);
 
   const value = useMemo<NotificationContextValue>(
