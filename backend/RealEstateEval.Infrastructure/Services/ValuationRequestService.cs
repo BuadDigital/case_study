@@ -127,6 +127,27 @@ public sealed class ValuationRequestService : IValuationRequestService
         return (ToDto(row), null);
     }
 
+    public async Task<(ValuationRequestDto? Result, string? Error)> RecordImpedimentAsync(
+        Guid id,
+        ValuationImpedimentRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var row = await _db.ValuationRequests.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (row is null) return (null, "not_found");
+        if (string.Equals(row.Status, "done", StringComparison.OrdinalIgnoreCase))
+            return (null, "already_submitted");
+        if (string.Equals(row.Status, "fail", StringComparison.OrdinalIgnoreCase))
+            return (null, "already_impeded");
+
+        if (string.IsNullOrWhiteSpace(request.Reason))
+            return (null, "reason_required");
+
+        row.Status = "fail";
+        row.UpdatedAtUtc = DateTime.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken);
+        return (ToDto(row), null);
+    }
+
     private async Task<string> NextDisplayIdAsync(CancellationToken cancellationToken)
     {
         var max = await _db.ValuationRequests.CountAsync(cancellationToken);

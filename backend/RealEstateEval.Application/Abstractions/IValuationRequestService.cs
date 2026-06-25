@@ -17,4 +17,8 @@ public interface IValuationRequestService
     Task<(ValuationRequestDto? Result, string? Error)> SubmitReportAsync(
         Guid id,
         CancellationToken cancellationToken = default);
+    Task<(ValuationRequestDto? Result, string? Error)> RecordImpedimentAsync(
+        Guid id,
+        ValuationImpedimentRequest request,
+        CancellationToken cancellationToken = default);
 }

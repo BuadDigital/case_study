@@ -22,6 +22,7 @@ if (-not $isAdmin) {
 
 $rules = @(
   @{ Name = "Ejada Next.js Dev 3000"; Port = 3000; Description = "Allow LAN access to Ejada shell (npm run dev)" }
+  @{ Name = "Ejada API Dev 5160"; Port = 5160; Description = "Allow LAN access to Ejada API gateway (npm run dev:api)" }
 )
 
 foreach ($rule in $rules) {
@@ -49,13 +50,13 @@ foreach ($rule in $rules) {
 }
 
 Write-Host ""
-Write-Host "Done. Port 3000 is open for LAN access."
+Write-Host "Done. Ports 3000 (UI) and 5160 (API) are open for LAN access."
 Write-Host ""
 Write-Host "Share the URL from npm run dev, for example:"
 Write-Host "  http://192.168.1.15:3000/login"
 Write-Host ""
 Write-Host "Requirements for teammates:"
 Write-Host "  - Same Wi-Fi network"
-Write-Host "  - Backend running on this PC: dotnet run (port 5160, proxied via Next.js)"
-Write-Host "  - Do NOT use http://0.0.0.0:3000 — use your LAN IP above"
+Write-Host "  - Backend running on this PC: npm run dev:api (port 5160)"
+Write-Host "  - Do NOT use http://0.0.0.0:3000 - use your LAN IP above"
 Write-Host ""

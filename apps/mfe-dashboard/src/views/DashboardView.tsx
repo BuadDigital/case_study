@@ -7,7 +7,6 @@ import { TeamCurrentLoadCard } from "../components/dashboard/TeamCurrentLoadCard
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import {
   Badge,
-  Note,
   ProgressBar,
   ReportPageBody,
   StatCard,
@@ -20,7 +19,6 @@ import {
   SubpageHeader,
   SubpagePanel,
   SkeletonTableRows,
-  Skeleton,
   Table,
   TBody,
   Td,
@@ -41,10 +39,40 @@ import { useReportingDashboardQuery } from "../query/reporting-queries";
 const MGR_ROLES = new Set(["cdo", "general-manager", "section-supervisor"]);
 const TEAM_LOAD_ROLES = new Set([...MGR_ROLES, "cdo"]);
 
-function teamTint(t: string): { bg: string; fg: string } {
-  if (t === "internal") return { bg: "bg-info-bg", fg: "text-info-text" };
-  if (t === "freelance") return { bg: "bg-warning-bg", fg: "text-warning" };
-  return { bg: "bg-success-bg", fg: "text-success-text" };
+function failureStatusLabel(status: string): string {
+  switch (status) {
+    case "internal":
+      return "داخلي";
+    case "review":
+      return "مراجعة";
+    case "approved":
+      return "معتمد";
+    case "returned":
+      return "مُعاد";
+    case "resolved":
+      return "محلول";
+    default:
+      return status;
+  }
+}
+
+function valuationStatusBadge(status: string): "done" | "progress" | "fail" {
+  if (status === "done") return "done";
+  if (status === "fail") return "fail";
+  return "progress";
+}
+
+function panelLink(href: string, label: string) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "inline-flex items-center justify-center gap-1.5 rounded-[var(--radius-DEFAULT)] border border-border-md bg-surface px-2 py-1 text-[11px] font-normal text-text no-underline transition-colors hover:bg-surface-2",
+      )}
+    >
+      {label}
+    </Link>
+  );
 }
 
 export function DashboardView() {
@@ -118,14 +146,7 @@ export function DashboardView() {
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           <SubpagePanel>
             <SubpageHeader title="أوامر العمل النشطة">
-              <Link
-                href="/po"
-                className={cn(
-                  "inline-flex items-center justify-center gap-1.5 rounded-[var(--radius-DEFAULT)] border border-border-md bg-surface px-2 py-1 text-[11px] font-normal text-text no-underline transition-colors hover:bg-surface-2",
-                )}
-              >
-                عرض الكل
-              </Link>
+              {panelLink("/po", "عرض الكل")}
             </SubpageHeader>
             <Table pending={!poReady}>
               <THead>
@@ -180,14 +201,7 @@ export function DashboardView() {
           </SubpagePanel>
           <SubpagePanel>
             <SubpageHeader title="طلبات التقييم الأخيرة">
-              <Link
-                href="/valuation-requests"
-                className={cn(
-                  "inline-flex items-center justify-center gap-1.5 rounded-[var(--radius-DEFAULT)] border border-border-md bg-surface px-2 py-1 text-[11px] font-normal text-text no-underline transition-colors hover:bg-surface-2",
-                )}
-              >
-                عرض الكل
-              </Link>
+              {panelLink("/valuation-requests", "عرض الكل")}
             </SubpageHeader>
             <Table pending={!reportingReady}>
               <THead>
@@ -201,6 +215,12 @@ export function DashboardView() {
               <TBody>
                 {!reportingReady ? (
                   <SkeletonTableRows rows={4} cols={4} />
+                ) : (reporting?.recentValuationRequests ?? []).length === 0 ? (
+                  <Tr hoverable={false}>
+                    <Td colSpan={4} className="text-center text-text-3">
+                      لا توجد طلبات تقييم حديثة
+                    </Td>
+                  </Tr>
                 ) : (
                   (reporting?.recentValuationRequests ?? []).map((v) => (
                   <Tr key={v.displayId} hoverable={false}>
@@ -210,7 +230,7 @@ export function DashboardView() {
                     <Td>{v.propId}</Td>
                     <Td className="text-[11px]">{v.appraiser}</Td>
                     <Td>
-                      <StatusBadge status={v.status === "done" ? "done" : "progress"} />
+                      <StatusBadge status={valuationStatusBadge(v.status)} />
                     </Td>
                   </Tr>
                 ))
@@ -218,55 +238,97 @@ export function DashboardView() {
               </TBody>
             </Table>
           </SubpagePanel>
+          <SubpagePanel>
+            <SubpageHeader title="المراجعة الحكومية">
+              {panelLink("/government-review", "عرض الكل")}
+            </SubpageHeader>
+            <Table pending={!reportingReady}>
+              <THead>
+                <Tr hoverable={false}>
+                  <Th>PO</Th>
+                  <Th>العقار</Th>
+                  <Th>المراجع</Th>
+                  <Th>الحالة</Th>
+                </Tr>
+              </THead>
+              <TBody>
+                {!reportingReady ? (
+                  <SkeletonTableRows rows={4} cols={4} />
+                ) : (reporting?.recentGovernmentReviews ?? []).length === 0 ? (
+                  <Tr hoverable={false}>
+                    <Td colSpan={4} className="text-center text-text-3">
+                      لا توجد مراجعات حكومية نشطة
+                    </Td>
+                  </Tr>
+                ) : (
+                  (reporting?.recentGovernmentReviews ?? []).map((row) => (
+                    <Tr
+                      key={row.taskId}
+                      onClick={() => router.push("/government-review")}
+                    >
+                      <Td className="text-[11px] font-semibold text-primary-light">
+                        {row.poNumber}
+                      </Td>
+                      <Td className="max-w-[140px] truncate text-[11px]">
+                        {row.title}
+                      </Td>
+                      <Td className="text-[11px]">{row.reviewerName}</Td>
+                      <Td>
+                        <StatusBadge
+                          status={row.status === "done" ? "done" : "progress"}
+                        />
+                      </Td>
+                    </Tr>
+                  ))
+                )}
+              </TBody>
+            </Table>
+          </SubpagePanel>
+          <SubpagePanel>
+            <SubpageHeader title="التعذرات الأخيرة">
+              {panelLink("/failures", "عرض الكل")}
+            </SubpageHeader>
+            <Table pending={!reportingReady}>
+              <THead>
+                <Tr hoverable={false}>
+                  <Th>PO</Th>
+                  <Th>الصك</Th>
+                  <Th>الوصف</Th>
+                  <Th>الحالة</Th>
+                </Tr>
+              </THead>
+              <TBody>
+                {!reportingReady ? (
+                  <SkeletonTableRows rows={4} cols={4} />
+                ) : (reporting?.recentFailures ?? []).length === 0 ? (
+                  <Tr hoverable={false}>
+                    <Td colSpan={4} className="text-center text-text-3">
+                      لا توجد تعذرات مفتوحة
+                    </Td>
+                  </Tr>
+                ) : (
+                  (reporting?.recentFailures ?? []).map((f) => (
+                    <Tr key={f.id} onClick={() => router.push("/failures")}>
+                      <Td className="text-[11px] font-semibold text-primary-light">
+                        {f.poNumber}
+                      </Td>
+                      <Td className="text-[11px]">{f.deedNumber || "—"}</Td>
+                      <Td className="max-w-[140px] truncate text-[11px]">
+                        {f.title}
+                      </Td>
+                      <Td>
+                        <Badge tone={f.severity === "internal" ? "danger" : "warning"}>
+                          {failureStatusLabel(f.status)}
+                        </Badge>
+                      </Td>
+                    </Tr>
+                  ))
+                )}
+              </TBody>
+            </Table>
+          </SubpagePanel>
         </div>
       ) : null}
-
-      <h3 className="mb-2.5 text-[13px] font-semibold text-text">
-        الفريق الميداني — مزودو الخدمة الداخليين
-      </h3>
-      <Note tone="info">
-        المعاينون والمقيمون يتبعون قسم التقييم العقاري ويخدمون القسمين كمورد
-        مشترك
-      </Note>
-      {reportingPending ? (
-        <div className="mb-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 3 }, (_, index) => (
-            <div
-              key={index}
-              className="rounded-[var(--radius-lg)] border border-border bg-surface p-3"
-            >
-              <Skeleton className="mb-2 size-[34px] rounded-full" />
-              <Skeleton className="mb-1 h-4 w-24" />
-              <Skeleton className="h-3 w-32" />
-            </div>
-          ))}
-        </div>
-      ) : (reporting?.teamFieldMembers ?? []).length === 0 ? (
-        <p className="text-xs text-text-3">لا توجد بيانات فريق ميداني بعد.</p>
-      ) : (
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-          {(reporting?.teamFieldMembers ?? []).map((member) => {
-            const tint = teamTint(member.teamKind);
-            return (
-              <div
-                key={member.name}
-                className="flex items-center gap-2.5 rounded-[var(--radius-lg)] border border-border bg-surface p-3"
-              >
-                <div
-                  className={`flex size-[34px] shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${tint.bg} ${tint.fg}`}
-                >
-                  {member.initials}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium text-text">{member.name}</div>
-                  <div className="text-[11px] text-text-2">{member.roleLine}</div>
-                </div>
-                <div className="text-lg font-bold text-text">{member.activeCount}</div>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </ReportPageBody>
   );
 }

@@ -110,26 +110,32 @@ export const PAGE_SITUATION_CARDS: Partial<Record<PageId, PageSituationCardDef[]
       {
         key: "total",
         label: "إجمالي العقارات",
-        sub: "مسجّلة في الأتعاب",
+        sub: "",
         tone: "blue",
       },
       {
-        key: "pendingOffice",
-        label: "مسودة / مُعاد",
-        sub: "لدى المكتب",
+        key: "inProgress",
+        label: "قيد التنفيذ",
+        sub: "",
         tone: "warn",
       },
       {
-        key: "inPipeline",
-        label: "قيد المراجعة",
-        sub: "مشرف أو مالية",
+        key: "ready",
+        label: "جاهز للصرف",
+        sub: "",
         tone: "blue",
       },
       {
-        key: "disbursePath",
-        label: "مسار الصرف",
-        sub: "أمر صرف أو مصروف",
+        key: "disbursed",
+        label: "مصروفة",
+        sub: "",
         tone: "green",
+      },
+      {
+        key: "returned",
+        label: "مُعادة/استفسار",
+        sub: "",
+        tone: "red",
       },
     ],
   };
@@ -258,37 +264,33 @@ export function computeFeesPageSituation(
   rows: InspectorFeeRowDto[],
 ): Pick<
   PageSituationValues,
-  "total" | "pendingOffice" | "inPipeline" | "disbursePath"
+  "total" | "inProgress" | "ready" | "disbursed" | "returned"
 > {
-  let pendingOffice = 0;
-  let inPipeline = 0;
-  let disbursePath = 0;
+  let inProgress = 0;
+  let ready = 0;
+  let disbursed = 0;
+  let returned = 0;
 
   for (const row of rows) {
+    if (row.workStatus === "in_progress") inProgress += 1;
     if (
-      row.billingStatus === "draft" ||
-      row.billingStatus === "returned" ||
-      row.billingStatus === "inquiry"
+      row.workStatus === "done" &&
+      (row.billingStatus === "at-finance" || row.billingStatus === "disb-req")
     ) {
-      pendingOffice += 1;
-    } else if (
-      row.billingStatus === "sup-review" ||
-      row.billingStatus === "at-finance"
-    ) {
-      inPipeline += 1;
-    } else if (
-      row.billingStatus === "disb-req" ||
-      row.billingStatus === "disbursed"
-    ) {
-      disbursePath += 1;
+      ready += 1;
+    }
+    if (row.billingStatus === "disbursed") disbursed += 1;
+    if (row.billingStatus === "returned" || row.billingStatus === "inquiry") {
+      returned += 1;
     }
   }
 
   return {
     total: rows.length,
-    pendingOffice,
-    inPipeline,
-    disbursePath,
+    inProgress,
+    ready,
+    disbursed,
+    returned,
   };
 }
 

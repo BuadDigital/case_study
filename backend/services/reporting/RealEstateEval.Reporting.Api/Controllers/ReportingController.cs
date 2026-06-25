@@ -99,9 +99,71 @@ public class ReportingController : ControllerBase
             })
             .ToList();
 
+        var governmentReviews = allTasks
+            .Where(t => t.Kind == "government-review")
+            .OrderBy(t => WorkflowTaskStatus.IsTerminal(t.Status))
+            .ThenByDescending(t => t.UpdatedAt)
+            .Take(6)
+            .Select(t => new ReportingGovernmentReviewRowDto
+            {
+                TaskId = t.Id,
+                PoNumber = t.PoNumber,
+                Title = t.Title,
+                ReviewerName = t.AssigneeName,
+                Status = WorkflowTaskStatus.IsTerminal(t.Status) ? "done" : "progress",
+            })
+            .ToList();
+
+        var failures = (await _upstream.GetFailuresAsync(ct))
+            .Where(f => f.Status is not "resolved" and not "suspended")
+            .OrderByDescending(f => f.UpdatedAt)
+            .Take(6)
+            .Select(f => new ReportingFailureRowDto
+            {
+                Id = f.Id,
+                PoNumber = f.PoNumber,
+                DeedNumber = f.DeedNumber,
+                Title = f.Title,
+                Status = f.Status,
+                Severity = f.Severity,
+                UpdatedAt = f.UpdatedAt,
+            })
+            .ToList();
+
+        var feesSummary = await _upstream.GetInspectorFeesSummaryAsync(ct);
+        var feeRows = feesSummary.Rows
+            .Where(r => r.BillingStatus is not "disbursed")
+            .OrderByDescending(r => r.UpdatedAtUtc ?? DateTime.MinValue)
+            .Take(6)
+            .Select(r => new ReportingPartyFeeRowDto
+            {
+                PoNumber = r.PoNumber,
+                PropertyLabel = r.PropertyLabel,
+                PartyKindLabel = PartyKindLabel(r.TaskKind),
+                BillingStatus = r.BillingStatus,
+                BillingStatusLabel = r.BillingStatusLabel,
+                NetFeeSar = r.NetFeeSar,
+            })
+            .ToList();
+
+        var partyFeesOverview = new ReportingPartyFeesOverviewDto
+        {
+            PendingSupervisorReview = feesSummary.Rows.Count(r => r.BillingStatus == "sup-review"),
+            AtFinance = feesSummary.Rows.Count(r => r.BillingStatus == "at-finance"),
+            DisbursementRequested = feesSummary.Rows.Count(r => r.BillingStatus == "disb-req"),
+            NetDraftSar = feesSummary.NetDraftSar,
+            SupReviewSar = feesSummary.SupReviewSar,
+            AtFinanceSar = feesSummary.AtFinanceSar,
+            DisbReqSar = feesSummary.DisbReqSar,
+            RecentRows = feeRows,
+        };
+
         return new ReportingDashboardDto
         {
             RecentValuationRequests = valuationRows,
+            RecentGovernmentReviews = governmentReviews,
+            RecentFailures = failures,
+            PartyFeesOverview = partyFeesOverview,
             TeamFieldMembers = teamField,
             SpecialistLoad = specialistLoad,
             FieldInspectionProgress = await _upstream.GetFieldInspectionSummaryAsync(ct),
@@ -187,5 +249,13 @@ public class ReportingController : ControllerBase
             "property-appraisal" => "مقيم — ميداني",
             "engineering-survey" => "مكتب هندسي — رفع مساحي",
             _ => title,
+        };
+
+    private static string PartyKindLabel(string taskKind) =>
+        taskKind switch
+        {
+            "field-inspection" => "معاينة ميدانية",
+            "engineering-survey" => "رفع مساحي",
+            _ => taskKind,
         };
 }

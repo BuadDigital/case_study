@@ -20,6 +20,7 @@ var connectionString = ServiceCollectionExtensions.RequireConnectionString( buil
 builder.Services.AddPersistence(builder.Configuration, connectionString);
 builder.Services.AddIdentityInfrastructure();
 builder.Services.AddCaseStudyInfrastructure();
+builder.Services.AddValuationInfrastructure();
 builder.Services.AddIntegrationEventPublishing(builder.Configuration);
 builder.Services.AddOutboxDispatcher(builder.Configuration);
 builder.Services.AddValuationIntegrationHandlers();

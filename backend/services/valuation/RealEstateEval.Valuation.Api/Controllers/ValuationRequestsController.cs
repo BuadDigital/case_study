@@ -67,4 +67,22 @@ public class ValuationRequestsController : ControllerBase
             _ => Ok(result),
         };
     }
+
+    [HttpPost("{id:guid}/impediment")]
+    [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
+    public async Task<ActionResult<ValuationRequestDto>> RecordImpediment(
+        Guid id,
+        [FromBody] ValuationImpedimentRequest request,
+        CancellationToken ct)
+    {
+        var (result, error) = await _service.RecordImpedimentAsync(id, request, ct);
+        return error switch
+        {
+            "not_found" => NotFound(),
+            "already_submitted" => BadRequest(new { error = "report already submitted" }),
+            "already_impeded" => BadRequest(new { error = "impediment already recorded" }),
+            "reason_required" => BadRequest(new { error = "reason is required" }),
+            _ => Ok(result),
+        };
+    }
 }

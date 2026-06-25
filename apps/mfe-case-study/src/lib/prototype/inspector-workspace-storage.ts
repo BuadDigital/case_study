@@ -379,9 +379,14 @@ function draftToPayload(
   };
 }
 
-function writeCache(draft: InspectorWorkspaceDraft): void {
+function setCache(draft: InspectorWorkspaceDraft): void {
   if (!draft.taskId) return;
   workspaceCache.set(draft.taskId, draft);
+}
+
+/** Updates cache and notifies listeners — use only after user-facing writes. */
+function writeCache(draft: InspectorWorkspaceDraft): void {
+  setCache(draft);
   notifyChanged();
 }
 
@@ -410,7 +415,7 @@ export async function fetchInspectorWorkspace(
     latitude: readString(payload.mapLatitude),
     longitude: readString(payload.mapLongitude),
   });
-  writeCache(draft);
+  setCache(draft);
   return draft;
 }
 

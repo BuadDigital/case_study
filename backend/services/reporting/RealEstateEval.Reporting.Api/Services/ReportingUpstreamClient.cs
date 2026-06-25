@@ -28,6 +28,8 @@ public interface IReportingUpstreamClient
     Task<IReadOnlyList<ValuationRequestDto>> GetValuationRequestsAsync(CancellationToken cancellationToken);
     Task<IReadOnlyList<WorkflowTaskDto>> GetWorkflowTasksAsync(CancellationToken cancellationToken);
     Task<FieldInspectionWorkspaceSummaryDto> GetFieldInspectionSummaryAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyList<FailureRecordDto>> GetFailuresAsync(CancellationToken cancellationToken);
+    Task<InspectorFeesSummaryDto> GetInspectorFeesSummaryAsync(CancellationToken cancellationToken);
     Task<int> GetFailureCountAsync(CancellationToken cancellationToken);
     Task<int> GetPropertyCountAsync(CancellationToken cancellationToken);
 }
@@ -67,9 +69,19 @@ public sealed class ReportingUpstreamClient : IReportingUpstreamClient
             "/api/field-inspection-workspaces/summary",
             cancellationToken);
 
+    public Task<IReadOnlyList<FailureRecordDto>> GetFailuresAsync(
+        CancellationToken cancellationToken) =>
+        GetJsonAsync<IReadOnlyList<FailureRecordDto>>("/api/failures", cancellationToken);
+
+    public Task<InspectorFeesSummaryDto> GetInspectorFeesSummaryAsync(
+        CancellationToken cancellationToken) =>
+        GetJsonAsync<InspectorFeesSummaryDto>(
+            "/api/inspector-fees/summary?submittedOnly=false",
+            cancellationToken);
+
     public async Task<int> GetFailureCountAsync(CancellationToken cancellationToken)
     {
-        var failures = await GetJsonAsync<IReadOnlyList<object>>("/api/failures", cancellationToken);
+        var failures = await GetFailuresAsync(cancellationToken);
         return failures.Count;
     }
 

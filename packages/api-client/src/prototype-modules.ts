@@ -212,6 +212,46 @@ export async function listValuationRequests(
   }
 }
 
+export async function submitValuationReport(
+  config: PrototypeModulesApiConfig,
+  id: string,
+): Promise<PrototypeModulesResult<ValuationRequestDto>> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/valuation-requests/${id}/submit-report`, {
+      method: "POST",
+      headers: headers(config.token),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: await parseJson<ValuationRequestDto>(res) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export async function submitValuationImpediment(
+  config: PrototypeModulesApiConfig,
+  id: string,
+  reason: string,
+): Promise<PrototypeModulesResult<ValuationRequestDto>> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/valuation-requests/${id}/impediment`, {
+      method: "POST",
+      headers: headers(config.token),
+      body: JSON.stringify({ reason }),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: await parseJson<ValuationRequestDto>(res) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
 // --- Property keys ---
 
 export type PropertyKeyRecordDto = {
