@@ -4,8 +4,7 @@ import { useEffect } from "react";
 import { useAuth } from "@platform/app-shared/hooks/useAuth";
 import { appendAuditLogEntry } from "@platform/app-shared/audit/audit-log-store";
 import { pushNotification } from "@platform/app-shared/notifications/notification-store";
-import { FAILURES_CHANGED_EVENT } from "@failures/mfe";
-import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "@case-study/mfe/lib/case-study-field-inspection-events";
+import { DOMAIN_NOTIFICATION_RULES } from "@/lib/domain-notification-rules";
 
 /** Bridges domain window events to notifications + audit log. */
 export function DomainEventBridge() {
@@ -14,45 +13,22 @@ export function DomainEventBridge() {
   useEffect(() => {
     const actor = displayName ?? "مستخدم";
 
-    function onFailureChange() {
-      pushNotification({
-        title: "تحديث في التعذرات",
-        body: "راجع قائمة التعذرات.",
-        tone: "warn",
-        href: "/failures",
-      });
-      appendAuditLogEntry({
-        actor,
-        action: "تحديث تعذرات",
-        entity: "failures",
-      });
-    }
+    const cleanups = DOMAIN_NOTIFICATION_RULES.map((rule) => {
+      function onDomainEvent() {
+        pushNotification({ ...rule.notification, actor });
+        appendAuditLogEntry({
+          actor,
+          action: rule.auditAction,
+          entity: rule.auditEntity,
+        });
+      }
 
-    function onInspectionSubmit() {
-      pushNotification({
-        title: "إرسال معاينة",
-        body: "اكتملت معاينة عقار.",
-        tone: "success",
-        href: "/property-inspection",
-      });
-      appendAuditLogEntry({
-        actor,
-        action: "إرسال معاينة ميدانية",
-        entity: "field-inspection",
-      });
-    }
+      window.addEventListener(rule.event, onDomainEvent);
+      return () => window.removeEventListener(rule.event, onDomainEvent);
+    });
 
-    window.addEventListener(FAILURES_CHANGED_EVENT, onFailureChange);
-    window.addEventListener(
-      FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
-      onInspectionSubmit,
-    );
     return () => {
-      window.removeEventListener(FAILURES_CHANGED_EVENT, onFailureChange);
-      window.removeEventListener(
-        FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
-        onInspectionSubmit,
-      );
+      for (const cleanup of cleanups) cleanup();
     };
   }, [displayName]);
 

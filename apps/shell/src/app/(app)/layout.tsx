@@ -4,6 +4,8 @@ import { Suspense } from "react";
 import { PrototypeAppGate } from "@/components/PrototypeAppGate";
 import { AuthSessionWatcher } from "@/components/AuthSessionWatcher";
 import { DomainEventBridge } from "@/components/DomainEventBridge";
+import { NotificationToastBridge } from "@/components/NotificationToastBridge";
+import { ServerNotificationBridge } from "@/components/ServerNotificationBridge";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { PageAccessGate } from "@/components/PageAccessGate";
 import { AppShell } from "@/components/views/AppShell";
@@ -25,6 +27,8 @@ export default function AppSectionLayout({
             <PrototypeProvider>
               <AuthSessionWatcher />
               <DomainEventBridge />
+              <NotificationToastBridge />
+              <ServerNotificationBridge />
               <PageAccessGate>
                 <ErrorBoundary fallbackTitle="تعذّر تحميل التطبيق.">
                   <OfflineBanner />

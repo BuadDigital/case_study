@@ -224,6 +224,19 @@ export {
 } from "./permissions";
 
 export {
+  clearNotifications,
+  createNotification,
+  deleteNotification,
+  listNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  subscribeNotificationStream,
+  type CreateUserNotificationRequest,
+  type NotificationsApiConfig,
+  type UserNotificationDto,
+} from "./notifications";
+
+export {
   fetchReportingDashboard,
   fetchReportingKpi,
   type ReportingDashboardDto,

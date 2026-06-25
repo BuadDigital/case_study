@@ -4,14 +4,25 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Notifications;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 public class InspectorFeeService : IInspectorFeeService
 {
     private readonly ApplicationDbContext _db;
+    private readonly INotificationService _notifications;
+    private readonly NotificationRecipientResolver _recipients;
 
-    public InspectorFeeService(ApplicationDbContext db) => _db = db;
+    public InspectorFeeService(
+        ApplicationDbContext db,
+        INotificationService notifications,
+        NotificationRecipientResolver recipients)
+    {
+        _db = db;
+        _notifications = notifications;
+        _recipients = recipients;
+    }
 
     public async Task EnsureLedgersForTasksAsync(
         IEnumerable<WorkflowTask> tasks,
@@ -363,6 +374,12 @@ public class InspectorFeeService : IInspectorFeeService
         if (succeeded.Count > 0)
             await _db.SaveChangesAsync(cancellationToken);
 
+        if (string.Equals(request.Action.Trim(), InspectorFeeActions.Disburse, StringComparison.OrdinalIgnoreCase)
+            && succeeded.Count > 0)
+        {
+            await NotifyPartiesFeesDisbursedAsync(succeeded, cancellationToken);
+        }
+
         return new BatchInspectorFeeTransitionResult
         {
             Succeeded = succeeded,
@@ -465,6 +482,8 @@ public class InspectorFeeService : IInspectorFeeService
         });
 
         await _db.SaveChangesAsync(cancellationToken);
+
+        await NotifyFinanceDisbursementBatchCreatedAsync(succeeded.Count, cancellationToken);
 
         return new CreateDisbursementBatchResult
         {
@@ -909,6 +928,60 @@ public class InspectorFeeService : IInspectorFeeService
         TotalDiscountsSar = 0m,
         Rows = [],
     };
+
+    private async Task NotifyFinanceDisbursementBatchCreatedAsync(
+        int propertyCount,
+        CancellationToken cancellationToken)
+    {
+        var recipientIds = await _recipients.ResolveUserIdsWithPrototypeRoleAsync(
+            "financial-officer",
+            cancellationToken);
+
+        if (recipientIds.Count == 0) return;
+
+        await _notifications.CreateForUsersAsync(
+            recipientIds,
+            new CreateUserNotificationRequest
+            {
+                Title = "أمر صرف جديد",
+                Body = $"بانتظار صرف {propertyCount} عقار.",
+                Tone = "info",
+                Href = "/financial",
+                Category = "financial",
+                SourceEvent = $"disbursement-batch:{DateTime.UtcNow:yyyyMMddHHmmss}",
+            },
+            cancellationToken);
+    }
+
+    private async Task NotifyPartiesFeesDisbursedAsync(
+        IReadOnlyList<InspectorFeeRowDto> rows,
+        CancellationToken cancellationToken)
+    {
+        foreach (var row in rows)
+        {
+            if (string.IsNullOrWhiteSpace(row.AssigneeId)) continue;
+
+            var userId = await _recipients.ResolveUserIdForDistributionAssigneeAsync(
+                row.AssigneeId,
+                cancellationToken);
+            if (userId is null) continue;
+
+            await _notifications.CreateForUserAsync(
+                userId,
+                new CreateUserNotificationRequest
+                {
+                    Title = "تم صرف الأتعاب",
+                    Body = $"صُرفت أتعاب العقار {row.PropertyLabel}.",
+                    Tone = "success",
+                    Href = "/party-fees",
+                    Category = "financial",
+                    EntityType = "task",
+                    EntityId = row.WorkflowTaskId,
+                    SourceEvent = $"fee-disbursed:{row.WorkflowTaskId}",
+                },
+                cancellationToken);
+        }
+    }
 
     public async Task<IReadOnlyList<InspectorFeeAuditEntryDto>> ListTransitionsAsync(
         Guid workflowTaskId,

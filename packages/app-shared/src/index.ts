@@ -10,7 +10,15 @@ export { getAppEnv } from "./env";
 export { isFeatureEnabled, type FeatureFlag } from "./feature-flags";
 export { LIVE_QUEUE_POLL_INTERVAL_MS } from "./query/live-query";
 export { NotificationProvider, useNotifications } from "./notifications/NotificationProvider";
-export { pushNotification } from "./notifications/notification-store";
+export {
+  pushNotification,
+  type AppNotification,
+  type NotificationCategory,
+  type NotificationEntityType,
+  type PushNotificationInput,
+} from "./notifications/notification-store";
+export { formatNotificationTime } from "./notifications/format-notification-time";
+export { useSyncedNotifications } from "./notifications/useSyncedNotifications";
 export { appendAuditLogEntry, listAuditLogEntries } from "./audit/audit-log-store";
 export { exportRowsToCsv } from "./export/export-csv";
 export * from "./domain/form/field-errors";
