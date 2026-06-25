@@ -57,8 +57,8 @@ const PARTY_TASK_PAGES_MAP = {
     workIntro:
       "استلم المعاملة من دراسة الحالة ونسّق إسناد المعاين والمقيم.",
     saveLabel: "تأكيد الاستلام",
-    completeTitle: "تم الاستلام",
-    completeMessage: "تم استلام المعاملة في قسم التقييم العقاري.",
+    completeTitle: "تم التسليم",
+    completeMessage: "تم تسليم المعامله للمقيم العقاري",
     assigneeSubtitle: "منسق عمليات التقييم",
     icon: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 8 0 4 4 0 0 0-8 0z",
   },

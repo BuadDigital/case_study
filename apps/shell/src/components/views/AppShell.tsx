@@ -162,14 +162,14 @@ function navItemClasses({
     sub && "gap-[7px] ps-8 text-[11px] [&>svg]:size-3",
     toggle && "w-full border-0 bg-transparent font-inherit",
     active &&
-      "bg-primary/18 font-medium text-white before:absolute before:inset-y-0 before:start-0 before:w-[3px] before:rounded-e-sm before:bg-primary before:content-['']",
+      "bg-white/10 font-medium text-white before:absolute before:inset-y-0 before:start-0 before:w-[3px] before:rounded-e-sm before:bg-white/70 before:content-['']",
     locked && "cursor-default opacity-35",
   );
 }
 
 function navBadgeClasses() {
   return cn(
-    "ms-auto inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-primary px-[5px] text-[10px] font-semibold text-white",
+    "ms-auto inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-danger px-[5px] text-[10px] font-semibold text-white",
   );
 }
 

@@ -33,6 +33,7 @@ import {
 import {
   usePoListRowsQuery,
   usePropertyListItemsQuery,
+  useRecentValuationRequestsQuery,
 } from "../query/dashboard-queries";
 import { useReportingDashboardQuery } from "../query/reporting-queries";
 
@@ -83,8 +84,16 @@ export function DashboardView() {
   const { data: poRows, isPending: poPending } = usePoListRowsQuery();
   const { data: propertyItems, isPending: propertyPending } =
     usePropertyListItemsQuery();
+  const { data: valuationRows = [], isPending: valuationPending } =
+    useRecentValuationRequestsQuery();
   const { data: reporting, isPending: reportingPending } = useReportingDashboardQuery();
   const reportingReady = !reportingPending && reporting !== undefined;
+  const valuationRowsToShow =
+    (reporting?.recentValuationRequests ?? []).length > 0
+      ? reporting?.recentValuationRequests ?? []
+      : valuationRows;
+  const valuationReady =
+    reportingReady || (!valuationPending && valuationRows !== undefined);
 
   const propertyStats = useMemo(() => {
     if (!propertyItems) return undefined;
@@ -203,7 +212,7 @@ export function DashboardView() {
             <SubpageHeader title="طلبات التقييم الأخيرة">
               {panelLink("/valuation-requests", "عرض الكل")}
             </SubpageHeader>
-            <Table pending={!reportingReady}>
+            <Table pending={!valuationReady}>
               <THead>
                 <Tr hoverable={false}>
                   <Th>الطلب</Th>
@@ -213,16 +222,16 @@ export function DashboardView() {
                 </Tr>
               </THead>
               <TBody>
-                {!reportingReady ? (
+                {!valuationReady ? (
                   <SkeletonTableRows rows={4} cols={4} />
-                ) : (reporting?.recentValuationRequests ?? []).length === 0 ? (
+                ) : valuationRowsToShow.length === 0 ? (
                   <Tr hoverable={false}>
                     <Td colSpan={4} className="text-center text-text-3">
                       لا توجد طلبات تقييم حديثة
                     </Td>
                   </Tr>
                 ) : (
-                  (reporting?.recentValuationRequests ?? []).map((v) => (
+                  valuationRowsToShow.map((v) => (
                   <Tr key={v.displayId} hoverable={false}>
                     <Td className="text-[11px] font-semibold text-primary-light">
                       {v.displayId}

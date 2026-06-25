@@ -318,12 +318,23 @@ export function CaseStudyForm({
     [viewerPartyId, infoRolesMatrix],
   );
 
+  const hasPartyVisibleNonDeedSections = useMemo(() => {
+    if (!isParty) return false;
+    return FORM_STEP_SECTIONS.filter((section) => section !== "deed").some(
+      (section) =>
+        CASE_STUDY_SECTION_QUESTIONS[section].some((_, i) =>
+          isQuestionVisible(caseStudyAnswerKey(section, i)),
+        ),
+    );
+  }, [isParty, isQuestionVisible]);
+
   const sectionHasVisibleQuestions = useCallback(
     (section: CaseStudyQuestionSection) =>
+      !(isParty && hasPartyVisibleNonDeedSections && section === "deed") &&
       CASE_STUDY_SECTION_QUESTIONS[section].some((_, i) =>
         isQuestionVisible(caseStudyAnswerKey(section, i)),
       ),
-    [isQuestionVisible],
+    [isParty, hasPartyVisibleNonDeedSections, isQuestionVisible],
   );
 
   const visibleStepIndices = useMemo(() => {
@@ -536,6 +547,8 @@ export function CaseStudyForm({
   const isFirstVisibleStep = navSteps[0] === step;
   const isLastVisibleStep = navSteps[navSteps.length - 1] === step;
   const showStepFooterActions = !partyAdvisory;
+  const isPartyVariant = variant === "party";
+  const showFormStepChrome = !partyAdvisory && !isPartyVariant;
 
   const matrixTableProps = {
     canEditKey,
@@ -578,7 +591,7 @@ export function CaseStudyForm({
           "mt-0 gap-4 [&_[data-registration-card]]:overflow-hidden [&_[data-registration-card]]:rounded-xl [&_[data-registration-card]]:border [&_[data-registration-card]]:border-border [&_[data-registration-card]]:shadow-sm [&_[data-registration-card]_div:last-child]:p-0",
       )}
     >
-      {!partyAdvisory ? (
+      {showFormStepChrome ? (
         <div className="mb-3.5 flex flex-wrap items-stretch gap-3.5 border-b border-border">
           <nav
             className="flex min-w-0 flex-1 flex-nowrap gap-2 overflow-x-auto"
@@ -620,7 +633,7 @@ export function CaseStudyForm({
         </div>
       ) : null}
 
-      {isParty ? (
+      {isParty && !partyAdvisory ? (
         <CaseStudyMatrixBanner
           viewerPartyId={viewerPartyId}
           isParty={!!isParty}

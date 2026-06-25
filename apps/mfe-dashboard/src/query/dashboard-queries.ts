@@ -2,10 +2,12 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { listWorkflowTasks, type WorkflowTaskDto } from "@platform/api-client";
 import {
   loadPoListRows,
   loadPropertyListItems,
 } from "@platform/app-shared/prototype/work-orders-read";
+import { workOrdersApiConfig } from "@platform/app-shared/prototype/work-orders-api-config";
 
 const STALE_MS = 60_000;
 const GC_MS = 10 * 60_000;
@@ -25,6 +27,64 @@ export function usePropertyListItemsQuery() {
   return useQuery({
     queryKey: prototypeKeys.propertyListItems(),
     queryFn: loadPropertyListItems,
+    ...queryDefaults,
+  });
+}
+
+export type DashboardValuationRequestRow = {
+  id: string;
+  displayId: string;
+  propId: string;
+  appraiser: string;
+  status: string;
+  date: string;
+};
+
+function mapValuationTask(task: WorkflowTaskDto): DashboardValuationRequestRow {
+  const propertyLabel = task.title?.trim() || task.propertyId || "—";
+  const displayId = `${task.poNumber} · ${task.propertyOrdinal}`;
+  return {
+    id: task.id,
+    displayId,
+    propId: propertyLabel,
+    appraiser: task.assigneeName?.trim() || "—",
+    status:
+      task.status === "completed"
+        ? "done"
+        : task.status === "blocked"
+          ? "fail"
+          : "progress",
+    date: task.createdAt,
+  };
+}
+
+async function loadRecentValuationRequestsFromTasks(): Promise<
+  DashboardValuationRequestRow[]
+> {
+  const config = workOrdersApiConfig();
+  if (!config) return [];
+  const result = await listWorkflowTasks(config);
+  if (!result.ok) return [];
+
+  const appraisalRows = result.data
+    .filter((t) => t.kind === "property-appraisal")
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 6)
+    .map(mapValuationTask);
+
+  if (appraisalRows.length > 0) return appraisalRows;
+
+  return result.data
+    .filter((t) => t.kind === "valuation-coordination")
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 6)
+    .map(mapValuationTask);
+}
+
+export function useRecentValuationRequestsQuery() {
+  return useQuery({
+    queryKey: ["dashboard", "recent-valuation-requests"],
+    queryFn: loadRecentValuationRequestsFromTasks,
     ...queryDefaults,
   });
 }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type RefObject } from "react
 import { FormGroup, FormRow, InlineLoadingSkeleton, Input, Label, Note, Select, useToast } from "@platform/design-system";
 import {
   RegField,
+  RegSelect,
   RegTextarea,
 } from "@platform/app-shared/registration/FormFields";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
@@ -82,13 +83,42 @@ export function ValuationCoordinationWorkBody({
     [task, parentTask],
   );
 
+  const siblingInspectorTask = useMemo(
+    () =>
+      task.parentTaskId
+        ? allTasks?.find(
+            (t) =>
+              t.parentTaskId === task.parentTaskId &&
+              t.kind === "field-inspection",
+          )
+        : undefined,
+    [allTasks, task.parentTaskId],
+  );
+  const siblingAppraiserTask = useMemo(
+    () =>
+      task.parentTaskId
+        ? allTasks?.find(
+            (t) =>
+              t.parentTaskId === task.parentTaskId &&
+              t.kind === "property-appraisal",
+          )
+        : undefined,
+    [allTasks, task.parentTaskId],
+  );
+
   const inspectorName = useMemo(
-    () => assigneeLabel(getFieldInspectors(staffUsers), distribution.inspectorId),
-    [distribution.inspectorId, staffUsers],
+    () =>
+      assigneeLabel(getFieldInspectors(staffUsers), distribution.inspectorId) ||
+      siblingInspectorTask?.assigneeName?.trim() ||
+      "",
+    [distribution.inspectorId, siblingInspectorTask?.assigneeName, staffUsers],
   );
   const appraiserName = useMemo(
-    () => assigneeLabel(getValuators(staffUsers), distribution.valuatorId),
-    [distribution.valuatorId, staffUsers],
+    () =>
+      assigneeLabel(getValuators(staffUsers), distribution.valuatorId) ||
+      siblingAppraiserTask?.assigneeName?.trim() ||
+      "",
+    [distribution.valuatorId, siblingAppraiserTask?.assigneeName, staffUsers],
   );
 
   const property = record?.properties.find((p) => p.id === propertyId);
@@ -224,31 +254,26 @@ export function ValuationCoordinationWorkBody({
                 });
               }}
             />
-            <FormGroup className="mb-3 flex flex-col gap-1">
-              <Label
-                htmlFor="vc-priority"
-                className="text-[11px] font-semibold text-text-2"
-              >
-                أولوية التنفيذ
-              </Label>
-              <Select
-                id="vc-priority"
-                value={draft.priority}
-                className="text-xs"
-                onChange={(e) =>
-                  persist({
-                    priority: e.target.value as ValuationCoordinationPriority,
-                  })
-                }
-              >
-                <option value="normal">
-                  {valuationCoordinationPriorityLabel("normal")}
-                </option>
-                <option value="urgent">
-                  {valuationCoordinationPriorityLabel("urgent")}
-                </option>
-              </Select>
-            </FormGroup>
+            <RegSelect
+              id="vc-priority"
+              label="أولوية التنفيذ"
+              value={draft.priority}
+              options={[
+                {
+                  value: "normal",
+                  label: valuationCoordinationPriorityLabel("normal"),
+                },
+                {
+                  value: "urgent",
+                  label: valuationCoordinationPriorityLabel("urgent"),
+                },
+              ]}
+              onChange={(v) =>
+                persist({
+                  priority: v as ValuationCoordinationPriority,
+                })
+              }
+            />
           </FormRow>
 
           <FormGroup className="mb-3 flex flex-col gap-1">

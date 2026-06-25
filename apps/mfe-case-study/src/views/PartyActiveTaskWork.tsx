@@ -534,21 +534,35 @@ export function PartyActiveTaskWork({
         }
         showFooter
       >
-        {appraisalExtensions ? (
-          appraisalExtensions.renderAppraisalWork({
-            def,
-            childTask: task,
-            hostRef: evaluatorHostRef,
-          })
-        ) : (
-          <InlineLoadingSkeleton className={LOADING_TEXT} />
-        )}
-        <PartyTaskFailureRaise
-          def={def}
-          task={task}
-          deedNumber={deedLabel}
-          onSubmitted={refresh}
-        />
+        <div className="grid min-w-0 gap-4 xl:grid-cols-2">
+          <section className="min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
+            <h3 className="m-0 mb-2 text-sm font-semibold text-text">
+              {def.workTitle}
+            </h3>
+            {appraisalExtensions ? (
+              appraisalExtensions.renderAppraisalWork({
+                def,
+                childTask: task,
+                hostRef: evaluatorHostRef,
+              })
+            ) : (
+              <InlineLoadingSkeleton className={LOADING_TEXT} />
+            )}
+            <PartyTaskFailureRaise
+              def={def}
+              task={task}
+              deedNumber={deedLabel}
+              onSubmitted={refresh}
+            />
+          </section>
+
+          <section className="min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
+            <h3 className="m-0 mb-2 text-sm font-semibold text-text">
+              نموذج الدراسة
+            </h3>
+            <PartyCaseStudyFormTab def={def} childTask={task} />
+          </section>
+        </div>
       </TaskWorkChrome>
     );
   }
@@ -584,28 +598,37 @@ export function PartyActiveTaskWork({
         onClose={exit}
         onSave={submitFieldInspection}
         saveLabel={fieldInspectionLocked ? "رجوع" : def.saveLabel}
-        showFooter={false}
-        scrollMode="viewport"
+        showFooter
       >
-        <Note tone="info" className="mb-4">
-          {def.workIntro}
-        </Note>
-        <FieldInspectionWorkBody
-          def={def}
-          task={task}
-          hostRef={fieldInspectionHostRef}
-          submitting={saving}
-          beforeSubmitFooter={
-            <div id="inspector-failure-raise" className="scroll-mt-4">
-              <PartyTaskFailureRaise
-                def={def}
-                task={task}
-                deedNumber={deedLabel}
-                onSubmitted={refresh}
-              />
-            </div>
-          }
-        />
+        <div className="grid min-w-0 gap-4 xl:grid-cols-2">
+          <section className="min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
+            <h3 className="m-0 mb-2 text-sm font-semibold text-text">
+              {def.workTitle}
+            </h3>
+            <Note tone="info" className="mb-4">
+              {def.workIntro}
+            </Note>
+            <FieldInspectionWorkBody
+              def={def}
+              task={task}
+              hostRef={fieldInspectionHostRef}
+              submitting={saving}
+            />
+            <PartyTaskFailureRaise
+              def={def}
+              task={task}
+              deedNumber={deedLabel}
+              onSubmitted={refresh}
+            />
+          </section>
+
+          <section className="min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
+            <h3 className="m-0 mb-2 text-sm font-semibold text-text">
+              نموذج الدراسة
+            </h3>
+            <PartyCaseStudyFormTab def={def} childTask={task} />
+          </section>
+        </div>
       </TaskWorkChrome>
     );
   }
@@ -648,19 +671,27 @@ export function PartyActiveTaskWork({
         saveLabel={locked ? "رجوع" : def.saveLabel}
         showFooter
       >
-        {isGovernmentReview ? (
+        {isGovernmentReview || isValuationCoordination ? (
           <>
             <div className="grid min-w-0 gap-4 xl:grid-cols-2">
               <section className="min-w-0 rounded-xl border border-border bg-surface p-3">
                 <h3 className="m-0 mb-2 text-sm font-semibold text-text">
-                  المراجعة الحكومية
+                  {isGovernmentReview ? "المراجعة الحكومية" : def.workTitle}
                 </h3>
                 <Note tone="info">{def.workIntro}</Note>
-                <GovernmentReviewWorkBody
-                  def={def}
-                  task={task}
-                  hostRef={governmentHostRef}
-                />
+                {isGovernmentReview ? (
+                  <GovernmentReviewWorkBody
+                    def={def}
+                    task={task}
+                    hostRef={governmentHostRef}
+                  />
+                ) : (
+                  <ValuationCoordinationWorkBody
+                    def={def}
+                    task={task}
+                    hostRef={coordinationHostRef}
+                  />
+                )}
                 <PartyTaskFailureRaise
                   def={def}
                   task={task}
