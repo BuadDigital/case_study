@@ -162,18 +162,6 @@ export function PartyPropertyBrowse({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-base font-semibold text-text">استعراض العقارات</h2>
-        <Badge tone="info">
-          {partyName}
-          {partyCategory ? ` · ${partyCategory}` : ""} · {rows.length} عقار
-        </Badge>
-      </div>
-      <p className="text-xs text-text-3">
-        كل عقارات الدور بحالتَي العمل والدفع وفواتيره — مع بحث وتصفية وتنقّل
-        صفحات.
-      </p>
-
       {showPartyPicker && parties.length > 0 && onSelectParty ? (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-text-2">الطرف:</span>

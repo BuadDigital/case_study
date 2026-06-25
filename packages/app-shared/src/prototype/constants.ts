@@ -318,12 +318,15 @@ export type PoRow = {
 };
 
 export type VrRow = {
+  /** API record id (GUID) */
+  recordId: string;
+  /** Display id shown in tables (e.g. VR-441) */
   id: string;
   propId: string;
   area: string;
   type: string;
   appraiser: string;
-  status: "done" | "progress";
+  status: "done" | "progress" | "fail";
   date: string;
 };
 

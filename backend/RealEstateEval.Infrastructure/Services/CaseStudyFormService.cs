@@ -15,10 +15,14 @@ public class CaseStudyFormService : ICaseStudyFormService
     };
 
     private readonly ApplicationDbContext _db;
+    private readonly ICaseStudyValuationDispatchService _valuationDispatch;
 
-    public CaseStudyFormService(ApplicationDbContext db)
+    public CaseStudyFormService(
+        ApplicationDbContext db,
+        ICaseStudyValuationDispatchService valuationDispatch)
     {
         _db = db;
+        _valuationDispatch = valuationDispatch;
     }
 
     public async Task<CaseStudyFormDto?> GetAsync(
@@ -44,6 +48,7 @@ public class CaseStudyFormService : ICaseStudyFormService
             f => f.TaskId == taskId && f.IsPartyForm == party,
             cancellationToken);
 
+        var previousStatus = entity?.Status;
         var now = DateTime.UtcNow;
         if (entity is null)
         {
@@ -59,6 +64,14 @@ public class CaseStudyFormService : ICaseStudyFormService
 
         ApplyDto(entity, form, now);
         await _db.SaveChangesAsync(cancellationToken);
+
+        if (!party
+            && string.Equals(form.Status, "submitted", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(previousStatus, "submitted", StringComparison.OrdinalIgnoreCase))
+        {
+            await _valuationDispatch.TryCreateFromCaseStudySubmissionAsync(taskId, cancellationToken);
+        }
+
         return ToDto(entity);
     }
 

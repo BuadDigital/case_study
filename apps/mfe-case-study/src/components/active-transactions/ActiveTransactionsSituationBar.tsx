@@ -39,7 +39,7 @@ function SituationCard({
     <>
       <StatLabel>{label}</StatLabel>
       <StatValue value={value} countUp />
-      <StatSub>{sub}</StatSub>
+      {sub ? <StatSub>{sub}</StatSub> : null}
     </>
   );
 
@@ -69,7 +69,9 @@ export function ActiveTransactionsSituationBar({
   if (!situation) return null;
 
   const { cards, values } = situation;
-  const gridCols = cards.length as 2 | 3 | 4;
+  const gridCols = (cards.length <= 4 ? cards.length : 4) as 2 | 3 | 4;
+  const gridClassName =
+    cards.length === 5 ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : undefined;
 
   const rendered: ReactNode[] = cards.map((card) => (
     <SituationCard
@@ -82,5 +84,9 @@ export function ActiveTransactionsSituationBar({
     />
   ));
 
-  return <StatGrid cols={gridCols}>{rendered}</StatGrid>;
+  return (
+    <StatGrid cols={gridCols} className={gridClassName}>
+      {rendered}
+    </StatGrid>
+  );
 }

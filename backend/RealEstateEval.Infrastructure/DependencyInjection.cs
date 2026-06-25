@@ -98,6 +98,7 @@ public static class DependencyInjection
         services.AddScoped<IWorkOrderService, WorkOrderService>();
         services.AddScoped<IWorkflowTaskService, WorkflowTaskService>();
         services.AddScoped<ICaseStudyFormService, CaseStudyFormService>();
+        services.AddScoped<ICaseStudyValuationDispatchService, CaseStudyValuationDispatchService>();
         services.AddScoped<IPartyTaskSubmissionService, PartyTaskSubmissionService>();
         services.AddScoped<IInspectorFeeService, InspectorFeeService>();
         services.AddScoped<IPoEnfazBillingService, PoEnfazBillingService>();

@@ -10,7 +10,7 @@ import {
   type RefObject,
 } from "react";
 import { useRouter } from "next/navigation";
-import { PartyCaseStudyFormTab } from "../components/case-study/PartyCaseStudyFormTab";
+import { TaskCompletionSuccess } from "../components/party-tasks/TaskCompletionSuccess";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
 import {
   GovernmentReviewWorkBody,
@@ -30,7 +30,6 @@ import {
 } from "../components/field-inspection/FieldInspectionWorkBody";
 import { useFieldInspectionWorkspacesQuery } from "../query/field-inspection-workspaces-queries";
 import { isFieldInspectionLocked } from "../lib/prototype/field-inspection-work-queue";
-import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import { isGovernmentReviewLocked } from "../lib/prototype/government-review-work-queue";
 import { isValuationCoordinationLocked } from "../lib/prototype/valuation-coordination-work-queue";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
@@ -405,9 +404,11 @@ export function PartyActiveTaskWork({
       return renderPropertyTaskShell(
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div className={TAB_CONTENT}>
-            <RegistrationFormCard title={submitSuccess ? "تم الإرسال" : def.completeTitle}>
-              <Note tone="success">{def.completeMessage}</Note>
-            </RegistrationFormCard>
+            <TaskCompletionSuccess
+              title={submitSuccess ? "تم الإرسال" : def.completeTitle}
+              message={def.completeMessage}
+              compact
+            />
           </div>
         </div>,
       );
@@ -436,7 +437,11 @@ export function PartyActiveTaskWork({
       return renderSurveyPropertyShell(
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div className={TAB_CONTENT}>
-            <Note tone="success">{def.completeMessage}</Note>
+            <TaskCompletionSuccess
+              title={def.completeTitle}
+              message={def.completeMessage}
+              compact
+            />
           </div>
         </div>,
       );
@@ -485,9 +490,10 @@ export function PartyActiveTaskWork({
         variant="detail"
         showFooter={false}
       >
-        <RegistrationFormCard title={def.completeTitle}>
-          <Note tone="success">{def.completeMessage}</Note>
-        </RegistrationFormCard>
+        <TaskCompletionSuccess
+          title={def.completeTitle}
+          message={def.completeMessage}
+        />
       </TaskWorkChrome>
     );
   }
@@ -505,11 +511,10 @@ export function PartyActiveTaskWork({
           saveLabel="رجوع للقائمة"
           showFooter
         >
-          <RegistrationFormCard title="تم الإرسال">
-            <Note tone="success">
-              تم إرسال التقييم وإجابات الاستدلال لأخصائي دراسة الحالة.
-            </Note>
-          </RegistrationFormCard>
+          <TaskCompletionSuccess
+            title="تم الإرسال"
+            message="تم إرسال التقييم وإجابات الاستدلال لأخصائي دراسة الحالة."
+          />
         </TaskWorkChrome>
       );
     }
@@ -560,9 +565,10 @@ export function PartyActiveTaskWork({
           saveLabel="رجوع للقائمة"
           showFooter
         >
-          <RegistrationFormCard title="تم الإرسال">
-            <Note tone="success">{def.completeMessage}</Note>
-          </RegistrationFormCard>
+          <TaskCompletionSuccess
+            title="تم الإرسال"
+            message={def.completeMessage}
+          />
         </TaskWorkChrome>
       );
     }
@@ -621,9 +627,10 @@ export function PartyActiveTaskWork({
           saveLabel="رجوع للقائمة"
           showFooter
         >
-          <RegistrationFormCard title="تم الإرسال">
-            <Note tone="success">{def.completeMessage}</Note>
-          </RegistrationFormCard>
+          <TaskCompletionSuccess
+            title="تم الإرسال"
+            message={def.completeMessage}
+          />
         </TaskWorkChrome>
       );
     }

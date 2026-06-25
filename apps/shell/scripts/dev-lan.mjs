@@ -75,8 +75,9 @@ if (lan) {
   console.log("  (Same Wi‑Fi only — not public internet.)");
   console.log("");
   console.log(
-    "  If others cannot connect: run scripts/open-firewall.ps1 as Administrator once.",
+    "  LAN login calls the API on port 5160 (not proxied). Firewall must allow 3000 + 5160:",
   );
+  console.log("    apps/shell/scripts/open-firewall.ps1  (Run as Administrator, once)");
   if (!lan.startsWith("192.168.")) {
     console.log("");
     console.log(

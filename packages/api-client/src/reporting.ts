@@ -28,9 +28,50 @@ export type ReportingDashboardDto = {
     status: string;
     date: string;
   }[];
+  recentGovernmentReviews: ReportingGovernmentReviewRowDto[];
+  recentFailures: ReportingFailureRowDto[];
+  partyFeesOverview?: ReportingPartyFeesOverviewDto;
   teamFieldMembers: ReportingTeamMemberDto[];
   specialistLoad: ReportingSpecialistLoadDto[];
   fieldInspectionProgress?: FieldInspectionWorkspaceSummaryDto;
+};
+
+export type ReportingGovernmentReviewRowDto = {
+  taskId: string;
+  poNumber: string;
+  title: string;
+  reviewerName: string;
+  status: string;
+};
+
+export type ReportingFailureRowDto = {
+  id: string;
+  poNumber: string;
+  deedNumber: string;
+  title: string;
+  status: string;
+  severity: string;
+  updatedAt: string;
+};
+
+export type ReportingPartyFeesOverviewDto = {
+  pendingSupervisorReview: number;
+  atFinance: number;
+  disbursementRequested: number;
+  netDraftSar: number;
+  supReviewSar: number;
+  atFinanceSar: number;
+  disbReqSar: number;
+  recentRows: ReportingPartyFeeRowDto[];
+};
+
+export type ReportingPartyFeeRowDto = {
+  poNumber: string;
+  propertyLabel: string;
+  partyKindLabel: string;
+  billingStatus: string;
+  billingStatusLabel: string;
+  netFeeSar: number;
 };
 
 export type FieldInspectionWorkspaceSummaryDto = {

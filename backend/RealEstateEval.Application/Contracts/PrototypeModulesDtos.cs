@@ -125,6 +125,12 @@ public class SaveValuationRequestRequest
     public string Date { get; init; } = "";
 }
 
+public class ValuationImpedimentRequest
+{
+    [Required, MaxLength(2000)]
+    public string Reason { get; init; } = "";
+}
+
 public class PropertyKeyRecordDto
 {
     public Guid Id { get; init; }
