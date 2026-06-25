@@ -32,7 +32,7 @@ export function buildActiveQueueRowMoreItems(options: {
     },
     {
       id: "delegation-letter",
-      label: "خطاب التفويض الداخلي",
+      label: "خطاب تفويض الشركة",
       onClick: () =>
         openInternalDelegationLetterPlaceholder({
           poNumber: po,

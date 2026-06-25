@@ -592,7 +592,7 @@ export function PoPropertyDetailTabs({
       </TabBar>
 
       <div className="flex min-h-0 flex-1 flex-col items-stretch overflow-hidden lg:flex-row">
-        <TabPanel className="order-1">
+        <TabPanel className="order-1 min-h-0">
           {tab === "basic" ? (
             <BasicTab record={record} property={property} />
           ) : null}
@@ -876,7 +876,7 @@ export function PoPropertyDetailTabs({
           ) : null}
         </TabPanel>
 
-        <div className="max-lg:hidden">
+        <div className="order-2 flex h-full min-h-0 min-w-0 shrink-0 max-lg:hidden">
           <PropertyTransactionTimeline record={record} property={property} />
         </div>
       </div>
