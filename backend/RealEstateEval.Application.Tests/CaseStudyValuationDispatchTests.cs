@@ -22,7 +22,6 @@ public class CaseStudyValuationDispatchTests
         await using var db = CreateDb();
         SeedWorkflow(db);
 
-        var fees = new InspectorFeeService(db);
         var timeline = new PropertyTimelineService(db);
         var valuation = new ValuationRequestService(
             db,
@@ -63,7 +62,6 @@ public class CaseStudyValuationDispatchTests
         await using var db = CreateDb();
         SeedWorkflow(db);
 
-        var fees = new InspectorFeeService(db);
         var timeline = new PropertyTimelineService(db);
         var valuation = new ValuationRequestService(
             db,

@@ -4,10 +4,6 @@ import { useMemo, useState } from "react";
 import {
   Badge,
   InlineLoadingSkeleton,
-  StatCard,
-  StatGrid,
-  StatLabel,
-  StatValue,
   Tab,
   TabBar,
   TabPanel,
@@ -77,9 +73,7 @@ export function PropertyDetailFinanceTab({
     enabled: Boolean(property.id),
   });
 
-  const netOut = rows.reduce((s, r) => s + r.netFeeSar, 0);
   const enfazIn = enfazRevenue?.hasEnfazRevenue ? enfazRevenue.enfazFeeSar ?? 0 : null;
-  const margin = enfazIn != null ? enfazIn - netOut : null;
 
   if (feeTasks.length === 0) {
     return (
@@ -140,61 +134,23 @@ export function PropertyDetailFinanceTab({
 
       <TabPanel>
         {sub === "out" ? (
-          <>
-            <StatGrid cols={3} flush className="mb-4">
-              <StatCard accent="blue" flush>
-                <StatLabel>إجمالي الالتزامات (صافي)</StatLabel>
-                <StatValue value={netOut} countUp />
-              </StatCard>
-              <StatCard accent="warn" flush>
-                <StatLabel>إجمالي الحسومات</StatLabel>
-                <StatValue
-                  value={rows.reduce((s, r) => s + r.supervisorDiscountSar, 0)}
-                  countUp
-                />
-              </StatCard>
-              <StatCard accent={margin != null ? "green" : "gray"} flush>
-                <StatLabel>هامش المعاملة</StatLabel>
-                <StatValue value={margin ?? "—"} countUp={margin != null} />
-              </StatCard>
-            </StatGrid>
-
-            {isSupervisor ? (
-              <InspectorFeesBillingTable rows={rows} mode="supervisor" />
-            ) : (
-              <PartyFeeWorkflowTable
-                rows={rows}
-                role={isFinance ? "readonly" : "office"}
-              />
-            )}
-          </>
+          isSupervisor ? (
+            <InspectorFeesBillingTable rows={rows} mode="supervisor" />
+          ) : (
+            <PartyFeeWorkflowTable
+              rows={rows}
+              role={isFinance ? "readonly" : "office"}
+            />
+          )
+        ) : enfazIn != null ? (
+          <InfoBox icon="✓">
+            عُبّئ إيراد إنفاذ لهذه المعاملة من سطح المالية، فظهر الهامش.
+          </InfoBox>
         ) : (
-          <>
-            <StatGrid cols={3} flush className="mb-4">
-              <StatCard accent="blue" flush>
-                <StatLabel>إيراد إنفاذ (وارد)</StatLabel>
-                <StatValue value={enfazIn ?? "—"} countUp={enfazIn != null} />
-              </StatCard>
-              <StatCard accent="red" flush>
-                <StatLabel>التزاماتنا (صافي)</StatLabel>
-                <StatValue value={netOut} countUp />
-              </StatCard>
-              <StatCard accent={margin != null ? "green" : "gray"} flush>
-                <StatLabel>هامش المعاملة</StatLabel>
-                <StatValue value={margin ?? "—"} countUp={margin != null} />
-              </StatCard>
-            </StatGrid>
-            {enfazIn != null ? (
-              <InfoBox icon="✓">
-                عُبّئ إيراد إنفاذ لهذه المعاملة من سطح المالية، فظهر الهامش.
-              </InfoBox>
-            ) : (
-              <InfoBox icon="⏱">
-                إيراد إنفاذ يُعبّأ من المالية بعد اكتمال أمر العمل. حتى ذلك
-                يبقى «—» ولا يُحسب هامش.
-              </InfoBox>
-            )}
-          </>
+          <InfoBox icon="⏱">
+            إيراد إنفاذ يُعبّأ من المالية بعد اكتمال أمر العمل. حتى ذلك يبقى
+            «—» ولا يُحسب هامش.
+          </InfoBox>
         )}
       </TabPanel>
 

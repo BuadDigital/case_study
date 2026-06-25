@@ -20,7 +20,7 @@ public class ValuationIntegrationHandlerTests
     await using var db = CreateDb();
     SeedOpenAppraisalTask(db);
 
-    var fees = new InspectorFeeService(db);
+    var fees = TestInspectorFeeServiceFactory.Create(db);
     var timeline = new PropertyTimelineService(db);
     var handler = new ValuationReportWorkflowHandler(
       db,
@@ -46,7 +46,7 @@ public class ValuationIntegrationHandlerTests
     await using var db = CreateDb();
     SeedOpenAppraisalTask(db);
 
-    var fees = new InspectorFeeService(db);
+    var fees = TestInspectorFeeServiceFactory.Create(db);
     var timeline = new PropertyTimelineService(db);
     var handler = new ValuationReportWorkflowHandler(
       db,
