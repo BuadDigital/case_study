@@ -61,6 +61,10 @@ export function markAllNotificationsRead(): void {
   writeAll(readAll().map((n) => ({ ...n, read: true })));
 }
 
+export function deleteNotification(id: string): void {
+  writeAll(readAll().filter((n) => n.id !== id));
+}
+
 export function clearNotifications(): void {
   localStorage.removeItem(STORAGE_KEY);
   window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));

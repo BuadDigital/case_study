@@ -10,6 +10,7 @@ import {
 } from "react";
 import {
   clearNotifications,
+  deleteNotification,
   listNotifications,
   markAllNotificationsRead,
   markNotificationRead,
@@ -24,6 +25,7 @@ type NotificationContextValue = {
   unreadCount: number;
   push: typeof pushNotification;
   markRead: (id: string) => void;
+  remove: (id: string) => void;
   markAllRead: () => void;
   clear: () => void;
   refresh: () => void;
@@ -51,6 +53,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       unreadCount: unreadNotificationCount(),
       push: pushNotification,
       markRead: markNotificationRead,
+      remove: deleteNotification,
       markAllRead: markAllNotificationsRead,
       clear: clearNotifications,
       refresh,

@@ -6,6 +6,7 @@ import { FailureRaisePanel } from "@failures/mfe";
 import { failureRaiserRoleForParty } from "@failures/mfe/lib/failure-party-roles";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import { Note, cn } from "@platform/design-system";
+import { PartyCaseStudyFormTab } from "../case-study/PartyCaseStudyFormTab";
 import { PropertyTransactionTimeline } from "../po-intake/PropertyTransactionTimeline";
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/prototype/po-intake-data";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
@@ -87,16 +88,13 @@ export function FieldInspectionWorkPanel({
         </button>
       </nav>
 
-      <div className="flex min-h-0 flex-1 flex-row items-stretch overflow-hidden max-lg:flex-col">
-        <div className="order-1 min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
-          {workTab === "property" ? (
-            <EngineeringSurveyPropertySummary
-              property={property}
-              record={record}
-            />
-          ) : null}
-          {workTab === "inspection" ? (
-            <>
+      {workTab === "inspection" ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-4 sm:px-6 sm:py-5">
+          <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-2">
+            <section className="min-h-0 min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
+              <h3 className="m-0 mb-2 text-sm font-semibold text-text">
+                {def.workTitle}
+              </h3>
               <Note tone="info" className="mb-4">
                 {def.workIntro}
               </Note>
@@ -107,27 +105,44 @@ export function FieldInspectionWorkPanel({
                 submitting={submitting}
                 onRegisterFailure={() => setWorkTab("failures")}
               />
-            </>
-          ) : null}
-          {workTab === "fees" ? (
-            <InspectorFeesTab tasks={[task]} variant="field-inspection" />
-          ) : null}
-          {workTab === "failures" && task.propertyId ? (
-            <div id="inspector-failure-raise" className="scroll-mt-4">
-              <FailureRaisePanel
-                poNumber={task.poNumber}
-                propertyId={task.propertyId}
-                deedNumber={deedNumber}
-                specialist={task.assigneeName || def.assigneeSubtitle}
-                raisedByRole={failureRaiserRoleForParty(def)}
-                onSubmitted={onFailureSubmitted}
-              />
-            </div>
-          ) : null}
+            </section>
+            <section className="min-h-0 min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
+              <h3 className="m-0 mb-2 text-sm font-semibold text-text">
+                نموذج الدراسة
+              </h3>
+              <PartyCaseStudyFormTab def={def} childTask={task} />
+            </section>
+          </div>
         </div>
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-row items-stretch overflow-hidden max-lg:flex-col">
+          <div className="order-1 min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+            {workTab === "property" ? (
+              <EngineeringSurveyPropertySummary
+                property={property}
+                record={record}
+              />
+            ) : null}
+            {workTab === "fees" ? (
+              <InspectorFeesTab tasks={[task]} variant="field-inspection" />
+            ) : null}
+            {workTab === "failures" && task.propertyId ? (
+              <div id="inspector-failure-raise" className="scroll-mt-4">
+                <FailureRaisePanel
+                  poNumber={task.poNumber}
+                  propertyId={task.propertyId}
+                  deedNumber={deedNumber}
+                  specialist={task.assigneeName || def.assigneeSubtitle}
+                  raisedByRole={failureRaiserRoleForParty(def)}
+                  onSubmitted={onFailureSubmitted}
+                />
+              </div>
+            ) : null}
+          </div>
 
-        <PropertyTransactionTimeline record={record} property={property} />
-      </div>
+          <PropertyTransactionTimeline record={record} property={property} />
+        </div>
+      )}
     </div>
   );
 }

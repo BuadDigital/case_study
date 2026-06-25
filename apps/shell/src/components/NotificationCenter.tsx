@@ -16,7 +16,7 @@ function BellIcon() {
 }
 
 export function NotificationCenter() {
-  const { items, unreadCount, markRead, markAllRead } = useNotifications();
+  const { items, unreadCount, markRead, markAllRead, clear, remove } = useNotifications();
   const [open, setOpen] = useState(false);
 
   if (!isFeatureEnabled("notificationCenter")) return null;
@@ -45,9 +45,20 @@ export function NotificationCenter() {
           <div className="flex items-center justify-between border-b border-border px-3 py-2">
             <span className="text-sm font-semibold text-text">الإشعارات</span>
             {items.length > 0 ? (
-              <Button type="button" size="sm" variant="ghost" onClick={markAllRead}>
-                تعليم الكل كمقروء
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button type="button" size="sm" variant="ghost" onClick={markAllRead}>
+                  تعليم الكل كمقروء
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="text-danger hover:text-danger"
+                  onClick={clear}
+                >
+                  حذف الكل
+                </Button>
+              </div>
             ) : null}
           </div>
           <div className="max-h-80 overflow-y-auto">
@@ -64,26 +75,38 @@ export function NotificationCenter() {
                     !item.read && "bg-primary/5",
                   )}
                 >
-                  {item.href ? (
-                    <Link
-                      href={item.href}
-                      className="block font-medium text-text no-underline hover:text-primary"
-                      onClick={() => {
-                        markRead(item.id);
-                        setOpen(false);
-                      }}
-                    >
-                      {item.title}
-                    </Link>
-                  ) : (
-                    <button
+                  <div className="flex items-start justify-between gap-2">
+                    {item.href ? (
+                      <Link
+                        href={item.href}
+                        className="block font-medium text-text no-underline hover:text-primary"
+                        onClick={() => {
+                          markRead(item.id);
+                          setOpen(false);
+                        }}
+                      >
+                        {item.title}
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        className="block w-full border-none bg-transparent p-0 text-start font-medium text-text"
+                        onClick={() => markRead(item.id)}
+                      >
+                        {item.title}
+                      </button>
+                    )}
+                    <Button
                       type="button"
-                      className="block w-full border-none bg-transparent p-0 text-start font-medium text-text"
-                      onClick={() => markRead(item.id)}
+                      size="sm"
+                      variant="ghost"
+                      className="h-auto px-1 py-0 text-text-3 hover:text-danger"
+                      onClick={() => remove(item.id)}
+                      aria-label="حذف الإشعار"
                     >
-                      {item.title}
-                    </button>
-                  )}
+                      حذف
+                    </Button>
+                  </div>
                   {item.body ? (
                     <p className="m-0 mt-1 text-text-3">{item.body}</p>
                   ) : null}
