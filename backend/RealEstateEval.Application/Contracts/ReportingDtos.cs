@@ -64,6 +64,7 @@ public class ReportingTeamMemberDto
 
 public class ReportingSpecialistLoadDto
 {
+    public required string RoleId { get; init; }
     public required string Name { get; init; }
     public required string RoleLabel { get; init; }
     public int CurrentLoad { get; init; }

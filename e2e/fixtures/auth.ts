@@ -70,12 +70,43 @@ async function seedBrowserSession(
   );
 }
 
+/** Post-login landing per release test user (matches server page permissions). */
+const POST_LOGIN_LANDING: Record<string, { path: string; title: string }> = {
+  [RELEASE_USERS.cdo]: { path: "/dashboard", title: "لوحة التحكم" },
+  [RELEASE_USERS.caseSpecialist]: { path: "/dashboard", title: "لوحة التحكم" },
+  [RELEASE_USERS.fieldInspector]: {
+    path: "/property-inspection",
+    title: "معاينة العقار",
+  },
+  [RELEASE_USERS.valuationCoordinator]: {
+    path: "/valuation-coordination",
+    title: "استلام التقييم",
+  },
+  [RELEASE_USERS.appraiser]: { path: "/po", title: "أوامر العمل" },
+  [RELEASE_USERS.governmentReviewer]: {
+    path: "/government-review",
+    title: "المراجعة الحكومية",
+  },
+  [RELEASE_USERS.engineeringOffice]: {
+    path: "/active-survey",
+    title: "الرفع المساحي",
+  },
+  [RELEASE_USERS.financialOfficer]: {
+    path: "/financial",
+    title: "التقارير المالية",
+  },
+};
+
 /** Fast, reliable login for module/journey tests (API + sessionStorage). */
 export async function loginAs(page: Page, username: string) {
   const session = await fetchLoginSession(username);
   await seedBrowserSession(page, session);
-  await page.goto("/dashboard", { waitUntil: "commit" });
-  await waitForPageTitle(page, "لوحة التحكم");
+  const landing = POST_LOGIN_LANDING[username] ?? {
+    path: "/po",
+    title: "أوامر العمل",
+  };
+  await page.goto(landing.path, { waitUntil: "commit" });
+  await waitForPageTitle(page, landing.title);
 }
 
 /** Exercises the real login form — used only by login.spec.ts. */
@@ -109,12 +140,17 @@ export async function loginViaUi(page: Page, username: string) {
     );
   }
 
+  const landing = POST_LOGIN_LANDING[username] ?? {
+    path: "/po",
+    title: "أوامر العمل",
+  };
+
   await page.waitForFunction(
-    () => /\/dashboard/.test(window.location.pathname),
-    undefined,
+    (expectedPath) => window.location.pathname.startsWith(expectedPath),
+    landing.path,
     { timeout: 60_000 },
   );
-  await waitForPageTitle(page, "لوحة التحكم");
+  await waitForPageTitle(page, landing.title);
 }
 
 export function pagePath(pageId: string): string {
@@ -180,19 +216,16 @@ export const ROLE_MODULE_PAGES: Record<string, string[]> = {
     "system-screen-catalog",
   ],
   [RELEASE_USERS.fieldInspector]: [
-    "dashboard",
     "property-inspection",
     "system-fields-catalog",
     "system-screen-catalog",
   ],
   [RELEASE_USERS.valuationCoordinator]: [
-    "dashboard",
     "valuation-coordination",
     "system-fields-catalog",
     "system-screen-catalog",
   ],
   [RELEASE_USERS.appraiser]: [
-    "dashboard",
     "po",
     "property-appraisal",
     "suspended-transactions",
@@ -200,20 +233,17 @@ export const ROLE_MODULE_PAGES: Record<string, string[]> = {
     "system-screen-catalog",
   ],
   [RELEASE_USERS.governmentReviewer]: [
-    "dashboard",
     "government-review",
     "keys",
     "system-fields-catalog",
     "system-screen-catalog",
   ],
   [RELEASE_USERS.engineeringOffice]: [
-    "dashboard",
     "active-survey",
     "system-fields-catalog",
     "system-screen-catalog",
   ],
   [RELEASE_USERS.financialOfficer]: [
-    "dashboard",
     "financial",
     "system-fields-catalog",
     "system-screen-catalog",

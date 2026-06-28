@@ -125,3 +125,6 @@ export function failureProblemTypeLabel(
   if (type) return type.label;
   return fallbackTitle?.trim() || "تعذر";
 }
+
+export const DEED_INACTIVE_RESOLVED_LABEL =
+  "الصك كان غير فعال سابقاً لكن تم حل المشكلة";

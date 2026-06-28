@@ -24,6 +24,11 @@ export type EvaluatorRecallRequest = {
 const memoryByTask = new Map<string, EvaluatorRecallRequest>();
 
 export const EVALUATOR_RECALL_CHANGED_EVENT = "evaluator-recall-changed";
+/** Queue refresh after silent hydrate — must not trigger inbox toasts. */
+export const EVALUATOR_RECALL_HYDRATED_EVENT = "evaluator-recall-hydrated";
+
+let recallsHydrated = false;
+let hydratePromise: Promise<void> | null = null;
 
 function mapDto(row: {
   taskId: string;
@@ -53,18 +58,33 @@ export function notifyEvaluatorRecallChanged(): void {
   }
 }
 
-export async function hydrateEvaluatorRecalls(): Promise<void> {
-  const config = prototypeModulesApiConfig();
-  if (!config) return;
+export async function hydrateEvaluatorRecalls(options?: {
+  force?: boolean;
+}): Promise<void> {
+  if (!options?.force && recallsHydrated) return;
+  if (hydratePromise) return hydratePromise;
 
-  const result = await listEvaluatorRecallsApi(config);
-  if (!result.ok) return;
+  hydratePromise = (async () => {
+    const config = prototypeModulesApiConfig();
+    if (!config) return;
 
-  memoryByTask.clear();
-  for (const row of result.data) {
-    memoryByTask.set(row.taskId, mapDto(row));
-  }
-  notifyEvaluatorRecallChanged();
+    const result = await listEvaluatorRecallsApi(config);
+    if (!result.ok) return;
+
+    memoryByTask.clear();
+    for (const row of result.data) {
+      memoryByTask.set(row.taskId, mapDto(row));
+    }
+    recallsHydrated = true;
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event(EVALUATOR_RECALL_HYDRATED_EVENT));
+    }
+  })().finally(() => {
+    hydratePromise = null;
+  });
+
+  return hydratePromise;
 }
 
 export async function hydrateEvaluatorRecallForTask(

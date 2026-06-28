@@ -6,8 +6,10 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Badge,
+  Button,
   cn,
   EmptyState,
+  Note,
   OperationalPanel,
   PageShellHeader,
   QueueTableHint,
@@ -41,6 +43,7 @@ import {
   buildDistributionTableRow,
   buildPrimaryDataTableRow,
   compareQueueTasksOldestFirst,
+  compareQueueTasksNewestFirst,
   findPropertyForTask,
 } from "../lib/prototype/my-task-row";
 import type { PoIntakeRecord } from "../lib/prototype/po-intake-data";
@@ -106,6 +109,8 @@ export type ActiveTransactionQueueConfig = {
   refreshOnWindowEvents?: string[];
   /** Stats / filters above the queue table (e.g. engineering office dashboard). */
   renderQueueHeader?: (listed: WorkflowTask[]) => ReactNode;
+  /** Default: oldest receipt first (FIFO). */
+  queueSort?: "oldest-first" | "newest-first";
 };
 
 export type ActiveQueueRowMoreContext = {
@@ -173,18 +178,33 @@ export function ActiveTransactionQueueView({
     data: tasks,
     refetch: refetchTasks,
     isFetched: tasksFetched,
+    isError: tasksError,
+    error: tasksQueryError,
   } = useWorkflowTasksQuery({ live: true });
   const {
     data: poRecords = [],
     isFetched: poRecordsFetched,
+    isError: poRecordsError,
+    error: poRecordsQueryError,
+    refetch: refetchPoRecords,
   } = usePoRecordsQuery();
-  const queueReady = tasksFetched && poRecordsFetched;
-  const queuePending = !queueReady;
+  const queueLoadError = tasksError || poRecordsError;
+  const queueErrorMessage =
+    (tasksQueryError instanceof Error ? tasksQueryError.message : null) ??
+    (poRecordsQueryError instanceof Error ? poRecordsQueryError.message : null) ??
+    "تعذّر تحميل قائمة المعاملات";
+  const queueReady = tasksFetched && poRecordsFetched && !queueLoadError;
+  const queuePending = !tasksFetched || !poRecordsFetched;
   const [now, setNow] = useState(() => new Date());
   const [panelOpen, setPanelOpen] = useState(() => Boolean(selectedId));
   const advancingRef = useRef(false);
   const [, bump] = useState(0);
   const [submissionCacheGen, setSubmissionCacheGen] = useState(0);
+
+  const retryQueueLoad = useCallback(() => {
+    void refetchPoRecords();
+    void refetchTasks();
+  }, [refetchPoRecords, refetchTasks]);
 
   const refreshWork = useCallback(() => {
     bump((n) => n + 1);
@@ -262,16 +282,21 @@ export function ActiveTransactionQueueView({
   ]);
 
   const listed = useMemo(
-    () =>
-      config
+    () => {
+      const compare =
+        config.queueSort === "newest-first"
+          ? compareQueueTasksNewestFirst
+          : compareQueueTasksOldestFirst;
+      return config
         .filterListed(mine, poByNumber)
         .filter(
           (t) =>
             (t.status === "open" || t.status === "blocked") &&
             !isTaskOnSuspendedProperty(t),
         )
-        .sort((a, b) => compareQueueTasksOldestFirst(a, b, poByNumber)),
-    [config, mine, poByNumber],
+        .sort((a, b) => compare(a, b, poByNumber));
+    },
+    [config, mine, poByNumber, submissionCacheGen],
   );
 
   const selectedTask = useMemo((): WorkflowTask | null => {
@@ -443,7 +468,14 @@ export function ActiveTransactionQueueView({
             ? config.renderQueueHeader(listed)
             : null}
 
-          {queueReady && listed.length === 0 ? (
+          {queueLoadError ? (
+            <div className="flex flex-col gap-3 p-4">
+              <Note tone="warn">{queueErrorMessage}</Note>
+              <Button type="button" variant="outline" size="sm" onClick={retryQueueLoad}>
+                إعادة المحاولة
+              </Button>
+            </div>
+          ) : queueReady && listed.length === 0 ? (
             <EmptyState line={config.emptyLine} hint={config.emptyHint} />
           ) : (
             <>

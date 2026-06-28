@@ -23,12 +23,14 @@ import {
 
 const POLL_FALLBACK_MS = 180_000;
 const SSE_RETRY_MS = 5_000;
+const LOCAL_SYNC_SUPPRESS_MS = 60_000;
 
 /** Server inbox sync via SSE with polling fallback. */
 export function ServerNotificationBridge() {
   const { token, authReady, isAuthenticated } = useAuth();
   const seenIdsRef = useRef<Set<string>>(new Set());
   const initialLoadRef = useRef(true);
+  const localSyncSourceEventsRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     if (!isFeatureEnabled("notificationCenter")) return;
@@ -53,6 +55,7 @@ export function ServerNotificationBridge() {
 
         if (notifyNew && !initialLoadRef.current) {
           for (const item of newUnread) {
+            if (shouldSuppressEchoToast(item.sourceEvent)) continue;
             window.dispatchEvent(
               new CustomEvent<AppNotification>(NOTIFICATION_TOAST_EVENT, {
                 detail: item,
@@ -67,13 +70,29 @@ export function ServerNotificationBridge() {
       }
     }
 
+    function shouldSuppressEchoToast(sourceEvent?: string): boolean {
+      if (!sourceEvent) return false;
+      const at = localSyncSourceEventsRef.current.get(sourceEvent);
+      if (!at) return false;
+      if (Date.now() - at > LOCAL_SYNC_SUPPRESS_MS) {
+        localSyncSourceEventsRef.current.delete(sourceEvent);
+        return false;
+      }
+      return true;
+    }
+
     function handleServerDto(dto: UserNotificationDto) {
       const item = notificationFromDto(dto);
       const isNew = !seenIdsRef.current.has(item.id);
       seenIdsRef.current.add(item.id);
       upsertNotificationFromServer(item);
 
-      if (!initialLoadRef.current && isNew && !item.read) {
+      if (
+        !initialLoadRef.current &&
+        isNew &&
+        !item.read &&
+        !shouldSuppressEchoToast(item.sourceEvent)
+      ) {
         window.dispatchEvent(
           new CustomEvent<AppNotification>(NOTIFICATION_TOAST_EVENT, {
             detail: item,
@@ -136,6 +155,9 @@ export function ServerNotificationBridge() {
     function onPushed(event: Event) {
       const item = (event as CustomEvent<AppNotification>).detail;
       if (!item) return;
+      if (item.sourceEvent) {
+        localSyncSourceEventsRef.current.set(item.sourceEvent, Date.now());
+      }
       void createNotification(
         { token: token! },
         notificationToCreateRequest(item),

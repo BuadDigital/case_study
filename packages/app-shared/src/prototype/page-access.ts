@@ -1,4 +1,33 @@
 import type { PageId } from "@platform/types";
+import { ACTIVE_TRANSACTIONS_NAV } from "./active-transactions";
+import { NAV } from "./constants";
+import { SETTINGS_NAV } from "./settings-nav";
+import { SYSTEM_FIELDS_PAGE_IDS } from "./system-fields-nav";
+
+const NAV_PAGE_ORDER: PageId[] = [
+  ...NAV.map((item) => item.id),
+  ...ACTIVE_TRANSACTIONS_NAV.map((item) => item.id),
+  ...SETTINGS_NAV.map((item) => item.id),
+  ...SYSTEM_FIELDS_PAGE_IDS,
+];
+
+/** Map shell page id to app route. */
+export function pagePathFromId(pageId: PageId): string {
+  return pageId === "po" ? "/po" : `/${pageId}`;
+}
+
+/** First permitted page in sidebar order — post-login and access-denied redirect. */
+export function defaultLandingPage(rolePages: readonly PageId[]): PageId {
+  if (rolePages.includes("dashboard")) return "dashboard";
+  for (const pageId of NAV_PAGE_ORDER) {
+    if (rolePages.includes(pageId)) return pageId;
+  }
+  return rolePages[0] ?? "users";
+}
+
+export function defaultLandingPath(rolePages: readonly PageId[]): string {
+  return pagePathFromId(defaultLandingPage(rolePages));
+}
 
 /** Map URL path to sidebar page id for permission checks. */
 export function pageIdFromPathname(pathname: string): PageId | null {
@@ -33,6 +62,5 @@ export function canAccessPage(
   pageId: PageId,
   rolePages: readonly PageId[],
 ): boolean {
-  if (pageId === "dashboard") return true;
   return rolePages.includes(pageId);
 }

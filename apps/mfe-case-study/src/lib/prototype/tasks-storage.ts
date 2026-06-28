@@ -12,8 +12,9 @@ import {
   syncWorkflowTasks,
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
-import { workOrdersApiConfig } from "../work-orders-api-config";
+import { apiErrorMessage, workOrdersApiConfig } from "../work-orders-api-config";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
+import { hasRuntimeCapability } from "@platform/app-shared/prototype/runtime-access";
 import {
   getPrototypeRoleAssigneeId,
   partyAccountForViewer,
@@ -195,6 +196,23 @@ export async function loadWorkflowTasks(): Promise<WorkflowTask[]> {
   if (!result.ok) return [];
   return result.data.map(dtoToTask);
 }
+
+/** React Query loader — surfaces API failures instead of an empty queue. */
+export async function loadWorkflowTasksForQuery(): Promise<WorkflowTask[]> {
+  const config = workOrdersApiConfig();
+  if (!config) {
+    throw new Error(apiErrorMessage("auth"));
+  }
+  const result = await listWorkflowTasks(config);
+  if (!result.ok) {
+    throw new Error(
+      apiErrorMessage(result.kind, "تعذّر تحميل مهام سير العمل"),
+    );
+  }
+  return result.data.map(dtoToTask);
+}
+
+export type SyncTasksResult = { ok: true } | { ok: false; error: string };
 
 function poCaseTasks(list: WorkflowTask[], poNumber: string): WorkflowTask[] {
   const n = poNumber.trim();
@@ -701,11 +719,27 @@ export function tasksForPartyAssignee(
     .sort(compareWorkflowTasks);
 }
 
-export async function syncTasksFromPoRecords(): Promise<void> {
+export async function syncTasksFromPoRecords(): Promise<SyncTasksResult> {
   const config = workOrdersApiConfig();
-  if (!config) return;
-  await syncWorkflowTasks(config);
+  if (!config) {
+    return { ok: false, error: apiErrorMessage("auth") };
+  }
+  if (!hasRuntimeCapability("manage-work-orders")) {
+    return { ok: true };
+  }
+  const result = await syncWorkflowTasks(config);
+  if (!result.ok) {
+    console.warn("[workflow-tasks] sync failed:", result.kind);
+    return {
+      ok: false,
+      error: apiErrorMessage(
+        result.kind,
+        "تعذّر مزامنة خانات البيانات الأولية",
+      ),
+    };
+  }
   notifyTasksChanged();
+  return { ok: true };
 }
 
 export async function patchTaskDistribution(

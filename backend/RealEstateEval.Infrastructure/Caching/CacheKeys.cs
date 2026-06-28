@@ -2,7 +2,7 @@ namespace RealEstateEval.Infrastructure.Caching;
 
 public static class CacheKeys
 {
-    public const string ReportingDashboard = "reporting:dashboard:v1";
+    public const string ReportingDashboard = "reporting:dashboard:v4";
     public const string ReportingKpi = "reporting:kpi:v1";
     public const string FinancialSummary = "financial:summary:v1";
     public const string SurveyOfficesList = "operations:survey-offices:v1";

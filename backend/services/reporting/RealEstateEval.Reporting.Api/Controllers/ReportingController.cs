@@ -13,6 +13,19 @@ namespace RealEstateEval.Reporting.Api.Controllers;
 public class ReportingController : ControllerBase
 {
     private const int SpecialistCapacity = 20;
+
+    private static readonly (string RoleId, string RoleLabel, int MaxLoad, int SortOrder)[] TeamLoadRoles =
+    [
+        ("case-specialist", "دراسة حالة العقارات", SpecialistCapacity, 0),
+        ("government-reviewer", "مراجع حكومي", 15, 1),
+        ("valuation-coordinator", "منسق التقييم", 15, 2),
+        ("field-inspector", "معاين ميداني", 12, 3),
+        ("engineering-office", "مكتب هندسي", 10, 4),
+    ];
+
+    private static readonly Dictionary<string, (string RoleLabel, int MaxLoad, int SortOrder)> TeamLoadRoleMap =
+        TeamLoadRoles.ToDictionary(x => x.RoleId, x => (x.RoleLabel, x.MaxLoad, x.SortOrder));
+
     private readonly IReportingUpstreamClient _upstream;
     private readonly ApiResponseCache _cache;
 
@@ -46,12 +59,9 @@ public class ReportingController : ControllerBase
 
     private async Task<ReportingDashboardDto> BuildDashboardAsync(CancellationToken ct)
     {
-        var valuationRows = (await _upstream.GetValuationRequestsAsync(ct))
-            .OrderByDescending(x => x.Date)
-            .Take(6)
-            .ToList();
-
         var allTasks = await _upstream.GetWorkflowTasksAsync(ct);
+
+        var valuationRows = BuildRecentValuationRequests(allTasks);
 
         var openPartyTasks = allTasks
             .Where(t => !WorkflowTaskStatus.IsTerminal(t.Status))
@@ -85,19 +95,7 @@ public class ReportingController : ControllerBase
             .Take(6)
             .ToList();
 
-        var specialistLoad = allTasks
-            .Where(t => t.AssigneeRole == "case-specialist")
-            .Where(t => !WorkflowTaskStatus.IsTerminal(t.Status))
-            .GroupBy(t => t.AssigneeName)
-            .Select(g => new ReportingSpecialistLoadDto
-            {
-                Name = g.Key,
-                RoleLabel = "أخصائي",
-                CurrentLoad = g.Count(),
-                MaxLoad = SpecialistCapacity,
-                Tone = g.Count() >= SpecialistCapacity * 0.6 ? "warning" : "success",
-            })
-            .ToList();
+        var specialistLoad = BuildTeamLoad(allTasks);
 
         var governmentReviews = allTasks
             .Where(t => t.Kind == "government-review")
@@ -233,6 +231,96 @@ public class ReportingController : ControllerBase
             ProviderScores = providerScores,
         };
     }
+
+    private static List<ValuationRequestDto> BuildRecentValuationRequests(
+        IReadOnlyList<WorkflowTaskDto> allTasks)
+    {
+        var appraisalRows = allTasks
+            .Where(t => t.Kind == "property-appraisal")
+            .Where(t => !WorkflowTaskStatus.IsTerminal(t.Status))
+            .OrderByDescending(t => t.UpdatedAt)
+            .Take(6)
+            .Select(MapAppraisalTaskToValuationRequest)
+            .ToList();
+
+        if (appraisalRows.Count > 0) return appraisalRows;
+
+        return allTasks
+            .Where(t => t.Kind == "valuation-coordination")
+            .Where(t => !WorkflowTaskStatus.IsTerminal(t.Status))
+            .OrderByDescending(t => t.UpdatedAt)
+            .Take(6)
+            .Select(MapAppraisalTaskToValuationRequest)
+            .ToList();
+    }
+
+    private static ValuationRequestDto MapAppraisalTaskToValuationRequest(WorkflowTaskDto task)
+    {
+        _ = Guid.TryParse(task.Id, out var taskId);
+        var propertyLabel = string.IsNullOrWhiteSpace(task.Title)
+            ? task.PropertyId ?? "—"
+            : task.Title.Trim();
+
+        return new ValuationRequestDto
+        {
+            Id = taskId,
+            DisplayId = $"{task.PoNumber}-{task.PropertyOrdinal}",
+            PropId = propertyLabel,
+            Area = "",
+            Type = "",
+            Appraiser = task.AssigneeName,
+            Status = WorkflowTaskStatus.IsTerminal(task.Status) ? "done" : "progress",
+            Date = task.UpdatedAt,
+        };
+    }
+
+    private static List<ReportingSpecialistLoadDto> BuildTeamLoad(
+        IReadOnlyList<WorkflowTaskDto> allTasks)
+    {
+        return allTasks
+            .Where(t => IsActiveQueueStatus(t.Status))
+            .Where(t => TeamLoadRoleMap.ContainsKey(t.AssigneeRole) && MatchesTeamLoadTask(t, t.AssigneeRole))
+            .GroupBy(t => (t.AssigneeRole, t.AssigneeName))
+            .Select(g =>
+            {
+                var cfg = TeamLoadRoleMap[g.Key.AssigneeRole];
+                var count = g.Count();
+                return new ReportingSpecialistLoadDto
+                {
+                    RoleId = g.Key.AssigneeRole,
+                    Name = g.Key.AssigneeName,
+                    RoleLabel = cfg.RoleLabel,
+                    CurrentLoad = count,
+                    MaxLoad = cfg.MaxLoad,
+                    Tone = count >= cfg.MaxLoad * 0.6 ? "warning" : "success",
+                };
+            })
+            .OrderBy(x => TeamLoadRoleMap[x.RoleId].SortOrder)
+            .ThenByDescending(x => x.CurrentLoad)
+            .ThenBy(x => x.Name, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Same open-work rules as sidebar badges and active-transaction queues (excludes completed/cancelled).
+    /// </summary>
+    private static bool IsActiveQueueStatus(string? status) =>
+        status is WorkflowTaskStatus.Open or WorkflowTaskStatus.Blocked;
+
+    /// <summary>
+    /// Count only tasks that belong on each role's active queue — not every open task for that assignee role.
+    /// </summary>
+    private static bool MatchesTeamLoadTask(WorkflowTaskDto task, string roleId) =>
+        task.AssigneeRole == roleId && roleId switch
+        {
+            "case-specialist" =>
+                task.Kind == "case-study-property" && task.Phase == "case-study",
+            "government-reviewer" => task.Kind == "government-review",
+            "valuation-coordinator" => task.Kind == "valuation-coordination",
+            "field-inspector" => task.Kind == "field-inspection",
+            "engineering-office" => task.Kind == "engineering-survey",
+            _ => false,
+        };
 
     private static string Initials(string name)
     {

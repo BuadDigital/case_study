@@ -42,7 +42,7 @@ export function EvaluatorWindow({
     () => inspectionGateForAppraisal(task, tasks),
     [task, tasks],
   );
-  const { showToast } = useToast();
+  const { showToast, runWithUploadToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [draft, setDraft] = useState<EvaluatorSubmission>(() =>
@@ -178,29 +178,34 @@ export function EvaluatorWindow({
 
   async function onReportSelected(file: File | null) {
     if (!file || formDisabled) return;
-    setUploading(true);
     setUploadError(null);
-    const result = await cacheEvaluatorReport(task.id, file);
-    setUploading(false);
-    if (!result.ok) {
-      setUploadError(result.error);
-      showToast(result.error, "error");
-      return;
-    }
-    setReportName(file.name);
-    showToast("تم رفع تقرير التقييم.", "success");
-    persistDraft(
-      { reportFileName: file.name },
-      {
-        fileName: file.name,
-        mimeType: file.type || "application/pdf",
-        sizeBytes: file.size,
-      },
-    );
-    setFieldErrors((prev) => {
-      const next = { ...prev };
-      delete next.evaluator_report_file;
-      return next;
+    await runWithUploadToast(async () => {
+      setUploading(true);
+      try {
+        const result = await cacheEvaluatorReport(task.id, file);
+        if (!result.ok) {
+          setUploadError(result.error);
+          showToast(result.error, "error");
+          return false;
+        }
+        setReportName(file.name);
+        persistDraft(
+          { reportFileName: file.name },
+          {
+            fileName: file.name,
+            mimeType: file.type || "application/pdf",
+            sizeBytes: file.size,
+          },
+        );
+        setFieldErrors((prev) => {
+          const next = { ...prev };
+          delete next.evaluator_report_file;
+          return next;
+        });
+        return true;
+      } finally {
+        setUploading(false);
+      }
     });
   }
 
@@ -293,6 +298,7 @@ export function EvaluatorWindow({
                     variant="primary"
                     loading={uploading}
                     disabled={uploading}
+                    showActionToast={false}
                     onClick={() => fileInputRef.current?.click()}
                   >
                     {hasReport ? "تغيير الملف" : "رفع الملف"}

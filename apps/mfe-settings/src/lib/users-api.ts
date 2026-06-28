@@ -17,6 +17,7 @@ import {
   contractTypeToStaffType,
   userListItemToStaff,
 } from "@platform/app-shared/users/user-mappers";
+import { hasRuntimeCapability } from "@platform/app-shared/prototype/runtime-access";
 
 export { contractTypeToStaffType, userListItemToStaff };
 
@@ -36,7 +37,11 @@ export async function fetchStaffUsers(): Promise<FetchStaffUsersResult> {
   const config = apiConfig();
   if (!config) return { users: [], loadError: null };
 
-  const result = await listUsers(config);
+  const result = hasRuntimeCapability("manage-users")
+    ? await listUsers(config)
+    : hasRuntimeCapability("manage-work-orders")
+      ? await listDistributionAssignees(config)
+      : { ok: true as const, users: [] };
   if (!result.ok) {
     const message =
       result.kind === "network"

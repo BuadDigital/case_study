@@ -10,6 +10,7 @@ export type ReportingTeamMemberDto = {
 };
 
 export type ReportingSpecialistLoadDto = {
+  roleId: string;
   name: string;
   roleLabel: string;
   currentLoad: number;

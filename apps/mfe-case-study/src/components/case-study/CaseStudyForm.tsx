@@ -10,6 +10,7 @@ import {
   Note,
   Textarea,
   cn,
+  progressMessageForActionLabel,
   useToast,
 } from "@platform/design-system";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
@@ -253,7 +254,7 @@ export function CaseStudyForm({
     emptyCaseStudyFormDraft(storageTaskId, seed),
   );
   const [hydrated, setHydrated] = useState(false);
-  const { showToast } = useToast();
+  const { showToast, showProgressToast, dismissToast } = useToast();
   const [partyRevision, setPartyRevision] = useState(0);
   const { data: workflowTasks } = useWorkflowTasksQuery();
   const [partyAnswersByKey, setPartyAnswersByKey] = useState<
@@ -506,15 +507,37 @@ export function CaseStudyForm({
     });
   };
 
+  const withInstantSaveFeedback = (
+    actionLabel: string,
+    successMessage: string,
+    action: () => void,
+  ) => {
+    const progressId = showProgressToast(
+      progressMessageForActionLabel(actionLabel),
+    );
+    try {
+      action();
+    } finally {
+      dismissToast(progressId);
+      showToast(successMessage, "success");
+    }
+  };
+
   const saveDraft = () => {
-    persist({ ...draft, status: "draft" });
-    showToast("تم حفظ المسودة — يمكنك مواصلة التعبئة لاحقاً", "success");
+    withInstantSaveFeedback(
+      "حفظ مسودة",
+      "تم حفظ المسودة — يمكنك مواصلة التعبئة لاحقاً",
+      () => persist({ ...draft, status: "draft" }),
+    );
   };
 
   const submitForm = () => {
     if (isParty) {
-      persist({ ...draft, status: "draft" });
-      showToast("تم حفظ إجاباتك في نموذج الدراسة", "success");
+      withInstantSaveFeedback(
+        "حفظ إجاباتي",
+        "تم حفظ إجاباتك في نموذج الدراسة",
+        () => persist({ ...draft, status: "draft" }),
+      );
       return;
     }
     const { answered, total, pct } = summary;
@@ -524,8 +547,11 @@ export function CaseStudyForm({
       );
       if (!ok) return;
     }
-    persist({ ...draft, status: "submitted" });
-    showToast("تم رفع نموذج دراسة الحالة للنظام بنجاح", "success");
+    withInstantSaveFeedback(
+      "رفع النموذج للنظام",
+      "تم رفع نموذج دراسة الحالة للنظام بنجاح",
+      () => persist({ ...draft, status: "submitted" }),
+    );
   };
 
   if (!hydrated || !infoRolesReady) {
@@ -567,14 +593,21 @@ export function CaseStudyForm({
 
   const formFooterActions = (
     <div className="flex justify-end gap-2">
-      <Button onClick={saveDraft}>حفظ مسودة</Button>
+      <Button showActionToast={false} onClick={saveDraft}>
+        حفظ مسودة
+      </Button>
       {isParty ? (
-        <Button variant="primary" onClick={submitForm}>
+        <Button
+          variant="primary"
+          showActionToast={false}
+          onClick={submitForm}
+        >
           حفظ إجاباتي
         </Button>
       ) : (
         <Button
           className="border-success bg-success text-white hover:border-primary-mid hover:bg-primary-mid"
+          showActionToast={false}
           onClick={submitForm}
         >
           رفع النموذج للنظام

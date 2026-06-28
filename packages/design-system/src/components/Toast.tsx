@@ -9,7 +9,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { progressMessageForActionLabel } from "../lib/action-progress-message";
+import {
+  progressMessageForActionLabel,
+  successMessageForActionLabel,
+  UPLOAD_PROGRESS_MESSAGE,
+  UPLOAD_SUCCESS_MESSAGE,
+} from "../lib/action-progress-message";
 import { bindGlobalActionToast } from "../lib/action-toast-listener";
 import { cn } from "../lib/cn";
 
@@ -30,6 +35,9 @@ type ToastContextValue = {
     actionLabel: string,
     action: () => void | Promise<void>,
   ) => Promise<void>;
+  runWithUploadToast: (
+    action: () => boolean | void | Promise<boolean | void>,
+  ) => Promise<boolean>;
 };
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -87,21 +95,51 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       );
       try {
         await action();
-      } finally {
         dismissToast(progressId);
+        showToast(successMessageForActionLabel(actionLabel), "success");
+      } catch (error) {
+        dismissToast(progressId);
+        throw error;
       }
     },
-    [dismissToast, showProgressToast],
+    [dismissToast, showProgressToast, showToast],
+  );
+
+  const runWithUploadToast = useCallback(
+    async (action: () => boolean | void | Promise<boolean | void>) => {
+      const progressId = showProgressToast(UPLOAD_PROGRESS_MESSAGE);
+      try {
+        const result = await action();
+        dismissToast(progressId);
+        if (result !== false) {
+          showToast(UPLOAD_SUCCESS_MESSAGE, "success");
+          return true;
+        }
+        return false;
+      } catch (error) {
+        dismissToast(progressId);
+        throw error;
+      }
+    },
+    [dismissToast, showProgressToast, showToast],
   );
 
   const value = useMemo(
-    () => ({ showToast, showProgressToast, dismissToast, runWithActionToast }),
-    [dismissToast, runWithActionToast, showProgressToast, showToast],
+    () => ({
+      showToast,
+      showProgressToast,
+      dismissToast,
+      runWithActionToast,
+      runWithUploadToast,
+    }),
+    [dismissToast, runWithActionToast, runWithUploadToast, showProgressToast, showToast],
   );
 
   useEffect(() => {
-    return bindGlobalActionToast(showProgressToast, dismissToast);
-  }, [dismissToast, showProgressToast]);
+    return bindGlobalActionToast(showProgressToast, dismissToast, (message) => {
+      showToast(message, "success");
+    });
+  }, [dismissToast, showProgressToast, showToast]);
 
   return (
     <ToastContext.Provider value={value}>

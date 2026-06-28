@@ -22,7 +22,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "آق",
     bg: "var(--info-bg)",
     tc: "var(--info)",
-    pages: ["dashboard", "users", "system-fields-catalog", "system-screen-catalog"],
+    pages: ["users", "system-fields-catalog", "system-screen-catalog"],
   },
   "proc-admin": {
     name: "علي الأمين",
@@ -30,7 +30,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "عل",
     bg: "var(--warning-bg)",
     tc: "var(--warning)",
-    pages: ["dashboard", "users", "system-fields-catalog", "system-screen-catalog"],
+    pages: ["users", "system-fields-catalog", "system-screen-catalog"],
   },
   "crm-admin": {
     name: "شهد العماري",
@@ -38,7 +38,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "شع",
     bg: "var(--success-bg)",
     tc: "var(--success)",
-    pages: ["dashboard", "users", "system-fields-catalog", "system-screen-catalog"],
+    pages: ["users", "system-fields-catalog", "system-screen-catalog"],
   },
   "general-manager": {
     name: "سالم الغريب",
@@ -47,7 +47,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
     bg: "var(--info-bg)",
     tc: "var(--info)",
     pages: [
-      "dashboard",
       "po",
       "active-primary-data",
       "bourse-inquiry",
@@ -75,7 +74,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
     bg: "var(--warning-bg)",
     tc: "var(--warning)",
     pages: [
-      "dashboard",
       "po",
       "active-primary-data",
       "bourse-inquiry",
@@ -115,7 +113,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "مد",
     bg: "var(--purple-bg)",
     tc: "var(--purple)",
-    pages: ["dashboard", "valuation-coordination", "system-fields-catalog", "system-screen-catalog"],
+    pages: ["valuation-coordination", "system-fields-catalog", "system-screen-catalog"],
   },
   "real-estate-appraiser": {
     name: "عبدالله الكثيري",
@@ -123,7 +121,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "عك",
     bg: "var(--info-bg)",
     tc: "var(--info)",
-    pages: ["dashboard", "po", "property-appraisal", "suspended-transactions", "system-fields-catalog", "system-screen-catalog"],
+    pages: ["po", "property-appraisal", "suspended-transactions", "system-fields-catalog", "system-screen-catalog"],
   },
   "field-inspector": {
     name: "أحمد سعيد",
@@ -132,7 +130,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
     bg: "var(--info-bg)",
     tc: "var(--info)",
     pages: [
-      "dashboard",
       "property-inspection",
       "party-fees",
       "system-fields-catalog",
@@ -145,7 +142,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "فك",
     bg: "var(--orange-bg)",
     tc: "var(--orange)",
-    pages: ["dashboard", "government-review", "keys", "system-fields-catalog", "system-screen-catalog"],
+    pages: ["government-review", "keys", "failures", "system-fields-catalog", "system-screen-catalog"],
   },
   "engineering-office": {
     name: "مكتب جدة للمساحة",
@@ -154,7 +151,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
     bg: "var(--purple-bg)",
     tc: "var(--purple)",
     pages: [
-      "dashboard",
       "active-survey",
       "party-fees",
       "system-fields-catalog",
@@ -167,7 +163,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "إن",
     bg: "var(--danger-bg)",
     tc: "var(--danger)",
-    pages: ["dashboard", "financial", "system-fields-catalog", "system-screen-catalog"],
+    pages: ["financial", "system-fields-catalog", "system-screen-catalog"],
   },
 };
 

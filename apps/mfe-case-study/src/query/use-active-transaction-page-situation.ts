@@ -88,6 +88,24 @@ export function useActiveTransactionPageSituation(
     useFieldInspectionWorkspacesQuery(needsInspectionWorkspaces);
 
   const [, bump] = useState(0);
+  const [partySubmissionGen, setPartySubmissionGen] = useState(0);
+
+  useEffect(() => {
+    if (!needsPartyPrefetch || !pageId) return;
+    const events = [
+      "evaluator-submission-changed",
+      "evaluator-recall-changed",
+      "evaluator-recall-hydrated",
+      "field-inspection-submission-changed",
+      "government-review-submission-changed",
+      "valuation-coordination-submission-changed",
+    ];
+    const handler = () => setPartySubmissionGen((n) => n + 1);
+    for (const ev of events) window.addEventListener(ev, handler);
+    return () => {
+      for (const ev of events) window.removeEventListener(ev, handler);
+    };
+  }, [needsPartyPrefetch, pageId]);
 
   useEffect(() => {
     if (!needsPartyPrefetch || !tasksFetched || !pageId) return;
@@ -99,6 +117,7 @@ export function useActiveTransactionPageSituation(
       partyAssignee: Boolean(partyDef),
       assigneeRole: partyDef?.roleId,
       viewerEmail: viewerEmail ?? getAuthSession()?.user.email,
+      viewerAssigneeId: distributionAssigneeId,
       staffUsers,
     });
     void prefetchPartySubmissionsForTasks(mine.map((t) => t.id)).then(() =>
@@ -111,6 +130,7 @@ export function useActiveTransactionPageSituation(
     role,
     pageId,
     viewerEmail,
+    distributionAssigneeId,
     staffUsers,
   ]);
 
@@ -144,6 +164,7 @@ export function useActiveTransactionPageSituation(
       partyAssignee: Boolean(partyDef),
       assigneeRole: partyDef?.roleId,
       viewerEmail: viewerEmail ?? getAuthSession()?.user.email,
+      viewerAssigneeId: distributionAssigneeId,
       staffUsers,
     });
 
@@ -186,6 +207,8 @@ export function useActiveTransactionPageSituation(
     failures,
     inspectionWorkspaces,
     viewerEmail,
+    distributionAssigneeId,
     staffUsers,
+    partySubmissionGen,
   ]);
 }

@@ -405,7 +405,13 @@ public class WorkflowTaskService : IWorkflowTaskService
         var tasks = allTasks
             .Where(t => t.Kind == CaseStudyPropertyKind && t.PoNumber == poNumber)
             .ToList();
-        var byOrdinal = tasks.ToDictionary(t => t.PropertyOrdinal);
+        var byOrdinal = tasks
+            .GroupBy(t => t.PropertyOrdinal)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderBy(t => t.PropertyId.HasValue ? 0 : 1)
+                    .ThenBy(t => t.CreatedAtUtc)
+                    .First());
 
         for (var ord = 1; ord <= expected; ord++)
         {

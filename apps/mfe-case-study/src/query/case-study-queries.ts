@@ -4,6 +4,7 @@ import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { LIVE_QUEUE_POLL_INTERVAL_MS } from "@platform/app-shared/query/live-query";
 import { isFeatureEnabled } from "@platform/app-shared/feature-flags";
+import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { loadPoListRows } from "@platform/app-shared/prototype/work-orders-read";
 import { loadPropertyListItems } from "@platform/app-shared/prototype/work-orders-read";
 import {
@@ -11,9 +12,13 @@ import {
   loadPendingBourseItems,
   loadPoRecords,
 } from "../lib/prototype/po-intake-storage";
-import { loadWorkflowTasks, syncTasksFromPoRecords } from "../lib/prototype/tasks-storage";
+import {
+  loadWorkflowTasks,
+  loadWorkflowTasksForQuery,
+  syncTasksFromPoRecords,
+} from "../lib/prototype/tasks-storage";
 
-export { loadWorkflowTasks };
+export { loadWorkflowTasks, loadWorkflowTasksForQuery };
 export { WORK_ORDERS_CHANGED_EVENT } from "../lib/work-orders-api-config";
 export { TASKS_CHANGED_EVENT, TASKS_STORAGE_KEY } from "../lib/prototype/tasks-storage";
 
@@ -24,7 +29,10 @@ const queryDefaults = { staleTime: STALE_MS, gcTime: GC_MS };
 /** Loads POs from API and keeps workflow task slots in sync. */
 export async function loadPoRecordsWithTaskSync() {
   const records = await loadPoRecords();
-  await syncTasksFromPoRecords();
+  const sync = await syncTasksFromPoRecords();
+  if (!sync.ok) {
+    throw new Error(sync.error);
+  }
   return records;
 }
 
@@ -43,16 +51,18 @@ export function useWorkflowTasksQuery(options?: { live?: boolean }) {
     options?.live === true && isFeatureEnabled("liveQueuePolling");
   return useQuery({
     queryKey: prototypeKeys.workflowTasks(),
-    queryFn: loadWorkflowTasks,
+    queryFn: loadWorkflowTasksForQuery,
     ...queryDefaults,
     refetchInterval: live ? LIVE_QUEUE_POLL_INTERVAL_MS : false,
   });
 }
 
 export function usePoRecordsQuery() {
+  const { authReady, capabilities } = usePrototype();
   return useQuery({
-    queryKey: prototypeKeys.poRecords(),
+    queryKey: [...prototypeKeys.poRecords(), capabilities.join(",")],
     queryFn: loadPoRecordsWithTaskSync,
+    enabled: authReady,
     ...queryDefaults,
   });
 }

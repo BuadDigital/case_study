@@ -59,6 +59,18 @@ export function isActiveFailureStatus(status: FailureStatus): boolean {
   return status !== "resolved" && status !== "suspended";
 }
 
+/** Stops work and shows as an open obstruction (not yet cleared). */
+export function isBlockingFailureStatus(status: FailureStatus): boolean {
+  return (
+    status === "internal" || status === "review" || status === "returned"
+  );
+}
+
+/** Closed failures — show as «تعذرات سابقة», not as active blockers. */
+export function isHistoricalFailureStatus(status: FailureStatus): boolean {
+  return status === "resolved" || status === "suspended";
+}
+
 /** Open failures for sidebar badge and stats (not approved / resolved). */
 export function countOpenFailures(records: FailureRecord[]): number {
   return records.filter(

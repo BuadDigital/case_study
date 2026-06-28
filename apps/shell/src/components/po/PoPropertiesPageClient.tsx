@@ -5,11 +5,7 @@ import { PoPropertiesPage } from "@case-study/mfe";
 import type { PoPropertyRowMoreContext } from "@case-study/mfe/lib/prototype/po-properties-row-menu";
 import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import {
-  buildAppraiserRecallMenuItems,
-  EVALUATOR_RECALL_CHANGED_EVENT,
-  EVALUATOR_SUBMISSION_CHANGED_EVENT,
-} from "@evaluator/mfe";
+import { buildAppraiserRecallMenuItems, EVALUATOR_RECALL_CHANGED_EVENT, EVALUATOR_SUBMISSION_CHANGED_EVENT } from "@evaluator/mfe";
 import { useWorkflowTasksQuery } from "@/lib/query/prototype-queries";
 
 export function PoPropertiesPageClient({ poNumber }: { poNumber: string }) {

@@ -1,3 +1,6 @@
+export const UPLOAD_PROGRESS_MESSAGE = "جاري الرفع…";
+export const UPLOAD_SUCCESS_MESSAGE = "تم الرفع !";
+
 const EXACT_MESSAGES: Record<string, string> = {
   "حفظ أمر العمل": "جاري حفظ أمر العمل…",
   "حفظ التعديلات": "جاري حفظ التعديلات…",
@@ -38,6 +41,46 @@ const KEYWORD_MESSAGES: { keyword: string; message: string }[] = [
   { keyword: "إنشاء", message: "جاري الإنشاء…" },
 ];
 
+const SUCCESS_EXACT_MESSAGES: Record<string, string> = {
+  "حفظ أمر العمل": "تم حفظ أمر العمل !",
+  "حفظ التعديلات": "تم حفظ التعديلات !",
+  "حفظ وإرسال المعاينة": "تم إرسال المعاينة !",
+  "حفظ وإتمام المراجعة": "تم إتمام المراجعة !",
+  "حفظ وإتمام التقييم": "تم إرسال التقييم !",
+  "حفظ وإرسال الرفع": "تم إرسال الرفع المساحي !",
+  "حفظ وإكمال البورصة": "تم حفظ بيانات البورصة !",
+  "تأكيد التوزيع وإرسال المهام": "تم تأكيد التوزيع وإرسال المهام !",
+  "إرسال للأخصائي": "تم إرسال التقييم للأخصائي !",
+  "إرسال للمشرف — إدارة التعذرات": "تم إرسال التعذر للمشرف !",
+  "حفظ والانتقال للتوزيع": "تم الحفظ والانتقال للتوزيع !",
+  "حفظ مسودة": "تم حفظ المسودة !",
+  "حفظ إجاباتي": "تم حفظ الإجابات !",
+  "حفظ الحقل": "تم حفظ الحقل !",
+  "حفظ الإسناد": "تم حفظ الإسناد !",
+  "تأكيد الحفظ": "تم إنشاء الحساب !",
+  "رفع النموذج للنظام": "تم رفع نموذج الدراسة !",
+  "دخول": "تم تسجيل الدخول !",
+  "إرفاق صورة": "تم إرفاق الصورة !",
+  "تسجيل تعذر": "تم تسجيل التعذر !",
+};
+
+const SUCCESS_KEYWORD_MESSAGES: { keyword: string; message: string }[] = [
+  { keyword: "رفع", message: UPLOAD_SUCCESS_MESSAGE },
+  { keyword: "إرفاق", message: "تم الإرفاق !" },
+  { keyword: "إرسال", message: "تم الإرسال !" },
+  { keyword: "حذف", message: "تم الحذف !" },
+  { keyword: "تأكيد", message: "تم التأكيد !" },
+  { keyword: "تحميل", message: "تم التحميل !" },
+  { keyword: "إضافة", message: "تمت الإضافة !" },
+  { keyword: "اعتماد", message: "تم الاعتماد !" },
+  { keyword: "حفظ", message: "تم الحفظ !" },
+  { keyword: "تسجيل", message: "تم التسجيل !" },
+  { keyword: "تحديث", message: "تم التحديث !" },
+  { keyword: "استيراد", message: "تم الاستيراد !" },
+  { keyword: "تنفيذ", message: "تم التنفيذ !" },
+  { keyword: "إنشاء", message: "تم الإنشاء !" },
+];
+
 const SKIP_ACTION_LABELS = new Set([
   "إلغاء",
   "الغاء",
@@ -66,6 +109,21 @@ export function progressMessageForActionLabel(actionLabel: string): string {
   }
 
   return "جاري التنفيذ…";
+}
+
+/** Maps a button label to a short Arabic success toast after the action completes. */
+export function successMessageForActionLabel(actionLabel: string): string {
+  const label = actionLabel.replace(/\s+/g, " ").trim();
+  if (!label) return "تم التنفيذ !";
+
+  const exact = SUCCESS_EXACT_MESSAGES[label];
+  if (exact) return exact;
+
+  for (const { keyword, message } of SUCCESS_KEYWORD_MESSAGES) {
+    if (label.includes(keyword)) return message;
+  }
+
+  return "تم التنفيذ !";
 }
 
 export function isActionLikeLabel(actionLabel: string): boolean {

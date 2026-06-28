@@ -1,9 +1,5 @@
+import { activeFailureForProperty } from "./failure-property-match";
 import type { FailureRecord } from "./failures-types";
-import { isActiveFailureStatus } from "./failures-types";
-
-function propertyKey(poNumber: string, propertyId: string): string {
-  return `${poNumber.trim()}|${propertyId.trim()}`;
-}
 
 let listCache: FailureRecord[] = [];
 
@@ -18,15 +14,13 @@ export function setCachedFailuresList(list: FailureRecord[]): void {
 export function getCachedPropertyFailure(
   poNumber: string,
   propertyId: string,
+  deedNumber?: string,
 ): FailureRecord | null {
-  const key = propertyKey(poNumber, propertyId);
-  return (
-    listCache.find(
-      (f) =>
-        propertyKey(f.poNumber, f.propertyId) === key &&
-        isActiveFailureStatus(f.status),
-    ) ?? null
-  );
+  return activeFailureForProperty(listCache, {
+    poNumber,
+    propertyId,
+    deedNumber,
+  });
 }
 
 export function upsertCachedFailure(record: FailureRecord): void {

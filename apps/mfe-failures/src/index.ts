@@ -17,8 +17,14 @@ export * from "./lib/failures-repository";
 export {
   failureSeverityLabel,
   failureStatusLabel,
+  failureRecordTitle,
+  failureOccurrenceSuffix,
+  groupSimilarFailureRecords,
+  isPanelBlockingFailure,
 } from "./lib/failures-labels";
+export type { GroupedFailureRow } from "./lib/failures-labels";
 export * from "./lib/failure-types-data";
+export * from "./lib/failure-property-match";
 export * from "./lib/failure-types-storage";
 export * from "./lib/failures-api";
 export * from "./query/failures-queries";

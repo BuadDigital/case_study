@@ -49,6 +49,7 @@ import {
 } from "@platform/design-system";
 
 import { markPropertyKeyReceived } from "../lib/keys-api";
+import type { PropertyKeyRow } from "../lib/keys-types";
 
 import {
 
@@ -63,6 +64,15 @@ function deedStatusTone(status: string): "success" | "warning" | "danger" | "def
   if (value === "فعال") return "success";
   if (value === "قيد التحقق") return "warning";
   if (value === "موقوف" || value.includes("موقوف")) return "danger";
+  return "default";
+}
+
+function keyFailureTone(
+  state: PropertyKeyRow["keyFailureState"],
+): "success" | "warning" | "danger" | "default" {
+  if (state === "active") return "danger";
+  if (state === "past") return "warning";
+  if (state === "clear") return "success";
   return "default";
 }
 
@@ -87,6 +97,8 @@ export function KeysView() {
   const received = kp.filter((p) => p.status === "done").length;
 
   const pending = Math.max(0, kp.length - received);
+
+  const keyObstructions = kp.filter((p) => p.keyFailureState === "active").length;
 
   const ready = !isPending;
 
@@ -150,11 +162,11 @@ export function KeysView() {
 
             </StatCard>
 
-            <StatCard accent="gray">
+            <StatCard accent="red">
 
-              <StatLabel>مندوبو المحكمة</StatLabel>
+              <StatLabel>تعذرات مفاتيح</StatLabel>
 
-              <StatValue value={courtDelegates.length} />
+              <StatValue value={keyObstructions} countUp />
 
             </StatCard>
 
@@ -196,6 +208,8 @@ export function KeysView() {
 
               <Th>حالة المفتاح</Th>
 
+              <Th>تعذر المفتاح</Th>
+
               <Th>المندوب</Th>
 
               <Th>إجراء</Th>
@@ -208,13 +222,13 @@ export function KeysView() {
 
             {!ready ? (
 
-              <SkeletonTableRows rows={5} cols={7} />
+              <SkeletonTableRows rows={5} cols={8} />
 
             ) : kp.length === 0 ? (
 
               <Tr hoverable={false}>
 
-                <Td colSpan={7}>
+                <Td colSpan={8}>
 
                   <EmptyState line="لا توجد عقارات تحتاج مفاتيح حالياً" />
 
@@ -279,6 +293,15 @@ export function KeysView() {
 
                     )}
 
+                  </Td>
+
+                  <Td>
+                    <Badge
+                      tone={keyFailureTone(p.keyFailureState)}
+                      className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal"
+                    >
+                      {p.keyFailureLabel}
+                    </Badge>
                   </Td>
 
                   <Td className="text-text-2">{p.delegate}</Td>

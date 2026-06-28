@@ -497,6 +497,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const activeTxBadges = useActiveTransactionNavBadges();
   const failuresNavBadge = useFailuresNavBadge();
   const insertActiveTxAfterPo = rolePages.includes("po");
+  const activeTxAnchorId = useMemo(() => {
+    if (insertActiveTxAfterPo) return "po" as PageId;
+    return navRuns.flatMap((run) => run.items)[0]?.id ?? null;
+  }, [insertActiveTxAfterPo, navRuns]);
 
   const prefetchPage = useMemo(
     () => (page: PageId) => prefetchPrototypePage(queryClient, page),
@@ -907,7 +911,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     !activeTransactionsInserted &&
                     showActiveTransactionsGroup &&
                     ((insertActiveTxAfterPo && item.id === "po") ||
-                      (!insertActiveTxAfterPo && item.id === "dashboard"));
+                      (!insertActiveTxAfterPo &&
+                        activeTxAnchorId &&
+                        item.id === activeTxAnchorId));
                   if (shouldInsertActiveTx) {
                     activeTransactionsInserted = true;
                     nodes.push(

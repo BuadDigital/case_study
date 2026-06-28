@@ -305,6 +305,15 @@ export function compareQueueTasksOldestFirst(
   return a.propertyOrdinal - b.propertyOrdinal;
 }
 
+/** Newest PO receipt first (inverse of oldest-first). */
+export function compareQueueTasksNewestFirst(
+  a: WorkflowTask,
+  b: WorkflowTask,
+  poByNumber: Map<string, PoIntakeRecord>,
+): number {
+  return -compareQueueTasksOldestFirst(a, b, poByNumber);
+}
+
 /** Next task in queue order after `currentTaskId` (listed must already be sorted). */
 export function nextPrimaryDataTaskId(
   listed: WorkflowTask[],

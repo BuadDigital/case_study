@@ -6,8 +6,6 @@ import {
 import { ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT } from "@engineering-office/mfe";
 import {
   SUSPENDED_TRANSACTIONS_CHANGED_EVENT,
-  TASKS_CHANGED_EVENT,
-  WORK_ORDERS_CHANGED_EVENT,
 } from "@case-study/mfe";
 import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "@case-study/mfe/lib/case-study-field-inspection-events";
 import { GOVERNMENT_REVIEW_SUBMISSION_CHANGED_EVENT } from "@case-study/mfe/lib/prototype/government-review-work-storage";
@@ -133,34 +131,6 @@ export const DOMAIN_NOTIFICATION_RULES: DomainNotificationRule[] = [
     },
     auditAction: "تحديث استلام تقييم",
     auditEntity: "valuation-coordination",
-  },
-  {
-    event: TASKS_CHANGED_EVENT,
-    notification: {
-      title: "تحديث المهام",
-      body: "تغيّرت حالة مهام سير العمل.",
-      tone: "info",
-      href: "/active-case-study",
-      category: "workflow",
-      entityType: "task",
-      sourceEvent: TASKS_CHANGED_EVENT,
-    },
-    auditAction: "تحديث مهام سير العمل",
-    auditEntity: "workflow-tasks",
-  },
-  {
-    event: WORK_ORDERS_CHANGED_EVENT,
-    notification: {
-      title: "تحديث أوامر العمل",
-      body: "راجع أوامر العمل المرتبطة بالمعاملات.",
-      tone: "info",
-      href: "/active-case-study",
-      category: "workflow",
-      entityType: "work-order",
-      sourceEvent: WORK_ORDERS_CHANGED_EVENT,
-    },
-    auditAction: "تحديث أوامر العمل",
-    auditEntity: "work-orders",
   },
   {
     event: SUSPENDED_TRANSACTIONS_CHANGED_EVENT,

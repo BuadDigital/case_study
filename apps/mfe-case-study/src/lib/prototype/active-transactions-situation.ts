@@ -157,7 +157,7 @@ export function computeActiveTransactionsSituation(input: {
 }): ActiveTransactionsSituationStats {
   const effectivePages = [
     ...new Set([
-      ...(input.rolePages?.length ? input.rolePages : (["dashboard"] as PageId[])),
+      ...(input.rolePages?.length ? input.rolePages : ([] as PageId[])),
       ...(input.customGrantedPages ?? []),
     ]),
   ] as PageId[];
