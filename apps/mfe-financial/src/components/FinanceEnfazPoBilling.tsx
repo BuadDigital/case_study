@@ -14,8 +14,6 @@ import {
   Button,
   EmptyState,
   Input,
-  SubpageHeader,
-  SubpagePanel,
   Table,
   TBody,
   Td,
@@ -166,9 +164,7 @@ export function FinanceEnfazPoBilling() {
   };
 
   return (
-    <SubpagePanel>
-      <SubpageHeader title="أوامر العمل الواردة (إنفاذ)" />
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(200px,0.85fr)_1.5fr]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(200px,0.85fr)_1.5fr]">
         <div className="rounded-[var(--radius-lg)] border border-border bg-surface">
           <div className="border-b border-border px-3 py-2 text-[11px] text-text-3">
             أوامر العمل الجاهزة للفوترة
@@ -267,7 +263,6 @@ export function FinanceEnfazPoBilling() {
             </>
           )}
         </div>
-      </div>
-    </SubpagePanel>
+    </div>
   );
 }

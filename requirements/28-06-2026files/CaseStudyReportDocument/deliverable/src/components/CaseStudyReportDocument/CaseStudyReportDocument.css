@@ -1,0 +1,548 @@
+/* ============================================================
+   CaseStudyReportDocument.css
+   A4 RTL Print Report — Ejadah Professional Valuation
+   Design tokens: navy #0F2A4E · gold #A38F67
+   ============================================================ */
+
+/* ── Google Font ─────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap');
+
+/* ── Design Tokens ───────────────────────────────────────── */
+.csrd-root {
+  --navy:         #0F2A4E;
+  --gold:         #A38F67;
+  --gold-border:  #C4A96A;
+  --border:       #C8C8C8;
+  --row-alt:      #F9FAFC;
+  --sub-bg:       #F5F6F8;
+  --approval-bg:  #F8F9FA;
+  --yellow-bg:    #FFFBEB;
+  --yellow-bdr:   #E5C84A;
+  --yellow-text:  #7A5F00;
+  --text:         #1C1C1C;
+  --text-muted:   #5A5A5A;
+  --white:        #FFFFFF;
+
+  /* layout */
+  --header-h:     38mm;
+  --footer-h:     24mm;
+  --margin-top:   42mm;
+  --margin-btm:   28mm;
+  --margin-side:  14mm;
+  --wm-w:         17mm;
+}
+
+/* ── @page ───────────────────────────────────────────────── */
+@page {
+  size: A4 portrait;
+  margin: 42mm 14mm 28mm 14mm;
+}
+
+/* ── Root wrapper ────────────────────────────────────────── */
+.csrd-root {
+  font-family: 'IBM Plex Sans Arabic', 'Segoe UI', Arial, sans-serif;
+  font-size: 9.5pt;
+  line-height: 1.45;
+  color: var(--text);
+  direction: rtl;
+  background: var(--white);
+}
+
+/* ============================================================
+   PAGE HEADER  — fixed, repeats on every printed page
+   ============================================================ */
+.csrd-header {
+  position: fixed;
+  top: calc(-1 * var(--margin-top));
+  right: calc(-1 * var(--margin-side));
+  left:  calc(-1 * var(--margin-side));
+  height: var(--header-h);
+  z-index: 200;
+  background: var(--white);
+}
+
+.csrd-header img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* CSS placeholder shown when PNG not provided */
+.csrd-header-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: stretch;
+  border-bottom: 3px solid var(--gold);
+}
+
+.csrd-header-logo {
+  background: var(--navy);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  min-width: 55mm;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.csrd-header-wordmark {
+  color: var(--white);
+  font-size: 20pt;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+
+.csrd-header-wordmark-dot {
+  color: var(--gold);
+}
+
+.csrd-header-sub {
+  color: var(--gold);
+  font-size: 7.5pt;
+  font-weight: 600;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+.csrd-header-divider {
+  width: 4px;
+  background: var(--gold);
+  align-self: stretch;
+  flex-shrink: 0;
+}
+
+.csrd-header-service {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 16px;
+}
+
+.csrd-header-service-en {
+  color: var(--gold);
+  font-size: 9.5pt;
+  font-weight: 600;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  line-height: 1.4;
+}
+
+.csrd-header-url {
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  color: var(--navy);
+  font-size: 9pt;
+  font-weight: 600;
+  direction: ltr;
+}
+
+/* ============================================================
+   PAGE FOOTER  — fixed, repeats on every printed page
+   ============================================================ */
+.csrd-footer {
+  position: fixed;
+  bottom: calc(-1 * var(--margin-btm));
+  right: calc(-1 * var(--margin-side));
+  left:  calc(-1 * var(--margin-side));
+  height: var(--footer-h);
+  z-index: 200;
+  background: var(--white);
+}
+
+.csrd-footer img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.csrd-footer-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 14mm;
+  border-top: 1.5px solid var(--border);
+  direction: ltr;
+  gap: 0;
+}
+
+.csrd-footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 7.5pt;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.csrd-footer-sep {
+  width: 1px;
+  height: 22px;
+  background: var(--border);
+  margin: 0 18px;
+  flex-shrink: 0;
+}
+
+.csrd-footer-gold {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.csrd-footer-ar {
+  margin-left: auto;
+  text-align: right;
+  direction: rtl;
+  font-size: 8pt;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+/* ============================================================
+   WATERMARK  — fixed, right edge (left in CSS for RTL)
+   ============================================================ */
+.csrd-watermark {
+  position: fixed;
+  top:    calc(-1 * var(--margin-top));
+  bottom: calc(-1 * var(--margin-btm));
+  left:   calc(-1 * var(--margin-side));
+  width:  var(--wm-w);
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.csrd-watermark img {
+  height: 100%;
+  width: auto;
+  opacity: 0.1;
+}
+
+.csrd-watermark-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.csrd-watermark-text {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  font-size: 9pt;
+  font-weight: 700;
+  color: var(--navy);
+  letter-spacing: 3px;
+  white-space: nowrap;
+  opacity: 0.09;
+  line-height: 1;
+}
+
+/* ============================================================
+   CONTENT AREA
+   ============================================================ */
+.csrd-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Report title ────────────────────────────────────────── */
+.csrd-title-block {
+  text-align: center;
+  margin-bottom: 5mm;
+  padding-bottom: 4mm;
+  border-bottom: 1.5px solid var(--gold);
+}
+
+.csrd-title-main {
+  font-size: 14pt;
+  font-weight: 700;
+  color: var(--navy);
+  letter-spacing: 0.5px;
+}
+
+.csrd-title-sub {
+  font-size: 10pt;
+  font-weight: 600;
+  color: var(--gold);
+  margin-top: 2px;
+}
+
+/* ============================================================
+   SHARED TABLE STYLES
+   ============================================================ */
+.csrd-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 4.5mm;
+  font-size: 9.5pt;
+  table-layout: fixed;
+}
+
+.csrd-table th,
+.csrd-table td {
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  vertical-align: middle;
+  text-align: right;
+}
+
+/* Section title bar */
+.csrd-table .csrd-sec-hdr td {
+  background: var(--navy);
+  color: var(--white);
+  font-size: 11pt;
+  font-weight: 700;
+  text-align: center;
+  padding: 5px 10px;
+  border-color: var(--navy);
+}
+
+/* Column header row */
+.csrd-table .csrd-col-hdr th {
+  background: var(--navy);
+  color: var(--white);
+  font-size: 9pt;
+  font-weight: 600;
+  text-align: center;
+  padding: 4px 6px;
+}
+
+.csrd-table .csrd-col-hdr th:first-child {
+  text-align: right;
+  padding-right: 8px;
+}
+
+/* Yes / No cells — 28 mm fixed */
+.csrd-yn {
+  text-align: center !important;
+  width: 28mm;
+  min-width: 28mm;
+  max-width: 28mm;
+}
+
+/* Data label (bayan al-ta3meed) */
+.csrd-data-lbl {
+  font-weight: 600;
+  color: var(--navy);
+  width: 38%;
+  background: var(--row-alt);
+}
+
+/* Sub-info row */
+.csrd-table .csrd-sub-row td {
+  background: var(--sub-bg);
+  font-size: 8.5pt;
+  color: var(--text-muted);
+  padding: 3px 20px;
+  border-top: none;
+  font-style: italic;
+}
+
+/* Notes row */
+.csrd-table .csrd-notes-row td {
+  background: var(--approval-bg);
+  font-size: 9pt;
+  padding: 5px 10px;
+  line-height: 1.55;
+}
+
+.csrd-notes-label {
+  display: block;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 2px;
+}
+
+/* ── Alert strip ─────────────────────────────────────────── */
+.csrd-alert {
+  background: var(--yellow-bg);
+  border: 1px solid var(--yellow-bdr);
+  border-radius: 3px;
+  padding: 4px 10px 4px 8px;
+  font-size: 9pt;
+  color: var(--yellow-text);
+  margin-bottom: 1.5mm;
+  line-height: 1.4;
+}
+
+/* ── Checkbox ────────────────────────────────────────────── */
+.csrd-cb {
+  font-size: 14px;
+  display: inline-block;
+  width: 18px;
+  text-align: center;
+  color: #444;
+  line-height: 1;
+  font-family: 'Segoe UI Symbol', 'Apple Symbols', sans-serif;
+}
+
+.csrd-cb--on {
+  color: var(--navy);
+  font-size: 15px;
+}
+
+/* ── Electric meter row ──────────────────────────────────── */
+.csrd-meter-opts {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  direction: rtl;
+  font-size: 9pt;
+}
+
+.csrd-meter-opts span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+/* ── Approval block ──────────────────────────────────────── */
+.csrd-approval-decl {
+  background: var(--approval-bg);
+  border-right: 4px solid var(--gold);
+  padding: 7px 12px;
+  font-size: 9.5pt;
+  margin-bottom: 3mm;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.csrd-approval-table th {
+  background: var(--navy);
+  color: var(--white);
+  font-size: 9.5pt;
+  font-weight: 600;
+  text-align: center;
+  padding: 5px;
+}
+
+.csrd-approval-table td {
+  height: 26mm;
+  vertical-align: middle;
+  text-align: center;
+}
+
+.csrd-approval-table img {
+  max-height: 22mm;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.csrd-sig-box {
+  height: 22mm;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 4px;
+  color: #ccc;
+  font-size: 8pt;
+}
+
+.csrd-stamp-box {
+  height: 22mm;
+  width: 22mm;
+  border: 1px dashed var(--border);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ccc;
+  font-size: 8pt;
+  margin: auto;
+}
+
+/* ── Section wrapper ─────────────────────────────────────── */
+.csrd-section {
+  page-break-inside: avoid;
+}
+
+.csrd-section--break {
+  page-break-before: always;
+}
+
+.csrd-table .csrd-sec-hdr {
+  page-break-after: avoid;
+}
+
+.csrd-table .csrd-col-hdr {
+  page-break-after: avoid;
+}
+
+.csrd-table tr {
+  page-break-inside: avoid;
+}
+
+.csrd-approval-block {
+  page-break-inside: avoid;
+}
+
+/* ============================================================
+   SCREEN PREVIEW  (not printed)
+   ============================================================ */
+@media screen {
+  body {
+    background: #D0D0D0;
+    padding: 20px 0;
+  }
+
+  .csrd-root {
+    max-width: 210mm;
+    margin: 0 auto;
+    padding: calc(var(--margin-top) + 4mm) var(--margin-side) calc(var(--margin-btm) + 4mm);
+    min-height: 297mm;
+    box-shadow: 0 4px 28px rgba(0, 0, 0, 0.2);
+    position: relative;
+  }
+
+  .csrd-header {
+    position: fixed;
+    top: 0;
+    /* center over the page preview */
+    right: 50%;
+    left: auto;
+    transform: translateX(50%);
+    width: 210mm;
+    height: var(--header-h);
+  }
+
+  .csrd-footer {
+    position: fixed;
+    bottom: 0;
+    right: 50%;
+    left: auto;
+    transform: translateX(50%);
+    width: 210mm;
+    height: var(--footer-h);
+  }
+
+  .csrd-watermark {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    right: 50%;
+    left: auto;
+    transform: translateX(calc(50% - 210mm / 2));
+    width: var(--wm-w);
+  }
+}
+
+/* ── Print color fidelity ────────────────────────────────── */
+@media print {
+  .csrd-root {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

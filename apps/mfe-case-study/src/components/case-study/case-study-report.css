@@ -1,57 +1,424 @@
-/* A4 sheet — letterhead is a fixed tile, never stretched to content height */
-.cs-report-page {
+/* Case study report — designer layout (csrd-*) + form approval (cs-form-*) */
+
+.csrd-root {
+  --navy: #0f2a4e;
+  --gold: #a38f67;
+  --gold-border: #c4a96a;
+  --border: #c8c8c8;
+  --row-alt: #f9fafc;
+  --sub-bg: #f5f6f8;
+  --approval-bg: #f8f9fa;
+  --yellow-bg: #fffbeb;
+  --yellow-bdr: #e5c84a;
+  --yellow-text: #7a5f00;
+  --text: #1c1c1c;
+  --text-muted: #5a5a5a;
+  --white: #ffffff;
+  --header-h: 38mm;
+  --footer-h: 24mm;
+  --margin-top: 42mm;
+  --margin-btm: 28mm;
+  --margin-side: 14mm;
+  --wm-w: 17mm;
+
+  font-family: "IBM Plex Sans Arabic", "Segoe UI", Arial, sans-serif;
+  font-size: 9.5pt;
+  line-height: 1.45;
+  color: var(--text);
+  direction: rtl;
+  background: var(--white);
   position: relative;
   width: 210mm;
-  min-height: 297mm;
+  max-width: 100%;
   margin: 0 auto;
-  background-color: #fff;
-  box-shadow: 0 2px 16px rgba(15, 52, 96, 0.12);
-  isolation: isolate;
+  padding: var(--margin-top) var(--margin-side) var(--margin-btm);
+  min-height: 297mm;
+  box-sizing: border-box;
 }
 
-.cs-report-page::before {
-  content: "";
+.csrd-root *,
+.csrd-root *::before,
+.csrd-root *::after {
+  box-sizing: border-box;
+}
+
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+
+/* ── Header / footer / watermark ── */
+.csrd-header {
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: var(--header-h);
+  z-index: 200;
+  background: var(--white);
+  overflow: hidden;
+}
+
+.csrd-header img,
+.csrd-footer img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.csrd-header-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: stretch;
+  border-bottom: 3px solid var(--gold);
+}
+
+.csrd-header-logo {
+  background: var(--navy);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  min-width: 55mm;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.csrd-header-wordmark {
+  color: var(--white);
+  font-size: 20pt;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+
+.csrd-header-wordmark-dot {
+  color: var(--gold);
+}
+
+.csrd-header-sub {
+  color: var(--gold);
+  font-size: 7.5pt;
+  font-weight: 600;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+.csrd-header-divider {
+  width: 4px;
+  background: var(--gold);
+  align-self: stretch;
+  flex-shrink: 0;
+}
+
+.csrd-header-service {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 16px;
+}
+
+.csrd-header-service-en {
+  color: var(--gold);
+  font-size: 9.5pt;
+  font-weight: 600;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  line-height: 1.4;
+}
+
+.csrd-footer {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  height: var(--footer-h);
+  z-index: 200;
+  background: var(--white);
+  overflow: hidden;
+}
+
+.csrd-footer-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 14mm;
+  border-top: 1.5px solid var(--border);
+  direction: ltr;
+}
+
+.csrd-footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 7.5pt;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.csrd-footer-sep {
+  width: 1px;
+  height: 22px;
+  background: var(--border);
+  margin: 0 18px;
+  flex-shrink: 0;
+}
+
+.csrd-footer-gold {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.csrd-footer-ar {
+  margin-left: auto;
+  text-align: right;
+  direction: rtl;
+  font-size: 8pt;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.csrd-watermark {
+  position: absolute;
+  top: var(--header-h);
+  bottom: var(--footer-h);
+  right: 0;
+  left: auto;
+  width: var(--wm-w);
   z-index: 0;
   pointer-events: none;
-  background-image: url("/case-study/ejadah-letterhead.png");
-  background-size: 210mm 297mm;
-  background-repeat: repeat-y;
-  background-position: top center;
+  overflow: hidden;
 }
 
-.cs-report-doc {
+.csrd-watermark-repeat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+  width: 100%;
+  padding: 3mm 0;
+}
+
+.csrd-watermark-word {
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 6.5pt;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  line-height: 1;
+  color: transparent;
+  -webkit-text-stroke: 0.35px rgba(15, 42, 78, 0.18);
+  opacity: 0.55;
+  white-space: nowrap;
+}
+
+/* ── Content ── */
+.csrd-content {
   position: relative;
   z-index: 1;
-  width: 100%;
-  min-height: 297mm;
-  /* Safe zone: below header logo, above footer bar */
-  padding: 36mm 18mm 32mm 14mm;
-  color: var(--text);
-  font-size: 10.5px;
 }
 
-.cs-report-form-title {
+.csrd-title-block {
   text-align: center;
-  margin-bottom: 10px;
+  margin-bottom: 5mm;
+  padding-bottom: 4mm;
+  border-bottom: 1.5px solid var(--gold);
 }
 
-.cs-report-form-title h1 {
-  margin: 0 0 2px;
-  font-size: 14px;
+.csrd-title-main {
+  font-size: 14pt;
   font-weight: 700;
-  color: #0f3460;
+  color: var(--navy);
 }
 
-.cs-report-form-title p {
-  margin: 0;
-  font-size: 10px;
-  color: #4a6272;
+.csrd-title-sub {
+  font-size: 10pt;
+  font-weight: 600;
+  color: var(--gold);
+  margin-top: 2px;
 }
 
+.csrd-ltr {
+  direction: ltr;
+  text-align: right;
+}
+
+.csrd-bold {
+  font-weight: 700;
+}
+
+.csrd-muted {
+  color: var(--text-muted);
+  font-size: 8.5pt;
+}
+
+/* ── Tables ── */
+.csrd-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 4.5mm;
+  font-size: 9.5pt;
+  table-layout: fixed;
+}
+
+.csrd-table th,
+.csrd-table td {
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  vertical-align: middle;
+  text-align: right;
+}
+
+.csrd-table .csrd-sec-hdr td {
+  background: var(--navy);
+  color: var(--white);
+  font-size: 11pt;
+  font-weight: 700;
+  text-align: center;
+  padding: 5px 10px;
+  border-color: var(--navy);
+}
+
+.csrd-table .csrd-col-hdr th {
+  background: var(--navy);
+  color: var(--white);
+  font-size: 9pt;
+  font-weight: 600;
+  text-align: center;
+  padding: 4px 6px;
+}
+
+.csrd-table .csrd-col-hdr th:first-child {
+  text-align: right;
+}
+
+.csrd-yn {
+  text-align: center !important;
+  width: 28mm;
+  min-width: 28mm;
+  max-width: 28mm;
+}
+
+.csrd-data-lbl {
+  font-weight: 600;
+  color: var(--navy);
+  width: 38%;
+  background: var(--row-alt);
+}
+
+.csrd-table .csrd-sub-row td {
+  background: var(--sub-bg);
+  font-size: 8.5pt;
+  color: var(--text-muted);
+  padding: 3px 20px;
+  border-top: none;
+  font-style: italic;
+}
+
+.csrd-table .csrd-notes-row td {
+  background: var(--approval-bg);
+  font-size: 9pt;
+  padding: 5px 10px;
+  line-height: 1.55;
+}
+
+.csrd-notes-label {
+  display: block;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 2px;
+}
+
+.csrd-alert {
+  background: var(--yellow-bg);
+  border: 1px solid var(--yellow-bdr);
+  border-radius: 3px;
+  padding: 4px 10px;
+  font-size: 9pt;
+  color: var(--yellow-text);
+  margin-bottom: 1.5mm;
+}
+
+.csrd-cb {
+  font-size: 14px;
+  display: inline-block;
+  width: 18px;
+  text-align: center;
+  color: #444;
+  line-height: 1;
+}
+
+.csrd-cb--on {
+  color: var(--navy);
+  font-size: 15px;
+}
+
+.csrd-approval-decl {
+  background: var(--approval-bg);
+  border-right: 4px solid var(--gold);
+  padding: 7px 12px;
+  font-size: 9.5pt;
+  margin-bottom: 3mm;
+  line-height: 1.5;
+}
+
+.csrd-approval-table th {
+  background: var(--navy);
+  color: var(--white);
+  font-size: 9.5pt;
+  font-weight: 600;
+  text-align: center;
+  padding: 5px;
+}
+
+.csrd-approval-table td {
+  height: 26mm;
+  vertical-align: middle;
+  text-align: center;
+}
+
+.csrd-approval-table img {
+  max-height: 22mm;
+  max-width: 100%;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+}
+
+.csrd-section {
+  page-break-inside: avoid;
+}
+
+.csrd-section--break {
+  page-break-before: always;
+}
+
+.csrd-approval-block {
+  page-break-inside: avoid;
+}
+
+.csrd-table tr {
+  page-break-inside: avoid;
+}
+
+/* ── Modal preview shell (header/footer داخل الصفحة) ── */
+.cs-report-preview-shell {
+  background: #eef3f9;
+  padding: 8px 0 16px;
+}
+
+.cs-report-preview-shell .csrd-root {
+  box-shadow: 0 4px 28px rgba(0, 0, 0, 0.15);
+}
+
+/* ── Form step approval (CaseStudyForm) ── */
 .cs-form-approval-note {
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .cs-form-sig-table-wrap {
@@ -61,29 +428,28 @@
 .cs-form-sig-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 9.5px;
+  font-size: 12px;
 }
 
 .cs-form-sig-table th {
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 600;
-  color: #4a6272;
-  padding: 10px 6px;
-  background: #eef3f9;
-  border: 1px solid #d5e3f0;
+  color: var(--text-2, #4a6272);
+  padding: 8px 12px;
+  background: var(--surface-3, #eef3f9);
+  border: 1px solid var(--border, #d5e3f0);
   text-align: center;
 }
 
 .cs-form-sig-table td {
-  padding: 10px 6px;
-  border: 1px solid #d5e3f0;
+  padding: 14px 10px;
+  border: 1px solid var(--border, #d5e3f0);
   text-align: center;
   vertical-align: middle;
 }
 
 .cs-form-sig-value {
   font-weight: 600;
-  color: var(--text);
   display: block;
 }
 
@@ -94,200 +460,57 @@
 }
 
 .cs-form-sig-img--signature {
-  max-width: 110px;
-  max-height: 52px;
+  max-width: 120px;
+  max-height: 56px;
 }
 
 .cs-form-sig-img--stamp {
-  max-width: 88px;
-  max-height: 88px;
-}
-
-.cs-report-meta-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 10px;
-  border: 1px solid #d5e3f0;
-}
-
-.cs-report-meta-table th,
-.cs-report-meta-table td {
-  border: 1px solid #d5e3f0;
-  padding: 5px 8px;
-  font-size: 10px;
-  text-align: right;
-}
-
-.cs-report-meta-table th {
-  background: #eef3f9;
-  color: #4a6272;
-  width: 22%;
-  font-weight: 600;
-}
-
-.cs-report-section {
-  margin-bottom: 8px;
-  border: 1px solid #d5e3f0;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.92);
-}
-
-.cs-report-section-title {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 700;
-  color: #fff;
-  background: #0f3460;
-  padding: 6px 10px;
-}
-
-.cs-report-section-title--approval {
-  background: #1a6b5a;
-}
-
-.cs-report-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #fff;
-}
-
-.cs-report-table th,
-.cs-report-table td {
-  border-bottom: 1px solid #d5e3f0;
-  padding: 5px 8px;
-  vertical-align: middle;
-}
-
-.cs-report-table th {
-  background: #eef3f9;
-  color: #4a6272;
-  font-size: 9.5px;
-  text-align: right;
-  font-weight: 600;
-}
-
-.cs-report-table th.center,
-.cs-report-table td.center {
-  text-align: center;
-}
-
-.cs-report-table th.col-a {
-  width: 88px;
-}
-
-.cs-report-table th.col-b {
-  width: 96px;
-}
-
-.cs-report-table td.question {
-  line-height: 1.45;
-  font-size: 10px;
-}
-
-.cs-report-mark {
-  display: inline-flex;
-  width: 14px;
-  height: 14px;
-  align-items: center;
-  justify-content: center;
-  border: 1.5px solid #4a6272;
-  border-radius: 1px;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.cs-report-mark.checked {
-  background: #fff;
-  border-color: #0f3460;
-  color: #0f3460;
-}
-
-.cs-report-remarks-hint {
-  margin: 0;
-  padding: 6px 10px;
-  border-top: 1px solid #d5e3f0;
-  background: #fef3d7;
-  font-size: 9.5px;
-  color: #784212;
-  font-weight: 500;
-}
-
-.cs-report-extra-line {
-  margin: 0;
-  padding: 5px 10px;
-  border-top: 1px solid #d5e3f0;
-  background: #f7f9fc;
-  font-size: 9.5px;
-}
-
-.cs-report-remarks {
-  padding: 6px 10px;
-  border-top: 1px solid #d5e3f0;
-  background: #fef3d7;
-  font-size: 9.5px;
-  line-height: 1.5;
-}
-
-.cs-report-remarks-label {
-  font-weight: 700;
-  display: block;
-  margin-bottom: 3px;
-  color: #784212;
-}
-
-.cs-report-section--approval {
-  border: none;
-  background: transparent;
-}
-
-.cs-report-section--approval .cs-report-section-title {
-  border: 1px solid #d5e3f0;
-  border-bottom: none;
-}
-
-.cs-report-section--approval .cs-report-approval {
-  padding: 10px;
-  border: 1px solid #d5e3f0;
-  border-top: none;
-  background: rgba(255, 255, 255, 0.95);
-}
-
-.cs-report-approval .note {
-  padding: 7px 10px;
-  background: #d6eaf8;
-  border-right: 3px solid #2980b9;
-  margin-bottom: 8px;
-  line-height: 1.55;
-  font-size: 9.5px;
-  color: #1a5276;
+  max-width: 96px;
+  max-height: 96px;
 }
 
 @media print {
-  @page {
-    size: A4;
-    margin: 0;
+  .cs-report-preview-shell {
+    background: transparent;
+    padding: 0;
   }
 
-  .cs-report-page {
-    width: 210mm;
-    min-height: auto;
-    max-width: none;
+  .cs-report-preview-shell .csrd-root,
+  .csrd-root {
     box-shadow: none;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
-  .cs-report-page::before {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+  .cs-report-preview-shell .csrd-header,
+  .csrd-header {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    width: 210mm;
+    margin: 0 auto;
+    height: var(--header-h);
   }
 
-  .cs-report-doc {
-    min-height: auto;
+  .cs-report-preview-shell .csrd-footer,
+  .csrd-footer {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    width: 210mm;
+    margin: 0 auto;
+    height: var(--footer-h);
   }
 
-  .cs-report-section {
-    page-break-inside: avoid;
+  .cs-report-preview-shell .csrd-watermark,
+  .csrd-watermark {
+    position: fixed;
+    top: var(--header-h);
+    bottom: var(--footer-h);
+    right: calc(50% - 105mm);
+    left: auto;
+    width: var(--wm-w);
   }
 }
