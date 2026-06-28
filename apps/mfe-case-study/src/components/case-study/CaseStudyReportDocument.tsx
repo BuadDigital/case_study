@@ -1,14 +1,12 @@
+import { CaseStudyApprovalSection } from "./CaseStudyApprovalSection";
 import {
-  Note,
-  Table,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr,
-  cn,
-} from "@platform/design-system";
+  CASE_STUDY_REPORT_SUBTITLE,
+  CASE_STUDY_REPORT_TITLE,
+  CASE_STUDY_SECTION_REMARKS_HINT,
+} from "../../lib/prototype/case-study-form-data";
+import type { CaseStudyQuestionSection } from "../../lib/prototype/case-study-form-data";
 import type { CaseStudyReportModel } from "../../lib/prototype/case-study-report-model";
+import "./case-study-report.css";
 
 type Props = {
   model: CaseStudyReportModel;
@@ -16,13 +14,14 @@ type Props = {
   className?: string;
 };
 
+const SECTIONS_WITH_REMARKS_HINT: ReadonlySet<CaseStudyQuestionSection> =
+  new Set(["deed", "survey"]);
+
 function ReportMark({ checked }: { checked: boolean }) {
   return (
     <span
-      className={cn(
-        "inline-flex h-[18px] w-[18px] items-center justify-center rounded-[3px] border-[1.5px] border-border-md text-[11px] font-bold",
-        checked && "border-primary bg-primary text-white",
-      )}
+      className={`cs-report-mark${checked ? " checked" : ""}`}
+      aria-hidden="true"
     >
       {checked ? "✓" : ""}
     </span>
@@ -31,69 +30,113 @@ function ReportMark({ checked }: { checked: boolean }) {
 
 export function CaseStudyReportDocument({ model, id, className }: Props) {
   return (
-    <article
-      id={id}
-      className={cn("bg-white text-xs text-text", className)}
-      dir="rtl"
-      lang="ar"
-    >
-      {model.sections.map((section) => (
-        <details
-          key={section.id}
-          className="group mb-3 overflow-hidden rounded-xl border border-border"
-          open
-        >
-          <summary className="flex cursor-pointer list-none items-center gap-2 bg-primary p-2 px-3 text-xs font-bold text-white [&::-webkit-details-marker]:hidden">
-            <span
-              className="h-0 w-0 shrink-0 border-y-4 border-y-transparent border-s-[5px] border-s-white/85 transition-transform group-open:rotate-90"
-              aria-hidden="true"
-            />
-            {section.title}
-          </summary>
-          <div className="bg-white">
-            <Table>
-              <THead>
-                <Tr hoverable={false}>
-                  <Th className="text-[10px]">الأسئلة</Th>
-                  <Th className="w-[90px] text-center text-[10px]">
-                    {section.colAHeader}
-                  </Th>
-                  <Th className="w-[90px] text-center text-[10px]">
-                    {section.colBHeader}
-                  </Th>
-                </Tr>
-              </THead>
-              <TBody>
+    <div className={`cs-report-page${className ? ` ${className}` : ""}`}>
+      <article id={id} className="cs-report-doc" dir="rtl" lang="ar">
+        <div className="cs-report-form-title">
+          <h1>{CASE_STUDY_REPORT_TITLE}</h1>
+          <p>{CASE_STUDY_REPORT_SUBTITLE}</p>
+        </div>
+
+        <table className="cs-report-meta-table">
+          <tbody>
+            <tr>
+              <th>اسم مزود الخدمة</th>
+              <td>{model.providerName}</td>
+              <th>رقم الطلب</th>
+              <td>{model.requestNumber}</td>
+            </tr>
+            <tr>
+              <th>تاريخ الطلب</th>
+              <td>{model.requestDate}</td>
+              <th>رقم الصك</th>
+              <td>{model.deedNumber}</td>
+            </tr>
+            {model.propertyLocation || model.propertyType ? (
+              <tr>
+                {model.propertyLocation ? (
+                  <>
+                    <th>الموقع</th>
+                    <td>{model.propertyLocation}</td>
+                  </>
+                ) : (
+                  <>
+                    <th />
+                    <td />
+                  </>
+                )}
+                {model.propertyType ? (
+                  <>
+                    <th>نوع العقار</th>
+                    <td>{model.propertyType}</td>
+                  </>
+                ) : (
+                  <>
+                    <th />
+                    <td />
+                  </>
+                )}
+              </tr>
+            ) : null}
+            {model.assignmentSpecialist && model.assignmentSpecialist !== "—" ? (
+              <tr>
+                <th>أخصائي الإسناد</th>
+                <td colSpan={3}>{model.assignmentSpecialist}</td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+
+        {model.sections.map((section) => (
+          <section key={section.id} className="cs-report-section">
+            <h2 className="cs-report-section-title">{section.title}</h2>
+            <table className="cs-report-table">
+              <thead>
+                <tr>
+                  <th>الأسئلة</th>
+                  <th className="center col-a">{section.colAHeader}</th>
+                  <th className="center col-b">{section.colBHeader}</th>
+                </tr>
+              </thead>
+              <tbody>
                 {section.rows.map((row, i) => (
-                  <Tr key={`${section.id}-${i}`} hoverable={false}>
-                    <Td className="leading-snug">{row.question}</Td>
-                    <Td className="text-center">
+                  <tr key={`${section.id}-${i}`}>
+                    <td className="question">{row.question}</td>
+                    <td className="center">
                       <ReportMark checked={row.markA} />
-                    </Td>
-                    <Td className="text-center">
+                    </td>
+                    <td className="center">
                       <ReportMark checked={row.markB} />
-                    </Td>
-                  </Tr>
+                    </td>
+                  </tr>
                 ))}
-              </TBody>
-            </Table>
+              </tbody>
+            </table>
+            {SECTIONS_WITH_REMARKS_HINT.has(section.id) ? (
+              <p className="cs-report-remarks-hint">
+                {CASE_STUDY_SECTION_REMARKS_HINT}
+              </p>
+            ) : null}
             {section.extras?.map((line) => (
-              <p
-                key={line}
-                className="m-0 border-t border-border bg-surface-2 px-3 py-1.5 text-[11px]"
-              >
+              <p key={line} className="cs-report-extra-line">
                 {line}
               </p>
             ))}
             {section.remarks ? (
-              <Note tone="warn" className="mb-0 rounded-none border-r-0">
-                <span className="mb-1 block font-bold">ملاحظات:</span>
-                <p className="m-0">{section.remarks}</p>
-              </Note>
+              <div className="cs-report-remarks">
+                <span className="cs-report-remarks-label">ملاحظات:</span>
+                <p>{section.remarks}</p>
+              </div>
             ) : null}
-          </div>
-        </details>
-      ))}
-    </article>
+          </section>
+        ))}
+
+        <section className="cs-report-section cs-report-section--approval">
+          <h2 className="cs-report-section-title cs-report-section-title--approval">
+            الاعتماد والتوقيع
+          </h2>
+          <CaseStudyApprovalSection approval={model.approval} variant="report" />
+        </section>
+      </article>
+    </div>
   );
 }

@@ -50,6 +50,7 @@ export * from "./lib/prototype/case-study-form-data";
 export * from "./lib/prototype/case-study-form-storage";
 export * from "./lib/prototype/case-study-tracks";
 export * from "./lib/prototype/case-study-party-answers";
+export * from "./lib/prototype/viewer-task-access";
 export * from "./lib/prototype/case-study-report-model";
 export * from "./lib/prototype/government-review-po";
 export * from "./lib/prototype/suspended-transactions-storage";

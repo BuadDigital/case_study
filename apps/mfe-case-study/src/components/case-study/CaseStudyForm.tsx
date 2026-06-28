@@ -16,14 +16,17 @@ import {
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import { RegField } from "@platform/app-shared/registration/FormFields";
 import { CASE_STUDY_FORM_STEPS, CASE_STUDY_SECTION_QUESTIONS, caseStudyAnswerKey,type CaseStudyFormAnswer,type CaseStudyQuestionSection} from "../../lib/prototype/case-study-form-data";
+import { CaseStudyApprovalSection } from "./CaseStudyApprovalSection";
 import { CaseStudyReportActions } from "./CaseStudyReportActions";
 import { CaseStudyProgressDonut } from "./CaseStudyProgressDonut";
 import { CaseStudyMatrixTable } from "./CaseStudyMatrixTable";
 import { CaseStudyInfathSpecialistSection } from "./CaseStudyInfathSpecialistSection";
 import {
   canPartyAnswerQuestion,
+  canSpecialistApproveQuestion,
   CASE_STUDY_INFO_ROLES_CHANGED_EVENT,
   emptyCaseStudyInfoRolesConfig,
+  isCaseStudyQuestionVisibleToSpecialist,
   isPartyQuestionVisible,
   partyById,
   type CaseStudyInfoPartyId,
@@ -196,13 +199,18 @@ function SpecialistClosingCards({
   reportModel: ReturnType<typeof buildCaseStudyReportModel>;
 }) {
   return (
-    <RegistrationFormCard title="التقرير النهائي">
-      <p className="mb-3 text-xs leading-relaxed text-text-2">
-        يُعبّأ التقرير تلقائياً من إجابات النموذج وبيانات النظام (الصك، أمر
-        العمل، التاريخ، المعتمد).
-      </p>
-      <CaseStudyReportActions model={reportModel} />
-    </RegistrationFormCard>
+    <>
+      <RegistrationFormCard title="الاعتماد والتوقيع">
+        <CaseStudyApprovalSection approval={reportModel.approval} />
+      </RegistrationFormCard>
+      <RegistrationFormCard title="التقرير النهائي">
+        <p className="mb-3 text-xs leading-relaxed text-text-2">
+          يُعبّأ التقرير تلقائياً من إجابات النموذج وبيانات النظام (الصك، أمر
+          العمل، التاريخ، المعتمد).
+        </p>
+        <CaseStudyReportActions model={reportModel} />
+      </RegistrationFormCard>
+    </>
   );
 }
 
@@ -286,37 +294,49 @@ export function CaseStudyForm({
   ]);
 
   const isQuestionVisible = useCallback(
-    (key: string) =>
-      isPartyQuestionVisible(infoRolesMatrix, key, viewerPartyId),
-    [viewerPartyId, infoRolesMatrix],
+    (key: string) => {
+      if (!isParty) {
+        return isCaseStudyQuestionVisibleToSpecialist(infoRolesMatrix, key);
+      }
+      return isPartyQuestionVisible(infoRolesMatrix, key, viewerPartyId);
+    },
+    [isParty, viewerPartyId, infoRolesMatrix],
   );
 
   const partyContribCount = useMemo(() => {
     if (isParty) return 0;
-    let n = 0;
-    for (const [key, items] of Object.entries(partyAnswersByKey)) {
-      if (isQuestionVisible(key)) n += items.length;
-    }
-    return n;
-  }, [isParty, partyAnswersByKey, isQuestionVisible]);
+    return Object.values(partyAnswersByKey).reduce(
+      (total, items) => total + items.length,
+      0,
+    );
+  }, [isParty, partyAnswersByKey]);
 
   useEffect(() => {
     if (isParty) return;
     const refresh = () => setPartyRevision((n) => n + 1);
     window.addEventListener("focus", refresh);
     window.addEventListener(CASE_STUDY_INFO_ROLES_CHANGED_EVENT, refresh);
+    window.addEventListener(PARTY_CASE_STUDY_FORM_CHANGED_EVENT, refresh);
     window.addEventListener(EVALUATOR_SUBMISSION_CHANGED_EVENT, refresh);
     return () => {
       window.removeEventListener("focus", refresh);
       window.removeEventListener(CASE_STUDY_INFO_ROLES_CHANGED_EVENT, refresh);
+      window.removeEventListener(
+        PARTY_CASE_STUDY_FORM_CHANGED_EVENT,
+        refresh,
+      );
       window.removeEventListener(EVALUATOR_SUBMISSION_CHANGED_EVENT, refresh);
     };
   }, [isParty]);
 
   const canEditKey = useCallback(
-    (key: string) =>
-      canPartyAnswerQuestion(infoRolesMatrix, key, viewerPartyId),
-    [viewerPartyId, infoRolesMatrix],
+    (key: string) => {
+      if (!isParty) {
+        return canSpecialistApproveQuestion(infoRolesMatrix, key);
+      }
+      return canPartyAnswerQuestion(infoRolesMatrix, key, viewerPartyId);
+    },
+    [isParty, viewerPartyId, infoRolesMatrix],
   );
 
   const hasPartyVisibleNonDeedSections = useMemo(() => {
@@ -592,8 +612,8 @@ export function CaseStudyForm({
   };
 
   const formFooterActions = (
-    <div className="flex justify-end gap-2">
-      <Button showActionToast={false} onClick={saveDraft}>
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      <Button variant="outline" showActionToast={false} onClick={saveDraft}>
         حفظ مسودة
       </Button>
       {isParty ? (
@@ -606,11 +626,30 @@ export function CaseStudyForm({
         </Button>
       ) : (
         <Button
-          className="border-success bg-success text-white hover:border-primary-mid hover:bg-primary-mid"
+          variant="primary"
           showActionToast={false}
           onClick={submitForm}
         >
           رفع النموذج للنظام
+        </Button>
+      )}
+    </div>
+  );
+
+  const renderStepFooter = (nextLabel: string) => (
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+      {!isFirstVisibleStep ? (
+        <Button variant="outline" onClick={() => goAdjacentStep(-1)}>
+          السابق →
+        </Button>
+      ) : (
+        <span />
+      )}
+      {isLastVisibleStep ? (
+        showStepFooterActions ? formFooterActions : null
+      ) : (
+        <Button variant="primary" onClick={() => goAdjacentStep(1)}>
+          {nextLabel}
         </Button>
       )}
     </div>
@@ -697,16 +736,7 @@ export function CaseStudyForm({
           {!isParty && isLastVisibleStep ? (
             <SpecialistClosingCards reportModel={reportModel} />
           ) : null}
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-            <span />
-            {isLastVisibleStep ? (
-              showStepFooterActions ? formFooterActions : null
-            ) : (
-              <Button variant="primary" onClick={() => goAdjacentStep(1)}>
-                التالي — الرفع المساحي ←
-              </Button>
-            )}
-          </div>
+          {renderStepFooter("التالي — الرفع المساحي ←")}
         </div>
       ) : null}
 
@@ -731,22 +761,7 @@ export function CaseStudyForm({
           {!isParty && isLastVisibleStep ? (
             <SpecialistClosingCards reportModel={reportModel} />
           ) : null}
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-            {!isFirstVisibleStep ? (
-              <Button variant="outline" onClick={() => goAdjacentStep(-1)}>
-                → السابق
-              </Button>
-            ) : (
-              <span />
-            )}
-            {isLastVisibleStep ? (
-              showStepFooterActions ? formFooterActions : null
-            ) : (
-              <Button variant="primary" onClick={() => goAdjacentStep(1)}>
-                التالي — مكونات العقار ←
-              </Button>
-            )}
-          </div>
+          {renderStepFooter("التالي — مكونات العقار ←")}
         </div>
       ) : null}
 
@@ -810,22 +825,7 @@ export function CaseStudyForm({
           {!isParty && isLastVisibleStep ? (
             <SpecialistClosingCards reportModel={reportModel} />
           ) : null}
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-            {!isFirstVisibleStep ? (
-              <Button variant="outline" onClick={() => goAdjacentStep(-1)}>
-                → السابق
-              </Button>
-            ) : (
-              <span />
-            )}
-            {isLastVisibleStep ? (
-              showStepFooterActions ? formFooterActions : null
-            ) : (
-              <Button variant="primary" onClick={() => goAdjacentStep(1)}>
-                التالي — الإشغال والإيجار ←
-              </Button>
-            )}
-          </div>
+          {renderStepFooter("التالي — الإشغال والإيجار ←")}
         </div>
       ) : null}
 
@@ -863,22 +863,7 @@ export function CaseStudyForm({
           {!isParty && isLastVisibleStep ? (
             <SpecialistClosingCards reportModel={reportModel} />
           ) : null}
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-            {!isFirstVisibleStep ? (
-              <Button variant="outline" onClick={() => goAdjacentStep(-1)}>
-                → السابق
-              </Button>
-            ) : (
-              <span />
-            )}
-            {isLastVisibleStep ? (
-              showStepFooterActions ? formFooterActions : null
-            ) : (
-              <Button variant="primary" onClick={() => goAdjacentStep(1)}>
-                التالي — ملاحظات إضافية ←
-              </Button>
-            )}
-          </div>
+          {renderStepFooter("التالي — ملاحظات إضافية ←")}
         </div>
       ) : null}
 
@@ -895,16 +880,7 @@ export function CaseStudyForm({
           {!isParty && isLastVisibleStep ? (
             <SpecialistClosingCards reportModel={reportModel} />
           ) : null}
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-            {!isFirstVisibleStep ? (
-              <Button variant="outline" onClick={() => goAdjacentStep(-1)}>
-                → السابق
-              </Button>
-            ) : (
-              <span />
-            )}
-            {isLastVisibleStep ? (showStepFooterActions ? formFooterActions : null) : null}
-          </div>
+          {renderStepFooter("")}
         </div>
       ) : null}
 

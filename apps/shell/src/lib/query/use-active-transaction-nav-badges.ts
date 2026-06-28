@@ -19,6 +19,7 @@ import { countGovernmentReviewOpenPos } from "@case-study/mfe";
 import { PARTY_TASK_PAGES } from "@platform/app-shared/prototype/party-task-pages";
 import { reviewerScopeForRole } from "@case-study/mfe/lib/prototype/reviewer-coverage";
 import {
+  seesAllCaseStudyWorkflowTasks,
   tasksForPartyAssignee,
   tasksForRole,
 } from "@case-study/mfe";
@@ -65,7 +66,9 @@ export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>>
 
   return useMemo(() => {
     const poByNumber = poRecordsMap(poRecords);
-    const mine = tasksForRole(role, tasks ?? []);
+    const mine = seesAllCaseStudyWorkflowTasks(role)
+      ? (tasks ?? [])
+      : tasksForRole(role, tasks ?? []);
     const partyMine = tasksForPartyAssignee(
       role,
       tasks ?? [],

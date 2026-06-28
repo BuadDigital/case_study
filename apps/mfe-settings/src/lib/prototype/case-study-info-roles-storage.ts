@@ -135,6 +135,32 @@ export function isPartyQuestionVisible(
   return canPartyAnswerQuestion(matrix, questionKey, partyId);
 }
 
+/** هل السؤال مسند لأي طرف (للمراجعة من الأخصائي). */
+export function isAnyPartyAssignedToQuestion(
+  matrix: CaseStudyInfoRolesMatrix,
+  questionKey: string,
+): boolean {
+  return CASE_STUDY_INFO_PARTIES.some((party) =>
+    canPartyAnswerQuestion(matrix, questionKey, party.id),
+  );
+}
+
+/** الأخصائي يراجع أي سؤال مسند لطرف واحد على الأقل — حتى «مكونات العقار» للمعاين فقط. */
+export function isCaseStudyQuestionVisibleToSpecialist(
+  matrix: CaseStudyInfoRolesMatrix,
+  questionKey: string,
+): boolean {
+  return isAnyPartyAssignedToQuestion(matrix, questionKey);
+}
+
+/** الأخصائي يعتمد الإجابة الرسمية لأي سؤال يظهر في مراجعته. */
+export function canSpecialistApproveQuestion(
+  matrix: CaseStudyInfoRolesMatrix,
+  questionKey: string,
+): boolean {
+  return isCaseStudyQuestionVisibleToSpecialist(matrix, questionKey);
+}
+
 export function partyRoleOnQuestion(
   matrix: CaseStudyInfoRolesMatrix,
   questionKey: string,

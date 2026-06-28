@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode, type RefObject } from "react";
+import { useCallback, useEffect, useState, type ReactNode, type RefObject } from "react";
 import {
   Badge,
   Button,
@@ -21,13 +21,11 @@ import {
 } from "@platform/app-shared/registration/FormFields";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
-import { partyIdForRoleId } from "@settings/mfe";
 import { EngineeringSurveyMap } from "@engineering-office/mfe/components/EngineeringSurveyMap";
 import {
   JEDDAH_DEFAULT_LAT,
   JEDDAH_DEFAULT_LNG,
 } from "@engineering-office/mfe/lib/jeddah-default-coords";
-import { CaseStudyForm } from "../case-study/CaseStudyForm";
 import { InspectorDefinedPhotosSection } from "./InspectorDefinedPhotosSection";
 import { InspectorSubmitFooter } from "./InspectorSubmitFooter";
 import { InspectorPhotoFilePicker } from "./InspectorPhotoFilePicker";
@@ -43,7 +41,7 @@ import {
   PROPERTY_BOUNDARY_ROWS,
   type PoPropertyIntake,
 } from "../../lib/prototype/po-intake-data";
-import { usePoRecordQuery, useWorkflowTasksQuery } from "../../query/case-study-queries";
+import { usePoRecordQuery } from "../../query/case-study-queries";
 import {
   INSPECTOR_AMENITY_OPTIONS,
   INSPECTOR_FEATURE_FIELDS,
@@ -102,25 +100,6 @@ export type FieldInspectionWorkHostRef = {
   onSavingChange?: (saving: boolean) => void;
 };
 
-function resolveParentCaseStudyTask(
-  task: WorkflowTask,
-  all: WorkflowTask[],
-): WorkflowTask | null {
-  if (task.kind === "case-study-property") return task;
-  if (task.parentTaskId) {
-    const parent = all.find((t) => t.id === task.parentTaskId);
-    if (parent) return parent;
-  }
-  return (
-    all.find(
-      (t) =>
-        t.kind === "case-study-property" &&
-        t.poNumber === task.poNumber &&
-        t.propertyId === task.propertyId,
-    ) ?? null
-  );
-}
-
 function InspectorCard({
   title,
   icon,
@@ -166,7 +145,6 @@ export function FieldInspectionWorkBody({
   const { showToast } = useToast();
   const propertyId = task.propertyId ?? "";
   const { data: record } = usePoRecordQuery(task.poNumber);
-  const { data: workflowTasks } = useWorkflowTasksQuery();
   const property = record?.properties.find((p) => p.id === propertyId);
 
   const [draft, setDraft] = useState<InspectorWorkspaceDraft | null>(null);
@@ -174,12 +152,6 @@ export function FieldInspectionWorkBody({
     {},
   );
   const [formError, setFormError] = useState<string | null>(null);
-
-  const parentTask = useMemo(
-    () => resolveParentCaseStudyTask(task, workflowTasks ?? []),
-    [task, workflowTasks],
-  );
-  const partyId = partyIdForRoleId(def.roleId);
 
   useEffect(() => {
     if (!propertyId) return;
@@ -271,25 +243,6 @@ export function FieldInspectionWorkBody({
     hostRef.current.submit = submit;
     hostRef.current.saveDraft = saveDraft;
   }, [hostRef, submit, saveDraft]);
-
-  const captureGps = useCallback(() => {
-    const place = (lat: number, lng: number) => {
-      persist({
-        mapLatitude: lat.toFixed(6),
-        mapLongitude: lng.toFixed(6),
-      });
-      showToast("تم تحديد الموقع");
-    };
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (p) => place(p.coords.latitude, p.coords.longitude),
-        () =>
-          showToast("تعذّر الحصول على الموقع — أدخل الإحداثيات يدوياً", "error"),
-      );
-    } else {
-      showToast("المتصفح لا يدعم تحديد الموقع", "error");
-    }
-  }, [persist, showToast]);
 
   const handleCoordsChange = useCallback(
     (lat: string, lng: string) => {
@@ -390,7 +343,7 @@ export function FieldInspectionWorkBody({
             يُستخدم الموقع للتحقق من النزول الميداني. يجب أن تتطابق الإحداثيات
             مع موقع العقار الفعلي — اضغط على الخريطة أو اسحب الدبوس لضبطه.
           </p>
-          <div className="mb-3 grid grid-cols-1 gap-2.5 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+          <div className="mb-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
             <div>
               <Label htmlFor="ins-lat" className="text-xs">
                 خط العرض (Latitude) <span className="text-danger-text">*</span>
@@ -418,21 +371,6 @@ export function FieldInspectionWorkBody({
                 placeholder={JEDDAH_DEFAULT_LNG}
                 onChange={(e) => persist({ mapLongitude: e.target.value })}
               />
-            </div>
-            <div className="flex flex-col">
-              <Label className="pointer-events-none text-xs invisible" aria-hidden="true">
-                موقع
-              </Label>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-[34px] whitespace-nowrap"
-                disabled={locked}
-                onClick={captureGps}
-              >
-                <i className="ti ti-current-location" aria-hidden /> موقعي الحالي
-              </Button>
             </div>
           </div>
           {fieldErrors.mapLatitude ? (
@@ -636,7 +574,7 @@ export function FieldInspectionWorkBody({
                   "عدد المعارض",
                   {
                     photoKey: "showroom" as InspectorComponentPhotoKey,
-                    photoLabel: "إرفاق صورة المعرض",
+                    photoLabel: "إرفاق صورة للمعرض التجاري",
                   },
                 ],
                 [
@@ -1115,31 +1053,6 @@ export function FieldInspectionWorkBody({
             </p>
           ) : null}
         </InspectorCard>
-
-        {partyId && parentTask ? (
-          <div className="mt-2 border-t-2 border-dashed border-border pt-2">
-            <InspectorCard
-              title="دراسة الحالة — أسئلة المصفوفة"
-              icon="ti-table"
-              badge={
-                <Badge tone="default">من علاقة المستخدم بالمعلومة</Badge>
-              }
-            >
-              <CaseStudyForm
-                taskId={parentTask.id}
-                task={parentTask}
-                property={property ?? null}
-                poRecord={record ?? undefined}
-                requestDateSeed={record?.receivedFromEnfathAt}
-                variant="party"
-                partyId={partyId}
-                partyChildTaskId={task.id}
-                parentFormTaskId={parentTask.id}
-                partyAdvisory
-              />
-            </InspectorCard>
-          </div>
-        ) : null}
 
         {beforeSubmitFooter}
 

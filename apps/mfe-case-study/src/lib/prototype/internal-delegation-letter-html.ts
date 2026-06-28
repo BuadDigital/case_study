@@ -1,4 +1,5 @@
 import type { InternalDelegationLetter } from "./internal-delegation-letters";
+import { openHtmlDocumentInNewTab } from "../open-html-document";
 import {
   formatDateAr,
   formatPoDisplay,
@@ -63,10 +64,5 @@ export function printInternalDelegationLetter(
 </body>
 </html>`;
 
-  const win = window.open("", "_blank", "noopener,noreferrer");
-  if (!win) return;
-  win.document.write(html);
-  win.document.close();
-  win.focus();
-  win.print();
+  openHtmlDocumentInNewTab(html, { print: true });
 }

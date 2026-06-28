@@ -1,6 +1,7 @@
 import {
   CASE_STUDY_PROVIDER_NAME,
   CASE_STUDY_REPORT_APPROVER_NAME,
+  CASE_STUDY_REPORT_TITLE,
   CASE_STUDY_SECTION_QUESTIONS,
   CASE_STUDY_TABLE_HEADERS,
   caseStudyAnswerKey,
@@ -216,7 +217,7 @@ export function buildCaseStudyReportModel(
   });
 
   return {
-    title: "دراسة الحالة",
+    title: CASE_STUDY_REPORT_TITLE,
     providerName: CASE_STUDY_PROVIDER_NAME,
     requestNumber: approval.requestNumber,
     requestDate: requestDateIso ? formatDateAr(requestDateIso) : "—",

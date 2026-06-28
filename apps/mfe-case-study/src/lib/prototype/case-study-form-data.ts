@@ -18,10 +18,17 @@ export const CASE_STUDY_FORM_STEPS = [
 ] as const;
 
 export const CASE_STUDY_PROVIDER_NAME = "شركة إجادة المهنية للتقييم";
+export const CASE_STUDY_REPORT_TITLE = "نموذج دراسة الحالة";
+export const CASE_STUDY_REPORT_SUBTITLE = "منصة إدارة التقييم العقاري";
 /** معتمد التقرير — ثابت في التقرير (ليس أخصائي الإسناد من أمر العمل). */
 export const CASE_STUDY_REPORT_APPROVER_NAME = "عماد رشيد الرشيد";
+export const CASE_STUDY_LETTERHEAD_IMAGE = "/case-study/ejadah-letterhead.png";
 export const CASE_STUDY_SIGNATURE_IMAGE = "/case-study/emad-signature.png";
 export const CASE_STUDY_STAMP_IMAGE = "/case-study/ejadah-stamp.png";
+
+/** نص ثابت أسفل جداول الصك والرفع المساحي — مطابق للنموذج الورقي. */
+export const CASE_STUDY_SECTION_REMARKS_HINT =
+  "في حال وجود اختلاف في البيانات أعلاه يتم التوضيح في الملاحظات ادناه";
 
 export const CASE_STUDY_DEED_QUESTIONS = [
   "هل الصك فعال",
