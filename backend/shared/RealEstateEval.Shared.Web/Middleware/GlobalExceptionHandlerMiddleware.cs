@@ -34,6 +34,10 @@ public sealed class GlobalExceptionHandlerMiddleware
         {
             await _next(context);
         }
+        catch (Exception ex) when (IsBenignCancellation(context, ex))
+        {
+            // Long-lived requests (SSE) and shutdown cancel in-flight writes — not errors.
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unhandled exception for {Method} {Path}",
@@ -59,6 +63,10 @@ public sealed class GlobalExceptionHandlerMiddleware
             await context.Response.WriteAsync(JsonSerializer.Serialize(problem, JsonOptions));
         }
     }
+
+    private static bool IsBenignCancellation(HttpContext context, Exception ex) =>
+        ex is OperationCanceledException or TaskCanceledException
+        && context.RequestAborted.IsCancellationRequested;
 }
 
 public static class GlobalExceptionHandlerExtensions

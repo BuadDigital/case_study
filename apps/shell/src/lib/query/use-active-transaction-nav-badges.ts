@@ -13,6 +13,8 @@ import {
   filterTasksForDistribution,
   filterTasksForPrimaryData,
 } from "@case-study/mfe";
+import { isTaskOnSuspendedProperty } from "@case-study/mfe/lib/prototype/suspended-transactions-storage";
+import { listedTasksForPage } from "@case-study/mfe/lib/prototype/active-transaction-page-situation";
 import { countGovernmentReviewOpenPos } from "@case-study/mfe";
 import { PARTY_TASK_PAGES } from "@platform/app-shared/prototype/party-task-pages";
 import { reviewerScopeForRole } from "@case-study/mfe/lib/prototype/reviewer-coverage";
@@ -74,7 +76,9 @@ export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>>
     );
 
     const primaryOpen = filterTasksForPrimaryData(mine, poByNumber).filter(
-      (t) => t.status === "open" || t.status === "blocked",
+      (t) =>
+        (t.status === "open" || t.status === "blocked") &&
+        !isTaskOnSuspendedProperty(t),
     ).length;
 
     const bourseOpen = filterActionablePendingBourseItems(
@@ -107,9 +111,7 @@ export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>>
         if (open > 0) badges[def.pageId] = open;
         continue;
       }
-      const open = partyMine.filter(
-        (t) => t.kind === def.kind && t.status === "open",
-      ).length;
+      const open = listedTasksForPage(def.pageId, partyMine, poByNumber).length;
       if (open > 0) badges[def.pageId] = open;
     }
 

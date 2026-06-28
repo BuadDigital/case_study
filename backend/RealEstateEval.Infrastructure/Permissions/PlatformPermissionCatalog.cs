@@ -35,30 +35,30 @@ public static class PlatformPermissionCatalog
     private static readonly Dictionary<string, string[]> IdentityRolePages = new(StringComparer.OrdinalIgnoreCase)
     {
         ["CDO"] = AllPages.ToArray(),
-        ["HrAdmin"] = ["dashboard", "users", "system-fields-catalog", "system-screen-catalog"],
-        ["ProcAdmin"] = ["dashboard", "users", "system-fields-catalog", "system-screen-catalog"],
-        ["CrmAdmin"] = ["dashboard", "users", "system-fields-catalog", "system-screen-catalog"],
-        ["HR"] = ["dashboard", "users"],
-        ["PROC"] = ["dashboard", "users"],
-        ["CRM"] = ["dashboard", "users"],
+        ["HrAdmin"] = ["users", "system-fields-catalog", "system-screen-catalog"],
+        ["ProcAdmin"] = ["users", "system-fields-catalog", "system-screen-catalog"],
+        ["CrmAdmin"] = ["users", "system-fields-catalog", "system-screen-catalog"],
+        ["HR"] = ["users"],
+        ["PROC"] = ["users"],
+        ["CRM"] = ["users"],
     };
 
     private static readonly Dictionary<string, string[]> PrototypeRolePages = new(StringComparer.OrdinalIgnoreCase)
     {
         ["cdo"] = AllPages.ToArray(),
-        ["hr-admin"] = ["dashboard", "users", "system-fields-catalog", "system-screen-catalog"],
-        ["proc-admin"] = ["dashboard", "users", "system-fields-catalog", "system-screen-catalog"],
-        ["crm-admin"] = ["dashboard", "users", "system-fields-catalog", "system-screen-catalog"],
+        ["hr-admin"] = ["users", "system-fields-catalog", "system-screen-catalog"],
+        ["proc-admin"] = ["users", "system-fields-catalog", "system-screen-catalog"],
+        ["crm-admin"] = ["users", "system-fields-catalog", "system-screen-catalog"],
         ["general-manager"] =
         [
-            "dashboard", "po", "active-primary-data", "bourse-inquiry", "active-distribution",
+            "po", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "survey", "keys", "failures", "suspended-transactions",
             "valuation-requests", "system-fields-catalog", "system-screen-catalog",
             "financial", "kpi", "users", "courts", "failure-types", "case-study-info-roles",
         ],
         ["section-supervisor"] =
         [
-            "dashboard", "po", "active-primary-data", "bourse-inquiry", "active-distribution",
+            "po", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "keys", "failures", "suspended-transactions", "failure-types",
             "party-fees",
             "system-fields-catalog", "system-screen-catalog",
@@ -71,32 +71,32 @@ public static class PlatformPermissionCatalog
         ],
         ["valuation-coordinator"] =
         [
-            "dashboard", "valuation-coordination",
+            "valuation-coordination",
             "system-fields-catalog", "system-screen-catalog",
         ],
         ["real-estate-appraiser"] =
         [
-            "dashboard", "po", "property-appraisal", "suspended-transactions",
+            "po", "property-appraisal", "suspended-transactions",
             "system-fields-catalog", "system-screen-catalog",
         ],
         ["field-inspector"] =
         [
-            "dashboard", "property-inspection", "party-fees",
+            "property-inspection", "party-fees",
             "system-fields-catalog", "system-screen-catalog",
         ],
         ["government-reviewer"] =
         [
-            "dashboard", "government-review", "keys",
+            "government-review", "keys",
             "system-fields-catalog", "system-screen-catalog",
         ],
         ["engineering-office"] =
         [
-            "dashboard", "active-survey", "party-fees",
+            "active-survey", "party-fees",
             "system-fields-catalog", "system-screen-catalog",
         ],
         ["financial-officer"] =
         [
-            "dashboard", "financial",
+            "financial",
             "system-fields-catalog", "system-screen-catalog",
         ],
     };

@@ -39,10 +39,10 @@ export function useCaseStudyInfoRolesQuery() {
 }
 
 export function useStaffUsersQuery() {
-  const { authReady } = usePrototype();
+  const { authReady, capabilities } = usePrototype();
   const userId = getAuthSession()?.user.id ?? "anonymous";
   return useQuery({
-    queryKey: [...prototypeKeys.staffUsers(), userId],
+    queryKey: [...prototypeKeys.staffUsers(), userId, capabilities.join(",")],
     queryFn: fetchStaffUsers,
     enabled: authReady,
     ...queryDefaults,

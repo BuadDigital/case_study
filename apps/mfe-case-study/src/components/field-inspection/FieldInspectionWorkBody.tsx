@@ -34,7 +34,6 @@ import { InspectorPhotoFilePicker } from "./InspectorPhotoFilePicker";
 import { InspectorStampedPhotoThumb } from "./InspectorStampedPhotoThumb";
 import {
   clearInspectorPhotoDataUrl,
-  getInspectorPhotoDataUrl,
   uploadInspectorPhotoFromFile,
 } from "../../lib/prototype/inspector-photo-upload";
 import {
@@ -452,9 +451,6 @@ export function FieldInspectionWorkBody({
         <InspectorCard
           title="نموذج التحقق الميداني — خصائص العقار"
           icon="ti-list-check"
-          badge={
-            <Badge tone="info">قيم افتراضية من إنفاذ — قابلة للتعديل</Badge>
-          }
         >
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] border-collapse">
@@ -471,9 +467,6 @@ export function FieldInspectionWorkBody({
                   const value = draft.featureValues[field.key] ?? "";
                   const attachment = draft.featurePhotoAttachments[field.key];
                   const photoRef = `feature:${field.key}`;
-                  const photoDataUrl = attachment
-                    ? getInspectorPhotoDataUrl(draft.taskId, photoRef)
-                    : undefined;
                   return (
                     <tr key={field.key}>
                       <td className={cn(TABLE_TD, "text-center text-[11px] text-text-3")}>
@@ -525,7 +518,9 @@ export function FieldInspectionWorkBody({
                             <InspectorStampedPhotoThumb
                               compact
                               stamp={photoStamp}
-                              dataUrl={photoDataUrl}
+                              taskId={draft.taskId}
+                              photoRef={photoRef}
+                              attachment={attachment}
                               onClear={
                                 locked
                                   ? undefined
@@ -550,7 +545,7 @@ export function FieldInspectionWorkBody({
                               className="w-auto"
                               onFilesSelected={async (files) => {
                                 const file = files[0];
-                                if (!file) return;
+                                if (!file) return false;
                                 const result =
                                   await uploadInspectorPhotoFromFile(
                                     draft.taskId,
@@ -560,7 +555,7 @@ export function FieldInspectionWorkBody({
                                   );
                                 if (!result.ok) {
                                   showToast(result.error, "error");
-                                  return;
+                                  return false;
                                 }
                                 persist({
                                   featurePhotoAttachments: {
@@ -568,9 +563,6 @@ export function FieldInspectionWorkBody({
                                     [field.key]: result.attachment,
                                   },
                                 });
-                                showToast(
-                                  "تم إرفاق الصورة مع ختم التاريخ والوقت",
-                                );
                               }}
                             />
                           )
@@ -692,9 +684,6 @@ export function FieldInspectionWorkBody({
               const photoRef = photoMeta
                 ? `component:${photoMeta.photoKey}`
                 : "";
-              const photoDataUrl = attachment
-                ? getInspectorPhotoDataUrl(draft.taskId, photoRef)
-                : undefined;
 
               return (
                 <div key={key}>
@@ -723,7 +712,9 @@ export function FieldInspectionWorkBody({
                         <InspectorStampedPhotoThumb
                           compact
                           stamp={photoStamp}
-                          dataUrl={photoDataUrl}
+                          taskId={draft.taskId}
+                          photoRef={photoRef}
+                          attachment={attachment}
                           onClear={
                             locked
                               ? undefined
@@ -748,7 +739,7 @@ export function FieldInspectionWorkBody({
                           className="w-auto"
                           onFilesSelected={async (files) => {
                             const file = files[0];
-                            if (!file) return;
+                            if (!file) return false;
                             const result = await uploadInspectorPhotoFromFile(
                               draft.taskId,
                               photoRef,
@@ -757,7 +748,7 @@ export function FieldInspectionWorkBody({
                             );
                             if (!result.ok) {
                               showToast(result.error, "error");
-                              return;
+                              return false;
                             }
                             persist({
                               componentPhotoAttachments: {
@@ -765,9 +756,6 @@ export function FieldInspectionWorkBody({
                                 [photoMeta.photoKey]: result.attachment,
                               },
                             });
-                            showToast(
-                              "تم إرفاق الصورة مع ختم التاريخ والوقت",
-                            );
                           }}
                         />
                       )}
@@ -970,9 +958,6 @@ export function FieldInspectionWorkBody({
           ) : null}
           {draft.observations.map((obs) => {
             const obsPhotoRef = `observation:${obs.id}`;
-            const obsPhotoDataUrl = obs.photo
-              ? getInspectorPhotoDataUrl(draft.taskId, obsPhotoRef)
-              : undefined;
 
             return (
             <div
@@ -983,7 +968,9 @@ export function FieldInspectionWorkBody({
                 {obs.photo?.fileName ? (
                   <InspectorStampedPhotoThumb
                     stamp={photoStamp}
-                    dataUrl={obsPhotoDataUrl}
+                    taskId={draft.taskId}
+                    photoRef={obsPhotoRef}
+                    attachment={obs.photo}
                     onClear={
                       locked
                         ? undefined
@@ -1007,7 +994,7 @@ export function FieldInspectionWorkBody({
                     className="h-[116px] flex-col border-2 py-2"
                     onFilesSelected={async (files) => {
                       const file = files[0];
-                      if (!file) return;
+                      if (!file) return false;
                       const result = await uploadInspectorPhotoFromFile(
                         draft.taskId,
                         obsPhotoRef,
@@ -1016,7 +1003,7 @@ export function FieldInspectionWorkBody({
                       );
                       if (!result.ok) {
                         showToast(result.error, "error");
-                        return;
+                        return false;
                       }
                       persist({
                         observations: draft.observations.map((o) =>
@@ -1025,7 +1012,6 @@ export function FieldInspectionWorkBody({
                             : o,
                         ),
                       });
-                      showToast("تم إرفاق الصورة مع ختم التاريخ والوقت");
                     }}
                   />
                 )}

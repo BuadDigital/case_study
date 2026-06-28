@@ -1,24 +1,43 @@
 "use client";
 
 import type { ReactNode } from "react";
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardBody, CardHeader, Button, cn, useToast } from "@platform/design-system";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { failureProblemTypeLabel } from "../../lib/failure-types-data";
+import {
+  activeFailureForProperty,
+  failuresForProperty,
+  historicalFailuresForProperty,
+} from "../../lib/failure-property-match";
 import { createFailure } from "../../lib/failures-repository";
 import {
+  failureOccurrenceSuffix,
+  failureRecordTitle,
   failureSeverityLabel,
   failureStatusLabel,
+  groupSimilarFailureRecords,
+  isPanelBlockingFailure,
 } from "../../lib/failures-labels";
+import { formatDateAr } from "@case-study/mfe";
 import type { FailureSeverity } from "../../lib/failures-types";
-import { isActiveFailureStatus } from "../../lib/failures-types";
 import { useFailuresQuery } from "../../query/failures-queries";
 import { FailureRaiseFields } from "./FailureRaiseFields";
 
 const noteWarnClass = cn(
   "rounded-[var(--radius-DEFAULT)] border border-amber border-e-[3px] border-e-amber bg-amber-light px-3.5 py-2.5 text-xs leading-relaxed text-amber-text",
+);
+
+const noteOkClass = cn(
+  "rounded-[var(--radius-DEFAULT)] border border-success/30 border-e-[3px] border-e-success bg-success-light px-3.5 py-2.5 text-xs leading-relaxed text-success-text",
+);
+
+const noteNeutralClass = cn(
+  "rounded-[var(--radius-DEFAULT)] border border-border-md bg-surface-2 px-3.5 py-2.5 text-xs leading-relaxed text-text-2",
+);
+
+const noteInfoClass = cn(
+  "rounded-[var(--radius-DEFAULT)] border border-primary/20 bg-primary-light px-3.5 py-2.5 text-xs leading-relaxed text-text-2",
 );
 
 export function FailureRaisePanel({
@@ -44,19 +63,50 @@ export function FailureRaisePanel({
   const [problemTypeId, setProblemTypeId] = useState("");
   const [note, setNote] = useState("");
 
-  const activeFailure = useMemo(
-    () =>
-      failures.find(
-        (f) =>
-          f.poNumber === poNumber &&
-          f.propertyId === propertyId &&
-          isActiveFailureStatus(f.status),
-      ) ?? null,
-    [failures, poNumber, propertyId],
+  const propertyRef = useMemo(
+    () => ({ poNumber, propertyId, deedNumber }),
+    [poNumber, propertyId, deedNumber],
   );
 
+  const propertyFailures = useMemo(
+    () => failuresForProperty(failures, propertyRef),
+    [failures, propertyRef],
+  );
+
+  const blockingFailures = useMemo(
+    () =>
+      propertyFailures.filter((failure) => isPanelBlockingFailure(failure)),
+    [propertyFailures],
+  );
+
+  const approvedFailure = useMemo(
+    () =>
+      propertyFailures.find((failure) => failure.status === "approved") ?? null,
+    [propertyFailures],
+  );
+
+  const pastFailures = useMemo(
+    () => historicalFailuresForProperty(failures, propertyRef),
+    [failures, propertyRef],
+  );
+
+  const groupedPastFailures = useMemo(
+    () => groupSimilarFailureRecords(pastFailures),
+    [pastFailures],
+  );
+
+  const openFailureForCreate = useMemo(
+    () => activeFailureForProperty(failures, propertyRef),
+    [failures, propertyRef],
+  );
+
+  function formatFailureDate(iso: string): string {
+    const day = iso.slice(0, 10);
+    return day ? formatDateAr(day) : "—";
+  }
+
   function handleSubmit() {
-    if (!problemTypeId || activeFailure) return;
+    if (!problemTypeId || openFailureForCreate) return;
     void createFailure({
       poNumber,
       propertyId,
@@ -68,6 +118,9 @@ export function FailureRaisePanel({
       specialist,
     }).then(() => {
       void queryClient.invalidateQueries({ queryKey: prototypeKeys.failures() });
+      void queryClient.invalidateQueries({
+        queryKey: prototypeKeys.propertyKeys(),
+      });
       setOpen(false);
       setProblemTypeId("");
       setNote("");
@@ -76,45 +129,106 @@ export function FailureRaisePanel({
     });
   }
 
-  if (activeFailure && !open) {
-    const title = failureProblemTypeLabel(
-      activeFailure.problemTypeId,
-      activeFailure.title,
-    );
-    return (
-      <FailureCard>
-        <div className={noteWarnClass}>
-          <strong>تعذر مسجّل على هذا العقار:</strong> {title}
-          <div className="mt-1.5 text-xs text-text-2">
-            {failureSeverityLabel(activeFailure.severity)} ·{" "}
-            {failureStatusLabel(activeFailure.status)}
+  function renderStatusSection() {
+    if (blockingFailures.length > 0) {
+      if (blockingFailures.length === 1) {
+        const failure = blockingFailures[0];
+        const title = failureRecordTitle(failure);
+        return (
+          <div className={noteWarnClass}>
+            <strong>تعذر قائم على هذا العقار:</strong> {title}
+            <div className="mt-1.5 text-xs text-text-2">
+              {failureSeverityLabel(failure.severity)} ·{" "}
+              {failureStatusLabel(failure.status)}
+            </div>
           </div>
-          <div className="mt-2.5">
-            <Link
-              href="/failures"
-              className="inline-flex items-center justify-center rounded-[var(--radius-DEFAULT)] border border-border-md bg-surface px-2 py-1 text-[11px] text-text no-underline transition-colors hover:bg-surface-2"
-            >
-              إدارة التعذرات
-            </Link>
+        );
+      }
+
+      return (
+        <div className={noteWarnClass}>
+          <strong>تعذرات قائمة على هذا العقار</strong>
+          <ul className="mt-2 list-disc space-y-1 ps-4">
+            {blockingFailures.slice(0, 4).map((failure) => (
+              <li key={failure.id}>
+                {failureRecordTitle(failure)}
+                {" · "}
+                {failureSeverityLabel(failure.severity)} ·{" "}
+                {failureStatusLabel(failure.status)}
+              </li>
+            ))}
+          </ul>
+          {blockingFailures.length > 4 ? (
+            <p className="mt-1.5 text-[10px] text-text-3">
+              +{blockingFailures.length - 4} تعذرات أخرى
+            </p>
+          ) : null}
+        </div>
+      );
+    }
+
+    if (approvedFailure) {
+      const title = failureRecordTitle(approvedFailure);
+      return (
+        <div className={noteInfoClass}>
+          <strong>تعذر معتمد:</strong> {title}
+          <div className="mt-1.5 text-xs text-text-3">
+            يمكن متابعة العمل بعد اعتماد المشرف — لا يُعرض كتعذر نشط.
           </div>
         </div>
-      </FailureCard>
+      );
+    }
+
+    if (groupedPastFailures.length > 0) {
+      return (
+        <div className={noteNeutralClass}>
+          <strong>تعذرات سابقة على هذا العقار</strong>
+          <ul className="mt-2 list-disc space-y-1 ps-4">
+            {groupedPastFailures.slice(0, 4).map((row) => (
+              <li key={row.id}>
+                {row.title}
+                {failureOccurrenceSuffix(row.count)}
+                {" · "}
+                {row.statusLabel}
+                {" · آخر تحديث "}
+                {formatFailureDate(row.latestUpdatedAt)}
+              </li>
+            ))}
+          </ul>
+          {groupedPastFailures.length > 4 ? (
+            <p className="mt-1.5 text-[10px] text-text-3">
+              +{groupedPastFailures.length - 4} تعذرات أخرى
+            </p>
+          ) : null}
+        </div>
+      );
+    }
+
+    return (
+      <div className={noteOkClass}>
+        <strong>صافي</strong> — لا توجد تعذرات على هذا العقار.
+      </div>
     );
   }
 
   return (
     <FailureCard>
-      {!open ? (
+      {renderStatusSection()}
+
+      {!open && !openFailureForCreate ? (
         <Button
           type="button"
           variant="dangerOutline"
           size="sm"
+          className="mt-3"
           onClick={() => setOpen(true)}
         >
-          تسجيل تعذر على العقار
+          تسجيل تعذر
         </Button>
-      ) : (
-        <div>
+      ) : null}
+
+      {open ? (
+        <div className="mt-3 border-t border-border pt-3">
           <div className="mb-3 flex items-center justify-between">
             <span className="text-[13px] font-semibold">رفع تعذر</span>
             <Button type="button" size="sm" onClick={() => setOpen(false)}>
@@ -140,7 +254,7 @@ export function FailureRaisePanel({
             {severity === "internal" ? "حفظ تعذر داخلي" : "تسجيل احتمال تعذر"}
           </Button>
         </div>
-      )}
+      ) : null}
     </FailureCard>
   );
 }

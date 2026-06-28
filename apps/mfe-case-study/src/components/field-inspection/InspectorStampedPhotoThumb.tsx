@@ -1,22 +1,62 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { cn } from "@platform/design-system";
+import type { InspectorPhotoAttachment } from "../../lib/prototype/inspector-workspace-data";
+import {
+  getInspectorPhotoDataUrl,
+  prefetchInspectorPhoto,
+} from "../../lib/prototype/inspector-photo-upload";
 
 export function InspectorStampedPhotoThumb({
   stamp,
   compact,
   className,
-  dataUrl,
+  taskId,
+  photoRef,
+  attachment,
+  dataUrl: dataUrlProp,
   onClear,
   onClick,
 }: {
   stamp: string;
   compact?: boolean;
   className?: string;
+  taskId?: string;
+  photoRef?: string;
+  attachment?: InspectorPhotoAttachment | null;
   dataUrl?: string;
   onClear?: () => void;
   onClick?: () => void;
 }) {
+  const [dataUrl, setDataUrl] = useState(
+    () =>
+      dataUrlProp ??
+      (taskId && photoRef ? getInspectorPhotoDataUrl(taskId, photoRef) : undefined),
+  );
+
+  useEffect(() => {
+    if (dataUrlProp !== undefined) {
+      setDataUrl(dataUrlProp);
+      return;
+    }
+    if (!taskId || !photoRef || !attachment) return;
+
+    const cached = getInspectorPhotoDataUrl(taskId, photoRef);
+    if (cached) {
+      setDataUrl(cached);
+      return;
+    }
+
+    let cancelled = false;
+    void prefetchInspectorPhoto(taskId, photoRef, attachment).then((url) => {
+      if (!cancelled && url) setDataUrl(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [dataUrlProp, taskId, photoRef, attachment]);
+
   const sizeClass = compact
     ? "h-[60px] w-[84px] text-[10px]"
     : "h-[72px] w-[116px] text-[11px]";
@@ -54,13 +94,16 @@ export function InspectorStampedPhotoThumb({
         <button
           type="button"
           title="إزالة"
-          className="absolute left-0.5 top-0.5 flex h-[18px] w-[18px] items-center justify-center rounded bg-white/90 text-[11px] text-text-3 hover:text-danger-text"
+          aria-label="إزالة الصورة"
+          className="absolute -start-1 -top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface text-danger-text shadow-sm hover:bg-danger-surface"
           onClick={(e) => {
             e.stopPropagation();
             onClear();
           }}
         >
-          <i className="ti ti-x" aria-hidden />
+          <span className="text-sm font-bold leading-none" aria-hidden>
+            ×
+          </span>
         </button>
       ) : null}
     </div>

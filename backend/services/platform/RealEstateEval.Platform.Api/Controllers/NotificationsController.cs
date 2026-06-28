@@ -81,6 +81,10 @@ public sealed class NotificationsController : ControllerBase
                 }
             }
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Client closed the tab or the host is shutting down (e.g. dev-api restart).
+        }
         finally
         {
             _realtime.Unsubscribe(userId, connectionId);

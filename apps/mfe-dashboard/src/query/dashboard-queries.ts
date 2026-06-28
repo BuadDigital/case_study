@@ -42,7 +42,7 @@ export type DashboardValuationRequestRow = {
 
 function mapValuationTask(task: WorkflowTaskDto): DashboardValuationRequestRow {
   const propertyLabel = task.title?.trim() || task.propertyId || "—";
-  const displayId = `${task.poNumber} · ${task.propertyOrdinal}`;
+  const displayId = `${task.poNumber}-${task.propertyOrdinal}`;
   return {
     id: task.id,
     displayId,
@@ -58,6 +58,10 @@ function mapValuationTask(task: WorkflowTaskDto): DashboardValuationRequestRow {
   };
 }
 
+function isOpenAppraisalTask(task: WorkflowTaskDto): boolean {
+  return task.status === "open" || task.status === "blocked";
+}
+
 async function loadRecentValuationRequestsFromTasks(): Promise<
   DashboardValuationRequestRow[]
 > {
@@ -67,16 +71,16 @@ async function loadRecentValuationRequestsFromTasks(): Promise<
   if (!result.ok) return [];
 
   const appraisalRows = result.data
-    .filter((t) => t.kind === "property-appraisal")
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .filter((t) => t.kind === "property-appraisal" && isOpenAppraisalTask(t))
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, 6)
     .map(mapValuationTask);
 
   if (appraisalRows.length > 0) return appraisalRows;
 
   return result.data
-    .filter((t) => t.kind === "valuation-coordination")
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .filter((t) => t.kind === "valuation-coordination" && isOpenAppraisalTask(t))
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, 6)
     .map(mapValuationTask);
 }

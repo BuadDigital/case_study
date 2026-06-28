@@ -88,12 +88,9 @@ export function DashboardView() {
     useRecentValuationRequestsQuery();
   const { data: reporting, isPending: reportingPending } = useReportingDashboardQuery();
   const reportingReady = !reportingPending && reporting !== undefined;
-  const valuationRowsToShow =
-    (reporting?.recentValuationRequests ?? []).length > 0
-      ? reporting?.recentValuationRequests ?? []
-      : valuationRows;
-  const valuationReady =
-    reportingReady || (!valuationPending && valuationRows !== undefined);
+  /** Always from workflow tasks — same source as «تقييم العقار». */
+  const valuationRowsToShow = valuationRows;
+  const valuationReady = !valuationPending && valuationRows !== undefined;
 
   const propertyStats = useMemo(() => {
     if (!propertyItems) return undefined;
@@ -210,7 +207,7 @@ export function DashboardView() {
           </SubpagePanel>
           <SubpagePanel>
             <SubpageHeader title="طلبات التقييم الأخيرة">
-              {panelLink("/valuation-requests", "عرض الكل")}
+              {panelLink("/property-appraisal", "عرض الكل")}
             </SubpageHeader>
             <Table pending={!valuationReady}>
               <THead>

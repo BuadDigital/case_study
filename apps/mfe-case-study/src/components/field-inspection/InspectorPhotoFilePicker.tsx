@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, type ChangeEvent } from "react";
-import { cn } from "@platform/design-system";
+import { cn, useToast } from "@platform/design-system";
 
 const UPLOAD_BTN =
   "inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border-md bg-surface px-2.5 py-2 text-[11px] text-text-2 hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60";
@@ -22,17 +22,18 @@ export function InspectorPhotoFilePicker({
   disabled?: boolean;
   multiple?: boolean;
   className?: string;
-  onFilesSelected: (files: File[]) => void | Promise<void>;
+  onFilesSelected: (files: File[]) => boolean | void | Promise<boolean | void>;
 }) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const isMobile = useCoarsePointer();
+  const { runWithUploadToast } = useToast();
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     e.target.value = "";
     if (files.length > 0) {
-      void onFilesSelected(files);
+      void runWithUploadToast(() => onFilesSelected(files));
     }
   };
 
@@ -43,6 +44,7 @@ export function InspectorPhotoFilePicker({
           type="button"
           className={UPLOAD_BTN}
           disabled={disabled}
+          data-no-action-toast=""
           onClick={() => cameraRef.current?.click()}
         >
           <i className="ti ti-camera" aria-hidden /> تصوير بالكاميرا
@@ -51,6 +53,7 @@ export function InspectorPhotoFilePicker({
           type="button"
           className={UPLOAD_BTN}
           disabled={disabled}
+          data-no-action-toast=""
           onClick={() => galleryRef.current?.click()}
         >
           <i className="ti ti-photo" aria-hidden /> اختيار من المعرض
@@ -85,6 +88,7 @@ export function InspectorPhotoFilePicker({
         type="button"
         className={cn(UPLOAD_BTN, className)}
         disabled={disabled}
+        data-no-action-toast=""
         onClick={() => inputRef.current?.click()}
       >
         <i className="ti ti-upload" aria-hidden /> {label}

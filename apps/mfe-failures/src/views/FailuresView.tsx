@@ -30,10 +30,10 @@ import { formatDateAr, formatPoDisplay } from "@case-study/mfe";
 import { poPropertyPath } from "@case-study/mfe/lib/po-routes";
 import { suspendPropertyTransaction } from "@case-study/mfe/lib/prototype/suspend-property-transaction";
 import { usePoRecordsQuery } from "@case-study/mfe/query/case-study-queries";
-import { failureProblemTypeLabel } from "../lib/failure-types-data";
+import { getFailureProblemType } from "../lib/failure-types-data";
 import { approveFailure, resolveFailure, returnFailure, submitFailureForReview, upgradeFailureToInternal } from "../lib/failures-repository";
-import { failureSeverityLabel, failureStatusLabel } from "../lib/failures-labels";
-import { countOpenFailures, isActiveFailureStatus } from "../lib/failures-types";
+import { failureRecordTitle, failureSeverityLabel, failureStatusLabel } from "../lib/failures-labels";
+import { countOpenFailures, isActiveFailureStatus, type FailureRecord } from "../lib/failures-types";
 import { useFailuresQuery } from "../query/failures-queries";
 
 function isCaseEditor(role: RoleId) {
@@ -42,6 +42,23 @@ function isCaseEditor(role: RoleId) {
 
 function isSupervisor(role: RoleId) {
   return isSuperAdmin(role) || role === "section-supervisor";
+}
+
+function isGovernmentReviewer(role: RoleId) {
+  return role === "government-reviewer";
+}
+
+function failuresForGovernmentReviewer(items: FailureRecord[]) {
+  return items.filter((failure) => {
+    const category = getFailureProblemType(failure.problemTypeId)?.categoryId;
+    const raisedBy = failure.raisedByRole.trim();
+    return (
+      category === "access" ||
+      category === "deed-documents" ||
+      raisedBy.includes("مراجع") ||
+      raisedBy.includes("government")
+    );
+  });
 }
 
 type ResolveDraft = { reason: string; instructions: string };
@@ -57,6 +74,13 @@ export function FailuresView() {
   const ce = isCaseEditor(role);
   const ca = isSupervisor(role);
   const { data: items = [], isFetched, refetch } = useFailuresQuery();
+  const visibleItems = useMemo(
+    () =>
+      isGovernmentReviewer(role)
+        ? failuresForGovernmentReviewer(items)
+        : items,
+    [items, role],
+  );
   const { data: poRecords = [] } = usePoRecordsQuery();
   const assignmentSpecialistByPo = useMemo(() => {
     const map = new Map<string, string>();
@@ -84,12 +108,12 @@ export function FailuresView() {
   }, [queryClient, refetch]);
 
   const stats = useMemo(() => {
-    const open = countOpenFailures(items);
-    const review = items.filter((f) => f.status === "review").length;
-    const approved = items.filter((f) => f.status === "approved").length;
-    const resolved = items.filter((f) => f.status === "resolved").length;
+    const open = countOpenFailures(visibleItems);
+    const review = visibleItems.filter((f) => f.status === "review").length;
+    const approved = visibleItems.filter((f) => f.status === "approved").length;
+    const resolved = visibleItems.filter((f) => f.status === "resolved").length;
     const closed = approved + resolved;
-    const total = items.filter((f) => f.status !== "suspended").length;
+    const total = visibleItems.filter((f) => f.status !== "suspended").length;
     return {
       open,
       review,
@@ -98,10 +122,10 @@ export function FailuresView() {
       closedPct:
         total > 0 ? `${Math.round((closed / total) * 100)}% من الإجمالي` : "—",
     };
-  }, [items]);
+  }, [visibleItems]);
 
   const sortedItems = useMemo(() => {
-    return [...items]
+    return [...visibleItems]
       .filter((f) => f.status !== "suspended")
       .sort((a, b) => {
         const aActive = isActiveFailureStatus(a.status);
@@ -109,7 +133,7 @@ export function FailuresView() {
         if (aActive !== bActive) return aActive ? -1 : 1;
         return b.updatedAt.localeCompare(a.updatedAt);
       });
-  }, [items]);
+  }, [visibleItems]);
 
   function handleSubmit(id: string) {
     void submitFailureForReview(id).then(() => refresh());
@@ -226,7 +250,7 @@ export function FailuresView() {
               <div className="flex flex-col gap-2.5 px-4 py-4">
                 {sortedItems.map((f) => {
           const active = isActiveFailureStatus(f.status);
-          const displayTitle = failureProblemTypeLabel(f.problemTypeId, f.title);
+          const displayTitle = failureRecordTitle(f);
           const canSpecialistAct =
             ce &&
             active &&

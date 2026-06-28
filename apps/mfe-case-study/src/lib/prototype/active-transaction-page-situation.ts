@@ -21,6 +21,7 @@ import {
   filterTasksForPrimaryData,
 } from "./transaction-filters";
 import type { WorkflowTask } from "./tasks-storage";
+import { isTaskOnSuspendedProperty } from "./suspended-transactions-storage";
 
 export type SituationTone = "blue" | "warn" | "green" | "red";
 
@@ -81,27 +82,6 @@ export const PAGE_SITUATION_CARDS: Partial<Record<PageId, PageSituationCardDef[]
     ],
     "active-distribution": workflowCards("بانتظار التوزيع"),
     "active-case-study": workflowCards("دراسات مفتوحة"),
-    "government-review": [
-      {
-        key: "openPos",
-        label: "أوامر بمهام مفتوحة",
-        sub: SUB_ASSIGNED,
-        tone: "blue",
-      },
-      {
-        key: "openTasks",
-        label: "مهام مفتوحة",
-        sub: "مراجعة حكومية",
-        tone: "warn",
-      },
-      {
-        key: "submitted",
-        label: "مُرسَلة",
-        sub: "بانتظار الاعتماد",
-        tone: "green",
-      },
-      { key: "returned", label: "مُعادة", sub: "للتصحيح", tone: "red" },
-    ],
     "valuation-coordination": partyCards(),
     "property-inspection": partyCards("مكتملة"),
     "property-appraisal": partyCards(),
@@ -142,6 +122,19 @@ export const PAGE_SITUATION_CARDS: Partial<Record<PageId, PageSituationCardDef[]
 
 export function pageSituationCards(pageId: PageId): PageSituationCardDef[] | null {
   return PAGE_SITUATION_CARDS[pageId] ?? null;
+}
+
+/** Rows visible in the queue table — same filters as ActiveTransactionQueueView.listed. */
+export function listedTasksForPage(
+  pageId: PageId,
+  tasks: WorkflowTask[],
+  poByNumber: Map<string, PoIntakeRecord>,
+): WorkflowTask[] {
+  return filterTasksForPage(pageId, tasks, poByNumber).filter(
+    (t) =>
+      (t.status === "open" || t.status === "blocked") &&
+      !isTaskOnSuspendedProperty(t),
+  );
 }
 
 function openWorkflowTasks(tasks: WorkflowTask[]): WorkflowTask[] {
@@ -294,36 +287,6 @@ export function computeFeesPageSituation(
   };
 }
 
-export function computeGovernmentReviewSituation(
-  tasks: WorkflowTask[],
-): Pick<PageSituationValues, "openPos" | "openTasks" | "submitted" | "returned"> {
-  const gov = tasks.filter((t) => t.kind === "government-review");
-  const openTasks = gov.filter((t) => t.status === "open" || t.status === "blocked");
-  const byPo = new Map<string, WorkflowTask[]>();
-
-  for (const task of openTasks) {
-    const key = task.poNumber.trim();
-    const list = byPo.get(key) ?? [];
-    list.push(task);
-    byPo.set(key, list);
-  }
-
-  let submitted = 0;
-  let returned = 0;
-  for (const task of openTasks) {
-    const bucket = classifyPartyTask(task);
-    if (bucket === "submitted") submitted += 1;
-    else if (bucket === "returned") returned += 1;
-  }
-
-  return {
-    openPos: byPo.size,
-    openTasks: openTasks.length,
-    submitted,
-    returned,
-  };
-}
-
 export function filterTasksForPage(
   pageId: PageId,
   tasks: WorkflowTask[],
@@ -371,7 +334,7 @@ export function computePageSituationValues(
   const cards = pageSituationCards(pageId);
   if (!cards) return null;
 
-  const scoped = filterTasksForPage(pageId, input.tasks, input.poByNumber);
+  const scoped = listedTasksForPage(pageId, input.tasks, input.poByNumber);
 
   if (pageId === "bourse-inquiry") {
     return computeBourseSituation({
@@ -381,10 +344,6 @@ export function computePageSituationValues(
       obstructedCount: input.obstructedCount ?? 0,
       now: input.now,
     });
-  }
-
-  if (pageId === "government-review") {
-    return computeGovernmentReviewSituation(scoped);
   }
 
   if (pageId === "party-fees") {

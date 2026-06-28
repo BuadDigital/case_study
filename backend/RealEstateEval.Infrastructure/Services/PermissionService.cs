@@ -52,7 +52,7 @@ public sealed class PermissionService : IPermissionService
         }
 
         if (pages.Count == 0)
-            pages.Add("dashboard");
+            pages.Add("users");
 
         capabilities.Add("authenticated");
 

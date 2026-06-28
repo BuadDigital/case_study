@@ -118,7 +118,7 @@ function MiniPhotoThumb({
       <span
         role="button"
         tabIndex={0}
-        className="absolute left-0.5 top-0.5 flex h-[18px] w-[18px] items-center justify-center rounded bg-white/90 text-[11px] text-text-3 hover:text-danger-text"
+        className="absolute -start-1 -top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface text-danger-text shadow-sm hover:bg-danger-surface"
         onClick={(e) => {
           e.stopPropagation();
           onDelete();
@@ -131,7 +131,9 @@ function MiniPhotoThumb({
           }
         }}
       >
-        <i className="ti ti-x" aria-hidden />
+        <span className="text-sm font-bold leading-none" aria-hidden>
+          ×
+        </span>
       </span>
     </button>
   );
@@ -214,7 +216,7 @@ export function InspectorDefinedPhotosSection({
   }
 
   async function uploadSlotPhotos(slotId: string, files: File[]) {
-    if (disabled || uploading) return;
+    if (disabled || uploading) return false;
     setUploading(true);
     let added = 0;
     let workingDraft = draft;
@@ -257,9 +259,9 @@ export function InspectorDefinedPhotosSection({
 
     if (added > 0) {
       onPatch({ definedPhotos: workingDraft.definedPhotos });
-      showToast("تم رفع الصورة واعتمادها");
     }
     setUploading(false);
+    return added > 0;
   }
 
   function deleteSlotPhoto(slotId: string, photoId: number) {
@@ -285,7 +287,7 @@ export function InspectorDefinedPhotosSection({
   }
 
   async function uploadFreePhotos(files: File[]) {
-    if (disabled || uploading) return;
+    if (disabled || uploading) return false;
     setUploading(true);
     let workingDraft = draft;
     let lastId: number | null = null;
@@ -322,6 +324,7 @@ export function InspectorDefinedPhotosSection({
       setPickerPhotoId(lastId);
     }
     setUploading(false);
+    return lastId !== null;
   }
 
   function tagFreePhoto(photoId: number, category: string) {
@@ -528,13 +531,15 @@ export function InspectorDefinedPhotosSection({
                   <span
                     role="button"
                     tabIndex={0}
-                    className="absolute left-0.5 top-0.5 flex h-[18px] w-[18px] items-center justify-center rounded bg-white/90 text-[11px]"
+                    className="absolute -start-1 -top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface text-danger-text shadow-sm hover:bg-danger-surface"
                     onClick={(e) => {
                       e.stopPropagation();
                       deleteFreePhoto(photo.id);
                     }}
                   >
-                    <i className="ti ti-x" aria-hidden />
+                    <span className="text-sm font-bold leading-none" aria-hidden>
+                      ×
+                    </span>
                   </span>
                 </button>
               );

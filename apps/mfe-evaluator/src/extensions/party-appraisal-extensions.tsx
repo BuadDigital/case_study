@@ -11,7 +11,11 @@ import {
   canAppraiserOpenTask,
   filterAppraiserListedTasks,
 } from "../lib/evaluator/evaluator-queue";
-import { EVALUATOR_RECALL_CHANGED_EVENT, hydrateEvaluatorRecalls } from "../lib/evaluator/evaluator-recall-storage";
+import {
+  EVALUATOR_RECALL_CHANGED_EVENT,
+  EVALUATOR_RECALL_HYDRATED_EVENT,
+  hydrateEvaluatorRecalls,
+} from "../lib/evaluator/evaluator-recall-storage";
 import {
   EVALUATOR_SUBMISSION_CHANGED_EVENT,
   isEvaluatorFormLocked,
@@ -43,6 +47,7 @@ export const partyAppraisalExtensions: PartyAppraisalExtensions = {
       getTaskStatusBadge: (task) => appraiserTaskStatusBadge(task.id),
       refreshOnWindowEvents: [
         EVALUATOR_RECALL_CHANGED_EVENT,
+        EVALUATOR_RECALL_HYDRATED_EVENT,
         EVALUATOR_SUBMISSION_CHANGED_EVENT,
       ],
     };

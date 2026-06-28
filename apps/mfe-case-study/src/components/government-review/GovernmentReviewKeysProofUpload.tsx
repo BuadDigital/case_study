@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type ChangeEvent } from "react";
-import { FormGroup, Label, cn } from "@platform/design-system";
+import { FormGroup, Label, cn, useToast } from "@platform/design-system";
 import { isImageMime } from "../../lib/prototype/assignment-doc-attachments";
 import {
   GOVERNMENT_REVIEW_KEYS_PROOF_ACCEPT,
@@ -93,22 +93,26 @@ export function GovernmentReviewKeysProofUpload({
   const desktopRef = useRef<HTMLInputElement>(null);
   const isMobile = useCoarsePointer();
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const { runWithUploadToast } = useToast();
 
   const addFiles = async (selected: File[]) => {
-    setUploadError(null);
-    const next = [...files];
-    for (const file of selected) {
-      try {
-        next.push(await fileToGovernmentReviewKeysProof(file));
-      } catch (err) {
-        setUploadError(
-          err instanceof Error ? err.message : "تعذر رفع الملف",
-        );
+    await runWithUploadToast(async () => {
+      setUploadError(null);
+      const next = [...files];
+      let added = 0;
+      for (const file of selected) {
+        try {
+          next.push(await fileToGovernmentReviewKeysProof(file));
+          added += 1;
+        } catch (err) {
+          setUploadError(
+            err instanceof Error ? err.message : "تعذر رفع الملف",
+          );
+        }
       }
-    }
-    if (next.length !== files.length) {
+      if (added === 0) return false;
       onChange(next);
-    }
+    });
   };
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -136,6 +140,7 @@ export function GovernmentReviewKeysProofUpload({
             type="button"
             className={UPLOAD_BTN}
             disabled={disabled}
+            data-no-action-toast=""
             onClick={() => cameraRef.current?.click()}
           >
             <i className="ti ti-camera" aria-hidden /> تصوير بالكاميرا
@@ -144,6 +149,7 @@ export function GovernmentReviewKeysProofUpload({
             type="button"
             className={UPLOAD_BTN}
             disabled={disabled}
+            data-no-action-toast=""
             onClick={() => galleryRef.current?.click()}
           >
             <i className="ti ti-photo" aria-hidden /> اختيار صور أو PDF
@@ -175,6 +181,7 @@ export function GovernmentReviewKeysProofUpload({
             type="button"
             className={UPLOAD_BTN}
             disabled={disabled}
+            data-no-action-toast=""
             onClick={() => desktopRef.current?.click()}
           >
             <i className="ti ti-upload" aria-hidden /> رفع صور أو خطاب (PDF)

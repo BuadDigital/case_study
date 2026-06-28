@@ -44,17 +44,17 @@ export function TeamCurrentLoadCard() {
   const rows = dashboard?.specialistLoad ?? [];
 
   return (
-    <SubpagePanel className="mb-4">
+    <SubpagePanel className="mb-4 shrink-0 flex-none">
       <SubpageHeader title="حمل الفريق الحالي" />
       <CardBody>
         {isPending ? (
           <InlineLoadingSkeleton />
         ) : rows.length === 0 ? (
-          <p className="text-xs text-text-3">لا توجد مهام مفتوحة لأخصائيي دراسة الحالة.</p>
+          <p className="text-xs text-text-3">لا توجد مهام مفتوحة للفريق حالياً.</p>
         ) : (
           rows.map((row) => (
             <LoadRow
-              key={row.name}
+              key={`${row.roleId}:${row.name}`}
               name={row.name}
               roleLabel={row.roleLabel}
               value={row.currentLoad}

@@ -122,7 +122,7 @@ export function pushNotification(input: PushNotificationInput): AppNotification 
       };
       const next = [...existing];
       next.splice(index, 1);
-      writeAll([updated, ...next], updated);
+      writeAll([updated, ...next]);
       return updated;
     }
   }

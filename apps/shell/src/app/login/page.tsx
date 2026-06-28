@@ -2,9 +2,11 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { fetchDevLoginUsers, getApiBase } from "@platform/api-client";
+import { fetchDevLoginUsers, fetchPermissions, getApiBase } from "@platform/api-client";
 import { setAuthSession, type AuthSession, getValidAuthSession } from "@platform/auth-client";
 import { PROTOTYPE_LOGIN_USERS } from "@platform/app-shared/prototype/prototype-users";
+import { defaultLandingPath } from "@platform/app-shared/prototype/page-access";
+import { pagesFromPermissions } from "@platform/app-shared/prototype/permissions-pages";
 import { Button, Card, Label, Select } from "@platform/design-system";
 
 type LoginResponse = {
@@ -18,6 +20,19 @@ type LoginUserOption = {
   label: string;
 };
 
+async function resolvePostLoginPath(token: string): Promise<string> {
+  try {
+    const permissions = await fetchPermissions({ token });
+    return defaultLandingPath(
+      pagesFromPermissions(permissions.pages ?? [], {
+        prototypeRole: permissions.prototypeRole,
+      }),
+    );
+  } catch {
+    return "/active-primary-data";
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [loginUsers, setLoginUsers] = useState<LoginUserOption[]>([]);
@@ -27,14 +42,15 @@ export default function LoginPage() {
 
   useEffect(() => {
     const session = getValidAuthSession();
-    if (session) {
-      setAuthSession(session);
-      router.replace("/dashboard");
-    }
+    if (!session) return;
+    setAuthSession(session);
+    void resolvePostLoginPath(session.token).then((path) => {
+      router.replace(path);
+    });
   }, [router]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => router.prefetch("/dashboard"), 2000);
+    const timer = window.setTimeout(() => router.prefetch("/po"), 2000);
     return () => window.clearTimeout(timer);
   }, [router]);
 
@@ -107,7 +123,8 @@ export default function LoginPage() {
         expiresAtUtc: data.expiresAtUtc,
       } satisfies AuthSession);
 
-      router.replace("/dashboard");
+      const landingPath = await resolvePostLoginPath(data.token);
+      router.replace(landingPath);
     } catch (err) {
       console.error("login failed", err);
       const timedOut =

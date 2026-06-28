@@ -70,7 +70,7 @@ export function EngineeringSurveyWorkPanel({
   onFailureSubmitted?: () => void;
 }) {
   const propertyId = task.propertyId ?? "";
-  const { showToast } = useToast();
+  const { showToast, runWithUploadToast } = useToast();
   const { data: record } = usePoRecordQuery(task.poNumber);
   const property = record?.properties.find((p) => p.id === propertyId);
   const { data: failures = [] } = useFailuresQuery();
@@ -203,18 +203,21 @@ export function EngineeringSurveyWorkPanel({
     if (!file || formDisabled || !draft) return;
     const docField =
       field === "surveyReportFileName" ? "surveyReport" : "siteLetter";
-    void cacheEngineeringSurveyFile(draft.taskId, docField, file).then((result) => {
+    void runWithUploadToast(async () => {
+      const result = await cacheEngineeringSurveyFile(draft.taskId, docField, file);
       if (!result.ok) {
         setFormError(result.error);
         showToast(result.error, "error");
-        return;
+        return false;
       }
       const next = loadEngineeringSurveySubmission(draft.taskId);
       if (next) setDraft(next);
       setFieldErrors((prev) => {
-        const next = { ...prev };
-        delete next[field === "surveyReportFileName" ? "survey_report" : "site_letter"];
-        return next;
+        const nextErrors = { ...prev };
+        delete nextErrors[
+          field === "surveyReportFileName" ? "survey_report" : "site_letter"
+        ];
+        return nextErrors;
       });
     });
   }
@@ -227,22 +230,6 @@ export function EngineeringSurveyWorkPanel({
       const next = loadEngineeringSurveySubmission(draft.taskId);
       if (next) setDraft(next);
     });
-  }
-
-  function useCurrentLocation() {
-    if (formDisabled || !navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = pos.coords.latitude.toFixed(6);
-        const lng = pos.coords.longitude.toFixed(6);
-        persist({ latitude: lat, longitude: lng });
-      },
-      () => {
-        const message = "تعذر الحصول على الموقع الحالي — أدخل الإحداثيات يدوياً";
-        setFormError(message);
-        showToast(message, "error");
-      },
-    );
   }
 
   if (!draft) {

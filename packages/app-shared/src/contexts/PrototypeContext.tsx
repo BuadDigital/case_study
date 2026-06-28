@@ -65,9 +65,13 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
   const capabilities = permissions?.capabilities ?? [];
 
   const rolePages = useMemo(() => {
-    if (permissions?.pages?.length) return pagesFromPermissions(permissions.pages);
-    return ["dashboard"] as PageId[];
-  }, [permissions]);
+    if (permissions?.pages?.length) {
+      return pagesFromPermissions(permissions.pages, {
+        prototypeRole: permissions.prototypeRole,
+      });
+    }
+    return ROLES[role].pages;
+  }, [permissions, role]);
 
   const authReady = hasSession && (isSuccess || isError);
 

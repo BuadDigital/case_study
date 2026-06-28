@@ -5,10 +5,11 @@ import { useEffect } from "react";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import {
   canAccessPage,
+  defaultLandingPath,
   pageIdFromPathname,
 } from "@platform/app-shared/prototype/page-access";
 
-/** Redirects to dashboard when the signed-in user lacks permission for the current route. */
+/** Redirects to the user's first allowed page when they lack permission for the current route. */
 export function PageAccessGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
@@ -20,7 +21,7 @@ export function PageAccessGate({ children }: { children: React.ReactNode }) {
     const pageId = pageIdFromPathname(pathname);
     if (pageId === null) return;
     if (!canAccessPage(pageId, rolePages)) {
-      router.replace("/dashboard");
+      router.replace(defaultLandingPath(rolePages));
     }
   }, [authReady, pathname, rolePages, router]);
 

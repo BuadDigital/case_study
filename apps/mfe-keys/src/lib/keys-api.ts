@@ -5,9 +5,23 @@ import {
   listWorkflowTasks,
   patchPropertyKey,
 } from "@platform/api-client";
+import {
+  failuresApiConfig,
+  loadFailuresFromBackend,
+} from "@failures/mfe/lib/failures-api";
+import {
+  failureRecordTitle,
+  historicalFailuresForProperty,
+  keyFailuresForProperty,
+} from "@failures/mfe";
+import { isBlockingFailureStatus } from "@failures/mfe/lib/failures-types";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 import { workOrdersApiConfig } from "@platform/app-shared/prototype/work-orders-api-config";
-import type { PropertyKeyRow, PropertyKeysPageData } from "./keys-types";
+import type {
+  KeyFailureState,
+  PropertyKeyRow,
+  PropertyKeysPageData,
+} from "./keys-types";
 
 function courtLabel(
   area: string,
@@ -53,17 +67,57 @@ function loadCourtDelegates(
     .filter(Boolean);
 }
 
+function resolveKeyFailureSummary(
+  failures: Awaited<ReturnType<typeof loadFailuresFromBackend>>,
+  row: { po: string; idProp: string },
+): { keyFailureState: KeyFailureState; keyFailureLabel: string } {
+  const ref = {
+    poNumber: row.po,
+    propertyId: row.idProp,
+    deedNumber: row.idProp,
+  };
+  const keyFailures = keyFailuresForProperty(failures, ref);
+  if (keyFailures.length === 0) {
+    return { keyFailureState: "clear", keyFailureLabel: "صافي" };
+  }
+
+  const blocking = keyFailures.find((failure) =>
+    isBlockingFailureStatus(failure.status),
+  );
+  if (blocking) {
+    return {
+      keyFailureState: "active",
+      keyFailureLabel: failureRecordTitle(blocking),
+    };
+  }
+
+  const past = historicalFailuresForProperty(keyFailures, ref);
+  if (past.length > 0) {
+    return {
+      keyFailureState: "past",
+      keyFailureLabel: "تعذرات سابقة",
+    };
+  }
+
+  return { keyFailureState: "clear", keyFailureLabel: "صافي" };
+}
+
 export async function loadPropertyKeysPage(): Promise<PropertyKeysPageData> {
   const modulesConfig = prototypeModulesApiConfig();
   if (!modulesConfig) return { keys: [], courtDelegates: [] };
 
   const workConfig = workOrdersApiConfig();
+  const failuresPromise = failuresApiConfig()
+    ? loadFailuresFromBackend()
+    : Promise.resolve([]);
 
-  const [keysResult, courtsResult, tasksResult, usersResult] = await Promise.all([
+  const [keysResult, courtsResult, tasksResult, usersResult, failures] =
+    await Promise.all([
     listPropertyKeys(modulesConfig, true),
     listCourts(modulesConfig),
     workConfig ? listWorkflowTasks(workConfig) : Promise.resolve({ ok: false as const, kind: "auth" as const }),
     listUsers(modulesConfig),
+    failuresPromise,
   ]);
 
   if (!keysResult.ok) return { keys: [], courtDelegates: [] };
@@ -76,6 +130,7 @@ export async function loadPropertyKeysPage(): Promise<PropertyKeysPageData> {
 
   const keys: PropertyKeyRow[] = keysResult.data.map((row) => {
     const reviewer = reviewerForProperty(tasks, row.idProp, row.po);
+    const failureSummary = resolveKeyFailureSummary(failures, row);
     return {
       id: row.id,
       idProp: row.idProp,
@@ -89,6 +144,7 @@ export async function loadPropertyKeysPage(): Promise<PropertyKeysPageData> {
       status: row.status,
       court: courtLabel(row.area, courts),
       delegate: reviewer || row.specialist.trim() || "—",
+      ...failureSummary,
     };
   });
 
