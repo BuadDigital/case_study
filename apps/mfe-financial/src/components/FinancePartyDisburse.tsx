@@ -3,8 +3,9 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { loadInspectorFeesSummary } from "@platform/app-shared/prototype/inspector-fees-api";
-import { runInspectorFeeBatchTransition,
+import {
+  loadInspectorFeesSummary,
+  runInspectorFeeBatchTransition,
   runInspectorFeeTransition,
 } from "@platform/app-shared/prototype/inspector-fees-api";
 import { pushNotification } from "@platform/app-shared";
@@ -19,6 +20,8 @@ import {
   Badge,
   Button,
   EmptyState,
+  Note,
+  PageToolbar,
   QueueTableHint,
   SkeletonTableRows,
   Table,
@@ -37,6 +40,14 @@ import {
   inspectorFeeStatusTone,
   inspectorFeeWorkStatusTone,
 } from "@platform/api-client";
+import {
+  bucketFinanceDisburseRows,
+  financeDisburseVisibleRows,
+} from "../lib/finance-queue-stats";
+import {
+  FinanceSectionTitle,
+  FinanceStatusSummary,
+} from "./FinanceStatusSummary";
 
 export function FinancePartyDisburse() {
   const queryClient = useQueryClient();
@@ -54,15 +65,23 @@ export function FinancePartyDisburse() {
   });
 
   const parties = useMemo(() => {
-    const rows = (data?.rows ?? []).filter(
-      (r) =>
-        r.workStatus !== "cancelled" &&
-        r.billingStatus !== "disbursed" &&
-        r.billingStatus !== "draft" &&
-        r.billingStatus !== "sup-review",
-    );
+    const rows = financeDisburseVisibleRows(data?.rows ?? []);
     return groupInspectorFeesByParty(rows, staffUsers);
   }, [data?.rows, staffUsers]);
+
+  const sortedParties = useMemo(() => {
+    return [...parties].sort((a, b) => {
+      const aReady = a.rows.filter((r) => r.billingStatus === "disb-req").length;
+      const bReady = b.rows.filter((r) => r.billingStatus === "disb-req").length;
+      if (aReady !== bReady) return bReady - aReady;
+      return a.name.localeCompare(b.name, "ar");
+    });
+  }, [parties]);
+
+  const queueTotals = useMemo(() => {
+    const rows = financeDisburseVisibleRows(data?.rows ?? []);
+    return bucketFinanceDisburseRows(rows);
+  }, [data?.rows]);
 
   const activeParty = parties.find((p) => p.assigneeId === selectedParty) ?? null;
 
@@ -84,12 +103,25 @@ export function FinancePartyDisburse() {
 
   if (!activeParty) {
     return (
-      <>
-        <p className="mb-3 text-xs text-text-3">
-          فهرس الأطراف — ادخل لتنفيذ الصرف أو الإرجاع/الاستفسار.
-        </p>
-        {parties.length === 0 ? (
-          <EmptyState line="لا التزامات معلقة حالياً." />
+      <div className="flex flex-col gap-3">
+        <PageToolbar className="border-0 bg-surface-2/60">
+          <Note tone="info" className="m-0 flex-1">
+            مسار الصرف: المشرف يعتمد ← المكتب ينشئ <strong>أمر صرف</strong> من
+            «الاتعاب والصرف» ← المالية تصرف من القسم «جاهز للصرف الآن» أدناه.
+          </Note>
+        </PageToolbar>
+
+        <FinanceStatusSummary
+          readyToDisburse={queueTotals.readyToDisburse.length}
+          waitingOffice={queueTotals.waitingOffice.length}
+          needsAttention={queueTotals.needsAttention.length}
+        />
+
+        {sortedParties.length === 0 ? (
+          <EmptyState
+            line="لا التزامات معلقة حالياً."
+            hint="عند وصول أتعاب معتمدة من المشرف ستظهر هنا."
+          />
         ) : (
           <div
             className={cn(
@@ -98,104 +130,140 @@ export function FinancePartyDisburse() {
             )}
           >
             <Table>
-            <THead>
-              <Tr hoverable={false}>
-                <Th>الطرف</Th>
-                <Th>الفئة</Th>
-                <Th>العقارات</Th>
-                <Th>ضمن أمر صرف</Th>
-                <Th>مُعاد/استفسار</Th>
-                <Th className="text-end">المستحق (صافي)</Th>
-                <Th />
-              </Tr>
-            </THead>
-            <TBody>
-              {parties.map((party) => {
-                const disbReq = party.rows.filter(
-                  (r) => r.billingStatus === "disb-req",
-                ).length;
-                const returned = party.rows.filter((r) =>
-                  ["returned", "inquiry"].includes(r.billingStatus),
-                ).length;
-                const due = party.rows.reduce((s, r) => s + r.netFeeSar, 0);
-                return (
-                  <Tr key={party.assigneeId} hoverable={false}>
-                    <Td className="font-medium">{party.name}</Td>
-                    <Td className="text-text-2">{party.category}</Td>
-                    <Td>{party.rows.length}</Td>
-                    <Td>
-                      {disbReq > 0 ? (
-                        <Badge tone="info">{disbReq}</Badge>
-                      ) : (
-                        "—"
-                      )}
-                    </Td>
-                    <Td>
-                      {returned > 0 ? (
-                        <Badge tone="danger">{returned}</Badge>
-                      ) : (
-                        "—"
-                      )}
-                    </Td>
-                    <Td className="text-end tabular-nums">
-                      {due.toLocaleString("ar-SA")} ر.س
-                    </Td>
-                    <Td>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="primary"
-                        onClick={() => setSelectedParty(party.assigneeId)}
-                      >
-                        دخول
-                      </Button>
-                    </Td>
-                  </Tr>
-                );
-              })}
-            </TBody>
-          </Table>
+              <THead>
+                <Tr hoverable={false}>
+                  <Th>الطرف</Th>
+                  <Th>الفئة</Th>
+                  <Th>العقارات</Th>
+                  <Th>جاهز للصرف</Th>
+                  <Th>بانتظار المكتب</Th>
+                  <Th className="text-end">المستحق (صافي)</Th>
+                  <Th />
+                </Tr>
+              </THead>
+              <TBody>
+                {sortedParties.map((party) => {
+                  const ready = party.rows.filter(
+                    (r) => r.billingStatus === "disb-req",
+                  ).length;
+                  const waiting = party.rows.filter(
+                    (r) => r.billingStatus === "at-finance",
+                  ).length;
+                  const due = party.rows.reduce((s, r) => s + r.netFeeSar, 0);
+                  return (
+                    <Tr
+                      key={party.assigneeId}
+                      hoverable={false}
+                      className={ready > 0 ? "bg-success-bg/30" : undefined}
+                    >
+                      <Td className="font-medium">{party.name}</Td>
+                      <Td className="text-text-2">{party.category}</Td>
+                      <Td>{party.rows.length}</Td>
+                      <Td>
+                        {ready > 0 ? (
+                          <Badge tone="success">{ready}</Badge>
+                        ) : (
+                          <span className="text-text-3">—</span>
+                        )}
+                      </Td>
+                      <Td>
+                        {waiting > 0 ? (
+                          <Badge tone="info">{waiting}</Badge>
+                        ) : (
+                          <span className="text-text-3">—</span>
+                        )}
+                      </Td>
+                      <Td className="text-end tabular-nums">
+                        {due.toLocaleString("ar-SA")} ر.س
+                      </Td>
+                      <Td>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={ready > 0 ? "primary" : "outline"}
+                          onClick={() => setSelectedParty(party.assigneeId)}
+                        >
+                          {ready > 0 ? "صرف الآن" : "مراجعة"}
+                        </Button>
+                      </Td>
+                    </Tr>
+                  );
+                })}
+              </TBody>
+            </Table>
           </div>
         )}
-        <QueueTableHint className="mt-3 px-0">
-          حدّد طرفاً من الجدول للدخول إلى تفاصيل الصرف والإرجاع.
+
+        {queueTotals.waitingOffice.length > 0 &&
+        queueTotals.readyToDisburse.length === 0 ? (
+          <Note tone="warn">
+            يوجد {queueTotals.waitingOffice.length} عقار «جاهز للصرف لدى المالية»
+            لكن لا يمكن صرفه بعد — المكتب لم يُنشئ أمر صرف. اطلب من الطرف فتح
+            «الاتعاب والصرف → طلب صرف».
+          </Note>
+        ) : null}
+
+        <QueueTableHint className="px-0">
+          الأطراف ذات شارة «جاهز للصرف» يمكن صرفها فوراً. الباقي بانتظار إجراء
+          المكتب.
         </QueueTableHint>
-      </>
+      </div>
     );
   }
 
+  const buckets = bucketFinanceDisburseRows(activeParty.rows);
   const dueNet = activeParty.rows.reduce((s, r) => s + r.netFeeSar, 0);
+  const readyNet = buckets.readyToDisburse.reduce((s, r) => s + r.netFeeSar, 0);
 
   return (
-    <>
-      <div className={cn(pageToolbarClassName, "mb-3 rounded-[var(--radius-lg)]")}>
+    <div className="flex flex-col gap-3">
+      <PageToolbar className="rounded-[var(--radius-lg)] border border-border bg-surface">
         <Button
           type="button"
           size="sm"
           variant="ghost"
           onClick={() => setSelectedParty(null)}
         >
-          رجوع لفهرس الأطراف
+          ← فهرس الأطراف
         </Button>
-        <span className="text-sm font-semibold text-text">
-          {resolvePartyName(activeParty.assigneeId, staffUsers)}
-        </span>
-        <span className="text-xs text-text-3">
-          {resolvePartyCategory(
-            activeParty.assigneeId,
-            activeParty.rows,
-            staffUsers,
-          )}
-        </span>
-        <span className="mr-auto text-xs text-text-2">
-          المستحق: {dueNet.toLocaleString("ar-SA")} ر.س
-        </span>
-      </div>
-      <FinancePartyDetailTable
-        rows={activeParty.rows}
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold text-text">
+            {resolvePartyName(activeParty.assigneeId, staffUsers)}
+          </div>
+          <div className="text-[11px] text-text-3">
+            {resolvePartyCategory(
+              activeParty.assigneeId,
+              activeParty.rows,
+              staffUsers,
+            )}
+          </div>
+        </div>
+        <div className="text-end text-xs text-text-2">
+          <div>
+            المستحق الكلي:{" "}
+            <span className="font-semibold tabular-nums text-text">
+              {dueNet.toLocaleString("ar-SA")} ر.س
+            </span>
+          </div>
+          {buckets.readyToDisburse.length > 0 ? (
+            <div className="text-success">
+              قابل للصرف: {readyNet.toLocaleString("ar-SA")} ر.س
+            </div>
+          ) : null}
+        </div>
+      </PageToolbar>
+
+      <FinanceStatusSummary
+        readyToDisburse={buckets.readyToDisburse.length}
+        waitingOffice={buckets.waitingOffice.length}
+        needsAttention={buckets.needsAttention.length}
+      />
+
+      <FinancePartyDetailSections
+        buckets={buckets}
         onChanged={() => void invalidate()}
       />
-    </>
+    </div>
   );
 }
 
@@ -204,32 +272,22 @@ type ReasonModalState =
   | { kind: "inquiry"; row: InspectorFeeRowDto }
   | null;
 
-function FinancePartyDetailTable({
-  rows,
+function FinancePartyDetailSections({
+  buckets,
   onChanged,
 }: {
-  rows: InspectorFeeRowDto[];
+  buckets: ReturnType<typeof bucketFinanceDisburseRows>;
   onChanged: () => void;
 }) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [reasonModal, setReasonModal] = useState<ReasonModalState>(null);
 
-  const sortedRows = useMemo(() => {
-    return [...rows].sort((a, b) => {
-      const batchA = a.disbursementBatchId ?? "";
-      const batchB = b.disbursementBatchId ?? "";
-      if (batchA && batchB && batchA !== batchB) return batchA.localeCompare(batchB);
-      if (batchA && !batchB) return -1;
-      if (!batchA && batchB) return 1;
-      return a.propertyLabel.localeCompare(b.propertyLabel, "ar");
-    });
-  }, [rows]);
-
-  const disbReqRows = sortedRows.filter((r) => r.billingStatus === "disb-req");
-  const selectedDisbReq = disbReqRows.filter((r) =>
+  const { readyToDisburse, waitingOffice, needsAttention } = buckets;
+  const selectedRows = readyToDisburse.filter((r) =>
     selected.has(r.workflowTaskId),
   );
+  const selectedTotal = selectedRows.reduce((s, r) => s + r.netFeeSar, 0);
 
   const toggle = (id: string, on: boolean) => {
     setSelected((prev) => {
@@ -239,6 +297,12 @@ function FinancePartyDetailTable({
       return next;
     });
   };
+
+  const selectAllReady = () => {
+    setSelected(new Set(readyToDisburse.map((r) => r.workflowTaskId)));
+  };
+
+  const clearSelection = () => setSelected(new Set());
 
   const act = async (
     row: InspectorFeeRowDto,
@@ -258,7 +322,7 @@ function FinancePartyDetailTable({
   };
 
   const bulkDisburse = async () => {
-    const ids = selectedDisbReq.map((r) => r.workflowTaskId);
+    const ids = selectedRows.map((r) => r.workflowTaskId);
     if (ids.length === 0) return;
     setBusyId("bulk");
     try {
@@ -295,124 +359,141 @@ function FinancePartyDetailTable({
     }
   };
 
+  const hasAny =
+    readyToDisburse.length + waitingOffice.length + needsAttention.length > 0;
+
+  if (!hasAny) {
+    return <EmptyState line="لا معاملات لهذا الطرف حالياً." />;
+  }
+
   return (
     <>
-      <div className={cn(pageToolbarClassName, "mb-3 rounded-[var(--radius-lg)]")}>
-        <span className="text-xs text-text-2">
-          {selectedDisbReq.length > 0
-            ? `محدّد: ${selectedDisbReq.length}`
-            : "حدّد «ضمن أمر صرف» للصرف الجماعي"}
-        </span>
-        <Button
-          type="button"
-          size="sm"
-          variant="primary"
-          disabled={busyId === "bulk" || selectedDisbReq.length === 0}
-          onClick={() => void bulkDisburse()}
-        >
-          صرف الدفعة
-        </Button>
-      </div>
+      {readyToDisburse.length > 0 ? (
+        <section>
+          <FinanceSectionTitle
+            title="جاهز للصرف الآن"
+            count={readyToDisburse.length}
+            hint="هذه المعاملات ضمن أمر صرف — يمكنك تحديدها وتنفيذ الصرف."
+          />
 
-      <div
-        className={cn(
-          queueTableWrapClassName,
-          "rounded-[var(--radius-lg)] border border-border bg-surface",
-        )}
-      >
-        <Table>
-        <THead>
-          <Tr hoverable={false}>
-            <Th className="w-10" />
-            <Th>المعاملة</Th>
-            <Th className="text-end">الصافي</Th>
-            <Th>حالة العمل</Th>
-            <Th>حالة الدفع</Th>
-            <Th>أمر الصرف</Th>
-            <Th>إجراء</Th>
-          </Tr>
-        </THead>
-        <TBody>
-          {sortedRows.map((row) => (
-            <Tr key={row.workflowTaskId} hoverable={false}>
-              <Td>
-                {row.billingStatus === "disb-req" ? (
-                  <input
-                    type="checkbox"
-                    checked={selected.has(row.workflowTaskId)}
-                    onChange={(e) =>
-                      toggle(row.workflowTaskId, e.target.checked)
-                    }
-                  />
+          <div
+            className={cn(
+              pageToolbarClassName,
+              "mb-2 rounded-[var(--radius-lg)] border border-success/30 bg-success-bg/20",
+            )}
+          >
+            <div className="flex flex-wrap items-center gap-2 text-xs text-text-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={selectAllReady}
+                disabled={selectedRows.length === readyToDisburse.length}
+              >
+                تحديد الكل
+              </Button>
+              {selectedRows.length > 0 ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={clearSelection}
+                >
+                  إلغاء التحديد
+                </Button>
+              ) : null}
+              <span className="text-text-3">|</span>
+              <span>
+                المحدّد: <strong>{selectedRows.length}</strong>
+                {selectedRows.length > 0 ? (
+                  <>
+                    {" "}
+                    ·{" "}
+                    <strong className="tabular-nums">
+                      {selectedTotal.toLocaleString("ar-SA")} ر.س
+                    </strong>
+                  </>
                 ) : null}
-              </Td>
-              <Td className="font-medium">{row.propertyLabel}</Td>
-              <Td className="text-end tabular-nums">
-                {row.netFeeSar.toLocaleString("ar-SA")} ر.س
-              </Td>
-              <Td>
-                <Badge tone={inspectorFeeWorkStatusTone(row.workStatus)}>
-                  {row.workStatusLabel}
-                </Badge>
-              </Td>
-              <Td>
-                <Badge tone={inspectorFeeStatusTone(row.billingStatus)}>
-                  {row.billingStatusLabel ||
-                    inspectorFeeStatusLabel(row.billingStatus)}
-                </Badge>
-              </Td>
-              <Td className="text-[10px] text-text-3">
-                {row.disbursementBatchId
-                  ? row.disbursementBatchId.slice(0, 8)
-                  : "—"}
-              </Td>
-              <Td>
-                <div className="flex flex-wrap gap-1">
-                  {row.billingStatus === "disb-req" ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="primary"
-                      disabled={busyId === row.workflowTaskId}
-                      onClick={() => void act(row, "disburse")}
-                    >
-                      صرف
-                    </Button>
-                  ) : null}
-                  {row.billingStatus === "at-finance" ||
-                  row.billingStatus === "disb-req" ? (
-                    <>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={busyId === row.workflowTaskId}
-                        onClick={() =>
-                          setReasonModal({ kind: "return", row })
-                        }
-                      >
-                        إرجاع للمشرف
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        disabled={busyId === row.workflowTaskId}
-                        onClick={() =>
-                          setReasonModal({ kind: "inquiry", row })
-                        }
-                      >
-                        استفسار للمكتب
-                      </Button>
-                    </>
-                  ) : null}
-                </div>
-              </Td>
-            </Tr>
-          ))}
-        </TBody>
-      </Table>
-      </div>
+              </span>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="primary"
+              disabled={busyId === "bulk" || selectedRows.length === 0}
+              onClick={() => void bulkDisburse()}
+            >
+              صرف الدفعة
+            </Button>
+          </div>
+
+          <FinanceDisburseTable
+            rows={readyToDisburse}
+            mode="disburse"
+            busyId={busyId}
+            selected={selected}
+            onToggle={toggle}
+            onDisburse={(row) => void act(row, "disburse")}
+            onReturn={(row) => setReasonModal({ kind: "return", row })}
+            onInquiry={(row) => setReasonModal({ kind: "inquiry", row })}
+          />
+        </section>
+      ) : null}
+
+      {waitingOffice.length > 0 ? (
+        <section className={readyToDisburse.length > 0 ? "mt-5" : undefined}>
+          <FinanceSectionTitle
+            title="بانتظار أمر صرف من المكتب"
+            count={waitingOffice.length}
+            hint="المشرف اعتمد هذه الأتعاب لكن المكتب لم يُنشئ أمر صرف بعد — لا يمكن الصرف من هنا."
+          />
+          <Note tone="warn" className="mb-2">
+            لصرف هذه العقارات: يجب على المكتب/المعاين فتح «الاتعاب والصرف → طلب
+            صرف» واختيارها ثم «إنشاء أمر صرف واعتماده». بعدها تنتقل تلقائياً
+            إلى قسم «جاهز للصرف الآن».
+          </Note>
+          <FinanceDisburseTable
+            rows={waitingOffice}
+            mode="review"
+            busyId={busyId}
+            selected={selected}
+            onToggle={toggle}
+            onDisburse={() => {}}
+            onReturn={(row) => setReasonModal({ kind: "return", row })}
+            onInquiry={(row) => setReasonModal({ kind: "inquiry", row })}
+          />
+        </section>
+      ) : null}
+
+      {needsAttention.length > 0 ? (
+        <section
+          className={
+            readyToDisburse.length + waitingOffice.length > 0 ? "mt-5" : undefined
+          }
+        >
+          <FinanceSectionTitle
+            title="مُعاد أو استفسار"
+            count={needsAttention.length}
+            hint="بانتظار معالجة المشرف أو المكتب — لا صرف حتى يُعاد رفعها."
+          />
+          <FinanceDisburseTable
+            rows={needsAttention}
+            mode="readonly"
+            busyId={busyId}
+            selected={selected}
+            onToggle={toggle}
+            onDisburse={() => {}}
+            onReturn={() => {}}
+            onInquiry={() => {}}
+          />
+        </section>
+      ) : null}
+
+      {readyToDisburse.length === 0 && waitingOffice.length > 0 ? (
+        <QueueTableHint className="px-0">
+          لا يوجد ما يمكن صرفه الآن — كل المعاملات بانتظار المكتب.
+        </QueueTableHint>
+      ) : null}
 
       <FeeActionReasonModal
         open={reasonModal !== null}
@@ -435,8 +516,134 @@ function FinancePartyDetailTable({
               : "return-to-supervisor",
             { reason },
           );
+          setReasonModal(null);
         }}
       />
     </>
+  );
+}
+
+function FinanceDisburseTable({
+  rows,
+  mode,
+  busyId,
+  selected,
+  onToggle,
+  onDisburse,
+  onReturn,
+  onInquiry,
+}: {
+  rows: InspectorFeeRowDto[];
+  mode: "disburse" | "review" | "readonly";
+  busyId: string | null;
+  selected: Set<string>;
+  onToggle: (id: string, on: boolean) => void;
+  onDisburse: (row: InspectorFeeRowDto) => void;
+  onReturn: (row: InspectorFeeRowDto) => void;
+  onInquiry: (row: InspectorFeeRowDto) => void;
+}) {
+  const showCheckbox = mode === "disburse";
+  const showDisburse = mode === "disburse";
+  const showReviewActions = mode === "disburse" || mode === "review";
+
+  return (
+    <div
+      className={cn(
+        queueTableWrapClassName,
+        "rounded-[var(--radius-lg)] border border-border bg-surface",
+      )}
+    >
+      <Table>
+        <THead>
+          <Tr hoverable={false}>
+            {showCheckbox ? <Th className="w-10" /> : null}
+            <Th>المعاملة</Th>
+            <Th className="text-end">الصافي</Th>
+            <Th>حالة العمل</Th>
+            <Th>حالة الدفع</Th>
+            <Th>أمر الصرف</Th>
+            {showReviewActions || showDisburse ? <Th className="text-end">إجراء</Th> : null}
+          </Tr>
+        </THead>
+        <TBody>
+          {rows.map((row) => (
+            <Tr key={row.workflowTaskId} hoverable={false}>
+              {showCheckbox ? (
+                <Td>
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-primary"
+                    checked={selected.has(row.workflowTaskId)}
+                    onChange={(e) => onToggle(row.workflowTaskId, e.target.checked)}
+                    aria-label={`تحديد ${row.propertyLabel}`}
+                  />
+                </Td>
+              ) : null}
+              <Td className="font-medium">{row.propertyLabel}</Td>
+              <Td className="text-end tabular-nums">
+                {row.netFeeSar.toLocaleString("ar-SA")} ر.س
+              </Td>
+              <Td>
+                <Badge tone={inspectorFeeWorkStatusTone(row.workStatus)}>
+                  {row.workStatusLabel}
+                </Badge>
+              </Td>
+              <Td>
+                <Badge tone={inspectorFeeStatusTone(row.billingStatus)}>
+                  {row.billingStatusLabel ||
+                    inspectorFeeStatusLabel(row.billingStatus)}
+                </Badge>
+              </Td>
+              <Td className="font-mono text-[11px] text-text-2">
+                {row.disbursementBatchId ? (
+                  row.disbursementBatchId.slice(0, 8)
+                ) : (
+                  <span className="text-text-3">لم يُنشأ بعد</span>
+                )}
+              </Td>
+              {showReviewActions || showDisburse ? (
+                <Td>
+                  <div className="flex flex-wrap justify-end gap-1">
+                    {showDisburse ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="primary"
+                        disabled={busyId === row.workflowTaskId}
+                        onClick={() => onDisburse(row)}
+                      >
+                        صرف
+                      </Button>
+                    ) : null}
+                    {showReviewActions ? (
+                      <>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={busyId === row.workflowTaskId}
+                          onClick={() => onReturn(row)}
+                        >
+                          إرجاع
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={busyId === row.workflowTaskId}
+                          onClick={() => onInquiry(row)}
+                        >
+                          استفسار
+                        </Button>
+                      </>
+                    ) : null}
+                  </div>
+                </Td>
+              ) : null}
+            </Tr>
+          ))}
+        </TBody>
+      </Table>
+    </div>
   );
 }

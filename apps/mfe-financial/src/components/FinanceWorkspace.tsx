@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import {
   Badge,
   EmptyState,
+  Note,
+  PageToolbar,
   SkeletonTableRows,
   Tab,
   TabBar,
@@ -18,6 +20,7 @@ import {
   queueTableWrapClassName,
 } from "@platform/design-system";
 import type { FinancialSummaryDto } from "../lib/financial-api";
+import { useFinanceTabCounts } from "../query/finance-tab-counts";
 import { FinancePartyDisburse } from "./FinancePartyDisburse";
 import { FinanceEnfazPoBilling } from "./FinanceEnfazPoBilling";
 import { FinancePartyBrowse } from "./FinancePartyBrowse";
@@ -54,6 +57,15 @@ function ReportTableSection({
   );
 }
 
+function tabBadge(count: number, tone: "success" | "info" | "warning" = "success") {
+  if (count <= 0) return null;
+  return (
+    <Badge tone={tone} className="ms-1.5 px-1.5 py-0 text-[10px] font-semibold">
+      {count}
+    </Badge>
+  );
+}
+
 export function FinanceWorkspace({
   summary,
   ready,
@@ -64,6 +76,7 @@ export function FinanceWorkspace({
   const [tab, setTab] = useState<"disburse" | "enfaz" | "browse" | "reports">(
     "disburse",
   );
+  const counts = useFinanceTabCounts();
   const revenueRows = summary?.revenueRows ?? [];
   const costRows = summary?.costRows ?? [];
 
@@ -71,13 +84,18 @@ export function FinanceWorkspace({
     <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 py-4">
       <TabBar className="mb-0 shrink-0">
         <Tab active={tab === "disburse"} onClick={() => setTab("disburse")}>
-          صرف الالتزامات (حسب الطرف)
+          صرف الالتزامات
+          {!counts.isPending ? tabBadge(counts.readyToDisburse, "success") : null}
+          {!counts.isPending && counts.readyToDisburse === 0 && counts.waitingOffice > 0
+            ? tabBadge(counts.waitingOffice, "info")
+            : null}
         </Tab>
         <Tab active={tab === "enfaz"} onClick={() => setTab("enfaz")}>
-          أوامر العمل الواردة (إنفاذ)
+          فوترة إنفاذ
+          {!counts.isPending ? tabBadge(counts.enfazReady, "warning") : null}
         </Tab>
         <Tab active={tab === "browse"} onClick={() => setTab("browse")}>
-          استعراض حسب الطرف
+          استعراض الأطراف
         </Tab>
         <Tab active={tab === "reports"} onClick={() => setTab("reports")}>
           التقارير
@@ -85,7 +103,29 @@ export function FinanceWorkspace({
       </TabBar>
 
       <TabPanel className="min-h-0 flex-1 overflow-y-auto px-0 py-0">
-        {tab === "disburse" ? <FinancePartyDisburse /> : null}
+        {tab === "disburse" ? (
+          <>
+            {!counts.isPending && counts.readyToDisburse > 0 ? (
+              <PageToolbar className="mb-3 border-0 bg-success-bg/25">
+                <Note tone="success" className="m-0 flex-1">
+                  لديك <strong>{counts.readyToDisburse}</strong> عقار جاهز للصرف
+                  الآن — ادخل للطرف ونفّذ من قسم «جاهز للصرف الآن».
+                </Note>
+              </PageToolbar>
+            ) : null}
+            {!counts.isPending &&
+            counts.readyToDisburse === 0 &&
+            counts.waitingOffice > 0 ? (
+              <PageToolbar className="mb-3 border-0 bg-warning-bg/40">
+                <Note tone="warn" className="m-0 flex-1">
+                  {counts.waitingOffice} عقار بانتظار المكتب لإنشاء أمر صرف — لا
+                  يمكنك الصرف حتى يُنشئ الطرف طلباً من «الاتعاب والصرف».
+                </Note>
+              </PageToolbar>
+            ) : null}
+            <FinancePartyDisburse />
+          </>
+        ) : null}
         {tab === "enfaz" ? <FinanceEnfazPoBilling /> : null}
         {tab === "browse" ? <FinancePartyBrowse /> : null}
         {tab === "reports" ? (
@@ -98,7 +138,10 @@ export function FinanceWorkspace({
                   </TBody>
                 </Table>
               ) : revenueRows.length === 0 ? (
-                <EmptyState line="لا توجد إيرادات مسجّلة بعد." />
+                <EmptyState
+                  line="لا توجد إيرادات مسجّلة بعد."
+                  hint="صدر فواتير إنفاذ من تبويب «فوترة إنفاذ»."
+                />
               ) : (
                 <Table>
                   <THead>
