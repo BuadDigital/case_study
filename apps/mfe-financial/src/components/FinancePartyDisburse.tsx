@@ -19,9 +19,8 @@ import {
   Badge,
   Button,
   EmptyState,
+  QueueTableHint,
   SkeletonTableRows,
-  SubpageHeader,
-  SubpagePanel,
   Table,
   TBody,
   Td,
@@ -30,6 +29,7 @@ import {
   Tr,
   cn,
   pageToolbarClassName,
+  queueTableWrapClassName,
 } from "@platform/design-system";
 import type { InspectorFeeAction, InspectorFeeRowDto } from "@platform/api-client";
 import {
@@ -74,28 +74,30 @@ export function FinancePartyDisburse() {
 
   if (isPending) {
     return (
-      <SubpagePanel>
-        <SubpageHeader title="صرف الالتزامات (حسب الطرف)" />
-        <Table pending>
-          <TBody>
-            <SkeletonTableRows rows={4} cols={7} />
-          </TBody>
-        </Table>
-      </SubpagePanel>
+      <Table pending>
+        <TBody>
+          <SkeletonTableRows rows={4} cols={7} />
+        </TBody>
+      </Table>
     );
   }
 
   if (!activeParty) {
     return (
-      <SubpagePanel>
-        <SubpageHeader title="صرف الالتزامات (حسب الطرف)" />
+      <>
         <p className="mb-3 text-xs text-text-3">
           فهرس الأطراف — ادخل لتنفيذ الصرف أو الإرجاع/الاستفسار.
         </p>
         {parties.length === 0 ? (
           <EmptyState line="لا التزامات معلقة حالياً." />
         ) : (
-          <Table>
+          <div
+            className={cn(
+              queueTableWrapClassName,
+              "rounded-[var(--radius-lg)] border border-border bg-surface",
+            )}
+          >
+            <Table>
             <THead>
               <Tr hoverable={false}>
                 <Th>الطرف</Th>
@@ -153,15 +155,19 @@ export function FinancePartyDisburse() {
               })}
             </TBody>
           </Table>
+          </div>
         )}
-      </SubpagePanel>
+        <QueueTableHint className="mt-3 px-0">
+          حدّد طرفاً من الجدول للدخول إلى تفاصيل الصرف والإرجاع.
+        </QueueTableHint>
+      </>
     );
   }
 
   const dueNet = activeParty.rows.reduce((s, r) => s + r.netFeeSar, 0);
 
   return (
-    <SubpagePanel>
+    <>
       <div className={cn(pageToolbarClassName, "mb-3 rounded-[var(--radius-lg)]")}>
         <Button
           type="button"
@@ -189,7 +195,7 @@ export function FinancePartyDisburse() {
         rows={activeParty.rows}
         onChanged={() => void invalidate()}
       />
-    </SubpagePanel>
+    </>
   );
 }
 
@@ -308,7 +314,13 @@ function FinancePartyDetailTable({
         </Button>
       </div>
 
-      <Table>
+      <div
+        className={cn(
+          queueTableWrapClassName,
+          "rounded-[var(--radius-lg)] border border-border bg-surface",
+        )}
+      >
+        <Table>
         <THead>
           <Tr hoverable={false}>
             <Th className="w-10" />
@@ -400,6 +412,7 @@ function FinancePartyDetailTable({
           ))}
         </TBody>
       </Table>
+      </div>
 
       <FeeActionReasonModal
         open={reasonModal !== null}

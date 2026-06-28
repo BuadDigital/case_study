@@ -14,6 +14,8 @@ namespace RealEstateEval.Platform.Api.Controllers;
 [Authorize]
 public sealed class NotificationsController : ControllerBase
 {
+    private static readonly TimeSpan StreamKeepAliveInterval = TimeSpan.FromSeconds(25);
+
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -53,30 +55,33 @@ public sealed class NotificationsController : ControllerBase
         Response.Headers.Connection = "keep-alive";
 
         var (connectionId, reader) = _realtime.Subscribe(userId);
-        using var keepAlive = new PeriodicTimer(TimeSpan.FromSeconds(25));
 
         try
         {
             while (!ct.IsCancellationRequested)
             {
-                var waitRead = reader.WaitToReadAsync(ct).AsTask();
-                var waitPing = keepAlive.WaitForNextTickAsync(ct).AsTask();
-                var completed = await Task.WhenAny(waitRead, waitPing);
+                using var readTimeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                readTimeout.CancelAfter(StreamKeepAliveInterval);
 
-                if (completed == waitPing)
+                try
+                {
+                    if (!await reader.WaitToReadAsync(readTimeout.Token))
+                        break;
+
+                    while (reader.TryRead(out var notification))
+                    {
+                        var json = JsonSerializer.Serialize(notification, JsonOpts);
+                        await Response.WriteAsync($"data: {json}\n\n", ct);
+                        await Response.Body.FlushAsync(ct);
+                    }
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (OperationCanceledException)
                 {
                     await Response.WriteAsync(": keepalive\n\n", ct);
-                    await Response.Body.FlushAsync(ct);
-                    continue;
-                }
-
-                if (!await waitRead)
-                    break;
-
-                while (reader.TryRead(out var notification))
-                {
-                    var json = JsonSerializer.Serialize(notification, JsonOpts);
-                    await Response.WriteAsync($"data: {json}\n\n", ct);
                     await Response.Body.FlushAsync(ct);
                 }
             }

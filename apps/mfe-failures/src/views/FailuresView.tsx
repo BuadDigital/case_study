@@ -222,7 +222,7 @@ export function FailuresView() {
         )}
       </StatGrid>
 
-      <OperationalPanel className="min-h-0 flex-1">
+      <OperationalPanel className="min-h-0 flex-1 overflow-y-auto">
           {!ce && !ca ? (
             <PageToolbar className="border-b-0 bg-surface-2/50">
               <Note tone="info" className="m-0 flex-1">

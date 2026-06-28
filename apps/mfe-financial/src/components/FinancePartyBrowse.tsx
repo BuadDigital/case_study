@@ -14,7 +14,6 @@ import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import {
   EmptyState,
   SkeletonTableRows,
-  SubpagePanel,
   Table,
   TBody,
 } from "@platform/design-system";
@@ -45,27 +44,20 @@ export function FinancePartyBrowse() {
 
   if (isPending) {
     return (
-      <SubpagePanel>
-        <Table pending>
-          <TBody>
-            <SkeletonTableRows rows={6} cols={7} />
-          </TBody>
-        </Table>
-      </SubpagePanel>
+      <Table pending>
+        <TBody>
+          <SkeletonTableRows rows={6} cols={7} />
+        </TBody>
+      </Table>
     );
   }
 
   if (!activeParty) {
-    return (
-      <SubpagePanel>
-        <EmptyState line="لا أطراف لعرض عقاراتها." />
-      </SubpagePanel>
-    );
+    return <EmptyState line="لا أطراف لعرض عقاراتها." />;
   }
 
   return (
-    <SubpagePanel>
-      <PartyPropertyBrowse
+    <PartyPropertyBrowse
         rows={activeParty.rows}
         partyName={resolvePartyName(activeParty.assigneeId, staffUsers)}
         partyCategory={resolvePartyCategory(
@@ -78,6 +70,5 @@ export function FinancePartyBrowse() {
         selectedAssigneeId={activeAssigneeId ?? undefined}
         onSelectParty={setSelectedAssigneeId}
       />
-    </SubpagePanel>
   );
 }

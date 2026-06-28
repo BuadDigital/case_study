@@ -73,8 +73,10 @@ export function CaseStudyReportActions({ model }: Props) {
                 </Button>
               </div>
             </ModalHeader>
-            <ModalBody className="max-h-[calc(100vh-120px)] overflow-auto bg-[#eef3f9] p-4 print:max-h-none print:overflow-visible print:bg-white print:p-0">
-              <CaseStudyReportDocument model={model} id="cs-report-print-root" />
+            <ModalBody className="max-h-[calc(100vh-120px)] overflow-auto p-0 print:max-h-none print:overflow-visible print:bg-white">
+              <div className="cs-report-preview-shell print:p-0">
+                <CaseStudyReportDocument model={model} id="cs-report-print-root" />
+              </div>
             </ModalBody>
           </div>
         </ModalOverlay>
