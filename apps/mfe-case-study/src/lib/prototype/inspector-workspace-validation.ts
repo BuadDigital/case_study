@@ -48,21 +48,22 @@ export function validateInspectorWorkspace(
 
   const photoIssues = listInspectorPhotoValidationIssues(submission);
   if (photoIssues.length > 0) {
-    errors.definedPhotos = photoIssues[0];
-    if (photoIssues.some((issue) => issue.includes("توثيقية"))) {
-      errors.featurePhotos = photoIssues.find((issue) =>
-        issue.includes("توثيقية"),
-      );
-    }
-    if (
-      photoIssues.some(
-        (issue) => issue.includes("المعرض") || issue.includes("البئر"),
-      )
-    ) {
-      errors.componentPhotos = photoIssues.find(
-        (issue) => issue.includes("المعرض") || issue.includes("البئر"),
-      );
-    }
+    const featureIssue = photoIssues.find((issue) => issue.includes("توثيقية"));
+    if (featureIssue) errors.featurePhotos = featureIssue;
+
+    const componentIssue = photoIssues.find(
+      (issue) =>
+        issue.includes("عدد المعارض") || issue.includes("عدد الآبار"),
+    );
+    if (componentIssue) errors.componentPhotos = componentIssue;
+
+    const definedIssue = photoIssues.find(
+      (issue) =>
+        issue.includes("الموثّقة") ||
+        issue.includes("بانتظار الاعتماد") ||
+        issue.includes("إضافية"),
+    );
+    if (definedIssue) errors.definedPhotos = definedIssue;
   }
 
   void options?.boundariesUnavailable;

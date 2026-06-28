@@ -257,7 +257,7 @@ export function EngineeringSurveyWorkPanel({
         يُستخدم الموقع للتحقق من زيارة المكتب الهندسي. يجب أن تتطابق الإحداثيات
         مع موقع العقار الفعلي.
       </InfoBox>
-      <div className="mb-3 grid grid-cols-1 gap-2.5 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+      <div className="mb-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         <div>
           <Label htmlFor="eng-lat" className="text-xs">
             خط العرض (Latitude) <span className="text-danger-text">*</span>
@@ -297,21 +297,6 @@ export function EngineeringSurveyWorkPanel({
               });
             }}
           />
-        </div>
-        <div className="flex flex-col">
-          <Label className="pointer-events-none text-xs invisible" aria-hidden="true">
-            موقع
-          </Label>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="h-[34px] whitespace-nowrap"
-            disabled={formDisabled}
-            onClick={useCurrentLocation}
-          >
-            موقعي الحالي
-          </Button>
         </div>
       </div>
       {fieldErrors.latitude || fieldErrors.longitude ? (

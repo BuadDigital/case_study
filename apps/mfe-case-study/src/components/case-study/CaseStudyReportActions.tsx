@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Button, ModalBody, ModalHeader, ModalOverlay, ModalTitle } from "@platform/design-system";
 import { CaseStudyReportDocument } from "./CaseStudyReportDocument";
 import { buildCaseStudyReportPrintHtml } from "../../lib/prototype/case-study-report-html";
+import { openHtmlDocumentInNewTab } from "../../lib/open-html-document";
 import type { CaseStudyReportModel } from "../../lib/prototype/case-study-report-model";
 
 type Props = {
@@ -27,17 +28,13 @@ export function CaseStudyReportActions({ model }: Props) {
   }, []);
 
   const openPrintWindow = useCallback(() => {
-    const w = window.open("", "_blank", "noopener,noreferrer");
-    if (!w) {
-      window.alert("تعذّر فتح نافذة الطباعة — تحقق من إعدادات المنبثقات.");
-      return;
+    const html = buildCaseStudyReportPrintHtml(model, {
+      origin: window.location.origin,
+    });
+    const opened = openHtmlDocumentInNewTab(html);
+    if (!opened) {
+      window.alert("تعذّر فتح نافذة التقرير — تحقق من إعدادات المنبثقات.");
     }
-    w.document.open();
-    w.document.write(
-      buildCaseStudyReportPrintHtml(model, { origin: window.location.origin }),
-    );
-    w.document.close();
-    w.focus();
   }, [model]);
 
   return (
@@ -60,7 +57,7 @@ export function CaseStudyReportActions({ model }: Props) {
           aria-label="معاينة تقرير دراسة الحالة"
         >
           <div
-            className="w-full max-w-[920px] overflow-hidden rounded-xl bg-surface-2 shadow-lg print:rounded-none print:shadow-none"
+            className="w-[210mm] max-w-full overflow-hidden rounded-xl bg-surface-2 shadow-lg print:rounded-none print:shadow-none"
             onClick={(e) => e.stopPropagation()}
           >
             <ModalHeader className="print:hidden border-b border-border bg-surface px-3.5 py-2.5">
@@ -76,7 +73,7 @@ export function CaseStudyReportActions({ model }: Props) {
                 </Button>
               </div>
             </ModalHeader>
-            <ModalBody className="max-h-[calc(100vh-120px)] overflow-auto bg-[#eef3f9] p-4 print:max-h-none print:overflow-visible print:bg-white">
+            <ModalBody className="max-h-[calc(100vh-120px)] overflow-auto bg-[#eef3f9] p-4 print:max-h-none print:overflow-visible print:bg-white print:p-0">
               <CaseStudyReportDocument model={model} id="cs-report-print-root" />
             </ModalBody>
           </div>

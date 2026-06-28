@@ -5,9 +5,11 @@ import {
   partyIdForRoleId,
   type CaseStudyInfoPartyId,
   type CaseStudyInfoRoleType,
-} from "@settings/mfe";
-import type { CaseStudyInfoRolesMatrix } from "@settings/mfe";
-import { partyRoleOnQuestion } from "@settings/mfe";
+} from "@settings/mfe/lib/prototype/case-study-info-roles-data";
+import {
+  partyRoleOnQuestion,
+  type CaseStudyInfoRolesMatrix,
+} from "@settings/mfe/lib/prototype/case-study-info-roles-storage";
 import { loadPartyCaseStudyFormDraft } from "./case-study-form-storage";
 import type { WorkflowTask, WorkflowTaskKind } from "./tasks-storage";
 
@@ -46,8 +48,20 @@ export function childTasksForCaseStudyParent(
   parentTaskId: string,
   tasks: WorkflowTask[],
 ): WorkflowTask[] {
-  return tasks.filter(
+  const byParentLink = tasks.filter(
     (t) => t.parentTaskId === parentTaskId && t.kind !== "case-study-property",
+  );
+  if (byParentLink.length > 0) return byParentLink;
+
+  const parent = tasks.find((t) => t.id === parentTaskId);
+  if (!parent?.poNumber || !parent.propertyId) return byParentLink;
+
+  return tasks.filter(
+    (t) =>
+      t.id !== parentTaskId &&
+      t.kind !== "case-study-property" &&
+      t.poNumber === parent.poNumber &&
+      t.propertyId === parent.propertyId,
   );
 }
 

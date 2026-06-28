@@ -137,7 +137,7 @@ export function EngineeringSurveyMap({
             فتح الموقع في Google Maps ({latitude}, {longitude})
           </a>
         ) : (
-          <span>أدخل الإحداثيات أو استخدم «موقعي الحالي»</span>
+          <span>أدخل الإحداثيات أو اضغط على الخريطة</span>
         )}
       </div>
     );

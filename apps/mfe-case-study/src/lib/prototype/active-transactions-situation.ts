@@ -4,6 +4,7 @@ import { activeTransactionNavForRole, filterTasksForCaseStudy } from "@platform/
 import type { PoIntakeRecord } from "./po-intake-data";
 import { PARTY_TASK_PAGES } from "@platform/app-shared/prototype/party-task-pages";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
+import { isCaseStudyWorkflowOverseer } from "./viewer-task-access";
 import type { PoRow } from "@platform/app-shared/prototype/constants";
 import { filterTasksForDistribution,filterTasksForPrimaryData } from "./transaction-filters";
 import { tasksForPartyAssignee,tasksForRole,type WorkflowTask } from "./tasks-storage";
@@ -53,7 +54,7 @@ export function tasksAssignedToViewer(
   staffUsers: StaffUser[] = [],
   viewerAssigneeId?: string | null,
 ): WorkflowTask[] {
-  if (isSuperAdmin(role)) return tasks;
+  if (isSuperAdmin(role) || isCaseStudyWorkflowOverseer(role)) return tasks;
 
   const roleTasks = PARTY_ROLE_IDS.has(role)
     ? tasksForPartyAssignee(

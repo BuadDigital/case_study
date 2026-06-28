@@ -8,6 +8,28 @@ import {
   type WorkflowTask,
 } from "./tasks-storage";
 
+/** Case-study workflow queues where the section supervisor oversees all rows. */
+const CASE_STUDY_WORKFLOW_QUEUE_PAGES: ReadonlySet<PageId> = new Set([
+  "active-primary-data",
+  "bourse-inquiry",
+  "active-distribution",
+  "active-case-study",
+]);
+
+export function isCaseStudyWorkflowOverseer(role: RoleId): boolean {
+  return role === "section-supervisor";
+}
+
+export function seesAllCaseStudyWorkflowTasks(
+  role: RoleId,
+  pageId?: PageId,
+): boolean {
+  if (isSuperAdmin(role)) return true;
+  if (!isCaseStudyWorkflowOverseer(role)) return false;
+  if (!pageId) return true;
+  return CASE_STUDY_WORKFLOW_QUEUE_PAGES.has(pageId);
+}
+
 export function resolveQueueTasksForViewer(input: {
   role: RoleId;
   tasks: WorkflowTask[];
@@ -20,7 +42,7 @@ export function resolveQueueTasksForViewer(input: {
 }): WorkflowTask[] {
   const all = input.tasks;
 
-  if (input.pageId && isSuperAdmin(input.role)) {
+  if (input.pageId && seesAllCaseStudyWorkflowTasks(input.role, input.pageId)) {
     return [...all].sort(compareWorkflowTasks);
   }
 
@@ -45,7 +67,7 @@ export function canViewWorkflowTask(input: {
   pageId: PageId;
   matchesPage: (task: WorkflowTask) => boolean;
 }): boolean {
-  if (isSuperAdmin(input.role)) {
+  if (seesAllCaseStudyWorkflowTasks(input.role, input.pageId)) {
     return input.matchesPage(input.task);
   }
   return tasksForRole(input.role, input.tasks).some((t) => t.id === input.task.id);
