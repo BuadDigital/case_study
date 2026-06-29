@@ -6,6 +6,8 @@ import {
   isBourseInquiryIdentifier,
   PROPERTY_CLASSIFICATIONS,
   requiresAssignmentDecree,
+  requiredPropertyIdentifierDigitLength,
+  sanitizePropertyIdentifierInput,
   showsCourtFields,
   type AssignmentType,
   type PoPropertyIntake,
@@ -83,6 +85,15 @@ export function PoPropertyEnfathForm({
   const showAssignmentDecree = requiresAssignmentDecree(assignmentType);
   const showCourt = showsCourtFields(assignmentType);
   const isBourseId = isBourseInquiryIdentifier(property.identifierType);
+  const identifierDigitLength = requiredPropertyIdentifierDigitLength(
+    property.identifierType,
+  );
+  const patchDeedNumber = (value: string) => {
+    onPatch(
+      "deedNumber",
+      sanitizePropertyIdentifierInput(value, property.identifierType),
+    );
+  };
   const propertyTypes = useMemo(() => {
     const c = property.classification;
     return c ? (PROPERTY_CLASSIFICATIONS[c] ?? []) : [];
@@ -205,9 +216,12 @@ export function PoPropertyEnfathForm({
             label="رقم الصك"
             required
             dir="ltr"
+            inputMode="numeric"
+            maxLength={identifierDigitLength}
+            hint={`${identifierDigitLength} أرقام`}
             value={property.deedNumber}
             error={fieldErrors.deedNumber}
-            onChange={(v) => onPatch("deedNumber", v)}
+            onChange={patchDeedNumber}
           />
           <RegField
             id="task_number_bourse"
@@ -263,9 +277,12 @@ export function PoPropertyEnfathForm({
           }
           required
           dir="ltr"
+          inputMode="numeric"
+          maxLength={identifierDigitLength}
+          hint={`${identifierDigitLength} أرقام`}
           value={property.deedNumber}
           error={fieldErrors.deedNumber}
-          onChange={(v) => onPatch("deedNumber", v)}
+          onChange={patchDeedNumber}
         />
         <RegField
           id="task_number"

@@ -140,6 +140,10 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         var validPropertyIds = order.Properties.Select(p => p.Id).ToHashSet();
         var now = DateTime.UtcNow;
 
+        var existingRows = await _db.PoEnfazRevenueLines
+            .Where(x => x.PoNumber == normalized && validPropertyIds.Contains(x.PropertyId))
+            .ToDictionaryAsync(x => x.PropertyId, cancellationToken);
+
         foreach (var input in request.Lines)
         {
             if (!Guid.TryParse(input.PropertyId.Trim(), out var propertyId))
@@ -147,12 +151,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
             if (!validPropertyIds.Contains(propertyId))
                 continue;
 
-            var row = await _db.PoEnfazRevenueLines
-                .FirstOrDefaultAsync(
-                    x => x.PoNumber == normalized && x.PropertyId == propertyId,
-                    cancellationToken);
-
-            if (row is null)
+            if (!existingRows.TryGetValue(propertyId, out var row))
             {
                 row = new PoEnfazRevenueLine
                 {
@@ -161,6 +160,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
                     PropertyId = propertyId,
                 };
                 _db.PoEnfazRevenueLines.Add(row);
+                existingRows[propertyId] = row;
             }
 
             row.EnfazFeeSar = Math.Max(0m, input.EnfazFeeSar);
@@ -212,12 +212,19 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
             x => (x.PoNumber.Trim(), x.PropertyId),
             x => x);
 
+        var allPropertyIds = orders.SelectMany(o => o.Properties.Select(p => p.Id)).ToList();
+        var allTasks = await _db.WorkflowTasks.AsNoTracking()
+            .Where(t => poNumbers.Contains(t.PoNumber)
+                && t.PropertyId != null
+                && allPropertyIds.Contains(t.PropertyId.Value))
+            .ToListAsync(cancellationToken);
+        var taskStatusesByPo = BuildPropertyWorkStatusesByPo(allTasks);
+
         var rows = new List<EnfazTrackingRowDto>();
         foreach (var order in orders)
         {
             var po = order.PoNumber.Trim();
-            var propertyIds = order.Properties.Select(p => p.Id).ToList();
-            var taskStatuses = await LoadPropertyWorkStatusesAsync(po, propertyIds, cancellationToken);
+            var taskStatuses = taskStatusesByPo.GetValueOrDefault(po, []);
 
             foreach (var property in order.Properties.OrderBy(p => p.TaskNumber ?? p.DeedNumber, StringComparer.Ordinal))
             {
@@ -287,6 +294,34 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
             .Where(t => t.PoNumber == poNumber && t.PropertyId != null && propertyIds.Contains(t.PropertyId.Value))
             .ToListAsync(cancellationToken);
 
+        return ComputePropertyWorkStatuses(propertyIds, tasks);
+    }
+
+    private static Dictionary<string, Dictionary<Guid, (string Status, string Label)>> BuildPropertyWorkStatusesByPo(
+        IReadOnlyList<WorkflowTask> tasks)
+    {
+        var byPo = tasks
+            .GroupBy(t => t.PoNumber.Trim(), StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
+
+        var result = new Dictionary<string, Dictionary<Guid, (string, string)>>(StringComparer.Ordinal);
+        foreach (var (po, poTasks) in byPo)
+        {
+            var propertyIds = poTasks
+                .Where(t => t.PropertyId.HasValue)
+                .Select(t => t.PropertyId!.Value)
+                .Distinct()
+                .ToList();
+            result[po] = ComputePropertyWorkStatuses(propertyIds, poTasks);
+        }
+
+        return result;
+    }
+
+    private static Dictionary<Guid, (string Status, string Label)> ComputePropertyWorkStatuses(
+        IReadOnlyList<Guid> propertyIds,
+        IReadOnlyList<WorkflowTask> tasks)
+    {
         var result = new Dictionary<Guid, (string, string)>();
         foreach (var propertyId in propertyIds)
         {

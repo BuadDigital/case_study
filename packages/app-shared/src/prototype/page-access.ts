@@ -58,9 +58,33 @@ export function pageIdFromPathname(pathname: string): PageId | null {
   }
 }
 
+/** PO property failure registration — allowed without full PO list access. */
+export function isPoPropertyFailurePath(pathname: string): boolean {
+  const parts = pathname.split("/").filter(Boolean);
+  return (
+    parts.length === 5 &&
+    parts[0] === "po" &&
+    parts[2] === "property" &&
+    parts[4] === "failure"
+  );
+}
+
 export function canAccessPage(
   pageId: PageId,
   rolePages: readonly PageId[],
 ): boolean {
   return rolePages.includes(pageId);
+}
+
+/** Path-aware permission check for shell routes (incl. PO failure sub-route). */
+export function canAccessPathname(
+  pathname: string,
+  rolePages: readonly PageId[],
+): boolean {
+  if (isPoPropertyFailurePath(pathname) && rolePages.includes("failures")) {
+    return true;
+  }
+  const pageId = pageIdFromPathname(pathname);
+  if (pageId === null) return true;
+  return canAccessPage(pageId, rolePages);
 }

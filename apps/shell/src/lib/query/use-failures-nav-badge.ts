@@ -5,6 +5,7 @@ import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import {
   countOpenFailures,
   countOpenFailuresForGovernmentReviewer,
+  countOpenFailuresForEngineeringOffice,
 } from "@failures/mfe";
 import { useFailuresQuery } from "@/lib/query/prototype-queries";
 
@@ -17,6 +18,9 @@ export function useFailuresNavBadge(): number {
     if (!rolePages.includes("failures")) return 0;
     if (role === "government-reviewer") {
       return countOpenFailuresForGovernmentReviewer(failures);
+    }
+    if (role === "engineering-office") {
+      return countOpenFailuresForEngineeringOffice(failures);
     }
     return countOpenFailures(failures);
   }, [role, rolePages, failures]);

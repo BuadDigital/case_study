@@ -18,4 +18,8 @@ public interface IPropertyTimelineService
         string tone,
         DateTime occurredAtUtc,
         CancellationToken cancellationToken = default);
+
+    Task RecordManyAsync(
+        IReadOnlyList<PropertyTimelineRecordRequest> events,
+        CancellationToken cancellationToken = default);
 }

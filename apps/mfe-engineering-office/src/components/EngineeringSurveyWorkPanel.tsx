@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button, InlineLoadingSkeleton, Input, Label, cn, formControlClassName, useToast } from "@platform/design-system";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import type { WorkflowTask } from "@case-study/mfe";
+import { activeSurveyWorkspacePath } from "@case-study/mfe/lib/my-task-routes";
 import {
   emptyCaseStudyFormDraft,
   InspectorFeesTab,
@@ -17,7 +19,6 @@ import {
   SectionDivider,
   SectionHeader,
 } from "@case-study/mfe/components/po-intake/PropertyDetailFields";
-import { PropertyTransactionTimeline } from "@case-study/mfe/components/po-intake/PropertyTransactionTimeline";
 import { FailureRaisePanel } from "@failures/mfe";
 import { failureRaiserRoleForParty } from "@failures/mfe/lib/failure-party-roles";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
@@ -62,13 +63,17 @@ export function EngineeringSurveyWorkPanel({
   hostRef,
   deedNumber,
   onFailureSubmitted,
+  variant = "workspace",
 }: {
   def: PartyTaskPageDef;
   childTask: WorkflowTask;
   hostRef: EngineeringSurveyWindowHostRefObject;
   deedNumber: string;
   onFailureSubmitted?: () => void;
+  variant?: "workspace" | "entry";
 }) {
+  const router = useRouter();
+  const readOnly = variant === "workspace";
   const propertyId = task.propertyId ?? "";
   const { showToast, runWithUploadToast } = useToast();
   const { data: record } = usePoRecordQuery(task.poNumber);
@@ -86,7 +91,9 @@ export function EngineeringSurveyWorkPanel({
   }, [failures, propertyId, task.poNumber]);
 
   const [draft, setDraft] = useState<EngineeringSurveySubmission | null>(null);
-  const [workTab, setWorkTab] = useState<WorkTab>("survey");
+  const [workTab, setWorkTab] = useState<WorkTab>(
+    variant === "entry" ? "survey" : "property",
+  );
   const [fieldErrors, setFieldErrors] = useState<EngineeringSurveyFieldErrors>(
     {},
   );
@@ -108,11 +115,11 @@ export function EngineeringSurveyWorkPanel({
   }, [task.id, task.poNumber, propertyId]);
 
   const locked = draft ? isEngineeringSurveyFormLocked(draft.status) : false;
-  const formDisabled = locked;
+  const formDisabled = locked || readOnly;
 
   const syncCaseStudyFromChecklist = useCallback(
     async (checklist: EngineeringSurveySubmission["checklist"]) => {
-      if (locked || !task.id) return;
+      if (locked || readOnly || !task.id) return;
 
       const partyDraft =
         (await loadPartyCaseStudyFormDraft(task.id)) ??
@@ -182,9 +189,9 @@ export function EngineeringSurveyWorkPanel({
   }, [draft, locked, hostRef, task.id, showToast]);
 
   useEffect(() => {
-    if (!hostRef.current) return;
+    if (variant !== "entry" || !hostRef.current) return;
     hostRef.current.submit = submit;
-  }, [hostRef, submit]);
+  }, [hostRef, submit, variant]);
 
   const handleCoordsChange = useCallback(
     (lat: string, lng: string) => {
@@ -256,10 +263,12 @@ export function EngineeringSurveyWorkPanel({
       ) : null}
 
       <SectionHeader>موقع العقار الميداني</SectionHeader>
-      <InfoBox icon="ℹ">
-        يُستخدم الموقع للتحقق من زيارة المكتب الهندسي. يجب أن تتطابق الإحداثيات
-        مع موقع العقار الفعلي.
-      </InfoBox>
+      {!readOnly ? (
+        <InfoBox icon="ℹ">
+          يُستخدم الموقع للتحقق من زيارة المكتب الهندسي. يجب أن تتطابق الإحداثيات
+          مع موقع العقار الفعلي.
+        </InfoBox>
+      ) : null}
       <div className="mb-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         <div>
           <Label htmlFor="eng-lat" className="text-xs">
@@ -378,26 +387,28 @@ export function EngineeringSurveyWorkPanel({
 
       <SectionDivider />
       <SectionHeader>التقرير المساحي</SectionHeader>
-      <div className="rounded-[var(--radius-DEFAULT)] border-2 border-dashed border-border-md bg-surface-2 p-[18px] text-center">
-        <div className="mb-1 text-xs font-semibold text-text-2">رفع التقرير المساحي</div>
-        <div className="mb-2.5 text-[11px] text-text-3">PDF — الحجم الأقصى 20 ميجابايت</div>
-        <label className="mt-1 inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-[var(--radius-DEFAULT)] border border-primary bg-primary px-2 py-1 text-[11px] text-white transition-colors hover:border-primary-mid hover:bg-primary-mid">
-          اختيار ملف
-          <input
-            type="file"
-            accept=".pdf,application/pdf"
-            className="hidden"
-            disabled={formDisabled}
-            onChange={(e) =>
-              onFilePick("surveyReportFileName", e.target.files?.[0] ?? null)
-            }
-          />
-        </label>
-      </div>
+      {!readOnly ? (
+        <div className="rounded-[var(--radius-DEFAULT)] border-2 border-dashed border-border-md bg-surface-2 p-[18px] text-center">
+          <div className="mb-1 text-xs font-semibold text-text-2">رفع التقرير المساحي</div>
+          <div className="mb-2.5 text-[11px] text-text-3">PDF — الحجم الأقصى 20 ميجابايت</div>
+          <label className="mt-1 inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-[var(--radius-DEFAULT)] border border-primary bg-primary px-2 py-1 text-[11px] text-white transition-colors hover:border-primary-mid hover:bg-primary-mid">
+            اختيار ملف
+            <input
+              type="file"
+              accept=".pdf,application/pdf"
+              className="hidden"
+              disabled={formDisabled}
+              onChange={(e) =>
+                onFilePick("surveyReportFileName", e.target.files?.[0] ?? null)
+              }
+            />
+          </label>
+        </div>
+      ) : null}
       {draft.surveyReportFileName ? (
         <div className="mt-2 flex items-center justify-between gap-2 rounded-[var(--radius-DEFAULT)] border border-[#a9dfbf] bg-[#d5f5ef] px-3 py-2 text-xs">
           <span>{draft.surveyReportFileName}</span>
-          {!formDisabled ? (
+          {!formDisabled && !readOnly ? (
             <Button
               type="button"
               size="sm"
@@ -415,26 +426,28 @@ export function EngineeringSurveyWorkPanel({
 
       <SectionDivider />
       <SectionHeader>خطاب إقرار صحة الموقع</SectionHeader>
-      <div className="rounded-[var(--radius-DEFAULT)] border-2 border-dashed border-border-md bg-surface-2 p-[18px] text-center">
-        <div className="mb-1 text-xs font-semibold text-text-2">رفع خطاب الإقرار</div>
-        <div className="mb-2.5 text-[11px] text-text-3">PDF — الحجم الأقصى 10 ميجابايت</div>
-        <label className="mt-1 inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-[var(--radius-DEFAULT)] border border-primary bg-primary px-2 py-1 text-[11px] text-white transition-colors hover:border-primary-mid hover:bg-primary-mid">
-          اختيار ملف
-          <input
-            type="file"
-            accept=".pdf,application/pdf"
-            className="hidden"
-            disabled={formDisabled}
-            onChange={(e) =>
-              onFilePick("siteLetterFileName", e.target.files?.[0] ?? null)
-            }
-          />
-        </label>
-      </div>
+      {!readOnly ? (
+        <div className="rounded-[var(--radius-DEFAULT)] border-2 border-dashed border-border-md bg-surface-2 p-[18px] text-center">
+          <div className="mb-1 text-xs font-semibold text-text-2">رفع خطاب الإقرار</div>
+          <div className="mb-2.5 text-[11px] text-text-3">PDF — الحجم الأقصى 10 ميجابايت</div>
+          <label className="mt-1 inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-[var(--radius-DEFAULT)] border border-primary bg-primary px-2 py-1 text-[11px] text-white transition-colors hover:border-primary-mid hover:bg-primary-mid">
+            اختيار ملف
+            <input
+              type="file"
+              accept=".pdf,application/pdf"
+              className="hidden"
+              disabled={formDisabled}
+              onChange={(e) =>
+                onFilePick("siteLetterFileName", e.target.files?.[0] ?? null)
+              }
+            />
+          </label>
+        </div>
+      ) : null}
       {draft.siteLetterFileName ? (
         <div className="mt-2 flex items-center justify-between gap-2 rounded-[var(--radius-DEFAULT)] border border-[#a9dfbf] bg-[#d5f5ef] px-3 py-2 text-xs">
           <span>{draft.siteLetterFileName}</span>
-          {!formDisabled ? (
+          {!formDisabled && !readOnly ? (
             <Button
               type="button"
               size="sm"
@@ -446,25 +459,33 @@ export function EngineeringSurveyWorkPanel({
           ) : null}
         </div>
       ) : null}
-      <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-[var(--radius-DEFAULT)] border border-[#fad7a0] bg-[#fef3d7] px-3 py-2.5 text-[11px] leading-relaxed">
-        <input
-          type="checkbox"
-          checked={draft.siteConfirmed}
-          disabled={formDisabled}
-          onChange={(e) => {
-            persist({ siteConfirmed: e.target.checked });
-            setFieldErrors((prev) => {
-              const next = { ...prev };
-              delete next.site_confirmed;
-              return next;
-            });
-          }}
-        />
-        <span>
-          أُقرّ بأن المكتب الهندسي تحقق ميدانياً وأن بيانات التقرير المساحي
-          المرفوع <strong>صحيحة ودقيقة</strong>.
-        </span>
-      </label>
+      {readOnly ? (
+        <div className="mt-3 rounded-[var(--radius-DEFAULT)] border border-[#fad7a0] bg-[#fef3d7] px-3 py-2.5 text-[11px] leading-relaxed">
+          {draft.siteConfirmed
+            ? "تم الإقرار بأن المكتب الهندسي تحقق ميدانياً وأن بيانات التقرير المساحي صحيحة ودقيقة."
+            : "لم يتم الإقرار بعد بصحة الموقع."}
+        </div>
+      ) : (
+        <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-[var(--radius-DEFAULT)] border border-[#fad7a0] bg-[#fef3d7] px-3 py-2.5 text-[11px] leading-relaxed">
+          <input
+            type="checkbox"
+            checked={draft.siteConfirmed}
+            disabled={formDisabled}
+            onChange={(e) => {
+              persist({ siteConfirmed: e.target.checked });
+              setFieldErrors((prev) => {
+                const next = { ...prev };
+                delete next.site_confirmed;
+                return next;
+              });
+            }}
+          />
+          <span>
+            أُقرّ بأن المكتب الهندسي تحقق ميدانياً وأن بيانات التقرير المساحي
+            المرفوع <strong>صحيحة ودقيقة</strong>.
+          </span>
+        </label>
+      )}
       {fieldErrors.site_confirmed ? (
         <p className="mt-1 text-[11px] text-danger-text">{fieldErrors.site_confirmed}</p>
       ) : null}
@@ -492,16 +513,42 @@ export function EngineeringSurveyWorkPanel({
       ) : null}
 
       <SectionDivider />
-      <SectionHeader>أسئلة نموذج دراسة الحالة</SectionHeader>
-      <PartyCaseStudyFormTab def={def} childTask={task} />
+      {!readOnly ? (
+        <>
+          <SectionHeader>أسئلة نموذج دراسة الحالة</SectionHeader>
+          <PartyCaseStudyFormTab def={def} childTask={task} />
+        </>
+      ) : null}
     </>
   );
+
+  if (variant === "entry") {
+    return (
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="shrink-0 border-b border-border bg-surface px-4 py-3 sm:px-6">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => router.push(activeSurveyWorkspacePath(task.id))}
+          >
+            العودة لملخص المهمة
+          </Button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+          <SectionHeader>{def.workTitle}</SectionHeader>
+          {surveyBody}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <nav
         className="flex shrink-0 gap-0 overflow-x-auto border-b border-border bg-surface px-4 sm:px-6 [&::-webkit-scrollbar]:h-0"
         aria-label="أقسام المهمة"
+        role="tablist"
       >
         <button
           type="button"
@@ -531,7 +578,7 @@ export function EngineeringSurveyWorkPanel({
           )}
           onClick={() => setWorkTab("fees")}
         >
-          الأتعاب
+          مالية المعاملة
         </button>
         <button
           type="button"
@@ -550,8 +597,7 @@ export function EngineeringSurveyWorkPanel({
         </button>
       </nav>
 
-      <div className="flex min-h-0 flex-1 flex-col items-stretch overflow-hidden lg:flex-row">
-        <div className="order-1 min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
           {workTab === "property" ? (
             <EngineeringSurveyPropertySummary
               property={property}
@@ -575,11 +621,6 @@ export function EngineeringSurveyWorkPanel({
               />
             </div>
           ) : null}
-        </div>
-
-        {record && property ? (
-          <PropertyTransactionTimeline record={record} property={property} />
-        ) : null}
       </div>
     </div>
   );

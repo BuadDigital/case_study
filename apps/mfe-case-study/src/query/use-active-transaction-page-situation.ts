@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { getAuthSession } from "@platform/auth-client";
-import { prefetchPartySubmissionsForTasks } from "@platform/app-shared/prototype/party-submission-api";
+import { prefetchPartySubmissionsForTasks, partySubmissionTaskIdsKey } from "@platform/app-shared/prototype/party-submission-api";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import type { PageId, RoleId } from "@platform/types";
 import {
@@ -87,8 +87,32 @@ export function useActiveTransactionPageSituation(
   const { data: inspectionWorkspaces = [], isFetched: workspacesFetched } =
     useFieldInspectionWorkspacesQuery(needsInspectionWorkspaces);
 
-  const [, bump] = useState(0);
   const [partySubmissionGen, setPartySubmissionGen] = useState(0);
+
+  const viewerTaskIdsKey = useMemo(() => {
+    if (!needsPartyPrefetch || !tasksFetched || !pageId) return "";
+    const partyDef = partyTaskPageDef(pageId);
+    const mine = resolveQueueTasksForViewer({
+      role,
+      tasks: tasks ?? [],
+      pageId,
+      partyAssignee: Boolean(partyDef),
+      assigneeRole: partyDef?.roleId,
+      viewerEmail: viewerEmail ?? getAuthSession()?.user.email,
+      viewerAssigneeId: distributionAssigneeId,
+      staffUsers,
+    });
+    return partySubmissionTaskIdsKey(mine.map((t) => t.id));
+  }, [
+    needsPartyPrefetch,
+    tasksFetched,
+    pageId,
+    role,
+    tasks,
+    viewerEmail,
+    distributionAssigneeId,
+    staffUsers,
+  ]);
 
   useEffect(() => {
     if (!needsPartyPrefetch || !pageId) return;
@@ -108,31 +132,12 @@ export function useActiveTransactionPageSituation(
   }, [needsPartyPrefetch, pageId]);
 
   useEffect(() => {
-    if (!needsPartyPrefetch || !tasksFetched || !pageId) return;
-    const partyDef = partyTaskPageDef(pageId);
-    const mine = resolveQueueTasksForViewer({
-      role,
-      tasks: tasks ?? [],
-      pageId,
-      partyAssignee: Boolean(partyDef),
-      assigneeRole: partyDef?.roleId,
-      viewerEmail: viewerEmail ?? getAuthSession()?.user.email,
-      viewerAssigneeId: distributionAssigneeId,
-      staffUsers,
-    });
-    void prefetchPartySubmissionsForTasks(mine.map((t) => t.id)).then(() =>
-      bump((n) => n + 1),
+    if (!viewerTaskIdsKey) return;
+    const ids = viewerTaskIdsKey.split("\0");
+    void prefetchPartySubmissionsForTasks(ids).then(() =>
+      setPartySubmissionGen((n) => n + 1),
     );
-  }, [
-    needsPartyPrefetch,
-    tasksFetched,
-    tasks,
-    role,
-    pageId,
-    viewerEmail,
-    distributionAssigneeId,
-    staffUsers,
-  ]);
+  }, [viewerTaskIdsKey]);
 
   const ready =
     (isFeesPage ? feesFetched : true) &&

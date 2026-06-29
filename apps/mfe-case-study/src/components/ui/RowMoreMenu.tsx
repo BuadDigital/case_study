@@ -165,6 +165,7 @@ export function RowMoreMenu({
       id={menuId}
       className="w-max max-w-[min(20rem,calc(100vw-1rem))] rounded-lg border border-border bg-surface py-1 shadow-[0_8px_24px_rgba(15,23,42,0.14)]"
       role="menu"
+      data-no-action-toast
       style={menuStyle}
     >
       {items.map((item) => (

@@ -33,6 +33,7 @@ const PRIMARY_DATA_QUEUE: ActiveTransactionQueueConfig = {
   getBasePath: myTasksPath,
   getTaskPath: primaryDataTaskPath,
   queueSort: "newest-first",
+  statusColumnLabel: "المدة المتبقية",
   filterListed: (mine, poByNumber) => filterTasksForPrimaryData(mine, poByNumber),
 };
 

@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
-using RealEstateEval.Application.Authorization;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Web.Authorization;
 

@@ -7,6 +7,7 @@ import { poPropertiesPath } from "../../lib/po-routes";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import {
+  ENGINEERING_OFFICE_FAILURE_RAISER,
   FAILURE_RAISER_SPECIALIST,
   FAILURE_RAISER_SUPERVISOR,
   FailureReportForm,
@@ -26,9 +27,13 @@ export function PoPropertyFailureRoute({
   const { data: record } = usePoRecordQuery(poNumber);
   const property = record?.properties.find((p) => p.id === propertyId);
   const raisedByRole =
-    role === "section-supervisor"
-      ? FAILURE_RAISER_SUPERVISOR
-      : FAILURE_RAISER_SPECIALIST;
+    role === "engineering-office"
+      ? ENGINEERING_OFFICE_FAILURE_RAISER
+      : role === "section-supervisor"
+        ? FAILURE_RAISER_SUPERVISOR
+        : FAILURE_RAISER_SPECIALIST;
+  const afterPath =
+    role === "engineering-office" ? "/active-survey" : poPropertiesPath(poNumber);
 
   return (
     <FailureReportForm
@@ -39,9 +44,9 @@ export function PoPropertyFailureRoute({
       raisedByRole={raisedByRole}
       onDone={() => {
         void queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
-        router.push(poPropertiesPath(poNumber));
+        router.push(afterPath);
       }}
-      onCancel={() => router.push(poPropertiesPath(poNumber))}
+      onCancel={() => router.push(afterPath)}
     />
   );
 }

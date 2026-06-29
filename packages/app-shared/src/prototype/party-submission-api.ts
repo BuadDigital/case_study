@@ -83,29 +83,52 @@ export function payloadFromDto<T extends Record<string, unknown>>(
   return dto.payload as T;
 }
 
+/** Stable cache key for a set of workflow task ids (order-independent). */
+export function partySubmissionTaskIdsKey(taskIds: string[]): string {
+  return [...new Set(taskIds.map((id) => id.trim()).filter(Boolean))]
+    .sort()
+    .join("\0");
+}
+
+let prefetchInflight: Promise<void> | null = null;
+let prefetchInflightKey = "";
+
 export async function prefetchPartySubmissionsForTasks(
   taskIds: string[],
 ): Promise<void> {
   const config = workOrdersApiConfig();
   if (!config) return;
 
-  const ids = taskIds.map((id) => id.trim()).filter(Boolean);
-  if (ids.length === 0) return;
+  const key = partySubmissionTaskIdsKey(taskIds);
+  if (!key) return;
 
-  if (ids.length === 1) {
-    await fetchPartySubmission(ids[0]);
-    return;
+  if (prefetchInflight && prefetchInflightKey === key) {
+    return prefetchInflight;
   }
 
-  const result = await listPartyTaskSubmissions(config, ids);
-  if (result.ok) {
-    const returned = new Set(result.data.map((dto) => dto.taskId));
-    for (const dto of result.data) setCachedPartySubmission(dto, dto.taskId);
-    for (const id of ids) {
-      if (!returned.has(id)) setCachedPartySubmission(null, id);
+  const ids = key.split("\0");
+  prefetchInflightKey = key;
+  prefetchInflight = (async () => {
+    if (ids.length === 1) {
+      await fetchPartySubmission(ids[0]!);
+      return;
     }
-    return;
-  }
 
-  await Promise.all(ids.map((taskId) => fetchPartySubmission(taskId)));
+    const result = await listPartyTaskSubmissions(config, ids);
+    if (result.ok) {
+      const returned = new Set(result.data.map((dto) => dto.taskId));
+      for (const dto of result.data) setCachedPartySubmission(dto, dto.taskId);
+      for (const id of ids) {
+        if (!returned.has(id)) setCachedPartySubmission(null, id);
+      }
+      return;
+    }
+
+    await Promise.all(ids.map((taskId) => fetchPartySubmission(taskId)));
+  })().finally(() => {
+    prefetchInflight = null;
+    prefetchInflightKey = "";
+  });
+
+  return prefetchInflight;
 }

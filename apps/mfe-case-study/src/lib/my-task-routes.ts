@@ -39,9 +39,19 @@ export function activeSurveyWorkspacePath(taskId: string): string {
   return `/active-survey/${encodeURIComponent(taskId)}`;
 }
 
+/** Data-entry page for الرفع المساحي (editable form). */
+export function activeSurveyEntryPath(taskId: string): string {
+  return `/active-survey/${encodeURIComponent(taskId)}/entry`;
+}
+
 export function isActiveSurveyWorkspacePath(pathname: string): boolean {
   const parts = pathname.split("/").filter(Boolean);
-  return parts[0] === "active-survey" && parts.length >= 2;
+  return parts[0] === "active-survey" && parts.length >= 2 && parts[2] !== "entry";
+}
+
+export function isActiveSurveyEntryPath(pathname: string): boolean {
+  const parts = pathname.split("/").filter(Boolean);
+  return parts[0] === "active-survey" && parts.length >= 3 && parts[2] === "entry";
 }
 
 /** Full-page workspace for المقيم العقاري (تقييم العقار). */

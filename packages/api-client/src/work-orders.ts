@@ -1,5 +1,6 @@
 import { parseFieldErrorsFromResponse } from "./field-errors";
 import { getApiBase } from "./index";
+import { fetchAllListPages } from "./pagination";
 
 export type WorkOrdersApiConfig = {
   baseUrl?: string;
@@ -81,6 +82,7 @@ export type WorkOrderListItemDto = {
   receivedFromEnfathAt: string;
   dueDateAt: string;
   assignmentSpecialist?: string;
+  createdAtUtc?: string;
 };
 
 export type CreateWorkOrderRequest = {
@@ -187,18 +189,10 @@ async function parseFieldErrors(res: Response): Promise<Record<string, string>> 
 export async function listWorkOrders(
   config: WorkOrdersApiConfig,
 ): Promise<ApiOk<WorkOrderListItemDto[]> | ApiErr> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/work-orders`, {
-      headers: headers(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    const data = (await res.json()) as WorkOrderListItemDto[];
-    return { ok: true, data: Array.isArray(data) ? data : [] };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
+  return fetchAllListPages<WorkOrderListItemDto>(
+    { ...config, baseUrl: config.baseUrl ?? getApiBase() },
+    "/api/work-orders",
+  );
 }
 
 /** Full work orders with properties — one round-trip (replaces N+1 getWorkOrder calls). */

@@ -1,4 +1,9 @@
 import { notifyTasksChanged } from "./tasks-storage";
+import { dispatchPartySubmissionChanged } from "@platform/app-shared/prototype/party-submission-changed-event";
+import {
+  dispatchWorkflowSubmitted,
+  VALUATION_COORDINATION_SUBMITTED_EVENT,
+} from "@platform/app-shared/prototype/party-workflow-events";
 import {
   fetchPartySubmission,
   getCachedPartySubmission,
@@ -17,11 +22,9 @@ export const VALUATION_COORDINATION_SUBMISSION_CHANGED_EVENT =
   "valuation-coordination-submission-changed";
 
 function notifyChanged(): void {
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(
-      new Event(VALUATION_COORDINATION_SUBMISSION_CHANGED_EVENT),
-    );
-  }
+  dispatchPartySubmissionChanged(
+    VALUATION_COORDINATION_SUBMISSION_CHANGED_EVENT,
+  );
 }
 
 function dtoToSubmission(
@@ -126,6 +129,7 @@ export async function submitValuationCoordinationSubmission(
   const dto = await submitPartySubmission(taskId);
   if (!dto) return loadValuationCoordinationSubmission(taskId);
   notifyChanged();
+  dispatchWorkflowSubmitted(VALUATION_COORDINATION_SUBMITTED_EVENT);
   notifyTasksChanged();
   return dtoToSubmission(dto);
 }

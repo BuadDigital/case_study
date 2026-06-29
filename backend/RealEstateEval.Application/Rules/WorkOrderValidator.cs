@@ -6,6 +6,9 @@ namespace RealEstateEval.Application.Rules;
 
 public static class WorkOrderValidator
 {
+    private const int DeedNumberDigitLength = 12;
+    private const int RealEstateRegistrationDigitLength = 16;
+
     public static bool RequiresAssignmentDecree(AssignmentType type) =>
         type == AssignmentType.Execution;
 
@@ -50,8 +53,8 @@ public static class WorkOrderValidator
 
         if (idType == PropertyIdentifierType.BourseInquiry)
         {
-            if (string.IsNullOrWhiteSpace(dto.DeedNumber))
-                errors["deedNumber"] = "رقم الصك مطلوب";
+            ValidateIdentifierNumber(dto, idType, errors);
+
             if (string.IsNullOrWhiteSpace(dto.TaskNumber))
                 errors["taskNumber"] = "رقم المهمة مطلوب";
             if (string.IsNullOrWhiteSpace(dto.DeedDate))
@@ -71,12 +74,7 @@ public static class WorkOrderValidator
         }
         else
         {
-            if (string.IsNullOrWhiteSpace(dto.DeedNumber))
-            {
-                errors["deedNumber"] = idType == PropertyIdentifierType.RealEstateRegistration
-                    ? "رقم التسجيل العيني مطلوب"
-                    : "رقم الصك مطلوب";
-            }
+            ValidateIdentifierNumber(dto, idType, errors);
 
             if (string.IsNullOrWhiteSpace(dto.TaskNumber))
                 errors["taskNumber"] = "رقم المهمة مطلوب";
@@ -143,6 +141,34 @@ public static class WorkOrderValidator
 
         return errors;
     }
+
+    private static void ValidateIdentifierNumber(
+        WorkOrderPropertyDto dto,
+        PropertyIdentifierType idType,
+        Dictionary<string, string> errors)
+    {
+        var label = idType == PropertyIdentifierType.RealEstateRegistration
+            ? "رقم التسجيل العيني"
+            : "رقم الصك";
+        var requiredLength = idType == PropertyIdentifierType.RealEstateRegistration
+            ? RealEstateRegistrationDigitLength
+            : DeedNumberDigitLength;
+
+        if (string.IsNullOrWhiteSpace(dto.DeedNumber))
+        {
+            errors["deedNumber"] = $"{label} مطلوب";
+            return;
+        }
+
+        var digits = NormalizeIdentifierDigits(dto.DeedNumber);
+        if (digits.Length != requiredLength)
+        {
+            errors["deedNumber"] = $"{label} يجب أن يكون {requiredLength} رقماً";
+        }
+    }
+
+    private static string NormalizeIdentifierDigits(string value) =>
+        new string(value.Where(char.IsDigit).ToArray());
 
     private static void ValidateContacts(WorkOrderPropertyDto dto, Dictionary<string, string> errors)
     {

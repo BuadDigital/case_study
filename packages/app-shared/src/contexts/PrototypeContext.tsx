@@ -49,31 +49,39 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
     isError,
   } = usePermissionsQuery(hasSession);
 
+  const permissionsResolved = isSuccess || isError;
+
   useEffect(() => {
     if (permissions) setRuntimeCapabilities(permissions.capabilities);
   }, [permissions]);
 
-  const role = useMemo(
-    () =>
-      roleFromPermissions(
-        permissions?.prototypeRole,
-        permissions?.identityRoles,
-      ),
-    [permissions?.prototypeRole, permissions?.identityRoles],
-  );
+  const role = useMemo(() => {
+    if (!permissionsResolved) return "general-manager";
+    return roleFromPermissions(
+      permissions?.prototypeRole,
+      permissions?.identityRoles,
+    );
+  }, [
+    permissionsResolved,
+    permissions?.prototypeRole,
+    permissions?.identityRoles,
+  ]);
 
   const capabilities = permissions?.capabilities ?? [];
 
   const rolePages = useMemo(() => {
+    if (!permissionsResolved) return [];
+    const baseline = ROLES[role].pages;
     if (permissions?.pages?.length) {
-      return pagesFromPermissions(permissions.pages, {
+      const fromApi = pagesFromPermissions(permissions.pages, {
         prototypeRole: permissions.prototypeRole,
       });
+      return [...new Set<PageId>([...fromApi, ...baseline])];
     }
-    return ROLES[role].pages;
-  }, [permissions, role]);
+    return baseline;
+  }, [permissionsResolved, permissions, role]);
 
-  const authReady = hasSession && (isSuccess || isError);
+  const authReady = hasSession && permissionsResolved;
 
   const value = useMemo<Ctx>(
     () => ({

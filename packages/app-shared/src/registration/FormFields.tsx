@@ -58,6 +58,7 @@ export function RegField({
   dir,
   error,
   hint,
+  maxLength,
 }: {
   id: string;
   label: string;
@@ -71,6 +72,7 @@ export function RegField({
   dir?: "ltr" | "rtl";
   error?: string;
   hint?: string;
+  maxLength?: number;
 }) {
   const describedBy = [hint ? `${id}-hint` : null, error ? `${id}-error` : null]
     .filter(Boolean)
@@ -94,6 +96,7 @@ export function RegField({
         dir={dir}
         onChange={(e) => onChange(e.target.value)}
         autoComplete="off"
+        maxLength={maxLength}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy || undefined}
         className="text-xs"

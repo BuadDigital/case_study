@@ -76,6 +76,62 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
         await _db.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task RecordManyAsync(
+        IReadOnlyList<PropertyTimelineRecordRequest> events,
+        CancellationToken cancellationToken = default)
+    {
+        if (events.Count == 0) return;
+
+        var normalized = events
+            .Select(e => new
+            {
+                Po = e.PoNumber.Trim(),
+                e.PropertyId,
+                Key = e.EventKey.Trim(),
+                e.Title,
+                e.Detail,
+                e.Tone,
+                e.OccurredAtUtc,
+            })
+            .Where(e => !string.IsNullOrEmpty(e.Po) && !string.IsNullOrEmpty(e.Key))
+            .ToList();
+        if (normalized.Count == 0) return;
+
+        var poNumbers = normalized.Select(e => e.Po).Distinct().ToList();
+        var propertyIds = normalized.Select(e => e.PropertyId).Distinct().ToList();
+        var existingKeys = await _db.PropertyTimelineEntries
+            .AsNoTracking()
+            .Where(e => poNumbers.Contains(e.PoNumber) && propertyIds.Contains(e.PropertyId))
+            .Select(e => new { e.PoNumber, e.PropertyId, e.EventKey })
+            .ToListAsync(cancellationToken);
+        var existing = existingKeys
+            .Select(e => (e.PoNumber, e.PropertyId, e.EventKey))
+            .ToHashSet();
+
+        var now = DateTime.UtcNow;
+        foreach (var entry in normalized)
+        {
+            if (existing.Contains((entry.Po, entry.PropertyId, entry.Key)))
+                continue;
+
+            _db.PropertyTimelineEntries.Add(new PropertyTimelineEntry
+            {
+                Id = Guid.NewGuid(),
+                PoNumber = entry.Po,
+                PropertyId = entry.PropertyId,
+                EventKey = entry.Key,
+                Title = entry.Title.Trim(),
+                Detail = string.IsNullOrWhiteSpace(entry.Detail) ? null : entry.Detail.Trim(),
+                Tone = NormalizeTone(entry.Tone),
+                OccurredAtUtc = entry.OccurredAtUtc,
+                RecordedAtUtc = now,
+            });
+            existing.Add((entry.Po, entry.PropertyId, entry.Key));
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
     private async Task<List<PropertyTimelineEntry>> BootstrapAsync(
         string poNumber,
         Guid propertyId,

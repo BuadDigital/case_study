@@ -22,7 +22,8 @@ export type PrimaryDataTableRow = {
   deedLabel: string;
   assignmentType: string;
   propertySlot: string;
-  assignmentSpecialist: string;
+  city: string;
+  district: string;
   remainingTime: RemainingTimeState;
 };
 
@@ -169,7 +170,8 @@ export function buildPrimaryDataTableRow(
     assignmentType:
       record?.assignmentType?.trim() || task.assignmentType?.trim() || "—",
     propertySlot: formatPrimaryDataPropertyLabel(task, property, record),
-    assignmentSpecialist: record?.assignmentSpecialist?.trim() || "—",
+    city: fieldOrDash(property?.city),
+    district: fieldOrDash(property?.district),
     remainingTime: resolveRemainingTime(record?.dueDateAt ?? "", now),
   };
 }
@@ -281,37 +283,60 @@ export function buildTaskTableRow(
   };
 }
 
+/** PO receipt date — for FIFO (oldest receipt first). */
+function poReceiptDateForSort(
+  task: WorkflowTask,
+  poByNumber: Map<string, PoIntakeRecord>,
+): string {
+  const record = poByNumber.get(task.poNumber.trim());
+  return (
+    record?.receivedFromEnfathAt?.trim() ||
+    record?.createdAtUtc?.trim() ||
+    task.createdAt ||
+    ""
+  );
+}
+
+/** When the PO was created in the system — for newest-first queues. */
+function poCreatedAtForSort(
+  task: WorkflowTask,
+  poByNumber: Map<string, PoIntakeRecord>,
+): string {
+  const record = poByNumber.get(task.poNumber.trim());
+  return (
+    record?.createdAtUtc?.trim() ||
+    record?.receivedFromEnfathAt?.trim() ||
+    task.createdAt ||
+    ""
+  );
+}
+
 /** Oldest PO receipt first, then property slot within the same PO. */
 export function compareQueueTasksOldestFirst(
   a: WorkflowTask,
   b: WorkflowTask,
   poByNumber: Map<string, PoIntakeRecord>,
 ): number {
-  const recordA = poByNumber.get(a.poNumber.trim());
-  const recordB = poByNumber.get(b.poNumber.trim());
-  const dateA =
-    recordA?.receivedFromEnfathAt?.trim() ||
-    recordA?.createdAtUtc ||
-    a.createdAt ||
-    "";
-  const dateB =
-    recordB?.receivedFromEnfathAt?.trim() ||
-    recordB?.createdAtUtc ||
-    b.createdAt ||
-    "";
+  const dateA = poReceiptDateForSort(a, poByNumber);
+  const dateB = poReceiptDateForSort(b, poByNumber);
   if (dateA !== dateB) return dateA.localeCompare(dateB);
   const poCmp = a.poNumber.trim().localeCompare(b.poNumber.trim(), "ar");
   if (poCmp !== 0) return poCmp;
   return a.propertyOrdinal - b.propertyOrdinal;
 }
 
-/** Newest PO receipt first (inverse of oldest-first). */
+/** Newest PO creation first, then property slot within the same PO. */
 export function compareQueueTasksNewestFirst(
   a: WorkflowTask,
   b: WorkflowTask,
   poByNumber: Map<string, PoIntakeRecord>,
 ): number {
-  return -compareQueueTasksOldestFirst(a, b, poByNumber);
+  const dateA = poCreatedAtForSort(a, poByNumber);
+  const dateB = poCreatedAtForSort(b, poByNumber);
+  if (dateA !== dateB) return dateB.localeCompare(dateA);
+  const poCmp = a.poNumber.trim().localeCompare(b.poNumber.trim(), "ar");
+  if (poCmp !== 0) return poCmp;
+  return a.propertyOrdinal - b.propertyOrdinal;
 }
 
 /** Next task in queue order after `currentTaskId` (listed must already be sorted). */

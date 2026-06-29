@@ -21,6 +21,7 @@ export type PartyEngineeringSurveyExtensions = {
     hostRef: RefObject<PartyEngineeringSurveyWorkHostRef | null>;
     deedNumber: string;
     onFailureSubmitted?: () => void;
+    variant?: "workspace" | "entry";
   }) => ReactNode;
   isSurveyLocked: (taskId: string, saving: boolean) => boolean;
 };

@@ -153,6 +153,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     pages: [
       "active-survey",
       "party-fees",
+      "failures",
       "system-fields-catalog",
       "system-screen-catalog",
     ],
@@ -311,6 +312,8 @@ export type PoRow = {
   date: string;
   dueDate: string;
   specialist: string;
+  /** ISO-8601 — used to show newest POs first in the list. */
+  createdAtUtc?: string;
 };
 
 export type VrRow = {

@@ -20,6 +20,7 @@ const EXACT_MESSAGES: Record<string, string> = {
   "حفظ الإسناد": "جاري حفظ الإسناد…",
   "تأكيد الحفظ": "جاري إنشاء الحساب…",
   "رفع النموذج للنظام": "جاري رفع نموذج الدراسة…",
+  "رفع التقرير": "جاري رفع التقرير…",
   "دخول": "جاري تسجيل الدخول…",
   "إرفاق صورة": "جاري إرفاق الصورة…",
   "حفظ تعذر داخلي": "جاري تسجيل التعذر…",
@@ -30,7 +31,6 @@ const KEYWORD_MESSAGES: { keyword: string; message: string }[] = [
   { keyword: "إرسال", message: "جاري الإرسال…" },
   { keyword: "حذف", message: "جاري الحذف…" },
   { keyword: "تأكيد", message: "جاري التأكيد…" },
-  { keyword: "رفع", message: "جاري الرفع…" },
   { keyword: "تحميل", message: "جاري التحميل…" },
   { keyword: "إضافة", message: "جاري الإضافة…" },
   { keyword: "إرفاق", message: "جاري الإرفاق…" },
@@ -62,6 +62,7 @@ const SUCCESS_EXACT_MESSAGES: Record<string, string> = {
   "حفظ الإسناد": "تم حفظ الإسناد !",
   "تأكيد الحفظ": "تم إنشاء الحساب !",
   "رفع النموذج للنظام": "تم رفع نموذج الدراسة !",
+  "رفع التقرير": "تم رفع التقرير !",
   "دخول": "تم تسجيل الدخول !",
   "إرفاق صورة": "تم إرفاق الصورة !",
   "حفظ تعذر داخلي": "تم تسجيل التعذر !",
@@ -70,7 +71,6 @@ const SUCCESS_EXACT_MESSAGES: Record<string, string> = {
 };
 
 const SUCCESS_KEYWORD_MESSAGES: { keyword: string; message: string }[] = [
-  { keyword: "رفع", message: UPLOAD_SUCCESS_MESSAGE },
   { keyword: "إرفاق", message: "تم الإرفاق !" },
   { keyword: "إرسال", message: "تم الإرسال !" },
   { keyword: "حذف", message: "تم الحذف !" },
@@ -100,6 +100,11 @@ const SKIP_ACTION_LABELS = new Set([
   "تحرير",
   "⋮",
   "تسجيل تعذر",
+  "ابدأ الرفع المساحي",
+  "فتح المعاملة",
+  "تفاصيل العقار",
+  "دراسة العقار",
+  "إسناد مهمة",
 ]);
 
 /** Maps a button label to a short Arabic progress toast. */
@@ -191,9 +196,8 @@ export function shouldShowGlobalActionToast(
   if (element.closest("[data-no-action-toast]")) return false;
   if (element.hasAttribute("data-no-action-toast")) return false;
   if (element.closest('[role="tablist"]')) return false;
-  if (element.closest("nav[aria-label]") && !isActionLikeLabel(label)) {
-    return false;
-  }
+  if (element.closest('nav[aria-label]')) return false;
+  if (element.closest('[role="menu"], [role="menuitem"]')) return false;
 
   const normalized = label.replace(/\s+/g, " ").trim();
   if (!normalized || SKIP_ACTION_LABELS.has(normalized)) return false;

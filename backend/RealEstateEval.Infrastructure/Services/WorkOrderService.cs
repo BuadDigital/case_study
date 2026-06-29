@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
@@ -12,23 +13,77 @@ public class WorkOrderService : IWorkOrderService
 {
     private readonly ApplicationDbContext _db;
     private readonly IPropertyTimelineService _timeline;
+    private readonly DatabaseOptions _dbOptions;
 
     public WorkOrderService(
         ApplicationDbContext db,
-        IPropertyTimelineService timeline)
+        IPropertyTimelineService timeline,
+        IOptions<DatabaseOptions>? dbOptions = null)
     {
         _db = db;
         _timeline = timeline;
+        _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
     }
 
     public async Task<IReadOnlyList<WorkOrderListItemDto>> ListAsync(CancellationToken cancellationToken)
     {
-        var list = await _db.WorkOrders
-            .AsNoTracking()
-            .Include(w => w.Properties)
-            .OrderByDescending(w => w.CreatedAtUtc)
+        var (_, take, _, _) = NpgsqlConfiguration.ResolveListPaging(null, null, _dbOptions);
+        return await QueryListItems()
+            .Take(take)
             .ToListAsync(cancellationToken);
-        return list.Select(WorkOrderMapper.ToListItem).ToList();
+    }
+
+    public async Task<PagedResultDto<WorkOrderListItemDto>> ListPagedAsync(
+        int? page,
+        int? pageSize,
+        CancellationToken cancellationToken)
+    {
+        var (skip, take, resolvedPage, _) = NpgsqlConfiguration.ResolveListPaging(
+            page,
+            pageSize,
+            _dbOptions);
+        var query = QueryListItems();
+        var total = await query.CountAsync(cancellationToken);
+        var items = await query
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        return new PagedResultDto<WorkOrderListItemDto>
+        {
+            Items = items,
+            TotalCount = total,
+            Page = resolvedPage,
+            PageSize = take,
+        };
+    }
+
+    private IQueryable<WorkOrderListItemDto> QueryListItems()
+    {
+        return _db.WorkOrders
+            .AsNoTracking()
+            .OrderByDescending(w => w.CreatedAtUtc)
+            .Select(w => new WorkOrderListItemDto
+            {
+                PoNumber = w.PoNumber,
+                AssignmentType = AssignmentTypeLabels.ToLabel(w.AssignmentType),
+                PropertyCount = w.Properties.Count,
+                ExpectedPropertyCount = w.ExpectedPropertyCount,
+                CompletedCount = w.Properties.Count(p => p.BourseDataCompleted),
+                Status = w.Properties.Count < Math.Max(1, w.ExpectedPropertyCount)
+                    ? WorkOrderListStatus.Progress
+                    : w.Properties.Count(p =>
+                        p.BourseDataCompleted ||
+                        p.IdentifierType == PropertyIdentifierType.RealEstateRegistration) >=
+                      Math.Max(1, w.ExpectedPropertyCount)
+                        ? WorkOrderListStatus.Done
+                        : WorkOrderListStatus.Progress,
+                PromulgationDate = w.PromulgationDate.ToString("yyyy-MM-dd"),
+                ReceivedFromEnfathAt = w.ReceivedFromEnfathAt.ToString("yyyy-MM-dd"),
+                DueDateAt = w.DueDateAt.ToString("yyyy-MM-dd"),
+                AssignmentSpecialist = w.AssignmentSpecialist ?? "",
+                CreatedAtUtc = w.CreatedAtUtc.ToString("O"),
+            });
     }
 
     public async Task<IReadOnlyList<WorkOrderDto>> ListDetailsAsync(
@@ -187,27 +242,27 @@ public class WorkOrderService : IWorkOrderService
         var specialistDetail = string.IsNullOrWhiteSpace(workOrder.AssignmentSpecialist)
             ? null
             : $"أخصائي الإسناد: {workOrder.AssignmentSpecialist.Trim()}";
-        foreach (var prop in workOrder.Properties)
+        var dueAt = workOrder.DueDateAt.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var timelineEvents = workOrder.Properties.SelectMany(prop => new[]
         {
-            await _timeline.RecordAsync(
+            new PropertyTimelineRecordRequest(
                 po,
                 prop.Id,
                 "enfath",
                 "استلام من إنفاذ",
                 specialistDetail,
                 "done",
-                enfathAt,
-                cancellationToken);
-            await _timeline.RecordAsync(
+                enfathAt),
+            new PropertyTimelineRecordRequest(
                 po,
                 prop.Id,
                 "due",
                 "موعد الاستحقاق",
                 null,
                 "muted",
-                workOrder.DueDateAt.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
-                cancellationToken);
-        }
+                dueAt),
+        }).ToList();
+        await _timeline.RecordManyAsync(timelineEvents, cancellationToken);
 
         var loaded = await LoadWorkOrderTrackedAsync(po, cancellationToken, asNoTracking: true);
         return (loaded is null ? null : WorkOrderMapper.ToDto(loaded), null);

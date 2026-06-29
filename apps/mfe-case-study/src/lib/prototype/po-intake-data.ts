@@ -229,6 +229,61 @@ export function formatPendingBourseDeedDisplay(item: {
   });
 }
 
+export const DEED_NUMBER_DIGIT_LENGTH = 12;
+export const REAL_ESTATE_REG_NUMBER_DIGIT_LENGTH = 16;
+
+const ARABIC_DIGITS = "٠١٢٣٤٥٦٧٨٩";
+
+function toLatinDigits(value: string): string {
+  return value.replace(/[٠-٩]/g, (ch) => String(ARABIC_DIGITS.indexOf(ch)));
+}
+
+export function requiredPropertyIdentifierDigitLength(
+  identifierType: PropertyIdentifierType,
+): number {
+  return identifierType === "real_estate_reg"
+    ? REAL_ESTATE_REG_NUMBER_DIGIT_LENGTH
+    : DEED_NUMBER_DIGIT_LENGTH;
+}
+
+export function propertyIdentifierFieldLabel(
+  identifierType: PropertyIdentifierType,
+): string {
+  return identifierType === "real_estate_reg"
+    ? "رقم التسجيل العيني"
+    : "رقم الصك";
+}
+
+/** Digits only — used while typing (max length enforced). */
+export function sanitizePropertyIdentifierInput(
+  value: string,
+  identifierType: PropertyIdentifierType,
+): string {
+  const maxLen = requiredPropertyIdentifierDigitLength(identifierType);
+  return toLatinDigits(value).replace(/\D/g, "").slice(0, maxLen);
+}
+
+export function normalizePropertyIdentifierNumber(
+  value: string,
+  identifierType: PropertyIdentifierType,
+): string {
+  return sanitizePropertyIdentifierInput(value, identifierType);
+}
+
+export function validatePropertyIdentifierNumber(
+  identifierType: PropertyIdentifierType,
+  value: string,
+): string | undefined {
+  const label = propertyIdentifierFieldLabel(identifierType);
+  const requiredLen = requiredPropertyIdentifierDigitLength(identifierType);
+  const digits = normalizePropertyIdentifierNumber(value, identifierType);
+  if (!digits) return `${label} مطلوب`;
+  if (digits.length !== requiredLen) {
+    return `${label} يجب أن يكون ${requiredLen} رقماً`;
+  }
+  return undefined;
+}
+
 export function restrictionsPresentLabel(value: string): string {
   const v = value.trim();
   if (!v) return "";

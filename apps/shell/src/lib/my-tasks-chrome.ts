@@ -24,9 +24,10 @@ export function resolveMyTasksChrome(
     const party = partyTaskPageDef("active-survey");
     if (party) {
       decodeTaskParam(parts[1]);
+      const isEntry = parts[2] === "entry";
       return {
-        breadcrumb: `دراسة الحالة / المعاملات النشطة / ${party.breadcrumbTitle} / تنفيذ المهمة`,
-        title: party.workTitle,
+        breadcrumb: `دراسة الحالة / المعاملات النشطة / ${party.breadcrumbTitle} / ${isEntry ? "إدخال الرفع المساحي" : "تنفيذ المهمة"}`,
+        title: isEntry ? "ابدأ الرفع المساحي" : party.workTitle,
       };
     }
   }

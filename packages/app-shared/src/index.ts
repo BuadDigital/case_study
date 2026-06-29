@@ -18,6 +18,14 @@ export {
   type PushNotificationInput,
 } from "./notifications/notification-store";
 export { formatNotificationTime } from "./notifications/format-notification-time";
+export {
+  ENGINEERING_OFFICE_ROLE,
+  filterNotificationsForRole,
+  isAllowedEngineeringOfficeNotification,
+  isEngineeringOfficeRole,
+  shouldDeliverDomainNotification,
+  shouldShowNotificationToast,
+} from "./notifications/role-notification-policy";
 export { useSyncedNotifications } from "./notifications/useSyncedNotifications";
 export { appendAuditLogEntry, listAuditLogEntries } from "./audit/audit-log-store";
 export { exportRowsToCsv } from "./export/export-csv";
@@ -35,6 +43,8 @@ export * from "./prototype/property-fields-catalog";
 export * from "./prototype/field-dictionary";
 export * from "./prototype/prototype-modules-api-config";
 export * from "./prototype/task-attachments-api";
+export * from "./prototype/party-submission-changed-event";
+export * from "./prototype/party-workflow-events";
 export * from "./prototype/screen-catalog";
 export { prototypeKeys } from "./query/prototype-keys";
 export { permissionsKeys, usePermissionsQuery } from "./query/permissions-queries";

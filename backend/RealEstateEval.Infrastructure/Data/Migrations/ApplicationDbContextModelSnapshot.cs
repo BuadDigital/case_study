@@ -1247,6 +1247,8 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
 
                     b.HasIndex("PoNumber", "PropertyId");
 
+                    b.HasIndex("Status");
+
                     b.ToTable("PropertyFailures", "failures");
                 });
 
@@ -1595,6 +1597,8 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.HasIndex("PoNumber")
                         .IsUnique();
 
+                    b.HasIndex("CreatedAtUtc");
+
                     b.ToTable("WorkOrders", "case_study");
                 });
 
@@ -1733,6 +1737,8 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
 
                     b.HasIndex("WorkOrderId", "DeedNumber");
 
+                    b.HasIndex("DeedNumber");
+
                     b.ToTable("WorkOrderProperties", "case_study");
                 });
 
@@ -1820,6 +1826,12 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.HasIndex("PropertyId");
 
                     b.HasIndex("PoNumber", "PropertyOrdinal");
+
+                    b.HasIndex("PoNumber", "PropertyId");
+
+                    b.HasIndex("Kind", "Status");
+
+                    b.HasIndex("CreatedAtUtc");
 
                     b.ToTable("WorkflowTasks", "case_study");
                 });

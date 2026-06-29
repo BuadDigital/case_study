@@ -197,7 +197,7 @@ export async function loadWorkflowTasks(): Promise<WorkflowTask[]> {
   return result.data.map(dtoToTask);
 }
 
-/** React Query loader — surfaces API failures instead of an empty queue. */
+/** React Query loader — surfaces API failures; fetches workflow tasks in paginated chunks. */
 export async function loadWorkflowTasksForQuery(): Promise<WorkflowTask[]> {
   const config = workOrdersApiConfig();
   if (!config) {

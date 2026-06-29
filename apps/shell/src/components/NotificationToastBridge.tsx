@@ -2,11 +2,13 @@
 
 import { useEffect } from "react";
 import { useOptionalToast, type ToastTone } from "@platform/design-system";
+import { useAuth } from "@platform/app-shared/hooks/useAuth";
 import {
   NOTIFICATION_PUSHED_EVENT,
   NOTIFICATION_TOAST_EVENT,
   type AppNotification,
 } from "@platform/app-shared/notifications/notification-store";
+import { shouldShowNotificationToast } from "@platform/app-shared/notifications/role-notification-policy";
 
 function toastToneForNotification(
   tone: AppNotification["tone"],
@@ -24,6 +26,7 @@ function toastMessageForNotification(item: AppNotification): string {
 /** Shows a short toast when a notification is pushed to the inbox. */
 export function NotificationToastBridge() {
   const toast = useOptionalToast();
+  const { role } = useAuth();
 
   useEffect(() => {
     if (!toast) return;
@@ -32,6 +35,7 @@ export function NotificationToastBridge() {
     function onPushed(event: Event) {
       const item = (event as CustomEvent<AppNotification>).detail;
       if (!item) return;
+      if (!shouldShowNotificationToast(role, item)) return;
       showToast(
         toastMessageForNotification(item),
         toastToneForNotification(item.tone),
@@ -44,7 +48,7 @@ export function NotificationToastBridge() {
       window.removeEventListener(NOTIFICATION_PUSHED_EVENT, onPushed);
       window.removeEventListener(NOTIFICATION_TOAST_EVENT, onPushed);
     };
-  }, [toast]);
+  }, [toast, role]);
 
   return null;
 }

@@ -61,7 +61,7 @@ import {
   isPoViewOnly,
 } from "../lib/prototype/po-roles";
 
-type SortKey = "po" | "received" | "due";
+type SortKey = "created" | "po" | "received" | "due";
 type SortDir = "asc" | "desc";
 type StatusFilter = "" | "progress" | "done" | "under_study";
 
@@ -275,7 +275,7 @@ export function PoListView() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
   const [typeFilter, setTypeFilter] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("po");
+  const [sortKey, setSortKey] = useState<SortKey>("created");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [page, setPage] = useState(1);
   const pageSize = 10;
@@ -287,7 +287,7 @@ export function PoListView() {
     router.replace("/po", { scroll: false });
   }, [showIntake, searchParams, router]);
 
-  const { data: rows } = usePoListRowsQuery();
+  const { data: rows, isPending: rowsPending } = usePoListRowsQuery();
   const { data: propertyItems } = usePropertyListItemsQuery();
   const list = useMemo(() => rows ?? [], [rows]);
   const deedIndex = useMemo(
@@ -296,7 +296,7 @@ export function PoListView() {
   );
   const searchMode = useMemo(() => classifyPoListSearch(search), [search]);
   const searchModeLabel = poListSearchModeLabel(searchMode);
-  const statsReady = rows !== undefined;
+  const statsReady = rows !== undefined && !rowsPending;
 
   const stats = useMemo(() => {
     if (!statsReady) return undefined;
@@ -333,7 +333,20 @@ export function PoListView() {
       const rowA = a.view === "po" ? a.item.row : a.item.row;
       const rowB = b.view === "po" ? b.item.row : b.item.row;
       let cmp = 0;
-      if (sortKey === "po") {
+      if (sortKey === "created") {
+        const createdA = rowA.createdAtUtc || "";
+        const createdB = rowB.createdAtUtc || "";
+        if (createdA && createdB) {
+          cmp = createdA.localeCompare(createdB);
+        } else {
+          cmp =
+            list.findIndex((r) => r.id === rowA.id) -
+            list.findIndex((r) => r.id === rowB.id);
+        }
+        if (cmp === 0) {
+          cmp = rowA.id.localeCompare(rowB.id);
+        }
+      } else if (sortKey === "po") {
         cmp = rowA.id.localeCompare(rowB.id);
         if (cmp === 0 && a.view === "property" && b.view === "property") {
           cmp = a.item.deed.deedNumber.localeCompare(
@@ -373,7 +386,7 @@ export function PoListView() {
       return;
     }
     setSortKey(key);
-    setSortDir(key === "po" ? "desc" : "asc");
+    setSortDir(key === "po" || key === "created" ? "desc" : "asc");
   }
 
   async function handleDeletePo(poNumber: string) {

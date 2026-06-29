@@ -1,4 +1,6 @@
 import { notifyTasksChanged } from "@case-study/mfe/lib/prototype/tasks-storage";
+import { dispatchPartySubmissionChanged } from "@platform/app-shared/prototype/party-submission-changed-event";
+import { dispatchWorkflowSubmitted, ENGINEERING_SURVEY_SUBMITTED_EVENT } from "@platform/app-shared/prototype/party-workflow-events";
 import {
   fetchPartySubmission,
   getCachedPartySubmission,
@@ -24,9 +26,7 @@ export const ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT =
   "engineering-survey-submission-changed";
 
 function notifyChanged(): void {
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT));
-  }
+  dispatchPartySubmissionChanged(ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT);
 }
 
 function dtoToSubmission(
@@ -183,6 +183,7 @@ export async function submitEngineeringSurveySubmission(
   const dto = await submitPartySubmission(taskId);
   if (!dto) return loadEngineeringSurveySubmission(taskId);
   notifyChanged();
+  dispatchWorkflowSubmitted(ENGINEERING_SURVEY_SUBMITTED_EVENT);
   notifyTasksChanged();
   return dtoToSubmission(dto);
 }

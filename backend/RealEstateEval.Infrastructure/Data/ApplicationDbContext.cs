@@ -113,6 +113,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .WithOne(x => x.WorkOrder)
                 .HasForeignKey(x => x.WorkOrderId)
                 .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.CreatedAtUtc);
         });
 
         builder.Entity<WorkOrderProperty>(e =>
@@ -140,6 +141,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.Classification).HasMaxLength(128);
             e.Property(x => x.PropertyType).HasMaxLength(128);
             e.HasIndex(x => new { x.WorkOrderId, x.DeedNumber });
+            e.HasIndex(x => x.DeedNumber);
             e.HasMany(x => x.Contacts)
                 .WithOne(x => x.Property)
                 .HasForeignKey(x => x.PropertyId)
@@ -179,8 +181,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.AssignmentType).HasMaxLength(64);
             e.HasIndex(x => x.PoNumber);
             e.HasIndex(x => new { x.PoNumber, x.PropertyOrdinal });
+            e.HasIndex(x => new { x.PoNumber, x.PropertyId });
             e.HasIndex(x => x.PropertyId);
             e.HasIndex(x => x.ParentTaskId);
+            e.HasIndex(x => new { x.Kind, x.Status });
+            e.HasIndex(x => x.CreatedAtUtc);
         });
 
         builder.Entity<CaseStudyInfoRolesConfig>(e =>
@@ -296,6 +301,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.Specialist).HasMaxLength(256);
             e.HasIndex(x => x.PoNumber);
             e.HasIndex(x => new { x.PoNumber, x.PropertyId });
+            e.HasIndex(x => x.Status);
         });
 
         builder.Entity<CaseStudyForm>(e =>

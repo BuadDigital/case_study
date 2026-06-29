@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { PrototypeAppGate } from "@/components/PrototypeAppGate";
 import { AuthSessionWatcher } from "@/components/AuthSessionWatcher";
 import { DomainEventBridge } from "@/components/DomainEventBridge";
+import { EngineeringOfficeNotificationCleanup } from "@/components/EngineeringOfficeNotificationCleanup";
 import { NotificationToastBridge } from "@/components/NotificationToastBridge";
 import { ServerNotificationBridge } from "@/components/ServerNotificationBridge";
 import { OfflineBanner } from "@/components/OfflineBanner";
@@ -27,6 +28,7 @@ export default function AppSectionLayout({
             <PrototypeProvider>
               <AuthSessionWatcher />
               <DomainEventBridge />
+              <EngineeringOfficeNotificationCleanup />
               <NotificationToastBridge />
               <ServerNotificationBridge />
               <PageAccessGate>
