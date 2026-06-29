@@ -1,10 +1,6 @@
 {
-  "extends": ["../../tsconfig.base.json", "../tsconfig.mfe-paths.json"],
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
-      "@kpi/mfe": ["./src/index.ts"],
-      "@kpi/mfe/*": ["./src/*"],
       "@case-study/mfe": ["../mfe-case-study/src/index.ts"],
       "@case-study/mfe/*": ["../mfe-case-study/src/*"],
       "@engineering-office/mfe": ["../mfe-engineering-office/src/index.ts"],
@@ -15,6 +11,18 @@
       "@failures/mfe/*": ["../mfe-failures/src/*"],
       "@settings/mfe": ["../mfe-settings/src/index.ts"],
       "@settings/mfe/*": ["../mfe-settings/src/*"],
+      "@dashboard/mfe": ["../mfe-dashboard/src/index.ts"],
+      "@dashboard/mfe/*": ["../mfe-dashboard/src/*"],
+      "@survey/mfe": ["../mfe-survey/src/index.ts"],
+      "@survey/mfe/*": ["../mfe-survey/src/*"],
+      "@keys/mfe": ["../mfe-keys/src/index.ts"],
+      "@keys/mfe/*": ["../mfe-keys/src/*"],
+      "@financial/mfe": ["../mfe-financial/src/index.ts"],
+      "@financial/mfe/*": ["../mfe-financial/src/*"],
+      "@kpi/mfe": ["../mfe-kpi/src/index.ts"],
+      "@kpi/mfe/*": ["../mfe-kpi/src/*"],
+      "@valuation/mfe": ["../mfe-valuation/src/index.ts"],
+      "@valuation/mfe/*": ["../mfe-valuation/src/*"],
       "@platform/api-client": ["../../packages/api-client/src/index.ts"],
       "@platform/api-client/*": ["../../packages/api-client/src/*"],
       "@platform/app-shared": ["../../packages/app-shared/src/index.ts"],
@@ -26,7 +34,5 @@
       "@platform/types": ["../../packages/types/src/index.ts"],
       "@platform/types/*": ["../../packages/types/src/*"]
     }
-  },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["node_modules"]
+  }
 }

@@ -1,5 +1,5 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": ["../../tsconfig.base.json", "../tsconfig.mfe-paths.json"],
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
@@ -11,10 +11,16 @@
       "@engineering-office/mfe/*": ["../mfe-engineering-office/src/*"],
       "@evaluator/mfe": ["../mfe-evaluator/src/index.ts"],
       "@evaluator/mfe/*": ["../mfe-evaluator/src/*"],
+      "@settings/mfe": ["../mfe-settings/src/index.ts"],
+      "@settings/mfe/*": ["../mfe-settings/src/*"],
       "@platform/api-client": ["../../packages/api-client/src/index.ts"],
       "@platform/api-client/*": ["../../packages/api-client/src/*"],
       "@platform/app-shared": ["../../packages/app-shared/src/index.ts"],
       "@platform/app-shared/*": ["../../packages/app-shared/src/*"],
+      "@platform/auth-client": ["../../packages/auth-client/src/index.ts"],
+      "@platform/auth-client/*": ["../../packages/auth-client/src/*"],
+      "@platform/design-system": ["../../packages/design-system/src/index.ts"],
+      "@platform/design-system/*": ["../../packages/design-system/src/*"],
       "@platform/types": ["../../packages/types/src/index.ts"],
       "@platform/types/*": ["../../packages/types/src/*"]
     }

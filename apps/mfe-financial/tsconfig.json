@@ -1,10 +1,20 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": ["../../tsconfig.base.json", "../tsconfig.mfe-paths.json"],
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
       "@financial/mfe": ["./src/index.ts"],
       "@financial/mfe/*": ["./src/*"],
+      "@case-study/mfe": ["../mfe-case-study/src/index.ts"],
+      "@case-study/mfe/*": ["../mfe-case-study/src/*"],
+      "@engineering-office/mfe": ["../mfe-engineering-office/src/index.ts"],
+      "@engineering-office/mfe/*": ["../mfe-engineering-office/src/*"],
+      "@evaluator/mfe": ["../mfe-evaluator/src/index.ts"],
+      "@evaluator/mfe/*": ["../mfe-evaluator/src/*"],
+      "@failures/mfe": ["../mfe-failures/src/index.ts"],
+      "@failures/mfe/*": ["../mfe-failures/src/*"],
+      "@settings/mfe": ["../mfe-settings/src/index.ts"],
+      "@settings/mfe/*": ["../mfe-settings/src/*"],
       "@platform/api-client": ["../../packages/api-client/src/index.ts"],
       "@platform/api-client/*": ["../../packages/api-client/src/*"],
       "@platform/app-shared": ["../../packages/app-shared/src/index.ts"],

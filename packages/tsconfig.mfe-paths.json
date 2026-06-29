@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "paths": {
+      "@case-study/mfe": ["../apps/mfe-case-study/src/index.ts"],
+      "@case-study/mfe/*": ["../apps/mfe-case-study/src/*"],
+      "@engineering-office/mfe": ["../apps/mfe-engineering-office/src/index.ts"],
+      "@engineering-office/mfe/*": ["../apps/mfe-engineering-office/src/*"],
+      "@evaluator/mfe": ["../apps/mfe-evaluator/src/index.ts"],
+      "@evaluator/mfe/*": ["../apps/mfe-evaluator/src/*"],
+      "@failures/mfe": ["../apps/mfe-failures/src/index.ts"],
+      "@failures/mfe/*": ["../apps/mfe-failures/src/*"],
+      "@settings/mfe": ["../apps/mfe-settings/src/index.ts"],
+      "@settings/mfe/*": ["../apps/mfe-settings/src/*"],
+      "@dashboard/mfe": ["../apps/mfe-dashboard/src/index.ts"],
+      "@dashboard/mfe/*": ["../apps/mfe-dashboard/src/*"],
+      "@survey/mfe": ["../apps/mfe-survey/src/index.ts"],
+      "@survey/mfe/*": ["../apps/mfe-survey/src/*"],
+      "@keys/mfe": ["../apps/mfe-keys/src/index.ts"],
+      "@keys/mfe/*": ["../apps/mfe-keys/src/*"],
+      "@financial/mfe": ["../apps/mfe-financial/src/index.ts"],
+      "@financial/mfe/*": ["../apps/mfe-financial/src/*"],
+      "@kpi/mfe": ["../apps/mfe-kpi/src/index.ts"],
+      "@kpi/mfe/*": ["../apps/mfe-kpi/src/*"],
+      "@valuation/mfe": ["../apps/mfe-valuation/src/index.ts"],
+      "@valuation/mfe/*": ["../apps/mfe-valuation/src/*"],
+      "@platform/api-client": ["./api-client/src/index.ts"],
+      "@platform/api-client/*": ["./api-client/src/*"],
+      "@platform/app-shared": ["./app-shared/src/index.ts"],
+      "@platform/app-shared/*": ["./app-shared/src/*"],
+      "@platform/auth-client": ["./auth-client/src/index.ts"],
+      "@platform/auth-client/*": ["./auth-client/src/*"],
+      "@platform/design-system": ["./design-system/src/index.ts"],
+      "@platform/design-system/*": ["./design-system/src/*"],
+      "@platform/types": ["./types/src/index.ts"],
+      "@platform/types/*": ["./types/src/*"]
+    }
+  }
+}

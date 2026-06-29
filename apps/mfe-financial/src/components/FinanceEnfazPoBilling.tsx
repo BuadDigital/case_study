@@ -194,7 +194,7 @@ export function FinanceEnfazPoBilling() {
         <div className="rounded-[var(--radius-lg)] border border-border bg-surface">
           <div className="border-b border-border px-3 py-2.5 text-[12px] font-semibold text-text">
             أوامر العمل الجاهزة
-            <Badge tone="warn" className="ms-2 text-[10px]">
+            <Badge tone="warning" className="ms-2 text-[10px]">
               {readySummaries.length}
             </Badge>
           </div>
