@@ -1,5 +1,5 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": ["../../tsconfig.base.json", "../tsconfig.mfe-paths.json"],
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
@@ -7,14 +7,22 @@
       "@platform/app-shared/*": ["./src/*"],
       "@platform/types": ["../types/src/index.ts"],
       "@platform/types/*": ["../types/src/*"],
-      "@failures/mfe": ["../../apps/mfe-failures/src/index.ts"],
-      "@failures/mfe/*": ["../../apps/mfe-failures/src/*"],
       "@platform/api-client": ["../api-client/src/index.ts"],
       "@platform/api-client/*": ["../api-client/src/*"],
       "@platform/auth-client": ["../auth-client/src/index.ts"],
       "@platform/auth-client/*": ["../auth-client/src/*"],
+      "@platform/design-system": ["../design-system/src/index.ts"],
+      "@platform/design-system/*": ["../design-system/src/*"],
       "@case-study/mfe": ["../../apps/mfe-case-study/src/index.ts"],
-      "@case-study/mfe/*": ["../../apps/mfe-case-study/src/*"]
+      "@case-study/mfe/*": ["../../apps/mfe-case-study/src/*"],
+      "@engineering-office/mfe": ["../../apps/mfe-engineering-office/src/index.ts"],
+      "@engineering-office/mfe/*": ["../../apps/mfe-engineering-office/src/*"],
+      "@evaluator/mfe": ["../../apps/mfe-evaluator/src/index.ts"],
+      "@evaluator/mfe/*": ["../../apps/mfe-evaluator/src/*"],
+      "@failures/mfe": ["../../apps/mfe-failures/src/index.ts"],
+      "@failures/mfe/*": ["../../apps/mfe-failures/src/*"],
+      "@settings/mfe": ["../../apps/mfe-settings/src/index.ts"],
+      "@settings/mfe/*": ["../../apps/mfe-settings/src/*"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
