@@ -124,14 +124,14 @@ public class WorkOrderValidatorTests
     public void ValidatePropertyEnfath_rejects_duplicate_deed_in_same_po()
     {
         var dto = ValidDeedProperty();
-        dto.DeedNumber = "12345";
+        dto.DeedNumber = "123450000001";
 
         var errors = WorkOrderValidator.ValidatePropertyEnfath(
             dto,
             AssignmentType.Estates,
             "PO-1",
             null,
-            (deed, _) => deed == "12345");
+            (deed, _) => deed == "123450000001");
 
         Assert.Equal("رقم الصك مسجّل مسبقاً في هذا أمر العمل", errors["deedNumber"]);
     }
@@ -141,16 +141,50 @@ public class WorkOrderValidatorTests
     {
         var propertyId = Guid.NewGuid();
         var dto = ValidDeedProperty();
-        dto.DeedNumber = "12345";
+        dto.DeedNumber = "123450000001";
 
         var errors = WorkOrderValidator.ValidatePropertyEnfath(
             dto,
             AssignmentType.Estates,
             "PO-1",
             propertyId,
-            (deed, excludeId) => deed == "12345" && excludeId != propertyId);
+            (deed, excludeId) => deed == "123450000001" && excludeId != propertyId);
 
         Assert.DoesNotContain(errors, e => e.Key == "deedNumber");
+    }
+
+    [Fact]
+    public void ValidatePropertyEnfath_rejects_deed_with_wrong_digit_length()
+    {
+        var dto = ValidDeedProperty();
+        dto.DeedNumber = "12345";
+
+        var errors = WorkOrderValidator.ValidatePropertyEnfath(
+            dto,
+            AssignmentType.Estates,
+            "PO-1",
+            null,
+            (_, _) => false);
+
+        Assert.Equal("رقم الصك يجب أن يكون 12 رقماً", errors["deedNumber"]);
+    }
+
+    [Fact]
+    public void ValidatePropertyEnfath_requires_sixteen_digits_for_real_estate_registration()
+    {
+        var dto = ValidDeedProperty();
+        dto.IdentifierType = PropertyIdentifierTypeLabels.RealEstateReg;
+        dto.RealEstateRegFileName = "registry.pdf";
+        dto.DeedNumber = "123450000001";
+
+        var errors = WorkOrderValidator.ValidatePropertyEnfath(
+            dto,
+            AssignmentType.Estates,
+            "PO-1",
+            null,
+            (_, _) => false);
+
+        Assert.Equal("رقم التسجيل العيني يجب أن يكون 16 رقماً", errors["deedNumber"]);
     }
 
     [Fact]
@@ -209,7 +243,7 @@ public class WorkOrderValidatorTests
     private static WorkOrderPropertyDto ValidDeedProperty() => new()
     {
         IdentifierType = PropertyIdentifierTypeLabels.Deed,
-        DeedNumber = "98765",
+        DeedNumber = "987650000001",
         TaskNumber = "T-1",
         DeedDate = "2026-01-01",
         OwnerName = "Owner",

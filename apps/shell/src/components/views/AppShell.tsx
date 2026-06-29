@@ -199,13 +199,31 @@ const ALL_NAV_RUNS: NavRun[] = (() => {
   return runs;
 })();
 
-function navRunsForRole(rolePages: PageId[]): NavRun[] {
+function navRunsForRole(rolePages: PageId[], role: RoleId): NavRun[] {
   return ALL_NAV_RUNS
-    .map((run) => ({
-      ...run,
-      items: run.items.filter((item) => rolePages.includes(item.id)),
-    }))
+    .map((run) => {
+      let items = run.items.filter((item) => rolePages.includes(item.id));
+      if (role === "engineering-office") {
+        items = sortNavRunItemsForEngineeringOffice(items);
+      }
+      return { ...run, items };
+    })
     .filter((run) => run.items.length > 0);
+}
+
+/** مكتب هندسي — الاتعاب ثم التعذرات تحتها مباشرة. */
+function sortNavRunItemsForEngineeringOffice(
+  items: (typeof NAV)[number][],
+): (typeof NAV)[number][] {
+  const order: PageId[] = ["party-fees", "failures"];
+  return [...items].sort((a, b) => {
+    const ai = order.indexOf(a.id);
+    const bi = order.indexOf(b.id);
+    if (ai === -1 && bi === -1) return 0;
+    if (ai === -1) return -1;
+    if (bi === -1) return 1;
+    return ai - bi;
+  });
 }
 
 function NavRow({
@@ -486,7 +504,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const showSystemFieldsGroup = systemFieldsNavItems.some((i) => i.available);
   const showSettingsGroup = settingsNavItems.some((i) => i.available);
 
-  const navRuns = useMemo(() => navRunsForRole(navPages), [navPages]);
+  const navRuns = useMemo(() => navRunsForRole(navPages, role), [navPages, role]);
 
   const activeTransactionItems = useMemo(
     () => activeTransactionNavForRole(rolePages),
@@ -497,10 +515,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const activeTxBadges = useActiveTransactionNavBadges();
   const failuresNavBadge = useFailuresNavBadge();
   const insertActiveTxAfterPo = rolePages.includes("po");
+  const insertActiveTxAtNavStart =
+    role === "engineering-office" && !insertActiveTxAfterPo;
   const activeTxAnchorId = useMemo(() => {
     if (insertActiveTxAfterPo) return "po" as PageId;
+    if (insertActiveTxAtNavStart) return null;
     return navRuns.flatMap((run) => run.items)[0]?.id ?? null;
-  }, [insertActiveTxAfterPo, navRuns]);
+  }, [insertActiveTxAfterPo, insertActiveTxAtNavStart, navRuns]);
 
   const prefetchPage = useMemo(
     () => (page: PageId) => prefetchPrototypePage(queryClient, page),
@@ -536,13 +557,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   const onCaseStudyWorkspace = pathname?.startsWith("/case-study/") ?? false;
-  const onActiveSurveyWorkspace = pathParts[0] === "active-survey" && pathParts.length >= 2;
+  const onActiveSurveyRoute = pathParts[0] === "active-survey" && pathParts.length >= 2;
+  const onActiveSurveyEntry = onActiveSurveyRoute && pathParts[2] === "entry";
+  const onActiveSurveyWorkspace = onActiveSurveyRoute && !onActiveSurveyEntry;
   const onPropertyAppraisalWorkspace = pathParts[0] === "property-appraisal" && pathParts.length >= 2;
   const onPropertyInspectionWorkspace = pathParts[0] === "property-inspection" && pathParts.length >= 2;
   const onGovernmentReviewWorkspace = pathParts[0] === "government-review" && pathParts.length >= 2;
   const onValuationCoordinationWorkspace = pathParts[0] === "valuation-coordination" && pathParts.length >= 2;
   const caseStudyTaskId = onCaseStudyWorkspace ? (pathParts[1] ?? null) : null;
-  const activeSurveyTaskId = onActiveSurveyWorkspace ? (pathParts[1] ?? null) : null;
+  const activeSurveyTaskId = onActiveSurveyRoute ? (pathParts[1] ?? null) : null;
   const propertyAppraisalTaskId = onPropertyAppraisalWorkspace ? (pathParts[1] ?? null) : null;
   const propertyInspectionTaskId = onPropertyInspectionWorkspace ? (pathParts[1] ?? null) : null;
   const governmentReviewTaskId = onGovernmentReviewWorkspace ? (pathParts[1] ?? null) : null;
@@ -596,7 +619,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [activeSurveyTask, activeSurveyPo]);
 
   const activeSurveyBreadcrumb = useMemo(() => {
-    if (!onActiveSurveyWorkspace || !activeSurveyTask?.poNumber?.trim()) {
+    if (!onActiveSurveyRoute || !activeSurveyTask?.poNumber?.trim()) {
       return null;
     }
     return buildPoPropertyDetailSegments(
@@ -604,7 +627,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       activeSurveyDeedLabel || undefined,
     );
   }, [
-    onActiveSurveyWorkspace,
+    onActiveSurveyRoute,
     activeSurveyTask,
     activeSurveyDeedLabel,
   ]);
@@ -666,7 +689,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               currentPage === "active-distribution" ||
               currentPage === "active-case-study" ||
               onCaseStudyWorkspace ||
-              onActiveSurveyWorkspace ||
+              onActiveSurveyRoute ||
               onPropertyAppraisalWorkspace ||
               onPropertyInspectionWorkspace ||
               onGovernmentReviewWorkspace ||
@@ -674,7 +697,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               isPartyTaskPage(currentPage)
               ? onCaseStudyWorkspace
                 ? caseStudyTaskId
-                : onActiveSurveyWorkspace
+                : onActiveSurveyRoute
                   ? activeSurveyTaskId
                   : onPropertyAppraisalWorkspace
                     ? propertyAppraisalTaskId
@@ -696,7 +719,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       currentPage,
       taskQuery,
       onCaseStudyWorkspace,
-      onActiveSurveyWorkspace,
+      onActiveSurveyRoute,
       onPropertyAppraisalWorkspace,
       onPropertyInspectionWorkspace,
       onGovernmentReviewWorkspace,
@@ -714,7 +737,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const onTaskWork =
     (currentPage === "active-primary-data" && Boolean(taskQuery)) ||
     (currentPage === "active-distribution" && Boolean(taskQuery)) ||
-    onActiveSurveyWorkspace ||
+    onActiveSurveyRoute ||
     onPropertyAppraisalWorkspace ||
     onPropertyInspectionWorkspace ||
     onGovernmentReviewWorkspace ||
@@ -740,11 +763,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // they track sidebar insertion within the current JSX pass only.
   // Declared outside JSX (not inside .map) so React Strict Mode double-invoking
   // the render function still gives the right result.
-  let activeTransactionsInserted = false;
+  let activeTransactionsInserted =
+    insertActiveTxAtNavStart && showActiveTransactionsGroup;
   let generalNavInserted = false;
 
   const onPoPropertyDetail = Boolean(poChrome?.propertyDetail);
-  const onActiveSurveyPropertyDetail = onActiveSurveyWorkspace;
+  const onActiveSurveyPropertyDetail = onActiveSurveyEntry;
   const breadcrumbSegments =
     poChrome?.segments ??
     activeSurveyBreadcrumb ??
@@ -846,6 +870,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             className="min-h-0 shrink pb-1"
             aria-label="التنقل الرئيسي"
           >
+          {insertActiveTxAtNavStart && showActiveTransactionsGroup ? (
+            <ActiveTransactionsNavDropdown
+              key="active-tx-dropdown-start"
+              items={activeTransactionItems}
+              currentPage={currentPage}
+              onTaskWork={onTaskWork}
+              onCaseStudyWorkspace={onCaseStudyWorkspace}
+              onPrefetch={prefetchPage}
+              badges={activeTxBadges}
+            />
+          ) : null}
           {navRuns.map((run, ri) => {
             const blocks: React.ReactNode[] = [];
             blocks.push(

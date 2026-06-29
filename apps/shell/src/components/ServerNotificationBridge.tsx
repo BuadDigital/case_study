@@ -10,6 +10,10 @@ import {
 import { isFeatureEnabled } from "@platform/app-shared/feature-flags";
 import { useAuth } from "@platform/app-shared/hooks/useAuth";
 import {
+  filterNotificationsForRole,
+  shouldShowNotificationToast,
+} from "@platform/app-shared/notifications/role-notification-policy";
+import {
   notificationFromDto,
   notificationToCreateRequest,
 } from "@platform/app-shared/notifications/notification-mappers";
@@ -27,7 +31,7 @@ const LOCAL_SYNC_SUPPRESS_MS = 60_000;
 
 /** Server inbox sync via SSE with polling fallback. */
 export function ServerNotificationBridge() {
-  const { token, authReady, isAuthenticated } = useAuth();
+  const { token, authReady, isAuthenticated, role } = useAuth();
   const seenIdsRef = useRef<Set<string>>(new Set());
   const initialLoadRef = useRef(true);
   const localSyncSourceEventsRef = useRef<Map<string, number>>(new Map());
@@ -45,7 +49,10 @@ export function ServerNotificationBridge() {
         const dtos = await listNotifications({ token: authToken });
         if (cancelled) return;
 
-        const items = dtos.map(notificationFromDto);
+        const items = filterNotificationsForRole(
+          role,
+          dtos.map(notificationFromDto),
+        );
         const newUnread = items.filter(
           (item) => !item.read && !seenIdsRef.current.has(item.id),
         );
@@ -56,6 +63,7 @@ export function ServerNotificationBridge() {
         if (notifyNew && !initialLoadRef.current) {
           for (const item of newUnread) {
             if (shouldSuppressEchoToast(item.sourceEvent)) continue;
+            if (!shouldShowNotificationToast(role, item)) continue;
             window.dispatchEvent(
               new CustomEvent<AppNotification>(NOTIFICATION_TOAST_EVENT, {
                 detail: item,
@@ -83,6 +91,7 @@ export function ServerNotificationBridge() {
 
     function handleServerDto(dto: UserNotificationDto) {
       const item = notificationFromDto(dto);
+      if (!shouldShowNotificationToast(role, item)) return;
       const isNew = !seenIdsRef.current.has(item.id);
       seenIdsRef.current.add(item.id);
       upsertNotificationFromServer(item);
@@ -147,7 +156,7 @@ export function ServerNotificationBridge() {
       streamAbort.abort();
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [authReady, isAuthenticated, token]);
+  }, [authReady, isAuthenticated, token, role]);
 
   useEffect(() => {
     if (!token) return;

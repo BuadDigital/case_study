@@ -8,6 +8,7 @@ import {
 } from "@platform/app-shared/prototype/task-attachments-api";
 import { getCachedPartySubmission } from "@platform/app-shared/prototype/party-submission-api";
 import { persistPartySubmissionPayload } from "@platform/app-shared/prototype/party-submission-api";
+import { dispatchPartySubmissionChanged } from "@platform/app-shared/prototype/party-submission-changed-event";
 import { ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT } from "./engineering-survey-submission-storage";
 import { loadEngineeringSurveySubmission } from "./engineering-survey-submission-storage";
 
@@ -51,9 +52,7 @@ const FIELD_META: Record<
 };
 
 function notifyChanged(): void {
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT));
-  }
+  dispatchPartySubmissionChanged(ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT);
 }
 
 function attachmentFromPayload(

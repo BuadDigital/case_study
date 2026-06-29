@@ -31,6 +31,7 @@ import { poPropertyPath } from "@case-study/mfe/lib/po-routes";
 import { suspendPropertyTransaction } from "@case-study/mfe/lib/prototype/suspend-property-transaction";
 import { usePoRecordsQuery } from "@case-study/mfe/query/case-study-queries";
 import { failuresForGovernmentReviewer } from "../lib/failures-government-reviewer-scope";
+import { failuresForEngineeringOffice } from "../lib/failures-engineering-office-scope";
 import { approveFailure, resolveFailure, returnFailure, submitFailureForReview, upgradeFailureToInternal } from "../lib/failures-repository";
 import { failureRecordTitle, failureSeverityLabel, failureStatusLabel } from "../lib/failures-labels";
 import { countOpenFailures, isActiveFailureStatus, type FailureRecord } from "../lib/failures-types";
@@ -48,6 +49,10 @@ function isGovernmentReviewer(role: RoleId) {
   return role === "government-reviewer";
 }
 
+function isEngineeringOffice(role: RoleId) {
+  return role === "engineering-office";
+}
+
 type ResolveDraft = { reason: string; instructions: string };
 
 const fieldTextareaClass = cn(
@@ -61,13 +66,11 @@ export function FailuresView() {
   const ce = isCaseEditor(role);
   const ca = isSupervisor(role);
   const { data: items = [], isFetched, refetch } = useFailuresQuery();
-  const visibleItems = useMemo(
-    () =>
-      isGovernmentReviewer(role)
-        ? failuresForGovernmentReviewer(items)
-        : items,
-    [items, role],
-  );
+  const visibleItems = useMemo(() => {
+    if (isGovernmentReviewer(role)) return failuresForGovernmentReviewer(items);
+    if (isEngineeringOffice(role)) return failuresForEngineeringOffice(items);
+    return items;
+  }, [items, role]);
   const { data: poRecords = [] } = usePoRecordsQuery();
   const assignmentSpecialistByPo = useMemo(() => {
     const map = new Map<string, string>();
@@ -219,7 +222,9 @@ export function FailuresView() {
                     ? "صلاحيات كاملة — يمكنك اعتماد التعذرات وإنشاؤها"
                     : isGovernmentReviewer(role)
                       ? "تعرض هنا تعذراتك التي رفعتها من المراجعة الحكومية فقط — للمتابعة والاطلاع."
-                      : "أنت في وضع المراقبة — لا تملك صلاحية تعديل التعذرات"}
+                      : isEngineeringOffice(role)
+                        ? "تعرض هنا تعذراتك التي سجّلتها من الرفع المساحي فقط — للمتابعة والاطلاع."
+                        : "أنت في وضع المراقبة — لا تملك صلاحية تعديل التعذرات"}
               </Note>
             </PageToolbar>
           ) : null}
@@ -233,7 +238,13 @@ export function FailuresView() {
           ) : null}
 
           {sortedItems.length === 0 ? (
-            <EmptyState line="لا توجد تعذرات — سجّل تعذراً من شاشة العقارات." />
+            <EmptyState
+              line={
+                isEngineeringOffice(role)
+                  ? "لا توجد تعذرات — سجّل تعذراً من قائمة الرفع المساحي أو من تبويب التعذرات في المعاملة."
+                  : "لا توجد تعذرات — سجّل تعذراً من شاشة العقارات."
+              }
+            />
           ) : (
             <>
               <div className="flex flex-col gap-2.5 px-4 py-4">

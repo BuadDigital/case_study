@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -18,28 +19,61 @@ public class WorkflowTaskService : IWorkflowTaskService
     private readonly ApplicationDbContext _db;
     private readonly IInspectorFeeService _inspectorFees;
     private readonly IPropertyTimelineService _timeline;
+    private readonly DatabaseOptions _dbOptions;
 
     public WorkflowTaskService(
         ApplicationDbContext db,
         IInspectorFeeService inspectorFees,
-        IPropertyTimelineService timeline)
+        IPropertyTimelineService timeline,
+        IOptions<DatabaseOptions>? dbOptions = null)
     {
         _db = db;
         _inspectorFees = inspectorFees;
         _timeline = timeline;
+        _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
     }
 
     public async Task<IReadOnlyList<WorkflowTaskDto>> ListAsync(
         CancellationToken cancellationToken = default)
     {
-        var list = await _db.WorkflowTasks
-            .AsNoTracking()
-            .OrderBy(t => t.PoNumber)
-            .ThenBy(t => t.PropertyOrdinal)
-            .ThenBy(t => t.CreatedAtUtc)
+        var (_, take, _, _) = NpgsqlConfiguration.ResolveListPaging(null, null, _dbOptions);
+        var list = await OrderedTaskQuery()
+            .Take(take)
             .ToListAsync(cancellationToken);
         return list.Select(WorkflowTaskMapper.ToDto).ToList();
     }
+
+    public async Task<PagedResultDto<WorkflowTaskDto>> ListPagedAsync(
+        int? page,
+        int? pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var (skip, take, resolvedPage, _) = NpgsqlConfiguration.ResolveListPaging(
+            page,
+            pageSize,
+            _dbOptions);
+        var query = OrderedTaskQuery();
+        var total = await query.CountAsync(cancellationToken);
+        var list = await query
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        return new PagedResultDto<WorkflowTaskDto>
+        {
+            Items = list.Select(WorkflowTaskMapper.ToDto).ToList(),
+            TotalCount = total,
+            Page = resolvedPage,
+            PageSize = take,
+        };
+    }
+
+    private IQueryable<WorkflowTask> OrderedTaskQuery() =>
+        _db.WorkflowTasks
+            .AsNoTracking()
+            .OrderBy(t => t.PoNumber)
+            .ThenBy(t => t.PropertyOrdinal)
+            .ThenBy(t => t.CreatedAtUtc);
 
     public async Task<IReadOnlyList<WorkflowTaskDto>> SyncFromWorkOrdersAsync(
         CancellationToken cancellationToken = default)
@@ -49,7 +83,10 @@ public class WorkflowTaskService : IWorkflowTaskService
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        var tracked = await _db.WorkflowTasks.ToListAsync(cancellationToken);
+        var poNumbers = orders.Select(o => o.PoNumber).Distinct().ToList();
+        var tracked = await _db.WorkflowTasks
+            .Where(t => poNumbers.Contains(t.PoNumber))
+            .ToListAsync(cancellationToken);
 
         foreach (var order in orders)
         {
@@ -80,8 +117,7 @@ public class WorkflowTaskService : IWorkflowTaskService
         ConfirmTaskDistributionRequest request,
         CancellationToken cancellationToken = default)
     {
-        var list = await _db.WorkflowTasks.ToListAsync(cancellationToken);
-        var parent = list.FirstOrDefault(t => t.Id == id);
+        var parent = await _db.WorkflowTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
         if (parent is null ||
             parent.Phase != "distribution" ||
             parent.PropertyId is null)
@@ -159,36 +195,34 @@ public class WorkflowTaskService : IWorkflowTaskService
 
         if (parent.PropertyId is Guid propertyId)
         {
-            await _timeline.RecordAsync(
-                parent.PoNumber,
-                propertyId,
-                $"task:{parent.Id}:distribution",
-                "توزيع المعاملة",
-                null,
-                "done",
-                now,
-                cancellationToken);
-            await _timeline.RecordAsync(
-                parent.PoNumber,
-                propertyId,
-                $"task:{parent.Id}:case-study",
-                "دراسة حالة العقار",
-                parent.AssigneeName,
-                "active",
-                now,
-                cancellationToken);
-            foreach (var child in children)
+            var timelineEvents = new List<PropertyTimelineRecordRequest>
             {
-                await _timeline.RecordAsync(
+                new(
                     parent.PoNumber,
                     propertyId,
-                    $"party:{child.Id}:assigned",
-                    PartyAssignedTitle(child.Kind),
-                    child.AssigneeName,
+                    $"task:{parent.Id}:distribution",
+                    "توزيع المعاملة",
+                    null,
                     "done",
-                    child.CreatedAtUtc,
-                    cancellationToken);
-            }
+                    now),
+                new(
+                    parent.PoNumber,
+                    propertyId,
+                    $"task:{parent.Id}:case-study",
+                    "دراسة حالة العقار",
+                    parent.AssigneeName,
+                    "active",
+                    now),
+            };
+            timelineEvents.AddRange(children.Select(child => new PropertyTimelineRecordRequest(
+                parent.PoNumber,
+                propertyId,
+                $"party:{child.Id}:assigned",
+                PartyAssignedTitle(child.Kind),
+                child.AssigneeName,
+                "done",
+                child.CreatedAtUtc)));
+            await _timeline.RecordManyAsync(timelineEvents, cancellationToken);
         }
 
         await _inspectorFees.EnsureLedgersForTasksAsync(

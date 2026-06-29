@@ -31,8 +31,21 @@ public static class DependencyInjection
         IConfiguration configuration,
         string connectionString)
     {
-        services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseNpgsql(connectionString));
+        services.Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SectionName));
+
+        var dbOptions = configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>()
+            ?? new DatabaseOptions();
+        var pooledConnectionString = NpgsqlConfiguration.EnhanceConnectionString(
+            connectionString,
+            configuration);
+
+        services.AddDbContextPool<ApplicationDbContext>(options =>
+            options.UseNpgsql(pooledConnectionString, npgsql =>
+            {
+                npgsql.EnableRetryOnFailure(maxRetryCount: 3);
+                npgsql.CommandTimeout(dbOptions.CommandTimeoutSeconds);
+            }));
+
         services.AddRedisCaching(configuration);
         return services;
     }

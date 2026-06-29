@@ -19,11 +19,13 @@ export function PartyActiveTaskWorkPage({
   taskId,
   appraisalExtensions,
   engineeringSurveyExtensions,
+  engineeringSurveyEntry = false,
 }: {
   pageId: PageId;
   taskId: string;
   appraisalExtensions?: PartyAppraisalExtensions;
   engineeringSurveyExtensions?: PartyEngineeringSurveyExtensions;
+  engineeringSurveyEntry?: boolean;
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -77,6 +79,7 @@ export function PartyActiveTaskWorkPage({
         layout="page"
         appraisalExtensions={appraisalExtensions}
         engineeringSurveyExtensions={engineeringSurveyExtensions}
+        engineeringSurveyEntry={engineeringSurveyEntry}
       />
     </div>
   );

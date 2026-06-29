@@ -91,7 +91,7 @@ public static class PlatformPermissionCatalog
         ],
         ["engineering-office"] =
         [
-            "active-survey", "party-fees",
+            "active-survey", "party-fees", "failures",
             "system-fields-catalog", "system-screen-catalog",
         ],
         ["financial-officer"] =

@@ -1,10 +1,7 @@
 import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
 import { getPropertyFailure } from "@failures/mfe";
-import { openInternalDelegationLetterPlaceholder } from "@case-study/mfe/lib/prototype/internal-delegation-letter-placeholder";
-import { caseStudyWorkspacePath } from "../my-task-routes";
+import { activeSurveyEntryPath, caseStudyWorkspacePath } from "../my-task-routes";
 import {
-  poPropertiesPath,
-  poPropertyEditPath,
   poPropertyFailurePath,
   poPropertyPath,
 } from "../po-routes";
@@ -18,6 +15,9 @@ export function buildActiveQueueRowMoreItems(options: {
 }): RowMoreMenuItem[] {
   const po = options.task.poNumber.trim();
   const propertyId = options.propertyId?.trim();
+  const failureExists = propertyId
+    ? Boolean(getPropertyFailure(po, propertyId))
+    : false;
 
   const items: RowMoreMenuItem[] = [
     {
@@ -25,35 +25,32 @@ export function buildActiveQueueRowMoreItems(options: {
       label: "فتح المعاملة",
       onClick: options.openTask,
     },
-    {
-      id: "po-properties",
-      label: "عقارات أمر العمل",
-      onClick: () => options.router.push(poPropertiesPath(po)),
-    },
-    {
-      id: "delegation-letter",
-      label: "خطاب تفويض الشركة",
-      onClick: () =>
-        openInternalDelegationLetterPlaceholder({
-          poNumber: po,
-          propertyId,
-        }),
-    },
   ];
 
+  if (options.task.kind === "engineering-survey") {
+    items.push({
+      id: "start-survey",
+      label: "ابدأ الرفع المساحي",
+      onClick: () => options.router.push(activeSurveyEntryPath(options.task.id)),
+    });
+    items.push({
+      id: "register-failure",
+      label: "تسجيل تعذر",
+      danger: true,
+      disabled: !propertyId || failureExists,
+      onClick: () => {
+        if (!propertyId) return;
+        options.router.push(poPropertyFailurePath(po, propertyId));
+      },
+    });
+  }
+
   if (propertyId) {
-    items.push(
-      {
-        id: "property-detail",
-        label: "تفاصيل العقار",
-        onClick: () => options.router.push(poPropertyPath(po, propertyId)),
-      },
-      {
-        id: "property-edit",
-        label: "تعديل العقار",
-        onClick: () => options.router.push(poPropertyEditPath(po, propertyId)),
-      },
-    );
+    items.push({
+      id: "property-detail",
+      label: "تفاصيل العقار",
+      onClick: () => options.router.push(poPropertyPath(po, propertyId)),
+    });
   }
 
   return items;

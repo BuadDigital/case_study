@@ -23,9 +23,14 @@ public class WorkOrdersController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<WorkOrderListItemDto>>> List(
+    public async Task<IActionResult> List(
+        [FromQuery] int? page,
+        [FromQuery] int? pageSize,
         CancellationToken cancellationToken)
     {
+        if (page.HasValue || pageSize.HasValue)
+            return Ok(await _workOrders.ListPagedAsync(page, pageSize, cancellationToken));
+
         return Ok(await _workOrders.ListAsync(cancellationToken));
     }
 

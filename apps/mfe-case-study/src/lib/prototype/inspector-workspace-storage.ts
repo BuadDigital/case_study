@@ -9,6 +9,8 @@ import {
   type PartyTaskSubmissionDto,
 } from "@platform/api-client";
 import { reopenPartySubmission } from "@platform/app-shared/prototype/party-submission-api";
+import { dispatchPartySubmissionChanged } from "@platform/app-shared/prototype/party-submission-changed-event";
+import { dispatchWorkflowSubmitted, FIELD_INSPECTION_SUBMITTED_EVENT } from "@platform/app-shared/prototype/party-workflow-events";
 import { resolveApiError, workOrdersApiConfig } from "../work-orders-api-config";
 import {
   applyEnfathPrefillToInspectorDraft,
@@ -34,9 +36,7 @@ export const FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT =
   "field-inspection-submission-changed";
 
 function notifyChanged(): void {
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT));
-  }
+  dispatchPartySubmissionChanged(FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT);
 }
 
 function readString(value: unknown): string {
@@ -547,6 +547,7 @@ export async function submitInspectorWorkspace(
 
   const draft = payloadToDraft(result.data, saved);
   writeCache(draft);
+  dispatchWorkflowSubmitted(FIELD_INSPECTION_SUBMITTED_EVENT);
   return { ok: true, draft };
 }
 

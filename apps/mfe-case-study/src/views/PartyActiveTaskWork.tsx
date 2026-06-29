@@ -158,6 +158,7 @@ export function PartyActiveTaskWork({
   layout = "panel",
   appraisalExtensions,
   engineeringSurveyExtensions,
+  engineeringSurveyEntry = false,
 }: {
   def: PartyTaskPageDef;
   task: WorkflowTask;
@@ -165,6 +166,7 @@ export function PartyActiveTaskWork({
   layout?: "page" | "panel";
   appraisalExtensions?: PartyAppraisalExtensions;
   engineeringSurveyExtensions?: PartyEngineeringSurveyExtensions;
+  engineeringSurveyEntry?: boolean;
 }) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -182,8 +184,10 @@ export function PartyActiveTaskWork({
   };
 
   const completePartyTaskSubmit = useCallback(
-    (toastMessage: string = def.completeMessage) => {
-      showToast(toastMessage, "success");
+    (toastMessage: string = def.completeMessage, options?: { showToast?: boolean }) => {
+      if (options?.showToast !== false) {
+        showToast(toastMessage, "success");
+      }
       setSubmitSuccess(true);
       refresh();
       if (layout === "panel") {
@@ -216,10 +220,9 @@ export function PartyActiveTaskWork({
   const governmentHostRef = useRef<GovernmentReviewWorkHostRef>({});
   const coordinationHostRef = useRef<ValuationCoordinationWorkHostRef>({});
   const fieldInspectionHostRef = useRef<FieldInspectionWorkHostRef>({});
-  evaluatorHostRef.current.onSubmitted = () =>
-    completePartyTaskSubmit(APPRAISAL_SUCCESS_MESSAGE);
+  evaluatorHostRef.current.onSubmitted = () => completePartyTaskSubmit(APPRAISAL_SUCCESS_MESSAGE);
   evaluatorHostRef.current.onSavingChange = setSaving;
-  surveyHostRef.current.onSubmitted = () => completePartyTaskSubmit();
+  surveyHostRef.current.onSubmitted = () => completePartyTaskSubmit(def.completeMessage, { showToast: false });
   surveyHostRef.current.onSavingChange = setSaving;
   governmentHostRef.current.onSubmitted = () => completePartyTaskSubmit();
   governmentHostRef.current.onSavingChange = setSaving;
@@ -342,6 +345,10 @@ export function PartyActiveTaskWork({
   }, [record, surveyProperty]);
 
   useEffect(() => {
+    if (!engineeringSurveyEntry) {
+      setSurveyWorkTopbarState(null);
+      return;
+    }
     if (!isEngineeringSurvey || !record || !surveyProperty || surveyLocked) {
       setSurveyWorkTopbarState(null);
       return;
@@ -355,6 +362,7 @@ export function PartyActiveTaskWork({
     });
     return () => setSurveyWorkTopbarState(null);
   }, [
+    engineeringSurveyEntry,
     isEngineeringSurvey,
     record,
     surveyProperty,
@@ -456,6 +464,7 @@ export function PartyActiveTaskWork({
           hostRef: surveyHostRef,
           deedNumber: deedLabel,
           onFailureSubmitted: refresh,
+          variant: engineeringSurveyEntry ? "entry" : "workspace",
         })
       ) : (
         <InlineLoadingSkeleton className={LOADING_TEXT} />

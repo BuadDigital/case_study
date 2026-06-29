@@ -1,6 +1,7 @@
 import {
   isBourseInquiryIdentifier,
   requiresAssignmentDecree,
+  validatePropertyIdentifierNumber,
   type AssignmentType,
   type PoPropertyIntake,
 } from "../../prototype/po-intake-data";
@@ -43,6 +44,11 @@ export function validatePropertyEnfathFields(
       errors.assignmentDocFileName =
         "ارفع قرار الإسناد الخاص بهذا العقار (مطلوب لمسار التنفيذ)";
     }
+    const identifierError = validatePropertyIdentifierNumber(
+      p.identifierType,
+      p.deedNumber,
+    );
+    if (identifierError) errors.deedNumber = identifierError;
     return errors;
   }
 
@@ -80,6 +86,12 @@ export function validatePropertyEnfathFields(
     errors.assignmentDocFileName =
       "ارفع قرار الإسناد الخاص بهذا العقار (مطلوب لمسار التنفيذ)";
   }
+
+  const identifierError = validatePropertyIdentifierNumber(
+    p.identifierType,
+    p.deedNumber,
+  );
+  if (identifierError) errors.deedNumber = identifierError;
 
   return errors;
 }

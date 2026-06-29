@@ -1,5 +1,6 @@
 import { getApiBase } from "./index";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
+import { fetchAllListPages } from "./pagination";
 
 export type TaskDistributionDraftDto = {
   governmentAuditor: boolean;
@@ -52,18 +53,10 @@ async function readJson<T>(res: Response): Promise<T> {
 export async function listWorkflowTasks(
   config: WorkOrdersApiConfig,
 ): Promise<ApiOk<WorkflowTaskDto[]> | ApiErr> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/workflow-tasks`, {
-      headers: headers(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    const data = await readJson<WorkflowTaskDto[]>(res);
-    return { ok: true, data: Array.isArray(data) ? data : [] };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
+  return fetchAllListPages<WorkflowTaskDto>(
+    { ...config, baseUrl: config.baseUrl ?? getApiBase() },
+    "/api/workflow-tasks",
+  );
 }
 
 export async function syncWorkflowTasks(

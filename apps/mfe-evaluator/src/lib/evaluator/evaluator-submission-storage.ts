@@ -9,6 +9,8 @@ import {
   submitPartySubmission,
 } from "@platform/app-shared/prototype/party-submission-api";
 import { notifyTasksChanged } from "@case-study/mfe/lib/prototype/tasks-storage";
+import { dispatchPartySubmissionChanged } from "@platform/app-shared/prototype/party-submission-changed-event";
+import { dispatchWorkflowSubmitted, EVALUATOR_SUBMITTED_EVENT } from "@platform/app-shared/prototype/party-workflow-events";
 import { loadPartyCaseStudyFormDraft } from "@case-study/mfe";
 import { mergeEvaluatorChecklistFromCaseStudy } from "./evaluator-checklist-case-study-sync";
 import {
@@ -27,9 +29,7 @@ export type EvaluatorReportMetadata = {
 };
 
 function notifyEvaluatorSubmissionChanged(): void {
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(EVALUATOR_SUBMISSION_CHANGED_EVENT));
-  }
+  dispatchPartySubmissionChanged(EVALUATOR_SUBMISSION_CHANGED_EVENT);
 }
 
 function dtoToSubmission(
@@ -192,6 +192,7 @@ export async function submitEvaluatorSubmission(
   }
 
   notifyEvaluatorSubmissionChanged();
+  dispatchWorkflowSubmitted(EVALUATOR_SUBMITTED_EVENT);
   notifyTasksChanged();
 
   const submission = dtoToSubmission(dto);

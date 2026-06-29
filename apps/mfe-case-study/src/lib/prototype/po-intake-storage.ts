@@ -3,7 +3,7 @@ import type {
   PoIntakeRecord,
   PoPropertyIntake,
 } from "./po-intake-data";
-import { classificationRequiresSurvey, computeBusinessDueDate, emptyProperty, parsePropertyIdentifierType, poListStatusForAssignmentType,} from "./po-intake-data";
+import { classificationRequiresSurvey, computeBusinessDueDate, emptyProperty, normalizePropertyIdentifierNumber, parsePropertyIdentifierType, poListStatusForAssignmentType,} from "./po-intake-data";
 import {
   contactsForApi,
   propertyHasIncompleteContact,
@@ -159,7 +159,10 @@ export function propertyToEnfathDto(
   return {
     ...(options?.forInsert ? {} : { id: prop.id || undefined }),
     identifierType: prop.identifierType,
-    deedNumber: prop.deedNumber.trim(),
+    deedNumber: normalizePropertyIdentifierNumber(
+      prop.deedNumber,
+      prop.identifierType,
+    ),
     taskNumber: prop.taskNumber.trim() || undefined,
     deedDate: prop.deedDate || undefined,
     ownerName: prop.ownerName || undefined,
@@ -303,6 +306,7 @@ export function poRecordToListRow(record: PoIntakeRecord): PoRow {
     date: record.receivedFromEnfathAt,
     dueDate: record.dueDateAt,
     specialist: record.assignmentSpecialist,
+    createdAtUtc: new Date().toISOString(),
   };
 }
 

@@ -27,6 +27,7 @@ export function EngineeringSurveyTopbarActions() {
         variant="primary"
         loading={topbar.saving}
         disabled={topbar.saving}
+        data-no-action-toast
         onClick={topbar.onSave}
       >
         {topbar.saveLabel}

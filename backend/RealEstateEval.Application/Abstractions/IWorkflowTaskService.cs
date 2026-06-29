@@ -6,6 +6,10 @@ namespace RealEstateEval.Application.Abstractions;
 public interface IWorkflowTaskService
 {
     Task<IReadOnlyList<WorkflowTaskDto>> ListAsync(CancellationToken cancellationToken = default);
+    Task<PagedResultDto<WorkflowTaskDto>> ListPagedAsync(
+        int? page,
+        int? pageSize,
+        CancellationToken cancellationToken = default);
     Task<IReadOnlyList<WorkflowTaskDto>> SyncFromWorkOrdersAsync(CancellationToken cancellationToken = default);
     Task<WorkflowTaskDto?> PatchDistributionAsync(
         Guid id,

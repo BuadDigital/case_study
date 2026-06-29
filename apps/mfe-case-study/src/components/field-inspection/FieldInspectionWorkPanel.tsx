@@ -74,7 +74,7 @@ export function FieldInspectionWorkPanel({
           )}
           onClick={() => setWorkTab("fees")}
         >
-          الأتعاب
+          مالية المعاملة
         </button>
         <button
           type="button"

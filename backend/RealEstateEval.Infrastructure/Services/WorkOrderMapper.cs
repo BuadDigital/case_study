@@ -105,6 +105,7 @@ public static class WorkOrderMapper
             ReceivedFromEnfathAt = entity.ReceivedFromEnfathAt.ToString("yyyy-MM-dd"),
             DueDateAt = entity.DueDateAt.ToString("yyyy-MM-dd"),
             AssignmentSpecialist = entity.AssignmentSpecialist ?? "",
+            CreatedAtUtc = entity.CreatedAtUtc.ToString("O"),
         };
     }
 

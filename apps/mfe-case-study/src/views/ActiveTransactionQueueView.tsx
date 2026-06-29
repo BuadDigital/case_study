@@ -7,12 +7,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   Badge,
   Button,
-  cn,
-  EmptyState,
+  Input,
   Note,
   OperationalPanel,
   PageShellHeader,
+  PageToolbar,
   QueueTableHint,
+  Select,
   SkeletonTableRows,
   Table,
   TBody,
@@ -22,6 +23,8 @@ import {
   ThAction,
   THead,
   Tr,
+  cn,
+  EmptyState,
   queueTableRowActiveClassName,
   queueTableRowClassName,
   queueTableWrapClassName,
@@ -50,12 +53,19 @@ import type { PoIntakeRecord } from "../lib/prototype/po-intake-data";
 import { isTaskOnSuspendedProperty } from "../lib/prototype/suspended-transactions-storage";
 import { type WorkflowTask } from "../lib/prototype/tasks-storage";
 import { resolveQueueTasksForViewer } from "../lib/prototype/viewer-task-access";
-import { fieldInspectionTaskStatusBadge } from "../lib/prototype/field-inspection-work-queue";
-import { governmentReviewTaskStatusBadge } from "../lib/prototype/government-review-work-queue";
-import { valuationCoordinationTaskStatusBadge } from "../lib/prototype/valuation-coordination-work-queue";
+import {
+  buildDistributionQueueRowMeta,
+  buildPrimaryQueueRowMeta,
+  filterDistributionQueueRows,
+  filterPrimaryQueueRows,
+  QUEUE_LIST_TOOLBAR_FIELD,
+  resolveQueueTaskStatusBadge,
+  uniqueSortedLabels,
+} from "../lib/prototype/active-queue-list-filters";
 import { useFieldInspectionWorkspacesQuery } from "../query/field-inspection-workspaces-queries";
 import {
   getCachedPartySubmission,
+  partySubmissionTaskIdsKey,
   prefetchPartySubmissionsForTasks,
 } from "@platform/app-shared/prototype/party-submission-api";
 import {
@@ -139,6 +149,23 @@ type PanelRenderProps = {
 const ROW = queueTableRowClassName;
 const ROW_ACTIVE = queueTableRowActiveClassName;
 
+function SearchIcon() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden
+    >
+      <circle cx="11" cy="11" r="7" />
+      <path d="M20 20l-3-3" />
+    </svg>
+  );
+}
+
 function legacyBadgeTone(className: string): BadgeTone {
   if (className.includes("done")) return "success";
   if (className.includes("fail")) return "danger";
@@ -197,6 +224,9 @@ export function ActiveTransactionQueueView({
   const queuePending = !tasksFetched || !poRecordsFetched;
   const [now, setNow] = useState(() => new Date());
   const [panelOpen, setPanelOpen] = useState(() => Boolean(selectedId));
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
   const advancingRef = useRef(false);
   const [, bump] = useState(0);
   const [submissionCacheGen, setSubmissionCacheGen] = useState(0);
@@ -296,7 +326,12 @@ export function ActiveTransactionQueueView({
         )
         .sort((a, b) => compare(a, b, poByNumber));
     },
-    [config, mine, poByNumber, submissionCacheGen],
+    [config, mine, poByNumber],
+  );
+
+  const listedTaskIdsKey = useMemo(
+    () => partySubmissionTaskIdsKey(listed.map((t) => t.id)),
+    [listed],
   );
 
   const selectedTask = useMemo((): WorkflowTask | null => {
@@ -365,37 +400,23 @@ export function ActiveTransactionQueueView({
   );
 
   useEffect(() => {
-    if (!needsPartySubmissions || listed.length === 0) return;
-    void prefetchPartySubmissionsForTasks(listed.map((t) => t.id)).then(() => {
+    if (!needsPartySubmissions || listedTaskIdsKey.length === 0) return;
+    const ids = listedTaskIdsKey.split("\0");
+    void prefetchPartySubmissionsForTasks(ids).then(() => {
       setSubmissionCacheGen((n) => n + 1);
     });
-  }, [listed, needsPartySubmissions]);
+  }, [listedTaskIdsKey, needsPartySubmissions]);
 
   const renderStatusOrRemaining = useCallback(
     (
       task: WorkflowTask,
       remainingTime: Parameters<typeof RemainingTimeCell>[0]["state"],
     ) => {
-      let badge: { label: string; className: string } | null = null;
-      if (task.kind === "field-inspection") {
-        badge = fieldInspectionTaskStatusBadge(
-          task.id,
-          task.status,
-          inspectionWorkspaceByTaskId.get(task.id),
-        );
-      } else if (task.kind === "government-review") {
-        badge = governmentReviewTaskStatusBadge(
-          task,
-          getCachedPartySubmission(task.id),
-        );
-      } else if (task.kind === "valuation-coordination") {
-        badge = valuationCoordinationTaskStatusBadge(
-          task.id,
-          getCachedPartySubmission(task.id),
-        );
-      } else {
-        badge = config.getTaskStatusBadge?.(task) ?? null;
-      }
+      const badge = resolveQueueTaskStatusBadge(task, {
+        getTaskStatusBadge: config.getTaskStatusBadge,
+        inspectionWorkspace: inspectionWorkspaceByTaskId.get(task.id),
+        partySubmission: getCachedPartySubmission(task.id),
+      });
       if (badge) {
         return (
           <Badge tone={legacyBadgeTone(badge.className)}>{badge.label}</Badge>
@@ -405,6 +426,75 @@ export function ActiveTransactionQueueView({
     },
     [config, inspectionWorkspaceByTaskId, submissionCacheGen],
   );
+
+  const resolveTaskBadge = useCallback(
+    (task: WorkflowTask) =>
+      resolveQueueTaskStatusBadge(task, {
+        getTaskStatusBadge: config.getTaskStatusBadge,
+        inspectionWorkspace: inspectionWorkspaceByTaskId.get(task.id),
+        partySubmission: getCachedPartySubmission(task.id),
+      }),
+    [config, inspectionWorkspaceByTaskId, submissionCacheGen],
+  );
+
+  const isDistributionTable =
+    config.tableLayout === "distribution" ||
+    config.tableLayout === "case-study";
+  const showPartyColumns = config.tableLayout === "case-study";
+  const distributionSkeletonCols = 8 + (showPartyColumns ? 4 : 0);
+  const primarySkeletonCols = 6;
+
+  const primaryRowMeta = useMemo(() => {
+    if (isDistributionTable) return [];
+    return buildPrimaryQueueRowMeta(listed, poByNumber, now, resolveTaskBadge);
+  }, [isDistributionTable, listed, poByNumber, now, resolveTaskBadge]);
+
+  const distributionRowMeta = useMemo(() => {
+    if (!isDistributionTable) return [];
+    return buildDistributionQueueRowMeta(listed, poByNumber);
+  }, [isDistributionTable, listed, poByNumber]);
+
+  const assignmentTypes = useMemo(
+    () =>
+      uniqueSortedLabels(
+        isDistributionTable
+          ? distributionRowMeta.map((row) => row.assignmentType)
+          : primaryRowMeta.map((row) => row.assignmentType),
+      ),
+    [isDistributionTable, distributionRowMeta, primaryRowMeta],
+  );
+
+  const statusOptions = useMemo(
+    () => uniqueSortedLabels(primaryRowMeta.map((row) => row.statusLabel)),
+    [primaryRowMeta],
+  );
+
+  const filteredListed = useMemo(() => {
+    if (isDistributionTable) {
+      return filterDistributionQueueRows(distributionRowMeta, {
+        search,
+        typeFilter,
+      });
+    }
+    return filterPrimaryQueueRows(primaryRowMeta, {
+      search,
+      statusFilter,
+      typeFilter,
+    });
+  }, [
+    isDistributionTable,
+    distributionRowMeta,
+    primaryRowMeta,
+    search,
+    statusFilter,
+    typeFilter,
+  ]);
+
+  useEffect(() => {
+    setStatusFilter("");
+    setTypeFilter("");
+    setSearch("");
+  }, [config.pageId]);
 
   useEffect(() => {
     if (!queueApiRef) return;
@@ -430,12 +520,66 @@ export function ActiveTransactionQueueView({
     }
   }, [selectedId, selectedTask, queuePending, listed, closePanel, tasks]);
 
-  const isDistributionTable =
-    config.tableLayout === "distribution" ||
-    config.tableLayout === "case-study";
-  const showPartyColumns = config.tableLayout === "case-study";
-  const distributionSkeletonCols = 8 + (showPartyColumns ? 4 : 0);
-  const primarySkeletonCols = 6;
+  const queueToolbar = queueReady ? (
+    <PageToolbar className="shrink-0 border-b border-border bg-surface-2">
+      <div className="relative min-w-[min(100%,220px)] flex-1 basis-[240px] max-w-[320px]">
+        <span className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-text-3">
+          <SearchIcon />
+        </span>
+        <Input
+          className={cn(QUEUE_LIST_TOOLBAR_FIELD, "pe-8 text-[12.5px]")}
+          type="search"
+          placeholder={
+            isDistributionTable
+              ? "رقم الصك أو PO أو المدينة…"
+              : "رقم الصك أو نوع الإسناد أو المدينة…"
+          }
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="بحث المعاملات"
+        />
+      </div>
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:flex-none">
+        {!isDistributionTable ? (
+          <Select
+            className={cn(
+              QUEUE_LIST_TOOLBAR_FIELD,
+              "!w-auto min-w-[148px] max-w-full shrink-0 sm:w-[148px]",
+            )}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            aria-label="تصفية الحالة"
+          >
+            <option value="">جميع الحالات</option>
+            {statusOptions.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </Select>
+        ) : null}
+        <Select
+          className={cn(
+            QUEUE_LIST_TOOLBAR_FIELD,
+            "!w-auto min-w-[168px] max-w-full shrink-0 sm:w-[168px]",
+          )}
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+          aria-label="تصفية نوع الإسناد"
+        >
+          <option value="">جميع أنواع الإسناد</option>
+          {assignmentTypes.map((type) => (
+            <option key={type} value={type}>
+              {type}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <span className="w-full text-[11.5px] text-text-3 sm:ms-auto sm:w-auto">
+        {queueReady ? `${filteredListed.length} نتيجة` : "—"}
+      </span>
+    </PageToolbar>
+  ) : null;
 
   const handleDistributionRowClick = useCallback(
     (task: WorkflowTask, propertyId: string | undefined) => {
@@ -479,6 +623,7 @@ export function ActiveTransactionQueueView({
             <EmptyState line={config.emptyLine} hint={config.emptyHint} />
           ) : (
             <>
+              {queueToolbar}
               <div
                 className={cn(
                   queueTableWrapClassName,
@@ -520,7 +665,7 @@ export function ActiveTransactionQueueView({
                           cols={distributionSkeletonCols}
                         />
                       ) : (
-                        listed.map((task) => {
+                        filteredListed.map((task) => {
                         const record = poByNumber.get(task.poNumber.trim());
                         const property = findPropertyForTask(record, task);
                         const row = buildDistributionTableRow(
@@ -597,10 +742,10 @@ export function ActiveTransactionQueueView({
                     <THead>
                       <Tr hoverable={false}>
                         <Th>رقم الصك</Th>
-                        <Th>أمر العمل</Th>
                         <Th>نوع الإسناد</Th>
-                        <Th>أخصائي الإسناد</Th>
-                        <Th>{config.statusColumnLabel ?? "المدة المتبقية"}</Th>
+                        <Th>المدينة</Th>
+                        <Th>الحي</Th>
+                        <Th>{config.statusColumnLabel ?? "الحالة"}</Th>
                         <ThAction aria-label="المزيد" />
                       </Tr>
                     </THead>
@@ -608,7 +753,7 @@ export function ActiveTransactionQueueView({
                       {queuePending && listed.length === 0 ? (
                         <SkeletonTableRows rows={6} cols={primarySkeletonCols} />
                       ) : (
-                        listed.map((task) => {
+                        filteredListed.map((task) => {
                         const record = poByNumber.get(task.poNumber.trim());
                         const property = findPropertyForTask(record, task);
                         const row = buildPrimaryDataTableRow(
@@ -634,16 +779,9 @@ export function ActiveTransactionQueueView({
                                 {row.propertySlot}
                               </span>
                             </Td>
-                            <Td className="text-text-2">
-                              <PoNumber value={task.poNumber} link />
-                            </Td>
                             <Td className="text-text-2">{row.assignmentType}</Td>
-                            <Td
-                              className="max-w-0 overflow-hidden text-ellipsis text-text-2"
-                              title={row.assignmentSpecialist}
-                            >
-                              {row.assignmentSpecialist}
-                            </Td>
+                            <Td className="text-text-2">{row.city}</Td>
+                            <Td className="text-text-2">{row.district}</Td>
                             <Td>
                               {renderStatusOrRemaining(task, row.remainingTime)}
                             </Td>

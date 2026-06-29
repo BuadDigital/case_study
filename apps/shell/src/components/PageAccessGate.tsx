@@ -2,9 +2,10 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { PanelSkeleton } from "@platform/design-system";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import {
-  canAccessPage,
+  canAccessPathname,
   defaultLandingPath,
   pageIdFromPathname,
 } from "@platform/app-shared/prototype/page-access";
@@ -20,10 +21,14 @@ export function PageAccessGate({ children }: { children: React.ReactNode }) {
 
     const pageId = pageIdFromPathname(pathname);
     if (pageId === null) return;
-    if (!canAccessPage(pageId, rolePages)) {
+    if (!canAccessPathname(pathname, rolePages)) {
       router.replace(defaultLandingPath(rolePages));
     }
   }, [authReady, pathname, rolePages, router]);
+
+  if (!authReady) {
+    return <PanelSkeleton className="min-h-svh" />;
+  }
 
   return <>{children}</>;
 }

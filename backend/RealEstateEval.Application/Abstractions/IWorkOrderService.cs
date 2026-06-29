@@ -6,6 +6,10 @@ namespace RealEstateEval.Application.Abstractions;
 public interface IWorkOrderService
 {
     Task<IReadOnlyList<WorkOrderListItemDto>> ListAsync(CancellationToken cancellationToken);
+    Task<PagedResultDto<WorkOrderListItemDto>> ListPagedAsync(
+        int? page,
+        int? pageSize,
+        CancellationToken cancellationToken);
     Task<IReadOnlyList<WorkOrderDto>> ListDetailsAsync(CancellationToken cancellationToken);
     Task<IReadOnlyList<PropertyListItemDto>> ListPropertyListItemsAsync(
         CancellationToken cancellationToken);

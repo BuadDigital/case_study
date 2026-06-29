@@ -35,6 +35,7 @@ function listItemToPoRow(item: WorkOrderListItemDto): PoRow {
     date: item.receivedFromEnfathAt,
     dueDate: item.dueDateAt,
     specialist: item.assignmentSpecialist?.trim() || "—",
+    createdAtUtc: item.createdAtUtc,
   };
 }
 
@@ -189,7 +190,7 @@ export function mapWorkOrderDtosToPropertyListItems(
   );
 }
 
-/** PO list rows for dashboard and PO screens — shared prototype read. */
+/** PO list rows for dashboard and PO screens — loads all pages (500 rows per request). */
 export async function loadPoListRows(): Promise<PoRow[]> {
   const config = workOrdersApiConfig();
   if (!config) return [];

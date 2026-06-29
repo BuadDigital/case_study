@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "@platform/app-shared/hooks/useAuth";
 import { useSyncedNotifications } from "@platform/app-shared/notifications/useSyncedNotifications";
+import { filterNotificationsForRole } from "@platform/app-shared/notifications/role-notification-policy";
 import { formatNotificationTime } from "@platform/app-shared/notifications/format-notification-time";
 import type { NotificationCategory } from "@platform/app-shared/notifications/notification-store";
 import { isFeatureEnabled } from "@platform/app-shared/feature-flags";
@@ -31,8 +33,17 @@ const toneBorderClass = {
 } as const;
 
 export function NotificationCenter() {
-  const { items, unreadCount, markRead, markAllRead, clear, remove } =
+  const { role } = useAuth();
+  const { items: allItems, markRead, markAllRead, clear, remove } =
     useSyncedNotifications();
+  const items = useMemo(
+    () => filterNotificationsForRole(role, allItems),
+    [role, allItems],
+  );
+  const unreadCount = useMemo(
+    () => items.filter((item) => !item.read).length,
+    [items],
+  );
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 

@@ -19,9 +19,14 @@ public class WorkflowTasksController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<WorkflowTaskDto>>> List(
+    public async Task<IActionResult> List(
+        [FromQuery] int? page,
+        [FromQuery] int? pageSize,
         CancellationToken cancellationToken)
     {
+        if (page.HasValue || pageSize.HasValue)
+            return Ok(await _tasks.ListPagedAsync(page, pageSize, cancellationToken));
+
         return Ok(await _tasks.ListAsync(cancellationToken));
     }
 

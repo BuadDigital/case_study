@@ -1,4 +1,9 @@
 import { notifyTasksChanged } from "./tasks-storage";
+import { dispatchPartySubmissionChanged } from "@platform/app-shared/prototype/party-submission-changed-event";
+import {
+  dispatchWorkflowSubmitted,
+  GOVERNMENT_REVIEW_SUBMITTED_EVENT,
+} from "@platform/app-shared/prototype/party-workflow-events";
 import {
   fetchPartySubmission,
   getCachedPartySubmission,
@@ -18,9 +23,7 @@ export const GOVERNMENT_REVIEW_SUBMISSION_CHANGED_EVENT =
   "government-review-submission-changed";
 
 function notifyChanged(): void {
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(GOVERNMENT_REVIEW_SUBMISSION_CHANGED_EVENT));
-  }
+  dispatchPartySubmissionChanged(GOVERNMENT_REVIEW_SUBMISSION_CHANGED_EVENT);
 }
 
 function dtoToSubmission(
@@ -125,6 +128,7 @@ export async function submitGovernmentReviewSubmission(
   const dto = await submitPartySubmission(taskId);
   if (!dto) return loadGovernmentReviewSubmission(taskId);
   notifyChanged();
+  dispatchWorkflowSubmitted(GOVERNMENT_REVIEW_SUBMITTED_EVENT);
   notifyTasksChanged();
   return dtoToSubmission(dto);
 }
