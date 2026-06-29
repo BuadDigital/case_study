@@ -10,6 +10,7 @@ import {
   createFailure,
   type FailureSeverity,
 } from "@failures/mfe";
+import { FREE_TEXT_FAILURE_PROBLEM_TYPE_ID } from "@failures/mfe/lib/failure-types-data";
 
 export function FailureRaiseModal({
   open,
@@ -33,14 +34,14 @@ export function FailureRaiseModal({
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const [severity, setSeverity] = useState<FailureSeverity>("internal");
-  const [problemTypeId, setProblemTypeId] = useState("");
+  const [problemDescription, setProblemDescription] = useState("");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setSeverity("internal");
-    setProblemTypeId("");
+    setProblemDescription("");
     setNote("");
     setSaving(false);
   }, [open, propertyId]);
@@ -51,14 +52,16 @@ export function FailureRaiseModal({
   }
 
   async function handleSubmit() {
-    if (!problemTypeId || saving) return;
+    const description = problemDescription.trim();
+    if (!description || saving) return;
     setSaving(true);
     try {
       await createFailure({
         poNumber,
         propertyId,
         deedNumber,
-        problemTypeId,
+        problemTypeId: FREE_TEXT_FAILURE_PROBLEM_TYPE_ID,
+        title: description,
         severity,
         raisedByRole,
         internalNote: note,
@@ -93,7 +96,7 @@ export function FailureRaiseModal({
             type="button"
             variant="primary"
             loading={saving}
-            disabled={saving || !problemTypeId}
+            disabled={saving || !problemDescription.trim()}
             className="min-w-[9.5rem]"
             onClick={() => void handleSubmit()}
           >
@@ -106,8 +109,8 @@ export function FailureRaiseModal({
         idPrefix={`modal-${propertyId}`}
         severity={severity}
         onSeverityChange={setSeverity}
-        problemTypeId={problemTypeId}
-        onProblemTypeIdChange={setProblemTypeId}
+        problemDescription={problemDescription}
+        onProblemDescriptionChange={setProblemDescription}
         note={note}
         onNoteChange={setNote}
       />

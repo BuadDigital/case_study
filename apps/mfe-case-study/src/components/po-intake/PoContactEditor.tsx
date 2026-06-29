@@ -9,7 +9,7 @@ import { Button } from "@platform/design-system";
 import {
   normalizePhoneInput,
   PHONE_MIN_DIGITS,
-} from "./po-property-validation";
+} from "../../lib/domain/po-intake/property-validation";
 
 export function PoContactEditor({
   contacts,

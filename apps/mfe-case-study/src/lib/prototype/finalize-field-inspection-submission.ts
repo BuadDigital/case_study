@@ -10,6 +10,3 @@ export async function finalizeInspectorWorkspace(
 > {
   return submitInspectorWorkspace(taskId);
 }
-
-/** @deprecated */
-export const finalizeFieldInspectionSubmission = finalizeInspectorWorkspace;

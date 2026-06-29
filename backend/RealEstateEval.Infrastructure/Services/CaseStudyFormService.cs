@@ -14,15 +14,21 @@ public class CaseStudyFormService : ICaseStudyFormService
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
+    private const string CaseStudyPropertyKind = "case-study-property";
+    private const string FormStatusSubmitted = "submitted";
+
     private readonly ApplicationDbContext _db;
     private readonly ICaseStudyValuationDispatchService _valuationDispatch;
+    private readonly IWorkflowTaskService _workflowTasks;
 
     public CaseStudyFormService(
         ApplicationDbContext db,
-        ICaseStudyValuationDispatchService valuationDispatch)
+        ICaseStudyValuationDispatchService valuationDispatch,
+        IWorkflowTaskService workflowTasks)
     {
         _db = db;
         _valuationDispatch = valuationDispatch;
+        _workflowTasks = workflowTasks;
     }
 
     public async Task<CaseStudyFormDto?> GetAsync(
@@ -38,7 +44,7 @@ public class CaseStudyFormService : ICaseStudyFormService
         return entity is null ? null : ToDto(entity);
     }
 
-    public async Task<CaseStudyFormDto> SaveAsync(
+    public async Task<(CaseStudyFormDto? Result, Dictionary<string, string>? Errors)> SaveAsync(
         Guid taskId,
         bool party,
         CaseStudyFormDto form,
@@ -47,6 +53,16 @@ public class CaseStudyFormService : ICaseStudyFormService
         var entity = await _db.CaseStudyForms.FirstOrDefaultAsync(
             f => f.TaskId == taskId && f.IsPartyForm == party,
             cancellationToken);
+
+        if (party)
+        {
+            var partyErrors = await ValidatePartySaveAllowedAsync(
+                taskId,
+                entity,
+                cancellationToken);
+            if (partyErrors is not null)
+                return (null, partyErrors);
+        }
 
         var previousStatus = entity?.Status;
         var now = DateTime.UtcNow;
@@ -66,13 +82,107 @@ public class CaseStudyFormService : ICaseStudyFormService
         await _db.SaveChangesAsync(cancellationToken);
 
         if (!party
-            && string.Equals(form.Status, "submitted", StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(previousStatus, "submitted", StringComparison.OrdinalIgnoreCase))
+            && string.Equals(form.Status, FormStatusSubmitted, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(previousStatus, FormStatusSubmitted, StringComparison.OrdinalIgnoreCase))
         {
             await _valuationDispatch.TryCreateFromCaseStudySubmissionAsync(taskId, cancellationToken);
+            await TryCompleteCaseStudyWorkflowTaskAsync(taskId, cancellationToken);
+            await LockPartyFormsAsync(taskId, now, cancellationToken);
         }
 
-        return ToDto(entity);
+        return (ToDto(entity), null);
+    }
+
+    private async Task<Dictionary<string, string>?> ValidatePartySaveAllowedAsync(
+        Guid partyTaskId,
+        CaseStudyForm? existingEntity,
+        CancellationToken cancellationToken)
+    {
+        if (existingEntity is not null
+            && string.Equals(existingEntity.Status, FormStatusSubmitted, StringComparison.OrdinalIgnoreCase))
+        {
+            return new Dictionary<string, string>
+            {
+                ["_"] = "تم إغلاق نموذج الطرف بعد رفع دراسة الحالة",
+            };
+        }
+
+        var task = await _db.WorkflowTasks
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == partyTaskId, cancellationToken);
+        if (task?.ParentTaskId is not Guid parentId)
+            return null;
+
+        var parentSubmitted = await _db.CaseStudyForms
+            .AsNoTracking()
+            .AnyAsync(
+                f => f.TaskId == parentId
+                     && !f.IsPartyForm
+                     && f.Status == FormStatusSubmitted,
+                cancellationToken);
+        if (!parentSubmitted)
+            return null;
+
+        return new Dictionary<string, string>
+        {
+            ["_"] = "تم رفع نموذج دراسة الحالة — لا يمكن تعديل إجابات الأطراف",
+        };
+    }
+
+    private async Task LockPartyFormsAsync(
+        Guid parentTaskId,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var childTaskIds = await _db.WorkflowTasks
+            .AsNoTracking()
+            .Where(t => t.ParentTaskId == parentTaskId)
+            .Select(t => t.Id)
+            .ToListAsync(cancellationToken);
+        if (childTaskIds.Count == 0)
+            return;
+
+        var partyForms = await _db.CaseStudyForms
+            .Where(f => f.IsPartyForm && childTaskIds.Contains(f.TaskId))
+            .ToListAsync(cancellationToken);
+
+        var changed = false;
+        foreach (var partyForm in partyForms)
+        {
+            if (string.Equals(partyForm.Status, FormStatusSubmitted, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            partyForm.Status = FormStatusSubmitted;
+            partyForm.UpdatedAtUtc = now;
+            changed = true;
+        }
+
+        if (changed)
+            await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task TryCompleteCaseStudyWorkflowTaskAsync(
+        Guid taskId,
+        CancellationToken cancellationToken)
+    {
+        var task = await _db.WorkflowTasks
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
+        if (task is null
+            || !string.Equals(task.Kind, CaseStudyPropertyKind, StringComparison.OrdinalIgnoreCase)
+            || WorkflowTaskStatus.IsTerminal(task.Status))
+        {
+            return;
+        }
+
+        await _workflowTasks.PatchAsync(
+            taskId,
+            new PatchWorkflowTaskRequest
+            {
+                Status = WorkflowTaskStatus.Completed,
+                Phase = "done",
+            },
+            cancellationToken);
     }
 
     private static void ApplyDto(CaseStudyForm entity, CaseStudyFormDto dto, DateTime now)
@@ -98,6 +208,11 @@ public class CaseStudyFormService : ICaseStudyFormService
         entity.SpecialistReviewApprovedJson = dto.SpecialistReviewApproved is null
             ? null
             : JsonSerializer.Serialize(dto.SpecialistReviewApproved, JsonOpts);
+        entity.InfathLinkedAssets = dto.InfathLinkedAssets ?? "";
+        entity.InfathLinkedDeedNumbers = dto.InfathLinkedDeedNumbers ?? "";
+        entity.InfathLinkedAssetsNotes = dto.InfathLinkedAssetsNotes ?? "";
+        entity.InfathOtherNotes = dto.InfathOtherNotes ?? "";
+        entity.InfathClosingNotes = dto.InfathClosingNotes ?? "";
         entity.SavedAtUtc = now;
         entity.UpdatedAtUtc = now;
     }
@@ -152,6 +267,11 @@ public class CaseStudyFormService : ICaseStudyFormService
             SigApprover = entity.SigApprover,
             SigDate = entity.SigDate,
             SpecialistReviewApproved = specialistReview,
+            InfathLinkedAssets = entity.InfathLinkedAssets,
+            InfathLinkedDeedNumbers = entity.InfathLinkedDeedNumbers,
+            InfathLinkedAssetsNotes = entity.InfathLinkedAssetsNotes,
+            InfathOtherNotes = entity.InfathOtherNotes,
+            InfathClosingNotes = entity.InfathClosingNotes,
             SavedAtUtc = entity.SavedAtUtc?.ToString("O"),
         };
     }

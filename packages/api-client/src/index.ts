@@ -275,7 +275,6 @@ export {
 export {
   getPoEnfazBilling,
   getPropertyEnfazRevenue,
-  listReadyEnfazPos,
   listReadyEnfazPoSummaries,
   savePoEnfazBilling,
   type EnfazBillingApiConfig,

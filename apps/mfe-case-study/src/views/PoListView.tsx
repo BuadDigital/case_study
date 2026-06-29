@@ -113,7 +113,7 @@ function DeedColumnCell({
   highlightDeed?: string;
 }) {
   if (deeds.length === 0) {
-    return <span className="text-text-3">—</span>;
+    return <span className="text-text-3">لا صكوك</span>;
   }
 
   if (highlightDeed) {
@@ -133,13 +133,7 @@ function DeedColumnCell({
   }
 
   if (deeds.length === 1) {
-    return (
-      <span className="font-medium text-text-2">
-        <bdi dir="ltr" className={ltrValueClass}>
-          {deeds[0].deedNumber}
-        </bdi>
-      </span>
-    );
+    return <span className="text-[12px] text-text-2">صك واحد</span>;
   }
 
   return (

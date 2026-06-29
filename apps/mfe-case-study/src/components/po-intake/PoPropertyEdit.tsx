@@ -26,12 +26,12 @@ import { PoPropertyEnfathForm } from "./PoPropertyEnfathForm";
 import {
   firstBourseValidationMessage,
   validatePropertyBourseFields,
-} from "./po-property-bourse-validation";
+} from "../../lib/domain/po-intake/property-bourse-validation";
 import {
   firstEnfathValidationMessage,
   mergePropertyEnfathValidation,
-} from "./po-property-enfath-validation";
-import { contactsForApi } from "./po-property-validation";
+} from "../../lib/domain/po-intake/property-enfath-validation";
+import { contactsForApi } from "../../lib/domain/po-intake/property-validation";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { canDeleteProperty } from "../../lib/prototype/po-roles";
 

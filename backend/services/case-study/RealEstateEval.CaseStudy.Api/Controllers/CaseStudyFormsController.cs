@@ -35,8 +35,13 @@ public class CaseStudyFormsController : ControllerBase
         [FromBody] SaveCaseStudyFormRequest request,
         CancellationToken cancellationToken)
     {
-        var dto = await _forms.SaveAsync(taskId, party: false, request.Form, cancellationToken);
-        return Ok(dto);
+        var (result, errors) = await _forms.SaveAsync(
+            taskId,
+            party: false,
+            request.Form,
+            cancellationToken);
+        if (errors is not null) return BadRequest(new { errors });
+        return Ok(result);
     }
 
     [HttpGet("party/{taskId:guid}")]
@@ -56,7 +61,12 @@ public class CaseStudyFormsController : ControllerBase
         [FromBody] SaveCaseStudyFormRequest request,
         CancellationToken cancellationToken)
     {
-        var dto = await _forms.SaveAsync(taskId, party: true, request.Form, cancellationToken);
-        return Ok(dto);
+        var (result, errors) = await _forms.SaveAsync(
+            taskId,
+            party: true,
+            request.Form,
+            cancellationToken);
+        if (errors is not null) return BadRequest(new { errors });
+        return Ok(result);
     }
 }

@@ -244,6 +244,7 @@ const evaluatorChecklistFields: PropertyFieldCatalogEntry[] = [
   { key: "q_land_waqf", label: "هل الأرض موقوفة؟" },
   { key: "q_property_waqf", label: "هل العقار موقوف؟" },
   { key: "q_expropriation", label: "هل يوجد نزع على منطقة العقار؟" },
+  { key: "q_property_use_verified", label: "هل تم التأكد من استخدام العقار؟" },
   { key: "q_agriculture_inquiry", label: "هل تم الاستعلام من وزارة الزراعة حيال الأرض الزراعية؟" },
   { key: "q_overlap", label: "هل يوجد تداخل في الأصل؟" },
   { key: "q_shared_building", label: "هل يوجد على الأصل مبنى مشترك؟" },

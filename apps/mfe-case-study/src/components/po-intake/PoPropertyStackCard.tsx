@@ -7,7 +7,7 @@ import {
   type PoPropertyIntake,
 } from "../../lib/prototype/po-intake-data";
 import { Button, Card, CardBody, CardHeader, cn } from "@platform/design-system";
-import { isValidContactEntry } from "./po-property-validation";
+import { isValidContactEntry } from "../../lib/domain/po-intake/property-validation";
 
 export function PoPropertyStackCard({
   index,

@@ -41,16 +41,6 @@ public class WorkflowTaskService : IWorkflowTaskService
         return list.Select(WorkflowTaskMapper.ToDto).ToList();
     }
 
-    public async Task<WorkflowTaskDto?> GetAsync(
-        Guid id,
-        CancellationToken cancellationToken = default)
-    {
-        var entity = await _db.WorkflowTasks
-            .AsNoTracking()
-            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
-        return entity is null ? null : WorkflowTaskMapper.ToDto(entity);
-    }
-
     public async Task<IReadOnlyList<WorkflowTaskDto>> SyncFromWorkOrdersAsync(
         CancellationToken cancellationToken = default)
     {

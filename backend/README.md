@@ -1,14 +1,8 @@
 # Backend — microservices
 
-
-
 The platform runs as an **API gateway** plus **domain services** (shared Postgres stepping stone).
 
-
-
 ## Layout
-
-
 
 ```text
 
@@ -42,11 +36,7 @@ backend/
 
 ```
 
-
-
 ## Gateway routes
-
-
 
 | Path | Service |
 
@@ -70,11 +60,7 @@ backend/
 
 | `/api/*` (catch-all) | Case Study |
 
-
-
 ## Local development
-
-
 
 ```bash
 
@@ -86,19 +72,11 @@ npm run dev        # Next.js shell
 
 ```
 
-
-
 Individual services: `dev:identity`, `dev:case-study`, `dev:operations`, `dev:reporting`, `dev:financial`, `dev:valuation`, `dev:failures`, `dev:platform`, `dev:attachments`, `dev:gateway`.
-
-
 
 ## EF migrations
 
-
-
 Migrations live in `RealEstateEval.Infrastructure/Data/Migrations/`. Applied automatically when **Case Study** starts (dev or Docker).
-
-
 
 ```bash
 
@@ -110,11 +88,7 @@ dotnet ef migrations add <Name> \
 
 ```
 
-
-
 ## Docker (full API stack)
-
-
 
 ```bash
 
@@ -122,11 +96,7 @@ docker compose -f infra/docker-compose.yml up -d postgres rabbitmq redis identit
 
 ```
 
-
-
 Gateway: `http://localhost:5160`
-
-
 
 ## Remaining toward full microservices
 
@@ -138,12 +108,14 @@ Gateway: `http://localhost:5160`
 
 Each service resolves `ConnectionStrings:{ServiceName}` first, then `REAL_ESTATE_EVAL_PG_CONNECTION_STRING_{SERVICENAME}`, then the shared default.
 
-| Service | Key |
-|---------|-----|
-| Identity | `ConnectionStrings:Identity` |
-| Case Study | `ConnectionStrings:CaseStudy` |
-| Operations | `ConnectionStrings:Operations` |
-| … | See `ServiceDatabaseNames` in `RealEstateEval.Shared.Web` |
+
+| Service    | Key                                                       |
+| ---------- | --------------------------------------------------------- |
+| Identity   | `ConnectionStrings:Identity`                              |
+| Case Study | `ConnectionStrings:CaseStudy`                             |
+| Operations | `ConnectionStrings:Operations`                            |
+| …          | See `ServiceDatabaseNames` in `RealEstateEval.Shared.Web` |
+
 
 In dev, all keys may point at `realestate_eval_dev`. In prod, point each at its own database.
 
@@ -155,11 +127,13 @@ Available in **Development** and **Docker** at `http://localhost:{port}/swagger`
 
 Reporting no longer reads Postgres directly. It calls upstream HTTP APIs (forwards the user JWT):
 
-| Data | Upstream |
-|------|----------|
-| Valuation requests | `GET /api/valuation-requests` |
+
+| Data                            | Upstream                                          |
+| ------------------------------- | ------------------------------------------------- |
+| Valuation requests              | `GET /api/valuation-requests`                     |
 | Workflow tasks, property counts | `GET /api/workflow-tasks`, `GET /api/work-orders` |
-| Failure count | `GET /api/failures` |
+| Failure count                   | `GET /api/failures`                               |
+
 
 Config: `UpstreamServices:GatewayBaseUrl` (local dev), or per-service URLs in Docker (`CaseStudyBaseUrl`, `ValuationBaseUrl`, `FailuresBaseUrl`).
 
@@ -175,17 +149,19 @@ Shell loads `GET /api/permissions` after login. Sidebar `pages` and `hasCapabili
 
 One database (`realestate_eval_dev`) with **domain schemas** as a stepping stone to DB-per-service:
 
-| Schema | Tables |
-|--------|--------|
-| `identity` | Users, roles, profiles |
-| `case_study` | Work orders, workflow, forms, PO drafts |
-| `platform` | Field dictionary, courts, custom screens |
-| `failures` | Property failures, failure-types catalog |
-| `operations` | Survey offices, property keys |
-| `valuation` | Valuation requests, evaluator recalls |
-| `attachments` | File attachment metadata |
-| `financial` | Financial report config |
-| `messaging` | Outbox messages |
+
+| Schema        | Tables                                   |
+| ------------- | ---------------------------------------- |
+| `identity`    | Users, roles, profiles                   |
+| `case_study`  | Work orders, workflow, forms, PO drafts  |
+| `platform`    | Field dictionary, courts, custom screens |
+| `failures`    | Property failures, failure-types catalog |
+| `operations`  | Survey offices, property keys            |
+| `valuation`   | Valuation requests, evaluator recalls    |
+| `attachments` | File attachment metadata                 |
+| `financial`   | Financial report config                  |
+| `messaging`   | Outbox messages                          |
+
 
 Constants: `RealEstateEval.Infrastructure/Data/DatabaseSchemas.cs`. EF maps each entity via `ToTable(name, schema)`.
 
@@ -193,22 +169,26 @@ Constants: `RealEstateEval.Infrastructure/Data/DatabaseSchemas.cs`. EF maps each
 
 `docker compose … redis` (port `6379`). Registered via `AddRedisCaching` in `AddPersistence`.
 
-| Key | Endpoint | TTL |
-|-----|----------|-----|
-| `reporting:dashboard:v1` | `GET /api/reporting/v1/dashboard` | 60s |
-| `reporting:kpi:v1` | `GET /api/reporting/v1/kpi` | 60s |
-| `financial:summary:v1` | `GET /api/financial/v1/summary` | 60s (invalidated on PUT) |
-| `operations:survey-offices:v1` | `GET /api/survey-offices` | 120s (invalidated on writes) |
-| `platform:courts:v1` | `GET /api/courts` | 5m (invalidated on PUT) |
+
+| Key                            | Endpoint                          | TTL                          |
+| ------------------------------ | --------------------------------- | ---------------------------- |
+| `reporting:dashboard:v1`       | `GET /api/reporting/v1/dashboard` | 60s                          |
+| `reporting:kpi:v1`             | `GET /api/reporting/v1/kpi`       | 60s                          |
+| `financial:summary:v1`         | `GET /api/financial/v1/summary`   | 60s (invalidated on PUT)     |
+| `operations:survey-offices:v1` | `GET /api/survey-offices`         | 120s (invalidated on writes) |
+| `platform:courts:v1`           | `GET /api/courts`                 | 5m (invalidated on PUT)      |
+
 
 Config: `Redis:Enabled`, `Redis:ConnectionString` (Docker: `Redis__ConnectionString=redis:6379`). Set `Redis:Enabled` to `false` to bypass cache (in-memory fallback for `IDistributedCache` only when disabled).
 
 ## Permissions API
 
-| Endpoint | Description |
-|----------|-------------|
-| `GET /api/permissions` | Pages + capabilities for the signed-in user |
-| `GET /api/auth/me?includePermissions=true` | Profile + permissions |
+
+| Endpoint                                   | Description                                 |
+| ------------------------------------------ | ------------------------------------------- |
+| `GET /api/permissions`                     | Pages + capabilities for the signed-in user |
+| `GET /api/auth/me?includePermissions=true` | Profile + permissions                       |
+
 
 Roles come from Identity (`CDO`, `HrAdmin`, …) and optional `UserProfile.PermissionLevel` (prototype role id).
 
@@ -218,23 +198,25 @@ Files are stored under `data/blobs/` at repo root (local provider). DB keeps met
 
 ## Integration events (outbox + RabbitMQ)
 
-| Event | Trigger |
-|-------|---------|
-| `valuation.request.created.v1` | `POST /api/valuation-requests` |
+
+| Event                           | Trigger                                           |
+| ------------------------------- | ------------------------------------------------- |
+| `valuation.request.created.v1`  | `POST /api/valuation-requests`                    |
 | `valuation.report.submitted.v1` | `POST /api/valuation-requests/{id}/submit-report` |
+
 
 Case Study consumer completes `property-appraisal` tasks on report submitted; logs on request created.
 
 All services export **traces and metrics** via OTLP (default `http://localhost:4317` → Jaeger in docker compose).
 
-| Endpoint | Purpose |
-|----------|---------|
-| `GET /health` | Liveness |
-| `GET /ready` | DB connectivity (domain services only) |
-| `X-Correlation-Id` header | Returned on every response |
 
-Override: `OpenTelemetry:OtlpEndpoint` or env `OTEL_EXPORTER_OTLP_ENDPOINT`. Jaeger UI: http://localhost:16686
+| Endpoint                  | Purpose                                |
+| ------------------------- | -------------------------------------- |
+| `GET /health`             | Liveness                               |
+| `GET /ready`              | DB connectivity (domain services only) |
+| `X-Correlation-Id` header | Returned on every response             |
+
+
+Override: `OpenTelemetry:OtlpEndpoint` or env `OTEL_EXPORTER_OTLP_ENDPOINT`. Jaeger UI: [http://localhost:16686](http://localhost:16686)
 
 Requires `docker compose … rabbitmq` for integration events; both **valuation** + **case-study** must be running.
-
-

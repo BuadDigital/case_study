@@ -7,7 +7,12 @@ import {
   saveCaseStudyForm,
   savePartyCaseStudyForm,
 } from "@platform/api-client";
-import { workOrdersApiConfig } from "../work-orders-api-config";
+import { apiErrorMessage, resolveApiError, workOrdersApiConfig } from "../work-orders-api-config";
+import { syncEvaluatorChecklistFromPartyCaseStudy } from "@evaluator/mfe";
+
+export type SaveCaseStudyFormDraftResult =
+  | { ok: true; draft: CaseStudyFormDraft }
+  | { ok: false; error: string };
 
 export type CaseStudyFormStatus = "new" | "draft" | "submitted";
 
@@ -68,6 +73,11 @@ function dtoToDraft(dto: CaseStudyFormDto): CaseStudyFormDraft {
     sigApprover: dto.sigApprover,
     sigDate: dto.sigDate,
     specialistReviewApproved: dto.specialistReviewApproved,
+    infathLinkedAssets: (dto.infathLinkedAssets || "") as CaseStudyFormDraft["infathLinkedAssets"],
+    infathLinkedDeedNumbers: dto.infathLinkedDeedNumbers ?? "",
+    infathLinkedAssetsNotes: dto.infathLinkedAssetsNotes ?? "",
+    infathOtherNotes: dto.infathOtherNotes ?? "",
+    infathClosingNotes: dto.infathClosingNotes ?? "",
     savedAtUtc: dto.savedAtUtc,
   };
 }
@@ -95,6 +105,11 @@ function draftToDto(draft: CaseStudyFormDraft): CaseStudyFormDto {
     sigApprover: draft.sigApprover,
     sigDate: draft.sigDate,
     specialistReviewApproved: draft.specialistReviewApproved,
+    infathLinkedAssets: draft.infathLinkedAssets ?? "",
+    infathLinkedDeedNumbers: draft.infathLinkedDeedNumbers ?? "",
+    infathLinkedAssetsNotes: draft.infathLinkedAssetsNotes ?? "",
+    infathOtherNotes: draft.infathOtherNotes ?? "",
+    infathClosingNotes: draft.infathClosingNotes ?? "",
     savedAtUtc: draft.savedAtUtc,
   };
 }
@@ -156,16 +171,26 @@ export async function loadCaseStudyFormDraft(
 
 export async function saveCaseStudyFormDraft(
   draft: CaseStudyFormDraft,
-): Promise<CaseStudyFormDraft | null> {
+): Promise<SaveCaseStudyFormDraftResult> {
   const config = workOrdersApiConfig();
-  if (!config) return null;
+  if (!config) {
+    return { ok: false, error: apiErrorMessage("auth") };
+  }
   const payload = {
     ...draft,
     savedAtUtc: new Date().toISOString(),
   };
   const result = await saveCaseStudyForm(config, draft.taskId, draftToDto(payload));
-  if (!result.ok) return null;
-  return dtoToDraft(result.data);
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: resolveApiError(
+        result.kind,
+        "errors" in result ? result.errors : undefined,
+      ),
+    };
+  }
+  return { ok: true, draft: dtoToDraft(result.data) };
 }
 
 export async function loadPartyCaseStudyFormDraft(
@@ -192,9 +217,11 @@ function notifyPartyCaseStudyFormChanged(taskId: string): void {
 
 export async function savePartyCaseStudyFormDraft(
   draft: CaseStudyFormDraft,
-): Promise<CaseStudyFormDraft | null> {
+): Promise<SaveCaseStudyFormDraftResult> {
   const config = workOrdersApiConfig();
-  if (!config) return null;
+  if (!config) {
+    return { ok: false, error: apiErrorMessage("auth") };
+  }
   const payload = {
     ...draft,
     savedAtUtc: new Date().toISOString(),
@@ -204,8 +231,16 @@ export async function savePartyCaseStudyFormDraft(
     draft.taskId,
     draftToDto(payload),
   );
-  if (!result.ok) return null;
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: resolveApiError(result.kind, "errors" in result ? result.errors : undefined),
+    };
+  }
   const saved = dtoToDraft(result.data);
   notifyPartyCaseStudyFormChanged(draft.taskId);
-  return saved;
+  void syncEvaluatorChecklistFromPartyCaseStudy(draft.taskId, {
+    overwriteLinked: true,
+  });
+  return { ok: true, draft: saved };
 }

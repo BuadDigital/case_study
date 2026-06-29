@@ -55,7 +55,7 @@ import { PoPropertyBourseForm } from "@case-study/mfe/components/po-intake/PoPro
 import {
   firstBourseValidationMessage,
   validatePropertyBourseFields,
-} from "@case-study/mfe/components/po-intake/po-property-bourse-validation";
+} from "../lib/domain/po-intake/property-bourse-validation";
 import type { PendingBoursePropertyDto } from "@platform/api-client";
 import { filterActionablePendingBourseItems } from "../lib/prototype/pending-bourse-queue";
 import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
@@ -75,7 +75,7 @@ export function BourseInquiryView() {
 
   const items = filterActionablePendingBourseItems(rawItems, failures);
   const queuePending = !isFetched;
-  const { showToast } = useToast();
+  const { showToast, runWithActionToast } = useToast();
   const [selected, setSelected] = useState<PendingBoursePropertyDto | null>(null);
   const [property, setProperty] = useState<PoPropertyIntake>(emptyProperty);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -163,24 +163,30 @@ export function BourseInquiryView() {
         return;
       }
 
-      setSaving(true);
-      setFormError(null);
-      setObstructionReasonError(undefined);
-      await submitBourseObstruction({
-        poNumber: selected.poNumber,
-        propertyId: selected.propertyId,
-        deedNumber: property.deedNumber || selected.deedNumber,
-        reason: obstructionReason,
-        specialist: ROLES[role]?.name ?? "أخصائي دراسة الحالة",
+      await runWithActionToast("إرسال للمشرف — إدارة التعذرات", async () => {
+        setSaving(true);
+        setFormError(null);
+        setObstructionReasonError(undefined);
+        try {
+          await submitBourseObstruction({
+            poNumber: selected.poNumber,
+            propertyId: selected.propertyId,
+            deedNumber: property.deedNumber || selected.deedNumber,
+            reason: obstructionReason,
+            specialist: ROLES[role]?.name ?? "أخصائي دراسة الحالة",
+          });
+          closeForm();
+          await queryClient.invalidateQueries({
+            queryKey: prototypeKeys.failures(),
+          });
+          await queryClient.invalidateQueries({
+            queryKey: prototypeKeys.workflowTasks(),
+          });
+          await refresh();
+        } finally {
+          setSaving(false);
+        }
       });
-      setSaving(false);
-      closeForm();
-      await queryClient.invalidateQueries({ queryKey: prototypeKeys.failures() });
-      await queryClient.invalidateQueries({
-        queryKey: prototypeKeys.workflowTasks(),
-      });
-      await refresh();
-      showToast("تم إرسال التعذر للمشرف.", "success");
       return;
     }
 
@@ -191,25 +197,29 @@ export function BourseInquiryView() {
       return;
     }
 
-    setSaving(true);
-    setFormError(null);
-    const result = await completePropertyBourse(
-      selected.poNumber,
-      selected.propertyId,
-      { ...property, deedStatus: "فعال" },
-    );
-    setSaving(false);
+    await runWithActionToast("حفظ وإكمال البورصة", async () => {
+      setSaving(true);
+      setFormError(null);
+      try {
+        const result = await completePropertyBourse(
+          selected.poNumber,
+          selected.propertyId,
+          { ...property, deedStatus: "فعال" },
+        );
 
-    if (!result.ok) {
-      setFormError(result.error);
-      if (result.errors) setFieldErrors(result.errors);
-      showToast(result.error, "error");
-      return;
-    }
+        if (!result.ok) {
+          setFormError(result.error);
+          if (result.errors) setFieldErrors(result.errors);
+          showToast(result.error, "error");
+          throw new Error("save-failed");
+        }
 
-    closeForm();
-    await refresh();
-    showToast("تم حفظ بيانات البورصة.", "success");
+        closeForm();
+        await refresh();
+      } finally {
+        setSaving(false);
+      }
+    });
   }
 
   const obstructionPath = deedVitality === "inactive";
@@ -370,6 +380,12 @@ export function BourseInquiryView() {
                   variant="primary"
                   loading={saving}
                   disabled={saving}
+                  showActionToast={false}
+                  actionLabel={
+                    obstructionPath
+                      ? "إرسال للمشرف — إدارة التعذرات"
+                      : "حفظ وإكمال البورصة"
+                  }
                   onClick={() => void handleSubmit()}
                 >
                   {obstructionPath

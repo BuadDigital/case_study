@@ -128,3 +128,6 @@ export function failureProblemTypeLabel(
 
 export const DEED_INACTIVE_RESOLVED_LABEL =
   "الصك كان غير فعال سابقاً لكن تم حل المشكلة";
+
+/** Free-text problems entered by the user instead of catalog pickers. */
+export const FREE_TEXT_FAILURE_PROBLEM_TYPE_ID = "free-text";

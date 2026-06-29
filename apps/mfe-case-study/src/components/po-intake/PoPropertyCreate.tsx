@@ -9,8 +9,8 @@ import { Button, InlineLoadingSkeleton, Label, Note, cn } from "@platform/design
 import { PoIntakeWizardShell } from "./PoIntakeWizardShell";
 import { PoPropertyEnfathForm } from "./PoPropertyEnfathForm";
 import { PoPropertyStackCard } from "./PoPropertyStackCard";
-import { findInvalidEnfathPropertyIndex,firstEnfathValidationMessage,mergePropertyEnfathValidation,} from "./po-property-enfath-validation";
-import { contactsForApi } from "./po-property-validation";
+import { findInvalidEnfathPropertyIndex,firstEnfathValidationMessage,mergePropertyEnfathValidation,} from "../../lib/domain/po-intake/property-enfath-validation";
+import { contactsForApi } from "../../lib/domain/po-intake/property-validation";
 const PROPERTY_STEPS = ["تسجيل العقارات"] as const;
 const PROPERTY_HINT = "أدخل بيانات كل عقار من المعلومات الواردة في منصة إنفاذ والمستندات المرفقة.";
 

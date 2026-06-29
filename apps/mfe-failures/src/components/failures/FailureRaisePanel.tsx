@@ -11,6 +11,7 @@ import {
   historicalFailuresForProperty,
 } from "../../lib/failure-property-match";
 import { createFailure } from "../../lib/failures-repository";
+import type { FailureSeverity } from "../../lib/failures-types";
 import {
   failureOccurrenceSuffix,
   failureRecordTitle,
@@ -20,7 +21,7 @@ import {
   isPanelBlockingFailure,
 } from "../../lib/failures-labels";
 import { formatDateAr } from "@case-study/mfe";
-import type { FailureSeverity } from "../../lib/failures-types";
+import { FREE_TEXT_FAILURE_PROBLEM_TYPE_ID } from "../../lib/failure-types-data";
 import { useFailuresQuery } from "../../query/failures-queries";
 import { FailureRaiseFields } from "./FailureRaiseFields";
 
@@ -60,8 +61,9 @@ export function FailureRaisePanel({
   const { data: failures = [] } = useFailuresQuery();
   const [open, setOpen] = useState(false);
   const [severity, setSeverity] = useState<FailureSeverity>("internal");
-  const [problemTypeId, setProblemTypeId] = useState("");
+  const [problemDescription, setProblemDescription] = useState("");
   const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const propertyRef = useMemo(
     () => ({ poNumber, propertyId, deedNumber }),
@@ -106,27 +108,39 @@ export function FailureRaisePanel({
   }
 
   function handleSubmit() {
-    if (!problemTypeId || openFailureForCreate) return;
-    void createFailure({
-      poNumber,
-      propertyId,
-      deedNumber,
-      problemTypeId,
-      severity,
-      raisedByRole,
-      internalNote: note,
-      specialist,
-    }).then(() => {
-      void queryClient.invalidateQueries({ queryKey: prototypeKeys.failures() });
-      void queryClient.invalidateQueries({
-        queryKey: prototypeKeys.propertyKeys(),
-      });
-      setOpen(false);
-      setProblemTypeId("");
-      setNote("");
-      showToast("تم تسجيل التعذر.", "success");
-      onSubmitted?.();
-    });
+    const description = problemDescription.trim();
+    if (!description || openFailureForCreate || saving) return;
+    void (async () => {
+      setSaving(true);
+      try {
+        await createFailure({
+          poNumber,
+          propertyId,
+          deedNumber,
+          problemTypeId: FREE_TEXT_FAILURE_PROBLEM_TYPE_ID,
+          title: description,
+          severity,
+          raisedByRole,
+          internalNote: note,
+          specialist,
+        });
+        await queryClient.invalidateQueries({
+          queryKey: prototypeKeys.failures(),
+        });
+        await queryClient.invalidateQueries({
+          queryKey: prototypeKeys.propertyKeys(),
+        });
+        setOpen(false);
+        setProblemDescription("");
+        setNote("");
+        showToast("تم تسجيل التعذر !", "success");
+        onSubmitted?.();
+      } catch {
+        showToast("تعذر حفظ التعذر — تحقق من الاتصال وحاول مرة أخرى.", "error");
+      } finally {
+        setSaving(false);
+      }
+    })();
   }
 
   function renderStatusSection() {
@@ -221,6 +235,7 @@ export function FailureRaisePanel({
           variant="dangerOutline"
           size="sm"
           className="mt-3"
+          showActionToast={false}
           onClick={() => setOpen(true)}
         >
           تسجيل تعذر
@@ -239,8 +254,8 @@ export function FailureRaisePanel({
             idPrefix={`raise-${propertyId}`}
             severity={severity}
             onSeverityChange={setSeverity}
-            problemTypeId={problemTypeId}
-            onProblemTypeIdChange={setProblemTypeId}
+            problemDescription={problemDescription}
+            onProblemDescriptionChange={setProblemDescription}
             note={note}
             onNoteChange={setNote}
           />
@@ -248,7 +263,9 @@ export function FailureRaisePanel({
             type="button"
             variant="primary"
             size="sm"
-            disabled={!problemTypeId}
+            loading={saving}
+            disabled={!problemDescription.trim() || saving}
+            showActionToast={false}
             onClick={handleSubmit}
           >
             {severity === "internal" ? "حفظ تعذر داخلي" : "تسجيل احتمال تعذر"}

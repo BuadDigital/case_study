@@ -181,12 +181,15 @@ export function CaseStudyMatrixTable({
   sectionTotal,
   answers,
   onAnswer,
+  questions,
   canEditKey,
   visibleKey,
   partyByKey,
   showPartyColumn = true,
   partyContribCount = 0,
   onRefreshParty,
+  partyReviewApproved,
+  onConfirmPartyReview,
   footer,
 }: {
   section: CaseStudyQuestionSection;
@@ -195,16 +198,19 @@ export function CaseStudyMatrixTable({
   sectionTotal: number;
   answers: Record<string, CaseStudyFormAnswer | null>;
   onAnswer: (key: string, value: CaseStudyFormAnswer | null) => void;
+  questions?: readonly string[];
   canEditKey?: (key: string) => boolean;
   visibleKey?: (key: string) => boolean;
   partyByKey?: Record<string, PartyQuestionContribution[]>;
   showPartyColumn?: boolean;
   partyContribCount?: number;
   onRefreshParty?: () => void;
+  partyReviewApproved?: Record<string, boolean>;
+  onConfirmPartyReview?: (key: string) => void;
   footer?: ReactNode;
 }) {
-  const questions = CASE_STUDY_SECTION_QUESTIONS[section];
-  const visibleRows = questions
+  const questionRows = questions ?? CASE_STUDY_SECTION_QUESTIONS[section];
+  const visibleRows = questionRows
     .map((q, i) => ({ q, i, key: caseStudyAnswerKey(section, i) }))
     .filter((row) => (visibleKey ? visibleKey(row.key) : true));
 
@@ -242,9 +248,9 @@ export function CaseStudyMatrixTable({
             <IconInfo />
             <p className="m-0 min-w-[min(100%,220px)] flex-1">
               <strong>مسؤولية الأخصائي:</strong> راجِع إجابات الأطراف الظاهرة لكل
-              سؤال (للاستدلال فقط)، ثم حدِّد <strong>الإجابة المعتمدة</strong>{" "}
-              الرسمية. إجابات الأطراف للقراءة فقط، والأعمدة المعتمدة وحدها قابلة
-              للتعديل.
+              سؤال (للاستدلال فقط)، ثم اعتمد المراجعة أو حدِّد{" "}
+              <strong>الإجابة المعتمدة</strong> الرسمية. إجابات الأطراف للقراءة
+              فقط، والأعمدة المعتمدة وحدها قابلة للتعديل.
             </p>
             {partyContribCount > 0 && onRefreshParty ? (
               <Button size="sm" className="shrink-0" onClick={onRefreshParty}>
@@ -313,6 +319,9 @@ export function CaseStudyMatrixTable({
                 ? getMatrixConsensus(partyAnswers)
                 : null;
               const hasPartyAnswers = Object.keys(partyAnswers).length > 0;
+              const partyReviewConfirmed = partyReviewApproved?.[key] === true;
+              const awaitingPartyAnswer =
+                showPartyColumn && status === "pending" && official === null;
 
               const setOfficial = (next: MatrixYn | null) => {
                 onAnswer(key, ynToAnswer(next));
@@ -332,7 +341,7 @@ export function CaseStudyMatrixTable({
                       rowCellBg,
                       "border-b border-border px-4 py-2.5 align-top text-xs leading-snug text-text",
                       status === "pending" &&
-                        showPartyColumn &&
+                        awaitingPartyAnswer &&
                         "shadow-[inset_3px_0_0_#F39C12]",
                       status === "conflict" &&
                         showPartyColumn &&
@@ -348,7 +357,7 @@ export function CaseStudyMatrixTable({
                         <IconAlert size={9} /> تعارض
                       </span>
                     ) : null}
-                    {showPartyColumn && status === "pending" ? (
+                    {awaitingPartyAnswer ? (
                       <span className="ms-1.5 inline-flex items-center gap-0.5 rounded-full bg-[#FEF3D7] px-2 py-0.5 align-middle text-[10px] font-semibold text-[#946100]">
                         بانتظار إجابة
                       </span>
@@ -363,18 +372,35 @@ export function CaseStudyMatrixTable({
                       )}
                     >
                       {hasPartyAnswers ? (
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {PARTY_MATRIX_ORDER.filter((k) => partyAnswers[k]).map(
-                            (k) => (
-                              <PartyBadge
-                                key={k}
-                                short={PARTY_MATRIX_SHORT[k]}
-                                value={partyAnswers[k]!}
-                              />
-                            ),
-                          )}
+                        <div className="flex flex-col gap-2">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {PARTY_MATRIX_ORDER.filter((k) => partyAnswers[k]).map(
+                              (k) => (
+                                <PartyBadge
+                                  key={k}
+                                  short={PARTY_MATRIX_SHORT[k]}
+                                  value={partyAnswers[k]!}
+                                />
+                              ),
+                            )}
+                          </div>
+                          {partyReviewConfirmed ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#1A6B5A]">
+                              <IconCheckCheck size={12} />
+                              تمت مراجعة إجابات الأطراف
+                            </span>
+                          ) : onConfirmPartyReview && editable && hasPartyAnswers ? (
+                            <button
+                              type="button"
+                              className="inline-flex max-w-full cursor-pointer items-center justify-center gap-1 rounded-full border border-[#BCDCF2] bg-white px-2.5 py-1 text-[10px] font-semibold text-[#1A5276] hover:border-[#A9D0F0] hover:bg-[#EBF5FB]"
+                              onClick={() => onConfirmPartyReview(key)}
+                            >
+                              <IconCheck size={11} />
+                              اعتماد مراجعة الأطراف
+                            </button>
+                          ) : null}
                         </div>
-                      ) : (
+                      ) : official !== null ? null : (
                         <span className="text-[11px] text-[#8FA8BC]">
                           — لم يُسجَّل أي طرف إجابة بعد —
                         </span>
@@ -394,6 +420,7 @@ export function CaseStudyMatrixTable({
                       disabled={!editable}
                       onPick={setOfficial}
                       showAdopt={
+                        editable &&
                         showPartyColumn &&
                         status === "consensus" &&
                         consensus === "Y" &&
@@ -414,6 +441,7 @@ export function CaseStudyMatrixTable({
                       disabled={!editable}
                       onPick={setOfficial}
                       showAdopt={
+                        editable &&
                         showPartyColumn &&
                         status === "consensus" &&
                         consensus === "N" &&

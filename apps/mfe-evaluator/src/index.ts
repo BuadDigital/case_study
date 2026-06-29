@@ -18,5 +18,6 @@ export * from "./lib/evaluator/evaluator-inspection-gate";
 export * from "./lib/evaluator/evaluator-queue";
 export * from "./lib/evaluator/evaluator-window-host";
 export * from "./lib/evaluator/finalize-appraiser-submission";
+export * from "./lib/evaluator/evaluator-checklist-case-study-sync";
 
 export * from "./query/evaluator-queries";

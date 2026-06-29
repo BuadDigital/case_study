@@ -22,18 +22,9 @@ public class CaseStudyValuationDispatchTests
         await using var db = CreateDb();
         SeedWorkflow(db);
 
-        var timeline = new PropertyTimelineService(db);
-        var valuation = new ValuationRequestService(
-            db,
-            new OutboxIntegrationEventPublisher(db, NullLogger<OutboxIntegrationEventPublisher>.Instance));
-        var dispatch = new CaseStudyValuationDispatchService(
-            db,
-            valuation,
-            timeline,
-            NullLogger<CaseStudyValuationDispatchService>.Instance);
-        var forms = new CaseStudyFormService(db, dispatch);
+        var forms = CreateFormService(db);
 
-        await forms.SaveAsync(
+        var (dto, errors) = await forms.SaveAsync(
             ParentTaskId,
             party: false,
             new()
@@ -43,6 +34,8 @@ public class CaseStudyValuationDispatchTests
                 PoNumber = "PO-900",
                 Status = "submitted",
             });
+        Assert.Null(errors);
+        Assert.NotNull(dto);
 
         var vr = await db.ValuationRequests.SingleAsync();
         Assert.Equal(PropertyId.ToString(), vr.PropertyId);
@@ -62,16 +55,7 @@ public class CaseStudyValuationDispatchTests
         await using var db = CreateDb();
         SeedWorkflow(db);
 
-        var timeline = new PropertyTimelineService(db);
-        var valuation = new ValuationRequestService(
-            db,
-            new OutboxIntegrationEventPublisher(db, NullLogger<OutboxIntegrationEventPublisher>.Instance));
-        var dispatch = new CaseStudyValuationDispatchService(
-            db,
-            valuation,
-            timeline,
-            NullLogger<CaseStudyValuationDispatchService>.Instance);
-        var forms = new CaseStudyFormService(db, dispatch);
+        var forms = CreateFormService(db);
 
         var form = new CaseStudyFormDto
         {
@@ -81,13 +65,58 @@ public class CaseStudyValuationDispatchTests
             Status = "submitted",
         };
 
-        await forms.SaveAsync(ParentTaskId, party: false, form);
+        var (_, firstErrors) = await forms.SaveAsync(ParentTaskId, party: false, form);
+        Assert.Null(firstErrors);
         form.Status = "draft";
-        await forms.SaveAsync(ParentTaskId, party: false, form);
+        var (_, draftErrors) = await forms.SaveAsync(ParentTaskId, party: false, form);
+        Assert.Null(draftErrors);
         form.Status = "submitted";
-        await forms.SaveAsync(ParentTaskId, party: false, form);
+        var (_, submitErrors) = await forms.SaveAsync(ParentTaskId, party: false, form);
+        Assert.Null(submitErrors);
 
         Assert.Equal(1, await db.ValuationRequests.CountAsync());
+    }
+
+    [Fact]
+    public async Task Case_study_form_submission_completes_parent_workflow_task()
+    {
+        await using var db = CreateDb();
+        SeedWorkflow(db);
+
+        var forms = CreateFormService(db);
+        var (dto, errors) = await forms.SaveAsync(
+            ParentTaskId,
+            party: false,
+            new()
+            {
+                TaskId = ParentTaskId.ToString(),
+                PropertyId = PropertyId.ToString(),
+                PoNumber = "PO-900",
+                Status = "submitted",
+            });
+        Assert.Null(errors);
+        Assert.NotNull(dto);
+
+        var task = await db.WorkflowTasks.FindAsync(ParentTaskId);
+        Assert.NotNull(task);
+        Assert.Equal(WorkflowTaskStatus.Completed, task.Status);
+        Assert.Equal("done", task.Phase);
+    }
+
+    private static CaseStudyFormService CreateFormService(ApplicationDbContext db)
+    {
+        var timeline = new PropertyTimelineService(db);
+        var valuation = new ValuationRequestService(
+            db,
+            new OutboxIntegrationEventPublisher(db, NullLogger<OutboxIntegrationEventPublisher>.Instance));
+        var dispatch = new CaseStudyValuationDispatchService(
+            db,
+            valuation,
+            timeline,
+            NullLogger<CaseStudyValuationDispatchService>.Instance);
+        var fees = TestInspectorFeeServiceFactory.Create(db);
+        var workflow = new WorkflowTaskService(db, fees, timeline);
+        return new CaseStudyFormService(db, dispatch, workflow);
     }
 
     private static ApplicationDbContext CreateDb()

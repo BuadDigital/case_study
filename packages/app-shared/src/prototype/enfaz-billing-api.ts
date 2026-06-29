@@ -4,20 +4,12 @@ import {
   issuePoEnfazInvoice,
   listEnfazTracking,
   listReadyEnfazPoSummaries,
-  listReadyEnfazPos,
   savePoEnfazBilling,
   type PoEnfazBillingDto,
   type PropertyEnfazRevenueDto,
   type SavePoEnfazBillingRequest,
 } from "@platform/api-client";
 import { workOrdersApiConfig } from "./work-orders-api-config";
-
-export async function loadReadyEnfazPos(): Promise<string[]> {
-  const config = workOrdersApiConfig();
-  if (!config) return [];
-  const result = await listReadyEnfazPos(config);
-  return result.ok ? result.data : [];
-}
 
 export async function loadReadyEnfazPoSummaries() {
   const config = workOrdersApiConfig();

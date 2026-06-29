@@ -110,22 +110,6 @@ function normalizeTrackingRow(
   };
 }
 
-export async function listReadyEnfazPos(
-  config: EnfazBillingApiConfig,
-): Promise<ApiOk<string[]> | ApiErr> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/enfaz-billing/ready-pos`, {
-      headers: headers(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: (await res.json()) as string[] };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
 export async function listReadyEnfazPoSummaries(
   config: EnfazBillingApiConfig,
 ): Promise<ApiOk<EnfazReadyPoSummaryDto[]> | ApiErr> {

@@ -48,7 +48,7 @@ import {
   type PoPropertyIntake,
 } from "../../lib/prototype/po-intake-data";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
-import { isValidContactEntry } from "./po-property-validation";
+import { isValidContactEntry } from "../../lib/domain/po-intake/property-validation";
 import { PartyRoleDetailPanel } from "./PartyRoleDetailPanel";
 import {
   buildPropertyDetailPartyCards,

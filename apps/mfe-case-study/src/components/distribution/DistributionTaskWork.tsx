@@ -46,7 +46,7 @@ export function DistributionTaskWork({
   onClose: () => void;
 }) {
   const { role } = usePrototype();
-  const { showToast } = useToast();
+  const { runWithActionToast } = useToast();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
   const [property, setProperty] = useState<PoPropertyIntake>(emptyProperty);
@@ -139,17 +139,21 @@ export function DistributionTaskWork({
       return;
     }
 
-    setSaving(true);
-    await confirmTaskDistribution(
-      task.id,
-      distribution,
-      formatPropertyDeedDisplay(property),
-      staffUsers,
-    );
-    setSaving(false);
-    onRefresh();
-    showToast("تم تأكيد التوزيع وإرسال المهام.", "success");
-    onClose();
+    await runWithActionToast("تأكيد التوزيع وإرسال المهام", async () => {
+      setSaving(true);
+      try {
+        await confirmTaskDistribution(
+          task.id,
+          distribution,
+          formatPropertyDeedDisplay(property),
+          staffUsers,
+        );
+        onRefresh();
+        onClose();
+      } finally {
+        setSaving(false);
+      }
+    });
   }
 
   const deedTitle = useMemo(

@@ -13,6 +13,7 @@ export function PoEditShell({
   onBack,
   onSave,
   saveLabel = "حفظ التعديلات",
+  saveShowActionToast = true,
   footerExtra,
   variant = "edit",
   showFooter = true,
@@ -27,6 +28,7 @@ export function PoEditShell({
   onBack: () => void;
   onSave: () => void;
   saveLabel?: string;
+  saveShowActionToast?: boolean;
   footerExtra?: ReactNode;
   variant?: "edit" | "detail";
   showFooter?: boolean;
@@ -108,6 +110,8 @@ export function PoEditShell({
                   variant="primary"
                   loading={saving}
                   disabled={saving}
+                  showActionToast={saveShowActionToast}
+                  actionLabel={saveLabel}
                   onClick={onSave}
                 >
                   {saveLabel}

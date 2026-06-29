@@ -12,6 +12,7 @@ import type {
 } from "./case-study-info-roles-data";
 import { CASE_STUDY_INFO_PARTIES } from "./case-study-info-roles-data";
 import { CASE_STUDY_QUESTION_CATALOG } from "./case-study-info-roles-data";
+import { defaultCaseStudyInfoRolesMatrix } from "./default-case-study-info-roles-matrix";
 
 export const CASE_STUDY_INFO_ROLES_CHANGED_EVENT = "case-study-info-roles-changed";
 
@@ -40,7 +41,7 @@ function emptyMatrix(): CaseStudyInfoRolesMatrix {
 
 export function emptyCaseStudyInfoRolesConfig(): CaseStudyInfoRolesConfig {
   return {
-    matrix: emptyMatrix(),
+    matrix: defaultCaseStudyInfoRolesMatrix(),
     notes: {},
     updatedAt: new Date().toISOString(),
   };
@@ -49,13 +50,20 @@ export function emptyCaseStudyInfoRolesConfig(): CaseStudyInfoRolesConfig {
 function mergeConfig(
   partial: Pick<CaseStudyInfoRolesConfig, "matrix" | "notes" | "updatedAt">,
 ): CaseStudyInfoRolesConfig {
-  const base = emptyCaseStudyInfoRolesConfig();
-  const matrix: CaseStudyInfoRolesMatrix = { ...base.matrix };
+  const defaults = defaultCaseStudyInfoRolesMatrix();
+  const matrix: CaseStudyInfoRolesMatrix = {};
+
+  for (const q of CASE_STUDY_QUESTION_CATALOG) {
+    matrix[q.key] = { ...(defaults[q.key] ?? {}) };
+  }
 
   for (const [questionKey, parties] of Object.entries(partial.matrix ?? {})) {
     if (!matrix[questionKey]) matrix[questionKey] = {};
     for (const [partyId, role] of Object.entries(parties ?? {})) {
-      if (!role || role === "none") continue;
+      if (!role || role === "none") {
+        delete matrix[questionKey]![partyId as CaseStudyInfoPartyId];
+        continue;
+      }
       matrix[questionKey]![partyId as CaseStudyInfoPartyId] =
         role as CaseStudyInfoRoleType;
     }
@@ -63,8 +71,8 @@ function mergeConfig(
 
   return {
     matrix,
-    notes: { ...base.notes, ...partial.notes },
-    updatedAt: partial.updatedAt ?? base.updatedAt,
+    notes: { ...partial.notes },
+    updatedAt: partial.updatedAt ?? new Date().toISOString(),
   };
 }
 

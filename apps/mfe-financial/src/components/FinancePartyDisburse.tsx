@@ -3,18 +3,10 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import {
-  loadInspectorFeesSummary,
-  runInspectorFeeBatchTransition,
-  runInspectorFeeTransition,
-} from "@platform/app-shared/prototype/inspector-fees-api";
+import { loadInspectorFeesSummary, runInspectorFeeBatchTransition, runInspectorFeeTransition } from "@platform/app-shared/prototype/inspector-fees-api";
 import { pushNotification } from "@platform/app-shared";
 import { FeeActionReasonModal } from "@platform/app-shared/fees/FeeActionReasonModal";
-import {
-  groupInspectorFeesByParty,
-  resolvePartyCategory,
-  resolvePartyName,
-} from "@platform/app-shared/fees/party-fee-meta";
+import { groupInspectorFeesByParty, resolvePartyCategory, resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import {
   Badge,
@@ -35,19 +27,9 @@ import {
   queueTableWrapClassName,
 } from "@platform/design-system";
 import type { InspectorFeeAction, InspectorFeeRowDto } from "@platform/api-client";
-import {
-  inspectorFeeStatusLabel,
-  inspectorFeeStatusTone,
-  inspectorFeeWorkStatusTone,
-} from "@platform/api-client";
-import {
-  bucketFinanceDisburseRows,
-  financeDisburseVisibleRows,
-} from "../lib/finance-queue-stats";
-import {
-  FinanceSectionTitle,
-  FinanceStatusSummary,
-} from "./FinanceStatusSummary";
+import { inspectorFeeStatusLabel, inspectorFeeStatusTone, inspectorFeeWorkStatusTone } from "@platform/api-client";
+import { bucketFinanceDisburseRows, financeDisburseVisibleRows } from "../lib/finance-queue-stats";
+import { FinanceSectionTitle, FinanceStatusSummary} from "./FinanceStatusSummary";
 
 export function FinancePartyDisburse() {
   const queryClient = useQueryClient();

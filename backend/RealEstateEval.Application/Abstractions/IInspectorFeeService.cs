@@ -61,8 +61,6 @@ public interface IInspectorFeeService
 
 public interface IPoEnfazBillingService
 {
-    Task<IReadOnlyList<string>> ListReadyPoNumbersAsync(CancellationToken cancellationToken = default);
-
     Task<IReadOnlyList<EnfazReadyPoSummaryDto>> ListReadyPoSummariesAsync(
         CancellationToken cancellationToken = default);
 

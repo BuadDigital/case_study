@@ -295,10 +295,33 @@ public class ReportingController : ControllerBase
                     Tone = count >= cfg.MaxLoad * 0.6 ? "warning" : "success",
                 };
             })
+            .Where(row => !IsTeamLoadPlaceholderRow(row.Name, row.RoleLabel))
             .OrderBy(x => TeamLoadRoleMap[x.RoleId].SortOrder)
             .ThenByDescending(x => x.CurrentLoad)
             .ThenBy(x => x.Name, StringComparer.Ordinal)
             .ToList();
+    }
+
+    /// <summary>
+    /// Drop placeholder assignee rows where the name is just the role title (e.g. «معاين ميداني»)
+    /// or the legacy default demo persona superseded by named staff in HR seed.
+    /// </summary>
+    private static bool IsTeamLoadPlaceholderRow(string name, string roleLabel)
+    {
+        var trimmed = name.Trim();
+        if (string.IsNullOrEmpty(trimmed))
+            return true;
+
+        if (string.Equals(trimmed, roleLabel.Trim(), StringComparison.Ordinal))
+            return true;
+
+        foreach (var (_, label, _, _) in TeamLoadRoles)
+        {
+            if (string.Equals(trimmed, label, StringComparison.Ordinal))
+                return true;
+        }
+
+        return string.Equals(trimmed, "أحمد سعيد", StringComparison.Ordinal);
     }
 
     /// <summary>

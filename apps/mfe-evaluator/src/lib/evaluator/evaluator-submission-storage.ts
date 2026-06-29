@@ -9,6 +9,8 @@ import {
   submitPartySubmission,
 } from "@platform/app-shared/prototype/party-submission-api";
 import { notifyTasksChanged } from "@case-study/mfe/lib/prototype/tasks-storage";
+import { loadPartyCaseStudyFormDraft } from "@case-study/mfe";
+import { mergeEvaluatorChecklistFromCaseStudy } from "./evaluator-checklist-case-study-sync";
 import {
   createEvaluatorDraft,
   type EvaluatorSubmission,
@@ -81,6 +83,34 @@ export async function hydrateEvaluatorSubmission(input: {
   const draft = createEvaluatorDraft(input);
   const saved = await saveEvaluatorSubmission(draft);
   return saved ?? draft;
+}
+
+export async function syncEvaluatorChecklistFromPartyCaseStudy(
+  appraisalTaskId: string,
+  options: { overwriteLinked?: boolean } = {},
+): Promise<EvaluatorSubmission | null> {
+  const current = loadEvaluatorSubmission(appraisalTaskId);
+  if (!current) return null;
+  if (current.status === "submitted" || current.status === "completed") {
+    return current;
+  }
+
+  const partyDraft = await loadPartyCaseStudyFormDraft(appraisalTaskId);
+  if (!partyDraft) return current;
+
+  const checklist = mergeEvaluatorChecklistFromCaseStudy(
+    current.checklist,
+    partyDraft.answers,
+    {
+      deedRemarks: partyDraft.deedRemarks,
+      componentsRemarks: partyDraft.componentsRemarks,
+    },
+    { overwriteLinked: options.overwriteLinked ?? true },
+  );
+
+  const saved = await saveEvaluatorSubmission({ ...current, checklist });
+  if (saved) notifyEvaluatorSubmissionChanged();
+  return saved;
 }
 
 export async function saveEvaluatorSubmission(

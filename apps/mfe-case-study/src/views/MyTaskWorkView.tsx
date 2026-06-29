@@ -10,11 +10,11 @@ import { PoPropertyBourseForm } from "@case-study/mfe/components/po-intake/PoPro
 import {
   firstEnfathValidationMessage,
   mergePropertyEnfathValidation,
-} from "@case-study/mfe/components/po-intake/po-property-enfath-validation";
+} from "../lib/domain/po-intake/property-enfath-validation";
 import {
   firstBourseValidationMessage,
   validatePropertyBourseFields,
-} from "@case-study/mfe/components/po-intake/po-property-bourse-validation";
+} from "../lib/domain/po-intake/property-bourse-validation";
 import {
   hasFieldErrors,
   type FieldErrors,
@@ -95,7 +95,7 @@ export function CaseStudyTaskWork({
   const queryClient = useQueryClient();
   const exit = onClose ?? (() => router.push(myTasksPath()));
   const { role } = usePrototype();
-  const { showToast } = useToast();
+  const { showToast, runWithActionToast } = useToast();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
   const [assignmentType, setAssignmentType] = useState<AssignmentType>("تنفيذ");
@@ -236,38 +236,43 @@ export function CaseStudyTaskWork({
         ? { ...property, bourseDataCompleted: false }
         : property;
 
-    setSaving(true);
-    const result = task.propertyId
-      ? await updatePropertyInPo(task.poNumber, task.propertyId, persisted)
-      : await addPropertyToPo(task.poNumber, persisted, {
-          assignToTaskId: task.id,
-        });
-    setSaving(false);
+    await runWithActionToast("حفظ", async () => {
+      setSaving(true);
+      try {
+        const result = task.propertyId
+          ? await updatePropertyInPo(task.poNumber, task.propertyId, persisted)
+          : await addPropertyToPo(task.poNumber, persisted, {
+              assignToTaskId: task.id,
+            });
 
-    if (!result.ok) {
-      setFormError(result.error);
-      if (result.errors) setFieldErrors(result.errors);
-      showToast(result.error, "error");
-      return;
-    }
+        if (!result.ok) {
+          setFormError(result.error);
+          if (result.errors) setFieldErrors(result.errors);
+          showToast(result.error, "error");
+          throw new Error("save-failed");
+        }
 
-    if (result.ok) {
-      const savedProperty = skipsBourseForIdentifier(property.identifierType)
-        ? { ...result.data, bourseDataCompleted: true }
-        : result.data;
-      if (task.propertyId) {
-        const updatedTask = await advanceTaskAfterEnfath(task.id, savedProperty);
-        if (updatedTask?.phase) setPhaseOverride(updatedTask.phase);
+        const savedProperty = skipsBourseForIdentifier(property.identifierType)
+          ? { ...result.data, bourseDataCompleted: true }
+          : result.data;
+        if (task.propertyId) {
+          const updatedTask = await advanceTaskAfterEnfath(
+            task.id,
+            savedProperty,
+          );
+          if (updatedTask?.phase) setPhaseOverride(updatedTask.phase);
+        }
+        if (onEnfathSaved) {
+          await onEnfathSaved(task.id, {
+            identifierType: property.identifierType,
+          });
+        } else {
+          onRefresh();
+        }
+      } finally {
+        setSaving(false);
       }
-      if (onEnfathSaved) {
-        await onEnfathSaved(task.id, {
-          identifierType: property.identifierType,
-        });
-      } else {
-        onRefresh();
-      }
-      showToast("تم حفظ بيانات إنفاذ.", "success");
-    }
+    });
   }
 
   async function saveBourse() {
@@ -292,21 +297,27 @@ export function CaseStudyTaskWork({
         setFormError("لا يوجد عقار مرتبط بهذه المهمة.");
         return;
       }
-      setSaving(true);
-      await submitBourseObstruction({
-        poNumber: task.poNumber,
-        propertyId: task.propertyId,
-        deedNumber: property.deedNumber,
-        reason: obstructionReason,
-        specialist: ROLES[role]?.name ?? "أخصائي دراسة الحالة",
+      await runWithActionToast("إرسال للمشرف — إدارة التعذرات", async () => {
+        setSaving(true);
+        try {
+          await submitBourseObstruction({
+            poNumber: task.poNumber,
+            propertyId: task.propertyId!,
+            deedNumber: property.deedNumber,
+            reason: obstructionReason,
+            specialist: ROLES[role]?.name ?? "أخصائي دراسة الحالة",
+          });
+          void queryClient.invalidateQueries({
+            queryKey: prototypeKeys.failures(),
+          });
+          void queryClient.invalidateQueries({
+            queryKey: prototypeKeys.workflowTasks(),
+          });
+          onRefresh();
+        } finally {
+          setSaving(false);
+        }
       });
-      setSaving(false);
-      void queryClient.invalidateQueries({ queryKey: prototypeKeys.failures() });
-      void queryClient.invalidateQueries({
-        queryKey: prototypeKeys.workflowTasks(),
-      });
-      onRefresh();
-      showToast("تم إرسال التعذر للمشرف.", "success");
       return;
     }
 
@@ -345,56 +356,60 @@ export function CaseStudyTaskWork({
       return;
     }
 
-    setSaving(true);
-    let prop = property;
-    let propertyId = task.propertyId;
+    await runWithActionToast("حفظ والانتقال للتوزيع", async () => {
+      setSaving(true);
+      try {
+        let prop = property;
+        let propertyId = task.propertyId;
 
-    if (!propertyId) {
-      const insert = await addPropertyToPo(task.poNumber, property, {
-        assignToTaskId: task.id,
-      });
-      if (!insert.ok) {
+        if (!propertyId) {
+          const insert = await addPropertyToPo(task.poNumber, property, {
+            assignToTaskId: task.id,
+          });
+          if (!insert.ok) {
+            setFormError(insert.error);
+            if (insert.errors) setFieldErrors(insert.errors);
+            showToast(insert.error, "error");
+            throw new Error("save-failed");
+          }
+          prop = insert.data;
+          propertyId = insert.data.id;
+        } else if (bourseInquiryFastPath) {
+          const updated = await updatePropertyInPo(
+            task.poNumber,
+            propertyId,
+            property,
+          );
+          if (!updated.ok) {
+            setFormError(updated.error);
+            if (updated.errors) setFieldErrors(updated.errors);
+            showToast(updated.error, "error");
+            throw new Error("save-failed");
+          }
+          prop = updated.data;
+          await advanceTaskAfterEnfath(task.id, updated.data);
+        }
+
+        const result = await completePropertyBourse(
+          task.poNumber,
+          propertyId!,
+          { ...prop, deedStatus: "فعال" },
+        );
+
+        if (!result.ok) {
+          setFormError(result.error);
+          if (result.errors) setFieldErrors(result.errors);
+          showToast(result.error, "error");
+          throw new Error("save-failed");
+        }
+
+        const advancedTask = await advanceTaskAfterBourse(task.id, result.data);
+        if (advancedTask?.phase) setPhaseOverride(advancedTask.phase);
+        onRefresh();
+      } finally {
         setSaving(false);
-        setFormError(insert.error);
-        if (insert.errors) setFieldErrors(insert.errors);
-        return;
       }
-      prop = insert.data;
-      propertyId = insert.data.id;
-    } else if (bourseInquiryFastPath) {
-      const updated = await updatePropertyInPo(
-        task.poNumber,
-        propertyId,
-        property,
-      );
-      if (!updated.ok) {
-        setSaving(false);
-        setFormError(updated.error);
-        if (updated.errors) setFieldErrors(updated.errors);
-        return;
-      }
-      prop = updated.data;
-      await advanceTaskAfterEnfath(task.id, updated.data);
-    }
-
-    const result = await completePropertyBourse(
-      task.poNumber,
-      propertyId!,
-      { ...prop, deedStatus: "فعال" },
-    );
-    setSaving(false);
-
-    if (!result.ok) {
-      setFormError(result.error);
-      if (result.errors) setFieldErrors(result.errors);
-      showToast(result.error, "error");
-      return;
-    }
-
-    const advancedTask = await advanceTaskAfterBourse(task.id, result.data);
-    if (advancedTask?.phase) setPhaseOverride(advancedTask.phase);
-    onRefresh();
-    showToast("تم حفظ بيانات البورصة.", "success");
+    });
   }
 
   async function confirmDistribution() {
@@ -408,20 +423,28 @@ export function CaseStudyTaskWork({
       return;
     }
 
-    const result = await confirmTaskDistribution(
-      task.id,
-      distribution,
-      formatPropertyDeedDisplay(property),
-      staffUsers,
-    );
-    if (!result.parent) return;
+    await runWithActionToast("تأكيد التوزيع وإرسال المهام", async () => {
+      setSaving(true);
+      try {
+        const result = await confirmTaskDistribution(
+          task.id,
+          distribution,
+          formatPropertyDeedDisplay(property),
+          staffUsers,
+        );
+        if (!result.parent) {
+          throw new Error("save-failed");
+        }
 
-    setPhaseOverride(result.parent.phase);
-    void queryClient.invalidateQueries({
-      queryKey: prototypeKeys.workflowTasks(),
+        setPhaseOverride(result.parent.phase);
+        void queryClient.invalidateQueries({
+          queryKey: prototypeKeys.workflowTasks(),
+        });
+        onRefresh();
+      } finally {
+        setSaving(false);
+      }
     });
-    onRefresh();
-    showToast("تم تأكيد التوزيع وإرسال المهام.", "success");
   }
 
   async function patchDistribution(patch: Partial<TaskDistributionDraft>) {

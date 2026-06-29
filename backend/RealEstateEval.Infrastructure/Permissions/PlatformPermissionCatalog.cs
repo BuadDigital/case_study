@@ -86,7 +86,7 @@ public static class PlatformPermissionCatalog
         ],
         ["government-reviewer"] =
         [
-            "government-review", "keys",
+            "government-review", "keys", "failures",
             "system-fields-catalog", "system-screen-catalog",
         ],
         ["engineering-office"] =

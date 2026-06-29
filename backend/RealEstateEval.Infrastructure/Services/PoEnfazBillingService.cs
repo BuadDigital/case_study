@@ -14,27 +14,6 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
 
     public PoEnfazBillingService(ApplicationDbContext db) => _db = db;
 
-    public async Task<IReadOnlyList<string>> ListReadyPoNumbersAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var orders = await _db.WorkOrders.AsNoTracking()
-            .Include(w => w.Properties)
-            .OrderBy(w => w.PoNumber)
-            .ToListAsync(cancellationToken);
-
-        var poNumbers = orders.Select(o => o.PoNumber.Trim()).Distinct().ToList();
-        var tasks = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t => poNumbers.Contains(t.PoNumber))
-            .ToListAsync(cancellationToken);
-        var tasksByPo = tasks.GroupBy(t => t.PoNumber.Trim(), StringComparer.Ordinal)
-            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
-
-        return orders
-            .Where(o => IsPoReadyForEnfazBilling(o, tasksByPo.GetValueOrDefault(o.PoNumber.Trim(), [])))
-            .Select(w => w.PoNumber)
-            .ToList();
-    }
-
     public async Task<IReadOnlyList<EnfazReadyPoSummaryDto>> ListReadyPoSummariesAsync(
         CancellationToken cancellationToken = default)
     {

@@ -21,5 +21,9 @@ public class CapabilityPolicyRegistrationTests
             var policy = await policyProvider.GetPolicyAsync(CapabilityPolicyNames.For(capability));
             Assert.NotNull(policy);
         }
+
+        var raiseFailures = await policyProvider.GetPolicyAsync(
+            CapabilityPolicyNames.RaiseFailures);
+        Assert.NotNull(raiseFailures);
     }
 }

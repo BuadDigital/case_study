@@ -23,6 +23,11 @@ public class CaseStudyFormDto
     public string SigApprover { get; set; } = "";
     public string SigDate { get; set; } = "";
     public Dictionary<string, bool>? SpecialistReviewApproved { get; set; }
+    public string InfathLinkedAssets { get; set; } = "";
+    public string InfathLinkedDeedNumbers { get; set; } = "";
+    public string InfathLinkedAssetsNotes { get; set; } = "";
+    public string InfathOtherNotes { get; set; } = "";
+    public string InfathClosingNotes { get; set; } = "";
     public string? SavedAtUtc { get; set; }
 }
 
