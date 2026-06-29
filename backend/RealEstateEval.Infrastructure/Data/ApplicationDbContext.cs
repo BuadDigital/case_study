@@ -317,6 +317,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.SigApprover).HasMaxLength(256);
             e.Property(x => x.SigDate).HasMaxLength(32);
             e.Property(x => x.SpecialistReviewApprovedJson).HasColumnType("jsonb");
+            e.Property(x => x.InfathLinkedAssets).HasMaxLength(8);
+            e.Property(x => x.InfathLinkedDeedNumbers).HasMaxLength(512);
+            e.Property(x => x.InfathLinkedAssetsNotes).HasMaxLength(4000);
+            e.Property(x => x.InfathOtherNotes).HasMaxLength(4000);
+            e.Property(x => x.InfathClosingNotes).HasMaxLength(4000);
             e.Property(x => x.PoNumber).HasMaxLength(64);
             e.HasIndex(x => new { x.TaskId, x.IsPartyForm }).IsUnique();
         });

@@ -32,6 +32,16 @@ public static class AuthorizationExtensions
                 "CanManageUsers",
                 policy => policy.AddRequirements(
                     new CapabilityRequirement(PlatformCapabilities.ManageUsers)));
+
+            options.AddPolicy(
+                CapabilityPolicyNames.RaiseFailures,
+                policy => policy.RequireAssertion(ctx =>
+                    ctx.User.HasClaim(
+                        CapabilityAuthorizationHandler.ClaimType,
+                        PlatformCapabilities.ManageFailures)
+                    || ctx.User.HasClaim(
+                        CapabilityAuthorizationHandler.ClaimType,
+                        PlatformCapabilities.SubmitPartyWork)));
         });
 
         return services;

@@ -127,10 +127,13 @@ export function EngineeringSurveyWorkPanel({
       );
       if (!caseStudyAnswersChanged(partyDraft.answers, mergedAnswers)) return;
 
-      await savePartyCaseStudyFormDraft({
+      const saved = await savePartyCaseStudyFormDraft({
         ...partyDraft,
         answers: mergedAnswers,
       });
+      if (!saved.ok) {
+        console.warn("Case study party form sync failed:", saved.error);
+      }
     },
     [locked, propertyId, task.id, task.poNumber],
   );

@@ -15,16 +15,13 @@ import {
 } from "@platform/design-system";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import { RegField } from "@platform/app-shared/registration/FormFields";
-import { CASE_STUDY_FORM_STEPS, CASE_STUDY_SECTION_QUESTIONS, caseStudyAnswerKey,type CaseStudyFormAnswer,type CaseStudyQuestionSection} from "../../lib/prototype/case-study-form-data";
+import { CASE_STUDY_FORM_STEPS, caseStudyAnswerKey,type CaseStudyFormAnswer,type CaseStudyQuestionSection} from "../../lib/prototype/case-study-form-data";
 import { CaseStudyApprovalSection } from "./CaseStudyApprovalSection";
 import { CaseStudyReportActions } from "./CaseStudyReportActions";
 import { CaseStudyProgressDonut } from "./CaseStudyProgressDonut";
 import { CaseStudyMatrixTable } from "./CaseStudyMatrixTable";
 import { CaseStudyInfathSpecialistSection } from "./CaseStudyInfathSpecialistSection";
-import {
-  canPartyAnswerQuestion,
-  canSpecialistApproveQuestion,
-  CASE_STUDY_INFO_ROLES_CHANGED_EVENT,
+import { canPartyAnswerQuestion, canSpecialistApproveQuestion, CASE_STUDY_INFO_ROLES_CHANGED_EVENT,
   emptyCaseStudyInfoRolesConfig,
   isCaseStudyQuestionVisibleToSpecialist,
   isPartyQuestionVisible,
@@ -50,6 +47,8 @@ import { buildCaseStudyReportModel } from "../../lib/prototype/case-study-report
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/prototype/po-intake-data";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
+import { useCaseStudyQuestionCatalogQuery } from "../../query/case-study-question-catalog-queries";
+import { DEFAULT_CASE_STUDY_QUESTION_CATALOG } from "../../lib/prototype/case-study-question-catalog";
 import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../../lib/case-study-evaluator-events";
 
 /** Stable fallback — avoid calling emptyCaseStudyInfoRolesConfig() per render (infinite effect loop). */
@@ -63,11 +62,14 @@ const FORM_STEP_SECTIONS: CaseStudyQuestionSection[] = [
   "extra",
 ];
 
-function migrateFormStep(storedStep: number): number {
-  const max = CASE_STUDY_FORM_STEPS.length - 1;
-  // Legacy drafts used step 0 for بيانات التعميد (removed).
-  const next = storedStep >= 1 ? storedStep - 1 : 0;
-  return Math.max(0, Math.min(max, next));
+/** Clamp step index; only shift when value is from legacy six-tab drafts (تعميد + 5 sections). */
+function normalizeFormStep(storedStep: number): number {
+  const max = FORM_STEP_SECTIONS.length - 1;
+  let step = storedStep;
+  if (step > max) {
+    step = step - 1;
+  }
+  return Math.max(0, Math.min(max, step));
 }
 
 type Props = {
@@ -93,11 +95,13 @@ function RemarksBlock({
   value,
   onChange,
   rows = 3,
+  disabled = false,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   rows?: number;
+  disabled?: boolean;
 }) {
   return (
     <FormGroup className="mb-4 border-t border-border pt-3">
@@ -106,6 +110,7 @@ function RemarksBlock({
         rows={rows}
         placeholder="الملاحظات..."
         value={value}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
       />
     </FormGroup>
@@ -255,6 +260,9 @@ export function CaseStudyForm({
 
   const { data: infoRolesData, isFetched: infoRolesReady } =
     useCaseStudyInfoRolesQuery();
+  const { data: questionCatalog = DEFAULT_CASE_STUDY_QUESTION_CATALOG } =
+    useCaseStudyQuestionCatalogQuery();
+  const sectionQuestions = questionCatalog.sectionQuestions;
   const infoRoles = infoRolesData ?? DEFAULT_INFO_ROLES_CONFIG;
   const infoRolesMatrix = infoRoles.matrix;
 
@@ -262,8 +270,10 @@ export function CaseStudyForm({
     emptyCaseStudyFormDraft(storageTaskId, seed),
   );
   const [hydrated, setHydrated] = useState(false);
+  const [parentFormSubmitted, setParentFormSubmitted] = useState(false);
   const { showToast, showProgressToast, dismissToast } = useToast();
   const [partyRevision, setPartyRevision] = useState(0);
+  const [saving, setSaving] = useState(false);
   const { data: workflowTasks } = useWorkflowTasksQuery();
   const [partyAnswersByKey, setPartyAnswersByKey] = useState<
     Record<string, PartyQuestionContribution[]>
@@ -331,31 +341,35 @@ export function CaseStudyForm({
 
   const canEditKey = useCallback(
     (key: string) => {
+      if (!isParty && draft.status === "submitted") return false;
+      if (isParty && (draft.status === "submitted" || parentFormSubmitted)) {
+        return false;
+      }
       if (!isParty) {
         return canSpecialistApproveQuestion(infoRolesMatrix, key);
       }
       return canPartyAnswerQuestion(infoRolesMatrix, key, viewerPartyId);
     },
-    [isParty, viewerPartyId, infoRolesMatrix],
+    [isParty, viewerPartyId, infoRolesMatrix, draft.status, parentFormSubmitted],
   );
 
   const hasPartyVisibleNonDeedSections = useMemo(() => {
     if (!isParty) return false;
     return FORM_STEP_SECTIONS.filter((section) => section !== "deed").some(
       (section) =>
-        CASE_STUDY_SECTION_QUESTIONS[section].some((_, i) =>
+        sectionQuestions[section].some((_, i) =>
           isQuestionVisible(caseStudyAnswerKey(section, i)),
         ),
     );
-  }, [isParty, isQuestionVisible]);
+  }, [isParty, isQuestionVisible, sectionQuestions]);
 
   const sectionHasVisibleQuestions = useCallback(
     (section: CaseStudyQuestionSection) =>
       !(isParty && hasPartyVisibleNonDeedSections && section === "deed") &&
-      CASE_STUDY_SECTION_QUESTIONS[section].some((_, i) =>
+      sectionQuestions[section].some((_, i) =>
         isQuestionVisible(caseStudyAnswerKey(section, i)),
       ),
-    [isParty, hasPartyVisibleNonDeedSections, isQuestionVisible],
+    [isParty, hasPartyVisibleNonDeedSections, isQuestionVisible, sectionQuestions],
   );
 
   const visibleStepIndices = useMemo(() => {
@@ -379,11 +393,14 @@ export function CaseStudyForm({
       const mergedAnswers = isParty
         ? { ...parentDraft?.answers, ...base.answers }
         : base.answers;
+      const parentSubmitted = parentDraft?.status === "submitted";
       if (cancelled) return;
+      setParentFormSubmitted(parentSubmitted);
       setDraft({
         ...base,
         ...seed,
         answers: mergedAnswers,
+        status: parentSubmitted && isParty ? "submitted" : base.status,
         specialistReviewApproved: {
           ...base.specialistReviewApproved,
           ...stored?.specialistReviewApproved,
@@ -391,7 +408,7 @@ export function CaseStudyForm({
         requestNumber: seed.requestNumber ?? base.requestNumber,
         deedNumber: seed.deedNumber ?? base.deedNumber,
         requestDate: seed.requestDate ?? base.requestDate,
-        currentStep: stored ? migrateFormStep(stored.currentStep) : 0,
+        currentStep: stored ? normalizeFormStep(stored.currentStep) : 0,
       });
       setHydrated(true);
     })();
@@ -400,6 +417,18 @@ export function CaseStudyForm({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- load once per task
   }, [storageTaskId, referenceTaskId, isParty]);
+
+  useEffect(() => {
+    if (!isParty || !hydrated) return;
+    void loadCaseStudyFormDraft(referenceTaskId).then((parent) => {
+      const locked = parent?.status === "submitted";
+      setParentFormSubmitted(locked);
+      if (!locked) return;
+      setDraft((current) =>
+        current.status === "submitted" ? current : { ...current, status: "submitted" },
+      );
+    });
+  }, [isParty, hydrated, referenceTaskId, partyRevision]);
 
   useEffect(() => {
     if (!isParty || !partyChildTaskId) return;
@@ -429,13 +458,49 @@ export function CaseStudyForm({
     };
   }, [isParty, partyChildTaskId]);
 
+  const persistToServer = useCallback(
+    async (next: CaseStudyFormDraft) => {
+      if (isParty) return savePartyCaseStudyFormDraft(next);
+      return saveCaseStudyFormDraft(next);
+    },
+    [isParty],
+  );
+
   const persist = useCallback(
     (next: CaseStudyFormDraft) => {
       setDraft(next);
-      if (isParty) void savePartyCaseStudyFormDraft(next);
-      else void saveCaseStudyFormDraft(next);
+      if (!isParty && next.status === "submitted" && draft.status === "submitted") {
+        return;
+      }
+      if (
+        isParty &&
+        (parentFormSubmitted ||
+          draft.status === "submitted" ||
+          next.status === "submitted")
+      ) {
+        return;
+      }
+      void persistToServer(next);
     },
-    [isParty],
+    [persistToServer, isParty, draft.status, parentFormSubmitted],
+  );
+
+  const setPartyReviewApproved = useCallback(
+    (key: string, approved: boolean) => {
+      if (isParty || !canEditKey(key)) return;
+      setDraft((d) => {
+        const next: CaseStudyFormDraft = {
+          ...d,
+          specialistReviewApproved: {
+            ...d.specialistReviewApproved,
+            [key]: approved,
+          },
+        };
+        void saveCaseStudyFormDraft(next);
+        return next;
+      });
+    },
+    [isParty, canEditKey],
   );
 
   const setAnswer = useCallback(
@@ -443,7 +508,20 @@ export function CaseStudyForm({
       if (!canEditKey(key)) return;
       setDraft((d) => {
         const displayAnswers = { ...d.answers, [key]: value };
-        const next = { ...d, answers: displayAnswers };
+        const marksPartyReview =
+          !isParty && (value === "A" || value === "B");
+        const next: CaseStudyFormDraft = {
+          ...d,
+          answers: displayAnswers,
+          ...(marksPartyReview
+            ? {
+                specialistReviewApproved: {
+                  ...d.specialistReviewApproved,
+                  [key]: true,
+                },
+              }
+            : {}),
+        };
         if (isParty && partyChildTaskId) {
           void loadPartyCaseStudyFormDraft(partyChildTaskId).then((prevParty) => {
             const partyAnswers = {
@@ -454,6 +532,8 @@ export function CaseStudyForm({
               ...next,
               taskId: partyChildTaskId,
               answers: partyAnswers,
+            }).then((result) => {
+              if (!result.ok) showToast(result.error, "error");
             });
           });
         } else {
@@ -462,14 +542,14 @@ export function CaseStudyForm({
         return next;
       });
     },
-    [canEditKey, isParty, partyChildTaskId],
+    [canEditKey, isParty, partyChildTaskId, showToast],
   );
 
   const summary = useMemo(() => {
     let total = 0;
     let answered = 0;
     for (const section of FORM_STEP_SECTIONS) {
-      CASE_STUDY_SECTION_QUESTIONS[section].forEach((_, i) => {
+      sectionQuestions[section].forEach((_, i) => {
         const key = caseStudyAnswerKey(section, i);
         if (!isQuestionVisible(key)) return;
         total += 1;
@@ -480,11 +560,11 @@ export function CaseStudyForm({
     const pending = total - answered;
     const pct = total > 0 ? Math.round((answered / total) * 100) : 0;
     return { total, answered, pending, pct };
-  }, [draft.answers, isQuestionVisible]);
+  }, [draft.answers, isQuestionVisible, sectionQuestions]);
 
   const reportModel = useMemo(
-    () => buildCaseStudyReportModel(draft, property, task, poRecord),
-    [draft, property, task, poRecord],
+    () => buildCaseStudyReportModel(draft, property, task, poRecord, questionCatalog),
+    [draft, property, task, poRecord, questionCatalog],
   );
 
   const goStep = (n: number) => {
@@ -519,7 +599,7 @@ export function CaseStudyForm({
     key: K,
     value: CaseStudyFormDraft[K],
   ) => {
-    if (isParty) return;
+    if (isParty || draft.status === "submitted") return;
     setDraft((d) => {
       const next = { ...d, [key]: value };
       void saveCaseStudyFormDraft(next);
@@ -527,36 +607,49 @@ export function CaseStudyForm({
     });
   };
 
-  const withInstantSaveFeedback = (
+  const withSaveFeedback = async (
     actionLabel: string,
     successMessage: string,
-    action: () => void,
-  ) => {
+    buildNext: () => CaseStudyFormDraft,
+  ): Promise<boolean> => {
+    if (saving) return false;
+
     const progressId = showProgressToast(
       progressMessageForActionLabel(actionLabel),
     );
+    setSaving(true);
     try {
-      action();
+      const result = await persistToServer(buildNext());
+      if (!result.ok) {
+        showToast(result.error, "error");
+        return false;
+      }
+      setDraft(result.draft);
+      showToast(successMessage, "success");
+      return true;
     } finally {
       dismissToast(progressId);
-      showToast(successMessage, "success");
+      setSaving(false);
     }
   };
 
   const saveDraft = () => {
-    withInstantSaveFeedback(
+    if (!isParty && draft.status === "submitted") return;
+    void withSaveFeedback(
       "حفظ مسودة",
       "تم حفظ المسودة — يمكنك مواصلة التعبئة لاحقاً",
-      () => persist({ ...draft, status: "draft" }),
+      () => ({ ...draft, status: "draft" }),
     );
   };
 
   const submitForm = () => {
+    if (!isParty && draft.status === "submitted") return;
+    if (isParty && (draft.status === "submitted" || parentFormSubmitted)) return;
     if (isParty) {
-      withInstantSaveFeedback(
+      void withSaveFeedback(
         "حفظ إجاباتي",
         "تم حفظ إجاباتك في نموذج الدراسة",
-        () => persist({ ...draft, status: "draft" }),
+        () => ({ ...draft, status: "draft" }),
       );
       return;
     }
@@ -567,10 +660,10 @@ export function CaseStudyForm({
       );
       if (!ok) return;
     }
-    withInstantSaveFeedback(
+    void withSaveFeedback(
       "رفع النموذج للنظام",
       "تم رفع نموذج دراسة الحالة للنظام بنجاح",
-      () => persist({ ...draft, status: "submitted" }),
+      () => ({ ...draft, status: "submitted" }),
     );
   };
 
@@ -595,6 +688,10 @@ export function CaseStudyForm({
   const showStepFooterActions = !partyAdvisory;
   const isPartyVariant = variant === "party";
   const showFormStepChrome = !partyAdvisory && !isPartyVariant;
+  const isFormReadOnly = Boolean(
+    (!isParty && draft.status === "submitted") ||
+      (isParty && (draft.status === "submitted" || parentFormSubmitted)),
+  );
 
   const matrixTableProps = {
     canEditKey,
@@ -608,18 +705,29 @@ export function CaseStudyForm({
           showPartyColumn: true,
           partyContribCount,
           onRefreshParty: () => setPartyRevision((n) => n + 1),
+          partyReviewApproved: draft.specialistReviewApproved,
+          onConfirmPartyReview: (key: string) =>
+            setPartyReviewApproved(key, true),
         }),
   };
 
-  const formFooterActions = (
+  const formFooterActions = isFormReadOnly ? (
+    <p className="m-0 text-xs text-text-2">النموذج مُرفَع — للعرض فقط</p>
+  ) : (
     <div className="flex flex-wrap items-center justify-end gap-2">
-      <Button variant="outline" showActionToast={false} onClick={saveDraft}>
+      <Button
+        variant="outline"
+        showActionToast={false}
+        disabled={saving}
+        onClick={saveDraft}
+      >
         حفظ مسودة
       </Button>
       {isParty ? (
         <Button
           variant="primary"
           showActionToast={false}
+          disabled={saving}
           onClick={submitForm}
         >
           حفظ إجاباتي
@@ -628,6 +736,7 @@ export function CaseStudyForm({
         <Button
           variant="primary"
           showActionToast={false}
+          disabled={saving}
           onClick={submitForm}
         >
           رفع النموذج للنظام
@@ -705,6 +814,14 @@ export function CaseStudyForm({
         </div>
       ) : null}
 
+      {isFormReadOnly ? (
+        <Note tone="success">
+          {isParty
+            ? "تم رفع نموذج دراسة الحالة — إجاباتك للعرض فقط ولا يمكن التعديل."
+            : "تم رفع النموذج للنظام — العرض للقراءة فقط ولا يمكن تعديل الإجابات أو الملاحظات."}
+        </Note>
+      ) : null}
+
       {isParty && !partyAdvisory ? (
         <CaseStudyMatrixBanner
           viewerPartyId={viewerPartyId}
@@ -720,6 +837,7 @@ export function CaseStudyForm({
           <CaseStudyMatrixTable
             section="deed"
             sectionTitle="بيانات الصك والعقار"
+            questions={sectionQuestions.deed}
             answers={draft.answers}
             onAnswer={setAnswer}
             {...matrixTableProps}
@@ -728,6 +846,7 @@ export function CaseStudyForm({
                 <RemarksBlock
                   label="في حال وجود اختلاف في البيانات أعلاه يتم التوضيح في الملاحظات ادناه"
                   value={draft.deedRemarks}
+                  disabled={isFormReadOnly}
                   onChange={(v) => patch("deedRemarks", v)}
                 />
               ) : undefined
@@ -745,6 +864,7 @@ export function CaseStudyForm({
           <CaseStudyMatrixTable
             section="survey"
             sectionTitle="الرفع المساحي والطبيعة"
+            questions={sectionQuestions.survey}
             answers={draft.answers}
             onAnswer={setAnswer}
             {...matrixTableProps}
@@ -753,6 +873,7 @@ export function CaseStudyForm({
                 <RemarksBlock
                   label="في حال وجود اختلاف في البيانات أعلاه يتم التوضيح في الملاحظات ادناه"
                   value={draft.surveyRemarks}
+                  disabled={isFormReadOnly}
                   onChange={(v) => patch("surveyRemarks", v)}
                 />
               ) : undefined
@@ -770,6 +891,7 @@ export function CaseStudyForm({
           <CaseStudyMatrixTable
             section="comp"
             sectionTitle="مكونات العقار"
+            questions={sectionQuestions.comp}
             answers={draft.answers}
             onAnswer={setAnswer}
             {...matrixTableProps}
@@ -783,6 +905,7 @@ export function CaseStudyForm({
                       placeholder="رقم"
                       aria-label="رقم العداد"
                       value={draft.meterNumber}
+                      disabled={isFormReadOnly}
                       onChange={(e) => patch("meterNumber", e.target.value)}
                     />
                     <span className="font-semibold text-text-2">)</span>
@@ -802,6 +925,7 @@ export function CaseStudyForm({
                             type="radio"
                             name={`meter-${taskId}`}
                             checked={draft.meterType === val}
+                            disabled={isFormReadOnly}
                             onChange={() => {
                               patch("meterType", val as CaseStudyMeterType);
                               if (val === "none") patch("meterNumber", "");
@@ -815,6 +939,7 @@ export function CaseStudyForm({
                   <RemarksBlock
                     label="ملاحظات"
                     value={draft.componentsRemarks}
+                    disabled={isFormReadOnly}
                     onChange={(v) => patch("componentsRemarks", v)}
                     rows={2}
                   />
@@ -834,6 +959,7 @@ export function CaseStudyForm({
           <CaseStudyMatrixTable
             section="occ"
             sectionTitle="الإشغال والإيجار"
+            questions={sectionQuestions.occ}
             answers={draft.answers}
             onAnswer={setAnswer}
             {...matrixTableProps}
@@ -853,6 +979,7 @@ export function CaseStudyForm({
                   <RemarksBlock
                     label="ملاحظات"
                     value={draft.occupancyRemarks}
+                    disabled={isFormReadOnly}
                     onChange={(v) => patch("occupancyRemarks", v)}
                     rows={2}
                   />
@@ -872,6 +999,7 @@ export function CaseStudyForm({
           <CaseStudyMatrixTable
             section="extra"
             sectionTitle="ملاحظات إضافية"
+            questions={sectionQuestions.extra}
             answers={draft.answers}
             onAnswer={setAnswer}
             {...matrixTableProps}
@@ -887,7 +1015,7 @@ export function CaseStudyForm({
       {!isParty ? (
         <CaseStudyInfathSpecialistSection
           draft={draft}
-          disabled={draft.status === "submitted"}
+          disabled={isFormReadOnly}
           onPatch={(p) => {
             (Object.keys(p) as (keyof CaseStudyFormDraft)[]).forEach((key) => {
               patch(key, p[key] as CaseStudyFormDraft[typeof key]);

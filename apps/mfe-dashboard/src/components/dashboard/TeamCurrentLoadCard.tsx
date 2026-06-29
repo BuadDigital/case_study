@@ -9,6 +9,7 @@ import {
   SubpagePanel,
 } from "@platform/design-system";
 import { useReportingDashboardQuery } from "../../query/reporting-queries";
+import { isTeamLoadPlaceholderRow } from "../../lib/team-load-filters";
 
 function LoadRow({
   name,
@@ -41,7 +42,9 @@ function LoadRow({
 
 export function TeamCurrentLoadCard() {
   const { data: dashboard, isPending } = useReportingDashboardQuery();
-  const rows = dashboard?.specialistLoad ?? [];
+  const rows = (dashboard?.specialistLoad ?? []).filter(
+    (row) => !isTeamLoadPlaceholderRow(row.name, row.roleLabel),
+  );
 
   return (
     <SubpagePanel className="mb-4 shrink-0 flex-none">

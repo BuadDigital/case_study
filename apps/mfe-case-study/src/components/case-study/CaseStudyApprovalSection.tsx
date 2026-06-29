@@ -1,7 +1,4 @@
-import {
-  CASE_STUDY_SIGNATURE_IMAGE,
-  CASE_STUDY_STAMP_IMAGE,
-} from "../../lib/prototype/case-study-form-data";
+import { CASE_STUDY_SIGNATURE_IMAGE, CASE_STUDY_STAMP_IMAGE } from "../../lib/prototype/case-study-form-data";
 import type { CaseStudyReportApproval } from "../../lib/prototype/case-study-report-model";
 import "./case-study-report.css";
 

@@ -1,3 +1,4 @@
+import { parseFieldErrorsFromResponse } from "./field-errors";
 import { getApiBase } from "./index";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
@@ -23,6 +24,11 @@ export type CaseStudyFormDto = {
   sigApprover: string;
   sigDate: string;
   specialistReviewApproved?: Record<string, boolean>;
+  infathLinkedAssets?: string;
+  infathLinkedDeedNumbers?: string;
+  infathLinkedAssetsNotes?: string;
+  infathOtherNotes?: string;
+  infathClosingNotes?: string;
   savedAtUtc?: string;
 };
 
@@ -64,6 +70,10 @@ export async function saveCaseStudyForm(
       body: JSON.stringify({ form }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 400) {
+      const errors = await parseFieldErrorsFromResponse(res);
+      return { ok: false, kind: "validation", errors };
+    }
     if (!res.ok) return { ok: false, kind: "server" };
     return { ok: true, data: (await res.json()) as CaseStudyFormDto };
   } catch {
@@ -102,6 +112,10 @@ export async function savePartyCaseStudyForm(
       body: JSON.stringify({ form }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 400) {
+      const errors = await parseFieldErrorsFromResponse(res);
+      return { ok: false, kind: "validation", errors };
+    }
     if (!res.ok) return { ok: false, kind: "server" };
     return { ok: true, data: (await res.json()) as CaseStudyFormDto };
   } catch {

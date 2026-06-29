@@ -1,7 +1,14 @@
-import { CASE_STUDY_FORM_STEPS, CASE_STUDY_SECTION_QUESTIONS, CASE_STUDY_TABLE_HEADERS, caseStudyFormSummary,
+import {
+  CASE_STUDY_FORM_STEPS,
+  CASE_STUDY_TABLE_HEADERS,
+  caseStudyFormSummary,
   type CaseStudyFormAnswer,
   type CaseStudyQuestionSection,
 } from "./case-study-form-data";
+import {
+  DEFAULT_CASE_STUDY_QUESTION_CATALOG,
+  questionLabelFromCatalog,
+} from "./case-study-question-catalog";
 import { loadCaseStudyFormDraft, loadPartyCaseStudyFormDraft,
   type CaseStudyFormDraft,
   type CaseStudyFormStatus,
@@ -28,6 +35,16 @@ import {
   infathYesNoLabel,
 } from "./infath-field-labels";
 import { getPartyTaskSubmission, type PartyTaskSubmissionDto } from "@platform/api-client";
+import {
+  appraiserOnlyCaseStudyChecklistItems,
+  caseStudyAnswerDisplayLabel,
+  isEvaluatorChecklistQuestionAssignedToAppraiser,
+  mergeEvaluatorChecklistFromCaseStudy,
+  type EvaluatorChecklistBooleanKey,
+} from "@evaluator/mfe/lib/evaluator/evaluator-checklist-case-study-sync";
+import type { EvaluatorChecklistAnswers } from "@evaluator/mfe/lib/evaluator/evaluator-window-data";
+import { loadCaseStudyInfoRolesConfig } from "@settings/mfe";
+import type { CaseStudyInfoRolesMatrix } from "@settings/mfe";
 import { workOrdersApiConfig } from "../work-orders-api-config";
 import { fetchGovernmentReviewSubmission } from "./government-review-work-storage";
 import { formatGovernmentReviewKeysProofLabel } from "./government-review-work-data";
@@ -180,13 +197,12 @@ function answerDisplay(
 }
 
 function questionLabelFromKey(key: string): string | null {
-  const match = /^([a-z]+)_(\d+)$/.exec(key);
-  if (!match) return null;
-  const section = match[1] as CaseStudyQuestionSection;
-  const index = Number.parseInt(match[2] ?? "", 10);
-  const questions = CASE_STUDY_SECTION_QUESTIONS[section];
-  if (!questions || !Number.isFinite(index)) return null;
-  return questions[index] ?? null;
+  const label = questionLabelFromCatalog(
+    DEFAULT_CASE_STUDY_QUESTION_CATALOG,
+    key,
+    "",
+  );
+  return label || null;
 }
 
 function answeredRows(
@@ -391,13 +407,16 @@ function checklistAnswerLabel(value: boolean | null): string {
 
 function evaluatorChecklistRows(
   checklist: EvaluatorChecklist,
+  matrix?: CaseStudyInfoRolesMatrix,
+  caseStudyAnswers?: Record<string, CaseStudyFormAnswer | null | undefined>,
 ): PartyAnswerRow[] {
-  const labels: Record<string, string> = {
+  const labels: Record<EvaluatorChecklistBooleanKey, string> = {
     q_plan_match: "هل رقم المخطط مطابق للصك؟",
     q_excess_zoning: "هل القطعة زائدة تنظيمية؟",
     q_land_waqf: "هل الأرض موقوفة؟",
     q_property_waqf: "هل العقار موقوف؟",
     q_expropriation: "هل يوجد نزع على منطقة العقار؟",
+    q_property_use_verified: "هل تم التأكد من استخدام العقار؟",
     q_agriculture_inquiry:
       "هل تم الاستعلام من وزارة الزراعة حيال الأرض الزراعية؟",
     q_overlap: "هل يوجد تداخل في الأصل؟",
@@ -414,13 +433,41 @@ function evaluatorChecklistRows(
   };
 
   const rows: PartyAnswerRow[] = [];
-  for (const [id, label] of Object.entries(labels)) {
+  for (const [id, label] of Object.entries(labels) as [
+    EvaluatorChecklistBooleanKey,
+    string,
+  ][]) {
+    if (
+      matrix &&
+      !isEvaluatorChecklistQuestionAssignedToAppraiser(matrix, id)
+    ) {
+      continue;
+    }
     const value = checklist[id];
-    if (typeof value !== "boolean") continue;
-    rows.push({ question: label, answer: checklistAnswerLabel(value) });
+    rows.push({
+      question: label,
+      answer: checklistAnswerLabel(
+        typeof value === "boolean" ? value : null,
+      ),
+    });
   }
 
-  if (checklist.q_shared_deed === true) {
+  if (matrix) {
+    for (const item of appraiserOnlyCaseStudyChecklistItems(matrix)) {
+      rows.push({
+        question: item.label,
+        answer: caseStudyAnswerDisplayLabel(
+          caseStudyAnswers?.[item.caseStudyKey],
+        ),
+      });
+    }
+  }
+
+  if (
+    checklist.q_shared_deed === true &&
+    (!matrix ||
+      isEvaluatorChecklistQuestionAssignedToAppraiser(matrix, "q_shared_deed"))
+  ) {
     const scope =
       checklist.shared_deed_scope === "full"
         ? "كامل العقار"
@@ -435,7 +482,14 @@ function evaluatorChecklistRows(
   }
 
   const techNotes = String(checklist.technical_notes_text ?? "").trim();
-  if (techNotes) {
+  if (
+    techNotes &&
+    (!matrix ||
+      isEvaluatorChecklistQuestionAssignedToAppraiser(
+        matrix,
+        "q_technical_notes_exists",
+      ))
+  ) {
     rows.push({ question: "الملاحظات الفنية", answer: techNotes });
   }
 
@@ -698,8 +752,14 @@ function buildFromFormDraft(
 
 function buildFromEvaluator(
   submission: EvaluatorSubmissionSnapshot,
+  matrix?: CaseStudyInfoRolesMatrix,
+  caseStudyAnswers?: Record<string, CaseStudyFormAnswer | null | undefined>,
 ): PropertyDetailPartySubmission {
-  const answers = evaluatorChecklistRows(submission.checklist);
+  const answers = evaluatorChecklistRows(
+    submission.checklist,
+    matrix,
+    caseStudyAnswers,
+  );
   const price = formatPriceDisplay(submission.evaluatorPrice);
   const notes = submission.evaluatorNotes.trim();
 
@@ -1259,7 +1319,24 @@ export async function loadPropertyDetailPartySubmission(input: {
     if (!submission) {
       return emptySubmission(roleKey, "لم يُقدَّم بعد");
     }
-    return buildFromEvaluator(submission);
+    const partyDraft = await loadPartyCaseStudyFormDraft(child.id);
+    const infoRoles = await loadCaseStudyInfoRolesConfig();
+    if (partyDraft) {
+      submission.checklist = mergeEvaluatorChecklistFromCaseStudy(
+        submission.checklist as EvaluatorChecklistAnswers,
+        partyDraft.answers,
+        {
+          deedRemarks: partyDraft.deedRemarks,
+          componentsRemarks: partyDraft.componentsRemarks,
+        },
+        { overwriteLinked: true },
+      ) as EvaluatorChecklist;
+    }
+    return buildFromEvaluator(
+      submission,
+      infoRoles.matrix,
+      partyDraft?.answers,
+    );
   }
 
   if (roleKey === "survey") {

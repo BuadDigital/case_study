@@ -12,6 +12,7 @@ export type EvaluatorChecklistAnswers = {
   q_land_waqf: boolean | null;
   q_property_waqf: boolean | null;
   q_expropriation: boolean | null;
+  q_property_use_verified: boolean | null;
   q_agriculture_inquiry: boolean | null;
   q_overlap: boolean | null;
   q_shared_building: boolean | null;
@@ -60,6 +61,7 @@ export type EvaluatorBooleanQuestion = {
     | "q_land_waqf"
     | "q_property_waqf"
     | "q_expropriation"
+    | "q_property_use_verified"
     | "q_agriculture_inquiry"
     | "q_overlap"
     | "q_shared_building"
@@ -78,6 +80,10 @@ export const EVALUATOR_SIMPLE_QUESTIONS: EvaluatorBooleanQuestion[] = [
   { id: "q_land_waqf", label: "هل الأرض موقوفة؟" },
   { id: "q_property_waqf", label: "هل العقار موقوف؟" },
   { id: "q_expropriation", label: "هل يوجد نزع على منطقة العقار؟" },
+  {
+    id: "q_property_use_verified",
+    label: "هل تم التأكد من استخدام العقار؟",
+  },
   {
     id: "q_agriculture_inquiry",
     label: "هل تم الاستعلام من وزارة الزراعة حيال الأرض الزراعية؟",
@@ -113,6 +119,7 @@ export function emptyChecklist(): EvaluatorChecklistAnswers {
     q_land_waqf: null,
     q_property_waqf: null,
     q_expropriation: null,
+    q_property_use_verified: null,
     q_agriculture_inquiry: null,
     q_overlap: null,
     q_shared_building: null,

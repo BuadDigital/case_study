@@ -1,8 +1,11 @@
 import {
+  DEFAULT_CASE_STUDY_QUESTION_CATALOG,
+  type CaseStudyQuestionCatalog,
+} from "./case-study-question-catalog";
+import {
   CASE_STUDY_PROVIDER_NAME,
   CASE_STUDY_REPORT_APPROVER_NAME,
   CASE_STUDY_REPORT_TITLE,
-  CASE_STUDY_SECTION_QUESTIONS,
   CASE_STUDY_TABLE_HEADERS,
   caseStudyAnswerKey,
   type CaseStudyFormAnswer,
@@ -124,9 +127,10 @@ export function buildCaseStudyReportApproval(
 function buildSectionRows(
   section: CaseStudyQuestionSection,
   answers: Record<string, CaseStudyFormAnswer | null>,
+  sectionQuestions: CaseStudyQuestionCatalog["sectionQuestions"],
 ): CaseStudyReportQuestionRow[] {
   const headers = CASE_STUDY_TABLE_HEADERS[section];
-  const questions = CASE_STUDY_SECTION_QUESTIONS[section];
+  const questions = sectionQuestions[section];
   return questions.map((question, i) => {
     const key = caseStudyAnswerKey(section, i);
     const val = answers[key] ?? null;
@@ -165,6 +169,7 @@ export function buildCaseStudyReportModel(
     | "receivedFromEnfathAt"
     | "promulgationDate"
   > | null | undefined,
+  catalog: CaseStudyQuestionCatalog = DEFAULT_CASE_STUDY_QUESTION_CATALOG,
 ): CaseStudyReportModel {
   const requestDateIso = resolveRequestDateIso(poRecord, draft);
   const approval = buildCaseStudyReportApproval(
@@ -185,7 +190,7 @@ export function buildCaseStudyReportModel(
       title: SECTION_TITLES[id],
       colAHeader: headers.colA,
       colBHeader: headers.colB,
-      rows: buildSectionRows(id, draft.answers),
+      rows: buildSectionRows(id, draft.answers, catalog.sectionQuestions),
     };
 
     if (id === "deed" && draft.deedRemarks.trim()) {

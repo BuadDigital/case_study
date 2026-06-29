@@ -124,9 +124,9 @@ export const ROLES: Record<RoleId, RoleDef> = {
     pages: ["po", "property-appraisal", "suspended-transactions", "system-fields-catalog", "system-screen-catalog"],
   },
   "field-inspector": {
-    name: "أحمد سعيد",
+    name: "عبدالله عبدالمانع",
     dept: "معاين ميداني",
-    init: "أس",
+    init: "عع",
     bg: "var(--info-bg)",
     tc: "var(--info)",
     pages: [

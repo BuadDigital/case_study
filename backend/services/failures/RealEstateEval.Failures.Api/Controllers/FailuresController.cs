@@ -37,7 +37,7 @@ public class FailuresController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Policy = CapabilityPolicyNames.ManageFailures)]
+    [Authorize(Policy = CapabilityPolicyNames.RaiseFailures)]
     public async Task<ActionResult<FailureRecordDto>> Create(
         [FromBody] CreateFailureRequest request,
         CancellationToken cancellationToken)

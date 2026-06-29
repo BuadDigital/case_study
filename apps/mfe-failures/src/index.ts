@@ -9,6 +9,7 @@ export {
   FAILURE_RAISER_SPECIALIST,
   FAILURE_RAISER_SUPERVISOR,
   failureRaiserRoleForParty,
+  FAILURE_RAISER_LABEL_BY_KIND,
 } from "./lib/failure-party-roles";
 
 export * from "./lib/failures-types";
@@ -25,6 +26,7 @@ export {
 export type { GroupedFailureRow } from "./lib/failures-labels";
 export * from "./lib/failure-types-data";
 export * from "./lib/failure-property-match";
+export * from "./lib/failures-government-reviewer-scope";
 export * from "./lib/failure-types-storage";
 export * from "./lib/failures-api";
 export * from "./query/failures-queries";

@@ -16,5 +16,8 @@ public static class CapabilityPolicyNames
     public const string ManageFinancial = "Capability:manage-financial";
     public const string ManageOperations = "Capability:manage-operations";
 
+    /// <summary>Party workspaces raise failures; case staff manage the full queue.</summary>
+    public const string RaiseFailures = "Capability:raise-failures";
+
     public static string For(string capability) => $"Capability:{capability}";
 }

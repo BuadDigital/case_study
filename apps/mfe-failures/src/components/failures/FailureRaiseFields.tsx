@@ -1,9 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { Label, Select, cn, formControlClassName } from "@platform/design-system";
+import { Input, Label, cn, formControlClassName } from "@platform/design-system";
 import type { FailureSeverity } from "../../lib/failures-types";
-import { useFailureTypesQuery } from "../../query/failure-types-queries";
 
 const fieldTextareaClass = cn(
   formControlClassName,
@@ -13,37 +11,20 @@ const fieldTextareaClass = cn(
 export function FailureRaiseFields({
   severity,
   onSeverityChange,
-  problemTypeId,
-  onProblemTypeIdChange,
+  problemDescription,
+  onProblemDescriptionChange,
   note,
   onNoteChange,
   idPrefix = "fail",
 }: {
   severity: FailureSeverity;
   onSeverityChange: (value: FailureSeverity) => void;
-  problemTypeId: string;
-  onProblemTypeIdChange: (value: string) => void;
+  problemDescription: string;
+  onProblemDescriptionChange: (value: string) => void;
   note: string;
   onNoteChange: (value: string) => void;
   idPrefix?: string;
 }) {
-  const { data: catalog } = useFailureTypesQuery();
-
-  const groupedOptions = useMemo(() => {
-    if (!catalog) return [];
-    return catalog.categories
-      .slice()
-      .sort((a, b) => a.order - b.order)
-      .map((category) => ({
-        category,
-        types: catalog.problemTypes
-          .filter((t) => t.categoryId === category.id)
-          .sort((a, b) => a.order - b.order),
-      }));
-  }, [catalog]);
-
-  const selectedType = catalog?.problemTypes.find((t) => t.id === problemTypeId);
-
   return (
     <>
       <div className="mb-2.5">
@@ -71,29 +52,16 @@ export function FailureRaiseFields({
       </div>
 
       <div className="mb-2.5">
-        <Label htmlFor={`${idPrefix}_problem_type`} className="text-[11px] font-semibold text-text-2">
-          نوع المشكلة *
+        <Label htmlFor={`${idPrefix}_problem`} className="text-[11px] font-semibold text-text-2">
+          اكتب المشكلة *
         </Label>
-        <Select
-          id={`${idPrefix}_problem_type`}
+        <Input
+          id={`${idPrefix}_problem`}
           className="mt-1 text-xs"
-          value={problemTypeId}
-          onChange={(e) => onProblemTypeIdChange(e.target.value)}
-        >
-          <option value="">— اختر من القائمة —</option>
-          {groupedOptions.map(({ category, types }) => (
-            <optgroup key={category.id} label={category.label}>
-              {types.map((type) => (
-                <option key={type.id} value={type.id}>
-                  {type.label}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </Select>
-        <p className="mt-1.5 min-h-[2.5rem] text-[10px] leading-relaxed text-text-3">
-          {selectedType?.description ?? "\u00a0"}
-        </p>
+          value={problemDescription}
+          onChange={(e) => onProblemDescriptionChange(e.target.value)}
+          placeholder="صف المشكلة باختصار"
+        />
       </div>
 
       <div className="mb-3">

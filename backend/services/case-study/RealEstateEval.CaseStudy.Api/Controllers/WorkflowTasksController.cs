@@ -25,16 +25,6 @@ public class WorkflowTasksController : ControllerBase
         return Ok(await _tasks.ListAsync(cancellationToken));
     }
 
-    [HttpGet("{id:guid}")]
-    public async Task<ActionResult<WorkflowTaskDto>> Get(
-        Guid id,
-        CancellationToken cancellationToken)
-    {
-        var dto = await _tasks.GetAsync(id, cancellationToken);
-        if (dto is null) return NotFound();
-        return Ok(dto);
-    }
-
     [HttpPost("sync")]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<IReadOnlyList<WorkflowTaskDto>>> Sync(

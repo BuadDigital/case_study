@@ -62,15 +62,6 @@ public class InspectorFeesController : ControllerBase
             returnTo,
             ct));
 
-    [HttpGet("{workflowTaskId:guid}")]
-    public async Task<ActionResult<InspectorFeeRowDto>> GetByTask(
-        Guid workflowTaskId,
-        CancellationToken ct)
-    {
-        var row = await _fees.GetByWorkflowTaskIdAsync(workflowTaskId, ct);
-        return row is null ? NotFound() : Ok(row);
-    }
-
     [HttpGet("{workflowTaskId:guid}/transitions")]
     public async Task<ActionResult<IReadOnlyList<InspectorFeeAuditEntryDto>>> ListTransitions(
         Guid workflowTaskId,

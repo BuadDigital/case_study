@@ -16,10 +16,6 @@ public class EnfazBillingController : ControllerBase
 
     public EnfazBillingController(IPoEnfazBillingService billing) => _billing = billing;
 
-    [HttpGet("ready-pos")]
-    public async Task<ActionResult<IReadOnlyList<string>>> ListReadyPos(CancellationToken ct) =>
-        Ok(await _billing.ListReadyPoNumbersAsync(ct));
-
     [HttpGet("ready-pos-summary")]
     public async Task<ActionResult<IReadOnlyList<EnfazReadyPoSummaryDto>>> ListReadyPosSummary(
         CancellationToken ct) =>

@@ -1,13 +1,14 @@
 import {
   CASE_STUDY_INFO_PARTIES,
-  isPartyQuestionVisible,
   partyIdForRoleId,
   type CaseStudyInfoPartyId,
-  type CaseStudyInfoRolesMatrix,
-} from "@settings/mfe";
+} from "@settings/mfe/lib/prototype/case-study-info-roles-data";
 import {
-  CASE_STUDY_SECTION_QUESTIONS,
-  caseStudyAnswerKey,
+  isPartyQuestionVisible,
+  type CaseStudyInfoRolesMatrix,
+} from "@settings/mfe/lib/prototype/case-study-info-roles-storage";
+import { DEFAULT_CASE_STUDY_QUESTION_CATALOG } from "./case-study-question-catalog";
+import {
   type CaseStudyFormAnswer,
   type CaseStudyQuestionSection,
 } from "./case-study-form-data";
@@ -68,9 +69,9 @@ export function sortPartyCaseStudyProgress(
 function allQuestionKeys(): string[] {
   const keys: string[] = [];
   for (const section of FORM_SECTIONS) {
-    CASE_STUDY_SECTION_QUESTIONS[section].forEach((_, index) => {
-      keys.push(caseStudyAnswerKey(section, index));
-    });
+    for (const key of DEFAULT_CASE_STUDY_QUESTION_CATALOG.sectionKeys[section]) {
+      keys.push(key);
+    }
   }
   return keys;
 }
@@ -93,15 +94,19 @@ export function computePartyCaseStudyProgress(
   >,
 ): PartyCaseStudyProgress[] {
   const keys = allQuestionKeys();
+  const specialistAnswers = answersByParty.specA ?? {};
 
   const rows = CASE_STUDY_INFO_PARTIES.map((party) => {
     const visibleKeys = keys.filter((key) =>
       isPartyQuestionVisible(matrix, key, party.id),
     );
-    const answers = answersByParty[party.id] ?? {};
+    const partyAnswers = answersByParty[party.id] ?? {};
     const answered = visibleKeys.filter((key) => {
-      const value = answers[key];
-      return value === "A" || value === "B";
+      const value = partyAnswers[key];
+      if (value === "A" || value === "B") return true;
+      if (party.id === "specA") return false;
+      const official = specialistAnswers[key];
+      return official === "A" || official === "B";
     }).length;
     const total = visibleKeys.length;
     const pct = total > 0 ? Math.round((answered / total) * 100) : 0;

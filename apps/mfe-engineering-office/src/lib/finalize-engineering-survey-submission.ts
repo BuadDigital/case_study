@@ -14,11 +14,14 @@ export async function finalizeEngineeringSurveySubmission(
 
   const partyDraft = await loadPartyCaseStudyFormDraft(surveyTaskId);
   if (partyDraft) {
-    await savePartyCaseStudyFormDraft({
+    const saved = await savePartyCaseStudyFormDraft({
       ...partyDraft,
       status: "submitted",
       savedAtUtc: new Date().toISOString(),
     });
+    if (!saved.ok) {
+      console.warn("Case study party form save failed:", saved.error);
+    }
   }
 
   return submitted;

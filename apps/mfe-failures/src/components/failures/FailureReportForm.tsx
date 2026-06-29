@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button, Card, CardBody, CardHeader } from "@platform/design-system";
+import { FREE_TEXT_FAILURE_PROBLEM_TYPE_ID } from "../../lib/failure-types-data";
 import { createFailure } from "../../lib/failures-repository";
 import type { FailureSeverity } from "../../lib/failures-types";
 import { FailureRaiseFields } from "./FailureRaiseFields";
@@ -24,16 +25,18 @@ export function FailureReportForm({
   onCancel: () => void;
 }) {
   const [severity, setSeverity] = useState<FailureSeverity>("internal");
-  const [problemTypeId, setProblemTypeId] = useState("");
+  const [problemDescription, setProblemDescription] = useState("");
   const [note, setNote] = useState("");
 
   function handleSubmit() {
-    if (!problemTypeId) return;
+    const description = problemDescription.trim();
+    if (!description) return;
     void createFailure({
       poNumber,
       propertyId,
       deedNumber,
-      problemTypeId,
+      problemTypeId: FREE_TEXT_FAILURE_PROBLEM_TYPE_ID,
+      title: description,
       severity,
       raisedByRole,
       internalNote: note,
@@ -52,8 +55,8 @@ export function FailureReportForm({
         <FailureRaiseFields
           severity={severity}
           onSeverityChange={setSeverity}
-          problemTypeId={problemTypeId}
-          onProblemTypeIdChange={setProblemTypeId}
+          problemDescription={problemDescription}
+          onProblemDescriptionChange={setProblemDescription}
           note={note}
           onNoteChange={setNote}
         />
@@ -62,7 +65,7 @@ export function FailureReportForm({
             type="button"
             variant="primary"
             size="sm"
-            disabled={!problemTypeId}
+            disabled={!problemDescription.trim()}
             onClick={handleSubmit}
           >
             {severity === "internal" ? "حفظ تعذر داخلي" : "تسجيل احتمال تعذر"}

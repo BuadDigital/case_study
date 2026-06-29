@@ -1,13 +1,13 @@
-/** Question banks for نموذج دراسة الحالة (from docs/case_study_form 3.html). */
+/** Question banks for نموذج دراسة الحالة — labels من قاموس الحقول (API) مع افتراضيات محلية. */
+
+import {
+  DEFAULT_CASE_STUDY_QUESTION_CATALOG,
+  type CaseStudyQuestionSection,
+} from "./case-study-question-catalog";
+
+export type { CaseStudyQuestionSection };
 
 export type CaseStudyFormAnswer = "A" | "B";
-
-export type CaseStudyQuestionSection =
-  | "deed"
-  | "survey"
-  | "comp"
-  | "occ"
-  | "extra";
 
 export const CASE_STUDY_FORM_STEPS = [
   { id: 1, label: "بيانات الصك والعقار" },
@@ -29,57 +29,16 @@ export const CASE_STUDY_STAMP_IMAGE = "/case-study/ejadah-stamp.png";
 export const CASE_STUDY_SECTION_REMARKS_HINT =
   "في حال وجود اختلاف في البيانات أعلاه يتم التوضيح في الملاحظات ادناه";
 
-export const CASE_STUDY_DEED_QUESTIONS = [
-  "هل الصك فعال",
-  "هل رقم القطعة مطابق للصك.",
-  "هل رقم المخطط مطابق للصك.",
-  "هل القطعة زائدة تنظيمية.",
-  "هل يوجد نزع على منطقة العقار.",
-  "هل الأرض موقوفة",
-  "هل العقاروقوف.",
-  "هل تم التأكد من استخدام العقار(سكني – تجاري – ...).",
-  "هل تم الاستعلام من وزارة الزراعة حيال الأرض الزراعية.",
-  "هل الصك مشاع.",
-  "في حال ان الصك مشاع هل المساحة المملوكة بالصك لكامل مساحة العقار او لجزء محدد وتحديد النسبة في الملاحظات.",
-] as const;
-
-export const CASE_STUDY_SURVEY_QUESTIONS = [
-  "هل الصك مطابق للرفع المساحي.",
-  "هل تم ذكر جميع الاختلافات في الرفع المساحي.",
-  "هل تم تطبيق جميع التعليمات الصادرة من المركز في الرفع المساحي.",
-  "هل تم التوقيع وارفاق إقرار على صحة الموقع.",
-  "هل يوجد تداخل في الأصل.",
-  "هل يوجد على الأصل مبنى مشترك.",
-  "هل ذكر المرجع المعتمد في الاستدلال على استخدام العقار.",
-] as const;
-
-export const CASE_STUDY_COMPONENTS_QUESTIONS = [
-  "هل يوجد في العقار بئر.",
-  "هل يوجد في العقار غرفة كهرباء.",
-  "هل يوجد في العقار أبراج كهرباء.",
-  "هل يوجد في العقار أبراج اتصالات.",
-  "هل يوجد في العقار مضخة دفاع مدني.",
-  "هل يوجد في العقار منقولات.",
-  "هل يوجد في العقار مركبات.",
-  "هل يوجد في العقار معدات زراعية او موجودات حيوية.",
-  "هل تم مطابقة مكونات العقار على الطبيعة مع المكونات المذكورة في الصك. (للأصول المجمدة)",
-] as const;
-
-export const CASE_STUDY_OCCUPANCY_QUESTIONS = [
-  "هل العقار مأهول بالسكن.",
-  "هل يوجد عقد إيجار.",
-  "هل تم مطابقة رقم الصك بالمذكوربعقد الإيجار.",
-  "هل عقد الإيجار ساري.",
-  "هل عقد الإيجار إلكتروني.",
-  "هل يوجد اتحاد ملاك؟",
-] as const;
-
-export const CASE_STUDY_EXTRA_QUESTIONS = [
-  "هل تم ذكر جميع الملاحظات للتوضيح في حال عدم المطابقة",
-  "هل يوجد ملاحظات فنية قد تؤثر على قيمة العقار",
-  "هل هناك أي عوامل بيئية أوتنظيمية قد تؤثر على العقار(مثل طريق مستقبلي أو قيود بناء).",
-  "هل العقاريحتوي على أي إضافات غير مسجلة في الصك.",
-] as const;
+export const CASE_STUDY_DEED_QUESTIONS =
+  DEFAULT_CASE_STUDY_QUESTION_CATALOG.sectionQuestions.deed;
+export const CASE_STUDY_SURVEY_QUESTIONS =
+  DEFAULT_CASE_STUDY_QUESTION_CATALOG.sectionQuestions.survey;
+export const CASE_STUDY_COMPONENTS_QUESTIONS =
+  DEFAULT_CASE_STUDY_QUESTION_CATALOG.sectionQuestions.comp;
+export const CASE_STUDY_OCCUPANCY_QUESTIONS =
+  DEFAULT_CASE_STUDY_QUESTION_CATALOG.sectionQuestions.occ;
+export const CASE_STUDY_EXTRA_QUESTIONS =
+  DEFAULT_CASE_STUDY_QUESTION_CATALOG.sectionQuestions.extra;
 
 export const CASE_STUDY_TABLE_HEADERS: Record<
   CaseStudyQuestionSection,
@@ -95,16 +54,8 @@ export const CASE_STUDY_TABLE_HEADERS: Record<
   extra: { colA: "يوجد", colB: "لا يوجد" },
 };
 
-export const CASE_STUDY_SECTION_QUESTIONS: Record<
-  CaseStudyQuestionSection,
-  readonly string[]
-> = {
-  deed: CASE_STUDY_DEED_QUESTIONS,
-  survey: CASE_STUDY_SURVEY_QUESTIONS,
-  comp: CASE_STUDY_COMPONENTS_QUESTIONS,
-  occ: CASE_STUDY_OCCUPANCY_QUESTIONS,
-  extra: CASE_STUDY_EXTRA_QUESTIONS,
-};
+export const CASE_STUDY_SECTION_QUESTIONS =
+  DEFAULT_CASE_STUDY_QUESTION_CATALOG.sectionQuestions;
 
 export function caseStudyAnswerKey(
   section: CaseStudyQuestionSection,

@@ -16,6 +16,7 @@ export function TaskWorkChrome({
   variant = "edit",
   footerExtra,
   scrollMode = "viewport",
+  saveShowActionToast = false,
   children,
 }: {
   layout?: "page" | "panel";
@@ -30,6 +31,8 @@ export function TaskWorkChrome({
   variant?: "edit" | "detail";
   footerExtra?: ReactNode;
   scrollMode?: "viewport" | "document";
+  /** Parent handlers use runWithActionToast — skip duplicate global toast. */
+  saveShowActionToast?: boolean;
   children: ReactNode;
 }) {
   if (layout === "panel") {
@@ -45,6 +48,8 @@ export function TaskWorkChrome({
                 variant="primary"
                 loading={saving}
                 disabled={saving}
+                showActionToast={saveShowActionToast}
+                actionLabel={saveLabel}
                 onClick={onSave}
               >
                 {saveLabel}
@@ -67,6 +72,7 @@ export function TaskWorkChrome({
         onBack={onClose}
         onSave={onSave}
         saveLabel={saveLabel}
+        saveShowActionToast={saveShowActionToast}
         footerExtra={footerExtra}
         variant={variant}
         showFooter={showFooter}

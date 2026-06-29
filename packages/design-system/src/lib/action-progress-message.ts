@@ -2,6 +2,7 @@ export const UPLOAD_PROGRESS_MESSAGE = "جاري الرفع…";
 export const UPLOAD_SUCCESS_MESSAGE = "تم الرفع !";
 
 const EXACT_MESSAGES: Record<string, string> = {
+  حفظ: "جاري الحفظ…",
   "حفظ أمر العمل": "جاري حفظ أمر العمل…",
   "حفظ التعديلات": "جاري حفظ التعديلات…",
   "حفظ وإرسال المعاينة": "جاري إرسال المعاينة…",
@@ -21,7 +22,8 @@ const EXACT_MESSAGES: Record<string, string> = {
   "رفع النموذج للنظام": "جاري رفع نموذج الدراسة…",
   "دخول": "جاري تسجيل الدخول…",
   "إرفاق صورة": "جاري إرفاق الصورة…",
-  "تسجيل تعذر": "جاري تسجيل التعذر…",
+  "حفظ تعذر داخلي": "جاري تسجيل التعذر…",
+  "تسجيل احتمال تعذر": "جاري تسجيل التعذر…",
 };
 
 const KEYWORD_MESSAGES: { keyword: string; message: string }[] = [
@@ -42,6 +44,7 @@ const KEYWORD_MESSAGES: { keyword: string; message: string }[] = [
 ];
 
 const SUCCESS_EXACT_MESSAGES: Record<string, string> = {
+  حفظ: "تم الحفظ !",
   "حفظ أمر العمل": "تم حفظ أمر العمل !",
   "حفظ التعديلات": "تم حفظ التعديلات !",
   "حفظ وإرسال المعاينة": "تم إرسال المعاينة !",
@@ -61,7 +64,9 @@ const SUCCESS_EXACT_MESSAGES: Record<string, string> = {
   "رفع النموذج للنظام": "تم رفع نموذج الدراسة !",
   "دخول": "تم تسجيل الدخول !",
   "إرفاق صورة": "تم إرفاق الصورة !",
-  "تسجيل تعذر": "تم تسجيل التعذر !",
+  "حفظ تعذر داخلي": "تم تسجيل التعذر !",
+  "تسجيل احتمال تعذر": "تم تسجيل التعذر !",
+  "تسجيل التعذر": "تم تسجيل التعذر !",
 };
 
 const SUCCESS_KEYWORD_MESSAGES: { keyword: string; message: string }[] = [
@@ -94,6 +99,7 @@ const SKIP_ACTION_LABELS = new Set([
   "معاينة",
   "تحرير",
   "⋮",
+  "تسجيل تعذر",
 ]);
 
 /** Maps a button label to a short Arabic progress toast. */

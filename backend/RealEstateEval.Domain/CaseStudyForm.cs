@@ -25,6 +25,12 @@ public class CaseStudyForm
     public string SigApprover { get; set; } = "";
     public string SigDate { get; set; } = "";
     public string? SpecialistReviewApprovedJson { get; set; }
+    /// <summary>هل الأصل مرتبط بأصول أخرى؟ — empty | yes | no</summary>
+    public string InfathLinkedAssets { get; set; } = "";
+    public string InfathLinkedDeedNumbers { get; set; } = "";
+    public string InfathLinkedAssetsNotes { get; set; } = "";
+    public string InfathOtherNotes { get; set; } = "";
+    public string InfathClosingNotes { get; set; } = "";
     public DateTime? SavedAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }

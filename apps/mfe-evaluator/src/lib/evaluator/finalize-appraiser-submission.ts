@@ -5,6 +5,7 @@ import {
 import {
   loadEvaluatorSubmission,
   submitEvaluatorSubmission,
+  syncEvaluatorChecklistFromPartyCaseStudy,
 } from "./evaluator-submission-storage";
 import { clearEvaluatorRecall } from "./evaluator-recall-storage";
 import type { EvaluatorSubmission } from "./evaluator-window-data";
@@ -17,18 +18,27 @@ export type FinalizeAppraiserResult =
 export async function finalizeAppraiserSubmission(
   appraisalTaskId: string,
 ): Promise<FinalizeAppraiserResult> {
+  const partyDraft = await loadPartyCaseStudyFormDraft(appraisalTaskId);
+  if (loadEvaluatorSubmission(appraisalTaskId) && partyDraft) {
+    await syncEvaluatorChecklistFromPartyCaseStudy(appraisalTaskId, {
+      overwriteLinked: true,
+    });
+  }
+
   const result = await submitEvaluatorSubmission(appraisalTaskId);
   if (!result.ok) return result;
 
   clearEvaluatorRecall(appraisalTaskId);
 
-  const partyDraft = await loadPartyCaseStudyFormDraft(appraisalTaskId);
   if (partyDraft) {
-    await savePartyCaseStudyFormDraft({
+    const saved = await savePartyCaseStudyFormDraft({
       ...partyDraft,
       status: "submitted",
       savedAtUtc: new Date().toISOString(),
     });
+    if (!saved.ok) {
+      return { ok: false, message: saved.error };
+    }
   }
 
   return result;

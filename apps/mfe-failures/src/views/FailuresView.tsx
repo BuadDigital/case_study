@@ -30,7 +30,7 @@ import { formatDateAr, formatPoDisplay } from "@case-study/mfe";
 import { poPropertyPath } from "@case-study/mfe/lib/po-routes";
 import { suspendPropertyTransaction } from "@case-study/mfe/lib/prototype/suspend-property-transaction";
 import { usePoRecordsQuery } from "@case-study/mfe/query/case-study-queries";
-import { getFailureProblemType } from "../lib/failure-types-data";
+import { failuresForGovernmentReviewer } from "../lib/failures-government-reviewer-scope";
 import { approveFailure, resolveFailure, returnFailure, submitFailureForReview, upgradeFailureToInternal } from "../lib/failures-repository";
 import { failureRecordTitle, failureSeverityLabel, failureStatusLabel } from "../lib/failures-labels";
 import { countOpenFailures, isActiveFailureStatus, type FailureRecord } from "../lib/failures-types";
@@ -46,19 +46,6 @@ function isSupervisor(role: RoleId) {
 
 function isGovernmentReviewer(role: RoleId) {
   return role === "government-reviewer";
-}
-
-function failuresForGovernmentReviewer(items: FailureRecord[]) {
-  return items.filter((failure) => {
-    const category = getFailureProblemType(failure.problemTypeId)?.categoryId;
-    const raisedBy = failure.raisedByRole.trim();
-    return (
-      category === "access" ||
-      category === "deed-documents" ||
-      raisedBy.includes("مراجع") ||
-      raisedBy.includes("government")
-    );
-  });
 }
 
 type ResolveDraft = { reason: string; instructions: string };
@@ -230,7 +217,9 @@ export function FailuresView() {
                   ? "أنت في وضع الاطلاع — صلاحية التعديل للمشرف والأخصائي"
                   : role === "cdo"
                     ? "صلاحيات كاملة — يمكنك اعتماد التعذرات وإنشاؤها"
-                    : "أنت في وضع المراقبة — لا تملك صلاحية تعديل التعذرات"}
+                    : isGovernmentReviewer(role)
+                      ? "تعرض هنا تعذراتك التي رفعتها من المراجعة الحكومية فقط — للمتابعة والاطلاع."
+                      : "أنت في وضع المراقبة — لا تملك صلاحية تعديل التعذرات"}
               </Note>
             </PageToolbar>
           ) : null}
