@@ -14,18 +14,12 @@ import {
 import { findAppraisalChildForParent } from "../../lib/evaluator/evaluator-inspection-gate";
 import { openEvaluatorReportPreview } from "../../lib/evaluator/evaluator-report-attachments";
 import {
-  approveEvaluatorRecall,
-  EVALUATOR_RECALL_CHANGED_EVENT,
-  getEvaluatorRecall,
-  hydrateEvaluatorRecallForTask,
-  recallStatusLabel,
-  rejectEvaluatorRecall,
-} from "../../lib/evaluator/evaluator-recall-storage";
-import {
   EVALUATOR_SUBMISSION_CHANGED_EVENT,
   fetchEvaluatorSubmissionSnapshot,
   loadEvaluatorSubmission,
 } from "../../lib/evaluator/evaluator-submission-storage";
+import { PartyRecallAdvisorySection } from "@case-study/mfe/components/party-tasks/PartyRecallAdvisorySection";
+import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/prototype/party-task-recall-storage";
 import {
   checklistAnswerLabel,
   EVALUATOR_CONDITIONAL_QUESTIONS,
@@ -74,11 +68,11 @@ export function EvaluatorAdvisoryPanel({
   useEffect(() => {
     const refresh = () => setRefreshKey((k) => k + 1);
     window.addEventListener(EVALUATOR_SUBMISSION_CHANGED_EVENT, refresh);
-    window.addEventListener(EVALUATOR_RECALL_CHANGED_EVENT, refresh);
+    window.addEventListener(PARTY_TASK_RECALL_CHANGED_EVENT, refresh);
     window.addEventListener(PARTY_CASE_STUDY_FORM_CHANGED_EVENT, refresh);
     return () => {
       window.removeEventListener(EVALUATOR_SUBMISSION_CHANGED_EVENT, refresh);
-      window.removeEventListener(EVALUATOR_RECALL_CHANGED_EVENT, refresh);
+      window.removeEventListener(PARTY_TASK_RECALL_CHANGED_EVENT, refresh);
       window.removeEventListener(PARTY_CASE_STUDY_FORM_CHANGED_EVENT, refresh);
     };
   }, []);
@@ -96,13 +90,6 @@ export function EvaluatorAdvisoryPanel({
       cancelled = true;
     };
   }, [appraisalTask?.id, refreshKey]);
-
-  useEffect(() => {
-    if (!appraisalTask) return;
-    void hydrateEvaluatorRecallForTask(appraisalTask.id).then(() => {
-      setRefreshKey((k) => k + 1);
-    });
-  }, [appraisalTask?.id]);
 
   useEffect(() => {
     if (!appraisalTask) return;
@@ -148,11 +135,6 @@ export function EvaluatorAdvisoryPanel({
     [assignedQuestions],
   );
 
-  const recall = useMemo(() => {
-    if (!appraisalTask) return null;
-    return getEvaluatorRecall(appraisalTask.id);
-  }, [appraisalTask, refreshKey]);
-
   if (!appraisalTask) {
     return (
       <RegistrationFormCard title="بيانات المقيم العقاري (استرشادي)">
@@ -173,57 +155,24 @@ export function EvaluatorAdvisoryPanel({
     );
   }
 
-  function handleApproveRecall() {
-    if (!appraisalTask) return;
-    void approveEvaluatorRecall(appraisalTask.id).then(() => {
-      setRefreshKey((k) => k + 1);
-      onReopened?.();
-    });
-  }
-
-  function handleRejectRecall() {
-    if (!appraisalTask) return;
-    const note = window.prompt("سبب الرفض (اختياري):", "");
-    if (note === null) return;
-    void rejectEvaluatorRecall(appraisalTask.id, note).then(() => {
-      setRefreshKey((k) => k + 1);
-    });
-  }
-
   const checklist = displayChecklist ?? submission.checklist;
 
   return (
     <RegistrationFormCard title="بيانات المقيم العقاري (استرشادي — للقراءة فقط)">
       <p className="mb-3 text-[11px] leading-relaxed text-text-3">
         هذه البيانات من المقيم بصفة أصيل — لا يُعدَّل السعر من الأخصائي. طلب
-        الاستدعاء للتعديل يحتاج موافقتك.
+        الاسترجاع للتعديل يحتاج موافقتك.
       </p>
 
-      {recall?.status === "pending" ? (
-        <div className={noteWarnClass}>
-          <p className="m-0">
-            <strong>طلب استدعاء من المقيم</strong>
-            {recall.reason ? ` — ${recall.reason}` : ""}
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <Button type="button" size="sm" variant="primary" onClick={handleApproveRecall}>
-              الموافقة على الاستدعاء
-            </Button>
-            <Button type="button" size="sm" variant="outline" onClick={handleRejectRecall}>
-              رفض
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
-      {recall && recall.status !== "pending" ? (
-        <div className={infoRowClass}>
-          <span className="shrink-0 text-text-3">طلب الاستدعاء</span>
-          <span className="text-left font-medium text-text">
-            {recallStatusLabel(recall.status)}
-          </span>
-        </div>
-      ) : null}
+      <PartyRecallAdvisorySection
+        taskId={appraisalTask.id}
+        partyLabel="المقيم العقاري"
+        refreshKey={refreshKey}
+        onResolved={() => {
+          setRefreshKey((k) => k + 1);
+          onReopened?.();
+        }}
+      />
 
       <div className={infoRowClass}>
         <span className="shrink-0 text-text-3">الحالة</span>

@@ -33,13 +33,20 @@ export function buildActiveQueueRowMoreItems(options: {
       label: "ابدأ الرفع المساحي",
       onClick: () => options.router.push(activeSurveyEntryPath(options.task.id)),
     });
+  }
+
+  if (
+    (options.task.kind === "engineering-survey" ||
+      options.task.kind === "field-inspection" ||
+      options.task.kind === "property-appraisal") &&
+    propertyId
+  ) {
     items.push({
       id: "register-failure",
       label: "تسجيل تعذر",
       danger: true,
-      disabled: !propertyId || failureExists,
+      disabled: failureExists,
       onClick: () => {
-        if (!propertyId) return;
         options.router.push(poPropertyFailurePath(po, propertyId));
       },
     });

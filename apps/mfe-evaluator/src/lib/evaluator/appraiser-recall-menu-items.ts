@@ -28,9 +28,9 @@ export function buildAppraiserRecallMenuItems(
   return [
     {
       id: "recall",
-      label: "استدعاء المعاملة",
+      label: "طلب استرجاع المعاملة",
       onClick: () => {
-        const reason = window.prompt("سبب طلب الاستدعاء (اختياري):", "");
+        const reason = window.prompt("سبب طلب الاسترجاع (اختياري):", "");
         if (reason === null) return;
         void requestEvaluatorRecall({
           taskId: task.id,

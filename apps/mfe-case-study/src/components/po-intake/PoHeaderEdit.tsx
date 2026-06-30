@@ -8,7 +8,7 @@ import {
   type PoIntakeRecord,
 } from "../../lib/prototype/po-intake-data";
 import { updatePoRecord } from "../../lib/prototype/po-intake-storage";
-import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
+import { RegField, RegSelect, RegTextarea } from "@platform/app-shared/registration/FormFields";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import {
   collectRequiredErrors,
@@ -72,6 +72,12 @@ export function PoHeaderEdit({
   const [expectedPropertyCount, setExpectedPropertyCount] = useState(
     String(record.expectedPropertyCount ?? 1),
   );
+  const [propertiesRegion, setPropertiesRegion] = useState(
+    record.propertiesRegion ?? "",
+  );
+  const [workOrderDescription, setWorkOrderDescription] = useState(
+    record.workOrderDescription ?? "",
+  );
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -90,6 +96,8 @@ export function PoHeaderEdit({
     promulgationDate !== (record.promulgationDate || record.receivedFromEnfathAt) ||
     assignmentSpecialist.trim() !== record.assignmentSpecialist ||
     assignmentSpecialistEmail.trim() !== record.assignmentSpecialistEmail ||
+    propertiesRegion.trim() !== (record.propertiesRegion ?? "").trim() ||
+    workOrderDescription.trim() !== (record.workOrderDescription ?? "").trim() ||
     Math.max(1, parseInt(expectedPropertyCount, 10) || 1) !==
       (record.expectedPropertyCount ?? 1);
 
@@ -130,6 +138,8 @@ export function PoHeaderEdit({
       assignmentSpecialist: assignmentSpecialist.trim(),
       assignmentSpecialistEmail: assignmentSpecialistEmail.trim(),
       expectedPropertyCount: Math.max(1, count || 1),
+      propertiesRegion: propertiesRegion.trim(),
+      workOrderDescription: workOrderDescription.trim(),
     };
 
     const result = await updatePoRecord(next);
@@ -211,6 +221,22 @@ export function PoHeaderEdit({
               setExpectedPropertyCount(digits || "");
             }}
           />
+          <RegField
+            id="properties_region_edit"
+            label="منطقة العقارات"
+            value={propertiesRegion}
+            onChange={setPropertiesRegion}
+            maxLength={256}
+          />
+          <div className="col-span-full">
+            <RegTextarea
+              id="work_order_description_edit"
+              label="وصف أمر العمل"
+              value={workOrderDescription}
+              onChange={setWorkOrderDescription}
+              rows={3}
+            />
+          </div>
           <CountDisplay
             label="تاريخ الاستلام الفعلي"
             value={receivedDisplay}

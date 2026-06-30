@@ -59,6 +59,8 @@ public class WorkOrderDto
     public int ExpectedPropertyCount { get; set; }
     public string DueDateAt { get; set; } = "";
     public string CreatedAtUtc { get; set; } = "";
+    public string? PropertiesRegion { get; set; }
+    public string? WorkOrderDescription { get; set; }
     public List<WorkOrderPropertyDto> Properties { get; set; } = [];
 }
 
@@ -82,6 +84,12 @@ public class CreateWorkOrderRequest
     [Range(1, 999)]
     public int ExpectedPropertyCount { get; set; } = 1;
 
+    [MaxLength(256)]
+    public string? PropertiesRegion { get; set; }
+
+    [MaxLength(2000)]
+    public string? WorkOrderDescription { get; set; }
+
     public List<WorkOrderPropertyDto> Properties { get; set; } = [];
 }
 
@@ -101,6 +109,12 @@ public class UpdateWorkOrderHeaderRequest
 
     [Range(1, 999)]
     public int ExpectedPropertyCount { get; set; } = 1;
+
+    [MaxLength(256)]
+    public string? PropertiesRegion { get; set; }
+
+    [MaxLength(2000)]
+    public string? WorkOrderDescription { get; set; }
 }
 
 public class UpdatePropertyBourseRequest

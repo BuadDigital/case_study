@@ -70,21 +70,41 @@ public static class PropertyIdentifierTypeLabels
     }
 }
 
-/// <summary>PO list workflow status returned to the shell (progress | done).</summary>
+/// <summary>Manual PO lifecycle overrides set from the PO list menu.</summary>
+public static class WorkOrderLifecycleStatus
+{
+    public const string Cancelled = "cancelled";
+    public const string Stopped = "stopped";
+}
+
+/// <summary>PO list status returned to the shell.</summary>
 public static class WorkOrderListStatus
 {
-    public const string Progress = "progress";
-    public const string Done = "done";
+    public const string New = "new";
+    public const string UnderStudy = "under_study";
+    public const string Cancelled = "cancelled";
+    public const string Stopped = "stopped";
+    public const string Completed = "completed";
+    public const string PartiallyBilled = "partially_billed";
+    public const string FullyBilled = "fully_billed";
 
-    public static string FromWorkOrder(WorkOrder entity)
+    public static string Resolve(WorkOrder order, int studiedCount)
     {
-        var expected = Math.Max(1, entity.ExpectedPropertyCount);
-        if (entity.Properties.Count < expected) return Progress;
+        var lifecycle = order.LifecycleStatus?.Trim();
+        if (lifecycle == WorkOrderLifecycleStatus.Cancelled) return Cancelled;
+        if (lifecycle == WorkOrderLifecycleStatus.Stopped) return Stopped;
 
-        var ready = entity.Properties.Count(p =>
-            p.BourseDataCompleted ||
-            p.IdentifierType == PropertyIdentifierType.RealEstateRegistration);
+        var expected = Math.Max(1, order.ExpectedPropertyCount);
+        var registered = order.Properties.Count;
 
-        return ready >= expected ? Done : Progress;
+        if (registered > 0 && studiedCount >= registered && registered >= expected)
+            return FullyBilled;
+        if (studiedCount > 0)
+            return PartiallyBilled;
+        if (registered >= expected)
+            return Completed;
+        if (registered > 0)
+            return UnderStudy;
+        return New;
     }
 }

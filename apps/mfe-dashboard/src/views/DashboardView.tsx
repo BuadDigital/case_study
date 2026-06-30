@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { TeamCurrentLoadCard } from "../components/dashboard/TeamCurrentLoadCard";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { isPoListStatusTerminal } from "@platform/app-shared/prototype/po-list-status";
 import {
   Badge,
   ProgressBar,
@@ -82,10 +83,8 @@ export function DashboardView() {
   const mgr = MGR_ROLES.has(role);
   const showTeamLoad = TEAM_LOAD_ROLES.has(role);
   const { data: poRows, isPending: poPending } = usePoListRowsQuery();
-  const { data: propertyItems, isPending: propertyPending } =
-    usePropertyListItemsQuery();
-  const { data: valuationRows = [], isPending: valuationPending } =
-    useRecentValuationRequestsQuery();
+  const { data: propertyItems, isPending: propertyPending } = usePropertyListItemsQuery();
+  const { data: valuationRows = [], isPending: valuationPending } = useRecentValuationRequestsQuery();
   const { data: reporting, isPending: reportingPending } = useReportingDashboardQuery();
   const reportingReady = !reportingPending && reporting !== undefined;
   /** Always from workflow tasks — same source as «تقييم العقار». */
@@ -106,7 +105,9 @@ export function DashboardView() {
     };
   }, [propertyItems]);
 
-  const poActive = (poRows ?? []).filter((p) => p.status === "progress");
+  const poActive = (poRows ?? []).filter(
+    (p) => !isPoListStatusTerminal(p.status) && p.status !== "partially_billed",
+  );
   const poReady = !poPending && poRows !== undefined;
 
   const statCards = propertyPending

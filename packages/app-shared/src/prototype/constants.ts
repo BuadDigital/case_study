@@ -48,6 +48,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     tc: "var(--info)",
     pages: [
       "po",
+      "all-transactions",
       "active-primary-data",
       "bourse-inquiry",
       "active-distribution",
@@ -75,6 +76,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     tc: "var(--warning)",
     pages: [
       "po",
+      "all-transactions",
       "active-primary-data",
       "bourse-inquiry",
       "active-distribution",
@@ -97,6 +99,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     pages: [
       "dashboard",
       "po",
+      "all-transactions",
       "active-primary-data",
       "bourse-inquiry",
       "active-distribution",
@@ -113,7 +116,12 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "مد",
     bg: "var(--purple-bg)",
     tc: "var(--purple)",
-    pages: ["valuation-coordination", "system-fields-catalog", "system-screen-catalog"],
+    pages: [
+      "all-transactions",
+      "valuation-coordination",
+      "system-fields-catalog",
+      "system-screen-catalog",
+    ],
   },
   "real-estate-appraiser": {
     name: "عبدالله الكثيري",
@@ -121,7 +129,15 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "عك",
     bg: "var(--info-bg)",
     tc: "var(--info)",
-    pages: ["po", "property-appraisal", "suspended-transactions", "system-fields-catalog", "system-screen-catalog"],
+    pages: [
+      "po",
+      "all-transactions",
+      "property-appraisal",
+      "failures",
+      "suspended-transactions",
+      "system-fields-catalog",
+      "system-screen-catalog",
+    ],
   },
   "field-inspector": {
     name: "عبدالله عبدالمانع",
@@ -130,8 +146,10 @@ export const ROLES: Record<RoleId, RoleDef> = {
     bg: "var(--info-bg)",
     tc: "var(--info)",
     pages: [
+      "all-transactions",
       "property-inspection",
       "party-fees",
+      "failures",
       "system-fields-catalog",
       "system-screen-catalog",
     ],
@@ -142,7 +160,14 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "فك",
     bg: "var(--orange-bg)",
     tc: "var(--orange)",
-    pages: ["government-review", "keys", "failures", "system-fields-catalog", "system-screen-catalog"],
+    pages: [
+      "all-transactions",
+      "government-review",
+      "keys",
+      "failures",
+      "system-fields-catalog",
+      "system-screen-catalog",
+    ],
   },
   "engineering-office": {
     name: "مكتب جدة للمساحة",
@@ -151,6 +176,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     bg: "var(--purple-bg)",
     tc: "var(--purple)",
     pages: [
+      "all-transactions",
       "active-survey",
       "party-fees",
       "failures",
@@ -174,6 +200,12 @@ export const NAV: NavItem[] = [
     id: "po",
     label: "أوامر العمل (PO)",
     icon: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z",
+    grp: "قسم دراسة الحالة",
+  },
+  {
+    id: "all-transactions",
+    label: "جميع المعاملات",
+    icon: "M4 6h16M4 12h16M4 18h10",
     grp: "قسم دراسة الحالة",
   },
   {
@@ -250,6 +282,7 @@ export const PAGE_TITLES: Record<PageId, string> = {
   "active-distribution": "توزيع المعاملات",
   "active-case-study": "دراسة حالة العقارات",
   po: "أوامر العمل",
+  "all-transactions": "جميع المعاملات",
   "bourse-inquiry": "استعلام بورصة",
   survey: "مكاتب الرفع الهندسي",
   keys: "إدارة المفاتيح",
@@ -279,6 +312,7 @@ export const PAGE_BREADCRUMB: Record<PageId, string> = {
   "active-distribution": "دراسة الحالة / المعاملات النشطة / توزيع المعاملات",
   "active-case-study": "دراسة الحالة / المعاملات النشطة / دراسة حالة العقارات",
   po: "دراسة الحالة / أوامر العمل",
+  "all-transactions": "دراسة الحالة / أوامر العمل / جميع المعاملات",
   "bourse-inquiry": "دراسة الحالة / المعاملات النشطة / استعلام بورصة",
   survey: "دراسة الحالة",
   keys: "دراسة الحالة",
@@ -302,13 +336,19 @@ export const PAGE_BREADCRUMB: Record<PageId, string> = {
   "audit-log": "الإعدادات / سجل التدقيق",
 };
 
+import type { PoListStatus } from "./po-list-status";
+
 /** Mock rows aligned with `requirment/system_prototype_4.html` (PO / VR / عقارات). */
 export type PoRow = {
   id: string;
   type: string;
+  /** عدد العقارات المتوقع من إنفاذ */
   count: number;
+  /** صكوك / عقارات مسجّلة فعلياً */
+  registered: number;
+  /** دراسات حالة مكتملة */
   done: number;
-  status: "progress" | "done" | "under_study";
+  status: PoListStatus;
   date: string;
   dueDate: string;
   specialist: string;

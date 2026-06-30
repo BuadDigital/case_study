@@ -34,7 +34,7 @@ const TRACK_KIND: Record<
   caseStudy: "parent",
 };
 
-function trackStateFromTask(
+export function trackStateFromTask(
   child: WorkflowTask | undefined,
   spawned: boolean,
 ): CaseStudyTrackState {

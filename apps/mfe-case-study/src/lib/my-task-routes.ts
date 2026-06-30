@@ -1,5 +1,6 @@
 import type { PageId } from "@platform/types";
 import { isPartyTaskPage } from "@platform/app-shared/prototype/party-task-pages";
+import type { WorkflowTask } from "./prototype/tasks-storage";
 
 export function myTasksPath(): string {
   return "/active-primary-data";
@@ -101,6 +102,32 @@ export function isPartyTaskWorkPath(pathname: string): boolean {
 
 export function primaryDataTaskPath(taskId: string): string {
   return `/active-primary-data?task=${encodeURIComponent(taskId)}`;
+}
+
+export function allTransactionsPath(): string {
+  return "/all-transactions";
+}
+
+export function allTransactionsTaskPath(taskId: string): string {
+  return `/all-transactions?task=${encodeURIComponent(taskId)}`;
+}
+
+/** Full-page workspace for distributed party tasks opened from جميع المعاملات. */
+export function partyTaskWorkspacePath(task: WorkflowTask): string | undefined {
+  switch (task.kind) {
+    case "field-inspection":
+      return propertyInspectionWorkspacePath(task.id);
+    case "engineering-survey":
+      return activeSurveyWorkspacePath(task.id);
+    case "property-appraisal":
+      return propertyAppraisalWorkspacePath(task.id);
+    case "valuation-coordination":
+      return valuationCoordinationWorkspacePath(task.id);
+    case "government-review":
+      return governmentReviewWorkspacePath(task.id);
+    default:
+      return undefined;
+  }
 }
 
 export function decodeTaskParam(value: string): string {

@@ -31,6 +31,7 @@ export { appendAuditLogEntry, listAuditLogEntries } from "./audit/audit-log-stor
 export { exportRowsToCsv } from "./export/export-csv";
 export * from "./domain/form/field-errors";
 export * from "./prototype/constants";
+export * from "./prototype/po-list-status";
 export * from "./prototype/active-transactions";
 export * from "./prototype/party-task-pages";
 export * from "./prototype/prototype-role-access";
@@ -44,6 +45,7 @@ export * from "./prototype/field-dictionary";
 export * from "./prototype/prototype-modules-api-config";
 export * from "./prototype/task-attachments-api";
 export * from "./prototype/party-submission-changed-event";
+export * from "./prototype/party-task-recall-storage";
 export * from "./prototype/party-workflow-events";
 export * from "./prototype/screen-catalog";
 export { prototypeKeys } from "./query/prototype-keys";

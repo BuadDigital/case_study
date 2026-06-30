@@ -27,6 +27,7 @@ import { PropertyDetailCaseStudyReport } from "./PropertyDetailCaseStudyReport";
 import { PropertyDetailPropertyKeys } from "./PropertyDetailPropertyKeys";
 import { PropertyDetailEnfathUpload } from "./PropertyDetailEnfathUpload";
 import { PropertyDetailFinanceTab } from "./PropertyDetailFinanceTab";
+import { PropertyDetailSurveyNotesTab } from "./PropertyDetailSurveyNotesTab";
 import { PropertyTransactionTimeline } from "./PropertyTransactionTimeline";
 import {
   boundariesAvailabilityLabel,
@@ -92,6 +93,7 @@ const TABS = [
   { id: "keys", label: "مفاتيح العقار" },
   { id: "enfath-upload", label: "الرفع على انفاذ" },
   { id: "finance", label: "المالية" },
+  { id: "survey-notes", label: "ملاحظة" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -486,8 +488,24 @@ export function PoPropertyDetailTabs({
       tab === "parties" ||
       tab === "keys" ||
       tab === "enfath-upload" ||
-      tab === "appraisal",
+      tab === "appraisal" ||
+      tab === "finance" ||
+      tab === "survey-notes" ||
+      Boolean(surveyTask),
   });
+
+  const engineeringPartyNotes = partySubmissionsQuery.data?.survey?.remarks ?? [];
+  const surveyNotePreview = useMemo(() => {
+    const primary =
+      engineeringPartyNotes.find((row) =>
+        row.label.includes("ملاحظات"),
+      )?.value ??
+      engineeringPartyNotes[0]?.value ??
+      "";
+    const text = primary.trim();
+    if (!text) return "";
+    return text.length > 24 ? `${text.slice(0, 24)}…` : text;
+  }, [engineeringPartyNotes]);
 
   const logEventsQuery = usePropertyTimelineQuery(poNumber, property.id);
   const fallbackLogEvents = useMemo(
@@ -582,7 +600,21 @@ export function PoPropertyDetailTabs({
               active={tab === t.id}
               onClick={() => setTab(t.id)}
             >
-              {t.label}
+              {t.id === "survey-notes" ? (
+                <span className="inline-flex max-w-[9.5rem] items-center gap-1">
+                  <span>{t.label}</span>
+                  {surveyNotePreview ? (
+                    <span
+                      className="truncate text-[10px] font-normal text-text-3"
+                      title={surveyNotePreview}
+                    >
+                      {surveyNotePreview}
+                    </span>
+                  ) : null}
+                </span>
+              ) : (
+                t.label
+              )}
               {count !== null ? (
                 <TabCount tone={countTone}>{count}</TabCount>
               ) : null}
@@ -872,6 +904,16 @@ export function PoPropertyDetailTabs({
               poNumber={poNumber}
               property={property}
               tasks={tasks}
+            />
+          ) : null}
+
+          {tab === "survey-notes" ? (
+            <PropertyDetailSurveyNotesTab
+              remarks={engineeringPartyNotes}
+              loading={
+                partySubmissionsQuery.isLoading ||
+                partySubmissionsQuery.isFetching
+              }
             />
           ) : null}
         </TabPanel>

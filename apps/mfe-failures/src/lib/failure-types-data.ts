@@ -17,11 +17,7 @@ export type FailureProblemType = {
 export const FAILURE_TYPE_CATEGORIES: FailureTypeCategory[] = [
   { id: "deed-documents", label: "مشاكل الصك والوثائق", order: 1 },
   { id: "location", label: "مشاكل تحديد الموقع والحدود", order: 2 },
-  {
-    id: "ownership",
-    label: "مشاكل الملكية والحدود المساحية",
-    order: 3,
-  },
+  { id: "ownership", label: "مشاكل الملكية والحدود المساحية",order: 3},
   { id: "access", label: "مشاكل الدخول والتمكين", order: 4 },
   { id: "contents", label: "مشاكل محتوى العقار", order: 5 },
   { id: "parties", label: "مشاكل الأطراف والتعاون", order: 6 },

@@ -111,6 +111,7 @@ export function prefetchPrototypePage(
       });
       break;
     case "active-primary-data":
+    case "all-transactions":
     case "active-distribution":
     case "active-case-study":
     case "property-inspection":

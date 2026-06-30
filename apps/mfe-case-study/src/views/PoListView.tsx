@@ -5,6 +5,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import type { PoRow } from "@platform/app-shared/prototype/constants";
 import {
+  isPoListStatusTerminal,
+  PO_LIST_STATUS_OPTIONS,
+  poListStatusMeta,
+  poProgressPct,
+  type PoListStatus,
+} from "@platform/app-shared/prototype/po-list-status";
+import {
   Badge,
   Button,
   Input,
@@ -31,7 +38,6 @@ import {
   cn,
   queueTableRowClassName,
   useToast,
-  type BadgeTone,
 } from "@platform/design-system";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import { RowMoreMenu } from "@case-study/mfe/components/ui/RowMoreMenu";
@@ -39,7 +45,11 @@ import { buildPoListRowMoreItems } from "../lib/prototype/po-list-row-menu";
 import { ltrValueClass } from "../components/po-intake/PropertyDetailFields";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { formatDateAr, isPastDue } from "../lib/prototype/po-intake-data";
-import { deletePoRecord } from "../lib/prototype/po-intake-storage";
+import {
+  cancelPoRecord,
+  deletePoRecord,
+  stopPoRecord,
+} from "../lib/prototype/po-intake-storage";
 import { poHeaderEditPath, poPropertiesPath, poPropertyPath } from "../lib/po-routes";
 import {
   buildPoDeedIndex,
@@ -63,7 +73,7 @@ import {
 
 type SortKey = "created" | "po" | "received" | "due";
 type SortDir = "asc" | "desc";
-type StatusFilter = "" | "progress" | "done" | "under_study";
+type StatusFilter = PoListStatus | "";
 
 const PO_LIST_TOOLBAR_FIELD =
   "!h-8 !py-0 !leading-8 border-border-md bg-surface px-2.5 text-xs shadow-none";
@@ -77,7 +87,7 @@ function isDueSoon(iso: string): boolean {
 }
 
 function isDueUrgent(dueIso: string, status: PoRow["status"]): boolean {
-  if (!dueIso || status === "done") return false;
+  if (!dueIso || isPoListStatusTerminal(status)) return false;
   return isPastDue(dueIso) || isDueSoon(dueIso);
 }
 
@@ -87,60 +97,9 @@ function progressFillClass(pct: number): string {
   return "bg-red";
 }
 
-function poListStatusMeta(status: PoRow["status"]): {
-  tone: BadgeTone;
-  label: string;
-} {
-  if (status === "done") {
-    return { tone: "success", label: "مكتمل" };
-  }
-  if (status === "under_study") {
-    return { tone: "danger", label: "معلق" };
-  }
-  return { tone: "warning", label: "تنفيذ" };
-}
-
 function PoListStatusBadge({ status }: { status: PoRow["status"] }) {
   const { tone, label } = poListStatusMeta(status);
   return <Badge tone={tone}>{label}</Badge>;
-}
-
-function DeedColumnCell({
-  deeds,
-  highlightDeed,
-}: {
-  deeds: PoDeedIndexEntry[];
-  highlightDeed?: string;
-}) {
-  if (deeds.length === 0) {
-    return <span className="text-text-3">لا صكوك</span>;
-  }
-
-  if (highlightDeed) {
-    const hit = deeds.find((d) => d.deedNumber === highlightDeed) ?? deeds[0];
-    return (
-      <div className="flex flex-col gap-0.5">
-        <span className="font-semibold text-text">
-          <bdi dir="ltr" className={ltrValueClass}>
-            {hit.deedNumber}
-          </bdi>
-        </span>
-        {hit.area ? (
-          <span className="text-[10.5px] text-text-3">{hit.area}</span>
-        ) : null}
-      </div>
-    );
-  }
-
-  if (deeds.length === 1) {
-    return <span className="text-[12px] text-text-2">صك واحد</span>;
-  }
-
-  return (
-    <span className="text-[12px] text-text-2">
-      {deeds.length.toLocaleString("ar-SA")} صكوك
-    </span>
-  );
 }
 
 function SearchIcon() {
@@ -271,6 +230,7 @@ export function PoListView() {
   const showDelete = canDeletePo(role);
   const { showToast } = useToast();
   const [deletingPo, setDeletingPo] = useState<string | null>(null);
+  const [lifecyclePo, setLifecyclePo] = useState<string | null>(null);
   const [intakeOpen, setIntakeOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
@@ -294,6 +254,13 @@ export function PoListView() {
     () => buildPoDeedIndex(propertyItems ?? []),
     [propertyItems],
   );
+  const registeredByPo = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const entry of deedIndex) {
+      counts.set(entry.poNumber, (counts.get(entry.poNumber) ?? 0) + 1);
+    }
+    return counts;
+  }, [deedIndex]);
   const searchMode = useMemo(() => classifyPoListSearch(search), [search]);
   const searchModeLabel = poListSearchModeLabel(searchMode);
   const statsReady = rows !== undefined && !rowsPending;
@@ -303,7 +270,12 @@ export function PoListView() {
     const propertyCount = list.reduce((n, p) => n + p.count, 0);
     const avgPerPo =
       list.length > 0 ? (propertyCount / list.length).toFixed(1) : "0";
-    const doneMonth = list.filter((p) => p.status === "done").length;
+    const doneMonth = list.filter(
+      (p) =>
+        p.status === "completed" ||
+        p.status === "fully_billed" ||
+        p.status === "partially_billed",
+    ).length;
     return {
       total: list.length,
       propertyCount,
@@ -389,6 +361,44 @@ export function PoListView() {
     setSortDir(key === "po" || key === "created" ? "desc" : "asc");
   }
 
+  async function handleCancelPo(poNumber: string) {
+    if (
+      !window.confirm(
+        `إلغاء أمر العمل «${poNumber}»؟ سيُعرض كملغى في القائمة.`,
+      )
+    ) {
+      return;
+    }
+    setLifecyclePo(poNumber);
+    const result = await cancelPoRecord(poNumber);
+    setLifecyclePo(null);
+    if (!result.ok) {
+      showToast(result.error, "error");
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
+    showToast(`تم إلغاء أمر العمل «${poNumber}».`, "success");
+  }
+
+  async function handleStopPo(poNumber: string) {
+    if (
+      !window.confirm(
+        `إيقاف أمر العمل «${poNumber}»؟ سيُعرض كمتوقف في القائمة.`,
+      )
+    ) {
+      return;
+    }
+    setLifecyclePo(poNumber);
+    const result = await stopPoRecord(poNumber);
+    setLifecyclePo(null);
+    if (!result.ok) {
+      showToast(result.error, "error");
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
+    showToast(`تم إيقاف أمر العمل «${poNumber}».`, "success");
+  }
+
   async function handleDeletePo(poNumber: string) {
     if (
       !window.confirm(
@@ -442,7 +452,7 @@ export function PoListView() {
                   <StatSub>عقار لكل أمر</StatSub>
                 </StatCard>
                 <StatCard accent="gray">
-                  <StatLabel>مكتملة هذا الشهر</StatLabel>
+                  <StatLabel>مكتملة / مفوترة</StatLabel>
                   <StatValue value={stats?.doneMonth} countUp />
                   <StatSub>{`من ${stats?.total ?? 0} إجمالي`}</StatSub>
                 </StatCard>
@@ -505,9 +515,13 @@ export function PoListView() {
                   aria-label="تصفية الحالة"
                 >
                   <option value="">جميع الحالات</option>
-                  <option value="progress">قيد التنفيذ</option>
-                  <option value="done">مكتمل</option>
-                  <option value="under_study">معلق</option>
+                  {PO_LIST_STATUS_OPTIONS.filter((o) => o.value !== "").map(
+                    (option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ),
+                  )}
                 </Select>
                 <Select
                   className={cn(
@@ -544,7 +558,6 @@ export function PoListView() {
                         <SortIcon />
                       </button>
                     </Th>
-                    <Th>رقم الصك</Th>
                     <Th>نوع الإسناد</Th>
                     <Th>العقارات</Th>
                     <Th>المكتملة</Th>
@@ -570,17 +583,17 @@ export function PoListView() {
                         <SortIcon />
                       </button>
                     </Th>
-                    <Th>الأخصائي</Th>
+                    <Th>أخصائي الإسناد</Th>
                     <ThAction aria-label="إجراءات" />
                   </Tr>
                 </THead>
                 <TBody>
                   {!statsReady ? (
-                    <SkeletonTableRows rows={8} cols={11} />
+                    <SkeletonTableRows rows={8} cols={10} />
                   ) : filtered.length === 0 ? (
                     <Tr hoverable={false}>
                       <Td
-                        colSpan={11}
+                        colSpan={10}
                         className="cursor-default py-10 text-center text-[13px] text-text-3"
                       >
                         <div className="flex flex-col items-center justify-center gap-2">
@@ -598,14 +611,13 @@ export function PoListView() {
                       const p = entry.view === "po" ? entry.item.row : entry.item.row;
                       const deedEntry =
                         entry.view === "property" ? entry.item.deed : null;
-                      const poDeeds =
-                        entry.view === "po" ? entry.item.deeds : [entry.item.deed];
                       const match =
                         entry.view === "po" ? entry.item.match : entry.item.match;
-                      const pct =
-                        p.count > 0
-                          ? Math.round((p.done / p.count) * 100)
-                          : 0;
+                      const registered =
+                        p.registered ?? registeredByPo.get(p.id) ?? 0;
+                      const studied = p.done ?? 0;
+                      const expected = p.count ?? 0;
+                      const pct = poProgressPct(registered, studied, expected);
                       const urgent = isDueUrgent(p.dueDate, p.status);
                       const target =
                         deedEntry || match?.propertyId
@@ -637,21 +649,11 @@ export function PoListView() {
                               className="text-[13px] font-medium text-primary"
                             />
                           </Td>
-                          <Td>
-                            <DeedColumnCell
-                              deeds={poDeeds}
-                              highlightDeed={
-                                match?.deedNumber ??
-                                deedEntry?.deedNumber ??
-                                undefined
-                              }
-                            />
-                          </Td>
                           <Td className="whitespace-nowrap">{p.type}</Td>
                           <Td className="whitespace-nowrap">
                             <strong>{p.count}</strong>
                           </Td>
-                          <Td className="whitespace-nowrap">{p.done}</Td>
+                          <Td className="whitespace-nowrap">{studied}</Td>
                           <Td className="whitespace-nowrap">
                             <div className="flex min-w-[120px] items-center gap-2">
                               <div className="h-[5px] min-w-[60px] flex-1 overflow-hidden rounded bg-surface-3">
@@ -663,7 +665,7 @@ export function PoListView() {
                                   style={{ width: `${pct}%` }}
                                 />
                               </div>
-                              <span className="min-w-7 text-end text-[11.5px] text-text-2">
+                              <span className="min-w-7 text-end text-[11.5px] text-text-2 tabular-nums">
                                 {pct}%
                               </span>
                             </div>
@@ -718,11 +720,16 @@ export function PoListView() {
                               <RowMoreMenu
                                 items={buildPoListRowMoreItems({
                                   poNumber: p.id,
+                                  status: p.status,
                                   showEdit,
                                   showDelete,
+                                  showLifecycleActions: showEdit,
                                   deleting: deletingPo === p.id,
+                                  lifecycleBusy: lifecyclePo === p.id,
                                   router,
                                   onDelete: () => void handleDeletePo(p.id),
+                                  onCancel: () => void handleCancelPo(p.id),
+                                  onStop: () => void handleStopPo(p.id),
                                 })}
                               />
                             </div>

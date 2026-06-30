@@ -134,6 +134,24 @@ public class WorkOrdersController : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("{poNumber}/cancel")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public async Task<IActionResult> Cancel(string poNumber, CancellationToken cancellationToken)
+    {
+        var (ok, error) = await _workOrders.CancelAsync(poNumber, cancellationToken);
+        if (!ok) return BadRequest(new { message = error });
+        return NoContent();
+    }
+
+    [HttpPost("{poNumber}/stop")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public async Task<IActionResult> Stop(string poNumber, CancellationToken cancellationToken)
+    {
+        var (ok, error) = await _workOrders.StopAsync(poNumber, cancellationToken);
+        if (!ok) return BadRequest(new { message = error });
+        return NoContent();
+    }
+
     [HttpPost("{poNumber}/properties")]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<WorkOrderPropertyDto>> AddProperty(

@@ -147,7 +147,7 @@ type EngineeringSurveySubmissionSnapshot = {
 };
 
 type GovernmentReviewSubmissionSnapshot = {
-  status: "draft" | "submitted";
+  status: "draft" | "submitted" | "reopened";
   visitStatus: "completed" | "scheduled" | "blocked" | "";
   visitDate: string;
   courtName: string;
@@ -155,6 +155,7 @@ type GovernmentReviewSubmissionSnapshot = {
   keysDescription: string;
   accessBlockReason: string;
   reviewNotes: string;
+  returnNote?: string;
   propertyZoneStatus?: string;
   keysProofFiles?: import("./government-review-work-data").GovernmentReviewKeysProofFile[];
   keysProofFileName?: string;

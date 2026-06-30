@@ -47,7 +47,7 @@ public class AuthController : ControllerBase
             from user in _db.Users.AsNoTracking()
             join profile in _db.UserProfiles.AsNoTracking() on user.Id equals profile.UserId
             where profile.Status == UserStatus.Active && user.UserName != null
-            orderby user.DisplayName
+            orderby user.UserName == "sliman" ? 0 : 1, user.DisplayName
             select new DevLoginUserDto
             {
                 Username = user.UserName!,

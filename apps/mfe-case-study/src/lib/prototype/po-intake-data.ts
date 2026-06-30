@@ -592,6 +592,10 @@ export type PoIntakeRecord = {
   assignmentSpecialist: string;
   assignmentSpecialistEmail: string;
   expectedPropertyCount: number;
+  /** وصف نصي اختياري — منطقة العقارات */
+  propertiesRegion: string;
+  /** وصف نصي اختياري — وصف أمر العمل */
+  workOrderDescription: string;
   dueDateAt: string;
   properties: PoPropertyIntake[];
   createdAtUtc: string;
@@ -754,11 +758,4 @@ export function assignmentTypeBadgeClass(type: string): string {
   if (type === "تركات") return "b-prog";
   if (type === "قطاع خاص") return "b-key";
   return "b-cancel";
-}
-
-export function poListStatusForAssignmentType(
-  _assignmentType: string,
-  workflowStatus: "progress" | "done",
-): "progress" | "done" {
-  return workflowStatus;
 }

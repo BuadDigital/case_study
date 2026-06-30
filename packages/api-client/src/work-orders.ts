@@ -68,6 +68,8 @@ export type WorkOrderDto = {
   expectedPropertyCount: number;
   dueDateAt: string;
   createdAtUtc: string;
+  propertiesRegion?: string;
+  workOrderDescription?: string;
   properties: WorkOrderPropertyDto[];
 };
 
@@ -93,6 +95,8 @@ export type CreateWorkOrderRequest = {
   assignmentSpecialist?: string;
   assignmentSpecialistEmail?: string;
   expectedPropertyCount: number;
+  propertiesRegion?: string;
+  workOrderDescription?: string;
   properties?: WorkOrderPropertyDto[];
 };
 
@@ -103,6 +107,8 @@ export type UpdateWorkOrderHeaderRequest = {
   assignmentSpecialist?: string;
   assignmentSpecialistEmail?: string;
   expectedPropertyCount: number;
+  propertiesRegion?: string;
+  workOrderDescription?: string;
 };
 
 export type UpdatePropertyBourseRequest = {
@@ -431,6 +437,45 @@ export async function deleteWorkOrder(
   } catch {
     return { ok: false, kind: "network" };
   }
+}
+
+async function postWorkOrderLifecycleAction(
+  config: WorkOrdersApiConfig,
+  poNumber: string,
+  action: "cancel" | "stop",
+): Promise<ApiOk<void> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/${action}`,
+      { method: "POST", headers: headers(config.token) },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (!res.ok) {
+      const message =
+        res.status === 400
+          ? ((await res.json()) as { message?: string }).message
+          : undefined;
+      return { ok: false, kind: "server", message };
+    }
+    return { ok: true, data: undefined };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export async function cancelWorkOrder(
+  config: WorkOrdersApiConfig,
+  poNumber: string,
+): Promise<ApiOk<void> | ApiErr> {
+  return postWorkOrderLifecycleAction(config, poNumber, "cancel");
+}
+
+export async function stopWorkOrder(
+  config: WorkOrdersApiConfig,
+  poNumber: string,
+): Promise<ApiOk<void> | ApiErr> {
+  return postWorkOrderLifecycleAction(config, poNumber, "stop");
 }
 
 export async function addWorkOrderProperty(

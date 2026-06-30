@@ -38,8 +38,69 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
             }
         }
 
-        return existing.Select(ToDto).ToList();
+        var (parent, children) = await LoadPartyTasksAsync(po, propertyId, cancellationToken);
+        return existing
+            .Select(e => ToDto(ApplyDynamicTone(e, parent, children)))
+            .ToList();
     }
+
+    private async Task<(WorkflowTask? Parent, List<WorkflowTask> Children)> LoadPartyTasksAsync(
+        string poNumber,
+        Guid propertyId,
+        CancellationToken cancellationToken)
+    {
+        var tasks = await _db.WorkflowTasks
+            .AsNoTracking()
+            .Where(t => t.PoNumber == poNumber && t.PropertyId == propertyId)
+            .ToListAsync(cancellationToken);
+
+        var parent = tasks.FirstOrDefault(t => t.Kind == CaseStudyPropertyKind);
+        var children = parent is null
+            ? []
+            : tasks.Where(t => t.ParentTaskId == parent.Id).ToList();
+        return (parent, children);
+    }
+
+    private static PropertyTimelineEntry ApplyDynamicTone(
+        PropertyTimelineEntry entry,
+        WorkflowTask? parent,
+        IReadOnlyList<WorkflowTask> children)
+    {
+        if (entry.EventKey.StartsWith("party:", StringComparison.Ordinal) &&
+            entry.EventKey.EndsWith(":assigned", StringComparison.Ordinal))
+        {
+            const string assignedSuffix = ":assigned";
+            var inner = entry.EventKey["party:".Length..^assignedSuffix.Length];
+            if (Guid.TryParse(inner, out var taskId))
+            {
+                var child = children.FirstOrDefault(c => c.Id == taskId);
+                if (child is not null)
+                {
+                    entry.Tone = child.Status == WorkflowTaskStatus.Completed ? "done" : "active";
+                }
+            }
+        }
+        else if (entry.EventKey.Contains(":distribution", StringComparison.Ordinal) && children.Count > 0)
+        {
+            entry.Tone = children.All(c => c.Status == WorkflowTaskStatus.Completed)
+                ? "done"
+                : "active";
+        }
+        else if (entry.EventKey.StartsWith("failure:", StringComparison.Ordinal) &&
+                 entry.EventKey.EndsWith(":created", StringComparison.Ordinal))
+        {
+            entry.Tone = "warn";
+        }
+        else if (entry.EventKey.EndsWith(":case-study", StringComparison.Ordinal) && parent is not null)
+        {
+            entry.Tone = IsCaseStudyComplete(parent) ? "done" : "active";
+        }
+
+        return entry;
+    }
+
+    private static bool IsCaseStudyComplete(WorkflowTask parent) =>
+        parent.Status == WorkflowTaskStatus.Completed || parent.Phase == "done";
 
     public async Task RecordAsync(
         string poNumber,
@@ -233,6 +294,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
             if (children.Count > 0)
             {
                 var distributionAt = children.Min(c => c.CreatedAtUtc);
+                var distributionDone = children.All(c => c.Status == WorkflowTaskStatus.Completed);
                 AddEvent(
                     events,
                     poNumber,
@@ -240,7 +302,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                     $"task:{parent.Id}:distribution",
                     "توزيع المعاملة",
                     null,
-                    parent.Phase == "distribution" ? "active" : "done",
+                    distributionDone ? "done" : "active",
                     distributionAt,
                     recordedAt);
 
@@ -253,7 +315,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                         $"party:{child.Id}:assigned",
                         PartyAssignedTitle(child.Kind),
                         child.AssigneeName,
-                        "done",
+                        child.Status == WorkflowTaskStatus.Completed ? "done" : "active",
                         child.CreatedAtUtc,
                         recordedAt);
                 }
@@ -271,7 +333,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                     $"task:{parent.Id}:case-study",
                     "دراسة حالة العقار",
                     parent.AssigneeName,
-                    parent.Phase == "case-study" ? "active" : "done",
+                    IsCaseStudyComplete(parent) ? "done" : "active",
                     caseStudyAt,
                     recordedAt);
             }
@@ -356,7 +418,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                 $"failure:{failure.Id}:created",
                 "تسجيل تعذر",
                 $"{failure.Title} — {FailureStatusLabel(failure.Status)}",
-                failure.Status == PropertyFailureStatus.Approved ? "warn" : "active",
+                "warn",
                 failure.CreatedAtUtc,
                 recordedAt);
 

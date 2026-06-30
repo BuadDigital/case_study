@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button, Card, CardBody, CardHeader } from "@platform/design-system";
-import { FREE_TEXT_FAILURE_PROBLEM_TYPE_ID } from "../../lib/failure-types-data";
+import { failureProblemTypeLabel } from "../../lib/failure-types-data";
 import { createFailure } from "../../lib/failures-repository";
 import type { FailureSeverity } from "../../lib/failures-types";
 import { FailureRaiseFields } from "./FailureRaiseFields";
@@ -25,18 +25,17 @@ export function FailureReportForm({
   onCancel: () => void;
 }) {
   const [severity, setSeverity] = useState<FailureSeverity>("internal");
-  const [problemDescription, setProblemDescription] = useState("");
+  const [problemTypeId, setProblemTypeId] = useState("");
   const [note, setNote] = useState("");
 
   function handleSubmit() {
-    const description = problemDescription.trim();
-    if (!description) return;
+    if (!problemTypeId.trim()) return;
     void createFailure({
       poNumber,
       propertyId,
       deedNumber,
-      problemTypeId: FREE_TEXT_FAILURE_PROBLEM_TYPE_ID,
-      title: description,
+      problemTypeId,
+      title: failureProblemTypeLabel(problemTypeId),
       severity,
       raisedByRole,
       internalNote: note,
@@ -55,8 +54,8 @@ export function FailureReportForm({
         <FailureRaiseFields
           severity={severity}
           onSeverityChange={setSeverity}
-          problemDescription={problemDescription}
-          onProblemDescriptionChange={setProblemDescription}
+          problemTypeId={problemTypeId}
+          onProblemTypeIdChange={setProblemTypeId}
           note={note}
           onNoteChange={setNote}
         />
@@ -65,7 +64,7 @@ export function FailureReportForm({
             type="button"
             variant="primary"
             size="sm"
-            disabled={!problemDescription.trim()}
+            disabled={!problemTypeId.trim()}
             onClick={handleSubmit}
           >
             {severity === "internal" ? "حفظ تعذر داخلي" : "تسجيل احتمال تعذر"}

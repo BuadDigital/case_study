@@ -8,9 +8,9 @@ import { Button, useToast } from "@platform/design-system";
 import {
   FailureRaiseFields,
   createFailure,
+  failureProblemTypeLabel,
   type FailureSeverity,
 } from "@failures/mfe";
-import { FREE_TEXT_FAILURE_PROBLEM_TYPE_ID } from "@failures/mfe/lib/failure-types-data";
 
 export function FailureRaiseModal({
   open,
@@ -34,14 +34,14 @@ export function FailureRaiseModal({
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const [severity, setSeverity] = useState<FailureSeverity>("internal");
-  const [problemDescription, setProblemDescription] = useState("");
+  const [problemTypeId, setProblemTypeId] = useState("");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setSeverity("internal");
-    setProblemDescription("");
+    setProblemTypeId("");
     setNote("");
     setSaving(false);
   }, [open, propertyId]);
@@ -52,16 +52,15 @@ export function FailureRaiseModal({
   }
 
   async function handleSubmit() {
-    const description = problemDescription.trim();
-    if (!description || saving) return;
+    if (!problemTypeId.trim() || saving) return;
     setSaving(true);
     try {
       await createFailure({
         poNumber,
         propertyId,
         deedNumber,
-        problemTypeId: FREE_TEXT_FAILURE_PROBLEM_TYPE_ID,
-        title: description,
+        problemTypeId,
+        title: failureProblemTypeLabel(problemTypeId),
         severity,
         raisedByRole,
         internalNote: note,
@@ -96,7 +95,7 @@ export function FailureRaiseModal({
             type="button"
             variant="primary"
             loading={saving}
-            disabled={saving || !problemDescription.trim()}
+            disabled={saving || !problemTypeId.trim()}
             className="min-w-[9.5rem]"
             onClick={() => void handleSubmit()}
           >
@@ -109,8 +108,8 @@ export function FailureRaiseModal({
         idPrefix={`modal-${propertyId}`}
         severity={severity}
         onSeverityChange={setSeverity}
-        problemDescription={problemDescription}
-        onProblemDescriptionChange={setProblemDescription}
+        problemTypeId={problemTypeId}
+        onProblemTypeIdChange={setProblemTypeId}
         note={note}
         onNoteChange={setNote}
       />

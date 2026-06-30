@@ -9,6 +9,8 @@ export type PoIntakeDraftDto = {
   assignmentSpecialist: string;
   assignmentSpecialistEmail: string;
   expectedPropertyCount: number;
+  propertiesRegion?: string;
+  workOrderDescription?: string;
   updatedAtUtc?: string;
 };
 
@@ -42,6 +44,8 @@ export async function getPoIntakeDraft(
       assignmentSpecialist?: string;
       assignmentSpecialistEmail?: string;
       expectedPropertyCount?: number;
+      propertiesRegion?: string;
+      workOrderDescription?: string;
       updatedAtUtc?: string;
     };
     return {
@@ -57,6 +61,8 @@ export async function getPoIntakeDraft(
           data.expectedPropertyCount && data.expectedPropertyCount > 0
             ? data.expectedPropertyCount
             : 1,
+        propertiesRegion: data.propertiesRegion ?? "",
+        workOrderDescription: data.workOrderDescription ?? "",
         updatedAtUtc: data.updatedAtUtc,
       },
     };
@@ -81,6 +87,8 @@ export async function savePoIntakeDraft(
         assignmentSpecialist: draft.assignmentSpecialist,
         assignmentSpecialistEmail: draft.assignmentSpecialistEmail,
         expectedPropertyCount: draft.expectedPropertyCount,
+        propertiesRegion: draft.propertiesRegion,
+        workOrderDescription: draft.workOrderDescription,
       }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };

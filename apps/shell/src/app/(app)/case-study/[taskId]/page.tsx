@@ -8,6 +8,7 @@ import {
 import { EngineeringSurveyAdvisoryPanel } from "@engineering-office/mfe";
 import { EvaluatorAdvisoryPanel } from "@evaluator/mfe";
 import { FieldInspectionAdvisoryPanel } from "@case-study/mfe";
+import { GovernmentReviewAdvisoryPanel } from "@case-study/mfe";
 
 export default function CaseStudyWorkspacePage({
   params,
@@ -32,6 +33,11 @@ export default function CaseStudyWorkspacePage({
               tasks={tasks}
             />
             <EvaluatorAdvisoryPanel
+              parentTask={task}
+              propertyId={property.id}
+              tasks={tasks}
+            />
+            <GovernmentReviewAdvisoryPanel
               parentTask={task}
               propertyId={property.id}
               tasks={tasks}

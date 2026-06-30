@@ -15,6 +15,10 @@ const MyTasksView = dynamic(
   () => import("@case-study/mfe").then((m) => m.MyTasksView),
   { ssr: false },
 );
+const AllAssignedTransactionsView = dynamic(
+  () => import("@case-study/mfe").then((m) => m.AllAssignedTransactionsView),
+  { ssr: false },
+);
 const ActiveDistributionView = dynamic(
   () => import("@case-study/mfe").then((m) => m.ActiveDistributionView),
   { ssr: false },
@@ -103,6 +107,7 @@ const PartyActiveTaskViewHost = dynamic(
 const VIEWS: Partial<Record<PageId, ComponentType>> = {
   dashboard: DashboardView,
   "active-primary-data": MyTasksView,
+  "all-transactions": AllAssignedTransactionsView,
   "bourse-inquiry": BourseInquiryView,
   "active-distribution": ActiveDistributionView,
   "active-case-study": ActiveCaseStudyView,
@@ -137,6 +142,7 @@ export function PrototypePageView({ page }: { page: PageId }) {
 
   const needsSuspense =
     page === "active-primary-data" ||
+    page === "all-transactions" ||
     page === "active-distribution" ||
     page === "active-case-study" ||
     page === "government-review" ||

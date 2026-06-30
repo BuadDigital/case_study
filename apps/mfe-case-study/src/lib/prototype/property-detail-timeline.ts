@@ -98,11 +98,15 @@ export function buildPropertyDetailTimeline(input: {
       task.phase === "case-study" ||
       task.phase === "done"
     ) {
+      const children = tasks.filter((t) => t.parentTaskId === task.id);
+      const distributionDone =
+        children.length > 0 &&
+        children.every((c) => c.status === "completed");
       pushEvent(events, {
         id: "distribution",
         at: taskUpdatedAt,
         title: "توزيع المعاملة",
-        tone: task.phase === "distribution" ? "active" : "done",
+        tone: distributionDone ? "done" : "active",
       });
     }
 
@@ -112,7 +116,8 @@ export function buildPropertyDetailTimeline(input: {
         at: taskUpdatedAt,
         title: "دراسة حالة العقار",
         detail: task.assigneeName,
-        tone: task.phase === "case-study" ? "active" : "done",
+        tone:
+          task.status === "completed" || task.phase === "done" ? "done" : "active",
       });
     }
 
@@ -144,7 +149,7 @@ export function buildPropertyDetailTimeline(input: {
       at: failure.updatedAt,
       title: "تسجيل تعذر",
       detail: `${failure.title} — ${failureStatusLabel(failure.status)}`,
-      tone: failure.status === "approved" ? "warn" : "active",
+      tone: "warn",
     });
   }
 

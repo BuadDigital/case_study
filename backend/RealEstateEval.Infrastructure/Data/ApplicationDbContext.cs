@@ -109,6 +109,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.AssignmentSpecialist).HasMaxLength(256).IsRequired(false);
             e.Property(x => x.AssignmentSpecialistEmail).HasMaxLength(256).IsRequired(false);
             e.Property(x => x.ReceivedFromEnfathTime).HasMaxLength(8);
+            e.Property(x => x.LifecycleStatus).HasMaxLength(32).IsRequired(false);
+            e.Property(x => x.PropertiesRegion).HasMaxLength(256).IsRequired(false);
+            e.Property(x => x.WorkOrderDescription).HasMaxLength(2000).IsRequired(false);
             e.HasMany(x => x.Properties)
                 .WithOne(x => x.WorkOrder)
                 .HasForeignKey(x => x.WorkOrderId)

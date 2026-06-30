@@ -203,16 +203,16 @@ function navRunsForRole(rolePages: PageId[], role: RoleId): NavRun[] {
   return ALL_NAV_RUNS
     .map((run) => {
       let items = run.items.filter((item) => rolePages.includes(item.id));
-      if (role === "engineering-office") {
-        items = sortNavRunItemsForEngineeringOffice(items);
+      if (role === "engineering-office" || role === "field-inspector") {
+        items = sortPartyFeesBeforeFailures(items);
       }
       return { ...run, items };
     })
     .filter((run) => run.items.length > 0);
 }
 
-/** مكتب هندسي — الاتعاب ثم التعذرات تحتها مباشرة. */
-function sortNavRunItemsForEngineeringOffice(
+/** أطراف المعاملة — الاتعاب ثم التعذرات تحتها مباشرة. */
+function sortPartyFeesBeforeFailures(
   items: (typeof NAV)[number][],
 ): (typeof NAV)[number][] {
   const order: PageId[] = ["party-fees", "failures"];
@@ -514,14 +514,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const showActiveTransactionsGroup = activeTransactionItems.length > 0;
   const activeTxBadges = useActiveTransactionNavBadges();
   const failuresNavBadge = useFailuresNavBadge();
-  const insertActiveTxAfterPo = rolePages.includes("po");
+  const activeTxInsertAnchor: PageId | null = rolePages.includes("all-transactions")
+    ? "all-transactions"
+    : rolePages.includes("po")
+      ? "po"
+      : null;
   const insertActiveTxAtNavStart =
-    role === "engineering-office" && !insertActiveTxAfterPo;
+    (role === "engineering-office" || role === "field-inspector") &&
+    !activeTxInsertAnchor;
   const activeTxAnchorId = useMemo(() => {
-    if (insertActiveTxAfterPo) return "po" as PageId;
+    if (activeTxInsertAnchor) return activeTxInsertAnchor;
     if (insertActiveTxAtNavStart) return null;
     return navRuns.flatMap((run) => run.items)[0]?.id ?? null;
-  }, [insertActiveTxAfterPo, insertActiveTxAtNavStart, navRuns]);
+  }, [activeTxInsertAnchor, insertActiveTxAtNavStart, navRuns]);
 
   const prefetchPage = useMemo(
     () => (page: PageId) => prefetchPrototypePage(queryClient, page),
@@ -686,6 +691,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         ? resolveMyTasksChrome(
             pathname,
             currentPage === "active-primary-data" ||
+              currentPage === "all-transactions" ||
               currentPage === "active-distribution" ||
               currentPage === "active-case-study" ||
               onCaseStudyWorkspace ||
@@ -736,6 +742,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const inPoSection = pathname?.startsWith("/po") ?? false;
   const onTaskWork =
     (currentPage === "active-primary-data" && Boolean(taskQuery)) ||
+    (currentPage === "all-transactions" && Boolean(taskQuery)) ||
     (currentPage === "active-distribution" && Boolean(taskQuery)) ||
     onActiveSurveyRoute ||
     onPropertyAppraisalWorkspace ||
@@ -945,8 +952,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   const shouldInsertActiveTx =
                     !activeTransactionsInserted &&
                     showActiveTransactionsGroup &&
-                    ((insertActiveTxAfterPo && item.id === "po") ||
-                      (!insertActiveTxAfterPo &&
+                    ((activeTxInsertAnchor && item.id === activeTxInsertAnchor) ||
+                      (!activeTxInsertAnchor &&
                         activeTxAnchorId &&
                         item.id === activeTxAnchorId));
                   if (shouldInsertActiveTx) {

@@ -3,7 +3,7 @@ import type {
   PoIntakeRecord,
   PoPropertyIntake,
 } from "./po-intake-data";
-import { classificationRequiresSurvey, computeBusinessDueDate, emptyProperty, normalizePropertyIdentifierNumber, parsePropertyIdentifierType, poListStatusForAssignmentType,} from "./po-intake-data";
+import { classificationRequiresSurvey, computeBusinessDueDate, emptyProperty, normalizePropertyIdentifierNumber, parsePropertyIdentifierType,} from "./po-intake-data";
 import {
   contactsForApi,
   propertyHasIncompleteContact,
@@ -21,6 +21,7 @@ import type { PoRow, PropertyRow } from "@platform/app-shared/prototype/constant
 import type { PendingBoursePropertyDto,UpdatePropertyBourseRequest,WorkOrderDto,WorkOrderPropertyDto} from "@platform/api-client";
 import {
   addWorkOrderProperty,
+  cancelWorkOrder,
   completePropertyBourseData,
   createWorkOrder,
   deletePoIntakeDraft,
@@ -32,6 +33,7 @@ import {
   listPendingBourseProperties,
   listWorkOrders,
   savePoIntakeDraft,
+  stopWorkOrder,
   updateWorkOrderHeader,
   updateWorkOrderProperty,
   workOrderExists,
@@ -85,6 +87,8 @@ function normalizePoRecord(record: PoIntakeRecord): PoIntakeRecord {
   return {
     ...record,
     id: String(record.id),
+    propertiesRegion: record.propertiesRegion ?? "",
+    workOrderDescription: record.workOrderDescription ?? "",
     receivedFromEnfathTime,
     dueDateAt:
       record.dueDateAt ||
@@ -146,6 +150,8 @@ function dtoToRecord(dto: WorkOrderDto): PoIntakeRecord {
     assignmentSpecialist: dto.assignmentSpecialist ?? "",
     assignmentSpecialistEmail: dto.assignmentSpecialistEmail ?? "",
     expectedPropertyCount: dto.expectedPropertyCount ?? 1,
+    propertiesRegion: dto.propertiesRegion ?? "",
+    workOrderDescription: dto.workOrderDescription ?? "",
     dueDateAt: dto.dueDateAt,
     createdAtUtc: dto.createdAtUtc,
     properties: dto.properties.map(dtoToProperty),
@@ -270,6 +276,8 @@ export async function savePoRecord(
     assignmentSpecialist: record.assignmentSpecialist.trim() || undefined,
     assignmentSpecialistEmail: record.assignmentSpecialistEmail.trim() || undefined,
     expectedPropertyCount: record.expectedPropertyCount,
+    propertiesRegion: record.propertiesRegion.trim() || undefined,
+    workOrderDescription: record.workOrderDescription.trim() || undefined,
     properties: record.properties.map((p) =>
       propertyToEnfathDto(p, { forInsert: true }),
     ),
@@ -297,12 +305,20 @@ export async function poRecordExists(poNumber: string): Promise<boolean> {
 }
 
 export function poRecordToListRow(record: PoIntakeRecord): PoRow {
+  const registered = record.properties.length;
+  const expected = record.expectedPropertyCount ?? registered;
   return {
     id: record.poNumber,
     type: record.assignmentType ?? "—",
-    count: record.expectedPropertyCount ?? record.properties.length,
-    done: record.properties.filter((p) => p.bourseDataCompleted).length,
-    status: poListStatusForAssignmentType(record.assignmentType, "progress"),
+    count: expected,
+    registered,
+    done: 0,
+    status:
+      registered >= expected && expected > 0
+        ? "completed"
+        : registered > 0
+          ? "under_study"
+          : "new",
     date: record.receivedFromEnfathAt,
     dueDate: record.dueDateAt,
     specialist: record.assignmentSpecialist,
@@ -447,6 +463,40 @@ export async function deletePoRecord(
   return { ok: true };
 }
 
+export async function cancelPoRecord(
+  poNumber: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const config = workOrdersApiConfig();
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
+
+  const result = await cancelWorkOrder(config, poNumber);
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: result.message ?? apiErrorMessage(result.kind),
+    };
+  }
+  notifyWorkOrdersChanged();
+  return { ok: true };
+}
+
+export async function stopPoRecord(
+  poNumber: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const config = workOrdersApiConfig();
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
+
+  const result = await stopWorkOrder(config, poNumber);
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: result.message ?? apiErrorMessage(result.kind),
+    };
+  }
+  notifyWorkOrdersChanged();
+  return { ok: true };
+}
+
 export async function updatePoRecord(
   record: PoIntakeRecord,
 ): Promise<StorageOk<PoIntakeRecord> | StorageError> {
@@ -460,6 +510,8 @@ export async function updatePoRecord(
     assignmentSpecialist: record.assignmentSpecialist.trim() || undefined,
     assignmentSpecialistEmail: record.assignmentSpecialistEmail.trim() || undefined,
     expectedPropertyCount: record.expectedPropertyCount,
+    propertiesRegion: record.propertiesRegion.trim() || undefined,
+    workOrderDescription: record.workOrderDescription.trim() || undefined,
   });
 
   if (!result.ok) {
@@ -606,6 +658,8 @@ export type PoIntakeDraftPayload = {
   assignmentSpecialist: string;
   assignmentSpecialistEmail: string;
   expectedPropertyCount: number;
+  propertiesRegion: string;
+  workOrderDescription: string;
 };
 
 function draftToDto(draft: PoIntakeDraftPayload) {
@@ -617,6 +671,8 @@ function draftToDto(draft: PoIntakeDraftPayload) {
     assignmentSpecialist: draft.assignmentSpecialist,
     assignmentSpecialistEmail: draft.assignmentSpecialistEmail,
     expectedPropertyCount: draft.expectedPropertyCount,
+    propertiesRegion: draft.propertiesRegion,
+    workOrderDescription: draft.workOrderDescription,
   };
 }
 
@@ -628,6 +684,8 @@ function dtoToDraft(dto: {
   assignmentSpecialist?: string;
   assignmentSpecialistEmail?: string;
   expectedPropertyCount?: number;
+  propertiesRegion?: string;
+  workOrderDescription?: string;
 }): PoIntakeDraftPayload {
   return {
     step: dto.step ?? 1,
@@ -640,6 +698,8 @@ function dtoToDraft(dto: {
       dto.expectedPropertyCount && dto.expectedPropertyCount > 0
         ? dto.expectedPropertyCount
         : 1,
+    propertiesRegion: dto.propertiesRegion ?? "",
+    workOrderDescription: dto.workOrderDescription ?? "",
   };
 }
 

@@ -91,7 +91,7 @@ public class FailureService : IFailureService
                 $"failure:{entity.Id}:created",
                 "تسجيل تعذر",
                 $"{entity.Title} — {FailureStatusLabel(entity.Status)}",
-                entity.Status == PropertyFailureStatus.Approved ? "warn" : "active",
+                "warn",
                 now,
                 cancellationToken);
         }

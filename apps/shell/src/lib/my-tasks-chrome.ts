@@ -87,6 +87,14 @@ export function resolveMyTasksChrome(
     }
   }
 
+  if (parts[0] === "all-transactions" && taskId) {
+    return {
+      breadcrumb:
+        "دراسة الحالة / أوامر العمل / جميع المعاملات / تنفيذ المعاملة",
+      title: "تنفيذ المعاملة",
+    };
+  }
+
   if (parts[0] === "active-primary-data" && taskId) {
     decodeTaskParam(taskId);
     return {

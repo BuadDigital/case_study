@@ -9,6 +9,8 @@ import {
   cn,
   formControlClassName,
 } from "@platform/design-system";
+import { PartyRecallAdvisorySection } from "../party-tasks/PartyRecallAdvisorySection";
+import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/prototype/party-task-recall-storage";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 import { findInspectionChildForParent } from "../../lib/field-inspection-task";
 import {
@@ -48,11 +50,13 @@ export function FieldInspectionAdvisoryPanel({
   useEffect(() => {
     const refresh = () => setRefreshKey((k) => k + 1);
     window.addEventListener(FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT, refresh);
+    window.addEventListener(PARTY_TASK_RECALL_CHANGED_EVENT, refresh);
     return () => {
       window.removeEventListener(
         FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
         refresh,
       );
+      window.removeEventListener(PARTY_TASK_RECALL_CHANGED_EVENT, refresh);
     };
   }, []);
 
@@ -130,8 +134,19 @@ export function FieldInspectionAdvisoryPanel({
   return (
     <RegistrationFormCard title="معاينة العقار (استرشادي — للقراءة فقط)">
       <p className="mb-3 text-[11px] leading-relaxed text-text-3">
-        ملخص من تقرير المعاين — يمكنك إعادة المهمة للتصحيح مع ملاحظة إلزامية.
+        ملخص من تقرير المعاين — يمكنك إعادة المهمة للتصحيح أو الموافقة على طلب
+        الاسترجاع.
       </p>
+
+      <PartyRecallAdvisorySection
+        taskId={inspectionTask.id}
+        partyLabel="المعاين الميداني"
+        refreshKey={refreshKey}
+        onResolved={() => {
+          setRefreshKey((k) => k + 1);
+          onReturned?.();
+        }}
+      />
 
       {submission.status === "reopened" && submission.returnNote?.trim() ? (
         <div className={noteWarnClass}>

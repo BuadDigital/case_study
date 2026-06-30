@@ -12,6 +12,8 @@ import {
   loadEngineeringSurveySubmissionAsync,
   reopenEngineeringSurveySubmission,
 } from "../lib/engineering-survey-submission-storage";
+import { PartyRecallAdvisorySection } from "@case-study/mfe/components/party-tasks/PartyRecallAdvisorySection";
+import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/prototype/party-task-recall-storage";
 
 function formatCoordsDisplay(lat: string, lng: string): string {
   const latTrim = lat.trim();
@@ -48,11 +50,13 @@ export function EngineeringSurveyAdvisoryPanel({
   useEffect(() => {
     const refresh = () => setRefreshKey((k) => k + 1);
     window.addEventListener(ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT, refresh);
+    window.addEventListener(PARTY_TASK_RECALL_CHANGED_EVENT, refresh);
     return () => {
       window.removeEventListener(
         ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
         refresh,
       );
+      window.removeEventListener(PARTY_TASK_RECALL_CHANGED_EVENT, refresh);
     };
   }, []);
 
@@ -143,8 +147,18 @@ export function EngineeringSurveyAdvisoryPanel({
     <RegistrationFormCard title="بيانات المكتب الهندسي (استرشادي — للقراءة فقط)">
       <p className="mb-3 text-[11px] leading-relaxed text-text-3">
         هذه البيانات من المكتب الهندسي — يمكنك إعادة الرفع للتصحيح مع ملاحظة
-        إلزامية.
+        إلزامية. طلب الاسترجاع من المكتب يحتاج موافقتك.
       </p>
+
+      <PartyRecallAdvisorySection
+        taskId={surveyTask.id}
+        partyLabel="المكتب الهندسي"
+        refreshKey={refreshKey}
+        onResolved={() => {
+          setRefreshKey((k) => k + 1);
+          onReturned?.();
+        }}
+      />
 
       {submission.status === "reopened" && submission.returnNote?.trim() ? (
         <div className={noteWarnClass}>

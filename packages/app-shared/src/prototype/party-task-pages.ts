@@ -90,7 +90,7 @@ const PARTY_TASK_PAGES_MAP = {
     pageTitle: "تقييم العقار",
     emptyLine: "لا توجد مهام تقييم عقاري بانتظار التنفيذ.",
     emptyHint:
-      "بعد الإرسال للأخصائي تُدار المعاملة من صفحة عقارات أمر العمل (⋮ → استدعاء المعاملة).",
+      "بعد الإرسال للأخصائي يمكن طلب استرجاع المعاملة من شاشة العمل أو من عقارات أمر العمل (⋮).",
     tableHint:
       "⋮ — فتح المعاملة · عقارات أمر العمل · تفاصيل العقار.",
     breadcrumbTitle: "تقييم العقار",
@@ -143,6 +143,25 @@ export function filterTasksForPartyKind(
   kind: WorkflowTaskKind,
 ): WorkflowTask[] {
   return tasks.filter((t) => t.kind === kind);
+}
+
+/** Distributed party workflow roles (معاين، مكتب هندسي، مقيم، منسق). */
+export const PARTY_WORKFLOW_ROLE_IDS: RoleId[] = [
+  "field-inspector",
+  "engineering-office",
+  "real-estate-appraiser",
+  "valuation-coordinator",
+  "government-reviewer",
+];
+
+export function isPartyWorkflowRole(role: RoleId): boolean {
+  return PARTY_WORKFLOW_ROLE_IDS.includes(role);
+}
+
+export function partyTaskPageDefForKind(
+  kind: WorkflowTaskKind,
+): PartyTaskPageDef | null {
+  return Object.values(PARTY_TASK_PAGES).find((d) => d.kind === kind) ?? null;
 }
 
 /** Sidebar — المعاملات النشطة for distributed party roles */

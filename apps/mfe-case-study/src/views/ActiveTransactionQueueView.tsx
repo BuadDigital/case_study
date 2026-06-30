@@ -102,6 +102,8 @@ export type ActiveTransactionQueueConfig = {
   getTaskPath: (taskId: string) => string;
   /** Navigate to a dedicated page instead of opening the side panel. */
   fullPageTaskPath?: (taskId: string) => string;
+  /** Per-task full-page navigation (e.g. جميع المعاملات for mixed party queues). */
+  resolveFullPageTaskPath?: (task: WorkflowTask) => string | undefined;
   filterListed: (
     mine: WorkflowTask[],
     poByNumber: Map<string, PoIntakeRecord>,
@@ -121,6 +123,8 @@ export type ActiveTransactionQueueConfig = {
   renderQueueHeader?: (listed: WorkflowTask[]) => ReactNode;
   /** Default: oldest receipt first (FIFO). */
   queueSort?: "oldest-first" | "newest-first";
+  /** When true, list open, blocked, and completed tasks (e.g. جميع المعاملات). */
+  includeAllStatuses?: boolean;
 };
 
 export type ActiveQueueRowMoreContext = {
@@ -319,11 +323,11 @@ export function ActiveTransactionQueueView({
           : compareQueueTasksOldestFirst;
       return config
         .filterListed(mine, poByNumber)
-        .filter(
-          (t) =>
-            (t.status === "open" || t.status === "blocked") &&
-            !isTaskOnSuspendedProperty(t),
-        )
+        .filter((t) => {
+          if (isTaskOnSuspendedProperty(t)) return false;
+          if (config.includeAllStatuses) return true;
+          return t.status === "open" || t.status === "blocked";
+        })
         .sort((a, b) => compare(a, b, poByNumber));
     },
     [config, mine, poByNumber],
@@ -350,10 +354,27 @@ export function ActiveTransactionQueueView({
     }
   }, [selectedId, listed, queueReady, closePanel]);
 
-  const useFullPage = Boolean(config.fullPageTaskPath);
+  const useFullPage = Boolean(
+    config.fullPageTaskPath || config.resolveFullPageTaskPath,
+  );
+
+  const resolveTaskFullPagePath = useCallback(
+    (task: WorkflowTask): string | undefined => {
+      const perTask = config.resolveFullPageTaskPath?.(task);
+      if (perTask) return perTask;
+      if (config.fullPageTaskPath) return config.fullPageTaskPath(task.id);
+      return undefined;
+    },
+    [config],
+  );
 
   const openTask = useCallback(
-    (taskId: string) => {
+    (taskId: string, task?: WorkflowTask) => {
+      const fullPath = task ? resolveTaskFullPagePath(task) : undefined;
+      if (fullPath) {
+        router.push(fullPath);
+        return;
+      }
       if (config.fullPageTaskPath) {
         router.push(config.fullPageTaskPath(taskId));
         return;
@@ -361,7 +382,7 @@ export function ActiveTransactionQueueView({
       setPanelOpen(true);
       router.replace(config.getTaskPath(taskId), { scroll: false });
     },
-    [router, config],
+    [router, config, resolveTaskFullPagePath],
   );
 
   const handleRowClick = useCallback(
@@ -369,8 +390,13 @@ export function ActiveTransactionQueueView({
       const task = listed.find((t) => t.id === taskId);
       if (task && config.canOpenTask && !config.canOpenTask(task)) return;
 
+      const fullPath = task ? resolveTaskFullPagePath(task) : undefined;
+      if (fullPath) {
+        router.push(fullPath);
+        return;
+      }
       if (useFullPage) {
-        openTask(taskId);
+        openTask(taskId, task);
         return;
       }
       if (selectedId === taskId) {
@@ -379,7 +405,7 @@ export function ActiveTransactionQueueView({
       }
       openTask(taskId);
     },
-    [useFullPage, selectedId, closePanel, openTask, listed, config],
+    [useFullPage, selectedId, closePanel, openTask, listed, config, resolveTaskFullPagePath, router],
   );
 
   const resolveRowMoreItems = useCallback(

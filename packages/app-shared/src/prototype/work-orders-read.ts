@@ -1,5 +1,8 @@
 import { getPropertyFailure } from "@failures/mfe";
 import type { PoRow, PropertyRow } from "./constants";
+import {
+  normalizePoListStatus,
+} from "./po-list-status";
 import type {
   PropertyListItemDto,
   WorkOrderDto,
@@ -15,23 +18,15 @@ import { workOrdersApiConfig } from "./work-orders-api-config";
 
 const INCOMPLETE_CONTACT_MARKER_PHONE = "0500000000";
 
-function poListStatusForAssignmentType(
-  _assignmentType: string,
-  workflowStatus: "progress" | "done",
-): "progress" | "done" {
-  return workflowStatus;
-}
-
 function listItemToPoRow(item: WorkOrderListItemDto): PoRow {
+  const expected = item.expectedPropertyCount || item.propertyCount || 0;
   return {
     id: item.poNumber,
     type: item.assignmentType || "—",
-    count: item.expectedPropertyCount || item.propertyCount || 0,
-    done: item.completedCount,
-    status: poListStatusForAssignmentType(
-      item.assignmentType,
-      item.status === "done" ? "done" : "progress",
-    ),
+    count: expected,
+    registered: item.propertyCount ?? 0,
+    done: item.completedCount ?? 0,
+    status: normalizePoListStatus(item.status),
     date: item.receivedFromEnfathAt,
     dueDate: item.dueDateAt,
     specialist: item.assignmentSpecialist?.trim() || "—",
