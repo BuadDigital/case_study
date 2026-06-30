@@ -6,6 +6,7 @@ import {
 import {
   buildCaseStudyPartyAssignees,
   caseStudyTrackBadgeLabel,
+  trackStateFromTask,
   type CaseStudyTrackState,
 } from "./case-study-tracks";
 import {
@@ -177,7 +178,11 @@ export function buildPropertyDetailPartyCards(input: {
       role: "المنسق",
       name: coordinatorName.trim() || "لم يُعيَّن",
       unassigned: !coordinatorName.trim(),
-      state: coordinatorName.trim() ? "progress" : "new",
+      state: trackStateFromTask(
+        valuationCoordinationChild(allTasks, task?.id),
+        coordinatorEnabled(distribution, allTasks, task?.id) &&
+          Boolean(coordinatorName.trim()),
+      ),
       enabled: coordinatorEnabled(distribution, allTasks, task?.id),
     },
   ];
@@ -218,11 +223,11 @@ export function buildPropertyDetailTimelinePartyRows(input: {
         task?.id,
       );
       const enabled = coordinatorEnabled(distribution, allTasks, task?.id);
-      const badge = timelineBadgeForParty(
-        enabled,
-        name.trim() ? "progress" : "new",
-        def.key,
+      const state = trackStateFromTask(
+        valuationCoordinationChild(allTasks, task?.id),
+        enabled && Boolean(name.trim()),
       );
+      const badge = timelineBadgeForParty(enabled, state, def.key);
       return { label: def.label, ...badge };
     }
 

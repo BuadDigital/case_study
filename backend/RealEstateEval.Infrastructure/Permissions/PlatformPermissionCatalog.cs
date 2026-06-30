@@ -6,7 +6,7 @@ public static class PlatformPermissionCatalog
     public static readonly IReadOnlyList<string> AllPages =
     [
         "dashboard", "active-primary-data", "active-distribution", "active-case-study",
-        "po", "bourse-inquiry", "survey", "keys", "failures", "suspended-transactions",
+        "po", "all-transactions", "bourse-inquiry", "survey", "keys", "failures", "suspended-transactions",
         "valuation-requests", "property-inspection", "government-review",
         "valuation-coordination", "property-appraisal", "active-survey", "party-fees",
         "system-fields-catalog", "system-screen-catalog", "financial", "kpi",
@@ -51,47 +51,47 @@ public static class PlatformPermissionCatalog
         ["crm-admin"] = ["users", "system-fields-catalog", "system-screen-catalog"],
         ["general-manager"] =
         [
-            "po", "active-primary-data", "bourse-inquiry", "active-distribution",
+            "po", "all-transactions", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "survey", "keys", "failures", "suspended-transactions",
             "valuation-requests", "system-fields-catalog", "system-screen-catalog",
             "financial", "kpi", "users", "courts", "failure-types", "case-study-info-roles",
         ],
         ["section-supervisor"] =
         [
-            "po", "active-primary-data", "bourse-inquiry", "active-distribution",
+            "po", "all-transactions", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "keys", "failures", "suspended-transactions", "failure-types",
             "party-fees",
             "system-fields-catalog", "system-screen-catalog",
         ],
         ["case-specialist"] =
         [
-            "dashboard", "po", "active-primary-data", "bourse-inquiry", "active-distribution",
+            "dashboard", "po", "all-transactions", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "failures", "suspended-transactions",
             "system-fields-catalog", "system-screen-catalog",
         ],
         ["valuation-coordinator"] =
         [
-            "valuation-coordination",
+            "all-transactions", "valuation-coordination",
             "system-fields-catalog", "system-screen-catalog",
         ],
         ["real-estate-appraiser"] =
         [
-            "po", "property-appraisal", "suspended-transactions",
+            "po", "all-transactions", "property-appraisal", "failures", "suspended-transactions",
             "system-fields-catalog", "system-screen-catalog",
         ],
         ["field-inspector"] =
         [
-            "property-inspection", "party-fees",
+            "all-transactions", "property-inspection", "party-fees", "failures",
             "system-fields-catalog", "system-screen-catalog",
         ],
         ["government-reviewer"] =
         [
-            "government-review", "keys", "failures",
+            "all-transactions", "government-review", "keys", "failures",
             "system-fields-catalog", "system-screen-catalog",
         ],
         ["engineering-office"] =
         [
-            "active-survey", "party-fees", "failures",
+            "all-transactions", "active-survey", "party-fees", "failures",
             "system-fields-catalog", "system-screen-catalog",
         ],
         ["financial-officer"] =

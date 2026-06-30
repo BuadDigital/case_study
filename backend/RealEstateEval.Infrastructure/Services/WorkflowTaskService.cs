@@ -203,7 +203,7 @@ public class WorkflowTaskService : IWorkflowTaskService
                     $"task:{parent.Id}:distribution",
                     "توزيع المعاملة",
                     null,
-                    "done",
+                    "active",
                     now),
                 new(
                     parent.PoNumber,
@@ -220,7 +220,7 @@ public class WorkflowTaskService : IWorkflowTaskService
                 $"party:{child.Id}:assigned",
                 PartyAssignedTitle(child.Kind),
                 child.AssigneeName,
-                "done",
+                "active",
                 child.CreatedAtUtc)));
             await _timeline.RecordManyAsync(timelineEvents, cancellationToken);
         }

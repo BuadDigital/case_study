@@ -22,6 +22,8 @@ public static class WorkOrderMapper
             ExpectedPropertyCount = entity.ExpectedPropertyCount,
             DueDateAt = entity.DueDateAt.ToString("yyyy-MM-dd"),
             CreatedAtUtc = entity.CreatedAtUtc.ToString("o"),
+            PropertiesRegion = entity.PropertiesRegion,
+            WorkOrderDescription = entity.WorkOrderDescription,
             Properties = entity.Properties
                 .OrderBy(p => p.DeedNumber)
                 .Select(ToPropertyDto)
@@ -90,17 +92,23 @@ public static class WorkOrderMapper
         };
     }
 
-    public static WorkOrderListItemDto ToListItem(WorkOrder entity)
+    public static WorkOrderListItemDto ToListItem(
+        WorkOrder entity,
+        IReadOnlyDictionary<Guid, bool>? studiedByProperty = null)
     {
-        var bourseDone = entity.Properties.Count(p => p.BourseDataCompleted);
+        var studiedCount = entity.Properties.Count(p =>
+            studiedByProperty is not null
+            && studiedByProperty.TryGetValue(p.Id, out var studied)
+            && studied);
+
         return new WorkOrderListItemDto
         {
             PoNumber = entity.PoNumber,
             AssignmentType = AssignmentTypeLabels.ToLabel(entity.AssignmentType),
             PropertyCount = entity.Properties.Count,
             ExpectedPropertyCount = entity.ExpectedPropertyCount,
-            CompletedCount = bourseDone,
-            Status = WorkOrderListStatus.FromWorkOrder(entity),
+            CompletedCount = studiedCount,
+            Status = WorkOrderListStatus.Resolve(entity, studiedCount),
             PromulgationDate = entity.PromulgationDate.ToString("yyyy-MM-dd"),
             ReceivedFromEnfathAt = entity.ReceivedFromEnfathAt.ToString("yyyy-MM-dd"),
             DueDateAt = entity.DueDateAt.ToString("yyyy-MM-dd"),

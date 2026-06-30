@@ -80,6 +80,8 @@ public sealed class PoIntakeDraftService : IPoIntakeDraftService
                 ExpectedPropertyCount = dto.ExpectedPropertyCount > 0
                     ? dto.ExpectedPropertyCount
                     : 1,
+                PropertiesRegion = dto.PropertiesRegion ?? "",
+                WorkOrderDescription = dto.WorkOrderDescription ?? "",
                 UpdatedAtUtc = updatedAtUtc,
             };
         }

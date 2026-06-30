@@ -47,4 +47,6 @@ public interface IWorkOrderService
         string poNumber,
         Guid propertyId,
         CancellationToken cancellationToken);
+    Task<(bool Ok, string? Error)> CancelAsync(string poNumber, CancellationToken cancellationToken);
+    Task<(bool Ok, string? Error)> StopAsync(string poNumber, CancellationToken cancellationToken);
 }

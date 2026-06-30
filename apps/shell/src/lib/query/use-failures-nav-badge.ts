@@ -4,8 +4,7 @@ import { useMemo } from "react";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import {
   countOpenFailures,
-  countOpenFailuresForGovernmentReviewer,
-  countOpenFailuresForEngineeringOffice,
+  countOpenFailuresForPartyRole,
 } from "@failures/mfe";
 import { useFailuresQuery } from "@/lib/query/prototype-queries";
 
@@ -16,12 +15,6 @@ export function useFailuresNavBadge(): number {
 
   return useMemo(() => {
     if (!rolePages.includes("failures")) return 0;
-    if (role === "government-reviewer") {
-      return countOpenFailuresForGovernmentReviewer(failures);
-    }
-    if (role === "engineering-office") {
-      return countOpenFailuresForEngineeringOffice(failures);
-    }
-    return countOpenFailures(failures);
+    return countOpenFailuresForPartyRole(role, failures);
   }, [role, rolePages, failures]);
 }

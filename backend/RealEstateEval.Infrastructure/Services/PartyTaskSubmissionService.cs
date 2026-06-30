@@ -194,11 +194,11 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (task is null)
             return (null, new Dictionary<string, string> { ["_"] = "المهمة غير موجودة" });
 
-        if (task.Kind is not ("engineering-survey" or "property-appraisal" or "field-inspection"))
+        if (task.Kind is not ("engineering-survey" or "property-appraisal" or "field-inspection" or "government-review"))
             return (null, new Dictionary<string, string> { ["_"] = "إعادة الفتح غير مدعومة لهذا النوع" });
 
         var returnNote = request.ReturnNote?.Trim() ?? "";
-        if (task.Kind is "engineering-survey" or "field-inspection" && string.IsNullOrWhiteSpace(returnNote))
+        if (task.Kind is "engineering-survey" or "field-inspection" or "government-review" && string.IsNullOrWhiteSpace(returnNote))
             return (null, new Dictionary<string, string> { ["returnNote"] = "ملاحظة الإرجاع مطلوبة" });
 
         var entity = await _db.PartyTaskSubmissions

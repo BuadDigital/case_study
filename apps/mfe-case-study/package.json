@@ -9,6 +9,7 @@
     "./query/case-study-queries": "./src/query/case-study-queries.ts",
     "./query/*": "./src/query/*.ts",
     "./lib/*": "./src/lib/*",
+    "./hooks/*": "./src/hooks/*.ts",
     "./views/*": "./src/views/*",
     "./components/*": "./src/components/*"
   },

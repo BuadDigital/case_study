@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardBody, CardHeader, Button, cn, useToast } from "@platform/design-system";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
@@ -21,7 +21,7 @@ import {
   isPanelBlockingFailure,
 } from "../../lib/failures-labels";
 import { formatDateAr } from "@case-study/mfe";
-import { FREE_TEXT_FAILURE_PROBLEM_TYPE_ID } from "../../lib/failure-types-data";
+import { failureProblemTypeLabel } from "../../lib/failure-types-data";
 import { useFailuresQuery } from "../../query/failures-queries";
 import { FailureRaiseFields } from "./FailureRaiseFields";
 
@@ -48,6 +48,7 @@ export function FailureRaisePanel({
   specialist,
   raisedByRole,
   onSubmitted,
+  autoOpenRaise = false,
 }: {
   poNumber: string;
   propertyId: string;
@@ -55,13 +56,15 @@ export function FailureRaisePanel({
   specialist: string;
   raisedByRole: string;
   onSubmitted?: () => void;
+  /** Opens the raise form when the panel mounts (e.g. from quick actions). */
+  autoOpenRaise?: boolean;
 }) {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const { data: failures = [] } = useFailuresQuery();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(autoOpenRaise);
   const [severity, setSeverity] = useState<FailureSeverity>("internal");
-  const [problemDescription, setProblemDescription] = useState("");
+  const [problemTypeId, setProblemTypeId] = useState("");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -102,14 +105,19 @@ export function FailureRaisePanel({
     [failures, propertyRef],
   );
 
+  useEffect(() => {
+    if (autoOpenRaise && !openFailureForCreate) {
+      setOpen(true);
+    }
+  }, [autoOpenRaise, openFailureForCreate]);
+
   function formatFailureDate(iso: string): string {
     const day = iso.slice(0, 10);
     return day ? formatDateAr(day) : "—";
   }
 
   function handleSubmit() {
-    const description = problemDescription.trim();
-    if (!description || openFailureForCreate || saving) return;
+    if (!problemTypeId.trim() || openFailureForCreate || saving) return;
     void (async () => {
       setSaving(true);
       try {
@@ -117,8 +125,8 @@ export function FailureRaisePanel({
           poNumber,
           propertyId,
           deedNumber,
-          problemTypeId: FREE_TEXT_FAILURE_PROBLEM_TYPE_ID,
-          title: description,
+          problemTypeId,
+          title: failureProblemTypeLabel(problemTypeId),
           severity,
           raisedByRole,
           internalNote: note,
@@ -131,7 +139,7 @@ export function FailureRaisePanel({
           queryKey: prototypeKeys.propertyKeys(),
         });
         setOpen(false);
-        setProblemDescription("");
+        setProblemTypeId("");
         setNote("");
         showToast("تم تسجيل التعذر !", "success");
         onSubmitted?.();
@@ -254,8 +262,8 @@ export function FailureRaisePanel({
             idPrefix={`raise-${propertyId}`}
             severity={severity}
             onSeverityChange={setSeverity}
-            problemDescription={problemDescription}
-            onProblemDescriptionChange={setProblemDescription}
+            problemTypeId={problemTypeId}
+            onProblemTypeIdChange={setProblemTypeId}
             note={note}
             onNoteChange={setNote}
           />
@@ -264,7 +272,7 @@ export function FailureRaisePanel({
             variant="primary"
             size="sm"
             loading={saving}
-            disabled={!problemDescription.trim() || saving}
+            disabled={!problemTypeId.trim() || saving}
             showActionToast={false}
             onClick={handleSubmit}
           >

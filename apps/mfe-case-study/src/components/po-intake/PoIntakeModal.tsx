@@ -1,7 +1,7 @@
 "use client";
 
 import { AppModal } from "@case-study/mfe/components/ui/AppModal";
-import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
+import { RegField, RegSelect, RegTextarea } from "@platform/app-shared/registration/FormFields";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import { UNSAVED_CONFIRM_MSG } from "@platform/app-shared/registration/registration-utils";
 import { Button, Note } from "@platform/design-system";
@@ -113,6 +113,24 @@ export function PoIntakeModal({
               form.setExpectedPropertyCount(digits || "");
             }}
           />
+          <RegField
+            id="properties_region_modal"
+            label="منطقة العقارات"
+            value={form.propertiesRegion}
+            onChange={form.setPropertiesRegion}
+            placeholder="مثال: مكة — الشوقية"
+            maxLength={256}
+          />
+          <div className="col-span-full">
+            <RegTextarea
+              id="work_order_description_modal"
+              label="وصف أمر العمل"
+              value={form.workOrderDescription}
+              onChange={form.setWorkOrderDescription}
+              placeholder="ملاحظات أو وصف عام لأمر العمل (اختياري)"
+              rows={3}
+            />
+          </div>
         </div>
       </RegistrationFormCard>
     </AppModal>

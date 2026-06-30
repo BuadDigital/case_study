@@ -7,7 +7,7 @@ import { poPropertiesPath } from "../../lib/po-routes";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import {
-  ENGINEERING_OFFICE_FAILURE_RAISER,
+  failureRaiserLabelForPartyRole,
   FAILURE_RAISER_SPECIALIST,
   FAILURE_RAISER_SUPERVISOR,
   FailureReportForm,
@@ -26,14 +26,20 @@ export function PoPropertyFailureRoute({
   const { role } = usePrototype();
   const { data: record } = usePoRecordQuery(poNumber);
   const property = record?.properties.find((p) => p.id === propertyId);
+  const partyRaiser = failureRaiserLabelForPartyRole(role);
   const raisedByRole =
-    role === "engineering-office"
-      ? ENGINEERING_OFFICE_FAILURE_RAISER
-      : role === "section-supervisor"
-        ? FAILURE_RAISER_SUPERVISOR
-        : FAILURE_RAISER_SPECIALIST;
+    partyRaiser ??
+    (role === "section-supervisor"
+      ? FAILURE_RAISER_SUPERVISOR
+      : FAILURE_RAISER_SPECIALIST);
   const afterPath =
-    role === "engineering-office" ? "/active-survey" : poPropertiesPath(poNumber);
+    role === "engineering-office"
+      ? "/active-survey"
+      : role === "field-inspector"
+        ? "/property-inspection"
+        : role === "real-estate-appraiser"
+          ? "/property-appraisal"
+          : poPropertiesPath(poNumber);
 
   return (
     <FailureReportForm

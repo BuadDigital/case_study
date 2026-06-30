@@ -3,6 +3,9 @@ export type PrototypeLoginUser = {
   label: string;
 };
 
+/** CDO dev account — pinned first on the login picker. */
+export const PROTOTYPE_CDO_LOGIN_USERNAME = "sliman";
+
 /** Dev login quick-pick — usernames match `DataSeeder` HR staff and proc providers. */
 export const PROTOTYPE_LOGIN_USERS: PrototypeLoginUser[] = [
   { username: "sliman", label: "سليمان — مسؤول التحول الرقمي (CDO)" },
@@ -20,3 +23,13 @@ export const PROTOTYPE_LOGIN_USERS: PrototypeLoginUser[] = [
   { username: "eman", label: "إيمان النهدي — موظف الشؤون المالية" },
   { username: "jeddah_survey", label: "مكتب جدة للمساحة — مزود مسح ميداني" },
 ];
+
+export function sortLoginUsersForPicker<T extends { username: string; label: string }>(
+  users: readonly T[],
+): T[] {
+  return [...users].sort((a, b) => {
+    if (a.username === PROTOTYPE_CDO_LOGIN_USERNAME) return -1;
+    if (b.username === PROTOTYPE_CDO_LOGIN_USERNAME) return 1;
+    return a.label.localeCompare(b.label, "ar", { numeric: true });
+  });
+}

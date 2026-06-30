@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { fetchDevLoginUsers, fetchPermissions, getApiBase } from "@platform/api-client";
 import { setAuthSession, type AuthSession, getValidAuthSession } from "@platform/auth-client";
-import { PROTOTYPE_LOGIN_USERS } from "@platform/app-shared/prototype/prototype-users";
+import { PROTOTYPE_LOGIN_USERS, sortLoginUsersForPicker } from "@platform/app-shared/prototype/prototype-users";
 import { defaultLandingPath } from "@platform/app-shared/prototype/page-access";
 import { pagesFromPermissions } from "@platform/app-shared/prototype/permissions-pages";
 import { Button, Card, Label, Select } from "@platform/design-system";
@@ -59,14 +59,17 @@ export default function LoginPage() {
     void fetchDevLoginUsers(getApiBase()).then((result) => {
       if (cancelled) return;
       if (result.ok && result.users.length > 0) {
-        setLoginUsers(result.users);
-        setUsername(result.users[0]?.username ?? "");
+        const users = sortLoginUsersForPicker(result.users);
+        setLoginUsers(users);
+        setUsername(users[0]?.username ?? "");
         return;
       }
-      const fallback = PROTOTYPE_LOGIN_USERS.map((user) => ({
-        username: user.username,
-        label: user.label,
-      }));
+      const fallback = sortLoginUsersForPicker(
+        PROTOTYPE_LOGIN_USERS.map((user) => ({
+          username: user.username,
+          label: user.label,
+        })),
+      );
       setLoginUsers(fallback);
       setUsername(fallback[0]?.username ?? "");
     });

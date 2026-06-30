@@ -56,6 +56,7 @@ export {
 
 export {
   addWorkOrderProperty,
+  cancelWorkOrder,
   completePropertyBourseData,
   createWorkOrder,
   deleteWorkOrder,
@@ -67,6 +68,7 @@ export {
   listWorkOrders,
   listWorkOrdersWithDetails,
   listPropertyListItems,
+  stopWorkOrder,
   updateWorkOrderHeader,
   updateWorkOrderProperty,
   workOrderExists,

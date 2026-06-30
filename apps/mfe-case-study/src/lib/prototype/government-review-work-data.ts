@@ -8,7 +8,10 @@ export type GovernmentReviewKeysStatus =
   | "pending"
   | "not_required";
 
-export type GovernmentReviewSubmissionStatus = "draft" | "submitted";
+export type GovernmentReviewSubmissionStatus =
+  | "draft"
+  | "submitted"
+  | "reopened";
 
 export type GovernmentReviewKeysProofFile = {
   id: string;
@@ -35,6 +38,7 @@ export type GovernmentReviewSubmission = {
   keysProofFileName?: string;
   confirmed: boolean;
   status: GovernmentReviewSubmissionStatus;
+  returnNote?: string;
   submittedAtUtc: string | null;
   updatedAtUtc: string;
 };
@@ -94,6 +98,7 @@ export function governmentReviewStatusLabel(
   status: GovernmentReviewSubmissionStatus,
 ): string {
   if (status === "submitted") return "مُرسَل";
+  if (status === "reopened") return "مُعاد للتصحيح";
   return "قيد العمل";
 }
 

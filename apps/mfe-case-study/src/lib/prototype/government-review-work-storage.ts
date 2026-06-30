@@ -10,6 +10,7 @@ import {
   payloadFromDto,
   persistPartySubmissionPayload,
   prefetchPartySubmissionsForTasks,
+  reopenPartySubmission,
   setCachedPartySubmission,
   submitPartySubmission,
 } from "@platform/app-shared/prototype/party-submission-api";
@@ -38,6 +39,7 @@ function dtoToSubmission(
     propertyId: normalized.propertyId ?? dto.propertyId ?? "",
     poNumber: normalized.poNumber ?? dto.poNumber ?? "",
     status: normalized.status ?? (dto.status as GovernmentReviewSubmission["status"]),
+    returnNote: normalized.returnNote ?? payload.returnNote,
     submittedAtUtc: dto.submittedAtUtc ?? normalized.submittedAtUtc ?? null,
     updatedAtUtc: dto.updatedAtUtc ?? normalized.updatedAtUtc,
   } as GovernmentReviewSubmission;
@@ -107,7 +109,7 @@ export async function updateGovernmentReviewDraft(
   const next: GovernmentReviewSubmission = {
     ...current,
     ...patch,
-    status: "draft",
+    status: current.status === "reopened" ? "reopened" : "draft",
     updatedAtUtc: new Date().toISOString(),
   };
   return saveGovernmentReviewSubmission(next);
@@ -129,6 +131,17 @@ export async function submitGovernmentReviewSubmission(
   if (!dto) return loadGovernmentReviewSubmission(taskId);
   notifyChanged();
   dispatchWorkflowSubmitted(GOVERNMENT_REVIEW_SUBMITTED_EVENT);
+  notifyTasksChanged();
+  return dtoToSubmission(dto);
+}
+
+export async function reopenGovernmentReviewSubmission(
+  taskId: string,
+  returnNote: string,
+): Promise<GovernmentReviewSubmission | null> {
+  const dto = await reopenPartySubmission(taskId, returnNote);
+  if (!dto) return null;
+  notifyChanged();
   notifyTasksChanged();
   return dtoToSubmission(dto);
 }

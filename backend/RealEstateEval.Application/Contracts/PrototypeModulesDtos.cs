@@ -259,5 +259,7 @@ public class PoIntakeDraftDto
     public string AssignmentSpecialist { get; init; } = "";
     public string AssignmentSpecialistEmail { get; init; } = "";
     public int ExpectedPropertyCount { get; init; } = 1;
+    public string PropertiesRegion { get; init; } = "";
+    public string WorkOrderDescription { get; init; } = "";
     public DateTime UpdatedAtUtc { get; init; }
 }

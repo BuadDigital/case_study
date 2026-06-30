@@ -11,6 +11,8 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public class WorkOrderService : IWorkOrderService
 {
+    private const string CaseStudyPropertyKind = "case-study-property";
+
     private readonly ApplicationDbContext _db;
     private readonly IPropertyTimelineService _timeline;
     private readonly DatabaseOptions _dbOptions;
@@ -28,9 +30,7 @@ public class WorkOrderService : IWorkOrderService
     public async Task<IReadOnlyList<WorkOrderListItemDto>> ListAsync(CancellationToken cancellationToken)
     {
         var (_, take, _, _) = NpgsqlConfiguration.ResolveListPaging(null, null, _dbOptions);
-        return await QueryListItems()
-            .Take(take)
-            .ToListAsync(cancellationToken);
+        return await BuildListItemsAsync(null, take, cancellationToken);
     }
 
     public async Task<PagedResultDto<WorkOrderListItemDto>> ListPagedAsync(
@@ -42,12 +42,8 @@ public class WorkOrderService : IWorkOrderService
             page,
             pageSize,
             _dbOptions);
-        var query = QueryListItems();
-        var total = await query.CountAsync(cancellationToken);
-        var items = await query
-            .Skip(skip)
-            .Take(take)
-            .ToListAsync(cancellationToken);
+        var total = await _db.WorkOrders.CountAsync(cancellationToken);
+        var items = await BuildListItemsAsync(skip, take, cancellationToken);
 
         return new PagedResultDto<WorkOrderListItemDto>
         {
@@ -58,32 +54,49 @@ public class WorkOrderService : IWorkOrderService
         };
     }
 
-    private IQueryable<WorkOrderListItemDto> QueryListItems()
+    private async Task<IReadOnlyList<WorkOrderListItemDto>> BuildListItemsAsync(
+        int? skip,
+        int? take,
+        CancellationToken cancellationToken)
     {
-        return _db.WorkOrders
+        IQueryable<WorkOrder> query = _db.WorkOrders
             .AsNoTracking()
-            .OrderByDescending(w => w.CreatedAtUtc)
-            .Select(w => new WorkOrderListItemDto
-            {
-                PoNumber = w.PoNumber,
-                AssignmentType = AssignmentTypeLabels.ToLabel(w.AssignmentType),
-                PropertyCount = w.Properties.Count,
-                ExpectedPropertyCount = w.ExpectedPropertyCount,
-                CompletedCount = w.Properties.Count(p => p.BourseDataCompleted),
-                Status = w.Properties.Count < Math.Max(1, w.ExpectedPropertyCount)
-                    ? WorkOrderListStatus.Progress
-                    : w.Properties.Count(p =>
-                        p.BourseDataCompleted ||
-                        p.IdentifierType == PropertyIdentifierType.RealEstateRegistration) >=
-                      Math.Max(1, w.ExpectedPropertyCount)
-                        ? WorkOrderListStatus.Done
-                        : WorkOrderListStatus.Progress,
-                PromulgationDate = w.PromulgationDate.ToString("yyyy-MM-dd"),
-                ReceivedFromEnfathAt = w.ReceivedFromEnfathAt.ToString("yyyy-MM-dd"),
-                DueDateAt = w.DueDateAt.ToString("yyyy-MM-dd"),
-                AssignmentSpecialist = w.AssignmentSpecialist ?? "",
-                CreatedAtUtc = w.CreatedAtUtc.ToString("O"),
-            });
+            .OrderByDescending(w => w.CreatedAtUtc);
+
+        if (skip is > 0)
+            query = query.Skip(skip.Value);
+        if (take is > 0)
+            query = query.Take(take.Value);
+
+        var orders = await query
+            .Include(w => w.Properties)
+            .ToListAsync(cancellationToken);
+        if (orders.Count == 0)
+            return [];
+
+        var poNumbers = orders.Select(w => w.PoNumber.Trim()).Distinct().ToList();
+        var propertyIds = orders.SelectMany(w => w.Properties.Select(p => p.Id)).ToList();
+
+        var caseStudyTasks = propertyIds.Count == 0
+            ? []
+            : await _db.WorkflowTasks
+                .AsNoTracking()
+                .Where(t => poNumbers.Contains(t.PoNumber)
+                    && t.Kind == CaseStudyPropertyKind
+                    && t.PropertyId != null
+                    && propertyIds.Contains(t.PropertyId.Value))
+                .ToListAsync(cancellationToken);
+
+        var studiedByProperty = caseStudyTasks
+            .Where(t => t.PropertyId.HasValue)
+            .GroupBy(t => t.PropertyId!.Value)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Any(t => t.Status == WorkflowTaskStatus.Completed));
+
+        return orders
+            .Select(w => WorkOrderMapper.ToListItem(w, studiedByProperty))
+            .ToList();
     }
 
     public async Task<IReadOnlyList<WorkOrderDto>> ListDetailsAsync(
@@ -225,6 +238,8 @@ public class WorkOrderService : IWorkOrderService
             AssignmentSpecialist = NormalizeOptionalText(request.AssignmentSpecialist),
             AssignmentSpecialistEmail = NormalizeOptionalText(request.AssignmentSpecialistEmail),
             ExpectedPropertyCount = request.ExpectedPropertyCount,
+            PropertiesRegion = NormalizeOptionalText(request.PropertiesRegion),
+            WorkOrderDescription = NormalizeOptionalText(request.WorkOrderDescription),
             DueDateAt = BusinessDueDateCalculator.Compute(promulgation, request.ReceivedFromEnfathTime),
             CreatedAtUtc = DateTime.UtcNow,
         };
@@ -302,6 +317,8 @@ public class WorkOrderService : IWorkOrderService
         entity.AssignmentSpecialist = NormalizeOptionalText(request.AssignmentSpecialist);
         entity.AssignmentSpecialistEmail = NormalizeOptionalText(request.AssignmentSpecialistEmail);
         entity.ExpectedPropertyCount = request.ExpectedPropertyCount;
+        entity.PropertiesRegion = NormalizeOptionalText(request.PropertiesRegion);
+        entity.WorkOrderDescription = NormalizeOptionalText(request.WorkOrderDescription);
         entity.DueDateAt = BusinessDueDateCalculator.Compute(promulgation, request.ReceivedFromEnfathTime);
 
         await _db.SaveChangesAsync(cancellationToken);
@@ -362,6 +379,47 @@ public class WorkOrderService : IWorkOrderService
         await _db.PropertyTimelineEntries
             .Where(e => e.PoNumber == n)
             .ExecuteDeleteAsync(cancellationToken);
+        await _db.SaveChangesAsync(cancellationToken);
+        return (true, null);
+    }
+
+    public Task<(bool Ok, string? Error)> CancelAsync(
+        string poNumber,
+        CancellationToken cancellationToken) =>
+        SetLifecycleStatusAsync(
+            poNumber,
+            WorkOrderLifecycleStatus.Cancelled,
+            "أمر العمل ملغى مسبقاً",
+            cancellationToken);
+
+    public Task<(bool Ok, string? Error)> StopAsync(
+        string poNumber,
+        CancellationToken cancellationToken) =>
+        SetLifecycleStatusAsync(
+            poNumber,
+            WorkOrderLifecycleStatus.Stopped,
+            "أمر العمل متوقف مسبقاً",
+            cancellationToken);
+
+    private async Task<(bool Ok, string? Error)> SetLifecycleStatusAsync(
+        string poNumber,
+        string lifecycleStatus,
+        string alreadyAppliedMessage,
+        CancellationToken cancellationToken)
+    {
+        var entity = await LoadWorkOrderTrackedAsync(poNumber, cancellationToken);
+        if (entity is null) return (false, "أمر العمل غير موجود");
+
+        if (string.Equals(entity.LifecycleStatus, lifecycleStatus, StringComparison.Ordinal))
+            return (false, alreadyAppliedMessage);
+
+        if (lifecycleStatus == WorkOrderLifecycleStatus.Stopped
+            && entity.LifecycleStatus == WorkOrderLifecycleStatus.Cancelled)
+        {
+            return (false, "لا يمكن إيقاف أمر عمل ملغى");
+        }
+
+        entity.LifecycleStatus = lifecycleStatus;
         await _db.SaveChangesAsync(cancellationToken);
         return (true, null);
     }

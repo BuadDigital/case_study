@@ -120,6 +120,8 @@ export function useActiveTransactionPageSituation(
       "evaluator-submission-changed",
       "evaluator-recall-changed",
       "evaluator-recall-hydrated",
+      "party-task-recall-changed",
+      "party-task-recall-hydrated",
       "field-inspection-submission-changed",
       "government-review-submission-changed",
       "valuation-coordination-submission-changed",

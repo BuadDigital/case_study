@@ -67,6 +67,8 @@ import { FailureRaisePanel } from "@failures/mfe";
 import { failureRaiserRoleForParty } from "@failures/mfe/lib/failure-party-roles";
 import { setSurveyWorkTopbarState } from "@platform/app-shared/prototype/survey-work-topbar-bridge";
 import { usePoRecordQuery } from "../query/case-study-queries";
+import { usePartyTaskRecallEligibility } from "../hooks/use-party-task-recall-eligibility";
+import { PartyTaskRecallOverlay } from "../components/party-tasks/PartyTaskRecallOverlay";
 
 const PARTY_FAILURE_RAISE_KINDS = new Set([
   "field-inspection",
@@ -206,6 +208,7 @@ export function PartyActiveTaskWork({
   const [saving, setSaving] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [workTab, setWorkTab] = useState<"task" | "case-study">("task");
+  const recallEligible = usePartyTaskRecallEligibility(task);
 
   const isAppraisal = def.kind === "property-appraisal";
   const isEngineeringSurvey = def.kind === "engineering-survey";
@@ -530,49 +533,56 @@ export function PartyActiveTaskWork({
     }
 
     return (
-      <TaskWorkChrome
-        layout={layout}
-        title={`رفع التقييم — ${deedLabel}`}
-        subtitle={`${def.assigneeSubtitle} · ${formatPoDisplay(task.poNumber)} · ${location}`}
-        deedBadge={deedLabel}
-        saving={saving}
-        onClose={exit}
-        onSave={submitAppraisal}
-        saveLabel={
-          evaluatorLocked ? "رجوع" : "إرسال للأخصائي"
-        }
-        showFooter
+      <PartyTaskRecallOverlay
+        task={task}
+        deedNumber={deedLabel}
+        show={recallEligible}
+        notSubmittedMessage="لا يمكن طلب الاسترجاع قبل إرسال التقييم للأخصائي"
       >
-        <div className="grid min-w-0 gap-4 xl:grid-cols-2">
-          <section className="min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
-            <h3 className="m-0 mb-2 text-sm font-semibold text-text">
-              {def.workTitle}
-            </h3>
-            {appraisalExtensions ? (
-              appraisalExtensions.renderAppraisalWork({
-                def,
-                childTask: task,
-                hostRef: evaluatorHostRef,
-              })
-            ) : (
-              <InlineLoadingSkeleton className={LOADING_TEXT} />
-            )}
-            <PartyTaskFailureRaise
-              def={def}
-              task={task}
-              deedNumber={deedLabel}
-              onSubmitted={refresh}
-            />
-          </section>
+        <TaskWorkChrome
+          layout={layout}
+          title={`رفع التقييم — ${deedLabel}`}
+          subtitle={`${def.assigneeSubtitle} · ${formatPoDisplay(task.poNumber)} · ${location}`}
+          deedBadge={deedLabel}
+          saving={saving}
+          onClose={exit}
+          onSave={submitAppraisal}
+          saveLabel={
+            evaluatorLocked ? "رجوع" : "إرسال للأخصائي"
+          }
+          showFooter
+        >
+          <div className="grid min-w-0 gap-4 xl:grid-cols-2">
+            <section className="min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
+              <h3 className="m-0 mb-2 text-sm font-semibold text-text">
+                {def.workTitle}
+              </h3>
+              {appraisalExtensions ? (
+                appraisalExtensions.renderAppraisalWork({
+                  def,
+                  childTask: task,
+                  hostRef: evaluatorHostRef,
+                })
+              ) : (
+                <InlineLoadingSkeleton className={LOADING_TEXT} />
+              )}
+              <PartyTaskFailureRaise
+                def={def}
+                task={task}
+                deedNumber={deedLabel}
+                onSubmitted={refresh}
+              />
+            </section>
 
-          <section className="min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
-            <h3 className="m-0 mb-2 text-sm font-semibold text-text">
-              نموذج الدراسة
-            </h3>
-            <PartyCaseStudyFormTab def={def} childTask={task} />
-          </section>
-        </div>
-      </TaskWorkChrome>
+            <section className="min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
+              <h3 className="m-0 mb-2 text-sm font-semibold text-text">
+                نموذج الدراسة
+              </h3>
+              <PartyCaseStudyFormTab def={def} childTask={task} />
+            </section>
+          </div>
+        </TaskWorkChrome>
+      </PartyTaskRecallOverlay>
     );
   }
 
@@ -598,47 +608,54 @@ export function PartyActiveTaskWork({
     }
 
     return (
-      <TaskWorkChrome
-        layout={layout}
-        title={`${def.workTitle} — ${deedLabel}`}
-        subtitle={`${def.assigneeSubtitle} · ${formatPoDisplay(task.poNumber)} · ${location}`}
-        deedBadge={deedLabel}
-        saving={saving}
-        onClose={exit}
-        onSave={submitFieldInspection}
-        saveLabel={fieldInspectionLocked ? "رجوع" : def.saveLabel}
-        showFooter
+      <PartyTaskRecallOverlay
+        task={task}
+        deedNumber={deedLabel}
+        show={recallEligible}
+        notSubmittedMessage="لا يمكن طلب الاسترجاع قبل إرسال المعاينة للأخصائي"
       >
-        <div className="grid min-w-0 gap-4 xl:grid-cols-2">
-          <section className="min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
-            <h3 className="m-0 mb-2 text-sm font-semibold text-text">
-              {def.workTitle}
-            </h3>
-            <Note tone="info" className="mb-4">
-              {def.workIntro}
-            </Note>
-            <FieldInspectionWorkBody
-              def={def}
-              task={task}
-              hostRef={fieldInspectionHostRef}
-              submitting={saving}
-            />
-            <PartyTaskFailureRaise
-              def={def}
-              task={task}
-              deedNumber={deedLabel}
-              onSubmitted={refresh}
-            />
-          </section>
+        <TaskWorkChrome
+          layout={layout}
+          title={`${def.workTitle} — ${deedLabel}`}
+          subtitle={`${def.assigneeSubtitle} · ${formatPoDisplay(task.poNumber)} · ${location}`}
+          deedBadge={deedLabel}
+          saving={saving}
+          onClose={exit}
+          onSave={submitFieldInspection}
+          saveLabel={fieldInspectionLocked ? "رجوع" : def.saveLabel}
+          showFooter
+        >
+          <div className="grid min-w-0 gap-4 xl:grid-cols-2">
+            <section className="min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
+              <h3 className="m-0 mb-2 text-sm font-semibold text-text">
+                {def.workTitle}
+              </h3>
+              <Note tone="info" className="mb-4">
+                {def.workIntro}
+              </Note>
+              <FieldInspectionWorkBody
+                def={def}
+                task={task}
+                hostRef={fieldInspectionHostRef}
+                submitting={saving}
+              />
+              <PartyTaskFailureRaise
+                def={def}
+                task={task}
+                deedNumber={deedLabel}
+                onSubmitted={refresh}
+              />
+            </section>
 
-          <section className="min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
-            <h3 className="m-0 mb-2 text-sm font-semibold text-text">
-              نموذج الدراسة
-            </h3>
-            <PartyCaseStudyFormTab def={def} childTask={task} />
-          </section>
-        </div>
-      </TaskWorkChrome>
+            <section className="min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
+              <h3 className="m-0 mb-2 text-sm font-semibold text-text">
+                نموذج الدراسة
+              </h3>
+              <PartyCaseStudyFormTab def={def} childTask={task} />
+            </section>
+          </div>
+        </TaskWorkChrome>
+      </PartyTaskRecallOverlay>
     );
   }
 
@@ -668,7 +685,7 @@ export function PartyActiveTaskWork({
       );
     }
 
-    return (
+    const structuredWork = (
       <TaskWorkChrome
         layout={layout}
         title={`${def.workTitle} — ${deedLabel}`}
@@ -747,6 +764,21 @@ export function PartyActiveTaskWork({
         )}
       </TaskWorkChrome>
     );
+
+    if (isGovernmentReview) {
+      return (
+        <PartyTaskRecallOverlay
+          task={task}
+          deedNumber={deedLabel}
+          show={recallEligible}
+          notSubmittedMessage="لا يمكن طلب الاسترجاع قبل إرسال المراجعة للأخصائي"
+        >
+          {structuredWork}
+        </PartyTaskRecallOverlay>
+      );
+    }
+
+    return structuredWork;
   }
 
   return (

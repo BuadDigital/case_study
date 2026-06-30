@@ -1245,9 +1245,9 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
 
                     b.HasIndex("PoNumber");
 
-                    b.HasIndex("PoNumber", "PropertyId");
-
                     b.HasIndex("Status");
+
+                    b.HasIndex("PoNumber", "PropertyId");
 
                     b.ToTable("PropertyFailures", "failures");
                 });
@@ -1577,6 +1577,10 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<int>("ExpectedPropertyCount")
                         .HasColumnType("integer");
 
+                    b.Property<string>("LifecycleStatus")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.Property<string>("PoNumber")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -1585,6 +1589,10 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<DateOnly>("PromulgationDate")
                         .HasColumnType("date");
 
+                    b.Property<string>("PropertiesRegion")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
                     b.Property<DateOnly>("ReceivedFromEnfathAt")
                         .HasColumnType("date");
 
@@ -1592,12 +1600,16 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasMaxLength(8)
                         .HasColumnType("character varying(8)");
 
+                    b.Property<string>("WorkOrderDescription")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("CreatedAtUtc");
 
                     b.HasIndex("PoNumber")
                         .IsUnique();
-
-                    b.HasIndex("CreatedAtUtc");
 
                     b.ToTable("WorkOrders", "case_study");
                 });
@@ -1735,9 +1747,9 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("WorkOrderId", "DeedNumber");
-
                     b.HasIndex("DeedNumber");
+
+                    b.HasIndex("WorkOrderId", "DeedNumber");
 
                     b.ToTable("WorkOrderProperties", "case_study");
                 });
@@ -1819,19 +1831,19 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CreatedAtUtc");
+
                     b.HasIndex("ParentTaskId");
 
                     b.HasIndex("PoNumber");
 
                     b.HasIndex("PropertyId");
 
-                    b.HasIndex("PoNumber", "PropertyOrdinal");
+                    b.HasIndex("Kind", "Status");
 
                     b.HasIndex("PoNumber", "PropertyId");
 
-                    b.HasIndex("Kind", "Status");
-
-                    b.HasIndex("CreatedAtUtc");
+                    b.HasIndex("PoNumber", "PropertyOrdinal");
 
                     b.ToTable("WorkflowTasks", "case_study");
                 });

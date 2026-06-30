@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, InlineLoadingSkeleton, Input, Label, cn, formControlClassName, useToast } from "@platform/design-system";
+import { Button, InlineLoadingSkeleton, Input, Label, Note, cn, formControlClassName, useToast } from "@platform/design-system";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import type { WorkflowTask } from "@case-study/mfe";
-import { activeSurveyWorkspacePath } from "@case-study/mfe/lib/my-task-routes";
+import { activeSurveyEntryPath, activeSurveyWorkspacePath } from "@case-study/mfe/lib/my-task-routes";
 import {
   emptyCaseStudyFormDraft,
   InspectorFeesTab,
@@ -19,7 +19,11 @@ import {
   SectionDivider,
   SectionHeader,
 } from "@case-study/mfe/components/po-intake/PropertyDetailFields";
-import { FailureRaisePanel } from "@failures/mfe";
+import {
+  FailureRaisePanel,
+  blockingFailureForProperty,
+  failureRecordTitle,
+} from "@failures/mfe";
 import { failureRaiserRoleForParty } from "@failures/mfe/lib/failure-party-roles";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 import { isActiveFailureStatus } from "@failures/mfe/lib/failures-types";
@@ -54,8 +58,13 @@ import {
   applyChecklistToCaseStudyAnswers,
   caseStudyAnswersChanged,
 } from "../lib/engineering-survey-checklist-sync";
+import { EngineeringSurveyFailuresHistory } from "./EngineeringSurveyFailuresHistory";
+import { QuickActionsFab } from "./QuickActionsFab";
+import { usePartyTaskRecallRequest } from "@case-study/mfe/hooks/use-party-task-recall-request";
+import { usePartyTaskRecallEligibility } from "@case-study/mfe/hooks/use-party-task-recall-eligibility";
+import { isEngineeringSurveyTransactionActive } from "../lib/engineering-survey-transaction-active";
 
-type WorkTab = "property" | "survey" | "fees" | "failures";
+type WorkTab = "property" | "survey" | "fees" | "notes" | "failures";
 
 export function EngineeringSurveyWorkPanel({
   def,
@@ -90,6 +99,15 @@ export function EngineeringSurveyWorkPanel({
     ).length;
   }, [failures, propertyId, task.poNumber]);
 
+  const blockingFailure = useMemo(() => {
+    if (!propertyId) return null;
+    return blockingFailureForProperty(failures, {
+      poNumber: task.poNumber,
+      propertyId,
+      deedNumber,
+    });
+  }, [deedNumber, failures, propertyId, task.poNumber]);
+
   const [draft, setDraft] = useState<EngineeringSurveySubmission | null>(null);
   const [workTab, setWorkTab] = useState<WorkTab>(
     variant === "entry" ? "survey" : "property",
@@ -98,6 +116,8 @@ export function EngineeringSurveyWorkPanel({
     {},
   );
   const [formError, setFormError] = useState<string | null>(null);
+  const [failureRaiseOpen, setFailureRaiseOpen] = useState(false);
+  const [noteDraft, setNoteDraft] = useState("");
 
   useEffect(() => {
     if (!propertyId) return;
@@ -116,6 +136,82 @@ export function EngineeringSurveyWorkPanel({
 
   const locked = draft ? isEngineeringSurveyFormLocked(draft.status) : false;
   const formDisabled = locked || readOnly;
+  const recallEligible = usePartyTaskRecallEligibility(task);
+  const transactionActive = useMemo(
+    () => isEngineeringSurveyTransactionActive(task.status, draft?.status),
+    [draft?.status, task.status],
+  );
+  const notesEditable = transactionActive && !locked;
+  const savedNote = draft?.surveyNotes?.trim() ?? "";
+  const notePreview =
+    savedNote.length > 28 ? `${savedNote.slice(0, 28)}…` : savedNote;
+
+  useEffect(() => {
+    setNoteDraft(draft?.surveyNotes ?? "");
+  }, [draft?.surveyNotes]);
+
+  useEffect(() => {
+    if (workTab !== "failures") setFailureRaiseOpen(false);
+  }, [workTab]);
+
+  const openFailuresTab = useCallback(() => {
+    setWorkTab("failures");
+    setFailureRaiseOpen(true);
+    showToast("سجّل وصف التعذر في النموذج أدناه", "info");
+  }, [showToast]);
+
+  const openNotesTab = useCallback(() => {
+    setWorkTab("notes");
+  }, []);
+
+  const handleStartSurvey = useCallback(() => {
+    if (!transactionActive) {
+      showToast(
+        "تم إرسال الرفع المساحي لهذا العقار. استخدم «طلب استرجاع المعاملة» لإعادة فتح العمل.",
+        "info",
+      );
+      return;
+    }
+    if (blockingFailure) {
+      showToast(
+        `لا يمكن بدء الرفع المساحي — يوجد تعذر نشط: ${failureRecordTitle(blockingFailure)}`,
+        "error",
+      );
+      setWorkTab("failures");
+      return;
+    }
+    router.push(activeSurveyEntryPath(task.id));
+  }, [
+    blockingFailure,
+    router,
+    showToast,
+    task.id,
+    transactionActive,
+  ]);
+
+  const handleAddObstruction = useCallback(() => {
+    if (!transactionActive) {
+      showToast("لا يمكن تسجيل تعذر بعد إرسال المعاملة.", "info");
+      return;
+    }
+    openFailuresTab();
+  }, [openFailuresTab, showToast, transactionActive]);
+
+  const handleAddNote = useCallback(() => {
+    if (!transactionActive) {
+      showToast("لا يمكن إضافة ملاحظة بعد إرسال المعاملة.", "info");
+      return;
+    }
+    openNotesTab();
+  }, [openNotesTab, showToast, transactionActive]);
+
+  const handleRequestRecall = usePartyTaskRecallRequest({
+    taskId: task.id,
+    poNumber: task.poNumber,
+    propertyId,
+    isSubmitted: recallEligible,
+    notSubmittedMessage: "لا يمكن طلب الاسترجاع قبل إرسال الرفع المساحي",
+  });
 
   const syncCaseStudyFromChecklist = useCallback(
     async (checklist: EngineeringSurveySubmission["checklist"]) => {
@@ -154,6 +250,12 @@ export function EngineeringSurveyWorkPanel({
     },
     [task.id],
   );
+
+  const saveNote = useCallback(() => {
+    if (!notesEditable) return;
+    persist({ surveyNotes: noteDraft });
+    showToast("تم حفظ الملاحظة", "success");
+  }, [noteDraft, notesEditable, persist, showToast]);
 
   useEffect(() => {
     if (!draft || locked) return;
@@ -544,7 +646,8 @@ export function EngineeringSurveyWorkPanel({
   }
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+    <>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <nav
         className="flex shrink-0 gap-0 overflow-x-auto border-b border-border bg-surface px-4 sm:px-6 [&::-webkit-scrollbar]:h-0"
         aria-label="أقسام المهمة"
@@ -583,6 +686,24 @@ export function EngineeringSurveyWorkPanel({
         <button
           type="button"
           className={cn(
+            "mb-[-1px] flex max-w-[200px] items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 font-inherit text-xs text-text-2 transition-colors hover:text-text",
+            workTab === "notes" && "border-b-primary font-medium text-primary",
+          )}
+          onClick={() => setWorkTab("notes")}
+        >
+          <span>ملاحظة</span>
+          {notePreview ? (
+            <span
+              className="max-w-[120px] truncate text-[10px] font-normal text-text-3"
+              title={savedNote}
+            >
+              {notePreview}
+            </span>
+          ) : null}
+        </button>
+        <button
+          type="button"
+          className={cn(
             "mb-[-1px] flex items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 font-inherit text-xs text-text-2 transition-colors hover:text-text",
             workTab === "failures" && "border-b-primary font-medium text-primary",
           )}
@@ -598,6 +719,14 @@ export function EngineeringSurveyWorkPanel({
       </nav>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+          {blockingFailure && workTab === "property" ? (
+            <InfoBox variant="amber" icon="⚠">
+              <strong>يوجد تعذر نشط على هذا العقار.</strong>
+              <br />
+              لا يمكن بدء الرفع المساحي حتى يُعالج التعذر:{" "}
+              {failureRecordTitle(blockingFailure)}
+            </InfoBox>
+          ) : null}
           {workTab === "property" ? (
             <EngineeringSurveyPropertySummary
               property={property}
@@ -608,9 +737,49 @@ export function EngineeringSurveyWorkPanel({
           {workTab === "fees" ? (
             <InspectorFeesTab tasks={[task]} variant="engineering-survey" />
           ) : null}
+          {workTab === "notes" ? (
+            <div>
+              <SectionHeader>ملاحظة على المعاملة</SectionHeader>
+              <Note className="mb-3">
+                تُحفظ الملاحظة مع بيانات الرفع المساحي وتظهر بجانب تبويب المالية.
+              </Note>
+              <textarea
+                id="eng-workspace-note"
+                className={cn(
+                  formControlClassName,
+                  "min-h-[120px] w-full resize-y py-2 leading-relaxed",
+                )}
+                rows={5}
+                disabled={!notesEditable}
+                value={noteDraft}
+                placeholder="اكتب ملاحظتك هنا…"
+                onChange={(e) => setNoteDraft(e.target.value)}
+              />
+              {notesEditable ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button type="button" size="sm" onClick={saveNote}>
+                    حفظ الملاحظة
+                  </Button>
+                </div>
+              ) : (
+                <p className="mt-2 text-[11px] text-text-3">
+                  لا يمكن تعديل الملاحظة بعد إرسال المعاملة أو إغلاقها.
+                </p>
+              )}
+              {savedNote ? (
+                <div className="mt-4">
+                  <InfoBox variant="teal" icon="ℹ">
+                    <strong>الملاحظة المحفوظة:</strong>
+                    <br />
+                    {savedNote}
+                  </InfoBox>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           {workTab === "failures" && propertyId ? (
             <div>
-              <SectionHeader>التعذرات المسجلة</SectionHeader>
+              <SectionHeader>تسجيل تعذر</SectionHeader>
               <FailureRaisePanel
                 poNumber={task.poNumber}
                 propertyId={propertyId}
@@ -618,10 +787,31 @@ export function EngineeringSurveyWorkPanel({
                 specialist={task.assigneeName || def.assigneeSubtitle}
                 raisedByRole={failureRaiserRoleForParty(def)}
                 onSubmitted={onFailureSubmitted}
+                autoOpenRaise={failureRaiseOpen}
+              />
+              <SectionDivider />
+              <SectionHeader>سجل التعذرات</SectionHeader>
+              <EngineeringSurveyFailuresHistory
+                poNumber={task.poNumber}
+                propertyId={propertyId}
+                deedNumber={deedNumber}
               />
             </div>
           ) : null}
       </div>
-    </div>
+      </div>
+
+      <QuickActionsFab
+        placement="bottom-start"
+        deedNumber={deedNumber}
+        startSurveyDimmed={!transactionActive || Boolean(blockingFailure)}
+        workActionsDimmed={!transactionActive}
+        recallDimmed={transactionActive || !recallEligible}
+        onStartSurvey={handleStartSurvey}
+        onAddObstruction={handleAddObstruction}
+        onAddNote={handleAddNote}
+        onRequestRecall={handleRequestRecall}
+      />
+    </>
   );
 }

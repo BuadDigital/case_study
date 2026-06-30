@@ -30,8 +30,10 @@ import { formatDateAr, formatPoDisplay } from "@case-study/mfe";
 import { poPropertyPath } from "@case-study/mfe/lib/po-routes";
 import { suspendPropertyTransaction } from "@case-study/mfe/lib/prototype/suspend-property-transaction";
 import { usePoRecordsQuery } from "@case-study/mfe/query/case-study-queries";
-import { failuresForGovernmentReviewer } from "../lib/failures-government-reviewer-scope";
-import { failuresForEngineeringOffice } from "../lib/failures-engineering-office-scope";
+import {
+  failuresForPartyRole,
+  isPartyScopedFailuresRole,
+} from "../lib/failures-party-raiser-scope";
 import { approveFailure, resolveFailure, returnFailure, submitFailureForReview, upgradeFailureToInternal } from "../lib/failures-repository";
 import { failureRecordTitle, failureSeverityLabel, failureStatusLabel } from "../lib/failures-labels";
 import { countOpenFailures, isActiveFailureStatus, type FailureRecord } from "../lib/failures-types";
@@ -45,12 +47,33 @@ function isSupervisor(role: RoleId) {
   return isSuperAdmin(role) || role === "section-supervisor";
 }
 
-function isGovernmentReviewer(role: RoleId) {
-  return role === "government-reviewer";
+
+function partyScopedFailuresNote(role: RoleId): string | null {
+  switch (role) {
+    case "government-reviewer":
+      return "تعرض هنا تعذراتك التي رفعتها من المراجعة الحكومية فقط — للمتابعة والاطلاع.";
+    case "engineering-office":
+      return "تعرض هنا تعذراتك التي سجّلتها من الرفع المساحي فقط — للمتابعة والاطلاع.";
+    case "field-inspector":
+      return "تعرض هنا تعذراتك التي سجّلتها من المعاينة الميدانية فقط — للمتابعة والاطلاع.";
+    case "real-estate-appraiser":
+      return "تعرض هنا تعذراتك التي سجّلتها من تقييم العقار فقط — للمتابعة والاطلاع.";
+    default:
+      return null;
+  }
 }
 
-function isEngineeringOffice(role: RoleId) {
-  return role === "engineering-office";
+function partyScopedFailuresEmptyLine(role: RoleId): string | null {
+  switch (role) {
+    case "engineering-office":
+      return "لا توجد تعذرات — سجّل تعذراً من قائمة الرفع المساحي أو من تبويب التعذرات في المعاملة.";
+    case "field-inspector":
+      return "لا توجد تعذرات — سجّل تعذراً من قائمة المعاينة الميدانية أو من تبويب التعذرات في المعاملة.";
+    case "real-estate-appraiser":
+      return "لا توجد تعذرات — سجّل تعذراً من قائمة تقييم العقار أو من تبويب التعذرات في المعاملة.";
+    default:
+      return null;
+  }
 }
 
 type ResolveDraft = { reason: string; instructions: string };
@@ -67,8 +90,8 @@ export function FailuresView() {
   const ca = isSupervisor(role);
   const { data: items = [], isFetched, refetch } = useFailuresQuery();
   const visibleItems = useMemo(() => {
-    if (isGovernmentReviewer(role)) return failuresForGovernmentReviewer(items);
-    if (isEngineeringOffice(role)) return failuresForEngineeringOffice(items);
+    const scoped = failuresForPartyRole(role, items);
+    if (scoped) return scoped;
     return items;
   }, [items, role]);
   const { data: poRecords = [] } = usePoRecordsQuery();
@@ -220,11 +243,9 @@ export function FailuresView() {
                   ? "أنت في وضع الاطلاع — صلاحية التعديل للمشرف والأخصائي"
                   : role === "cdo"
                     ? "صلاحيات كاملة — يمكنك اعتماد التعذرات وإنشاؤها"
-                    : isGovernmentReviewer(role)
-                      ? "تعرض هنا تعذراتك التي رفعتها من المراجعة الحكومية فقط — للمتابعة والاطلاع."
-                      : isEngineeringOffice(role)
-                        ? "تعرض هنا تعذراتك التي سجّلتها من الرفع المساحي فقط — للمتابعة والاطلاع."
-                        : "أنت في وضع المراقبة — لا تملك صلاحية تعديل التعذرات"}
+                    : isPartyScopedFailuresRole(role)
+                      ? partyScopedFailuresNote(role)
+                      : "أنت في وضع المراقبة — لا تملك صلاحية تعديل التعذرات"}
               </Note>
             </PageToolbar>
           ) : null}
@@ -240,9 +261,8 @@ export function FailuresView() {
           {sortedItems.length === 0 ? (
             <EmptyState
               line={
-                isEngineeringOffice(role)
-                  ? "لا توجد تعذرات — سجّل تعذراً من قائمة الرفع المساحي أو من تبويب التعذرات في المعاملة."
-                  : "لا توجد تعذرات — سجّل تعذراً من شاشة العقارات."
+                partyScopedFailuresEmptyLine(role) ??
+                "لا توجد تعذرات — سجّل تعذراً من شاشة العقارات."
               }
             />
           ) : (
