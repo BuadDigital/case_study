@@ -902,6 +902,28 @@ function buildFromFieldInspection(
     true,
   );
   pushInspectionField(INFATH_FIELD_LABELS.wellCount, submission.wellCount, true);
+  pushInspectionField(INFATH_FIELD_LABELS.towerCount, submission.towerCount, true);
+  pushInspectionField(INFATH_FIELD_LABELS.builtArea, submission.builtArea, true);
+  pushInspectionField(
+    INFATH_FIELD_LABELS.buildingFloors,
+    submission.buildingFloors,
+    true,
+  );
+  pushInspectionField(
+    INFATH_FIELD_LABELS.basementTotal,
+    submission.basementTotal,
+    true,
+  );
+  pushInspectionField(INFATH_FIELD_LABELS.annexTotal, submission.annexTotal, true);
+  pushInspectionField(
+    INFATH_FIELD_LABELS.buildingsTotal,
+    submission.buildingsTotal,
+    true,
+  );
+  pushInspectionField(
+    INFATH_FIELD_LABELS.buildLicense,
+    submission.buildLicenseNumber,
+  );
   pushInspectionField(
     INFATH_FIELD_LABELS.services,
     submission.services.join("، "),

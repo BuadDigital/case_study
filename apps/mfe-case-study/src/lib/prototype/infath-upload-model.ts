@@ -97,6 +97,22 @@ function parseNumber(raw: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function firstNonEmpty(...values: (string | undefined | null)[]): string {
+  for (const value of values) {
+    const trimmed = value?.trim() ?? "";
+    if (trimmed) return trimmed;
+  }
+  return "";
+}
+
+function surveyOrPropertyField(
+  survey: PropertyDetailPartySubmission | null | undefined,
+  propertyValue: string | undefined,
+  label: string,
+): string {
+  return firstNonEmpty(partyField(survey, label), propertyValue);
+}
+
 function formatMoney(n: number): string {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
 }
@@ -218,6 +234,7 @@ export function buildInfathUploadModel(input: {
   const appraisal = parties?.appraisal ?? null;
   const government = parties?.government ?? null;
   const specialist = parties?.specialist ?? null;
+  const coordinator = parties?.coordinator ?? null;
 
   const deed = property.deedNumber.trim() || "—";
   const reportNumber = `INF-${record.poNumber.trim()}-${deed}`;
@@ -233,7 +250,20 @@ export function buildInfathUploadModel(input: {
   const appraisalPrice = partyField(appraisal, "سعر التقييم");
   const landValue = partyField(appraisal, L.landValue);
   const buildingValue = partyField(appraisal, L.buildingValue);
+  const valuationMethod = partyField(appraisal, L.valuationMethod);
+  const valueBasis = partyField(appraisal, L.valueBasis);
   const forcedDiscountRaw = partyField(appraisal, L.forcedDiscount);
+  const reportIssueDate = partyField(appraisal, L.reportIssueDate);
+  const buildLicense = firstNonEmpty(
+    property.buildLicenseNumber,
+    partyField(inspection, L.buildLicense),
+  );
+  const zoneStatus = firstNonEmpty(
+    partyField(government, L.zoneStatus),
+    partyField(inspection, L.zoneStatus),
+  );
+  const linkedAssetsAnswer = partyField(specialist, L.linkedAssets);
+  const workerName = partyField(coordinator, "المقيم العقاري");
   const appraisalNotes = partyRemark(appraisal, "ملاحظات المقيّم");
   const keysStatus = partyField(government, "حالة المفاتيح");
   const keysReceived =
@@ -247,13 +277,15 @@ export function buildInfathUploadModel(input: {
     ? `${property.area.trim()} م²`
     : partyField(inspection, "المساحة الفعلية");
 
-  const forcedDiscountPct = parseNumber(forcedDiscountRaw.replace("%", "")) ?? 10;
+  const forcedDiscountPct = forcedDiscountRaw.trim()
+    ? parseNumber(forcedDiscountRaw.replace("%", ""))
+    : null;
   const totalValue =
     parseNumber(landValue) != null && parseNumber(buildingValue) != null
       ? (parseNumber(landValue) ?? 0) + (parseNumber(buildingValue) ?? 0)
       : parseNumber(appraisalPrice);
   const forcedSale =
-    totalValue != null
+    totalValue != null && forcedDiscountPct != null
       ? formatMoney(Math.round(totalValue * (1 - forcedDiscountPct / 100)))
       : "";
 
@@ -281,10 +313,16 @@ export function buildInfathUploadModel(input: {
           visitDateForReport ? "" : "un",
         ),
         txt("appraisal-date", L.appraisalDate, appraisalDate, "EV"),
-        sel("method", L.valuationMethod, partyField(appraisal, L.valuationMethod) || "طريقة البيوع المقارنة", "EV"),
+        sel(
+          "method",
+          L.valuationMethod,
+          valuationMethod,
+          "EV",
+          valuationMethod ? "" : "ms",
+        ),
         txt("appraiser-title", L.appraiserAddress, partyField(appraisal, L.appraiserAddress), "SY", "text", partyField(appraisal, L.appraiserAddress) ? "" : "un"),
         txt("appraiser-phone", L.appraiserPhone, partyField(appraisal, L.appraiserPhone), "SY", "text", partyField(appraisal, L.appraiserPhone) ? "" : "un"),
-        txt("issue-date", L.reportIssueDate, partyField(appraisal, L.reportIssueDate) || appraisalDate, "EV"),
+        txt("issue-date", L.reportIssueDate, reportIssueDate, "EV", "text", reportIssueDate ? "" : "ms"),
       ],
       areas: [],
     },
@@ -294,7 +332,13 @@ export function buildInfathUploadModel(input: {
       title: "نطاق العمل",
       fields: [
         auto("report-no", "رقم التقرير", reportNumber),
-        sel("value-basis", "أساس القيمة", "القيمة السوقية", "EV"),
+        sel(
+          "value-basis",
+          L.valueBasis,
+          valueBasis,
+          "EV",
+          valueBasis ? "" : "ms",
+        ),
       ],
       areas: [],
     },
@@ -309,8 +353,8 @@ export function buildInfathUploadModel(input: {
           partyField(inspection, L.assetSubject) || partyField(inspection, "نوع العقار") || property.classification,
           "MA",
         ),
-        sel("facade", L.facade, partyField(inspection, L.facade), "MA", "un"),
-        txt("build-license", L.buildLicense, property.buildLicenseNumber?.trim() ?? "", "BR", "text", property.buildLicenseNumber?.trim() ? "" : "ms"),
+        sel("facade", L.facade, partyField(inspection, L.facade), "MA", partyField(inspection, L.facade) ? "" : "un"),
+        txt("build-license", L.buildLicense, buildLicense, "BR", "text", buildLicense ? "" : "ms"),
         txt("street-width", L.streetWidth, partyField(inspection, L.streetWidth), "MA", "text", partyField(inspection, L.streetWidth) ? "" : "ms"),
         txt("built-area", L.builtArea, partyField(inspection, L.builtArea), "MA", "text", partyField(inspection, L.builtArea) ? "" : "ms"),
         txt("subdivision", L.subdivisionRecord, property.subdivisionRecordNumber?.trim() ?? "", "BR", "text", property.subdivisionRecordNumber?.trim() ? "" : "ms"),
@@ -324,8 +368,9 @@ export function buildInfathUploadModel(input: {
         sel(
           "zone-status",
           L.zoneStatus,
-          partyField(government, L.zoneStatus) || (property.deedStatus ? "غير موقوفة" : ""),
+          zoneStatus,
           "GR",
+          zoneStatus ? "" : "ms",
         ),
         txt("main-street", L.mainStreet, partyField(inspection, L.mainStreet), "MA"),
         txt("map", L.mapCoords, coords, "MA", "text", coords ? "" : "ms"),
@@ -335,13 +380,43 @@ export function buildInfathUploadModel(input: {
         txt("baths", L.bathroomCount, partyField(inspection, L.bathroomCount), "MA"),
         txt("age", L.propertyAge, partyField(inspection, L.propertyAge), "MA"),
         txt("showrooms", L.showroomCount, partyField(inspection, L.showroomCount), "MA"),
-        txt("towers", L.towerCount, partyField(inspection, L.towerCount), "MA"),
+        txt("towers", L.towerCount, partyField(inspection, L.towerCount), "MA", "text", partyField(inspection, L.towerCount) ? "" : "ms"),
         txt("wells", L.wellCount, partyField(inspection, L.wellCount), "MA"),
-        sel("kitchen", "مطبخ", "", "MA"),
-        sel("car-entrance", "مدخل السيارة", "", "MA"),
-        sel("basement", "يوجد قبو", "", "MA"),
-        sel("elevator", "يوجد مصعد", "", "MA"),
-        sel("pool", "يوجد مسبح", "", "MA"),
+        sel(
+          "kitchen",
+          L.kitchen,
+          partyField(inspection, L.kitchen),
+          "MA",
+          partyField(inspection, L.kitchen) ? "" : "ms",
+        ),
+        sel(
+          "car-entrance",
+          L.carEntrance,
+          partyField(inspection, L.carEntrance),
+          "MA",
+          partyField(inspection, L.carEntrance) ? "" : "ms",
+        ),
+        sel(
+          "basement",
+          L.hasBasement,
+          partyField(inspection, L.hasBasement),
+          "MA",
+          partyField(inspection, L.hasBasement) ? "" : "ms",
+        ),
+        sel(
+          "elevator",
+          L.hasElevator,
+          partyField(inspection, L.hasElevator),
+          "MA",
+          partyField(inspection, L.hasElevator) ? "" : "ms",
+        ),
+        sel(
+          "pool",
+          L.hasPool,
+          partyField(inspection, L.hasPool),
+          "MA",
+          partyField(inspection, L.hasPool) ? "" : "ms",
+        ),
         sel(
           "build-state",
           L.buildState,
@@ -384,14 +459,54 @@ export function buildInfathUploadModel(input: {
       title: "الحدود والأطوال للأصل",
       fields: [
         txt("land-area", "مساحة الأرض", landArea, "BR"),
-        txt("north", L.northBoundary, partyField(survey, L.northBoundary), "EN"),
-        txt("north-len", L.northLength, partyField(survey, L.northLength), "EN"),
-        txt("south", L.southBoundary, partyField(survey, L.southBoundary), "EN"),
-        txt("south-len", L.southLength, partyField(survey, L.southLength), "EN"),
-        txt("east", L.eastBoundary, partyField(survey, L.eastBoundary), "EN"),
-        txt("east-len", L.eastLength, partyField(survey, L.eastLength), "EN"),
-        txt("west", L.westBoundary, partyField(survey, L.westBoundary), "EN"),
-        txt("west-len", L.westLength, partyField(survey, L.westLength), "EN"),
+        txt(
+          "north",
+          L.northBoundary,
+          surveyOrPropertyField(survey, property.northBoundary, L.northBoundary),
+          "EN",
+        ),
+        txt(
+          "north-len",
+          L.northLength,
+          surveyOrPropertyField(survey, property.northBoundaryLengthM, L.northLength),
+          "EN",
+        ),
+        txt(
+          "south",
+          L.southBoundary,
+          surveyOrPropertyField(survey, property.southBoundary, L.southBoundary),
+          "EN",
+        ),
+        txt(
+          "south-len",
+          L.southLength,
+          surveyOrPropertyField(survey, property.southBoundaryLengthM, L.southLength),
+          "EN",
+        ),
+        txt(
+          "east",
+          L.eastBoundary,
+          surveyOrPropertyField(survey, property.eastBoundary, L.eastBoundary),
+          "EN",
+        ),
+        txt(
+          "east-len",
+          L.eastLength,
+          surveyOrPropertyField(survey, property.eastBoundaryLengthM, L.eastLength),
+          "EN",
+        ),
+        txt(
+          "west",
+          L.westBoundary,
+          surveyOrPropertyField(survey, property.westBoundary, L.westBoundary),
+          "EN",
+        ),
+        txt(
+          "west-len",
+          L.westLength,
+          surveyOrPropertyField(survey, property.westBoundaryLengthM, L.westLength),
+          "EN",
+        ),
         txt("floors", L.buildingFloors, partyField(inspection, L.buildingFloors), "MA", "text", partyField(inspection, L.buildingFloors) ? "" : "un"),
         txt("basement-total", L.basementTotal, partyField(inspection, L.basementTotal), "MA", "text", partyField(inspection, L.basementTotal) ? "" : "un"),
         txt("annex-total", L.annexTotal, partyField(inspection, L.annexTotal), "MA", "text", partyField(inspection, L.annexTotal) ? "" : "un"),
@@ -404,7 +519,13 @@ export function buildInfathUploadModel(input: {
       num: "٥",
       title: "الأصول المرتبطة",
       fields: [
-        sel("linked-q", L.linkedAssets, partyField(specialist, L.linkedAssets) || "لا", "SP"),
+        sel(
+          "linked-q",
+          L.linkedAssets,
+          linkedAssetsAnswer,
+          "SP",
+          linkedAssetsAnswer ? "" : "ms",
+        ),
         txt("linked-deeds", L.linkedDeedNumbers, partyField(specialist, L.linkedDeedNumbers), "SY", "auto"),
       ],
       areas: [
@@ -416,14 +537,21 @@ export function buildInfathUploadModel(input: {
       num: "٦",
       title: "تقدير القيمة",
       fields: [
-        txt("land-value", L.landValue, landValue || appraisalPrice, "EV"),
-        txt("build-value", L.buildingValue, buildingValue || "0", "EV"),
+        txt("land-value", L.landValue, landValue, "EV", "text", landValue ? "" : "ms"),
+        txt("build-value", L.buildingValue, buildingValue, "EV", "text", buildingValue ? "" : "ms"),
         auto(
           "total-value",
           L.totalValue,
-          totalValue != null ? formatMoney(totalValue) : appraisalPrice,
+          totalValue != null ? formatMoney(totalValue) : "",
         ),
-        txt("forced-pct", L.forcedDiscount, forcedDiscountRaw || `${forcedDiscountPct}%`, "EV"),
+        txt(
+          "forced-pct",
+          L.forcedDiscount,
+          forcedDiscountRaw,
+          "EV",
+          "text",
+          forcedDiscountRaw ? "" : "ms",
+        ),
         auto("forced-value", L.forcedSaleValue, forcedSale),
       ],
       areas: [],
@@ -452,7 +580,7 @@ export function buildInfathUploadModel(input: {
       title: "بيانات العاملين على التقرير",
       badge: "تعبئة تلقائية غير محسومة",
       fields: [
-        txt("worker-name", "الاسم", record.assignmentSpecialist.trim(), "UN", "text", "un"),
+        txt("worker-name", "الاسم", workerName, "UN", "text", workerName ? "" : "ms"),
         txt("worker-license", "رقم الترخيص", "", "SY", "text", "un"),
         txt("worker-license-date", "تاريخ الترخيص", "", "SY", "text", "un"),
         file("worker-license-file", "مرفق الترخيص", "", "SY"),

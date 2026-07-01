@@ -141,7 +141,6 @@ export function FailureRaisePanel({
         setOpen(false);
         setProblemTypeId("");
         setNote("");
-        showToast("تم تسجيل التعذر !", "success");
         onSubmitted?.();
       } catch {
         showToast("تعذر حفظ التعذر — تحقق من الاتصال وحاول مرة أخرى.", "error");

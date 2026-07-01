@@ -1119,6 +1119,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               )}
               onClick={handleLogout}
               aria-label="تسجيل الخروج"
+              data-no-action-toast
             >
               <TopbarSvgIcon>
                 <LogoutIcon />
@@ -1130,6 +1131,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               size="sm"
               className="max-lg:hidden"
               onClick={handleLogout}
+              showActionToast={false}
             >
               تسجيل الخروج
             </Button>

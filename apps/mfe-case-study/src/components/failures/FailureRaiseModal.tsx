@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppModal } from "@case-study/mfe/components/ui/AppModal";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { Button, useToast } from "@platform/design-system";
+import { Button } from "@platform/design-system";
 import {
   FailureRaiseFields,
   createFailure,
@@ -32,7 +32,6 @@ export function FailureRaiseModal({
   onSubmitted?: () => void;
 }) {
   const queryClient = useQueryClient();
-  const { showToast } = useToast();
   const [severity, setSeverity] = useState<FailureSeverity>("internal");
   const [problemTypeId, setProblemTypeId] = useState("");
   const [note, setNote] = useState("");
@@ -68,7 +67,6 @@ export function FailureRaiseModal({
       });
       await queryClient.invalidateQueries({ queryKey: prototypeKeys.failures() });
       await queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
-      showToast("تم تسجيل التعذر.", "success");
       onSubmitted?.();
       onClose();
     } finally {
@@ -97,6 +95,7 @@ export function FailureRaiseModal({
             loading={saving}
             disabled={saving || !problemTypeId.trim()}
             className="min-w-[9.5rem]"
+            showActionToast={false}
             onClick={() => void handleSubmit()}
           >
             تسجيل التعذر

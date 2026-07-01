@@ -7,7 +7,7 @@ import { setAuthSession, type AuthSession, getValidAuthSession } from "@platform
 import { PROTOTYPE_LOGIN_USERS, sortLoginUsersForPicker } from "@platform/app-shared/prototype/prototype-users";
 import { defaultLandingPath } from "@platform/app-shared/prototype/page-access";
 import { pagesFromPermissions } from "@platform/app-shared/prototype/permissions-pages";
-import { Button, Card, Label, Select } from "@platform/design-system";
+import { Button, Card, Label, Select, useToast } from "@platform/design-system";
 
 type LoginResponse = {
   token: string;
@@ -35,6 +35,7 @@ async function resolvePostLoginPath(token: string): Promise<string> {
 
 export default function LoginPage() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [loginUsers, setLoginUsers] = useState<LoginUserOption[]>([]);
   const [username, setUsername] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -125,6 +126,8 @@ export default function LoginPage() {
         user: data.user,
         expiresAtUtc: data.expiresAtUtc,
       } satisfies AuthSession);
+
+      showToast("تم تسجيل الدخول !", "success");
 
       const landingPath = await resolvePostLoginPath(data.token);
       router.replace(landingPath);
@@ -218,6 +221,8 @@ export default function LoginPage() {
             loading={loading}
             disabled={loading || loginUsers.length === 0}
             className="mt-1 w-full"
+            showActionToast={false}
+            actionLabel="دخول"
           >
             دخول
           </Button>

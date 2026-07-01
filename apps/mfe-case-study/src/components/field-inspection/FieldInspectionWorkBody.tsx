@@ -585,6 +585,7 @@ export function FieldInspectionWorkBody({
                     photoLabel: "إرفاق صورة البئر",
                   },
                 ],
+                ["towerCount", "عدد الأبراج", null],
                 ["propertyAgeYears", "عمر العقار (سنوات)", null],
                 ["buildLicenseNumber", "رقم رخصة البناء", null],
               ] as const
@@ -730,6 +731,33 @@ export function FieldInspectionWorkBody({
               {fieldErrors.componentPhotos}
             </p>
           ) : null}
+        </InspectorCard>
+
+        <InspectorCard
+          title="مساحات المباني"
+          icon="ti-ruler-measure"
+          badge={<Badge tone="danger">إدخال ميداني</Badge>}
+        >
+          <FormRow className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            {(
+              [
+                ["builtArea", "مساحة البناء (م²)"],
+                ["buildingFloors", "عدد أدوار المباني"],
+                ["basementTotal", "إجمالي مساحة القبو (م²)"],
+                ["annexTotal", "إجمالي مساحة اللاحق (م²)"],
+                ["buildingsTotal", "إجمالي مساحة المباني (م²)"],
+              ] as const
+            ).map(([key, label]) => (
+              <RegField
+                key={key}
+                id={`ins-${key}`}
+                label={label}
+                type="number"
+                value={draft[key]}
+                onChange={(v) => persist({ [key]: v })}
+              />
+            ))}
+          </FormRow>
         </InspectorCard>
 
         {!boundariesUnavailable && property ? (
@@ -1061,6 +1089,7 @@ export function FieldInspectionWorkBody({
           saving={submitting}
           locked={locked}
           onRegisterFailure={onRegisterFailure}
+          onSaveDraft={() => void saveDraft()}
           onSubmit={() => void hostRef.current?.submit?.()}
         />
       </fieldset>

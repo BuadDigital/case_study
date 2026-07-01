@@ -56,6 +56,57 @@ export type EngineeringSurveySubmission = {
   submittedAtUtc?: string;
 };
 
+export function emptyChecklistRows(): EngineeringSurveyChecklistRow[] {
+  return ENGINEERING_SURVEY_CHECKLIST_ITEMS.map(() => ({
+    answer: null,
+    note: "",
+  }));
+}
+
+function parseChecklistRow(raw: unknown): EngineeringSurveyChecklistRow {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return { answer: null, note: "" };
+  }
+  const row = raw as Record<string, unknown>;
+  const ans = row.answer;
+  const answer: ChecklistAnswer =
+    ans === "yes" || ans === true
+      ? "yes"
+      : ans === "no" || ans === false
+        ? "no"
+        : null;
+  return {
+    answer,
+    note: typeof row.note === "string" ? row.note : "",
+  };
+}
+
+/** API / legacy payloads may store checklist as a non-array object. */
+export function normalizeEngineeringSurveyChecklist(
+  raw: unknown,
+): EngineeringSurveyChecklistRow[] {
+  const defaults = emptyChecklistRows();
+
+  if (Array.isArray(raw)) {
+    return ENGINEERING_SURVEY_CHECKLIST_ITEMS.map((_, index) =>
+      parseChecklistRow(raw[index]),
+    );
+  }
+
+  if (raw && typeof raw === "object") {
+    const obj = raw as Record<string, unknown>;
+    const numericKeys = Object.keys(obj).filter((k) => /^\d+$/.test(k));
+    if (numericKeys.length > 0) {
+      const sorted = numericKeys.sort((a, b) => Number(a) - Number(b));
+      return normalizeEngineeringSurveyChecklist(
+        sorted.map((key) => obj[key]),
+      );
+    }
+  }
+
+  return defaults;
+}
+
 export function createEngineeringSurveyDraft(input: {
   taskId: string;
   propertyId: string;
@@ -71,10 +122,7 @@ export function createEngineeringSurveyDraft(input: {
     surveyReportFileName: "",
     siteLetterFileName: "",
     siteConfirmed: false,
-    checklist: ENGINEERING_SURVEY_CHECKLIST_ITEMS.map(() => ({
-      answer: null,
-      note: "",
-    })),
+    checklist: emptyChecklistRows(),
     onSiteAreaSqm: "",
     northBoundary: "",
     northBoundaryLengthM: "",

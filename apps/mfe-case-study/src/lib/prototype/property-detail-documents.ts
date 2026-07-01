@@ -99,7 +99,7 @@ export function collectIntakeDocuments(input: {
       id: "intake-boundaries",
       name: "مستند الحدود",
       fileName: property.boundariesExternalDocName.trim(),
-      source: "استعلام البورصة",
+      source,
       kind: fileKind(property.boundariesExternalDocName),
     });
   }
@@ -276,7 +276,6 @@ export const PROPERTY_DETAIL_DOCUMENT_SECTIONS: {
   title: string;
 }[] = [
   { id: "intake", title: "البيانات الأولية" },
-  { id: "bourse", title: "استعلام البورصة" },
   { id: "engineering", title: "المكتب الهندسي" },
   { id: "appraisal", title: "المقيّم العقاري" },
   { id: "inspection", title: "المعاين الميداني" },
@@ -288,7 +287,6 @@ const SECTION_TITLE_BY_ID = Object.fromEntries(
 
 function sectionIdForSource(source: string): string {
   if (source === "البيانات الأولية") return "intake";
-  if (source === "استعلام البورصة") return "bourse";
   if (source === "المكتب الهندسي") return "engineering";
   if (source === "المقيّم العقاري") return "appraisal";
   if (source === "المعاين الميداني") return "inspection";

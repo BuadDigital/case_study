@@ -10,6 +10,11 @@ import {
   openEvaluatorReportPreview,
 } from "../../lib/evaluator/evaluator-report-attachments";
 import {
+  cacheEvaluatorPlanImage,
+  getCachedEvaluatorPlanImage,
+  openEvaluatorPlanImagePreview,
+} from "../../lib/evaluator/evaluator-plan-attachments";
+import {
   createEvaluatorDraft,
   evaluatorStatusLabel,
   formatEvaluatorPriceDisplay,
@@ -18,6 +23,7 @@ import {
   hydrateEvaluatorSubmission,
   isEvaluatorFormLocked,
   updateEvaluatorDraft,
+  type EvaluatorPlanImageMetadata,
   type EvaluatorReportMetadata,
 } from "../../lib/evaluator/evaluator-submission-storage";
 import type { EvaluatorSubmission } from "../../lib/evaluator/evaluator-window-data";
@@ -44,6 +50,7 @@ export function EvaluatorWindow({
   );
   const { showToast, runWithUploadToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const planFileInputRef = useRef<HTMLInputElement>(null);
 
   const [draft, setDraft] = useState<EvaluatorSubmission>(() =>
     createEvaluatorDraft({
@@ -58,11 +65,17 @@ export function EvaluatorWindow({
     return cached?.fileName ?? null;
   });
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [planUploadError, setPlanUploadError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<EvaluatorValidationErrors>(
     {},
   );
   const [uploading, setUploading] = useState(false);
+  const [planUploading, setPlanUploading] = useState(false);
+  const [planName, setPlanName] = useState<string | null>(() => {
+    const cached = getCachedEvaluatorPlanImage(task.id);
+    return cached?.fileName ?? null;
+  });
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -70,6 +83,11 @@ export function EvaluatorWindow({
   const formDisabled = locked || !gate.ready;
   const hasReport = Boolean(
     reportName || getCachedEvaluatorReport(task.id)?.dataUrl,
+  );
+  const hasPlan = Boolean(
+    planName ||
+      draft.planImageFileName ||
+      getCachedEvaluatorPlanImage(task.id)?.dataUrl,
   );
 
   const persistDraft = useCallback(
@@ -92,9 +110,11 @@ export function EvaluatorWindow({
         reportIssueDate: string;
       }>,
       reportMetadata?: EvaluatorReportMetadata,
+      planImageMetadata?: EvaluatorPlanImageMetadata,
     ) => {
       if (locked) return;
-      void updateEvaluatorDraft(task.id, patch, reportMetadata).then((updated) => {
+      void updateEvaluatorDraft(task.id, patch, reportMetadata, planImageMetadata).then(
+        (updated) => {
         if (updated) setDraft(updated);
       });
     },
@@ -120,6 +140,9 @@ export function EvaluatorWindow({
         setDraft(loaded);
         if (loaded.reportFileName) {
           setReportName(loaded.reportFileName);
+        }
+        if (loaded.planImageFileName) {
+          setPlanName(loaded.planImageFileName);
         }
         setDraftLoading(false);
       }
@@ -205,6 +228,35 @@ export function EvaluatorWindow({
         return true;
       } finally {
         setUploading(false);
+      }
+    });
+  }
+
+  async function onPlanSelected(file: File | null) {
+    if (!file || formDisabled) return;
+    setPlanUploadError(null);
+    await runWithUploadToast(async () => {
+      setPlanUploading(true);
+      try {
+        const result = await cacheEvaluatorPlanImage(task.id, file);
+        if (!result.ok) {
+          setPlanUploadError(result.error);
+          showToast(result.error, "error");
+          return false;
+        }
+        setPlanName(file.name);
+        persistDraft(
+          { planImageFileName: file.name },
+          undefined,
+          {
+            fileName: file.name,
+            mimeType: file.type || "application/octet-stream",
+            sizeBytes: file.size,
+          },
+        );
+        return true;
+      } finally {
+        setPlanUploading(false);
       }
     });
   }
@@ -586,20 +638,75 @@ export function EvaluatorWindow({
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="inf-plan" className="text-xs font-semibold text-text-2">
-                صورة الأصل من المخطط (اسم الملف)
-              </Label>
-              <Input
-                id="inf-plan"
-                className="text-xs"
-                disabled={formDisabled}
-                value={draft.planImageFileName ?? ""}
-                onChange={(e) => {
-                  const planImageFileName = e.target.value || null;
-                  setDraft((prev) => ({ ...prev, planImageFileName }));
-                  scheduleAutosave({ planImageFileName });
-                }}
-              />
+              <span className="text-xs font-semibold text-text-2">
+                صورة الأصل من المخطط
+              </span>
+              <div
+                className={cn(
+                  "file-zone flex flex-wrap items-center gap-3 rounded-xl border-[1.5px] border-dashed border-border-md bg-surface-2 p-3.5 transition-colors",
+                  hasPlan && "border-solid border-[#86EFAC] bg-[#F0FDF4]",
+                  formDisabled && "cursor-not-allowed opacity-65",
+                  !formDisabled && !hasPlan && "hover:border-primary hover:bg-[#F8FAFF]",
+                )}
+              >
+                <input
+                  ref={planFileInputRef}
+                  type="file"
+                  accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
+                  disabled={formDisabled || planUploading}
+                  className="pointer-events-none absolute size-0 opacity-0"
+                  onChange={(e) => void onPlanSelected(e.target.files?.[0] ?? null)}
+                />
+                <div
+                  className={cn(
+                    "flex size-11 shrink-0 items-center justify-center rounded-[10px] border border-border bg-surface text-[10px] font-extrabold text-primary",
+                    hasPlan && "border-success bg-success text-white",
+                  )}
+                  aria-hidden
+                >
+                  {hasPlan ? "✓" : "PDF"}
+                </div>
+                <div className="flex min-w-[140px] flex-1 flex-col gap-0.5 text-[11px] leading-snug text-text-3">
+                  {hasPlan ? (
+                    <strong className="break-all text-[13px] text-text">
+                      {planName ?? draft.planImageFileName ?? "تم رفع الملف"}
+                    </strong>
+                  ) : (
+                    <>
+                      <strong className="text-[13px] text-text">اختر ملف المخطط</strong>
+                      <span>PDF أو صورة · حتى 20 MB</span>
+                    </>
+                  )}
+                </div>
+                <div className="ms-auto flex flex-wrap gap-2">
+                  {!formDisabled ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="primary"
+                      loading={planUploading}
+                      disabled={planUploading}
+                      showActionToast={false}
+                      onClick={() => planFileInputRef.current?.click()}
+                    >
+                      {hasPlan ? "تغيير الملف" : "رفع الملف"}
+                    </Button>
+                  ) : null}
+                  {getCachedEvaluatorPlanImage(task.id)?.dataUrl ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openEvaluatorPlanImagePreview(task.id)}
+                    >
+                      معاينة
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+              {planUploadError ? (
+                <span className="text-[11px] text-danger-text">{planUploadError}</span>
+              ) : null}
             </div>
             </div>
           </div>

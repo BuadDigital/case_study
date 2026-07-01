@@ -8,6 +8,7 @@ export function InspectorSubmitFooter({
   locked,
   failureRaiseId = "inspector-failure-raise",
   onRegisterFailure,
+  onSaveDraft,
   onSubmit,
 }: {
   disabled?: boolean;
@@ -15,6 +16,7 @@ export function InspectorSubmitFooter({
   locked?: boolean;
   failureRaiseId?: string;
   onRegisterFailure?: () => void;
+  onSaveDraft?: () => void;
   onSubmit?: () => void;
 }) {
   if (locked) return null;
@@ -44,15 +46,31 @@ export function InspectorSubmitFooter({
           size="sm"
           className="border-orange text-orange hover:bg-orange-bg"
           disabled={disabled}
+          showActionToast={false}
           onClick={openFailureRaise}
         >
           <i className="ti ti-alert-triangle" aria-hidden /> تسجيل تعذر
         </Button>
+        {onSaveDraft ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={disabled || saving}
+            showActionToast={false}
+            actionLabel="حفظ مسودة المعاينة"
+            onClick={() => void onSaveDraft()}
+          >
+            حفظ مسودة المعاينة
+          </Button>
+        ) : null}
         <Button
           type="button"
           variant="primary"
           size="sm"
           disabled={disabled || saving}
+          showActionToast={false}
+          actionLabel="حفظ وإرسال المعاينة"
           onClick={() => void onSubmit?.()}
         >
           <i className="ti ti-send" aria-hidden />{" "}

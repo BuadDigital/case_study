@@ -101,17 +101,15 @@ function watchActionElement(
 
 const SYNC_ACTION_DISMISS_MS = 50;
 
+/** Dismiss orphaned progress toasts when the button never entered a busy state. */
 function scheduleSyncActionDismiss(
   element: HTMLElement,
   dismissToast: (id: string) => void,
-  showSuccessToast?: (message: string) => void,
 ) {
   window.setTimeout(() => {
     const entry = activeToasts.get(element);
     if (!entry || entry.sawBusy) return;
-    dismissFor(element, dismissToast, showSuccessToast, {
-      forceSuccess: true,
-    });
+    dismissFor(element, dismissToast);
   }, SYNC_ACTION_DISMISS_MS);
 }
 
@@ -135,7 +133,7 @@ export function bindGlobalActionToast(
     dismissFor(element, dismissToast, showSuccessToast);
     const toastId = showProgressToast(progressMessageForActionLabel(label));
     watchActionElement(element, toastId, label, dismissToast, showSuccessToast);
-    scheduleSyncActionDismiss(element, dismissToast, showSuccessToast);
+    scheduleSyncActionDismiss(element, dismissToast);
   }
 
   document.addEventListener("pointerdown", onPointerDown, true);

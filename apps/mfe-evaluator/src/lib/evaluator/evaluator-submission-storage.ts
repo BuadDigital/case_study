@@ -28,6 +28,13 @@ export type EvaluatorReportMetadata = {
   attachmentId?: string;
 };
 
+export type EvaluatorPlanImageMetadata = {
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  attachmentId?: string;
+};
+
 function notifyEvaluatorSubmissionChanged(): void {
   dispatchPartySubmissionChanged(EVALUATOR_SUBMISSION_CHANGED_EVENT);
 }
@@ -51,9 +58,11 @@ function dtoToSubmission(
 function submissionPayload(
   submission: EvaluatorSubmission,
   reportMetadata?: EvaluatorReportMetadata | null,
+  planImageMetadata?: EvaluatorPlanImageMetadata | null,
 ): Record<string, unknown> {
   const payload: Record<string, unknown> = { ...submission };
   if (reportMetadata) payload.reportMetadata = reportMetadata;
+  if (planImageMetadata) payload.planImageMetadata = planImageMetadata;
   return payload;
 }
 
@@ -116,11 +125,13 @@ export async function syncEvaluatorChecklistFromPartyCaseStudy(
 export async function saveEvaluatorSubmission(
   submission: EvaluatorSubmission,
   reportMetadata?: EvaluatorReportMetadata | null,
+  planImageMetadata?: EvaluatorPlanImageMetadata | null,
 ): Promise<EvaluatorSubmission | null> {
   if (!submission.taskId) return null;
   const payload = submissionPayload(
     { ...submission, updatedAtUtc: new Date().toISOString() },
     reportMetadata,
+    planImageMetadata,
   );
   const dto = await persistPartySubmissionPayload(submission.taskId, payload);
   if (!dto) return null;
@@ -135,15 +146,18 @@ export async function getOrCreateEvaluatorDraft(input: {
   return hydrateEvaluatorSubmission(input);
 }
 
+type EvaluatorDraftPatch = Partial<
+  Omit<
+    EvaluatorSubmission,
+    "taskId" | "propertyId" | "poNumber" | "status" | "submittedAtUtc" | "updatedAtUtc"
+  >
+>;
+
 export async function updateEvaluatorDraft(
   taskId: string,
-  patch: Partial<
-    Pick<
-      EvaluatorSubmission,
-      "evaluatorPrice" | "evaluatorNotes" | "checklist" | "reportFileName"
-    >
-  >,
+  patch: EvaluatorDraftPatch,
   reportMetadata?: EvaluatorReportMetadata | null,
+  planImageMetadata?: EvaluatorPlanImageMetadata | null,
 ): Promise<EvaluatorSubmission | null> {
   const current = loadEvaluatorSubmission(taskId);
   if (!current) return null;
@@ -160,7 +174,7 @@ export async function updateEvaluatorDraft(
       current.status === "reopened" ? "reopened" : ("draft" as const),
     updatedAtUtc: new Date().toISOString(),
   };
-  return saveEvaluatorSubmission(next, reportMetadata);
+  return saveEvaluatorSubmission(next, reportMetadata, planImageMetadata);
 }
 
 export async function submitEvaluatorSubmission(

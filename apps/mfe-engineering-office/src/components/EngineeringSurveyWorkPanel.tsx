@@ -757,7 +757,7 @@ export function EngineeringSurveyWorkPanel({
               />
               {notesEditable ? (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Button type="button" size="sm" onClick={saveNote}>
+                  <Button type="button" size="sm" showActionToast={false} onClick={saveNote}>
                     حفظ الملاحظة
                   </Button>
                 </div>

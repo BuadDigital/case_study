@@ -1,4 +1,5 @@
 import type { EngineeringSurveySubmission } from "./engineering-survey-data";
+import { normalizeEngineeringSurveyChecklist } from "./engineering-survey-data";
 
 export type EngineeringSurveyFieldErrors = Partial<
   Record<
@@ -36,7 +37,8 @@ export function validateEngineeringSurveySubmission(
     errors.site_confirmed = "يجب الإقرار بصحة البيانات المساحية";
   }
 
-  const unanswered = submission.checklist.some((row) => row.answer === null);
+  const checklist = normalizeEngineeringSurveyChecklist(submission.checklist);
+  const unanswered = checklist.some((row) => row.answer === null);
   if (unanswered) {
     errors.checklist = "أكمل جميع بنود نموذج التحقق الميداني (13 بنداً)";
   }
