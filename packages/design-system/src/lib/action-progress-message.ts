@@ -15,6 +15,7 @@ const EXACT_MESSAGES: Record<string, string> = {
   "إرسال للمشرف — إدارة التعذرات": "جاري إرسال التعذر للمشرف…",
   "حفظ والانتقال للتوزيع": "جاري الحفظ والانتقال للتوزيع…",
   "حفظ مسودة": "جاري حفظ المسودة…",
+  "حفظ مسودة المعاينة": "جاري حفظ مسودة المعاينة…",
   "حفظ إجاباتي": "جاري حفظ الإجابات…",
   "حفظ الحقل": "جاري حفظ الحقل…",
   "حفظ الإسناد": "جاري حفظ الإسناد…",
@@ -22,6 +23,9 @@ const EXACT_MESSAGES: Record<string, string> = {
   "رفع النموذج للنظام": "جاري رفع نموذج الدراسة…",
   "رفع التقرير": "جاري رفع التقرير…",
   "دخول": "جاري تسجيل الدخول…",
+  "تسجيل الدخول": "جاري تسجيل الدخول…",
+  "تسجيل الاستلام": "جاري تسجيل الاستلام…",
+  "حفظ الملاحظة": "جاري حفظ الملاحظة…",
   "إرفاق صورة": "جاري إرفاق الصورة…",
   "حفظ تعذر داخلي": "جاري تسجيل التعذر…",
   "تسجيل احتمال تعذر": "جاري تسجيل التعذر…",
@@ -57,6 +61,7 @@ const SUCCESS_EXACT_MESSAGES: Record<string, string> = {
   "إرسال للمشرف — إدارة التعذرات": "تم إرسال التعذر للمشرف !",
   "حفظ والانتقال للتوزيع": "تم الحفظ والانتقال للتوزيع !",
   "حفظ مسودة": "تم حفظ المسودة !",
+  "حفظ مسودة المعاينة": "تم حفظ مسودة المعاينة.",
   "حفظ إجاباتي": "تم حفظ الإجابات !",
   "حفظ الحقل": "تم حفظ الحقل !",
   "حفظ الإسناد": "تم حفظ الإسناد !",
@@ -64,6 +69,9 @@ const SUCCESS_EXACT_MESSAGES: Record<string, string> = {
   "رفع النموذج للنظام": "تم رفع نموذج الدراسة !",
   "رفع التقرير": "تم رفع التقرير !",
   "دخول": "تم تسجيل الدخول !",
+  "تسجيل الدخول": "تم تسجيل الدخول !",
+  "تسجيل الاستلام": "تم تسجيل الاستلام !",
+  "حفظ الملاحظة": "تم حفظ الملاحظة !",
   "إرفاق صورة": "تم إرفاق الصورة !",
   "حفظ تعذر داخلي": "تم تسجيل التعذر !",
   "تسجيل احتمال تعذر": "تم تسجيل التعذر !",
@@ -100,12 +108,45 @@ const SKIP_ACTION_LABELS = new Set([
   "تحرير",
   "⋮",
   "تسجيل تعذر",
+  "تسجيل التعذر",
+  "حفظ تعذر داخلي",
+  "تسجيل احتمال تعذر",
+  "حفظ مسودة المعاينة",
+  "تسجيل الخروج",
+  "تسجيل الاستلام",
+  "حفظ وإرسال المعاينة",
+  "حفظ وإتمام المراجعة",
+  "حفظ وإتمام التقييم",
+  "حفظ وإرسال الرفع",
+  "تأكيد الاستلام",
+  "إرسال للأخصائي",
   "ابدأ الرفع المساحي",
   "فتح المعاملة",
   "تفاصيل العقار",
   "دراسة العقار",
   "إسناد مهمة",
 ]);
+
+/** Avoid broad keyword hits on longer phrases with dedicated exact/skip rules. */
+function keywordMatchesLabel(keyword: string, label: string): boolean {
+  if (!label.includes(keyword)) return false;
+  if (keyword === "تسجيل") {
+    if (
+      label.includes("الدخول") ||
+      label.includes("الخروج") ||
+      label.includes("الاستلام") ||
+      label.includes("التعذر") ||
+      label.includes("احتمال")
+    ) {
+      return false;
+    }
+  }
+  if (keyword === "حفظ") {
+    if (label.includes("ملاحظة")) return false;
+    if (label.includes("مسودة") && label.includes("معاينة")) return false;
+  }
+  return true;
+}
 
 /** Maps a button label to a short Arabic progress toast. */
 export function progressMessageForActionLabel(actionLabel: string): string {
@@ -116,7 +157,7 @@ export function progressMessageForActionLabel(actionLabel: string): string {
   if (exact) return exact;
 
   for (const { keyword, message } of KEYWORD_MESSAGES) {
-    if (label.includes(keyword)) return message;
+    if (keywordMatchesLabel(keyword, label)) return message;
   }
 
   return "جاري التنفيذ…";
@@ -131,7 +172,7 @@ export function successMessageForActionLabel(actionLabel: string): string {
   if (exact) return exact;
 
   for (const { keyword, message } of SUCCESS_KEYWORD_MESSAGES) {
-    if (label.includes(keyword)) return message;
+    if (keywordMatchesLabel(keyword, label)) return message;
   }
 
   return "تم التنفيذ !";
@@ -141,7 +182,9 @@ export function isActionLikeLabel(actionLabel: string): boolean {
   const label = actionLabel.replace(/\s+/g, " ").trim();
   if (!label || SKIP_ACTION_LABELS.has(label)) return false;
   if (EXACT_MESSAGES[label]) return true;
-  return KEYWORD_MESSAGES.some(({ keyword }) => label.includes(keyword));
+  return KEYWORD_MESSAGES.some(({ keyword }) =>
+    keywordMatchesLabel(keyword, label),
+  );
 }
 
 export function shouldShowActionProgressToast(

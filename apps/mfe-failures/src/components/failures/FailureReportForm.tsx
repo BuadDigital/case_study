@@ -65,6 +65,7 @@ export function FailureReportForm({
             variant="primary"
             size="sm"
             disabled={!problemTypeId.trim()}
+            showActionToast={false}
             onClick={handleSubmit}
           >
             {severity === "internal" ? "حفظ تعذر داخلي" : "تسجيل احتمال تعذر"}

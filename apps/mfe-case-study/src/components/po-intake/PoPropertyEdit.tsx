@@ -247,6 +247,7 @@ export function PoPropertyEdit({
       title={`تعديل عقار — ${property.deedNumber || poNumber}`}
       subtitle={`أخصائي دراسة الحالة · ${formatPoDisplay(poNumber)}`}
       saving={saving}
+      saveShowActionToast={false}
       onBack={onBackAction}
       onSave={() => void handleSave()}
       footerExtra={

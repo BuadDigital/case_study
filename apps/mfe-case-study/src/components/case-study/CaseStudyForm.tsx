@@ -485,24 +485,6 @@ export function CaseStudyForm({
     [persistToServer, isParty, draft.status, parentFormSubmitted],
   );
 
-  const setPartyReviewApproved = useCallback(
-    (key: string, approved: boolean) => {
-      if (isParty || !canEditKey(key)) return;
-      setDraft((d) => {
-        const next: CaseStudyFormDraft = {
-          ...d,
-          specialistReviewApproved: {
-            ...d.specialistReviewApproved,
-            [key]: approved,
-          },
-        };
-        void saveCaseStudyFormDraft(next);
-        return next;
-      });
-    },
-    [isParty, canEditKey],
-  );
-
   const setAnswer = useCallback(
     (key: string, value: CaseStudyFormAnswer | null) => {
       if (!canEditKey(key)) return;
@@ -705,9 +687,6 @@ export function CaseStudyForm({
           showPartyColumn: true,
           partyContribCount,
           onRefreshParty: () => setPartyRevision((n) => n + 1),
-          partyReviewApproved: draft.specialistReviewApproved,
-          onConfirmPartyReview: (key: string) =>
-            setPartyReviewApproved(key, true),
         }),
   };
 
@@ -898,18 +877,23 @@ export function CaseStudyForm({
             footer={
               !isParty ? (
                 <>
-                  <div className="flex flex-wrap items-center gap-1.5 border-t border-border py-3 text-sm text-text">
-                    <span className="font-semibold text-text-2">عداد الكهرباء رقم (</span>
-                    <Input
-                      className="w-[5.5rem] rounded-none border-0 border-b bg-transparent px-0.5 shadow-none focus:ring-0"
-                      placeholder="رقم"
-                      aria-label="رقم العداد"
-                      value={draft.meterNumber}
-                      disabled={isFormReadOnly}
-                      onChange={(e) => patch("meterNumber", e.target.value)}
-                    />
-                    <span className="font-semibold text-text-2">)</span>
-                    <span className="ms-2 inline-flex flex-wrap items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border py-3 text-sm text-text">
+                    <span className="inline-flex items-center gap-1.5 font-semibold text-text-2">
+                      <span className="whitespace-nowrap">عداد الكهرباء رقم</span>
+                      <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                        <span aria-hidden="true">(</span>
+                        <Input
+                          className="w-[5.5rem] rounded-none border-0 border-b bg-transparent px-0.5 shadow-none focus:ring-0"
+                          placeholder="رقم"
+                          aria-label="رقم العداد"
+                          value={draft.meterNumber}
+                          disabled={isFormReadOnly}
+                          onChange={(e) => patch("meterNumber", e.target.value)}
+                        />
+                        <span aria-hidden="true">)</span>
+                      </span>
+                    </span>
+                    <span className="inline-flex flex-wrap items-center gap-3">
                       {(
                         [
                           ["electronic", "إلكتروني"],

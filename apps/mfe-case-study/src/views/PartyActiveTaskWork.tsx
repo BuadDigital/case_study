@@ -223,15 +223,20 @@ export function PartyActiveTaskWork({
   const governmentHostRef = useRef<GovernmentReviewWorkHostRef>({});
   const coordinationHostRef = useRef<ValuationCoordinationWorkHostRef>({});
   const fieldInspectionHostRef = useRef<FieldInspectionWorkHostRef>({});
-  evaluatorHostRef.current.onSubmitted = () => completePartyTaskSubmit(APPRAISAL_SUCCESS_MESSAGE);
+  evaluatorHostRef.current.onSubmitted = () =>
+    completePartyTaskSubmit(APPRAISAL_SUCCESS_MESSAGE, { showToast: false });
   evaluatorHostRef.current.onSavingChange = setSaving;
-  surveyHostRef.current.onSubmitted = () => completePartyTaskSubmit(def.completeMessage, { showToast: false });
+  surveyHostRef.current.onSubmitted = () =>
+    completePartyTaskSubmit(def.completeMessage, { showToast: false });
   surveyHostRef.current.onSavingChange = setSaving;
-  governmentHostRef.current.onSubmitted = () => completePartyTaskSubmit();
+  governmentHostRef.current.onSubmitted = () =>
+    completePartyTaskSubmit(def.completeMessage, { showToast: false });
   governmentHostRef.current.onSavingChange = setSaving;
-  coordinationHostRef.current.onSubmitted = () => completePartyTaskSubmit();
+  coordinationHostRef.current.onSubmitted = () =>
+    completePartyTaskSubmit(def.completeMessage, { showToast: false });
   coordinationHostRef.current.onSavingChange = setSaving;
-  fieldInspectionHostRef.current.onSubmitted = () => completePartyTaskSubmit();
+  fieldInspectionHostRef.current.onSubmitted = () =>
+    completePartyTaskSubmit(def.completeMessage, { showToast: false });
   fieldInspectionHostRef.current.onSavingChange = setSaving;
 
   const evaluatorLocked = useMemo(() => {

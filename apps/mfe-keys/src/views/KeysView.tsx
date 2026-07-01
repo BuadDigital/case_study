@@ -324,6 +324,8 @@ export function KeysView() {
 
                         disabled={receivingId !== null}
 
+                        showActionToast={false}
+
                         onClick={() => void handleReceive(p.id)}
 
                       >

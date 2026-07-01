@@ -14,9 +14,9 @@ import {
   type EvaluatorReportMetadata,
 } from "./evaluator-submission-storage";
 
-const EVALUATOR_REPORT_SCOPE = "evaluator-report";
+const EVALUATOR_PLAN_SCOPE = "evaluator-plan-image";
 
-export type CachedEvaluatorReport = {
+export type CachedEvaluatorPlanImage = {
   fileName: string;
   mimeType: string;
   dataUrl?: string;
@@ -24,17 +24,24 @@ export type CachedEvaluatorReport = {
   attachmentId?: string;
 };
 
-export function getCachedEvaluatorReport(
+function isAcceptedPlanFile(file: File): boolean {
+  const lower = file.name.toLowerCase();
+  if (file.type === "application/pdf" || lower.endsWith(".pdf")) return true;
+  if (file.type.startsWith("image/")) return true;
+  return /\.(jpe?g|png|webp|gif)$/i.test(lower);
+}
+
+export function getCachedEvaluatorPlanImage(
   taskId: string,
-): CachedEvaluatorReport | null {
+): CachedEvaluatorPlanImage | null {
   if (!taskId) return null;
 
-  const cached = getCachedTaskAttachment(EVALUATOR_REPORT_SCOPE, taskId);
+  const cached = getCachedTaskAttachment(EVALUATOR_PLAN_SCOPE, taskId);
   if (cached?.fileName) return cached;
 
   const dto = getCachedPartySubmission(taskId);
-  const metadata = dto?.payload.reportMetadata as
-    | EvaluatorReportMetadata
+  const metadata = dto?.payload.planImageMetadata as
+    | EvaluatorPlanImageMetadata
     | undefined;
   if (metadata?.fileName) {
     return {
@@ -46,28 +53,31 @@ export function getCachedEvaluatorReport(
   }
 
   const sub = loadEvaluatorSubmission(taskId);
-  if (sub?.reportFileName) {
-    return { fileName: sub.reportFileName, mimeType: "application/pdf" };
+  if (sub?.planImageFileName) {
+    return {
+      fileName: sub.planImageFileName,
+      mimeType: "application/pdf",
+    };
   }
   return null;
 }
 
-export async function prefetchEvaluatorReport(
+export async function prefetchEvaluatorPlanImage(
   taskId: string,
-): Promise<CachedEvaluatorReport | null> {
+): Promise<CachedEvaluatorPlanImage | null> {
   if (!taskId) return null;
-  return prefetchTaskAttachment(EVALUATOR_REPORT_SCOPE, taskId);
+  return prefetchTaskAttachment(EVALUATOR_PLAN_SCOPE, taskId);
 }
 
-export async function cacheEvaluatorReport(
+export async function cacheEvaluatorPlanImage(
   taskId: string,
   file: File,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!taskId) {
     return { ok: false, error: "تعذّر حفظ الملف." };
   }
-  if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
-    return { ok: false, error: "يُقبل ملف PDF فقط." };
+  if (!isAcceptedPlanFile(file)) {
+    return { ok: false, error: "يُقبل ملف PDF أو صورة (JPG, PNG, WebP)." };
   }
   if (file.size > MAX_EVALUATOR_PDF_BYTES) {
     return { ok: false, error: "الحجم الأقصى 20 ميجابايت." };
@@ -79,7 +89,7 @@ export async function cacheEvaluatorReport(
   }
 
   const uploaded = await uploadTaskScopedAttachment(
-    EVALUATOR_REPORT_SCOPE,
+    EVALUATOR_PLAN_SCOPE,
     taskId,
     file,
   );
@@ -87,42 +97,42 @@ export async function cacheEvaluatorReport(
     return { ok: false, error: "تعذّر حفظ الملف." };
   }
 
-  const reportMetadata: EvaluatorReportMetadata = {
+  const planImageMetadata: EvaluatorPlanImageMetadata = {
     fileName: file.name,
-    mimeType: file.type || "application/pdf",
+    mimeType: file.type || "application/octet-stream",
     sizeBytes: file.size,
     attachmentId: uploaded.attachmentId,
   };
 
   const dto = getCachedPartySubmission(taskId);
-  const planImageMetadata = dto?.payload.planImageMetadata as
-    | EvaluatorPlanImageMetadata
+  const reportMetadata = dto?.payload.reportMetadata as
+    | EvaluatorReportMetadata
     | undefined;
 
   await saveEvaluatorSubmission(
-    { ...current, reportFileName: file.name },
+    { ...current, planImageFileName: file.name },
     reportMetadata,
     planImageMetadata,
   );
   return { ok: true };
 }
 
-export async function clearCachedEvaluatorReport(taskId: string): Promise<void> {
-  if (!taskId) return;
-  const current = loadEvaluatorSubmission(taskId);
-  if (!current) return;
-  await clearTaskScopedAttachments(EVALUATOR_REPORT_SCOPE, taskId);
-  await saveEvaluatorSubmission({ ...current, reportFileName: null });
-}
-
-export function openEvaluatorReportPreview(taskId: string): void {
-  const cached = getCachedEvaluatorReport(taskId);
+export function openEvaluatorPlanImagePreview(taskId: string): void {
+  const cached = getCachedEvaluatorPlanImage(taskId);
   if (!cached) return;
   if (cached.dataUrl) {
     openTaskAttachmentPreview(cached);
     return;
   }
-  void prefetchEvaluatorReport(taskId).then((preview) => {
+  void prefetchEvaluatorPlanImage(taskId).then((preview) => {
     if (preview) openTaskAttachmentPreview(preview);
   });
+}
+
+export async function clearCachedEvaluatorPlanImage(taskId: string): Promise<void> {
+  if (!taskId) return;
+  const current = loadEvaluatorSubmission(taskId);
+  if (!current) return;
+  await clearTaskScopedAttachments(EVALUATOR_PLAN_SCOPE, taskId);
+  await saveEvaluatorSubmission({ ...current, planImageFileName: null });
 }

@@ -188,8 +188,6 @@ export function CaseStudyMatrixTable({
   showPartyColumn = true,
   partyContribCount = 0,
   onRefreshParty,
-  partyReviewApproved,
-  onConfirmPartyReview,
   footer,
 }: {
   section: CaseStudyQuestionSection;
@@ -205,8 +203,6 @@ export function CaseStudyMatrixTable({
   showPartyColumn?: boolean;
   partyContribCount?: number;
   onRefreshParty?: () => void;
-  partyReviewApproved?: Record<string, boolean>;
-  onConfirmPartyReview?: (key: string) => void;
   footer?: ReactNode;
 }) {
   const questionRows = questions ?? CASE_STUDY_SECTION_QUESTIONS[section];
@@ -248,8 +244,8 @@ export function CaseStudyMatrixTable({
             <IconInfo />
             <p className="m-0 min-w-[min(100%,220px)] flex-1">
               <strong>مسؤولية الأخصائي:</strong> راجِع إجابات الأطراف الظاهرة لكل
-              سؤال (للاستدلال فقط)، ثم اعتمد المراجعة أو حدِّد{" "}
-              <strong>الإجابة المعتمدة</strong> الرسمية. إجابات الأطراف للقراءة
+              سؤال (للاستدلال فقط)، ثم حدِّد <strong>الإجابة المعتمدة</strong>{" "}
+              الرسمية. إجابات الأطراف للقراءة
               فقط، والأعمدة المعتمدة وحدها قابلة للتعديل.
             </p>
             {partyContribCount > 0 && onRefreshParty ? (
@@ -319,7 +315,6 @@ export function CaseStudyMatrixTable({
                 ? getMatrixConsensus(partyAnswers)
                 : null;
               const hasPartyAnswers = Object.keys(partyAnswers).length > 0;
-              const partyReviewConfirmed = partyReviewApproved?.[key] === true;
               const awaitingPartyAnswer =
                 showPartyColumn && status === "pending" && official === null;
 
@@ -384,21 +379,6 @@ export function CaseStudyMatrixTable({
                               ),
                             )}
                           </div>
-                          {partyReviewConfirmed ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#1A6B5A]">
-                              <IconCheckCheck size={12} />
-                              تمت مراجعة إجابات الأطراف
-                            </span>
-                          ) : onConfirmPartyReview && editable && hasPartyAnswers ? (
-                            <button
-                              type="button"
-                              className="inline-flex max-w-full cursor-pointer items-center justify-center gap-1 rounded-full border border-[#BCDCF2] bg-white px-2.5 py-1 text-[10px] font-semibold text-[#1A5276] hover:border-[#A9D0F0] hover:bg-[#EBF5FB]"
-                              onClick={() => onConfirmPartyReview(key)}
-                            >
-                              <IconCheck size={11} />
-                              اعتماد مراجعة الأطراف
-                            </button>
-                          ) : null}
                         </div>
                       ) : official !== null ? null : (
                         <span className="text-[11px] text-[#8FA8BC]">

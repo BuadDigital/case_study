@@ -13,9 +13,11 @@ import {
 } from "@platform/app-shared/prototype/party-submission-api";
 import {
   createEngineeringSurveyDraft,
+  normalizeEngineeringSurveyChecklist,
   type EngineeringSurveyChecklistRow,
   type EngineeringSurveySubmission,
   type EngineeringSurveySubmissionStatus,
+  ENGINEERING_SURVEY_CHECKLIST_ITEMS,
 } from "./engineering-survey-data";
 import {
   jeddahDefaultCoords,
@@ -34,6 +36,7 @@ function dtoToSubmission(
 ): EngineeringSurveySubmission | null {
   if (!dto) return null;
   const payload = payloadFromDto<EngineeringSurveySubmission>(dto);
+  const checklist = normalizeEngineeringSurveyChecklist(payload.checklist);
   return {
     ...payload,
     taskId: dto.taskId,
@@ -43,6 +46,7 @@ function dtoToSubmission(
     returnNote: dto.returnNote ?? payload.returnNote,
     submittedAtUtc: dto.submittedAtUtc ?? payload.submittedAtUtc,
     updatedAtUtc: dto.updatedAtUtc ?? payload.updatedAtUtc,
+    checklist,
   };
 }
 
@@ -66,12 +70,15 @@ export async function fetchEngineeringSurveySubmission(
   let sub = dtoToSubmission(dto);
   if (!sub) return null;
 
-  if (!sub.checklist?.length) {
-    sub = createEngineeringSurveyDraft({
-      taskId: sub.taskId,
-      propertyId: sub.propertyId,
-      poNumber: sub.poNumber,
-    });
+  const checklistValid =
+    Array.isArray(sub.checklist) &&
+    sub.checklist.length === ENGINEERING_SURVEY_CHECKLIST_ITEMS.length;
+  if (!checklistValid) {
+    sub = {
+      ...sub,
+      checklist: normalizeEngineeringSurveyChecklist(sub.checklist),
+    };
+    await saveEngineeringSurveySubmission(sub);
   }
   if (
     sub.status !== "submitted" &&

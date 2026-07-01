@@ -249,6 +249,12 @@ export type InspectorWorkspaceDraft = {
   bathroomCount: string;
   showroomCount: string;
   wellCount: string;
+  towerCount: string;
+  builtArea: string;
+  buildingFloors: string;
+  basementTotal: string;
+  annexTotal: string;
+  buildingsTotal: string;
   propertyAgeYears: string;
   buildLicenseNumber: string;
   hasAnnex: "" | "نعم" | "لا";
@@ -319,6 +325,12 @@ export function createInspectorWorkspaceDraft(input: {
     bathroomCount: "",
     showroomCount: "",
     wellCount: "",
+    towerCount: "",
+    builtArea: "",
+    buildingFloors: "",
+    basementTotal: "",
+    annexTotal: "",
+    buildingsTotal: "",
     propertyAgeYears: "",
     buildLicenseNumber: "",
     hasAnnex: "",
