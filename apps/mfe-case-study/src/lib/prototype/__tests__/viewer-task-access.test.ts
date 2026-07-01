@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canOpenCaseStudyWorkspace,
   canViewWorkflowTask,
   resolveQueueTasksForViewer,
 } from "../viewer-task-access";
@@ -48,6 +49,39 @@ describe("resolveQueueTasksForViewer", () => {
       pageId: "active-primary-data",
     });
     expect(listed).toEqual([enfathTask]);
+  });
+});
+
+describe("canOpenCaseStudyWorkspace", () => {
+  const caseStudyPhaseTask: WorkflowTask = {
+    ...enfathTask,
+    id: "task-cs",
+    phase: "case-study",
+  };
+
+  it("lets section supervisor open parent tasks in any phase", () => {
+    expect(
+      canOpenCaseStudyWorkspace("section-supervisor", enfathTask, [enfathTask]),
+    ).toBe(true);
+    expect(
+      canOpenCaseStudyWorkspace(
+        "section-supervisor",
+        caseStudyPhaseTask,
+        [caseStudyPhaseTask],
+      ),
+    ).toBe(true);
+  });
+
+  it("lets case specialist open assigned parent tasks", () => {
+    expect(
+      canOpenCaseStudyWorkspace("case-specialist", enfathTask, [enfathTask]),
+    ).toBe(true);
+  });
+
+  it("blocks party roles from the full workspace", () => {
+    expect(
+      canOpenCaseStudyWorkspace("engineering-office", enfathTask, [enfathTask]),
+    ).toBe(false);
   });
 });
 

@@ -11,6 +11,7 @@ import {
 } from "../../lib/po-routes";
 import { caseStudyWorkspacePath } from "../../lib/my-task-routes";
 import { caseStudyTaskForProperty } from "../../lib/prototype/tasks-storage";
+import { canOpenCaseStudyWorkspace } from "../../lib/prototype/viewer-task-access";
 import { usePoRecordQuery, useWorkflowTasksQuery } from "../../query/case-study-queries";
 
 const linkButtonClass = (variant: "default" | "primary" = "default") =>
@@ -44,6 +45,11 @@ export function PoPropertyDetailTopbarActions({
     return caseStudyTaskForProperty(record.poNumber.trim(), property.id, tasks);
   }, [record, property, tasks]);
 
+  const showCaseStudyLink = useMemo(() => {
+    if (!task) return false;
+    return canOpenCaseStudyWorkspace(role, task, tasks);
+  }, [task, role, tasks]);
+
   if (!record || !property) return null;
 
   const needsBourse = !property.bourseDataCompleted;
@@ -69,7 +75,7 @@ export function PoPropertyDetailTopbarActions({
           <span className="max-sm:hidden">استعلام البورصة</span>
         </Link>
       ) : null}
-      {task ? (
+      {showCaseStudyLink && task ? (
         <Link
           href={caseStudyWorkspacePath(task.id)}
           className={linkButtonClass("primary")}

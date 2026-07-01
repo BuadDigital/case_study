@@ -1,6 +1,7 @@
 import type { PageId, RoleId } from "@platform/types";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
+import { isCaseStudySpecialist } from "./po-roles";
 import {
   compareWorkflowTasks,
   tasksForPartyAssignee,
@@ -71,4 +72,22 @@ export function canViewWorkflowTask(input: {
     return input.matchesPage(input.task);
   }
   return tasksForRole(input.role, input.tasks).some((t) => t.id === input.task.id);
+}
+
+/** Full-page `/case-study/[taskId]` — parent property task, any workflow phase. */
+export function canOpenCaseStudyWorkspace(
+  role: RoleId,
+  task: WorkflowTask,
+  tasks: WorkflowTask[],
+): boolean {
+  if (task.kind !== "case-study-property") return false;
+  if (isSuperAdmin(role)) return true;
+  if (seesAllCaseStudyWorkflowTasks(role, "active-case-study")) return true;
+  if (
+    isCaseStudySpecialist(role) &&
+    tasksForRole(role, tasks).some((t) => t.id === task.id)
+  ) {
+    return true;
+  }
+  return role === "general-manager" || role === "cdo";
 }

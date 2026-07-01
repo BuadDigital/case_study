@@ -1,5 +1,5 @@
 import { FAILURES_CHANGED_EVENT } from "@failures/mfe";
-import { EVALUATOR_RECALL_CHANGED_EVENT } from "@evaluator/mfe";
+import { PARTY_TASK_RECALL_REQUESTED_EVENT } from "@platform/app-shared/prototype/party-task-recall-storage";
 import {
   SUSPENDED_TRANSACTIONS_CHANGED_EVENT,
 } from "@case-study/mfe";
@@ -92,7 +92,7 @@ export const DOMAIN_NOTIFICATION_RULES: DomainNotificationRule[] = [
     auditEntity: "property-appraisal",
   },
   {
-    event: EVALUATOR_RECALL_CHANGED_EVENT,
+    event: PARTY_TASK_RECALL_REQUESTED_EVENT,
     notification: {
       title: "طلب استرجاع معاملة",
       body: "وصل طلب استرجاع من أحد الأطراف للمراجعة.",
@@ -100,7 +100,7 @@ export const DOMAIN_NOTIFICATION_RULES: DomainNotificationRule[] = [
       href: "/property-appraisal",
       category: "workflow",
       entityType: "task",
-      sourceEvent: EVALUATOR_RECALL_CHANGED_EVENT,
+      sourceEvent: PARTY_TASK_RECALL_REQUESTED_EVENT,
     },
     auditAction: "طلب استرجاع معاملة",
     auditEntity: "party-task",
@@ -148,4 +148,4 @@ export const DOMAIN_NOTIFICATION_RULES: DomainNotificationRule[] = [
     auditEntity: "suspended-transactions",
   },
 ];
-
+

@@ -31,7 +31,7 @@ export const CASE_STUDY_ACTIVE_TRANSACTIONS_NAV: ActiveTransactionNavItem[] = [
 
 export function taskMatchesCaseStudy(task: WorkflowTask): boolean {
   if (task.kind !== "case-study-property") return false;
-  return task.phase === "case-study";
+  return task.phase === "case-study" || task.phase === "done";
 }
 
 export function filterTasksForCaseStudy(

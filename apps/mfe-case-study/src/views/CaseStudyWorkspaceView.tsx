@@ -1,16 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, type ReactNode } from "react";
-import { Button, Note, PageGutter, PageShell, PanelSkeleton } from "@platform/design-system";
+import { useEffect, useMemo, type ReactNode } from "react";
+import { PageShell, PanelSkeleton } from "@platform/design-system";
 import { CaseStudyForm } from "../components/case-study/CaseStudyForm";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
 import { PropertyTransactionTimeline } from "../components/po-intake/PropertyTransactionTimeline";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { taskMatchesCaseStudy } from "@platform/app-shared/prototype/active-transactions";
 import { activeCaseStudyPath } from "../lib/my-task-routes";
+import { poPropertyPath } from "../lib/po-routes";
 import { findPropertyForTask } from "../lib/prototype/my-task-row";
-import { canViewWorkflowTask } from "../lib/prototype/viewer-task-access";
+import { canOpenCaseStudyWorkspace } from "../lib/prototype/viewer-task-access";
 import type { WorkflowTask } from "../lib/prototype/tasks-storage";
 import {
   usePoRecordQuery,
@@ -22,6 +22,16 @@ export type CaseStudyWorkspacePartiesExtrasProps = {
   property: ReturnType<typeof findPropertyForTask>;
   tasks: WorkflowTask[];
 };
+
+function caseStudyWorkspaceFallbackPath(task: WorkflowTask | null): string {
+  if (task?.propertyId) {
+    return poPropertyPath(task.poNumber.trim(), task.propertyId);
+  }
+  if (task?.poNumber.trim()) {
+    return poPropertyPath(task.poNumber.trim());
+  }
+  return activeCaseStudyPath();
+}
 
 export function CaseStudyWorkspaceView({
   taskId,
@@ -46,13 +56,7 @@ export function CaseStudyWorkspaceView({
 
   const canAccess = useMemo(() => {
     if (!task) return false;
-    return canViewWorkflowTask({
-      role,
-      task,
-      tasks: tasks ?? [],
-      pageId: "active-case-study",
-      matchesPage: taskMatchesCaseStudy,
-    });
+    return canOpenCaseStudyWorkspace(role, task, tasks ?? []);
   }, [task, role, tasks]);
 
   const { data: record, isPending: recordLoading } = usePoRecordQuery(
@@ -72,29 +76,15 @@ export function CaseStudyWorkspaceView({
   const loading =
     (!tasksFetched && tasksPending) || (recordLoading && !record);
 
-  if (!loading && (!task || !canAccess)) {
-    return (
-      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg">
-        <PageGutter className="py-6">
-          <Note tone="warn">
-            لم تُعثر على معاملة دراسة الحالة أو لا تملك صلاحية عرضها.
-            <div className="mt-3">
-              <Button
-                size="sm"
-                variant="default"
-                type="button"
-                onClick={() => router.push(activeCaseStudyPath())}
-              >
-                رجوع لدراسة حالة العقارات
-              </Button>
-            </div>
-          </Note>
-        </PageGutter>
-      </div>
-    );
-  }
+  const shouldRedirect =
+    !loading && tasksFetched && (!task || !canAccess || !record || !property);
 
-  if (loading || !task) {
+  useEffect(() => {
+    if (!shouldRedirect) return;
+    router.replace(caseStudyWorkspaceFallbackPath(task));
+  }, [shouldRedirect, task, router]);
+
+  if (loading || shouldRedirect || !task) {
     return (
       <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg">
         <PanelSkeleton />
@@ -105,21 +95,7 @@ export function CaseStudyWorkspaceView({
   if (!record || !property || propertyIndex < 0) {
     return (
       <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg">
-        <PageGutter className="py-6">
-          <Note tone="warn">
-            لم تُعثر على بيانات العقار.
-            <div className="mt-3">
-              <Button
-                size="sm"
-                variant="default"
-                type="button"
-                onClick={() => router.push(activeCaseStudyPath())}
-              >
-                رجوع لدراسة حالة العقارات
-              </Button>
-            </div>
-          </Note>
-        </PageGutter>
+        <PanelSkeleton />
       </div>
     );
   }

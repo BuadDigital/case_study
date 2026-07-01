@@ -5,9 +5,6 @@ import { PageShell, cn } from "@platform/design-system";
 import type { PageId } from "@platform/types";
 import { ActiveTransactionsSituationBar } from "./ActiveTransactionsSituationBar";
 
-/**
- * PO-style canvas for active-transaction queues: KPI row + operational panel(s).
- */
 export function ActiveTransactionPageLayout({
   pageId,
   hasRail = false,

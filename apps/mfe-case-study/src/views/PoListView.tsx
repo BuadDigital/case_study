@@ -426,7 +426,6 @@ export function PoListView() {
           onClose={() => setIntakeOpen(false)}
           onComplete={(record) => {
             setIntakeOpen(false);
-            void queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
             router.push(poPropertiesPath(record.poNumber));
           }}
         />

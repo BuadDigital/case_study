@@ -291,9 +291,9 @@ export async function savePoRecord(
     };
   }
 
-  notifyWorkOrdersChanged();
   const saved = dtoToRecord(result.data);
   await syncTaskSlotsForPo(saved);
+  notifyWorkOrdersChanged();
   return { ok: true, data: saved };
 }
 
@@ -423,9 +423,9 @@ export async function completePropertyBourse(
     };
   }
 
-  notifyWorkOrdersChanged();
   const saved = dtoToProperty(result.data);
   await advanceTaskAfterBourseForProperty(poNumber, propertyId, saved);
+  notifyWorkOrdersChanged();
   return { ok: true, data: saved };
 }
 
@@ -522,7 +522,6 @@ export async function updatePoRecord(
     };
   }
 
-  notifyWorkOrdersChanged();
   const saved = dtoToRecord(result.data);
   const full = await getPoRecord(record.poNumber);
   if (full) {
@@ -537,6 +536,7 @@ export async function updatePoRecord(
   } else {
     await syncTaskSlotsForPo({ ...record, ...saved, properties: record.properties });
   }
+  notifyWorkOrdersChanged();
   return { ok: true, data: saved };
 }
 
@@ -585,7 +585,6 @@ export async function addPropertyToPo(
     };
   }
 
-  notifyWorkOrdersChanged();
   const prop = dtoToProperty(result.data);
   const record = await getPoRecord(poNumber);
   if (options?.assignToTaskId) {
@@ -593,6 +592,7 @@ export async function addPropertyToPo(
   } else if (record) {
     await linkNewPropertyToTaskSlot(record, prop);
   }
+  notifyWorkOrdersChanged();
   return { ok: true, data: prop };
 }
 
