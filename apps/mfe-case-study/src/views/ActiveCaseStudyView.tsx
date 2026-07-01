@@ -28,6 +28,7 @@ const CASE_STUDY_QUEUE: ActiveTransactionQueueConfig = {
   getBasePath: activeCaseStudyPath,
   getTaskPath: caseStudyTaskPath,
   fullPageTaskPath: caseStudyWorkspacePath,
+  includeAllStatuses: true,
   filterListed: (mine) => filterTasksForCaseStudy(mine),
   buildRowMoreItems: ({ task, propertyId, router }) =>
     buildCaseStudyQueueRowMoreItems({ task, propertyId, router }),

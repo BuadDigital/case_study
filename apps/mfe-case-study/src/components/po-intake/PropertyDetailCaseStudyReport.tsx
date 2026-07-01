@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { emptyCaseStudyInfoRolesConfig } from "@settings/mfe";
 import { useCaseStudyInfoRolesQuery } from "@settings/mfe/query/settings-queries";
+import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { CaseStudyReportDocument } from "../case-study/CaseStudyReportDocument";
 import { CaseStudyPartyProgressRings } from "../case-study/CaseStudyPartyProgressRings";
 import { buildCaseStudyReportModel } from "../../lib/prototype/case-study-report-model";
@@ -19,6 +20,7 @@ import {
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/prototype/po-intake-data";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 import { caseStudyWorkspacePath } from "../../lib/my-task-routes";
+import { canOpenCaseStudyWorkspace } from "../../lib/prototype/viewer-task-access";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { EmptyState, InfoBox } from "./PropertyDetailFields";
 import { cn, InlineLoadingSkeleton } from "@platform/design-system";
@@ -40,6 +42,7 @@ export function PropertyDetailCaseStudyReport({
   property: PoPropertyIntake;
   task: WorkflowTask | null;
 }) {
+  const { role } = usePrototype();
   const [draft, setDraft] = useState<CaseStudyFormDraft | null>(null);
   const [loading, setLoading] = useState(false);
   const [partyRevision, setPartyRevision] = useState(0);
@@ -98,6 +101,11 @@ export function PropertyDetailCaseStudyReport({
     return computePartyCaseStudyProgress(infoRolesMatrix, partyAnswers);
   }, [infoRolesMatrix, partyAnswers]);
 
+  const showWorkspaceLink = useMemo(() => {
+    if (!task) return false;
+    return canOpenCaseStudyWorkspace(role, task, tasks);
+  }, [task, role, tasks]);
+
   if (!task) {
     return (
       <InfoBox variant="amber" icon="ℹ">
@@ -122,9 +130,11 @@ export function PropertyDetailCaseStudyReport({
           sub="سيظهر هنا نموذج دراسة الحالة مع جميع الأسئلة والإجابات بعد البدء في تعبئته."
         />
         <p className="mt-3">
-          <Link href={caseStudyWorkspacePath(task.id)} className={linkButtonPrimarySmClass}>
-            دراسة حالة العقار
-          </Link>
+          {showWorkspaceLink ? (
+            <Link href={caseStudyWorkspacePath(task.id)} className={linkButtonPrimarySmClass}>
+              دراسة حالة العقار
+            </Link>
+          ) : null}
         </p>
       </>
     );
@@ -137,9 +147,11 @@ export function PropertyDetailCaseStudyReport({
         <CaseStudyReportDocument model={reportModel} />
       </div>
       <p className="mt-3">
-        <Link href={caseStudyWorkspacePath(task.id)} className={linkButtonPrimarySmClass}>
-          دراسة حالة العقار
-        </Link>
+        {showWorkspaceLink ? (
+          <Link href={caseStudyWorkspacePath(task.id)} className={linkButtonPrimarySmClass}>
+            دراسة حالة العقار
+          </Link>
+        ) : null}
       </p>
     </>
   );

@@ -1,6 +1,6 @@
 import { getPropertyFailure } from "@failures/mfe";
 import { failureStatusLabel } from "@failures/mfe/lib/failures-labels";
-import { formatDateAr } from "./po-intake-data";
+import { formatInstantInRiyadh } from "./active-transactions-situation";
 import type { PoIntakeRecord, PoPropertyIntake } from "./po-intake-data";
 import { getSuspendedTransaction } from "./suspended-transactions-storage";
 import {
@@ -183,10 +183,5 @@ export function buildPropertyDetailTimeline(input: {
 }
 
 export function formatTimelineDate(iso: string): string {
-  if (!iso) return "—";
-  const day = iso.slice(0, 10);
-  const datePart = formatDateAr(day);
-  if (iso.length <= 10) return datePart;
-  const timePart = iso.includes("T") ? iso.slice(11, 16) : "";
-  return timePart ? `${datePart} · ${timePart}` : datePart;
+  return formatInstantInRiyadh(iso);
 }

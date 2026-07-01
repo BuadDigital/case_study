@@ -25,11 +25,15 @@ const memoryByTask = new Map<string, PartyTaskRecallRequest>();
 
 export const PARTY_TASK_RECALL_CHANGED_EVENT = "party-task-recall-changed";
 export const PARTY_TASK_RECALL_HYDRATED_EVENT = "party-task-recall-hydrated";
+/** Fired only when a party submits a new recall request (not on clear/approve/reject). */
+export const PARTY_TASK_RECALL_REQUESTED_EVENT = "party-task-recall-requested";
 
 /** @deprecated use PARTY_TASK_RECALL_CHANGED_EVENT */
 export const EVALUATOR_RECALL_CHANGED_EVENT = PARTY_TASK_RECALL_CHANGED_EVENT;
 /** @deprecated use PARTY_TASK_RECALL_HYDRATED_EVENT */
 export const EVALUATOR_RECALL_HYDRATED_EVENT = PARTY_TASK_RECALL_HYDRATED_EVENT;
+/** @deprecated use PARTY_TASK_RECALL_REQUESTED_EVENT */
+export const EVALUATOR_RECALL_REQUESTED_EVENT = PARTY_TASK_RECALL_REQUESTED_EVENT;
 
 let recallsHydrated = false;
 let hydratePromise: Promise<void> | null = null;
@@ -59,6 +63,12 @@ function mapDto(row: {
 export function notifyPartyTaskRecallChanged(): void {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(PARTY_TASK_RECALL_CHANGED_EVENT));
+  }
+}
+
+function notifyPartyTaskRecallRequested(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(PARTY_TASK_RECALL_REQUESTED_EVENT));
   }
 }
 
@@ -131,7 +141,6 @@ export function partyTaskRecallStatusLabel(
 
 export function clearPartyTaskRecall(taskId: string): void {
   memoryByTask.delete(taskId);
-  notifyPartyTaskRecallChanged();
 }
 
 export async function requestPartyTaskRecall(input: {
@@ -152,6 +161,7 @@ export async function requestPartyTaskRecall(input: {
   const mapped = mapDto(result.data);
   memoryByTask.set(input.taskId, mapped);
   notifyPartyTaskRecallChanged();
+  notifyPartyTaskRecallRequested();
   return mapped;
 }
 

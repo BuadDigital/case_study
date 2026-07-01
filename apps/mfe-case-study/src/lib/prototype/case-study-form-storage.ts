@@ -8,6 +8,7 @@ import {
   savePartyCaseStudyForm,
 } from "@platform/api-client";
 import { apiErrorMessage, resolveApiError, workOrdersApiConfig } from "../work-orders-api-config";
+import { notifyWorkOrdersChanged } from "@platform/app-shared/prototype/work-orders-api-config";
 import { syncEvaluatorChecklistFromPartyCaseStudy } from "@evaluator/mfe";
 
 export type SaveCaseStudyFormDraftResult =
@@ -189,6 +190,9 @@ export async function saveCaseStudyFormDraft(
         "errors" in result ? result.errors : undefined,
       ),
     };
+  }
+  if (payload.status === "submitted") {
+    notifyWorkOrdersChanged();
   }
   return { ok: true, draft: dtoToDraft(result.data) };
 }

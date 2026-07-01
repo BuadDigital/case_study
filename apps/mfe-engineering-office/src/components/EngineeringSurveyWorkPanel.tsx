@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button, InlineLoadingSkeleton, Input, Label, Note, cn, formControlClassName, useToast } from "@platform/design-system";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import type { WorkflowTask } from "@case-study/mfe";
-import { activeSurveyEntryPath, activeSurveyWorkspacePath } from "@case-study/mfe/lib/my-task-routes";
+import { activeSurveyEntryPath } from "@case-study/mfe/lib/my-task-routes";
 import {
   emptyCaseStudyFormDraft,
   InspectorFeesTab,
@@ -627,16 +627,6 @@ export function EngineeringSurveyWorkPanel({
   if (variant === "entry") {
     return (
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="shrink-0 border-b border-border bg-surface px-4 py-3 sm:px-6">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => router.push(activeSurveyWorkspacePath(task.id))}
-          >
-            العودة لملخص المهمة
-          </Button>
-        </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
           <SectionHeader>{def.workTitle}</SectionHeader>
           {surveyBody}

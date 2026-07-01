@@ -130,11 +130,11 @@ export function listedTasksForPage(
   tasks: WorkflowTask[],
   poByNumber: Map<string, PoIntakeRecord>,
 ): WorkflowTask[] {
-  return filterTasksForPage(pageId, tasks, poByNumber).filter(
-    (t) =>
-      (t.status === "open" || t.status === "blocked") &&
-      !isTaskOnSuspendedProperty(t),
-  );
+  return filterTasksForPage(pageId, tasks, poByNumber).filter((t) => {
+    if (isTaskOnSuspendedProperty(t)) return false;
+    if (pageId === "active-case-study") return true;
+    return t.status === "open" || t.status === "blocked";
+  });
 }
 
 function openWorkflowTasks(tasks: WorkflowTask[]): WorkflowTask[] {
