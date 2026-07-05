@@ -28,18 +28,42 @@ export type CaseStudyInfoRolesConfig = {
   updatedAt: string;
 };
 
-function emptyMatrix(): CaseStudyInfoRolesMatrix {
+
+export function emptyCaseStudyInfoRolesConfig(): CaseStudyInfoRolesConfig {
+  return {
+    matrix: defaultCaseStudyInfoRolesMatrix(),
+    notes: {},
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function normalizeMatrixFromSaved(
+  saved: CaseStudyInfoRolesMatrix | undefined,
+): CaseStudyInfoRolesMatrix {
   const matrix: CaseStudyInfoRolesMatrix = {};
   for (const q of CASE_STUDY_QUESTION_CATALOG) {
-    matrix[q.key] = {};
-    for (const p of CASE_STUDY_INFO_PARTIES) {
-      matrix[q.key]![p.id] = undefined;
+    const row = saved?.[q.key] ?? {};
+    const clean: Partial<Record<CaseStudyInfoPartyId, CaseStudyInfoRoleType>> =
+      {};
+    for (const [partyId, role] of Object.entries(row)) {
+      if (!role || role === "none") continue;
+      clean[partyId as CaseStudyInfoPartyId] = role as CaseStudyInfoRoleType;
     }
+    matrix[q.key] = clean;
   }
   return matrix;
 }
 
-export function emptyCaseStudyInfoRolesConfig(): CaseStudyInfoRolesConfig {
+export function isStoredCaseStudyInfoRolesMatrixEmpty(
+  saved: CaseStudyInfoRolesMatrix | undefined,
+): boolean {
+  if (!saved || Object.keys(saved).length === 0) return true;
+  return !Object.values(saved).some((row) =>
+    Object.values(row ?? {}).some((role) => role && role !== "none"),
+  );
+}
+
+function seedConfigFromDefaults(): CaseStudyInfoRolesConfig {
   return {
     matrix: defaultCaseStudyInfoRolesMatrix(),
     notes: {},
@@ -50,30 +74,30 @@ export function emptyCaseStudyInfoRolesConfig(): CaseStudyInfoRolesConfig {
 function mergeConfig(
   partial: Pick<CaseStudyInfoRolesConfig, "matrix" | "notes" | "updatedAt">,
 ): CaseStudyInfoRolesConfig {
-  const defaults = defaultCaseStudyInfoRolesMatrix();
-  const matrix: CaseStudyInfoRolesMatrix = {};
+  const savedMatrix = partial.matrix as CaseStudyInfoRolesMatrix | undefined;
 
-  for (const q of CASE_STUDY_QUESTION_CATALOG) {
-    matrix[q.key] = { ...(defaults[q.key] ?? {}) };
-  }
-
-  for (const [questionKey, parties] of Object.entries(partial.matrix ?? {})) {
-    if (!matrix[questionKey]) matrix[questionKey] = {};
-    for (const [partyId, role] of Object.entries(parties ?? {})) {
-      if (!role || role === "none") {
-        delete matrix[questionKey]![partyId as CaseStudyInfoPartyId];
-        continue;
-      }
-      matrix[questionKey]![partyId as CaseStudyInfoPartyId] =
-        role as CaseStudyInfoRoleType;
-    }
+  if (isStoredCaseStudyInfoRolesMatrixEmpty(savedMatrix)) {
+    return seedConfigFromDefaults();
   }
 
   return {
-    matrix,
-    notes: { ...partial.notes },
+    matrix: normalizeMatrixFromSaved(savedMatrix),
+    notes: { ...(partial.notes ?? {}) },
     updatedAt: partial.updatedAt ?? new Date().toISOString(),
   };
+}
+
+let seedInFlight = false;
+
+async function seedDefaultsIfEmpty(): Promise<void> {
+  if (seedInFlight) return;
+  seedInFlight = true;
+  try {
+    const seeded = seedConfigFromDefaults();
+    await saveCaseStudyInfoRolesConfig(seeded);
+  } finally {
+    seedInFlight = false;
+  }
 }
 
 export function notifyCaseStudyInfoRolesChanged(): void {
@@ -90,6 +114,13 @@ export async function loadCaseStudyInfoRolesConfig(): Promise<CaseStudyInfoRoles
   if (!result.ok) {
     console.warn(apiErrorMessage(result.kind, "Info roles API"));
     return emptyCaseStudyInfoRolesConfig();
+  }
+
+  const rawMatrix = result.config.matrix as CaseStudyInfoRolesMatrix;
+  if (isStoredCaseStudyInfoRolesMatrixEmpty(rawMatrix)) {
+    const seeded = seedConfigFromDefaults();
+    void seedDefaultsIfEmpty();
+    return seeded;
   }
 
   return mergeConfig({

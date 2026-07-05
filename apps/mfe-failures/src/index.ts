@@ -31,5 +31,5 @@ export * from "./lib/failures-engineering-office-scope";
 export * from "./lib/failures-party-raiser-scope";
 export * from "./lib/failure-types-storage";
 export * from "./lib/failures-api";
-export * from "./query/failures-queries";
+export { useFailuresQuery } from "./query/failures-queries";
 export * from "./query/failure-types-queries";

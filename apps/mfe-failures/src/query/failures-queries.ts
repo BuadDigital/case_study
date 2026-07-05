@@ -8,8 +8,6 @@ const STALE_MS = 60_000;
 const GC_MS = 10 * 60_000;
 const queryDefaults = { staleTime: STALE_MS, gcTime: GC_MS };
 
-export { loadFailuresQuery as loadFailures };
-
 export function useFailuresQuery() {
   return useQuery({
     queryKey: prototypeKeys.failures(),

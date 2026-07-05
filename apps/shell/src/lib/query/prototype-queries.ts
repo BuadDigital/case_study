@@ -12,7 +12,7 @@ import {
 import {
   FAILURES_CHANGED_EVENT,
   FAILURES_STORAGE_KEY,
-  loadFailures,
+  loadFailuresQuery,
 } from "@failures/mfe";
 import {
   CASE_STUDY_INFO_ROLES_CHANGED_EVENT,
@@ -97,7 +97,7 @@ export function prefetchPrototypePage(
     case "failures":
       void queryClient.prefetchQuery({
         queryKey: prototypeKeys.failures(),
-        queryFn: loadFailures,
+        queryFn: loadFailuresQuery,
         ...opts,
       });
       prefetchTasksAndPos();
@@ -206,7 +206,7 @@ export function prefetchCorePrototypeData(queryClient: QueryClient): void {
   void queryClient.prefetchQuery({ queryKey: prototypeKeys.propertyListItems(), queryFn: loadPropertyListItems, ...opts });
   void queryClient.prefetchQuery({ queryKey: prototypeKeys.poRecords(), queryFn: loadPoRecordsWithTaskSync, ...opts });
   void queryClient.prefetchQuery({ queryKey: prototypeKeys.workflowTasks(), queryFn: loadWorkflowTasksForQuery, ...opts });
-  void queryClient.prefetchQuery({ queryKey: prototypeKeys.failures(), queryFn: loadFailures, ...opts });
+  void queryClient.prefetchQuery({ queryKey: prototypeKeys.failures(), queryFn: loadFailuresQuery, ...opts });
 
   // Tier 2 — secondary data that can wait until the UI has settled.
   setTimeout(() => {

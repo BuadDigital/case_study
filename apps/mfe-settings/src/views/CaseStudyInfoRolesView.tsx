@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import {
   Button,
   InlineLoadingSkeleton,
@@ -21,6 +22,7 @@ import { CASE_STUDY_INFO_PARTIES,
   type CaseStudyInfoPartyId,
   type CaseStudyInfoRoleType,
 } from "../lib/prototype/case-study-info-roles-data";
+import { downloadCaseStudyInfoRolesMarkdown } from "../lib/prototype/case-study-info-roles-markdown";
 import {
   emptyCaseStudyInfoRolesConfig,
   saveCaseStudyInfoRolesConfig,
@@ -76,23 +78,71 @@ export function CaseStudyInfoRolesView() {
   const [activeSec, setActiveSec] = useState(CASE_STUDY_INFO_SECTIONS[0]?.id);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const saveQueueRef = useRef(Promise.resolve());
+  const noteSaveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>(
+    {},
+  );
 
-  const persist = useCallback(
-    async (next: CaseStudyInfoRolesConfig) => {
-      setSaving(true);
-      setSaveError(null);
-      const savedConfig = await saveCaseStudyInfoRolesConfig(next);
-      setSaving(false);
-      if (!savedConfig) {
-        const message = apiErrorMessage("server", "تعذّر حفظ المصفوفة");
-        setSaveError(message);
-        showToast(message, "error");
-        return;
+  useEffect(() => {
+    return () => {
+      for (const timer of Object.values(noteSaveTimersRef.current)) {
+        clearTimeout(timer);
       }
-      setCaseStudyInfoRolesCache(queryClient, savedConfig);
-      showToast("تم الحفظ.", "success");
+    };
+  }, []);
+
+  const enqueueSave = useCallback(
+    (next: CaseStudyInfoRolesConfig, rollback: CaseStudyInfoRolesConfig) => {
+      saveQueueRef.current = saveQueueRef.current.then(async () => {
+        setSaving(true);
+        setSaveError(null);
+        const savedConfig = await saveCaseStudyInfoRolesConfig(next);
+        setSaving(false);
+        if (!savedConfig) {
+          const message = apiErrorMessage("server", "تعذّر حفظ المصفوفة");
+          setSaveError(message);
+          setCaseStudyInfoRolesCache(queryClient, rollback);
+          showToast(message, "error");
+          return;
+        }
+        setCaseStudyInfoRolesCache(queryClient, savedConfig);
+      });
     },
     [queryClient, showToast],
+  );
+
+  const applyConfig = useCallback(
+    (
+      buildNext: (prev: CaseStudyInfoRolesConfig) => CaseStudyInfoRolesConfig,
+      options?: { debounceMs?: number; noteKey?: string },
+    ) => {
+      const prev =
+        queryClient.getQueryData<CaseStudyInfoRolesConfig>(
+          prototypeKeys.caseStudyInfoRoles(),
+        ) ?? config;
+      if (!prev) return;
+
+      const next = buildNext(prev);
+      const rollback = prev;
+      setCaseStudyInfoRolesCache(queryClient, next);
+
+      if (options?.debounceMs != null && options.noteKey) {
+        const { noteKey, debounceMs } = options;
+        const existing = noteSaveTimersRef.current[noteKey];
+        if (existing) clearTimeout(existing);
+        noteSaveTimersRef.current[noteKey] = setTimeout(() => {
+          delete noteSaveTimersRef.current[noteKey];
+          const latest = queryClient.getQueryData<CaseStudyInfoRolesConfig>(
+            prototypeKeys.caseStudyInfoRoles(),
+          );
+          if (latest) enqueueSave(latest, rollback);
+        }, debounceMs);
+        return;
+      }
+
+      enqueueSave(next, rollback);
+    },
+    [config, enqueueSave, queryClient],
   );
 
   const summary = useMemo(() => {
@@ -131,13 +181,28 @@ export function CaseStudyInfoRolesView() {
                   {saveError}
                 </Note>
               ) : null}
+              {saving ? (
+                <span className="text-[11px] text-text-3">جاري الحفظ…</span>
+              ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!config}
+                onClick={() => {
+                  if (!config) return;
+                  downloadCaseStudyInfoRolesMarkdown(config);
+                }}
+              >
+                تصدير Markdown
+              </Button>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => {
                   if (!window.confirm("إعادة تعيين جميع الاختيارات؟")) return;
-                  persist(emptyCaseStudyInfoRolesConfig());
+                  applyConfig(() => emptyCaseStudyInfoRolesConfig());
                 }}
               >
                 إعادة تعيين
@@ -148,7 +213,8 @@ export function CaseStudyInfoRolesView() {
           <p className="m-0 max-w-[640px] text-xs leading-snug text-text-2">
             حدّد لكل سؤال في نموذج دراسة الحالة: من الأطراف المعنيين وما دوره (أصيل /
             ثانوي / معتمد). تُطبَّق القواعد على تبويب «نموذج الدراسة» في معاملات
-            الأطراف.
+            الأطراف. يُحفظ تلقائياً في قاعدة البيانات — استخدم «تصدير Markdown» لنسخ
+            الملف إلى <code className="text-[11px]">docs/case-study-info-roles.md</code>.
           </p>
         </PageShellHeader>
 
@@ -223,8 +289,11 @@ export function CaseStudyInfoRolesView() {
             const qs = CASE_STUDY_QUESTION_CATALOG.filter(
               (q) => q.section === sec.id,
             );
-            const filled = qs.filter(
-              (q) => questionStatus(config, q.key) !== "empty",
+            const doneCount = qs.filter(
+              (q) => questionStatus(config, q.key) === "done",
+            ).length;
+            const partialCount = qs.filter(
+              (q) => questionStatus(config, q.key) === "partial",
             ).length;
             const active = activeSec === sec.id;
             return (
@@ -248,8 +317,9 @@ export function CaseStudyInfoRolesView() {
                     "ms-auto rounded-lg px-1.5 py-px text-[10px] text-text-3",
                     active ? "bg-[#DBEAFE] text-primary" : "bg-surface-2",
                   )}
+                  title={`${doneCount} مكتمل · ${partialCount} جزئي · ${qs.length - doneCount - partialCount} فارغ`}
                 >
-                  {filled}/{qs.length}
+                  {doneCount}/{qs.length}
                 </span>
               </button>
             );
@@ -334,18 +404,17 @@ export function CaseStudyInfoRolesView() {
                                     sel && ROLE_BTN_SELECTED[rt.id],
                                   )}
                                   onClick={() => {
-                                    const cur =
-                                      config.matrix[q.key]?.[party.id];
-                                    const next =
-                                      cur === rt.id ? null : rt.id;
-                                    persist(
-                                      setMatrixRole(
-                                        config,
+                                    applyConfig((prev) => {
+                                      const cur = prev.matrix[q.key]?.[party.id];
+                                      const nextRole =
+                                        cur === rt.id ? null : rt.id;
+                                      return setMatrixRole(
+                                        prev,
                                         q.key,
                                         party.id,
-                                        next,
-                                      ),
-                                    );
+                                        nextRole,
+                                      );
+                                    });
                                   }}
                                 >
                                   <span>{rt.icon}</span>
@@ -364,13 +433,16 @@ export function CaseStudyInfoRolesView() {
                         rows={2}
                         value={config.notes[q.key] ?? ""}
                         onChange={(e) =>
-                          persist({
-                            ...config,
-                            notes: {
-                              ...config.notes,
-                              [q.key]: e.target.value,
-                            },
-                          })
+                          applyConfig(
+                            (prev) => ({
+                              ...prev,
+                              notes: {
+                                ...prev.notes,
+                                [q.key]: e.target.value,
+                              },
+                            }),
+                            { debounceMs: 600, noteKey: q.key },
+                          )
                         }
                       />
                     </label>
