@@ -33,10 +33,14 @@ export function loadGoogleMapsApi(): Promise<typeof google> {
         if (window.google?.maps) {
           resolve(window.google);
         } else {
+          loadPromise = null;
           reject(new Error("Google Maps failed to load"));
         }
       };
-      script.onerror = () => reject(new Error("Google Maps script error"));
+      script.onerror = () => {
+        loadPromise = null;
+        reject(new Error("Google Maps script error"));
+      };
       document.head.appendChild(script);
     });
   }

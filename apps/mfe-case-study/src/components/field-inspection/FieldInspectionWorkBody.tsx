@@ -1,46 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useState, type ReactNode, type RefObject } from "react";
-import {
-  Badge,
-  Button,
-  FormRow,
-  InlineLoadingSkeleton,
-  Input,
-  Label,
-  Note,
-  Select,
-  Textarea,
-  cn,
-  formControlClassName,
-  useToast,
-} from "@platform/design-system";
-import {
-  RegField,
-  RegTextarea,
-} from "@platform/app-shared/registration/FormFields";
+import { Badge, Button, FormRow, InlineLoadingSkeleton, Input, Label, Note, Select, Textarea, cn, formControlClassName, useToast } from "@platform/design-system";
+import { RegField, RegTextarea} from "@platform/app-shared/registration/FormFields";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import { EngineeringSurveyMap } from "@engineering-office/mfe/components/EngineeringSurveyMap";
-import {
-  JEDDAH_DEFAULT_LAT,
-  JEDDAH_DEFAULT_LNG,
-} from "@engineering-office/mfe/lib/jeddah-default-coords";
+import { JEDDAH_DEFAULT_LAT, JEDDAH_DEFAULT_LNG } from "@engineering-office/mfe/lib/jeddah-default-coords";
 import { InspectorDefinedPhotosSection } from "./InspectorDefinedPhotosSection";
 import { InspectorSubmitFooter } from "./InspectorSubmitFooter";
 import { InspectorPhotoFilePicker } from "./InspectorPhotoFilePicker";
 import { InspectorStampedPhotoThumb } from "./InspectorStampedPhotoThumb";
-import {
-  clearInspectorPhotoDataUrl,
-  uploadInspectorPhotoFromFile,
-} from "../../lib/prototype/inspector-photo-upload";
-import {
-  boundariesMarkedUnavailable,
-  formatPoDisplay,
-  formatPropertyDeedDisplay,
-  PROPERTY_BOUNDARY_ROWS,
-  type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
+import { clearInspectorPhotoDataUrl, uploadInspectorPhotoFromFile } from "../../lib/prototype/inspector-photo-upload";
+import { boundariesMarkedUnavailable, formatPoDisplay, formatPropertyDeedDisplay, PROPERTY_BOUNDARY_ROWS, type PoPropertyIntake } from "../../lib/prototype/po-intake-data";
 import { usePoRecordQuery } from "../../query/case-study-queries";
 import {
   INSPECTOR_AMENITY_OPTIONS,
@@ -58,16 +30,8 @@ import {
   type InspectorWorkspaceDraft,
 } from "../../lib/prototype/inspector-workspace-data";
 import { finalizeInspectorWorkspace } from "../../lib/prototype/finalize-field-inspection-submission";
-import {
-  getOrCreateInspectorWorkspace,
-  saveInspectorWorkspaceDraft,
-  updateInspectorWorkspace,
-} from "../../lib/prototype/inspector-workspace-storage";
-import {
-  firstInspectorWorkspaceError,
-  validateInspectorWorkspace,
-  type InspectorWorkspaceFieldErrors,
-} from "../../lib/prototype/inspector-workspace-validation";
+import { getOrCreateInspectorWorkspace, saveInspectorWorkspaceDraft, updateInspectorWorkspace } from "../../lib/prototype/inspector-workspace-storage";
+import { firstInspectorWorkspaceError, validateInspectorWorkspace, type InspectorWorkspaceFieldErrors } from "../../lib/prototype/inspector-workspace-validation";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 
 const BOUNDARY_KEYS: InspectorBoundaryKey[] = [

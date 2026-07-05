@@ -35,7 +35,9 @@ import {
 import { useCaseStudyInfoRolesQuery } from "@settings/mfe/query/settings-queries";
 import {
   emptyCaseStudyFormDraft,
+  loadCaseStudyFormDraft,
   loadCaseStudyFormDraftOrThrow,
+  loadPartyCaseStudyFormDraft,
   loadPartyCaseStudyFormDraftOrThrow,
   PARTY_CASE_STUDY_FORM_CHANGED_EVENT,
   saveCaseStudyFormDraft,
@@ -520,6 +522,10 @@ export function CaseStudyForm({
         };
         if (isParty && partyChildTaskId) {
           void loadPartyCaseStudyFormDraft(partyChildTaskId).then((prevParty) => {
+            if (!prevParty) {
+              showToast("تعذّر تحميل إجاباتك السابقة — حاول مرة أخرى", "error");
+              return;
+            }
             const partyAnswers = {
               ...(prevParty?.answers ?? {}),
               [key]: value,

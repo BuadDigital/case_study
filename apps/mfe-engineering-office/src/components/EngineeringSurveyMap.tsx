@@ -7,7 +7,7 @@ import {
   loadGoogleMapsApi,
   parseCoord,
 } from "../lib/google-maps-loader";
-import { Skeleton } from "@platform/design-system";
+import { Skeleton, Button } from "@platform/design-system";
 import { JEDDAH_DEFAULT_CENTER } from "../lib/jeddah-default-coords";
 
 const DEFAULT_CENTER = JEDDAH_DEFAULT_CENTER;
@@ -32,6 +32,7 @@ export function EngineeringSurveyMap({
   const markerRef = useRef<google.maps.Marker | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const lat = parseCoord(latitude);
   const lng = parseCoord(longitude);
@@ -40,9 +41,11 @@ export function EngineeringSurveyMap({
   useEffect(() => {
     if (!googleMapsApiKey()) {
       setMapError("أضف NEXT_PUBLIC_GOOGLE_MAPS_API_KEY لتفعيل خريطة Google.");
+      setMapReady(false);
       return;
     }
 
+    setMapReady(false);
     let cancelled = false;
 
     loadGoogleMapsApi()
@@ -103,8 +106,8 @@ export function EngineeringSurveyMap({
       markerRef.current = null;
       mapRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [disabled]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- init map once per disabled/reload
+  }, [disabled, reloadKey]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -123,39 +126,58 @@ export function EngineeringSurveyMap({
     if (map.getZoom()! < PIN_ZOOM) map.setZoom(PIN_ZOOM);
   }, [mapReady, hasPin, lat, lng]);
 
-  if (mapError) {
-    return (
-      <div className="rounded-[var(--radius-DEFAULT)] border border-dashed border-border-md bg-surface-2 px-4 py-6 text-center text-xs text-text-3">
-        <p className="m-0 mb-2.5">{mapError}</p>
-        {hasPin ? (
-          <a
-            href={googleMapsSearchUrl(lat!, lng!)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium text-primary no-underline hover:underline"
-          >
-            فتح الموقع في Google Maps ({latitude}, {longitude})
-          </a>
-        ) : (
-          <span>أدخل الإحداثيات أو اضغط على الخريطة</span>
-        )}
-      </div>
-    );
-  }
-
   return (
-    <div className="relative overflow-hidden rounded-[var(--radius-DEFAULT)] border border-border bg-surface-2">
-      <div ref={containerRef} className="h-[280px] w-full" aria-label="خريطة Google" />
-      {!mapReady ? (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-white/85 p-6">
-          <Skeleton className="h-full w-full max-h-[200px]" />
+    <div className="relative overflow-hidden rounded-DEFAULT border border-border bg-surface-2">
+      <div
+        ref={containerRef}
+        className={mapError ? "hidden h-[280px] w-full" : "h-[280px] w-full"}
+        aria-label="خريطة Google"
+        aria-hidden={mapError ? true : undefined}
+      />
+      {mapError ? (
+        <div className="rounded-DEFAULT border border-dashed border-border-md bg-surface-2 px-4 py-6 text-center text-xs text-text-3">
+          <p className="m-0 mb-2.5">{mapError}</p>
+          {googleMapsApiKey() ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="mb-2.5"
+              onClick={() => {
+                setMapError(null);
+                setReloadKey((key) => key + 1);
+              }}
+            >
+              إعادة المحاولة
+            </Button>
+          ) : null}
+          {hasPin ? (
+            <a
+              href={googleMapsSearchUrl(lat!, lng!)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-primary no-underline hover:underline"
+            >
+              فتح الموقع في Google Maps ({latitude}, {longitude})
+            </a>
+          ) : (
+            <span>أدخل الإحداثيات أو اضغط على الخريطة</span>
+          )}
         </div>
-      ) : null}
-      {!hasPin && mapReady ? (
-        <p className="m-0 border-t border-border bg-surface px-3 py-2 text-[11px] text-text-3">
-          اضغط على الخريطة لتحديد موقع العقار، أو أدخل الإحداثيات يدوياً.
-        </p>
-      ) : null}
+      ) : (
+        <>
+          {!mapReady ? (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-white/85 p-6">
+              <Skeleton className="h-full w-full max-h-[200px]" />
+            </div>
+          ) : null}
+          {!hasPin && mapReady ? (
+            <p className="m-0 border-t border-border bg-surface px-3 py-2 text-[11px] text-text-3">
+              اضغط على الخريطة لتحديد موقع العقار، أو أدخل الإحداثيات يدوياً.
+            </p>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }
