@@ -5,11 +5,17 @@ export function openHtmlDocumentInNewTab(
 ): boolean {
   const blob = new Blob([html], { type: "text/html;charset=utf-8" });
   const url = URL.createObjectURL(blob);
-  const win = window.open(url, "_blank", "noopener,noreferrer");
+
+  // Open about:blank synchronously so we can detect popup blockers. Using
+  // noopener in window.open() returns null even on success in modern browsers.
+  const win = window.open("about:blank", "_blank");
   if (!win) {
     URL.revokeObjectURL(url);
     return false;
   }
+
+  win.opener = null;
+  win.location.href = url;
 
   win.addEventListener(
     "load",

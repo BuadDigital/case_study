@@ -59,7 +59,6 @@ function SituationCard({
   return <StatCard accent={toneAccent[tone]}>{inner}</StatCard>;
 }
 
-/** ملخص وضع الصفحة — أعلى شاشات المعاملات النشطة (أرقام خاصة بكل تبويب). */
 export function ActiveTransactionsSituationBar({
   pageId,
 }: {
