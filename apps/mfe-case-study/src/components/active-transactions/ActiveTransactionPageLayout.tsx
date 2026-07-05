@@ -16,7 +16,6 @@ export function ActiveTransactionPageLayout({
   pageId: PageId;
   hasRail?: boolean;
   panelOpen?: boolean;
-  /** Override split grid when the side rail is open (e.g. wider PO detail panel). */
   railGridClassName?: string;
   queuePanel: ReactNode;
   sidePanel?: ReactNode;
