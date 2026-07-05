@@ -9,7 +9,7 @@ import {
   type PropertyEnfazRevenueDto,
   type SavePoEnfazBillingRequest,
 } from "@platform/api-client";
-import { workOrdersApiConfig } from "./work-orders-api-config";
+import { workOrdersApiConfig, apiErrorMessage } from "./work-orders-api-config";
 
 export async function loadReadyEnfazPoSummaries() {
   const config = workOrdersApiConfig();
@@ -25,6 +25,18 @@ export async function loadPoEnfazBilling(
   if (!config) return null;
   const result = await getPoEnfazBilling(config, poNumber);
   return result.ok ? result.data : null;
+}
+
+export async function loadPoEnfazBillingForQuery(
+  poNumber: string,
+): Promise<PoEnfazBillingDto> {
+  const config = workOrdersApiConfig();
+  if (!config) throw new Error(apiErrorMessage("auth"));
+  const result = await getPoEnfazBilling(config, poNumber);
+  if (!result.ok) {
+    throw new Error(apiErrorMessage(result.kind, "تعذّر تحميل بيانات الفوترة"));
+  }
+  return result.data;
 }
 
 export async function savePoEnfazBillingData(

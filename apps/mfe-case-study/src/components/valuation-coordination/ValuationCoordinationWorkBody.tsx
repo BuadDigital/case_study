@@ -164,10 +164,14 @@ export function ValuationCoordinationWorkBody({
         inspectorName,
         appraiserName,
       }).then((next) => {
-        if (next) setDraft(next);
+        if (next) {
+          setDraft(next);
+          return;
+        }
+        showToast("تعذّر حفظ التنسيق — حاول مرة أخرى", "error");
       });
     },
-    [task.id, inspectorName, appraiserName],
+    [task.id, inspectorName, appraiserName, showToast],
   );
 
   const submit = useCallback(async (): Promise<boolean> => {

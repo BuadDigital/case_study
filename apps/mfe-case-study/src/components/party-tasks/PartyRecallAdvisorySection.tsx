@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@platform/design-system";
+import { Button, useToast } from "@platform/design-system";
 import {
   approvePartyTaskRecall,
   getPartyTaskRecall,
@@ -25,18 +25,33 @@ export function PartyRecallAdvisorySection({
   refreshKey: number;
   onResolved?: () => void;
 }) {
+  const { showToast } = useToast();
   const recall = getPartyTaskRecall(taskId);
 
   if (!recall) return null;
 
   function handleApprove() {
-    void approvePartyTaskRecall(taskId).then(() => onResolved?.());
+    void approvePartyTaskRecall(taskId).then((result) => {
+      if (result) {
+        showToast("تمت الموافقة على طلب الاسترجاع", "success");
+        onResolved?.();
+        return;
+      }
+      showToast("تعذّر الموافقة على الاسترجاع — حاول لاحقاً", "error");
+    });
   }
 
   function handleReject() {
     const note = window.prompt("سبب الرفض (اختياري):", "");
     if (note === null) return;
-    void rejectPartyTaskRecall(taskId, note).then(() => onResolved?.());
+    void rejectPartyTaskRecall(taskId, note).then((result) => {
+      if (result) {
+        showToast("تم رفض طلب الاسترجاع", "success");
+        onResolved?.();
+        return;
+      }
+      showToast("تعذّر رفض طلب الاسترجاع — حاول لاحقاً", "error");
+    });
   }
 
   void refreshKey;

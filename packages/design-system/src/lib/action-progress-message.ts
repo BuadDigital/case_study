@@ -1,5 +1,6 @@
 export const UPLOAD_PROGRESS_MESSAGE = "جاري الرفع…";
 export const UPLOAD_SUCCESS_MESSAGE = "تم الرفع !";
+export const UPLOAD_FAILURE_MESSAGE = "تعذّر رفع الملف — حاول مرة أخرى";
 
 const EXACT_MESSAGES: Record<string, string> = {
   حفظ: "جاري الحفظ…",

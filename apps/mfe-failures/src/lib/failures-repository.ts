@@ -3,6 +3,7 @@ import {
   createFailureAsync,
   deleteFailuresForPoAsync,
   getPropertyFailureFromCache,
+  loadFailuresForQuery,
   loadFailuresFromBackend,
   reportBourseObstructionAsync,
   resolveFailureAsync,
@@ -20,6 +21,10 @@ import type {
 
 export async function loadFailures(): Promise<FailureRecord[]> {
   return loadFailuresFromBackend();
+}
+
+export async function loadFailuresQuery(): Promise<FailureRecord[]> {
+  return loadFailuresForQuery();
 }
 
 export async function createFailure(
@@ -68,7 +73,7 @@ export async function returnFailure(
   return returnFailureAsync(id, finalNote);
 }
 
-export async function deleteFailuresForPo(poNumber: string): Promise<void> {
+export async function deleteFailuresForPo(poNumber: string): Promise<boolean> {
   return deleteFailuresForPoAsync(poNumber);
 }
 

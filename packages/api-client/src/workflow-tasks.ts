@@ -1,6 +1,7 @@
 import { getApiBase } from "./index";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 import { fetchAllListPages } from "./pagination";
+import { parseFieldErrorsFromResponse } from "./field-errors";
 
 export type TaskDistributionDraftDto = {
   governmentAuditor: boolean;
@@ -122,6 +123,10 @@ export async function confirmWorkflowTaskDistribution(
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (res.status === 400) {
+      const errors = await parseFieldErrorsFromResponse(res);
+      return { ok: false, kind: "validation", errors };
+    }
     if (!res.ok) return { ok: false, kind: "server" };
     return { ok: true, data: await readJson<ConfirmTaskDistributionResponseDto>(res) };
   } catch {

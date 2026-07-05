@@ -179,10 +179,10 @@ export async function cacheEngineeringSurveyFile(
 export async function clearEngineeringSurveyFile(
   taskId: string,
   field: EngineeringSurveyDocField,
-): Promise<void> {
-  if (!taskId) return;
+): Promise<boolean> {
+  if (!taskId) return false;
   const current = loadEngineeringSurveySubmission(taskId);
-  if (!current || current.status === "submitted") return;
+  if (!current || current.status === "submitted") return false;
 
   const meta = FIELD_META[field];
   await clearTaskScopedAttachments(meta.scope, taskId);
@@ -195,8 +195,10 @@ export async function clearEngineeringSurveyFile(
     updatedAtUtc: new Date().toISOString(),
   };
   delete payload[meta.attachmentKey];
-  await persistPartySubmissionPayload(taskId, payload);
+  const saved = await persistPartySubmissionPayload(taskId, payload);
+  if (!saved) return false;
   notifyChanged();
+  return true;
 }
 
 export function openEngineeringSurveyDocumentPreview(

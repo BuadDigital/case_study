@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useToast } from "@platform/design-system";
 import {
   type AssignmentType,
   type PoIntakeRecord,
@@ -9,6 +10,7 @@ import {
   buildPoRecord,
   clearPoDraft,
   hydratePoDraft,
+  PO_INTAKE_DRAFT_SAVE_FAILED_EVENT,
   poRecordExists,
   savePoDraft,
   savePoRecord,
@@ -23,6 +25,7 @@ import {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
+  const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -54,6 +57,16 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
       setDraftReady(true);
     });
   }, []);
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const error = (event as CustomEvent<{ error?: string }>).detail?.error;
+      showToast(error ?? "تعذّر حفظ مسودة أمر العمل", "error");
+    };
+    window.addEventListener(PO_INTAKE_DRAFT_SAVE_FAILED_EVENT, handler);
+    return () =>
+      window.removeEventListener(PO_INTAKE_DRAFT_SAVE_FAILED_EVENT, handler);
+  }, [showToast]);
 
   const isDirty = useMemo(
     () =>

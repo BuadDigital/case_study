@@ -224,6 +224,7 @@ public class FailureService : IFailureService
         await _db.SaveChangesAsync(cancellationToken);
 
         await SetPropertyDeedStatusAsync(entity, "موقوف", cancellationToken);
+        await BlockPropertyTasksForApprovedFailureAsync(entity, cancellationToken);
         await NotifyFailureApprovedAsync(entity, cancellationToken);
         return ToDto(entity);
     }
@@ -310,6 +311,41 @@ public class FailureService : IFailureService
                 ObstructionPriorPhase = "",
             },
             cancellationToken);
+    }
+
+    private async Task BlockPropertyTasksForApprovedFailureAsync(
+        PropertyFailure failure,
+        CancellationToken cancellationToken)
+    {
+        var propertyGuid = await ResolvePropertyGuidAsync(
+            failure.PoNumber,
+            failure.PropertyId,
+            cancellationToken);
+        if (!propertyGuid.HasValue) return;
+
+        var po = failure.PoNumber.Trim();
+        var reason = failure.FinalNote.Trim().Length > 0
+            ? failure.FinalNote.Trim()
+            : (failure.Title.Trim().Length > 0 ? failure.Title.Trim() : "تعذر معتمد");
+
+        var tasks = await _db.WorkflowTasks
+            .Where(t =>
+                t.PoNumber == po &&
+                t.PropertyId == propertyGuid &&
+                t.Status != WorkflowTaskStatus.Completed)
+            .ToListAsync(cancellationToken);
+
+        foreach (var task in tasks)
+        {
+            await _tasks.PatchAsync(
+                task.Id,
+                new PatchWorkflowTaskRequest
+                {
+                    Status = WorkflowTaskStatus.Blocked,
+                    ObstructionReason = reason,
+                },
+                cancellationToken);
+        }
     }
 
     private async Task<WorkflowTask?> FindCaseStudyTaskAsync(

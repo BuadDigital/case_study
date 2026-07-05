@@ -15,10 +15,11 @@ public interface IWorkflowTaskService
         Guid id,
         TaskDistributionDraftDto distribution,
         CancellationToken cancellationToken = default);
-    Task<ConfirmTaskDistributionResponseDto> ConfirmDistributionAsync(
-        Guid id,
-        ConfirmTaskDistributionRequest request,
-        CancellationToken cancellationToken = default);
+    Task<(ConfirmTaskDistributionResponseDto? Result, IReadOnlyDictionary<string, string>? Errors)>
+        ConfirmDistributionAsync(
+            Guid id,
+            ConfirmTaskDistributionRequest request,
+            CancellationToken cancellationToken = default);
     Task<WorkflowTaskDto?> AdvanceAfterEnfathAsync(
         Guid id,
         AdvanceTaskAfterEnfathRequest request,

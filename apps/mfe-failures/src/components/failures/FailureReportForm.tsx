@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Card, CardBody, CardHeader } from "@platform/design-system";
+import { Button, Card, CardBody, CardHeader, useToast } from "@platform/design-system";
 import { failureProblemTypeLabel } from "../../lib/failure-types-data";
 import { createFailure } from "../../lib/failures-repository";
 import type { FailureSeverity } from "../../lib/failures-types";
@@ -24,6 +24,7 @@ export function FailureReportForm({
   onDone: () => void;
   onCancel: () => void;
 }) {
+  const { showToast } = useToast();
   const [severity, setSeverity] = useState<FailureSeverity>("internal");
   const [problemTypeId, setProblemTypeId] = useState("");
   const [note, setNote] = useState("");
@@ -40,7 +41,11 @@ export function FailureReportForm({
       raisedByRole,
       internalNote: note,
       specialist,
-    }).then(() => onDone());
+    })
+      .then(() => onDone())
+      .catch(() => {
+        showToast("تعذّر تسجيل التعذر — حاول مرة أخرى", "error");
+      });
   }
 
   return (

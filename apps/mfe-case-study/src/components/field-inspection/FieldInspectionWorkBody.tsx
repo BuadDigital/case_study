@@ -182,10 +182,14 @@ export function FieldInspectionWorkBody({
     (patch: Parameters<typeof updateInspectorWorkspace>[1]) => {
       if (!task.id || locked) return;
       void updateInspectorWorkspace(task.id, patch).then((next) => {
-        if (next) setDraft(next);
+        if (next) {
+          setDraft(next);
+          return;
+        }
+        showToast("تعذّر حفظ المعاينة — حاول مرة أخرى", "error");
       });
     },
-    [task.id, locked],
+    [task.id, locked, showToast],
   );
 
   const saveDraft = useCallback(async (): Promise<boolean> => {

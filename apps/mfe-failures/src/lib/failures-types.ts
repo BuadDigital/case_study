@@ -62,7 +62,10 @@ export function isActiveFailureStatus(status: FailureStatus): boolean {
 /** Stops work and shows as an open obstruction (not yet cleared). */
 export function isBlockingFailureStatus(status: FailureStatus): boolean {
   return (
-    status === "internal" || status === "review" || status === "returned"
+    status === "internal" ||
+    status === "review" ||
+    status === "returned" ||
+    status === "approved"
   );
 }
 
