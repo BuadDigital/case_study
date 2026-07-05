@@ -25,6 +25,7 @@ import {
   StatSkeleton,
   StatSub,
   StatValue,
+  useToast,
 } from "@platform/design-system";
 import { formatDateAr, formatPoDisplay } from "@case-study/mfe";
 import { poPropertyPath } from "@case-study/mfe/lib/po-routes";
@@ -83,12 +84,15 @@ const fieldTextareaClass = cn(
   "min-h-[72px] resize-y py-2 leading-relaxed",
 );
 
+const MUTATION_ERROR = "تعذّر تنفيذ العملية — حاول مرة أخرى";
+
 export function FailuresView() {
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const { role } = usePrototype();
   const ce = isCaseEditor(role);
   const ca = isSupervisor(role);
-  const { data: items = [], isFetched, refetch } = useFailuresQuery();
+  const { data: items = [], isFetched, isError, error, refetch } = useFailuresQuery();
   const visibleItems = useMemo(() => {
     const scoped = failuresForPartyRole(role, items);
     if (scoped) return scoped;
@@ -149,19 +153,43 @@ export function FailuresView() {
   }, [visibleItems]);
 
   function handleSubmit(id: string) {
-    void submitFailureForReview(id).then(() => refresh());
+    void submitFailureForReview(id).then((updated) => {
+      if (updated) {
+        refresh();
+        return;
+      }
+      showToast(MUTATION_ERROR, "error");
+    });
   }
 
   function handleUpgrade(id: string) {
-    void upgradeFailureToInternal(id).then(() => refresh());
+    void upgradeFailureToInternal(id).then((updated) => {
+      if (updated) {
+        refresh();
+        return;
+      }
+      showToast(MUTATION_ERROR, "error");
+    });
   }
 
   function handleApprove(id: string) {
-    void approveFailure(id, supervisorNote[id] ?? "").then(() => refresh());
+    void approveFailure(id, supervisorNote[id] ?? "").then((updated) => {
+      if (updated) {
+        refresh();
+        return;
+      }
+      showToast(MUTATION_ERROR, "error");
+    });
   }
 
   function handleReturn(id: string) {
-    void returnFailure(id, supervisorNote[id] ?? "").then(() => refresh());
+    void returnFailure(id, supervisorNote[id] ?? "").then((updated) => {
+      if (updated) {
+        refresh();
+        return;
+      }
+      showToast(MUTATION_ERROR, "error");
+    });
   }
 
   async function handleSuspend(id: string) {
@@ -172,7 +200,11 @@ export function FailuresView() {
       supervisorNote: supervisorNote[id] ?? "",
       suspendedBy: ROLES[role]?.name ?? "مشرف",
     });
-    if (ok) refresh();
+    if (ok) {
+      refresh();
+      return;
+    }
+    showToast("تعذّر إيقاف المعاملة — حاول مرة أخرى", "error");
   }
 
   function handleResolve(id: string) {
@@ -181,7 +213,11 @@ export function FailuresView() {
     void resolveFailure(id, {
       resolutionReason: draft.reason,
       continueInstructions: draft.instructions,
-    }).then(() => {
+    }).then((updated) => {
+      if (!updated) {
+        showToast(MUTATION_ERROR, "error");
+        return;
+      }
       setResolveOpen((o) => ({ ...o, [id]: false }));
       refresh();
     });
@@ -200,6 +236,18 @@ export function FailuresView() {
 
   return (
     <PageShell variant="canvas" className="min-h-0 flex-1">
+      {isError ? (
+        <Note tone="warn" className="mb-4">
+          {error instanceof Error
+            ? error.message
+            : "تعذّر تحميل التعذرات — حاول مرة أخرى"}
+          <div className="mt-2">
+            <Button type="button" size="sm" variant="outline" onClick={() => void refetch()}>
+              إعادة المحاولة
+            </Button>
+          </div>
+        </Note>
+      ) : null}
       <StatGrid cols={4}>
         {!isFetched ? (
           Array.from({ length: 4 }, (_, index) => (

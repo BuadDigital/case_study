@@ -14,6 +14,7 @@ import {
   successMessageForActionLabel,
   UPLOAD_PROGRESS_MESSAGE,
   UPLOAD_SUCCESS_MESSAGE,
+  UPLOAD_FAILURE_MESSAGE,
 } from "../lib/action-progress-message";
 import { bindGlobalActionToast } from "../lib/action-toast-listener";
 import { cn } from "../lib/cn";
@@ -50,6 +51,23 @@ const toneClasses: Record<ToastTone, string> = {
   info: "border-border bg-surface text-text-2",
   progress: "border-primary/30 bg-teal-light text-primary",
 };
+
+const GENERIC_ACTION_ERROR = "تعذّر تنفيذ العملية — حاول مرة أخرى";
+
+function actionToastErrorMessage(error: unknown): string {
+  if (!(error instanceof Error) || !error.message.trim()) {
+    return GENERIC_ACTION_ERROR;
+  }
+  const message = error.message.trim();
+  if (
+    message === "save-failed" ||
+    message.startsWith("createFailure failed:") ||
+    message.startsWith("reportBourseObstruction failed:")
+  ) {
+    return GENERIC_ACTION_ERROR;
+  }
+  return message;
+}
 
 function newToastId(): string {
   if (
@@ -99,6 +117,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         showToast(successMessageForActionLabel(actionLabel), "success");
       } catch (error) {
         dismissToast(progressId);
+        showToast(actionToastErrorMessage(error), "error");
         throw error;
       }
     },
@@ -115,10 +134,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           showToast(UPLOAD_SUCCESS_MESSAGE, "success");
           return true;
         }
+        showToast(UPLOAD_FAILURE_MESSAGE, "error");
         return false;
       } catch (error) {
         dismissToast(progressId);
-        throw error;
+        showToast(actionToastErrorMessage(error), "error");
+        return false;
       }
     },
     [dismissToast, showProgressToast, showToast],

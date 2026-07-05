@@ -23,7 +23,7 @@ import {
 } from "@settings/mfe";
 import {
   loadPoRecordsWithTaskSync,
-  loadWorkflowTasks,
+  loadWorkflowTasksForQuery,
   TASKS_CHANGED_EVENT,
   TASKS_STORAGE_KEY,
   WORK_ORDERS_CHANGED_EVENT,
@@ -60,7 +60,7 @@ export function prefetchPrototypePage(
     });
     void queryClient.prefetchQuery({
       queryKey: prototypeKeys.workflowTasks(),
-      queryFn: loadWorkflowTasks,
+      queryFn: loadWorkflowTasksForQuery,
       ...opts,
     });
   };
@@ -205,7 +205,7 @@ export function prefetchCorePrototypeData(queryClient: QueryClient): void {
   void queryClient.prefetchQuery({ queryKey: prototypeKeys.poListRows(), queryFn: loadPoListRows, ...opts });
   void queryClient.prefetchQuery({ queryKey: prototypeKeys.propertyListItems(), queryFn: loadPropertyListItems, ...opts });
   void queryClient.prefetchQuery({ queryKey: prototypeKeys.poRecords(), queryFn: loadPoRecordsWithTaskSync, ...opts });
-  void queryClient.prefetchQuery({ queryKey: prototypeKeys.workflowTasks(), queryFn: loadWorkflowTasks, ...opts });
+  void queryClient.prefetchQuery({ queryKey: prototypeKeys.workflowTasks(), queryFn: loadWorkflowTasksForQuery, ...opts });
   void queryClient.prefetchQuery({ queryKey: prototypeKeys.failures(), queryFn: loadFailures, ...opts });
 
   // Tier 2 — secondary data that can wait until the UI has settled.

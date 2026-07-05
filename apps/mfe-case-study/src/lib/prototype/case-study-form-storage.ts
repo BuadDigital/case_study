@@ -170,6 +170,20 @@ export async function loadCaseStudyFormDraft(
   return dtoToDraft(result.data);
 }
 
+/** React Query / form loader — surfaces API failures; 404 means no draft yet. */
+export async function loadCaseStudyFormDraftOrThrow(
+  taskId: string,
+): Promise<CaseStudyFormDraft | null> {
+  const config = workOrdersApiConfig();
+  if (!config) throw new Error(apiErrorMessage("auth"));
+  const result = await getCaseStudyForm(config, taskId);
+  if (result.ok) return dtoToDraft(result.data);
+  if (result.kind === "not_found") return null;
+  throw new Error(
+    apiErrorMessage(result.kind, "تعذّر تحميل نموذج دراسة الحالة"),
+  );
+}
+
 export async function saveCaseStudyFormDraft(
   draft: CaseStudyFormDraft,
 ): Promise<SaveCaseStudyFormDraftResult> {
@@ -205,6 +219,19 @@ export async function loadPartyCaseStudyFormDraft(
   const result = await getPartyCaseStudyForm(config, childTaskId);
   if (!result.ok) return null;
   return dtoToDraft(result.data);
+}
+
+export async function loadPartyCaseStudyFormDraftOrThrow(
+  childTaskId: string,
+): Promise<CaseStudyFormDraft | null> {
+  const config = workOrdersApiConfig();
+  if (!config) throw new Error(apiErrorMessage("auth"));
+  const result = await getPartyCaseStudyForm(config, childTaskId);
+  if (result.ok) return dtoToDraft(result.data);
+  if (result.kind === "not_found") return null;
+  throw new Error(
+    apiErrorMessage(result.kind, "تعذّر تحميل إجابات دراسة الحالة"),
+  );
 }
 
 export const PARTY_CASE_STUDY_FORM_CHANGED_EVENT =

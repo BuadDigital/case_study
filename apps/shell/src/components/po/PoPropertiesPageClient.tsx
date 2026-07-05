@@ -5,11 +5,13 @@ import { PoPropertiesPage } from "@case-study/mfe";
 import type { PoPropertyRowMoreContext } from "@case-study/mfe/lib/prototype/po-properties-row-menu";
 import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useToast } from "@platform/design-system";
 import { buildAppraiserRecallMenuItems, EVALUATOR_RECALL_CHANGED_EVENT, EVALUATOR_SUBMISSION_CHANGED_EVENT } from "@evaluator/mfe";
 import { useWorkflowTasksQuery } from "@/lib/query/prototype-queries";
 
 export function PoPropertiesPageClient({ poNumber }: { poNumber: string }) {
   const { role } = usePrototype();
+  const { showToast } = useToast();
   const { data: tasks, refetch } = useWorkflowTasksQuery();
 
   useEffect(() => {
@@ -33,9 +35,14 @@ export function PoPropertiesPageClient({ poNumber }: { poNumber: string }) {
           t.propertyId === ctx.property.id,
       );
       if (!task) return [];
-      return buildAppraiserRecallMenuItems(task, ctx.refresh);
+      return buildAppraiserRecallMenuItems(task, ctx.refresh, {
+        onRecallSent: () =>
+          showToast("تم إرسال طلب استرجاع المعاملة", "success"),
+        onRecallFailed: () =>
+          showToast("تعذّر إرسال الطلب — حاول لاحقاً", "error"),
+      });
     },
-    [role, tasks],
+    [role, tasks, showToast],
   );
 
   return (

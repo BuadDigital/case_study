@@ -458,7 +458,13 @@ export async function deletePoRecord(
     };
   }
   await deleteTasksForPo(poNumber);
-  await deleteFailuresForPo(poNumber);
+  const failuresDeleted = await deleteFailuresForPo(poNumber);
+  if (!failuresDeleted) {
+    return {
+      ok: false,
+      error: "تم حذف أمر العمل لكن تعذّر حذف سجلات التعذرات المرتبطة",
+    };
+  }
   notifyWorkOrdersChanged();
   return { ok: true };
 }
@@ -705,8 +711,27 @@ function dtoToDraft(dto: {
 
 async function persistPoDraft(draft: PoIntakeDraftPayload): Promise<void> {
   const config = prototypeModulesApiConfig();
-  if (!config) return;
-  await savePoIntakeDraft(config, draftToDto(draft));
+  if (!config) {
+    notifyPoDraftSaveFailed(apiErrorMessage("auth"));
+    return;
+  }
+  const result = await savePoIntakeDraft(config, draftToDto(draft));
+  if (!result.ok) {
+    notifyPoDraftSaveFailed(
+      apiErrorMessage(result.kind, "تعذّر حفظ مسودة أمر العمل"),
+    );
+  }
+}
+
+export const PO_INTAKE_DRAFT_SAVE_FAILED_EVENT = "po-intake-draft-save-failed";
+
+function notifyPoDraftSaveFailed(error: string): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent(PO_INTAKE_DRAFT_SAVE_FAILED_EVENT, {
+      detail: { error },
+    }),
+  );
 }
 
 /** Load draft from in-memory cache (call hydratePoDraft first). */

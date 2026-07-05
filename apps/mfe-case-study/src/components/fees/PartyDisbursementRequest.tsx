@@ -17,6 +17,7 @@ import {
   cn,
   pageToolbarClassName,
   queueTableWrapClassName,
+  useToast,
 } from "@platform/design-system";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import type { InspectorFeeRowDto } from "@platform/api-client";
@@ -32,6 +33,7 @@ export function PartyDisbursementRequest({
   rows: InspectorFeeRowDto[];
 }) {
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sort, setSort] = useState<SortKey>("date");
   const [budget, setBudget] = useState("");
@@ -110,7 +112,9 @@ export function PartyDisbursementRequest({
           });
         }
         setSelected(new Set());
+        return;
       }
+      showToast("تعذّر إنشاء أمر الصرف — حاول مرة أخرى", "error");
       await queryClient.invalidateQueries({
         queryKey: [...prototypeKeys.all, "inspector-fees"],
       });

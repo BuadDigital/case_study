@@ -115,10 +115,15 @@ export function EvaluatorWindow({
       if (locked) return;
       void updateEvaluatorDraft(task.id, patch, reportMetadata, planImageMetadata).then(
         (updated) => {
-        if (updated) setDraft(updated);
-      });
+          if (updated) {
+            setDraft(updated);
+            return;
+          }
+          showToast("تعذّر حفظ مسودة التقييم — حاول مرة أخرى", "error");
+        },
+      );
     },
-    [locked, task.id],
+    [locked, task.id, showToast],
   );
 
   const scheduleAutosave = useCallback(
@@ -208,8 +213,7 @@ export function EvaluatorWindow({
         const result = await cacheEvaluatorReport(task.id, file);
         if (!result.ok) {
           setUploadError(result.error);
-          showToast(result.error, "error");
-          return false;
+          throw new Error(result.error);
         }
         setReportName(file.name);
         persistDraft(
@@ -241,8 +245,7 @@ export function EvaluatorWindow({
         const result = await cacheEvaluatorPlanImage(task.id, file);
         if (!result.ok) {
           setPlanUploadError(result.error);
-          showToast(result.error, "error");
-          return false;
+          throw new Error(result.error);
         }
         setPlanName(file.name);
         persistDraft(

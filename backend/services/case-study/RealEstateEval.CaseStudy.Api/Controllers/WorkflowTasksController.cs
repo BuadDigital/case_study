@@ -60,7 +60,13 @@ public class WorkflowTasksController : ControllerBase
         [FromBody] ConfirmTaskDistributionRequest request,
         CancellationToken cancellationToken)
     {
-        return Ok(await _tasks.ConfirmDistributionAsync(id, request, cancellationToken));
+        var (result, errors) = await _tasks.ConfirmDistributionAsync(
+            id,
+            request,
+            cancellationToken);
+        if (errors is not null)
+            return BadRequest(new { errors });
+        return Ok(result);
     }
 
     [HttpPost("{id:guid}/advance-after-enfath")]

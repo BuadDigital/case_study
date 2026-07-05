@@ -9,6 +9,10 @@ import { loadEvaluatorSubmission } from "./evaluator-submission-storage";
 export function buildAppraiserRecallMenuItems(
   task: WorkflowTask,
   refresh: () => void,
+  options?: {
+    onRecallSent?: () => void;
+    onRecallFailed?: () => void;
+  },
 ): RowMoreMenuItem[] {
   const submission = loadEvaluatorSubmission(task.id);
   if (submission?.status !== "submitted") return [];
@@ -37,7 +41,14 @@ export function buildAppraiserRecallMenuItems(
           poNumber: task.poNumber,
           propertyId: task.propertyId ?? "",
           reason,
-        }).then(() => refresh());
+        }).then((result) => {
+          if (result) {
+            options?.onRecallSent?.();
+            refresh();
+            return;
+          }
+          options?.onRecallFailed?.();
+        });
       },
     },
   ];

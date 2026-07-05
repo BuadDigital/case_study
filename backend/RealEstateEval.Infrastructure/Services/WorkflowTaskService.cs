@@ -112,17 +112,35 @@ public class WorkflowTaskService : IWorkflowTaskService
         return WorkflowTaskMapper.ToDto(entity);
     }
 
-    public async Task<ConfirmTaskDistributionResponseDto> ConfirmDistributionAsync(
-        Guid id,
-        ConfirmTaskDistributionRequest request,
-        CancellationToken cancellationToken = default)
+    public async Task<(ConfirmTaskDistributionResponseDto? Result, IReadOnlyDictionary<string, string>? Errors)>
+        ConfirmDistributionAsync(
+            Guid id,
+            ConfirmTaskDistributionRequest request,
+            CancellationToken cancellationToken = default)
     {
         var parent = await _db.WorkflowTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
-        if (parent is null ||
-            parent.Phase != "distribution" ||
-            parent.PropertyId is null)
+        if (parent is null)
         {
-            return new ConfirmTaskDistributionResponseDto();
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "المهمة غير موجودة",
+            });
+        }
+
+        if (parent.Phase != "distribution")
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "المعاملة ليست في مرحلة التوزيع حالياً",
+            });
+        }
+
+        if (parent.PropertyId is null)
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "لا يوجد عقار مرتبط بمهمة التوزيع",
+            });
         }
 
         var now = DateTime.UtcNow;
@@ -229,11 +247,11 @@ public class WorkflowTaskService : IWorkflowTaskService
             children.Where(c => c.Kind is "field-inspection" or "engineering-survey"),
             cancellationToken);
 
-        return new ConfirmTaskDistributionResponseDto
+        return (new ConfirmTaskDistributionResponseDto
         {
             Parent = WorkflowTaskMapper.ToDto(parent),
             Children = children.Select(WorkflowTaskMapper.ToDto).ToList(),
-        };
+        }, null);
     }
 
     public async Task<WorkflowTaskDto?> AdvanceAfterEnfathAsync(

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, type ReactNode } from "react";
-import { PageShell, PanelSkeleton } from "@platform/design-system";
+import { Button, Note, PageShell, PanelSkeleton } from "@platform/design-system";
 import { CaseStudyForm } from "../components/case-study/CaseStudyForm";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
 import { PropertyTransactionTimeline } from "../components/po-intake/PropertyTransactionTimeline";
@@ -48,6 +48,9 @@ export function CaseStudyWorkspaceView({
     data: tasks,
     isFetched: tasksFetched,
     isPending: tasksPending,
+    isError: tasksError,
+    error: tasksQueryError,
+    refetch: refetchTasks,
   } = useWorkflowTasksQuery();
 
   const task = useMemo((): WorkflowTask | null => {
@@ -59,9 +62,14 @@ export function CaseStudyWorkspaceView({
     return canOpenCaseStudyWorkspace(role, task, tasks ?? []);
   }, [task, role, tasks]);
 
-  const { data: record, isPending: recordLoading } = usePoRecordQuery(
-    task?.poNumber ?? null,
-  );
+  const {
+    data: record,
+    isPending: recordLoading,
+    isFetched: recordFetched,
+    isError: recordError,
+    error: recordQueryError,
+    refetch: refetchRecord,
+  } = usePoRecordQuery(task?.poNumber ?? null);
 
   const property = useMemo(
     () => (task && record ? findPropertyForTask(record, task) : null),
@@ -74,17 +82,59 @@ export function CaseStudyWorkspaceView({
   }, [record, property]);
 
   const loading =
-    (!tasksFetched && tasksPending) || (recordLoading && !record);
+    (!tasksFetched && tasksPending) ||
+    (Boolean(task?.poNumber) && recordLoading && !record);
+
+  const loadErrorMessage =
+    (tasksQueryError instanceof Error ? tasksQueryError.message : null) ??
+    (recordQueryError instanceof Error ? recordQueryError.message : null) ??
+    "تعذّر تحميل بيانات دراسة الحالة";
+
+  const hasLoadError =
+    (tasksFetched && tasksError) ||
+    (Boolean(task?.poNumber) && recordFetched && recordError);
 
   const shouldRedirect =
-    !loading && tasksFetched && (!task || !canAccess || !record || !property);
+    !loading &&
+    !hasLoadError &&
+    tasksFetched &&
+    (!task || !canAccess || (recordFetched && (!record || !property)));
 
   useEffect(() => {
     if (!shouldRedirect) return;
     router.replace(caseStudyWorkspaceFallbackPath(task));
   }, [shouldRedirect, task, router]);
 
-  if (loading || shouldRedirect || !task) {
+  if (loading) {
+    return (
+      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg">
+        <PanelSkeleton />
+      </div>
+    );
+  }
+
+  if (hasLoadError) {
+    return (
+      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg p-4">
+        <Note tone="warn">{loadErrorMessage}</Note>
+        <div className="mt-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              void refetchTasks();
+              if (task?.poNumber) void refetchRecord();
+            }}
+          >
+            إعادة المحاولة
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (shouldRedirect || !task) {
     return (
       <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg">
         <PanelSkeleton />

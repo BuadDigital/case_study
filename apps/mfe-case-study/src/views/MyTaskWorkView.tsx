@@ -73,6 +73,8 @@ import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 
 const LOADING_TEXT = "text-xs text-text-3";
+const ADVANCE_PHASE_ERROR = "تم حفظ البيانات لكن تعذّر الانتقال للمرحلة التالية — حاول مرة أخرى";
+const CONFIRM_DISTRIBUTION_ERROR = "تعذّر تأكيد التوزيع — تحقق من المرحلة وحاول مرة أخرى";
 
 export function CaseStudyTaskWork({
   task,
@@ -197,7 +199,11 @@ export function CaseStudyTaskWork({
         engineeringOfficeId: "",
       });
       setDistribution(next);
-      void patchTaskDistribution(task.id, next, task);
+      void patchTaskDistribution(task.id, next, task).then((updated) => {
+        if (!updated) {
+          showToast("تعذّر حفظ التوزيع — حاول مرة أخرى", "error");
+        }
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sync when engineering unavailable
   }, [loading, task.phase, task.id, showEngineering, property.classification]);
@@ -255,13 +261,13 @@ export function CaseStudyTaskWork({
         const savedProperty = skipsBourseForIdentifier(property.identifierType)
           ? { ...result.data, bourseDataCompleted: true }
           : result.data;
-        if (task.propertyId) {
-          const updatedTask = await advanceTaskAfterEnfath(
-            task.id,
-            savedProperty,
-          );
-          if (updatedTask?.phase) setPhaseOverride(updatedTask.phase);
+        const updatedTask = await advanceTaskAfterEnfath(task.id, savedProperty);
+        if (!updatedTask) {
+          setFormError(ADVANCE_PHASE_ERROR);
+          showToast(ADVANCE_PHASE_ERROR, "error");
+          throw new Error("advance-failed");
         }
+        setPhaseOverride(updatedTask.phase);
         if (onEnfathSaved) {
           await onEnfathSaved(task.id, {
             identifierType: property.identifierType,
@@ -387,7 +393,13 @@ export function CaseStudyTaskWork({
             throw new Error("save-failed");
           }
           prop = updated.data;
-          await advanceTaskAfterEnfath(task.id, updated.data);
+          const enfathAdvance = await advanceTaskAfterEnfath(task.id, updated.data);
+          if (!enfathAdvance) {
+            setFormError(ADVANCE_PHASE_ERROR);
+            showToast(ADVANCE_PHASE_ERROR, "error");
+            throw new Error("advance-failed");
+          }
+          setPhaseOverride(enfathAdvance.phase);
         }
 
         const result = await completePropertyBourse(
@@ -404,7 +416,12 @@ export function CaseStudyTaskWork({
         }
 
         const advancedTask = await advanceTaskAfterBourse(task.id, result.data);
-        if (advancedTask?.phase) setPhaseOverride(advancedTask.phase);
+        if (!advancedTask) {
+          setFormError(ADVANCE_PHASE_ERROR);
+          showToast(ADVANCE_PHASE_ERROR, "error");
+          throw new Error("advance-failed");
+        }
+        setPhaseOverride(advancedTask.phase);
         onRefresh();
       } finally {
         setSaving(false);
@@ -433,6 +450,9 @@ export function CaseStudyTaskWork({
           staffUsers,
         );
         if (!result.parent) {
+          const message = result.error ?? CONFIRM_DISTRIBUTION_ERROR;
+          setFormError(message);
+          showToast(message, "error");
           throw new Error("save-failed");
         }
 
@@ -542,8 +562,15 @@ export function CaseStudyTaskWork({
               type="button"
               variant="primary"
               onClick={() => {
-                void resolveTaskObstruction(task.id, task);
-                onRefresh();
+                void (async () => {
+                  const updated = await resolveTaskObstruction(task.id, task);
+                  if (updated) {
+                    showToast("تمت إعادة المهمة للأخصائي", "success");
+                    onRefresh();
+                    return;
+                  }
+                  showToast("تعذّر إعادة المهمة للأخصائي — حاول مرة أخرى", "error");
+                })();
               }}
             >
               إعادة للأخصائي

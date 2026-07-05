@@ -476,9 +476,19 @@ export async function confirmTaskDistribution(
   distribution: TaskDistributionDraft,
   deedNumber = "",
   staffUsers: StaffUser[] = [],
-): Promise<{ parent: WorkflowTask | null; children: WorkflowTask[] }> {
+): Promise<{
+  parent: WorkflowTask | null;
+  children: WorkflowTask[];
+  error?: string;
+}> {
   const config = workOrdersApiConfig();
-  if (!config) return { parent: null, children: [] };
+  if (!config) {
+    return {
+      parent: null,
+      children: [],
+      error: apiErrorMessage("auth"),
+    };
+  }
 
   const normalized = migrateDistribution(distribution, staffUsers);
   const result = await confirmWorkflowTaskDistribution(config, taskId, {
@@ -486,8 +496,22 @@ export async function confirmTaskDistribution(
     deedNumber,
     assigneeNames: buildAssigneeNames(normalized, staffUsers),
   });
-  if (!result.ok || !result.data.parent) {
-    return { parent: null, children: [] };
+  if (!result.ok) {
+    return {
+      parent: null,
+      children: [],
+      error: resolveApiError(
+        result.kind,
+        "errors" in result ? result.errors : undefined,
+      ),
+    };
+  }
+  if (!result.data.parent) {
+    return {
+      parent: null,
+      children: [],
+      error: "تعذّر تأكيد التوزيع — تحقق من المرحلة وحاول مرة أخرى",
+    };
   }
 
   notifyTasksChanged();
@@ -533,9 +557,14 @@ export async function suspendWorkflowTasksForProperty(
   poNumber: string,
   propertyId: string,
   reason: string,
-): Promise<void> {
+): Promise<boolean> {
   const n = poNumber.trim();
-  const list = await loadWorkflowTasks();
+  let list: WorkflowTask[];
+  try {
+    list = await loadWorkflowTasksForQuery();
+  } catch {
+    return false;
+  }
   const related = list.filter(
     (t) =>
       t.poNumber.trim() === n &&
@@ -543,15 +572,18 @@ export async function suspendWorkflowTasksForProperty(
       t.status !== "completed",
   );
   const config = workOrdersApiConfig();
-  if (!config) return;
+  if (!config) return false;
   const note = reason.trim() || "معاملة معلقة";
+  let allOk = true;
   for (const task of related) {
-    await patchWorkflowTask(config, task.id, {
+    const result = await patchWorkflowTask(config, task.id, {
       status: "blocked",
       obstructionReason: note,
     });
+    if (!result.ok) allOk = false;
   }
-  notifyTasksChanged();
+  if (related.length > 0) notifyTasksChanged();
+  return allOk;
 }
 
 export async function resolveObstructionForProperty(

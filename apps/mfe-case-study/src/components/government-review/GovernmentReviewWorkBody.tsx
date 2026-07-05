@@ -111,10 +111,14 @@ export function GovernmentReviewWorkBody({
     (patch: Parameters<typeof updateGovernmentReviewDraft>[1]) => {
       if (!task.id) return;
       void updateGovernmentReviewDraft(task.id, patch).then((next) => {
-        if (next) setDraft(next);
+        if (next) {
+          setDraft(next);
+          return;
+        }
+        showToast("تعذّر حفظ المراجعة — حاول مرة أخرى", "error");
       });
     },
-    [task.id],
+    [task.id, showToast],
   );
 
   const submit = useCallback(async (): Promise<boolean> => {

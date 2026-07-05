@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import {
-  loadPoEnfazBilling,
+  loadPoEnfazBillingForQuery,
   loadReadyEnfazPoSummaries,
   savePoEnfazBillingData,
   issueEnfazInvoice,
@@ -26,6 +26,7 @@ import {
   cn,
   pageToolbarClassName,
   queueTableWrapClassName,
+  useToast,
 } from "@platform/design-system";
 import {
   inspectorFeeWorkStatusTone,
@@ -34,6 +35,7 @@ import {
 
 export function FinanceEnfazPoBilling() {
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const [selectedPo, setSelectedPo] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, { fee: string; inc: boolean }>>(
     {},
@@ -51,9 +53,9 @@ export function FinanceEnfazPoBilling() {
     if (!selectedPo && readyPos.length > 0) setSelectedPo(readyPos[0]);
   }, [readyPos, selectedPo]);
 
-  const { data: billing, isPending } = useQuery({
+  const { data: billing, isPending, isError, error, refetch } = useQuery({
     queryKey: [...prototypeKeys.all, "enfaz-billing", selectedPo],
-    queryFn: () => loadPoEnfazBilling(selectedPo!),
+    queryFn: () => loadPoEnfazBillingForQuery(selectedPo!),
     enabled: Boolean(selectedPo),
   });
 
@@ -87,13 +89,18 @@ export function FinanceEnfazPoBilling() {
     if (!selectedPo || !billing) return;
     setBusy(true);
     try {
-      await savePoEnfazBillingData(selectedPo, {
+      const saved = await savePoEnfazBillingData(selectedPo, {
         lines: billing.lines.map((line) => ({
           propertyId: line.propertyId,
           enfazFeeSar: Number(draft[line.propertyId]?.fee) || 0,
           includedInBilling: draft[line.propertyId]?.inc ?? true,
         })),
       });
+      if (!saved) {
+        showToast("تعذّر حفظ الأتعاب — حاول مرة أخرى", "error");
+        return;
+      }
+      showToast("تم حفظ الأتعاب", "success");
       await queryClient.invalidateQueries({
         queryKey: [...prototypeKeys.all, "enfaz-billing"],
       });
@@ -106,7 +113,12 @@ export function FinanceEnfazPoBilling() {
     if (!selectedPo) return;
     setBusy(true);
     try {
-      await issueEnfazInvoice(selectedPo);
+      const issued = await issueEnfazInvoice(selectedPo);
+      if (!issued) {
+        showToast("تعذّر إصدار الفاتورة — حاول مرة أخرى", "error");
+        return;
+      }
+      showToast("تم إصدار الفاتورة", "success");
       await queryClient.invalidateQueries({
         queryKey: [...prototypeKeys.all, "enfaz-billing"],
       });
@@ -189,6 +201,19 @@ export function FinanceEnfazPoBilling() {
           يظهر في التقارير وهامش المعاملة.
         </Note>
       </PageToolbar>
+
+      {isError ? (
+        <Note tone="warn">
+          {error instanceof Error
+            ? error.message
+            : "تعذّر تحميل بيانات الفوترة — حاول مرة أخرى"}
+          <div className="mt-2">
+            <Button type="button" size="sm" variant="outline" onClick={() => void refetch()}>
+              إعادة المحاولة
+            </Button>
+          </div>
+        </Note>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(220px,0.9fr)_1.6fr]">
         <div className="rounded-[var(--radius-lg)] border border-border bg-surface">

@@ -17,6 +17,7 @@ import {
   cn,
   pageToolbarClassName,
   queueTableWrapClassName,
+  useToast,
 } from "@platform/design-system";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import {
@@ -164,6 +165,7 @@ export function InspectorFeesBillingTable({
   onChanged?: () => void;
 }) {
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const [drafts, setDrafts] = useState<Record<string, RowDraft>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -226,7 +228,9 @@ export function InspectorFeesBillingTable({
           return next;
         });
         await invalidate();
+        return;
       }
+      showToast("تعذّر حفظ الصف — حاول مرة أخرى", "error");
     } finally {
       setBusyId(null);
     }
@@ -244,7 +248,11 @@ export function InspectorFeesBillingTable({
         reason: extra?.reason,
         disbursementVoucher: extra?.disbursementVoucher,
       });
-      if (result) await invalidate();
+      if (result) {
+        await invalidate();
+        return;
+      }
+      showToast("تعذّر تنفيذ الإجراء — حاول مرة أخرى", "error");
     } finally {
       setBusyId(null);
     }

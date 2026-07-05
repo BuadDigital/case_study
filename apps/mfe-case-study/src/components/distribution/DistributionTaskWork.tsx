@@ -46,7 +46,7 @@ export function DistributionTaskWork({
   onClose: () => void;
 }) {
   const { role } = usePrototype();
-  const { runWithActionToast } = useToast();
+  const { runWithActionToast, showToast } = useToast();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
   const [property, setProperty] = useState<PoPropertyIntake>(emptyProperty);
@@ -105,7 +105,11 @@ export function DistributionTaskWork({
         engineeringOfficeId: "",
       });
       setDistribution(next);
-      void patchTaskDistribution(task.id, next, task);
+      void patchTaskDistribution(task.id, next, task).then((updated) => {
+        if (!updated) {
+          showToast("تعذّر حفظ التوزيع — حاول مرة أخرى", "error");
+        }
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sync when engineering unavailable
   }, [loading, task.id, showEngineering, property.classification]);
@@ -142,12 +146,20 @@ export function DistributionTaskWork({
     await runWithActionToast("تأكيد التوزيع وإرسال المهام", async () => {
       setSaving(true);
       try {
-        await confirmTaskDistribution(
+        const result = await confirmTaskDistribution(
           task.id,
           distribution,
           formatPropertyDeedDisplay(property),
           staffUsers,
         );
+        if (!result.parent) {
+          const message =
+            result.error ??
+            "تعذّر تأكيد التوزيع — تحقق من المرحلة وحاول مرة أخرى";
+          setFormError(message);
+          showToast(message, "error");
+          throw new Error("confirm-failed");
+        }
         onRefresh();
         onClose();
       } finally {

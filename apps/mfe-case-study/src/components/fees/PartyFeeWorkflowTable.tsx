@@ -14,6 +14,7 @@ import {
   Tr,
   cn,
   queueTableWrapClassName,
+  useToast,
 } from "@platform/design-system";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import {
@@ -50,6 +51,7 @@ export function PartyFeeWorkflowTable({
   onChanged?: () => void;
 }) {
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [reasonModal, setReasonModal] = useState<{
     row: InspectorFeeRowDto;
@@ -74,7 +76,11 @@ export function PartyFeeWorkflowTable({
         action,
         reason: extra?.reason,
       });
-      if (result) await invalidate();
+      if (result) {
+        await invalidate();
+        return;
+      }
+      showToast("تعذّر تنفيذ الإجراء — حاول مرة أخرى", "error");
     } finally {
       setBusyId(null);
     }

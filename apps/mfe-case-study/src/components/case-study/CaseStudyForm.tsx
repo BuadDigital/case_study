@@ -35,8 +35,8 @@ import {
 import { useCaseStudyInfoRolesQuery } from "@settings/mfe/query/settings-queries";
 import {
   emptyCaseStudyFormDraft,
-  loadCaseStudyFormDraft,
-  loadPartyCaseStudyFormDraft,
+  loadCaseStudyFormDraftOrThrow,
+  loadPartyCaseStudyFormDraftOrThrow,
   PARTY_CASE_STUDY_FORM_CHANGED_EVENT,
   saveCaseStudyFormDraft,
   savePartyCaseStudyFormDraft,
@@ -270,6 +270,8 @@ export function CaseStudyForm({
     emptyCaseStudyFormDraft(storageTaskId, seed),
   );
   const [hydrated, setHydrated] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [parentFormSubmitted, setParentFormSubmitted] = useState(false);
   const { showToast, showProgressToast, dismissToast } = useToast();
   const [partyRevision, setPartyRevision] = useState(0);
@@ -380,14 +382,16 @@ export function CaseStudyForm({
 
   useEffect(() => {
     let cancelled = false;
+    setLoadError(null);
     (async () => {
-      const parentDraft = await loadCaseStudyFormDraft(referenceTaskId);
+      try {
+      const parentDraft = await loadCaseStudyFormDraftOrThrow(referenceTaskId);
       const partyStored = isParty
-        ? await loadPartyCaseStudyFormDraft(storageTaskId)
+        ? await loadPartyCaseStudyFormDraftOrThrow(storageTaskId)
         : null;
       const stored = isParty
         ? partyStored
-        : await loadCaseStudyFormDraft(storageTaskId);
+        : await loadCaseStudyFormDraftOrThrow(storageTaskId);
       const base =
         stored ?? emptyCaseStudyFormDraft(storageTaskId, seed);
       const mergedAnswers = isParty
@@ -411,12 +415,20 @@ export function CaseStudyForm({
         currentStep: stored ? normalizeFormStep(stored.currentStep) : 0,
       });
       setHydrated(true);
+      } catch (error) {
+        if (cancelled) return;
+        setLoadError(
+          error instanceof Error
+            ? error.message
+            : "تعذّر تحميل نموذج دراسة الحالة",
+        );
+      }
     })();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- load once per task
-  }, [storageTaskId, referenceTaskId, isParty]);
+  }, [storageTaskId, referenceTaskId, isParty, reloadKey]);
 
   useEffect(() => {
     if (!isParty || !hydrated) return;
@@ -480,9 +492,11 @@ export function CaseStudyForm({
       ) {
         return;
       }
-      void persistToServer(next);
+      void persistToServer(next).then((result) => {
+        if (result && !result.ok) showToast(result.error, "error");
+      });
     },
-    [persistToServer, isParty, draft.status, parentFormSubmitted],
+    [persistToServer, isParty, draft.status, parentFormSubmitted, showToast],
   );
 
   const setAnswer = useCallback(
@@ -519,7 +533,9 @@ export function CaseStudyForm({
             });
           });
         } else {
-          void saveCaseStudyFormDraft(next);
+          void saveCaseStudyFormDraft(next).then((result) => {
+            if (!result.ok) showToast(result.error, "error");
+          });
         }
         return next;
       });
@@ -584,7 +600,9 @@ export function CaseStudyForm({
     if (isParty || draft.status === "submitted") return;
     setDraft((d) => {
       const next = { ...d, [key]: value };
-      void saveCaseStudyFormDraft(next);
+      void saveCaseStudyFormDraft(next).then((result) => {
+        if (!result.ok) showToast(result.error, "error");
+      });
       return next;
     });
   };
@@ -648,6 +666,28 @@ export function CaseStudyForm({
       () => ({ ...draft, status: "submitted" }),
     );
   };
+
+  if (loadError) {
+    return (
+      <Note tone="warn">
+        {loadError}
+        <div className="mt-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setHydrated(false);
+              setLoadError(null);
+              setReloadKey((key) => key + 1);
+            }}
+          >
+            إعادة المحاولة
+          </Button>
+        </div>
+      </Note>
+    );
+  }
 
   if (!hydrated || !infoRolesReady) {
     return <InlineLoadingSkeleton className="my-2" />;

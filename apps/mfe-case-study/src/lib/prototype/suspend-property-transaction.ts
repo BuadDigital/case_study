@@ -20,11 +20,12 @@ export async function suspendPropertyTransaction(input: {
   );
   if (!suspended) return false;
 
-  await suspendWorkflowTasksForProperty(
+  const tasksBlocked = await suspendWorkflowTasksForProperty(
     failure.poNumber,
     failure.propertyId,
     input.supervisorNote.trim() || failure.title,
   );
+  if (!tasksBlocked) return false;
 
   notifySuspendedTransactionsChanged();
   return true;

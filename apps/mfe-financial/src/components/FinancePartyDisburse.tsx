@@ -25,6 +25,7 @@ import {
   cn,
   pageToolbarClassName,
   queueTableWrapClassName,
+  useToast,
 } from "@platform/design-system";
 import type { InspectorFeeAction, InspectorFeeRowDto } from "@platform/api-client";
 import { inspectorFeeStatusLabel, inspectorFeeStatusTone, inspectorFeeWorkStatusTone } from "@platform/api-client";
@@ -261,6 +262,7 @@ function FinancePartyDetailSections({
   buckets: ReturnType<typeof bucketFinanceDisburseRows>;
   onChanged: () => void;
 }) {
+  const { showToast } = useToast();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [reasonModal, setReasonModal] = useState<ReasonModalState>(null);
@@ -297,7 +299,11 @@ function FinancePartyDetailSections({
         action,
         reason: extra?.reason,
       });
-      if (result) onChanged();
+      if (result) {
+        onChanged();
+        return;
+      }
+      showToast("تعذّر تنفيذ الإجراء — حاول مرة أخرى", "error");
     } finally {
       setBusyId(null);
     }
@@ -335,7 +341,9 @@ function FinancePartyDetailSections({
         }
         setSelected(new Set());
         onChanged();
+        return;
       }
+      showToast("تعذّر تنفيذ الصرف — حاول مرة أخرى", "error");
     } finally {
       setBusyId(null);
     }

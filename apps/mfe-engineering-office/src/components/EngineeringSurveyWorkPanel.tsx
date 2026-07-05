@@ -235,20 +235,27 @@ export function EngineeringSurveyWorkPanel({
         answers: mergedAnswers,
       });
       if (!saved.ok) {
-        console.warn("Case study party form sync failed:", saved.error);
+        showToast(
+          saved.error ?? "تعذّر مزامنة إجابات دراسة الحالة",
+          "error",
+        );
       }
     },
-    [locked, propertyId, task.id, task.poNumber],
+    [locked, propertyId, task.id, task.poNumber, showToast],
   );
 
   const persist = useCallback(
     (patch: Parameters<typeof updateEngineeringSurveyDraft>[1]) => {
       if (!task.id) return;
       void updateEngineeringSurveyDraft(task.id, patch).then((next) => {
-        if (next) setDraft(next);
+        if (next) {
+          setDraft(next);
+          return;
+        }
+        showToast("تعذّر حفظ الرفع المساحي — حاول مرة أخرى", "error");
       });
     },
-    [task.id],
+    [task.id, showToast],
   );
 
   const saveNote = useCallback(() => {
@@ -276,11 +283,14 @@ export function EngineeringSurveyWorkPanel({
 
     hostRef.current?.onSavingChange?.(true);
     setFormError(null);
-    const submitted = await finalizeEngineeringSurveySubmission(task.id);
+    const result = await finalizeEngineeringSurveySubmission(task.id);
     hostRef.current?.onSavingChange?.(false);
 
-    if (submitted) {
-      setDraft(submitted);
+    if (result) {
+      setDraft(result.submission);
+      if (result.warning) {
+        showToast(result.warning, "error");
+      }
       hostRef.current?.onSubmitted?.();
       return true;
     }
@@ -319,8 +329,7 @@ export function EngineeringSurveyWorkPanel({
       const result = await cacheEngineeringSurveyFile(draft.taskId, docField, file);
       if (!result.ok) {
         setFormError(result.error);
-        showToast(result.error, "error");
-        return false;
+        throw new Error(result.error);
       }
       const next = loadEngineeringSurveySubmission(draft.taskId);
       if (next) setDraft(next);
@@ -338,7 +347,11 @@ export function EngineeringSurveyWorkPanel({
     if (!draft || formDisabled) return;
     const docField =
       field === "surveyReportFileName" ? "surveyReport" : "siteLetter";
-    void clearEngineeringSurveyFile(draft.taskId, docField).then(() => {
+    void clearEngineeringSurveyFile(draft.taskId, docField).then((cleared) => {
+      if (!cleared) {
+        showToast("تعذّر حذف المرفق — حاول مرة أخرى", "error");
+        return;
+      }
       const next = loadEngineeringSurveySubmission(draft.taskId);
       if (next) setDraft(next);
     });
