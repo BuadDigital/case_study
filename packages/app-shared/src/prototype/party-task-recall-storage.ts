@@ -36,13 +36,6 @@ export const PARTY_TASK_RECALL_HYDRATED_EVENT = "party-task-recall-hydrated";
 /** Fired only when a party submits a new recall request (not on clear/approve/reject). */
 export const PARTY_TASK_RECALL_REQUESTED_EVENT = "party-task-recall-requested";
 
-/** @deprecated use PARTY_TASK_RECALL_CHANGED_EVENT */
-export const EVALUATOR_RECALL_CHANGED_EVENT = PARTY_TASK_RECALL_CHANGED_EVENT;
-/** @deprecated use PARTY_TASK_RECALL_HYDRATED_EVENT */
-export const EVALUATOR_RECALL_HYDRATED_EVENT = PARTY_TASK_RECALL_HYDRATED_EVENT;
-/** @deprecated use PARTY_TASK_RECALL_REQUESTED_EVENT */
-export const EVALUATOR_RECALL_REQUESTED_EVENT = PARTY_TASK_RECALL_REQUESTED_EVENT;
-
 let recallsHydrated = false;
 let hydratePromise: Promise<void> | null = null;
 

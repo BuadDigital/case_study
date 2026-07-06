@@ -12,8 +12,8 @@ import {
   filterAppraiserListedTasks,
 } from "../lib/evaluator/evaluator-queue";
 import {
-  EVALUATOR_RECALL_CHANGED_EVENT,
-  EVALUATOR_RECALL_HYDRATED_EVENT,
+  PARTY_TASK_RECALL_CHANGED_EVENT,
+  PARTY_TASK_RECALL_HYDRATED_EVENT,
   hydratePartyTaskRecalls,
 } from "@platform/app-shared/prototype/party-task-recall-storage";
 import {
@@ -46,8 +46,8 @@ export const partyAppraisalExtensions: PartyAppraisalExtensions = {
       canOpenTask: (task) => canAppraiserOpenTask(task.id, task.status),
       getTaskStatusBadge: (task) => appraiserTaskStatusBadge(task.id),
       refreshOnWindowEvents: [
-        EVALUATOR_RECALL_CHANGED_EVENT,
-        EVALUATOR_RECALL_HYDRATED_EVENT,
+        PARTY_TASK_RECALL_CHANGED_EVENT,
+        PARTY_TASK_RECALL_HYDRATED_EVENT,
         EVALUATOR_SUBMISSION_CHANGED_EVENT,
       ],
     };

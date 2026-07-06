@@ -46,6 +46,7 @@ export function FieldInspectionAdvisoryPanel({
     null,
   );
   const [loadingSubmission, setLoadingSubmission] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     const refresh = () => setRefreshKey((k) => k + 1);
@@ -68,10 +69,12 @@ export function FieldInspectionAdvisoryPanel({
   useEffect(() => {
     if (!inspectionTask) {
       setSubmission(null);
+      setLoadError(null);
       return;
     }
     let cancelled = false;
     setLoadingSubmission(true);
+    setLoadError(null);
     void loadInspectorWorkspaceSnapshot(inspectionTask.id).then((loaded) => {
       if (!cancelled) {
         setSubmission(loaded);
@@ -79,9 +82,13 @@ export function FieldInspectionAdvisoryPanel({
       }
     }).catch((err: unknown) => {
       if (!cancelled) {
-        console.warn("Field inspection advisory load failed:", err);
         setSubmission(null);
         setLoadingSubmission(false);
+        setLoadError(
+          err instanceof Error
+            ? err.message
+            : "تعذّر تحميل بيانات المعاينة الميدانية",
+        );
       }
     });
     return () => {
@@ -103,6 +110,23 @@ export function FieldInspectionAdvisoryPanel({
     return (
       <RegistrationFormCard title="معاينة العقار (استرشادي)">
         <InlineLoadingSkeleton />
+      </RegistrationFormCard>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <RegistrationFormCard title="معاينة العقار (استرشادي)">
+        <p className="text-xs leading-relaxed text-danger-text">{loadError}</p>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="mt-2"
+          onClick={() => setRefreshKey((k) => k + 1)}
+        >
+          إعادة المحاولة
+        </Button>
       </RegistrationFormCard>
     );
   }
