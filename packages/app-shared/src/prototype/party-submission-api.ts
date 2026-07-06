@@ -65,6 +65,10 @@ export async function persistPartySubmissionPayload(
 export type PartySubmissionMutationResult =
   MutationResult<PartyTaskSubmissionDto>;
 
+export type PartyWorkMutationResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string };
+
 export async function submitPartySubmission(
   taskId: string,
 ): Promise<PartySubmissionMutationResult> {

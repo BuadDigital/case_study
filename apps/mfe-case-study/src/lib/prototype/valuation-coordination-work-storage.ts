@@ -12,6 +12,7 @@ import {
   prefetchPartySubmissionsForTasks,
   setCachedPartySubmission,
   submitPartySubmission,
+  type PartyWorkMutationResult,
 } from "@platform/app-shared/prototype/party-submission-api";
 import {
   createValuationCoordinationDraft,
@@ -60,16 +61,20 @@ export async function fetchValuationCoordinationSubmission(
 
 export async function saveValuationCoordinationSubmission(
   submission: ValuationCoordinationSubmission,
-): Promise<ValuationCoordinationSubmission | null> {
-  if (!submission.taskId) return null;
+): Promise<ValuationCoordinationSubmission> {
+  if (!submission.taskId) {
+    throw new Error("معرّف المهمة مطلوب لحفظ التنسيق");
+  }
   const payload = {
     ...submission,
     updatedAtUtc: new Date().toISOString(),
   };
   const saved = await persistPartySubmissionPayload(submission.taskId, payload);
-  if (!saved.ok) return null;
+  if (!saved.ok) throw new Error(saved.error);
   notifyChanged();
-  return dtoToSubmission(saved.data);
+  const next = dtoToSubmission(saved.data);
+  if (!next) throw new Error("تعذّر قراءة مسودة التنسيق بعد الحفظ");
+  return next;
 }
 
 export async function getOrCreateValuationCoordinationDraft(input: {
@@ -119,23 +124,39 @@ export async function updateValuationCoordinationDraft(
 
 export async function submitValuationCoordinationSubmission(
   taskId: string,
-): Promise<ValuationCoordinationSubmission | null> {
+): Promise<PartyWorkMutationResult<ValuationCoordinationSubmission>> {
   const current = loadValuationCoordinationSubmission(taskId);
-  if (!current || current.status === "submitted") return current;
+  if (!current) {
+    return { ok: false, error: "لا توجد مسودة للإرسال" };
+  }
+  if (current.status === "submitted") {
+    return { ok: true, data: current };
+  }
 
-  const saved = await saveValuationCoordinationSubmission({
-    ...current,
-    status: "draft",
-    updatedAtUtc: new Date().toISOString(),
-  });
-  if (!saved) return null;
+  try {
+    await saveValuationCoordinationSubmission({
+      ...current,
+      status: "draft",
+      updatedAtUtc: new Date().toISOString(),
+    });
+  } catch (err: unknown) {
+    return {
+      ok: false,
+      error:
+        err instanceof Error ? err.message : "تعذّر حفظ المسودة قبل الإرسال",
+    };
+  }
 
   const submitted = await submitPartySubmission(taskId);
-  if (!submitted.ok) return null;
+  if (!submitted.ok) return { ok: false, error: submitted.error };
   notifyChanged();
   dispatchWorkflowSubmitted(VALUATION_COORDINATION_SUBMITTED_EVENT);
   notifyTasksChanged();
-  return dtoToSubmission(submitted.data);
+  const data = dtoToSubmission(submitted.data);
+  if (!data) {
+    return { ok: false, error: "تعذّر قراءة بيانات الإرسال" };
+  }
+  return { ok: true, data };
 }
 
 export async function prefetchValuationCoordinationSubmissions(

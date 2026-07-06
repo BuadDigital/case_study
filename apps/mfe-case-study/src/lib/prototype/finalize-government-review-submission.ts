@@ -5,5 +5,6 @@ import { submitGovernmentReviewSubmission } from "./government-review-work-stora
 export async function finalizeGovernmentReviewSubmission(
   taskId: string,
 ): Promise<GovernmentReviewSubmission | null> {
-  return submitGovernmentReviewSubmission(taskId);
+  const result = await submitGovernmentReviewSubmission(taskId);
+  return result.ok ? result.data : null;
 }

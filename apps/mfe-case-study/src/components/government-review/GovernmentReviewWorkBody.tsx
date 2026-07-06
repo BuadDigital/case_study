@@ -110,13 +110,16 @@ export function GovernmentReviewWorkBody({
   const persist = useCallback(
     (patch: Parameters<typeof updateGovernmentReviewDraft>[1]) => {
       if (!task.id) return;
-      void updateGovernmentReviewDraft(task.id, patch).then((next) => {
-        if (next) {
-          setDraft(next);
-          return;
-        }
-        showToast("تعذّر حفظ المراجعة — حاول مرة أخرى", "error");
-      });
+      void updateGovernmentReviewDraft(task.id, patch)
+        .then((next) => {
+          if (next) setDraft(next);
+        })
+        .catch((err: unknown) => {
+          showToast(
+            err instanceof Error ? err.message : "تعذّر حفظ المراجعة — حاول مرة أخرى",
+            "error",
+          );
+        });
     },
     [task.id, showToast],
   );

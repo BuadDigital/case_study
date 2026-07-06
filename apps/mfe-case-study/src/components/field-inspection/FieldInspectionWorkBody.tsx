@@ -145,13 +145,16 @@ export function FieldInspectionWorkBody({
   const persist = useCallback(
     (patch: Parameters<typeof updateInspectorWorkspace>[1]) => {
       if (!task.id || locked) return;
-      void updateInspectorWorkspace(task.id, patch).then((next) => {
-        if (next) {
-          setDraft(next);
-          return;
-        }
-        showToast("تعذّر حفظ المعاينة — حاول مرة أخرى", "error");
-      });
+      void updateInspectorWorkspace(task.id, patch)
+        .then((next) => {
+          if (next) setDraft(next);
+        })
+        .catch((err: unknown) => {
+          showToast(
+            err instanceof Error ? err.message : "تعذّر حفظ المعاينة — حاول مرة أخرى",
+            "error",
+          );
+        });
     },
     [task.id, locked, showToast],
   );
@@ -159,19 +162,22 @@ export function FieldInspectionWorkBody({
   const saveDraft = useCallback(async (): Promise<boolean> => {
     if (!draft || locked) return false;
     hostRef.current?.onSavingChange?.(true);
-    const next = await saveInspectorWorkspaceDraft(draft);
-    hostRef.current?.onSavingChange?.(false);
-    if (next) {
+    try {
+      const next = await saveInspectorWorkspaceDraft(draft);
       setDraft(next);
       setFormError(null);
       showToast("تم حفظ مسودة المعاينة.", "success");
       return true;
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "تعذّر حفظ المسودة — حاول مرة أخرى";
+      setFormError(message);
+      showToast(message, "error");
+      return false;
+    } finally {
+      hostRef.current?.onSavingChange?.(false);
     }
-    const message = "تعذّر حفظ المسودة — حاول مرة أخرى";
-    setFormError(message);
-    showToast(message, "error");
-    return false;
-  }, [draft, locked, hostRef, task.id, showToast]);
+  }, [draft, locked, hostRef, showToast]);
 
   const submit = useCallback(async (): Promise<boolean> => {
     if (!draft || locked) return false;

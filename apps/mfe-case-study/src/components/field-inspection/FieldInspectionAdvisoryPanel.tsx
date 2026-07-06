@@ -125,11 +125,11 @@ export function FieldInspectionAdvisoryPanel({
       return;
     }
     const reopened = await reopenInspectorWorkspace(inspectionTask.id, trimmed);
-    if (!reopened) {
-      setReturnError("تعذّر إعادة المعاينة للتصحيح — حاول لاحقاً");
+    if (!reopened.ok) {
+      setReturnError(reopened.error);
       return;
     }
-    setSubmission(reopened);
+    setSubmission(reopened.data);
     setReturnOpen(false);
     setReturnNote("");
     setReturnError(null);

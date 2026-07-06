@@ -122,7 +122,11 @@ export function openEvaluatorReportPreview(taskId: string): void {
     openTaskAttachmentPreview(cached);
     return;
   }
-  void prefetchEvaluatorReport(taskId).then((preview) => {
-    if (preview) openTaskAttachmentPreview(preview);
-  });
+  void prefetchEvaluatorReport(taskId)
+    .then((preview) => {
+      if (preview) openTaskAttachmentPreview(preview);
+    })
+    .catch((err: unknown) => {
+      console.warn("Evaluator report prefetch failed:", err);
+    });
 }

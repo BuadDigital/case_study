@@ -15,7 +15,7 @@ export async function finalizeEngineeringSurveySubmission(
   surveyTaskId: string,
 ): Promise<FinalizeEngineeringSurveyResult | null> {
   const submitted = await submitEngineeringSurveySubmission(surveyTaskId);
-  if (!submitted) return null;
+  if (!submitted.ok) return null;
 
   let warning: string | undefined;
   const partyDraft = await loadPartyCaseStudyFormDraft(surveyTaskId);
@@ -31,5 +31,7 @@ export async function finalizeEngineeringSurveySubmission(
     }
   }
 
-  return warning ? { submission: submitted, warning } : { submission: submitted };
+  return warning
+    ? { submission: submitted.data, warning }
+    : { submission: submitted.data };
 }

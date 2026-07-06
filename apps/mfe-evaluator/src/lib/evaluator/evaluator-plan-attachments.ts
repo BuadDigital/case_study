@@ -124,9 +124,13 @@ export function openEvaluatorPlanImagePreview(taskId: string): void {
     openTaskAttachmentPreview(cached);
     return;
   }
-  void prefetchEvaluatorPlanImage(taskId).then((preview) => {
-    if (preview) openTaskAttachmentPreview(preview);
-  });
+  void prefetchEvaluatorPlanImage(taskId)
+    .then((preview) => {
+      if (preview) openTaskAttachmentPreview(preview);
+    })
+    .catch((err: unknown) => {
+      console.warn("Evaluator plan image prefetch failed:", err);
+    });
 }
 
 export async function clearCachedEvaluatorPlanImage(taskId: string): Promise<void> {
