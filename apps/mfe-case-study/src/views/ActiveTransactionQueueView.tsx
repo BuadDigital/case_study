@@ -428,9 +428,16 @@ export function ActiveTransactionQueueView({
   useEffect(() => {
     if (!needsPartySubmissions || listedTaskIdsKey.length === 0) return;
     const ids = listedTaskIdsKey.split("\0");
-    void prefetchPartySubmissionsForTasks(ids).then(() => {
-      setSubmissionCacheGen((n) => n + 1);
-    });
+    void prefetchPartySubmissionsForTasks(ids)
+      .then(() => {
+        setSubmissionCacheGen((n) => n + 1);
+      })
+      .catch((err: unknown) => {
+        console.warn(
+          "Party submission prefetch failed:",
+          err instanceof Error ? err.message : err,
+        );
+      });
   }, [listedTaskIdsKey, needsPartySubmissions]);
 
   const renderStatusOrRemaining = useCallback(

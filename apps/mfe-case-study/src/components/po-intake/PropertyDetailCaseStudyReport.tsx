@@ -85,6 +85,8 @@ export function PropertyDetailCaseStudyReport({
     let cancelled = false;
     void loadPartyCaseStudyAnswersByParty(task, tasks).then((loaded) => {
       if (!cancelled) setPartyAnswers(loaded);
+    }).catch((err: unknown) => {
+      if (!cancelled) console.warn("Party case study answers load failed:", err);
     });
     return () => {
       cancelled = true;

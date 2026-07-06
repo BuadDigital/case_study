@@ -85,6 +85,8 @@ export function EvaluatorAdvisoryPanel({
     let cancelled = false;
     void loadPartyCaseStudyFormDraft(appraisalTask.id).then((draft) => {
       if (!cancelled) setPartyDraft(draft);
+    }).catch((err: unknown) => {
+      if (!cancelled) console.warn("Appraisal party draft load failed:", err);
     });
     return () => {
       cancelled = true;
@@ -95,6 +97,8 @@ export function EvaluatorAdvisoryPanel({
     if (!appraisalTask) return;
     void fetchEvaluatorSubmissionSnapshot(appraisalTask.id).then(() => {
       setRefreshKey((k) => k + 1);
+    }).catch((err: unknown) => {
+      console.warn("Evaluator submission snapshot prefetch failed:", err);
     });
   }, [appraisalTask?.id]);
 

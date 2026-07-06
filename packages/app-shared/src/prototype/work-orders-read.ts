@@ -14,7 +14,10 @@ import {
   listWorkOrders,
   listWorkOrdersWithDetails,
 } from "@platform/api-client";
-import { workOrdersApiConfig } from "./work-orders-api-config";
+import {
+  requireWorkOrdersApiConfig,
+  unwrapApiResult,
+} from "./work-orders-api-config";
 
 const INCOMPLETE_CONTACT_MARKER_PHONE = "0500000000";
 
@@ -151,12 +154,9 @@ export async function loadWorkOrderDtos(): Promise<WorkOrderDto[]> {
   if (workOrderDtosInflight) return workOrderDtosInflight;
 
   workOrderDtosInflight = (async () => {
-    const config = workOrdersApiConfig();
-    if (!config) return [];
-
+    const config = requireWorkOrdersApiConfig();
     const result = await listWorkOrdersWithDetails(config);
-    if (!result.ok) return [];
-    return result.data;
+    return unwrapApiResult(result, "تعذّر تحميل أوامر العمل");
   })().finally(() => {
     workOrderDtosInflight = null;
   });
@@ -187,11 +187,11 @@ export function mapWorkOrderDtosToPropertyListItems(
 
 /** PO list rows for dashboard and PO screens — loads all pages (500 rows per request). */
 export async function loadPoListRows(): Promise<PoRow[]> {
-  const config = workOrdersApiConfig();
-  if (!config) return [];
+  const config = requireWorkOrdersApiConfig();
   const result = await listWorkOrders(config);
-  if (!result.ok) return [];
-  return result.data.map(listItemToPoRow);
+  return unwrapApiResult(result, "تعذّر تحميل قائمة أوامر العمل").map(
+    listItemToPoRow,
+  );
 }
 
 export type PropertyListItem = {
@@ -205,12 +205,12 @@ export async function loadPropertyListItems(): Promise<PropertyListItem[]> {
   if (propertyListItemsInflight) return propertyListItemsInflight;
 
   propertyListItemsInflight = (async () => {
-    const config = workOrdersApiConfig();
-    if (!config) return [];
-
+    const config = requireWorkOrdersApiConfig();
     const result = await listPropertyListItems(config);
-    if (!result.ok) return [];
-    return result.data.map(apiPropertyListItemToPropertyListItem);
+    return unwrapApiResult(
+      result,
+      "تعذّر تحميل قائمة العقارات",
+    ).map(apiPropertyListItemToPropertyListItem);
   })().finally(() => {
     propertyListItemsInflight = null;
   });

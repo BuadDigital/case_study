@@ -665,8 +665,10 @@ public static class DataSeeder
                     .AsTracking()
                     .FirstOrDefaultAsync(t => t.Id == parentId, cancellationToken);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Console.Error.WriteLine(
+                    $"BackfillPartyChildAssigneeIds: failed to load parent {parentId}: {ex.Message}");
                 continue;
             }
 
@@ -684,12 +686,12 @@ public static class DataSeeder
                     .Where(t => t.ParentTaskId == parentId)
                     .ToListAsync(cancellationToken);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Console.Error.WriteLine(
+                    $"BackfillPartyChildAssigneeIds: failed to load children for parent {parentId}: {ex.Message}");
                 continue;
             }
-
-            foreach (var child in children)
             {
                 var expectedId = PartyAssigneeIdFromDistribution(child.Kind, distribution);
                 if (string.IsNullOrWhiteSpace(expectedId)) continue;

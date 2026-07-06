@@ -108,11 +108,11 @@ export function KeysView() {
 
     setReceivingId(id);
 
-    const updated = await markPropertyKeyReceived(id);
+    const result = await markPropertyKeyReceived(id);
 
     setReceivingId(null);
 
-    if (updated) {
+    if (result.ok) {
 
       invalidate();
 
@@ -120,7 +120,7 @@ export function KeysView() {
 
     } else {
 
-      showToast("تعذّر تسجيل الاستلام.", "error");
+      showToast(result.error, "error");
 
     }
 

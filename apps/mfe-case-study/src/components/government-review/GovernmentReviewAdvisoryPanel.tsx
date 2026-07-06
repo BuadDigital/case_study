@@ -82,6 +82,12 @@ export function GovernmentReviewAdvisoryPanel({
         setSubmission(loaded);
         setLoadingSubmission(false);
       }
+    }).catch((err: unknown) => {
+      if (!cancelled) {
+        console.warn("Government review advisory load failed:", err);
+        setSubmission(null);
+        setLoadingSubmission(false);
+      }
     });
     return () => {
       cancelled = true;

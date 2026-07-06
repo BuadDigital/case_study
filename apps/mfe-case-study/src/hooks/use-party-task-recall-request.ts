@@ -47,10 +47,10 @@ export function usePartyTaskRecallRequest(options: {
       propertyId: options.propertyId,
       reason,
     }).then((result) => {
-      if (result) {
+      if (result.ok) {
         showToast("تم إرسال طلب استرجاع المعاملة", "success");
       } else {
-        showToast("تعذّر إرسال الطلب — حاول لاحقاً", "error");
+        showToast(result.error, "error");
       }
     });
   }, [options, showToast]);

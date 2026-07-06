@@ -131,9 +131,10 @@ export async function uploadTaskScopedAttachment(
       contentType: preview.mimeType,
       contentBase64: await fileToBase64(file),
     });
-    if (upload.ok) {
-      preview.attachmentId = upload.data.id;
+    if (!upload.ok) {
+      return null;
     }
+    preview.attachmentId = upload.data.id;
   }
 
   previewCache.set(cacheKey(scope, taskId), preview);

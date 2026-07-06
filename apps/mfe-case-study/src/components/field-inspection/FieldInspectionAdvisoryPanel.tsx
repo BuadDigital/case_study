@@ -77,6 +77,12 @@ export function FieldInspectionAdvisoryPanel({
         setSubmission(loaded);
         setLoadingSubmission(false);
       }
+    }).catch((err: unknown) => {
+      if (!cancelled) {
+        console.warn("Field inspection advisory load failed:", err);
+        setSubmission(null);
+        setLoadingSubmission(false);
+      }
     });
     return () => {
       cancelled = true;

@@ -34,7 +34,6 @@ import {
   INFATH_FIELD_LABELS,
   infathYesNoLabel,
 } from "./infath-field-labels";
-import { getPartyTaskSubmission, type PartyTaskSubmissionDto } from "@platform/api-client";
 import {
   appraiserOnlyCaseStudyChecklistItems,
   caseStudyAnswerDisplayLabel,
@@ -45,10 +44,28 @@ import {
 import type { EvaluatorChecklistAnswers } from "@evaluator/mfe/lib/evaluator/evaluator-window-data";
 import { loadCaseStudyInfoRolesConfig } from "@settings/mfe";
 import type { CaseStudyInfoRolesMatrix } from "@settings/mfe";
-import { workOrdersApiConfig } from "../work-orders-api-config";
-import { fetchGovernmentReviewSubmission } from "./government-review-work-storage";
+import {
+  loadEngineeringSurveySubmissionSnapshot,
+  loadEvaluatorSubmissionSnapshot,
+  loadGovernmentReviewSubmissionSnapshot,
+  loadValuationCoordinationSubmissionSnapshot,
+} from "./property-detail-party-submission-loaders";
 import { formatGovernmentReviewKeysProofLabel } from "./government-review-work-data";
-import { fetchValuationCoordinationSubmission } from "./valuation-coordination-work-storage";
+import type { EvaluatorChecklist } from "./property-detail-party-submission-types";
+export type {
+  PartyAnswerRow,
+  PropertyDetailPartySubmission,
+} from "./property-detail-party-submission-types";
+import type {
+  EngineeringSurveyChecklistAnswer,
+  EngineeringSurveyChecklistRow,
+  EngineeringSurveySubmissionSnapshot,
+  EvaluatorSubmissionSnapshot,
+  GovernmentReviewSubmissionSnapshot,
+  PartyAnswerRow,
+  PropertyDetailPartySubmission,
+  ValuationCoordinationSubmissionSnapshot,
+} from "./property-detail-party-submission-types";
 
 /** Must match `ENGINEERING_SURVEY_CHECKLIST_ITEMS` in engineering-survey-data (no circular import). */
 const ENGINEERING_SURVEY_CHECKLIST_LABELS = [
@@ -75,106 +92,6 @@ const ROLE_CHILD_KIND: Partial<
   appraisal: "property-appraisal",
   government: "government-review",
   coordinator: "valuation-coordination",
-};
-
-export type PartyAnswerRow = {
-  question: string;
-  answer: string;
-};
-
-export type PropertyDetailPartySubmission = {
-  roleKey: PropertyDetailPartyRoleKey;
-  hasData: boolean;
-  emptyReason?: string;
-  statusLabel?: string;
-  taskStatusLabel?: string;
-  fields: { label: string; value: string; ltr?: boolean }[];
-  answers: PartyAnswerRow[];
-  remarks: { label: string; value: string }[];
-};
-
-type EvaluatorChecklist = Record<string, boolean | null | string>;
-
-type EvaluatorSubmissionSnapshot = {
-  status: string;
-  evaluatorPrice: string;
-  evaluatorNotes: string;
-  reportFileName: string | null;
-  submittedAtUtc: string | null;
-  checklist: EvaluatorChecklist;
-  appraisalDate?: string;
-  valuationMethod?: string;
-  valueBasis?: string;
-  demandLevel?: string;
-  landValue?: string;
-  buildingValue?: string;
-  forcedSaleDiscountPct?: string;
-  searchScopeNotes?: string;
-  planImageFileName?: string | null;
-  appraiserAddress?: string;
-  appraiserPhone?: string;
-  reportIssueDate?: string;
-};
-
-type EngineeringSurveyChecklistAnswer = "yes" | "no" | null;
-
-type EngineeringSurveyChecklistRow = {
-  answer: EngineeringSurveyChecklistAnswer;
-  note: string;
-};
-
-type EngineeringSurveySubmissionSnapshot = {
-  status: "draft" | "submitted" | "reopened";
-  latitude: string;
-  longitude: string;
-  surveyReportFileName: string;
-  siteLetterFileName: string;
-  siteConfirmed: boolean;
-  checklist: EngineeringSurveyChecklistRow[];
-  returnNote?: string;
-  onSiteAreaSqm: string;
-  northBoundary: string;
-  northBoundaryLengthM: string;
-  southBoundary: string;
-  southBoundaryLengthM: string;
-  eastBoundary: string;
-  eastBoundaryLengthM: string;
-  westBoundary: string;
-  westBoundaryLengthM: string;
-  surveyNotes: string;
-  updatedAtUtc: string;
-  submittedAtUtc?: string;
-};
-
-type GovernmentReviewSubmissionSnapshot = {
-  status: "draft" | "submitted" | "reopened";
-  visitStatus: "completed" | "scheduled" | "blocked" | "";
-  visitDate: string;
-  courtName: string;
-  keysStatus: "received" | "pending" | "not_required" | "";
-  keysDescription: string;
-  accessBlockReason: string;
-  reviewNotes: string;
-  returnNote?: string;
-  propertyZoneStatus?: string;
-  keysProofFiles?: import("./government-review-work-data").GovernmentReviewKeysProofFile[];
-  keysProofFileName?: string;
-  submittedAtUtc: string | null;
-  updatedAtUtc: string;
-};
-
-type ValuationCoordinationSubmissionSnapshot = {
-  status: "draft" | "submitted";
-  receiptConfirmed: boolean;
-  receiptDate: string;
-  inspectorName: string;
-  appraiserName: string;
-  priority: "normal" | "urgent";
-  coordinationNotes: string;
-  inspectorInstructions: string;
-  appraiserInstructions: string;
-  submittedAtUtc: string | null;
-  updatedAtUtc: string;
 };
 
 function formStatusLabel(status: CaseStudyFormStatus): string {
@@ -250,130 +167,6 @@ function childForRole(
       (t) => t.kind === kind,
     ) ?? null
   );
-}
-
-function parseEvaluatorPayload(
-  dto: PartyTaskSubmissionDto,
-): EvaluatorSubmissionSnapshot | null {
-  const payload = dto.payload ?? {};
-  if (typeof payload !== "object" || payload === null) return null;
-  const raw = payload as Record<string, unknown>;
-  return {
-    status: String(raw.status ?? dto.status ?? "draft"),
-    evaluatorPrice: String(raw.evaluatorPrice ?? ""),
-    evaluatorNotes: String(raw.evaluatorNotes ?? ""),
-    reportFileName:
-      typeof raw.reportFileName === "string" ? raw.reportFileName : null,
-    submittedAtUtc:
-      typeof raw.submittedAtUtc === "string"
-        ? raw.submittedAtUtc
-        : dto.submittedAtUtc ?? null,
-    checklist: (raw.checklist ?? {}) as EvaluatorChecklist,
-  };
-}
-
-async function loadEvaluatorSubmissionSnapshot(
-  taskId: string,
-): Promise<EvaluatorSubmissionSnapshot | null> {
-  const config = workOrdersApiConfig();
-  if (!config || !taskId) return null;
-
-  const result = await getPartyTaskSubmission(config, taskId);
-  if (!result.ok) return null;
-  return parseEvaluatorPayload(result.data);
-}
-
-async function loadEngineeringSurveySubmissionSnapshot(
-  taskId: string,
-): Promise<EngineeringSurveySubmissionSnapshot | null> {
-  const config = workOrdersApiConfig();
-  if (!config || !taskId) return null;
-
-  const result = await getPartyTaskSubmission(config, taskId);
-  if (!result.ok) return null;
-
-  const payload = result.data.payload ?? {};
-  const status =
-    (payload.status as EngineeringSurveySubmissionSnapshot["status"] | undefined)
-    ?? (result.data.status as EngineeringSurveySubmissionSnapshot["status"])
-    ?? "draft";
-
-  return {
-    status,
-    latitude: String(payload.latitude ?? ""),
-    longitude: String(payload.longitude ?? ""),
-    surveyReportFileName: String(payload.surveyReportFileName ?? ""),
-    siteLetterFileName: String(payload.siteLetterFileName ?? ""),
-    siteConfirmed: payload.siteConfirmed === true,
-    checklist: Array.isArray(payload.checklist)
-      ? (payload.checklist as EngineeringSurveyChecklistRow[])
-      : [],
-    returnNote:
-      typeof payload.returnNote === "string"
-        ? payload.returnNote
-        : result.data.returnNote,
-    onSiteAreaSqm: String(payload.onSiteAreaSqm ?? ""),
-    northBoundary: String(payload.northBoundary ?? ""),
-    northBoundaryLengthM: String(payload.northBoundaryLengthM ?? ""),
-    southBoundary: String(payload.southBoundary ?? ""),
-    southBoundaryLengthM: String(payload.southBoundaryLengthM ?? ""),
-    eastBoundary: String(payload.eastBoundary ?? ""),
-    eastBoundaryLengthM: String(payload.eastBoundaryLengthM ?? ""),
-    westBoundary: String(payload.westBoundary ?? ""),
-    westBoundaryLengthM: String(payload.westBoundaryLengthM ?? ""),
-    surveyNotes: String(payload.surveyNotes ?? ""),
-    updatedAtUtc:
-      typeof payload.updatedAtUtc === "string"
-        ? payload.updatedAtUtc
-        : result.data.updatedAtUtc,
-    submittedAtUtc:
-      typeof payload.submittedAtUtc === "string"
-        ? payload.submittedAtUtc
-        : result.data.submittedAtUtc,
-  };
-}
-
-async function loadGovernmentReviewSubmissionSnapshot(
-  child: WorkflowTask,
-): Promise<GovernmentReviewSubmissionSnapshot | null> {
-  if (!child.propertyId) return null;
-  const submission = await fetchGovernmentReviewSubmission(child.id);
-  if (!submission) return null;
-  return {
-    status: submission.status,
-    visitStatus: submission.visitStatus,
-    visitDate: submission.visitDate,
-    courtName: submission.courtName,
-    keysStatus: submission.keysStatus,
-    keysDescription: submission.keysDescription,
-    accessBlockReason: submission.accessBlockReason,
-    reviewNotes: submission.reviewNotes,
-    propertyZoneStatus: submission.propertyZoneStatus,
-    keysProofFiles: submission.keysProofFiles,
-    submittedAtUtc: submission.submittedAtUtc,
-    updatedAtUtc: submission.updatedAtUtc,
-  };
-}
-
-async function loadValuationCoordinationSubmissionSnapshot(
-  child: WorkflowTask,
-): Promise<ValuationCoordinationSubmissionSnapshot | null> {
-  if (!child.propertyId) return null;
-  const submission = await fetchValuationCoordinationSubmission(child.id);
-  if (!submission) return null;
-  return {
-    status: submission.status,
-    receiptConfirmed: submission.receiptConfirmed,
-    receiptDate: submission.receiptDate,
-    inspectorName: submission.inspectorName,
-    appraiserName: submission.appraiserName,
-    priority: submission.priority,
-    coordinationNotes: submission.coordinationNotes,
-    inspectorInstructions: submission.inspectorInstructions,
-    appraiserInstructions: submission.appraiserInstructions,
-    submittedAtUtc: submission.submittedAtUtc,
-    updatedAtUtc: submission.updatedAtUtc,
-  };
 }
 
 function evaluatorStatusLabel(status: string): string {

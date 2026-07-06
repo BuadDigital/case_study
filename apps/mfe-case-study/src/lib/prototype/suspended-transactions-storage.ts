@@ -1,5 +1,8 @@
 import { listSuspendedTransactions } from "@platform/api-client";
-import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
+import {
+  requirePrototypeModulesApiConfig,
+  unwrapApiResult,
+} from "@platform/app-shared/prototype/prototype-modules-api-config";
 import { getPropertyFailureFromCache } from "@failures/mfe";
 
 export const SUSPENDED_TRANSACTIONS_CHANGED_EVENT =
@@ -63,13 +66,12 @@ function mapDto(row: {
 export async function loadSuspendedTransactions(): Promise<
   SuspendedTransaction[]
 > {
-  const config = prototypeModulesApiConfig();
-  if (!config) return memoryList;
-
+  const config = requirePrototypeModulesApiConfig();
   const result = await listSuspendedTransactions(config);
-  if (!result.ok) return memoryList;
-
-  memoryList = result.data.map(mapDto);
+  memoryList = unwrapApiResult(
+    result,
+    "تعذّر تحميل المعاملات المعلّقة",
+  ).map(mapDto);
   return memoryList;
 }
 

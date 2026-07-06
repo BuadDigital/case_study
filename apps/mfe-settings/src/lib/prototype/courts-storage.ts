@@ -9,6 +9,10 @@ export type CourtCatalogEntry = {
   circuits: string[];
 };
 
+export type CourtsCatalogMutationResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
 function newId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
@@ -37,8 +41,9 @@ export async function loadCourtsCatalog(): Promise<CourtCatalogEntry[]> {
 
   const result = await listCourts(config);
   if (!result.ok) {
-    console.warn(apiErrorMessage(result.kind, "Courts API"));
-    return seedFromDefaults();
+    throw new Error(
+      apiErrorMessage(result.kind, "تعذّر تحميل دليل المحاكم"),
+    );
   }
 
   return result.entries.map((e) => ({
@@ -51,9 +56,9 @@ export async function loadCourtsCatalog(): Promise<CourtCatalogEntry[]> {
 
 export async function saveCourtsCatalog(
   entries: CourtCatalogEntry[],
-): Promise<boolean> {
+): Promise<CourtsCatalogMutationResult> {
   const config = courtsApiConfig();
-  if (!config) return false;
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
 
   const result = await replaceCourtsCatalog(
     config,
@@ -64,5 +69,11 @@ export async function saveCourtsCatalog(
       circuits: e.circuits,
     })),
   );
-  return result.ok;
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: apiErrorMessage(result.kind, "تعذّر حفظ دليل المحاكم"),
+    };
+  }
+  return { ok: true };
 }

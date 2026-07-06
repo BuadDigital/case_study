@@ -14,8 +14,8 @@ import {
 import {
   EVALUATOR_RECALL_CHANGED_EVENT,
   EVALUATOR_RECALL_HYDRATED_EVENT,
-  hydrateEvaluatorRecalls,
-} from "../lib/evaluator/evaluator-recall-storage";
+  hydratePartyTaskRecalls,
+} from "@platform/app-shared/prototype/party-task-recall-storage";
 import {
   EVALUATOR_SUBMISSION_CHANGED_EVENT,
   isEvaluatorFormLocked,
@@ -37,7 +37,7 @@ export const partyAppraisalExtensions: PartyAppraisalExtensions = {
       fullPageTaskPath: propertyAppraisalWorkspacePath,
       statusColumnLabel: "الحالة",
       filterListed: (mine: WorkflowTask[], poByNumber: Map<string, PoIntakeRecord>) => {
-        void hydrateEvaluatorRecalls();
+        void hydratePartyTaskRecalls();
         const listed = filterAppraiserListedTasks(baseFilter(mine, poByNumber));
         void prefetchEvaluatorSubmissions(listed.map((t) => t.id));
         return listed;

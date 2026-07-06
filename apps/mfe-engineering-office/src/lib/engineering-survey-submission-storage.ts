@@ -119,10 +119,10 @@ export async function saveEngineeringSurveySubmission(
     ...submissionToPayload(submission),
     updatedAtUtc: new Date().toISOString(),
   };
-  const dto = await persistPartySubmissionPayload(submission.taskId, payload);
-  if (!dto) return null;
+  const saved = await persistPartySubmissionPayload(submission.taskId, payload);
+  if (!saved.ok) return null;
   notifyChanged();
-  return dtoToSubmission(dto);
+  return dtoToSubmission(saved.data);
 }
 
 export async function getOrCreateEngineeringSurveyDraft(input: {
@@ -134,7 +134,10 @@ export async function getOrCreateEngineeringSurveyDraft(input: {
   if (existing) return existing;
   const draft = createEngineeringSurveyDraft(input);
   const saved = await saveEngineeringSurveySubmission(draft);
-  return saved ?? draft;
+  if (!saved) {
+    throw new Error("تعذّر حفظ مسودة الرفع — تحقق من الاتصال وحاول مجدداً.");
+  }
+  return saved;
 }
 
 export async function updateEngineeringSurveyDraft(
@@ -181,29 +184,30 @@ export async function submitEngineeringSurveySubmission(
   const current = loadEngineeringSurveySubmission(taskId);
   if (!current || current.status === "submitted") return current;
 
-  await saveEngineeringSurveySubmission({
+  const saved = await saveEngineeringSurveySubmission({
     ...current,
     status: "draft",
     updatedAtUtc: new Date().toISOString(),
   });
+  if (!saved) return null;
 
-  const dto = await submitPartySubmission(taskId);
-  if (!dto) return loadEngineeringSurveySubmission(taskId);
+  const submitted = await submitPartySubmission(taskId);
+  if (!submitted.ok) return null;
   notifyChanged();
   dispatchWorkflowSubmitted(ENGINEERING_SURVEY_SUBMITTED_EVENT);
   notifyTasksChanged();
-  return dtoToSubmission(dto);
+  return dtoToSubmission(submitted.data);
 }
 
 export async function reopenEngineeringSurveySubmission(
   taskId: string,
   returnNote: string,
 ): Promise<EngineeringSurveySubmission | null> {
-  const dto = await reopenPartySubmission(taskId, returnNote);
-  if (!dto) return null;
+  const reopened = await reopenPartySubmission(taskId, returnNote);
+  if (!reopened.ok) return null;
   notifyChanged();
   notifyTasksChanged();
-  return dtoToSubmission(dto);
+  return dtoToSubmission(reopened.data);
 }
 
 export async function prefetchEngineeringSurveySubmissions(

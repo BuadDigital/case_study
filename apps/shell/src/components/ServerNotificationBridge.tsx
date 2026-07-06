@@ -73,8 +73,8 @@ export function ServerNotificationBridge() {
         }
 
         initialLoadRef.current = false;
-      } catch {
-        // offline or API unavailable — keep local inbox
+      } catch (err) {
+        console.warn("Notification inbox pull failed; keeping local inbox", err);
       }
     }
 
@@ -170,7 +170,9 @@ export function ServerNotificationBridge() {
       void createNotification(
         { token: token! },
         notificationToCreateRequest(item),
-      ).catch(() => undefined);
+      ).catch((err) => {
+        console.warn("Failed to sync local notification to server", err);
+      });
     }
 
     window.addEventListener(NOTIFICATION_PUSHED_EVENT, onPushed);

@@ -3,7 +3,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { getPropertyTimeline } from "@platform/api-client";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { workOrdersApiConfig } from "../lib/work-orders-api-config";
+import {
+  requireWorkOrdersApiConfig,
+  unwrapApiResult,
+} from "../lib/work-orders-api-config";
 import {
   mapPropertyTimelineDtos,
   type PropertyTimelineEvent,
@@ -22,11 +25,12 @@ export function usePropertyTimelineQuery(
   return useQuery<PropertyTimelineEvent[]>({
     queryKey: prototypeKeys.propertyTimeline(po, property),
     queryFn: async () => {
-      const config = workOrdersApiConfig();
-      if (!config || !po || !property) return [];
+      const config = requireWorkOrdersApiConfig();
+      if (!po || !property) return [];
       const result = await getPropertyTimeline(config, po, property);
-      if (!result.ok) return [];
-      return mapPropertyTimelineDtos(result.data);
+      return mapPropertyTimelineDtos(
+        unwrapApiResult(result, "تعذّر تحميل الجدول الزمني للعقار"),
+      );
     },
     enabled: Boolean(po && property),
     staleTime: STALE_MS,

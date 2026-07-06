@@ -13,6 +13,7 @@ import {
   ModalTitle,
   Select,
   cn,
+  useToast,
 } from "@platform/design-system";
 import {
   FIELD_TYPE_GROUPS,
@@ -74,6 +75,7 @@ export function FieldDictionaryAddModal({
   onClose,
   listFields,
 }: Props) {
+  const { showToast } = useToast();
   const [draft, setDraft] = useState(() => ({
     ...emptyDraft(),
     ref: nextFieldRef(listFields),
@@ -87,12 +89,12 @@ export function FieldDictionaryAddModal({
   function handleSave(): void {
     const name = draft.name.trim();
     if (!name) {
-      window.alert("اكتب اسم الحقل");
+      showToast("اكتب اسم الحقل", "error");
       return;
     }
     const assignments = normalizeFieldAssignments(draft.assignments);
     if (assignments.length === 0) {
-      window.alert("أضف دوراً واحداً على الأقل مع شاشة.");
+      showToast("أضف دوراً واحداً على الأقل مع شاشة.", "error");
       return;
     }
     onSave({

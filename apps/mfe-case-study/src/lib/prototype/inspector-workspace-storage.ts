@@ -264,7 +264,7 @@ async function migrateInspectorDefaultCoordsIfNeeded(
     mapLongitude: defaults.longitude,
   };
   const saved = await saveInspectorWorkspaceDraft(next);
-  return saved ?? next;
+  return saved;
 }
 
 function payloadToDraft(
@@ -453,14 +453,17 @@ export async function getOrCreateInspectorWorkspace(input: {
   if (input.property && inspectorDraftNeedsEnfathPrefill(draft)) {
     draft = applyEnfathPrefillToInspectorDraft(draft, input.property);
   }
-  return saveInspectorWorkspaceDraft(draft);
+  const saved = await saveInspectorWorkspaceDraft(draft);
+  return saved;
 }
 
 export async function saveInspectorWorkspaceDraft(
   draft: InspectorWorkspaceDraft,
-): Promise<InspectorWorkspaceDraft | null> {
+): Promise<InspectorWorkspaceDraft> {
   const config = workOrdersApiConfig();
-  if (!config) return null;
+  if (!config) {
+    throw new Error("تعذّر حفظ مسودة المعاينة — تحقق من تسجيل الدخول");
+  }
 
   const payload = draftToPayload({
     ...draft,
@@ -478,7 +481,11 @@ export async function saveInspectorWorkspaceDraft(
     draft.taskId,
     payload,
   );
-  if (!result.ok) return null;
+  if (!result.ok) {
+    throw new Error(
+      resolveApiError(result.kind, result.errors, "تعذّر حفظ مسودة المعاينة"),
+    );
+  }
 
   const next = payloadToDraft(result.data, draft);
   writeCache(next);
@@ -544,9 +551,6 @@ export async function submitInspectorWorkspace(
   }
 
   const saved = await saveInspectorWorkspaceDraft(current);
-  if (!saved) {
-    return { ok: false, message: "تعذّر حفظ المسودة قبل الإرسال" };
-  }
 
   const result = await submitPartyTaskSubmission(config, taskId);
   if (!result.ok) {
@@ -567,9 +571,9 @@ export async function reopenInspectorWorkspace(
   taskId: string,
   returnNote: string,
 ): Promise<InspectorWorkspaceDraft | null> {
-  const dto = await reopenPartySubmission(taskId, returnNote);
-  if (!dto) return null;
-  const next = payloadToDraft(dto);
+  const reopened = await reopenPartySubmission(taskId, returnNote);
+  if (!reopened.ok) return null;
+  const next = payloadToDraft(reopened.data);
   writeCache(next);
   return next;
 }
