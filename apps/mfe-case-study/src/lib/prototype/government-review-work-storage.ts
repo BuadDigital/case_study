@@ -13,6 +13,7 @@ import {
   reopenPartySubmission,
   setCachedPartySubmission,
   submitPartySubmission,
+  type PartyWorkMutationResult,
 } from "@platform/app-shared/prototype/party-submission-api";
 import {
   createGovernmentReviewDraft,
@@ -60,16 +61,20 @@ export async function fetchGovernmentReviewSubmission(
 
 export async function saveGovernmentReviewSubmission(
   submission: GovernmentReviewSubmission,
-): Promise<GovernmentReviewSubmission | null> {
-  if (!submission.taskId) return null;
+): Promise<GovernmentReviewSubmission> {
+  if (!submission.taskId) {
+    throw new Error("معرّف المهمة مطلوب لحفظ المراجعة");
+  }
   const payload = {
     ...submission,
     updatedAtUtc: new Date().toISOString(),
   };
   const saved = await persistPartySubmissionPayload(submission.taskId, payload);
-  if (!saved.ok) return null;
+  if (!saved.ok) throw new Error(saved.error);
   notifyChanged();
-  return dtoToSubmission(saved.data);
+  const next = dtoToSubmission(saved.data);
+  if (!next) throw new Error("تعذّر قراءة مسودة المراجعة بعد الحفظ");
+  return next;
 }
 
 export async function getOrCreateGovernmentReviewDraft(input: {
@@ -120,34 +125,54 @@ export async function updateGovernmentReviewDraft(
 
 export async function submitGovernmentReviewSubmission(
   taskId: string,
-): Promise<GovernmentReviewSubmission | null> {
+): Promise<PartyWorkMutationResult<GovernmentReviewSubmission>> {
   const current = loadGovernmentReviewSubmission(taskId);
-  if (!current || current.status === "submitted") return current;
+  if (!current) {
+    return { ok: false, error: "لا توجد مسودة للإرسال" };
+  }
+  if (current.status === "submitted") {
+    return { ok: true, data: current };
+  }
 
-  const saved = await saveGovernmentReviewSubmission({
-    ...current,
-    status: "draft",
-    updatedAtUtc: new Date().toISOString(),
-  });
-  if (!saved) return null;
+  try {
+    await saveGovernmentReviewSubmission({
+      ...current,
+      status: "draft",
+      updatedAtUtc: new Date().toISOString(),
+    });
+  } catch (err: unknown) {
+    return {
+      ok: false,
+      error:
+        err instanceof Error ? err.message : "تعذّر حفظ المسودة قبل الإرسال",
+    };
+  }
 
   const submitted = await submitPartySubmission(taskId);
-  if (!submitted.ok) return null;
+  if (!submitted.ok) return { ok: false, error: submitted.error };
   notifyChanged();
   dispatchWorkflowSubmitted(GOVERNMENT_REVIEW_SUBMITTED_EVENT);
   notifyTasksChanged();
-  return dtoToSubmission(submitted.data);
+  const data = dtoToSubmission(submitted.data);
+  if (!data) {
+    return { ok: false, error: "تعذّر قراءة بيانات الإرسال" };
+  }
+  return { ok: true, data };
 }
 
 export async function reopenGovernmentReviewSubmission(
   taskId: string,
   returnNote: string,
-): Promise<GovernmentReviewSubmission | null> {
+): Promise<PartyWorkMutationResult<GovernmentReviewSubmission>> {
   const reopened = await reopenPartySubmission(taskId, returnNote);
-  if (!reopened.ok) return null;
+  if (!reopened.ok) return { ok: false, error: reopened.error };
   notifyChanged();
   notifyTasksChanged();
-  return dtoToSubmission(reopened.data);
+  const data = dtoToSubmission(reopened.data);
+  if (!data) {
+    return { ok: false, error: "تعذّر قراءة بيانات إعادة الفتح" };
+  }
+  return { ok: true, data };
 }
 
 export async function prefetchGovernmentReviewSubmissions(

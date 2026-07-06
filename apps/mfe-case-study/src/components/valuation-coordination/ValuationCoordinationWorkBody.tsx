@@ -163,13 +163,16 @@ export function ValuationCoordinationWorkBody({
         ...patch,
         inspectorName,
         appraiserName,
-      }).then((next) => {
-        if (next) {
-          setDraft(next);
-          return;
-        }
-        showToast("تعذّر حفظ التنسيق — حاول مرة أخرى", "error");
-      });
+      })
+        .then((next) => {
+          if (next) setDraft(next);
+        })
+        .catch((err: unknown) => {
+          showToast(
+            err instanceof Error ? err.message : "تعذّر حفظ التنسيق — حاول مرة أخرى",
+            "error",
+          );
+        });
     },
     [task.id, inspectorName, appraiserName, showToast],
   );
@@ -201,7 +204,10 @@ export function ValuationCoordinationWorkBody({
     hostRef.current?.onSavingChange?.(false);
 
     if (submitted) {
-      setDraft(submitted);
+      setDraft(submitted.submission);
+      if (submitted.warning) {
+        showToast(submitted.warning, "error");
+      }
       hostRef.current?.onSubmitted?.();
       return true;
     }

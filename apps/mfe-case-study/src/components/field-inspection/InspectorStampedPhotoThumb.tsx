@@ -49,9 +49,13 @@ export function InspectorStampedPhotoThumb({
     }
 
     let cancelled = false;
-    void prefetchInspectorPhoto(taskId, photoRef, attachment).then((url) => {
-      if (!cancelled && url) setDataUrl(url);
-    });
+    void prefetchInspectorPhoto(taskId, photoRef, attachment)
+      .then((url) => {
+        if (!cancelled && url) setDataUrl(url);
+      })
+      .catch((err: unknown) => {
+        console.warn("Inspector photo prefetch failed:", err);
+      });
     return () => {
       cancelled = true;
     };

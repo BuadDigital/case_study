@@ -103,10 +103,14 @@ export function GovernmentReviewPoPanel({
 
   useEffect(() => {
     if (!record) return;
-    void hydrateInternalDelegationLetters(record.poNumber).then(() => {
-      syncInternalDelegationLetters(record);
-      refreshLetters();
-    });
+    void hydrateInternalDelegationLetters(record.poNumber)
+      .then(() => {
+        syncInternalDelegationLetters(record);
+        refreshLetters();
+      })
+      .catch((err: unknown) => {
+        console.warn("Delegation letters hydrate failed:", err);
+      });
   }, [record, refreshLetters]);
 
   const courtGroups = useMemo(

@@ -247,13 +247,16 @@ export function EngineeringSurveyWorkPanel({
   const persist = useCallback(
     (patch: Parameters<typeof updateEngineeringSurveyDraft>[1]) => {
       if (!task.id) return;
-      void updateEngineeringSurveyDraft(task.id, patch).then((next) => {
-        if (next) {
-          setDraft(next);
-          return;
-        }
-        showToast("تعذّر حفظ الرفع المساحي — حاول مرة أخرى", "error");
-      });
+      void updateEngineeringSurveyDraft(task.id, patch)
+        .then((next) => {
+          if (next) setDraft(next);
+        })
+        .catch((err: unknown) => {
+          showToast(
+            err instanceof Error ? err.message : "تعذّر حفظ الرفع المساحي — حاول مرة أخرى",
+            "error",
+          );
+        });
     },
     [task.id, showToast],
   );

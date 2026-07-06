@@ -24,7 +24,7 @@
 |------|------|
 | `evaluator-window-data.ts` | Types, draft factory, status/price formatters |
 | `evaluator-submission-storage.ts` | localStorage draft/submit; `EVALUATOR_SUBMISSION_CHANGED_EVENT` |
-| `evaluator-recall-storage.ts` | Recall request/approve/reject; `EVALUATOR_RECALL_CHANGED_EVENT` |
+| `@platform/app-shared/prototype/party-task-recall-storage` | Recall request/approve/reject; `PARTY_TASK_RECALL_CHANGED_EVENT` |
 | `evaluator-validation.ts` | Field validation for upload form |
 | `evaluator-report-attachments.ts` | PDF cache + preview |
 | `evaluator-inspection-gate.ts` | Sibling inspection gate (disabled in prototype); `findAppraisalChildForParent` |

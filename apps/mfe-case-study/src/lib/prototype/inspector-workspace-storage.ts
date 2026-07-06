@@ -8,7 +8,7 @@ import {
   submitPartyTaskSubmission,
   type PartyTaskSubmissionDto,
 } from "@platform/api-client";
-import { reopenPartySubmission } from "@platform/app-shared/prototype/party-submission-api";
+import { reopenPartySubmission, type PartyWorkMutationResult } from "@platform/app-shared/prototype/party-submission-api";
 import { dispatchPartySubmissionChanged } from "@platform/app-shared/prototype/party-submission-changed-event";
 import { dispatchWorkflowSubmitted, FIELD_INSPECTION_SUBMITTED_EVENT } from "@platform/app-shared/prototype/party-workflow-events";
 import { resolveApiError, workOrdersApiConfig } from "../work-orders-api-config";
@@ -570,12 +570,12 @@ export async function submitInspectorWorkspace(
 export async function reopenInspectorWorkspace(
   taskId: string,
   returnNote: string,
-): Promise<InspectorWorkspaceDraft | null> {
+): Promise<PartyWorkMutationResult<InspectorWorkspaceDraft>> {
   const reopened = await reopenPartySubmission(taskId, returnNote);
-  if (!reopened.ok) return null;
+  if (!reopened.ok) return { ok: false, error: reopened.error };
   const next = payloadToDraft(reopened.data);
   writeCache(next);
-  return next;
+  return { ok: true, data: next };
 }
 
 export type InspectorWorkspaceSnapshot = InspectorWorkspaceDraft;

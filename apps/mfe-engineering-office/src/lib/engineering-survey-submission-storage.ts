@@ -10,6 +10,7 @@ import {
   reopenPartySubmission,
   setCachedPartySubmission,
   submitPartySubmission,
+  type PartyWorkMutationResult,
 } from "@platform/app-shared/prototype/party-submission-api";
 import {
   createEngineeringSurveyDraft,
@@ -111,8 +112,10 @@ export async function loadEngineeringSurveySubmissionAsync(input: {
 
 export async function saveEngineeringSurveySubmission(
   submission: EngineeringSurveySubmission,
-): Promise<EngineeringSurveySubmission | null> {
-  if (!submission.taskId) return null;
+): Promise<EngineeringSurveySubmission> {
+  if (!submission.taskId) {
+    throw new Error("معرّف المهمة مطلوب لحفظ الرفع المساحي");
+  }
   const existingDto = getCachedPartySubmission(submission.taskId);
   const payload: Record<string, unknown> = {
     ...(existingDto?.payload ?? {}),
@@ -120,9 +123,11 @@ export async function saveEngineeringSurveySubmission(
     updatedAtUtc: new Date().toISOString(),
   };
   const saved = await persistPartySubmissionPayload(submission.taskId, payload);
-  if (!saved.ok) return null;
+  if (!saved.ok) throw new Error(saved.error);
   notifyChanged();
-  return dtoToSubmission(saved.data);
+  const next = dtoToSubmission(saved.data);
+  if (!next) throw new Error("تعذّر قراءة مسودة الرفع بعد الحفظ");
+  return next;
 }
 
 export async function getOrCreateEngineeringSurveyDraft(input: {
@@ -180,34 +185,54 @@ export async function updateEngineeringSurveyDraft(
 
 export async function submitEngineeringSurveySubmission(
   taskId: string,
-): Promise<EngineeringSurveySubmission | null> {
+): Promise<PartyWorkMutationResult<EngineeringSurveySubmission>> {
   const current = loadEngineeringSurveySubmission(taskId);
-  if (!current || current.status === "submitted") return current;
+  if (!current) {
+    return { ok: false, error: "لا توجد مسودة للإرسال" };
+  }
+  if (current.status === "submitted") {
+    return { ok: true, data: current };
+  }
 
-  const saved = await saveEngineeringSurveySubmission({
-    ...current,
-    status: "draft",
-    updatedAtUtc: new Date().toISOString(),
-  });
-  if (!saved) return null;
+  try {
+    await saveEngineeringSurveySubmission({
+      ...current,
+      status: "draft",
+      updatedAtUtc: new Date().toISOString(),
+    });
+  } catch (err: unknown) {
+    return {
+      ok: false,
+      error:
+        err instanceof Error ? err.message : "تعذّر حفظ المسودة قبل الإرسال",
+    };
+  }
 
   const submitted = await submitPartySubmission(taskId);
-  if (!submitted.ok) return null;
+  if (!submitted.ok) return { ok: false, error: submitted.error };
   notifyChanged();
   dispatchWorkflowSubmitted(ENGINEERING_SURVEY_SUBMITTED_EVENT);
   notifyTasksChanged();
-  return dtoToSubmission(submitted.data);
+  const data = dtoToSubmission(submitted.data);
+  if (!data) {
+    return { ok: false, error: "تعذّر قراءة بيانات الإرسال" };
+  }
+  return { ok: true, data };
 }
 
 export async function reopenEngineeringSurveySubmission(
   taskId: string,
   returnNote: string,
-): Promise<EngineeringSurveySubmission | null> {
+): Promise<PartyWorkMutationResult<EngineeringSurveySubmission>> {
   const reopened = await reopenPartySubmission(taskId, returnNote);
-  if (!reopened.ok) return null;
+  if (!reopened.ok) return { ok: false, error: reopened.error };
   notifyChanged();
   notifyTasksChanged();
-  return dtoToSubmission(reopened.data);
+  const data = dtoToSubmission(reopened.data);
+  if (!data) {
+    return { ok: false, error: "تعذّر قراءة بيانات إعادة الفتح" };
+  }
+  return { ok: true, data };
 }
 
 export async function prefetchEngineeringSurveySubmissions(

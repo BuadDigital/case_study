@@ -113,15 +113,16 @@ export function EvaluatorWindow({
       planImageMetadata?: EvaluatorPlanImageMetadata,
     ) => {
       if (locked) return;
-      void updateEvaluatorDraft(task.id, patch, reportMetadata, planImageMetadata).then(
-        (updated) => {
-          if (updated) {
-            setDraft(updated);
-            return;
-          }
-          showToast("تعذّر حفظ مسودة التقييم — حاول مرة أخرى", "error");
-        },
-      );
+      void updateEvaluatorDraft(task.id, patch, reportMetadata, planImageMetadata)
+        .then((updated) => {
+          if (updated) setDraft(updated);
+        })
+        .catch((err: unknown) => {
+          showToast(
+            err instanceof Error ? err.message : "تعذّر حفظ مسودة التقييم — حاول مرة أخرى",
+            "error",
+          );
+        });
     },
     [locked, task.id, showToast],
   );
