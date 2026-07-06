@@ -84,8 +84,6 @@ const fieldTextareaClass = cn(
   "min-h-[72px] resize-y py-2 leading-relaxed",
 );
 
-const MUTATION_ERROR = "تعذّر تنفيذ العملية — حاول مرة أخرى";
-
 export function FailuresView() {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
@@ -153,42 +151,50 @@ export function FailuresView() {
   }, [visibleItems]);
 
   function handleSubmit(id: string) {
-    void submitFailureForReview(id).then((updated) => {
-      if (updated) {
-        refresh();
+    void submitFailureForReview(id).then((result) => {
+      if (!result.ok) {
+        showToast(result.error, "error");
         return;
       }
-      showToast(MUTATION_ERROR, "error");
+      refresh();
+    }).catch(() => {
+      showToast("تعذّر إرسال التعذر للمراجعة — حاول مرة أخرى", "error");
     });
   }
 
   function handleUpgrade(id: string) {
-    void upgradeFailureToInternal(id).then((updated) => {
-      if (updated) {
-        refresh();
+    void upgradeFailureToInternal(id).then((result) => {
+      if (!result.ok) {
+        showToast(result.error, "error");
         return;
       }
-      showToast(MUTATION_ERROR, "error");
+      refresh();
+    }).catch(() => {
+      showToast("تعذّر ترقية التعذر — حاول مرة أخرى", "error");
     });
   }
 
   function handleApprove(id: string) {
-    void approveFailure(id, supervisorNote[id] ?? "").then((updated) => {
-      if (updated) {
-        refresh();
+    void approveFailure(id, supervisorNote[id] ?? "").then((result) => {
+      if (!result.ok) {
+        showToast(result.error, "error");
         return;
       }
-      showToast(MUTATION_ERROR, "error");
+      refresh();
+    }).catch(() => {
+      showToast("تعذّر اعتماد التعذر — حاول مرة أخرى", "error");
     });
   }
 
   function handleReturn(id: string) {
-    void returnFailure(id, supervisorNote[id] ?? "").then((updated) => {
-      if (updated) {
-        refresh();
+    void returnFailure(id, supervisorNote[id] ?? "").then((result) => {
+      if (!result.ok) {
+        showToast(result.error, "error");
         return;
       }
-      showToast(MUTATION_ERROR, "error");
+      refresh();
+    }).catch(() => {
+      showToast("تعذّر إرجاع التعذر — حاول مرة أخرى", "error");
     });
   }
 
@@ -213,13 +219,15 @@ export function FailuresView() {
     void resolveFailure(id, {
       resolutionReason: draft.reason,
       continueInstructions: draft.instructions,
-    }).then((updated) => {
-      if (!updated) {
-        showToast(MUTATION_ERROR, "error");
+    }).then((result) => {
+      if (!result.ok) {
+        showToast(result.error, "error");
         return;
       }
       setResolveOpen((o) => ({ ...o, [id]: false }));
       refresh();
+    }).catch(() => {
+      showToast("تعذّر حل التعذر — حاول مرة أخرى", "error");
     });
   }
 

@@ -299,11 +299,11 @@ function FinancePartyDetailSections({
         action,
         reason: extra?.reason,
       });
-      if (result) {
+      if (result.ok) {
         onChanged();
         return;
       }
-      showToast("تعذّر تنفيذ الإجراء — حاول مرة أخرى", "error");
+      showToast(result.error ?? "تعذّر تنفيذ الإجراء — حاول مرة أخرى", "error");
     } finally {
       setBusyId(null);
     }
@@ -318,21 +318,21 @@ function FinancePartyDetailSections({
         workflowTaskIds: ids,
         action: "disburse",
       });
-      if (result) {
-        if (result.succeeded.length > 0) {
+      if (result.ok) {
+        if (result.data.succeeded.length > 0) {
           pushNotification({
             title: "تم الصرف",
-            body: `صُرف ${result.succeeded.length} عقار بنجاح.`,
+            body: `صُرف ${result.data.succeeded.length} عقار بنجاح.`,
             tone: "success",
             category: "financial",
             href: "/financial",
             sourceEvent: "financial-disburse-success",
           });
         }
-        if (result.failed.length > 0) {
+        if (result.data.failed.length > 0) {
           pushNotification({
             title: "تعذر صرف بعض العقارات",
-            body: result.failed.map((f) => f.error).join(" · "),
+            body: result.data.failed.map((f) => f.error).join(" · "),
             tone: "warn",
             category: "financial",
             href: "/financial",
@@ -343,7 +343,7 @@ function FinancePartyDetailSections({
         onChanged();
         return;
       }
-      showToast("تعذّر تنفيذ الصرف — حاول مرة أخرى", "error");
+      showToast(result.error ?? "تعذّر تنفيذ الصرف — حاول مرة أخرى", "error");
     } finally {
       setBusyId(null);
     }

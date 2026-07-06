@@ -87,7 +87,7 @@ export function DistributionTaskWork({
     if (prop.deedNumber.trim()) {
       void findPriorDeedFull(prop.deedNumber.trim(), task.poNumber).then(
         (prior) => setHasPriorSurvey(Boolean(prior)),
-      );
+      ).catch(() => setHasPriorSurvey(false));
     } else {
       setHasPriorSurvey(false);
     }
@@ -109,6 +109,8 @@ export function DistributionTaskWork({
         if (!updated) {
           showToast("تعذّر حفظ التوزيع — حاول مرة أخرى", "error");
         }
+      }).catch(() => {
+        showToast("تعذّر حفظ التوزيع — حاول مرة أخرى", "error");
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sync when engineering unavailable

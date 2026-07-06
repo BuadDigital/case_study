@@ -42,20 +42,30 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
   const [workOrderDescription, setWorkOrderDescription] = useState("");
 
   useEffect(() => {
-    void hydratePoDraft().then((draft) => {
-      if (draft) {
-        setPoNumber(draft.poNumber);
-        setPromulgationDate(draft.promulgationDate);
-        setAssignmentType(draft.assignmentType || "");
-        setAssignmentSpecialist(draft.assignmentSpecialist);
-        setAssignmentSpecialistEmail(draft.assignmentSpecialistEmail);
-        const count = draft.expectedPropertyCount;
-        setExpectedPropertyCount(count && count > 0 ? String(count) : "1");
-        setPropertiesRegion(draft.propertiesRegion ?? "");
-        setWorkOrderDescription(draft.workOrderDescription ?? "");
-      }
-      setDraftReady(true);
-    });
+    void hydratePoDraft()
+      .then((draft) => {
+        if (draft) {
+          setPoNumber(draft.poNumber);
+          setPromulgationDate(draft.promulgationDate);
+          setAssignmentType(draft.assignmentType || "");
+          setAssignmentSpecialist(draft.assignmentSpecialist);
+          setAssignmentSpecialistEmail(draft.assignmentSpecialistEmail);
+          const count = draft.expectedPropertyCount;
+          setExpectedPropertyCount(count && count > 0 ? String(count) : "1");
+          setPropertiesRegion(draft.propertiesRegion ?? "");
+          setWorkOrderDescription(draft.workOrderDescription ?? "");
+        }
+        setDraftReady(true);
+      })
+      .catch((error) => {
+        showToast(
+          error instanceof Error
+            ? error.message
+            : "تعذّر تحميل مسودة أمر العمل",
+          "error",
+        );
+        setDraftReady(true);
+      });
   }, []);
 
   useEffect(() => {

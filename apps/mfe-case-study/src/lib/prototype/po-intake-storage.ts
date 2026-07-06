@@ -292,7 +292,10 @@ export async function savePoRecord(
   }
 
   const saved = dtoToRecord(result.data);
-  await syncTaskSlotsForPo(saved);
+  const slots = await syncTaskSlotsForPo(saved);
+  if (!slots.ok) {
+    return { ok: false, error: slots.error };
+  }
   notifyWorkOrdersChanged();
   return { ok: true, data: saved };
 }
@@ -424,7 +427,10 @@ export async function completePropertyBourse(
   }
 
   const saved = dtoToProperty(result.data);
-  await advanceTaskAfterBourseForProperty(poNumber, propertyId, saved);
+  const advanced = await advanceTaskAfterBourseForProperty(poNumber, propertyId, saved);
+  if (advanced && !advanced.ok) {
+    return { ok: false, error: advanced.error };
+  }
   notifyWorkOrdersChanged();
   return { ok: true, data: saved };
 }
@@ -440,7 +446,12 @@ export async function getPoRecord(
   const config = workOrdersApiConfig();
   if (!config) return null;
   const result = await getWorkOrder(config, poNumber);
-  if (!result.ok) return null;
+  if (!result.ok) {
+    if (result.kind === "not_found") return null;
+    throw new Error(
+      resolveApiError(result.kind, result.errors, "تعذّر تحميل أمر العمل"),
+    );
+  }
   return dtoToRecord(result.data);
 }
 
@@ -530,17 +541,19 @@ export async function updatePoRecord(
 
   const saved = dtoToRecord(result.data);
   const full = await getPoRecord(record.poNumber);
-  if (full) {
-    await syncTaskSlotsForPo({
-      ...full,
-      expectedPropertyCount: saved.expectedPropertyCount,
-      assignmentType: saved.assignmentType,
-      promulgationDate: saved.promulgationDate,
-      assignmentSpecialist: saved.assignmentSpecialist,
-      assignmentSpecialistEmail: saved.assignmentSpecialistEmail,
-    });
-  } else {
-    await syncTaskSlotsForPo({ ...record, ...saved, properties: record.properties });
+  const syncTarget = full
+    ? {
+        ...full,
+        expectedPropertyCount: saved.expectedPropertyCount,
+        assignmentType: saved.assignmentType,
+        promulgationDate: saved.promulgationDate,
+        assignmentSpecialist: saved.assignmentSpecialist,
+        assignmentSpecialistEmail: saved.assignmentSpecialistEmail,
+      }
+    : { ...record, ...saved, properties: record.properties };
+  const slots = await syncTaskSlotsForPo(syncTarget);
+  if (!slots.ok) {
+    return { ok: false, error: slots.error };
   }
   notifyWorkOrdersChanged();
   return { ok: true, data: saved };
@@ -594,9 +607,15 @@ export async function addPropertyToPo(
   const prop = dtoToProperty(result.data);
   const record = await getPoRecord(poNumber);
   if (options?.assignToTaskId) {
-    await advanceTaskAfterEnfath(options.assignToTaskId, prop);
+    const advanced = await advanceTaskAfterEnfath(options.assignToTaskId, prop);
+    if (!advanced.ok) {
+      return { ok: false, error: advanced.error };
+    }
   } else if (record) {
-    await linkNewPropertyToTaskSlot(record, prop);
+    const linked = await linkNewPropertyToTaskSlot(record, prop);
+    if (linked && !linked.ok) {
+      return { ok: false, error: linked.error };
+    }
   }
   notifyWorkOrdersChanged();
   return { ok: true, data: prop };
@@ -751,7 +770,16 @@ export async function hydratePoDraft(): Promise<PoIntakeDraftPayload | null> {
     }
 
     const result = await getPoIntakeDraft(config);
-    if (result.ok && result.data) {
+    if (!result.ok) {
+      if (result.kind === "not_found") {
+        memoryDraft = null;
+        return null;
+      }
+      throw new Error(
+        resolveApiError(result.kind, undefined, "تعذّر تحميل مسودة أمر العمل"),
+      );
+    }
+    if (result.data) {
       memoryDraft = dtoToDraft(result.data);
       return memoryDraft;
     }

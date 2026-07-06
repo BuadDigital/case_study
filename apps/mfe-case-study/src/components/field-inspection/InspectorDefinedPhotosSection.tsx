@@ -81,6 +81,8 @@ function MiniPhotoThumb({
     }
     void prefetchInspectorPhoto(taskId, photoRef, photo).then((url) => {
       if (!cancelled && url) setDataUrl(url);
+    }).catch(() => {
+      if (!cancelled) setDataUrl(undefined);
     });
     return () => {
       cancelled = true;

@@ -147,6 +147,10 @@ export async function reportBourseObstructionAsync(
   return applyMutation(mapDto(result.data));
 }
 
+export type FailureMutationResult =
+  | { ok: true; data: FailureRecord }
+  | { ok: false; error: string };
+
 async function mutateFailure(
   id: string,
   apiCall: (
@@ -156,16 +160,18 @@ async function mutateFailure(
     | { ok: true; data: FailureRecordDto }
     | { ok: false; kind: string }
   >,
-): Promise<FailureRecord | null> {
+): Promise<FailureMutationResult> {
   const config = requireFailuresApi();
   const result = await apiCall(config, id);
-  if (!result.ok) return null;
-  return applyMutation(mapDto(result.data));
+  if (!result.ok) {
+    return { ok: false, error: apiErrorMessage(result.kind) };
+  }
+  return { ok: true, data: applyMutation(mapDto(result.data)) };
 }
 
 export async function upgradeFailureToInternalAsync(
   id: string,
-): Promise<FailureRecord | null> {
+): Promise<FailureMutationResult> {
   return mutateFailure(id, (config, failureId) =>
     apiUpgradeFailureToInternal(config, failureId),
   );
@@ -173,7 +179,7 @@ export async function upgradeFailureToInternalAsync(
 
 export async function submitFailureForReviewAsync(
   id: string,
-): Promise<FailureRecord | null> {
+): Promise<FailureMutationResult> {
   return mutateFailure(id, (config, failureId) =>
     apiSubmitFailureForReview(config, failureId),
   );
@@ -182,41 +188,49 @@ export async function submitFailureForReviewAsync(
 export async function suspendFailureAsync(
   id: string,
   note: string,
-): Promise<FailureRecord | null> {
+): Promise<FailureMutationResult> {
   const config = requireFailuresApi();
   const result = await apiSuspendFailure(config, id, note);
-  if (!result.ok) return null;
-  return applyMutation(mapDto(result.data));
+  if (!result.ok) {
+    return { ok: false, error: apiErrorMessage(result.kind) };
+  }
+  return { ok: true, data: applyMutation(mapDto(result.data)) };
 }
 
 export async function resolveFailureAsync(
   id: string,
   input: ResolveFailureInput,
-): Promise<FailureRecord | null> {
+): Promise<FailureMutationResult> {
   const config = requireFailuresApi();
   const result = await apiResolveFailure(config, id, input);
-  if (!result.ok) return null;
-  return applyMutation(mapDto(result.data));
+  if (!result.ok) {
+    return { ok: false, error: apiErrorMessage(result.kind) };
+  }
+  return { ok: true, data: applyMutation(mapDto(result.data)) };
 }
 
 export async function approveFailureAsync(
   id: string,
   finalNote: string,
-): Promise<FailureRecord | null> {
+): Promise<FailureMutationResult> {
   const config = requireFailuresApi();
   const result = await apiApproveFailure(config, id, finalNote);
-  if (!result.ok) return null;
-  return applyMutation(mapDto(result.data));
+  if (!result.ok) {
+    return { ok: false, error: apiErrorMessage(result.kind) };
+  }
+  return { ok: true, data: applyMutation(mapDto(result.data)) };
 }
 
 export async function returnFailureAsync(
   id: string,
   finalNote: string,
-): Promise<FailureRecord | null> {
+): Promise<FailureMutationResult> {
   const config = requireFailuresApi();
   const result = await apiReturnFailure(config, id, finalNote);
-  if (!result.ok) return null;
-  return applyMutation(mapDto(result.data));
+  if (!result.ok) {
+    return { ok: false, error: apiErrorMessage(result.kind) };
+  }
+  return { ok: true, data: applyMutation(mapDto(result.data)) };
 }
 
 export async function deleteFailuresForPoAsync(
