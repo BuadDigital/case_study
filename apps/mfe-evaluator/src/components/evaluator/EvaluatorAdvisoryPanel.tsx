@@ -35,8 +35,13 @@ import {
   isEvaluatorChecklistQuestionAssignedToAppraiser,
   mergeEvaluatorChecklistFromCaseStudy,
 } from "../../lib/evaluator/evaluator-checklist-case-study-sync";
+
 const noteWarnClass = cn(
   "mb-3 rounded-[var(--radius-DEFAULT)] border border-amber border-e-[3px] border-e-amber bg-amber-light px-3.5 py-2.5 text-xs leading-relaxed text-amber-text",
+);
+
+const loadErrorClass = cn(
+  "mb-3 rounded-[var(--radius-DEFAULT)] border border-danger-border bg-danger-bg px-3.5 py-2.5 text-xs leading-relaxed text-danger-text",
 );
 
 const infoRowClass =
@@ -57,6 +62,8 @@ export function EvaluatorAdvisoryPanel({
 }) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [partyDraft, setPartyDraft] = useState<CaseStudyFormDraft | null>(null);
+  const [partyDraftError, setPartyDraftError] = useState<string | null>(null);
+  const [prefetchError, setPrefetchError] = useState<string | null>(null);
   const { data: infoRolesData } = useCaseStudyInfoRolesQuery();
   const infoRolesMatrix = infoRolesData?.matrix ?? DEFAULT_INFO_ROLES.matrix;
 
@@ -80,13 +87,22 @@ export function EvaluatorAdvisoryPanel({
   useEffect(() => {
     if (!appraisalTask) {
       setPartyDraft(null);
+      setPartyDraftError(null);
       return;
     }
     let cancelled = false;
+    setPartyDraftError(null);
     void loadPartyCaseStudyFormDraft(appraisalTask.id).then((draft) => {
       if (!cancelled) setPartyDraft(draft);
     }).catch((err: unknown) => {
-      if (!cancelled) console.warn("Appraisal party draft load failed:", err);
+      if (!cancelled) {
+        setPartyDraft(null);
+        setPartyDraftError(
+          err instanceof Error
+            ? err.message
+            : "تعذّر تحميل إجابات دراسة الحالة للمقيم",
+        );
+      }
     });
     return () => {
       cancelled = true;
@@ -95,10 +111,15 @@ export function EvaluatorAdvisoryPanel({
 
   useEffect(() => {
     if (!appraisalTask) return;
+    setPrefetchError(null);
     void fetchEvaluatorSubmissionSnapshot(appraisalTask.id).then(() => {
       setRefreshKey((k) => k + 1);
     }).catch((err: unknown) => {
-      console.warn("Evaluator submission snapshot prefetch failed:", err);
+      setPrefetchError(
+        err instanceof Error
+          ? err.message
+          : "تعذّر تحميل بيانات التقييم من الخادم",
+      );
     });
   }, [appraisalTask?.id]);
 
@@ -167,6 +188,26 @@ export function EvaluatorAdvisoryPanel({
         هذه البيانات من المقيم بصفة أصيل — لا يُعدَّل السعر من الأخصائي. طلب
         الاسترجاع للتعديل يحتاج موافقتك.
       </p>
+
+      {prefetchError ? (
+        <div className={loadErrorClass}>
+          <p className="m-0">{prefetchError}</p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="mt-2"
+            onClick={() => setRefreshKey((k) => k + 1)}
+          >
+            إعادة المحاولة
+          </Button>
+        </div>
+      ) : null}
+      {partyDraftError ? (
+        <div className={noteWarnClass}>
+          <p className="m-0">{partyDraftError}</p>
+        </div>
+      ) : null}
 
       <PartyRecallAdvisorySection
         taskId={appraisalTask.id}

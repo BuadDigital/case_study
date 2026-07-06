@@ -6,7 +6,7 @@ import type { PoPropertyRowMoreContext } from "@case-study/mfe/lib/prototype/po-
 import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { useToast } from "@platform/design-system";
-import { buildAppraiserRecallMenuItems, EVALUATOR_RECALL_CHANGED_EVENT, EVALUATOR_SUBMISSION_CHANGED_EVENT } from "@evaluator/mfe";
+import { buildAppraiserRecallMenuItems, EVALUATOR_SUBMISSION_CHANGED_EVENT, PARTY_TASK_RECALL_CHANGED_EVENT } from "@evaluator/mfe";
 import { useWorkflowTasksQuery } from "@/lib/query/prototype-queries";
 
 export function PoPropertiesPageClient({ poNumber }: { poNumber: string }) {
@@ -17,10 +17,10 @@ export function PoPropertiesPageClient({ poNumber }: { poNumber: string }) {
   useEffect(() => {
     if (role !== "real-estate-appraiser") return;
     const handler = () => void refetch();
-    window.addEventListener(EVALUATOR_RECALL_CHANGED_EVENT, handler);
+    window.addEventListener(PARTY_TASK_RECALL_CHANGED_EVENT, handler);
     window.addEventListener(EVALUATOR_SUBMISSION_CHANGED_EVENT, handler);
     return () => {
-      window.removeEventListener(EVALUATOR_RECALL_CHANGED_EVENT, handler);
+      window.removeEventListener(PARTY_TASK_RECALL_CHANGED_EVENT, handler);
       window.removeEventListener(EVALUATOR_SUBMISSION_CHANGED_EVENT, handler);
     };
   }, [role, refetch]);

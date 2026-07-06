@@ -51,6 +51,7 @@ export function GovernmentReviewAdvisoryPanel({
     null,
   );
   const [loadingSubmission, setLoadingSubmission] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     const refresh = () => setRefreshKey((k) => k + 1);
@@ -73,10 +74,12 @@ export function GovernmentReviewAdvisoryPanel({
   useEffect(() => {
     if (!reviewTask) {
       setSubmission(null);
+      setLoadError(null);
       return;
     }
     let cancelled = false;
     setLoadingSubmission(true);
+    setLoadError(null);
     void fetchGovernmentReviewSubmission(reviewTask.id).then((loaded) => {
       if (!cancelled) {
         setSubmission(loaded);
@@ -84,9 +87,13 @@ export function GovernmentReviewAdvisoryPanel({
       }
     }).catch((err: unknown) => {
       if (!cancelled) {
-        console.warn("Government review advisory load failed:", err);
         setSubmission(null);
         setLoadingSubmission(false);
+        setLoadError(
+          err instanceof Error
+            ? err.message
+            : "تعذّر تحميل بيانات المراجعة الحكومية",
+        );
       }
     });
     return () => {
@@ -108,6 +115,23 @@ export function GovernmentReviewAdvisoryPanel({
     return (
       <RegistrationFormCard title="المراجعة الحكومية (استرشادي)">
         <InlineLoadingSkeleton />
+      </RegistrationFormCard>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <RegistrationFormCard title="المراجعة الحكومية (استرشادي)">
+        <p className="text-xs leading-relaxed text-danger-text">{loadError}</p>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="mt-2"
+          onClick={() => setRefreshKey((k) => k + 1)}
+        >
+          إعادة المحاولة
+        </Button>
       </RegistrationFormCard>
     );
   }
