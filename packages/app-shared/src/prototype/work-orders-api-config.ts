@@ -63,3 +63,33 @@ export function resolveApiError(
 ): string {
   return firstApiFieldError(errors) ?? apiErrorMessage(kind, fallback);
 }
+
+export type ApiResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; kind: string; errors?: Record<string, unknown> };
+
+export function requireWorkOrdersApiConfig(): WorkOrdersApiConfig {
+  const config = workOrdersApiConfig();
+  if (!config) throw new Error(apiErrorMessage("auth"));
+  return config;
+}
+
+export function unwrapApiResult<T>(result: ApiResult<T>, fallback: string): T {
+  if (result.ok) return result.data;
+  throw new Error(resolveApiError(result.kind, result.errors, fallback));
+}
+
+export type MutationResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string };
+
+export function mutationFromApiResult<T>(
+  result: ApiResult<T>,
+  fallback: string,
+): MutationResult<T> {
+  if (result.ok) return { ok: true, data: result.data };
+  return {
+    ok: false,
+    error: resolveApiError(result.kind, result.errors, fallback),
+  };
+}

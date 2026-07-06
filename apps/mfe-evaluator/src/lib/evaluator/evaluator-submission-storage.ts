@@ -91,7 +91,10 @@ export async function hydrateEvaluatorSubmission(input: {
   if (existing) return existing;
   const draft = createEvaluatorDraft(input);
   const saved = await saveEvaluatorSubmission(draft);
-  return saved ?? draft;
+  if (!saved) {
+    throw new Error("تعذّر حفظ مسودة التقييم — تحقق من الاتصال وحاول مجدداً.");
+  }
+  return saved;
 }
 
 export async function syncEvaluatorChecklistFromPartyCaseStudy(
@@ -133,9 +136,9 @@ export async function saveEvaluatorSubmission(
     reportMetadata,
     planImageMetadata,
   );
-  const dto = await persistPartySubmissionPayload(submission.taskId, payload);
-  if (!dto) return null;
-  return dtoToSubmission(dto);
+  const saved = await persistPartySubmissionPayload(submission.taskId, payload);
+  if (!saved.ok) return null;
+  return dtoToSubmission(saved.data);
 }
 
 export async function getOrCreateEvaluatorDraft(input: {
@@ -197,11 +200,11 @@ export async function submitEvaluatorSubmission(
     updatedAtUtc: new Date().toISOString(),
   });
 
-  const dto = await submitPartySubmission(taskId);
-  if (!dto) {
+  const submitted = await submitPartySubmission(taskId);
+  if (!submitted.ok) {
     return {
       ok: false,
-      message: "تعذّر إرسال التقييم — تحقق من الحقول والاتصال",
+      message: submitted.error || "تعذّر إرسال التقييم — تحقق من الحقول والاتصال",
     };
   }
 
@@ -209,7 +212,7 @@ export async function submitEvaluatorSubmission(
   dispatchWorkflowSubmitted(EVALUATOR_SUBMITTED_EVENT);
   notifyTasksChanged();
 
-  const submission = dtoToSubmission(dto);
+  const submission = dtoToSubmission(submitted.data);
   if (!submission) {
     return { ok: false, message: "تعذّر قراءة استجابة الإرسال" };
   }
@@ -239,11 +242,11 @@ export async function reopenEvaluatorSubmissionViaApi(
   taskId: string,
   returnNote = "",
 ): Promise<EvaluatorSubmission | null> {
-  const dto = await reopenPartySubmission(taskId, returnNote);
-  if (!dto) return reopenEvaluatorSubmission(taskId);
+  const reopened = await reopenPartySubmission(taskId, returnNote);
+  if (!reopened.ok) return reopenEvaluatorSubmission(taskId);
   notifyEvaluatorSubmissionChanged();
   notifyTasksChanged();
-  return dtoToSubmission(dto);
+  return dtoToSubmission(reopened.data);
 }
 
 export async function completeEvaluatorSubmission(

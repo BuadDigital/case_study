@@ -16,6 +16,10 @@ import {
   markNotificationRead,
 } from "./notification-store";
 
+function warnNotificationSync(action: string, err: unknown): void {
+  console.warn(`Notification sync failed (${action})`, err);
+}
+
 function isGuid(id: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     id,
@@ -31,7 +35,9 @@ export function useSyncedNotifications() {
     (id: string) => {
       markNotificationRead(id);
       if (token && isGuid(id)) {
-        void markNotificationReadApi({ token }, id).catch(() => undefined);
+        void markNotificationReadApi({ token }, id).catch((err) =>
+          warnNotificationSync("markRead", err),
+        );
       }
     },
     [token],
@@ -40,7 +46,9 @@ export function useSyncedNotifications() {
   const syncMarkAllRead = useCallback(() => {
     markAllNotificationsRead();
     if (token) {
-      void markAllNotificationsReadApi({ token }).catch(() => undefined);
+      void markAllNotificationsReadApi({ token }).catch((err) =>
+        warnNotificationSync("markAllRead", err),
+      );
     }
   }, [token]);
 
@@ -48,7 +56,9 @@ export function useSyncedNotifications() {
     (id: string) => {
       deleteNotification(id);
       if (token && isGuid(id)) {
-        void deleteNotificationApi({ token }, id).catch(() => undefined);
+        void deleteNotificationApi({ token }, id).catch((err) =>
+          warnNotificationSync("delete", err),
+        );
       }
     },
     [token],
@@ -57,7 +67,9 @@ export function useSyncedNotifications() {
   const syncClear = useCallback(() => {
     clearNotifications();
     if (token) {
-      void clearNotificationsApi({ token }).catch(() => undefined);
+      void clearNotificationsApi({ token }).catch((err) =>
+        warnNotificationSync("clear", err),
+      );
     }
   }, [token]);
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Button, ModalBody, ModalHeader, ModalOverlay, ModalTitle } from "@platform/design-system";
+import { Button, ModalBody, ModalHeader, ModalOverlay, ModalTitle, useToast } from "@platform/design-system";
 import { CaseStudyReportDocument } from "./CaseStudyReportDocument";
 import { buildCaseStudyReportPrintHtml } from "../../lib/prototype/case-study-report-html";
 import { openHtmlDocumentInNewTab } from "../../lib/open-html-document";
@@ -13,6 +13,7 @@ type Props = {
 
 export function CaseStudyReportActions({ model }: Props) {
   const [previewOpen, setPreviewOpen] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (!previewOpen) return;
@@ -33,9 +34,9 @@ export function CaseStudyReportActions({ model }: Props) {
     });
     const opened = openHtmlDocumentInNewTab(html);
     if (!opened) {
-      window.alert("تعذّر فتح نافذة التقرير — تحقق من إعدادات المنبثقات.");
+      showToast("تعذّر فتح نافذة التقرير — تحقق من إعدادات المنبثقات.", "error");
     }
-  }, [model]);
+  }, [model, showToast]);
 
   return (
     <>

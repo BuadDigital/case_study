@@ -28,6 +28,7 @@ import {
   FormRow,
   Label,
   Note,
+  useToast,
 } from "@platform/design-system";
 import { PropertyFileUploadField } from "./PropertyFileUploadField";
 import { PoContactEditor } from "./PoContactEditor";
@@ -80,6 +81,7 @@ export function PoPropertyEnfathForm({
   hideBoursePathStatus = false,
   fieldsMode = "all",
 }: Props) {
+  const { showToast } = useToast();
   const attachPo = poNumber?.trim() || excludePoNumber?.trim() || "";
   const [priorPo, setPriorPo] = useState<string | null>(null);
   const showAssignmentDecree = requiresAssignmentDecree(assignmentType);
@@ -103,24 +105,33 @@ export function PoPropertyEnfathForm({
     const deed = property.deedNumber.trim();
     if (!deed) return;
     let cancelled = false;
-    void findPriorDeedFull(deed, excludePoNumber).then((hit) => {
-      if (cancelled) return;
-      setPriorPo(hit?.poNumber ?? null);
-      if (hit) {
-        if (hit.deedDate && !property.deedDate) onPatch("deedDate", hit.deedDate);
-        if (hit.ownerName && !property.ownerName) onPatch("ownerName", hit.ownerName);
-        if (hit.contacts?.length && property.contacts.every((c) => !c.phone)) {
-          onPatch(
-            "contacts",
-            hit.contacts.map((c) => ({
-              name: c.name ?? "",
-              role: c.role ?? "",
-              phone: c.phone ?? "",
-            })),
-          );
+    void findPriorDeedFull(deed, excludePoNumber)
+      .then((hit) => {
+        if (cancelled) return;
+        setPriorPo(hit?.poNumber ?? null);
+        if (hit) {
+          if (hit.deedDate && !property.deedDate) onPatch("deedDate", hit.deedDate);
+          if (hit.ownerName && !property.ownerName) onPatch("ownerName", hit.ownerName);
+          if (hit.contacts?.length && property.contacts.every((c) => !c.phone)) {
+            onPatch(
+              "contacts",
+              hit.contacts.map((c) => ({
+                name: c.name ?? "",
+                role: c.role ?? "",
+                phone: c.phone ?? "",
+              })),
+            );
+          }
         }
-      }
-    });
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        showToast(
+          err instanceof Error ? err.message : "تعذّر التحقق من الصك السابق",
+          "error",
+        );
+        setPriorPo(null);
+      });
     return () => {
       cancelled = true;
     };
@@ -341,7 +352,11 @@ export function PoPropertyEnfathForm({
           onUpload={(file) => {
             onPatch("delegationLetterFileName", file.name);
             if (attachPo) {
-              void cacheDelegationDoc(attachPo, property.id, file);
+              void cacheDelegationDoc(attachPo, property.id, file).then(
+                (result) => {
+                  if (!result.ok) showToast(result.error, "error");
+                },
+              );
             }
           }}
           onClear={() => onPatch("delegationLetterFileName", "")}
@@ -373,7 +388,11 @@ export function PoPropertyEnfathForm({
           onUpload={(file) => {
             onPatch("assignmentDocFileName", file.name);
             if (attachPo) {
-              void cacheAssignmentDoc(attachPo, property.id, file);
+              void cacheAssignmentDoc(attachPo, property.id, file).then(
+                (result) => {
+                  if (!result.ok) showToast(result.error, "error");
+                },
+              );
             }
           }}
           onClear={() => onPatch("assignmentDocFileName", "")}

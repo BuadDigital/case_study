@@ -15,8 +15,15 @@ import {
   keyFailuresForProperty,
 } from "@failures/mfe";
 import { isBlockingFailureStatus } from "@failures/mfe/lib/failures-types";
-import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
-import { workOrdersApiConfig } from "@platform/app-shared/prototype/work-orders-api-config";
+import {
+  prototypeModulesApiConfig,
+} from "@platform/app-shared/prototype/prototype-modules-api-config";
+import {
+  apiErrorMessage,
+  resolveApiError,
+  workOrdersApiConfig,
+  type MutationResult,
+} from "@platform/app-shared/prototype/work-orders-api-config";
 import type {
   KeyFailureState,
   PropertyKeyRow,
@@ -151,17 +158,28 @@ export async function loadPropertyKeysPage(): Promise<PropertyKeysPageData> {
   return { keys, courtDelegates };
 }
 
+export type PropertyKeyMutationResult = MutationResult<PropertyKeyRow>;
+
 export async function markPropertyKeyReceived(
   id: string,
-): Promise<PropertyKeyRow | null> {
+): Promise<PropertyKeyMutationResult> {
   const config = prototypeModulesApiConfig();
-  if (!config) return null;
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
 
   const result = await patchPropertyKey(config, id, { status: "done" });
-  if (!result.ok) return null;
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: resolveApiError(result.kind, undefined, "تعذّر تسجيل استلام المفتاح"),
+    };
+  }
 
   const page = await loadPropertyKeysPage();
-  return page.keys.find((row) => row.id === id) ?? null;
+  const row = page.keys.find((r) => r.id === id);
+  if (!row) {
+    return { ok: false, error: "تم التحديث لكن تعذّر تحميل سجل المفتاح" };
+  }
+  return { ok: true, data: row };
 }
 
 export function keysApiEnabled(): boolean {

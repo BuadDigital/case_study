@@ -1,15 +1,14 @@
 import { listSurveyOffices } from "@platform/api-client";
-import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
+import {
+  requirePrototypeModulesApiConfig,
+  unwrapApiResult,
+} from "@platform/app-shared/prototype/prototype-modules-api-config";
 import type { SurveyOfficeListRow } from "./survey-types";
 
 export async function loadSurveyOffices(): Promise<SurveyOfficeListRow[]> {
-  const config = prototypeModulesApiConfig();
-  if (!config) return [];
-
+  const config = requirePrototypeModulesApiConfig();
   const result = await listSurveyOffices(config);
-  if (!result.ok) return [];
-
-  return result.data.map((row) => ({
+  return unwrapApiResult(result, "تعذّر تحميل مكاتب المساحة").map((row) => ({
     id: row.id,
     name: row.name,
     active: row.active,

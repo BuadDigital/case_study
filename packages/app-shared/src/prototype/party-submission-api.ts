@@ -6,7 +6,13 @@ import {
   submitPartyTaskSubmission,
   type PartyTaskSubmissionDto,
 } from "@platform/api-client";
-import { workOrdersApiConfig } from "@platform/app-shared/prototype/work-orders-api-config";
+import {
+  apiErrorMessage,
+  mutationFromApiResult,
+  resolveApiError,
+  workOrdersApiConfig,
+  type MutationResult,
+} from "@platform/app-shared/prototype/work-orders-api-config";
 
 /** In-memory cache keyed by workflow task id — queue filters read synchronously. */
 const submissionCache = new Map<string, PartyTaskSubmissionDto>();
@@ -39,42 +45,47 @@ export async function fetchPartySubmission(
     setCachedPartySubmission(null, taskId);
     return null;
   }
-  return getCachedPartySubmission(taskId);
+  throw new Error(
+    resolveApiError(result.kind, result.errors, "تعذّر تحميل مسودة المهمة"),
+  );
 }
 
 export async function persistPartySubmissionPayload(
   taskId: string,
   payload: Record<string, unknown>,
-): Promise<PartyTaskSubmissionDto | null> {
+): Promise<PartySubmissionMutationResult> {
   const config = workOrdersApiConfig();
-  if (!config) return null;
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
   const result = await savePartyTaskSubmission(config, taskId, payload);
-  if (!result.ok) return null;
-  setCachedPartySubmission(result.data, taskId);
-  return result.data;
+  const mapped = mutationFromApiResult(result, "تعذّر حفظ مسودة المهمة");
+  if (mapped.ok) setCachedPartySubmission(mapped.data, taskId);
+  return mapped;
 }
+
+export type PartySubmissionMutationResult =
+  MutationResult<PartyTaskSubmissionDto>;
 
 export async function submitPartySubmission(
   taskId: string,
-): Promise<PartyTaskSubmissionDto | null> {
+): Promise<PartySubmissionMutationResult> {
   const config = workOrdersApiConfig();
-  if (!config) return null;
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
   const result = await submitPartyTaskSubmission(config, taskId);
-  if (!result.ok) return null;
-  setCachedPartySubmission(result.data, taskId);
-  return result.data;
+  const mapped = mutationFromApiResult(result, "تعذّر إرسال مهمة الطرف");
+  if (mapped.ok) setCachedPartySubmission(mapped.data, taskId);
+  return mapped;
 }
 
 export async function reopenPartySubmission(
   taskId: string,
   returnNote: string,
-): Promise<PartyTaskSubmissionDto | null> {
+): Promise<PartySubmissionMutationResult> {
   const config = workOrdersApiConfig();
-  if (!config) return null;
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
   const result = await reopenPartyTaskSubmission(config, taskId, returnNote);
-  if (!result.ok) return null;
-  setCachedPartySubmission(result.data, taskId);
-  return result.data;
+  const mapped = mutationFromApiResult(result, "تعذّر إعادة فتح مهمة الطرف");
+  if (mapped.ok) setCachedPartySubmission(mapped.data, taskId);
+  return mapped;
 }
 
 export function payloadFromDto<T extends Record<string, unknown>>(
@@ -124,7 +135,9 @@ export async function prefetchPartySubmissionsForTasks(
       return;
     }
 
-    await Promise.all(ids.map((taskId) => fetchPartySubmission(taskId)));
+    throw new Error(
+      resolveApiError(result.kind, result.errors, "تعذّر تحميل مسودات المهام"),
+    );
   })().finally(() => {
     prefetchInflight = null;
     prefetchInflightKey = "";

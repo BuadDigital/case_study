@@ -497,8 +497,8 @@ export function PoPropertyDetailTabs({
   const engineeringPartyNotes = partySubmissionsQuery.data?.survey?.remarks ?? [];
   const surveyNotePreview = useMemo(() => {
     const primary =
-      engineeringPartyNotes.find((row) =>
-        row.label.includes("ملاحظات"),
+      engineeringPartyNotes.find(
+        (row: { label: string; value: string }) => row.label.includes("ملاحظات"),
       )?.value ??
       engineeringPartyNotes[0]?.value ??
       "";
@@ -582,7 +582,7 @@ export function PoPropertyDetailTabs({
             const govSubmission = partySubmissionsQuery.data?.government;
             if (govSubmission?.hasData) {
               const keysField = govSubmission.fields.find(
-                (f) => f.label === "حالة المفاتيح",
+                (f: { label: string; value: string }) => f.label === "حالة المفاتيح",
               );
               if (keysField?.value?.includes("استلام")) {
                 count = 1;

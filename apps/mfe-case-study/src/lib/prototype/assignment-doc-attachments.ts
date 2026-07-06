@@ -29,6 +29,8 @@ export type CachedAssignmentDoc = {
   attachmentId?: string;
 };
 
+export type DocCacheResult = { ok: true } | { ok: false; error: string };
+
 const docCache = new Map<string, CachedAssignmentDoc>();
 
 function cacheKey(
@@ -90,8 +92,10 @@ async function writeCachedDoc(
   poNumber: string,
   propertyId: string,
   file: File,
-): Promise<void> {
-  if (!poNumber.trim() || !propertyId) return;
+): Promise<DocCacheResult> {
+  if (!poNumber.trim() || !propertyId) {
+    return { ok: false, error: "بيانات العقار ناقصة." };
+  }
 
   const key = cacheKey(kind, poNumber, propertyId);
   const payload: CachedAssignmentDoc = {
@@ -121,19 +125,21 @@ async function writeCachedDoc(
       contentBase64: await fileToBase64(file),
     });
 
-    if (upload.ok) {
-      payload.attachmentId = upload.data.id;
+    if (!upload.ok) {
+      return { ok: false, error: "تعذّر رفع الملف — تحقق من الاتصال وحاول مجدداً." };
     }
+    payload.attachmentId = upload.data.id;
   }
 
   docCache.set(key, payload);
+  return { ok: true };
 }
 
 export async function cacheAssignmentDoc(
   poNumber: string,
   propertyId: string,
   file: File,
-): Promise<void> {
+): Promise<DocCacheResult> {
   return writeCachedDoc("decree", poNumber, propertyId, file);
 }
 
@@ -141,7 +147,7 @@ export async function cacheDelegationDoc(
   poNumber: string,
   propertyId: string,
   file: File,
-): Promise<void> {
+): Promise<DocCacheResult> {
   return writeCachedDoc("delegation", poNumber, propertyId, file);
 }
 
@@ -149,7 +155,7 @@ export async function cacheKeysProofDoc(
   poNumber: string,
   propertyId: string,
   file: File,
-): Promise<void> {
+): Promise<DocCacheResult> {
   return writeCachedDoc("keys-proof", poNumber, propertyId, file);
 }
 

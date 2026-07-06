@@ -7,7 +7,7 @@ import {
   saveCaseStudyForm,
   savePartyCaseStudyForm,
 } from "@platform/api-client";
-import { apiErrorMessage, resolveApiError, workOrdersApiConfig } from "../work-orders-api-config";
+import { apiErrorMessage, resolveApiError, requireWorkOrdersApiConfig, workOrdersApiConfig } from "../work-orders-api-config";
 import { notifyWorkOrdersChanged } from "@platform/app-shared/prototype/work-orders-api-config";
 import { syncEvaluatorChecklistFromPartyCaseStudy } from "@evaluator/mfe";
 
@@ -163,11 +163,13 @@ export function emptyCaseStudyFormDraft(
 export async function loadCaseStudyFormDraft(
   taskId: string,
 ): Promise<CaseStudyFormDraft | null> {
-  const config = workOrdersApiConfig();
-  if (!config) return null;
+  const config = requireWorkOrdersApiConfig();
   const result = await getCaseStudyForm(config, taskId);
-  if (!result.ok) return null;
-  return dtoToDraft(result.data);
+  if (result.ok) return dtoToDraft(result.data);
+  if (result.kind === "not_found") return null;
+  throw new Error(
+    resolveApiError(result.kind, result.errors, "تعذّر تحميل مسودة دراسة الحالة"),
+  );
 }
 
 /** React Query / form loader — surfaces API failures; 404 means no draft yet. */
@@ -214,11 +216,13 @@ export async function saveCaseStudyFormDraft(
 export async function loadPartyCaseStudyFormDraft(
   childTaskId: string,
 ): Promise<CaseStudyFormDraft | null> {
-  const config = workOrdersApiConfig();
-  if (!config) return null;
+  const config = requireWorkOrdersApiConfig();
   const result = await getPartyCaseStudyForm(config, childTaskId);
-  if (!result.ok) return null;
-  return dtoToDraft(result.data);
+  if (result.ok) return dtoToDraft(result.data);
+  if (result.kind === "not_found") return null;
+  throw new Error(
+    resolveApiError(result.kind, result.errors, "تعذّر تحميل مسودة دراسة الحالة"),
+  );
 }
 
 export async function loadPartyCaseStudyFormDraftOrThrow(

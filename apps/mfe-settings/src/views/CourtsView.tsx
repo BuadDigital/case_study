@@ -69,10 +69,10 @@ export function CourtsView() {
       });
     }
     setBusy(true);
-    const ok = await saveCourtsCatalog(list);
+    const result = await saveCourtsCatalog(list);
     setBusy(false);
-    if (!ok) {
-      showToast("تعذّر الحفظ — تحقق من تسجيل الدخول والخادم", "error");
+    if (!result.ok) {
+      showToast(result.error, "error");
       return;
     }
     await refresh();
@@ -96,10 +96,10 @@ export function CourtsView() {
       list.splice(idx, 1);
     }
     setBusy(true);
-    const ok = await saveCourtsCatalog(list);
+    const result = await saveCourtsCatalog(list);
     setBusy(false);
-    if (!ok) {
-      showToast("تعذّر الحفظ", "error");
+    if (!result.ok) {
+      showToast(result.error, "error");
       return;
     }
     await refresh();

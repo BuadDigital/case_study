@@ -66,10 +66,10 @@ export async function saveGovernmentReviewSubmission(
     ...submission,
     updatedAtUtc: new Date().toISOString(),
   };
-  const dto = await persistPartySubmissionPayload(submission.taskId, payload);
-  if (!dto) return null;
+  const saved = await persistPartySubmissionPayload(submission.taskId, payload);
+  if (!saved.ok) return null;
   notifyChanged();
-  return dtoToSubmission(dto);
+  return dtoToSubmission(saved.data);
 }
 
 export async function getOrCreateGovernmentReviewDraft(input: {
@@ -82,7 +82,10 @@ export async function getOrCreateGovernmentReviewDraft(input: {
   if (existing) return existing;
   const draft = createGovernmentReviewDraft(input);
   const saved = await saveGovernmentReviewSubmission(draft);
-  return saved ?? draft;
+  if (!saved) {
+    throw new Error("تعذّر حفظ مسودة المراجعة — تحقق من الاتصال وحاول مجدداً.");
+  }
+  return saved;
 }
 
 export async function updateGovernmentReviewDraft(
@@ -121,29 +124,30 @@ export async function submitGovernmentReviewSubmission(
   const current = loadGovernmentReviewSubmission(taskId);
   if (!current || current.status === "submitted") return current;
 
-  await saveGovernmentReviewSubmission({
+  const saved = await saveGovernmentReviewSubmission({
     ...current,
     status: "draft",
     updatedAtUtc: new Date().toISOString(),
   });
+  if (!saved) return null;
 
-  const dto = await submitPartySubmission(taskId);
-  if (!dto) return loadGovernmentReviewSubmission(taskId);
+  const submitted = await submitPartySubmission(taskId);
+  if (!submitted.ok) return null;
   notifyChanged();
   dispatchWorkflowSubmitted(GOVERNMENT_REVIEW_SUBMITTED_EVENT);
   notifyTasksChanged();
-  return dtoToSubmission(dto);
+  return dtoToSubmission(submitted.data);
 }
 
 export async function reopenGovernmentReviewSubmission(
   taskId: string,
   returnNote: string,
 ): Promise<GovernmentReviewSubmission | null> {
-  const dto = await reopenPartySubmission(taskId, returnNote);
-  if (!dto) return null;
+  const reopened = await reopenPartySubmission(taskId, returnNote);
+  if (!reopened.ok) return null;
   notifyChanged();
   notifyTasksChanged();
-  return dtoToSubmission(dto);
+  return dtoToSubmission(reopened.data);
 }
 
 export async function prefetchGovernmentReviewSubmissions(

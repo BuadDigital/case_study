@@ -11,7 +11,22 @@ export { buildAppraiserQueueRowMoreItems } from "./lib/evaluator/appraiser-queue
 
 export * from "./lib/evaluator/evaluator-window-data";
 export * from "./lib/evaluator/evaluator-submission-storage";
-export * from "./lib/evaluator/evaluator-recall-storage";
+export {
+  approvePartyTaskRecall as approveEvaluatorRecall,
+  clearPartyTaskRecall as clearEvaluatorRecall,
+  EVALUATOR_RECALL_CHANGED_EVENT,
+  EVALUATOR_RECALL_HYDRATED_EVENT,
+  getPartyTaskRecall as getEvaluatorRecall,
+  hydratePartyTaskRecalls as hydrateEvaluatorRecalls,
+  hydratePartyTaskRecallForTask as hydrateEvaluatorRecallForTask,
+  listPartyTaskRecalls as listEvaluatorRecalls,
+  notifyPartyTaskRecallChanged as notifyEvaluatorRecallChanged,
+  partyTaskRecallStatusLabel as recallStatusLabel,
+  rejectPartyTaskRecall as rejectEvaluatorRecall,
+  requestPartyTaskRecall as requestEvaluatorRecall,
+  type PartyTaskRecallRequest as EvaluatorRecallRequest,
+  type PartyTaskRecallStatus as EvaluatorRecallStatus,
+} from "@platform/app-shared/prototype/party-task-recall-storage";
 export * from "./lib/evaluator/evaluator-validation";
 export * from "./lib/evaluator/evaluator-report-attachments";
 export * from "./lib/evaluator/evaluator-inspection-gate";

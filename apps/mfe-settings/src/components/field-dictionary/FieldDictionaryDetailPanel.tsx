@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Badge, Button, cn } from "@platform/design-system";
+import { Badge, Button, cn, useToast } from "@platform/design-system";
 import {
   FIELD_DICTIONARY_SCREENS,
   FIELD_TYPE_LABELS,
@@ -39,6 +39,7 @@ export function FieldDictionaryDetailPanel({
   onUpdate,
   onDelete,
 }: Props) {
+  const { showToast } = useToast();
   const [editingAssignments, setEditingAssignments] = useState(false);
   const [draftAssignments, setDraftAssignments] = useState<
     FieldDictionaryAssignment[]
@@ -60,7 +61,7 @@ export function FieldDictionaryDetailPanel({
   function handleSaveAssignments(): void {
     const normalized = normalizeFieldAssignments(draftAssignments);
     if (normalized.length === 0) {
-      window.alert("اختر دوراً واحداً على الأقل مع شاشة.");
+      showToast("اختر دوراً واحداً على الأقل مع شاشة.", "error");
       return;
     }
     onUpdate({ ...field, assignments: normalized });

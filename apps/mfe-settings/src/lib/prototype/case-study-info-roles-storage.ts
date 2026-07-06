@@ -112,8 +112,9 @@ export async function loadCaseStudyInfoRolesConfig(): Promise<CaseStudyInfoRoles
 
   const result = await getCaseStudyInfoRoles(config);
   if (!result.ok) {
-    console.warn(apiErrorMessage(result.kind, "Info roles API"));
-    return emptyCaseStudyInfoRolesConfig();
+    throw new Error(
+      apiErrorMessage(result.kind, "تعذّر تحميل مصفوفة أدوار دراسة الحالة"),
+    );
   }
 
   const rawMatrix = result.config.matrix as CaseStudyInfoRolesMatrix;
@@ -142,7 +143,6 @@ export async function saveCaseStudyInfoRolesConfig(
   });
 
   if (!result.ok) {
-    console.warn(apiErrorMessage(result.kind, "Info roles API"));
     return null;
   }
 

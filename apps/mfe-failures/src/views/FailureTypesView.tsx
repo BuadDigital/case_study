@@ -47,34 +47,58 @@ export function FailureTypesView() {
   async function handleAdd() {
     if (!canEdit || !categoryId || !label.trim() || busy) return;
     setBusy(true);
-    await addFailureProblemType({
-      categoryId,
-      label,
-      description,
-    });
-    await refresh();
-    setLabel("");
-    setDescription("");
-    setBusy(false);
-    showToast("تمت إضافة نوع التعذر", "success");
+    try {
+      await addFailureProblemType({
+        categoryId,
+        label,
+        description,
+      });
+      await refresh();
+      setLabel("");
+      setDescription("");
+      showToast("تمت إضافة نوع التعذر", "success");
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : "تعذّر إضافة نوع التعذر",
+        "error",
+      );
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function handleRemove(id: string) {
     if (!canEdit || busy) return;
     setBusy(true);
-    await removeFailureProblemType(id);
-    await refresh();
-    setBusy(false);
-    showToast("تم الحذف", "success");
+    try {
+      await removeFailureProblemType(id);
+      await refresh();
+      showToast("تم الحذف", "success");
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : "تعذّر حذف نوع التعذر",
+        "error",
+      );
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function handleReset() {
     if (!canEdit || busy) return;
     setBusy(true);
-    await resetFailureTypesCatalog();
-    await refresh();
-    setBusy(false);
-    showToast("تمت استعادة القائمة الافتراضية", "success");
+    try {
+      await resetFailureTypesCatalog();
+      await refresh();
+      showToast("تمت استعادة القائمة الافتراضية", "success");
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : "تعذّر استعادة القائمة الافتراضية",
+        "error",
+      );
+    } finally {
+      setBusy(false);
+    }
   }
 
   const sortedCategories = [...(catalog?.categories ?? [])].sort(

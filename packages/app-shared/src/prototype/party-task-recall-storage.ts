@@ -5,10 +5,18 @@ import {
   rejectEvaluatorRecallApi,
   requestEvaluatorRecallApi,
 } from "@platform/api-client";
+import {
+  apiErrorMessage,
+  resolveApiError,
+} from "@platform/app-shared/prototype/work-orders-api-config";
 import { prototypeModulesApiConfig } from "./prototype-modules-api-config";
 import { reopenPartySubmission } from "./party-submission-api";
 
 export type PartyTaskRecallStatus = "pending" | "approved" | "rejected";
+
+export type PartyTaskRecallResult =
+  | { ok: true; request: PartyTaskRecallRequest }
+  | { ok: false; error: string };
 
 export type PartyTaskRecallRequest = {
   taskId: string;
@@ -83,7 +91,11 @@ export async function hydratePartyTaskRecalls(options?: {
     if (!config) return;
 
     const result = await listEvaluatorRecallsApi(config);
-    if (!result.ok) return;
+    if (!result.ok) {
+      throw new Error(
+        resolveApiError(result.kind, undefined, "تعذّر تحميل طلبات الاسترجاع"),
+      );
+    }
 
     memoryByTask.clear();
     for (const row of result.data) {
@@ -148,61 +160,96 @@ export async function requestPartyTaskRecall(input: {
   poNumber: string;
   propertyId: string;
   reason?: string;
-}): Promise<PartyTaskRecallRequest | null> {
+}): Promise<PartyTaskRecallResult> {
   const existing = getPartyTaskRecall(input.taskId);
-  if (existing?.status === "pending") return existing;
+  if (existing?.status === "pending") {
+    return { ok: true, request: existing };
+  }
 
   const config = prototypeModulesApiConfig();
-  if (!config) return null;
+  if (!config) {
+    return { ok: false, error: apiErrorMessage("auth") };
+  }
 
   const result = await requestEvaluatorRecallApi(config, input);
-  if (!result.ok) return null;
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: resolveApiError(result.kind, undefined, "تعذّر إرسال طلب الاسترجاع"),
+    };
+  }
 
   const mapped = mapDto(result.data);
   memoryByTask.set(input.taskId, mapped);
   notifyPartyTaskRecallChanged();
   notifyPartyTaskRecallRequested();
-  return mapped;
+  return { ok: true, request: mapped };
 }
 
 export async function approvePartyTaskRecall(
   taskId: string,
-): Promise<PartyTaskRecallRequest | null> {
+): Promise<PartyTaskRecallResult> {
   const current = getPartyTaskRecall(taskId);
-  if (current?.status !== "pending") return current ?? null;
+  if (current?.status !== "pending") {
+    if (current) return { ok: true, request: current };
+    return { ok: false, error: "لا يوجد طلب استرجاع لهذه المهمة" };
+  }
 
   const config = prototypeModulesApiConfig();
-  if (!config) return null;
+  if (!config) {
+    return { ok: false, error: apiErrorMessage("auth") };
+  }
 
   const result = await approveEvaluatorRecallApi(config, taskId);
-  if (!result.ok) return null;
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: resolveApiError(result.kind, undefined, "تعذّر الموافقة على الاسترجاع"),
+    };
+  }
 
   const mapped = mapDto(result.data);
   memoryByTask.set(taskId, mapped);
-  await reopenPartySubmission(taskId, current.reason);
+  const reopened = await reopenPartySubmission(taskId, current.reason);
+  if (!reopened.ok) {
+    return {
+      ok: false,
+      error: reopened.error || "وُوفّق على الاسترجاع لكن تعذّر إعادة فتح المسودة على الخادم",
+    };
+  }
   notifyPartyTaskRecallChanged();
-  return mapped;
+  return { ok: true, request: mapped };
 }
 
 export async function rejectPartyTaskRecall(
   taskId: string,
   specialistNote?: string,
-): Promise<PartyTaskRecallRequest | null> {
+): Promise<PartyTaskRecallResult> {
   const current = getPartyTaskRecall(taskId);
-  if (current?.status !== "pending") return current ?? null;
+  if (current?.status !== "pending") {
+    if (current) return { ok: true, request: current };
+    return { ok: false, error: "لا يوجد طلب استرجاع لهذه المهمة" };
+  }
 
   const config = prototypeModulesApiConfig();
-  if (!config) return null;
+  if (!config) {
+    return { ok: false, error: apiErrorMessage("auth") };
+  }
 
   const result = await rejectEvaluatorRecallApi(
     config,
     taskId,
     specialistNote,
   );
-  if (!result.ok) return null;
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: resolveApiError(result.kind, undefined, "تعذّر رفض طلب الاسترجاع"),
+    };
+  }
 
   const mapped = mapDto(result.data);
   memoryByTask.set(taskId, mapped);
   notifyPartyTaskRecallChanged();
-  return mapped;
+  return { ok: true, request: mapped };
 }

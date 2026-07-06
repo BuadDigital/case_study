@@ -138,7 +138,9 @@ export function useActiveTransactionPageSituation(
     const ids = viewerTaskIdsKey.split("\0");
     void prefetchPartySubmissionsForTasks(ids).then(() =>
       setPartySubmissionGen((n) => n + 1),
-    );
+    ).catch((err: unknown) => {
+      console.warn("Party submission prefetch failed:", err);
+    });
   }, [viewerTaskIdsKey]);
 
   const ready =

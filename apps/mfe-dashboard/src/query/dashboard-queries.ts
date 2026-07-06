@@ -2,12 +2,18 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { listWorkflowTasks, type WorkflowTaskDto } from "@platform/api-client";
+import {
+  listWorkflowTasks,
+  type WorkflowTaskDto,
+} from "@platform/api-client";
 import {
   loadPoListRows,
   loadPropertyListItems,
 } from "@platform/app-shared/prototype/work-orders-read";
-import { workOrdersApiConfig } from "@platform/app-shared/prototype/work-orders-api-config";
+import {
+  requireWorkOrdersApiConfig,
+  unwrapApiResult,
+} from "@platform/app-shared/prototype/work-orders-api-config";
 
 const STALE_MS = 60_000;
 const GC_MS = 10 * 60_000;
@@ -65,12 +71,11 @@ function isOpenAppraisalTask(task: WorkflowTaskDto): boolean {
 async function loadRecentValuationRequestsFromTasks(): Promise<
   DashboardValuationRequestRow[]
 > {
-  const config = workOrdersApiConfig();
-  if (!config) return [];
+  const config = requireWorkOrdersApiConfig();
   const result = await listWorkflowTasks(config);
-  if (!result.ok) return [];
+  const tasks = unwrapApiResult(result, "تعذّر تحميل طلبات التقييم");
 
-  const appraisalRows = result.data
+  const appraisalRows = tasks
     .filter((t) => t.kind === "property-appraisal" && isOpenAppraisalTask(t))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, 6)
@@ -78,7 +83,7 @@ async function loadRecentValuationRequestsFromTasks(): Promise<
 
   if (appraisalRows.length > 0) return appraisalRows;
 
-  return result.data
+  return tasks
     .filter((t) => t.kind === "valuation-coordination" && isOpenAppraisalTask(t))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, 6)

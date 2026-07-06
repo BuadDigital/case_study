@@ -8,7 +8,7 @@ import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
 import { PropertyTransactionTimeline } from "../components/po-intake/PropertyTransactionTimeline";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { activeCaseStudyPath } from "../lib/my-task-routes";
-import { poPropertyPath } from "../lib/po-routes";
+import { poPropertiesPath, poPropertyPath } from "../lib/po-routes";
 import { findPropertyForTask } from "../lib/prototype/my-task-row";
 import { canOpenCaseStudyWorkspace } from "../lib/prototype/viewer-task-access";
 import type { WorkflowTask } from "../lib/prototype/tasks-storage";
@@ -28,7 +28,7 @@ function caseStudyWorkspaceFallbackPath(task: WorkflowTask | null): string {
     return poPropertyPath(task.poNumber.trim(), task.propertyId);
   }
   if (task?.poNumber.trim()) {
-    return poPropertyPath(task.poNumber.trim());
+    return poPropertiesPath(task.poNumber.trim());
   }
   return activeCaseStudyPath();
 }

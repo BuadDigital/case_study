@@ -3,7 +3,7 @@ import {
   isVisibleInAppraiserQueue,
   loadEvaluatorSubmission,
 } from "./evaluator-submission-storage";
-import { getEvaluatorRecall } from "./evaluator-recall-storage";
+import { getPartyTaskRecall } from "@platform/app-shared/prototype/party-task-recall-storage";
 
 export function filterAppraiserQueueTasks(tasks: WorkflowTask[]): WorkflowTask[] {
   return tasks.filter(
@@ -41,7 +41,7 @@ export function appraiserTaskStatusBadge(
 ): { label: string; className: string } | null {
   const sub = loadEvaluatorSubmission(taskId);
   if (sub?.status === "submitted") {
-    const recall = getEvaluatorRecall(taskId);
+    const recall = getPartyTaskRecall(taskId);
     if (recall?.status === "pending") {
       return { label: "بانتظار موافقة الاستدعاء", className: "b-prog" };
     }

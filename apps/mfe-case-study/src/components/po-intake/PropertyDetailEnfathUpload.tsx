@@ -465,18 +465,20 @@ export function PropertyDetailEnfathUpload({
 
   const handleCopyField = useCallback(
     async (key: CopyKey, text: string) => {
-      await copyInfathText(text);
-      markCopied(key, text);
+      const copied = await copyInfathText(text);
+      if (copied) markCopied(key, text);
+      else showToast("تعذّر نسخ النص — حاول يدوياً", "error");
     },
-    [markCopied],
+    [markCopied, showToast],
   );
 
   const handleCopyArea = useCallback(
     async (key: CopyKey, text: string) => {
-      await copyInfathText(text);
-      markCopied(key, text);
+      const copied = await copyInfathText(text);
+      if (copied) markCopied(key, text);
+      else showToast("تعذّر نسخ النص — حاول يدوياً", "error");
     },
-    [markCopied],
+    [markCopied, showToast],
   );
 
   const handleDownloadFile = useCallback(

@@ -66,10 +66,10 @@ export async function saveValuationCoordinationSubmission(
     ...submission,
     updatedAtUtc: new Date().toISOString(),
   };
-  const dto = await persistPartySubmissionPayload(submission.taskId, payload);
-  if (!dto) return null;
+  const saved = await persistPartySubmissionPayload(submission.taskId, payload);
+  if (!saved.ok) return null;
   notifyChanged();
-  return dtoToSubmission(dto);
+  return dtoToSubmission(saved.data);
 }
 
 export async function getOrCreateValuationCoordinationDraft(input: {
@@ -83,7 +83,10 @@ export async function getOrCreateValuationCoordinationDraft(input: {
   if (existing) return existing;
   const draft = createValuationCoordinationDraft(input);
   const saved = await saveValuationCoordinationSubmission(draft);
-  return saved ?? draft;
+  if (!saved) {
+    throw new Error("تعذّر حفظ مسودة التنسيق — تحقق من الاتصال وحاول مجدداً.");
+  }
+  return saved;
 }
 
 export async function updateValuationCoordinationDraft(
@@ -120,18 +123,19 @@ export async function submitValuationCoordinationSubmission(
   const current = loadValuationCoordinationSubmission(taskId);
   if (!current || current.status === "submitted") return current;
 
-  await saveValuationCoordinationSubmission({
+  const saved = await saveValuationCoordinationSubmission({
     ...current,
     status: "draft",
     updatedAtUtc: new Date().toISOString(),
   });
+  if (!saved) return null;
 
-  const dto = await submitPartySubmission(taskId);
-  if (!dto) return loadValuationCoordinationSubmission(taskId);
+  const submitted = await submitPartySubmission(taskId);
+  if (!submitted.ok) return null;
   notifyChanged();
   dispatchWorkflowSubmitted(VALUATION_COORDINATION_SUBMITTED_EVENT);
   notifyTasksChanged();
-  return dtoToSubmission(dto);
+  return dtoToSubmission(submitted.data);
 }
 
 export async function prefetchValuationCoordinationSubmissions(

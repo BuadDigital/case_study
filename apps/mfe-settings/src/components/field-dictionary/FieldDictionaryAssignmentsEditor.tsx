@@ -1,7 +1,7 @@
 "use client";
 
 import type { RoleId } from "@platform/types";
-import { Button, Select, cn } from "@platform/design-system";
+import { Button, Select, cn, useToast } from "@platform/design-system";
 import {
   assignmentMode,
   fieldDictionaryRoleIds,
@@ -19,6 +19,8 @@ export function FieldDictionaryAssignmentsEditor({
   assignments,
   onChange,
 }: Props) {
+  const { showToast } = useToast();
+
   function updateAssignment(
     index: number,
     patch: Partial<FieldDictionaryAssignment>,
@@ -41,7 +43,7 @@ export function FieldDictionaryAssignmentsEditor({
       (assignment, i) => i !== index && assignment.role === role,
     );
     if (duplicate) {
-      window.alert("هذا الدور مُسنَد مسبقاً لهذا الحقل.");
+      showToast("هذا الدور مُسنَد مسبقاً لهذا الحقل.", "error");
       return;
     }
     const allowed = screensForRole(role).map((screen) => screen.id);

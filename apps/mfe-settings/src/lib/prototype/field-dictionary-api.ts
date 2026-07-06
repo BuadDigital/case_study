@@ -68,7 +68,10 @@ export async function buildSyncedFieldDictionaryState(): Promise<FieldDictionary
   const config = prototypeModulesApiConfig();
   if (config) {
     const result = await getFieldDictionary(config);
-    if (result.ok && (result.data.fields.length > 0 || result.data.tags.length > 0)) {
+    if (!result.ok) {
+      throw new Error(apiErrorMessage(result.kind, "تعذّر تحميل قاموس الحقول"));
+    }
+    if (result.data.fields.length > 0 || result.data.tags.length > 0) {
       stored = {
         fields: result.data.fields as FieldDictionaryState["fields"],
         tags: result.data.tags,
@@ -91,14 +94,15 @@ export async function loadFieldDictionaryFromApi(): Promise<FieldDictionaryState
   const config = prototypeModulesApiConfig();
   if (config) {
     const result = await getFieldDictionary(config);
-    if (result.ok) {
-      previousFields = result.data.fields as FieldDictionaryField[];
-      if (previousFields.length > 0 || result.data.tags.length > 0) {
-        stored = {
-          fields: previousFields,
-          tags: result.data.tags,
-        };
-      }
+    if (!result.ok) {
+      throw new Error(apiErrorMessage(result.kind, "تعذّر تحميل قاموس الحقول"));
+    }
+    previousFields = result.data.fields as FieldDictionaryField[];
+    if (previousFields.length > 0 || result.data.tags.length > 0) {
+      stored = {
+        fields: previousFields,
+        tags: result.data.tags,
+      };
     }
   }
 
@@ -116,14 +120,20 @@ export async function loadFieldDictionaryFromApi(): Promise<FieldDictionaryState
   if (!shouldPersist) return synced;
 
   const saved = await saveFieldDictionaryToApi(synced);
-  return saved ?? synced;
+  if (!saved) {
+    throw new Error("تعذّر حفظ قاموس الحقول — تحقق من الاتصال وحاول مجدداً.");
+  }
+  return saved;
 }
 
 export async function syncFieldDictionaryFromSystem(): Promise<FieldDictionaryState> {
   const synced = await buildSyncedFieldDictionaryState();
   const saved = await saveFieldDictionaryToApi(synced);
+  if (!saved) {
+    throw new Error("تعذّر مزامنة قاموس الحقول — تحقق من الاتصال وحاول مجدداً.");
+  }
   notifyFieldDictionaryChanged();
-  return saved ?? synced;
+  return saved;
 }
 
 export async function saveFieldDictionaryToApi(
@@ -134,7 +144,6 @@ export async function saveFieldDictionaryToApi(
 
   const result = await saveFieldDictionary(config, toStateDto(state));
   if (!result.ok) {
-    console.warn(apiErrorMessage(result.kind, "Field dictionary API"));
     return null;
   }
 
@@ -154,5 +163,8 @@ export async function resetFieldDictionaryOnApi(): Promise<FieldDictionaryState>
     defaultTags: baseline.tags,
   });
   const saved = await saveFieldDictionaryToApi(synced);
-  return saved ?? synced;
+  if (!saved) {
+    throw new Error("تعذّر إعادة ضبط قاموس الحقول — تحقق من الاتصال وحاول مجدداً.");
+  }
+  return saved;
 }

@@ -7,7 +7,7 @@ import {
   submitEvaluatorSubmission,
   syncEvaluatorChecklistFromPartyCaseStudy,
 } from "./evaluator-submission-storage";
-import { clearEvaluatorRecall } from "./evaluator-recall-storage";
+import { clearPartyTaskRecall } from "@platform/app-shared/prototype/party-task-recall-storage";
 import type { EvaluatorSubmission } from "./evaluator-window-data";
 
 export type FinalizeAppraiserResult =
@@ -28,7 +28,7 @@ export async function finalizeAppraiserSubmission(
   const result = await submitEvaluatorSubmission(appraisalTaskId);
   if (!result.ok) return result;
 
-  clearEvaluatorRecall(appraisalTaskId);
+  clearPartyTaskRecall(appraisalTaskId);
 
   if (partyDraft) {
     const saved = await savePartyCaseStudyFormDraft({

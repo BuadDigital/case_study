@@ -2,7 +2,12 @@ import {
   getFailureTypesCatalog,
   saveFailureTypesCatalog,
 } from "@platform/api-client";
-import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
+import {
+  apiErrorMessage,
+  prototypeModulesApiConfig,
+  requirePrototypeModulesApiConfig,
+  resolveApiError,
+} from "@platform/app-shared/prototype/prototype-modules-api-config";
 import {
   FAILURE_PROBLEM_TYPES,
   FAILURE_TYPE_CATEGORIES,
@@ -30,21 +35,24 @@ function notifyAndReturn(catalog: FailureTypesCatalog): FailureTypesCatalog {
 
 async function persistCatalog(catalog: FailureTypesCatalog): Promise<void> {
   const config = prototypeModulesApiConfig();
-  if (!config) return;
+  if (!config) throw new Error(apiErrorMessage("auth"));
 
   const result = await saveFailureTypesCatalog(config, catalog);
   if (!result.ok) {
-    console.warn("Failed to save failure types catalog:", result.kind);
+    throw new Error(
+      resolveApiError(result.kind, undefined, "تعذّر حفظ أنواع التعذر"),
+    );
   }
 }
 
 export async function loadFailureTypesCatalog(): Promise<FailureTypesCatalog> {
-  const config = prototypeModulesApiConfig();
-  if (!config) return { categories: [], problemTypes: [] };
-
+  const config = requirePrototypeModulesApiConfig();
   const result = await getFailureTypesCatalog(config);
-  if (!result.ok) return { categories: [], problemTypes: [] };
-
+  if (!result.ok) {
+    throw new Error(
+      resolveApiError(result.kind, undefined, "تعذّر تحميل أنواع التعذر"),
+    );
+  }
   return {
     categories: result.data.categories as FailureTypeCategory[],
     problemTypes: result.data.problemTypes as FailureProblemType[],

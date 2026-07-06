@@ -699,11 +699,11 @@ export function buildInfathUploadModel(input: {
   return model;
 }
 
-export async function copyInfathText(text: string): Promise<void> {
+export async function copyInfathText(text: string): Promise<boolean> {
   if (navigator.clipboard?.writeText) {
     try {
       await navigator.clipboard.writeText(text);
-      return;
+      return true;
     } catch {
       /* fallback */
     }
@@ -713,11 +713,13 @@ export async function copyInfathText(text: string): Promise<void> {
   document.body.appendChild(textarea);
   textarea.select();
   try {
-    document.execCommand("copy");
+    const copied = document.execCommand("copy");
+    document.body.removeChild(textarea);
+    return copied;
   } catch {
-    /* ignore */
+    document.body.removeChild(textarea);
+    return false;
   }
-  document.body.removeChild(textarea);
 }
 
 export function downloadInfathDocument(

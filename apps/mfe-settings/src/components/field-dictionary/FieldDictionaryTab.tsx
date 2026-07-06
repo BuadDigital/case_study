@@ -57,12 +57,26 @@ export function FieldDictionaryTab() {
   const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
-    void loadFieldDictionaryFromApi().then(setState);
-  }, []);
+    void loadFieldDictionaryFromApi()
+      .then(setState)
+      .catch((err: unknown) => {
+        showToast(
+          err instanceof Error ? err.message : "تعذّر تحميل قاموس الحقول",
+          "error",
+        );
+      });
+  }, [showToast]);
 
   useEffect(() => {
     const refresh = (): void => {
-      void loadFieldDictionaryFromApi().then(setState);
+      void loadFieldDictionaryFromApi()
+        .then(setState)
+        .catch((err: unknown) => {
+          showToast(
+            err instanceof Error ? err.message : "تعذّر تحميل قاموس الحقول",
+            "error",
+          );
+        });
     };
     window.addEventListener(FIELD_DICTIONARY_CHANGED_EVENT, refresh);
     return () => window.removeEventListener(FIELD_DICTIONARY_CHANGED_EVENT, refresh);
@@ -71,9 +85,13 @@ export function FieldDictionaryTab() {
   const persist = useCallback((next: FieldDictionaryState) => {
     setState(next);
     void saveFieldDictionaryToApi(next).then((saved) => {
-      if (saved) setState(saved);
+      if (saved) {
+        setState(saved);
+        return;
+      }
+      showToast("تعذّر حفظ قاموس الحقول — تحقق من الاتصال وحاول مجدداً.", "error");
     });
-  }, []);
+  }, [showToast]);
 
   const fields = state?.fields ?? [];
   const tags = state?.tags ?? [];
@@ -211,12 +229,19 @@ export function FieldDictionaryTab() {
       )
     )
       return;
-    void resetFieldDictionaryOnApi().then((next) => {
-      setState(next);
-      setSelectedId(next.fields[0]?.id ?? null);
-      clearFilters();
-      showToast("تمت إعادة فهرسة القاموس.", "success");
-    });
+    void resetFieldDictionaryOnApi()
+      .then((next) => {
+        setState(next);
+        setSelectedId(next.fields[0]?.id ?? null);
+        clearFilters();
+        showToast("تمت إعادة فهرسة القاموس.", "success");
+      })
+      .catch((err: unknown) => {
+        showToast(
+          err instanceof Error ? err.message : "تعذّر إعادة فهرسة القاموس",
+          "error",
+        );
+      });
   }
 
   if (!state) {

@@ -116,7 +116,8 @@ export async function uploadInspectorPhotoFromFile(
     if (stamp) {
       uploadFile = await burnInspectorPhotoStamp(file, stamp);
     }
-  } catch {
+  } catch (err) {
+    console.warn("Inspector photo stamp failed; uploading original image", err);
   }
 
   const attachment: InspectorPhotoAttachment = {
@@ -141,9 +142,10 @@ export async function uploadInspectorPhotoFromFile(
       contentType: attachment.mimeType,
       contentBase64: await fileToBase64(uploadFile),
     });
-    if (upload.ok) {
-      attachment.attachmentId = upload.data.id;
+    if (!upload.ok) {
+      return { ok: false, error: "تعذّر رفع الصورة — تحقق من الاتصال وحاول مجدداً." };
     }
+    attachment.attachmentId = upload.data.id;
   }
 
   return { ok: true, attachment };

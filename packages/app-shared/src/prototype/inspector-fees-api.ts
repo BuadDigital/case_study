@@ -6,82 +6,81 @@ import {
   patchInspectorFee,
   transitionInspectorFee,
   type BatchInspectorFeeTransitionRequest,
+  type BatchInspectorFeeTransitionResult,
   type CreateDisbursementBatchRequest,
   type CreateDisbursementBatchResult,
   type InspectorFeeRowDto,
   type InspectorFeesSummaryDto,
+  type InspectorFeeAuditEntryDto,
   type InspectorFeeTransitionRequest,
   type ListInspectorFeesQuery,
   type PatchInspectorFeeRequest,
 } from "@platform/api-client";
-import { workOrdersApiConfig } from "./work-orders-api-config";
+import {
+  apiErrorMessage,
+  mutationFromApiResult,
+  requireWorkOrdersApiConfig,
+  unwrapApiResult,
+  workOrdersApiConfig,
+  type MutationResult,
+} from "./work-orders-api-config";
 
-const EMPTY_SUMMARY: InspectorFeesSummaryDto = {
-  netDraftSar: 0,
-  supReviewSar: 0,
-  atFinanceSar: 0,
-  disbReqSar: 0,
-  disbursedSar: 0,
-  totalDiscountsSar: 0,
-  rows: [],
-};
+export type InspectorFeeMutationResult<T> = MutationResult<T>;
 
 export async function loadInspectorFeesSummary(
   query: ListInspectorFeesQuery,
 ): Promise<InspectorFeesSummaryDto> {
-  const config = workOrdersApiConfig();
-  if (!config) return EMPTY_SUMMARY;
-
+  const config = requireWorkOrdersApiConfig();
   const result = await listInspectorFees(config, query);
-  if (!result.ok) return EMPTY_SUMMARY;
-  return result.data;
+  return unwrapApiResult(result, "تعذّر تحميل أتعاب المعاينين");
 }
 
 export async function saveInspectorFeePatch(
   workflowTaskId: string,
   body: PatchInspectorFeeRequest,
-): Promise<InspectorFeeRowDto | null> {
+): Promise<InspectorFeeMutationResult<InspectorFeeRowDto>> {
   const config = workOrdersApiConfig();
-  if (!config) return null;
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
 
   const result = await patchInspectorFee(config, workflowTaskId, body);
-  return result.ok ? result.data : null;
+  return mutationFromApiResult(result, "تعذّر حفظ أتعاب المعاين");
 }
 
 export async function runInspectorFeeTransition(
   workflowTaskId: string,
   body: InspectorFeeTransitionRequest,
-): Promise<InspectorFeeRowDto | null> {
+): Promise<InspectorFeeMutationResult<InspectorFeeRowDto>> {
   const config = workOrdersApiConfig();
-  if (!config) return null;
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
 
   const result = await transitionInspectorFee(config, workflowTaskId, body);
-  return result.ok ? result.data : null;
+  return mutationFromApiResult(result, "تعذّر تنفيذ إجراء الأتعاب");
 }
 
 export async function runInspectorFeeBatchTransition(
   body: BatchInspectorFeeTransitionRequest,
-) {
+): Promise<InspectorFeeMutationResult<BatchInspectorFeeTransitionResult>> {
   const config = workOrdersApiConfig();
-  if (!config) return null;
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
 
   const result = await batchTransitionInspectorFees(config, body);
-  return result.ok ? result.data : null;
+  return mutationFromApiResult(result, "تعذّر تنفيذ إجراء الأتعاب الجماعي");
 }
 
 export async function runCreateDisbursementBatch(
   body: CreateDisbursementBatchRequest,
-): Promise<CreateDisbursementBatchResult | null> {
+): Promise<InspectorFeeMutationResult<CreateDisbursementBatchResult>> {
   const config = workOrdersApiConfig();
-  if (!config) return null;
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
 
   const result = await createDisbursementBatch(config, body);
-  return result.ok ? result.data : null;
+  return mutationFromApiResult(result, "تعذّر إنشاء أمر الصرف");
 }
 
-export async function loadInspectorFeeTransitions(workflowTaskId: string) {
-  const config = workOrdersApiConfig();
-  if (!config) return [];
+export async function loadInspectorFeeTransitions(
+  workflowTaskId: string,
+): Promise<InspectorFeeAuditEntryDto[]> {
+  const config = requireWorkOrdersApiConfig();
   const result = await listInspectorFeeTransitions(config, workflowTaskId);
-  return result.ok ? result.data : [];
+  return unwrapApiResult(result, "تعذّر تحميل سجل أتعاب المعاين");
 }
