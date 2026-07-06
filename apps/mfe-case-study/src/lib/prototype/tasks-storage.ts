@@ -12,7 +12,7 @@ import {
   syncWorkflowTasks,
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
-import { apiErrorMessage, workOrdersApiConfig } from "../work-orders-api-config";
+import { apiErrorMessage, resolveApiError, workOrdersApiConfig } from "../work-orders-api-config";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import { hasRuntimeCapability } from "@platform/app-shared/prototype/runtime-access";
 import {
