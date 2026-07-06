@@ -1,5 +1,6 @@
 import { listSurveyOffices } from "@platform/api-client";
 import {
+  prototypeModulesApiConfig,
   requirePrototypeModulesApiConfig,
   unwrapApiResult,
 } from "@platform/app-shared/prototype/prototype-modules-api-config";

@@ -356,7 +356,9 @@ export function PoPropertyEnfathForm({
                 (result) => {
                   if (!result.ok) showToast(result.error, "error");
                 },
-              );
+              ).catch(() => {
+                showToast("تعذّر حفظ مرفق التفويض — حاول مرة أخرى", "error");
+              });
             }
           }}
           onClear={() => onPatch("delegationLetterFileName", "")}
@@ -392,7 +394,9 @@ export function PoPropertyEnfathForm({
                 (result) => {
                   if (!result.ok) showToast(result.error, "error");
                 },
-              );
+              ).catch(() => {
+                showToast("تعذّر حفظ مرفق قرار الإسناد — حاول مرة أخرى", "error");
+              });
             }
           }}
           onClear={() => onPatch("assignmentDocFileName", "")}

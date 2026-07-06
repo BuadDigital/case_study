@@ -441,6 +441,8 @@ export function CaseStudyForm({
       setDraft((current) =>
         current.status === "submitted" ? current : { ...current, status: "submitted" },
       );
+    }).catch(() => {
+      showToast("تعذّر تحميل نموذج دراسة الحالة الرئيسي", "error");
     });
   }, [isParty, hydrated, referenceTaskId, partyRevision]);
 
@@ -457,6 +459,8 @@ export function CaseStudyForm({
           ...current,
           answers: { ...current.answers, ...stored.answers },
         }));
+      }).catch(() => {
+        showToast("تعذّر تحميل إجابات الطرف — حاول مرة أخرى", "error");
       });
     };
 
@@ -496,6 +500,8 @@ export function CaseStudyForm({
       }
       void persistToServer(next).then((result) => {
         if (result && !result.ok) showToast(result.error, "error");
+      }).catch(() => {
+        showToast("تعذّر حفظ نموذج دراسة الحالة — حاول مرة أخرى", "error");
       });
     },
     [persistToServer, isParty, draft.status, parentFormSubmitted, showToast],
@@ -536,11 +542,17 @@ export function CaseStudyForm({
               answers: partyAnswers,
             }).then((result) => {
               if (!result.ok) showToast(result.error, "error");
+            }).catch(() => {
+              showToast("تعذّر حفظ إجابات الطرف — حاول مرة أخرى", "error");
             });
+          }).catch(() => {
+            showToast("تعذّر تحميل إجاباتك السابقة — حاول مرة أخرى", "error");
           });
         } else {
           void saveCaseStudyFormDraft(next).then((result) => {
             if (!result.ok) showToast(result.error, "error");
+          }).catch(() => {
+            showToast("تعذّر حفظ نموذج دراسة الحالة — حاول مرة أخرى", "error");
           });
         }
         return next;
@@ -606,9 +618,7 @@ export function CaseStudyForm({
     if (isParty || draft.status === "submitted") return;
     setDraft((d) => {
       const next = { ...d, [key]: value };
-      void saveCaseStudyFormDraft(next).then((result) => {
-        if (!result.ok) showToast(result.error, "error");
-      });
+      persist(next);
       return next;
     });
   };

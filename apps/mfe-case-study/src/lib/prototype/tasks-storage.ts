@@ -340,24 +340,37 @@ export function caseStudyTaskForProperty(
 }
 
 /** Server-side slot sync from work orders. */
+export type SyncTaskSlotsResult =
+  | { ok: true; tasks: WorkflowTask[] }
+  | { ok: false; error: string };
+
+export type AdvanceTaskResult =
+  | { ok: true; task: WorkflowTask }
+  | { ok: false; error: string };
+
 export async function syncTaskSlotsForPo(
   record: PoIntakeRecord,
-): Promise<WorkflowTask[]> {
-  await syncTasksFromPoRecords();
+): Promise<SyncTaskSlotsResult> {
+  const sync = await syncTasksFromPoRecords();
+  if (!sync.ok) return { ok: false, error: sync.error };
   const list = await loadWorkflowTasks();
-  return poCaseTasks(list, record.poNumber.trim());
+  return {
+    ok: true,
+    tasks: poCaseTasks(list, record.poNumber.trim()),
+  };
 }
 
 /** Link a property registered outside مهامي (e.g. PO → إضافة عقار) to the next empty slot. */
 export async function linkNewPropertyToTaskSlot(
   record: PoIntakeRecord,
   property: PoPropertyIntake,
-): Promise<WorkflowTask | null> {
+): Promise<AdvanceTaskResult | null> {
   if (!property.id) return null;
-  await syncTaskSlotsForPo(record);
+  const slots = await syncTaskSlotsForPo(record);
+  if (!slots.ok) return { ok: false, error: slots.error };
   const list = await loadWorkflowTasks();
   const existing = caseStudyTaskForProperty(record.poNumber, property.id, list);
-  if (existing) return existing;
+  if (existing) return { ok: true, task: existing };
 
   const tasks = poCaseTasks(list, record.poNumber);
   const slot = tasks
@@ -394,34 +407,54 @@ export async function deleteTasksForPo(poNumber: string): Promise<void> {
 export async function advanceTaskAfterEnfath(
   taskId: string,
   property: PoPropertyIntake,
-): Promise<WorkflowTask | null> {
+): Promise<AdvanceTaskResult> {
   const config = workOrdersApiConfig();
-  if (!config || !property.id) return null;
+  if (!config || !property.id) {
+    return { ok: false, error: apiErrorMessage("auth") };
+  }
   const result = await advanceWorkflowTaskAfterEnfath(config, taskId, {
     propertyId: property.id,
     identifierType: property.identifierType,
     bourseDataCompleted: Boolean(property.bourseDataCompleted),
     deedNumber: property.deedNumber,
   });
-  if (!result.ok) return null;
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: resolveApiError(
+        result.kind,
+        "errors" in result ? result.errors : undefined,
+        "تعذّر تقديم مهمة إدخال البيانات الأولية",
+      ),
+    };
+  }
   notifyTasksChanged();
-  return dtoToTask(result.data);
+  return { ok: true, task: dtoToTask(result.data) };
 }
 
 export async function advanceTaskAfterBourse(
   taskId: string,
   property: PoPropertyIntake,
-): Promise<WorkflowTask | null> {
+): Promise<AdvanceTaskResult> {
   const config = workOrdersApiConfig();
-  if (!config) return null;
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
   const result = await advanceWorkflowTaskAfterBourse(
     config,
     taskId,
     formatPropertyDeedDisplay(property),
   );
-  if (!result.ok) return null;
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: resolveApiError(
+        result.kind,
+        "errors" in result ? result.errors : undefined,
+        "تعذّر تقديم مهمة البورصة",
+      ),
+    };
+  }
   notifyTasksChanged();
-  return dtoToTask(result.data);
+  return { ok: true, task: dtoToTask(result.data) };
 }
 
 /** After استعلام البورصة — move linked case-study task to توزيع المعاملات. */
@@ -430,7 +463,7 @@ export async function advanceTaskAfterBourseForProperty(
   propertyId: string,
   property: PoPropertyIntake,
   tasks?: WorkflowTask[],
-): Promise<WorkflowTask | null> {
+): Promise<AdvanceTaskResult | null> {
   const list = tasks ?? (await loadWorkflowTasks());
   const task = caseStudyTaskForProperty(poNumber, propertyId, list);
   if (!task) return null;

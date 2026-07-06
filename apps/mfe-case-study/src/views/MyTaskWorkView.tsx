@@ -73,7 +73,6 @@ import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 
 const LOADING_TEXT = "text-xs text-text-3";
-const ADVANCE_PHASE_ERROR = "تم حفظ البيانات لكن تعذّر الانتقال للمرحلة التالية — حاول مرة أخرى";
 const CONFIRM_DISTRIBUTION_ERROR = "تعذّر تأكيد التوزيع — تحقق من المرحلة وحاول مرة أخرى";
 
 export function CaseStudyTaskWork({
@@ -160,7 +159,7 @@ export function CaseStudyTaskWork({
       if (prop.deedNumber.trim()) {
         void findPriorDeedFull(prop.deedNumber.trim(), task.poNumber).then(
           (prior) => setHasPriorSurvey(Boolean(prior)),
-        );
+        ).catch(() => setHasPriorSurvey(false));
       } else {
         setHasPriorSurvey(false);
       }
@@ -203,6 +202,8 @@ export function CaseStudyTaskWork({
         if (!updated) {
           showToast("تعذّر حفظ التوزيع — حاول مرة أخرى", "error");
         }
+      }).catch(() => {
+        showToast("تعذّر حفظ التوزيع — حاول مرة أخرى", "error");
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sync when engineering unavailable
@@ -262,12 +263,12 @@ export function CaseStudyTaskWork({
           ? { ...result.data, bourseDataCompleted: true }
           : result.data;
         const updatedTask = await advanceTaskAfterEnfath(task.id, savedProperty);
-        if (!updatedTask) {
-          setFormError(ADVANCE_PHASE_ERROR);
-          showToast(ADVANCE_PHASE_ERROR, "error");
+        if (!updatedTask.ok) {
+          setFormError(updatedTask.error);
+          showToast(updatedTask.error, "error");
           throw new Error("advance-failed");
         }
-        setPhaseOverride(updatedTask.phase);
+        setPhaseOverride(updatedTask.task.phase);
         if (onEnfathSaved) {
           await onEnfathSaved(task.id, {
             identifierType: property.identifierType,
@@ -394,12 +395,12 @@ export function CaseStudyTaskWork({
           }
           prop = updated.data;
           const enfathAdvance = await advanceTaskAfterEnfath(task.id, updated.data);
-          if (!enfathAdvance) {
-            setFormError(ADVANCE_PHASE_ERROR);
-            showToast(ADVANCE_PHASE_ERROR, "error");
+          if (!enfathAdvance.ok) {
+            setFormError(enfathAdvance.error);
+            showToast(enfathAdvance.error, "error");
             throw new Error("advance-failed");
           }
-          setPhaseOverride(enfathAdvance.phase);
+          setPhaseOverride(enfathAdvance.task.phase);
         }
 
         const result = await completePropertyBourse(
@@ -416,12 +417,12 @@ export function CaseStudyTaskWork({
         }
 
         const advancedTask = await advanceTaskAfterBourse(task.id, result.data);
-        if (!advancedTask) {
-          setFormError(ADVANCE_PHASE_ERROR);
-          showToast(ADVANCE_PHASE_ERROR, "error");
+        if (!advancedTask.ok) {
+          setFormError(advancedTask.error);
+          showToast(advancedTask.error, "error");
           throw new Error("advance-failed");
         }
-        setPhaseOverride(advancedTask.phase);
+        setPhaseOverride(advancedTask.task.phase);
         onRefresh();
       } finally {
         setSaving(false);

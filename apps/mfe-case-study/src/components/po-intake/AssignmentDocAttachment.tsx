@@ -35,6 +35,8 @@ export function AssignmentDocAttachment({
         : prefetchPropertyDocAttachments(poNumber, propertyId);
     void load.then(() => {
       setHydrated((n) => n + 1);
+    }).catch(() => {
+      setHydrated((n) => n + 1);
     });
   }, [poNumber, propertyId, docKind]);
 
