@@ -76,18 +76,26 @@ export function PropertyDetailCaseStudyReport({
   const [partyAnswers, setPartyAnswers] = useState<
     Awaited<ReturnType<typeof loadPartyCaseStudyAnswersByParty>> | null
   >(null);
+  const [partyAnswersLoading, setPartyAnswersLoading] = useState(false);
 
   useEffect(() => {
     if (!task) {
       setPartyAnswers(null);
+      setPartyAnswersLoading(false);
       return;
     }
     let cancelled = false;
-    void loadPartyCaseStudyAnswersByParty(task, tasks).then((loaded) => {
-      if (!cancelled) setPartyAnswers(loaded);
-    }).catch((err: unknown) => {
-      if (!cancelled) console.warn("Party case study answers load failed:", err);
-    });
+    setPartyAnswersLoading(true);
+    void loadPartyCaseStudyAnswersByParty(task, tasks)
+      .then((loaded) => {
+        if (!cancelled) setPartyAnswers(loaded);
+      })
+      .catch(() => {
+        if (!cancelled) setPartyAnswers(null);
+      })
+      .finally(() => {
+        if (!cancelled) setPartyAnswersLoading(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -144,7 +152,11 @@ export function PropertyDetailCaseStudyReport({
 
   return (
     <>
-      <CaseStudyPartyProgressRings items={partyProgress} />
+      {partyAnswersLoading ? (
+        <InlineLoadingSkeleton className="my-2" />
+      ) : (
+        <CaseStudyPartyProgressRings items={partyProgress} />
+      )}
       <div className="mt-1">
         <CaseStudyReportDocument model={reportModel} />
       </div>

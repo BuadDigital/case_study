@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
-import { Button, cn } from "@platform/design-system";
+import { Button, cn, InlineLoadingSkeleton } from "@platform/design-system";
 import { emptyCaseStudyInfoRolesConfig } from "@settings/mfe";
 import { useCaseStudyInfoRolesQuery } from "@settings/mfe/query/settings-queries";
 import type { WorkflowTask } from "@case-study/mfe";
@@ -40,10 +40,6 @@ const noteWarnClass = cn(
   "mb-3 rounded-[var(--radius-DEFAULT)] border border-amber border-e-[3px] border-e-amber bg-amber-light px-3.5 py-2.5 text-xs leading-relaxed text-amber-text",
 );
 
-const loadErrorClass = cn(
-  "mb-3 rounded-[var(--radius-DEFAULT)] border border-danger-border bg-danger-bg px-3.5 py-2.5 text-xs leading-relaxed text-danger-text",
-);
-
 const infoRowClass =
   "flex items-baseline justify-between gap-3 border-b border-border py-2 text-xs last:border-b-0";
 
@@ -61,6 +57,8 @@ export function EvaluatorAdvisoryPanel({
   onReopened?: () => void;
 }) {
   const [refreshKey, setRefreshKey] = useState(0);
+  const [submissionVersion, setSubmissionVersion] = useState(0);
+  const [loadingSubmission, setLoadingSubmission] = useState(false);
   const [partyDraft, setPartyDraft] = useState<CaseStudyFormDraft | null>(null);
   const [partyDraftError, setPartyDraftError] = useState<string | null>(null);
   const [prefetchError, setPrefetchError] = useState<string | null>(null);
@@ -110,23 +108,40 @@ export function EvaluatorAdvisoryPanel({
   }, [appraisalTask?.id, refreshKey]);
 
   useEffect(() => {
-    if (!appraisalTask) return;
+    if (!appraisalTask) {
+      setLoadingSubmission(false);
+      setPrefetchError(null);
+      return;
+    }
+    let cancelled = false;
+    setLoadingSubmission(true);
     setPrefetchError(null);
-    void fetchEvaluatorSubmissionSnapshot(appraisalTask.id).then(() => {
-      setRefreshKey((k) => k + 1);
-    }).catch((err: unknown) => {
-      setPrefetchError(
-        err instanceof Error
-          ? err.message
-          : "تعذّر تحميل بيانات التقييم من الخادم",
-      );
-    });
-  }, [appraisalTask?.id]);
+    void fetchEvaluatorSubmissionSnapshot(appraisalTask.id)
+      .then(() => {
+        if (!cancelled) {
+          setSubmissionVersion((v) => v + 1);
+          setLoadingSubmission(false);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setPrefetchError(
+            err instanceof Error
+              ? err.message
+              : "تعذّر تحميل بيانات التقييم من الخادم",
+          );
+          setLoadingSubmission(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [appraisalTask?.id, refreshKey]);
 
   const submission = useMemo(() => {
     if (!appraisalTask) return null;
     return loadEvaluatorSubmission(appraisalTask.id);
-  }, [appraisalTask, refreshKey]);
+  }, [appraisalTask, refreshKey, submissionVersion]);
 
   const displayChecklist = useMemo((): EvaluatorChecklistAnswers | null => {
     if (!submission) return null;
@@ -170,6 +185,31 @@ export function EvaluatorAdvisoryPanel({
     );
   }
 
+  if (loadingSubmission) {
+    return (
+      <RegistrationFormCard title="بيانات المقيم العقاري (استرشادي)">
+        <InlineLoadingSkeleton />
+      </RegistrationFormCard>
+    );
+  }
+
+  if (prefetchError) {
+    return (
+      <RegistrationFormCard title="بيانات المقيم العقاري (استرشادي)">
+        <p className="text-xs leading-relaxed text-danger-text">{prefetchError}</p>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="mt-2"
+          onClick={() => setRefreshKey((k) => k + 1)}
+        >
+          إعادة المحاولة
+        </Button>
+      </RegistrationFormCard>
+    );
+  }
+
   if (!submission || submission.status === "draft") {
     return (
       <RegistrationFormCard title="بيانات المقيم العقاري (استرشادي)">
@@ -189,20 +229,6 @@ export function EvaluatorAdvisoryPanel({
         الاسترجاع للتعديل يحتاج موافقتك.
       </p>
 
-      {prefetchError ? (
-        <div className={loadErrorClass}>
-          <p className="m-0">{prefetchError}</p>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="mt-2"
-            onClick={() => setRefreshKey((k) => k + 1)}
-          >
-            إعادة المحاولة
-          </Button>
-        </div>
-      ) : null}
       {partyDraftError ? (
         <div className={noteWarnClass}>
           <p className="m-0">{partyDraftError}</p>
