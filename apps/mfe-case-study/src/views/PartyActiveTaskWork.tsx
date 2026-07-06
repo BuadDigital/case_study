@@ -229,6 +229,10 @@ export function PartyActiveTaskWork({
   surveyHostRef.current.onSubmitted = () => completePartyTaskSubmit(def.completeMessage, { showToast: false });
   surveyHostRef.current.onSavingChange = setSaving;
   governmentHostRef.current.onSubmitted = () => completePartyTaskSubmit(def.completeMessage, { showToast: false });
+  governmentHostRef.current.onPendingSaved = () => {
+    refresh();
+    exit();
+  };
   governmentHostRef.current.onSavingChange = setSaving;
   governmentHostRef.current.onVisitStatusChange = () =>
     setGovernmentFooterTick((n) => n + 1);
