@@ -46,6 +46,7 @@ import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 export type GovernmentReviewWorkHostRef = {
   submit?: () => Promise<boolean>;
   onSubmitted?: () => void;
+  onPendingSaved?: () => void;
   onSavingChange?: (saving: boolean) => void;
   onVisitStatusChange?: () => void;
   getFooterSaveLabel?: () => string;
@@ -158,6 +159,7 @@ export function GovernmentReviewWorkBody({
             : "تم حفظ المراجعة",
           "success",
         );
+        hostRef.current?.onPendingSaved?.();
         return true;
       } catch (err: unknown) {
         const message =
