@@ -510,11 +510,13 @@ export function CaseStudyForm({
   const setAnswer = useCallback(
     (key: string, value: CaseStudyFormAnswer | null) => {
       if (!canEditKey(key)) return;
+
+      let nextDraft!: CaseStudyFormDraft;
       setDraft((d) => {
         const displayAnswers = { ...d.answers, [key]: value };
         const marksPartyReview =
           !isParty && (value === "A" || value === "B");
-        const next: CaseStudyFormDraft = {
+        nextDraft = {
           ...d,
           answers: displayAnswers,
           ...(marksPartyReview
@@ -526,37 +528,42 @@ export function CaseStudyForm({
               }
             : {}),
         };
-        if (isParty && partyChildTaskId) {
-          void loadPartyCaseStudyFormDraft(partyChildTaskId).then((prevParty) => {
-            if (!prevParty) {
-              showToast("تعذّر تحميل إجاباتك السابقة — حاول مرة أخرى", "error");
-              return;
-            }
+        return nextDraft;
+      });
+
+      const next = nextDraft;
+
+      if (isParty && partyChildTaskId) {
+        void loadPartyCaseStudyFormDraft(partyChildTaskId)
+          .then((prevParty) => {
             const partyAnswers = {
               ...(prevParty?.answers ?? {}),
               [key]: value,
             };
-            void savePartyCaseStudyFormDraft({
+            return savePartyCaseStudyFormDraft({
               ...next,
               taskId: partyChildTaskId,
               answers: partyAnswers,
-            }).then((result) => {
-              if (!result.ok) showToast(result.error, "error");
-            }).catch(() => {
-              showToast("تعذّر حفظ إجابات الطرف — حاول مرة أخرى", "error");
             });
-          }).catch(() => {
-            showToast("تعذّر تحميل إجاباتك السابقة — حاول مرة أخرى", "error");
+          })
+          .then((result) => {
+            if (result && !result.ok) showToast(result.error, "error");
+          })
+          .catch((err: unknown) => {
+            showToast(
+              err instanceof Error
+                ? err.message
+                : "تعذّر حفظ إجابات الطرف — حاول مرة أخرى",
+              "error",
+            );
           });
-        } else {
-          void saveCaseStudyFormDraft(next).then((result) => {
-            if (!result.ok) showToast(result.error, "error");
-          }).catch(() => {
-            showToast("تعذّر حفظ نموذج دراسة الحالة — حاول مرة أخرى", "error");
-          });
-        }
-        return next;
-      });
+      } else {
+        void saveCaseStudyFormDraft(next).then((result) => {
+          if (!result.ok) showToast(result.error, "error");
+        }).catch(() => {
+          showToast("تعذّر حفظ نموذج دراسة الحالة — حاول مرة أخرى", "error");
+        });
+      }
     },
     [canEditKey, isParty, partyChildTaskId, showToast],
   );
