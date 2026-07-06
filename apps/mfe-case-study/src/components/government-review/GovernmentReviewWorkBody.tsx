@@ -27,10 +27,16 @@ import {
 import { finalizeGovernmentReviewSubmission } from "../../lib/prototype/finalize-government-review-submission";
 import {
   getOrCreateGovernmentReviewDraft,
+  saveGovernmentReviewSubmission,
   updateGovernmentReviewDraft,
 } from "../../lib/prototype/government-review-work-storage";
 import {
+  canFinalizeGovernmentReview,
+  isGovernmentReviewAwaitingVisit,
+} from "../../lib/prototype/government-review-work-data";
+import {
   firstGovernmentReviewError,
+  validateGovernmentReviewPendingSave,
   validateGovernmentReviewSubmission,
   type GovernmentReviewFieldErrors,
 } from "../../lib/prototype/government-review-work-validation";
@@ -41,6 +47,8 @@ export type GovernmentReviewWorkHostRef = {
   submit?: () => Promise<boolean>;
   onSubmitted?: () => void;
   onSavingChange?: (saving: boolean) => void;
+  onVisitStatusChange?: () => void;
+  getFooterSaveLabel?: () => string;
 };
 
 const RADIO_GROUP = "mt-1 flex flex-wrap gap-3";
@@ -127,6 +135,50 @@ export function GovernmentReviewWorkBody({
   const submit = useCallback(async (): Promise<boolean> => {
     if (!draft || locked) return false;
 
+    const awaitingVisit = isGovernmentReviewAwaitingVisit(draft.visitStatus);
+
+    if (awaitingVisit) {
+      const errors = validateGovernmentReviewPendingSave(draft);
+      setFieldErrors(errors);
+      if (Object.keys(errors).length > 0) {
+        const message = firstGovernmentReviewError(errors);
+        setFormError(message);
+        showToast(message, "error");
+        return false;
+      }
+
+      hostRef.current?.onSavingChange?.(true);
+      setFormError(null);
+      try {
+        const saved = await saveGovernmentReviewSubmission(draft);
+        setDraft(saved);
+        showToast(
+          draft.visitStatus === "scheduled"
+            ? "تم الحفظ — المعاملة بالانتظار حتى تمت الزيارة"
+            : "تم حفظ المراجعة",
+          "success",
+        );
+        return true;
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error
+            ? err.message
+            : "تعذّر حفظ المراجعة — حاول مرة أخرى";
+        setFormError(message);
+        showToast(message, "error");
+        return false;
+      } finally {
+        hostRef.current?.onSavingChange?.(false);
+      }
+    }
+
+    if (!canFinalizeGovernmentReview(draft.visitStatus)) {
+      const message = "حدّد «تمت الزيارة» لإتمام المراجعة";
+      setFormError(message);
+      showToast(message, "error");
+      return false;
+    }
+
     const errors = validateGovernmentReviewSubmission(draft);
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
@@ -155,7 +207,17 @@ export function GovernmentReviewWorkBody({
   useEffect(() => {
     if (!hostRef.current) return;
     hostRef.current.submit = submit;
-  }, [hostRef, submit]);
+    hostRef.current.getFooterSaveLabel = () => {
+      if (!draft || locked) return "حفظ وإتمام المراجعة";
+      return isGovernmentReviewAwaitingVisit(draft.visitStatus)
+        ? "حفظ والانتظار"
+        : "حفظ وإتمام المراجعة";
+    };
+  }, [hostRef, submit, draft, locked]);
+
+  useEffect(() => {
+    hostRef.current?.onVisitStatusChange?.();
+  }, [draft?.visitStatus, hostRef]);
 
   if (!draft) {
     return <InlineLoadingSkeleton />;
@@ -166,6 +228,7 @@ export function GovernmentReviewWorkBody({
     draft.visitStatus === "blocked" ||
     (draft.visitStatus === "completed" && draft.keysStatus === "pending");
   const showKeysDescription = draft.keysStatus === "received";
+  const showCompletionConfirm = draft.visitStatus === "completed";
 
   return (
     <>
@@ -353,6 +416,7 @@ export function GovernmentReviewWorkBody({
           />
 
           <FormGroup className="mb-3 mt-3 flex flex-col gap-1">
+            {showCompletionConfirm ? (
             <label className={CHECKBOX_OPT}>
               <input
                 type="checkbox"
@@ -369,6 +433,12 @@ export function GovernmentReviewWorkBody({
               />
               <span>أؤكد اكتمال المراجعة الحكومية لهذا العقار</span>
             </label>
+            ) : (
+              <p className="m-0 text-[11px] leading-relaxed text-text-3">
+                عند اختيار «بانتظار الموعد» أو «تعذر الوصول» يُحفظ العمل
+                بالانتظار — لإتمام المراجعة عد لاحقاً واختر «تمت الزيارة».
+              </p>
+            )}
             {fieldErrors.confirmed ? (
               <p className="mt-1 text-[10px] text-danger-text" role="alert">
                 {fieldErrors.confirmed}

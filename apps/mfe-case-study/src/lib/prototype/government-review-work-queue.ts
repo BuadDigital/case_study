@@ -1,6 +1,5 @@
 import type { PartyTaskSubmissionDto } from "@platform/api-client";
 import {
-  governmentReviewStatusLabel,
   isGovernmentReviewFormLocked,
   normalizeGovernmentReviewSubmission,
   type GovernmentReviewSubmission,
@@ -40,10 +39,16 @@ export function governmentReviewTaskStatusBadge(
   const sub = submissionFromDto(submissionDto);
 
   if (sub?.status === "submitted" || task.status === "completed") {
-    return { label: governmentReviewStatusLabel("submitted"), className: "b-done" };
+    return { label: "مكتملة", className: "b-done" };
   }
   if (!sub) {
     return { label: "جديدة", className: "b-new" };
+  }
+  if (sub.visitStatus === "scheduled") {
+    return { label: "بالانتظار", className: "b-prog" };
+  }
+  if (sub.visitStatus === "blocked") {
+    return { label: "تعذر الوصول", className: "b-prog" };
   }
   if (sub.visitStatus && sub.keysStatus) {
     return { label: "قيد التنفيذ", className: "b-prog" };

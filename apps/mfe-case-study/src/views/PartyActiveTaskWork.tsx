@@ -207,6 +207,7 @@ export function PartyActiveTaskWork({
   );
   const [saving, setSaving] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [governmentFooterTick, setGovernmentFooterTick] = useState(0);
   const [workTab, setWorkTab] = useState<"task" | "case-study">("task");
   const recallEligible = usePartyTaskRecallEligibility(task);
 
@@ -229,6 +230,8 @@ export function PartyActiveTaskWork({
   surveyHostRef.current.onSavingChange = setSaving;
   governmentHostRef.current.onSubmitted = () => completePartyTaskSubmit(def.completeMessage, { showToast: false });
   governmentHostRef.current.onSavingChange = setSaving;
+  governmentHostRef.current.onVisitStatusChange = () =>
+    setGovernmentFooterTick((n) => n + 1);
   coordinationHostRef.current.onSubmitted = () => completePartyTaskSubmit(def.completeMessage, { showToast: false });
   coordinationHostRef.current.onSavingChange = setSaving;
   fieldInspectionHostRef.current.onSubmitted = () => completePartyTaskSubmit(def.completeMessage, { showToast: false });
@@ -666,6 +669,10 @@ export function PartyActiveTaskWork({
     const onSave = isGovernmentReview
       ? submitGovernmentReview
       : submitValuationCoordination;
+    void governmentFooterTick;
+    const governmentSaveLabel = isGovernmentReview
+      ? (governmentHostRef.current.getFooterSaveLabel?.() ?? def.saveLabel)
+      : def.saveLabel;
 
     if (submitSuccess) {
       return (
@@ -696,7 +703,7 @@ export function PartyActiveTaskWork({
         saving={saving}
         onClose={exit}
         onSave={onSave}
-        saveLabel={locked ? "رجوع" : def.saveLabel}
+        saveLabel={locked ? "رجوع" : isGovernmentReview ? governmentSaveLabel : def.saveLabel}
         showFooter
       >
         {isGovernmentReview || isValuationCoordination ? (

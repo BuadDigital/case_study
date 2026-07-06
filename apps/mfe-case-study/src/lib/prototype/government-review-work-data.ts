@@ -76,6 +76,20 @@ export function isGovernmentReviewFormLocked(
   return status === "submitted";
 }
 
+/** Visit not done yet — save draft only; do not finalize the party task. */
+export function isGovernmentReviewAwaitingVisit(
+  visitStatus: GovernmentReviewVisitStatus | "",
+): boolean {
+  return visitStatus === "scheduled" || visitStatus === "blocked";
+}
+
+/** Full submission (إتمام) requires the court visit to be completed. */
+export function canFinalizeGovernmentReview(
+  visitStatus: GovernmentReviewVisitStatus | "",
+): boolean {
+  return visitStatus === "completed";
+}
+
 export function governmentReviewVisitStatusLabel(
   value: GovernmentReviewVisitStatus | "",
 ): string {

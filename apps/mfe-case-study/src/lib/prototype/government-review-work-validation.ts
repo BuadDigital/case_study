@@ -1,4 +1,8 @@
 import type { GovernmentReviewSubmission } from "./government-review-work-data";
+import {
+  canFinalizeGovernmentReview,
+  isGovernmentReviewAwaitingVisit,
+} from "./government-review-work-data";
 
 export type GovernmentReviewFieldErrors = Partial<
   Record<
@@ -20,6 +24,12 @@ export function validateGovernmentReviewSubmission(
 
   if (!submission.visitStatus) {
     errors.visitStatus = "حدّد حالة زيارة المحكمة";
+  }
+
+  if (!canFinalizeGovernmentReview(submission.visitStatus)) {
+    errors.visitStatus =
+      "لا يمكن إتمام المراجعة قبل تأكيد «تمت الزيارة» — احفظ كمسودة بالانتظار";
+    return errors;
   }
 
   if (submission.visitStatus === "completed" && !submission.visitDate.trim()) {
@@ -62,6 +72,37 @@ export function validateGovernmentReviewSubmission(
 
   if (!submission.confirmed) {
     errors.confirmed = "يجب تأكيد اكتمال المراجعة قبل الإرسال";
+  }
+
+  return errors;
+}
+
+/** Minimal checks when saving a visit as «بالانتظار» (scheduled / blocked). */
+export function validateGovernmentReviewPendingSave(
+  submission: GovernmentReviewSubmission,
+): GovernmentReviewFieldErrors {
+  const errors: GovernmentReviewFieldErrors = {};
+
+  if (!submission.visitStatus) {
+    errors.visitStatus = "حدّد حالة زيارة المحكمة";
+    return errors;
+  }
+
+  if (!isGovernmentReviewAwaitingVisit(submission.visitStatus)) {
+    errors.visitStatus =
+      "للإتمام اختر «تمت الزيارة» — أو احفظ كمسودة بالانتظار";
+    return errors;
+  }
+
+  if (!submission.keysStatus) {
+    errors.keysStatus = "حدّد حالة استلام المفاتيح";
+  }
+
+  if (
+    submission.visitStatus === "blocked" &&
+    !submission.accessBlockReason.trim()
+  ) {
+    errors.accessBlockReason = "اذكر سبب تعذر الوصول";
   }
 
   return errors;
