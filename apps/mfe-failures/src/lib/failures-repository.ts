@@ -11,7 +11,6 @@ import {
   submitFailureForReviewAsync,
   suspendFailureAsync,
   upgradeFailureToInternalAsync,
-  type FailureMutationResult,
 } from "./failures-api";
 import type {
   BourseObstructionInput,
@@ -19,8 +18,6 @@ import type {
   FailureRecord,
   ResolveFailureInput,
 } from "./failures-types";
-
-export type { FailureMutationResult } from "./failures-api";
 
 export async function loadFailures(): Promise<FailureRecord[]> {
   return loadFailuresFromBackend();
@@ -38,41 +35,41 @@ export async function createFailure(
 
 export async function upgradeFailureToInternal(
   id: string,
-): Promise<FailureMutationResult> {
+): Promise<FailureRecord | null> {
   return upgradeFailureToInternalAsync(id);
 }
 
 export async function resolveFailure(
   id: string,
   input: ResolveFailureInput,
-): Promise<FailureMutationResult> {
+): Promise<FailureRecord | null> {
   return resolveFailureAsync(id, input);
 }
 
 export async function suspendFailure(
   id: string,
   note: string,
-): Promise<FailureMutationResult> {
+): Promise<FailureRecord | null> {
   return suspendFailureAsync(id, note);
 }
 
 export async function submitFailureForReview(
   id: string,
-): Promise<FailureMutationResult> {
+): Promise<FailureRecord | null> {
   return submitFailureForReviewAsync(id);
 }
 
 export async function approveFailure(
   id: string,
   finalNote: string,
-): Promise<FailureMutationResult> {
+): Promise<FailureRecord | null> {
   return approveFailureAsync(id, finalNote);
 }
 
 export async function returnFailure(
   id: string,
   finalNote: string,
-): Promise<FailureMutationResult> {
+): Promise<FailureRecord | null> {
   return returnFailureAsync(id, finalNote);
 }
 

@@ -90,21 +90,21 @@ export function PartyDisbursementRequest({
       const result = await runCreateDisbursementBatch({
         workflowTaskIds: [...selected],
       });
-      if (result) {
-        if (result.rows.length > 0) {
+      if (result.ok) {
+        if (result.data.rows.length > 0) {
           pushNotification({
             title: "أُنشئ أمر صرف",
-            body: `اعتُمد ${result.rows.length} عقار — بانتظار صرف المالية.`,
+            body: `اعتُمد ${result.data.rows.length} عقار — بانتظار صرف المالية.`,
             tone: "success",
             category: "financial",
             href: "/party-fees",
             sourceEvent: "party-disbursement-created",
           });
         }
-        if (result.failed.length > 0) {
+        if (result.data.failed.length > 0) {
           pushNotification({
             title: "تعذر تضمين بعض العقارات",
-            body: result.failed.map((f) => f.error).join(" · "),
+            body: result.data.failed.map((f) => f.error).join(" · "),
             tone: "warn",
             category: "financial",
             href: "/party-fees",
@@ -114,7 +114,10 @@ export function PartyDisbursementRequest({
         setSelected(new Set());
         return;
       }
-      showToast("تعذّر إنشاء أمر الصرف — حاول مرة أخرى", "error");
+      showToast(
+        result.error ?? "تعذّر إنشاء أمر الصرف — حاول مرة أخرى",
+        "error",
+      );
       await queryClient.invalidateQueries({
         queryKey: [...prototypeKeys.all, "inspector-fees"],
       });
