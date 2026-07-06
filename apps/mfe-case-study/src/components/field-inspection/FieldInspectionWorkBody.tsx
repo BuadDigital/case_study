@@ -225,6 +225,94 @@ export function FieldInspectionWorkBody({
     [persist],
   );
 
+  const scrollToErrorTarget = useCallback((targetId: string) => {
+    const target = document.getElementById(targetId);
+    if (!target) return;
+
+    let scrollContainer = target.parentElement;
+    while (scrollContainer) {
+      const overflowY = window.getComputedStyle(scrollContainer).overflowY;
+      if (overflowY === "auto" || overflowY === "scroll") break;
+      scrollContainer = scrollContainer.parentElement;
+    }
+
+    if (scrollContainer) {
+      const targetRect = target.getBoundingClientRect();
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const centeredOffset = Math.max(
+        0,
+        (containerRect.height - targetRect.height) / 2,
+      );
+      const top =
+        scrollContainer.scrollTop +
+        targetRect.top -
+        containerRect.top -
+        centeredOffset;
+
+      scrollContainer.scrollTo({
+        top: Math.max(0, top),
+        behavior: "smooth",
+      });
+    }
+
+    if (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement ||
+      target instanceof HTMLButtonElement
+    ) {
+      target.focus({ preventScroll: true });
+    }
+  }, []);
+
+  const errorLinks: {
+    key: string;
+    message: string;
+    targetId: string;
+  }[] = [];
+  if (fieldErrors.inspectionDate) {
+    errorLinks.push({
+      key: "inspectionDate",
+      message: fieldErrors.inspectionDate,
+      targetId: "ins-date",
+    });
+  }
+  if (fieldErrors.inspectionTime) {
+    errorLinks.push({
+      key: "inspectionTime",
+      message: fieldErrors.inspectionTime,
+      targetId: "ins-time",
+    });
+  }
+  if (fieldErrors.mapLatitude) {
+    errorLinks.push({
+      key: "mapLatitude",
+      message: fieldErrors.mapLatitude,
+      targetId: "ins-map-section",
+    });
+  }
+  if (fieldErrors.definedPhotos) {
+    errorLinks.push({
+      key: "definedPhotos",
+      message: fieldErrors.definedPhotos,
+      targetId: "ins-defined-photos",
+    });
+  }
+  if (fieldErrors.observations) {
+    errorLinks.push({
+      key: "observations",
+      message: fieldErrors.observations,
+      targetId: "ins-observations",
+    });
+  }
+  if (fieldErrors.inspectionConfirmed) {
+    errorLinks.push({
+      key: "inspectionConfirmed",
+      message: fieldErrors.inspectionConfirmed,
+      targetId: "ins-confirm",
+    });
+  }
+
   if (!draft) {
     return <InlineLoadingSkeleton />;
   }
@@ -248,7 +336,33 @@ export function FieldInspectionWorkBody({
 
       {formError ? (
         <Note tone="warn" role="alert" className="mb-4">
-          {formError}
+          <div className="flex flex-col gap-2">
+            <p className="m-0">{formError}</p>
+            {errorLinks.length > 0 ? (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[11px] text-text-2">
+                  اضغط على الخطأ للانتقال مباشرة إلى مكانه:
+                </span>
+                <div className="flex flex-col gap-2">
+                  {errorLinks.map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      className="flex w-full items-start justify-between gap-3 rounded-xl border border-[#F5C2C7] bg-white px-3 py-2 text-right text-[11px] text-danger-text transition-colors hover:bg-[#FFF5F5]"
+                      onClick={() => scrollToErrorTarget(item.targetId)}
+                    >
+                      <span className="min-w-0 flex-1 leading-5 break-words">
+                        {item.message}
+                      </span>
+                      <span className="shrink-0 text-[10px] text-text-3">
+                        فتح
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
         </Note>
       ) : null}
 
@@ -275,6 +389,7 @@ export function FieldInspectionWorkBody({
           <PropertySummary property={property} task={task} draft={draft} />
         </InspectorCard>
 
+        <div id="ins-map-section">
         <InspectorCard
           title="بيانات المعاينة"
           icon="ti-clipboard-check"
@@ -359,6 +474,7 @@ export function FieldInspectionWorkBody({
             onCoordsChange={handleCoordsChange}
           />
         </InspectorCard>
+        </div>
 
         <InspectorCard
           title="نموذج التحقق الميداني — خصائص العقار"
@@ -869,17 +985,20 @@ export function FieldInspectionWorkBody({
           />
         </InspectorCard>
 
-        <InspectorDefinedPhotosSection
-          draft={draft}
-          disabled={locked}
-          onPatch={(patch) => persist(patch)}
-        />
-        {fieldErrors.definedPhotos ? (
-          <p className="-mt-2 mb-4 text-[10px] text-danger-text" role="alert">
-            {fieldErrors.definedPhotos}
-          </p>
-        ) : null}
+        <div id="ins-defined-photos">
+          <InspectorDefinedPhotosSection
+            draft={draft}
+            disabled={locked}
+            onPatch={(patch) => persist(patch)}
+          />
+          {fieldErrors.definedPhotos ? (
+            <p className="-mt-2 mb-4 text-[10px] text-danger-text" role="alert">
+              {fieldErrors.definedPhotos}
+            </p>
+          ) : null}
+        </div>
 
+        <div id="ins-observations">
         <InspectorCard
           title="ملاحظات العقار الموثّقة بالصور"
           icon="ti-camera-plus"
@@ -957,26 +1076,52 @@ export function FieldInspectionWorkBody({
                 )}
               </div>
               <div className="flex min-w-0 flex-1 flex-col gap-2 pe-8 sm:pe-0">
-                <Select
-                  value={obs.category}
-                  onChange={(e) =>
-                    persist({
-                      observations: draft.observations.map((o) =>
-                        o.id === obs.id
-                          ? { ...o, category: e.target.value }
-                          : o,
-                      ),
-                    })
-                  }
-                  className={cn(formControlClassName, "text-xs")}
-                >
-                  <option value="">— نوع الملاحظة —</option>
-                  {INSPECTOR_OBSERVATION_CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </Select>
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[11px] font-semibold text-text-2">
+                    نوع الملاحظة
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-[11px] transition-colors",
+                        obs.category === ""
+                          ? "border-primary bg-[rgba(29,158,117,0.12)] text-primary"
+                          : "border-border bg-surface text-text-2 hover:border-primary/40",
+                      )}
+                      onClick={() =>
+                        persist({
+                          observations: draft.observations.map((o) =>
+                            o.id === obs.id ? { ...o, category: "" } : o,
+                          ),
+                        })
+                      }
+                    >
+                      بدون تحديد
+                    </button>
+                    {INSPECTOR_OBSERVATION_CATEGORIES.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        className={cn(
+                          "rounded-full border px-3 py-1.5 text-[11px] transition-colors",
+                          obs.category === c
+                            ? "border-primary bg-[rgba(29,158,117,0.12)] text-primary"
+                            : "border-border bg-surface text-text-2 hover:border-primary/40",
+                        )}
+                        onClick={() =>
+                          persist({
+                            observations: draft.observations.map((o) =>
+                              o.id === obs.id ? { ...o, category: c } : o,
+                            ),
+                          })
+                        }
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <Textarea
                   rows={2}
                   placeholder="اشرح الملاحظة..."
@@ -990,10 +1135,27 @@ export function FieldInspectionWorkBody({
                   }
                   className={cn(formControlClassName, "min-h-[62px] text-xs")}
                 />
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-danger-text"
+                    onClick={() =>
+                      persist({
+                        observations: draft.observations.filter(
+                          (o) => o.id !== obs.id,
+                        ),
+                      })
+                    }
+                  >
+                    حذف الملاحظة
+                  </Button>
+                </div>
               </div>
               <button
                 type="button"
-                className="absolute end-3 top-3 text-text-3 hover:text-danger-text sm:static sm:self-start"
+                className="absolute end-3 top-3 text-text-3 hover:text-danger-text sm:hidden"
                 title="حذف"
                 onClick={() =>
                   persist({
@@ -1055,6 +1217,7 @@ export function FieldInspectionWorkBody({
             </p>
           ) : null}
         </InspectorCard>
+        </div>
 
         {beforeSubmitFooter}
 

@@ -392,6 +392,7 @@ export function EvaluatorWindow({
                   id="evaluator_price"
                   className="min-w-0 flex-1 rounded-none border-0 text-sm font-semibold shadow-none focus:ring-0"
                   inputMode="decimal"
+                  autoComplete="off"
                   disabled={formDisabled}
                   hasError={Boolean(fieldErrors.evaluator_price)}
                   value={draft.evaluatorPrice}
@@ -434,6 +435,7 @@ export function EvaluatorWindow({
                   "min-h-[88px] resize-y rounded-[10px] py-2 leading-relaxed",
                 )}
                 rows={3}
+                autoComplete="off"
                 disabled={formDisabled}
                 placeholder="أي ملاحظات على العقار…"
                 value={draft.evaluatorNotes}
@@ -460,6 +462,7 @@ export function EvaluatorWindow({
                   id="inf-appraisal-date"
                   type="date"
                   className="text-xs"
+                  autoComplete="off"
                   disabled={formDisabled}
                   value={draft.appraisalDate}
                   onChange={(e) => {
@@ -477,6 +480,7 @@ export function EvaluatorWindow({
                   id="inf-issue-date"
                   type="date"
                   className="text-xs"
+                  autoComplete="off"
                   disabled={formDisabled}
                   value={draft.reportIssueDate}
                   onChange={(e) => {
@@ -495,6 +499,7 @@ export function EvaluatorWindow({
                 <Input
                   id="inf-method"
                   className="text-xs"
+                  autoComplete="off"
                   disabled={formDisabled}
                   value={draft.valuationMethod}
                   onChange={(e) => {
@@ -511,6 +516,7 @@ export function EvaluatorWindow({
                 <Input
                   id="inf-basis"
                   className="text-xs"
+                  autoComplete="off"
                   disabled={formDisabled}
                   value={draft.valueBasis}
                   onChange={(e) => {
@@ -529,6 +535,7 @@ export function EvaluatorWindow({
                 <Input
                   id="inf-land"
                   className="text-xs"
+                  autoComplete="off"
                   disabled={formDisabled}
                   value={draft.landValue}
                   onChange={(e) => {
@@ -545,6 +552,7 @@ export function EvaluatorWindow({
                 <Input
                   id="inf-building"
                   className="text-xs"
+                  autoComplete="off"
                   disabled={formDisabled}
                   value={draft.buildingValue}
                   onChange={(e) => {
@@ -561,6 +569,7 @@ export function EvaluatorWindow({
                 <Input
                   id="inf-discount"
                   className="text-xs"
+                  autoComplete="off"
                   disabled={formDisabled}
                   value={draft.forcedSaleDiscountPct}
                   onChange={(e) => {
@@ -578,6 +587,7 @@ export function EvaluatorWindow({
               <Input
                 id="inf-demand"
                 className="text-xs"
+                autoComplete="off"
                 disabled={formDisabled}
                 value={draft.demandLevel}
                 onChange={(e) => {
@@ -598,6 +608,7 @@ export function EvaluatorWindow({
                 "min-h-[88px] resize-y rounded-[10px] py-2 leading-relaxed",
               )}
                 rows={3}
+                autoComplete="off"
                 disabled={formDisabled}
                 value={draft.searchScopeNotes}
                 onChange={(e) => {
@@ -615,6 +626,7 @@ export function EvaluatorWindow({
                 <Input
                   id="inf-address"
                   className="text-xs"
+                  autoComplete="off"
                   disabled={formDisabled}
                   value={draft.appraiserAddress}
                   onChange={(e) => {
@@ -631,6 +643,7 @@ export function EvaluatorWindow({
                 <Input
                   id="inf-phone"
                   className="text-xs"
+                  autoComplete="off"
                   disabled={formDisabled}
                   value={draft.appraiserPhone}
                   onChange={(e) => {
