@@ -511,27 +511,21 @@ export function CaseStudyForm({
     (key: string, value: CaseStudyFormAnswer | null) => {
       if (!canEditKey(key)) return;
 
-      let nextDraft!: CaseStudyFormDraft;
-      setDraft((d) => {
-        const displayAnswers = { ...d.answers, [key]: value };
-        const marksPartyReview =
-          !isParty && (value === "A" || value === "B");
-        nextDraft = {
-          ...d,
-          answers: displayAnswers,
-          ...(marksPartyReview
-            ? {
-                specialistReviewApproved: {
-                  ...d.specialistReviewApproved,
-                  [key]: true,
-                },
-              }
-            : {}),
-        };
-        return nextDraft;
-      });
-
-      const next = nextDraft;
+      const displayAnswers = { ...draft.answers, [key]: value };
+      const marksPartyReview = !isParty && (value === "A" || value === "B");
+      const next: CaseStudyFormDraft = {
+        ...draft,
+        answers: displayAnswers,
+        ...(marksPartyReview
+          ? {
+              specialistReviewApproved: {
+                ...draft.specialistReviewApproved,
+                [key]: true,
+              },
+            }
+          : {}),
+      };
+      setDraft(next);
 
       if (isParty && partyChildTaskId) {
         void loadPartyCaseStudyFormDraft(partyChildTaskId)
@@ -565,7 +559,7 @@ export function CaseStudyForm({
         });
       }
     },
-    [canEditKey, isParty, partyChildTaskId, showToast],
+    [canEditKey, draft, isParty, partyChildTaskId, showToast],
   );
 
   const summary = useMemo(() => {

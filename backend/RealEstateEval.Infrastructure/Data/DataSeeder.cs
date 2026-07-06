@@ -692,6 +692,7 @@ public static class DataSeeder
                     $"BackfillPartyChildAssigneeIds: failed to load children for parent {parentId}: {ex.Message}");
                 continue;
             }
+            foreach (var child in children)
             {
                 var expectedId = PartyAssigneeIdFromDistribution(child.Kind, distribution);
                 if (string.IsNullOrWhiteSpace(expectedId)) continue;
