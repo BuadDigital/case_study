@@ -50,7 +50,10 @@ export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>>
   const { data: pendingBourse } = usePendingBourseItemsQuery();
   const { data: failures = [] } = useFailuresQuery();
   const { data: staffResult } = useStaffUsersQuery();
-  const staffUsers = staffResult?.users ?? [];
+  const staffUsers = useMemo(
+    () => staffResult?.users ?? [],
+    [staffResult?.users],
+  );
 
   const { data: feeSummary } = useQuery({
     queryKey: [...prototypeKeys.all, "inspector-fees", "nav-badges", role],

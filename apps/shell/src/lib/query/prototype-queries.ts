@@ -38,11 +38,8 @@ import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { useEffect } from "react";
 
 const STALE_MS = 60_000;
-const GC_MS = 10 * 60_000;
 
-const queryDefaults = { staleTime: STALE_MS, gcTime: GC_MS };
-
-function prefetchOpts(queryClient: QueryClient) {
+function prefetchOpts() {
   return { staleTime: STALE_MS };
 }
 
@@ -50,7 +47,7 @@ export function prefetchPrototypePage(
   queryClient: QueryClient,
   page: PageId,
 ): void {
-  const opts = prefetchOpts(queryClient);
+  const opts = prefetchOpts();
 
   const prefetchTasksAndPos = () => {
     void queryClient.prefetchQuery({
@@ -199,7 +196,7 @@ export function prefetchPrototypePage(
  * secondary data.
  */
 export function prefetchCorePrototypeData(queryClient: QueryClient): void {
-  const opts = prefetchOpts(queryClient);
+  const opts = prefetchOpts();
 
   // Tier 1 — data needed by the sidebar badges and most pages.
   void queryClient.prefetchQuery({ queryKey: prototypeKeys.poListRows(), queryFn: loadPoListRows, ...opts });
@@ -233,12 +230,6 @@ export function usePrototypeDataSync(): void {
     const invalidateFailures = () => {
       void queryClient.invalidateQueries({
         queryKey: prototypeKeys.failures(),
-      });
-    };
-
-    const invalidateCourts = () => {
-      void queryClient.invalidateQueries({
-        queryKey: prototypeKeys.courtsCatalog(),
       });
     };
 

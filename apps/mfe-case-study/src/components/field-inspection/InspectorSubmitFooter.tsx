@@ -21,15 +21,37 @@ export function InspectorSubmitFooter({
 }) {
   if (locked) return null;
 
+  function scrollWithinNearestContainer(target: HTMLElement) {
+    let scrollContainer: HTMLElement | null = target.parentElement;
+    while (scrollContainer) {
+      const { overflowY } = window.getComputedStyle(scrollContainer);
+      if (overflowY === "auto" || overflowY === "scroll") break;
+      scrollContainer = scrollContainer.parentElement;
+    }
+
+    if (!scrollContainer) {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
+    const targetRect = target.getBoundingClientRect();
+    const containerRect = scrollContainer.getBoundingClientRect();
+    const top =
+      scrollContainer.scrollTop + (targetRect.top - containerRect.top) - 16;
+
+    scrollContainer.scrollTo({
+      top: Math.max(0, top),
+      behavior: "smooth",
+    });
+  }
+
   function openFailureRaise() {
     if (onRegisterFailure) {
       onRegisterFailure();
       return;
     }
-    document.getElementById(failureRaiseId)?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
+    const target = document.getElementById(failureRaiseId);
+    if (target instanceof HTMLElement) scrollWithinNearestContainer(target);
   }
 
   return (
