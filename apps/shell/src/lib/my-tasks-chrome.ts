@@ -15,7 +15,6 @@ export type MyTasksChromeOptions = {
 export function resolveMyTasksChrome(
   pathname: string,
   taskId?: string | null,
-  options?: MyTasksChromeOptions,
 ): MyTasksChrome | null {
   const parts = pathname.split("/").filter(Boolean);
   const page = parts[0] as PageId | undefined;

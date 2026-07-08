@@ -353,6 +353,7 @@ function ActiveTransactionsNavDropdown({
   const [open, setOpen] = useState(inSection);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- auto-expand the active section when navigation enters it.
     if (inSection) setOpen(true);
   }, [inSection]);
 
@@ -424,6 +425,7 @@ function FooterNavDropdown({
   const [open, setOpen] = useState(inSection);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- auto-expand the active section when navigation enters it.
     if (inSection) setOpen(true);
   }, [inSection]);
 
@@ -558,13 +560,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [queryClient, currentPage]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- close the mobile drawer after route navigation completes.
     setMobileNavOpen(false);
   }, [pathname]);
 
   const onCaseStudyWorkspace = pathname?.startsWith("/case-study/") ?? false;
   const onActiveSurveyRoute = pathParts[0] === "active-survey" && pathParts.length >= 2;
   const onActiveSurveyEntry = onActiveSurveyRoute && pathParts[2] === "entry";
-  const onActiveSurveyWorkspace = onActiveSurveyRoute && !onActiveSurveyEntry;
   const onPropertyAppraisalWorkspace = pathParts[0] === "property-appraisal" && pathParts.length >= 2;
   const onPropertyInspectionWorkspace = pathParts[0] === "property-inspection" && pathParts.length >= 2;
   const onGovernmentReviewWorkspace = pathParts[0] === "government-review" && pathParts.length >= 2;
@@ -751,12 +753,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     onValuationCoordinationWorkspace ||
     (pathname ? isPartyTaskWorkPath(pathname) && Boolean(taskQuery) : false);
 
-  const onPartyTaskFullPageWorkspace =
-    onPropertyAppraisalWorkspace ||
-    onPropertyInspectionWorkspace ||
-    onGovernmentReviewWorkspace ||
-    onValuationCoordinationWorkspace;
-
   const def = ROLES[role];
   const chipName = sessionUser?.displayName?.trim() || def.name;
 
@@ -906,6 +902,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     showGeneralGroup &&
                     item.id === "financial";
                   if (shouldInsertGeneral) {
+                    // eslint-disable-next-line react-hooks/immutability -- render-local marker used only within this render pass.
                     generalNavInserted = true;
                     nodes.push(
                       <div key="general-grp">

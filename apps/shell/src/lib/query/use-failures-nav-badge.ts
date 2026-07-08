@@ -2,10 +2,7 @@
 
 import { useMemo } from "react";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import {
-  countOpenFailures,
-  countOpenFailuresForPartyRole,
-} from "@failures/mfe";
+import { countOpenFailuresForPartyRole } from "@failures/mfe";
 import { useFailuresQuery } from "@/lib/query/prototype-queries";
 
 /** Live red badge count for إدارة التعذرات in the sidebar. */

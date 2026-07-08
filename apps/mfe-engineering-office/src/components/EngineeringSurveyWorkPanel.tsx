@@ -143,8 +143,6 @@ export function EngineeringSurveyWorkPanel({
   );
   const notesEditable = transactionActive && !locked;
   const savedNote = draft?.surveyNotes?.trim() ?? "";
-  const notePreview =
-    savedNote.length > 28 ? `${savedNote.slice(0, 28)}…` : savedNote;
 
   useEffect(() => {
     setNoteDraft(draft?.surveyNotes ?? "");
@@ -698,13 +696,11 @@ export function EngineeringSurveyWorkPanel({
           onClick={() => setWorkTab("notes")}
         >
           <span>ملاحظة</span>
-          {notePreview ? (
+          {savedNote ? (
             <span
-              className="max-w-[120px] truncate text-[10px] font-normal text-text-3"
-              title={savedNote}
-            >
-              {notePreview}
-            </span>
+              className="inline-block size-1.5 rounded-full bg-primary"
+              aria-hidden
+            />
           ) : null}
         </button>
         <button
@@ -772,15 +768,6 @@ export function EngineeringSurveyWorkPanel({
                   لا يمكن تعديل الملاحظة بعد إرسال المعاملة أو إغلاقها.
                 </p>
               )}
-              {savedNote ? (
-                <div className="mt-4">
-                  <InfoBox variant="teal" icon="ℹ">
-                    <strong>الملاحظة المحفوظة:</strong>
-                    <br />
-                    {savedNote}
-                  </InfoBox>
-                </div>
-              ) : null}
             </div>
           ) : null}
           {workTab === "failures" && propertyId ? (

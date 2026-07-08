@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
   clearAuthSession,
   getValidAuthSession,
@@ -15,21 +15,17 @@ import { PanelSkeleton } from "@platform/design-system";
  */
 export function PrototypeAppGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [ok, setOk] = useState<boolean | null>(null);
+  const session = getValidAuthSession();
 
   useEffect(() => {
-    const session = getValidAuthSession();
     if (session) {
       setAuthSession(session);
-      setOk(true);
       return;
     }
     clearAuthSession();
     router.replace("/login");
-    setOk(false);
-  }, [router]);
+  }, [router, session]);
 
-  if (ok === null) return <PanelSkeleton className="min-h-svh" />;
-  if (!ok) return null;
+  if (!session) return <PanelSkeleton className="min-h-svh" />;
   return <>{children}</>;
 }

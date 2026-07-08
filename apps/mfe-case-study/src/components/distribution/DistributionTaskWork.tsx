@@ -10,6 +10,8 @@ import { ROLES } from "@platform/app-shared/prototype/constants";
 import {
   FAILURE_RAISER_SPECIALIST,
   FAILURE_RAISER_SUPERVISOR,
+  isBlockingFailureStatus,
+  useFailuresQuery,
 } from "@failures/mfe";
 import {
   classificationRequiresSurvey,
@@ -48,9 +50,11 @@ export function DistributionTaskWork({
   const { role } = usePrototype();
   const { runWithActionToast, showToast } = useToast();
   const { data: staffResult } = useStaffUsersQuery();
-  const staffUsers = staffResult?.users ?? [];
-  const [property, setProperty] = useState<PoPropertyIntake>(emptyProperty);
-  const [hasPriorSurvey, setHasPriorSurvey] = useState(false);
+  const staffUsers = useMemo(() => staffResult?.users ?? [], [staffResult?.users]);
+  const [priorSurveyLookup, setPriorSurveyLookup] = useState<{
+    deedNumber: string;
+    exists: boolean;
+  }>({ deedNumber: "", exists: false });
   const [distribution, setDistribution] = useState<TaskDistributionDraft>(() =>
     migrateDistribution(task.distribution ?? defaultDistribution()),
   );
@@ -61,6 +65,7 @@ export function DistributionTaskWork({
   const { data: poRecord, isPending: poRecordLoading } = usePoRecordQuery(
     task.poNumber,
   );
+  const { data: failures = [] } = useFailuresQuery();
   const loading = poRecordLoading && !poRecord;
 
   const isSpecialist = role === "case-specialist" || role === "cdo";
@@ -70,31 +75,63 @@ export function DistributionTaskWork({
       : FAILURE_RAISER_SPECIALIST;
   const failureSpecialist = ROLES[role]?.name ?? "أخصائي";
 
-  useEffect(() => {
-    setDistribution(migrateDistribution(task.distribution ?? defaultDistribution()));
-  }, [task.id, task.distribution]);
+  const property = useMemo<PoPropertyIntake>(() => {
+    if (!poRecord || !task.propertyId) return emptyProperty();
+    return poRecord.properties.find((p) => p.id === task.propertyId) ?? emptyProperty();
+  }, [poRecord, task.propertyId]);
 
   useEffect(() => {
-    if (!poRecord || !task.propertyId) {
-      setProperty(emptyProperty());
-      setHasPriorSurvey(false);
-      return;
-    }
-    const prop =
-      poRecord.properties.find((p) => p.id === task.propertyId) ??
-      emptyProperty();
-    setProperty(prop);
-    if (prop.deedNumber.trim()) {
-      void findPriorDeedFull(prop.deedNumber.trim(), task.poNumber).then(
-        (prior) => setHasPriorSurvey(Boolean(prior)),
-      ).catch(() => setHasPriorSurvey(false));
-    } else {
-      setHasPriorSurvey(false);
-    }
-  }, [poRecord, task.propertyId, task.poNumber]);
+    const deedNumber = property.deedNumber.trim();
+    if (!deedNumber) return;
+
+    let cancelled = false;
+    void findPriorDeedFull(deedNumber, task.poNumber)
+      .then((prior) => {
+        if (!cancelled) {
+          setPriorSurveyLookup({ deedNumber, exists: Boolean(prior) });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPriorSurveyLookup({ deedNumber, exists: false });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [property.deedNumber, task.poNumber]);
+
+  const hasPriorSurvey =
+    priorSurveyLookup.deedNumber === property.deedNumber.trim() &&
+    priorSurveyLookup.exists;
 
   const showEngineering = engineeringOfficeAvailable(property, hasPriorSurvey);
   const requiresSurvey = classificationRequiresSurvey(property.classification);
+  const activeFailure = useMemo(() => {
+    const propertyId = task.propertyId?.trim();
+    if (!propertyId) return null;
+    return (
+      failures.find(
+        (failure) =>
+          failure.poNumber === task.poNumber &&
+          failure.propertyId === propertyId &&
+          isBlockingFailureStatus(failure.status),
+      ) ?? null
+    );
+  }, [failures, task.poNumber, task.propertyId]);
+
+  const effectiveDistribution = useMemo(
+    () =>
+      showEngineering
+        ? distribution
+        : migrateDistribution({
+            ...distribution,
+            engineeringOffice: false,
+            engineeringOfficeId: "",
+          }),
+    [distribution, showEngineering],
+  );
 
   useEffect(() => {
     if (loading || showEngineering) return;
@@ -104,7 +141,6 @@ export function DistributionTaskWork({
         engineeringOffice: false,
         engineeringOfficeId: "",
       });
-      setDistribution(next);
       void patchTaskDistribution(task.id, next, task).then((updated) => {
         if (!updated) {
           showToast("تعذّر حفظ التوزيع — حاول مرة أخرى", "error");
@@ -127,7 +163,7 @@ export function DistributionTaskWork({
   }, [hasPriorSurvey, requiresSurvey]);
 
   async function patchDistribution(patch: Partial<TaskDistributionDraft>) {
-    const next = migrateDistribution({ ...distribution, ...patch });
+    const next = migrateDistribution({ ...effectiveDistribution, ...patch });
     if (!showEngineering) {
       next.engineeringOffice = false;
       next.engineeringOfficeId = "";
@@ -139,7 +175,16 @@ export function DistributionTaskWork({
 
   async function confirmDistribution() {
     setFormError(null);
-    const validation = distributionValidationError(distribution, showEngineering);
+    if (activeFailure) {
+      const message = "لا يمكن توزيع المعاملة ما دام عليها تعذر نشط.";
+      setFormError(message);
+      showToast(message, "error");
+      return;
+    }
+    const validation = distributionValidationError(
+      effectiveDistribution,
+      showEngineering,
+    );
     if (validation) {
       setFormError(validation);
       return;
@@ -150,7 +195,7 @@ export function DistributionTaskWork({
       try {
         const result = await confirmTaskDistribution(
           task.id,
-          distribution,
+          effectiveDistribution,
           formatPropertyDeedDisplay(property),
           staffUsers,
         );
@@ -228,6 +273,24 @@ export function DistributionTaskWork({
     );
   }
 
+  if (activeFailure) {
+    return (
+      <TaskWorkChrome
+        layout="panel"
+        title="توزيع المعاملة"
+        onClose={onClose}
+        onSave={onClose}
+        saveLabel="رجوع"
+        showFooter={false}
+      >
+        <Note tone="warn">
+          لا يمكن توزيع هذه المعاملة لأن عليها تعذرًا نشطًا. عالج التعذر أولًا ثم
+          أعد فتح التوزيع ({deedTitle} · {formatPoDisplay(task.poNumber)}).
+        </Note>
+      </TaskWorkChrome>
+    );
+  }
+
   return (
     <TaskWorkChrome
       layout="panel"
@@ -260,7 +323,7 @@ export function DistributionTaskWork({
         subtitle="فعّل الطرف ثم اختر المسؤول — يمكن الإسناد لأكثر من طرف معاً"
       >
         <DistributionPartiesForm
-          distribution={distribution}
+          distribution={effectiveDistribution}
           onPatch={patchDistribution}
           showEngineering={showEngineering}
           engineeringHint={engineeringUnavailableHint()}

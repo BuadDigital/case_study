@@ -143,6 +143,21 @@ public class WorkflowTaskService : IWorkflowTaskService
             });
         }
 
+        var propertyIdText = parent.PropertyId.Value.ToString();
+        var hasBlockingFailure = await _db.PropertyFailures.AnyAsync(
+            f => f.PoNumber == parent.PoNumber
+                && f.PropertyId == propertyIdText
+                && f.Status != PropertyFailureStatus.Resolved
+                && f.Status != PropertyFailureStatus.Suspended,
+            cancellationToken);
+        if (hasBlockingFailure)
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "لا يمكن توزيع المعاملة ما دام عليها تعذر نشط",
+            });
+        }
+
         var now = DateTime.UtcNow;
         var deed = request.DeedNumber.Trim();
         var distribution = NormalizeDistribution(request.Distribution);

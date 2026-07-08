@@ -42,7 +42,6 @@ import {
   formatPropertyDeedDisplay,
   type PoIntakeRecord,
 } from "../lib/prototype/po-intake-data";
-import { poPrimaryDataReadiness } from "../lib/prototype/po-primary-data-readiness";
 import {
   usePoRecordsQuery,
   useWorkflowTasksQuery,
@@ -56,8 +55,6 @@ type GovernmentReviewDeedRow = {
   deedLabel: string;
   assignmentType: string;
   courtLine: string;
-  primaryDataReady: boolean;
-  primaryDataLabel: string;
 };
 
 export function GovernmentReviewView() {
@@ -66,7 +63,7 @@ export function GovernmentReviewView() {
   const selectedTaskId = searchParams.get("task");
   const { role, viewerEmail } = usePrototype();
   const { data: staffResult } = useStaffUsersQuery();
-  const staffUsers = staffResult?.users ?? [];
+  const staffUsers = useMemo(() => staffResult?.users ?? [], [staffResult?.users]);
   const def = partyTaskPageDef("government-review");
   const reviewerScope = reviewerScopeForRole(role, staffUsers);
 
@@ -118,14 +115,6 @@ export function GovernmentReviewView() {
       const courts = court ? [court] : [];
       const cities = poCitiesForReviewerScope(record, [task]);
       if (!poInReviewerScope(courts, reviewerScope, cities)) continue;
-      const readiness = record
-        ? poPrimaryDataReadiness(record)
-        : {
-            ready: false,
-            label: "لا توجد بيانات أمر العمل",
-            completeCount: 0,
-            totalCount: 0,
-          };
       const deedLabel =
         (property ? formatPropertyDeedDisplay(property) : "") ||
         taskDisplayPropertyLabel(task);
@@ -135,8 +124,6 @@ export function GovernmentReviewView() {
         deedLabel,
         assignmentType: record?.assignmentType ?? task.assignmentType ?? "—",
         courtLine: [court, circuit].filter(Boolean).join(" · ") || "—",
-        primaryDataReady: readiness.ready,
-        primaryDataLabel: readiness.label,
       });
     }
     return list.sort((a, b) =>
@@ -162,13 +149,12 @@ export function GovernmentReviewView() {
                       <Th>نوع الإسناد</Th>
                       <Th>أمر العمل</Th>
                       <Th>حالة المهمة</Th>
-                    <Th>البيانات الأولية</Th>
-                  </Tr>
-                </THead>
-                <TBody>
-                  <SkeletonTableRows rows={5} cols={6} />
-                </TBody>
-              </Table>
+                    </Tr>
+                  </THead>
+                  <TBody>
+                    <SkeletonTableRows rows={5} cols={5} />
+                  </TBody>
+                </Table>
             </div>
           ) : rows.length === 0 ? (
             <EmptyState
@@ -189,7 +175,6 @@ export function GovernmentReviewView() {
                       <Th>نوع الإسناد</Th>
                       <Th>أمر العمل</Th>
                       <Th>حالة المهمة</Th>
-                      <Th>البيانات الأولية</Th>
                     </Tr>
                   </THead>
                   <TBody>
@@ -219,16 +204,6 @@ export function GovernmentReviewView() {
                             ) : (
                               <Badge tone="success">مكتملة</Badge>
                             )}
-                          </Td>
-                          <Td>
-                            {row.primaryDataReady ? (
-                              <Badge tone="success">مكتمل</Badge>
-                            ) : (
-                              <Badge tone="warning">ناقص</Badge>
-                            )}
-                            <div className="mt-1 text-[10px] text-text-3">
-                              {row.primaryDataLabel}
-                            </div>
                           </Td>
                         </Tr>
                       );

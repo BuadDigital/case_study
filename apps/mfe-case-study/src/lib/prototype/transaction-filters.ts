@@ -1,4 +1,4 @@
-import { getPropertyFailure } from "@failures/mfe";
+import { getPropertyFailure, isBlockingFailureStatus } from "@failures/mfe";
 import type { PoIntakeRecord } from "./po-intake-data";
 import { isBourseInquiryIdentifier } from "./po-intake-data";
 import { findPropertyForTask } from "./my-task-row";
@@ -9,7 +9,7 @@ function hasActiveFailureOnTask(task: WorkflowTask): boolean {
   if (!propertyId) return false;
   const failure = getPropertyFailure(task.poNumber, propertyId);
   if (!failure) return false;
-  return failure.status !== "returned" && failure.status !== "resolved";
+  return isBlockingFailureStatus(failure.status);
 }
 
 export function taskMatchesPrimaryData(task: WorkflowTask): boolean {
@@ -45,6 +45,7 @@ export function filterTasksForPrimaryData(
   tasks: WorkflowTask[],
   _poByNumber: Map<string, PoIntakeRecord>,
 ): WorkflowTask[] {
+  void _poByNumber;
   return tasks.filter((t) => taskMatchesPrimaryData(t));
 }
 
