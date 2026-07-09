@@ -495,17 +495,6 @@ export function PoPropertyDetailTabs({
   });
 
   const engineeringPartyNotes = partySubmissionsQuery.data?.survey?.remarks ?? [];
-  const surveyNotePreview = useMemo(() => {
-    const primary =
-      engineeringPartyNotes.find(
-        (row: { label: string; value: string }) => row.label.includes("ملاحظات"),
-      )?.value ??
-      engineeringPartyNotes[0]?.value ??
-      "";
-    const text = primary.trim();
-    if (!text) return "";
-    return text.length > 24 ? `${text.slice(0, 24)}…` : text;
-  }, [engineeringPartyNotes]);
 
   const logEventsQuery = usePropertyTimelineQuery(poNumber, property.id);
   const fallbackLogEvents = useMemo(
@@ -600,21 +589,7 @@ export function PoPropertyDetailTabs({
               active={tab === t.id}
               onClick={() => setTab(t.id)}
             >
-              {t.id === "survey-notes" ? (
-                <span className="inline-flex max-w-[9.5rem] items-center gap-1">
-                  <span>{t.label}</span>
-                  {surveyNotePreview ? (
-                    <span
-                      className="truncate text-[10px] font-normal text-text-3"
-                      title={surveyNotePreview}
-                    >
-                      {surveyNotePreview}
-                    </span>
-                  ) : null}
-                </span>
-              ) : (
-                t.label
-              )}
+              {t.label}
               {count !== null ? (
                 <TabCount tone={countTone}>{count}</TabCount>
               ) : null}

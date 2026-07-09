@@ -12,15 +12,27 @@ internal static class TestInspectorFeeServiceFactory
 {
     public static InspectorFeeService Create(ApplicationDbContext db)
     {
-        var userManager = new UserManager<ApplicationUser>(
-            new NullUserStore(),
-            null!, null!, null!, null!, null!, null!, null!, null!);
-
+        var userManager = CreateUserManager();
         return new InspectorFeeService(
             db,
             new NullNotificationService(),
             new NotificationRecipientResolver(db, userManager));
     }
+
+    public static WorkflowTaskService CreateWorkflow(ApplicationDbContext db)
+    {
+        var userManager = CreateUserManager();
+        var notifications = new NullNotificationService();
+        var recipients = new NotificationRecipientResolver(db, userManager);
+        var fees = new InspectorFeeService(db, notifications, recipients);
+        var timeline = new PropertyTimelineService(db);
+        return new WorkflowTaskService(db, fees, notifications, recipients, timeline);
+    }
+
+    private static UserManager<ApplicationUser> CreateUserManager() =>
+        new(
+            new NullUserStore(),
+            null!, null!, null!, null!, null!, null!, null!, null!);
 
     private sealed class NullNotificationService : INotificationService
     {
