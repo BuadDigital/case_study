@@ -37,11 +37,11 @@ export function TaskWorkChrome({
 }) {
   if (layout === "panel") {
     return (
-      <Card className="m-0 flex h-full min-h-0 w-full flex-col self-stretch overflow-hidden border-0 shadow-none">
-        <CardBody className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain bg-surface">
+        <Card className="m-0 flex h-full min-h-0 w-full flex-col self-stretch overflow-hidden border-0 shadow-none">
+          <CardBody className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain bg-surface">
           {children}
           {showFooter && variant !== "detail" ? (
-            <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
+            <div className="mt-auto flex flex-wrap gap-2 border-t border-border pt-6">
               {footerExtra}
               <Button
                 type="button"

@@ -4,6 +4,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Notifications;
 using System.Text.Json;
 
 namespace RealEstateEval.Infrastructure.Services;
@@ -18,17 +19,23 @@ public class WorkflowTaskService : IWorkflowTaskService
 
     private readonly ApplicationDbContext _db;
     private readonly IInspectorFeeService _inspectorFees;
+    private readonly INotificationService _notifications;
+    private readonly NotificationRecipientResolver _recipients;
     private readonly IPropertyTimelineService _timeline;
     private readonly DatabaseOptions _dbOptions;
 
     public WorkflowTaskService(
         ApplicationDbContext db,
         IInspectorFeeService inspectorFees,
+        INotificationService notifications,
+        NotificationRecipientResolver recipients,
         IPropertyTimelineService timeline,
         IOptions<DatabaseOptions>? dbOptions = null)
     {
         _db = db;
         _inspectorFees = inspectorFees;
+        _notifications = notifications;
+        _recipients = recipients;
         _timeline = timeline;
         _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
     }
@@ -261,6 +268,8 @@ public class WorkflowTaskService : IWorkflowTaskService
         await _inspectorFees.EnsureLedgersForTasksAsync(
             children.Where(c => c.Kind is "field-inspection" or "engineering-survey"),
             cancellationToken);
+
+        await NotifyDistributionAssignedAsync(parent, children, deed, cancellationToken);
 
         return (new ConfirmTaskDistributionResponseDto
         {
@@ -662,6 +671,91 @@ public class WorkflowTaskService : IWorkflowTaskService
         "valuation-coordination" => "تعيين منسق التقييم",
         _ => "تعيين طرف",
     };
+
+    private async Task NotifyDistributionAssignedAsync(
+        WorkflowTask parent,
+        IReadOnlyCollection<WorkflowTask> children,
+        string deed,
+        CancellationToken cancellationToken)
+    {
+        var assignmentsByUser = new Dictionary<string, List<WorkflowTask>>(StringComparer.Ordinal);
+
+        foreach (var child in children)
+        {
+            var assigneeId = child.AssigneeId?.Trim();
+            if (string.IsNullOrWhiteSpace(assigneeId)) continue;
+
+            var userId = await _recipients.ResolveUserIdForDistributionAssigneeAsync(
+                assigneeId,
+                cancellationToken);
+            if (string.IsNullOrWhiteSpace(userId)) continue;
+
+            if (!assignmentsByUser.TryGetValue(userId, out var list))
+            {
+                list = [];
+                assignmentsByUser[userId] = list;
+            }
+
+            list.Add(child);
+        }
+
+        var refLabel = string.IsNullOrWhiteSpace(deed) ? parent.PoNumber : deed.Trim();
+        foreach (var entry in assignmentsByUser)
+        {
+            var userId = entry.Key;
+            var assignedTasks = entry.Value;
+            if (assignedTasks.Count == 0) continue;
+
+            var single = assignedTasks.Count == 1 ? assignedTasks[0] : null;
+            var href = single is not null
+                ? TaskHref(single.Kind, single.Id)
+                : "/my-tasks";
+            var body = single is not null
+                ? $"أُسندت إليك مهمة جديدة: {TaskNotificationLabel(single.Kind)} على {refLabel}."
+                : $"أُسندت إليك {assignedTasks.Count} مهام جديدة على {refLabel}.";
+
+            await _notifications.CreateForUserAsync(
+                userId,
+                new CreateUserNotificationRequest
+                {
+                    Title = "معاملة جديدة بانتظارك",
+                    Body = body,
+                    Tone = "info",
+                    Href = href,
+                    Category = "workflow",
+                    EntityType = "task",
+                    EntityId = single?.Id.ToString() ?? parent.Id.ToString(),
+                    SourceEvent = single is not null
+                        ? $"distribution-assigned:{single.Id}"
+                        : $"distribution-assigned-batch:{parent.Id}:{userId}",
+                },
+                cancellationToken);
+        }
+    }
+
+    private static string TaskNotificationLabel(string kind) => kind switch
+    {
+        "field-inspection" => "معاينة العقار",
+        "engineering-survey" => "الرفع المساحي",
+        "property-appraisal" => "تقييم العقار",
+        "government-review" => "المراجعة الحكومية",
+        "valuation-coordination" => "استلام التقييم",
+        _ => "مهمة جديدة",
+    };
+
+    private static string TaskHref(string kind, Guid taskId)
+    {
+        var id = Uri.EscapeDataString(taskId.ToString());
+        return kind switch
+        {
+            "engineering-survey" => $"/active-survey/{id}",
+            "field-inspection" => $"/property-inspection/{id}",
+            "property-appraisal" => $"/property-appraisal/{id}",
+            "government-review" => $"/government-review/{id}",
+            "valuation-coordination" => $"/valuation-coordination/{id}",
+            _ => "/my-tasks",
+        };
+    }
 
     private async Task RemovePartySubmissionsForTasksAsync(
         List<Guid> taskIds,

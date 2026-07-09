@@ -169,9 +169,8 @@ public class FieldInspectionSubmissionIntegrationTests
 
     private static PartyTaskSubmissionService CreateService(ApplicationDbContext db)
     {
-        var fees = TestInspectorFeeServiceFactory.Create(db);
         var timeline = new PropertyTimelineService(db);
-        return new(db, new WorkflowTaskService(db, fees, timeline), new FieldInspectionAttachmentVerifier(db), timeline);
+        return new(db, TestInspectorFeeServiceFactory.CreateWorkflow(db), new FieldInspectionAttachmentVerifier(db), timeline);
     }
 
     private static void SeedInspectionTask(ApplicationDbContext db)

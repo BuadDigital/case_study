@@ -9,11 +9,15 @@ export function isEngineeringOfficeRole(
   return role === ENGINEERING_OFFICE_ROLE;
 }
 
-/** مكتب الهندسي — inbox/toast فقط عند إرسال الرفع المساحي. */
+/** مكتب الهندسي — يسمح فقط بإشعارات الرفع المساحي وإسناد المهام الخاصة به. */
 export function isAllowedEngineeringOfficeNotification(
   sourceEvent: string | undefined,
 ): boolean {
-  return sourceEvent === ENGINEERING_SURVEY_SUBMITTED_EVENT;
+  return (
+    sourceEvent === ENGINEERING_SURVEY_SUBMITTED_EVENT ||
+    sourceEvent?.startsWith("distribution-assigned:") === true ||
+    sourceEvent?.startsWith("distribution-assigned-batch:") === true
+  );
 }
 
 export function shouldDeliverDomainNotification(
@@ -21,7 +25,11 @@ export function shouldDeliverDomainNotification(
   eventName: string,
 ): boolean {
   if (!isEngineeringOfficeRole(role)) return true;
-  return eventName === ENGINEERING_SURVEY_SUBMITTED_EVENT;
+  return (
+    eventName === ENGINEERING_SURVEY_SUBMITTED_EVENT ||
+    eventName.startsWith("distribution-assigned:") ||
+    eventName.startsWith("distribution-assigned-batch:")
+  );
 }
 
 export function shouldShowNotificationToast(

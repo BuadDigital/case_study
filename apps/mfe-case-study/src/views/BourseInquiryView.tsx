@@ -375,12 +375,14 @@ export function BourseInquiryView() {
               </div>
 
               <div className="shrink-0 border-t border-border bg-surface px-4 py-4 shadow-[0_-4px_16px_rgba(15,52,96,0.08)]">
+                {/** Keep the toast action label unchanged, but render a simpler visible label for cleaner RTL centering. */}
                 <Button
                   type="button"
                   variant="primary"
                   loading={saving}
                   disabled={saving}
                   showActionToast={false}
+                  className="min-h-10 leading-tight"
                   actionLabel={
                     obstructionPath
                       ? "إرسال للمشرف — إدارة التعذرات"
@@ -389,7 +391,7 @@ export function BourseInquiryView() {
                   onClick={() => void handleSubmit()}
                 >
                   {obstructionPath
-                    ? "إرسال للمشرف — إدارة التعذرات"
+                    ? "إرسال للمشرف - إدارة التعذرات"
                     : "حفظ وإكمال البورصة"}
                 </Button>
               </div>

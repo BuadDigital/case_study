@@ -126,8 +126,7 @@ public class CaseStudyPartyFormLockTests
             valuation,
             timeline,
             NullLogger<CaseStudyValuationDispatchService>.Instance);
-        var fees = TestInspectorFeeServiceFactory.Create(db);
-        var workflow = new WorkflowTaskService(db, fees, timeline);
+        var workflow = TestInspectorFeeServiceFactory.CreateWorkflow(db);
         return new CaseStudyFormService(db, dispatch, workflow);
     }
 

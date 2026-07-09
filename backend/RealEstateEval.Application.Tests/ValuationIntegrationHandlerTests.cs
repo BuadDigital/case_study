@@ -20,11 +20,9 @@ public class ValuationIntegrationHandlerTests
     await using var db = CreateDb();
     SeedOpenAppraisalTask(db);
 
-    var fees = TestInspectorFeeServiceFactory.Create(db);
-    var timeline = new PropertyTimelineService(db);
     var handler = new ValuationReportWorkflowHandler(
       db,
-      new WorkflowTaskService(db, fees, timeline),
+      TestInspectorFeeServiceFactory.CreateWorkflow(db),
       NullLogger<ValuationReportWorkflowHandler>.Instance);
 
     await handler.HandleAsync(
@@ -46,11 +44,9 @@ public class ValuationIntegrationHandlerTests
     await using var db = CreateDb();
     SeedOpenAppraisalTask(db);
 
-    var fees = TestInspectorFeeServiceFactory.Create(db);
-    var timeline = new PropertyTimelineService(db);
     var handler = new ValuationReportWorkflowHandler(
       db,
-      new WorkflowTaskService(db, fees, timeline),
+      TestInspectorFeeServiceFactory.CreateWorkflow(db),
       NullLogger<ValuationReportWorkflowHandler>.Instance);
 
     var envelope = new IntegrationEventEnvelope<ValuationReportSubmittedPayload>(
