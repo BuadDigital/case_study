@@ -62,6 +62,7 @@ export type FieldInspectionWorkHostRef = {
   saveDraft?: () => Promise<boolean>;
   onSubmitted?: () => void;
   onSavingChange?: (saving: boolean) => void;
+  focusNotes?: () => void;
 };
 
 function InspectorCard({
@@ -216,6 +217,14 @@ export function FieldInspectionWorkBody({
     if (!hostRef.current) return;
     hostRef.current.submit = submit;
     hostRef.current.saveDraft = saveDraft;
+    hostRef.current.focusNotes = () => {
+      const field = document.getElementById("ins-asset-notes") as
+        | HTMLTextAreaElement
+        | null;
+      if (!field) return;
+      field.scrollIntoView({ behavior: "smooth", block: "center" });
+      window.setTimeout(() => field.focus(), 120);
+    };
   }, [hostRef, submit, saveDraft]);
 
   const handleCoordsChange = useCallback(

@@ -41,6 +41,7 @@ export type ValuationCoordinationWorkHostRef = {
   submit?: () => Promise<boolean>;
   onSubmitted?: () => void;
   onSavingChange?: (saving: boolean) => void;
+  focusCoordinationNotes?: () => void;
 };
 
 const CHECKBOX_OPT =
@@ -220,6 +221,14 @@ export function ValuationCoordinationWorkBody({
   useEffect(() => {
     if (!hostRef.current) return;
     hostRef.current.submit = submit;
+    hostRef.current.focusCoordinationNotes = () => {
+      const field = document.getElementById("vc-note") as
+        | HTMLTextAreaElement
+        | null;
+      if (!field) return;
+      field.scrollIntoView({ behavior: "smooth", block: "center" });
+      window.setTimeout(() => field.focus(), 120);
+    };
   }, [hostRef, submit]);
 
   if (!draft) {

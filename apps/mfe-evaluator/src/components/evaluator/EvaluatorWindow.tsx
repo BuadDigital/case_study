@@ -203,6 +203,14 @@ export function EvaluatorWindow({
   useEffect(() => {
     if (!hostRef.current) return;
     hostRef.current.submit = submit;
+    hostRef.current.focusEvaluatorNotes = () => {
+      const field = document.getElementById("evaluator_notes") as
+        | HTMLTextAreaElement
+        | null;
+      if (!field) return;
+      field.scrollIntoView({ behavior: "smooth", block: "center" });
+      window.setTimeout(() => field.focus(), 120);
+    };
   }, [hostRef, submit]);
 
   async function onReportSelected(file: File | null) {

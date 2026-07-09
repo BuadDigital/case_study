@@ -7,6 +7,7 @@ export type PartyEvaluatorWorkHostRef = {
   submit?: () => Promise<boolean>;
   onSubmitted?: () => void;
   onSavingChange?: (saving: boolean) => void;
+  focusEvaluatorNotes?: () => void;
 };
 
 /** حقن من shell — قائمة المقيم ونموذج رفع التقييم يعتمدان على وحدة المُقيّم. */
