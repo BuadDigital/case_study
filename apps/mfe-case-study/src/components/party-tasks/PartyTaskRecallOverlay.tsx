@@ -10,12 +10,16 @@ export function PartyTaskRecallOverlay({
   deedNumber,
   show,
   notSubmittedMessage,
+  onAddObstruction,
+  onAddNote,
   children,
 }: {
   task: WorkflowTask;
   deedNumber?: string;
   show: boolean;
   notSubmittedMessage?: string;
+  onAddObstruction?: () => void;
+  onAddNote?: () => void;
   children: ReactNode;
 }) {
   const requestRecall = usePartyTaskRecallRequest({
@@ -33,6 +37,8 @@ export function PartyTaskRecallOverlay({
         <PartyTaskRecallFab
           deedNumber={deedNumber}
           onRequestRecall={requestRecall}
+          onAddObstruction={onAddObstruction}
+          onAddNote={onAddNote}
         />
       ) : null}
     </>

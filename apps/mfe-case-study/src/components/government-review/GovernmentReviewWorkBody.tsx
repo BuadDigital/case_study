@@ -50,6 +50,7 @@ export type GovernmentReviewWorkHostRef = {
   onSavingChange?: (saving: boolean) => void;
   onVisitStatusChange?: () => void;
   getFooterSaveLabel?: () => string;
+  focusReviewNotes?: () => void;
 };
 
 const RADIO_GROUP = "mt-1 flex flex-wrap gap-3";
@@ -209,6 +210,14 @@ export function GovernmentReviewWorkBody({
   useEffect(() => {
     if (!hostRef.current) return;
     hostRef.current.submit = submit;
+    hostRef.current.focusReviewNotes = () => {
+      const field = document.getElementById("gov-review-notes") as
+        | HTMLTextAreaElement
+        | null;
+      if (!field) return;
+      field.scrollIntoView({ behavior: "smooth", block: "center" });
+      window.setTimeout(() => field.focus(), 120);
+    };
     hostRef.current.getFooterSaveLabel = () => {
       if (!draft || locked) return "حفظ وإتمام المراجعة";
       return isGovernmentReviewAwaitingVisit(draft.visitStatus)

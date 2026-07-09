@@ -224,6 +224,9 @@ export function PartyActiveTaskWork({
   const governmentHostRef = useRef<GovernmentReviewWorkHostRef>({});
   const coordinationHostRef = useRef<ValuationCoordinationWorkHostRef>({});
   const fieldInspectionHostRef = useRef<FieldInspectionWorkHostRef>({});
+  const appraisalFailureRef = useRef<HTMLDivElement>(null);
+  const governmentFailureRef = useRef<HTMLDivElement>(null);
+  const fieldInspectionFailureRef = useRef<HTMLDivElement>(null);
   evaluatorHostRef.current.onSubmitted = () => completePartyTaskSubmit(APPRAISAL_SUCCESS_MESSAGE, { showToast: false });
   evaluatorHostRef.current.onSavingChange = setSaving;
   surveyHostRef.current.onSubmitted = () => completePartyTaskSubmit(def.completeMessage, { showToast: false });
@@ -275,6 +278,43 @@ export function PartyActiveTaskWork({
     () => isFieldInspectionLocked(task.id, fieldInspectionWorkspace),
     [task.id, fieldInspectionWorkspace],
   );
+
+  const focusGovernmentFailure = useCallback(() => {
+    governmentFailureRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  }, []);
+
+  const focusGovernmentNotes = useCallback(() => {
+    governmentHostRef.current?.focusReviewNotes?.();
+  }, []);
+
+  const focusAppraisalFailure = useCallback(() => {
+    appraisalFailureRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  }, []);
+
+  const focusAppraisalNotes = useCallback(() => {
+    evaluatorHostRef.current?.focusEvaluatorNotes?.();
+  }, []);
+
+  const focusFieldInspectionFailure = useCallback(() => {
+    fieldInspectionFailureRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  }, []);
+
+  const focusFieldInspectionNotes = useCallback(() => {
+    fieldInspectionHostRef.current?.focusNotes?.();
+  }, []);
+
+  const focusCoordinationNotes = useCallback(() => {
+    coordinationHostRef.current?.focusCoordinationNotes?.();
+  }, []);
 
   const { deedLabel, location } = useMemo(() => {
     const property = record?.properties.find((p) => p.id === task.propertyId);
@@ -545,7 +585,9 @@ export function PartyActiveTaskWork({
       <PartyTaskRecallOverlay
         task={task}
         deedNumber={deedLabel}
-        show={recallEligible}
+        show
+        onAddObstruction={focusAppraisalFailure}
+        onAddNote={focusAppraisalNotes}
         notSubmittedMessage="لا يمكن طلب الاسترجاع قبل إرسال التقييم للأخصائي"
       >
         <TaskWorkChrome
@@ -575,12 +617,14 @@ export function PartyActiveTaskWork({
               ) : (
                 <InlineLoadingSkeleton className={LOADING_TEXT} />
               )}
-              <PartyTaskFailureRaise
-                def={def}
-                task={task}
-                deedNumber={deedLabel}
-                onSubmitted={refresh}
-              />
+              <div ref={appraisalFailureRef}>
+                <PartyTaskFailureRaise
+                  def={def}
+                  task={task}
+                  deedNumber={deedLabel}
+                  onSubmitted={refresh}
+                />
+              </div>
             </section>
 
             <section className="min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
@@ -620,7 +664,9 @@ export function PartyActiveTaskWork({
       <PartyTaskRecallOverlay
         task={task}
         deedNumber={deedLabel}
-        show={recallEligible}
+        show
+        onAddObstruction={focusFieldInspectionFailure}
+        onAddNote={focusFieldInspectionNotes}
         notSubmittedMessage="لا يمكن طلب الاسترجاع قبل إرسال المعاينة للأخصائي"
       >
         <TaskWorkChrome
@@ -648,12 +694,14 @@ export function PartyActiveTaskWork({
                 hostRef={fieldInspectionHostRef}
                 submitting={saving}
               />
-              <PartyTaskFailureRaise
-                def={def}
-                task={task}
-                deedNumber={deedLabel}
-                onSubmitted={refresh}
-              />
+              <div ref={fieldInspectionFailureRef}>
+                <PartyTaskFailureRaise
+                  def={def}
+                  task={task}
+                  deedNumber={deedLabel}
+                  onSubmitted={refresh}
+                />
+              </div>
             </section>
 
             <section className="min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
@@ -731,12 +779,14 @@ export function PartyActiveTaskWork({
                     hostRef={coordinationHostRef}
                   />
                 )}
-                <PartyTaskFailureRaise
-                  def={def}
-                  task={task}
-                  deedNumber={deedLabel}
-                  onSubmitted={refresh}
-                />
+                <div ref={isGovernmentReview ? governmentFailureRef : undefined}>
+                  <PartyTaskFailureRaise
+                    def={def}
+                    task={task}
+                    deedNumber={deedLabel}
+                    onSubmitted={refresh}
+                  />
+                </div>
               </section>
 
               <section className="min-w-0 rounded-xl border border-border bg-surface p-3">
@@ -783,8 +833,24 @@ export function PartyActiveTaskWork({
         <PartyTaskRecallOverlay
           task={task}
           deedNumber={deedLabel}
-          show={recallEligible}
+          show
+          onAddObstruction={focusGovernmentFailure}
+          onAddNote={focusGovernmentNotes}
           notSubmittedMessage="لا يمكن طلب الاسترجاع قبل إرسال المراجعة للأخصائي"
+        >
+          {structuredWork}
+        </PartyTaskRecallOverlay>
+      );
+    }
+
+    if (isValuationCoordination) {
+      return (
+        <PartyTaskRecallOverlay
+          task={task}
+          deedNumber={deedLabel}
+          show
+          onAddNote={focusCoordinationNotes}
+          notSubmittedMessage="لا يمكن طلب الاسترجاع قبل إرسال تنسيق التقييم للأخصائي"
         >
           {structuredWork}
         </PartyTaskRecallOverlay>

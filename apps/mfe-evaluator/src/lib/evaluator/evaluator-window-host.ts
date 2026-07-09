@@ -5,6 +5,7 @@ export type EvaluatorWindowHostRef = {
   submit?: () => Promise<boolean>;
   onSubmitted?: () => void;
   onSavingChange?: (saving: boolean) => void;
+  focusEvaluatorNotes?: () => void;
 };
 
 export type EvaluatorWindowHostRefObject = RefObject<
