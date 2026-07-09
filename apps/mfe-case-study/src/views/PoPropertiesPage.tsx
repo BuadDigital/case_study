@@ -134,7 +134,6 @@ export function PoPropertiesPage({
         showEdit,
         showFailureRaise,
         router,
-        refresh: bumpMenu,
       };
       const base = buildPoPropertiesRowMoreItems(ctx);
       const extra = buildPropertyRowMoreItems?.(ctx) ?? [];
