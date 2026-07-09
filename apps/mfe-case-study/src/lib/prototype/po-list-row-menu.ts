@@ -1,6 +1,5 @@
 import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
 import type { PoListStatus } from "@platform/app-shared/prototype/po-list-status";
-import { openInternalDelegationLetterPlaceholder } from "@case-study/mfe/lib/prototype/internal-delegation-letter-placeholder";
 import { poHeaderEditPath, poPropertiesPath } from "../po-routes";
 
 export function buildPoListRowMoreItems(options: {
@@ -23,12 +22,6 @@ export function buildPoListRowMoreItems(options: {
       label: "عرض العقارات",
       onClick: () => options.router.push(poPropertiesPath(po)),
     },
-    {
-      id: "delegation-letter",
-      label: "خطاب تفويض الشركة",
-      onClick: () =>
-        openInternalDelegationLetterPlaceholder({ poNumber: po }),
-    },
   ];
 
   if (options.showEdit) {
@@ -44,14 +37,14 @@ export function buildPoListRowMoreItems(options: {
     const stopped = options.status === "stopped";
     items.push({
       id: "cancel-po",
-      label: options.lifecycleBusy ? "جاري الإلغاء…" : "إلغاء أمر العمل",
+      label: options.lifecycleBusy ? "جاري الإلغاء..." : "إلغاء أمر العمل",
       danger: true,
       disabled: options.lifecycleBusy || cancelled,
       onClick: options.onCancel,
     });
     items.push({
       id: "stop-po",
-      label: options.lifecycleBusy ? "جاري الإيقاف…" : "إيقاف أمر العمل",
+      label: options.lifecycleBusy ? "جاري الإيقاف..." : "إيقاف أمر العمل",
       danger: true,
       disabled: options.lifecycleBusy || cancelled || stopped,
       onClick: options.onStop,
@@ -61,7 +54,7 @@ export function buildPoListRowMoreItems(options: {
   if (options.showDelete) {
     items.push({
       id: "delete",
-      label: options.deleting ? "جاري الحذف…" : "حذف أمر العمل",
+      label: options.deleting ? "جاري الحذف..." : "حذف أمر العمل",
       danger: true,
       disabled: options.deleting || options.lifecycleBusy,
       onClick: options.onDelete,

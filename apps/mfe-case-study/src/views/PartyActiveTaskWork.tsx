@@ -586,6 +586,7 @@ export function PartyActiveTaskWork({
         task={task}
         deedNumber={deedLabel}
         show
+        isSubmitted={recallEligible}
         onAddObstruction={focusAppraisalFailure}
         onAddNote={focusAppraisalNotes}
         notSubmittedMessage="لا يمكن طلب الاسترجاع قبل إرسال التقييم للأخصائي"
@@ -665,6 +666,7 @@ export function PartyActiveTaskWork({
         task={task}
         deedNumber={deedLabel}
         show
+        isSubmitted={recallEligible}
         onAddObstruction={focusFieldInspectionFailure}
         onAddNote={focusFieldInspectionNotes}
         notSubmittedMessage="لا يمكن طلب الاسترجاع قبل إرسال المعاينة للأخصائي"
@@ -834,6 +836,7 @@ export function PartyActiveTaskWork({
           task={task}
           deedNumber={deedLabel}
           show
+          isSubmitted={recallEligible}
           onAddObstruction={focusGovernmentFailure}
           onAddNote={focusGovernmentNotes}
           notSubmittedMessage="لا يمكن طلب الاسترجاع قبل إرسال المراجعة للأخصائي"
@@ -849,6 +852,7 @@ export function PartyActiveTaskWork({
           task={task}
           deedNumber={deedLabel}
           show
+          isSubmitted={recallEligible}
           onAddNote={focusCoordinationNotes}
           notSubmittedMessage="لا يمكن طلب الاسترجاع قبل إرسال تنسيق التقييم للأخصائي"
         >

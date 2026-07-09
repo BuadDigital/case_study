@@ -1,5 +1,4 @@
 import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
-import { openInternalDelegationLetterPlaceholder } from "@case-study/mfe/lib/prototype/internal-delegation-letter-placeholder";
 import { getPropertyFailure } from "@failures/mfe";
 import type { PoPropertyIntake } from "./po-intake-data";
 import {
@@ -14,7 +13,6 @@ export type PoPropertyRowMoreContext = {
   showEdit: boolean;
   showFailureRaise: boolean;
   router: { push: (href: string) => void };
-  refresh: () => void;
 };
 
 export function buildPoPropertiesRowMoreItems(
@@ -27,15 +25,6 @@ export function buildPoPropertiesRowMoreItems(
       id: "property-detail",
       label: "تفاصيل العقار",
       onClick: () => ctx.router.push(poPropertyPath(po, propertyId)),
-    },
-    {
-      id: "delegation-letter",
-      label: "خطاب تفويض الشركة",
-      onClick: () =>
-        openInternalDelegationLetterPlaceholder({
-          poNumber: po,
-          propertyId,
-        }),
     },
   ];
 

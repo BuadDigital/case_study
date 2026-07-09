@@ -11,7 +11,6 @@ import {
 } from "@platform/app-shared/prototype/work-orders-read";
 import {
   FAILURES_CHANGED_EVENT,
-  FAILURES_STORAGE_KEY,
   loadFailuresQuery,
 } from "@failures/mfe";
 import {
@@ -25,7 +24,6 @@ import {
   loadPoRecordsWithTaskSync,
   loadWorkflowTasksForQuery,
   TASKS_CHANGED_EVENT,
-  TASKS_STORAGE_KEY,
   WORK_ORDERS_CHANGED_EVENT,
 } from "@case-study/mfe/query/case-study-queries";
 import { loadSuspendedTransactions } from "@case-study/mfe/lib/prototype/suspended-transactions-storage";
@@ -245,18 +243,12 @@ export function usePrototypeDataSync(): void {
 
     const onFailuresChanged = () => invalidateFailures();
 
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === FAILURES_STORAGE_KEY) invalidateFailures();
-      if (e.key === TASKS_STORAGE_KEY) invalidateTasks();
-    };
-    window.addEventListener("storage", onStorage);
     window.addEventListener(FAILURES_CHANGED_EVENT, onFailuresChanged);
     window.addEventListener(CASE_STUDY_INFO_ROLES_CHANGED_EVENT, onInfoRolesChanged);
 
     return () => {
       window.removeEventListener(WORK_ORDERS_CHANGED_EVENT, invalidateWorkOrders);
       window.removeEventListener(TASKS_CHANGED_EVENT, invalidateTasks);
-      window.removeEventListener("storage", onStorage);
       window.removeEventListener(FAILURES_CHANGED_EVENT, onFailuresChanged);
       window.removeEventListener(
         CASE_STUDY_INFO_ROLES_CHANGED_EVENT,

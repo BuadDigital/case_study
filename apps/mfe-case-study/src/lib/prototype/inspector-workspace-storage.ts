@@ -163,10 +163,7 @@ function readObservations(value: unknown): InspectorObservation[] {
       const obj = row as Record<string, unknown>;
       const id = readString(obj.id);
       if (!id) return null;
-      const legacyAttached = readBool(obj.photoAttached);
-      const photo =
-        readPhotoAttachment(obj.photo) ??
-        (legacyAttached ? null : null);
+      const photo = readPhotoAttachment(obj.photo);
       return {
         id,
         category: readString(obj.category),

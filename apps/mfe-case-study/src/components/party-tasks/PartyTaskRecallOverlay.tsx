@@ -9,6 +9,7 @@ export function PartyTaskRecallOverlay({
   task,
   deedNumber,
   show,
+  isSubmitted,
   notSubmittedMessage,
   onAddObstruction,
   onAddNote,
@@ -17,6 +18,7 @@ export function PartyTaskRecallOverlay({
   task: WorkflowTask;
   deedNumber?: string;
   show: boolean;
+  isSubmitted?: boolean;
   notSubmittedMessage?: string;
   onAddObstruction?: () => void;
   onAddNote?: () => void;
@@ -26,7 +28,7 @@ export function PartyTaskRecallOverlay({
     taskId: task.id,
     poNumber: task.poNumber,
     propertyId: task.propertyId ?? "",
-    isSubmitted: show,
+    isSubmitted: isSubmitted ?? show,
     notSubmittedMessage,
   });
 
