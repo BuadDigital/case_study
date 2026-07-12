@@ -103,7 +103,9 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
                     PropertyLabel = label,
                     WorkStatus = work.Item1,
                     WorkStatusLabel = work.Item2,
-                    EnfazFeeSar = row?.EnfazFeeSar ?? 0m,
+                    CaseStudyFeeSar = row?.CaseStudyFeeSar ?? 0m,
+                    SurveyFeeSar = row?.SurveyFeeSar ?? 0m,
+                    EnfazFeeSar = row?.TotalFeeSar ?? 0m,
                     IncludedInBilling = row?.IncludedInBilling ?? work.Item1 != "cancelled",
                 };
             })
@@ -163,7 +165,14 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
                 existingRows[propertyId] = row;
             }
 
-            row.EnfazFeeSar = Math.Max(0m, input.EnfazFeeSar);
+            row.CaseStudyFeeSar = Math.Max(0m, input.CaseStudyFeeSar);
+            row.SurveyFeeSar = Math.Max(0m, input.SurveyFeeSar);
+            // Legacy clients may still send EnfazFeeSar only.
+            if (row.CaseStudyFeeSar <= 0m && row.SurveyFeeSar <= 0m && input.EnfazFeeSar is > 0m)
+            {
+                row.CaseStudyFeeSar = Math.Max(0m, input.EnfazFeeSar.Value);
+                row.SurveyFeeSar = 0m;
+            }
             row.IncludedInBilling = input.IncludedInBilling;
             row.UpdatedAtUtc = now;
         }
@@ -182,15 +191,23 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
                 x => x.PoNumber == poNumber.Trim() && x.PropertyId == propertyId,
                 cancellationToken);
 
-        if (row is null || !row.IncludedInBilling || row.EnfazFeeSar <= 0)
+        if (row is null || !row.IncludedInBilling || row.TotalFeeSar <= 0)
         {
-            return new PropertyEnfazRevenueDto { HasEnfazRevenue = false, EnfazFeeSar = null };
+            return new PropertyEnfazRevenueDto
+            {
+                HasEnfazRevenue = false,
+                CaseStudyFeeSar = null,
+                SurveyFeeSar = null,
+                EnfazFeeSar = null,
+            };
         }
 
         return new PropertyEnfazRevenueDto
         {
             HasEnfazRevenue = true,
-            EnfazFeeSar = row.EnfazFeeSar,
+            CaseStudyFeeSar = row.CaseStudyFeeSar,
+            SurveyFeeSar = row.SurveyFeeSar,
+            EnfazFeeSar = row.TotalFeeSar,
         };
     }
 
@@ -236,7 +253,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
                 if (!string.IsNullOrWhiteSpace(property.District))
                     label = $"{label} — {property.District.Trim()}";
 
-                var filled = enfaz is not null && enfaz.IncludedInBilling && enfaz.EnfazFeeSar > 0;
+                var filled = enfaz is not null && enfaz.IncludedInBilling && enfaz.TotalFeeSar > 0;
                 rows.Add(new EnfazTrackingRowDto
                 {
                     PoNumber = po,
@@ -245,7 +262,9 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
                     WorkStatus = work.Item1,
                     WorkStatusLabel = work.Item2,
                     EnfazFilled = filled,
-                    EnfazFeeSar = enfaz?.EnfazFeeSar ?? 0m,
+                    CaseStudyFeeSar = enfaz?.CaseStudyFeeSar ?? 0m,
+                    SurveyFeeSar = enfaz?.SurveyFeeSar ?? 0m,
+                    EnfazFeeSar = enfaz?.TotalFeeSar ?? 0m,
                 });
             }
         }
@@ -283,6 +302,17 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
 
         await _db.SaveChangesAsync(cancellationToken);
         return await GetPoBillingAsync(normalized, cancellationToken);
+    }
+
+    public async Task<byte[]?> GetInvoicePdfAsync(
+        string poNumber,
+        CancellationToken cancellationToken = default)
+    {
+        var billing = await GetPoBillingAsync(poNumber, cancellationToken);
+        if (billing is null || string.IsNullOrWhiteSpace(billing.InvoiceNumber))
+            return null;
+
+        return EnfazInvoicePdfGenerator.Generate(billing);
     }
 
     private async Task<Dictionary<Guid, (string Status, string Label)>> LoadPropertyWorkStatusesAsync(
@@ -381,7 +411,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
     {
         var subtotal = lines
             .Where(l => l.WorkStatus == "done" && l.IncludedInBilling)
-            .Sum(l => l.EnfazFeeSar);
+            .Sum(l => l.CaseStudyFeeSar + l.SurveyFeeSar);
         var vat = Math.Round(subtotal * VatRate, 2, MidpointRounding.AwayFromZero);
 
         return new PoEnfazBillingDto

@@ -2,6 +2,7 @@ import {
   getPoEnfazBilling,
   getPropertyEnfazRevenue,
   issuePoEnfazInvoice,
+  downloadPoEnfazInvoicePdf,
   listEnfazTracking,
   listReadyEnfazPoSummaries,
   savePoEnfazBilling,
@@ -63,12 +64,45 @@ export async function issueEnfazInvoice(poNumber: string) {
   return result.ok ? result.data : null;
 }
 
+export async function downloadEnfazInvoicePdf(
+  poNumber: string,
+): Promise<boolean> {
+  const config = workOrdersApiConfig();
+  if (!config) return false;
+  const result = await downloadPoEnfazInvoicePdf(config, poNumber);
+  if (!result.ok) return false;
+
+  const url = URL.createObjectURL(result.data);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `فاتورة-إنفاذ-${poNumber.trim()}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  return true;
+}
+
 export async function loadPropertyEnfazRevenue(
   poNumber: string,
   propertyId: string,
 ): Promise<PropertyEnfazRevenueDto> {
   const config = workOrdersApiConfig();
-  if (!config) return { hasEnfazRevenue: false, enfazFeeSar: null };
+  if (!config) {
+    return {
+      hasEnfazRevenue: false,
+      caseStudyFeeSar: null,
+      surveyFeeSar: null,
+      enfazFeeSar: null,
+    };
+  }
   const result = await getPropertyEnfazRevenue(config, poNumber, propertyId);
-  return result.ok ? result.data : { hasEnfazRevenue: false, enfazFeeSar: null };
+  return result.ok
+    ? result.data
+    : {
+        hasEnfazRevenue: false,
+        caseStudyFeeSar: null,
+        surveyFeeSar: null,
+        enfazFeeSar: null,
+      };
 }

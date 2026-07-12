@@ -36,7 +36,6 @@ import {
   formatPropertyDeedDisplay,
   formatPropertyLandFrontagesDisplay,
   formatPropertyLocation,
-  formatPropertyPlotPlanNumber,
   formatPropertyTypeLine,
   hasBourseDetailFields,
   ownershipStatusLabel,
@@ -210,11 +209,9 @@ function BasicTab({
   const mapUrl = propertyLocationMapUrl(property);
   const boundaryDimensions = formatPropertyBoundaryDimensionsDisplay(property);
   const landFrontages = formatPropertyLandFrontagesDisplay(property);
-  const plotPlanNumber = formatPropertyPlotPlanNumber(property);
   const ownershipStatus = ownershipStatusLabel(property);
   const dimensionsEmpty = propertySurveyEmptyLabel(property, "dimensions");
   const frontagesEmpty = propertySurveyEmptyLabel(property, "frontages");
-  const plotEmpty = propertySurveyEmptyLabel(property, "plot");
 
   return (
     <>
@@ -278,18 +275,7 @@ function BasicTab({
           value={landFrontages}
           emptyLabel={frontagesEmpty}
         />
-        <FieldBox
-          label="رقم القطعة / المخطط"
-          value={plotPlanNumber}
-          emptyLabel={plotEmpty}
-        />
       </FieldsGrid>
-      {property.bourseDataCompleted && !plotPlanNumber.trim() ? (
-        <InfoBox icon="ℹ">
-          لإضافة رقم المحضر أو رخصة البناء، عدّل بيانات البورصة من «استعلام
-          البورصة» في الشريط العلوي.
-        </InfoBox>
-      ) : null}
 
       <SectionDivider />
       <SectionHeader>بيانات الاتصال</SectionHeader>
@@ -334,18 +320,6 @@ function BasicTab({
                 <FieldBox
                   label="حالة الصك في البورصة"
                   value={property.deedStatus}
-                />
-                <FieldBox
-                  label="رقم محضر التجزئة"
-                  value={property.subdivisionRecordNumber}
-                  emptyLabel={plotEmpty}
-                  ltr
-                />
-                <FieldBox
-                  label="رقم رخصة البناء"
-                  value={property.buildLicenseNumber}
-                  emptyLabel={plotEmpty}
-                  ltr
                 />
                 <FieldBox
                   label="الأطوال والأبعاد"
@@ -463,9 +437,7 @@ export function PoPropertyDetailTabs({
     () => listPropertyDetailPhotos(propertyDocumentSections),
     [propertyDocumentSections],
   );
-  const specialistName = task?.assigneeName?.trim() || record.assignmentSpecialist.trim();
   const partyCards = buildPropertyDetailPartyCards({
-    specialistName,
     task: task ?? null,
     allTasks: tasks,
     staffUsers,
@@ -722,6 +694,9 @@ export function PoPropertyDetailTabs({
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {partyCards.map((card) => {
                   const selected = selectedPartyRole === card.roleKey;
+                  const submittedAt =
+                    partySubmissionsQuery.data?.[card.roleKey]?.submittedAtUtc?.trim() ||
+                    null;
                   return (
                     <button
                       key={card.roleKey}
@@ -760,6 +735,16 @@ export function PoPropertyDetailTabs({
                           {partyCardStatusLabel(card)}
                         </span>
                       </div>
+                      {submittedAt ? (
+                        <div
+                          className={cn(
+                            "mt-1.5 text-[10px] text-text-3",
+                            ltrValueClass,
+                          )}
+                        >
+                          {formatTimelineDate(submittedAt)}
+                        </div>
+                      ) : null}
                     </button>
                   );
                 })}

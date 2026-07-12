@@ -55,6 +55,18 @@ public class EnfazBillingController : ControllerBase
             : Ok(dto);
     }
 
+    [HttpGet("{poNumber}/invoice.pdf")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
+    public async Task<IActionResult> DownloadInvoicePdf(string poNumber, CancellationToken ct)
+    {
+        var pdf = await _billing.GetInvoicePdfAsync(poNumber, ct);
+        if (pdf is null)
+            return NotFound(new { error = "لا توجد فاتورة صادرة لهذا أمر العمل." });
+
+        var safePo = poNumber.Trim().Replace('"', '_');
+        return File(pdf, "application/pdf", $"enfaz-invoice-{safePo}.pdf");
+    }
+
     [HttpGet("{poNumber}/properties/{propertyId:guid}")]
     public async Task<ActionResult<PropertyEnfazRevenueDto>> GetPropertyRevenue(
         string poNumber,

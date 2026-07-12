@@ -82,4 +82,9 @@ public interface IPoEnfazBillingService
     Task<PoEnfazBillingDto?> IssueInvoiceAsync(
         string poNumber,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Returns PDF bytes for an already-issued Enfaz invoice, or null if none.</summary>
+    Task<byte[]?> GetInvoicePdfAsync(
+        string poNumber,
+        CancellationToken cancellationToken = default);
 }

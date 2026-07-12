@@ -35,7 +35,12 @@ export type InspectorFeeRowDto = {
   poNumber: string;
   assigneeId: string | null;
   taskKind: string;
-  inspectorType: "متعاون" | "موظف" | string;
+  inspectorType:
+    | "متعاون فرد"
+    | "متعاون شركة"
+    | "متعاون"
+    | "موظف"
+    | string;
   agreedFeeSar: number;
   supervisorDiscountSar: number;
   discountReason: string | null;

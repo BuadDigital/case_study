@@ -54,3 +54,5 @@ backend/**/bin/
 backend/**/obj/
 backend/**/*.user
 data/blobs/
+
+backend/_build_check/

@@ -254,10 +254,6 @@ export function buildInfathUploadModel(input: {
   const valueBasis = partyField(appraisal, L.valueBasis);
   const forcedDiscountRaw = partyField(appraisal, L.forcedDiscount);
   const reportIssueDate = partyField(appraisal, L.reportIssueDate);
-  const buildLicense = firstNonEmpty(
-    property.buildLicenseNumber,
-    partyField(inspection, L.buildLicense),
-  );
   const zoneStatus = firstNonEmpty(
     partyField(government, L.zoneStatus),
     partyField(inspection, L.zoneStatus),
@@ -354,10 +350,8 @@ export function buildInfathUploadModel(input: {
           "MA",
         ),
         sel("facade", L.facade, partyField(inspection, L.facade), "MA", partyField(inspection, L.facade) ? "" : "un"),
-        txt("build-license", L.buildLicense, buildLicense, "BR", "text", buildLicense ? "" : "ms"),
         txt("street-width", L.streetWidth, partyField(inspection, L.streetWidth), "MA", "text", partyField(inspection, L.streetWidth) ? "" : "ms"),
         txt("built-area", L.builtArea, partyField(inspection, L.builtArea), "MA", "text", partyField(inspection, L.builtArea) ? "" : "ms"),
-        txt("subdivision", L.subdivisionRecord, property.subdivisionRecordNumber?.trim() ?? "", "BR", "text", property.subdivisionRecordNumber?.trim() ? "" : "ms"),
         sel(
           "usage",
           L.propertyUsage,

@@ -19,7 +19,7 @@ export function pagesFromPermissions(
   }
 
   const role = options?.prototypeRole?.trim().toLowerCase();
-  const dashboardAllowed = role === "cdo" || role === "case-specialist";
+  const dashboardAllowed = role === "cdo";
   if (!dashboardAllowed) {
     merged.delete("dashboard");
   }

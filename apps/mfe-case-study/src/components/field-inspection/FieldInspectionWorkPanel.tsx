@@ -11,12 +11,13 @@ import { PropertyTransactionTimeline } from "../po-intake/PropertyTransactionTim
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/prototype/po-intake-data";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 import { InspectorFeesTab } from "./InspectorFeesTab";
+import { InspectorKeyStatusTab } from "./InspectorKeyStatusTab";
 import {
   FieldInspectionWorkBody,
   type FieldInspectionWorkHostRef,
 } from "./FieldInspectionWorkBody";
 
-type WorkTab = "property" | "inspection" | "fees" | "failures";
+type WorkTab = "property" | "inspection" | "key" | "fees" | "failures";
 
 export function FieldInspectionWorkPanel({
   def,
@@ -27,6 +28,7 @@ export function FieldInspectionWorkPanel({
   deedNumber,
   submitting = false,
   onFailureSubmitted,
+  forceReadOnly = false,
 }: {
   def: PartyTaskPageDef;
   task: WorkflowTask;
@@ -36,6 +38,7 @@ export function FieldInspectionWorkPanel({
   deedNumber: string;
   submitting?: boolean;
   onFailureSubmitted?: () => void;
+  forceReadOnly?: boolean;
 }) {
   const [workTab, setWorkTab] = useState<WorkTab>("inspection");
 
@@ -65,6 +68,16 @@ export function FieldInspectionWorkPanel({
           onClick={() => setWorkTab("inspection")}
         >
           {def.workTitle}
+        </button>
+        <button
+          type="button"
+          className={cn(
+            "mb-[-1px] flex items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 font-inherit text-xs text-text-2 transition-colors hover:text-text",
+            workTab === "key" && "border-b-primary font-medium text-primary",
+          )}
+          onClick={() => setWorkTab("key")}
+        >
+          المفتاح
         </button>
         <button
           type="button"
@@ -110,7 +123,11 @@ export function FieldInspectionWorkPanel({
               <h3 className="m-0 mb-2 text-sm font-semibold text-text">
                 نموذج الدراسة
               </h3>
-              <PartyCaseStudyFormTab def={def} childTask={task} />
+              <PartyCaseStudyFormTab
+                def={def}
+                childTask={task}
+                forceReadOnly={forceReadOnly}
+              />
             </section>
           </div>
         </div>
@@ -123,6 +140,7 @@ export function FieldInspectionWorkPanel({
                 record={record}
               />
             ) : null}
+            {workTab === "key" ? <InspectorKeyStatusTab task={task} /> : null}
             {workTab === "fees" ? (
               <InspectorFeesTab tasks={[task]} variant="field-inspection" />
             ) : null}

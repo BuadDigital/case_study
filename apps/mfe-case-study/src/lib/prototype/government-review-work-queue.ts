@@ -22,6 +22,7 @@ function submissionFromDto(
     courtName: normalized.courtName ?? "",
     keysStatus: normalized.keysStatus ?? "",
     keysDescription: normalized.keysDescription ?? "",
+    keyHandedToInspector: normalized.keyHandedToInspector ?? "",
     accessBlockReason: normalized.accessBlockReason ?? "",
     reviewNotes: normalized.reviewNotes ?? "",
     propertyZoneStatus: normalized.propertyZoneStatus ?? "",
@@ -49,6 +50,12 @@ export function governmentReviewTaskStatusBadge(
   }
   if (sub.visitStatus === "blocked") {
     return { label: "تعذر الوصول", className: "b-prog" };
+  }
+  if (
+    sub.visitStatus === "completed" &&
+    sub.keyHandedToInspector === "no"
+  ) {
+    return { label: "قيد التنفيذ", className: "b-prog" };
   }
   if (sub.visitStatus && sub.keysStatus) {
     return { label: "قيد التنفيذ", className: "b-prog" };

@@ -368,12 +368,18 @@ export function EvaluatorWindow({
                     {hasReport ? "تغيير الملف" : "رفع الملف"}
                   </Button>
                 ) : null}
-                {getCachedEvaluatorReport(task.id)?.dataUrl ? (
+                {hasReport ? (
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    onClick={() => openEvaluatorReportPreview(task.id)}
+                    onClick={() => {
+                      void openEvaluatorReportPreview(task.id).then((ok) => {
+                        if (!ok) {
+                          showToast("تعذّر فتح معاينة الملف — حاول مرة أخرى", "error");
+                        }
+                      });
+                    }}
                   >
                     معاينة
                   </Button>
@@ -717,12 +723,21 @@ export function EvaluatorWindow({
                       {hasPlan ? "تغيير الملف" : "رفع الملف"}
                     </Button>
                   ) : null}
-                  {getCachedEvaluatorPlanImage(task.id)?.dataUrl ? (
+                  {hasPlan ? (
                     <Button
                       type="button"
                       size="sm"
                       variant="outline"
-                      onClick={() => openEvaluatorPlanImagePreview(task.id)}
+                      onClick={() => {
+                        void openEvaluatorPlanImagePreview(task.id).then((ok) => {
+                          if (!ok) {
+                            showToast(
+                              "تعذّر فتح معاينة الملف — حاول مرة أخرى",
+                              "error",
+                            );
+                          }
+                        });
+                      }}
                     >
                       معاينة
                     </Button>

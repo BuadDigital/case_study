@@ -50,7 +50,9 @@ export function fieldInspectionTaskStatusBadge(
 export function isFieldInspectionLocked(
   _taskId?: string,
   workspace?: FieldInspectionWorkspaceListItemDto | null,
+  taskStatus?: string,
 ): boolean {
+  if (taskStatus === "completed") return true;
   if (workspace) {
     return isInspectorWorkspaceLocked(
       workspace.status as "draft" | "submitted" | "reopened",

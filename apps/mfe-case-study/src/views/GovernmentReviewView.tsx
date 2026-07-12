@@ -198,7 +198,7 @@ export function GovernmentReviewView() {
                           <Td className="text-text-2">{row.poNumber}</Td>
                           <Td>
                             {row.task.status === "open" ? (
-                              <Badge tone="warning">مفتوحة</Badge>
+                              <Badge tone="warning">قيد الإجراء</Badge>
                             ) : row.task.status === "blocked" ? (
                               <Badge tone="default">موقوفة</Badge>
                             ) : (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type RefObject } from "react";
-import { FormGroup, FormRow, InlineLoadingSkeleton, Input, Label, Note, Select, useToast } from "@platform/design-system";
+import { FormGroup, FormRow, InlineLoadingSkeleton, Input, Label, Note, Select, cn, useToast } from "@platform/design-system";
 import {
   RegField,
   RegSelect,
@@ -247,7 +247,14 @@ export function ValuationCoordinationWorkBody({
         </Note>
       ) : null}
 
-      <fieldset disabled={formDisabled} className="contents">
+      <fieldset
+        disabled={formDisabled}
+        className={cn(
+          "m-0 min-w-0 border-0 p-0",
+          formDisabled &&
+            "pointer-events-none select-none rounded-[10px] bg-[#F1F5F9] p-3 opacity-70 grayscale-[0.35]",
+        )}
+      >
         <RegistrationFormCard title="استلام المعاملة">
           <Note tone="info">
             {property

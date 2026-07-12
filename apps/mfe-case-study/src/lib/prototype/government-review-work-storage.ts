@@ -103,6 +103,7 @@ export async function updateGovernmentReviewDraft(
       | "courtName"
       | "keysStatus"
       | "keysDescription"
+      | "keyHandedToInspector"
       | "accessBlockReason"
       | "reviewNotes"
       | "confirmed"

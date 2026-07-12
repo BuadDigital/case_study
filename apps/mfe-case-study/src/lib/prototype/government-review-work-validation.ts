@@ -1,6 +1,7 @@
 import type { GovernmentReviewSubmission } from "./government-review-work-data";
 import {
   canFinalizeGovernmentReview,
+  isGovernmentReviewAwaitingKeyHandoff,
   isGovernmentReviewAwaitingVisit,
 } from "./government-review-work-data";
 
@@ -10,6 +11,7 @@ export type GovernmentReviewFieldErrors = Partial<
     | "visitDate"
     | "keysStatus"
     | "keysDescription"
+    | "keyHandedToInspector"
     | "accessBlockReason"
     | "confirmed"
     | "keysProofFiles",
@@ -17,21 +19,10 @@ export type GovernmentReviewFieldErrors = Partial<
   >
 >;
 
-export function validateGovernmentReviewSubmission(
+function validateKeysAndVisitBasics(
   submission: GovernmentReviewSubmission,
-): GovernmentReviewFieldErrors {
-  const errors: GovernmentReviewFieldErrors = {};
-
-  if (!submission.visitStatus) {
-    errors.visitStatus = "حدّد حالة زيارة المحكمة";
-  }
-
-  if (!canFinalizeGovernmentReview(submission.visitStatus)) {
-    errors.visitStatus =
-      "لا يمكن إتمام المراجعة قبل تأكيد «تمت الزيارة» — احفظ كمسودة بالانتظار";
-    return errors;
-  }
-
+  errors: GovernmentReviewFieldErrors,
+): void {
   if (submission.visitStatus === "completed" && !submission.visitDate.trim()) {
     errors.visitDate = "أدخل تاريخ الزيارة";
   }
@@ -69,6 +60,29 @@ export function validateGovernmentReviewSubmission(
     errors.accessBlockReason =
       "اذكر سبب عدم استلام المفاتيح أو الخطوة التالية";
   }
+}
+
+export function validateGovernmentReviewSubmission(
+  submission: GovernmentReviewSubmission,
+): GovernmentReviewFieldErrors {
+  const errors: GovernmentReviewFieldErrors = {};
+
+  if (!submission.visitStatus) {
+    errors.visitStatus = "حدّد حالة زيارة المحكمة";
+  }
+
+  if (!canFinalizeGovernmentReview(submission)) {
+    if (submission.visitStatus !== "completed") {
+      errors.visitStatus =
+        "لا يمكن إتمام المراجعة قبل تأكيد «تمت الزيارة» — احفظ كمسودة بالانتظار";
+    } else if (submission.keyHandedToInspector !== "yes") {
+      errors.keyHandedToInspector =
+        "لإتمام المعاملة اختر «نعم» بعد تسليم المفتاح للمعاين — أو احفظ كقيد التنفيذ";
+    }
+    return errors;
+  }
+
+  validateKeysAndVisitBasics(submission, errors);
 
   if (!submission.confirmed) {
     errors.confirmed = "يجب تأكيد اكتمال المراجعة قبل الإرسال";
@@ -108,6 +122,22 @@ export function validateGovernmentReviewPendingSave(
   return errors;
 }
 
+/** Visit done but key not handed — keep transaction in progress. */
+export function validateGovernmentReviewKeyHandoffPendingSave(
+  submission: GovernmentReviewSubmission,
+): GovernmentReviewFieldErrors {
+  const errors: GovernmentReviewFieldErrors = {};
+
+  if (!isGovernmentReviewAwaitingKeyHandoff(submission)) {
+    errors.keyHandedToInspector =
+      "اختر «لا» لحفظ المعاملة قيد التنفيذ حتى تسليم المفتاح";
+    return errors;
+  }
+
+  validateKeysAndVisitBasics(submission, errors);
+  return errors;
+}
+
 export function firstGovernmentReviewError(
   errors: GovernmentReviewFieldErrors,
 ): string {
@@ -117,6 +147,7 @@ export function firstGovernmentReviewError(
     errors.keysStatus ??
     errors.keysDescription ??
     errors.keysProofFiles ??
+    errors.keyHandedToInspector ??
     errors.accessBlockReason ??
     errors.confirmed ??
     "تحقق من الحقول المطلوبة"

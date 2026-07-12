@@ -34,9 +34,11 @@ function resolveParentCaseStudyTask(
 export function PartyCaseStudyFormTab({
   def,
   childTask,
+  forceReadOnly = false,
 }: {
   def: PartyTaskPageDef;
   childTask: WorkflowTask;
+  forceReadOnly?: boolean;
 }) {
   const partyId = partyIdForRoleId(def.roleId);
   const { data: tasks } = useWorkflowTasksQuery();
@@ -87,6 +89,7 @@ export function PartyCaseStudyFormTab({
         partyId={partyId}
         partyChildTaskId={childTask.id}
         parentFormTaskId={parentTask.id}
+        forceReadOnly={forceReadOnly}
       />
     </div>
   );

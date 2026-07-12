@@ -240,7 +240,7 @@ export function taskPhaseLabel(phase: CaseStudyTaskPhase): string {
 }
 
 export function taskStatusLabel(status: WorkflowTaskStatus): string {
-  if (status === "open") return "مفتوحة";
+  if (status === "open") return "قيد الإجراء";
   if (status === "blocked") return "موقوفة";
   return "مكتملة";
 }

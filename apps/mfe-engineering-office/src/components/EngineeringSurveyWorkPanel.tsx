@@ -19,6 +19,7 @@ import {
   SectionDivider,
   SectionHeader,
 } from "@case-study/mfe/components/po-intake/PropertyDetailFields";
+import { PropertyTransactionTimeline } from "@case-study/mfe/components/po-intake/PropertyTransactionTimeline";
 import {
   FailureRaisePanel,
   blockingFailureForProperty,
@@ -73,6 +74,7 @@ export function EngineeringSurveyWorkPanel({
   deedNumber,
   onFailureSubmitted,
   variant = "workspace",
+  forceReadOnly = false,
 }: {
   def: PartyTaskPageDef;
   childTask: WorkflowTask;
@@ -80,9 +82,11 @@ export function EngineeringSurveyWorkPanel({
   deedNumber: string;
   onFailureSubmitted?: () => void;
   variant?: "workspace" | "entry";
+  /** When true (e.g. completed task), forms stay visible but locked. */
+  forceReadOnly?: boolean;
 }) {
   const router = useRouter();
-  const readOnly = variant === "workspace";
+  const readOnly = variant === "workspace" || forceReadOnly;
   const propertyId = task.propertyId ?? "";
   const { showToast, runWithUploadToast } = useToast();
   const { data: record } = usePoRecordQuery(task.poNumber);
@@ -109,15 +113,14 @@ export function EngineeringSurveyWorkPanel({
   }, [deedNumber, failures, propertyId, task.poNumber]);
 
   const [draft, setDraft] = useState<EngineeringSurveySubmission | null>(null);
-  const [workTab, setWorkTab] = useState<WorkTab>(
-    variant === "entry" ? "survey" : "property",
-  );
+  const [workTab, setWorkTab] = useState<WorkTab>("survey");
   const [fieldErrors, setFieldErrors] = useState<EngineeringSurveyFieldErrors>(
     {},
   );
   const [formError, setFormError] = useState<string | null>(null);
   const [failureRaiseOpen, setFailureRaiseOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
+  const [savingLocal, setSavingLocal] = useState(false);
 
   useEffect(() => {
     if (!propertyId) return;
@@ -141,7 +144,7 @@ export function EngineeringSurveyWorkPanel({
     () => isEngineeringSurveyTransactionActive(task.status, draft?.status),
     [draft?.status, task.status],
   );
-  const notesEditable = transactionActive && !locked;
+  const notesEditable = transactionActive && !locked && !readOnly;
   const savedNote = draft?.surveyNotes?.trim() ?? "";
 
   useEffect(() => {
@@ -302,9 +305,9 @@ export function EngineeringSurveyWorkPanel({
   }, [draft, locked, hostRef, task.id, showToast]);
 
   useEffect(() => {
-    if (variant !== "entry" || !hostRef.current) return;
+    if (!hostRef.current) return;
     hostRef.current.submit = submit;
-  }, [hostRef, submit, variant]);
+  }, [hostRef, submit]);
 
   const handleCoordsChange = useCallback(
     (lat: string, lng: string) => {
@@ -627,184 +630,260 @@ export function EngineeringSurveyWorkPanel({
       {fieldErrors.checklist ? (
         <p className="mt-1 text-[11px] text-danger-text">{fieldErrors.checklist}</p>
       ) : null}
-
-      <SectionDivider />
-      {!readOnly ? (
-        <>
-          <SectionHeader>أسئلة نموذج دراسة الحالة</SectionHeader>
-          <PartyCaseStudyFormTab def={def} childTask={task} />
-        </>
-      ) : null}
     </>
   );
 
-  if (variant === "entry") {
-    return (
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
-          <SectionHeader>{def.workTitle}</SectionHeader>
-          {surveyBody}
+  const surveyWorkSection = (
+    <section className="min-h-0 min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
+      <h3 className="m-0 mb-2 text-sm font-semibold text-text">
+        {def.workTitle}
+      </h3>
+      <Note tone="info" className="mb-4">
+        {def.workIntro}
+      </Note>
+      <fieldset
+        disabled={formDisabled}
+        className={cn(
+          "m-0 min-w-0 border-0 p-0",
+          formDisabled &&
+            "pointer-events-none select-none rounded-[10px] bg-[#F1F5F9] p-3 opacity-70 grayscale-[0.35]",
+        )}
+      >
+        {surveyBody}
+      </fieldset>
+      {variant === "entry" && !formDisabled ? (
+        <div className="mt-4 rounded-[var(--radius-lg)] border border-border bg-surface p-4 shadow-[0_-4px_16px_rgba(15,52,96,0.08)]">
+          <div
+            dir="ltr"
+            className="flex flex-wrap items-center justify-end gap-2"
+          >
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              disabled={savingLocal}
+              loading={savingLocal}
+              showActionToast={false}
+              actionLabel={def.saveLabel}
+              onClick={() => {
+                void (async () => {
+                  setSavingLocal(true);
+                  try {
+                    await submit();
+                  } finally {
+                    setSavingLocal(false);
+                  }
+                })();
+              }}
+            >
+              <i className="ti ti-send" aria-hidden /> {def.saveLabel}
+            </Button>
+          </div>
         </div>
+      ) : null}
+    </section>
+  );
+
+  const caseStudySection = (
+    <section className="min-h-0 min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
+      <h3 className="m-0 mb-2 text-sm font-semibold text-text">
+        نموذج الدراسة
+      </h3>
+      <PartyCaseStudyFormTab
+        def={def}
+        childTask={task}
+        forceReadOnly={formDisabled}
+      />
+    </section>
+  );
+
+  const surveySplit = (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-4 sm:px-6 sm:py-5">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-2">
+        {surveyWorkSection}
+        {caseStudySection}
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
     <>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <nav
-        className="flex shrink-0 gap-0 overflow-x-auto border-b border-border bg-surface px-4 sm:px-6 [&::-webkit-scrollbar]:h-0"
-        aria-label="أقسام المهمة"
-        role="tablist"
-      >
-        <button
-          type="button"
-          className={cn(
-            "mb-[-1px] flex items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 font-inherit text-xs text-text-2 transition-colors hover:text-text",
-            workTab === "property" && "border-b-primary font-medium text-primary",
-          )}
-          onClick={() => setWorkTab("property")}
+        <nav
+          className="flex shrink-0 gap-0 overflow-x-auto border-b border-border bg-surface px-4 sm:px-6 [&::-webkit-scrollbar]:h-0"
+          aria-label="أقسام المهمة"
+          role="tablist"
         >
-          بيانات العقار
-        </button>
-        <button
-          type="button"
-          className={cn(
-            "mb-[-1px] flex items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 font-inherit text-xs text-text-2 transition-colors hover:text-text",
-            workTab === "survey" && "border-b-primary font-medium text-primary",
-          )}
-          onClick={() => setWorkTab("survey")}
-        >
-          {def.workTitle}
-        </button>
-        <button
-          type="button"
-          className={cn(
-            "mb-[-1px] flex items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 font-inherit text-xs text-text-2 transition-colors hover:text-text",
-            workTab === "fees" && "border-b-primary font-medium text-primary",
-          )}
-          onClick={() => setWorkTab("fees")}
-        >
-          مالية المعاملة
-        </button>
-        <button
-          type="button"
-          className={cn(
-            "mb-[-1px] flex max-w-[200px] items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 font-inherit text-xs text-text-2 transition-colors hover:text-text",
-            workTab === "notes" && "border-b-primary font-medium text-primary",
-          )}
-          onClick={() => setWorkTab("notes")}
-        >
-          <span>ملاحظة</span>
-          {savedNote ? (
-            <span
-              className="inline-block size-1.5 rounded-full bg-primary"
-              aria-hidden
-            />
-          ) : null}
-        </button>
-        <button
-          type="button"
-          className={cn(
-            "mb-[-1px] flex items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 font-inherit text-xs text-text-2 transition-colors hover:text-text",
-            workTab === "failures" && "border-b-primary font-medium text-primary",
-          )}
-          onClick={() => setWorkTab("failures")}
-        >
-          التعذرات
-          {activeFailureCount > 0 ? (
-            <span className="rounded-[10px] bg-danger-bg px-1.5 py-px text-[10px] font-medium text-danger-text">
-              {activeFailureCount}
-            </span>
-          ) : null}
-        </button>
-      </nav>
-
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
-          {blockingFailure && workTab === "property" ? (
-            <InfoBox variant="amber" icon="⚠">
-              <strong>يوجد تعذر نشط على هذا العقار.</strong>
-              <br />
-              لا يمكن بدء الرفع المساحي حتى يُعالج التعذر:{" "}
-              {failureRecordTitle(blockingFailure)}
-            </InfoBox>
-          ) : null}
-          {workTab === "property" ? (
-            <EngineeringSurveyPropertySummary
-              property={property}
-              record={record ?? undefined}
-            />
-          ) : null}
-          {workTab === "survey" ? surveyBody : null}
-          {workTab === "fees" ? (
-            <InspectorFeesTab tasks={[task]} variant="engineering-survey" />
-          ) : null}
-          {workTab === "notes" ? (
-            <div>
-              <SectionHeader>ملاحظة على المعاملة</SectionHeader>
-              <Note className="mb-3">
-                تُحفظ الملاحظة مع بيانات الرفع المساحي وتظهر بجانب تبويب المالية.
-              </Note>
-              <textarea
-                id="eng-workspace-note"
-                className={cn(
-                  formControlClassName,
-                  "min-h-[120px] w-full resize-y py-2 leading-relaxed",
-                )}
-                rows={5}
-                disabled={!notesEditable}
-                value={noteDraft}
-                placeholder="اكتب ملاحظتك هنا…"
-                onChange={(e) => setNoteDraft(e.target.value)}
+          <button
+            type="button"
+            className={cn(
+              "mb-[-1px] flex items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 font-inherit text-xs text-text-2 transition-colors hover:text-text",
+              workTab === "property" &&
+                "border-b-primary font-medium text-primary",
+            )}
+            onClick={() => setWorkTab("property")}
+          >
+            بيانات العقار
+          </button>
+          <button
+            type="button"
+            className={cn(
+              "mb-[-1px] flex items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 font-inherit text-xs text-text-2 transition-colors hover:text-text",
+              workTab === "survey" &&
+                "border-b-primary font-medium text-primary",
+            )}
+            onClick={() => setWorkTab("survey")}
+          >
+            {def.workTitle}
+          </button>
+          <button
+            type="button"
+            className={cn(
+              "mb-[-1px] flex items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 font-inherit text-xs text-text-2 transition-colors hover:text-text",
+              workTab === "fees" && "border-b-primary font-medium text-primary",
+            )}
+            onClick={() => setWorkTab("fees")}
+          >
+            مالية المعاملة
+          </button>
+          <button
+            type="button"
+            className={cn(
+              "mb-[-1px] flex max-w-[200px] items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 font-inherit text-xs text-text-2 transition-colors hover:text-text",
+              workTab === "notes" && "border-b-primary font-medium text-primary",
+            )}
+            onClick={() => setWorkTab("notes")}
+          >
+            <span>ملاحظة</span>
+            {savedNote ? (
+              <span
+                className="inline-block size-1.5 rounded-full bg-primary"
+                aria-hidden
               />
-              {notesEditable ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button type="button" size="sm" showActionToast={false} onClick={saveNote}>
-                    حفظ الملاحظة
-                  </Button>
+            ) : null}
+          </button>
+          <button
+            type="button"
+            className={cn(
+              "mb-[-1px] flex items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 font-inherit text-xs text-text-2 transition-colors hover:text-text",
+              workTab === "failures" &&
+                "border-b-primary font-medium text-primary",
+            )}
+            onClick={() => setWorkTab("failures")}
+          >
+            التعذرات
+            {activeFailureCount > 0 ? (
+              <span className="rounded-[10px] bg-danger-bg px-1.5 py-px text-[10px] font-medium text-danger-text">
+                {activeFailureCount}
+              </span>
+            ) : null}
+          </button>
+        </nav>
+
+        {workTab === "survey" ? (
+          surveySplit
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-row items-stretch overflow-hidden max-lg:flex-col">
+            <div className="order-1 min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+              {blockingFailure && workTab === "property" ? (
+                <InfoBox variant="amber" icon="⚠">
+                  <strong>يوجد تعذر نشط على هذا العقار.</strong>
+                  <br />
+                  لا يمكن بدء الرفع المساحي حتى يُعالج التعذر:{" "}
+                  {failureRecordTitle(blockingFailure)}
+                </InfoBox>
+              ) : null}
+              {workTab === "property" ? (
+                <EngineeringSurveyPropertySummary
+                  property={property}
+                  record={record ?? undefined}
+                />
+              ) : null}
+              {workTab === "fees" ? (
+                <InspectorFeesTab
+                  tasks={[task]}
+                  variant="engineering-survey"
+                />
+              ) : null}
+              {workTab === "notes" ? (
+                <div>
+                  <SectionHeader>ملاحظة على المعاملة</SectionHeader>
+                  <textarea
+                    id="eng-workspace-note"
+                    className={cn(
+                      formControlClassName,
+                      "min-h-[120px] w-full resize-y py-2 leading-relaxed",
+                    )}
+                    rows={5}
+                    disabled={!notesEditable}
+                    value={noteDraft}
+                    placeholder="اكتب ملاحظتك هنا…"
+                    onChange={(e) => setNoteDraft(e.target.value)}
+                  />
+                  {notesEditable ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        showActionToast={false}
+                        onClick={saveNote}
+                      >
+                        حفظ الملاحظة
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-[11px] text-text-3">
+                      لا يمكن تعديل الملاحظة بعد إرسال المعاملة أو إغلاقها.
+                    </p>
+                  )}
                 </div>
-              ) : (
-                <p className="mt-2 text-[11px] text-text-3">
-                  لا يمكن تعديل الملاحظة بعد إرسال المعاملة أو إغلاقها.
-                </p>
-              )}
+              ) : null}
+              {workTab === "failures" && propertyId ? (
+                <div>
+                  <SectionHeader>تسجيل تعذر</SectionHeader>
+                  <FailureRaisePanel
+                    poNumber={task.poNumber}
+                    propertyId={propertyId}
+                    deedNumber={deedNumber}
+                    specialist={task.assigneeName || def.assigneeSubtitle}
+                    raisedByRole={failureRaiserRoleForParty(def)}
+                    onSubmitted={onFailureSubmitted}
+                    autoOpenRaise={failureRaiseOpen}
+                  />
+                  <SectionDivider />
+                  <SectionHeader>سجل التعذرات</SectionHeader>
+                  <EngineeringSurveyFailuresHistory
+                    poNumber={task.poNumber}
+                    propertyId={propertyId}
+                    deedNumber={deedNumber}
+                  />
+                </div>
+              ) : null}
             </div>
-          ) : null}
-          {workTab === "failures" && propertyId ? (
-            <div>
-              <SectionHeader>تسجيل تعذر</SectionHeader>
-              <FailureRaisePanel
-                poNumber={task.poNumber}
-                propertyId={propertyId}
-                deedNumber={deedNumber}
-                specialist={task.assigneeName || def.assigneeSubtitle}
-                raisedByRole={failureRaiserRoleForParty(def)}
-                onSubmitted={onFailureSubmitted}
-                autoOpenRaise={failureRaiseOpen}
+
+            {record && property ? (
+              <PropertyTransactionTimeline
+                record={record}
+                property={property}
               />
-              <SectionDivider />
-              <SectionHeader>سجل التعذرات</SectionHeader>
-              <EngineeringSurveyFailuresHistory
-                poNumber={task.poNumber}
-                propertyId={propertyId}
-                deedNumber={deedNumber}
-              />
-            </div>
-          ) : null}
-      </div>
+            ) : null}
+          </div>
+        )}
       </div>
 
-      <QuickActionsFab
-        placement="bottom-start"
-        deedNumber={deedNumber}
-        startSurveyDimmed={!transactionActive || Boolean(blockingFailure)}
-        workActionsDimmed={!transactionActive}
-        recallDimmed={transactionActive || !recallEligible}
-        onStartSurvey={handleStartSurvey}
-        onAddObstruction={handleAddObstruction}
-        onAddNote={handleAddNote}
-        onRequestRecall={handleRequestRecall}
-      />
+      {variant === "workspace" ? (
+        <QuickActionsFab
+          placement="bottom-start"
+          deedNumber={deedNumber}
+          startSurveyDimmed={!transactionActive || Boolean(blockingFailure)}
+          workActionsDimmed={!transactionActive}
+          recallDimmed={transactionActive || !recallEligible}
+          onStartSurvey={handleStartSurvey}
+          onAddObstruction={handleAddObstruction}
+          onAddNote={handleAddNote}
+          onRequestRecall={handleRequestRecall}
+        />
+      ) : null}
     </>
   );
 }

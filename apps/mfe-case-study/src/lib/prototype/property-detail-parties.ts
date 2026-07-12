@@ -96,14 +96,15 @@ function timelineBadgeForParty(
   return { badge: "غير معيّن", badgeClass: "pd-badge-gray" };
 }
 
-/** Six party cards for property detail — matches HTML mockup roles. */
+/** Party cards for property detail — assigned work parties only (no case specialist). */
 export function buildPropertyDetailPartyCards(input: {
-  specialistName: string;
+  /** @deprecated unused — specialist is not shown on party cards */
+  specialistName?: string;
   task: WorkflowTask | null;
   allTasks: WorkflowTask[];
   staffUsers?: StaffUser[];
 }): PropertyDetailPartyCard[] {
-  const { specialistName, task, allTasks, staffUsers = [] } = input;
+  const { task, allTasks, staffUsers = [] } = input;
   const distribution = migrateDistribution(task?.distribution);
   const assignees = task ? buildCaseStudyPartyAssignees(task, allTasks) : [];
 
@@ -123,14 +124,6 @@ export function buildPropertyDetailPartyCards(input: {
   );
 
   const cards: PropertyDetailPartyCard[] = [
-    {
-      roleKey: "specialist",
-      role: "أخصائي دراسة الحالة",
-      name: specialistName.trim() || "لم يُعيَّن",
-      unassigned: !specialistName.trim(),
-      state: "progress",
-      enabled: true,
-    },
     {
       roleKey: "inspection",
       role: "المعاين",
@@ -246,7 +239,6 @@ export function partyCardStatusLabel(card: PropertyDetailPartyCard): string {
     if (card.role === "المعاين" && card.enabled) return "انتظار التعيين";
     return "لم يُعيَّن";
   }
-  if (card.role === "أخصائي دراسة الحالة") return "نشط";
   return caseStudyTrackBadgeLabel(card.state);
 }
 

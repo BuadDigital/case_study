@@ -22,6 +22,7 @@ export type PartyEngineeringSurveyExtensions = {
     deedNumber: string;
     onFailureSubmitted?: () => void;
     variant?: "workspace" | "entry";
+    forceReadOnly?: boolean;
   }) => ReactNode;
   isSurveyLocked: (taskId: string, saving: boolean) => boolean;
 };

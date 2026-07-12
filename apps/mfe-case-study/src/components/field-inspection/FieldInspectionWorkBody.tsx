@@ -138,7 +138,9 @@ export function FieldInspectionWorkBody({
     };
   }, [task.id, task.poNumber, task.propertyOrdinal, propertyId, property]);
 
-  const locked = draft ? isInspectorWorkspaceLocked(draft.status) : false;
+  const locked =
+    task.status === "completed" ||
+    (draft ? isInspectorWorkspaceLocked(draft.status) : false);
   const boundariesUnavailable = property
     ? boundariesMarkedUnavailable(property.boundariesAvailability)
     : false;
@@ -377,7 +379,11 @@ export function FieldInspectionWorkBody({
 
       <fieldset
         disabled={locked}
-        className="m-0 min-w-0 border-0 p-0 [&_*]:min-w-0"
+        className={cn(
+          "m-0 min-w-0 border-0 p-0 [&_*]:min-w-0",
+          locked &&
+            "pointer-events-none select-none rounded-[10px] bg-[#F1F5F9] p-3 opacity-70 grayscale-[0.35]",
+        )}
       >
         <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-purple-bg bg-purple-bg px-4 py-3 text-xs leading-relaxed text-text-2">
           <i className="ti ti-info-circle mt-0.5 text-purple" aria-hidden />
@@ -686,7 +692,6 @@ export function FieldInspectionWorkBody({
                 ],
                 ["towerCount", "عدد الأبراج", null],
                 ["propertyAgeYears", "عمر العقار (سنوات)", null],
-                ["buildLicenseNumber", "رقم رخصة البناء", null],
               ] as const
             ).map(([key, label, photoMeta]) => {
               if (key === "propertyAgeYears") {
@@ -728,7 +733,7 @@ export function FieldInspectionWorkBody({
                   <RegField
                     id={`ins-${key}`}
                     label={label}
-                    type={key === "buildLicenseNumber" ? "text" : "number"}
+                    type="number"
                     value={value}
                     onChange={(v) => {
                       const patch: Partial<InspectorWorkspaceDraft> = {

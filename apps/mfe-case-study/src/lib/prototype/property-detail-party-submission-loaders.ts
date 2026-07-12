@@ -116,6 +116,7 @@ export async function loadGovernmentReviewSubmissionSnapshot(
     courtName: submission.courtName,
     keysStatus: submission.keysStatus,
     keysDescription: submission.keysDescription,
+    keyHandedToInspector: submission.keyHandedToInspector,
     accessBlockReason: submission.accessBlockReason,
     reviewNotes: submission.reviewNotes,
     propertyZoneStatus: submission.propertyZoneStatus,

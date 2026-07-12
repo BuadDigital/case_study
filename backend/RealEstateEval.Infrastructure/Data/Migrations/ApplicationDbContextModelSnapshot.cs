@@ -1024,7 +1024,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<decimal>("EnfazFeeSar")
+                    b.Property<decimal>("CaseStudyFeeSar")
                         .HasPrecision(12, 2)
                         .HasColumnType("numeric(12,2)");
 
@@ -1038,6 +1038,10 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
 
                     b.Property<Guid>("PropertyId")
                         .HasColumnType("uuid");
+
+                    b.Property<decimal>("SurveyFeeSar")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
 
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");

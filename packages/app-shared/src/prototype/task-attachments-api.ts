@@ -155,5 +155,34 @@ export function openTaskAttachmentPreview(
   attachment: TaskAttachmentPreview,
 ): void {
   if (!attachment.dataUrl) return;
-  window.open(attachment.dataUrl, "_blank", "noopener,noreferrer");
+
+  const dataUrl = attachment.dataUrl;
+  try {
+    if (dataUrl.startsWith("data:")) {
+      const comma = dataUrl.indexOf(",");
+      if (comma > 0) {
+        const header = dataUrl.slice(0, comma);
+        const base64 = dataUrl.slice(comma + 1);
+        const mimeMatch = /^data:([^;]+)/.exec(header);
+        const mimeType = mimeMatch?.[1] || attachment.mimeType || "application/octet-stream";
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        const blobUrl = URL.createObjectURL(new Blob([bytes], { type: mimeType }));
+        const opened = window.open(blobUrl, "_blank", "noopener,noreferrer");
+        if (!opened) {
+          URL.revokeObjectURL(blobUrl);
+          return;
+        }
+        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+        return;
+      }
+    }
+  } catch {
+    /* fall through to data URL */
+  }
+
+  window.open(dataUrl, "_blank", "noopener,noreferrer");
 }
