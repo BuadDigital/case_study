@@ -152,7 +152,7 @@ function buildMainPages(): SystemScreenEntry[] {
   SETTINGS_NAV.forEach((item) => {
     add(
       pageEntry(item, SETTINGS_GROUP, {
-        whereToFind: `أسفل الشاشة ← الإعدادات ← ${item.label}`,
+        whereToFind: `أعلى الشاشة ← الملف الشخصي ← الإعدادات ← ${item.label}`,
       }),
     );
   });
@@ -160,7 +160,7 @@ function buildMainPages(): SystemScreenEntry[] {
   SYSTEM_FIELDS_NAV.forEach((item) => {
     add(
       pageEntry(item, SYSTEM_FIELDS_GROUP, {
-        whereToFind: `أسفل الشاشة ← جميع حقول النظام ← ${item.label}`,
+        whereToFind: `أعلى الشاشة ← الملف الشخصي ← جميع حقول النظام ← ${item.label}`,
         notes: item.placeholder
           ? "مرجع إعدادات — قيد إكمال الربط بالنظام."
           : undefined,

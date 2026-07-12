@@ -21,7 +21,6 @@
     "@keys/mfe": "*",
     "@kpi/mfe": "*",
     "@settings/mfe": "*",
-    "@survey/mfe": "*",
     "@valuation/mfe": "*",
     "@platform/app-shared": "*",
     "@platform/api-client": "*",

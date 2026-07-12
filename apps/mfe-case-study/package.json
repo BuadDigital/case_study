@@ -20,13 +20,14 @@
     "@engineering-office/mfe": "*",
     "@evaluator/mfe": "*",
     "@failures/mfe": "*",
-    "@settings/mfe": "*",
-    "@platform/app-shared": "*",
     "@platform/api-client": "*",
+    "@platform/app-shared": "*",
     "@platform/auth-client": "*",
     "@platform/design-system": "*",
     "@platform/types": "*",
-    "@tanstack/react-query": "^5.100.11"
+    "@settings/mfe": "*",
+    "@tanstack/react-query": "^5.100.11",
+    "pdfjs-dist": "^6.1.200"
   },
   "peerDependencies": {
     "next": ">=16",

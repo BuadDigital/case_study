@@ -715,7 +715,7 @@ export function CaseStudyForm({
     return (
       <Note tone="warn">
         لا توجد أسئلة مسندة لـ<strong>{party.name}</strong> في «علاقة المستخدم
-        بالمعلومة». راجع الإعدادات في الشريط الجانبي.
+        بالمعلومة». راجع الإعدادات من قائمة الملف الشخصي.
       </Note>
     );
   }

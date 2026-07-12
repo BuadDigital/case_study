@@ -182,7 +182,9 @@ public class WorkOrderService : IWorkOrderService
             .AsNoTracking()
             .Include(p => p.WorkOrder)
             .Where(p => !p.BourseDataCompleted && p.WorkOrder != null)
-            .OrderBy(p => p.WorkOrder!.DueDateAt)
+            .OrderByDescending(p => p.WorkOrder!.CreatedAtUtc)
+            .ThenByDescending(p => p.WorkOrder!.ReceivedFromEnfathAt)
+            .ThenBy(p => p.WorkOrder!.PoNumber)
             .ThenBy(p => p.DeedNumber)
             .ToListAsync(cancellationToken);
 

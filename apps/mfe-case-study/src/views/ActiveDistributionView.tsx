@@ -26,6 +26,7 @@ const DISTRIBUTION_QUEUE: ActiveTransactionQueueConfig = {
   panelId: "distribution-panel",
   getBasePath: activeDistributionPath,
   getTaskPath: distributionTaskPath,
+  queueSort: "newest-first",
   filterListed: (mine) => filterTasksForDistribution(mine),
   refreshOnWindowEvents: [FAILURES_CHANGED_EVENT, TASKS_CHANGED_EVENT],
 };

@@ -44,6 +44,7 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: "/welcome", destination: "/dashboard", permanent: true },
+      { source: "/survey", destination: "/dashboard", permanent: false },
     ];
   },
   async rewrites() {

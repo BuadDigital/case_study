@@ -2,7 +2,10 @@
 
 import type { ReactNode } from "react";
 import { Button, Input, Label } from "@platform/design-system";
-import type { PropertyDocKind } from "../../lib/prototype/assignment-doc-attachments";
+import {
+  clearCachedPropertyDoc,
+  type PropertyDocKind,
+} from "../../lib/prototype/assignment-doc-attachments";
 import { AssignmentDocAttachment } from "./AssignmentDocAttachment";
 
 export function PropertyFileUploadField({
@@ -31,12 +34,20 @@ export function PropertyFileUploadField({
   const hasFile = Boolean(fileName.trim());
   const showPreview = Boolean(docKind && attachPo && propertyId);
 
+  const handleReplace = () => {
+    if (docKind && attachPo && propertyId) {
+      clearCachedPropertyDoc(docKind, attachPo, propertyId);
+    }
+    onClear();
+  };
+
   if (hasFile) {
     return (
       <div className="mt-2 w-full">
         <Label className="mb-1 text-[11px]">{label}</Label>
         {showPreview ? (
           <AssignmentDocAttachment
+            key={`${docKind}-${attachPo}-${propertyId}-${fileName}`}
             poNumber={attachPo!}
             propertyId={propertyId!}
             fileName={fileName}
@@ -51,7 +62,7 @@ export function PropertyFileUploadField({
           variant="ghost"
           size="sm"
           className="mt-1.5 h-auto px-0 text-[11px] text-primary"
-          onClick={onClear}
+          onClick={handleReplace}
         >
           استبدال الملف
         </Button>

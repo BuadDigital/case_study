@@ -29,8 +29,6 @@ import {
 import { loadSuspendedTransactions } from "@case-study/mfe/lib/prototype/suspended-transactions-storage";
 import { loadFailureTypesCatalog } from "@failures/mfe/lib/failure-types-storage";
 import { loadReportingDashboard } from "@dashboard/mfe/lib/dashboard-reporting-api";
-import { loadSurveyOffices } from "@survey/mfe/lib/survey-api";
-import { loadSurveyRequestStats } from "@survey/mfe/lib/survey-request-stats";
 import { loadPropertyKeysPage } from "@keys/mfe/lib/keys-api";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { useEffect } from "react";
@@ -117,19 +115,6 @@ export function prefetchPrototypePage(
     case "party-fees":
     case "valuation-requests":
       prefetchActiveTransactionsSituation();
-      break;
-    case "survey":
-      prefetchActiveTransactionsSituation();
-      void queryClient.prefetchQuery({
-        queryKey: prototypeKeys.surveyOffices(),
-        queryFn: loadSurveyOffices,
-        ...opts,
-      });
-      void queryClient.prefetchQuery({
-        queryKey: [...prototypeKeys.surveyOffices(), "request-stats"] as const,
-        queryFn: loadSurveyRequestStats,
-        ...opts,
-      });
       break;
     case "bourse-inquiry":
       prefetchActiveTransactionsSituation();

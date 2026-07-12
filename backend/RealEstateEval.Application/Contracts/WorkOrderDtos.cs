@@ -217,6 +217,8 @@ public class PendingBoursePropertyDto
     public string AssignmentType { get; set; } = "";
     public string ReceivedFromEnfathAt { get; set; } = "";
     public string DueDateAt { get; set; } = "";
+    /// <summary>PO creation time (UTC ISO) — used for newest-first queue order.</summary>
+    public string CreatedAtUtc { get; set; } = "";
 }
 
 public class CourtCatalogEntryDto
