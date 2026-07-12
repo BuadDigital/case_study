@@ -317,7 +317,7 @@ export function BourseInquiryView() {
 
   const sidePanel = hasRail ? (
         selected ? (
-          <OperationalPanel className="min-h-0 flex-1">
+          <OperationalPanel className="min-h-0 h-fit self-start">
             <Card className="flex max-h-none flex-col overflow-hidden rounded-none border-none bg-transparent shadow-none">
             <CardHeader className="shrink-0 px-4 py-3">
               <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-text">
@@ -334,7 +334,7 @@ export function BourseInquiryView() {
               </Button>
             </CardHeader>
             <CardBody className="flex min-h-0 flex-1 flex-col overflow-hidden px-0 pb-0">
-              <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3">
+              <div className="min-h-0 overflow-y-auto px-4 pb-3">
                 <div className="mb-3.5 flex flex-wrap gap-x-5 gap-y-2 rounded-lg border border-border bg-surface-2 px-3 py-2.5 text-xs text-text-2">
                   <span>
                     أمر العمل:{" "}
@@ -399,7 +399,7 @@ export function BourseInquiryView() {
           </Card>
           </OperationalPanel>
         ) : (
-          <OperationalPanel className="hidden min-h-0 flex-1 items-center justify-center lg:flex">
+          <OperationalPanel className="hidden min-h-0 h-fit self-start items-center justify-center lg:flex">
             <div className="max-w-[280px] px-4 py-7 text-center sm:px-6">
               <div
                 className="mx-auto mb-3.5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-surface-2 text-primary"
