@@ -39,10 +39,6 @@ const SuspendedTransactionsView = dynamic(
   () => import("@case-study/mfe").then((m) => m.SuspendedTransactionsView),
   { ssr: false },
 );
-const SurveyView = dynamic(
-  () => import("@survey/mfe").then((m) => m.SurveyView),
-  { ssr: false },
-);
 const KeysView = dynamic(
   () => import("@keys/mfe").then((m) => m.KeysView),
   { ssr: false },
@@ -111,7 +107,6 @@ const VIEWS: Partial<Record<PageId, ComponentType>> = {
   "bourse-inquiry": BourseInquiryView,
   "active-distribution": ActiveDistributionView,
   "active-case-study": ActiveCaseStudyView,
-  survey: SurveyView,
   keys: KeysView,
   failures: FailuresView,
   "suspended-transactions": SuspendedTransactionsView,

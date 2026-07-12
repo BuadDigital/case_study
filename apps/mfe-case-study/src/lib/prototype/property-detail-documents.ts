@@ -4,8 +4,7 @@ import {
 } from "@engineering-office/mfe";
 import { getCachedEvaluatorReport } from "@evaluator/mfe";
 import {
-  getCachedAssignmentDoc,
-  getCachedDelegationDoc,
+  getCachedPropertyDocMatching,
   isImageMime,
 } from "./assignment-doc-attachments";
 import type { PoPropertyIntake } from "./po-intake-data";
@@ -62,7 +61,12 @@ export function collectIntakeDocuments(input: {
   }
 
   if (showDecree && property.assignmentDocFileName?.trim()) {
-    const cached = getCachedAssignmentDoc(poNumber, property.id);
+    const cached = getCachedPropertyDocMatching(
+      "decree",
+      poNumber,
+      property.id,
+      property.assignmentDocFileName,
+    );
     pushEntry(docs, {
       id: "intake-assignment",
       name: "قرار الإسناد",
@@ -77,7 +81,12 @@ export function collectIntakeDocuments(input: {
   }
 
   if (property.delegationLetterFileName?.trim()) {
-    const cached = getCachedDelegationDoc(poNumber, property.id);
+    const cached = getCachedPropertyDocMatching(
+      "delegation",
+      poNumber,
+      property.id,
+      property.delegationLetterFileName,
+    );
     pushEntry(docs, {
       id: "intake-delegation",
       name: "خطاب التفويض",

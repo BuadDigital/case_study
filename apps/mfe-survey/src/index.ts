@@ -1,4 +1,4 @@
-/** @survey/mfe — الرفع المساحي (/survey) */
+/** @survey/mfe — مكاتب الرفع الهندسي (legacy package; /survey route removed from shell) */
 
 export { SurveyView } from "./views/SurveyView";
 

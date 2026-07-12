@@ -180,7 +180,6 @@ export const MODULE_PAGES: { id: string; title: string }[] = [
   { id: "active-case-study", title: "دراسة حالة العقارات" },
   { id: "po", title: "أوامر العمل" },
   { id: "bourse-inquiry", title: "استعلام بورصة" },
-  { id: "survey", title: "مكاتب الرفع الهندسي" },
   { id: "keys", title: "إدارة المفاتيح" },
   { id: "failures", title: "إدارة التعذرات" },
   { id: "suspended-transactions", title: "المعاملات المعلقة" },

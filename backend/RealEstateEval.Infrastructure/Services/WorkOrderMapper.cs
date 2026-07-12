@@ -131,6 +131,7 @@ public static class WorkOrderMapper
             AssignmentType = AssignmentTypeLabels.ToLabel(p.WorkOrder.AssignmentType),
             ReceivedFromEnfathAt = p.WorkOrder.ReceivedFromEnfathAt.ToString("yyyy-MM-dd"),
             DueDateAt = p.WorkOrder.DueDateAt.ToString("yyyy-MM-dd"),
+            CreatedAtUtc = p.WorkOrder.CreatedAtUtc.ToString("O"),
         };
     }
 

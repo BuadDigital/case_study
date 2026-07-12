@@ -10,7 +10,6 @@ export const SCREEN_CATALOG_PAGE_NAMES: Partial<Record<PageId, string>> = {
   "active-distribution": "توزيع المعاملات على الأطراف",
   "active-case-study": "دراسة حالة العقارات",
   "bourse-inquiry": "استعلام بورصة عقارية",
-  survey: "الرفع المساحي — لوحة عامة",
   "active-survey": "الرفع المساحي — مهام المكتب الهندسي",
   keys: "المفاتيح — لوحة عامة",
   failures: "إدارة التعذرات",

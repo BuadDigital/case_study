@@ -178,6 +178,8 @@ export type PendingBoursePropertyDto = {
   assignmentType: string;
   receivedFromEnfathAt: string;
   dueDateAt: string;
+  /** PO creation time (ISO) — newest-first queue order. */
+  createdAtUtc?: string;
 };
 
 export type ApiOk<T> = { ok: true; data: T };
