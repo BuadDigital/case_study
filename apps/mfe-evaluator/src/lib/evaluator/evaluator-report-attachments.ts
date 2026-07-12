@@ -115,18 +115,22 @@ export async function clearCachedEvaluatorReport(taskId: string): Promise<void> 
   await saveEvaluatorSubmission({ ...current, reportFileName: null });
 }
 
-export function openEvaluatorReportPreview(taskId: string): void {
+export async function openEvaluatorReportPreview(
+  taskId: string,
+): Promise<boolean> {
   const cached = getCachedEvaluatorReport(taskId);
-  if (!cached) return;
-  if (cached.dataUrl) {
+  if (cached?.dataUrl) {
     openTaskAttachmentPreview(cached);
-    return;
+    return true;
   }
-  void prefetchEvaluatorReport(taskId)
-    .then((preview) => {
-      if (preview) openTaskAttachmentPreview(preview);
-    })
-    .catch((err: unknown) => {
-      console.warn("Evaluator report prefetch failed:", err);
-    });
+  try {
+    const preview = await prefetchEvaluatorReport(taskId);
+    if (preview?.dataUrl) {
+      openTaskAttachmentPreview(preview);
+      return true;
+    }
+  } catch (err: unknown) {
+    console.warn("Evaluator report prefetch failed:", err);
+  }
+  return false;
 }

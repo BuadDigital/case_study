@@ -265,7 +265,9 @@ export function EvaluatorAdvisoryPanel({
             <Button
               type="button"
               size="sm"
-              onClick={() => openEvaluatorReportPreview(appraisalTask.id)}
+              onClick={() => {
+                void openEvaluatorReportPreview(appraisalTask.id);
+              }}
             >
               معاينة PDF
             </Button>

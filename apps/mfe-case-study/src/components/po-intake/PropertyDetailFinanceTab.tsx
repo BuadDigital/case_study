@@ -24,7 +24,11 @@ import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import type { PoPropertyIntake } from "../../lib/prototype/po-intake-data";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 
-const FEE_KINDS = new Set(["field-inspection", "engineering-survey"]);
+const FEE_KINDS = new Set([
+  "field-inspection",
+  "engineering-survey",
+  "government-review",
+]);
 
 export function PropertyDetailFinanceTab({
   poNumber,
@@ -73,7 +77,13 @@ export function PropertyDetailFinanceTab({
     enabled: Boolean(property.id),
   });
 
-  const enfazIn = enfazRevenue?.hasEnfazRevenue ? enfazRevenue.enfazFeeSar ?? 0 : null;
+  const enfazIn = enfazRevenue?.hasEnfazRevenue
+    ? {
+        caseStudy: enfazRevenue.caseStudyFeeSar ?? 0,
+        survey: enfazRevenue.surveyFeeSar ?? 0,
+        total: enfazRevenue.enfazFeeSar ?? 0,
+      }
+    : null;
 
   if (feeTasks.length === 0) {
     return (
@@ -82,7 +92,7 @@ export function PropertyDetailFinanceTab({
         <EmptyState
           icon="💰"
           title="لا توجد مهام أتعاب"
-          sub="تظهر الأتعاب بعد توزيع مهمة المعاينة أو الرفع المساحي على هذا العقار."
+          sub="تظهر الأتعاب بعد توزيع مهمة المعاينة أو الرفع المساحي أو المراجعة الحكومية على هذا العقار."
         />
       </>
     );
@@ -144,12 +154,32 @@ export function PropertyDetailFinanceTab({
           )
         ) : enfazIn != null ? (
           <InfoBox icon="✓">
-            عُبّئ إيراد إنفاذ لهذه المعاملة من سطح المالية، فظهر الهامش.
+            <div className="mb-1">عُبّئ إيراد إنفاذ لهذه المعاملة من سطح المالية.</div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-text-2">
+              <span>
+                دراسة المعاملة:{" "}
+                <span className="tabular-nums font-medium text-text">
+                  {enfazIn.caseStudy.toLocaleString("ar-SA")} ر.س
+                </span>
+              </span>
+              <span>
+                تكاليف الرفع:{" "}
+                <span className="tabular-nums font-medium text-text">
+                  {enfazIn.survey.toLocaleString("ar-SA")} ر.س
+                </span>
+              </span>
+              <span>
+                المجموع:{" "}
+                <span className="tabular-nums font-medium text-text">
+                  {enfazIn.total.toLocaleString("ar-SA")} ر.س
+                </span>
+              </span>
+            </div>
           </InfoBox>
         ) : (
           <InfoBox icon="⏱">
-            إيراد إنفاذ يُعبّأ من المالية بعد اكتمال أمر العمل. حتى ذلك يبقى
-            «—» ولا يُحسب هامش.
+            إيراد إنفاذ يُعبّأ من المالية بعد اكتمال أمر العمل (دراسة + رفع). حتى
+            ذلك يبقى «—» ولا يُحسب هامش.
           </InfoBox>
         )}
       </TabPanel>

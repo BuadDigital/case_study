@@ -65,7 +65,6 @@ import {
 } from "@platform/design-system";
 import { FailureRaisePanel } from "@failures/mfe";
 import { failureRaiserRoleForParty } from "@failures/mfe/lib/failure-party-roles";
-import { setSurveyWorkTopbarState } from "@platform/app-shared/prototype/survey-work-topbar-bridge";
 import { usePoRecordQuery } from "../query/case-study-queries";
 import { usePartyTaskRecallEligibility } from "../hooks/use-party-task-recall-eligibility";
 import { PartyTaskRecallOverlay } from "../components/party-tasks/PartyTaskRecallOverlay";
@@ -249,11 +248,6 @@ export function PartyActiveTaskWork({
     return appraisalExtensions.isEvaluatorLocked(task.id, saving);
   }, [appraisalExtensions, task.id, saving]);
 
-  const surveyLocked = useMemo(() => {
-    if (!engineeringSurveyExtensions) return false;
-    return engineeringSurveyExtensions.isSurveyLocked(task.id, saving);
-  }, [engineeringSurveyExtensions, task.id, saving]);
-
   const governmentLocked = useMemo(
     () => isGovernmentReviewLocked(task.id, task.status),
     [task.id, task.status],
@@ -275,8 +269,8 @@ export function PartyActiveTaskWork({
   );
 
   const fieldInspectionLocked = useMemo(
-    () => isFieldInspectionLocked(task.id, fieldInspectionWorkspace),
-    [task.id, fieldInspectionWorkspace],
+    () => isFieldInspectionLocked(task.id, fieldInspectionWorkspace, task.status),
+    [task.id, fieldInspectionWorkspace, task.status],
   );
 
   const focusGovernmentFailure = useCallback(() => {
@@ -379,10 +373,6 @@ export function PartyActiveTaskWork({
     await runHostSubmit(evaluatorLocked, evaluatorHostRef);
   }
 
-  async function submitSurvey() {
-    await runHostSubmit(surveyLocked, surveyHostRef);
-  }
-
   async function submitFieldInspection() {
     await runHostSubmit(fieldInspectionLocked, fieldInspectionHostRef);
   }
@@ -395,33 +385,6 @@ export function PartyActiveTaskWork({
     if (!record || !surveyProperty) return -1;
     return record.properties.findIndex((p) => p.id === surveyProperty.id);
   }, [record, surveyProperty]);
-
-  useEffect(() => {
-    if (!engineeringSurveyEntry) {
-      setSurveyWorkTopbarState(null);
-      return;
-    }
-    if (!isEngineeringSurvey || !record || !surveyProperty || surveyLocked) {
-      setSurveyWorkTopbarState(null);
-      return;
-    }
-    setSurveyWorkTopbarState({
-      saving,
-      saveLabel: def.saveLabel,
-      onSave: () => {
-        void submitSurvey();
-      },
-    });
-    return () => setSurveyWorkTopbarState(null);
-  }, [
-    engineeringSurveyEntry,
-    isEngineeringSurvey,
-    record,
-    surveyProperty,
-    saving,
-    surveyLocked,
-    def.saveLabel,
-  ]);
 
   function renderPropertyTaskShell(body: ReactNode) {
     if (recordLoading && !record) {
@@ -461,20 +424,6 @@ export function PartyActiveTaskWork({
   }
 
   if (isFieldInspection && layout === "page") {
-    if (task.status === "completed" || submitSuccess) {
-      return renderPropertyTaskShell(
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className={TAB_CONTENT}>
-            <TaskCompletionSuccess
-              title={submitSuccess ? "تم الإرسال" : def.completeTitle}
-              message={def.completeMessage}
-              compact
-            />
-          </div>
-        </div>,
-      );
-    }
-
     return renderPropertyTaskShell(
       record && surveyProperty ? (
         <FieldInspectionWorkPanel
@@ -486,6 +435,7 @@ export function PartyActiveTaskWork({
           deedNumber={deedLabel}
           submitting={saving}
           onFailureSubmitted={refresh}
+          forceReadOnly={fieldInspectionLocked}
         />
       ) : (
         <InlineLoadingSkeleton className={LOADING_TEXT} />
@@ -494,19 +444,10 @@ export function PartyActiveTaskWork({
   }
 
   if (isEngineeringSurvey) {
-    if (task.status === "completed" || submitSuccess) {
-      return renderSurveyPropertyShell(
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className={TAB_CONTENT}>
-            <TaskCompletionSuccess
-              title={def.completeTitle}
-              message={def.completeMessage}
-              compact
-            />
-          </div>
-        </div>,
-      );
-    }
+    const surveyLocked =
+      Boolean(engineeringSurveyExtensions?.isSurveyLocked(task.id, saving)) ||
+      task.status === "completed" ||
+      submitSuccess;
 
     return renderSurveyPropertyShell(
       engineeringSurveyExtensions ? (
@@ -517,6 +458,7 @@ export function PartyActiveTaskWork({
           deedNumber: deedLabel,
           onFailureSubmitted: refresh,
           variant: engineeringSurveyEntry ? "entry" : "workspace",
+          forceReadOnly: surveyLocked,
         })
       ) : (
         <InlineLoadingSkeleton className={LOADING_TEXT} />
@@ -539,7 +481,13 @@ export function PartyActiveTaskWork({
     );
   }
 
-  if (task.status === "completed") {
+  if (
+    task.status === "completed" &&
+    !isGovernmentReview &&
+    !isValuationCoordination &&
+    !isAppraisal &&
+    !isFieldInspection
+  ) {
     return (
       <TaskWorkChrome
         layout={layout}
@@ -641,25 +589,7 @@ export function PartyActiveTaskWork({
   }
 
   if (isFieldInspection) {
-    if (submitSuccess) {
-      return (
-        <TaskWorkChrome
-          layout={layout}
-          title={`${def.workTitle} — ${deedLabel}`}
-          subtitle={`${def.assigneeSubtitle} · ${formatPoDisplay(task.poNumber)} · ${location}`}
-          deedBadge={deedLabel}
-          onClose={exit}
-          onSave={exit}
-          saveLabel="رجوع للقائمة"
-          showFooter
-        >
-          <TaskCompletionSuccess
-            title="تم الإرسال"
-            message={def.completeMessage}
-          />
-        </TaskWorkChrome>
-      );
-    }
+    const inspectionReadOnly = fieldInspectionLocked || submitSuccess;
 
     return (
       <PartyTaskRecallOverlay
@@ -679,7 +609,7 @@ export function PartyActiveTaskWork({
           saving={saving}
           onClose={exit}
           onSave={submitFieldInspection}
-          saveLabel={fieldInspectionLocked ? "رجوع" : def.saveLabel}
+          saveLabel={inspectionReadOnly ? "رجوع" : def.saveLabel}
           showFooter
         >
           <div className="grid min-w-0 gap-4 xl:grid-cols-2">
@@ -710,7 +640,11 @@ export function PartyActiveTaskWork({
               <h3 className="m-0 mb-2 text-sm font-semibold text-text">
                 نموذج الدراسة
               </h3>
-              <PartyCaseStudyFormTab def={def} childTask={task} />
+              <PartyCaseStudyFormTab
+                def={def}
+                childTask={task}
+                forceReadOnly={inspectionReadOnly}
+              />
             </section>
           </div>
         </TaskWorkChrome>
@@ -728,7 +662,7 @@ export function PartyActiveTaskWork({
       ? (governmentHostRef.current.getFooterSaveLabel?.() ?? def.saveLabel)
       : def.saveLabel;
 
-    if (submitSuccess) {
+    if (submitSuccess && !isGovernmentReview && !isValuationCoordination) {
       return (
         <TaskWorkChrome
           layout={layout}
@@ -795,7 +729,11 @@ export function PartyActiveTaskWork({
                 <h3 className="m-0 mb-2 text-sm font-semibold text-text">
                   نموذج الدراسة
                 </h3>
-                <PartyCaseStudyFormTab def={def} childTask={task} />
+                <PartyCaseStudyFormTab
+                  def={def}
+                  childTask={task}
+                  forceReadOnly={locked}
+                />
               </section>
             </div>
           </>

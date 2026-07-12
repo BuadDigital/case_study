@@ -117,20 +117,24 @@ export async function cacheEvaluatorPlanImage(
   return { ok: true };
 }
 
-export function openEvaluatorPlanImagePreview(taskId: string): void {
+export async function openEvaluatorPlanImagePreview(
+  taskId: string,
+): Promise<boolean> {
   const cached = getCachedEvaluatorPlanImage(taskId);
-  if (!cached) return;
-  if (cached.dataUrl) {
+  if (cached?.dataUrl) {
     openTaskAttachmentPreview(cached);
-    return;
+    return true;
   }
-  void prefetchEvaluatorPlanImage(taskId)
-    .then((preview) => {
-      if (preview) openTaskAttachmentPreview(preview);
-    })
-    .catch((err: unknown) => {
-      console.warn("Evaluator plan image prefetch failed:", err);
-    });
+  try {
+    const preview = await prefetchEvaluatorPlanImage(taskId);
+    if (preview?.dataUrl) {
+      openTaskAttachmentPreview(preview);
+      return true;
+    }
+  } catch (err: unknown) {
+    console.warn("Evaluator plan image prefetch failed:", err);
+  }
+  return false;
 }
 
 export async function clearCachedEvaluatorPlanImage(taskId: string): Promise<void> {

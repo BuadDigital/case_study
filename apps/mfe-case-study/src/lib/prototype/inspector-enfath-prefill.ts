@@ -65,11 +65,6 @@ export function applyEnfathPrefillToInspectorDraft(
 
   const patch: Partial<InspectorWorkspaceDraft> = changed ? { featureValues } : {};
 
-  if (!draft.buildLicenseNumber.trim() && property.buildLicenseNumber.trim()) {
-    patch.buildLicenseNumber = property.buildLicenseNumber.trim();
-    changed = true;
-  }
-
   if (!draft.propertyDescription.trim()) {
     const parts = [
       property.city.trim(),
@@ -92,7 +87,6 @@ export function inspectorDraftNeedsEnfathPrefill(
   const hasFeatures = Object.values(draft.featureValues).some((v) => v.trim());
   return (
     !hasFeatures &&
-    !draft.buildLicenseNumber.trim() &&
     !draft.propertyDescription.trim()
   );
 }

@@ -10,7 +10,7 @@ public class InspectorFeeLedger
     public Guid? PropertyId { get; set; }
     public int PropertyOrdinal { get; set; } = 1;
     public string? AssigneeId { get; set; }
-    /// <summary>متعاون | موظف</summary>
+    /// <summary>متعاون فرد | متعاون شركة | موظف (أو متعاون قديم)</summary>
     public string InspectorType { get; set; } = "موظف";
     public decimal AgreedFeeSar { get; set; }
     public decimal SupervisorDiscountSar { get; set; }

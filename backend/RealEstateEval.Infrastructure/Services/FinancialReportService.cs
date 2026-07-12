@@ -94,8 +94,8 @@ public sealed class FinancialReportService : IFinancialReportService
 
         var enfazLines = await _db.PoEnfazRevenueLines.AsNoTracking().ToListAsync(cancellationToken);
         var revenueTotal = enfazLines
-            .Where(l => l.IncludedInBilling && l.EnfazFeeSar > 0)
-            .Sum(l => l.EnfazFeeSar);
+            .Where(l => l.IncludedInBilling && l.TotalFeeSar > 0)
+            .Sum(l => l.TotalFeeSar);
         var profitMargin = revenueTotal - externalCosts;
 
         return new FinancialSummaryDto
@@ -198,8 +198,10 @@ public sealed class FinancialReportService : IFinancialReportService
             .Select(g => new
             {
                 PoNumber = g.Key,
-                Total = g.Where(x => x.IncludedInBilling).Sum(x => x.EnfazFeeSar),
-                Filled = g.Count(x => x.IncludedInBilling && x.EnfazFeeSar > 0),
+                Total = g.Where(x => x.IncludedInBilling)
+                    .Sum(x => x.CaseStudyFeeSar + x.SurveyFeeSar),
+                Filled = g.Count(x =>
+                    x.IncludedInBilling && (x.CaseStudyFeeSar + x.SurveyFeeSar) > 0),
             })
             .ToDictionaryAsync(x => x.PoNumber.Trim(), x => x, StringComparer.Ordinal, cancellationToken);
 
@@ -244,8 +246,11 @@ public sealed class FinancialReportService : IFinancialReportService
     private static string CostTypeCode(string inspectorType) =>
         inspectorType switch
         {
-            "موظف" => "int",
-            "متعاون" => "free",
+            InspectorFeeRules.TypeEmployee => "int",
+            InspectorFeeRules.TypeCooperatorIndividual
+                or InspectorFeeRules.TypeCooperatorOrganization
+                or InspectorFeeRules.TypeCooperatorLegacy
+                => "free",
             _ => "ext",
         };
 
@@ -253,6 +258,7 @@ public sealed class FinancialReportService : IFinancialReportService
     {
         "field-inspection" => "معاينة",
         "engineering-survey" => "رفع مساحي",
+        "government-review" => "مراجعة حكومية",
         "property-appraisal" => "تقييم",
         _ => "أخرى",
     };

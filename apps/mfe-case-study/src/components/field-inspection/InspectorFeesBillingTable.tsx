@@ -36,6 +36,11 @@ import { FeeActionReasonModal } from "@platform/app-shared/fees/FeeActionReasonM
 
 export type FeesBillingMode = "readonly" | "supervisor" | "finance";
 
+/** Employee fee types can have agreed amount edited by supervisor. */
+function isEmployeeFeeType(inspectorType: string): boolean {
+  return inspectorType.trim() === "موظف";
+}
+
 type RowDraft = {
   agreedFeeSar: string;
   supervisorDiscountSar: string;
@@ -209,10 +214,9 @@ export function InspectorFeesBillingTable({
     setBusyId(row.workflowTaskId);
     try {
       const body = {
-        agreedFeeSar:
-          row.inspectorType === "موظف"
-            ? Number(draft.agreedFeeSar)
-            : undefined,
+        agreedFeeSar: isEmployeeFeeType(row.inspectorType)
+          ? Number(draft.agreedFeeSar)
+          : undefined,
         supervisorDiscountSar: Number(draft.supervisorDiscountSar),
         discountReason: draft.discountReason.trim() || undefined,
         excludedFromBatch: draft.excludedFromBatch,
@@ -359,7 +363,8 @@ export function InspectorFeesBillingTable({
                     </Td>
                     <Td className="text-text-2">
                       <span>{row.inspectorType}</span>
-                      {row.inspectorType === "موظف" && partyTypeEmployeeHint ? (
+                      {isEmployeeFeeType(row.inspectorType) &&
+                      partyTypeEmployeeHint ? (
                         <span className="mr-1 text-[10px] text-text-3">
                           {partyTypeEmployeeHint}
                         </span>
@@ -367,7 +372,7 @@ export function InspectorFeesBillingTable({
                     </Td>
 
                     <Td className="text-end">
-                      {editing && row.inspectorType === "موظف" ? (
+                      {editing && isEmployeeFeeType(row.inspectorType) ? (
                         <Input
                           type="number"
                           min={0}

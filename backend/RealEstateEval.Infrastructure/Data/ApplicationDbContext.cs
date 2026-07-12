@@ -262,7 +262,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.ToTable("PoEnfazRevenueLines", DatabaseSchemas.Financial);
             e.HasKey(x => x.Id);
             e.Property(x => x.PoNumber).HasMaxLength(64);
-            e.Property(x => x.EnfazFeeSar).HasPrecision(12, 2);
+            e.Property(x => x.CaseStudyFeeSar).HasPrecision(12, 2);
+            e.Property(x => x.SurveyFeeSar).HasPrecision(12, 2);
+            e.Ignore(x => x.TotalFeeSar);
             e.HasIndex(x => new { x.PoNumber, x.PropertyId }).IsUnique();
         });
 

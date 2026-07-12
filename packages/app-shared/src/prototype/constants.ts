@@ -96,7 +96,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
     bg: "var(--success-bg)",
     tc: "var(--success)",
     pages: [
-      "dashboard",
       "po",
       "all-transactions",
       "active-primary-data",

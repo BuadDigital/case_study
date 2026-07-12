@@ -54,7 +54,8 @@ public class PlatformPermissionCatalogTests
     [InlineData("section-supervisor")]
     [InlineData("general-manager")]
     [InlineData("government-reviewer")]
-    public void Prototype_roles_except_cdo_and_case_specialist_exclude_dashboard(string role)
+    [InlineData("case-specialist")]
+    public void Prototype_roles_except_cdo_exclude_dashboard(string role)
     {
         var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -62,14 +63,12 @@ public class PlatformPermissionCatalogTests
         Assert.DoesNotContain("dashboard", pages);
     }
 
-    [Theory]
-    [InlineData("cdo")]
-    [InlineData("case-specialist")]
-    public void Cdo_and_case_specialist_include_dashboard(string role)
+    [Fact]
+    public void Cdo_includes_dashboard()
     {
         var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        PlatformPermissionCatalog.ApplyPrototypeRole(role, pages, capabilities);
+        PlatformPermissionCatalog.ApplyPrototypeRole("cdo", pages, capabilities);
         Assert.Contains("dashboard", pages);
     }
 }

@@ -279,7 +279,7 @@ export function GovernmentReviewPoPanel({
                       </div>
                       <div className="flex shrink-0 items-center gap-1.5">
                         <Badge tone={isOpen ? "warning" : "success"}>
-                          {isOpen ? "مفتوحة" : "منجزة"}
+                          {isOpen ? "قيد الإجراء" : "منجزة"}
                         </Badge>
                         <ChevronStartIcon />
                       </div>

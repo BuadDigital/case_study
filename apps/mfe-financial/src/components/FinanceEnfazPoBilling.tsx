@@ -8,6 +8,7 @@ import {
   loadReadyEnfazPoSummaries,
   savePoEnfazBillingData,
   issueEnfazInvoice,
+  downloadEnfazInvoicePdf,
 } from "@platform/app-shared/prototype/enfaz-billing-api";
 import {
   Badge,
@@ -33,13 +34,22 @@ import {
   type PoEnfazRevenueLineDto,
 } from "@platform/api-client";
 
+type LineDraft = {
+  caseStudyFee: string;
+  surveyFee: string;
+  inc: boolean;
+};
+
+function lineTotal(d: LineDraft | undefined): number {
+  if (!d) return 0;
+  return (Number(d.caseStudyFee) || 0) + (Number(d.surveyFee) || 0);
+}
+
 export function FinanceEnfazPoBilling() {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const [selectedPo, setSelectedPo] = useState<string | null>(null);
-  const [draft, setDraft] = useState<Record<string, { fee: string; inc: boolean }>>(
-    {},
-  );
+  const [draft, setDraft] = useState<Record<string, LineDraft>>({});
   const [busy, setBusy] = useState(false);
 
   const { data: readySummaries = [] } = useQuery({
@@ -61,10 +71,11 @@ export function FinanceEnfazPoBilling() {
 
   useEffect(() => {
     if (!billing) return;
-    const next: Record<string, { fee: string; inc: boolean }> = {};
+    const next: Record<string, LineDraft> = {};
     for (const line of billing.lines) {
       next[line.propertyId] = {
-        fee: String(line.enfazFeeSar || ""),
+        caseStudyFee: String(line.caseStudyFeeSar || ""),
+        surveyFee: String(line.surveyFeeSar || ""),
         inc: line.includedInBilling,
       };
     }
@@ -79,7 +90,7 @@ export function FinanceEnfazPoBilling() {
       const d = draft[line.propertyId];
       if (!d?.inc || line.workStatus !== "done") continue;
       billable += 1;
-      sub += Number(d.fee) || 0;
+      sub += lineTotal(d);
     }
     const vat = Math.round(sub * 0.15);
     return { sub, vat, total: sub + vat, billable };
@@ -90,11 +101,15 @@ export function FinanceEnfazPoBilling() {
     setBusy(true);
     try {
       const saved = await savePoEnfazBillingData(selectedPo, {
-        lines: billing.lines.map((line) => ({
-          propertyId: line.propertyId,
-          enfazFeeSar: Number(draft[line.propertyId]?.fee) || 0,
-          includedInBilling: draft[line.propertyId]?.inc ?? true,
-        })),
+        lines: billing.lines.map((line) => {
+          const d = draft[line.propertyId];
+          return {
+            propertyId: line.propertyId,
+            caseStudyFeeSar: Number(d?.caseStudyFee) || 0,
+            surveyFeeSar: Number(d?.surveyFee) || 0,
+            includedInBilling: d?.inc ?? true,
+          };
+        }),
       });
       if (!saved) {
         showToast("تعذّر حفظ الأتعاب — حاول مرة أخرى", "error");
@@ -122,9 +137,40 @@ export function FinanceEnfazPoBilling() {
       await queryClient.invalidateQueries({
         queryKey: [...prototypeKeys.all, "enfaz-billing"],
       });
+      const downloaded = await downloadEnfazInvoicePdf(selectedPo);
+      if (!downloaded) {
+        showToast("صدرت الفاتورة لكن تعذّر تنزيل PDF", "info");
+      }
     } finally {
       setBusy(false);
     }
+  };
+
+  const downloadPdf = async () => {
+    if (!selectedPo) return;
+    setBusy(true);
+    try {
+      const ok = await downloadEnfazInvoicePdf(selectedPo);
+      if (!ok) {
+        showToast("تعذّر تنزيل PDF — تأكد من إصدار الفاتورة أولاً", "error");
+        return;
+      }
+      showToast("تم تنزيل فاتورة PDF", "success");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const patchDraft = (propertyId: string, patch: Partial<LineDraft>) => {
+    setDraft((prev) => ({
+      ...prev,
+      [propertyId]: {
+        caseStudyFee: prev[propertyId]?.caseStudyFee ?? "",
+        surveyFee: prev[propertyId]?.surveyFee ?? "",
+        inc: prev[propertyId]?.inc ?? true,
+        ...patch,
+      },
+    }));
   };
 
   const lineRow = (line: PoEnfazRevenueLineDto) => {
@@ -145,18 +191,36 @@ export function FinanceEnfazPoBilling() {
             <Input
               type="number"
               min={0}
-              className="h-8 w-28 text-xs"
-              value={d?.fee ?? ""}
+              className="h-8 w-24 text-xs"
+              value={d?.caseStudyFee ?? ""}
               onChange={(e) =>
-                setDraft((prev) => ({
-                  ...prev,
-                  [line.propertyId]: {
-                    fee: e.target.value,
-                    inc: prev[line.propertyId]?.inc ?? true,
-                  },
-                }))
+                patchDraft(line.propertyId, { caseStudyFee: e.target.value })
               }
+              aria-label={`دخل دراسة المعاملة ${line.propertyLabel}`}
             />
+          )}
+        </Td>
+        <Td>
+          {cancelled ? (
+            <span className="text-text-3">—</span>
+          ) : (
+            <Input
+              type="number"
+              min={0}
+              className="h-8 w-24 text-xs"
+              value={d?.surveyFee ?? ""}
+              onChange={(e) =>
+                patchDraft(line.propertyId, { surveyFee: e.target.value })
+              }
+              aria-label={`دخل تكاليف الرفع ${line.propertyLabel}`}
+            />
+          )}
+        </Td>
+        <Td className="tabular-nums text-text-2">
+          {cancelled ? (
+            <span className="text-text-3">—</span>
+          ) : (
+            `${lineTotal(d).toLocaleString("ar-SA")} ر.س`
           )}
         </Td>
         <Td>
@@ -168,13 +232,7 @@ export function FinanceEnfazPoBilling() {
               className="size-4 accent-primary"
               checked={d?.inc ?? true}
               onChange={(e) =>
-                setDraft((prev) => ({
-                  ...prev,
-                  [line.propertyId]: {
-                    fee: prev[line.propertyId]?.fee ?? "",
-                    inc: e.target.checked,
-                  },
-                }))
+                patchDraft(line.propertyId, { inc: e.target.checked })
               }
               aria-label={`تضمين ${line.propertyLabel}`}
             />
@@ -197,8 +255,8 @@ export function FinanceEnfazPoBilling() {
     <div className="flex flex-col gap-3">
       <PageToolbar className="border-0 bg-surface-2/60">
         <Note tone="info" className="m-0 flex-1">
-          المسار: اختر PO ← عبّئ أتعاب المكتملة ← احفظ ← أصدر الفاتورة. الإيراد
-          يظهر في التقارير وهامش المعاملة.
+          المسار: اختر PO ← عبّئ دخل الدراسة ودخل الرفع للمكتملة ← احفظ ← أصدر
+          الفاتورة. الإيراد يظهر في التقارير وهامش المعاملة.
         </Note>
       </PageToolbar>
 
@@ -276,7 +334,9 @@ export function FinanceEnfazPoBilling() {
                     <Tr hoverable={false}>
                       <Th>المعاملة</Th>
                       <Th>الحالة</Th>
-                      <Th>أتعاب إنفاذ (ر.س)</Th>
+                      <Th>دخل الدراسة</Th>
+                      <Th>دخل الرفع</Th>
+                      <Th>المجموع</Th>
                       <Th>مشمول</Th>
                     </Tr>
                   </THead>
@@ -345,6 +405,17 @@ export function FinanceEnfazPoBilling() {
                   >
                     إصدار الفاتورة
                   </Button>
+                  {billing.invoiceNumber ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => void downloadPdf()}
+                    >
+                      تحميل PDF
+                    </Button>
+                  ) : null}
                 </div>
               </div>
 

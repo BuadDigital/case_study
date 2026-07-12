@@ -41,8 +41,6 @@ const bourseFields: PropertyFieldCatalogEntry[] = [
   { key: "restrictionsPresent", label: "القيود على العقار" },
   { key: "boundariesAvailability", label: "توفر الحدود" },
   { key: "boundariesExternalDocName", label: "المستند الخارجي للحدود" },
-  { key: "buildLicenseNumber", label: "رقم رخصة البناء" },
-  { key: "subdivisionRecordNumber", label: "رقم محضر التجزئة" },
   { key: "bourseDataCompleted", label: "اكتمال بيانات البورصة" },
 ];
 
@@ -395,11 +393,6 @@ const systemAutoFields: PropertyFieldCatalogEntry[] = [
   { key: "deedPhoto", label: "صك ملكية الأصل (PDF)" },
 ];
 
-const enfathUploadFields: PropertyFieldCatalogEntry[] = [
-  { key: "buildLicense", label: "رقم رخصة البناء (مرفق الرفع)" },
-  { key: "subdivisionRecord", label: "رقم محضر التجزئة (مرفق الرفع)" },
-];
-
 /** القسم ٨ — بيانات العاملين (مواصفة إنفاذ؛ غير مُنفَّذة بعد). */
 const infathWorkerLicenseFields: PropertyFieldCatalogEntry[] = [
   { key: "workerName", label: "اسم العامل على التقرير" },
@@ -744,12 +737,6 @@ export const PROPERTY_FIELDS_CATALOG: PropertyFieldCatalogGroup[] = [
     sourceRole: "نظام",
     screen: "بيانات تلقائية / محسوبة",
     fields: systemAutoFields,
-  },
-  {
-    id: "enfath-upload",
-    sourceRole: "نظام",
-    screen: "تبويب الرفع على إنفاذ",
-    fields: enfathUploadFields,
   },
   {
     id: "infath-worker-license",

@@ -65,7 +65,7 @@ public static class PlatformPermissionCatalog
         ],
         ["case-specialist"] =
         [
-            "dashboard", "po", "all-transactions", "active-primary-data", "bourse-inquiry", "active-distribution",
+            "po", "all-transactions", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "failures", "suspended-transactions",
             "system-fields-catalog", "system-screen-catalog",
         ],

@@ -114,6 +114,11 @@ public class PoEnfazRevenueLineDto
     public string PropertyLabel { get; set; } = "";
     public string WorkStatus { get; set; } = "";
     public string WorkStatusLabel { get; set; } = "";
+    /// <summary>دخل دراسة المعاملة.</summary>
+    public decimal CaseStudyFeeSar { get; set; }
+    /// <summary>دخل تكاليف الرفع.</summary>
+    public decimal SurveyFeeSar { get; set; }
+    /// <summary>مجموع البندين (للتوافق مع الشاشات).</summary>
     public decimal EnfazFeeSar { get; set; }
     public bool IncludedInBilling { get; set; }
 }
@@ -138,6 +143,8 @@ public class EnfazTrackingRowDto
     public string WorkStatus { get; set; } = "";
     public string WorkStatusLabel { get; set; } = "";
     public bool EnfazFilled { get; set; }
+    public decimal CaseStudyFeeSar { get; set; }
+    public decimal SurveyFeeSar { get; set; }
     public decimal EnfazFeeSar { get; set; }
 }
 
@@ -156,12 +163,17 @@ public class SavePoEnfazBillingRequest
 public class PoEnfazRevenueLineInput
 {
     public string PropertyId { get; init; } = "";
-    public decimal EnfazFeeSar { get; init; }
+    public decimal CaseStudyFeeSar { get; init; }
+    public decimal SurveyFeeSar { get; init; }
+    /// <summary>Legacy single amount — split into case study if new fields are zero.</summary>
+    public decimal? EnfazFeeSar { get; init; }
     public bool IncludedInBilling { get; init; } = true;
 }
 
 public class PropertyEnfazRevenueDto
 {
+    public decimal? CaseStudyFeeSar { get; set; }
+    public decimal? SurveyFeeSar { get; set; }
     public decimal? EnfazFeeSar { get; set; }
     public bool HasEnfazRevenue { get; set; }
 }

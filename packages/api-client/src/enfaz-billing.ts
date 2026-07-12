@@ -10,6 +10,11 @@ export type PoEnfazRevenueLineDto = {
   propertyLabel: string;
   workStatus: string;
   workStatusLabel: string;
+  /** دخل دراسة المعاملة */
+  caseStudyFeeSar: number;
+  /** دخل تكاليف الرفع */
+  surveyFeeSar: number;
+  /** مجموع البندين */
   enfazFeeSar: number;
   includedInBilling: boolean;
 };
@@ -32,6 +37,8 @@ export type EnfazTrackingRowDto = {
   workStatus: string;
   workStatusLabel: string;
   enfazFilled: boolean;
+  caseStudyFeeSar: number;
+  surveyFeeSar: number;
   enfazFeeSar: number;
 };
 
@@ -44,12 +51,15 @@ export type EnfazReadyPoSummaryDto = {
 export type SavePoEnfazBillingRequest = {
   lines: {
     propertyId: string;
-    enfazFeeSar: number;
+    caseStudyFeeSar: number;
+    surveyFeeSar: number;
     includedInBilling: boolean;
   }[];
 };
 
 export type PropertyEnfazRevenueDto = {
+  caseStudyFeeSar: number | null;
+  surveyFeeSar: number | null;
   enfazFeeSar: number | null;
   hasEnfazRevenue: boolean;
 };
@@ -62,6 +72,15 @@ function headers(token: string): HeadersInit {
 }
 
 function normalizeLine(raw: Record<string, unknown>): PoEnfazRevenueLineDto {
+  const caseStudyFeeSar = Number(
+    raw.caseStudyFeeSar ?? raw.CaseStudyFeeSar ?? 0,
+  );
+  const surveyFeeSar = Number(raw.surveyFeeSar ?? raw.SurveyFeeSar ?? 0);
+  const legacy = Number(raw.enfazFeeSar ?? raw.EnfazFeeSar ?? 0);
+  const total =
+    caseStudyFeeSar + surveyFeeSar > 0
+      ? caseStudyFeeSar + surveyFeeSar
+      : legacy;
   return {
     id: String(raw.id ?? raw.Id ?? ""),
     poNumber: String(raw.poNumber ?? raw.PoNumber ?? ""),
@@ -69,7 +88,10 @@ function normalizeLine(raw: Record<string, unknown>): PoEnfazRevenueLineDto {
     propertyLabel: String(raw.propertyLabel ?? raw.PropertyLabel ?? ""),
     workStatus: String(raw.workStatus ?? raw.WorkStatus ?? ""),
     workStatusLabel: String(raw.workStatusLabel ?? raw.WorkStatusLabel ?? ""),
-    enfazFeeSar: Number(raw.enfazFeeSar ?? raw.EnfazFeeSar ?? 0),
+    caseStudyFeeSar:
+      caseStudyFeeSar > 0 || surveyFeeSar > 0 ? caseStudyFeeSar : legacy,
+    surveyFeeSar,
+    enfazFeeSar: total,
     includedInBilling: Boolean(
       raw.includedInBilling ?? raw.IncludedInBilling ?? true,
     ),
@@ -99,6 +121,11 @@ function normalizeBilling(raw: Record<string, unknown>): PoEnfazBillingDto {
 function normalizeTrackingRow(
   raw: Record<string, unknown>,
 ): EnfazTrackingRowDto {
+  const caseStudyFeeSar = Number(
+    raw.caseStudyFeeSar ?? raw.CaseStudyFeeSar ?? 0,
+  );
+  const surveyFeeSar = Number(raw.surveyFeeSar ?? raw.SurveyFeeSar ?? 0);
+  const legacy = Number(raw.enfazFeeSar ?? raw.EnfazFeeSar ?? 0);
   return {
     poNumber: String(raw.poNumber ?? raw.PoNumber ?? ""),
     propertyId: String(raw.propertyId ?? raw.PropertyId ?? ""),
@@ -106,7 +133,12 @@ function normalizeTrackingRow(
     workStatus: String(raw.workStatus ?? raw.WorkStatus ?? ""),
     workStatusLabel: String(raw.workStatusLabel ?? raw.WorkStatusLabel ?? ""),
     enfazFilled: Boolean(raw.enfazFilled ?? raw.EnfazFilled ?? false),
-    enfazFeeSar: Number(raw.enfazFeeSar ?? raw.EnfazFeeSar ?? 0),
+    caseStudyFeeSar,
+    surveyFeeSar,
+    enfazFeeSar:
+      caseStudyFeeSar + surveyFeeSar > 0
+        ? caseStudyFeeSar + surveyFeeSar
+        : legacy,
   };
 }
 
@@ -216,6 +248,25 @@ export async function issuePoEnfazInvoice(
   }
 }
 
+export async function downloadPoEnfazInvoicePdf(
+  config: EnfazBillingApiConfig,
+  poNumber: string,
+): Promise<ApiOk<Blob> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/enfaz-billing/${encodeURIComponent(poNumber)}/invoice.pdf`,
+      { headers: { Authorization: `Bearer ${config.token}` } },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: await res.blob() };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
 export async function getPropertyEnfazRevenue(
   config: EnfazBillingApiConfig,
   poNumber: string,
@@ -230,12 +281,23 @@ export async function getPropertyEnfazRevenue(
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
     const raw = (await res.json()) as Record<string, unknown>;
+    const caseStudyRaw = raw.caseStudyFeeSar ?? raw.CaseStudyFeeSar;
+    const surveyRaw = raw.surveyFeeSar ?? raw.SurveyFeeSar;
+    const legacyRaw = raw.enfazFeeSar ?? raw.EnfazFeeSar;
+    const caseStudyFeeSar =
+      caseStudyRaw == null ? null : Number(caseStudyRaw);
+    const surveyFeeSar = surveyRaw == null ? null : Number(surveyRaw);
+    const legacy = legacyRaw == null ? null : Number(legacyRaw);
+    const total =
+      caseStudyFeeSar != null || surveyFeeSar != null
+        ? (caseStudyFeeSar ?? 0) + (surveyFeeSar ?? 0)
+        : legacy;
     return {
       ok: true,
       data: {
-        enfazFeeSar: (raw.enfazFeeSar ?? raw.EnfazFeeSar ?? null) as
-          | number
-          | null,
+        caseStudyFeeSar,
+        surveyFeeSar,
+        enfazFeeSar: total,
         hasEnfazRevenue: Boolean(
           raw.hasEnfazRevenue ?? raw.HasEnfazRevenue ?? false,
         ),

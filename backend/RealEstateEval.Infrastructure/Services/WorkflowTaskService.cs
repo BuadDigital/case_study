@@ -266,7 +266,7 @@ public class WorkflowTaskService : IWorkflowTaskService
         }
 
         await _inspectorFees.EnsureLedgersForTasksAsync(
-            children.Where(c => c.Kind is "field-inspection" or "engineering-survey"),
+            children.Where(c => c.Kind is "field-inspection" or "engineering-survey" or "government-review"),
             cancellationToken);
 
         await NotifyDistributionAssignedAsync(parent, children, deed, cancellationToken);

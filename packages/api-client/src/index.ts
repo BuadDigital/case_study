@@ -295,6 +295,7 @@ export {
   type SavePoEnfazBillingRequest,
   listEnfazTracking,
   issuePoEnfazInvoice,
+  downloadPoEnfazInvoicePdf,
 } from "./enfaz-billing";
 
 export {

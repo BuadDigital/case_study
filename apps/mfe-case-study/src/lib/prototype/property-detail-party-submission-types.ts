@@ -12,6 +12,8 @@ export type PropertyDetailPartySubmission = {
   emptyReason?: string;
   statusLabel?: string;
   taskStatusLabel?: string;
+  /** ISO timestamp when the party submitted (for party cards / timeline). */
+  submittedAtUtc?: string | null;
   fields: { label: string; value: string; ltr?: boolean }[];
   answers: PartyAnswerRow[];
   remarks: { label: string; value: string }[];
@@ -77,6 +79,7 @@ export type GovernmentReviewSubmissionSnapshot = {
   courtName: string;
   keysStatus: "received" | "pending" | "not_required" | "";
   keysDescription: string;
+  keyHandedToInspector: "yes" | "no" | "";
   accessBlockReason: string;
   reviewNotes: string;
   returnNote?: string;

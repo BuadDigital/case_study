@@ -45,7 +45,15 @@ export const partyEngineeringSurveyExtensions: PartyEngineeringSurveyExtensions 
       };
     },
 
-    renderSurveyWork({ def, childTask, hostRef, deedNumber, onFailureSubmitted, variant }) {
+    renderSurveyWork({
+      def,
+      childTask,
+      hostRef,
+      deedNumber,
+      onFailureSubmitted,
+      variant,
+      forceReadOnly,
+    }) {
       return (
         <EngineeringSurveyWorkPanel
           def={def}
@@ -54,6 +62,7 @@ export const partyEngineeringSurveyExtensions: PartyEngineeringSurveyExtensions 
           deedNumber={deedNumber}
           onFailureSubmitted={onFailureSubmitted}
           variant={variant ?? "workspace"}
+          forceReadOnly={forceReadOnly}
         />
       );
     },

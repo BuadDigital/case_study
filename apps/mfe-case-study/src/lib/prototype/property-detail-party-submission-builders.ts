@@ -421,6 +421,7 @@ export function buildFromEngineeringSurvey(
     taskStatusLabel: childTask
       ? workflowStatusLabel(childTask.status)
       : undefined,
+    submittedAtUtc: submission.submittedAtUtc ?? null,
     fields,
     answers,
     remarks,
@@ -520,6 +521,8 @@ export function buildFromFormDraft(
     taskStatusLabel: childTask
       ? workflowStatusLabel(childTask.status)
       : undefined,
+    submittedAtUtc:
+      draft.status === "submitted" ? draft.savedAtUtc?.trim() || null : null,
     fields,
     answers,
     remarks,
@@ -613,6 +616,7 @@ export function buildFromEvaluator(
     hasData,
     emptyReason: hasData ? undefined : "لم يُقدَّم بعد",
     statusLabel: evaluatorStatusLabel(submission.status),
+    submittedAtUtc: submission.submittedAtUtc,
     fields,
     answers,
     remarks,
@@ -696,10 +700,6 @@ export function buildFromFieldInspection(
     true,
   );
   pushInspectionField(
-    INFATH_FIELD_LABELS.buildLicense,
-    submission.buildLicenseNumber,
-  );
-  pushInspectionField(
     INFATH_FIELD_LABELS.services,
     submission.services.join("، "),
   );
@@ -770,6 +770,7 @@ export function buildFromFieldInspection(
     taskStatusLabel: childTask
       ? workflowStatusLabel(childTask.status)
       : undefined,
+    submittedAtUtc: submission.submittedAtUtc ?? null,
     fields,
     answers: [],
     remarks,
@@ -827,6 +828,15 @@ export function buildFromGovernmentReview(
     fields.push({
       label: "حالة المفاتيح",
       value: keysLabels[submission.keysStatus] ?? submission.keysStatus,
+    });
+  }
+  if (submission.keyHandedToInspector) {
+    fields.push({
+      label: "تسليم المفتاح للمعاين",
+      value:
+        submission.keyHandedToInspector === "yes"
+          ? "نعم — تم التسليم"
+          : "لا — لم يُسلَّم بعد",
     });
   }
   if (submission.propertyZoneStatus?.trim()) {
@@ -892,6 +902,7 @@ export function buildFromGovernmentReview(
     taskStatusLabel: childTask
       ? workflowStatusLabel(childTask.status)
       : undefined,
+    submittedAtUtc: submission.submittedAtUtc,
     fields,
     answers: [],
     remarks,
@@ -979,6 +990,7 @@ export function buildFromValuationCoordination(
     taskStatusLabel: childTask
       ? workflowStatusLabel(childTask.status)
       : undefined,
+    submittedAtUtc: submission.submittedAtUtc,
     fields,
     answers: [],
     remarks,
@@ -1023,6 +1035,8 @@ export function buildCoordinatorSubmission(
     hasData,
     emptyReason: hasData ? undefined : "لم يُقدَّم بعد",
     taskStatusLabel: child ? workflowStatusLabel(child.status) : undefined,
+    submittedAtUtc:
+      child?.status === "completed" ? child.updatedAt || null : null,
     fields,
     answers: [],
     remarks: [],

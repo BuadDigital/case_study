@@ -90,6 +90,8 @@ type Props = {
   parentFormTaskId?: string;
   /** مقيم — إجابات استدلالية للأخصائي وليست نهائية في نموذج الدراسة */
   partyAdvisory?: boolean;
+  /** قفل العرض (مثلاً بعد إتمام مهمة الطرف) — رمادي وغير قابل للتعديل */
+  forceReadOnly?: boolean;
 };
 
 function RemarksBlock({
@@ -206,18 +208,22 @@ function SpecialistClosingCards({
   reportModel: ReturnType<typeof buildCaseStudyReportModel>;
 }) {
   return (
-    <>
+    // Keep report actions usable after submit — parent form uses pointer-events-none when read-only.
+    <div
+      data-report-section
+      className="pointer-events-auto select-auto space-y-3 [&_button]:cursor-pointer"
+    >
       <RegistrationFormCard title="الاعتماد والتوقيع">
         <CaseStudyApprovalSection approval={reportModel.approval} />
       </RegistrationFormCard>
       <RegistrationFormCard title="التقرير النهائي">
         <p className="mb-3 text-xs leading-relaxed text-text-2">
           يُعبّأ التقرير تلقائياً من إجابات النموذج وبيانات النظام (الصك، أمر
-          العمل، التاريخ، المعتمد).
+          العمل، التاريخ، المعتمد). يمكنك معاينته أو تحميله حتى بعد رفع النموذج.
         </p>
         <CaseStudyReportActions model={reportModel} />
       </RegistrationFormCard>
-    </>
+    </div>
   );
 }
 
@@ -247,6 +253,7 @@ export function CaseStudyForm({
   partyChildTaskId,
   parentFormTaskId,
   partyAdvisory = false,
+  forceReadOnly = false,
 }: Props) {
   const isParty = variant === "party" && partyId && partyChildTaskId;
   const viewerPartyId: CaseStudyInfoPartyId = isParty ? partyId! : "specA";
@@ -345,6 +352,7 @@ export function CaseStudyForm({
 
   const canEditKey = useCallback(
     (key: string) => {
+      if (forceReadOnly) return false;
       if (!isParty && draft.status === "submitted") return false;
       if (isParty && (draft.status === "submitted" || parentFormSubmitted)) {
         return false;
@@ -354,7 +362,14 @@ export function CaseStudyForm({
       }
       return canPartyAnswerQuestion(infoRolesMatrix, key, viewerPartyId);
     },
-    [isParty, viewerPartyId, infoRolesMatrix, draft.status, parentFormSubmitted],
+    [
+      forceReadOnly,
+      isParty,
+      viewerPartyId,
+      infoRolesMatrix,
+      draft.status,
+      parentFormSubmitted,
+    ],
   );
 
   const hasPartyVisibleNonDeedSections = useMemo(() => {
@@ -728,7 +743,8 @@ export function CaseStudyForm({
   const isPartyVariant = variant === "party";
   const showFormStepChrome = !partyAdvisory && !isPartyVariant;
   const isFormReadOnly = Boolean(
-    (!isParty && draft.status === "submitted") ||
+    forceReadOnly ||
+      (!isParty && draft.status === "submitted") ||
       (isParty && (draft.status === "submitted" || parentFormSubmitted)),
   );
 
@@ -804,12 +820,20 @@ export function CaseStudyForm({
     <div
       className={cn(
         "flex flex-col gap-3",
+        isFormReadOnly &&
+          "select-none rounded-[10px] bg-[#F1F5F9] p-3 pointer-events-none [&_button]:cursor-not-allowed [&_[data-report-section]]:pointer-events-auto [&_[data-report-section]_button]:cursor-pointer",
         partyAdvisory &&
           "mt-0 gap-4 [&_[data-registration-card]]:overflow-hidden [&_[data-registration-card]]:rounded-xl [&_[data-registration-card]]:border [&_[data-registration-card]]:border-border [&_[data-registration-card]]:shadow-sm [&_[data-registration-card]_div:last-child]:p-0",
       )}
+      aria-disabled={isFormReadOnly || undefined}
     >
       {showFormStepChrome ? (
-        <div className="mb-3.5 flex flex-wrap items-stretch gap-3.5 border-b border-border">
+        <div
+          className={cn(
+            "mb-3.5 flex flex-wrap items-stretch gap-3.5 border-b border-border",
+            isFormReadOnly && "pointer-events-auto",
+          )}
+        >
           <nav
             className="flex min-w-0 flex-1 flex-nowrap gap-2 overflow-x-auto"
             aria-label="خطوات نموذج الدراسة"
@@ -852,9 +876,11 @@ export function CaseStudyForm({
 
       {isFormReadOnly ? (
         <Note tone="success">
-          {isParty
-            ? "تم رفع نموذج دراسة الحالة — إجاباتك للعرض فقط ولا يمكن التعديل."
-            : "تم رفع النموذج للنظام — العرض للقراءة فقط ولا يمكن تعديل الإجابات أو الملاحظات."}
+          {forceReadOnly
+            ? "المهمة مكتملة — الأسئلة للعرض فقط ولا يمكن التعديل."
+            : isParty
+              ? "تم رفع نموذج دراسة الحالة — إجاباتك للعرض فقط ولا يمكن التعديل."
+              : "تم رفع النموذج للنظام — العرض للقراءة فقط ولا يمكن تعديل الإجابات أو الملاحظات."}
         </Note>
       ) : null}
 

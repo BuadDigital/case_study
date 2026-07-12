@@ -68,7 +68,7 @@ export function GovernmentReviewPropertyTaskList({
                   </span>
                   <span className="flex shrink-0 items-center gap-2">
                     <Badge tone={open ? "warning" : "success"}>
-                      {open ? "مفتوحة" : "منجزة"}
+                      {open ? "قيد الإجراء" : "منجزة"}
                     </Badge>
                     <span
                       className="text-sm text-text-3 opacity-0 transition-opacity group-hover:opacity-100"

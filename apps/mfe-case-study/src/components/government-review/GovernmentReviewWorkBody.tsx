@@ -7,6 +7,7 @@ import {
   InlineLoadingSkeleton,
   Label,
   Note,
+  cn,
   useToast,
 } from "@platform/design-system";
 import {
@@ -17,9 +18,11 @@ import { RegistrationFormCard } from "@platform/app-shared/registration/Registra
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import { usePoRecordQuery } from "../../query/case-study-queries";
 import {
+  governmentReviewKeyHandedToInspectorLabel,
   governmentReviewKeysStatusLabel,
   governmentReviewVisitStatusLabel,
   isGovernmentReviewFormLocked,
+  type GovernmentReviewKeyHandedToInspector,
   type GovernmentReviewKeysStatus,
   type GovernmentReviewSubmission,
   type GovernmentReviewVisitStatus,
@@ -32,10 +35,12 @@ import {
 } from "../../lib/prototype/government-review-work-storage";
 import {
   canFinalizeGovernmentReview,
+  isGovernmentReviewAwaitingKeyHandoff,
   isGovernmentReviewAwaitingVisit,
 } from "../../lib/prototype/government-review-work-data";
 import {
   firstGovernmentReviewError,
+  validateGovernmentReviewKeyHandoffPendingSave,
   validateGovernmentReviewPendingSave,
   validateGovernmentReviewSubmission,
   type GovernmentReviewFieldErrors,
@@ -75,6 +80,20 @@ const KEYS_OPTIONS: {
   { value: "received", label: governmentReviewKeysStatusLabel("received") },
   { value: "pending", label: governmentReviewKeysStatusLabel("pending") },
   { value: "not_required", label: governmentReviewKeysStatusLabel("not_required") },
+];
+
+const KEY_HANDED_OPTIONS: {
+  value: GovernmentReviewKeyHandedToInspector;
+  label: string;
+}[] = [
+  {
+    value: "yes",
+    label: governmentReviewKeyHandedToInspectorLabel("yes"),
+  },
+  {
+    value: "no",
+    label: governmentReviewKeyHandedToInspectorLabel("no"),
+  },
 ];
 
 export function GovernmentReviewWorkBody({
@@ -138,6 +157,7 @@ export function GovernmentReviewWorkBody({
     if (!draft || locked) return false;
 
     const awaitingVisit = isGovernmentReviewAwaitingVisit(draft.visitStatus);
+    const awaitingKeyHandoff = isGovernmentReviewAwaitingKeyHandoff(draft);
 
     if (awaitingVisit) {
       const errors = validateGovernmentReviewPendingSave(draft);
@@ -175,8 +195,45 @@ export function GovernmentReviewWorkBody({
       }
     }
 
-    if (!canFinalizeGovernmentReview(draft.visitStatus)) {
-      const message = "حدّد «تمت الزيارة» لإتمام المراجعة";
+    if (awaitingKeyHandoff) {
+      const errors = validateGovernmentReviewKeyHandoffPendingSave(draft);
+      setFieldErrors(errors);
+      if (Object.keys(errors).length > 0) {
+        const message = firstGovernmentReviewError(errors);
+        setFormError(message);
+        showToast(message, "error");
+        return false;
+      }
+
+      hostRef.current?.onSavingChange?.(true);
+      setFormError(null);
+      try {
+        const saved = await saveGovernmentReviewSubmission(draft);
+        setDraft(saved);
+        showToast(
+          "تم الحفظ — المعاملة قيد التنفيذ حتى تسليم المفتاح للمعاين الميداني",
+          "success",
+        );
+        hostRef.current?.onPendingSaved?.();
+        return true;
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error
+            ? err.message
+            : "تعذّر حفظ المراجعة — حاول مرة أخرى";
+        setFormError(message);
+        showToast(message, "error");
+        return false;
+      } finally {
+        hostRef.current?.onSavingChange?.(false);
+      }
+    }
+
+    if (!canFinalizeGovernmentReview(draft)) {
+      const message =
+        draft.visitStatus !== "completed"
+          ? "حدّد «تمت الزيارة» لإتمام المراجعة"
+          : "حدّد هل تم تسليم المفتاح للمعاين الميداني — اختر «نعم» للإتمام أو «لا» للحفظ قيد التنفيذ";
       setFormError(message);
       showToast(message, "error");
       return false;
@@ -220,15 +277,19 @@ export function GovernmentReviewWorkBody({
     };
     hostRef.current.getFooterSaveLabel = () => {
       if (!draft || locked) return "حفظ وإتمام المراجعة";
-      return isGovernmentReviewAwaitingVisit(draft.visitStatus)
-        ? "حفظ والانتظار"
-        : "حفظ وإتمام المراجعة";
+      if (isGovernmentReviewAwaitingVisit(draft.visitStatus)) {
+        return "حفظ والانتظار";
+      }
+      if (isGovernmentReviewAwaitingKeyHandoff(draft)) {
+        return "حفظ — قيد التنفيذ";
+      }
+      return "حفظ وإتمام المراجعة";
     };
   }, [hostRef, submit, draft, locked]);
 
   useEffect(() => {
     hostRef.current?.onVisitStatusChange?.();
-  }, [draft?.visitStatus, hostRef]);
+  }, [draft?.visitStatus, draft?.keyHandedToInspector, hostRef]);
 
   if (!draft) {
     return <InlineLoadingSkeleton />;
@@ -239,7 +300,9 @@ export function GovernmentReviewWorkBody({
     draft.visitStatus === "blocked" ||
     (draft.visitStatus === "completed" && draft.keysStatus === "pending");
   const showKeysDescription = draft.keysStatus === "received";
-  const showCompletionConfirm = draft.visitStatus === "completed";
+  const showKeyHandoff = draft.visitStatus === "completed";
+  const showCompletionConfirm =
+    draft.visitStatus === "completed" && draft.keyHandedToInspector === "yes";
 
   return (
     <>
@@ -255,7 +318,14 @@ export function GovernmentReviewWorkBody({
         </Note>
       ) : null}
 
-      <fieldset disabled={formDisabled} className="contents">
+      <fieldset
+        disabled={formDisabled}
+        className={cn(
+          "m-0 min-w-0 border-0 p-0",
+          formDisabled &&
+            "pointer-events-none select-none rounded-[10px] bg-[#F1F5F9] p-3 opacity-70 grayscale-[0.35]",
+        )}
+      >
         <RegistrationFormCard title="زيارة المحكمة">
           <FormGroup className="mb-3 flex flex-col gap-1">
             <Label className="text-[11px] font-semibold text-text-2">حالة الزيارة</Label>
@@ -388,6 +458,48 @@ export function GovernmentReviewWorkBody({
               }}
             />
           ) : null}
+
+          {showKeyHandoff ? (
+            <FormGroup className="mb-3 mt-3 flex flex-col gap-1">
+              <Label className="text-[11px] font-semibold text-text-2">
+                هل تم تسليم المفتاح للمعاين الميداني؟
+              </Label>
+              <div className={RADIO_GROUP}>
+                {KEY_HANDED_OPTIONS.map((opt) => (
+                  <label key={opt.value} className={RADIO_OPT}>
+                    <input
+                      type="radio"
+                      name="gov-key-handed"
+                      checked={draft.keyHandedToInspector === opt.value}
+                      onChange={() => {
+                        persist({ keyHandedToInspector: opt.value });
+                        setFieldErrors((prev) => {
+                          const next = { ...prev };
+                          delete next.keyHandedToInspector;
+                          delete next.confirmed;
+                          return next;
+                        });
+                      }}
+                    />{" "}
+                    {opt.label}
+                  </label>
+                ))}
+              </div>
+              {fieldErrors.keyHandedToInspector ? (
+                <p className="mt-1 text-[10px] text-danger-text" role="alert">
+                  {fieldErrors.keyHandedToInspector}
+                </p>
+              ) : (
+                <p className="m-0 mt-1 text-[11px] leading-relaxed text-text-3">
+                  {draft.keyHandedToInspector === "no"
+                    ? "المعاملات تبقى «قيد التنفيذ» حتى تسليم المفتاح للمعاين."
+                    : draft.keyHandedToInspector === "yes"
+                      ? "بعد التأكيد يمكن إتمام المراجعة الحكومية."
+                      : "اختر «نعم» لإتمام المعاملة أو «لا» لإبقائها قيد التنفيذ."}
+                </p>
+              )}
+            </FormGroup>
+          ) : null}
         </RegistrationFormCard>
 
         <RegistrationFormCard title="بيانات الرفع لإنفاذ (المراجع)">
@@ -446,11 +558,12 @@ export function GovernmentReviewWorkBody({
             </label>
             ) : (
               <p className="m-0 text-[11px] leading-relaxed text-text-3">
-                عند اختيار «بانتظار الموعد» أو «تعذر الوصول» يُحفظ العمل
-                بالانتظار — لإتمام المراجعة عد لاحقاً واختر «تمت الزيارة».
+                {draft.visitStatus === "completed" &&
+                draft.keyHandedToInspector === "no"
+                  ? "المفتاح لم يُسلَّم بعد — احفظ لإبقاء المعاملة قيد التنفيذ، ثم اختر «نعم» بعد التسليم لإتمامها."
+                  : "عند اختيار «بانتظار الموعد» أو «تعذر الوصول» يُحفظ العمل بالانتظار — لإتمام المراجعة عد لاحقاً واختر «تمت الزيارة» وسَلِّم المفتاح للمعاين."}
               </p>
-            )}
-            {fieldErrors.confirmed ? (
+            )}            {fieldErrors.confirmed ? (
               <p className="mt-1 text-[10px] text-danger-text" role="alert">
                 {fieldErrors.confirmed}
               </p>

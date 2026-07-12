@@ -179,18 +179,6 @@ export function PoPropertyBourseForm({
             value={property.area}
             onChange={(v) => onPatch("area", v)}
           />
-          <RegField
-            id="build_license"
-            label="رقم رخصة البناء"
-            value={property.buildLicenseNumber}
-            onChange={(v) => onPatch("buildLicenseNumber", v)}
-          />
-          <RegField
-            id="subdivision_record"
-            label="رقم محضر التجزئة"
-            value={property.subdivisionRecordNumber}
-            onChange={(v) => onPatch("subdivisionRecordNumber", v)}
-          />
           {showDeedVitalityFlow ? null : (
             <RegSelect
               id="deed_status"

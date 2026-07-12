@@ -29,7 +29,7 @@ public class InspectorFeeService : IInspectorFeeService
         CancellationToken cancellationToken = default)
     {
         var feeTasks = tasks
-            .Where(t => t.Kind is "field-inspection" or "engineering-survey")
+            .Where(t => t.Kind is "field-inspection" or "engineering-survey" or "government-review")
             .ToList();
         if (feeTasks.Count == 0) return;
 
@@ -46,9 +46,7 @@ public class InspectorFeeService : IInspectorFeeService
             if (existingSet.Contains(task.Id)) continue;
 
             var partyType = await ResolvePartyTypeAsync(task, cancellationToken);
-            var agreedFee = task.Kind == "engineering-survey"
-                ? EngineeringSurveyFeeRules.DefaultAgreedFee(partyType)
-                : InspectorFeeRules.DefaultAgreedFee(partyType);
+            var agreedFee = DefaultFeeForKind(task.Kind, partyType);
 
             _db.InspectorFeeLedgers.Add(new InspectorFeeLedger
             {
@@ -74,6 +72,14 @@ public class InspectorFeeService : IInspectorFeeService
 
         await _db.SaveChangesAsync(cancellationToken);
     }
+
+    private static decimal DefaultFeeForKind(string kind, string partyType) =>
+        kind switch
+        {
+            "engineering-survey" => EngineeringSurveyFeeRules.DefaultAgreedFee(partyType),
+            "government-review" => GovernmentReviewFeeRules.DefaultAgreedFee(partyType),
+            _ => InspectorFeeRules.DefaultAgreedFee(partyType),
+        };
 
     public async Task<InspectorFeesSummaryDto> GetSummaryAsync(
         string? assigneeId,
@@ -233,7 +239,7 @@ public class InspectorFeeService : IInspectorFeeService
 
         if (request.AgreedFeeSar.HasValue)
         {
-            if (!string.Equals(ledger.InspectorType, "موظف", StringComparison.Ordinal))
+            if (!InspectorFeeRules.IsEmployee(ledger.InspectorType))
                 return null;
             ledger.AgreedFeeSar = Math.Max(0m, request.AgreedFeeSar.Value);
         }
@@ -691,7 +697,10 @@ public class InspectorFeeService : IInspectorFeeService
     private async Task BackfillMissingLedgersAsync(CancellationToken cancellationToken)
     {
         var feeTasks = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t => t.Kind == "field-inspection" || t.Kind == "engineering-survey")
+            .Where(t =>
+                t.Kind == "field-inspection"
+                || t.Kind == "engineering-survey"
+                || t.Kind == "government-review")
             .ToListAsync(cancellationToken);
         if (feeTasks.Count == 0) return;
 
@@ -738,7 +747,7 @@ public class InspectorFeeService : IInspectorFeeService
             return "done";
         }
 
-        if (task.Kind == "engineering-survey" &&
+        if (task.Kind is "engineering-survey" or "government-review" &&
             submissions.TryGetValue(task.Id, out var submission) &&
             submission.Status == PartyTaskSubmissionStatus.Submitted)
         {
@@ -897,25 +906,37 @@ public class InspectorFeeService : IInspectorFeeService
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(task.AssigneeId))
-            return "موظف";
+            return InspectorFeeRules.TypeEmployee;
 
         var aid = task.AssigneeId.Trim();
         var profile = await _db.UserProfiles.AsNoTracking()
             .Include(p => p.HrEmployee)
+            .Include(p => p.ProcProvider)
             .FirstOrDefaultAsync(p => p.DistributionAssigneeId == aid, cancellationToken);
 
         if (profile is not null)
         {
-            if (profile.ContractType == ContractType.Freelance)
-                return "متعاون";
-            if (profile.HrEmployee?.EmploymentType?.Contains("متعاون", StringComparison.Ordinal) == true)
-                return "متعاون";
-            return "موظف";
+            if (profile.ContractType == ContractType.ServiceProvider
+                || profile.ProcProvider?.ProviderKind == ProcProviderKind.Organization)
+            {
+                return InspectorFeeRules.TypeCooperatorOrganization;
+            }
+
+            if (profile.ContractType == ContractType.Freelance
+                || profile.ProcProvider?.ProviderKind == ProcProviderKind.Individual
+                || profile.HrEmployee?.EmploymentType?.Contains("متعاون", StringComparison.Ordinal) == true)
+            {
+                return InspectorFeeRules.TypeCooperatorIndividual;
+            }
+
+            return InspectorFeeRules.TypeEmployee;
         }
 
-        return task.Kind == "engineering-survey"
-            ? EngineeringSurveyFeeRules.ResolveOfficeType(aid)
-            : InspectorFeeRules.ResolveInspectorType(aid);
+        return task.Kind switch
+        {
+            "engineering-survey" => EngineeringSurveyFeeRules.ResolveOfficeType(aid),
+            _ => InspectorFeeRules.ResolveInspectorType(aid),
+        };
     }
 
     private static InspectorFeesSummaryDto EmptySummary() => new()

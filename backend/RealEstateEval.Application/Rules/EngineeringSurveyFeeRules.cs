@@ -1,5 +1,8 @@
 namespace RealEstateEval.Application.Rules;
 
+/// <summary>
+/// Default engineering-survey fees. External offices treat as متعاون شركة.
+/// </summary>
 public static class EngineeringSurveyFeeRules
 {
     public const decimal ExternalOfficeFeeSar = 500m;
@@ -13,11 +16,18 @@ public static class EngineeringSurveyFeeRules
 
     public static string ResolveOfficeType(string? assigneeId) =>
         assigneeId is not null && ExternalOfficeAssigneeIds.Contains(assigneeId.Trim())
-            ? "متعاون"
-            : "موظف";
+            ? InspectorFeeRules.TypeCooperatorOrganization
+            : InspectorFeeRules.TypeEmployee;
 
     public static decimal DefaultAgreedFee(string officeType) =>
-        officeType == "متعاون" ? ExternalOfficeFeeSar : InternalOfficeFeeSar;
+        officeType switch
+        {
+            InspectorFeeRules.TypeCooperatorOrganization
+                or InspectorFeeRules.TypeCooperatorLegacy
+                or InspectorFeeRules.TypeCooperatorIndividual
+                => ExternalOfficeFeeSar,
+            _ => InternalOfficeFeeSar,
+        };
 
     public static decimal NetFee(decimal agreedFeeSar, decimal supervisorDiscountSar) =>
         InspectorFeeRules.NetFee(agreedFeeSar, supervisorDiscountSar);
