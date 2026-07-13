@@ -44,12 +44,12 @@ export function PartyDisbursementRequest({
     if (sort === "fee") copy.sort((a, b) => b.netFeeSar - a.netFeeSar);
     else if (sort === "idate") {
       copy.sort((a, b) =>
-        (a.poReceivedAtUtc ?? "").localeCompare(b.poReceivedAtUtc ?? ""),
+        (b.poReceivedAtUtc ?? "").localeCompare(a.poReceivedAtUtc ?? ""),
       );
     } else {
       copy.sort((a, b) =>
-        (a.workSubmittedAtUtc ?? a.updatedAtUtc ?? "").localeCompare(
-          b.workSubmittedAtUtc ?? b.updatedAtUtc ?? "",
+        (b.workSubmittedAtUtc ?? b.updatedAtUtc ?? "").localeCompare(
+          a.workSubmittedAtUtc ?? a.updatedAtUtc ?? "",
         ),
       );
     }
@@ -112,6 +112,9 @@ export function PartyDisbursementRequest({
           });
         }
         setSelected(new Set());
+        await queryClient.invalidateQueries({
+          queryKey: [...prototypeKeys.all, "inspector-fees"],
+        });
         return;
       }
       showToast(
@@ -127,7 +130,12 @@ export function PartyDisbursementRequest({
   };
 
   if (rows.length === 0) {
-    return <EmptyState line="لا عقارات جاهزة للصرف حالياً." />;
+    return (
+      <EmptyState
+        line="لا عقارات جاهزة لإنشاء أمر صرف."
+        hint="تظهر هنا بعد اعتماد المشرف (حالة «جاهز للصرف لدى المالية»). الأتعاب نفسها تظهر بعد اكتمال دراسة الحالة للصك."
+      />
+    );
   }
 
   return (

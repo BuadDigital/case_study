@@ -59,6 +59,7 @@ export function RegField({
   error,
   hint,
   maxLength,
+  readOnly,
 }: {
   id: string;
   label: string;
@@ -67,12 +68,13 @@ export function RegField({
   placeholder?: string;
   inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
   value: string;
-  onChange: (value: string) => void;
+  onChange?: (value: string) => void;
   className?: string;
   dir?: "ltr" | "rtl";
   error?: string;
   hint?: string;
   maxLength?: number;
+  readOnly?: boolean;
 }) {
   const describedBy = [hint ? `${id}-hint` : null, error ? `${id}-error` : null]
     .filter(Boolean)
@@ -94,7 +96,10 @@ export function RegField({
         inputMode={inputMode}
         value={value}
         dir={dir}
-        onChange={(e) => onChange(e.target.value)}
+        readOnly={readOnly}
+        onChange={
+          readOnly || !onChange ? undefined : (e) => onChange(e.target.value)
+        }
         autoComplete="off"
         maxLength={maxLength}
         aria-invalid={error ? true : undefined}

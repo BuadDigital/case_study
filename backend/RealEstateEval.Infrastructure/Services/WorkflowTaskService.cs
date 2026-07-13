@@ -78,9 +78,9 @@ public class WorkflowTaskService : IWorkflowTaskService
     private IQueryable<WorkflowTask> OrderedTaskQuery() =>
         _db.WorkflowTasks
             .AsNoTracking()
-            .OrderBy(t => t.PoNumber)
-            .ThenBy(t => t.PropertyOrdinal)
-            .ThenBy(t => t.CreatedAtUtc);
+            .OrderByDescending(t => t.CreatedAtUtc)
+            .ThenBy(t => t.PoNumber)
+            .ThenBy(t => t.PropertyOrdinal);
 
     public async Task<IReadOnlyList<WorkflowTaskDto>> SyncFromWorkOrdersAsync(
         CancellationToken cancellationToken = default)
@@ -265,10 +265,6 @@ public class WorkflowTaskService : IWorkflowTaskService
             await _timeline.RecordManyAsync(timelineEvents, cancellationToken);
         }
 
-        await _inspectorFees.EnsureLedgersForTasksAsync(
-            children.Where(c => c.Kind is "field-inspection" or "engineering-survey" or "government-review"),
-            cancellationToken);
-
         await NotifyDistributionAssignedAsync(parent, children, deed, cancellationToken);
 
         return (new ConfirmTaskDistributionResponseDto
@@ -338,6 +334,10 @@ public class WorkflowTaskService : IWorkflowTaskService
         var entity = await _db.WorkflowTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
         if (entity is null) return null;
 
+        var wasCaseStudyCompleted =
+            string.Equals(entity.Kind, CaseStudyPropertyKind, StringComparison.OrdinalIgnoreCase)
+            && entity.Status == WorkflowTaskStatus.Completed;
+
         if (request.Phase is not null) entity.Phase = request.Phase;
         if (request.Status is not null) entity.Status = request.Status;
         if (request.Title is not null) entity.Title = request.Title;
@@ -366,6 +366,17 @@ public class WorkflowTaskService : IWorkflowTaskService
 
         entity.UpdatedAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
+
+        var nowCaseStudyCompleted =
+            string.Equals(entity.Kind, CaseStudyPropertyKind, StringComparison.OrdinalIgnoreCase)
+            && entity.Status == WorkflowTaskStatus.Completed;
+        if (!wasCaseStudyCompleted
+            && nowCaseStudyCompleted
+            && entity.PropertyId is Guid feePropertyId)
+        {
+            await _inspectorFees.EnsureLedgersForPropertyAsync(feePropertyId, cancellationToken);
+        }
+
         return WorkflowTaskMapper.ToDto(entity);
     }
 

@@ -137,7 +137,7 @@ public static class InspectorFeeBillingRules
 
     public static string StatusLabel(string? status) => status switch
     {
-        InspectorFeeBillingStatus.Draft => "مسودة لدى المكتب",
+        InspectorFeeBillingStatus.Draft => "مسودة",
         InspectorFeeBillingStatus.SupReview => "بانتظار اعتماد المشرف",
         InspectorFeeBillingStatus.AtFinance => "جاهز للصرف (لدى المالية)",
         InspectorFeeBillingStatus.DisbReq => "ضمن أمر صرف",

@@ -31,6 +31,7 @@ import { useInspectorFeesQuery } from "./inspector-fees-queries";
 function feesTaskKindForRole(role: RoleId): string | undefined {
   if (role === "field-inspector") return "field-inspection";
   if (role === "engineering-office") return "engineering-survey";
+  if (role === "government-reviewer") return "government-review";
   return undefined;
 }
 
@@ -73,7 +74,10 @@ export function useActiveTransactionPageSituation(
       taskKind: feesTaskKind,
     },
     {
-      enabled: isFeesPage && (isSupervisorFees || Boolean(feesTaskKind && feesAssigneeId)),
+      enabled:
+        Boolean(cards) &&
+        isFeesPage &&
+        (isSupervisorFees || Boolean(feesTaskKind && feesAssigneeId)),
     },
   );
 

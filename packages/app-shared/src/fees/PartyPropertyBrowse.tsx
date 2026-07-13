@@ -7,10 +7,6 @@ import {
   EmptyState,
   Input,
   SkeletonTableRows,
-  StatCard,
-  StatGrid,
-  StatLabel,
-  StatValue,
   Table,
   TBody,
   Td,
@@ -25,7 +21,7 @@ import {
   inspectorFeeWorkStatusTone,
   type InspectorFeeRowDto,
 } from "@platform/api-client";
-import { formatFeeDate } from "./party-fee-meta";
+import { formatFeeDate, sortInspectorFeeRowsNewestFirst } from "./party-fee-meta";
 import { PartyPickerModal } from "./PartyPickerModal";
 import { FeeAuditModal } from "./FeeAuditModal";
 import type { PartyFeeGroup } from "./party-fee-meta";
@@ -141,14 +137,16 @@ export function PartyPropertyBrowse({
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return rows.filter((row) => {
-      if (!matchesFilter(row, filter)) return false;
-      if (!q) return true;
-      return (
-        row.propertyLabel.toLowerCase().includes(q) ||
-        row.poNumber.toLowerCase().includes(q)
-      );
-    });
+    return sortInspectorFeeRowsNewestFirst(
+      rows.filter((row) => {
+        if (!matchesFilter(row, filter)) return false;
+        if (!q) return true;
+        return (
+          row.propertyLabel.toLowerCase().includes(q) ||
+          row.poNumber.toLowerCase().includes(q)
+        );
+      }),
+    );
   }, [filter, rows, search]);
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -194,29 +192,6 @@ export function PartyPropertyBrowse({
           />
         </div>
       ) : null}
-
-      <StatGrid className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
-        <StatCard accent="gray">
-          <StatLabel>إجمالي العقارات</StatLabel>
-          <StatValue value={counts.all} className="text-xl" />
-        </StatCard>
-        <StatCard accent="warn">
-          <StatLabel>قيد التنفيذ</StatLabel>
-          <StatValue value={counts.progress} className="text-xl" />
-        </StatCard>
-        <StatCard accent="blue">
-          <StatLabel>جاهز للصرف</StatLabel>
-          <StatValue value={counts.ready} className="text-xl" />
-        </StatCard>
-        <StatCard accent="green">
-          <StatLabel>مصروفة</StatLabel>
-          <StatValue value={counts.disbursed} className="text-xl" />
-        </StatCard>
-        <StatCard accent="red">
-          <StatLabel>مُعادة/استفسار</StatLabel>
-          <StatValue value={counts.returned} className="text-xl" />
-        </StatCard>
-      </StatGrid>
 
       <div className="flex flex-wrap gap-2">
         {(Object.keys(FILTER_LABELS) as BrowseFilter[]).map((key) => (

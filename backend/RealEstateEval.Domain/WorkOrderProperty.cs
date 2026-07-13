@@ -6,7 +6,12 @@ public class WorkOrderProperty
     public Guid WorkOrderId { get; set; }
     public PropertyIdentifierType IdentifierType { get; set; }
     public string DeedNumber { get; set; } = "";
-    public string? TaskNumber { get; set; }
+    /// <summary>رقم الطلب (كان سابقاً رقم المهمة).</summary>
+    public string? RequestNumber { get; set; }
+    /// <summary>رقم التكليف — بيانات أولية إلزامية.</summary>
+    public string? AssignmentMandateNumber { get; set; }
+    /// <summary>تاريخ التكليف — بيانات أولية إلزامية (yyyy-MM-dd).</summary>
+    public string? AssignmentMandateDate { get; set; }
     public string? DeedDate { get; set; }
     public string? OwnerName { get; set; }
     /// <summary>yes / no — القيود على العقار (مرحلة البورصة).</summary>
@@ -37,8 +42,12 @@ public class WorkOrderProperty
     public string? RealEstateRegFileName { get; set; }
     public bool BourseDataCompleted { get; set; }
     public DateTime? BourseCompletedAtUtc { get; set; }
-    public string? BuildLicenseNumber { get; set; }
-    public string? SubdivisionRecordNumber { get; set; }
+    /// <summary>رقم المخطط — بيانات أولية.</summary>
+    public string? PlanNumber { get; set; }
+    /// <summary>رقم القطعة — بيانات أولية.</summary>
+    public string? PlotNumber { get; set; }
+    /// <summary>رابط خريطة الموقع — مطلوب لفتح العشوائيات.</summary>
+    public string? LocationMapUrl { get; set; }
 
     public WorkOrder? WorkOrder { get; set; }
     public ICollection<PropertyContact> Contacts { get; set; } = [];

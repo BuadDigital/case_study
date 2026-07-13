@@ -43,9 +43,9 @@ export function PoPropertyStackCard({
           <span className="break-all text-[13px] font-semibold text-text" dir="ltr">
             {deedLabel}
           </span>
-          {property.taskNumber ? (
+          {property.requestNumber ? (
             <span className="text-[11px] text-text-3">
-              مهمة: {property.taskNumber}
+              طلب: {property.requestNumber}
             </span>
           ) : null}
         </div>

@@ -2,7 +2,11 @@ import type { RoleId } from "@platform/types";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 
 export function canReceivePo(role: RoleId): boolean {
-  return isSuperAdmin(role) || role === "section-supervisor";
+  return (
+    isSuperAdmin(role) ||
+    role === "section-supervisor" ||
+    role === "case-specialist"
+  );
 }
 
 export function canEditPoHeader(role: RoleId): boolean {

@@ -19,6 +19,7 @@ public class PlatformPermissionCatalogTests
     [InlineData("case-specialist", "manage-attachments")]
     [InlineData("field-inspector", "submit-party-work")]
     [InlineData("financial-officer", "manage-financial")]
+    [InlineData("proc-admin", "manage-financial")]
     [InlineData("government-reviewer", "manage-operations")]
     [InlineData("real-estate-appraiser", "submit-valuation-report")]
     public void Prototype_role_grants_expected_capability(string role, string capability)
@@ -40,13 +41,24 @@ public class PlatformPermissionCatalogTests
 
     [Theory]
     [InlineData("government-reviewer", "failures")]
+    [InlineData("government-reviewer", "party-fees")]
     [InlineData("section-supervisor", "failures")]
+    [InlineData("proc-admin", "financial")]
     public void Prototype_role_grants_expected_page(string role, string page)
     {
         var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         PlatformPermissionCatalog.ApplyPrototypeRole(role, pages, capabilities);
         Assert.Contains(page, pages);
+    }
+
+    [Fact]
+    public void Case_specialist_excludes_all_transactions()
+    {
+        var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        PlatformPermissionCatalog.ApplyPrototypeRole("case-specialist", pages, capabilities);
+        Assert.DoesNotContain("all-transactions", pages);
     }
 
     [Theory]

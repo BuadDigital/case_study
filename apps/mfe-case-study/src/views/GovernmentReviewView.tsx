@@ -126,9 +126,11 @@ export function GovernmentReviewView() {
         courtLine: [court, circuit].filter(Boolean).join(" · ") || "—",
       });
     }
-    return list.sort((a, b) =>
-      a.deedLabel.localeCompare(b.deedLabel, "ar", { numeric: true }),
-    );
+    return list.sort((a, b) => {
+      const createdCmp = b.task.createdAt.localeCompare(a.task.createdAt);
+      if (createdCmp !== 0) return createdCmp;
+      return a.deedLabel.localeCompare(b.deedLabel, "ar", { numeric: true });
+    });
   }, [mine, poByNumber, reviewerScope]);
 
   const hasRail = false;

@@ -9,6 +9,10 @@ public interface IInspectorFeeService
         IEnumerable<WorkflowTask> tasks,
         CancellationToken cancellationToken = default);
 
+    Task EnsureLedgersForPropertyAsync(
+        Guid propertyId,
+        CancellationToken cancellationToken = default);
+
     Task<InspectorFeesSummaryDto> GetSummaryAsync(
         string? assigneeId,
         string? workflowTaskId,

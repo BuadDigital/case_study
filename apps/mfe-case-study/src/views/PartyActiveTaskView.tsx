@@ -57,6 +57,7 @@ function queueConfig(
     tableHint: def.tableHint,
     partyAssignee: true,
     assigneeRole: def.roleId,
+    queueSort: "newest-first",
     getBasePath: () => partyTaskPath(def.pageId),
     getTaskPath: (taskId) => partyTaskTaskPath(def.pageId, taskId),
     filterListed: baseFilter,
@@ -103,7 +104,7 @@ function queueConfig(
       fullPageTaskPath: valuationCoordinationWorkspacePath,
       statusColumnLabel: "الحالة",
       getTaskStatusBadge: (task) =>
-        valuationCoordinationTaskStatusBadge(task.id),
+        valuationCoordinationTaskStatusBadge(task.id, null, task.status),
       refreshOnWindowEvents: [VALUATION_COORDINATION_SUBMISSION_CHANGED_EVENT],
     };
   }

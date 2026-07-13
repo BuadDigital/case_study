@@ -1,9 +1,17 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { listWorkflowTasks } from "@platform/api-client";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
+import { loadPropertyListItems } from "@platform/app-shared/prototype/work-orders-read";
+import {
+  requireWorkOrdersApiConfig,
+  unwrapApiResult,
+} from "@platform/app-shared/prototype/work-orders-api-config";
 import { StatusBadge, Button, Note, ReportPageBody, StatCard, StatGrid, StatLabel, StatSkeleton, StatValue, SubpageHeader, SubpagePanel, SkeletonTableRows, Table, TBody, Td, Th, THead, Tr, useToast } from "@platform/design-system";
 import type { RoleId } from "@platform/types";
-import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import {
   useSubmitValuationImpedimentMutation,
   useSubmitValuationReportMutation,
@@ -19,6 +27,7 @@ function isValuationMgr(role: RoleId) {
 }
 
 export function ValuationRequestsView() {
+  const router = useRouter();
   const { role } = usePrototype();
   const { showToast } = useToast();
   const mgr = isValuationMgr(role);
@@ -26,6 +35,7 @@ export function ValuationRequestsView() {
   const { data: vr = [], isPending } = useValuationRequestsQuery();
   const submitReport = useSubmitValuationReportMutation();
   const submitImpediment = useSubmitValuationImpedimentMutation();
+  const [openingPropId, setOpeningPropId] = useState<string | null>(null);
   const done = vr.filter((v) => v.status === "done").length;
   const prog = vr.filter((v) => v.status === "progress").length;
   const failed = vr.filter((v) => v.status === "fail").length;
@@ -53,6 +63,37 @@ export function ValuationRequestsView() {
     showToast(result.message, "error");
   };
 
+  const handleViewRequest = async (propId: string) => {
+    setOpeningPropId(propId);
+    try {
+      const config = requireWorkOrdersApiConfig();
+      const result = await listWorkflowTasks(config);
+      const tasks = unwrapApiResult(result, "تعذّر تحميل مهام التقييم");
+      const appraisal = tasks.find(
+        (t) => t.kind === "property-appraisal" && t.propertyId === propId,
+      );
+      if (appraisal) {
+        router.push(`/property-appraisal/${encodeURIComponent(appraisal.id)}`);
+        return;
+      }
+
+      const items = await loadPropertyListItems();
+      const item = items.find((row) => row.propertyId === propId);
+      if (item) {
+        router.push(
+          `/po/${encodeURIComponent(item.poNumber)}/property/${encodeURIComponent(item.propertyId)}`,
+        );
+        return;
+      }
+
+      showToast("تعذّر فتح تفاصيل الطلب", "error");
+    } catch {
+      showToast("تعذّر فتح تفاصيل الطلب — حاول مرة أخرى", "error");
+    } finally {
+      setOpeningPropId(null);
+    }
+  };
+
   const statCards = ready
     ? [
         <StatCard key="active" accent="blue">
@@ -71,12 +112,8 @@ export function ValuationRequestsView() {
           <StatLabel>متعذرة</StatLabel>
           <StatValue value={failed} countUp />
         </StatCard>,
-        <StatCard key="appraisers">
-          <StatLabel>مقيمون متاحون</StatLabel>
-          <StatValue value={2} />
-        </StatCard>,
       ]
-    : Array.from({ length: 5 }, (_, index) => (
+    : Array.from({ length: 4 }, (_, index) => (
         <StatCard key={index} accent="gray">
           <StatSkeleton />
         </StatCard>
@@ -141,7 +178,13 @@ export function ValuationRequestsView() {
                       </>
                     ) : null}
                     {mgr && v.status === "progress" ? (
-                      <Button size="sm">عرض</Button>
+                      <Button
+                        size="sm"
+                        disabled={openingPropId === v.propId}
+                        onClick={() => void handleViewRequest(v.propId)}
+                      >
+                        عرض
+                      </Button>
                     ) : null}
                   </div>
                 </Td>

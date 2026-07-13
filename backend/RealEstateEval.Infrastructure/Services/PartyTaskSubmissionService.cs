@@ -1,4 +1,6 @@
+using System.Security.Claims;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
@@ -28,17 +30,23 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
     private readonly IWorkflowTaskService _tasks;
     private readonly IFieldInspectionAttachmentVerifier _fieldInspectionAttachments;
     private readonly IPropertyTimelineService _timeline;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IPermissionService _permissions;
 
     public PartyTaskSubmissionService(
         ApplicationDbContext db,
         IWorkflowTaskService tasks,
         IFieldInspectionAttachmentVerifier fieldInspectionAttachments,
-        IPropertyTimelineService timeline)
+        IPropertyTimelineService timeline,
+        IHttpContextAccessor httpContextAccessor,
+        IPermissionService permissions)
     {
         _db = db;
         _tasks = tasks;
         _fieldInspectionAttachments = fieldInspectionAttachments;
         _timeline = timeline;
+        _httpContextAccessor = httpContextAccessor;
+        _permissions = permissions;
     }
 
     public async Task<PartyTaskSubmissionDto?> GetAsync(
@@ -232,6 +240,10 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         CancellationToken cancellationToken)
     {
         var errors = ValidateForSubmit(entity);
+        var documentary = await ValidateDocumentaryGatesAsync(entity, cancellationToken);
+        foreach (var (key, message) in documentary)
+            errors[key] = message;
+
         if (errors.Count > 0 || entity.Kind != "field-inspection")
             return errors;
 
@@ -251,6 +263,158 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         }
 
         return errors;
+    }
+
+    private async Task<Dictionary<string, string>> ValidateDocumentaryGatesAsync(
+        PartyTaskSubmission entity,
+        CancellationToken cancellationToken)
+    {
+        var errors = new Dictionary<string, string>();
+        var bypass = await CurrentUserBypassesAsync(cancellationToken);
+
+        WorkOrderProperty? property = null;
+        if (entity.PropertyId is Guid propertyId)
+        {
+            property = await _db.WorkOrderProperties
+                .AsNoTracking()
+                .Include(p => p.Contacts)
+                .Include(p => p.WorkOrder)
+                .FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
+        }
+
+        var propertyIdStr = entity.PropertyId?.ToString() ?? "";
+        var hasActiveFailure = await _db.PropertyFailures.AsNoTracking().AnyAsync(
+            f => f.PoNumber == entity.PoNumber
+                && f.PropertyId == propertyIdStr
+                && PropertyFailureStatus.Active.Contains(f.Status),
+            cancellationToken);
+
+        using var doc = JsonDocument.Parse(entity.PayloadJson);
+        var root = doc.RootElement;
+
+        switch (entity.Kind)
+        {
+            case "engineering-survey":
+            {
+                var inspectionCompleted = false;
+                if (entity.PropertyId is Guid pid)
+                {
+                    var surveyTask = await _db.WorkflowTasks.AsNoTracking()
+                        .FirstOrDefaultAsync(t => t.Id == entity.WorkflowTaskId, cancellationToken);
+                    if (surveyTask?.ParentTaskId is Guid parentId)
+                    {
+                        inspectionCompleted = await _db.WorkflowTasks.AsNoTracking().AnyAsync(
+                            t => t.ParentTaskId == parentId
+                                && t.PropertyId == pid
+                                && t.Kind == "field-inspection"
+                                && t.Status == WorkflowTaskStatus.Completed,
+                            cancellationToken);
+                    }
+                }
+
+                var informalOk = property is null
+                    || DocumentaryWorkflowRules.InformalAccessUnlocked(
+                        property.PlanNumber,
+                        property.PlotNumber,
+                        property.LocationMapUrl);
+
+                var surveyBlock = DocumentaryWorkflowRules.SurveyWorkBlockReason(
+                    bypass,
+                    inspectionCompleted,
+                    hasActiveFailure,
+                    informalOk);
+                if (surveyBlock is not null)
+                    errors["_documentary"] = surveyBlock;
+
+                var hasPhone = property is not null
+                    && DocumentaryWorkflowRules.HasAnyPartyPhone(property.Contacts);
+                var phoneWasPresent = GetBool(root, "declarationPhoneSatisfied");
+                var phoneBlock = DocumentaryWorkflowRules.DeclarationPhoneBlockReason(
+                    bypass,
+                    hasPhone,
+                    phoneWasPresent);
+                if (phoneBlock is not null
+                    && (HasNonEmpty(root, "siteLetterFileName") || GetBool(root, "siteConfirmed")))
+                {
+                    errors["siteLetterFileName"] = phoneBlock;
+                }
+                break;
+            }
+
+            case "field-inspection":
+            {
+                if (property is not null)
+                {
+                    var informalBlock = DocumentaryWorkflowRules.InformalAccessBlockReason(
+                        bypass,
+                        property.PlanNumber,
+                        property.PlotNumber,
+                        property.LocationMapUrl);
+                    if (informalBlock is not null)
+                        errors["_documentary"] = informalBlock;
+                }
+
+                var vacantLand = GetBool(root, "vacantLand")
+                    || string.Equals(GetString(root, "vacantLand"), "yes", StringComparison.OrdinalIgnoreCase);
+                var keyAvailable = GetBool(root, "keyAvailable")
+                    || string.Equals(GetString(root, "keyHandedToInspector"), "yes", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(GetString(root, "keysStatus"), "received", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(GetString(root, "keysStatus"), "not_required", StringComparison.OrdinalIgnoreCase);
+
+                var keyBlock = DocumentaryWorkflowRules.InspectorSubmitKeyBlockReason(
+                    bypass,
+                    vacantLand,
+                    keyAvailable);
+                if (keyBlock is not null)
+                    errors["keyAvailable"] = keyBlock;
+
+                var hasPhone = property is not null
+                    && DocumentaryWorkflowRules.HasAnyPartyPhone(property.Contacts);
+                var phoneWasPresent = GetBool(root, "declarationPhoneSatisfied");
+                var phoneBlock = DocumentaryWorkflowRules.DeclarationPhoneBlockReason(
+                    bypass,
+                    hasPhone,
+                    phoneWasPresent);
+                if (phoneBlock is not null && GetBool(root, "clientDeclarationSigned"))
+                    errors["clientDeclarationSigned"] = phoneBlock;
+                break;
+            }
+
+            case "government-review":
+            {
+                if (property is null) break;
+                foreach (var (key, message) in DocumentaryWorkflowRules.GovernmentReviewSubmitFieldErrors(
+                             bypass,
+                             property.DeedNumber,
+                             property.RequestNumber,
+                             property.City,
+                             property.District,
+                             property.Circuit,
+                             property.WorkOrder?.PoNumber ?? entity.PoNumber,
+                             property.AssignmentMandateNumber,
+                             property.AssignmentMandateDate))
+                {
+                    errors[key] = message;
+                }
+                break;
+            }
+        }
+
+        return errors;
+    }
+
+    private async Task<bool> CurrentUserBypassesAsync(CancellationToken cancellationToken)
+    {
+        var userId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId)) return false;
+        var perms = await _permissions.GetForUserIdAsync(userId, cancellationToken);
+        return DocumentaryWorkflowRules.RoleBypassesDocumentaryGates(perms?.PrototypeRole);
+    }
+
+    private static string? GetString(JsonElement root, string name)
+    {
+        if (!root.TryGetProperty(name, out var prop)) return null;
+        return prop.ValueKind == JsonValueKind.String ? prop.GetString() : prop.ToString();
     }
 
     private async Task SyncFieldInspectionWorkspaceAsync(

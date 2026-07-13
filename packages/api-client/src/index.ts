@@ -71,6 +71,7 @@ export {
   stopWorkOrder,
   updateWorkOrderHeader,
   updateWorkOrderProperty,
+  updateWorkOrderPropertyLocationMapUrl,
   workOrderExists,
   type ApiErr,
   type ApiOk,

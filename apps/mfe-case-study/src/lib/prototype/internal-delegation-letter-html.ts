@@ -21,7 +21,7 @@ export function printInternalDelegationLetter(
         <td>${i + 1}</td>
         <td>${formatPropertyDeedDisplay(p) || "—"}</td>
         <td>${p.ownerName || "—"}</td>
-        <td>${p.taskNumber || "—"}</td>
+        <td>${p.requestNumber || "—"}</td>
       </tr>`,
     )
     .join("");
@@ -56,7 +56,7 @@ export function printInternalDelegationLetter(
         <th>#</th>
         <th>رقم الصك / التسجيل</th>
         <th>المالك</th>
-        <th>رقم المهمة</th>
+        <th>رقم الطلب</th>
       </tr>
     </thead>
     <tbody>${rows}</tbody>

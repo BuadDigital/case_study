@@ -235,13 +235,56 @@ export function PoPropertyEnfathForm({
             onChange={patchDeedNumber}
           />
           <RegField
-            id="task_number_bourse"
-            label="رقم المهمة"
+            id="request_number_bourse"
+            label="رقم الطلب"
             required
             dir="ltr"
-            value={property.taskNumber}
-            error={fieldErrors.taskNumber}
-            onChange={(v) => onPatch("taskNumber", v)}
+            value={property.requestNumber}
+            error={fieldErrors.requestNumber}
+            onChange={(v) => onPatch("requestNumber", v)}
+          />
+          <RegField
+            id="assignment_mandate_number_bourse"
+            label="رقم التكليف"
+            required
+            dir="ltr"
+            value={property.assignmentMandateNumber}
+            error={fieldErrors.assignmentMandateNumber}
+            onChange={(v) => onPatch("assignmentMandateNumber", v)}
+          />
+          <RegField
+            id="assignment_mandate_date_bourse"
+            label="تاريخ التكليف"
+            required
+            type="date"
+            value={property.assignmentMandateDate}
+            error={fieldErrors.assignmentMandateDate}
+            onChange={(v) => onPatch("assignmentMandateDate", v)}
+          />
+          <RegField
+            id="plan_number_bourse"
+            label="رقم المخطط"
+            dir="ltr"
+            value={property.planNumber}
+            error={fieldErrors.planNumber}
+            onChange={(v) => onPatch("planNumber", v)}
+          />
+          <RegField
+            id="plot_number_bourse"
+            label="رقم القطعة"
+            dir="ltr"
+            value={property.plotNumber}
+            error={fieldErrors.plotNumber}
+            onChange={(v) => onPatch("plotNumber", v)}
+          />
+          <RegField
+            id="location_map_url_bourse"
+            label="رابط موقع الخريطة"
+            dir="ltr"
+            hint="مطلوب للمناطق العشوائية (بدون مخطط وقطعة)"
+            value={property.locationMapUrl}
+            error={fieldErrors.locationMapUrl}
+            onChange={(v) => onPatch("locationMapUrl", v)}
           />
           <RegField
             id="deed_date_bourse"
@@ -296,13 +339,56 @@ export function PoPropertyEnfathForm({
           onChange={patchDeedNumber}
         />
         <RegField
-          id="task_number"
-          label="رقم المهمة"
+          id="request_number"
+          label="رقم الطلب"
           required
           dir="ltr"
-          value={property.taskNumber}
-          error={fieldErrors.taskNumber}
-          onChange={(v) => onPatch("taskNumber", v)}
+          value={property.requestNumber}
+          error={fieldErrors.requestNumber}
+          onChange={(v) => onPatch("requestNumber", v)}
+        />
+        <RegField
+          id="assignment_mandate_number"
+          label="رقم التكليف"
+          required
+          dir="ltr"
+          value={property.assignmentMandateNumber}
+          error={fieldErrors.assignmentMandateNumber}
+          onChange={(v) => onPatch("assignmentMandateNumber", v)}
+        />
+        <RegField
+          id="assignment_mandate_date"
+          label="تاريخ التكليف"
+          required
+          type="date"
+          value={property.assignmentMandateDate}
+          error={fieldErrors.assignmentMandateDate}
+          onChange={(v) => onPatch("assignmentMandateDate", v)}
+        />
+        <RegField
+          id="plan_number"
+          label="رقم المخطط"
+          dir="ltr"
+          value={property.planNumber}
+          error={fieldErrors.planNumber}
+          onChange={(v) => onPatch("planNumber", v)}
+        />
+        <RegField
+          id="plot_number"
+          label="رقم القطعة"
+          dir="ltr"
+          value={property.plotNumber}
+          error={fieldErrors.plotNumber}
+          onChange={(v) => onPatch("plotNumber", v)}
+        />
+        <RegField
+          id="location_map_url"
+          label="رابط موقع الخريطة"
+          dir="ltr"
+          hint="مطلوب للمناطق العشوائية (بدون مخطط وقطعة)"
+          value={property.locationMapUrl}
+          error={fieldErrors.locationMapUrl}
+          onChange={(v) => onPatch("locationMapUrl", v)}
         />
         <RegField
           id="deed_date"

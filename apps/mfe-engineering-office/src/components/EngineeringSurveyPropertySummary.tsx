@@ -66,10 +66,19 @@ export function EngineeringSurveyPropertySummary({
         {showCourt ? (
           <FieldBox label="المحكمة / الدائرة" value={courtLine} />
         ) : null}
+        <FieldBox label="رقم المخطط" value={property.planNumber} ltr />
+        <FieldBox label="رقم القطعة" value={property.plotNumber} ltr />
         <FieldBox
           label="توفر الحدود"
           value={boundariesAvailabilityLabel(property.boundariesAvailability)}
         />
+        <FieldBox
+          label="رابط موقع الخريطة"
+          span={2}
+          href={property.locationMapUrl.trim() || undefined}
+        >
+          {property.locationMapUrl.trim() ? "فتح رابط الموقع" : undefined}
+        </FieldBox>
       </FieldsGrid>
 
       <SectionDivider />
@@ -81,7 +90,19 @@ export function EngineeringSurveyPropertySummary({
           label="المساحة الإجمالية"
           value={property.area.trim() ? `${property.area.trim()} م²` : ""}
         />
-        <FieldBox label="رقم المهمة" value={property.taskNumber} ltr />
+        <FieldBox label="رقم الطلب" value={property.requestNumber} ltr />
+        <FieldBox
+          label="رقم التكليف"
+          value={property.assignmentMandateNumber}
+          ltr
+        />
+        <FieldBox
+          label="تاريخ التكليف"
+          value={property.assignmentMandateDate}
+          ltr
+        />
+        <FieldBox label="رقم المخطط" value={property.planNumber} ltr />
+        <FieldBox label="رقم القطعة" value={property.plotNumber} ltr />
       </FieldsGrid>
     </>
   );

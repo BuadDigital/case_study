@@ -186,7 +186,10 @@ export function collectFieldInspectionDocumentsFromSubmission(
     const slot = submission.definedPhotos[def.id];
     if (!slot || slot.none) continue;
     slot.photos
-      .filter((photo) => photo.approved)
+      .filter(
+        (photo) =>
+          photo.approved || submission.status === "submitted",
+      )
       .forEach((photo, i) => {
         const photoRef = `slot:${def.id}:${photo.id}`;
         pushEntry(docs, {
@@ -201,7 +204,10 @@ export function collectFieldInspectionDocumentsFromSubmission(
   }
 
   submission.freePhotos
-    .filter((photo) => photo.approved)
+    .filter(
+      (photo) =>
+        photo.approved || submission.status === "submitted",
+    )
     .forEach((photo) => {
       const photoRef = `free:${photo.id}`;
       pushEntry(docs, {
@@ -345,9 +351,8 @@ export function listPropertyDetailPhotos(
   sections: PropertyDetailDocumentSection[],
 ): PropertyDetailDocumentEntry[] {
   return sections
-    .filter((section) => section.id === "inspection")
     .flatMap((section) => section.documents)
-    .filter((doc) => doc.kind === "image" && Boolean(doc.dataUrl));
+    .filter((doc) => doc.kind === "image");
 }
 
 export function countPropertyDetailPhotos(

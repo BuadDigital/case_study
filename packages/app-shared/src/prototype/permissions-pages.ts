@@ -23,6 +23,10 @@ export function pagesFromPermissions(
   if (!dashboardAllowed) {
     merged.delete("dashboard");
   }
+  // أخصائي دراسة الحالة — بدون «جميع المعاملات»
+  if (role === "case-specialist") {
+    merged.delete("all-transactions");
+  }
 
   if (merged.size === 0) merged.add(defaultLandingPage([]));
   return [...merged];

@@ -155,6 +155,7 @@ export async function updateEngineeringSurveyDraft(
       | "surveyReportFileName"
       | "siteLetterFileName"
       | "siteConfirmed"
+      | "declarationPhoneSatisfied"
       | "checklist"
       | "returnNote"
       | "onSiteAreaSqm"

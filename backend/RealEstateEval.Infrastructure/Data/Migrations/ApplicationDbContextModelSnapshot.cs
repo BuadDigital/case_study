@@ -946,6 +946,40 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.ToTable("OutboxMessages", "messaging");
                 });
 
+            modelBuilder.Entity("RealEstateEval.Domain.PartyFeePricingConfig", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("EngineeringSurveyFeeSar")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<decimal>("FieldInspectorEmployeeFeeSar")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<decimal>("FieldInspectorIndividualFeeSar")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<decimal>("FieldInspectorOrganizationFeeSar")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<decimal>("GovernmentReviewFeeSar")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PartyFeePricingConfigs", "financial");
+                });
+
             modelBuilder.Entity("RealEstateEval.Domain.PartyTaskSubmission", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1630,6 +1664,14 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<string>("AssignmentDocFileName")
                         .HasColumnType("text");
 
+                    b.Property<string>("AssignmentMandateDate")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("AssignmentMandateNumber")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("BoundariesAvailability")
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
@@ -1643,10 +1685,6 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
 
                     b.Property<bool>("BourseDataCompleted")
                         .HasColumnType("boolean");
-
-                    b.Property<string>("BuildLicenseNumber")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("Circuit")
                         .HasColumnType("text");
@@ -1695,6 +1733,10 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<int>("IdentifierType")
                         .HasColumnType("integer");
 
+                    b.Property<string>("LocationMapUrl")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
                     b.Property<string>("NorthBoundary")
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)");
@@ -1710,6 +1752,14 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<string>("OwnerName")
                         .HasColumnType("text");
 
+                    b.Property<string>("PlanNumber")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("PlotNumber")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<string>("PropertyType")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -1717,6 +1767,10 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
 
                     b.Property<string>("RealEstateRegFileName")
                         .HasColumnType("text");
+
+                    b.Property<string>("RequestNumber")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("RestrictionsPresent")
                         .HasMaxLength(8)
@@ -1729,14 +1783,6 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<string>("SouthBoundaryLengthM")
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
-
-                    b.Property<string>("SubdivisionRecordNumber")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<string>("TaskNumber")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("WestBoundary")
                         .HasMaxLength(512)

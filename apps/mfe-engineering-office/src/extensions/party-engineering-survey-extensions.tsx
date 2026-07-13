@@ -40,7 +40,8 @@ export const partyEngineeringSurveyExtensions: PartyEngineeringSurveyExtensions 
           void prefetchEngineeringSurveySubmissions(listed.map((t) => t.id));
           return listed;
         },
-        getTaskStatusBadge: (task) => engineeringSurveyTaskStatusBadge(task.id),
+        getTaskStatusBadge: (task) =>
+          engineeringSurveyTaskStatusBadge(task.id, task.status),
         refreshOnWindowEvents: [ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT],
       };
     },

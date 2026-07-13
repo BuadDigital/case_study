@@ -70,4 +70,52 @@ public class PropertyListRowBuilderTests
 
     Assert.Equal("fail", Assert.Single(items).Row.Status);
   }
+
+  [Fact]
+  public void Build_marks_completed_case_study_as_done()
+  {
+    var propertyId = Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+    var order = new WorkOrder
+    {
+      PoNumber = "PO-300",
+      Properties =
+      [
+        new WorkOrderProperty
+        {
+          Id = propertyId,
+          IdentifierType = PropertyIdentifierType.Deed,
+          DeedNumber = "789",
+          City = "الرياض",
+          Classification = "أرض",
+          PropertyType = "أرض",
+          BourseDataCompleted = true,
+        },
+      ],
+    };
+
+    var tasksByProperty = new Dictionary<Guid, IReadOnlyList<WorkflowTask>>
+    {
+      [propertyId] =
+      [
+        new WorkflowTask
+        {
+          Id = Guid.NewGuid(),
+          Kind = "case-study-property",
+          PoNumber = "PO-300",
+          PropertyId = propertyId,
+          Status = WorkflowTaskStatus.Completed,
+          Phase = "done",
+        },
+      ],
+    };
+
+    var items = Infrastructure.Services.PropertyListRowBuilder.Build(
+      [order],
+      new HashSet<string>(StringComparer.Ordinal),
+      tasksByProperty);
+
+    var row = Assert.Single(items).Row;
+    Assert.Equal("done", row.Status);
+    Assert.Equal("done", row.Study);
+  }
 }

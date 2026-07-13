@@ -5,15 +5,29 @@ import { Badge, Button, FormRow, InlineLoadingSkeleton, Input, Label, Note, Sele
 import { RegField, RegTextarea} from "@platform/app-shared/registration/FormFields";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
+import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { EngineeringSurveyMap } from "@engineering-office/mfe/components/EngineeringSurveyMap";
 import { JEDDAH_DEFAULT_LAT, JEDDAH_DEFAULT_LNG } from "@engineering-office/mfe/lib/jeddah-default-coords";
 import { InspectorDefinedPhotosSection } from "./InspectorDefinedPhotosSection";
 import { InspectorSubmitFooter } from "./InspectorSubmitFooter";
 import { InspectorPhotoFilePicker } from "./InspectorPhotoFilePicker";
 import { InspectorStampedPhotoThumb } from "./InspectorStampedPhotoThumb";
+import { useInspectorKeyAvailability } from "./InspectorKeyStatusTab";
 import { clearInspectorPhotoDataUrl, uploadInspectorPhotoFromFile } from "../../lib/prototype/inspector-photo-upload";
 import { boundariesMarkedUnavailable, formatPoDisplay, formatPropertyDeedDisplay, PROPERTY_BOUNDARY_ROWS, type PoPropertyIntake } from "../../lib/prototype/po-intake-data";
+import {
+  informalAccessGate,
+  inspectorKeySubmitGate,
+  declarationPhoneGate,
+  hasAnyPartyPhone,
+  isInformalSettlement,
+  roleBypassesDocumentaryGates,
+  roleCanSetLocationMapUrl,
+} from "../../lib/prototype/documentary-workflow-gates";
+import { updatePropertyLocationMapUrlInPo } from "../../lib/prototype/po-intake-storage";
 import { usePoRecordQuery } from "../../query/case-study-queries";
+import { useQueryClient } from "@tanstack/react-query";
+import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import {
   INSPECTOR_AMENITY_OPTIONS,
   INSPECTOR_FEATURE_FIELDS,
@@ -107,10 +121,15 @@ export function FieldInspectionWorkBody({
   onRegisterFailure?: () => void;
 }) {
   void def;
+  const { role } = usePrototype();
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const propertyId = task.propertyId ?? "";
   const { data: record } = usePoRecordQuery(task.poNumber);
   const property = record?.properties.find((p) => p.id === propertyId);
+  const keyAvailability = useInspectorKeyAvailability(task);
+  const [mapUrlDraft, setMapUrlDraft] = useState("");
+  const [savingMapUrl, setSavingMapUrl] = useState(false);
 
   const [draft, setDraft] = useState<InspectorWorkspaceDraft | null>(null);
   const [fieldErrors, setFieldErrors] = useState<InspectorWorkspaceFieldErrors>(
@@ -138,16 +157,29 @@ export function FieldInspectionWorkBody({
     };
   }, [task.id, task.poNumber, task.propertyOrdinal, propertyId, property]);
 
+  useEffect(() => {
+    setMapUrlDraft(property?.locationMapUrl ?? "");
+  }, [property?.locationMapUrl, propertyId]);
+
   const locked =
     task.status === "completed" ||
     (draft ? isInspectorWorkspaceLocked(draft.status) : false);
+  const informalGate = informalAccessGate({
+    role,
+    planNumber: property?.planNumber,
+    plotNumber: property?.plotNumber,
+    locationMapUrl: property?.locationMapUrl,
+  });
+  const informalBlocksAccess =
+    !informalGate.ready && !roleBypassesDocumentaryGates(role);
+  const workLocked = locked || informalBlocksAccess;
   const boundariesUnavailable = property
     ? boundariesMarkedUnavailable(property.boundariesAvailability)
     : false;
 
   const persist = useCallback(
     (patch: Parameters<typeof updateInspectorWorkspace>[1]) => {
-      if (!task.id || locked) return;
+      if (!task.id || workLocked) return;
       void updateInspectorWorkspace(task.id, patch)
         .then((next) => {
           if (next) setDraft(next);
@@ -159,7 +191,7 @@ export function FieldInspectionWorkBody({
           );
         });
     },
-    [task.id, locked, showToast],
+    [task.id, workLocked, showToast],
   );
 
   const saveDraft = useCallback(async (): Promise<boolean> => {
@@ -185,6 +217,36 @@ export function FieldInspectionWorkBody({
   const submit = useCallback(async (): Promise<boolean> => {
     if (!draft || locked) return false;
 
+    if (informalBlocksAccess) {
+      setFormError(informalGate.reason);
+      showToast(informalGate.reason, "error");
+      return false;
+    }
+
+    const keyGate = inspectorKeySubmitGate({
+      role,
+      vacantLand: draft.vacantLand,
+      keyAvailable: keyAvailability.keyAvailable,
+    });
+    if (!keyGate.ready) {
+      setFormError(keyGate.reason);
+      showToast(keyGate.reason, "error");
+      onRegisterFailure?.();
+      return false;
+    }
+
+    const hasPhone = hasAnyPartyPhone(property?.contacts);
+    const phoneGate = declarationPhoneGate({
+      role,
+      hasPhone,
+      phoneWasPresentAtDeclaration: draft.declarationPhoneSatisfied,
+    });
+    if (draft.clientDeclarationSigned && !phoneGate.ready) {
+      setFormError(phoneGate.reason);
+      showToast(phoneGate.reason, "error");
+      return false;
+    }
+
     const errors = validateInspectorWorkspace(draft, {
       boundariesUnavailable,
     });
@@ -198,6 +260,15 @@ export function FieldInspectionWorkBody({
 
     hostRef.current?.onSavingChange?.(true);
     setFormError(null);
+    const patched = await updateInspectorWorkspace(task.id, {
+      vacantLand: draft.vacantLand,
+      keyAvailable: keyAvailability.keyAvailable,
+      clientDeclarationSigned: draft.clientDeclarationSigned,
+      declarationPhoneSatisfied:
+        draft.declarationPhoneSatisfied ||
+        (draft.clientDeclarationSigned && hasPhone),
+    });
+    if (patched) setDraft(patched);
     const result = await finalizeInspectorWorkspace(task.id);
     hostRef.current?.onSavingChange?.(false);
 
@@ -213,7 +284,46 @@ export function FieldInspectionWorkBody({
     setFormError(result.message);
     showToast(result.message, "error");
     return false;
-  }, [draft, locked, hostRef, task.id, showToast, boundariesUnavailable]);
+  }, [
+    draft,
+    locked,
+    hostRef,
+    task.id,
+    showToast,
+    role,
+    property,
+    keyAvailability.keyAvailable,
+    boundariesUnavailable,
+    onRegisterFailure,
+    informalBlocksAccess,
+    informalGate.reason,
+  ]);
+
+  async function saveLocationMapUrl() {
+    if (!property || locked || savingMapUrl) return;
+    if (!roleCanSetLocationMapUrl(role)) {
+      showToast("لا صلاحية لحفظ رابط الموقع لهذا الدور.", "error");
+      return;
+    }
+    setSavingMapUrl(true);
+    try {
+      const result = await updatePropertyLocationMapUrlInPo(
+        task.poNumber,
+        property.id,
+        mapUrlDraft.trim(),
+      );
+      if (!result.ok) {
+        showToast(result.error || "تعذّر حفظ رابط الموقع", "error");
+        return;
+      }
+      await queryClient.invalidateQueries({
+        queryKey: prototypeKeys.poRecord(task.poNumber),
+      });
+      showToast("تم حفظ رابط موقع الخريطة", "success");
+    } finally {
+      setSavingMapUrl(false);
+    }
+  }
 
   useEffect(() => {
     if (!hostRef.current) return;
@@ -338,6 +448,45 @@ export function FieldInspectionWorkBody({
         </Note>
       ) : null}
 
+      {informalBlocksAccess ? (
+        <Note tone="warn" className="mb-4">
+          <strong>الوصول مقفول — منطقة عشوائية.</strong>{" "}
+          {informalGate.reason} احفظ رابط الخريطة أدناه لفتح نموذج المعاينة.
+        </Note>
+      ) : null}
+
+      {property &&
+      isInformalSettlement(property.planNumber, property.plotNumber) &&
+      roleCanSetLocationMapUrl(role) ? (
+        <div className="mb-4 rounded-lg border border-border bg-surface-2 p-3">
+          <Label className="text-[11px] font-semibold text-text-2">
+            رابط موقع الخريطة (عشوائي)
+          </Label>
+          <p className="mt-1 text-[10px] text-text-3">
+            العقار بدون رقم مخطط وقطعة — أدخل رابط خريطة لفتح الوصول.
+          </p>
+          <Input
+            className="mt-2"
+            dir="ltr"
+            value={mapUrlDraft}
+            disabled={locked}
+            placeholder="https://maps.google.com/..."
+            onChange={(e) => setMapUrlDraft(e.target.value)}
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="mt-2"
+            loading={savingMapUrl}
+            disabled={locked || savingMapUrl}
+            onClick={() => void saveLocationMapUrl()}
+          >
+            حفظ رابط الموقع
+          </Button>
+        </div>
+      ) : null}
+
       {draft.status === "reopened" && draft.returnNote?.trim() ? (
         <Note tone="warn" className="mb-4">
           <strong>{inspectorWorkspaceStatusLabel("reopened")}</strong> —{" "}
@@ -378,10 +527,10 @@ export function FieldInspectionWorkBody({
       ) : null}
 
       <fieldset
-        disabled={locked}
+        disabled={workLocked}
         className={cn(
           "m-0 min-w-0 border-0 p-0 [&_*]:min-w-0",
-          locked &&
+          workLocked &&
             "pointer-events-none select-none rounded-[10px] bg-[#F1F5F9] p-3 opacity-70 grayscale-[0.35]",
         )}
       >
@@ -1205,6 +1354,62 @@ export function FieldInspectionWorkBody({
           >
             <i className="ti ti-plus" aria-hidden /> إضافة ملاحظة موثّقة
           </Button>
+          <label className="mt-4 flex cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-surface-2 p-3 text-xs leading-relaxed text-text-2">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              id="ins-vacant-land"
+              checked={draft.vacantLand}
+              onChange={(e) => persist({ vacantLand: e.target.checked })}
+            />
+            <span>هل الموقع أرض فضاء؟ (يُستثنى من شرط استلام المفتاح)</span>
+          </label>
+          {!draft.vacantLand && !keyAvailability.keyAvailable ? (
+            <Note tone="warn" className="mt-3">
+              المفتاح غير مُسلَّم بعد. لا يمكن إتمام المعاينة — إن كان المفتاح
+              خطأ أو غير متوفر سجّل تعذراً مع ملاحظة توضيحية.
+              {onRegisterFailure ? (
+                <div className="mt-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={onRegisterFailure}
+                  >
+                    تسجيل تعذر المفتاح
+                  </Button>
+                </div>
+              ) : null}
+            </Note>
+          ) : null}
+          <label className="mt-4 flex cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-surface-2 p-3 text-xs leading-relaxed text-text-2">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              id="ins-client-declaration"
+              checked={draft.clientDeclarationSigned}
+              onChange={(e) => {
+                const signed = e.target.checked;
+                const hasPhone = hasAnyPartyPhone(property?.contacts);
+                if (signed && !hasPhone && !draft.declarationPhoneSatisfied) {
+                  showToast(
+                    "لا يمكن توقيع إقرار العميل بدون جوال لأحد الأطراف.",
+                    "error",
+                  );
+                  return;
+                }
+                persist({
+                  clientDeclarationSigned: signed,
+                  declarationPhoneSatisfied:
+                    draft.declarationPhoneSatisfied || (signed && hasPhone),
+                });
+              }}
+            />
+            <span>
+              تم توقيع إقرار العميل / صحة الموقع (يتطلب جوال أحد الأطراف عند
+              أول توقيع)
+            </span>
+          </label>
           <label className="mt-4 flex cursor-pointer items-start gap-2.5 rounded-lg border border-amber bg-amber-light p-3 text-xs leading-relaxed text-text-2">
             <input
               type="checkbox"
@@ -1236,9 +1441,9 @@ export function FieldInspectionWorkBody({
         {beforeSubmitFooter}
 
         <InspectorSubmitFooter
-          disabled={locked}
+          disabled={workLocked}
           saving={submitting}
-          locked={locked}
+          locked={workLocked}
           onRegisterFailure={onRegisterFailure}
           onSaveDraft={() => void saveDraft()}
           onSubmit={() => void hostRef.current?.submit?.()}

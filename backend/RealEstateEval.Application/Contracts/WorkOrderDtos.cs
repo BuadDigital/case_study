@@ -14,7 +14,9 @@ public class WorkOrderPropertyDto
     public Guid? Id { get; set; }
     public string IdentifierType { get; set; } = "deed";
     public string DeedNumber { get; set; } = "";
-    public string? TaskNumber { get; set; }
+    public string? RequestNumber { get; set; }
+    public string? AssignmentMandateNumber { get; set; }
+    public string? AssignmentMandateDate { get; set; }
     public string? DeedDate { get; set; }
     public string? OwnerName { get; set; }
     public string? RestrictionsPresent { get; set; }
@@ -41,8 +43,9 @@ public class WorkOrderPropertyDto
     public List<string> OtherDocumentFileNames { get; set; } = [];
     public string? RealEstateRegFileName { get; set; }
     public bool BourseDataCompleted { get; set; }
-    public string? BuildLicenseNumber { get; set; }
-    public string? SubdivisionRecordNumber { get; set; }
+    public string? PlanNumber { get; set; }
+    public string? PlotNumber { get; set; }
+    public string? LocationMapUrl { get; set; }
     public List<PropertyContactDto> Contacts { get; set; } = [];
 }
 
@@ -136,8 +139,6 @@ public class UpdatePropertyBourseRequest
     public string? EastBoundaryLengthM { get; set; }
     public string? WestBoundary { get; set; }
     public string? WestBoundaryLengthM { get; set; }
-    public string? BuildLicenseNumber { get; set; }
-    public string? SubdivisionRecordNumber { get; set; }
 }
 
 public class PropertyListRowDto
@@ -201,8 +202,14 @@ public class PriorDeedRegistrationDto
     public string? EastBoundaryLengthM { get; set; }
     public string? WestBoundary { get; set; }
     public string? WestBoundaryLengthM { get; set; }
-    public string? BuildLicenseNumber { get; set; }
-    public string? SubdivisionRecordNumber { get; set; }
+    public string? PlanNumber { get; set; }
+    public string? PlotNumber { get; set; }
+    public string? LocationMapUrl { get; set; }
+}
+
+public class UpdateLocationMapUrlRequest
+{
+    public string? LocationMapUrl { get; set; }
 }
 
 public class PendingBoursePropertyDto
@@ -213,7 +220,7 @@ public class PendingBoursePropertyDto
     public string DeedNumber { get; set; } = "";
     public string? DeedDate { get; set; }
     public string? OwnerName { get; set; }
-    public string? TaskNumber { get; set; }
+    public string? RequestNumber { get; set; }
     public string AssignmentType { get; set; } = "";
     public string ReceivedFromEnfathAt { get; set; } = "";
     public string DueDateAt { get; set; } = "";

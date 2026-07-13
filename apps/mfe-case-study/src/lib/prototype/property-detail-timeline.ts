@@ -1,4 +1,7 @@
-import { getPropertyFailure } from "@failures/mfe";
+import {
+  failuresForProperty,
+  getCachedFailuresList,
+} from "@failures/mfe";
 import { failureStatusLabel } from "@failures/mfe/lib/failures-labels";
 import { formatInstantInRiyadh } from "./active-transactions-situation";
 import type { PoIntakeRecord, PoPropertyIntake } from "./po-intake-data";
@@ -21,6 +24,22 @@ export type PropertyTimelineEvent = {
   tone: PropertyTimelineTone;
 };
 
+const FAILURE_REGISTRATION_TITLE = "تسجيل تعذر";
+
+function isFailureRegistrationTitle(title: string): boolean {
+  const t = title.trim();
+  return (
+    t === FAILURE_REGISTRATION_TITLE ||
+    /^تسجيل تعذر\s*\(\s*\d+\s*[x×]\s*\)$/i.test(t) ||
+    /^تسجيل تعذر\s*\(\s*[x×]\s*\d+\s*\)$/i.test(t)
+  );
+}
+
+export function formatFailureRegistrationTitle(count: number): string {
+  if (count <= 1) return FAILURE_REGISTRATION_TITLE;
+  return `${FAILURE_REGISTRATION_TITLE} (${count}×)`;
+}
+
 function pushEvent(
   list: PropertyTimelineEvent[],
   event: PropertyTimelineEvent,
@@ -29,10 +48,49 @@ function pushEvent(
   list.push(event);
 }
 
+/** Collapse multiple «تسجيل تعذر» rows into one titled «تسجيل تعذر (N×)». */
+export function collapseFailureRegistrationEvents(
+  events: PropertyTimelineEvent[],
+): PropertyTimelineEvent[] {
+  const failures = events.filter((e) => isFailureRegistrationTitle(e.title));
+  if (failures.length <= 1) {
+    return events.map((e) =>
+      isFailureRegistrationTitle(e.title)
+        ? { ...e, title: FAILURE_REGISTRATION_TITLE }
+        : e,
+    );
+  }
+
+  const rest = events.filter((e) => !isFailureRegistrationTitle(e.title));
+  const sorted = [...failures].sort((a, b) => a.at.localeCompare(b.at));
+  const latest = sorted[sorted.length - 1]!;
+  const details = sorted
+    .map((e) => e.detail?.trim())
+    .filter((d): d is string => Boolean(d));
+  const uniqueDetails = [...new Set(details)];
+
+  rest.push({
+    id: "failure-registrations",
+    at: latest.at,
+    title: formatFailureRegistrationTitle(failures.length),
+    detail:
+      uniqueDetails.length === 0
+        ? undefined
+        : uniqueDetails.length === 1
+          ? uniqueDetails[0]
+          : `${failures.length} تعذرات — أحدثها: ${uniqueDetails[uniqueDetails.length - 1]}`,
+    tone: "warn",
+  });
+
+  return rest
+    .filter((e) => e.at)
+    .sort((a, b) => a.at.localeCompare(b.at));
+}
+
 export function mapPropertyTimelineDtos(
   events: PropertyTimelineEventDto[],
 ): PropertyTimelineEvent[] {
-  return events
+  const mapped = events
     .filter((e) => e.at)
     .map((e) => ({
       id: e.id,
@@ -41,6 +99,7 @@ export function mapPropertyTimelineDtos(
       detail: e.detail?.trim() || undefined,
       tone: normalizeTimelineTone(e.tone),
     }));
+  return collapseFailureRegistrationEvents(mapped);
 }
 
 function normalizeTimelineTone(tone: string): PropertyTimelineTone {
@@ -117,7 +176,9 @@ export function buildPropertyDetailTimeline(input: {
         title: "دراسة حالة العقار",
         detail: task.assigneeName,
         tone:
-          task.status === "completed" || task.phase === "done" ? "done" : "active",
+          task.status === "completed" || task.phase === "done"
+            ? "done"
+            : "active",
       });
     }
 
@@ -142,12 +203,16 @@ export function buildPropertyDetailTimeline(input: {
     });
   }
 
-  const failure = getPropertyFailure(po, property.id);
-  if (failure) {
+  const propertyFailures = failuresForProperty(getCachedFailuresList(), {
+    poNumber: po,
+    propertyId: property.id,
+    deedNumber: property.deedNumber,
+  });
+  for (const failure of propertyFailures) {
     pushEvent(events, {
       id: `failure-${failure.id}`,
-      at: failure.updatedAt,
-      title: "تسجيل تعذر",
+      at: failure.createdAt || failure.updatedAt,
+      title: FAILURE_REGISTRATION_TITLE,
       detail: `${failure.title} — ${failureStatusLabel(failure.status)}`,
       tone: "warn",
     });
@@ -173,13 +238,15 @@ export function buildPropertyDetailTimeline(input: {
     });
   }
 
-  return events
-    .filter((e) => e.at)
-    .sort((a, b) => a.at.localeCompare(b.at))
-    .map((e) => ({
-      ...e,
-      detail: e.detail?.trim() || undefined,
-    }));
+  return collapseFailureRegistrationEvents(
+    events
+      .filter((e) => e.at)
+      .sort((a, b) => a.at.localeCompare(b.at))
+      .map((e) => ({
+        ...e,
+        detail: e.detail?.trim() || undefined,
+      })),
+  );
 }
 
 export function formatTimelineDate(iso: string): string {

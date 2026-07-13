@@ -32,7 +32,14 @@ function submissionFromDto(
 export function valuationCoordinationTaskStatusBadge(
   taskId: string,
   submissionDto?: PartyTaskSubmissionDto | null,
+  taskStatus?: string,
 ): { label: string; className: string } | null {
+  if (taskStatus === "completed") {
+    return {
+      label: valuationCoordinationStatusLabel("submitted"),
+      className: "b-done",
+    };
+  }
   const sub = submissionFromDto(submissionDto);
   if (sub?.status === "submitted") {
     return {

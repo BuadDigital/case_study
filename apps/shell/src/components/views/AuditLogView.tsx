@@ -97,7 +97,7 @@ export function AuditLogView() {
         ) : (
           <Table>
             <THead>
-              <Tr>
+              <Tr hoverable={false}>
                 <Th>الوقت</Th>
                 <Th>المستخدم</Th>
                 <Th>الإجراء</Th>
@@ -107,7 +107,7 @@ export function AuditLogView() {
             </THead>
             <TBody>
               {entries.map((entry) => (
-                <Tr key={entry.id}>
+                <Tr key={entry.id} hoverable={false}>
                   <Td className="whitespace-nowrap text-xs">{formatAt(entry.at)}</Td>
                   <Td>{entry.actor}</Td>
                   <Td>{entry.action}</Td>

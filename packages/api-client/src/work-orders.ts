@@ -24,7 +24,9 @@ export type WorkOrderPropertyDto = {
   id?: string;
   identifierType: string;
   deedNumber: string;
-  taskNumber?: string;
+  requestNumber?: string;
+  assignmentMandateNumber?: string;
+  assignmentMandateDate?: string;
   deedDate?: string;
   ownerName?: string;
   restrictionsPresent?: string;
@@ -51,8 +53,9 @@ export type WorkOrderPropertyDto = {
   otherDocumentFileNames?: string[];
   realEstateRegFileName?: string;
   bourseDataCompleted?: boolean;
-  buildLicenseNumber?: string;
-  subdivisionRecordNumber?: string;
+  planNumber?: string;
+  plotNumber?: string;
+  locationMapUrl?: string;
   contacts: PropertyContactDto[];
 };
 
@@ -129,8 +132,6 @@ export type UpdatePropertyBourseRequest = {
   eastBoundaryLengthM?: string;
   westBoundary?: string;
   westBoundaryLengthM?: string;
-  buildLicenseNumber?: string;
-  subdivisionRecordNumber?: string;
 };
 
 export type PriorDeedRegistrationDto = {
@@ -155,8 +156,9 @@ export type PriorDeedRegistrationDto = {
   eastBoundaryLengthM?: string;
   westBoundary?: string;
   westBoundaryLengthM?: string;
-  buildLicenseNumber?: string;
-  subdivisionRecordNumber?: string;
+  planNumber?: string;
+  plotNumber?: string;
+  locationMapUrl?: string;
 };
 
 export type PropertyTimelineEventDto = {
@@ -174,7 +176,7 @@ export type PendingBoursePropertyDto = {
   deedNumber: string;
   deedDate?: string;
   ownerName?: string;
-  taskNumber?: string;
+  requestNumber?: string;
   assignmentType: string;
   receivedFromEnfathAt: string;
   dueDateAt: string;
@@ -529,6 +531,40 @@ export async function updateWorkOrderProperty(
       },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 400) {
+      return {
+        ok: false,
+        kind: "validation",
+        errors: await parseFieldErrors(res),
+      };
+    }
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: (await res.json()) as WorkOrderPropertyDto };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/** Narrow patch for informal unlock — allowed for inspector without manage-work-orders. */
+export async function updateWorkOrderPropertyLocationMapUrl(
+  config: WorkOrdersApiConfig,
+  poNumber: string,
+  propertyId: string,
+  locationMapUrl: string,
+): Promise<ApiOk<WorkOrderPropertyDto> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties/${propertyId}/location-map-url`,
+      {
+        method: "PUT",
+        headers: headers(config.token),
+        body: JSON.stringify({ locationMapUrl }),
+      },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403) return { ok: false, kind: "auth" };
     if (res.status === 400) {
       return {
         ok: false,

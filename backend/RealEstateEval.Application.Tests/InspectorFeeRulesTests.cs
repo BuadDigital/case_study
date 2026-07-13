@@ -19,29 +19,31 @@ public class InspectorFeeRulesTests
     }
 
     [Theory]
-    [InlineData("jeddah_survey", "متعاون شركة", 500)]
-    [InlineData("eo-jeddah", "متعاون شركة", 500)]
-    [InlineData("eo-internal", "موظف", 150)]
-    public void Resolves_engineering_office_type_and_default_fee(
-        string? assigneeId,
-        string expectedType,
-        decimal expectedFee)
+    [InlineData("jeddah_survey")]
+    [InlineData("eo-jeddah")]
+    [InlineData("eo-internal")]
+    [InlineData(null)]
+    public void Engineering_office_is_always_external_at_500(string? assigneeId)
     {
-        var type = EngineeringSurveyFeeRules.ResolveOfficeType(assigneeId);
-        Assert.Equal(expectedType, type);
-        Assert.Equal(expectedFee, EngineeringSurveyFeeRules.DefaultAgreedFee(type));
+        Assert.Equal(
+            InspectorFeeRules.TypeCooperatorOrganization,
+            EngineeringSurveyFeeRules.ResolveOfficeType(assigneeId));
+        Assert.Equal(500m, EngineeringSurveyFeeRules.DefaultAgreedFee());
+        Assert.Equal(500m, EngineeringSurveyFeeRules.FallbackFeeSar);
+        Assert.Equal(500m, EngineeringSurveyFeeRules.DefaultAgreedFee("موظف"));
     }
 
     [Theory]
-    [InlineData("متعاون فرد", 350)]
-    [InlineData("متعاون شركة", 450)]
-    [InlineData("متعاون", 350)]
-    [InlineData("موظف", 100)]
-    public void Resolves_government_review_default_fee(
-        string partyType,
-        decimal expectedFee)
+    [InlineData("متعاون فرد")]
+    [InlineData("متعاون شركة")]
+    [InlineData("موظف")]
+    [InlineData(null)]
+    public void Government_review_is_always_individual_cooperator_at_350(string? partyType)
     {
-        Assert.Equal(expectedFee, GovernmentReviewFeeRules.DefaultAgreedFee(partyType));
+        Assert.Equal(InspectorFeeRules.TypeCooperatorIndividual, GovernmentReviewFeeRules.PartyType);
+        Assert.Equal(350m, GovernmentReviewFeeRules.DefaultAgreedFee(partyType));
+        Assert.Equal(350m, GovernmentReviewFeeRules.FallbackFeeSar);
+        Assert.Equal(350m, GovernmentReviewFeeRules.DefaultAgreedFee());
     }
 
     [Fact]

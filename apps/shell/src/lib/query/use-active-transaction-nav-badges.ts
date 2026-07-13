@@ -123,7 +123,12 @@ export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>>
 
     const feeRows = feeSummary?.rows ?? [];
     if (feeRows.length > 0) {
-      const isSupervisor = hasCapability("manage-operations");
+      const isPartyFeesRole =
+        role === "field-inspector" ||
+        role === "engineering-office" ||
+        role === "government-reviewer";
+      const isSupervisor =
+        hasCapability("manage-operations") && !isPartyFeesRole;
       const feeCount = isSupervisor
         ? feeRows.filter(
             (r) =>

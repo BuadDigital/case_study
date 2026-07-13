@@ -353,7 +353,7 @@ export function nextPrimaryDataTaskId(
   if (!pivot) return null;
   return (
     listed.find(
-      (t) => compareQueueTasksOldestFirst(pivot, t, poByNumber) < 0,
+      (t) => compareQueueTasksNewestFirst(pivot, t, poByNumber) < 0,
     )?.id ?? null
   );
 }

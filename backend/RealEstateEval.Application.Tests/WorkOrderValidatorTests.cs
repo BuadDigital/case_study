@@ -244,7 +244,9 @@ public class WorkOrderValidatorTests
     {
         IdentifierType = PropertyIdentifierTypeLabels.Deed,
         DeedNumber = "987650000001",
-        TaskNumber = "T-1",
+        RequestNumber = "T-1",
+        AssignmentMandateNumber = "M-1",
+        AssignmentMandateDate = "2026-01-01",
         DeedDate = "2026-01-01",
         OwnerName = "Owner",
         DelegationLetterFileName = "letter.pdf",

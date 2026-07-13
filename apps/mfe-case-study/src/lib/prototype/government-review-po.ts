@@ -92,6 +92,8 @@ export function buildGovernmentReviewPoRows(
 
   return rows.sort((a, b) => {
     if (a.openCount !== b.openCount) return b.openCount - a.openCount;
+    const createdCmp = (b.createdAt || "").localeCompare(a.createdAt || "");
+    if (createdCmp !== 0) return createdCmp;
     return a.poNumber.localeCompare(b.poNumber, undefined, { numeric: true });
   });
 }

@@ -1,33 +1,19 @@
 namespace RealEstateEval.Application.Rules;
 
 /// <summary>
-/// Default engineering-survey fees. External offices treat as متعاون شركة.
+/// Engineering-survey fees: offices are always external counterparties.
+/// Seed/fallback only — live defaults come from <c>PartyFeePricingConfig</c>.
 /// </summary>
 public static class EngineeringSurveyFeeRules
 {
-    public const decimal ExternalOfficeFeeSar = 500m;
-    public const decimal InternalOfficeFeeSar = 150m;
+    public const string OfficePartyType = InspectorFeeRules.TypeCooperatorOrganization;
 
-    private static readonly HashSet<string> ExternalOfficeAssigneeIds = new(StringComparer.Ordinal)
-    {
-        "eo-jeddah",
-        "jeddah_survey",
-    };
+    /// <summary>Seed fallback when pricing config row is first created.</summary>
+    public const decimal FallbackFeeSar = 500m;
 
-    public static string ResolveOfficeType(string? assigneeId) =>
-        assigneeId is not null && ExternalOfficeAssigneeIds.Contains(assigneeId.Trim())
-            ? InspectorFeeRules.TypeCooperatorOrganization
-            : InspectorFeeRules.TypeEmployee;
+    public static string ResolveOfficeType(string? assigneeId) => OfficePartyType;
 
-    public static decimal DefaultAgreedFee(string officeType) =>
-        officeType switch
-        {
-            InspectorFeeRules.TypeCooperatorOrganization
-                or InspectorFeeRules.TypeCooperatorLegacy
-                or InspectorFeeRules.TypeCooperatorIndividual
-                => ExternalOfficeFeeSar,
-            _ => InternalOfficeFeeSar,
-        };
+    public static decimal DefaultAgreedFee(string? officeType = null) => FallbackFeeSar;
 
     public static decimal NetFee(decimal agreedFeeSar, decimal supervisorDiscountSar) =>
         InspectorFeeRules.NetFee(agreedFeeSar, supervisorDiscountSar);

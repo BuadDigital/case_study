@@ -1,14 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import {
   findSurveyChildForParent,
 } from "@engineering-office/mfe";
 import { useMemo, useState } from "react";
-import { getPropertyFailure } from "@failures/mfe";
+import {
+  failuresForProperty,
+  useFailuresQuery,
+} from "@failures/mfe";
 import { failureStatusLabel } from "@failures/mfe/lib/failures-labels";
+import type { FailureRecord } from "@failures/mfe";
 import { Button, cn, Tab, TabBar, TabCount, TabPanel } from "@platform/design-system";
 import {
   DetailBadge,
@@ -23,6 +26,7 @@ import {
 } from "./PropertyDetailFields";
 import { PropertyDetailAppraisalTab } from "./PropertyDetailAppraisalTab";
 import { PropertyDetailPhotosTab } from "./PropertyDetailPhotosTab";
+import { PropertyDetailLinkedTab } from "./PropertyDetailLinkedTab";
 import { PropertyDetailCaseStudyReport } from "./PropertyDetailCaseStudyReport";
 import { PropertyDetailPropertyKeys } from "./PropertyDetailPropertyKeys";
 import { PropertyDetailEnfathUpload } from "./PropertyDetailEnfathUpload";
@@ -33,9 +37,7 @@ import {
   boundariesAvailabilityLabel,
   formatDateAr,
   formatPropertyBoundaryDimensionsDisplay,
-  formatPropertyDeedDisplay,
   formatPropertyLandFrontagesDisplay,
-  formatPropertyLocation,
   formatPropertyTypeLine,
   hasBourseDetailFields,
   ownershipStatusLabel,
@@ -56,7 +58,7 @@ import {
   partyCardStatusLabel,
   type PropertyDetailPartyRoleKey,
 } from "../../lib/prototype/property-detail-parties";
-import { poPropertyFailurePath, poPropertyPath } from "../../lib/po-routes";
+import { poPropertyFailurePath } from "../../lib/po-routes";
 import {
   buildPropertyDetailTimeline,
   formatTimelineDate,
@@ -219,6 +221,17 @@ function BasicTab({
         <SectionHeader>بيانات الصك</SectionHeader>
         <FieldsGrid>
           <FieldBox label="رقم الصك" value={property.deedNumber} ltr />
+          <FieldBox label="رقم الطلب" value={property.requestNumber} ltr />
+          <FieldBox
+            label="رقم التكليف"
+            value={property.assignmentMandateNumber}
+            ltr
+          />
+          <FieldBox
+            label="تاريخ التكليف"
+            value={property.assignmentMandateDate}
+            ltr
+          />
           <FieldBox label="تاريخ الصك" value={property.deedDate} ltr />
           <FieldBox label="حالة الصك">
             {property.deedStatus.trim() ? (
@@ -243,16 +256,33 @@ function BasicTab({
         {showsCourtFields(record.assignmentType) ? (
           <FieldBox label="المحكمة / الدائرة" value={courtLine} />
         ) : null}
+        <FieldBox label="رقم المخطط" value={property.planNumber} ltr />
+        <FieldBox label="رقم القطعة" value={property.plotNumber} ltr />
         <FieldBox
           label="توفر الحدود"
           value={boundariesAvailabilityLabel(property.boundariesAvailability)}
         />
         <FieldBox
-          label="الإحداثيات"
+          label="رابط موقع الخريطة"
+          span={2}
+          href={
+            property.locationMapUrl.trim() || mapUrl || undefined
+          }
+        >
+          {property.locationMapUrl.trim()
+            ? "فتح رابط الموقع"
+            : mapUrl
+              ? "عرض تقريبي على الخريطة"
+              : undefined}
+        </FieldBox>
+        <FieldBox
+          label="الإحداثيات (تقريبي)"
           span={2}
           href={mapUrl ?? undefined}
         >
-          {mapUrl ? "عرض على الخريطة" : undefined}
+          {mapUrl && !property.locationMapUrl.trim()
+            ? "عرض على الخريطة"
+            : undefined}
         </FieldBox>
       </FieldsGrid>
 
@@ -380,19 +410,19 @@ export function PoPropertyDetailTabs({
     [poNumber, property.id, tasks],
   );
 
-  const failure = useMemo(
-    () => getPropertyFailure(poNumber, property.id),
-    [poNumber, property.id],
+  const { data: failures = [] } = useFailuresQuery();
+  const propertyFailures = useMemo(
+    () =>
+      failuresForProperty(failures, {
+        poNumber,
+        propertyId: property.id,
+        deedNumber: property.deedNumber,
+      }),
+    [failures, poNumber, property.id, property.deedNumber],
   );
 
-  const linkedProperties = useMemo(
-    () =>
-      record.properties
-        .filter((p) => p.id !== property.id)
-        .map((p) => ({
-          property: p,
-          index: record.properties.findIndex((x) => x.id === p.id) + 1,
-        })),
+  const samePoLinkedCount = useMemo(
+    () => record.properties.filter((p) => p.id !== property.id).length,
     [record.properties, property.id],
   );
 
@@ -414,13 +444,21 @@ export function PoPropertyDetailTabs({
   }, [task, tasks]);
 
   const inspectionTask = useMemo(() => {
-    if (!task) return null;
+    const fromParent = task
+      ? childTasksForCaseStudyParent(task.id, tasks).find(
+          (t) => t.kind === "field-inspection",
+        )
+      : null;
+    if (fromParent) return fromParent;
     return (
-      childTasksForCaseStudyParent(task.id, tasks).find(
-        (t) => t.kind === "field-inspection",
+      tasks.find(
+        (t) =>
+          t.kind === "field-inspection" &&
+          t.poNumber.trim() === poNumber &&
+          t.propertyId === property.id,
       ) ?? null
     );
-  }, [task, tasks]);
+  }, [task, tasks, poNumber, property.id]);
 
   const propertyDocumentSections = usePropertyDetailDocuments({
     property,
@@ -472,7 +510,7 @@ export function PoPropertyDetailTabs({
   const fallbackLogEvents = useMemo(
     () =>
       [...buildPropertyDetailTimeline({ record, property, tasks })].reverse(),
-    [record, property, tasks],
+    [record, property, tasks, propertyFailures],
   );
   const logEvents =
     logEventsQuery.data && logEventsQuery.data.length > 0
@@ -521,8 +559,12 @@ export function PoPropertyDetailTabs({
             count = docCount;
             countTone = "teal";
           }
-          if (t.id === "failures" && failure) {
-            count = 1;
+          if (t.id === "linked" && samePoLinkedCount > 0) {
+            count = samePoLinkedCount;
+            countTone = "teal";
+          }
+          if (t.id === "failures" && propertyFailures.length > 0) {
+            count = propertyFailures.length;
             countTone = "red";
           }
           if (t.id === "photos" && photoCount > 0) {
@@ -581,78 +623,61 @@ export function PoPropertyDetailTabs({
           ) : null}
 
           {tab === "linked" ? (
-            linkedProperties.length === 0 ? (
-              <EmptyState
-                icon="🔗"
-                title="لا توجد عقارات مرتبطة"
-                sub="لا توجد عقارات أخرى مرتبطة بهذا الصك حالياً."
-              />
-            ) : (
-              <>
-                <SectionHeader>العقارات على نفس أمر العمل</SectionHeader>
-                <ul className="m-0 flex list-none flex-col gap-2 p-0">
-                  {linkedProperties.map(({ property: linked, index }) => (
-                    <li key={linked.id} className="m-0">
-                      <Link
-                        href={poPropertyPath(poNumber, linked.id)}
-                        className="flex flex-col gap-1 rounded-[var(--radius-DEFAULT)] border border-border bg-surface-2 px-3.5 py-3 no-underline transition-colors hover:border-primary-light hover:bg-info-bg"
-                      >
-                        <span className="text-[13px] font-semibold text-primary-light">
-                          {formatPropertyDeedDisplay(linked)}
-                        </span>
-                        <span className="text-[11px] text-text-3">
-                          عقار {index} · {formatPropertyLocation(linked) || "—"}
-                        </span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )
+            <PropertyDetailLinkedTab
+              record={record}
+              property={property}
+              caseStudyTask={task ?? null}
+            />
           ) : null}
 
           {tab === "failures" ? (
-            failure ? (
+            propertyFailures.length > 0 ? (
               <>
                 <SectionHeader>التعذرات المسجلة</SectionHeader>
-                <div
-                  className={cn(
-                    "mb-1.5 flex flex-col gap-2 rounded-[var(--radius-DEFAULT)] bg-surface-2 px-3.5 py-3 border-e-[3px] sm:flex-row sm:items-start sm:justify-between sm:gap-3",
-                    failure.status === "approved"
-                      ? "border-e-success"
-                      : "border-e-warning",
-                  )}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-0.5 text-[13px] font-medium text-text">
-                      {failure.title}
+                {propertyFailures.map((failure: FailureRecord) => (
+                  <div
+                    key={failure.id}
+                    className={cn(
+                      "mb-1.5 flex flex-col gap-2 rounded-[var(--radius-DEFAULT)] bg-surface-2 px-3.5 py-3 border-e-[3px] sm:flex-row sm:items-start sm:justify-between sm:gap-3",
+                      failure.status === "approved" ||
+                        failure.status === "resolved"
+                        ? "border-e-success"
+                        : "border-e-warning",
+                    )}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-0.5 text-[13px] font-medium text-text">
+                        {failure.title}
+                      </div>
+                      <div className="text-[11px] text-text-2">
+                        سُجّل بواسطة {failure.specialist || "—"} ·{" "}
+                        <bdi dir="ltr" className={ltrValueClass}>
+                          {formatDateAr(failure.updatedAt.slice(0, 10))}
+                        </bdi>
+                        {failure.internalNote
+                          ? ` · السبب: ${failure.internalNote}`
+                          : null}
+                      </div>
                     </div>
-                    <div className="text-[11px] text-text-2">
-                      سُجّل بواسطة {failure.specialist || "—"} ·{" "}
-                      <bdi dir="ltr" className={ltrValueClass}>
-                        {formatDateAr(failure.updatedAt.slice(0, 10))}
-                      </bdi>
-                      {failure.internalNote
-                        ? ` · السبب: ${failure.internalNote}`
-                        : null}
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <DetailBadge tone="amber">
+                        {failureStatusLabel(failure.status)}
+                      </DetailBadge>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="danger"
+                        onClick={() =>
+                          router.push(
+                            poPropertyFailurePath(poNumber, property.id),
+                          )
+                        }
+                      >
+                        معالجة
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    <DetailBadge tone="amber">
-                      {failureStatusLabel(failure.status)}
-                    </DetailBadge>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="danger"
-                      onClick={() =>
-                        router.push(poPropertyFailurePath(poNumber, property.id))
-                      }
-                    >
-                      معالجة
-                    </Button>
-                  </div>
-                </div>
+                ))}
                 <p className="mt-3">
                   <Button
                     type="button"

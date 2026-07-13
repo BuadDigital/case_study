@@ -129,7 +129,7 @@ export function BourseInquiryView() {
         id: item.propertyId,
         deedNumber: item.deedNumber,
         ownerName: item.ownerName ?? "",
-        taskNumber: item.taskNumber ?? "",
+        requestNumber: item.requestNumber ?? "",
       });
     }
   }
@@ -248,7 +248,7 @@ export function BourseInquiryView() {
                       <Th>رقم الصك</Th>
                       <Th>تاريخ الصك</Th>
                       <Th>أمر العمل</Th>
-                      <Th>رقم المهمة</Th>
+                      <Th>رقم الطلب</Th>
                       <Th>المالك</Th>
                       <Th>الاستحقاق</Th>
                     </Tr>
@@ -291,7 +291,7 @@ export function BourseInquiryView() {
                               dir="ltr"
                               className="inline-block text-[11px] font-semibold text-primary"
                             >
-                              {item.taskNumber?.trim() || "—"}
+                              {item.requestNumber?.trim() || "—"}
                             </span>
                           </Td>
                           <Td className="text-text-2">

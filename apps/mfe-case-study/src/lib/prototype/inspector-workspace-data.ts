@@ -257,6 +257,14 @@ export type InspectorWorkspaceDraft = {
   buildingsTotal: string;
   propertyAgeYears: string;
   buildLicenseNumber: string;
+  /** checklist — هل الموقع أرض فضاء */
+  vacantLand: boolean;
+  /** مستمد من تسليم المراجع — يُحدَّث عند الإرسال */
+  keyAvailable: boolean;
+  /** توقيع إقرار العميل */
+  clientDeclarationSigned: boolean;
+  /** جُمِع جوال طرف قبل الإقرار — لا يُعاد قفله بعد الحذف */
+  declarationPhoneSatisfied: boolean;
   hasAnnex: "" | "نعم" | "لا";
   boundaryMatches: Record<InspectorBoundaryKey, InspectorBoundaryMatch>;
   services: string[];
@@ -333,6 +341,10 @@ export function createInspectorWorkspaceDraft(input: {
     buildingsTotal: "",
     propertyAgeYears: "",
     buildLicenseNumber: "",
+    vacantLand: false,
+    keyAvailable: false,
+    clientDeclarationSigned: false,
+    declarationPhoneSatisfied: false,
     hasAnnex: "",
     boundaryMatches: emptyBoundaryMatches(),
     services: [],

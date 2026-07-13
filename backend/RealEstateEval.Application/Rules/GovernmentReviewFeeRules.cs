@@ -1,19 +1,17 @@
 namespace RealEstateEval.Application.Rules;
 
-/// <summary>Default government-review fees (متعاون فرد / شركة / موظف).</summary>
+/// <summary>
+/// Government-review: classification is always «متعاون فرد».
+/// Seed/fallback only — live defaults come from <c>PartyFeePricingConfig</c>.
+/// </summary>
 public static class GovernmentReviewFeeRules
 {
-    public const decimal CooperatorIndividualFeeSar = 350m;
-    public const decimal CooperatorOrganizationFeeSar = 450m;
-    public const decimal EmployeeFeeSar = 100m;
+    public const string PartyType = InspectorFeeRules.TypeCooperatorIndividual;
 
-    public static decimal DefaultAgreedFee(string partyType) =>
-        partyType switch
-        {
-            InspectorFeeRules.TypeCooperatorOrganization => CooperatorOrganizationFeeSar,
-            InspectorFeeRules.TypeCooperatorIndividual
-                or InspectorFeeRules.TypeCooperatorLegacy
-                => CooperatorIndividualFeeSar,
-            _ => EmployeeFeeSar,
-        };
+    /// <summary>Seed fallback when pricing config row is first created.</summary>
+    public const decimal FallbackFeeSar = 350m;
+
+    public static string ResolvePartyType(string? assigneeId = null) => PartyType;
+
+    public static decimal DefaultAgreedFee(string? partyType = null) => FallbackFeeSar;
 }

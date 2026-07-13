@@ -36,6 +36,8 @@ public sealed class FinancialApiWebApplicationFactory
         {
             services.RemoveAll<IFinancialReportService>();
             services.AddSingleton<IFinancialReportService, StubFinancialReportService>();
+            services.RemoveAll<IPartyFeePricingService>();
+            services.AddSingleton<IPartyFeePricingService, StubPartyFeePricingService>();
 
             services.AddAuthentication(options =>
                 {
@@ -47,6 +49,32 @@ public sealed class FinancialApiWebApplicationFactory
                     _ => { });
         });
     }
+}
+
+internal sealed class StubPartyFeePricingService : IPartyFeePricingService
+{
+    public Task<PartyFeePricingDto> GetAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult(Sample());
+
+    public Task<PartyFeePricingDto> SaveAsync(
+        PartyFeePricingDto request,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult(request);
+
+    public Task<decimal> ResolveDefaultFeeAsync(
+        string taskKind,
+        string partyType,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult(0m);
+
+    private static PartyFeePricingDto Sample() => new()
+    {
+        EngineeringSurveyFeeSar = 500,
+        GovernmentReviewFeeSar = 350,
+        FieldInspectorIndividualFeeSar = 400,
+        FieldInspectorOrganizationFeeSar = 500,
+        FieldInspectorEmployeeFeeSar = 100,
+    };
 }
 
 internal sealed class StubFinancialReportService : IFinancialReportService

@@ -13,7 +13,9 @@ import {
   PartyCaseStudyFormTab,
   savePartyCaseStudyFormDraft,
 } from "@case-study/mfe";
-import { usePoRecordQuery } from "@case-study/mfe/query/case-study-queries";
+import { surveyWorkGate, declarationPhoneGate, hasAnyPartyPhone } from "@case-study/mfe/lib/prototype/documentary-workflow-gates";
+import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { usePoRecordQuery, useWorkflowTasksQuery } from "@case-study/mfe/query/case-study-queries";
 import {
   InfoBox,
   SectionDivider,
@@ -86,12 +88,14 @@ export function EngineeringSurveyWorkPanel({
   forceReadOnly?: boolean;
 }) {
   const router = useRouter();
+  const { role } = usePrototype();
   const readOnly = variant === "workspace" || forceReadOnly;
   const propertyId = task.propertyId ?? "";
   const { showToast, runWithUploadToast } = useToast();
   const { data: record } = usePoRecordQuery(task.poNumber);
   const property = record?.properties.find((p) => p.id === propertyId);
   const { data: failures = [] } = useFailuresQuery();
+  const { data: workflowTasks = [] } = useWorkflowTasksQuery();
 
   const activeFailureCount = useMemo(() => {
     if (!propertyId) return 0;
@@ -111,6 +115,29 @@ export function EngineeringSurveyWorkPanel({
       deedNumber,
     });
   }, [deedNumber, failures, propertyId, task.poNumber]);
+
+  const documentaryGate = useMemo(
+    () =>
+      surveyWorkGate({
+        role,
+        surveyTask: task,
+        tasks: workflowTasks,
+        hasActiveFailure: Boolean(blockingFailure) || activeFailureCount > 0,
+        planNumber: property?.planNumber,
+        plotNumber: property?.plotNumber,
+        locationMapUrl: property?.locationMapUrl,
+      }),
+    [
+      activeFailureCount,
+      blockingFailure,
+      property?.locationMapUrl,
+      property?.planNumber,
+      property?.plotNumber,
+      role,
+      task,
+      workflowTasks,
+    ],
+  );
 
   const [draft, setDraft] = useState<EngineeringSurveySubmission | null>(null);
   const [workTab, setWorkTab] = useState<WorkTab>("survey");
@@ -173,6 +200,11 @@ export function EngineeringSurveyWorkPanel({
       );
       return;
     }
+    if (!documentaryGate.ready) {
+      showToast(documentaryGate.reason, "error");
+      if (blockingFailure) setWorkTab("failures");
+      return;
+    }
     if (blockingFailure) {
       showToast(
         `لا يمكن بدء الرفع المساحي — يوجد تعذر نشط: ${failureRecordTitle(blockingFailure)}`,
@@ -184,6 +216,7 @@ export function EngineeringSurveyWorkPanel({
     router.push(activeSurveyEntryPath(task.id));
   }, [
     blockingFailure,
+    documentaryGate,
     router,
     showToast,
     task.id,
@@ -276,6 +309,29 @@ export function EngineeringSurveyWorkPanel({
   const submit = useCallback(async (): Promise<boolean> => {
     if (!draft || locked) return false;
 
+    if (!documentaryGate.ready) {
+      setFormError(documentaryGate.reason);
+      showToast(documentaryGate.reason, "error");
+      return false;
+    }
+
+    const phoneGate = declarationPhoneGate({
+      role,
+      hasPhone: hasAnyPartyPhone(property?.contacts),
+      phoneWasPresentAtDeclaration: draft.declarationPhoneSatisfied,
+    });
+    if (!phoneGate.ready) {
+      setFormError(phoneGate.reason);
+      showToast(phoneGate.reason, "error");
+      return false;
+    }
+
+    if (hasAnyPartyPhone(property?.contacts) && !draft.declarationPhoneSatisfied) {
+      await updateEngineeringSurveyDraft(task.id, {
+        declarationPhoneSatisfied: true,
+      });
+    }
+
     const errors = validateEngineeringSurveySubmission(draft);
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
@@ -298,11 +354,20 @@ export function EngineeringSurveyWorkPanel({
       hostRef.current?.onSubmitted?.();
       return true;
     }
-    const message = "تعذر إتمام الرفع المساحي — حاول مرة أخرى";
+    const message = "تعذر إرسال الرفع المساحي — حاول مرة أخرى";
     setFormError(message);
     showToast(message, "error");
     return false;
-  }, [draft, locked, hostRef, task.id, showToast]);
+  }, [
+    draft,
+    locked,
+    documentaryGate,
+    role,
+    property?.contacts,
+    task.id,
+    hostRef,
+    showToast,
+  ]);
 
   useEffect(() => {
     if (!hostRef.current) return;
@@ -638,14 +703,19 @@ export function EngineeringSurveyWorkPanel({
       <h3 className="m-0 mb-2 text-sm font-semibold text-text">
         {def.workTitle}
       </h3>
+      {!documentaryGate.ready ? (
+        <Note tone="warn" className="mb-4">
+          <strong>الرفع مجمّد:</strong> {documentaryGate.reason}
+        </Note>
+      ) : null}
       <Note tone="info" className="mb-4">
         {def.workIntro}
       </Note>
       <fieldset
-        disabled={formDisabled}
+        disabled={formDisabled || !documentaryGate.ready}
         className={cn(
           "m-0 min-w-0 border-0 p-0",
-          formDisabled &&
+          (formDisabled || !documentaryGate.ready) &&
             "pointer-events-none select-none rounded-[10px] bg-[#F1F5F9] p-3 opacity-70 grayscale-[0.35]",
         )}
       >
@@ -785,6 +855,13 @@ export function EngineeringSurveyWorkPanel({
         ) : (
           <div className="flex min-h-0 flex-1 flex-row items-stretch overflow-hidden max-lg:flex-col">
             <div className="order-1 min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+              {!documentaryGate.ready ? (
+                <InfoBox variant="amber" icon="⚠">
+                  <strong>الرفع المساحي مجمّد.</strong>
+                  <br />
+                  {documentaryGate.reason}
+                </InfoBox>
+              ) : null}
               {blockingFailure && workTab === "property" ? (
                 <InfoBox variant="amber" icon="⚠">
                   <strong>يوجد تعذر نشط على هذا العقار.</strong>
@@ -875,7 +952,11 @@ export function EngineeringSurveyWorkPanel({
         <QuickActionsFab
           placement="bottom-start"
           deedNumber={deedNumber}
-          startSurveyDimmed={!transactionActive || Boolean(blockingFailure)}
+          startSurveyDimmed={
+            !transactionActive ||
+            Boolean(blockingFailure) ||
+            !documentaryGate.ready
+          }
           workActionsDimmed={!transactionActive}
           recallDimmed={transactionActive || !recallEligible}
           onStartSurvey={handleStartSurvey}

@@ -5,7 +5,7 @@ namespace RealEstateEval.Infrastructure.Services;
 
 /// <summary>
 /// Builds flat property list rows for dashboard tables without shipping full work-order DTOs.
-/// Mirrors <c>work-orders-read.ts</c> client mapping.
+/// Status/study tracks follow workflow tasks when available.
 /// </summary>
 public static class PropertyListRowBuilder
 {
@@ -13,10 +13,14 @@ public static class PropertyListRowBuilder
     private const string UnitInsideBuildingClassification = "وحدة داخل مبنى";
     private const string DeedUnderVerification = "قيد التحقق";
     private const string DeedSuspended = "موقوف";
+    private const string CaseStudyPropertyKind = "case-study-property";
+    private const string EngineeringSurveyKind = "engineering-survey";
+    private const string PropertyAppraisalKind = "property-appraisal";
 
     public static IReadOnlyList<PropertyListItemDto> Build(
         IReadOnlyList<WorkOrder> orders,
-        IReadOnlySet<string> approvedFailureKeys)
+        IReadOnlySet<string> approvedFailureKeys,
+        IReadOnlyDictionary<Guid, IReadOnlyList<WorkflowTask>>? tasksByProperty = null)
     {
         var priorByDeed = BuildPriorDeedIndex(orders);
         var items = new List<PropertyListItemDto>();
@@ -25,7 +29,7 @@ public static class PropertyListRowBuilder
         {
             foreach (var prop in order.Properties.OrderBy(p => p.DeedNumber))
             {
-                items.Add(BuildItem(order, prop, priorByDeed, approvedFailureKeys));
+                items.Add(BuildItem(order, prop, priorByDeed, approvedFailureKeys, tasksByProperty));
             }
         }
 
@@ -53,7 +57,8 @@ public static class PropertyListRowBuilder
         WorkOrder order,
         WorkOrderProperty prop,
         Dictionary<string, string> priorByDeed,
-        IReadOnlySet<string> approvedFailureKeys)
+        IReadOnlySet<string> approvedFailureKeys,
+        IReadOnlyDictionary<Guid, IReadOnlyList<WorkflowTask>>? tasksByProperty)
     {
         var propertyId = prop.Id.ToString();
         var failureKey = $"{order.PoNumber.Trim()}|{propertyId}";
@@ -76,17 +81,25 @@ public static class PropertyListRowBuilder
                 ? $"{city} · {district}"
                 : city.Length > 0 ? city : "—";
 
+        var propertyTasks = tasksByProperty is not null &&
+            tasksByProperty.TryGetValue(prop.Id, out var listed)
+            ? listed
+            : Array.Empty<WorkflowTask>();
+
+        var fromTasks = ResolveStatusFromTasks(propertyTasks);
+        var surveyFromTasks = ResolveKindStage(propertyTasks, EngineeringSurveyKind);
+        var valFromTasks = ResolveKindStage(propertyTasks, PropertyAppraisalKind);
+        var studyFromTasks = ResolveStudyStage(propertyTasks);
+
         var survey = boursePending
             ? "new"
-            : PriorSurveyWaived(prop, priorByDeed)
-                ? "done"
-                : "new";
+            : surveyFromTasks
+                ?? (PriorSurveyWaived(prop, priorByDeed) ? "done" : "new");
 
         var study = boursePending
             ? "progress"
-            : underVerification
-                ? "progress"
-                : "new";
+            : studyFromTasks
+                ?? (underVerification ? "progress" : "new");
 
         var status = boursePending
             ? "progress"
@@ -94,9 +107,8 @@ public static class PropertyListRowBuilder
                 ? "fail"
                 : incomplete
                     ? "incomplete"
-                    : underVerification
-                        ? "progress"
-                        : "new";
+                    : fromTasks
+                        ?? (underVerification ? "progress" : "new");
 
         return new PropertyListItemDto
         {
@@ -112,12 +124,74 @@ public static class PropertyListRowBuilder
                     : FirstNonEmpty(prop.PropertyType, prop.Classification, "—"),
                 Key = false,
                 Survey = survey,
-                Val = "new",
+                Val = valFromTasks ?? "new",
                 Study = study,
                 Status = status,
                 Specialist = order.AssignmentSpecialist ?? "",
             },
         };
+    }
+
+    private static string? ResolveStatusFromTasks(IReadOnlyList<WorkflowTask> propertyTasks)
+    {
+        if (propertyTasks.Count == 0) return null;
+
+        var active = propertyTasks
+            .Where(t => !string.Equals(t.Status, WorkflowTaskStatus.Cancelled, StringComparison.Ordinal))
+            .ToList();
+        if (active.Count == 0) return "fail";
+
+        var parent = active.FirstOrDefault(t =>
+            string.Equals(t.Kind, CaseStudyPropertyKind, StringComparison.Ordinal));
+        if (parent is not null &&
+            (string.Equals(parent.Status, WorkflowTaskStatus.Completed, StringComparison.Ordinal) ||
+             string.Equals(parent.Phase, "done", StringComparison.Ordinal)))
+        {
+            return "done";
+        }
+
+        if (active.All(t =>
+                string.Equals(t.Status, WorkflowTaskStatus.Completed, StringComparison.Ordinal)))
+        {
+            return "done";
+        }
+
+        var started = active.Any(t =>
+            string.Equals(t.Status, WorkflowTaskStatus.Completed, StringComparison.Ordinal) ||
+            string.Equals(t.Phase, "distribution", StringComparison.Ordinal) ||
+            string.Equals(t.Phase, "case-study", StringComparison.Ordinal) ||
+            string.Equals(t.Phase, "done", StringComparison.Ordinal) ||
+            !string.Equals(t.Kind, CaseStudyPropertyKind, StringComparison.Ordinal));
+
+        return started ? "progress" : "new";
+    }
+
+    private static string? ResolveKindStage(IReadOnlyList<WorkflowTask> propertyTasks, string kind)
+    {
+        var task = propertyTasks.FirstOrDefault(t =>
+            string.Equals(t.Kind, kind, StringComparison.Ordinal));
+        if (task is null) return null;
+        if (string.Equals(task.Status, WorkflowTaskStatus.Cancelled, StringComparison.Ordinal))
+            return "new";
+        if (string.Equals(task.Status, WorkflowTaskStatus.Completed, StringComparison.Ordinal))
+            return "done";
+        return "progress";
+    }
+
+    private static string? ResolveStudyStage(IReadOnlyList<WorkflowTask> propertyTasks)
+    {
+        var parent = propertyTasks.FirstOrDefault(t =>
+            string.Equals(t.Kind, CaseStudyPropertyKind, StringComparison.Ordinal));
+        if (parent is null) return null;
+        if (string.Equals(parent.Status, WorkflowTaskStatus.Completed, StringComparison.Ordinal) ||
+            string.Equals(parent.Phase, "done", StringComparison.Ordinal))
+            return "done";
+        if (string.Equals(parent.Phase, "case-study", StringComparison.Ordinal) ||
+            string.Equals(parent.Phase, "distribution", StringComparison.Ordinal) ||
+            string.Equals(parent.Status, WorkflowTaskStatus.Open, StringComparison.Ordinal) ||
+            string.Equals(parent.Status, WorkflowTaskStatus.Blocked, StringComparison.Ordinal))
+            return "progress";
+        return "new";
     }
 
     private static string PropertyRowId(string poNumber, WorkOrderProperty prop)

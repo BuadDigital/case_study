@@ -38,17 +38,17 @@ export function PoPropertyCreate({ poNumber, onBackAction,onSavedAction,}: {
     () =>
       isBourseInquiryIdentifier(currentProperty.identifierType)
         ? !!currentProperty.deedNumber.trim() ||
-          !!currentProperty.taskNumber.trim() ||
+          !!currentProperty.requestNumber.trim() ||
           !!currentProperty.ownerName.trim()
         : !!currentProperty.deedNumber.trim() ||
-          !!currentProperty.taskNumber.trim() ||
+          !!currentProperty.requestNumber.trim() ||
           !!currentProperty.ownerName.trim(),
     [
       currentProperty.identifierType,
       currentProperty.district,
       currentProperty.classification,
       currentProperty.deedNumber,
-      currentProperty.taskNumber,
+      currentProperty.requestNumber,
       currentProperty.ownerName,
     ],
   );
@@ -87,7 +87,7 @@ export function PoPropertyCreate({ poNumber, onBackAction,onSavedAction,}: {
     const isBourse = isBourseInquiryIdentifier(prop.identifierType);
     for (const key of keys) {
       if (key === "deedNumber") return isBourse ? "deed_number_bourse" : "deed_number";
-      if (key === "taskNumber") return isBourse ? "task_number_bourse" : "task_number";
+      if (key === "requestNumber") return isBourse ? "task_number_bourse" : "task_number";
       if (key === "deedDate") return isBourse ? "deed_date_bourse" : "deed_date";
       if (key === "ownerName") return isBourse ? "owner_name_bourse" : "owner_name";
       if (key === "court") return isBourse ? "court_bourse" : "court";
@@ -173,7 +173,7 @@ export function PoPropertyCreate({ poNumber, onBackAction,onSavedAction,}: {
     const target = properties[index];
     const hasDraft =
       !!currentProperty.deedNumber.trim() ||
-      !!currentProperty.taskNumber.trim();
+      !!currentProperty.requestNumber.trim();
     setProperties((prev) => {
       let next = prev.filter((_, i) => i !== index);
       if (hasDraft) next = [...next, commitCurrentProperty()];

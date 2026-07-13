@@ -36,7 +36,7 @@ public static class PlatformPermissionCatalog
     {
         ["CDO"] = AllPages.ToArray(),
         ["HrAdmin"] = ["users", "system-fields-catalog", "system-screen-catalog"],
-        ["ProcAdmin"] = ["users", "system-fields-catalog", "system-screen-catalog"],
+        ["ProcAdmin"] = ["financial", "users", "system-fields-catalog", "system-screen-catalog"],
         ["CrmAdmin"] = ["users", "system-fields-catalog", "system-screen-catalog"],
         ["HR"] = ["users"],
         ["PROC"] = ["users"],
@@ -47,7 +47,7 @@ public static class PlatformPermissionCatalog
     {
         ["cdo"] = AllPages.ToArray(),
         ["hr-admin"] = ["users", "system-fields-catalog", "system-screen-catalog"],
-        ["proc-admin"] = ["users", "system-fields-catalog", "system-screen-catalog"],
+        ["proc-admin"] = ["financial", "users", "system-fields-catalog", "system-screen-catalog"],
         ["crm-admin"] = ["users", "system-fields-catalog", "system-screen-catalog"],
         ["general-manager"] =
         [
@@ -65,7 +65,7 @@ public static class PlatformPermissionCatalog
         ],
         ["case-specialist"] =
         [
-            "po", "all-transactions", "active-primary-data", "bourse-inquiry", "active-distribution",
+            "po", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "failures", "suspended-transactions",
             "system-fields-catalog", "system-screen-catalog",
         ],
@@ -86,7 +86,7 @@ public static class PlatformPermissionCatalog
         ],
         ["government-reviewer"] =
         [
-            "all-transactions", "government-review", "keys", "failures",
+            "all-transactions", "government-review", "party-fees", "keys", "failures",
             "system-fields-catalog", "system-screen-catalog",
         ],
         ["engineering-office"] =
@@ -105,7 +105,7 @@ public static class PlatformPermissionCatalog
     {
         ["CDO"] = AllCapabilities.ToArray(),
         ["HrAdmin"] = ["manage-users"],
-        ["ProcAdmin"] = ["manage-users"],
+        ["ProcAdmin"] = ["manage-users", "manage-financial", "manage-attachments"],
         ["CrmAdmin"] = ["manage-users"],
     };
 
@@ -113,7 +113,7 @@ public static class PlatformPermissionCatalog
     {
         ["cdo"] = AllCapabilities.ToArray(),
         ["hr-admin"] = ["manage-users"],
-        ["proc-admin"] = ["manage-users"],
+        ["proc-admin"] = ["manage-users", "manage-financial", "manage-attachments"],
         ["crm-admin"] = ["manage-users"],
         ["general-manager"] =
         [

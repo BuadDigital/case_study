@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { ROLES } from "@platform/app-shared/prototype/constants";
@@ -86,6 +87,8 @@ const fieldTextareaClass = cn(
 
 export function FailuresView() {
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const highlightId = searchParams.get("highlight")?.trim() || null;
   const { showToast } = useToast();
   const { role } = usePrototype();
   const ce = isCaseEditor(role);
@@ -110,6 +113,13 @@ export function FailuresView() {
     {},
   );
   const [resolveOpen, setResolveOpen] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!highlightId || !isFetched) return;
+    const el = document.getElementById(`failure-${highlightId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [highlightId, isFetched, visibleItems]);
 
   const refresh = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: prototypeKeys.failures() });
@@ -337,8 +347,12 @@ export function FailuresView() {
 
           return (
             <div
+              id={`failure-${f.id}`}
               key={f.id}
-              className="mb-2.5 rounded-lg border border-border border-e-[3px] border-e-danger bg-surface p-3.5"
+              className={cn(
+                "mb-2.5 rounded-lg border border-border border-e-[3px] border-e-danger bg-surface p-3.5",
+                highlightId === f.id && "ring-2 ring-primary/40",
+              )}
               style={active ? undefined : { opacity: 0.72 }}
             >
               <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">

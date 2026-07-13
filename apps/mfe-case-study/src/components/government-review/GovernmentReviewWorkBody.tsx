@@ -16,6 +16,7 @@ import {
 } from "@platform/app-shared/registration/FormFields";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
+import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { usePoRecordQuery } from "../../query/case-study-queries";
 import {
   governmentReviewKeyHandedToInspectorLabel,
@@ -106,6 +107,7 @@ export function GovernmentReviewWorkBody({
   hostRef: RefObject<GovernmentReviewWorkHostRef | null>;
 }) {
   void def;
+  const { role } = usePrototype();
   const { showToast } = useToast();
   const propertyId = task.propertyId ?? "";
   const { data: record } = usePoRecordQuery(task.poNumber);
@@ -239,7 +241,17 @@ export function GovernmentReviewWorkBody({
       return false;
     }
 
-    const errors = validateGovernmentReviewSubmission(draft);
+    const errors = validateGovernmentReviewSubmission(draft, {
+      role,
+      deedNumber: property?.deedNumber,
+      requestNumber: property?.requestNumber,
+      city: property?.city,
+      district: property?.district,
+      circuit: property?.circuit,
+      poNumber: task.poNumber,
+      assignmentMandateNumber: property?.assignmentMandateNumber,
+      assignmentMandateDate: property?.assignmentMandateDate,
+    });
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
       const message = firstGovernmentReviewError(errors);
@@ -262,7 +274,7 @@ export function GovernmentReviewWorkBody({
     setFormError(message);
     showToast(message, "error");
     return false;
-  }, [draft, locked, hostRef, task.id, showToast]);
+  }, [draft, locked, hostRef, task.id, task.poNumber, showToast, role, property]);
 
   useEffect(() => {
     if (!hostRef.current) return;

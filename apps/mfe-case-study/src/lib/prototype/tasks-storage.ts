@@ -680,14 +680,13 @@ export function compareWorkflowTasks(
   a: WorkflowTask,
   b: WorkflowTask,
 ): number {
+  const createdCmp = b.createdAt.localeCompare(a.createdAt);
+  if (createdCmp !== 0) return createdCmp;
   const poCmp = a.poNumber.localeCompare(b.poNumber, undefined, {
     numeric: true,
   });
   if (poCmp !== 0) return poCmp;
-  if (a.propertyOrdinal !== b.propertyOrdinal) {
-    return a.propertyOrdinal - b.propertyOrdinal;
-  }
-  return a.createdAt.localeCompare(b.createdAt);
+  return a.propertyOrdinal - b.propertyOrdinal;
 }
 
 export function tasksForRole(

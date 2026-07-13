@@ -21,7 +21,9 @@ export function validatePropertyEnfathFields(
       collectRequiredErrors(
         {
           deedNumber: p.deedNumber,
-          taskNumber: p.taskNumber,
+          requestNumber: p.requestNumber,
+          assignmentMandateNumber: p.assignmentMandateNumber,
+          assignmentMandateDate: p.assignmentMandateDate,
           deedDate: p.deedDate,
           ownerName: p.ownerName,
           court: p.court,
@@ -29,7 +31,9 @@ export function validatePropertyEnfathFields(
         },
         [
           "deedNumber",
-          "taskNumber",
+          "requestNumber",
+          "assignmentMandateNumber",
+          "assignmentMandateDate",
           "deedDate",
           "ownerName",
           "court",
@@ -56,14 +60,18 @@ export function validatePropertyEnfathFields(
     collectRequiredErrors(
       {
         deedNumber: p.deedNumber,
-        taskNumber: p.taskNumber,
+        requestNumber: p.requestNumber,
+        assignmentMandateNumber: p.assignmentMandateNumber,
+        assignmentMandateDate: p.assignmentMandateDate,
         deedDate: p.deedDate,
         ownerName: p.ownerName,
         delegationLetterFileName: p.delegationLetterFileName,
       },
       [
         "deedNumber",
-        "taskNumber",
+        "requestNumber",
+        "assignmentMandateNumber",
+        "assignmentMandateDate",
         "deedDate",
         "ownerName",
         "delegationLetterFileName",
@@ -121,7 +129,9 @@ export function firstEnfathValidationMessage(errors: FieldErrors): string {
     errors._contacts ??
     errors._ ??
     errors.deedNumber ??
-    errors.taskNumber ??
+    errors.requestNumber ??
+    errors.assignmentMandateNumber ??
+    errors.assignmentMandateDate ??
     errors.deedDate ??
     errors.ownerName ??
     errors.court ??

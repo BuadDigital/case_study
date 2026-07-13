@@ -103,7 +103,7 @@ export function FinancePartyDisburse() {
         {sortedParties.length === 0 ? (
           <EmptyState
             line="لا التزامات معلقة حالياً."
-            hint="عند وصول أتعاب معتمدة من المشرف ستظهر هنا."
+            hint="تظهر بعد اعتماد المشرف. الصرف الفعلي يكون فقط لصفوف «ضمن أمر صرف» بعد أن ينشئ المكتب أمر الصرف."
           />
         ) : (
           <div

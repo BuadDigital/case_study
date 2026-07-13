@@ -290,7 +290,7 @@ function ActiveTransactionNavRow({
       {badgeCount != null && badgeCount > 0 ? (
         <span className={navBadgeClasses()}>{badgeCount}</span>
       ) : !available ? (
-        <span className={cn(navBadgeClasses(), "opacity-70")}>قريباً</span>
+        <span className={cn(navBadgeClasses(), "opacity-70")}>بدون صلاحية</span>
       ) : null}
     </>
   );
@@ -430,7 +430,7 @@ function ProfileMenuLink({
       <NavIcon d={item.icon} size={14} />
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
       {!item.available ? (
-        <span className="shrink-0 text-[10px] text-text-3">قريباً</span>
+        <span className="shrink-0 text-[10px] text-text-3">بدون صلاحية</span>
       ) : null}
     </>
   );
@@ -1042,6 +1042,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 ) : null}
                 {run.items.map((item) => {
                   const nodes: React.ReactNode[] = [];
+                  nodes.push(
+                    <NavRow
+                      key={item.id}
+                      item={item}
+                      active={
+                        currentPage === item.id ||
+                        (item.id === "po" && inPoSection)
+                      }
+                      onPrefetch={prefetchPage}
+                      badgeCount={
+                        item.id === "failures" ? failuresNavBadge : undefined
+                      }
+                    />,
+                  );
                   const shouldInsertGeneral =
                     !generalNavInserted &&
                     showGeneralGroup &&
@@ -1077,20 +1091,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       );
                     }
                   }
-                  nodes.push(
-                    <NavRow
-                      key={item.id}
-                      item={item}
-                      active={
-                        currentPage === item.id ||
-                        (item.id === "po" && inPoSection)
-                      }
-                      onPrefetch={prefetchPage}
-                      badgeCount={
-                        item.id === "failures" ? failuresNavBadge : undefined
-                      }
-                    />,
-                  );
                   const shouldInsertActiveTx =
                     !activeTransactionsInserted &&
                     showActiveTransactionsGroup &&
