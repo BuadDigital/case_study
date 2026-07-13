@@ -103,11 +103,20 @@ export function PropertyDetailFinanceTab({
   }
 
   if (rows.length === 0) {
+    const caseStudyOpen = tasks.some(
+      (t) =>
+        t.kind === "case-study-property" &&
+        t.propertyId === property.id &&
+        t.status !== "completed" &&
+        t.status !== "cancelled",
+    );
     return (
       <>
         <SectionHeader>مالية المعاملة</SectionHeader>
         <InfoBox icon="ℹ">
-          جاري تجهيز سجلات الأتعاب — أعد تحميل الصفحة بعد لحظات إن لم تظهر.
+          {caseStudyOpen
+            ? "سجلات الأتعاب تظهر بعد اكتمال دراسة الحالة لهذا الصك — وليست عند التوزيع."
+            : "جاري تجهيز سجلات الأتعاب — أعد تحميل الصفحة بعد لحظات إن لم تظهر."}
         </InfoBox>
       </>
     );

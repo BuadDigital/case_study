@@ -37,6 +37,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<EvaluatorRecallRecord> EvaluatorRecallRecords => Set<EvaluatorRecallRecord>();
     public DbSet<PoIntakeDraft> PoIntakeDrafts => Set<PoIntakeDraft>();
     public DbSet<FinancialReportConfig> FinancialReportConfigs => Set<FinancialReportConfig>();
+    public DbSet<PartyFeePricingConfig> PartyFeePricingConfigs => Set<PartyFeePricingConfig>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
 
@@ -123,7 +124,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         {
             e.ToTable("WorkOrderProperties", DatabaseSchemas.CaseStudy);
             e.Property(x => x.DeedNumber).HasMaxLength(128);
-            e.Property(x => x.TaskNumber).HasMaxLength(64);
+            e.Property(x => x.RequestNumber).HasMaxLength(64);
+            e.Property(x => x.AssignmentMandateNumber).HasMaxLength(64);
+            e.Property(x => x.AssignmentMandateDate).HasMaxLength(32);
             e.Property(x => x.DelegationLetterFileName).HasMaxLength(512);
             e.Property(x => x.OtherDocumentFileNames).HasMaxLength(2000);
             e.Property(x => x.BoundariesAvailability).HasMaxLength(32);
@@ -137,8 +140,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.WestBoundary).HasMaxLength(512);
             e.Property(x => x.WestBoundaryLengthM).HasMaxLength(32);
             e.Property(x => x.RestrictionsPresent).HasMaxLength(8);
-            e.Property(x => x.BuildLicenseNumber).HasMaxLength(128);
-            e.Property(x => x.SubdivisionRecordNumber).HasMaxLength(128);
+            e.Property(x => x.PlanNumber).HasMaxLength(128);
+            e.Property(x => x.PlotNumber).HasMaxLength(128);
+            e.Property(x => x.LocationMapUrl).HasMaxLength(1024);
             e.Property(x => x.City).HasMaxLength(128);
             e.Property(x => x.District).HasMaxLength(128);
             e.Property(x => x.Classification).HasMaxLength(128);
@@ -428,6 +432,17 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         {
             e.ToTable("FinancialReportConfigs", DatabaseSchemas.Financial);
             e.Property(x => x.ReportJson).HasColumnType("jsonb");
+        });
+
+        builder.Entity<PartyFeePricingConfig>(e =>
+        {
+            e.ToTable("PartyFeePricingConfigs", DatabaseSchemas.Financial);
+            e.HasKey(x => x.Id);
+            e.Property(x => x.EngineeringSurveyFeeSar).HasPrecision(12, 2);
+            e.Property(x => x.GovernmentReviewFeeSar).HasPrecision(12, 2);
+            e.Property(x => x.FieldInspectorIndividualFeeSar).HasPrecision(12, 2);
+            e.Property(x => x.FieldInspectorOrganizationFeeSar).HasPrecision(12, 2);
+            e.Property(x => x.FieldInspectorEmployeeFeeSar).HasPrecision(12, 2);
         });
 
         builder.Entity<PropertyTimelineEntry>(e =>

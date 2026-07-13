@@ -19,7 +19,8 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
     {
         var orders = await _db.WorkOrders.AsNoTracking()
             .Include(w => w.Properties)
-            .OrderBy(w => w.PoNumber)
+            .OrderByDescending(w => w.CreatedAtUtc)
+            .ThenBy(w => w.PoNumber)
             .ToListAsync(cancellationToken);
 
         var poNumbers = orders.Select(o => o.PoNumber.Trim()).Distinct().ToList();
@@ -84,14 +85,14 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         var taskStatuses = await LoadPropertyWorkStatusesAsync(normalized, propertyIds, cancellationToken);
 
         var lines = order.Properties
-            .OrderBy(p => p.TaskNumber ?? p.DeedNumber, StringComparer.Ordinal)
+            .OrderBy(p => p.RequestNumber ?? p.DeedNumber, StringComparer.Ordinal)
             .Select(p =>
             {
                 var work = taskStatuses.GetValueOrDefault(p.Id, ("in_progress", "قيد التنفيذ"));
                 existing.TryGetValue(p.Id, out var row);
-                var label = string.IsNullOrWhiteSpace(p.TaskNumber)
+                var label = string.IsNullOrWhiteSpace(p.RequestNumber)
                     ? p.DeedNumber.Trim()
-                    : p.TaskNumber.Trim();
+                    : p.RequestNumber.Trim();
                 if (!string.IsNullOrWhiteSpace(p.District))
                     label = $"{label} — {p.District.Trim()}";
 
@@ -216,7 +217,8 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
     {
         var orders = await _db.WorkOrders.AsNoTracking()
             .Include(w => w.Properties)
-            .OrderBy(w => w.PoNumber)
+            .OrderByDescending(w => w.CreatedAtUtc)
+            .ThenBy(w => w.PoNumber)
             .ToListAsync(cancellationToken);
 
         if (orders.Count == 0) return [];
@@ -243,13 +245,13 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
             var po = order.PoNumber.Trim();
             var taskStatuses = taskStatusesByPo.GetValueOrDefault(po, []);
 
-            foreach (var property in order.Properties.OrderBy(p => p.TaskNumber ?? p.DeedNumber, StringComparer.Ordinal))
+            foreach (var property in order.Properties.OrderBy(p => p.RequestNumber ?? p.DeedNumber, StringComparer.Ordinal))
             {
                 var work = taskStatuses.GetValueOrDefault(property.Id, ("in_progress", "قيد التنفيذ"));
                 enfazByKey.TryGetValue((po, property.Id), out var enfaz);
-                var label = string.IsNullOrWhiteSpace(property.TaskNumber)
+                var label = string.IsNullOrWhiteSpace(property.RequestNumber)
                     ? property.DeedNumber.Trim()
-                    : property.TaskNumber.Trim();
+                    : property.RequestNumber.Trim();
                 if (!string.IsNullOrWhiteSpace(property.District))
                     label = $"{label} — {property.District.Trim()}";
 

@@ -321,32 +321,30 @@ flowchart TB
 | 11 | Edit PO header | Section supervisor | Assignment type, dates, specialist — API `PUT` header |
 | 12 | Maintain courts | Section supervisor | Updates catalog used in property forms |
 
-### 8.3 Property status shown in lists (derived — not workflow engine)
+### 8.3 Property status shown in lists (derived from workflow)
 
-The UI builds a **synthetic** `PropertyRow` for tables (`poPropertyToPropertyRow`):
+The UI builds a `PropertyRow` for tables (`poPropertyToPropertyRow` / backend `PropertyListRowBuilder`):
 
 | Display status | How it is determined |
 |----------------|----------------------|
-| **جديد** | Default when complete contact data and no failure |
+| **جديد** | Registered, no workflow tasks started yet |
+| **قيد التنفيذ** | Tasks in distribution / case-study / open party work |
+| **مكتمل** | Case-study parent completed (or all property tasks completed) |
 | **ناقص** | Incomplete contact (name/phone rules) |
-| **قيد التنفيذ** | Deed status **قيد التحقق** (often after failure flow) |
-| **متعذر** | Approved failure in localStorage **or** deed **موقوف** |
-| **مكتمل** | Not driven by real survey/valuation/study completion yet |
+| **متعذر** | Approved failure **or** deed **موقوف** |
+| **بانتظار البورصة** | Badge override when bourse data incomplete |
 
-Columns **مسح / تقييم / دراسة** on any global property table use rules such as: prior deed waives survey to “done”; valuation/study stay **new** unless failure/verification logic applies.
+Survey / valuation / study columns follow the matching child (or parent) workflow task when present.
 
-**PM takeaway:** Status badges illustrate the **target** operating model; they are **not** updated by field teams through APIs yet.
+### 8.4 PO list status
 
-### 8.4 Planned cycle (not wired) — for roadmap discussion
+| Status | Meaning |
+|--------|---------|
+| `under_study` | Properties registered and/or studies in progress |
+| `completed` | All case-study parent tasks completed; not yet invoiced |
+| `fully_billed` / `partially_billed` | Enfaz invoice issued for the PO |
+| `cancelled` / `stopped` | Manual lifecycle overrides |
 
-| Phase | Intended business step | Current state |
-|-------|------------------------|---------------|
-| Distribution | Assign specialist/preparer/inspector/engineering office | `ActiveDistributionView` — **localStorage** tasks + mock party lists (not full API) |
-| Survey | Order and track رفع مساحي | `SurveyView` mock |
-| Keys | Track physical keys | `KeysView` mock |
-| Valuation | VR intake from case study | `ValuationRequestsView` mock |
-| Field inspection | Appraiser/inspector form | `FieldFormView` mock |
-| Study report | Report preparer completes case study | No dedicated screen; PO `done` count hardcoded 0 |
 | Financial / KPI | Billing and performance | Mock screens |
 | Messaging | Cross-department coordination | Mock thread list |
 

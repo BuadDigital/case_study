@@ -52,6 +52,32 @@ export function resolvePartyCategory(
   return "—";
 }
 
+export function compareInspectorFeeRowsNewestFirst(
+  a: InspectorFeeRowDto,
+  b: InspectorFeeRowDto,
+): number {
+  const dateA =
+    a.updatedAtUtc?.trim() ||
+    a.workSubmittedAtUtc?.trim() ||
+    a.poReceivedAtUtc?.trim() ||
+    "";
+  const dateB =
+    b.updatedAtUtc?.trim() ||
+    b.workSubmittedAtUtc?.trim() ||
+    b.poReceivedAtUtc?.trim() ||
+    "";
+  if (dateA !== dateB) return dateB.localeCompare(dateA);
+  const poCmp = a.poNumber.trim().localeCompare(b.poNumber.trim(), "ar");
+  if (poCmp !== 0) return poCmp;
+  return a.propertyLabel.localeCompare(b.propertyLabel, "ar");
+}
+
+export function sortInspectorFeeRowsNewestFirst(
+  rows: InspectorFeeRowDto[],
+): InspectorFeeRowDto[] {
+  return [...rows].sort(compareInspectorFeeRowsNewestFirst);
+}
+
 export function groupInspectorFeesByParty(
   rows: InspectorFeeRowDto[],
   staffUsers: StaffUser[],
@@ -68,7 +94,7 @@ export function groupInspectorFeesByParty(
       assigneeId,
       name: resolvePartyName(assigneeId, staffUsers),
       category: resolvePartyCategory(assigneeId, partyRows, staffUsers),
-      rows: partyRows,
+      rows: sortInspectorFeeRowsNewestFirst(partyRows),
     }))
     .sort((a, b) => a.name.localeCompare(b.name, "ar"));
 }

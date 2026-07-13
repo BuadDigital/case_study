@@ -26,7 +26,8 @@ public sealed class PropertyKeysService : IPropertyKeysService
             query = query.Where(x => !x.HasKey);
 
         var rows = await query
-            .OrderBy(x => x.PoNumber)
+            .OrderByDescending(x => x.UpdatedAtUtc)
+            .ThenBy(x => x.PoNumber)
             .ThenBy(x => x.PropertyId)
             .ToListAsync(cancellationToken);
 

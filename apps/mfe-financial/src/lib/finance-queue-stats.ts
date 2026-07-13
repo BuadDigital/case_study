@@ -1,4 +1,5 @@
 import type { InspectorFeeBillingStatus, InspectorFeeRowDto } from "@platform/api-client";
+import { compareInspectorFeeRowsNewestFirst } from "@platform/app-shared/fees/party-fee-meta";
 
 export type FinanceDisburseBuckets = {
   readyToDisburse: InspectorFeeRowDto[];
@@ -22,10 +23,15 @@ export function bucketFinanceDisburseRows(rows: InspectorFeeRowDto[]): FinanceDi
   const sorted = [...rows].sort((a, b) => {
     const batchA = a.disbursementBatchId ?? "";
     const batchB = b.disbursementBatchId ?? "";
-    if (batchA && batchB && batchA !== batchB) return batchA.localeCompare(batchB);
+    if (batchA && batchB && batchA !== batchB) {
+      // Newer batches first when both have ids — fall back to date within mixed sets.
+      const dateCmp = compareInspectorFeeRowsNewestFirst(a, b);
+      if (dateCmp !== 0) return dateCmp;
+      return batchB.localeCompare(batchA);
+    }
     if (batchA && !batchB) return -1;
     if (!batchA && batchB) return 1;
-    return a.propertyLabel.localeCompare(b.propertyLabel, "ar");
+    return compareInspectorFeeRowsNewestFirst(a, b);
   });
 
   return {

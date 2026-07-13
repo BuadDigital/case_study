@@ -47,7 +47,7 @@ import {
   type PoPropertyRowMoreContext,
 } from "../lib/prototype/po-properties-row-menu";
 import { formatDeliveryRemainingLabel } from "../lib/prototype/my-task-row";
-import { usePoRecordQuery } from "@case-study/mfe/query/case-study-queries";
+import { usePoRecordQuery, useWorkflowTasksQuery } from "@case-study/mfe/query/case-study-queries";
 import {
   canEditProperty,
   canRaisePropertyFailure,
@@ -124,6 +124,7 @@ export function PoPropertiesPage({
   const bumpMenu = useCallback(() => setMenuRevision((n) => n + 1), []);
 
   const { data: record, isPending } = usePoRecordQuery(poNumber);
+  const { data: workflowTasks = [] } = useWorkflowTasksQuery();
 
   const resolveRowMoreItems = useCallback(
     (property: PoPropertyIntake): RowMoreMenuItem[] => {
@@ -328,6 +329,7 @@ export function PoPropertiesPage({
                       record,
                       prop,
                       priorByDeed,
+                      workflowTasks,
                     );
                     const boursePending = !prop.bourseDataCompleted;
                     const locRaw = formatPropertyLocation(prop);

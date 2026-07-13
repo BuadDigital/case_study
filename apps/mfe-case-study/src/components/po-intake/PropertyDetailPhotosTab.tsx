@@ -19,7 +19,7 @@ export function PropertyDetailPhotosTab({
         <EmptyState
           icon="📷"
           title="لا توجد صور مرفوعة"
-          sub="تظهر هنا الصور المعتمدة من المعاين الميداني بعد رفعها في مهمة المعاينة."
+          sub="تظهر هنا صور المعاين الميداني بعد رفعها واعتمادها في مهمة المعاينة — ومستندات الصور الأخرى إن وُجدت."
         />
       </>
     );
@@ -29,7 +29,7 @@ export function PropertyDetailPhotosTab({
     <>
       <SectionHeader>صور العقار</SectionHeader>
       <InfoBox icon="ℹ">
-        {photos.length} صورة معتمدة من المعاين الميداني
+        {photos.length} صورة للعقار
       </InfoBox>
       <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {photos.map((photo) => (
@@ -39,7 +39,9 @@ export function PropertyDetailPhotosTab({
             className={cn(
               "group flex aspect-square flex-col overflow-hidden rounded-[var(--radius-DEFAULT)] border border-border bg-surface-2 p-0 text-start transition-colors",
               "hover:border-primary-light hover:shadow-sm",
+              !photo.dataUrl && "cursor-default opacity-80",
             )}
+            disabled={!photo.dataUrl}
             onClick={() => openPropertyDetailDocumentPreview(photo)}
           >
             {photo.dataUrl ? (
@@ -50,8 +52,9 @@ export function PropertyDetailPhotosTab({
                 className="h-full w-full flex-1 object-cover"
               />
             ) : (
-              <div className="flex flex-1 items-center justify-center text-text-3">
-                📷
+              <div className="flex flex-1 flex-col items-center justify-center gap-1 px-2 text-center text-text-3">
+                <span aria-hidden>📷</span>
+                <span className="text-[10px]">جاري التحميل…</span>
               </div>
             )}
             <div className="shrink-0 border-t border-border px-2 py-1.5">

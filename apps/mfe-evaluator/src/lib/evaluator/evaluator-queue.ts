@@ -38,7 +38,11 @@ export function canAppraiserOpenTask(taskId: string, taskStatus: string): boolea
 
 export function appraiserTaskStatusBadge(
   taskId: string,
+  taskStatus?: string,
 ): { label: string; className: string } | null {
+  if (taskStatus === "completed") {
+    return { label: "مكتملة", className: "b-done" };
+  }
   const sub = loadEvaluatorSubmission(taskId);
   if (sub?.status === "submitted") {
     const recall = getPartyTaskRecall(taskId);

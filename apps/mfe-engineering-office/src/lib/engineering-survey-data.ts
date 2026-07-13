@@ -39,6 +39,8 @@ export type EngineeringSurveySubmission = {
   surveyReportFileName: string;
   siteLetterFileName: string;
   siteConfirmed: boolean;
+  /** Once true, clearing contact phone later must not re-lock declaration. */
+  declarationPhoneSatisfied: boolean;
   checklist: EngineeringSurveyChecklistRow[];
   returnNote?: string;
   /** حقول الرفع لإنفاذ — المكتب الهندسي */
@@ -122,6 +124,7 @@ export function createEngineeringSurveyDraft(input: {
     surveyReportFileName: "",
     siteLetterFileName: "",
     siteConfirmed: false,
+    declarationPhoneSatisfied: false,
     checklist: emptyChecklistRows(),
     onSiteAreaSqm: "",
     northBoundary: "",

@@ -115,6 +115,7 @@ public static class DependencyInjection
         services.AddScoped<ICaseStudyValuationDispatchService, CaseStudyValuationDispatchService>();
         services.AddScoped<IPartyTaskSubmissionService, PartyTaskSubmissionService>();
         services.AddScoped<IInspectorFeeService, InspectorFeeService>();
+        services.AddScoped<IPartyFeePricingService, PartyFeePricingService>();
         services.AddScoped<IPoEnfazBillingService, PoEnfazBillingService>();
         services.AddScoped<IFieldInspectionAttachmentVerifier, FieldInspectionAttachmentVerifier>();
         services.AddScoped<IPropertyTimelineService, PropertyTimelineService>();
@@ -147,6 +148,7 @@ public static class DependencyInjection
     {
         services.AddNotificationInfrastructure(configuration);
         services.AddScoped<IInspectorFeeService, InspectorFeeService>();
+        services.AddScoped<IPartyFeePricingService, PartyFeePricingService>();
         services.AddScoped<IPoEnfazBillingService, PoEnfazBillingService>();
         services.AddScoped<IPropertyTimelineService, PropertyTimelineService>();
         services.AddScoped<IWorkflowTaskService, WorkflowTaskService>();
@@ -164,6 +166,7 @@ public static class DependencyInjection
     public static IServiceCollection AddFinancialInfrastructure(this IServiceCollection services)
     {
         services.AddScoped<IFinancialReportService, FinancialReportService>();
+        services.AddScoped<IPartyFeePricingService, PartyFeePricingService>();
         return services;
     }
 

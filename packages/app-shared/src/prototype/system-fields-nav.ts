@@ -21,7 +21,6 @@ export const SYSTEM_FIELDS_NAV: SystemFieldsNavItem[] = [
     label: "المحاكم و الدوائر",
     icon: "M3 21h18M5 21V7l8-4 8 4v14M9 21v-6h6v6",
     available: true,
-    placeholder: true,
   },
   {
     id: "failure-types",

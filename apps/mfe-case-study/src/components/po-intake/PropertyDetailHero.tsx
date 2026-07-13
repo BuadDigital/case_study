@@ -90,10 +90,10 @@ export function PropertyDetailHero({
         </div>
         <div className="shrink-0 text-end max-lg:w-full max-lg:text-start">
           <div className="max-lg:text-start">
-            <div className="mb-0.5 text-[11px] text-text-3">رقم المهمة</div>
+            <div className="mb-0.5 text-[11px] text-text-3">رقم الطلب</div>
             <div className="text-[22px] font-semibold text-primary">
               <bdi dir="ltr" className={ltrValueClass}>
-                {property.taskNumber.trim() || "—"}
+                {property.requestNumber.trim() || "—"}
               </bdi>
             </div>
           </div>

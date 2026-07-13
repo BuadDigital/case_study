@@ -65,6 +65,8 @@ public sealed class FinancialReportService : IFinancialReportService
     private async Task<FinancialSummaryDto> BuildFromDatabaseAsync(CancellationToken cancellationToken)
     {
         var ledgers = await _db.InspectorFeeLedgers.AsNoTracking().ToListAsync(cancellationToken);
+        ledgers = await FilterLedgersWithCompletedCaseStudyAsync(ledgers, cancellationToken);
+
         var taskIds = ledgers.Select(l => l.WorkflowTaskId).Distinct().ToList();
         var tasks = taskIds.Count == 0
             ? new Dictionary<Guid, WorkflowTask>()
@@ -110,6 +112,35 @@ public sealed class FinancialReportService : IFinancialReportService
             RevenueRows = revenueRows,
             CostRows = costRows,
         };
+    }
+
+    private async Task<List<InspectorFeeLedger>> FilterLedgersWithCompletedCaseStudyAsync(
+        List<InspectorFeeLedger> ledgers,
+        CancellationToken cancellationToken)
+    {
+        if (ledgers.Count == 0) return ledgers;
+
+        var propertyIds = ledgers
+            .Where(l => l.PropertyId.HasValue)
+            .Select(l => l.PropertyId!.Value)
+            .Distinct()
+            .ToList();
+        if (propertyIds.Count == 0) return [];
+
+        var ready = await _db.WorkflowTasks.AsNoTracking()
+            .Where(t =>
+                t.Kind == "case-study-property"
+                && t.PropertyId != null
+                && propertyIds.Contains(t.PropertyId.Value)
+                && t.Status == WorkflowTaskStatus.Completed)
+            .Select(t => t.PropertyId!.Value)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var readySet = ready.ToHashSet();
+
+        return ledgers
+            .Where(l => l.PropertyId is Guid pid && readySet.Contains(pid))
+            .ToList();
     }
 
     private async Task<Dictionary<string, string>> LoadAssigneeNamesAsync(
@@ -187,7 +218,8 @@ public sealed class FinancialReportService : IFinancialReportService
     {
         var orders = await _db.WorkOrders.AsNoTracking()
             .Include(w => w.Properties)
-            .OrderBy(w => w.PoNumber)
+            .OrderByDescending(w => w.CreatedAtUtc)
+            .ThenBy(w => w.PoNumber)
             .ToListAsync(cancellationToken);
 
         if (orders.Count == 0)

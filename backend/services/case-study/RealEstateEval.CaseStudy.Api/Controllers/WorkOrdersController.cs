@@ -1,7 +1,9 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
@@ -13,13 +15,16 @@ public class WorkOrdersController : ControllerBase
 {
     private readonly IWorkOrderService _workOrders;
     private readonly IPropertyTimelineService _timeline;
+    private readonly IPermissionService _permissions;
 
     public WorkOrdersController(
         IWorkOrderService workOrders,
-        IPropertyTimelineService timeline)
+        IPropertyTimelineService timeline,
+        IPermissionService permissions)
     {
         _workOrders = workOrders;
         _timeline = timeline;
+        _permissions = permissions;
     }
 
     [HttpGet]
@@ -200,6 +205,34 @@ public class WorkOrdersController : ControllerBase
             poNumber,
             propertyId,
             property,
+            cancellationToken);
+        if (errors is { Count: > 0 })
+            return BadRequest(new FieldErrorsResponseDto { Errors = errors });
+        if (result is null) return NotFound();
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Narrow write for informal unlock — specialist / inspector / supervisor / CDO.
+    /// Does not require manage-work-orders (inspectors only have submit-party-work).
+    /// </summary>
+    [HttpPut("{poNumber}/properties/{propertyId:guid}/location-map-url")]
+    public async Task<ActionResult<WorkOrderPropertyDto>> UpdateLocationMapUrl(
+        string poNumber,
+        Guid propertyId,
+        [FromBody] UpdateLocationMapUrlRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId)) return Forbid();
+        var perms = await _permissions.GetForUserIdAsync(userId, cancellationToken);
+        if (!DocumentaryWorkflowRules.RoleCanSetLocationMapUrl(perms?.PrototypeRole))
+            return Forbid();
+
+        var (result, errors) = await _workOrders.UpdateLocationMapUrlAsync(
+            poNumber,
+            propertyId,
+            request.LocationMapUrl,
             cancellationToken);
         if (errors is { Count: > 0 })
             return BadRequest(new FieldErrorsResponseDto { Errors = errors });

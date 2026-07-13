@@ -16,7 +16,11 @@ export function filterEngineeringSurveyListedTasks(
 
 export function engineeringSurveyTaskStatusBadge(
   taskId: string,
+  taskStatus?: string,
 ): { label: string; className: string } | null {
+  if (taskStatus === "completed") {
+    return { label: "مكتملة", className: "b-done" };
+  }
   const sub = loadEngineeringSurveySubmission(taskId);
   if (sub?.status === "submitted") {
     return { label: "مُرسَل للأخصائي", className: "b-new" };

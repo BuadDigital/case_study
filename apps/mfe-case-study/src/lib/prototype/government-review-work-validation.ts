@@ -4,6 +4,10 @@ import {
   isGovernmentReviewAwaitingKeyHandoff,
   isGovernmentReviewAwaitingVisit,
 } from "./government-review-work-data";
+import {
+  governmentReviewSubmitFieldErrors,
+} from "./documentary-workflow-gates";
+import type { RoleId } from "@platform/types";
 
 export type GovernmentReviewFieldErrors = Partial<
   Record<
@@ -64,8 +68,19 @@ function validateKeysAndVisitBasics(
 
 export function validateGovernmentReviewSubmission(
   submission: GovernmentReviewSubmission,
-): GovernmentReviewFieldErrors {
-  const errors: GovernmentReviewFieldErrors = {};
+  documentary?: {
+    role: RoleId;
+    deedNumber?: string | null;
+    requestNumber?: string | null;
+    city?: string | null;
+    district?: string | null;
+    circuit?: string | null;
+    poNumber?: string | null;
+    assignmentMandateNumber?: string | null;
+    assignmentMandateDate?: string | null;
+  },
+): GovernmentReviewFieldErrors & Record<string, string> {
+  const errors: GovernmentReviewFieldErrors & Record<string, string> = {};
 
   if (!submission.visitStatus) {
     errors.visitStatus = "حدّد حالة زيارة المحكمة";
@@ -75,9 +90,12 @@ export function validateGovernmentReviewSubmission(
     if (submission.visitStatus !== "completed") {
       errors.visitStatus =
         "لا يمكن إتمام المراجعة قبل تأكيد «تمت الزيارة» — احفظ كمسودة بالانتظار";
+    } else if (submission.keysStatus === "not_required") {
+      // unreachable when canFinalize is correct — keep defensive message
+      errors.keysStatus = "حدّد حالة المفاتيح";
     } else if (submission.keyHandedToInspector !== "yes") {
       errors.keyHandedToInspector =
-        "لإتمام المعاملة اختر «نعم» بعد تسليم المفتاح للمعاين — أو احفظ كقيد التنفيذ";
+        "لإتمام المعاملة اختر «نعم» بعد تسليم المفتاح للمعاين — أو احفظ كقيد التنفيذ (أو اختر مفاتيح غير مطلوبة)";
     }
     return errors;
   }
@@ -86,6 +104,10 @@ export function validateGovernmentReviewSubmission(
 
   if (!submission.confirmed) {
     errors.confirmed = "يجب تأكيد اكتمال المراجعة قبل الإرسال";
+  }
+
+  if (documentary) {
+    Object.assign(errors, governmentReviewSubmitFieldErrors(documentary));
   }
 
   return errors;

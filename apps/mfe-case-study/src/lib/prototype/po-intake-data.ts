@@ -377,16 +377,16 @@ export function formatPropertyLandFrontages(
     .join(" · ");
 }
 
-/** رقم القطعة / المخطط — من محضر التجزئة أو رخصة البناء. */
+/** رقم القطعة / المخطط. */
 export function formatPropertyPlotPlanNumber(
-  property: Pick<PoPropertyIntake, "subdivisionRecordNumber" | "buildLicenseNumber">,
+  property: Pick<PoPropertyIntake, "plotNumber" | "planNumber">,
 ): string {
   const parts = [
-    property.subdivisionRecordNumber.trim()
-      ? `محضر التجزئة: ${property.subdivisionRecordNumber.trim()}`
+    property.planNumber.trim()
+      ? `المخطط: ${property.planNumber.trim()}`
       : "",
-    property.buildLicenseNumber.trim()
-      ? `رخصة البناء: ${property.buildLicenseNumber.trim()}`
+    property.plotNumber.trim()
+      ? `القطعة: ${property.plotNumber.trim()}`
       : "",
   ].filter(Boolean);
   return parts.join(" · ");
@@ -444,8 +444,8 @@ export function formatPropertyLandFrontagesDisplay(
   return "";
 }
 
-/** رابط خريطة تقريبي من المدينة والحي (حتى تتوفر إحداثيات دقيقة). */
-export function propertyLocationMapUrl(
+/** رابط خريطة تقريبي من المدينة والحي (حتى يُزوَّد رابط موقع دقيق). */
+export function approximatePropertyMapSearchUrl(
   property: Pick<PoPropertyIntake, "city" | "district">,
 ): string | null {
   const query = [property.district.trim(), property.city.trim(), "السعودية"]
@@ -453,6 +453,13 @@ export function propertyLocationMapUrl(
     .join("، ");
   if (!query) return null;
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
+/** @deprecated use approximatePropertyMapSearchUrl */
+export function propertyLocationMapUrl(
+  property: Pick<PoPropertyIntake, "city" | "district">,
+): string | null {
+  return approximatePropertyMapSearchUrl(property);
 }
 
 /** حالة الملك — مشتقة مؤقتاً حتى يُضاف حقل مستقل في الـ API. */
@@ -493,8 +500,8 @@ export function hasBourseDetailFields(
     | "restrictionsPresent"
     | "boundariesAvailability"
     | "boundariesExternalDocName"
-    | "buildLicenseNumber"
-    | "subdivisionRecordNumber"
+    | "planNumber"
+    | "plotNumber"
     | PropertyBoundaryDescKey
     | PropertyBoundaryLenKey
   >,
@@ -509,8 +516,8 @@ export function hasBourseDetailFields(
       property.restrictionsPresent.trim() ||
       property.boundariesAvailability.trim() ||
       property.boundariesExternalDocName.trim() ||
-      property.buildLicenseNumber.trim() ||
-      property.subdivisionRecordNumber.trim() ||
+      property.planNumber.trim() ||
+      property.plotNumber.trim() ||
       property.northBoundary.trim() ||
       property.northBoundaryLengthM.trim() ||
       property.southBoundary.trim() ||
@@ -549,7 +556,9 @@ export type PoPropertyIntake = {
   id: string;
   identifierType: PropertyIdentifierType;
   deedNumber: string;
-  taskNumber: string;
+  requestNumber: string;
+  assignmentMandateNumber: string;
+  assignmentMandateDate: string;
   deedDate: string;
   ownerName: string;
   restrictionsPresent: string;
@@ -575,8 +584,9 @@ export type PoPropertyIntake = {
   delegationLetterFileName: string;
   otherDocumentFileNames: string[];
   realEstateRegFileName: string;
-  buildLicenseNumber: string;
-  subdivisionRecordNumber: string;
+  planNumber: string;
+  plotNumber: string;
+  locationMapUrl: string;
   bourseDataCompleted: boolean;
   contacts: PoContact[];
 };
@@ -613,7 +623,9 @@ export function emptyProperty(): PoPropertyIntake {
     id: newPropertyId(),
     identifierType: "deed",
     deedNumber: "",
-    taskNumber: "",
+    requestNumber: "",
+    assignmentMandateNumber: "",
+    assignmentMandateDate: "",
     deedDate: "",
     ownerName: "",
     restrictionsPresent: "",
@@ -632,8 +644,9 @@ export function emptyProperty(): PoPropertyIntake {
     delegationLetterFileName: "",
     otherDocumentFileNames: [],
     realEstateRegFileName: "",
-    buildLicenseNumber: "",
-    subdivisionRecordNumber: "",
+    planNumber: "",
+    plotNumber: "",
+    locationMapUrl: "",
     bourseDataCompleted: false,
     contacts: [{ name: "", role: "", phone: "" }],
   };

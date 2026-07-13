@@ -16,8 +16,13 @@ import {
   deleteTasksForProperty,
   linkNewPropertyToTaskSlot,
   syncTaskSlotsForPo,
+  type WorkflowTask,
 } from "./tasks-storage";
-import type { PoRow, PropertyRow } from "@platform/app-shared/prototype/constants";
+import {
+  resolvePropertyStatusFromTasks,
+  resolvePropertyTrackStagesFromTasks,
+} from "./property-list-status";
+import type { PropertyRow } from "@platform/app-shared/prototype/constants";
 import type { PendingBoursePropertyDto,UpdatePropertyBourseRequest,WorkOrderDto,WorkOrderPropertyDto} from "@platform/api-client";
 import {
   addWorkOrderProperty,
@@ -36,6 +41,7 @@ import {
   stopWorkOrder,
   updateWorkOrderHeader,
   updateWorkOrderProperty,
+  updateWorkOrderPropertyLocationMapUrl,
   workOrderExists,
 } from "@platform/api-client";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
@@ -102,7 +108,9 @@ function dtoToProperty(dto: WorkOrderPropertyDto): PoPropertyIntake {
     id: String(dto.id ?? ""),
     identifierType: parsePropertyIdentifierType(dto.identifierType),
     deedNumber: dto.deedNumber,
-    taskNumber: dto.taskNumber ?? "",
+    requestNumber: dto.requestNumber ?? "",
+    assignmentMandateNumber: dto.assignmentMandateNumber ?? "",
+    assignmentMandateDate: dto.assignmentMandateDate ?? "",
     deedDate: dto.deedDate ?? "",
     ownerName: dto.ownerName ?? "",
     restrictionsPresent: dto.restrictionsPresent ?? "",
@@ -128,8 +136,9 @@ function dtoToProperty(dto: WorkOrderPropertyDto): PoPropertyIntake {
     delegationLetterFileName: dto.delegationLetterFileName ?? "",
     otherDocumentFileNames: dto.otherDocumentFileNames ?? [],
     realEstateRegFileName: dto.realEstateRegFileName ?? "",
-    buildLicenseNumber: dto.buildLicenseNumber ?? "",
-    subdivisionRecordNumber: dto.subdivisionRecordNumber ?? "",
+    planNumber: dto.planNumber ?? "",
+    plotNumber: dto.plotNumber ?? "",
+    locationMapUrl: dto.locationMapUrl ?? "",
     bourseDataCompleted: dto.bourseDataCompleted ?? false,
     contacts: (dto.contacts ?? []).map((c) => ({
       name: c.name ?? "",
@@ -169,7 +178,9 @@ export function propertyToEnfathDto(
       prop.deedNumber,
       prop.identifierType,
     ),
-    taskNumber: prop.taskNumber.trim() || undefined,
+    requestNumber: prop.requestNumber.trim() || undefined,
+    assignmentMandateNumber: prop.assignmentMandateNumber.trim() || undefined,
+    assignmentMandateDate: prop.assignmentMandateDate.trim() || undefined,
     deedDate: prop.deedDate || undefined,
     ownerName: prop.ownerName || undefined,
     city: prop.city.trim() || undefined,
@@ -185,6 +196,9 @@ export function propertyToEnfathDto(
         ? prop.otherDocumentFileNames
         : undefined,
     realEstateRegFileName: prop.realEstateRegFileName || undefined,
+    planNumber: prop.planNumber.trim() || undefined,
+    plotNumber: prop.plotNumber.trim() || undefined,
+    locationMapUrl: prop.locationMapUrl.trim() || undefined,
     bourseDataCompleted: prop.bourseDataCompleted,
     contacts: contactsForApi(prop.contacts),
   };
@@ -204,8 +218,9 @@ export function propertyToDto(prop: PoPropertyIntake): WorkOrderPropertyDto {
     eastBoundaryLengthM: prop.eastBoundaryLengthM || undefined,
     westBoundary: prop.westBoundary || undefined,
     westBoundaryLengthM: prop.westBoundaryLengthM || undefined,
-    buildLicenseNumber: prop.buildLicenseNumber || undefined,
-    subdivisionRecordNumber: prop.subdivisionRecordNumber || undefined,
+    planNumber: prop.planNumber || undefined,
+    plotNumber: prop.plotNumber || undefined,
+    locationMapUrl: prop.locationMapUrl || undefined,
     deedStatus: prop.deedStatus || undefined,
     area: prop.area || undefined,
     city: prop.city.trim(),
@@ -236,8 +251,6 @@ export function propertyToBourseRequest(
     eastBoundaryLengthM: prop.eastBoundaryLengthM || undefined,
     westBoundary: prop.westBoundary || undefined,
     westBoundaryLengthM: prop.westBoundaryLengthM || undefined,
-    buildLicenseNumber: prop.buildLicenseNumber || undefined,
-    subdivisionRecordNumber: prop.subdivisionRecordNumber || undefined,
   };
 }
 
@@ -307,28 +320,6 @@ export async function poRecordExists(poNumber: string): Promise<boolean> {
   return result.ok ? result.data : false;
 }
 
-export function poRecordToListRow(record: PoIntakeRecord): PoRow {
-  const registered = record.properties.length;
-  const expected = record.expectedPropertyCount ?? registered;
-  return {
-    id: record.poNumber,
-    type: record.assignmentType ?? "—",
-    count: expected,
-    registered,
-    done: 0,
-    status:
-      registered >= expected && expected > 0
-        ? "completed"
-        : registered > 0
-          ? "under_study"
-          : "new",
-    date: record.receivedFromEnfathAt,
-    dueDate: record.dueDateAt,
-    specialist: record.assignmentSpecialist,
-    createdAtUtc: new Date().toISOString(),
-  };
-}
-
 export async function findPriorDeedFull(
   deedNumber: string,
   excludePo?: string,
@@ -350,6 +341,7 @@ export function poPropertyToPropertyRow(
   record: PoIntakeRecord,
   prop: PoPropertyIntake,
   priorByDeed: Map<string, string>,
+  tasks: WorkflowTask[] = [],
 ): PropertyRow {
   const failure = getPropertyFailure(record.poNumber, prop.id);
   const boursePending = !prop.bourseDataCompleted;
@@ -363,6 +355,26 @@ export function poPropertyToPropertyRow(
       ? `${prop.city} · ${prop.district}`
       : prop.city || "—";
 
+  const fromTasks = resolvePropertyStatusFromTasks(
+    record.poNumber,
+    prop.id,
+    tasks,
+  );
+  const tracks = resolvePropertyTrackStagesFromTasks(
+    record.poNumber,
+    prop.id,
+    tasks,
+  );
+
+  const status: PropertyRow["status"] = boursePending
+    ? "progress"
+    : isFailed
+      ? "fail"
+      : incomplete
+        ? "incomplete"
+        : fromTasks ??
+          (underVerification ? "progress" : "new");
+
   return {
     id: propertyRowId(record.poNumber, prop),
     po: record.poNumber,
@@ -373,24 +385,14 @@ export function poPropertyToPropertyRow(
     key: false,
     survey: boursePending
       ? "new"
-      : priorSurveyWaived(prop, priorByDeed)
-        ? "done"
-        : "new",
-    val: "new",
+      : (tracks.survey ??
+        (priorSurveyWaived(prop, priorByDeed) ? "done" : "new")),
+    val: tracks.val ?? "new",
     study: boursePending
       ? "progress"
-      : underVerification
-        ? "progress"
-        : "new",
-    status: boursePending
-      ? "progress"
-      : isFailed
-        ? "fail"
-        : incomplete
-          ? "incomplete"
-          : underVerification
-            ? "progress"
-            : "new",
+      : (tracks.study ??
+        (underVerification ? "progress" : "new")),
+    status,
     specialist: record.assignmentSpecialist,
   };
 }
@@ -662,6 +664,33 @@ export async function updatePropertyInPo(
     poNumber,
     propertyId,
     dto,
+  );
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: resolveApiError(result.kind, result.errors),
+      errors: result.errors,
+    };
+  }
+
+  notifyWorkOrdersChanged();
+  return { ok: true, data: dtoToProperty(result.data) };
+}
+
+/** Informal unlock — inspector/specialist without full property edit rights. */
+export async function updatePropertyLocationMapUrlInPo(
+  poNumber: string,
+  propertyId: string,
+  locationMapUrl: string,
+): Promise<StorageOk<PoPropertyIntake> | StorageError> {
+  const config = workOrdersApiConfig();
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
+
+  const result = await updateWorkOrderPropertyLocationMapUrl(
+    config,
+    poNumber,
+    propertyId,
+    locationMapUrl,
   );
   if (!result.ok) {
     return {

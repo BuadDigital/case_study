@@ -11,12 +11,16 @@ import {
   StatValue,
 } from "@platform/design-system";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { sortInspectorFeeRowsNewestFirst } from "@platform/app-shared/fees/party-fee-meta";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 import { InspectorFeesBillingTable } from "./InspectorFeesBillingTable";
 import { PartyFeeWorkflowTable } from "../fees/PartyFeeWorkflowTable";
 
-export type PartyFeesVariant = "field-inspection" | "engineering-survey";
+export type PartyFeesVariant =
+  | "field-inspection"
+  | "engineering-survey"
+  | "government-review";
 
 const COPY: Record<
   PartyFeesVariant,
@@ -39,7 +43,7 @@ const COPY: Record<
     partyTypeEmployeeHint: "(عمولة)",
     emptyLine: "لا توجد أتعاب مسجّلة بعد.",
     emptyHint:
-      "تظهر هنا بعد توزيع مهمة المعاينة وإرسال المعاينة الميدانية.",
+      "تظهر بعد اكتمال دراسة الحالة للصك، ثم توزيع/إنجاز المعاينة.",
     tableHint:
       "ملخص أتعاب كل العقارات المسندة إليك — ارفع للمشرف عند الإنجاز.",
     footer:
@@ -50,14 +54,28 @@ const COPY: Record<
     intro:
       "بعد إنجاز الرفع ارفع المعاملة للمشرف. وعند جاهزيتها للصرف أنشئ «أمر صرف» من شاشة الاتعاب.",
     partyTypeColumn: "نوع المكتب",
-    partyTypeEmployeeHint: "(داخلي)",
+    partyTypeEmployeeHint: "(خارجي)",
     emptyLine: "لا توجد أتعاب مسجّلة بعد.",
     emptyHint:
-      "تظهر هنا بعد توزيع مهمة الرفع المساحي وإرسال التقرير المساحي.",
+      "تظهر بعد اكتمال دراسة الحالة للصك، ثم توزيع/إنجاز الرفع المساحي.",
     tableHint:
       "ملخص أتعاب كل العقارات المسندة إليك — ارفع للمشرف عند الإنجاز.",
     footer:
-      "المكتب المتعاقد له أتعاب لكل عقار؛ المكتب الداخلي له أتعاب أقل يحددها المشرف. كل حسم يتطلب سبباً موضحاً.",
+      "المكتب الهندسي جهة خارجية — الأتعاب مقابل الرفوعات المنتهية. القيمة الافتراضية قابلة للتغيير من إعدادات المالية، ولكل سجل على حدة.",
+  },
+  "government-review": {
+    title: "أتعاب المراجعة الحكومية",
+    intro:
+      "بعد إنجاز المراجعة ارفع المعاملة للمشرف. وعند جاهزيتها للصرف أنشئ «أمر صرف» من شاشة الاتعاب.",
+    partyTypeColumn: "نوع المراجع",
+    partyTypeEmployeeHint: "(متعاون فرد)",
+    emptyLine: "لا توجد أتعاب مسجّلة بعد.",
+    emptyHint:
+      "تظهر بعد اكتمال دراسة الحالة للصك، ثم توزيع/إنجاز المراجعة الحكومية.",
+    tableHint:
+      "ملخص أتعاب كل العقارات المسندة إليك — ارفع للمشرف عند الإنجاز.",
+    footer:
+      "تصنيف المراجع الحكومي: متعاون فرد فقط. القيمة الافتراضية قابلة للتغيير من إعدادات المالية، ولكل سجل على حدة.",
   },
 };
 
@@ -66,8 +84,8 @@ const SUPERVISOR_COPY = {
   intro:
     "راجع الأتعاب والحسومات لكل العقارات. الاعتماد والإرسال للمالية من تبويب «الأمور المالية» في شاشة الاتعاب.",
   emptyLine: "لا توجد أتعاب مسجّلة بعد.",
-  emptyHint: "تظهر هنا بعد توزيع مهام المعاينة أو الرفع المساحي.",
-  tableHint: "جميع أتعاب المعاينة والرفع المساحي — الحسم هنا؛ الاعتماد من «الأمور المالية».",
+  emptyHint: "تظهر هنا بعد اكتمال دراسة الحالة وتوزيع مهام الأطراف (معاينة / رفع / مراجعة).",
+  tableHint: "جميع أتعاب الأطراف — الحسم هنا؛ الاعتماد من «الأمور المالية».",
   footer:
     "بعد الإرسال للمالية تُقفل التعديلات حتى يُعاد السجل باعتراض. كل حسم يتطلب سبباً موضحاً.",
   partyTypeColumn: "نوع الطرف",
@@ -109,7 +127,7 @@ export function InspectorFeesTab({
     },
   );
 
-  const rows = summary?.rows ?? [];
+  const rows = sortInspectorFeeRowsNewestFirst(summary?.rows ?? []);
   const queueReady = isFetched;
   const queuePending = !queueReady;
   const billingMode = isSupervisor ? "supervisor" : "readonly";

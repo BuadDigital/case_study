@@ -88,7 +88,12 @@ public static class WorkOrderListStatus
     public const string PartiallyBilled = "partially_billed";
     public const string FullyBilled = "fully_billed";
 
-    public static string Resolve(WorkOrder order, int studiedCount)
+    /// <param name="studiedCount">Properties whose case-study parent task is completed.</param>
+    /// <param name="hasEnfazInvoice">True when an Enfaz invoice was issued for this PO.</param>
+    public static string Resolve(
+        WorkOrder order,
+        int studiedCount,
+        bool hasEnfazInvoice = false)
     {
         var lifecycle = order.LifecycleStatus?.Trim();
         if (lifecycle == WorkOrderLifecycleStatus.Cancelled) return Cancelled;
@@ -96,15 +101,19 @@ public static class WorkOrderListStatus
 
         var expected = Math.Max(1, order.ExpectedPropertyCount);
         var registered = order.Properties.Count;
+        var allRegistered = registered > 0 && registered >= expected;
+        var allStudied = allRegistered && studiedCount >= registered;
 
-        if (registered > 0 && studiedCount >= registered && registered >= expected)
-            return FullyBilled;
-        if (studiedCount > 0)
-            return PartiallyBilled;
-        if (registered >= expected)
+        // Billing labels only when finance actually issued an invoice.
+        if (hasEnfazInvoice)
+            return allStudied ? FullyBilled : PartiallyBilled;
+
+        if (allStudied)
             return Completed;
-        if (registered > 0)
+
+        if (studiedCount > 0 || registered > 0)
             return UnderStudy;
+
         return New;
     }
 }

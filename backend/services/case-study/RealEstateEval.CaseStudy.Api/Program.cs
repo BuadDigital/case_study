@@ -16,6 +16,7 @@ builder.Services
     });
 
 builder.Services.AddResponseCompression(options => options.EnableForHttps = true);
+builder.Services.AddHttpContextAccessor();
 var connectionString = ServiceCollectionExtensions.RequireConnectionString( builder.Configuration, ServiceDatabaseNames.CaseStudy);
 builder.Services.AddPersistence(builder.Configuration, connectionString);
 builder.Services.AddIdentityInfrastructure();

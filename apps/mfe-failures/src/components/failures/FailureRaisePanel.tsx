@@ -49,6 +49,7 @@ export function FailureRaisePanel({
   raisedByRole,
   onSubmitted,
   autoOpenRaise = false,
+  initialProblemTypeId = "",
 }: {
   poNumber: string;
   propertyId: string;
@@ -58,15 +59,21 @@ export function FailureRaisePanel({
   onSubmitted?: () => void;
   /** Opens the raise form when the panel mounts (e.g. from quick actions). */
   autoOpenRaise?: boolean;
+  /** Prefills problem type (e.g. key-wont-open). */
+  initialProblemTypeId?: string;
 }) {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const { data: failures = [] } = useFailuresQuery();
   const [open, setOpen] = useState(autoOpenRaise);
   const [severity, setSeverity] = useState<FailureSeverity>("internal");
-  const [problemTypeId, setProblemTypeId] = useState("");
+  const [problemTypeId, setProblemTypeId] = useState(initialProblemTypeId);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (initialProblemTypeId) setProblemTypeId(initialProblemTypeId);
+  }, [initialProblemTypeId]);
 
   const propertyRef = useMemo(
     () => ({ poNumber, propertyId, deedNumber }),

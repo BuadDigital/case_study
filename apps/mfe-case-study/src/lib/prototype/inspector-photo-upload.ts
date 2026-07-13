@@ -3,7 +3,11 @@ import {
   uploadAttachment,
 } from "@platform/api-client";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
-import type { InspectorPhotoAttachment } from "./inspector-workspace-data";
+import type {
+  InspectorPhotoAttachment,
+  InspectorWorkspaceDraft,
+} from "./inspector-workspace-data";
+import { INSPECTOR_DEFINED_PHOTOS } from "./inspector-workspace-data";
 import { burnInspectorPhotoStamp } from "./inspector-photo-stamp";
 
 const SCOPE = "field-inspection-photo";
@@ -89,6 +93,74 @@ export async function prefetchInspectorPhoto(
   } catch {
     return undefined;
   }
+}
+
+/** Hydrate preview cache for property-detail «صور العقار» after loading the workspace. */
+export async function prefetchInspectorWorkspacePhotos(
+  draft: InspectorWorkspaceDraft,
+): Promise<void> {
+  const taskId = draft.taskId;
+  if (!taskId) return;
+
+  const include = (approved: boolean) =>
+    approved || draft.status === "submitted";
+
+  const jobs: Promise<unknown>[] = [];
+
+  for (const def of INSPECTOR_DEFINED_PHOTOS) {
+    const slot = draft.definedPhotos[def.id];
+    if (!slot || slot.none) continue;
+    for (const photo of slot.photos) {
+      if (!include(photo.approved) || !photo.attachmentId) continue;
+      jobs.push(
+        prefetchInspectorPhoto(taskId, `slot:${def.id}:${photo.id}`, {
+          fileName: photo.fileName,
+          mimeType: photo.mimeType,
+          attachmentId: photo.attachmentId,
+          sizeBytes: photo.sizeBytes,
+        }),
+      );
+    }
+  }
+
+  for (const photo of draft.freePhotos) {
+    if (!include(photo.approved) || !photo.attachmentId) continue;
+    jobs.push(
+      prefetchInspectorPhoto(taskId, `free:${photo.id}`, {
+        fileName: photo.fileName,
+        mimeType: photo.mimeType,
+        attachmentId: photo.attachmentId,
+        sizeBytes: photo.sizeBytes,
+      }),
+    );
+  }
+
+  for (const [key, attachment] of Object.entries(
+    draft.featurePhotoAttachments,
+  )) {
+    if (!attachment?.attachmentId) continue;
+    jobs.push(
+      prefetchInspectorPhoto(taskId, `feature:${key}`, attachment),
+    );
+  }
+
+  for (const [key, attachment] of Object.entries(
+    draft.componentPhotoAttachments,
+  )) {
+    if (!attachment?.attachmentId) continue;
+    jobs.push(
+      prefetchInspectorPhoto(taskId, `component:${key}`, attachment),
+    );
+  }
+
+  for (const obs of draft.observations) {
+    if (!obs.photo?.attachmentId) continue;
+    jobs.push(
+      prefetchInspectorPhoto(taskId, `observation:${obs.id}`, obs.photo),
+    );
+  }
+
+  await Promise.all(jobs);
 }
 
 export async function uploadInspectorPhotoFromFile(

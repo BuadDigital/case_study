@@ -1,8 +1,8 @@
 namespace RealEstateEval.Application.Rules;
 
 /// <summary>
-/// Default field-inspection fees.
-/// متعاون فرد / متعاون شركة / موظف — plus legacy "متعاون" → فرد.
+/// Field-inspection party types and seed/fallback fees.
+/// Live defaults come from <c>PartyFeePricingConfig</c>; each ledger remains editable.
 /// </summary>
 public static class InspectorFeeRules
 {

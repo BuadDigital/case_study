@@ -18,7 +18,10 @@ export function PartyReturnedQueue({ rows }: { rows: InspectorFeeRowDto[] }) {
 
   if (returned.length === 0) {
     return (
-      <EmptyState line="لا شيء مُعاد إليك أو بانتظار رد على استفسار." />
+      <EmptyState
+        line="لا شيء مُعاد إليك أو بانتظار رد على استفسار."
+        hint="إن أعادت المالية المعاملة للمشرف فستظهر عنده في «المُعاد من المالية»، وليس هنا."
+      />
     );
   }
 

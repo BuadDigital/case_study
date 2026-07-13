@@ -86,38 +86,6 @@ export const PAGE_SITUATION_CARDS: Partial<Record<PageId, PageSituationCardDef[]
     "property-inspection": partyCards("مكتملة"),
     "property-appraisal": partyCards(),
     "active-survey": partyCards(),
-    "party-fees": [
-      {
-        key: "total",
-        label: "إجمالي العقارات",
-        sub: "",
-        tone: "blue",
-      },
-      {
-        key: "inProgress",
-        label: "قيد التنفيذ",
-        sub: "",
-        tone: "warn",
-      },
-      {
-        key: "ready",
-        label: "جاهز للصرف",
-        sub: "",
-        tone: "blue",
-      },
-      {
-        key: "disbursed",
-        label: "مصروفة",
-        sub: "",
-        tone: "green",
-      },
-      {
-        key: "returned",
-        label: "مُعادة/استفسار",
-        sub: "",
-        tone: "red",
-      },
-    ],
   };
 
 export function pageSituationCards(pageId: PageId): PageSituationCardDef[] | null {

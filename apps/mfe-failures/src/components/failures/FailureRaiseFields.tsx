@@ -1,17 +1,22 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import {
   InlineLoadingSkeleton,
   Label,
   cn,
   formControlClassName,
 } from "@platform/design-system";
+import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import {
   FAILURE_PROBLEM_TYPES,
   FAILURE_TYPE_CATEGORIES,
   failureProblemTypeLabel,
 } from "../../lib/failure-types-data";
+import {
+  filterFailureCategoriesForRole,
+  filterFailureProblemTypesForRole,
+} from "../../lib/failure-category-role-visibility";
 import type { FailureSeverity } from "../../lib/failures-types";
 import { useFailureTypesQuery } from "../../query/failure-types-queries";
 
@@ -37,21 +42,34 @@ export function FailureRaiseFields({
   onNoteChange: (value: string) => void;
   idPrefix?: string;
 }) {
+  const { role } = usePrototype();
   const { data: catalog, isPending } = useFailureTypesQuery();
 
   const categories = useMemo(() => {
     const rows = catalog?.categories?.length
       ? catalog.categories
       : FAILURE_TYPE_CATEGORIES;
-    return [...rows].sort((a, b) => a.order - b.order);
-  }, [catalog?.categories]);
+    return filterFailureCategoriesForRole(
+      role,
+      [...rows].sort((a, b) => a.order - b.order),
+    );
+  }, [catalog?.categories, role]);
 
   const problemTypes = useMemo(() => {
     const rows = catalog?.problemTypes?.length
       ? catalog.problemTypes
       : FAILURE_PROBLEM_TYPES;
-    return [...rows].sort((a, b) => a.order - b.order);
-  }, [catalog?.problemTypes]);
+    return filterFailureProblemTypesForRole(
+      role,
+      [...rows].sort((a, b) => a.order - b.order),
+    );
+  }, [catalog?.problemTypes, role]);
+
+  useEffect(() => {
+    if (!problemTypeId) return;
+    if (problemTypes.some((type) => type.id === problemTypeId)) return;
+    onProblemTypeIdChange("");
+  }, [problemTypeId, problemTypes, onProblemTypeIdChange]);
 
   const selectedType = problemTypes.find((type) => type.id === problemTypeId);
 

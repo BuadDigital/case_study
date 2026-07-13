@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { TeamCurrentLoadCard } from "../components/dashboard/TeamCurrentLoadCard";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { isPoListStatusTerminal } from "@platform/app-shared/prototype/po-list-status";
+import {
+  isPoListStatusTerminal,
+  normalizePoListStatus,
+  poListStatusMeta,
+} from "@platform/app-shared/prototype/po-list-status";
 import {
   Badge,
   ProgressBar,
@@ -56,6 +60,15 @@ function failureStatusLabel(status: string): string {
     default:
       return status;
   }
+}
+
+function PoListStatusBadge({ status }: { status: string }) {
+  const { tone, label } = poListStatusMeta(normalizePoListStatus(status));
+  return (
+    <Badge tone={tone} className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal">
+      {label}
+    </Badge>
+  );
 }
 
 function valuationStatusBadge(status: string): "done" | "progress" | "fail" {
@@ -175,7 +188,14 @@ export function DashboardView() {
                   </Tr>
                 ) : (
                   poActive.map((p) => (
-                      <Tr key={p.id} onClick={() => router.push("/po")}>
+                      <Tr
+                        key={p.id}
+                        onClick={() =>
+                          router.push(
+                            `/po/${encodeURIComponent(p.id)}/property`,
+                          )
+                        }
+                      >
                         <Td className="text-[11px] font-semibold text-primary-light">
                           {p.id}
                         </Td>
@@ -198,7 +218,7 @@ export function DashboardView() {
                           />
                         </Td>
                         <Td>
-                          <StatusBadge status={p.status} />
+                          <PoListStatusBadge status={p.status} />
                         </Td>
                       </Tr>
                     ))
@@ -230,7 +250,14 @@ export function DashboardView() {
                   </Tr>
                 ) : (
                   valuationRowsToShow.map((v) => (
-                  <Tr key={v.displayId} hoverable={false}>
+                  <Tr
+                    key={v.displayId}
+                    onClick={() =>
+                      router.push(
+                        `/property-appraisal/${encodeURIComponent(v.id)}`,
+                      )
+                    }
+                  >
                     <Td className="text-[11px] font-semibold text-primary-light">
                       {v.displayId}
                     </Td>
@@ -271,7 +298,11 @@ export function DashboardView() {
                   (reporting?.recentGovernmentReviews ?? []).map((row) => (
                     <Tr
                       key={row.taskId}
-                      onClick={() => router.push("/government-review")}
+                      onClick={() =>
+                        router.push(
+                          `/government-review/${encodeURIComponent(row.taskId)}`,
+                        )
+                      }
                     >
                       <Td className="text-[11px] font-semibold text-primary-light">
                         {row.poNumber}
@@ -315,7 +346,14 @@ export function DashboardView() {
                   </Tr>
                 ) : (
                   (reporting?.recentFailures ?? []).map((f) => (
-                    <Tr key={f.id} onClick={() => router.push("/failures")}>
+                    <Tr
+                      key={f.id}
+                      onClick={() =>
+                        router.push(
+                          `/failures?highlight=${encodeURIComponent(f.id)}`,
+                        )
+                      }
+                    >
                       <Td className="text-[11px] font-semibold text-primary-light">
                         {f.poNumber}
                       </Td>

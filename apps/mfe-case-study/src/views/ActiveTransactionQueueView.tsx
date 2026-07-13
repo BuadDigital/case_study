@@ -121,7 +121,7 @@ export type ActiveTransactionQueueConfig = {
   refreshOnWindowEvents?: string[];
   /** Stats / filters above the queue table (e.g. engineering office dashboard). */
   renderQueueHeader?: (listed: WorkflowTask[]) => ReactNode;
-  /** Default: oldest receipt first (FIFO). */
+  /** Default: newest PO / task first (same as البيانات الأولية). */
   queueSort?: "oldest-first" | "newest-first";
   /** When true, list open, blocked, and completed tasks (e.g. جميع المعاملات). */
   includeAllStatuses?: boolean;
@@ -318,9 +318,9 @@ export function ActiveTransactionQueueView({
   const listed = useMemo(
     () => {
       const compare =
-        config.queueSort === "newest-first"
-          ? compareQueueTasksNewestFirst
-          : compareQueueTasksOldestFirst;
+        config.queueSort === "oldest-first"
+          ? compareQueueTasksOldestFirst
+          : compareQueueTasksNewestFirst;
       return config
         .filterListed(mine, poByNumber)
         .filter((t) => {

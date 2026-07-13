@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Notifications;
@@ -126,6 +127,42 @@ public class FailureService : IFailureService
 
         var submitted = await SubmitForReviewAsync(Guid.Parse(create.Result.Id), cancellationToken);
         return (submitted, null);
+    }
+
+    public async Task<FailureRecordDto?> EnsureSystemInternalFailureAsync(
+        string poNumber,
+        string propertyId,
+        string deedNumber,
+        string problemTypeId,
+        string title,
+        string note,
+        string specialist,
+        CancellationToken cancellationToken = default)
+    {
+        var active = await FindActiveForPropertyAsync(poNumber, propertyId, cancellationToken);
+        if (active is not null)
+        {
+            if (string.Equals(active.ProblemTypeId, problemTypeId, StringComparison.OrdinalIgnoreCase))
+                return ToDto(active);
+            return ToDto(active);
+        }
+
+        var (result, _) = await CreateAsync(new CreateFailureRequest
+        {
+            PoNumber = poNumber,
+            PropertyId = propertyId,
+            DeedNumber = deedNumber,
+            ProblemTypeId = problemTypeId,
+            Severity = "internal",
+            RaisedByRole = DocumentaryWorkflowRules.SystemRaiserRole,
+            Title = title,
+            InternalNote = note,
+            Specialist = string.IsNullOrWhiteSpace(specialist)
+                ? DocumentaryWorkflowRules.SystemRaiserRole
+                : specialist,
+        }, cancellationToken);
+
+        return result;
     }
 
     public async Task<FailureRecordDto?> UpgradeToInternalAsync(

@@ -1,14 +1,10 @@
 "use client";
 
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import {
   Badge,
-  Button,
   EmptyState,
   OperationalPanel,
   PageShell,
-  PageShellHeader,
   StatCard,
   StatGrid,
   StatLabel,
@@ -28,8 +24,6 @@ import {
 } from "../query/survey-queries";
 
 export function SurveyView() {
-  const { role } = usePrototype();
-  const viewOnly = !isSuperAdmin(role) && role === "general-manager";
   const { data: offices = [], isPending: officesPending } = useSurveyOfficesQuery();
   const { data: stats, isPending: statsPending } = useSurveyRequestStatsQuery();
   const ready = !officesPending && !statsPending;
@@ -66,18 +60,6 @@ export function SurveyView() {
       </StatGrid>
 
       <OperationalPanel className="min-h-0 flex-1">
-        {!viewOnly ? (
-          <PageShellHeader
-            hideTitle
-            title="مكاتب الرفع الهندسي"
-            actions={
-              <Button size="sm" variant="primary">
-                + إضافة مكتب
-              </Button>
-            }
-          />
-        ) : null}
-
         <Table pending={!ready}>
           <THead>
             <Tr hoverable={false}>

@@ -172,7 +172,7 @@ export function PoHeaderEdit({
             label="رقم PO (التعميد)"
             value={record.poNumber}
             dir="ltr"
-            onChange={() => {}}
+            readOnly
           />
           <RegField
             id="promulgation_edit"

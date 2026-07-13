@@ -14,17 +14,17 @@ export function screenCatalogRoleGroup(roleId: RoleId): string {
   const opt = ROLES[roleId];
   if (!opt) return roleId;
   if (roleId === "cdo") return "التحول الرقمي";
-  if (roleId === "hr-admin" || roleId === "proc-admin" || roleId === "crm-admin")
+  if (roleId === "hr-admin" || roleId === "crm-admin")
     return "إدارة المنظمة";
+  if (roleId === "proc-admin" || roleId === "financial-officer")
+    return "المالية والعقود";
   if (
     roleId === "general-manager" ||
     roleId === "valuation-coordinator" ||
     roleId === "real-estate-appraiser" ||
     roleId === "field-inspector" ||
-    roleId === "engineering-office" ||
-    roleId === "financial-officer"
+    roleId === "engineering-office"
   ) {
-    if (roleId === "financial-officer") return "المالية والعقود";
     if (
       roleId === "valuation-coordinator" ||
       roleId === "real-estate-appraiser" ||

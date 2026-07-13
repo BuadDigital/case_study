@@ -18,6 +18,7 @@ import { TASKS_CHANGED_EVENT } from "../../query/case-study-queries";
 import { usePropertyTimelineQuery } from "../../query/use-property-timeline-query";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { WORK_ORDERS_CHANGED_EVENT } from "../../lib/work-orders-api-config";
+import { FAILURES_CHANGED_EVENT } from "@failures/mfe/lib/failures-events";
 import { DetailBadge, ltrValueClass } from "./PropertyDetailFields";
 function toneToDotClass(tone: PropertyTimelineTone): string {
   if (tone === "done") return "bg-success";
@@ -74,9 +75,11 @@ export function PropertyTransactionTimeline({
     };
     window.addEventListener(TASKS_CHANGED_EVENT, invalidate);
     window.addEventListener(WORK_ORDERS_CHANGED_EVENT, invalidate);
+    window.addEventListener(FAILURES_CHANGED_EVENT, invalidate);
     return () => {
       window.removeEventListener(TASKS_CHANGED_EVENT, invalidate);
       window.removeEventListener(WORK_ORDERS_CHANGED_EVENT, invalidate);
+      window.removeEventListener(FAILURES_CHANGED_EVENT, invalidate);
     };
   }, [queryClient, poNumber, property.id]);
 

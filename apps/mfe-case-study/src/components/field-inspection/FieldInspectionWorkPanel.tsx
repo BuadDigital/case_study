@@ -41,6 +41,12 @@ export function FieldInspectionWorkPanel({
   forceReadOnly?: boolean;
 }) {
   const [workTab, setWorkTab] = useState<WorkTab>("inspection");
+  const [keyFailureIntent, setKeyFailureIntent] = useState(false);
+
+  function openKeyFailure() {
+    setKeyFailureIntent(true);
+    setWorkTab("failures");
+  }
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -116,7 +122,7 @@ export function FieldInspectionWorkPanel({
                 task={task}
                 hostRef={hostRef}
                 submitting={submitting}
-                onRegisterFailure={() => setWorkTab("failures")}
+                onRegisterFailure={openKeyFailure}
               />
             </section>
             <section className="min-h-0 min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
@@ -140,7 +146,12 @@ export function FieldInspectionWorkPanel({
                 record={record}
               />
             ) : null}
-            {workTab === "key" ? <InspectorKeyStatusTab task={task} /> : null}
+            {workTab === "key" ? (
+              <InspectorKeyStatusTab
+                task={task}
+                onRegisterKeyFailure={openKeyFailure}
+              />
+            ) : null}
             {workTab === "fees" ? (
               <InspectorFeesTab tasks={[task]} variant="field-inspection" />
             ) : null}
@@ -152,7 +163,14 @@ export function FieldInspectionWorkPanel({
                   deedNumber={deedNumber}
                   specialist={task.assigneeName || def.assigneeSubtitle}
                   raisedByRole={failureRaiserRoleForParty(def)}
-                  onSubmitted={onFailureSubmitted}
+                  onSubmitted={() => {
+                    setKeyFailureIntent(false);
+                    onFailureSubmitted?.();
+                  }}
+                  autoOpenRaise={keyFailureIntent}
+                  initialProblemTypeId={
+                    keyFailureIntent ? "key-wont-open" : ""
+                  }
                 />
               </div>
             ) : null}

@@ -44,7 +44,8 @@ export const partyAppraisalExtensions: PartyAppraisalExtensions = {
       },
       buildRowMoreItems: (ctx) => buildAppraiserQueueRowMoreItems(ctx),
       canOpenTask: (task) => canAppraiserOpenTask(task.id, task.status),
-      getTaskStatusBadge: (task) => appraiserTaskStatusBadge(task.id),
+      getTaskStatusBadge: (task) =>
+        appraiserTaskStatusBadge(task.id, task.status),
       refreshOnWindowEvents: [
         PARTY_TASK_RECALL_CHANGED_EVENT,
         PARTY_TASK_RECALL_HYDRATED_EVENT,

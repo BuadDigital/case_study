@@ -19,6 +19,20 @@ public interface IFailureService
         BourseObstructionRequest request,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Creates an internal system failure when none is active for the property
+    /// (idempotent for the given problem type while active).
+    /// </summary>
+    Task<FailureRecordDto?> EnsureSystemInternalFailureAsync(
+        string poNumber,
+        string propertyId,
+        string deedNumber,
+        string problemTypeId,
+        string title,
+        string note,
+        string specialist,
+        CancellationToken cancellationToken = default);
+
     Task<FailureRecordDto?> UpgradeToInternalAsync(
         Guid id,
         CancellationToken cancellationToken = default);

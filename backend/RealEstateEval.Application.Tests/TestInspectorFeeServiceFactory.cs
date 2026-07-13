@@ -16,7 +16,8 @@ internal static class TestInspectorFeeServiceFactory
         return new InspectorFeeService(
             db,
             new NullNotificationService(),
-            new NotificationRecipientResolver(db, userManager));
+            new NotificationRecipientResolver(db, userManager),
+            new PartyFeePricingService(db));
     }
 
     public static WorkflowTaskService CreateWorkflow(ApplicationDbContext db)
@@ -24,7 +25,11 @@ internal static class TestInspectorFeeServiceFactory
         var userManager = CreateUserManager();
         var notifications = new NullNotificationService();
         var recipients = new NotificationRecipientResolver(db, userManager);
-        var fees = new InspectorFeeService(db, notifications, recipients);
+        var fees = new InspectorFeeService(
+            db,
+            notifications,
+            recipients,
+            new PartyFeePricingService(db));
         var timeline = new PropertyTimelineService(db);
         return new WorkflowTaskService(db, fees, notifications, recipients, timeline);
     }

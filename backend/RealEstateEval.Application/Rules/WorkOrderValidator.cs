@@ -55,8 +55,12 @@ public static class WorkOrderValidator
         {
             ValidateIdentifierNumber(dto, idType, errors);
 
-            if (string.IsNullOrWhiteSpace(dto.TaskNumber))
-                errors["taskNumber"] = "رقم المهمة مطلوب";
+            if (string.IsNullOrWhiteSpace(dto.RequestNumber))
+                errors["requestNumber"] = "رقم الطلب مطلوب";
+            if (string.IsNullOrWhiteSpace(dto.AssignmentMandateNumber))
+                errors["assignmentMandateNumber"] = "رقم التكليف مطلوب";
+            if (string.IsNullOrWhiteSpace(dto.AssignmentMandateDate))
+                errors["assignmentMandateDate"] = "تاريخ التكليف مطلوب";
             if (string.IsNullOrWhiteSpace(dto.DeedDate))
                 errors["deedDate"] = "تاريخ الصك مطلوب";
             if (string.IsNullOrWhiteSpace(dto.OwnerName))
@@ -76,8 +80,12 @@ public static class WorkOrderValidator
         {
             ValidateIdentifierNumber(dto, idType, errors);
 
-            if (string.IsNullOrWhiteSpace(dto.TaskNumber))
-                errors["taskNumber"] = "رقم المهمة مطلوب";
+            if (string.IsNullOrWhiteSpace(dto.RequestNumber))
+                errors["requestNumber"] = "رقم الطلب مطلوب";
+            if (string.IsNullOrWhiteSpace(dto.AssignmentMandateNumber))
+                errors["assignmentMandateNumber"] = "رقم التكليف مطلوب";
+            if (string.IsNullOrWhiteSpace(dto.AssignmentMandateDate))
+                errors["assignmentMandateDate"] = "تاريخ التكليف مطلوب";
             if (string.IsNullOrWhiteSpace(dto.DeedDate))
                 errors["deedDate"] = "تاريخ الصك مطلوب";
             if (string.IsNullOrWhiteSpace(dto.OwnerName))

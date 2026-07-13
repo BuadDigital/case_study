@@ -93,26 +93,26 @@ export function isGovernmentReviewAwaitingVisit(
 export function isGovernmentReviewAwaitingKeyHandoff(
   submission: Pick<
     GovernmentReviewSubmission,
-    "visitStatus" | "keyHandedToInspector"
+    "visitStatus" | "keyHandedToInspector" | "keysStatus"
   >,
 ): boolean {
+  if (submission.keysStatus === "not_required") return false;
   return (
     submission.visitStatus === "completed" &&
     submission.keyHandedToInspector === "no"
   );
 }
 
-/** Full submission (إتمام) requires visit done + key handed to inspector. */
+/** Full submission (إتمام) — زيارة مكتملة + تسليم مفتاح، أو مفاتيح غير مطلوبة. */
 export function canFinalizeGovernmentReview(
   submission: Pick<
     GovernmentReviewSubmission,
-    "visitStatus" | "keyHandedToInspector"
+    "visitStatus" | "keyHandedToInspector" | "keysStatus"
   >,
 ): boolean {
-  return (
-    submission.visitStatus === "completed" &&
-    submission.keyHandedToInspector === "yes"
-  );
+  if (submission.visitStatus !== "completed") return false;
+  if (submission.keysStatus === "not_required") return true;
+  return submission.keyHandedToInspector === "yes";
 }
 
 export function governmentReviewVisitStatusLabel(

@@ -39,6 +39,7 @@ export function resolveQueueTaskStatusBadge(
     return valuationCoordinationTaskStatusBadge(
       task.id,
       options.partySubmission ?? null,
+      task.status,
     );
   }
   return options.getTaskStatusBadge?.(task) ?? null;

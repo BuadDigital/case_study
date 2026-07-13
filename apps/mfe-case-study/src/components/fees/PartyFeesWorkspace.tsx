@@ -12,6 +12,7 @@ import { PartyPropertyBrowse } from "@platform/app-shared/fees/PartyPropertyBrow
 import {
   resolvePartyCategory,
   resolvePartyName,
+  sortInspectorFeeRowsNewestFirst,
 } from "@platform/app-shared/fees/party-fee-meta";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 
@@ -22,11 +23,13 @@ export function PartyFeesWorkspace({
   assigneeId,
   isSupervisor,
 }: {
-  variant: "field-inspection" | "engineering-survey";
+  variant: "field-inspection" | "engineering-survey" | "government-review";
   assigneeId?: string;
   isSupervisor: boolean;
 }) {
-  const [tab, setTab] = useState<PartyFeesTab>("fees");
+  const [tab, setTab] = useState<PartyFeesTab>(
+    isSupervisor ? "financial" : "fees",
+  );
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
 
@@ -39,7 +42,10 @@ export function PartyFeesWorkspace({
     { enabled: isSupervisor || Boolean(assigneeId) },
   );
 
-  const rows = summary?.rows ?? [];
+  const rows = useMemo(
+    () => sortInspectorFeeRowsNewestFirst(summary?.rows ?? []),
+    [summary?.rows],
+  );
   const supReviewRows = useMemo(
     () => rows.filter((r) => r.billingStatus === "sup-review"),
     [rows],
@@ -56,14 +62,14 @@ export function PartyFeesWorkspace({
     <div className="flex min-h-0 flex-col gap-3 px-4 py-4">
       {isSupervisor ? (
         <TabBar className="mb-3">
-          <Tab active={tab === "fees"} onClick={() => setTab("fees")}>
-            الحسم والمراجعة
-          </Tab>
           <Tab active={tab === "financial"} onClick={() => setTab("financial")}>
             الأمور المالية
             {supReviewRows.length + returnedToSup.length > 0
               ? ` (${supReviewRows.length + returnedToSup.length})`
               : ""}
+          </Tab>
+          <Tab active={tab === "fees"} onClick={() => setTab("fees")}>
+            الحسم والمراجعة
           </Tab>
         </TabBar>
       ) : (
@@ -104,8 +110,9 @@ export function PartyFeesWorkspace({
                 pending={isLoading && !isFetched}
               />
               <QueueTableHint className="mt-3">
-                بعد إنجاز العمل ارفع المعاملة للمشرف. وعند جاهزيتها للصرف أنشئ
-                «أمر صرف» من تبويب طلب الصرف.
+                بعد إنجاز العمل ارفع المعاملة للمشرف. الأتعاب تظهر بعد اكتمال
+                دراسة الحالة للصك. وعند جاهزيتها للصرف أنشئ «أمر صرف» من تبويب
+                طلب الصرف.
               </QueueTableHint>
             </>
           )

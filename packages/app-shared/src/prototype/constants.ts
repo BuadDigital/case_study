@@ -30,7 +30,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "عل",
     bg: "var(--warning-bg)",
     tc: "var(--warning)",
-    pages: ["users", "system-fields-catalog", "system-screen-catalog"],
+    pages: ["financial", "users", "system-fields-catalog", "system-screen-catalog"],
   },
   "crm-admin": {
     name: "شهد العماري",
@@ -97,7 +97,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
     tc: "var(--success)",
     pages: [
       "po",
-      "all-transactions",
       "active-primary-data",
       "bourse-inquiry",
       "active-distribution",
@@ -161,6 +160,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     pages: [
       "all-transactions",
       "government-review",
+      "party-fees",
       "keys",
       "failures",
       "system-fields-catalog",
@@ -211,7 +211,6 @@ export const NAV: NavItem[] = [
     label: "إدارة المفاتيح",
     icon: "M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4",
     grp: null,
-    placeholder: true,
   },
   {
     id: "failures",
@@ -230,7 +229,6 @@ export const NAV: NavItem[] = [
     label: "طلبات التقييم",
     icon: "M9 11l3 3L22 4",
     grp: "قسم التقييم العقاري",
-    placeholder: true,
   },
   {
     id: "financial",
@@ -243,7 +241,6 @@ export const NAV: NavItem[] = [
     label: "مؤشرات الأداء",
     icon: "M18 20V10M12 20V4M6 20v-6",
     grp: null,
-    placeholder: true,
   },
   {
     id: "party-fees",

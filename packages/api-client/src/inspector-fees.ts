@@ -440,7 +440,7 @@ export function inspectorFeeStatusLabel(
     case "inquiry":
       return "استفسار مفتوح";
     default:
-      return "مسودة لدى المكتب";
+      return "مسودة";
   }
 }
 

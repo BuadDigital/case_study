@@ -7,6 +7,7 @@ import {
 import { fetchEvaluatorSubmission } from "@evaluator/mfe";
 import { useEffect, useState } from "react";
 import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-evaluator-events";
+import { prefetchInspectorWorkspacePhotos } from "../lib/prototype/inspector-photo-upload";
 import {
   fetchInspectorWorkspace,
   FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
@@ -56,7 +57,10 @@ export function usePropertyDetailDocuments(input: {
       return;
     }
 
-    const refresh = () => setSections(collect());
+    let cancelled = false;
+    const refresh = () => {
+      if (!cancelled) setSections(collect());
+    };
     refresh();
 
     void Promise.all([
@@ -67,7 +71,10 @@ export function usePropertyDetailDocuments(input: {
         ? fetchEvaluatorSubmission(appraisalTaskId)
         : Promise.resolve(null),
       inspectionTaskId
-        ? fetchInspectorWorkspace(inspectionTaskId)
+        ? fetchInspectorWorkspace(inspectionTaskId).then(async (workspace) => {
+            if (workspace) await prefetchInspectorWorkspacePhotos(workspace);
+            return workspace;
+          })
         : Promise.resolve(null),
     ]).then(refresh);
 
@@ -79,6 +86,7 @@ export function usePropertyDetailDocuments(input: {
     window.addEventListener(FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT, refresh);
 
     return () => {
+      cancelled = true;
       window.removeEventListener(
         ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
         refresh,

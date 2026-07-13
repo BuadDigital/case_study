@@ -51,7 +51,9 @@ public static class WorkOrderMapper
             Id = p.Id,
             IdentifierType = PropertyIdentifierTypeLabels.ToApiValue(p.IdentifierType),
             DeedNumber = p.DeedNumber,
-            TaskNumber = p.TaskNumber,
+            RequestNumber = p.RequestNumber,
+            AssignmentMandateNumber = p.AssignmentMandateNumber,
+            AssignmentMandateDate = p.AssignmentMandateDate,
             DeedDate = p.DeedDate,
             OwnerName = p.OwnerName,
             RestrictionsPresent = p.RestrictionsPresent,
@@ -78,8 +80,9 @@ public static class WorkOrderMapper
             OtherDocumentFileNames = otherDocs,
             RealEstateRegFileName = p.RealEstateRegFileName,
             BourseDataCompleted = p.BourseDataCompleted,
-            BuildLicenseNumber = p.BuildLicenseNumber,
-            SubdivisionRecordNumber = p.SubdivisionRecordNumber,
+            PlanNumber = p.PlanNumber,
+            PlotNumber = p.PlotNumber,
+            LocationMapUrl = p.LocationMapUrl,
             Contacts = p.Contacts
                 .OrderBy(c => c.SortOrder)
                 .Select(c => new PropertyContactDto
@@ -94,7 +97,8 @@ public static class WorkOrderMapper
 
     public static WorkOrderListItemDto ToListItem(
         WorkOrder entity,
-        IReadOnlyDictionary<Guid, bool>? studiedByProperty = null)
+        IReadOnlyDictionary<Guid, bool>? studiedByProperty = null,
+        bool hasEnfazInvoice = false)
     {
         var studiedCount = entity.Properties.Count(p =>
             studiedByProperty is not null
@@ -108,7 +112,7 @@ public static class WorkOrderMapper
             PropertyCount = entity.Properties.Count,
             ExpectedPropertyCount = entity.ExpectedPropertyCount,
             CompletedCount = studiedCount,
-            Status = WorkOrderListStatus.Resolve(entity, studiedCount),
+            Status = WorkOrderListStatus.Resolve(entity, studiedCount, hasEnfazInvoice),
             PromulgationDate = entity.PromulgationDate.ToString("yyyy-MM-dd"),
             ReceivedFromEnfathAt = entity.ReceivedFromEnfathAt.ToString("yyyy-MM-dd"),
             DueDateAt = entity.DueDateAt.ToString("yyyy-MM-dd"),
@@ -127,7 +131,7 @@ public static class WorkOrderMapper
             DeedNumber = p.DeedNumber,
             DeedDate = p.DeedDate,
             OwnerName = p.OwnerName,
-            TaskNumber = p.TaskNumber,
+            RequestNumber = p.RequestNumber,
             AssignmentType = AssignmentTypeLabels.ToLabel(p.WorkOrder.AssignmentType),
             ReceivedFromEnfathAt = p.WorkOrder.ReceivedFromEnfathAt.ToString("yyyy-MM-dd"),
             DueDateAt = p.WorkOrder.DueDateAt.ToString("yyyy-MM-dd"),
@@ -168,8 +172,9 @@ public static class WorkOrderMapper
             EastBoundaryLengthM = p.EastBoundaryLengthM,
             WestBoundary = p.WestBoundary,
             WestBoundaryLengthM = p.WestBoundaryLengthM,
-            BuildLicenseNumber = p.BuildLicenseNumber,
-            SubdivisionRecordNumber = p.SubdivisionRecordNumber,
+            PlanNumber = p.PlanNumber,
+            PlotNumber = p.PlotNumber,
+            LocationMapUrl = p.LocationMapUrl,
         };
     }
 

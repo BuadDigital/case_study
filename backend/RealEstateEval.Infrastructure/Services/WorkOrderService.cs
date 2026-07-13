@@ -15,15 +15,18 @@ public class WorkOrderService : IWorkOrderService
 
     private readonly ApplicationDbContext _db;
     private readonly IPropertyTimelineService _timeline;
+    private readonly IFailureService _failures;
     private readonly DatabaseOptions _dbOptions;
 
     public WorkOrderService(
         ApplicationDbContext db,
         IPropertyTimelineService timeline,
+        IFailureService failures,
         IOptions<DatabaseOptions>? dbOptions = null)
     {
         _db = db;
         _timeline = timeline;
+        _failures = failures;
         _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
     }
 
@@ -92,10 +95,24 @@ public class WorkOrderService : IWorkOrderService
             .GroupBy(t => t.PropertyId!.Value)
             .ToDictionary(
                 g => g.Key,
-                g => g.Any(t => t.Status == WorkflowTaskStatus.Completed));
+                g => g.Any(t =>
+                    t.Status == WorkflowTaskStatus.Completed
+                    || string.Equals(t.Phase, "done", StringComparison.Ordinal)));
+
+        var billedPos = poNumbers.Count == 0
+            ? new HashSet<string>(StringComparer.Ordinal)
+            : (await _db.PoEnfazInvoices.AsNoTracking()
+                .Where(i => poNumbers.Contains(i.PoNumber))
+                .Select(i => i.PoNumber)
+                .ToListAsync(cancellationToken))
+                .Select(p => p.Trim())
+                .ToHashSet(StringComparer.Ordinal);
 
         return orders
-            .Select(w => WorkOrderMapper.ToListItem(w, studiedByProperty))
+            .Select(w => WorkOrderMapper.ToListItem(
+                w,
+                studiedByProperty,
+                billedPos.Contains(w.PoNumber.Trim())))
             .ToList();
     }
 
@@ -131,7 +148,25 @@ public class WorkOrderService : IWorkOrderService
             .Select(f => $"{f.PoNumber.Trim()}|{f.PropertyId.Trim()}")
             .ToHashSet(StringComparer.Ordinal);
 
-        return PropertyListRowBuilder.Build(list, failureKeys);
+        var propertyIds = list.SelectMany(w => w.Properties.Select(p => p.Id)).ToList();
+        var poNumbers = list.Select(w => w.PoNumber.Trim()).Distinct().ToList();
+        var tasks = propertyIds.Count == 0
+            ? []
+            : await _db.WorkflowTasks
+                .AsNoTracking()
+                .Where(t => poNumbers.Contains(t.PoNumber)
+                    && t.PropertyId != null
+                    && propertyIds.Contains(t.PropertyId.Value))
+                .ToListAsync(cancellationToken);
+
+        var tasksByProperty = tasks
+            .Where(t => t.PropertyId.HasValue)
+            .GroupBy(t => t.PropertyId!.Value)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<WorkflowTask>)g.ToList());
+
+        return PropertyListRowBuilder.Build(list, failureKeys, tasksByProperty);
     }
 
     public async Task<WorkOrderDto?> GetByPoNumberAsync(
@@ -463,6 +498,8 @@ public class WorkOrderService : IWorkOrderService
         var existing = entity.Properties.FirstOrDefault(p => p.Id == propertyId);
         if (existing is null) return (null, new Dictionary<string, string> { ["_"] = "العقار غير موجود" });
 
+        var previousLocationMapUrl = existing.LocationMapUrl;
+
         if (property.BourseDataCompleted)
         {
             var enfathErrors = WorkOrderValidator.ValidatePropertyEnfath(
@@ -484,8 +521,6 @@ public class WorkOrderService : IWorkOrderService
                 RestrictionsPresent = property.RestrictionsPresent,
                 BoundariesAvailability = property.BoundariesAvailability,
                 BoundariesExternalDocName = property.BoundariesExternalDocName,
-                BuildLicenseNumber = property.BuildLicenseNumber,
-                SubdivisionRecordNumber = property.SubdivisionRecordNumber,
             });
             var errors = enfathErrors.Concat(bourseErrors)
                 .GroupBy(kv => kv.Key)
@@ -511,6 +546,44 @@ public class WorkOrderService : IWorkOrderService
         }
 
         await _db.SaveChangesAsync(cancellationToken);
+        await ApplyDocumentarySideEffectsAfterPropertySaveAsync(
+            entity,
+            existing,
+            previousLocationMapUrl,
+            cancellationToken);
+        return (WorkOrderMapper.ToPropertyDto(existing), null);
+    }
+
+    public async Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdateLocationMapUrlAsync(
+        string poNumber,
+        Guid propertyId,
+        string? locationMapUrl,
+        CancellationToken cancellationToken)
+    {
+        var entity = await LoadWorkOrderTrackedAsync(poNumber, cancellationToken);
+        if (entity is null) return (null, new Dictionary<string, string> { ["_"] = "أمر العمل غير موجود" });
+
+        var existing = entity.Properties.FirstOrDefault(p => p.Id == propertyId);
+        if (existing is null) return (null, new Dictionary<string, string> { ["_"] = "العقار غير موجود" });
+
+        var trimmed = locationMapUrl?.Trim() ?? "";
+        if (!string.IsNullOrEmpty(trimmed) && !DocumentaryWorkflowRules.HasLocationMapUrl(trimmed))
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["locationMapUrl"] = "رابط الموقع يجب أن يبدأ بـ http:// أو https://",
+            });
+        }
+
+        var previousLocationMapUrl = existing.LocationMapUrl;
+        existing.LocationMapUrl = string.IsNullOrEmpty(trimmed) ? null : trimmed;
+
+        await _db.SaveChangesAsync(cancellationToken);
+        await ApplyDocumentarySideEffectsAfterPropertySaveAsync(
+            entity,
+            existing,
+            previousLocationMapUrl,
+            cancellationToken);
         return (WorkOrderMapper.ToPropertyDto(existing), null);
     }
 
@@ -546,13 +619,24 @@ public class WorkOrderService : IWorkOrderService
         existing.EastBoundaryLengthM = NormalizeOptionalText(request.EastBoundaryLengthM);
         existing.WestBoundary = NormalizeOptionalText(request.WestBoundary);
         existing.WestBoundaryLengthM = NormalizeOptionalText(request.WestBoundaryLengthM);
-        existing.BuildLicenseNumber = NormalizeOptionalText(request.BuildLicenseNumber);
-        existing.SubdivisionRecordNumber = NormalizeOptionalText(request.SubdivisionRecordNumber);
         existing.BourseDataCompleted = true;
         var bourseNow = DateTime.UtcNow;
         existing.BourseCompletedAtUtc = bourseNow;
 
         await _db.SaveChangesAsync(cancellationToken);
+
+        if (DocumentaryWorkflowRules.BoundariesUnavailable(existing.BoundariesAvailability))
+        {
+            await _failures.EnsureSystemInternalFailureAsync(
+                NormalizePo(poNumber),
+                propertyId.ToString(),
+                existing.DeedNumber,
+                "unknown-boundaries",
+                "عدم معرفة حدود العقار",
+                "توفر الحدود = غير متوفرة حسب استعلام البورصة.",
+                entity.AssignmentSpecialist ?? "النظام",
+                cancellationToken);
+        }
 
         var location = string.Join(
             " · ",
@@ -644,7 +728,9 @@ public class WorkOrderService : IWorkOrderService
             entity.DeedNumber = dto.DeedNumber.Trim();
         }
 
-        entity.TaskNumber = dto.TaskNumber?.Trim();
+        entity.RequestNumber = dto.RequestNumber?.Trim();
+        entity.AssignmentMandateNumber = dto.AssignmentMandateNumber?.Trim();
+        entity.AssignmentMandateDate = dto.AssignmentMandateDate?.Trim();
         entity.DeedDate = dto.DeedDate?.Trim();
         entity.OwnerName = dto.OwnerName?.Trim();
         entity.AssignmentDocFileName = dto.AssignmentDocFileName?.Trim();
@@ -660,6 +746,9 @@ public class WorkOrderService : IWorkOrderService
         entity.PropertyType = dto.PropertyType?.Trim() ?? "";
         entity.DeedStatus = dto.DeedStatus?.Trim();
         entity.Area = dto.Area?.Trim();
+        entity.PlanNumber = NormalizeOptionalText(dto.PlanNumber);
+        entity.PlotNumber = NormalizeOptionalText(dto.PlotNumber);
+        entity.LocationMapUrl = NormalizeOptionalText(dto.LocationMapUrl);
 
         if (!forInsert)
             entity.Contacts.Clear();
@@ -691,7 +780,92 @@ public class WorkOrderService : IWorkOrderService
         entity.RestrictionsPresent = dto.RestrictionsPresent?.Trim();
         entity.BoundariesAvailability = dto.BoundariesAvailability?.Trim();
         entity.BoundariesExternalDocName = dto.BoundariesExternalDocName?.Trim();
-        entity.BuildLicenseNumber = NormalizeOptionalText(dto.BuildLicenseNumber);
-        entity.SubdivisionRecordNumber = NormalizeOptionalText(dto.SubdivisionRecordNumber);
+        entity.NorthBoundary = NormalizeOptionalText(dto.NorthBoundary);
+        entity.NorthBoundaryLengthM = NormalizeOptionalText(dto.NorthBoundaryLengthM);
+        entity.SouthBoundary = NormalizeOptionalText(dto.SouthBoundary);
+        entity.SouthBoundaryLengthM = NormalizeOptionalText(dto.SouthBoundaryLengthM);
+        entity.EastBoundary = NormalizeOptionalText(dto.EastBoundary);
+        entity.EastBoundaryLengthM = NormalizeOptionalText(dto.EastBoundaryLengthM);
+        entity.WestBoundary = NormalizeOptionalText(dto.WestBoundary);
+        entity.WestBoundaryLengthM = NormalizeOptionalText(dto.WestBoundaryLengthM);
+    }
+
+    private async Task ApplyDocumentarySideEffectsAfterPropertySaveAsync(
+        WorkOrder workOrder,
+        WorkOrderProperty property,
+        string? previousLocationMapUrl,
+        CancellationToken cancellationToken)
+    {
+        var specialist = workOrder.AssignmentSpecialist ?? DocumentaryWorkflowRules.SystemRaiserRole;
+        var propertyId = property.Id.ToString();
+
+        if (DocumentaryWorkflowRules.BoundariesUnavailable(property.BoundariesAvailability)
+            && property.BourseDataCompleted)
+        {
+            await _failures.EnsureSystemInternalFailureAsync(
+                workOrder.PoNumber,
+                propertyId,
+                property.DeedNumber,
+                "unknown-boundaries",
+                "عدم معرفة حدود العقار",
+                "توفر الحدود = غير متوفرة حسب استعلام البورصة.",
+                specialist,
+                cancellationToken);
+        }
+
+        var hadUrl = DocumentaryWorkflowRules.HasLocationMapUrl(previousLocationMapUrl);
+        var hasUrl = DocumentaryWorkflowRules.HasLocationMapUrl(property.LocationMapUrl);
+        var informal = DocumentaryWorkflowRules.IsInformalSettlement(
+            property.PlanNumber,
+            property.PlotNumber);
+
+        if (informal && hadUrl && !hasUrl)
+        {
+            await _failures.EnsureSystemInternalFailureAsync(
+                workOrder.PoNumber,
+                propertyId,
+                property.DeedNumber,
+                "unknown-location",
+                "عدم معرفة موقع العقار",
+                "تم مسح رابط موقع الخريطة لعقار في منطقة عشوائية.",
+                specialist,
+                cancellationToken);
+        }
+
+        if (hasUrl)
+        {
+            await ResolveSystemLocationFailuresAsync(
+                workOrder.PoNumber,
+                propertyId,
+                cancellationToken);
+        }
+    }
+
+    private async Task ResolveSystemLocationFailuresAsync(
+        string poNumber,
+        string propertyId,
+        CancellationToken cancellationToken)
+    {
+        var active = await _db.PropertyFailures
+            .Where(f =>
+                f.PoNumber == poNumber
+                && f.PropertyId == propertyId
+                && f.ProblemTypeId == "unknown-location"
+                && f.RaisedByRole == DocumentaryWorkflowRules.SystemRaiserRole
+                && PropertyFailureStatus.Active.Contains(f.Status))
+            .Select(f => f.Id)
+            .ToListAsync(cancellationToken);
+
+        foreach (var id in active)
+        {
+            await _failures.ResolveAsync(
+                id,
+                new ResolveFailureRequest
+                {
+                    ResolutionReason = "تم تزويد رابط موقع الخريطة.",
+                    ContinueInstructions = "يمكن استئناف العمل على العقار.",
+                },
+                cancellationToken);
+        }
     }
 }
