@@ -1,5 +1,7 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
@@ -170,7 +172,26 @@ public class FieldInspectionSubmissionIntegrationTests
     private static PartyTaskSubmissionService CreateService(ApplicationDbContext db)
     {
         var timeline = new PropertyTimelineService(db);
-        return new(db, TestInspectorFeeServiceFactory.CreateWorkflow(db), new FieldInspectionAttachmentVerifier(db), timeline);
+        return new(
+            db,
+            TestInspectorFeeServiceFactory.CreateWorkflow(db),
+            new FieldInspectionAttachmentVerifier(db),
+            timeline,
+            new NullHttpContextAccessor(),
+            new NullPermissionService());
+    }
+
+    private sealed class NullHttpContextAccessor : IHttpContextAccessor
+    {
+        public HttpContext? HttpContext { get; set; }
+    }
+
+    private sealed class NullPermissionService : IPermissionService
+    {
+        public Task<PermissionsDto?> GetForUserIdAsync(string userId, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<PermissionsDto?>(null);
+        }
     }
 
     private static void SeedInspectionTask(ApplicationDbContext db)
@@ -236,6 +257,7 @@ public class FieldInspectionSubmissionIntegrationTests
           "mapLatitude": "21.481000",
           "mapLongitude": "39.186500",
           "inspectionConfirmed": true,
+          "keyAvailable": true,
           "hasAnnex": "لا",
           "showroomCount": "",
           "wellCount": "",

@@ -119,6 +119,7 @@ public static class DependencyInjection
         services.AddScoped<IPoEnfazBillingService, PoEnfazBillingService>();
         services.AddScoped<IFieldInspectionAttachmentVerifier, FieldInspectionAttachmentVerifier>();
         services.AddScoped<IPropertyTimelineService, PropertyTimelineService>();
+        services.AddScoped<IFailureService, FailureService>();
         return services;
     }
 
