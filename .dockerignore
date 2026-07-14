@@ -1,0 +1,52 @@
+# Git
+.git
+.gitignore
+
+# Node modules (Docker will run npm ci itself)
+node_modules
+**/node_modules
+
+# Next.js build output (built inside Docker)
+apps/shell/.next
+**/.next
+
+# Test and tooling
+test-results
+playwright-report
+e2e/videos
+e2e/screenshots
+**/*.test.ts
+**/*.spec.ts
+
+# Local environment overrides
+.env.local
+**/.env.local
+
+# Dev-only infra (not needed in images)
+infra/docker-compose.yml
+infra/prometheus
+infra/grafana
+infra/fluent-bit
+
+# Docs / plans
+docs
+apps/plan
+requirements
+
+# Binary blobs
+data
+**/*.pdf
+**/*.bin
+**/*.sqlite
+
+# IDE / OS artifacts
+.vscode
+.agents
+**/.DS_Store
+**/Thumbs.db
+
+# .NET
+backend/*/bin
+backend/*/obj
+**/*.user
+**/.vs

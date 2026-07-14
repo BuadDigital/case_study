@@ -1,0 +1,264 @@
+name: Hostinger CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  # ----------------------------------------------------
+  # Job 1: Build & Run Tests
+  # ----------------------------------------------------
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install Frontend Dependencies
+        run: npm ci
+
+      - name: Typecheck Microfrontends (MFEs)
+        run: npm run typecheck:mfes
+
+      - name: Restore Backend Dependencies
+        run: dotnet restore backend/RealEstateEval.slnx
+
+      - name: Run Backend Tests
+        run: dotnet test backend/RealEstateEval.slnx --configuration Release --verbosity normal
+
+  # ----------------------------------------------------
+  # Job 2: Build & Push Docker Images to GHCR
+  # ----------------------------------------------------
+  build-and-push:
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_owner: ${{ steps.prep.outputs.image_owner }}
+      tag: ${{ steps.prep.outputs.tag }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Prepare Registry Variables
+        id: prep
+        run: |
+          # Lowercase the owner name for docker registry compatibility
+          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "image_owner=$OWNER_LOWER" >> $GITHUB_OUTPUT
+          echo "tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "IMAGE_OWNER=$OWNER_LOWER" >> $GITHUB_ENV
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build and push each microservice image
+      - name: Build & Push Frontend (Next.js)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/shell/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/frontend:latest
+            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/frontend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & Push Gateway
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/gateway/RealEstateEval.Gateway/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/gateway:latest
+            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/gateway:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & Push Identity
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/services/identity/RealEstateEval.Identity.Api/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/identity:latest
+            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/identity:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & Push Case Study Service
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/services/case-study/RealEstateEval.CaseStudy.Api/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/case-study:latest
+            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/case-study:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & Push Operations Service
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/services/operations/RealEstateEval.Operations.Api/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/operations:latest
+            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/operations:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & Push Reporting Service
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/services/reporting/RealEstateEval.Reporting.Api/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/reporting:latest
+            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/reporting:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & Push Financial Service
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/services/financial/RealEstateEval.Financial.Api/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/financial:latest
+            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/financial:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & Push Valuation Service
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/services/valuation/RealEstateEval.Valuation.Api/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/valuation:latest
+            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/valuation:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & Push Failures Service
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/services/failures/RealEstateEval.Failures.Api/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/failures:latest
+            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/failures:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & Push Platform Service
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/services/platform/RealEstateEval.Platform.Api/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/platform:latest
+            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/platform:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & Push Attachments Service
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/services/attachments/RealEstateEval.Attachments.Api/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/attachments:latest
+            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/attachments:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ----------------------------------------------------
+  # Job 3: Deploy to Hostinger VPS
+  # ----------------------------------------------------
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Create Deploy Directory on Hostinger VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOSTINGER_SSH_HOST }}
+          username: ${{ secrets.HOSTINGER_SSH_USER }}
+          key: ${{ secrets.HOSTINGER_SSH_KEY }}
+          port: ${{ secrets.HOSTINGER_SSH_PORT }}
+          script: |
+            mkdir -p /app/infra
+
+      - name: Transfer Compose & Config Files to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOSTINGER_SSH_HOST }}
+          username: ${{ secrets.HOSTINGER_SSH_USER }}
+          key: ${{ secrets.HOSTINGER_SSH_KEY }}
+          port: ${{ secrets.HOSTINGER_SSH_PORT }}
+          source: "infra/docker-compose.prod.yml,infra/nginx.conf"
+          target: "/app"
+          strip_components: 1
+
+      - name: Deploy Stack via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOSTINGER_SSH_HOST }}
+          username: ${{ secrets.HOSTINGER_SSH_USER }}
+          key: ${{ secrets.HOSTINGER_SSH_KEY }}
+          port: ${{ secrets.HOSTINGER_SSH_PORT }}
+          script: |
+            cd /app
+            # Log into GHCR on VPS using user Personal Access Token (PAT)
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
+            # Export variables for compose
+            export IMAGE_OWNER="${{ needs.build-and-push.outputs.image_owner }}"
+            export TAG="${{ needs.build-and-push.outputs.tag }}"
+            
+            # Pull new images and restart the container services
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            
+            # Clean up old/unused images
+            docker image prune -af

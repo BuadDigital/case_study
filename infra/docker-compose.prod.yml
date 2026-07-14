@@ -1,0 +1,245 @@
+# Production stack for Real Estate Evaluation on Hostinger VPS.
+# Usage: IMAGE_OWNER=your-github-username TAG=latest docker compose -f docker-compose.prod.yml up -d
+
+name: realestate-eval-prod
+
+services:
+  # Database
+  postgres:
+    image: postgres:17-alpine
+    container_name: ree-prod-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Admin}
+      POSTGRES_DB: realestate_eval_prod
+    volumes:
+      - ree_prod_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d realestate_eval_prod"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Message Broker
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: ree-prod-rabbitmq
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-dev}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-dev}
+    volumes:
+      - ree_prod_rabbitmqdata:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # Caching
+  redis:
+    image: redis:7-alpine
+    container_name: ree-prod-redis
+    restart: always
+    volumes:
+      - ree_prod_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Microservices
+  identity:
+    image: ghcr.io/${IMAGE_OWNER}/case_study/identity:${TAG:-latest}
+    container_name: ree-prod-identity
+    restart: always
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Redis__ConnectionString: redis:6379
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:-Admin}
+      Jwt__Issuer: RealEstateEval
+      Jwt__Audience: RealEstateEval
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:-CHANGE_ME_IN_PRODUCTION_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  case-study:
+    image: ghcr.io/${IMAGE_OWNER}/case_study/case-study:${TAG:-latest}
+    container_name: ree-prod-case-study
+    restart: always
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Redis__ConnectionString: redis:6379
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:-Admin}
+      Jwt__Issuer: RealEstateEval
+      Jwt__Audience: RealEstateEval
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:-CHANGE_ME_IN_PRODUCTION_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256}
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Port: 5672
+      RabbitMQ__UserName: ${RABBITMQ_USER:-dev}
+      RabbitMQ__Password: ${RABBITMQ_PASSWORD:-dev}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  operations:
+    image: ghcr.io/${IMAGE_OWNER}/case_study/operations:${TAG:-latest}
+    container_name: ree-prod-operations
+    restart: always
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:-Admin}
+      Jwt__Issuer: RealEstateEval
+      Jwt__Audience: RealEstateEval
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:-CHANGE_ME_IN_PRODUCTION_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  reporting:
+    image: ghcr.io/${IMAGE_OWNER}/case_study/reporting:${TAG:-latest}
+    container_name: ree-prod-reporting
+    restart: always
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:-Admin}
+      Jwt__Issuer: RealEstateEval
+      Jwt__Audience: RealEstateEval
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:-CHANGE_ME_IN_PRODUCTION_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  financial:
+    image: ghcr.io/${IMAGE_OWNER}/case_study/financial:${TAG:-latest}
+    container_name: ree-prod-financial
+    restart: always
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:-Admin}
+      Jwt__Issuer: RealEstateEval
+      Jwt__Audience: RealEstateEval
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:-CHANGE_ME_IN_PRODUCTION_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  valuation:
+    image: ghcr.io/${IMAGE_OWNER}/case_study/valuation:${TAG:-latest}
+    container_name: ree-prod-valuation
+    restart: always
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:-Admin}
+      Jwt__Issuer: RealEstateEval
+      Jwt__Audience: RealEstateEval
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:-CHANGE_ME_IN_PRODUCTION_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256}
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Port: 5672
+      RabbitMQ__UserName: ${RABBITMQ_USER:-dev}
+      RabbitMQ__Password: ${RABBITMQ_PASSWORD:-dev}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  failures:
+    image: ghcr.io/${IMAGE_OWNER}/case_study/failures:${TAG:-latest}
+    container_name: ree-prod-failures
+    restart: always
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:-Admin}
+      Jwt__Issuer: RealEstateEval
+      Jwt__Audience: RealEstateEval
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:-CHANGE_ME_IN_PRODUCTION_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  platform:
+    image: ghcr.io/${IMAGE_OWNER}/case_study/platform:${TAG:-latest}
+    container_name: ree-prod-platform
+    restart: always
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:-Admin}
+      Jwt__Issuer: RealEstateEval
+      Jwt__Audience: RealEstateEval
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:-CHANGE_ME_IN_PRODUCTION_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  attachments:
+    image: ghcr.io/${IMAGE_OWNER}/case_study/attachments:${TAG:-latest}
+    container_name: ree-prod-attachments
+    restart: always
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Redis__ConnectionString: redis:6379
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:-Admin}
+      Jwt__Issuer: RealEstateEval
+      Jwt__Audience: RealEstateEval
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:-CHANGE_ME_IN_PRODUCTION_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256}
+      BlobStorage__RootDirectory: /app/attachments-data
+    volumes:
+      - ree_prod_attachments_data:/app/attachments-data
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  gateway:
+    image: ghcr.io/${IMAGE_OWNER}/case_study/gateway:${TAG:-latest}
+    container_name: ree-prod-gateway
+    restart: always
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+    depends_on:
+      - identity
+      - case-study
+      - operations
+      - reporting
+      - financial
+      - valuation
+      - failures
+      - platform
+      - attachments
+
+  # Frontend Next.js Shell
+  frontend:
+    image: ghcr.io/${IMAGE_OWNER}/case_study/frontend:${TAG:-latest}
+    container_name: ree-prod-frontend
+    restart: always
+    environment:
+      NODE_ENV: production
+      API_UPSTREAM_URL: http://gateway:5160
+    depends_on:
+      - gateway
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: ree-prod-nginx
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - gateway
+
+volumes:
+  ree_prod_pgdata:
+  ree_prod_rabbitmqdata:
+  ree_prod_redisdata:
+  ree_prod_attachments_data:
