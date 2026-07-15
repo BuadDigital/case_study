@@ -11,7 +11,7 @@ export function Table({
       <table
         data-pending={pending ? "true" : undefined}
         className={cn(
-          "w-full border-collapse",
+          "w-full border-collapse font-sans",
           pending && "[&_tbody]:opacity-55 [&_tbody]:transition-opacity [&_tbody]:duration-200",
           className,
         )}
@@ -62,7 +62,7 @@ export function Td({ className, ...props }: TdHTMLAttributes<HTMLTableCellElemen
   return (
     <td
       className={cn(
-        "border-b border-border px-4 py-2.5 text-start text-xs text-text align-middle",
+        "border-b border-border px-4 py-2.5 text-start text-[11.5px] text-text align-middle",
         className,
       )}
       {...props}

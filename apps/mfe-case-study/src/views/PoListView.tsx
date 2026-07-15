@@ -75,8 +75,7 @@ type SortKey = "created" | "po" | "received" | "due";
 type SortDir = "asc" | "desc";
 type StatusFilter = PoListStatus | "";
 
-const PO_LIST_TOOLBAR_FIELD =
-  "!h-8 !py-0 !leading-8 border-border-md bg-surface px-2.5 text-xs shadow-none";
+const PO_LIST_TOOLBAR_FIELD = "!h-8 !py-0 !leading-8 border-border-md bg-surface px-2.5 text-xs shadow-none";
 
 function isDueSoon(iso: string): boolean {
   if (!iso) return false;

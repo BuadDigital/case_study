@@ -200,10 +200,10 @@ export function PartyDisbursementRequest({
                 <Td>
                   <PoNumber value={row.poNumber} link />
                 </Td>
-                <Td className="text-[11px] text-text-2">
+                <Td className="text-text-2">
                   {formatFeeDate(row.workSubmittedAtUtc ?? row.updatedAtUtc)}
                 </Td>
-                <Td className="text-[11px] text-text-2">
+                <Td className="text-text-2">
                   {formatFeeDate(row.poReceivedAtUtc)}
                 </Td>
                 <Td className="text-end tabular-nums">

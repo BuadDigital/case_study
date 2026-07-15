@@ -196,7 +196,7 @@ export function DashboardView() {
                           )
                         }
                       >
-                        <Td className="text-[11px] font-semibold text-primary-light">
+                        <Td className="font-semibold text-primary-light">
                           {p.id}
                         </Td>
                         <Td>
@@ -258,11 +258,11 @@ export function DashboardView() {
                       )
                     }
                   >
-                    <Td className="text-[11px] font-semibold text-primary-light">
+                    <Td className="font-semibold text-primary-light">
                       {v.displayId}
                     </Td>
                     <Td>{v.propId}</Td>
-                    <Td className="text-[11px]">{v.appraiser}</Td>
+                    <Td>{v.appraiser}</Td>
                     <Td>
                       <StatusBadge status={valuationStatusBadge(v.status)} />
                     </Td>
@@ -304,13 +304,13 @@ export function DashboardView() {
                         )
                       }
                     >
-                      <Td className="text-[11px] font-semibold text-primary-light">
+                      <Td className="font-semibold text-primary-light">
                         {row.poNumber}
                       </Td>
-                      <Td className="max-w-[140px] truncate text-[11px]">
+                      <Td className="max-w-[140px] truncate">
                         {row.title}
                       </Td>
-                      <Td className="text-[11px]">{row.reviewerName}</Td>
+                      <Td>{row.reviewerName}</Td>
                       <Td>
                         <StatusBadge
                           status={row.status === "done" ? "done" : "progress"}
@@ -354,11 +354,11 @@ export function DashboardView() {
                         )
                       }
                     >
-                      <Td className="text-[11px] font-semibold text-primary-light">
+                      <Td className="font-semibold text-primary-light">
                         {f.poNumber}
                       </Td>
-                      <Td className="text-[11px]">{f.deedNumber || "—"}</Td>
-                      <Td className="max-w-[140px] truncate text-[11px]">
+                      <Td>{f.deedNumber || "—"}</Td>
+                      <Td className="max-w-[140px] truncate">
                         {f.title}
                       </Td>
                       <Td>

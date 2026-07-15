@@ -221,7 +221,7 @@ function UsersStaffListView({
                 const inactive = u.status === "Inactive";
                 return (
                 <Tr key={u.id} hoverable={false}>
-                  <Td className="text-[11px] font-semibold">
+                  <Td className="font-semibold">
                     {u.name}
                     {inactive ? (
                       <Badge tone="default" className="ms-2 rounded-[20px] px-2 py-0 text-[10px]">
@@ -229,11 +229,11 @@ function UsersStaffListView({
                       </Badge>
                     ) : null}
                   </Td>
-                  <Td className="text-[11px] text-text-2">{roleLabel}</Td>
-                  <Td className="text-[11px] text-primary-light [direction:ltr] text-right">
+                  <Td className="text-text-2">{roleLabel}</Td>
+                  <Td className="text-primary-light [direction:ltr] text-right">
                     {u.email}
                   </Td>
-                  <Td className="text-[11px] text-text-2 [direction:ltr] text-right">
+                  <Td className="text-text-2 [direction:ltr] text-right">
                     {u.phone ?? "—"}
                   </Td>
                   {!viewOnly ? (

@@ -262,7 +262,7 @@ export function PartyPropertyBrowse({
                   </Badge>
                 </Td>
                 <Td>{documentCell(row, setAuditRow)}</Td>
-                <Td className="text-[11px] text-text-2">
+                <Td className="text-text-2">
                   {formatFeeDate(row.workSubmittedAtUtc ?? row.updatedAtUtc)}
                 </Td>
               </Tr>

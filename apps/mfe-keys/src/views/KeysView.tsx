@@ -242,7 +242,7 @@ export function KeysView() {
 
                 <Tr key={p.id} hoverable={false}>
 
-                  <Td className="text-[11px] font-semibold text-primary">{p.deedNumber}</Td>
+                  <Td className="font-semibold text-primary">{p.deedNumber}</Td>
 
                   <Td>
                     {p.deedStatus && p.deedStatus !== "—" ? (

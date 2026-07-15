@@ -82,7 +82,7 @@ export function FeeAuditModal({
               <TBody>
                 {data.map((entry) => (
                   <Tr key={entry.id} hoverable={false}>
-                    <Td className="text-[11px] text-text-2">
+                    <Td className="text-text-2">
                       {formatFeeDate(entry.createdAtUtc)}
                     </Td>
                     <Td>
@@ -92,10 +92,10 @@ export function FeeAuditModal({
                         <Badge tone="info">{entry.toStatusLabel}</Badge>
                       </div>
                     </Td>
-                    <Td className="text-[11px] text-text-2">
+                    <Td className="text-text-2">
                       {entry.reason ?? "—"}
                     </Td>
-                    <Td className="text-[11px] text-text-2">
+                    <Td className="text-text-2">
                       {entry.actorLabel ?? entry.actorUserId}
                     </Td>
                   </Tr>
