@@ -686,7 +686,7 @@ export function PoListView() {
                               "whitespace-nowrap text-[12.5px]",
                               urgent
                                 ? "font-medium text-red"
-                                : "text-text-2",
+                                : "text-text",
                             )}
                           >
                             {p.dueDate ? (
@@ -697,7 +697,7 @@ export function PoListView() {
                               "—"
                             )}
                           </Td>
-                          <Td className="whitespace-nowrap text-[12.5px] text-text-2">
+                          <Td className="whitespace-nowrap text-[12.5px] text-text">
                             {p.specialist}
                           </Td>
                           <TdAction onClick={(e) => e.stopPropagation()}>
