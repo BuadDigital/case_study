@@ -181,31 +181,100 @@ export function governmentReviewSubmitFieldErrors(input: {
 }): Record<string, string> {
   if (roleBypassesDocumentaryGates(input.role)) return {};
   const errors: Record<string, string> = {};
-  if (!String(input.deedNumber ?? "").trim()) {
-    errors.deedNumber = "رقم الصك مطلوب قبل تسليم المراجعة الحكومية.";
-  }
-  if (!String(input.requestNumber ?? "").trim()) {
-    errors.requestNumber = "رقم الطلب مطلوب قبل تسليم المراجعة الحكومية.";
-  }
-  if (!String(input.city ?? "").trim()) {
-    errors.city = "المدينة مطلوبة قبل تسليم المراجعة الحكومية.";
-  }
-  if (!String(input.district ?? "").trim()) {
-    errors.district = "الحي مطلوب قبل تسليم المراجعة الحكومية.";
-  }
-  if (!String(input.circuit ?? "").trim()) {
-    errors.circuit = "رقم الدائرة مطلوب قبل تسليم المراجعة الحكومية.";
-  }
-  if (!String(input.poNumber ?? "").trim()) {
-    errors.poNumber = "رقم التعميد (PO) مطلوب قبل تسليم المراجعة الحكومية.";
-  }
-  if (!String(input.assignmentMandateNumber ?? "").trim()) {
-    errors.assignmentMandateNumber =
-      "رقم التكليف مطلوب قبل تسليم المراجعة الحكومية.";
-  }
-  if (!String(input.assignmentMandateDate ?? "").trim()) {
-    errors.assignmentMandateDate =
-      "تاريخ التكليف مطلوب قبل تسليم المراجعة الحكومية.";
+  for (const [key, message] of missingGovernmentReviewBasics(input, true)) {
+    errors[key] = message;
   }
   return errors;
+}
+
+/** Block distributing to government reviewer until property basics are complete. */
+export function governmentReviewAssignmentBlockReason(input: {
+  deedNumber?: string | null;
+  requestNumber?: string | null;
+  city?: string | null;
+  district?: string | null;
+  circuit?: string | null;
+  poNumber?: string | null;
+  assignmentMandateNumber?: string | null;
+  assignmentMandateDate?: string | null;
+}): string | null {
+  const missing = missingGovernmentReviewBasics(input, false);
+  if (missing.length === 0) return null;
+  const labels = missing.map(([, label]) => label).join("، ");
+  return `لا يمكن إرسال المعاملة للمراجع الحكومي قبل اكتمال البيانات الأساسية: ${labels}`;
+}
+
+function missingGovernmentReviewBasics(
+  input: {
+    deedNumber?: string | null;
+    requestNumber?: string | null;
+    city?: string | null;
+    district?: string | null;
+    circuit?: string | null;
+    poNumber?: string | null;
+    assignmentMandateNumber?: string | null;
+    assignmentMandateDate?: string | null;
+  },
+  forSubmit: boolean,
+): Array<[string, string]> {
+  const missing: Array<[string, string]> = [];
+  const require = (
+    key: string,
+    value: string | null | undefined,
+    submitMsg: string,
+    label: string,
+  ) => {
+    if (String(value ?? "").trim()) return;
+    missing.push([key, forSubmit ? submitMsg : label]);
+  };
+
+  require(
+    "deedNumber",
+    input.deedNumber,
+    "رقم الصك مطلوب قبل تسليم المراجعة الحكومية.",
+    "رقم الصك",
+  );
+  require(
+    "requestNumber",
+    input.requestNumber,
+    "رقم الطلب مطلوب قبل تسليم المراجعة الحكومية.",
+    "رقم الطلب",
+  );
+  require(
+    "city",
+    input.city,
+    "المدينة مطلوبة قبل تسليم المراجعة الحكومية.",
+    "المدينة",
+  );
+  require(
+    "district",
+    input.district,
+    "الحي مطلوب قبل تسليم المراجعة الحكومية.",
+    "الحي",
+  );
+  require(
+    "circuit",
+    input.circuit,
+    "رقم الدائرة مطلوب قبل تسليم المراجعة الحكومية.",
+    "الدائرة",
+  );
+  require(
+    "poNumber",
+    input.poNumber,
+    "رقم التعميد (PO) مطلوب قبل تسليم المراجعة الحكومية.",
+    "رقم التعميد (PO)",
+  );
+  require(
+    "assignmentMandateNumber",
+    input.assignmentMandateNumber,
+    "رقم التكليف مطلوب قبل تسليم المراجعة الحكومية.",
+    "رقم التكليف",
+  );
+  require(
+    "assignmentMandateDate",
+    input.assignmentMandateDate,
+    "تاريخ التكليف مطلوب قبل تسليم المراجعة الحكومية.",
+    "تاريخ التكليف",
+  );
+  return missing;
 }

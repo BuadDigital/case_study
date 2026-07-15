@@ -28,9 +28,9 @@ export function requiresAssignmentDecree(type: AssignmentType): boolean {
   return type === "تنفيذ";
 }
 
-/** مسار التنفيذ فقط — محكمة ودائرة. */
-export function showsCourtFields(type: AssignmentType): boolean {
-  return type === "تنفيذ";
+/** محكمة ودائرة — لكل أنواع الإسناد (مطلوبة قبل توزيع المراجعة الحكومية). */
+export function showsCourtFields(_type: AssignmentType): boolean {
+  return true;
 }
 
 export const DEED_STATUS_OPTIONS = ["فعال", "موقوف", "قيد التحقق"] as const;

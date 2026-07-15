@@ -29,6 +29,7 @@ import {
   classificationRequiresSurvey,
   formatPropertyDeedDisplay,
 } from "./po-intake-data";
+import { governmentReviewAssignmentBlockReason } from "./documentary-workflow-gates";
 import {
   assigneeLabel,
   getEngineeringOffices,
@@ -285,6 +286,16 @@ export function defaultDistribution(): TaskDistributionDraft {
 export function distributionValidationError(
   distribution: TaskDistributionDraft,
   engineeringAvailable: boolean,
+  propertyBasics?: {
+    deedNumber?: string | null;
+    requestNumber?: string | null;
+    city?: string | null;
+    district?: string | null;
+    circuit?: string | null;
+    poNumber?: string | null;
+    assignmentMandateNumber?: string | null;
+    assignmentMandateDate?: string | null;
+  },
 ): string | null {
   const anyParty =
     distribution.governmentAuditor ||
@@ -295,6 +306,10 @@ export function distributionValidationError(
   }
   if (distribution.governmentAuditor && !distribution.governmentAuditorId.trim()) {
     return "اختر المراجع الحكومي من القائمة.";
+  }
+  if (distribution.governmentAuditor && propertyBasics) {
+    const govBlock = governmentReviewAssignmentBlockReason(propertyBasics);
+    if (govBlock) return govBlock;
   }
   if (distribution.valuationDepartment) {
     if (!distribution.operationsCoordinatorId.trim()) {
