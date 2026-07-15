@@ -37,7 +37,7 @@ export function Tr({
   return (
     <tr
       className={cn(
-        hoverable && "[&_td]:transition-colors [&_td]:duration-200 [&:hover_td]:bg-surface-2 [&:hover_td]:cursor-pointer",
+        hoverable && "[&_td]:transition-colors [&_td]:duration-200 [&:hover_td]:bg-row-hover [&:hover_td]:cursor-pointer",
         "[&:last-child_td]:border-b-0",
         className,
       )}
@@ -50,7 +50,7 @@ export function Th({ className, ...props }: ThHTMLAttributes<HTMLTableCellElemen
   return (
     <th
       className={cn(
-        "border-b border-border bg-surface-2 px-4 py-2 text-start text-[11px] font-medium text-text-2 whitespace-nowrap",
+        "border-b-2 border-gold bg-surface-2 px-4 py-2.5 text-start text-[12px] font-bold text-heading whitespace-nowrap",
         className,
       )}
       {...props}
@@ -62,7 +62,7 @@ export function Td({ className, ...props }: TdHTMLAttributes<HTMLTableCellElemen
   return (
     <td
       className={cn(
-        "border-b border-border px-4 py-2.5 text-start text-[11.5px] text-text align-middle",
+        "border-b border-border px-4 py-3.5 text-start text-[13px] text-text align-middle",
         className,
       )}
       {...props}
@@ -75,7 +75,7 @@ export function ThAction({ className, ...props }: ThHTMLAttributes<HTMLTableCell
   return (
     <th
       className={cn(
-        "w-12 border-b border-border bg-surface-2 px-4 py-2 text-center text-[11px] font-medium text-text-2 whitespace-nowrap",
+        "w-12 border-b-2 border-gold bg-surface-2 px-4 py-2.5 text-center text-[12px] font-bold text-heading whitespace-nowrap",
         className,
       )}
       {...props}

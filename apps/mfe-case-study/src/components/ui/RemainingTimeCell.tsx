@@ -11,7 +11,7 @@ export function RemainingTimeCell({ state }: { state: RemainingTimeState }) {
 
   if (state.status === "overdue") {
     return (
-      <span className="inline-block font-sans text-xs font-semibold text-danger-text">
+      <span className="inline-block font-sans text-xs font-medium text-danger-text">
         متأخر
       </span>
     );

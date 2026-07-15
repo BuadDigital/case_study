@@ -90,7 +90,7 @@ export function SurveyView() {
                   <Td>
                     <Badge
                       tone="default"
-                      className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal"
+                      className=""
                     >
                       {row.contract}
                     </Badge>
@@ -99,14 +99,14 @@ export function SurveyView() {
                     {row.statusBusy ? (
                       <Badge
                         tone="warning"
-                        className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal"
+                        className=""
                       >
                         مشغول
                       </Badge>
                     ) : (
                       <Badge
                         tone="success"
-                        className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal"
+                        className=""
                       >
                         نشط
                       </Badge>

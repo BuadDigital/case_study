@@ -273,7 +273,7 @@ export function BourseInquiryView() {
                           <Td>
                             <span
                               dir="ltr"
-                              className="inline-block text-[11px] font-semibold text-primary"
+                              className="inline-block text-[12px] font-medium text-primary"
                             >
                               {deedLabel}
                             </span>
@@ -284,12 +284,16 @@ export function BourseInquiryView() {
                               : "—"}
                           </Td>
                           <Td className="text-text-2">
-                            <PoNumber value={item.poNumber} link />
+                            <PoNumber
+                              value={item.poNumber}
+                              link
+                              className="text-[12px] !font-medium"
+                            />
                           </Td>
                           <Td className="text-text-2">
                             <span
                               dir="ltr"
-                              className="inline-block text-[11px] font-semibold text-primary"
+                              className="inline-block text-[12px] font-medium text-primary"
                             >
                               {item.requestNumber?.trim() || "—"}
                             </span>
@@ -307,7 +311,7 @@ export function BourseInquiryView() {
                   </TBody>
                 </Table>
               </div>
-              <QueueTableHint>
+              <QueueTableHint className="border-t border-border bg-surface-2">
                 اضغط الصف لفتح نموذج إكمال البورصة.
               </QueueTableHint>
             </>

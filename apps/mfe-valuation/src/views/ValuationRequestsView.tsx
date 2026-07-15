@@ -146,7 +146,7 @@ export function ValuationRequestsView() {
             ) : (
               vr.map((v) => (
               <Tr key={v.recordId} hoverable={false}>
-                <Td className="font-semibold text-primary-light">{v.id}</Td>
+                <Td className="font-medium text-primary-light">{v.id}</Td>
                 <Td className="text-primary-light">{v.propId}</Td>
                 <Td>{v.area}</Td>
                 <Td>{v.type}</Td>

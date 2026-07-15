@@ -452,7 +452,9 @@ export function ActiveTransactionQueueView({
       });
       if (badge) {
         return (
-          <Badge tone={legacyBadgeTone(badge.className)}>{badge.label}</Badge>
+          <Badge tone={legacyBadgeTone(badge.className)} dot>
+            {badge.label}
+          </Badge>
         );
       }
       return <RemainingTimeCell state={remainingTime} />;
@@ -473,7 +475,6 @@ export function ActiveTransactionQueueView({
   const isDistributionTable =
     config.tableLayout === "distribution" ||
     config.tableLayout === "case-study";
-  const useUnifiedTypography = config.pageId === "active-primary-data";
   const showPartyColumns = config.tableLayout === "case-study";
   const distributionSkeletonCols = 8 + (showPartyColumns ? 4 : 0);
   const primarySkeletonCols = 6;
@@ -730,7 +731,7 @@ export function ActiveTransactionQueueView({
                                     "basic",
                                   )}
                                   dir="ltr"
-                                  className="relative z-[1] inline-block text-[11px] font-semibold text-primary no-underline hover:underline"
+                                  className="relative z-[1] inline-block text-[13px] font-medium text-primary no-underline hover:underline"
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   {row.deedLabel}
@@ -738,7 +739,7 @@ export function ActiveTransactionQueueView({
                               ) : (
                                 <span
                                   dir="ltr"
-                                  className="inline-block text-[11px] font-semibold text-primary"
+                                  className="inline-block text-[13px] font-medium text-primary"
                                 >
                                   {row.deedLabel}
                                 </span>
@@ -808,12 +809,7 @@ export function ActiveTransactionQueueView({
                             <Td className="whitespace-nowrap">
                               <span
                                 dir="ltr"
-                                className={cn(
-                                  "inline-block text-primary",
-                                  useUnifiedTypography
-                                    ? "text-[13px] font-medium"
-                                    : "text-[11px] font-semibold",
-                                )}
+                                className="inline-block text-[12px] font-medium text-primary"
                               >
                                 {row.propertySlot}
                               </span>

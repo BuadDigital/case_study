@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { PoRow } from "@platform/app-shared/prototype/constants";
 import {
   isPoListStatusTerminal,
@@ -12,7 +12,6 @@ import {
   type PoListStatus,
 } from "@platform/app-shared/prototype/po-list-status";
 import {
-  Badge,
   Button,
   Input,
   OperationalPanel,
@@ -20,12 +19,6 @@ import {
   PageShell,
   PageToolbar,
   Select,
-  StatCard,
-  StatGrid,
-  StatLabel,
-  StatSkeleton,
-  StatSub,
-  StatValue,
   SkeletonTableRows,
   Table,
   TBody,
@@ -75,7 +68,8 @@ type SortKey = "created" | "po" | "received" | "due";
 type SortDir = "asc" | "desc";
 type StatusFilter = PoListStatus | "";
 
-const PO_LIST_TOOLBAR_FIELD = "!h-8 !py-0 !leading-8 border-border-md bg-surface px-2.5 text-xs shadow-none";
+const PO_LIST_TOOLBAR_FIELD =
+  "!h-[38px] !py-0 !leading-[38px] border-border-md bg-surface px-3 text-[13px] shadow-none";
 
 function isDueSoon(iso: string): boolean {
   if (!iso) return false;
@@ -90,16 +84,159 @@ function isDueUrgent(dueIso: string, status: PoRow["status"]): boolean {
   return isPastDue(dueIso) || isDueSoon(dueIso);
 }
 
-function progressFillClass(pct: number): string {
-  if (pct >= 80) return "bg-primary";
-  if (pct >= 40) return "bg-amber";
-  return "bg-red";
+function isDueWithin48(iso: string): boolean {
+  if (!iso) return false;
+  const due = new Date(iso.slice(0, 10)).getTime();
+  const now = Date.now();
+  return due >= now && due <= now + 2 * 24 * 60 * 60 * 1000;
 }
 
-function PoListStatusBadge({ status }: { status: PoRow["status"] }) {
-  const { tone, label } = poListStatusMeta(status);
-  return <Badge tone={tone}>{label}</Badge>;
+/** خلفية شريط التقدم — أخضر عند ≥60٪، ذهبي عند وجود تقدم، شفاف عند الصفر. */
+function progFill(pct: number): string {
+  if (pct >= 60) return "linear-gradient(90deg, #2f9e6b, #48c78e)";
+  if (pct > 0) return "linear-gradient(90deg, var(--gold-d), var(--gold))";
+  return "transparent";
 }
+
+function poStatusStyle(status: PoRow["status"]): {
+  base: string;
+  fg: string;
+  live: boolean;
+} {
+  switch (status) {
+    case "under_study":
+      return { base: "var(--gold)", fg: "var(--gold-d)", live: true };
+    case "completed":
+    case "fully_billed":
+      return { base: "#3f8f5f", fg: "#2f7a4d", live: false };
+    case "partially_billed":
+      return { base: "#d9a441", fg: "#b8791a", live: false };
+    case "stopped":
+      return { base: "#8a8d96", fg: "#696c75", live: false };
+    case "cancelled":
+      return { base: "var(--red)", fg: "var(--red-text)", live: false };
+    default:
+      return { base: "var(--heading)", fg: "var(--heading)", live: false };
+  }
+}
+
+function PoStatusPill({ status }: { status: PoRow["status"] }) {
+  const s = poStatusStyle(status);
+  const { label } = poListStatusMeta(status);
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-1 text-[12px] font-bold"
+      style={{
+        background: `color-mix(in srgb, ${s.base} 14%, transparent)`,
+        color: s.fg,
+      }}
+    >
+      <span
+        className={cn(
+          "size-1.5 shrink-0 rounded-full",
+          s.live && "ui-status-dot-live",
+        )}
+        style={{ background: s.base }}
+      />
+      {label}
+    </span>
+  );
+}
+
+function KpiCell({
+  first = false,
+  last = false,
+  icon,
+  iconClass,
+  label,
+  value,
+  valueClass,
+  sub,
+  dot = false,
+}: {
+  first?: boolean;
+  last?: boolean;
+  icon: ReactNode;
+  iconClass: string;
+  label: string;
+  value: ReactNode;
+  valueClass?: string;
+  sub: string;
+  dot?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "relative flex-1 px-6 py-5",
+        !last && "border-e border-border",
+        first &&
+          "before:absolute before:inset-y-0 before:start-0 before:w-[3px] before:bg-gold before:content-['']",
+      )}
+    >
+      <div className="mb-3.5 flex items-center gap-2.5">
+        <span
+          className={cn(
+            "grid size-[30px] shrink-0 place-items-center rounded-md",
+            iconClass,
+          )}
+        >
+          {icon}
+        </span>
+        <span className="text-[12.5px] font-medium text-text-2">{label}</span>
+      </div>
+      <div
+        className={cn(
+          "text-start text-[32px] font-extrabold leading-none text-heading tabular-nums",
+          valueClass,
+        )}
+      >
+        <bdi>{value}</bdi>
+      </div>
+      <div className="mt-2 flex items-center gap-1.5 text-[12px] text-text-3">
+        {dot ? <span className="size-1.5 rounded-full bg-gold" /> : null}
+        {sub}
+      </div>
+    </div>
+  );
+}
+
+function KpiClipboardIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="8" y="2" width="8" height="4" rx="1" />
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+      <path d="M9 12h6M9 16h6" />
+    </svg>
+  );
+}
+
+function KpiAlertIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+      <path d="M12 9v4M12 17h.01" />
+    </svg>
+  );
+}
+
+function KpiClockIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 6v6l4 2" />
+    </svg>
+  );
+}
+
+function KpiCheckIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+      <path d="m9 11 3 3L22 4" />
+    </svg>
+  );
+}
+
 
 function SearchIcon() {
   return (
@@ -264,23 +401,17 @@ export function PoListView() {
   const searchModeLabel = poListSearchModeLabel(searchMode);
   const statsReady = rows !== undefined && !rowsPending;
 
-  const stats = useMemo(() => {
+  const kpi = useMemo(() => {
     if (!statsReady) return undefined;
-    const propertyCount = list.reduce((n, p) => n + p.count, 0);
-    const avgPerPo =
-      list.length > 0 ? (propertyCount / list.length).toFixed(1) : "0";
-    const doneMonth = list.filter(
-      (p) =>
-        p.status === "completed" ||
-        p.status === "fully_billed" ||
-        p.status === "partially_billed",
+    const active = list.filter((p) => !isPoListStatusTerminal(p.status));
+    const overdue = active.filter(
+      (p) => p.dueDate && isPastDue(p.dueDate),
     ).length;
-    return {
-      total: list.length,
-      propertyCount,
-      avgPerPo,
-      doneMonth,
-    };
+    const dueSoon = active.filter(
+      (p) => p.dueDate && isDueWithin48(p.dueDate),
+    ).length;
+    const doneProps = list.reduce((n, p) => n + (p.done ?? 0), 0);
+    return { active: active.length, overdue, dueSoon, doneProps };
   }, [list, statsReady]);
 
   const assignmentTypes = useMemo(
@@ -431,53 +562,43 @@ export function PoListView() {
       ) : null}
 
       <PageShell variant="canvas" className="min-h-0 flex-1">
-        <StatGrid cols={4}>
-            {statsReady ? (
-              <>
-                <StatCard accent="default">
-                  <StatLabel>إجمالي أوامر العمل</StatLabel>
-                  <StatValue value={stats?.total} countUp />
-                  <StatSub>PO نشط</StatSub>
-                </StatCard>
-                <StatCard accent="amber">
-                  <StatLabel>عقارات نشطة</StatLabel>
-                  <StatValue value={stats?.propertyCount} countUp />
-                  <StatSub>قيد المعالجة</StatSub>
-                </StatCard>
-                <StatCard accent="blue">
-                  <StatLabel>متوسط العقارات / PO</StatLabel>
-                  <StatValue value={stats?.avgPerPo} />
-                  <StatSub>عقار لكل أمر</StatSub>
-                </StatCard>
-                <StatCard accent="gray">
-                  <StatLabel>مكتملة / مفوترة</StatLabel>
-                  <StatValue value={stats?.doneMonth} countUp />
-                  <StatSub>{`من ${stats?.total ?? 0} إجمالي`}</StatSub>
-                </StatCard>
-              </>
-            ) : (
-              Array.from({ length: 4 }, (_, index) => (
-                <StatCard key={index} accent="gray">
-                  <StatSkeleton />
-                </StatCard>
-              ))
-            )}
-        </StatGrid>
+        <div className="mb-6 flex shrink-0 flex-wrap overflow-hidden rounded-xl border border-border bg-surface shadow-card sm:flex-nowrap">
+          <KpiCell
+            first
+            icon={<KpiClipboardIcon />}
+            iconClass="bg-gold-soft text-gold-d"
+            label="أوامر نشطة"
+            value={kpi ? kpi.active : "—"}
+            sub="قيد التنفيذ حاليًا"
+            dot
+          />
+          <KpiCell
+            icon={<KpiAlertIcon />}
+            iconClass="bg-[color-mix(in_srgb,var(--red)_15%,transparent)] text-red"
+            label="متأخرة عن الاستحقاق"
+            value={kpi ? kpi.overdue : "—"}
+            valueClass="!text-red"
+            sub="تحتاج معالجة فورية"
+          />
+          <KpiCell
+            icon={<KpiClockIcon />}
+            iconClass="bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#b8791a]"
+            label="تستحق خلال 48 ساعة"
+            value={kpi ? kpi.dueSoon : "—"}
+            sub="قدّمها في الأولوية"
+          />
+          <KpiCell
+            last
+            icon={<KpiCheckIcon />}
+            iconClass="bg-[color-mix(in_srgb,#2f9e6b_16%,transparent)] text-[#2f9e6b]"
+            label="عقارات أُنجزت اليوم"
+            value={kpi ? kpi.doneProps : "—"}
+            valueClass="!text-[#2f9e6b]"
+            sub="عبر جميع الأوامر"
+          />
+        </div>
 
-        <OperationalPanel className="min-h-0 shrink-0">
-          <PageToolbar className="shrink-0 border-b-0 bg-surface-2">
-              {showIntake ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="primary"
-                  className="shrink-0"
-                  onClick={() => setIntakeOpen(true)}
-                >
-                  <PlusIcon />
-                  أمر عمل جديد
-                </Button>
-              ) : null}
+        <PageToolbar className="mb-3 shrink-0 border-b-0 bg-transparent px-0 py-0">
               <div className="relative min-w-[min(100%,220px)] flex-1 basis-[240px] max-w-[320px]">
                 <span className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-text-3">
                   <SearchIcon />
@@ -485,7 +606,7 @@ export function PoListView() {
                 <Input
                   className={cn(
                     PO_LIST_TOOLBAR_FIELD,
-                    "pe-8 text-[12.5px]",
+                    "pe-9",
                     search.trim() && searchModeLabel && "ps-[6.25rem]",
                   )}
                   type="search"
@@ -541,8 +662,21 @@ export function PoListView() {
               <span className="w-full text-[11.5px] text-text-3 sm:ms-auto sm:w-auto">
                 {statsReady ? `${filtered.length} نتيجة` : "—"}
               </span>
+              {showIntake ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="primary"
+                  className="h-[38px] shrink-0 px-4 text-[13px] font-bold shadow-[0_6px_16px_-8px_rgba(18,40,76,.6)] transition-transform hover:-translate-y-px"
+                  onClick={() => setIntakeOpen(true)}
+                >
+                  <PlusIcon />
+                  أمر عمل جديد
+                </Button>
+              ) : null}
           </PageToolbar>
 
+        <OperationalPanel className="min-h-0 shrink-0">
           <Table pending={!statsReady}>
                 <THead>
                   <Tr hoverable={false}>
@@ -557,8 +691,8 @@ export function PoListView() {
                       </button>
                     </Th>
                     <Th>نوع الإسناد</Th>
-                    <Th>العقارات</Th>
-                    <Th>المكتملة</Th>
+                    <Th className="text-center">العقارات</Th>
+                    <Th className="text-center">المكتملة</Th>
                     <Th>التقدم</Th>
                     <Th>الحالة</Th>
                     <Th>
@@ -644,38 +778,46 @@ export function PoListView() {
                             <PoNumber
                               value={p.id}
                               link
-                              className="text-[13px] !font-medium text-primary"
+                              className="text-[13.5px] !font-bold text-primary"
                             />
                           </Td>
-                          <Td className="whitespace-nowrap text-[11.5px] text-text-2">
-                            {p.type}
+                          <Td className="whitespace-nowrap">
+                            <span className="inline-flex items-center rounded-md border border-border-md bg-surface-2 px-2.5 py-[3px] text-[12px] font-medium text-text-2">
+                              {p.type}
+                            </span>
                           </Td>
-                          <Td className="whitespace-nowrap text-[11.5px] text-text-2">
+                          <Td className="whitespace-nowrap text-center text-[14px] font-extrabold text-heading tabular-nums">
                             {p.count}
                           </Td>
-                          <Td className="whitespace-nowrap text-[11.5px] text-text-2">
+                          <Td className="whitespace-nowrap text-center text-[13.5px] font-bold text-text-2 tabular-nums">
                             {studied}
                           </Td>
                           <Td className="whitespace-nowrap">
-                            <div className="flex min-w-[120px] items-center gap-2">
-                              <div className="h-[5px] min-w-[60px] flex-1 overflow-hidden rounded bg-surface-3">
+                            <div className="flex min-w-[120px] items-center gap-2.5">
+                              <div
+                                className="h-1.5 min-w-[60px] flex-1 overflow-hidden rounded-full"
+                                style={{
+                                  background:
+                                    "color-mix(in srgb, var(--text-3) 26%, transparent)",
+                                }}
+                              >
                                 <div
-                                  className={cn(
-                                    "h-full rounded transition-[width] duration-300",
-                                    progressFillClass(pct),
-                                  )}
-                                  style={{ width: `${pct}%` }}
+                                  className="h-full rounded-full transition-[width] duration-500"
+                                  style={{
+                                    width: `${pct}%`,
+                                    background: progFill(pct),
+                                  }}
                                 />
                               </div>
-                              <span className="min-w-7 text-end text-[11.5px] text-text-2 tabular-nums">
+                              <span className="min-w-8 text-start text-[12px] font-bold text-heading tabular-nums">
                                 {pct}%
                               </span>
                             </div>
                           </Td>
                           <Td className="whitespace-nowrap">
-                            <PoListStatusBadge status={p.status} />
+                            <PoStatusPill status={p.status} />
                           </Td>
-                          <Td className="whitespace-nowrap text-[11.5px] text-text-2">
+                          <Td className="whitespace-nowrap text-[13px] text-text-2">
                             {p.date ? (
                               <bdi dir="ltr" className={ltrValueClass}>
                                 {formatDateAr(p.date)}
@@ -686,8 +828,8 @@ export function PoListView() {
                           </Td>
                           <Td
                             className={cn(
-                              "whitespace-nowrap text-[11.5px] text-text-2",
-                              urgent && "text-red",
+                              "whitespace-nowrap text-[13px] font-semibold",
+                              urgent ? "text-red" : "text-heading",
                             )}
                           >
                             {p.dueDate ? (
@@ -698,25 +840,15 @@ export function PoListView() {
                               "—"
                             )}
                           </Td>
-                          <Td className="whitespace-nowrap text-[11.5px] text-text-2">
-                            {p.specialist}
+                          <Td className="whitespace-nowrap text-[13px] font-semibold text-heading">
+                            {p.specialist ? (
+                              p.specialist
+                            ) : (
+                              <span className="font-normal text-text-3">—</span>
+                            )}
                           </Td>
                           <TdAction onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                              {showEdit ? (
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-7 w-7 p-0"
-                                  title="تعديل"
-                                  onClick={() =>
-                                    router.push(poHeaderEditPath(p.id))
-                                  }
-                                >
-                                  <EditIcon />
-                                </Button>
-                              ) : null}
+                            <div className="flex items-center justify-center">
                               <RowMoreMenu
                                 items={buildPoListRowMoreItems({
                                   poNumber: p.id,
@@ -740,8 +872,9 @@ export function PoListView() {
                   )}
                 </TBody>
               </Table>
+        </OperationalPanel>
 
-          <PageGutter className="flex shrink-0 items-center justify-between border-t border-border bg-surface-2 py-2.5">
+          <PageGutter className="flex shrink-0 items-center justify-between bg-transparent px-0 py-3">
               <span className="text-xs text-text-3">
                 {statsReady
                   ? `عرض ${rangeStart}–${rangeEnd} من ${filtered.length} نتيجة`
@@ -782,7 +915,6 @@ export function PoListView() {
                 </Button>
               </div>
           </PageGutter>
-        </OperationalPanel>
       </PageShell>
     </>
   );

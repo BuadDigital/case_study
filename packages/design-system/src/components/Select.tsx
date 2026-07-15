@@ -25,7 +25,7 @@ export function Select({
         variant === "default" &&
           cn(formControlClassName, "cursor-pointer"),
         variant === "sidebar" &&
-          "rounded-[var(--radius-DEFAULT)] border border-sidebar-border bg-sidebar px-2 py-1.5 text-[11px] text-white [color-scheme:dark] focus:border-primary/50 focus:shadow-[0_0_0_2px_rgba(29,158,117,0.2)] focus:ring-0",
+          "rounded-[var(--radius-DEFAULT)] border border-sidebar-border bg-sidebar px-2 py-1.5 text-[11px] text-white [color-scheme:dark] focus:border-gold/50 focus:shadow-[0_0_0_2px_color-mix(in_srgb,var(--gold)_28%,transparent)] focus:ring-0",
         hasError && formControlErrorClassName,
         className,
       )}

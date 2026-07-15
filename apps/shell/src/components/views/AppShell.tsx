@@ -4,6 +4,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NavIcon } from "@/components/views/NavIcon";
+import { EjadaLogo } from "@/components/views/EjadaLogo";
+import { ThemeSwitch } from "@/components/views/ThemeSwitch";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import {
   prefetchPoRecord,
@@ -66,7 +68,7 @@ import { EngineeringSurveyTopbarActions } from "@engineering-office/mfe";
 import { useActiveTransactionNavBadges } from "@/lib/query/use-active-transaction-nav-badges";
 import { useFailuresNavBadge } from "@/lib/query/use-failures-nav-badge";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
-import { cn, Button } from "@platform/design-system";
+import { cn } from "@platform/design-system";
 import { clearAuthSession, getAuthSession } from "@platform/auth-client";
 
 function TopbarSvgIcon({ children }: { children: React.ReactNode }) {
@@ -156,13 +158,13 @@ function navItemClasses({
   toggle?: boolean;
 } = {}) {
   return cn(
-    "relative flex cursor-pointer items-center gap-[9px] rounded-none border-e-[3px] border-transparent py-[9px] px-3.5 text-[12.5px] text-sidebar-muted no-underline outline-none transition-[background,color] duration-150",
-    "hover:bg-white/5 hover:text-sidebar-muted-strong",
-    "[&>svg]:size-4 [&>svg]:shrink-0",
-    sub && "gap-[7px] ps-8 text-[11px] [&>svg]:size-3",
+    "relative flex cursor-pointer items-center gap-[11px] rounded-lg px-3 py-[9px] text-[13.5px] font-medium text-[#aeb6c4] no-underline outline-none transition-[background,color] duration-150",
+    "hover:bg-white/[0.06] hover:text-white",
+    "[&>svg]:size-[18px] [&>svg]:shrink-0",
+    sub && "gap-[9px] ps-8 text-[12.5px] [&>svg]:size-3.5",
     toggle && "w-full border-0 bg-transparent font-inherit",
     active &&
-      "bg-white/10 font-medium text-white before:absolute before:inset-y-0 before:start-0 before:w-[3px] before:rounded-e-sm before:bg-white/70 before:content-['']",
+      "bg-[color-mix(in_srgb,var(--gold)_18%,transparent)] font-bold text-gold-2 before:absolute before:inset-y-0 before:start-0 before:w-[3px] before:rounded-e-sm before:bg-gold before:content-['']",
     locked && "cursor-default opacity-35",
   );
 }
@@ -455,22 +457,20 @@ function ProfileMenu({
   chipName,
   initials,
   dept,
-  avatarBg,
-  avatarColor,
   systemFieldsItems,
   settingsItems,
   currentPage,
   onPrefetch,
+  onLogout,
 }: {
   chipName: string;
   initials: string;
   dept: string;
-  avatarBg: string;
-  avatarColor: string;
   systemFieldsItems: SystemFieldsNavItem[];
   settingsItems: SettingsNavItem[];
   currentPage: PageId;
   onPrefetch: (page: PageId) => void;
+  onLogout: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -502,9 +502,8 @@ function ProfileMenu({
 
   const avatar = (
     <div
-      className="flex size-[26px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
+      className="flex size-[34px] shrink-0 items-center justify-center rounded-lg text-[14px] font-bold text-gold-2"
       id="uav"
-      style={{ background: avatarBg, color: avatarColor }}
     >
       {initials}
     </div>
@@ -512,32 +511,26 @@ function ProfileMenu({
 
   const identity = (
     <div className="hidden min-w-0 sm:block">
-      <div className="truncate text-xs font-medium" id="uname">
+      <div
+        className="truncate text-[13px] font-bold leading-[1.25] text-heading"
+        id="uname"
+      >
         {chipName}
       </div>
-      <div className="truncate text-[10px] text-text-3" id="udept">
+      <div className="truncate text-[11px] text-text-3" id="udept">
         {dept}
       </div>
     </div>
   );
-
-  if (!hasMenu) {
-    return (
-      <div className="flex items-center gap-[7px] rounded-[20px] border-[0.5px] border-border-md bg-surface-2 py-1 ps-1.5 pe-1.5 sm:pe-2.5">
-        {avatar}
-        {identity}
-      </div>
-    );
-  }
 
   return (
     <div className="relative" ref={panelRef}>
       <button
         type="button"
         className={cn(
-          "flex items-center gap-[7px] rounded-[20px] border-[0.5px] border-border-md bg-surface-2 py-1 ps-1.5 pe-1.5 transition-colors sm:pe-2.5",
-          "hover:border-border hover:bg-surface",
-          (open || inMenuSection) && "border-primary/30 bg-primary/5",
+          "flex items-center gap-2.5 rounded-lg py-1 pe-1.5 ps-2.5 transition-colors",
+          "hover:bg-surface-2",
+          (open || inMenuSection) && "bg-surface-2",
         )}
         aria-label="قائمة الملف الشخصي"
         aria-expanded={open}
@@ -574,6 +567,7 @@ function ProfileMenu({
             </div>
             <div className="truncate text-[11px] text-text-3">{dept}</div>
           </div>
+          {hasMenu ? (
           <div className="max-h-80 overflow-y-auto py-1.5">
             {systemFieldsItems.length > 0 ? (
               <div className="px-1.5 pb-1" role="group" aria-label={SYSTEM_FIELDS_GROUP}>
@@ -612,6 +606,25 @@ function ProfileMenu({
                 ))}
               </div>
             ) : null}
+          </div>
+          ) : null}
+          <div className={cn(hasMenu && "border-t border-border")}>
+            <ThemeSwitch />
+          </div>
+          <div className="border-t border-border p-1.5">
+            <button
+              type="button"
+              role="menuitem"
+              className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-semibold text-danger-text transition-colors hover:bg-[color-mix(in_srgb,var(--red)_10%,transparent)] [&>svg]:size-4 [&>svg]:shrink-0"
+              onClick={() => {
+                setOpen(false);
+                onLogout();
+              }}
+              data-no-action-toast
+            >
+              <LogoutIcon />
+              <span>تسجيل الخروج</span>
+            </button>
           </div>
         </div>
       ) : null}
@@ -975,35 +988,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           "lg:translate-x-0",
         )}
       >
-        <div className="flex items-center gap-2 border-b border-sidebar-border px-3.5 py-4">
-          <div
-            className="flex shrink-0 items-center justify-center text-primary [&>svg]:size-[18px]"
-            aria-hidden
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M3 21h18" />
-              <path d="M9 8h1" />
-              <path d="M9 12h1" />
-              <path d="M9 16h1" />
-              <path d="M14 8h1" />
-              <path d="M14 12h1" />
-              <path d="M14 16h1" />
-              <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16" />
-            </svg>
-          </div>
-          <span className="min-w-0 flex-1 text-[13px] font-semibold leading-snug text-white">
-            إجادة للتقييم
-          </span>
+        <div className="relative flex items-center justify-center border-b border-white/[0.08] px-[18px] pb-[18px] pt-5">
+          <EjadaLogo className="h-auto w-[155px] max-w-full" />
           <button
             type="button"
-            className="flex size-9 shrink-0 items-center justify-center rounded-lg text-white/70 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
+            className="absolute end-2 top-2 flex size-9 shrink-0 items-center justify-center rounded-lg text-white/70 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
             aria-label="إغلاق القائمة"
             onClick={() => setMobileNavOpen(false)}
           >
@@ -1015,7 +1004,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <nav
             id="nav"
-            className="min-h-0 flex-1 overflow-y-auto pb-2"
+            className="min-h-0 flex-1 overflow-y-auto px-3 pb-[22px] pt-3"
             aria-label="التنقل الرئيسي"
           >
           {insertActiveTxAtNavStart && showActiveTransactionsGroup ? (
@@ -1035,7 +1024,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <div key={`run-${ri}`}>
                 {run.label ? (
                   <div>
-                    <div className="px-3.5 pb-1.5 pt-3.5 text-[10px] font-medium uppercase tracking-wider text-sidebar-label">
+                    <div className="px-3 pb-[7px] pt-[18px] text-[11px] font-bold tracking-[0.03em] text-[#6f7b90]">
                       {run.label}
                     </div>
                   </div>
@@ -1065,7 +1054,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     generalNavInserted = true;
                     nodes.push(
                       <div key="general-grp">
-                        <div className="px-3.5 pb-1.5 pt-3.5 text-[10px] font-medium uppercase tracking-wider text-sidebar-label">
+                        <div className="px-3 pb-[7px] pt-[18px] text-[11px] font-bold tracking-[0.03em] text-[#6f7b90]">
                           عام
                         </div>
                       </div>,
@@ -1132,7 +1121,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {!generalNavInserted && showGeneralGroup ? (
             <>
               <div key="general-grp-fallback">
-                <div className="px-3.5 pb-1.5 pt-3.5 text-[10px] font-medium uppercase tracking-wider text-sidebar-label">
+                <div className="px-3 pb-[7px] pt-[18px] text-[11px] font-bold tracking-[0.03em] text-[#6f7b90]">
                   عام
                 </div>
               </div>
@@ -1160,7 +1149,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div id="main" className="flex min-w-0 flex-1 flex-col overflow-hidden bg-bg">
         <div
           id="topbar"
-          className="flex h-topbar shrink-0 items-center justify-between gap-2 border-b-[0.5px] border-border bg-surface px-4 sm:gap-3 sm:px-6"
+          className="flex min-h-topbar shrink-0 items-center justify-between gap-2 border-b-[0.5px] border-border bg-surface px-4 py-3.5 sm:gap-3 sm:px-[30px]"
         >
           <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             <button
@@ -1182,39 +1171,42 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <PoNumber value={poChrome.propertyDetail.poNumber} />
               </Link>
             ) : null}
-            <AppBreadcrumb
-              segments={displayBreadcrumbSegments}
-              className={cn(
-                "max-lg:min-w-0 max-lg:flex-1 max-lg:flex-nowrap max-lg:overflow-x-auto max-lg:[&::-webkit-scrollbar]:hidden",
-                onPoPropertyDetail && "max-lg:hidden",
-              )}
-            />
-            {!onPoPropertyDetail && !onActiveSurveyPropertyDetail
-              ? (() => {
-                  if (!resolvedPageTitle && !poChrome?.titlePo) return null;
-                  return (
-                    <div
-                      className="hidden text-sm font-semibold text-text sm:block"
-                      id="page-title"
-                    >
-                      {poChrome?.titlePo ? (
-                        <span className="inline-flex flex-row flex-wrap items-baseline gap-[0.4em]">
-                          <span className="[unicode-bidi:embed]">
-                            {poChrome.title}
+            <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
+              <AppBreadcrumb
+                segments={displayBreadcrumbSegments}
+                className={cn(
+                  "max-lg:min-w-0 max-lg:flex-1 max-lg:flex-nowrap max-lg:overflow-x-auto max-lg:[&::-webkit-scrollbar]:hidden",
+                  onPoPropertyDetail && "max-lg:hidden",
+                )}
+              />
+              {!onPoPropertyDetail && !onActiveSurveyPropertyDetail
+                ? (() => {
+                    if (!resolvedPageTitle && !poChrome?.titlePo) return null;
+                    return (
+                      <h1
+                        className="mt-1 text-[20px] font-extrabold leading-none tracking-[-0.01em] text-heading max-sm:hidden"
+                        id="page-title"
+                      >
+                        {poChrome?.titlePo ? (
+                          <span className="inline-flex flex-row flex-wrap items-baseline gap-[0.4em]">
+                            <span className="[unicode-bidi:embed]">
+                              {poChrome.title}
+                            </span>
+                            <PoNumber value={poChrome.titlePo} />
                           </span>
-                          <PoNumber value={poChrome.titlePo} />
-                        </span>
-                      ) : (
-                        resolvedPageTitle
-                      )}
-                    </div>
-                  );
-                })()
-              : null}
+                        ) : (
+                          resolvedPageTitle
+                        )}
+                      </h1>
+                    );
+                  })()
+                : null}
+            </div>
           </div>
-          <div className="flex shrink-0 items-center gap-1 sm:gap-2.5">
+          <div className="flex shrink-0 items-center gap-3">
             <GlobalSearch />
             <NotificationCenter />
+            <div className="h-[26px] w-px shrink-0 bg-border-md" aria-hidden />
             {poChrome?.propertyDetail ? (
               <div className="max-lg:hidden">
                 <PoPropertyDetailTopbarActions
@@ -1226,42 +1218,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {onActiveSurveyPropertyDetail ? (
               <EngineeringSurveyTopbarActions />
             ) : null}
-            <button
-              type="button"
-              className={cn(
-                mobileTopbarIconBtn,
-                "text-text-2 hover:border-danger/25 hover:bg-danger-bg hover:text-danger-text",
-              )}
-              onClick={handleLogout}
-              aria-label="تسجيل الخروج"
-              data-no-action-toast
-            >
-              <TopbarSvgIcon>
-                <LogoutIcon />
-              </TopbarSvgIcon>
-            </button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="max-lg:hidden"
-              onClick={handleLogout}
-              showActionToast={false}
-            >
-              تسجيل الخروج
-            </Button>
             <ProfileMenu
               chipName={chipName}
               initials={def.init}
               dept={def.dept}
-              avatarBg={def.bg}
-              avatarColor={def.tc}
               systemFieldsItems={
                 showSystemFieldsGroup ? systemFieldsNavItems : []
               }
               settingsItems={showSettingsGroup ? settingsNavItems : []}
               currentPage={currentPage}
               onPrefetch={prefetchPage}
+              onLogout={handleLogout}
             />
           </div>
         </div>

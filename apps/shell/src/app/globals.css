@@ -25,7 +25,7 @@
 
   --font-sans:
 
-    var(--font-arabic), "IBM Plex Sans Arabic", "Segoe UI", Tahoma, system-ui,
+    var(--font-arabic), "Tajawal", "Segoe UI", Tahoma, system-ui,
 
     sans-serif;
 
@@ -53,13 +53,29 @@
 
 
 
-  --color-primary: var(--teal);
+  --color-primary: var(--primary);
 
   --color-primary-mid: var(--primary-mid);
 
   --color-teal-light: var(--teal-light);
 
   --color-teal-text: var(--teal-text);
+
+  --color-ink: var(--ink);
+
+  --color-navy-3: var(--navy-3);
+
+  --color-gold: var(--gold);
+
+  --color-gold-d: var(--gold-d);
+
+  --color-gold-2: var(--gold-2);
+
+  --color-gold-soft: var(--gold-soft);
+
+  --color-heading: var(--heading);
+
+  --color-row-hover: var(--row-hover);
 
 
 
@@ -177,6 +193,25 @@
 
     @apply min-h-full bg-bg text-text text-sm;
 
+  }
+
+  /* Custom scrollbars (docs/new look) */
+  ::-webkit-scrollbar {
+    width: 11px;
+    height: 11px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(120, 120, 140, 0.28);
+    border-radius: 99px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(120, 120, 140, 0.45);
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
   }
 
 

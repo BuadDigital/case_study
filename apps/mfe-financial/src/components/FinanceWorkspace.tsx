@@ -29,7 +29,7 @@ function ContractBadge({ type }: { type: string }) {
   const tone = type === "ext" ? "default" : type === "int" ? "info" : "warning";
   const label = type === "ext" ? "خارجي" : type === "int" ? "داخلي" : "متعاون";
   return (
-    <Badge tone={tone} className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal">
+    <Badge tone={tone} className="">
       {label}
     </Badge>
   );
@@ -157,7 +157,7 @@ export function FinanceWorkspace({
                   <TBody>
                     {revenueRows.map((r) => (
                       <Tr key={r.po} hoverable={false}>
-                        <Td className="font-semibold text-primary-light">
+                        <Td className="font-medium text-primary-light">
                           {r.po}
                         </Td>
                         <Td>{r.billed}</Td>

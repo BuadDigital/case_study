@@ -4,17 +4,17 @@ import { Spinner } from "./Spinner";
 
 const variantClasses = {
   default:
-    "border-border-md bg-surface text-text hover:bg-surface-2",
+    "border-border-md bg-surface text-text hover:border-gold hover:text-gold-d",
   primary:
-    "border-primary bg-primary text-white hover:border-primary-mid hover:bg-primary-mid",
+    "border-ink bg-ink text-white hover:border-navy-3 hover:bg-navy-3",
   outline:
-    "border-primary bg-transparent text-primary hover:bg-teal-light",
+    "border-primary bg-transparent text-primary hover:bg-gold-soft",
   accent:
-    "border-primary bg-primary text-white hover:border-primary-mid hover:bg-primary-mid",
+    "border-gold bg-gold text-white hover:border-gold-d hover:bg-gold-d",
   danger:
-    "border-red/30 bg-danger-bg text-danger-text hover:bg-[#f9dcdc]",
+    "border-red/30 bg-danger-bg text-danger-text hover:bg-[#f7ddd4]",
   success:
-    "border-primary bg-primary text-white hover:border-primary-mid hover:bg-primary-mid",
+    "border-teal bg-teal text-white hover:bg-teal-text",
   dangerOutline:
     "border-red/30 bg-transparent text-danger-text hover:bg-danger-bg",
   ghost:

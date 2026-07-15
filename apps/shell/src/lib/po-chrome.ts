@@ -55,7 +55,7 @@ export function resolvePoChrome(
         { label: "دراسة الحالة" },
         { label: "أوامر العمل", current: true },
       ],
-      title: "",
+      title: "أوامر العمل (PO)",
     };
   }
 

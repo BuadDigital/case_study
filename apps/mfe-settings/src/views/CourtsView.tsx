@@ -195,7 +195,7 @@ export function CourtsView() {
                       <Badge
                         key={circuit}
                         tone="warning"
-                        className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal"
+                        className=""
                       >
                         {circuit}
                         {canEdit ? (

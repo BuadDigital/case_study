@@ -177,7 +177,7 @@ function UsersStaffListView({
               {addButtonLabel(preferredSource)}
             </Button>
           ) : (
-            <Badge tone="default" className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal">
+            <Badge tone="default" className="">
               اطلاع فقط
             </Badge>
           )}
@@ -221,10 +221,10 @@ function UsersStaffListView({
                 const inactive = u.status === "Inactive";
                 return (
                 <Tr key={u.id} hoverable={false}>
-                  <Td className="font-semibold">
+                  <Td className="font-medium">
                     {u.name}
                     {inactive ? (
-                      <Badge tone="default" className="ms-2 rounded-[20px] px-2 py-0 text-[10px]">
+                      <Badge tone="default" className="ms-2">
                         معطّل
                       </Badge>
                     ) : null}
