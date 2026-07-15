@@ -465,7 +465,7 @@ export function PoListView() {
             )}
         </StatGrid>
 
-        <OperationalPanel className="min-h-0 flex-1">
+        <OperationalPanel className="min-h-0 shrink-0">
           <PageToolbar className="shrink-0 border-b-0 bg-surface-2">
               {showIntake ? (
                 <Button
@@ -645,16 +645,16 @@ export function PoListView() {
                             <PoNumber
                               value={p.id}
                               link
-                              className="text-[13px] font-medium text-primary"
+                              className="text-[13px] !font-medium text-primary"
                             />
                           </Td>
-                          <Td className="whitespace-nowrap text-text-2">
+                          <Td className="whitespace-nowrap text-[11.5px] text-text-2">
                             {p.type}
                           </Td>
-                          <Td className="whitespace-nowrap text-text-2">
+                          <Td className="whitespace-nowrap text-[11.5px] text-text-2">
                             {p.count}
                           </Td>
-                          <Td className="whitespace-nowrap text-text-2">
+                          <Td className="whitespace-nowrap text-[11.5px] text-text-2">
                             {studied}
                           </Td>
                           <Td className="whitespace-nowrap">
@@ -676,7 +676,7 @@ export function PoListView() {
                           <Td className="whitespace-nowrap">
                             <PoListStatusBadge status={p.status} />
                           </Td>
-                          <Td className="whitespace-nowrap text-[12.5px] text-text-2">
+                          <Td className="whitespace-nowrap text-[11.5px] text-text-2">
                             {p.date ? (
                               <bdi dir="ltr" className={ltrValueClass}>
                                 {formatDateAr(p.date)}
@@ -687,7 +687,7 @@ export function PoListView() {
                           </Td>
                           <Td
                             className={cn(
-                              "whitespace-nowrap text-[12.5px] text-text-2",
+                              "whitespace-nowrap text-[11.5px] text-text-2",
                               urgent && "text-red",
                             )}
                           >
@@ -699,7 +699,7 @@ export function PoListView() {
                               "—"
                             )}
                           </Td>
-                          <Td className="whitespace-nowrap text-[12.5px] text-text-2">
+                          <Td className="whitespace-nowrap text-[11.5px] text-text-2">
                             {p.specialist}
                           </Td>
                           <TdAction onClick={(e) => e.stopPropagation()}>
@@ -742,7 +742,7 @@ export function PoListView() {
                 </TBody>
               </Table>
 
-          <PageGutter className="flex shrink-0 items-center justify-between border-t border-border py-2.5">
+          <PageGutter className="flex shrink-0 items-center justify-between border-t border-border bg-surface-2 py-2.5">
               <span className="text-xs text-text-3">
                 {statsReady
                   ? `عرض ${rangeStart}–${rangeEnd} من ${filtered.length} نتيجة`

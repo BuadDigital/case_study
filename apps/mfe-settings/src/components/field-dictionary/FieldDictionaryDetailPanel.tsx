@@ -83,7 +83,7 @@ export function FieldDictionaryDetailPanel({
           <dd>
             <button
               type="button"
-              className="rounded bg-surface-2 px-2 py-0.5 font-mono text-[11px] text-text-2 hover:bg-primary/10 hover:text-primary"
+              className="rounded bg-surface-2 px-2 py-0.5 font-sans text-[11px] text-text-2 hover:bg-primary/10 hover:text-primary"
               onClick={() => copyRef(field.ref)}
               title="اضغط لنسخ الرقم المرجعي"
             >
@@ -93,7 +93,7 @@ export function FieldDictionaryDetailPanel({
         </div>
         <div className="flex justify-between gap-3">
           <dt className="text-text-3">المفتاح التقني</dt>
-          <dd className="font-mono text-[11px] text-text-2" dir="ltr">
+          <dd className="font-sans text-[11px] text-text-2" dir="ltr">
             {field.key}
           </dd>
         </div>

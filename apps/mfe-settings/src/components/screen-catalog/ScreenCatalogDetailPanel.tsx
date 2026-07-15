@@ -68,7 +68,7 @@ export function ScreenCatalogDetailPanel({
         ) : null}
         <div>
           <dt className="text-text-3">الرابط التقني (للدعم الفني)</dt>
-          <dd className="mt-0.5 font-mono text-[11px] text-text-3" dir="ltr">
+          <dd className="mt-0.5 font-sans text-[11px] text-text-3" dir="ltr">
             {humanizeScreenPath(screen.path)}
           </dd>
         </div>
