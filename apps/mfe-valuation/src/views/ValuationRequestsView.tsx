@@ -146,15 +146,15 @@ export function ValuationRequestsView() {
             ) : (
               vr.map((v) => (
               <Tr key={v.recordId} hoverable={false}>
-                <Td className="text-[11px] font-semibold text-primary-light">{v.id}</Td>
-                <Td className="text-[11px] text-primary-light">{v.propId}</Td>
+                <Td className="font-semibold text-primary-light">{v.id}</Td>
+                <Td className="text-primary-light">{v.propId}</Td>
                 <Td>{v.area}</Td>
                 <Td>{v.type}</Td>
-                <Td className="text-[11px]">{v.appraiser}</Td>
+                <Td>{v.appraiser}</Td>
                 <Td>
                   <StatusBadge status={v.status} />
                 </Td>
-                <Td className="text-[11px] text-text-3">{v.date}</Td>
+                <Td className="text-text-3">{v.date}</Td>
                 <Td>
                   <div className="flex flex-wrap gap-1">
                     {isApp && v.status === "progress" ? (

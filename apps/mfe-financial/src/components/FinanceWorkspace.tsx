@@ -157,13 +157,13 @@ export function FinanceWorkspace({
                   <TBody>
                     {revenueRows.map((r) => (
                       <Tr key={r.po} hoverable={false}>
-                        <Td className="text-[11px] font-semibold text-primary-light">
+                        <Td className="font-semibold text-primary-light">
                           {r.po}
                         </Td>
                         <Td>{r.billed}</Td>
                         <Td>{r.excluded}</Td>
                         <Td>{r.value}</Td>
-                        <Td className="text-[11px] text-text-2">
+                        <Td className="text-text-2">
                           {r.invoiceNumber ?? "—"}
                         </Td>
                         <Td>

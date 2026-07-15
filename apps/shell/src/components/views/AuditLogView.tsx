@@ -108,7 +108,7 @@ export function AuditLogView() {
             <TBody>
               {entries.map((entry) => (
                 <Tr key={entry.id} hoverable={false}>
-                  <Td className="whitespace-nowrap text-xs">{formatAt(entry.at)}</Td>
+                  <Td className="whitespace-nowrap">{formatAt(entry.at)}</Td>
                   <Td>{entry.actor}</Td>
                   <Td>{entry.action}</Td>
                   <Td>{entry.entity}</Td>

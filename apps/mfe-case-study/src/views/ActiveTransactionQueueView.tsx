@@ -772,13 +772,7 @@ export function ActiveTransactionQueueView({
                     </TBody>
                   </Table>
                 ) : (
-                  <Table
-                    className={cn(
-                      "w-full",
-                      useUnifiedTypography && "[&_td]:text-[13px]",
-                    )}
-                    pending={queuePending}
-                  >
+                  <Table className="w-full" pending={queuePending}>
                     <THead>
                       <Tr hoverable={false}>
                         <Th>رقم الصك</Th>

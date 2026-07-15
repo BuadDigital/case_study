@@ -584,7 +584,7 @@ function FinanceDisburseTable({
                     inspectorFeeStatusLabel(row.billingStatus)}
                 </Badge>
               </Td>
-              <Td className="font-sans text-[11px] text-text-2">
+              <Td className="text-text-2">
                 {row.disbursementBatchId ? (
                   row.disbursementBatchId.slice(0, 8)
                 ) : (
