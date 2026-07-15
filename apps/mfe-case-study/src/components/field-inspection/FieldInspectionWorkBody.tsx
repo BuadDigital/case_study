@@ -1249,7 +1249,7 @@ export function FieldInspectionWorkBody({
                       className={cn(
                         "rounded-full border px-3 py-1.5 text-[11px] transition-colors",
                         obs.category === ""
-                          ? "border-primary bg-[rgba(29,158,117,0.12)] text-primary"
+                          ? "border-primary bg-gold-soft text-primary"
                           : "border-border bg-surface text-text-2 hover:border-primary/40",
                       )}
                       onClick={() =>
@@ -1269,7 +1269,7 @@ export function FieldInspectionWorkBody({
                         className={cn(
                           "rounded-full border px-3 py-1.5 text-[11px] transition-colors",
                           obs.category === c
-                            ? "border-primary bg-[rgba(29,158,117,0.12)] text-primary"
+                            ? "border-primary bg-gold-soft text-primary"
                             : "border-border bg-surface text-text-2 hover:border-primary/40",
                         )}
                         onClick={() =>

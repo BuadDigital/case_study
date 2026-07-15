@@ -283,7 +283,7 @@ export function SuspendedTransactionsView() {
                             <Td className="whitespace-nowrap">
                               <span
                                 dir="ltr"
-                                className="inline-block text-[11px] font-semibold text-primary"
+                                className="inline-block text-[13px] font-medium text-primary"
                               >
                                 {deedLabel(item, record)}
                               </span>

@@ -436,7 +436,7 @@ export function InspectorFeesBillingTable({
                       )}
                     </Td>
 
-                    <Td className="text-end font-semibold text-text">
+                    <Td className="text-end font-medium text-text">
                       <Sar value={row.netFeeSar} />
                     </Td>
 

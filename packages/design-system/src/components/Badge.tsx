@@ -17,16 +17,23 @@ export type BadgeTone = keyof typeof toneClasses;
 export function Badge({
   className,
   tone = "default",
+  dot = false,
+  children,
   ...props
-}: HTMLAttributes<HTMLSpanElement> & { tone?: BadgeTone }) {
+}: HTMLAttributes<HTMLSpanElement> & { tone?: BadgeTone; dot?: boolean }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-[20px] px-[9px] py-0.5 text-[11px] font-normal whitespace-nowrap",
+        "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12px] font-bold whitespace-nowrap",
         toneClasses[tone],
         className,
       )}
       {...props}
-    />
+    >
+      {dot ? (
+        <span className="size-1.5 shrink-0 rounded-full bg-current opacity-90" />
+      ) : null}
+      {children}
+    </span>
   );
 }

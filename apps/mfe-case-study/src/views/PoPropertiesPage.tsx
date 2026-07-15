@@ -365,7 +365,7 @@ export function PoPropertiesPage({
                             </span>
                             <span
                               dir="ltr"
-                              className="inline-block text-[11px] font-semibold text-primary"
+                              className="inline-block text-[13px] font-medium text-primary"
                             >
                               {label}
                             </span>

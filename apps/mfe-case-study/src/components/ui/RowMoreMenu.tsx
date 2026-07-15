@@ -85,8 +85,8 @@ function computeMenuStyle(
 
 const moreBtnClass = (open: boolean) =>
   cn(
-    "inline-flex h-[30px] w-[30px] items-center justify-center rounded-[var(--radius-DEFAULT)] border border-border bg-surface text-text-2 outline-none transition-colors hover:bg-info-bg hover:border-info hover:text-info-text",
-    open && "bg-info-bg border-info text-info-text",
+    "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent bg-transparent text-text-2 outline-none transition-colors hover:border-border-md hover:bg-surface-2 hover:text-heading",
+    open && "border-border-md bg-surface-2 text-heading",
   );
 
 export function RowMoreMenu({

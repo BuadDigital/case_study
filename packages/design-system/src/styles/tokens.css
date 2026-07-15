@@ -1,28 +1,38 @@
-/* Design tokens — aligned with docs/property_detail.html :root */
+/* Design tokens — aligned with docs/new look (navy + gold, Tajawal). */
 :root {
+  /* ── Brand palette (new look) ── */
+  --ink: #102b4e;
+  --navy-3: #22406e;
+  --gold: #a4906f;
+  --gold-d: #8c7857;
+  --gold-2: #c8b591;
+  --gold-soft: #f1ece2;
+  --heading: #102b4e;
+  --row-hover: #faf6ee;
+
   /* ── HTML semantic palette ── */
-  --bg: #f7f8fa;
+  --bg: #f5f3ee;
   --surface: #ffffff;
-  --surface-2: #f2f4f7;
-  --border: rgba(0, 0, 0, 0.08);
-  --border-md: rgba(0, 0, 0, 0.14);
-  --text-1: #111827;
-  --text-2: #6b7280;
-  --text-3: #9ca3af;
+  --surface-2: #faf8f3;
+  --border: #ece8df;
+  --border-md: #ddd8cc;
+  --text-1: #3a3f4d;
+  --text-2: #73767f;
+  --text-3: #a4a6ad;
   --teal: #1d9e75;
   --teal-light: #e1f5ee;
   --teal-text: #0f6e56;
   --amber: #ef9f27;
   --amber-light: #faeeda;
   --amber-text: #854f0b;
-  --red: #e24b4a;
-  --red-light: #fcebeb;
-  --red-text: #a32d2d;
+  --red: #d9694f;
+  --red-light: #fbe9e4;
+  --red-text: #b03d24;
   --blue: #378add;
   --blue-light: #e6f1fb;
   --blue-text: #185fa5;
-  --sidebar-w: 200px;
-  --topbar-h: 52px;
+  --sidebar-w: 260px;
+  --topbar-h: 66px;
   --tabs-h: 42px;
   --page-gutter-x: 1rem;
   --page-gutter-x-sm: 1.5rem;
@@ -34,17 +44,17 @@
   --radius-sm: 6px;
 
   /* ── Legacy app aliases (prototype.css + registration.css) ── */
-  --primary: var(--teal);
-  --primary-mid: #188f69;
-  --primary-light: var(--teal);
-  --primary-bg: var(--teal-light);
-  --accent: var(--teal);
-  --accent-dark: var(--teal-text);
-  --accent-light: var(--teal-light);
-  --sidebar: #1a2232;
+  --primary: var(--gold-d);
+  --primary-mid: var(--gold);
+  --primary-light: var(--gold);
+  --primary-bg: var(--gold-soft);
+  --accent: var(--gold);
+  --accent-dark: var(--gold-d);
+  --accent-light: var(--gold-soft);
+  --sidebar: var(--ink);
   --bg2: var(--surface-2);
   --surface2: var(--surface-2);
-  --surface3: #e8ebf0;
+  --surface3: var(--gold-soft);
   --border2: var(--border-md);
   --text: var(--text-1);
   --text2: var(--text-2);
@@ -61,6 +71,35 @@
   --purple-bg: #ebd9f7;
   --orange: #d35400;
   --orange-bg: #fae5d3;
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.1);
+  --shadow: 0 1px 2px rgba(18, 40, 76, 0.03), 0 6px 16px -18px rgba(18, 40, 76, 0.1);
+  --shadow-lg: 0 10px 28px -8px rgba(18, 40, 76, 0.28);
+}
+
+/* ── Dark theme (docs/new look) — overrides raw values; aliases follow via var(). ── */
+html[data-theme="dark"] {
+  --ink: #122844;
+  --navy-3: #1c3252;
+  --gold: #c2a878;
+  --gold-d: #d6bd8c;
+  --gold-2: #e0cca0;
+  --gold-soft: rgba(194, 168, 120, 0.16);
+  --heading: #dde2ec;
+  --row-hover: #242e40;
+
+  --bg: #161d2a;
+  --surface: #1e2636;
+  --surface-2: #262f42;
+  --border: #2f3a4e;
+  --border-md: #3a4761;
+  --text-1: #cbd1de;
+  --text-2: #949cad;
+  --text-3: #727c90;
+
+  --surface3: rgba(194, 168, 120, 0.16);
+  --teal-light: rgba(63, 143, 95, 0.18);
+  --amber-light: rgba(217, 164, 65, 0.18);
+  --red-light: rgba(217, 105, 79, 0.18);
+  --blue-light: rgba(55, 138, 221, 0.18);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 6px 16px -18px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 10px 28px -8px rgba(0, 0, 0, 0.55);
 }

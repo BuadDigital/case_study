@@ -16,7 +16,7 @@ const STATUS_MAP: Record<string, readonly [string, BadgeTone]> = {
 export function StatusBadge({ status }: { status: string }) {
   const [label, tone] = STATUS_MAP[status] ?? ["—", "default"];
   return (
-    <Badge tone={tone} className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal">
+    <Badge tone={tone} dot>
       {label}
     </Badge>
   );
@@ -33,7 +33,7 @@ const WORKFLOW_MAP: Record<string, readonly [string, BadgeTone]> = {
 export function WorkflowStageBadge({ stage }: { stage: string }) {
   const [label, tone] = WORKFLOW_MAP[stage] ?? ["—", "default"];
   return (
-    <Badge tone={tone} className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal">
+    <Badge tone={tone} dot>
       {label}
     </Badge>
   );

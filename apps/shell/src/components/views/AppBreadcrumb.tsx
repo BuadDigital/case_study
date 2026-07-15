@@ -47,7 +47,7 @@ export function AppBreadcrumb({
   return (
     <nav
       className={cn(
-        "flex min-w-0 shrink-0 flex-wrap items-center gap-[5px] text-[12.5px] text-text-2",
+        "flex min-w-0 shrink-0 flex-wrap items-center gap-[7px] text-[12px] text-text-3",
         className,
       )}
       id="tb-bc"
@@ -64,13 +64,13 @@ export function AppBreadcrumb({
           >
             {showSep ? <BreadcrumbChevron /> : null}
             {isCurrent || !segment.href ? (
-              <span className={cn(isCurrent && "font-medium text-text")}>
+              <span className={cn(isCurrent && "font-bold text-gold-d")}>
                 <BreadcrumbLabel segment={segment} />
               </span>
             ) : (
               <Link
                 href={segment.href}
-                className="text-text-2 no-underline transition-colors hover:text-primary"
+                className="text-text-3 no-underline transition-colors hover:text-gold-d"
               >
                 <BreadcrumbLabel segment={segment} />
               </Link>

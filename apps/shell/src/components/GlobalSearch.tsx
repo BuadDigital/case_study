@@ -73,7 +73,7 @@ export function GlobalSearch() {
         بحث في أوامر العمل والمهام
       </label>
       <div className="relative">
-        <span className="pointer-events-none absolute inset-y-0 start-2.5 flex items-center text-text-3">
+        <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-text-3">
           <SearchIcon />
         </span>
         <input
@@ -87,8 +87,8 @@ export function GlobalSearch() {
           onFocus={() => setOpen(true)}
           placeholder="بحث: صك أو أمر عمل…"
           className={cn(
-            "h-8 w-full rounded-md border border-border bg-surface-2 pe-3 ps-8 text-xs text-text",
-            "placeholder:text-text-3 focus:border-primary focus:outline-none",
+            "h-[38px] w-full rounded-lg border border-border-md bg-surface-2 pe-3.5 ps-[38px] text-[13px] text-text",
+            "placeholder:text-text-3 focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_22%,transparent)] focus:outline-none",
           )}
           dir="rtl"
           autoComplete="off"

@@ -242,13 +242,13 @@ export function KeysView() {
 
                 <Tr key={p.id} hoverable={false}>
 
-                  <Td className="font-semibold text-primary">{p.deedNumber}</Td>
+                  <Td className="text-[13px] font-medium text-primary">{p.deedNumber}</Td>
 
                   <Td>
                     {p.deedStatus && p.deedStatus !== "—" ? (
                       <Badge
                         tone={deedStatusTone(p.deedStatus)}
-                        className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal"
+                        dot
                       >
                         {p.deedStatus}
                       </Badge>
@@ -265,13 +265,7 @@ export function KeysView() {
 
                     {p.status === "done" ? (
 
-                      <Badge
-
-                        tone="success"
-
-                        className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal"
-
-                      >
+                      <Badge tone="success" dot>
 
                         مستلم
 
@@ -279,13 +273,7 @@ export function KeysView() {
 
                     ) : (
 
-                      <Badge
-
-                        tone="warning"
-
-                        className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal"
-
-                      >
+                      <Badge tone="warning" dot>
 
                         بانتظار الاستلام
 
@@ -298,7 +286,7 @@ export function KeysView() {
                   <Td>
                     <Badge
                       tone={keyFailureTone(p.keyFailureState)}
-                      className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal"
+                      dot
                     >
                       {p.keyFailureLabel}
                     </Badge>

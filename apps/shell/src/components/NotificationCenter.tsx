@@ -75,8 +75,8 @@ export function NotificationCenter() {
       <button
         type="button"
         className={cn(
-          "relative inline-flex size-8 items-center justify-center rounded-md border border-transparent",
-          "text-text-2 hover:border-border hover:bg-surface-2",
+          "relative inline-flex size-[38px] items-center justify-center rounded-lg border border-border-md bg-surface",
+          "text-text-2 transition-colors hover:bg-surface-2 hover:text-heading",
         )}
         aria-label={`الإشعارات${unreadCount ? ` — ${unreadCount} غير مقروء` : ""}`}
         aria-expanded={open}
@@ -85,9 +85,7 @@ export function NotificationCenter() {
       >
         <BellIcon />
         {unreadCount > 0 ? (
-          <span className="absolute -top-1 -end-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-semibold text-white">
-            {unreadCount > 9 ? "9+" : unreadCount}
-          </span>
+          <span className="absolute top-2 end-[9px] size-[7px] rounded-full border-2 border-surface bg-red" />
         ) : null}
       </button>
       {open ? (

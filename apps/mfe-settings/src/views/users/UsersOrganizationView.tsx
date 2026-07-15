@@ -31,7 +31,7 @@ function PersonCard({
       <div className="mb-1 flex items-center justify-between gap-2">
         <span className="text-sm font-semibold text-text">{person.displayName}</span>
         {badge ? (
-          <Badge tone="info" className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal">
+          <Badge tone="info" className="">
             {badge}
           </Badge>
         ) : null}
@@ -52,11 +52,11 @@ function DepartmentCard({ dept }: { dept: OrgDepartment }) {
     <SubpagePanel className="mb-0">
       <SubpageHeader title={dept.title}>
         {dept.isActive ? (
-          <Badge tone="success" className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal">
+          <Badge tone="success" className="">
             مفعّل
           </Badge>
         ) : (
-          <Badge tone="warning" className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal">
+          <Badge tone="warning" className="">
             مرحلة مستقبلية
           </Badge>
         )}
@@ -96,7 +96,7 @@ export function UsersOrganizationView() {
 
       <SubpagePanel className="mb-4">
         <SubpageHeader title="مسؤول التحول الرقمي (CDO)">
-          <Badge tone="default" className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal">
+          <Badge tone="default" className="">
             اطلاع فقط
           </Badge>
         </SubpageHeader>

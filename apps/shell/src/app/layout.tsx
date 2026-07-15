@@ -1,11 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Sans_Arabic } from "next/font/google";
+import { Tajawal } from "next/font/google";
 import { ToastRootProvider } from "@/providers/ToastRootProvider";
 import "./globals.css";
 
-const arabic = IBM_Plex_Sans_Arabic({
-  weight: ["300", "400", "500", "600", "700"],
-  subsets: ["arabic"],
+const arabic = Tajawal({
+  weight: ["400", "500", "700", "800"],
+  subsets: ["arabic", "latin"],
   variable: "--font-arabic",
   display: "swap",
 });
@@ -32,6 +32,14 @@ export default function RootLayout({
       className={`${arabic.variable} h-full`}
       suppressHydrationWarning
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{if(localStorage.getItem('ejada_theme')==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}})();",
+          }}
+        />
+      </head>
       <body
         className="min-h-full font-sans antialiased"
         suppressHydrationWarning

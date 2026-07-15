@@ -4,7 +4,7 @@
  */
 @theme inline {
   --font-sans:
-    var(--font-arabic), "IBM Plex Sans Arabic", "Segoe UI", Tahoma, system-ui,
+    var(--font-arabic), "Tajawal", "Segoe UI", Tahoma, system-ui,
     sans-serif;
 
   --color-bg: var(--bg);
@@ -18,10 +18,19 @@
   --color-text-2: var(--text-2);
   --color-text-3: var(--text-3);
 
-  --color-primary: var(--teal);
+  --color-primary: var(--primary);
   --color-primary-mid: var(--primary-mid);
   --color-teal-light: var(--teal-light);
   --color-teal-text: var(--teal-text);
+
+  --color-ink: var(--ink);
+  --color-navy-3: var(--navy-3);
+  --color-gold: var(--gold);
+  --color-gold-d: var(--gold-d);
+  --color-gold-2: var(--gold-2);
+  --color-gold-soft: var(--gold-soft);
+  --color-heading: var(--heading);
+  --color-row-hover: var(--row-hover);
 
   --color-amber: var(--amber);
   --color-amber-light: var(--amber-light);

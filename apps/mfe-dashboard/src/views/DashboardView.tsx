@@ -65,7 +65,7 @@ function failureStatusLabel(status: string): string {
 function PoListStatusBadge({ status }: { status: string }) {
   const { tone, label } = poListStatusMeta(normalizePoListStatus(status));
   return (
-    <Badge tone={tone} className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal">
+    <Badge tone={tone} className="">
       {label}
     </Badge>
   );
@@ -196,13 +196,13 @@ export function DashboardView() {
                           )
                         }
                       >
-                        <Td className="font-semibold text-primary-light">
+                        <Td className="font-medium text-primary-light">
                           {p.id}
                         </Td>
                         <Td>
                           <Badge
                             tone={assignmentTypeBadgeTone(p.type)}
-                            className="rounded-[20px] px-2.5 py-0.5 text-[11px] font-normal"
+                            className=""
                           >
                             {p.type}
                           </Badge>
@@ -258,7 +258,7 @@ export function DashboardView() {
                       )
                     }
                   >
-                    <Td className="font-semibold text-primary-light">
+                    <Td className="font-medium text-primary-light">
                       {v.displayId}
                     </Td>
                     <Td>{v.propId}</Td>
@@ -304,7 +304,7 @@ export function DashboardView() {
                         )
                       }
                     >
-                      <Td className="font-semibold text-primary-light">
+                      <Td className="font-medium text-primary-light">
                         {row.poNumber}
                       </Td>
                       <Td className="max-w-[140px] truncate">
@@ -354,7 +354,7 @@ export function DashboardView() {
                         )
                       }
                     >
-                      <Td className="font-semibold text-primary-light">
+                      <Td className="font-medium text-primary-light">
                         {f.poNumber}
                       </Td>
                       <Td>{f.deedNumber || "—"}</Td>

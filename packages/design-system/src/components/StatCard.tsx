@@ -137,7 +137,7 @@ export function StatValue({
   return (
     <div
       className={cn(
-        "min-h-[1em] w-fit max-w-full self-start text-right text-[26px] font-bold leading-none text-text [direction:ltr] [unicode-bidi:isolate]",
+        "min-h-[1em] w-fit max-w-full self-start text-right text-[28px] font-extrabold leading-none text-heading [direction:ltr] [unicode-bidi:isolate]",
         ready ? "opacity-100 transition-opacity duration-200" : "opacity-0",
         className,
       )}
