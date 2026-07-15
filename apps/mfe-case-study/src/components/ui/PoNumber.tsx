@@ -8,7 +8,7 @@ import { poPropertiesPath } from "@case-study/mfe";
 import { prefetchPoRecord } from "../../query/case-study-queries";
 
 const poNumBase =
-  "inline-block font-mono text-[11px] font-semibold [unicode-bidi:isolate]";
+  "inline-block font-sans text-[11px] font-semibold [unicode-bidi:isolate]";
 
 /** PO number isolated for correct display in RTL (Arabic label + LTR code). */
 export function PoNumber({

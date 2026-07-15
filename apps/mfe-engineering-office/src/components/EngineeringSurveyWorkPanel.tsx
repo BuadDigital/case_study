@@ -460,7 +460,7 @@ export function EngineeringSurveyWorkPanel({
           </Label>
           <Input
             id="eng-lat"
-            className="font-mono text-[13px]"
+            className="font-sans text-[13px]"
             disabled={formDisabled}
             value={draft.latitude}
             placeholder={JEDDAH_DEFAULT_LAT}
@@ -480,7 +480,7 @@ export function EngineeringSurveyWorkPanel({
           </Label>
           <Input
             id="eng-lng"
-            className="font-mono text-[13px]"
+            className="font-sans text-[13px]"
             disabled={formDisabled}
             value={draft.longitude}
             placeholder={JEDDAH_DEFAULT_LNG}

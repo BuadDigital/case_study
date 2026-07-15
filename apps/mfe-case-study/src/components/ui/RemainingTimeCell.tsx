@@ -11,7 +11,7 @@ export function RemainingTimeCell({ state }: { state: RemainingTimeState }) {
 
   if (state.status === "overdue") {
     return (
-      <span className="inline-block font-mono text-xs font-semibold text-danger-text">
+      <span className="inline-block font-sans text-xs font-semibold text-danger-text">
         متأخر
       </span>
     );
@@ -21,7 +21,7 @@ export function RemainingTimeCell({ state }: { state: RemainingTimeState }) {
 
   return (
     <span
-      className="inline-block font-mono text-xs font-medium tracking-wide text-text-2 tabular-nums"
+      className="inline-block font-sans text-xs font-medium tracking-wide text-text-2 tabular-nums"
       dir="ltr"
       title="أيام.ساعات.دقائق.ثوانٍ"
       aria-label={`${days} أيام و ${pad2(hours)} ساعة و ${pad2(minutes)} دقيقة و ${pad2(seconds)} ثانية`}

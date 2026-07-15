@@ -604,7 +604,7 @@ export function FieldInspectionWorkBody({
               <Input
                 id="ins-lat"
                 dir="ltr"
-                className="font-mono text-[13px]"
+                className="font-sans text-[13px]"
                 disabled={locked}
                 value={draft.mapLatitude}
                 placeholder={JEDDAH_DEFAULT_LAT}
@@ -618,7 +618,7 @@ export function FieldInspectionWorkBody({
               <Input
                 id="ins-lng"
                 dir="ltr"
-                className="font-mono text-[13px]"
+                className="font-sans text-[13px]"
                 disabled={locked}
                 value={draft.mapLongitude}
                 placeholder={JEDDAH_DEFAULT_LNG}

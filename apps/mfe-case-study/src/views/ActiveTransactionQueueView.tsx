@@ -473,6 +473,7 @@ export function ActiveTransactionQueueView({
   const isDistributionTable =
     config.tableLayout === "distribution" ||
     config.tableLayout === "case-study";
+  const useUnifiedTypography = config.pageId === "active-primary-data";
   const showPartyColumns = config.tableLayout === "case-study";
   const distributionSkeletonCols = 8 + (showPartyColumns ? 4 : 0);
   const primarySkeletonCols = 6;
@@ -771,7 +772,13 @@ export function ActiveTransactionQueueView({
                     </TBody>
                   </Table>
                 ) : (
-                  <Table className="w-full" pending={queuePending}>
+                  <Table
+                    className={cn(
+                      "w-full",
+                      useUnifiedTypography && "[&_td]:text-[13px]",
+                    )}
+                    pending={queuePending}
+                  >
                     <THead>
                       <Tr hoverable={false}>
                         <Th>رقم الصك</Th>
@@ -807,7 +814,12 @@ export function ActiveTransactionQueueView({
                             <Td className="whitespace-nowrap">
                               <span
                                 dir="ltr"
-                                className="inline-block text-[11px] font-semibold text-primary"
+                                className={cn(
+                                  "inline-block text-primary",
+                                  useUnifiedTypography
+                                    ? "text-[13px] font-medium"
+                                    : "text-[11px] font-semibold",
+                                )}
                               >
                                 {row.propertySlot}
                               </span>
@@ -815,7 +827,7 @@ export function ActiveTransactionQueueView({
                             <Td className="text-text-2">{row.assignmentType}</Td>
                             <Td className="text-text-2">{row.city}</Td>
                             <Td className="text-text-2">{row.district}</Td>
-                            <Td>
+                            <Td className="text-text-2">
                               {renderStatusOrRemaining(task, row.remainingTime)}
                             </Td>
                             <TdAction>
@@ -829,7 +841,13 @@ export function ActiveTransactionQueueView({
                   </Table>
                 )}
               </div>
-              <QueueTableHint>
+              <QueueTableHint
+                className={cn(
+                  (config.pageId === "all-transactions" ||
+                    config.pageId === "active-primary-data") &&
+                    "border-t border-border bg-surface-2",
+                )}
+              >
                 {config.tableHint ??
                   (useFullPage
                     ? "اضغط الصف لفتح دراسة الحالة."

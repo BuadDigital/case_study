@@ -392,7 +392,7 @@ export function FieldDictionaryTab() {
                     )}
                     onClick={() => setSelectedId(field.id)}
                   >
-                    <span className="font-mono text-[10px] text-text-3">
+                    <span className="font-sans text-[10px] text-text-3">
                       {field.ref}
                     </span>
                     <span className="font-medium text-text">{field.name}</span>

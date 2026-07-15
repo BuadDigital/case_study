@@ -28,18 +28,28 @@ function SituationCard({
   sub,
   tone,
   href,
+  unifiedTypography = false,
 }: {
   label: string;
   value: number | undefined;
   sub: string;
   tone: SituationTone;
   href?: string;
+  unifiedTypography?: boolean;
 }) {
   const inner = (
     <>
       <StatLabel>{label}</StatLabel>
-      <StatValue value={value} countUp />
-      {sub ? <StatSub>{sub}</StatSub> : null}
+      <StatValue
+        value={value}
+        countUp
+        className={unifiedTypography ? "font-semibold" : undefined}
+      />
+      {sub ? (
+        <StatSub className={unifiedTypography ? "text-[11px]" : undefined}>
+          {sub}
+        </StatSub>
+      ) : null}
     </>
   );
 
@@ -80,6 +90,7 @@ export function ActiveTransactionsSituationBar({
       sub={card.sub}
       tone={card.tone}
       href={card.href}
+      unifiedTypography={pageId === "active-primary-data"}
     />
   ));
 
