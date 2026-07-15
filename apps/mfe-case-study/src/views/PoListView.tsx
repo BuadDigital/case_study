@@ -648,11 +648,15 @@ export function PoListView() {
                               className="text-[13px] font-medium text-primary"
                             />
                           </Td>
-                          <Td className="whitespace-nowrap">{p.type}</Td>
-                          <Td className="whitespace-nowrap">
-                            <strong>{p.count}</strong>
+                          <Td className="whitespace-nowrap text-text-2">
+                            {p.type}
                           </Td>
-                          <Td className="whitespace-nowrap">{studied}</Td>
+                          <Td className="whitespace-nowrap text-text-2">
+                            {p.count}
+                          </Td>
+                          <Td className="whitespace-nowrap text-text-2">
+                            {studied}
+                          </Td>
                           <Td className="whitespace-nowrap">
                             <div className="flex min-w-[120px] items-center gap-2">
                               <div className="h-[5px] min-w-[60px] flex-1 overflow-hidden rounded bg-surface-3">
@@ -683,10 +687,8 @@ export function PoListView() {
                           </Td>
                           <Td
                             className={cn(
-                              "whitespace-nowrap text-[12.5px]",
-                              urgent
-                                ? "font-medium text-red"
-                                : "text-text",
+                              "whitespace-nowrap text-[12.5px] text-text-2",
+                              urgent && "text-red",
                             )}
                           >
                             {p.dueDate ? (
@@ -697,7 +699,7 @@ export function PoListView() {
                               "—"
                             )}
                           </Td>
-                          <Td className="whitespace-nowrap text-[12.5px] text-text">
+                          <Td className="whitespace-nowrap text-[12.5px] text-text-2">
                             {p.specialist}
                           </Td>
                           <TdAction onClick={(e) => e.stopPropagation()}>
