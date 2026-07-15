@@ -412,13 +412,17 @@ export function PoPropertyEnfathForm({
             <RegField
               id="court"
               label="المحكمة"
+              required
               value={property.court}
+              error={fieldErrors.court}
               onChange={(v) => onPatch("court", v)}
             />
             <RegField
               id="circuit"
               label="الدائرة"
+              required
               value={property.circuit}
+              error={fieldErrors.circuit}
               onChange={(v) => onPatch("circuit", v)}
             />
           </>

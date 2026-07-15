@@ -90,6 +90,10 @@ public static class WorkOrderValidator
                 errors["deedDate"] = "تاريخ الصك مطلوب";
             if (string.IsNullOrWhiteSpace(dto.OwnerName))
                 errors["ownerName"] = "اسم المالك مطلوب";
+            if (string.IsNullOrWhiteSpace(dto.Court))
+                errors["court"] = "المحكمة مطلوبة";
+            if (string.IsNullOrWhiteSpace(dto.Circuit))
+                errors["circuit"] = "الدائرة مطلوبة";
             if (string.IsNullOrWhiteSpace(dto.DelegationLetterFileName))
                 errors["delegationLetterFileName"] = "خطاب التفويض مطلوب";
 

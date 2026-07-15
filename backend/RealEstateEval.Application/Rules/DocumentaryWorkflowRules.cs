@@ -137,23 +137,84 @@ public static class DocumentaryWorkflowRules
         var errors = new Dictionary<string, string>();
         if (bypass) return errors;
 
-        if (string.IsNullOrWhiteSpace(deedNumber))
-            errors["deedNumber"] = "رقم الصك مطلوب قبل تسليم المراجعة الحكومية.";
-        if (string.IsNullOrWhiteSpace(requestNumber))
-            errors["requestNumber"] = "رقم الطلب مطلوب قبل تسليم المراجعة الحكومية.";
-        if (string.IsNullOrWhiteSpace(city))
-            errors["city"] = "المدينة مطلوبة قبل تسليم المراجعة الحكومية.";
-        if (string.IsNullOrWhiteSpace(district))
-            errors["district"] = "الحي مطلوب قبل تسليم المراجعة الحكومية.";
-        if (string.IsNullOrWhiteSpace(circuit))
-            errors["circuit"] = "رقم الدائرة مطلوب قبل تسليم المراجعة الحكومية.";
-        if (string.IsNullOrWhiteSpace(poNumber))
-            errors["poNumber"] = "رقم التعميد (PO) مطلوب قبل تسليم المراجعة الحكومية.";
-        if (string.IsNullOrWhiteSpace(assignmentMandateNumber))
-            errors["assignmentMandateNumber"] = "رقم التكليف مطلوب قبل تسليم المراجعة الحكومية.";
-        if (string.IsNullOrWhiteSpace(assignmentMandateDate))
-            errors["assignmentMandateDate"] = "تاريخ التكليف مطلوب قبل تسليم المراجعة الحكومية.";
+        foreach (var (key, message) in MissingGovernmentReviewBasics(
+                     deedNumber,
+                     requestNumber,
+                     city,
+                     district,
+                     circuit,
+                     poNumber,
+                     assignmentMandateNumber,
+                     assignmentMandateDate,
+                     forSubmit: true))
+        {
+            errors[key] = message;
+        }
 
         return errors;
+    }
+
+    /// <summary>
+    /// Blocks assigning government-review if property basics are incomplete.
+    /// </summary>
+    public static string? GovernmentReviewAssignmentBlockReason(
+        string? deedNumber,
+        string? requestNumber,
+        string? city,
+        string? district,
+        string? circuit,
+        string? poNumber,
+        string? assignmentMandateNumber,
+        string? assignmentMandateDate)
+    {
+        var missing = MissingGovernmentReviewBasics(
+            deedNumber,
+            requestNumber,
+            city,
+            district,
+            circuit,
+            poNumber,
+            assignmentMandateNumber,
+            assignmentMandateDate,
+            forSubmit: false);
+        if (missing.Count == 0) return null;
+
+        var labels = string.Join("، ", missing.Select(kv => kv.Value));
+        return
+            "لا يمكن إرسال المعاملة للمراجع الحكومي قبل اكتمال البيانات الأساسية: "
+            + labels;
+    }
+
+    static List<KeyValuePair<string, string>> MissingGovernmentReviewBasics(
+        string? deedNumber,
+        string? requestNumber,
+        string? city,
+        string? district,
+        string? circuit,
+        string? poNumber,
+        string? assignmentMandateNumber,
+        string? assignmentMandateDate,
+        bool forSubmit)
+    {
+        var missing = new List<KeyValuePair<string, string>>();
+
+        void Require(string key, string? value, string submitMsg, string label)
+        {
+            if (!string.IsNullOrWhiteSpace(value)) return;
+            missing.Add(new KeyValuePair<string, string>(
+                key,
+                forSubmit ? submitMsg : label));
+        }
+
+        Require("deedNumber", deedNumber, "رقم الصك مطلوب قبل تسليم المراجعة الحكومية.", "رقم الصك");
+        Require("requestNumber", requestNumber, "رقم الطلب مطلوب قبل تسليم المراجعة الحكومية.", "رقم الطلب");
+        Require("city", city, "المدينة مطلوبة قبل تسليم المراجعة الحكومية.", "المدينة");
+        Require("district", district, "الحي مطلوب قبل تسليم المراجعة الحكومية.", "الحي");
+        Require("circuit", circuit, "رقم الدائرة مطلوب قبل تسليم المراجعة الحكومية.", "الدائرة");
+        Require("poNumber", poNumber, "رقم التعميد (PO) مطلوب قبل تسليم المراجعة الحكومية.", "رقم التعميد (PO)");
+        Require("assignmentMandateNumber", assignmentMandateNumber, "رقم التكليف مطلوب قبل تسليم المراجعة الحكومية.", "رقم التكليف");
+        Require("assignmentMandateDate", assignmentMandateDate, "تاريخ التكليف مطلوب قبل تسليم المراجعة الحكومية.", "تاريخ التكليف");
+
+        return missing;
     }
 }

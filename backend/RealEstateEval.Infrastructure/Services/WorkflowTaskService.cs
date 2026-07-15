@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Notifications;
@@ -165,9 +166,29 @@ public class WorkflowTaskService : IWorkflowTaskService
             });
         }
 
+        var distribution = NormalizeDistribution(request.Distribution);
+
+        if (distribution.GovernmentAuditor)
+        {
+            var property = await _db.WorkOrderProperties.AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == parent.PropertyId.Value, cancellationToken);
+            var govBlock = DocumentaryWorkflowRules.GovernmentReviewAssignmentBlockReason(
+                property?.DeedNumber ?? request.DeedNumber,
+                property?.RequestNumber,
+                property?.City,
+                property?.District,
+                property?.Circuit,
+                parent.PoNumber,
+                property?.AssignmentMandateNumber,
+                property?.AssignmentMandateDate);
+            if (govBlock is not null)
+            {
+                return (null, new Dictionary<string, string> { ["_"] = govBlock });
+            }
+        }
+
         var now = DateTime.UtcNow;
         var deed = request.DeedNumber.Trim();
-        var distribution = NormalizeDistribution(request.Distribution);
         var children = new List<WorkflowTask>();
 
         var names = request.AssigneeNames ?? new Dictionary<string, string>();

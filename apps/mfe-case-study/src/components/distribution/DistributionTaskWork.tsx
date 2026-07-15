@@ -32,6 +32,7 @@ import {
   type TaskDistributionDraft,
   type WorkflowTask,
 } from "../../lib/prototype/tasks-storage";
+import { governmentReviewAssignmentBlockReason } from "../../lib/prototype/documentary-workflow-gates";
 import { usePoRecordQuery } from "../../query/case-study-queries";
 import { Button, InlineLoadingSkeleton, Note, useToast } from "@platform/design-system";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
@@ -184,6 +185,16 @@ export function DistributionTaskWork({
     const validation = distributionValidationError(
       effectiveDistribution,
       showEngineering,
+      {
+        deedNumber: property.deedNumber,
+        requestNumber: property.requestNumber,
+        city: property.city,
+        district: property.district,
+        circuit: property.circuit,
+        poNumber: task.poNumber,
+        assignmentMandateNumber: property.assignmentMandateNumber,
+        assignmentMandateDate: property.assignmentMandateDate,
+      },
     );
     if (validation) {
       setFormError(validation);
@@ -214,6 +225,20 @@ export function DistributionTaskWork({
       }
     });
   }
+
+  const govBasicsBlock = useMemo(() => {
+    if (!effectiveDistribution.governmentAuditor) return null;
+    return governmentReviewAssignmentBlockReason({
+      deedNumber: property.deedNumber,
+      requestNumber: property.requestNumber,
+      city: property.city,
+      district: property.district,
+      circuit: property.circuit,
+      poNumber: task.poNumber,
+      assignmentMandateNumber: property.assignmentMandateNumber,
+      assignmentMandateDate: property.assignmentMandateDate,
+    });
+  }, [effectiveDistribution.governmentAuditor, property, task.poNumber]);
 
   const deedTitle = useMemo(
     () =>
@@ -315,6 +340,14 @@ export function DistributionTaskWork({
       {formError ? (
         <Note tone="warn" className="mb-3" role="alert">
           {formError}
+        </Note>
+      ) : null}
+
+      {govBasicsBlock ? (
+        <Note tone="warn" className="mb-3" role="status">
+          {govBasicsBlock}
+          <br />
+          أكمل الحقول على العقار (نموذج إنفاذ) ثم أعد التوزيع.
         </Note>
       ) : null}
 

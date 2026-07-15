@@ -65,6 +65,8 @@ export function validatePropertyEnfathFields(
         assignmentMandateDate: p.assignmentMandateDate,
         deedDate: p.deedDate,
         ownerName: p.ownerName,
+        court: p.court,
+        circuit: p.circuit,
         delegationLetterFileName: p.delegationLetterFileName,
       },
       [
@@ -74,6 +76,8 @@ export function validatePropertyEnfathFields(
         "assignmentMandateDate",
         "deedDate",
         "ownerName",
+        "court",
+        "circuit",
         "delegationLetterFileName",
       ],
     ),

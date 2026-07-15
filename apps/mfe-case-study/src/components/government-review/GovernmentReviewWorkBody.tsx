@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useState, type RefObject } from "react";
 import {
   FormGroup,
   FormRow,
@@ -41,11 +41,13 @@ import {
 } from "../../lib/prototype/government-review-work-data";
 import {
   firstGovernmentReviewError,
+  listGovernmentReviewDocumentaryErrors,
   validateGovernmentReviewKeyHandoffPendingSave,
   validateGovernmentReviewPendingSave,
   validateGovernmentReviewSubmission,
   type GovernmentReviewFieldErrors,
 } from "../../lib/prototype/government-review-work-validation";
+import { governmentReviewSubmitFieldErrors } from "../../lib/prototype/documentary-workflow-gates";
 import { GovernmentReviewKeysProofUpload } from "./GovernmentReviewKeysProofUpload";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 
@@ -303,6 +305,21 @@ export function GovernmentReviewWorkBody({
     hostRef.current?.onVisitStatusChange?.();
   }, [draft?.visitStatus, draft?.keyHandedToInspector, hostRef]);
 
+  const documentaryGaps = useMemo(() => {
+    const errors = governmentReviewSubmitFieldErrors({
+      role,
+      deedNumber: property?.deedNumber,
+      requestNumber: property?.requestNumber,
+      city: property?.city,
+      district: property?.district,
+      circuit: property?.circuit,
+      poNumber: task.poNumber,
+      assignmentMandateNumber: property?.assignmentMandateNumber,
+      assignmentMandateDate: property?.assignmentMandateDate,
+    });
+    return listGovernmentReviewDocumentaryErrors(errors);
+  }, [role, property, task.poNumber]);
+
   if (!draft) {
     return <InlineLoadingSkeleton />;
   }
@@ -314,13 +331,27 @@ export function GovernmentReviewWorkBody({
   const showKeysDescription = draft.keysStatus === "received";
   const showKeyHandoff = draft.visitStatus === "completed";
   const showCompletionConfirm =
-    draft.visitStatus === "completed" && draft.keyHandedToInspector === "yes";
+    draft.visitStatus === "completed" &&
+    (draft.keysStatus === "not_required" ||
+      draft.keyHandedToInspector === "yes");
 
   return (
     <>
       {locked ? (
         <Note tone="success">
           تم إرسال نتيجة المراجعة — النموذج للقراءة فقط.
+        </Note>
+      ) : null}
+
+      {!locked && documentaryGaps.length > 0 ? (
+        <Note tone="warn" role="status" className="mb-3">
+          <strong>لا يمكن إتمام التسليم بعد.</strong> بيانات العقار/التعميد
+          ناقصة (يملأها أخصائي دراسة الحالة):
+          <ul className="mb-0 mt-2 list-disc pr-5">
+            {documentaryGaps.map((msg) => (
+              <li key={msg}>{msg}</li>
+            ))}
+          </ul>
         </Note>
       ) : null}
 

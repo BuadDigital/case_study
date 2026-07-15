@@ -160,8 +160,19 @@ export function validateGovernmentReviewKeyHandoffPendingSave(
   return errors;
 }
 
+const DOCUMENTARY_ERROR_KEYS = [
+  "deedNumber",
+  "requestNumber",
+  "city",
+  "district",
+  "circuit",
+  "poNumber",
+  "assignmentMandateNumber",
+  "assignmentMandateDate",
+] as const;
+
 export function firstGovernmentReviewError(
-  errors: GovernmentReviewFieldErrors,
+  errors: GovernmentReviewFieldErrors & Record<string, string>,
 ): string {
   return (
     errors.visitStatus ??
@@ -172,6 +183,16 @@ export function firstGovernmentReviewError(
     errors.keyHandedToInspector ??
     errors.accessBlockReason ??
     errors.confirmed ??
+    DOCUMENTARY_ERROR_KEYS.map((key) => errors[key]).find(Boolean) ??
+    Object.values(errors).find(Boolean) ??
     "تحقق من الحقول المطلوبة"
+  );
+}
+
+export function listGovernmentReviewDocumentaryErrors(
+  errors: Record<string, string>,
+): string[] {
+  return DOCUMENTARY_ERROR_KEYS.map((key) => errors[key]).filter(
+    (msg): msg is string => Boolean(msg),
   );
 }

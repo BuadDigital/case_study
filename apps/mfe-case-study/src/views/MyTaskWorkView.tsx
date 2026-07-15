@@ -435,6 +435,16 @@ export function CaseStudyTaskWork({
     const validation = distributionValidationError(
       distribution,
       showEngineering,
+      {
+        deedNumber: property.deedNumber,
+        requestNumber: property.requestNumber,
+        city: property.city,
+        district: property.district,
+        circuit: property.circuit,
+        poNumber: task.poNumber,
+        assignmentMandateNumber: property.assignmentMandateNumber,
+        assignmentMandateDate: property.assignmentMandateDate,
+      },
     );
     if (validation) {
       setFormError(validation);
