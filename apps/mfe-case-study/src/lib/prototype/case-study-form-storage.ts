@@ -9,6 +9,7 @@ import {
 } from "@platform/api-client";
 import { apiErrorMessage, resolveApiError, requireWorkOrdersApiConfig, workOrdersApiConfig } from "../work-orders-api-config";
 import { notifyWorkOrdersChanged } from "@platform/app-shared/prototype/work-orders-api-config";
+import { notifyTasksChanged } from "./tasks-storage";
 import { syncEvaluatorChecklistFromPartyCaseStudy } from "@evaluator/mfe";
 
 export type SaveCaseStudyFormDraftResult =
@@ -209,6 +210,7 @@ export async function saveCaseStudyFormDraft(
   }
   if (payload.status === "submitted") {
     notifyWorkOrdersChanged();
+    notifyTasksChanged();
   }
   return { ok: true, draft: dtoToDraft(result.data) };
 }

@@ -89,4 +89,21 @@ export {
   ProgressBar,
   KpiRowLabel,
 } from "./components/SubpagePanel";
-export { StatusBadge, WorkflowStageBadge } from "./badges";
+export {
+  StatusBadge,
+  StatusPill,
+  WorkflowStageBadge,
+  queueLegacyStatusStyle,
+  type StatusPillStyle,
+} from "./badges";
+export {
+  OperationalToolbarPrimaryButton,
+  OperationalToolbarSearch,
+  OperationalToolbarSelect,
+  operationalToolbarPrimaryButtonClassName,
+  operationalToolbarSearchInputClassName,
+  operationalToolbarSearchWrapClassName,
+  operationalToolbarSelectCaretClassName,
+  operationalToolbarSelectClassName,
+  operationalToolbarSelectWrapClassName,
+} from "./components/OperationalToolbar";

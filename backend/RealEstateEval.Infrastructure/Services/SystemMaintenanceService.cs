@@ -53,61 +53,67 @@ public class SystemMaintenanceService : ISystemMaintenanceService
                 await blobs.DeleteAsync(key, cancellationToken);
         }
 
-        await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
-        try
+        var strategy = _db.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
         {
-            await _db.CaseStudyForms.ExecuteDeleteAsync(cancellationToken);
-            await _db.FieldInspectionWorkspaces.ExecuteDeleteAsync(cancellationToken);
-            await _db.PartyTaskSubmissions.ExecuteDeleteAsync(cancellationToken);
-            await _db.PropertyFailures.ExecuteDeleteAsync(cancellationToken);
-            await _db.WorkflowTasks.ExecuteDeleteAsync(cancellationToken);
-            await _db.PropertyContacts.ExecuteDeleteAsync(cancellationToken);
-            await _db.WorkOrderProperties.ExecuteDeleteAsync(cancellationToken);
-            await _db.WorkOrders.ExecuteDeleteAsync(cancellationToken);
-            await _db.CourtCatalogEntries.ExecuteDeleteAsync(cancellationToken);
-            await _db.CaseStudyInfoRolesConfigs.ExecuteDeleteAsync(cancellationToken);
-            await _db.PoIntakeDrafts.ExecuteDeleteAsync(cancellationToken);
-            await _db.FileAttachments.ExecuteDeleteAsync(cancellationToken);
-            await _db.InternalDelegationLetterSets.ExecuteDeleteAsync(cancellationToken);
-            await _db.EvaluatorRecallRecords.ExecuteDeleteAsync(cancellationToken);
-            await _db.FieldDictionaryConfigs.ExecuteDeleteAsync(cancellationToken);
-            await _db.FailureTypesCatalogConfigs.ExecuteDeleteAsync(cancellationToken);
-            await _db.PropertyKeyRecords.ExecuteDeleteAsync(cancellationToken);
-            await _db.ValuationRequests.ExecuteDeleteAsync(cancellationToken);
-            await _db.SurveyOffices.ExecuteDeleteAsync(cancellationToken);
-            await _db.FinancialReportConfigs.ExecuteDeleteAsync(cancellationToken);
-            await _db.OutboxMessages.ExecuteDeleteAsync(cancellationToken);
-
-            var registeredUsersDeleted = await _users.DeleteAllRegisteredAsync(cancellationToken);
-            await DataSeeder.ReseedPrototypeModuleDataAsync(_db, cancellationToken);
-
-            await transaction.CommitAsync(cancellationToken);
-
-            return new SystemResetResultDto
+            await using var transaction =
+                await _db.Database.BeginTransactionAsync(cancellationToken);
+            try
             {
-                WorkOrdersDeleted = workOrders,
-                WorkflowTasksDeleted = workflowTasks,
-                CaseStudyFormsDeleted = caseStudyForms,
-                CourtCatalogEntriesDeleted = courts,
-                CaseStudyInfoRolesConfigsDeleted = infoRoles,
-                PropertyFailuresDeleted = propertyFailures,
-                RegisteredUsersDeleted = registeredUsersDeleted,
-                PoIntakeDraftsDeleted = poIntakeDrafts,
-                AttachmentsDeleted = attachments,
-                InternalDelegationLetterSetsDeleted = delegationLetterSets,
-                EvaluatorRecallsDeleted = evaluatorRecalls,
-                FieldDictionaryConfigsDeleted = fieldDictionaryConfigs,
-                FailureTypesCatalogConfigsDeleted = failureTypesCatalogConfigs,
-                SurveyOfficesDeleted = surveyOffices,
-                ValuationRequestsDeleted = valuationRequests,
-                PropertyKeyRecordsDeleted = propertyKeyRecords,
-                FinancialReportConfigsDeleted = financialReportConfigs,
-            };
-        }
-        catch
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            throw;
-        }
+                await _db.CaseStudyForms.ExecuteDeleteAsync(cancellationToken);
+                await _db.FieldInspectionWorkspaces.ExecuteDeleteAsync(cancellationToken);
+                await _db.PartyTaskSubmissions.ExecuteDeleteAsync(cancellationToken);
+                await _db.PropertyFailures.ExecuteDeleteAsync(cancellationToken);
+                await _db.WorkflowTasks.ExecuteDeleteAsync(cancellationToken);
+                await _db.PropertyContacts.ExecuteDeleteAsync(cancellationToken);
+                await _db.WorkOrderProperties.ExecuteDeleteAsync(cancellationToken);
+                await _db.WorkOrders.ExecuteDeleteAsync(cancellationToken);
+                await _db.CourtCatalogEntries.ExecuteDeleteAsync(cancellationToken);
+                await _db.CaseStudyInfoRolesConfigs.ExecuteDeleteAsync(cancellationToken);
+                await _db.PoIntakeDrafts.ExecuteDeleteAsync(cancellationToken);
+                await _db.FileAttachments.ExecuteDeleteAsync(cancellationToken);
+                await _db.InternalDelegationLetterSets.ExecuteDeleteAsync(cancellationToken);
+                await _db.EvaluatorRecallRecords.ExecuteDeleteAsync(cancellationToken);
+                await _db.FieldDictionaryConfigs.ExecuteDeleteAsync(cancellationToken);
+                await _db.FailureTypesCatalogConfigs.ExecuteDeleteAsync(cancellationToken);
+                await _db.PropertyKeyRecords.ExecuteDeleteAsync(cancellationToken);
+                await _db.ValuationRequests.ExecuteDeleteAsync(cancellationToken);
+                await _db.SurveyOffices.ExecuteDeleteAsync(cancellationToken);
+                await _db.FinancialReportConfigs.ExecuteDeleteAsync(cancellationToken);
+                await _db.OutboxMessages.ExecuteDeleteAsync(cancellationToken);
+
+                var registeredUsersDeleted =
+                    await _users.DeleteAllRegisteredAsync(cancellationToken);
+                await DataSeeder.ReseedPrototypeModuleDataAsync(_db, cancellationToken);
+
+                await transaction.CommitAsync(cancellationToken);
+
+                return new SystemResetResultDto
+                {
+                    WorkOrdersDeleted = workOrders,
+                    WorkflowTasksDeleted = workflowTasks,
+                    CaseStudyFormsDeleted = caseStudyForms,
+                    CourtCatalogEntriesDeleted = courts,
+                    CaseStudyInfoRolesConfigsDeleted = infoRoles,
+                    PropertyFailuresDeleted = propertyFailures,
+                    RegisteredUsersDeleted = registeredUsersDeleted,
+                    PoIntakeDraftsDeleted = poIntakeDrafts,
+                    AttachmentsDeleted = attachments,
+                    InternalDelegationLetterSetsDeleted = delegationLetterSets,
+                    EvaluatorRecallsDeleted = evaluatorRecalls,
+                    FieldDictionaryConfigsDeleted = fieldDictionaryConfigs,
+                    FailureTypesCatalogConfigsDeleted = failureTypesCatalogConfigs,
+                    SurveyOfficesDeleted = surveyOffices,
+                    ValuationRequestsDeleted = valuationRequests,
+                    PropertyKeyRecordsDeleted = propertyKeyRecords,
+                    FinancialReportConfigsDeleted = financialReportConfigs,
+                };
+            }
+            catch
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                throw;
+            }
+        });
     }
 }

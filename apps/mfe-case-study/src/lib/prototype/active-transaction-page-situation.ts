@@ -100,7 +100,6 @@ export function listedTasksForPage(
 ): WorkflowTask[] {
   return filterTasksForPage(pageId, tasks, poByNumber).filter((t) => {
     if (isTaskOnSuspendedProperty(t)) return false;
-    if (pageId === "active-case-study") return true;
     return t.status === "open" || t.status === "blocked";
   });
 }
@@ -303,6 +302,11 @@ export function computePageSituationValues(
   if (!cards) return null;
 
   const scoped = listedTasksForPage(pageId, input.tasks, input.poByNumber);
+  const workflowSituationTasks = filterTasksForPage(
+    pageId,
+    input.tasks,
+    input.poByNumber,
+  ).filter((t) => !isTaskOnSuspendedProperty(t));
 
   if (pageId === "bourse-inquiry") {
     return computeBourseSituation({
@@ -329,5 +333,9 @@ export function computePageSituationValues(
     });
   }
 
-  return computeWorkflowPageSituation(scoped, input.poByNumber, input.now);
+  return computeWorkflowPageSituation(
+    workflowSituationTasks,
+    input.poByNumber,
+    input.now,
+  );
 }

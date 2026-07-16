@@ -1,10 +1,14 @@
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using RealEstateEval.Infrastructure.Data;
 
 #nullable disable
 
 namespace RealEstateEval.Infrastructure.Data.Migrations;
 
 /// <summary>Editable default party-fee pricing (singleton row).</summary>
+[DbContext(typeof(ApplicationDbContext))]
+[Migration("20260713120000_AddPartyFeePricingConfig")]
 public partial class AddPartyFeePricingConfig : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
