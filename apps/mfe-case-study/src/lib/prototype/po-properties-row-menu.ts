@@ -13,6 +13,8 @@ export type PoPropertyRowMoreContext = {
   showEdit: boolean;
   showFailureRaise: boolean;
   router: { push: (href: string) => void };
+  /** Open «نسخ من معاملة سابقة» with this property pre-selected. */
+  onCopyFromPrior?: () => void;
 };
 
 export function buildPoPropertiesRowMoreItems(
@@ -34,6 +36,13 @@ export function buildPoPropertiesRowMoreItems(
       label: "تعديل العقار",
       onClick: () => ctx.router.push(poPropertyEditPath(po, propertyId)),
     });
+    if (ctx.onCopyFromPrior) {
+      items.push({
+        id: "copy-from-prior",
+        label: "نسخ من معاملة سابقة",
+        onClick: ctx.onCopyFromPrior,
+      });
+    }
   }
 
   if (ctx.showFailureRaise && !getPropertyFailure(po, propertyId)) {

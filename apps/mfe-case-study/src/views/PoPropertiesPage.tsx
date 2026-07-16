@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Badge,
   Button,
@@ -28,6 +29,7 @@ import { RowMoreMenu } from "@case-study/mfe/components/ui/RowMoreMenu";
 import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import { ltrValueClass } from "../components/po-intake/PropertyDetailFields";
+import { CopyFromPriorTransactionModal } from "../components/po-intake/CopyFromPriorTransactionModal";
 import {
   formatDateAr,
   formatPropertyLocation,
@@ -40,7 +42,7 @@ import {
   poPropertyPath,
   poListPath,
 } from "../lib/po-routes";
-import { poPropertyToPropertyRow } from "../lib/prototype/po-intake-storage";
+import { poPropertyToPropertyRow, buildCopyPriorTargetOptions } from "../lib/prototype/po-intake-storage";
 import {
   buildPoPropertiesRowMoreItems,
   type PoPropertyRowMoreContext,
@@ -53,6 +55,7 @@ import {
   canViewPoEye,
 } from "../lib/prototype/po-roles";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import type { PoPropertyIntake } from "../lib/prototype/po-intake-data";
 
 function assignmentTypeBadgeTone(type: string): BadgeTone {
@@ -113,6 +116,7 @@ export function PoPropertiesPage({
   ) => RowMoreMenuItem[];
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { role } = usePrototype();
   const showEdit = canEditProperty(role);
   const showFailureRaise = canRaisePropertyFailure(role);
@@ -121,9 +125,41 @@ export function PoPropertiesPage({
     showEye || showEdit || showFailureRaise || Boolean(buildPropertyRowMoreItems);
   const [menuRevision, setMenuRevision] = useState(0);
   const bumpMenu = useCallback(() => setMenuRevision((n) => n + 1), []);
+  const [copyModalOpen, setCopyModalOpen] = useState(false);
+  const [copyInitialTargetKey, setCopyInitialTargetKey] = useState<
+    string | null
+  >(null);
 
   const { data: record, isPending } = usePoRecordQuery(poNumber);
   const { data: workflowTasks = [] } = useWorkflowTasksQuery();
+
+  const copyTargets = useMemo(
+    () =>
+      record
+        ? buildCopyPriorTargetOptions(record, workflowTasks)
+        : [],
+    [record, workflowTasks],
+  );
+
+  const openCopyModal = useCallback((targetKey?: string | null) => {
+    setCopyInitialTargetKey(targetKey ?? null);
+    setCopyModalOpen(true);
+  }, []);
+
+  const handleCopiedFromPrior = useCallback(() => {
+    void queryClient.invalidateQueries({
+      queryKey: prototypeKeys.poRecord(poNumber),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: prototypeKeys.workflowTasks(),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: prototypeKeys.pendingBourseItems(),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: prototypeKeys.propertyListItems(),
+    });
+  }, [queryClient, poNumber]);
 
   const resolveRowMoreItems = useCallback(
     (property: PoPropertyIntake): RowMoreMenuItem[] => {
@@ -131,9 +167,13 @@ export function PoPropertiesPage({
       const ctx: PoPropertyRowMoreContext = {
         poNumber,
         property,
-        showEdit,
-        showFailureRaise,
+        showEdit: showEdit && !property.isRemoved,
+        showFailureRaise: showFailureRaise && !property.isRemoved,
         router,
+        onCopyFromPrior:
+          showEdit && !property.isRemoved
+            ? () => openCopyModal(`property:${property.id}`)
+            : undefined,
       };
       const base = buildPoPropertiesRowMoreItems(ctx);
       const extra = buildPropertyRowMoreItems?.(ctx) ?? [];
@@ -152,6 +192,7 @@ export function PoPropertiesPage({
       bumpMenu,
       buildPropertyRowMoreItems,
       menuRevision,
+      openCopyModal,
     ],
   );
 
@@ -186,7 +227,7 @@ export function PoPropertiesPage({
 
   const showDecree = requiresAssignmentDecree(record.assignmentType);
   const priorByDeed = new Map<string, string>();
-  const count = record.properties.length;
+  const count = record.properties.filter((p) => !p.isRemoved).length;
   const expected = record.expectedPropertyCount ?? count;
   const dueUrgent = record.dueDateAt
     ? isPastDue(record.dueDateAt) || isDueSoon(record.dueDateAt)
@@ -195,7 +236,20 @@ export function PoPropertiesPage({
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg">
       <PageShell>
-        <PageShellHeader>
+        <PageShellHeader
+          actions={
+            showEdit ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="primary"
+                onClick={() => openCopyModal(null)}
+              >
+                نسخ من معاملة سابقة
+              </Button>
+            ) : undefined
+          }
+        >
           <Link
             href={poListPath()}
             className="mb-2 inline-flex w-fit items-center gap-1.5 py-1 text-[11px] font-medium text-text-2 no-underline transition-colors hover:text-primary [&_svg]:-scale-x-100"
@@ -350,7 +404,16 @@ export function PoPropertiesPage({
                           {prop.deedStatus || "—"}
                         </Td>
                         <Td>
-                          {boursePending ? (
+                          {prop.isRemoved ? (
+                            <div className="flex flex-col items-start gap-0.5">
+                              <StatusBadge status="removed" />
+                              {prop.removalReason.trim() ? (
+                                <span className="text-[11px] font-medium text-danger-text">
+                                  {prop.removalReason.trim()}
+                                </span>
+                              ) : null}
+                            </div>
+                          ) : boursePending ? (
                             <Badge tone="warning">بانتظار البورصة</Badge>
                           ) : (
                             <StatusBadge status={row.status} />
@@ -384,6 +447,21 @@ export function PoPropertiesPage({
           </>
         )}
       </PageShell>
+
+      {showEdit ? (
+        <CopyFromPriorTransactionModal
+          open={copyModalOpen}
+          poNumber={poNumber}
+          targets={copyTargets}
+          initialTargetKey={copyInitialTargetKey}
+          lockTarget={Boolean(copyInitialTargetKey)}
+          onClose={() => {
+            setCopyModalOpen(false);
+            setCopyInitialTargetKey(null);
+          }}
+          onCopied={handleCopiedFromPrior}
+        />
+      ) : null}
     </div>
   );
 }

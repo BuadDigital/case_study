@@ -60,6 +60,16 @@ public class FailureService : IFailureService
         var errors = ValidateCreate(request);
         if (errors.Count > 0) return (null, errors);
 
+        if (Guid.TryParse(request.PropertyId.Trim(), out var createPropertyId))
+        {
+            var prop = await _db.WorkOrderProperties.AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == createPropertyId, cancellationToken);
+            if (prop is null)
+                return (null, new Dictionary<string, string> { ["propertyId"] = "العقار غير موجود" });
+            if (prop.IsRemoved)
+                return (null, new Dictionary<string, string> { ["propertyId"] = "لا يمكن تسجيل تعذر على عقار محذوف" });
+        }
+
         var now = DateTime.UtcNow;
         var title = ResolveTitle(request);
         var entity = new PropertyFailure

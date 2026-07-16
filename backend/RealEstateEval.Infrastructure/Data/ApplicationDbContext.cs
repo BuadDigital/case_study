@@ -143,6 +143,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.PlanNumber).HasMaxLength(128);
             e.Property(x => x.PlotNumber).HasMaxLength(128);
             e.Property(x => x.LocationMapUrl).HasMaxLength(1024);
+            e.Property(x => x.RemovalReason).HasMaxLength(500);
             e.Property(x => x.City).HasMaxLength(128);
             e.Property(x => x.District).HasMaxLength(128);
             e.Property(x => x.Classification).HasMaxLength(128);

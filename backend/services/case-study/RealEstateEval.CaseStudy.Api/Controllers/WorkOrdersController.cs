@@ -73,9 +73,14 @@ public class WorkOrdersController : ControllerBase
     public async Task<ActionResult<PriorDeedRegistrationDto>> FindPriorDeed(
         [FromQuery] string deedNumber,
         [FromQuery] string? excludePo,
+        [FromQuery] Guid? excludePropertyId,
         CancellationToken cancellationToken)
     {
-        var hit = await _workOrders.FindPriorDeedAsync(deedNumber, excludePo, cancellationToken);
+        var hit = await _workOrders.FindPriorDeedAsync(
+            deedNumber,
+            excludePo,
+            cancellationToken,
+            excludePropertyId);
         if (hit is null) return NotFound();
         return Ok(hit);
     }
@@ -245,11 +250,13 @@ public class WorkOrdersController : ControllerBase
     public async Task<IActionResult> DeleteProperty(
         string poNumber,
         Guid propertyId,
+        [FromBody] DeleteWorkOrderPropertyRequest? request,
         CancellationToken cancellationToken)
     {
         var (ok, error) = await _workOrders.DeletePropertyAsync(
             poNumber,
             propertyId,
+            request?.Reason ?? "",
             cancellationToken);
         if (!ok) return BadRequest(new { message = error });
         return NoContent();

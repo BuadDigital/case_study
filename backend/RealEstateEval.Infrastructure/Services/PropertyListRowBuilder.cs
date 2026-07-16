@@ -27,7 +27,7 @@ public static class PropertyListRowBuilder
 
         foreach (var order in orders)
         {
-            foreach (var prop in order.Properties.OrderBy(p => p.DeedNumber))
+            foreach (var prop in order.Properties.Where(p => !p.IsRemoved).OrderBy(p => p.DeedNumber))
             {
                 items.Add(BuildItem(order, prop, priorByDeed, approvedFailureKeys, tasksByProperty));
             }
@@ -41,7 +41,7 @@ public static class PropertyListRowBuilder
         var priorByDeed = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var order in orders)
         {
-            foreach (var prop in order.Properties)
+            foreach (var prop in order.Properties.Where(p => !p.IsRemoved))
             {
                 if (prop.IdentifierType != PropertyIdentifierType.Deed) continue;
                 var deed = prop.DeedNumber.Trim();

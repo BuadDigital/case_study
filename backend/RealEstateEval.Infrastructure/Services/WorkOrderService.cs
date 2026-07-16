@@ -185,7 +185,8 @@ public class WorkOrderService : IWorkOrderService
     public async Task<PriorDeedRegistrationDto?> FindPriorDeedAsync(
         string deedNumber,
         string? excludePoNumber,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? excludePropertyId = null)
     {
         var n = deedNumber.Trim();
         if (n.Length == 0) return null;
@@ -199,8 +200,10 @@ public class WorkOrderService : IWorkOrderService
             .Include(p => p.WorkOrder)
             .Include(p => p.Contacts)
             .Where(p =>
+                !p.IsRemoved &&
                 p.IdentifierType == PropertyIdentifierType.Deed &&
                 p.DeedNumber == n &&
+                (excludePropertyId == null || p.Id != excludePropertyId.Value) &&
                 (exclude == null || p.WorkOrder!.PoNumber != exclude))
             .OrderByDescending(p => p.WorkOrder!.CreatedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
@@ -213,10 +216,18 @@ public class WorkOrderService : IWorkOrderService
     public async Task<IReadOnlyList<PendingBoursePropertyDto>> ListPendingBourseAsync(
         CancellationToken cancellationToken)
     {
+        // Only properties whose case-study task is currently in the bourse phase.
+        // After revert to enfath, BourseDataCompleted stays false — without the phase
+        // check the row would incorrectly remain on استعلام البورصة.
         var list = await _db.WorkOrderProperties
             .AsNoTracking()
             .Include(p => p.WorkOrder)
-            .Where(p => !p.BourseDataCompleted && p.WorkOrder != null)
+            .Where(p => !p.IsRemoved && !p.BourseDataCompleted && p.WorkOrder != null)
+            .Where(p => _db.WorkflowTasks.Any(t =>
+                t.PropertyId == p.Id
+                && t.Kind == CaseStudyPropertyKind
+                && t.ParentTaskId == null
+                && t.Phase == "bourse"))
             .OrderByDescending(p => p.WorkOrder!.CreatedAtUtc)
             .ThenByDescending(p => p.WorkOrder!.ReceivedFromEnfathAt)
             .ThenBy(p => p.WorkOrder!.PoNumber)
@@ -474,7 +485,8 @@ public class WorkOrderService : IWorkOrderService
             entity.AssignmentType,
             entity.PoNumber,
             null,
-            (deed, _) => entity.Properties.Any(p => p.DeedNumber.Trim() == deed.Trim()));
+            (deed, _) => entity.Properties.Any(p =>
+                !p.IsRemoved && p.DeedNumber.Trim() == deed.Trim()));
         if (errors.Count > 0) return (null, errors);
 
         // Never trust client ids on insert — draft ids make EF emit UPDATE and fail with 0 rows.
@@ -497,6 +509,8 @@ public class WorkOrderService : IWorkOrderService
 
         var existing = entity.Properties.FirstOrDefault(p => p.Id == propertyId);
         if (existing is null) return (null, new Dictionary<string, string> { ["_"] = "العقار غير موجود" });
+        if (existing.IsRemoved)
+            return (null, new Dictionary<string, string> { ["_"] = "لا يمكن تعديل عقار محذوف" });
 
         var previousLocationMapUrl = existing.LocationMapUrl;
 
@@ -509,6 +523,7 @@ public class WorkOrderService : IWorkOrderService
                 propertyId,
                 (deed, excludeId) =>
                     entity.Properties.Any(p =>
+                        !p.IsRemoved &&
                         p.DeedNumber.Trim() == deed.Trim() && p.Id != excludeId));
             var bourseErrors = WorkOrderValidator.ValidatePropertyBourse(new UpdatePropertyBourseRequest
             {
@@ -526,7 +541,7 @@ public class WorkOrderService : IWorkOrderService
                 .GroupBy(kv => kv.Key)
                 .ToDictionary(g => g.Key, g => g.First().Value);
             if (errors.Count > 0) return (null, errors);
-            ApplyPropertyEnfath(existing, property, forInsert: false);
+            ApplyPropertyEnfath(existing, property);
             ApplyPropertyBourse(existing, property);
             existing.BourseDataCompleted = true;
             existing.BourseCompletedAtUtc = DateTime.UtcNow;
@@ -540,18 +555,45 @@ public class WorkOrderService : IWorkOrderService
                 propertyId,
                 (deed, excludeId) =>
                     entity.Properties.Any(p =>
+                        !p.IsRemoved &&
                         p.DeedNumber.Trim() == deed.Trim() && p.Id != excludeId));
             if (errors.Count > 0) return (null, errors);
-            ApplyPropertyEnfath(existing, property, forInsert: false);
+            ApplyPropertyEnfath(existing, property);
         }
 
-        await _db.SaveChangesAsync(cancellationToken);
+        // Never mix contact DELETE/INSERT with property UPDATE in one SaveChanges —
+        // EF/Npgsql rewrites collection replaces into DELETE+UPDATE and throws
+        // DbUpdateConcurrencyException (0 rows). Detach contacts, save scalars, then
+        // rewrite contacts with ExecuteDelete + insert.
+        DetachTrackedContacts(existing);
+
+        try
+        {
+            await _db.SaveChangesAsync(cancellationToken);
+            await RewritePropertyContactsAsync(existing.Id, property.Contacts, cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            var kinds = string.Join(", ",
+                ex.Entries.Select(e => e.Metadata.ClrType.Name + ":" + e.State));
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = string.IsNullOrEmpty(kinds)
+                    ? "تعذّر حفظ العقار — أعد تحميل الصفحة وحاول مرة أخرى"
+                    : $"تعذّر حفظ العقار ({kinds}) — أعد تحميل الصفحة وحاول مرة أخرى",
+            });
+        }
         await ApplyDocumentarySideEffectsAfterPropertySaveAsync(
             entity,
             existing,
             previousLocationMapUrl,
             cancellationToken);
-        return (WorkOrderMapper.ToPropertyDto(existing), null);
+
+        var saved = await _db.WorkOrderProperties
+            .AsNoTracking()
+            .Include(p => p.Contacts)
+            .FirstAsync(p => p.Id == propertyId, cancellationToken);
+        return (WorkOrderMapper.ToPropertyDto(saved), null);
     }
 
     public async Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdateLocationMapUrlAsync(
@@ -565,6 +607,8 @@ public class WorkOrderService : IWorkOrderService
 
         var existing = entity.Properties.FirstOrDefault(p => p.Id == propertyId);
         if (existing is null) return (null, new Dictionary<string, string> { ["_"] = "العقار غير موجود" });
+        if (existing.IsRemoved)
+            return (null, new Dictionary<string, string> { ["_"] = "لا يمكن تعديل عقار محذوف" });
 
         var trimmed = locationMapUrl?.Trim() ?? "";
         if (!string.IsNullOrEmpty(trimmed) && !DocumentaryWorkflowRules.HasLocationMapUrl(trimmed))
@@ -598,6 +642,8 @@ public class WorkOrderService : IWorkOrderService
 
         var existing = entity.Properties.FirstOrDefault(p => p.Id == propertyId);
         if (existing is null) return (null, new Dictionary<string, string> { ["_"] = "العقار غير موجود" });
+        if (existing.IsRemoved)
+            return (null, new Dictionary<string, string> { ["_"] = "لا يمكن تعديل عقار محذوف" });
 
         var errors = WorkOrderValidator.ValidatePropertyBourse(request);
         if (errors.Count > 0) return (null, errors);
@@ -659,18 +705,27 @@ public class WorkOrderService : IWorkOrderService
     public async Task<(bool Ok, string? Error)> DeletePropertyAsync(
         string poNumber,
         Guid propertyId,
+        string reason,
         CancellationToken cancellationToken)
     {
+        var trimmedReason = (reason ?? "").Trim();
+        if (trimmedReason.Length == 0)
+            return (false, "سبب الحذف مطلوب");
+        if (trimmedReason.Length > 500)
+            return (false, "سبب الحذف طويل جداً");
+
         var entity = await LoadWorkOrderTrackedAsync(poNumber, cancellationToken);
         if (entity is null) return (false, "أمر العمل غير موجود");
 
         var prop = entity.Properties.FirstOrDefault(p => p.Id == propertyId);
         if (prop is null) return (false, "العقار غير موجود");
+        if (prop.IsRemoved) return (false, "العقار محذوف مسبقاً");
 
-        _db.WorkOrderProperties.Remove(prop);
-        await _db.PropertyTimelineEntries
-            .Where(e => e.PoNumber == NormalizePo(poNumber) && e.PropertyId == propertyId)
-            .ExecuteDeleteAsync(cancellationToken);
+        prop.IsRemoved = true;
+        prop.RemovalReason = trimmedReason;
+        prop.RemovedAtUtc = DateTime.UtcNow;
+        entity.ExpectedPropertyCount = Math.Max(1, entity.ExpectedPropertyCount - 1);
+
         await _db.SaveChangesAsync(cancellationToken);
         return (true, null);
     }
@@ -695,7 +750,7 @@ public class WorkOrderService : IWorkOrderService
     private static string? NormalizeOptionalText(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    private static WorkOrderProperty MapPropertyEnfath(
+    private WorkOrderProperty MapPropertyEnfath(
         WorkOrderPropertyDto dto,
         Guid workOrderId,
         bool forInsert)
@@ -706,14 +761,14 @@ public class WorkOrderService : IWorkOrderService
             WorkOrderId = workOrderId,
             BourseDataCompleted = false,
         };
-        ApplyPropertyEnfath(entity, dto, forInsert);
+        ApplyPropertyEnfath(entity, dto);
+        ReplacePropertyContacts(entity, dto.Contacts, clearExisting: false);
         return entity;
     }
 
     private static void ApplyPropertyEnfath(
         WorkOrderProperty entity,
-        WorkOrderPropertyDto dto,
-        bool forInsert)
+        WorkOrderPropertyDto dto)
     {
         PropertyIdentifierTypeLabels.TryParseApiValue(dto.IdentifierType, out var idType);
         entity.IdentifierType = idType;
@@ -749,12 +804,61 @@ public class WorkOrderService : IWorkOrderService
         entity.PlanNumber = NormalizeOptionalText(dto.PlanNumber);
         entity.PlotNumber = NormalizeOptionalText(dto.PlotNumber);
         entity.LocationMapUrl = NormalizeOptionalText(dto.LocationMapUrl);
+    }
 
-        if (!forInsert)
+    private void DetachTrackedContacts(WorkOrderProperty entity)
+    {
+        foreach (var contact in entity.Contacts.ToList())
+            _db.Entry(contact).State = EntityState.Detached;
+        entity.Contacts.Clear();
+    }
+
+    private async Task RewritePropertyContactsAsync(
+        Guid propertyId,
+        IEnumerable<PropertyContactDto> contacts,
+        CancellationToken cancellationToken)
+    {
+        await _db.PropertyContacts
+            .Where(c => c.PropertyId == propertyId)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        foreach (var entry in _db.ChangeTracker.Entries<PropertyContact>()
+                     .Where(e => e.Entity.PropertyId == propertyId)
+                     .ToList())
+        {
+            entry.State = EntityState.Detached;
+        }
+
+        var order = 0;
+        var rows = contacts
+            .Where(c => !string.IsNullOrWhiteSpace(c.Phone) || !string.IsNullOrWhiteSpace(c.Role))
+            .Select(c => new PropertyContact
+            {
+                Id = Guid.NewGuid(),
+                PropertyId = propertyId,
+                Name = (c.Name ?? "").Trim(),
+                Role = (c.Role ?? "").Trim(),
+                Phone = (c.Phone ?? "").Trim(),
+                SortOrder = order++,
+            })
+            .ToList();
+
+        if (rows.Count == 0) return;
+
+        _db.PropertyContacts.AddRange(rows);
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    private static void ReplacePropertyContacts(
+        WorkOrderProperty entity,
+        IEnumerable<PropertyContactDto> contacts,
+        bool clearExisting)
+    {
+        if (clearExisting)
             entity.Contacts.Clear();
 
         var order = 0;
-        foreach (var c in dto.Contacts.Where(c =>
+        foreach (var c in contacts.Where(c =>
                      !string.IsNullOrWhiteSpace(c.Phone) || !string.IsNullOrWhiteSpace(c.Role)))
         {
             entity.Contacts.Add(new PropertyContact

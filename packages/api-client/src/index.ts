@@ -102,6 +102,7 @@ export {
   advanceWorkflowTaskAfterBourse,
   advanceWorkflowTaskAfterEnfath,
   confirmWorkflowTaskDistribution,
+  deleteWorkflowTaskSlot,
   deleteWorkflowTasksForPo,
   deleteWorkflowTasksForProperty,
   listWorkflowTasks,

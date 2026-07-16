@@ -49,6 +49,14 @@ public class WorkOrderProperty
     /// <summary>رابط خريطة الموقع — مطلوب لفتح العشوائيات.</summary>
     public string? LocationMapUrl { get; set; }
 
+    /// <summary>حذف ناعم من طوابير المعاملات — يبقى ظاهراً في قائمة عقارات أمر العمل.</summary>
+    public bool IsRemoved { get; set; }
+
+    /// <summary>سبب الحذف — يُعرض في قائمة العقارات.</summary>
+    public string? RemovalReason { get; set; }
+
+    public DateTime? RemovedAtUtc { get; set; }
+
     public WorkOrder? WorkOrder { get; set; }
     public ICollection<PropertyContact> Contacts { get; set; } = [];
 }

@@ -588,6 +588,10 @@ export type PoPropertyIntake = {
   plotNumber: string;
   locationMapUrl: string;
   bourseDataCompleted: boolean;
+  /** Soft-deleted from active queues — still listed on PO properties. */
+  isRemoved: boolean;
+  removalReason: string;
+  removedAtUtc: string;
   contacts: PoContact[];
 };
 
@@ -648,6 +652,9 @@ export function emptyProperty(): PoPropertyIntake {
     plotNumber: "",
     locationMapUrl: "",
     bourseDataCompleted: false,
+    isRemoved: false,
+    removalReason: "",
+    removedAtUtc: "",
     contacts: [{ name: "", role: "", phone: "" }],
   };
 }

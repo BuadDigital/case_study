@@ -38,6 +38,11 @@ export function canDeleteProperty(role: RoleId): boolean {
   return isSuperAdmin(role) || role === "section-supervisor";
 }
 
+/** حذف معاملة من طوابير البيانات الأولية / البورصة / التوزيع — مشرف أو مسؤول فقط. */
+export function canDeleteTransaction(role: RoleId): boolean {
+  return canDeleteProperty(role);
+}
+
 /** §5 — المشرف والأخصائي يمكنهم رفع تعذر من شاشة العقار. */
 export function canRaisePropertyFailure(role: RoleId): boolean {
   return canEditProperty(role) || canEditPoHeader(role);

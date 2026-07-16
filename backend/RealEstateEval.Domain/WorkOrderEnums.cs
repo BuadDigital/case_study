@@ -100,7 +100,7 @@ public static class WorkOrderListStatus
         if (lifecycle == WorkOrderLifecycleStatus.Stopped) return Stopped;
 
         var expected = Math.Max(1, order.ExpectedPropertyCount);
-        var registered = order.Properties.Count;
+        var registered = order.Properties.Count(p => !p.IsRemoved);
         var allRegistered = registered > 0 && registered >= expected;
         var allStudied = allRegistered && studiedCount >= registered;
 

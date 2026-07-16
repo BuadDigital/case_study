@@ -3,7 +3,7 @@ import type {
   PoIntakeRecord,
   PoPropertyIntake,
 } from "./po-intake-data";
-import { classificationRequiresSurvey, computeBusinessDueDate, emptyProperty, normalizePropertyIdentifierNumber, parsePropertyIdentifierType,} from "./po-intake-data";
+import { classificationRequiresSurvey, computeBusinessDueDate, emptyProperty, formatPropertyDeedDisplay, hasBourseDetailFields, normalizePropertyIdentifierNumber, parsePropertyIdentifierType, skipsBourseForIdentifier,} from "./po-intake-data";
 import {
   contactsForApi,
   propertyHasIncompleteContact,
@@ -140,6 +140,9 @@ function dtoToProperty(dto: WorkOrderPropertyDto): PoPropertyIntake {
     plotNumber: dto.plotNumber ?? "",
     locationMapUrl: dto.locationMapUrl ?? "",
     bourseDataCompleted: dto.bourseDataCompleted ?? false,
+    isRemoved: Boolean(dto.isRemoved),
+    removalReason: dto.removalReason ?? "",
+    removedAtUtc: dto.removedAtUtc ?? "",
     contacts: (dto.contacts ?? []).map((c) => ({
       name: c.name ?? "",
       role: c.role ?? "",
@@ -323,12 +326,255 @@ export async function poRecordExists(poNumber: string): Promise<boolean> {
 export async function findPriorDeedFull(
   deedNumber: string,
   excludePo?: string,
+  excludePropertyId?: string,
 ): Promise<import("@platform/api-client").PriorDeedRegistrationDto | null> {
   const config = workOrdersApiConfig();
   if (!config) return null;
-  const result = await findPriorDeed(config, deedNumber, excludePo);
+  const result = await findPriorDeed(
+    config,
+    deedNumber,
+    excludePo,
+    excludePropertyId,
+  );
   if (!result.ok || !result.data) return null;
   return result.data;
+}
+
+export type CopyPriorScope = "enfath" | "bourse";
+
+export type CopyPriorTarget =
+  | { kind: "property"; propertyId: string }
+  | { kind: "empty-slot"; taskId: string };
+
+export type CopyPriorTargetOption = {
+  key: string;
+  label: string;
+  target: CopyPriorTarget;
+  hasExistingData: boolean;
+};
+
+/** Targets on the current PO: existing properties + empty enfath slots. */
+export function buildCopyPriorTargetOptions(
+  record: PoIntakeRecord,
+  tasks: WorkflowTask[],
+): CopyPriorTargetOption[] {
+  const po = record.poNumber.trim();
+  const options: CopyPriorTargetOption[] = [];
+
+  for (const prop of record.properties) {
+    if (prop.isRemoved) continue;
+    const deed = formatPropertyDeedDisplay(prop);
+    options.push({
+      key: `property:${prop.id}`,
+      label: deed !== "—" ? deed : `عقار ${prop.id.slice(0, 8)}`,
+      target: { kind: "property", propertyId: prop.id },
+      hasExistingData: Boolean(
+        prop.deedNumber.trim() ||
+          prop.ownerName.trim() ||
+          prop.requestNumber.trim(),
+      ),
+    });
+  }
+
+  const emptySlots = tasks
+    .filter(
+      (t) =>
+        t.kind === "case-study-property" &&
+        t.poNumber.trim() === po &&
+        !t.propertyId?.trim(),
+    )
+    .sort((a, b) => a.propertyOrdinal - b.propertyOrdinal);
+
+  const total = Math.max(
+    1,
+    record.expectedPropertyCount ?? emptySlots.length,
+    ...emptySlots.map((s) => s.propertyOrdinal),
+  );
+
+  for (const slot of emptySlots) {
+    options.push({
+      key: `slot:${slot.id}`,
+      label: `خانة ${slot.propertyOrdinal}/${total}`,
+      target: { kind: "empty-slot", taskId: slot.id },
+      hasExistingData: false,
+    });
+  }
+
+  return options;
+}
+
+/** Map prior deed lookup into a new property draft for the current PO. */
+export function priorDeedToPropertyIntake(
+  prior: import("@platform/api-client").PriorDeedRegistrationDto,
+  deedNumber: string,
+  scope: CopyPriorScope,
+): PoPropertyIntake {
+  const base = emptyProperty();
+  const identifierType = parsePropertyIdentifierType(prior.identifierType);
+  const contacts =
+    prior.contacts?.length &&
+    prior.contacts.some((c) => (c.name ?? "").trim() || (c.phone ?? "").trim())
+      ? prior.contacts.map((c) => ({
+          name: c.name ?? "",
+          role: c.role ?? "",
+          phone: c.phone ?? "",
+        }))
+      : base.contacts;
+
+  const enfath: PoPropertyIntake = {
+    ...base,
+    identifierType,
+    deedNumber: (prior.deedNumber ?? deedNumber).trim() || deedNumber.trim(),
+    requestNumber: prior.requestNumber?.trim() ?? "",
+    assignmentMandateNumber: prior.assignmentMandateNumber?.trim() ?? "",
+    assignmentMandateDate: prior.assignmentMandateDate?.trim() ?? "",
+    deedDate: prior.deedDate?.trim() ?? "",
+    ownerName: prior.ownerName?.trim() ?? "",
+    court: prior.court?.trim() ?? "",
+    circuit: prior.circuit?.trim() ?? "",
+    planNumber: prior.planNumber?.trim() ?? "",
+    plotNumber: prior.plotNumber?.trim() ?? "",
+    locationMapUrl: prior.locationMapUrl?.trim() ?? "",
+    contacts,
+    bourseDataCompleted: false,
+  };
+
+  if (scope === "enfath") return enfath;
+
+  return {
+    ...enfath,
+    city: prior.city?.trim() ?? "",
+    district: prior.district?.trim() ?? "",
+    classification: prior.classification?.trim() ?? "",
+    propertyType: prior.propertyType?.trim() ?? "",
+    area: prior.area?.trim() ?? "",
+    deedStatus: prior.deedStatus?.trim() ?? "",
+    restrictionsPresent: prior.restrictionsPresent?.trim() ?? "",
+    boundariesAvailability: prior.boundariesAvailability?.trim() ?? "",
+    boundariesExternalDocName: prior.boundariesExternalDocName?.trim() ?? "",
+    northBoundary: prior.northBoundary?.trim() ?? "",
+    northBoundaryLengthM: prior.northBoundaryLengthM?.trim() ?? "",
+    southBoundary: prior.southBoundary?.trim() ?? "",
+    southBoundaryLengthM: prior.southBoundaryLengthM?.trim() ?? "",
+    eastBoundary: prior.eastBoundary?.trim() ?? "",
+    eastBoundaryLengthM: prior.eastBoundaryLengthM?.trim() ?? "",
+    westBoundary: prior.westBoundary?.trim() ?? "",
+    westBoundaryLengthM: prior.westBoundaryLengthM?.trim() ?? "",
+    bourseDataCompleted: false,
+  };
+}
+
+function mergePriorOntoExisting(
+  existing: PoPropertyIntake,
+  draft: PoPropertyIntake,
+  scope: CopyPriorScope,
+): PoPropertyIntake {
+  if (scope === "enfath") {
+    return {
+      ...existing,
+      identifierType: draft.identifierType,
+      deedNumber: draft.deedNumber,
+      requestNumber: draft.requestNumber,
+      assignmentMandateNumber: draft.assignmentMandateNumber,
+      assignmentMandateDate: draft.assignmentMandateDate,
+      deedDate: draft.deedDate,
+      ownerName: draft.ownerName,
+      court: draft.court,
+      circuit: draft.circuit,
+      planNumber: draft.planNumber,
+      plotNumber: draft.plotNumber,
+      locationMapUrl: draft.locationMapUrl,
+      contacts: draft.contacts,
+    };
+  }
+  return {
+    ...draft,
+    id: existing.id,
+    bourseDataCompleted: false,
+  };
+}
+
+async function finishBourseIfNeeded(
+  poNumber: string,
+  propertyId: string,
+  draft: PoPropertyIntake,
+  prior: import("@platform/api-client").PriorDeedRegistrationDto,
+  scope: CopyPriorScope,
+  primaryResult: StorageOk<PoPropertyIntake>,
+): Promise<StorageOk<PoPropertyIntake> | StorageError> {
+  if (scope !== "bourse") return primaryResult;
+  if (skipsBourseForIdentifier(draft.identifierType)) return primaryResult;
+  if (!hasBourseDetailFields(draft) && !prior.bourseDataCompleted) {
+    return primaryResult;
+  }
+
+  const withId: PoPropertyIntake = {
+    ...draft,
+    id: propertyId,
+    bourseDataCompleted: true,
+  };
+  const completed = await completePropertyBourse(poNumber, propertyId, withId);
+  if (!completed.ok) {
+    return {
+      ok: false,
+      error:
+        completed.error ||
+        "تم نسخ البيانات الأولية، لكن تعذّر إكمال بيانات البورصة",
+      errors: completed.errors,
+    };
+  }
+  return completed;
+}
+
+/**
+ * Copy primary (and optionally bourse) fields from a prior deed onto a target
+ * property or empty slot on the current PO.
+ */
+export async function copyPropertyFromPriorTransaction(
+  poNumber: string,
+  prior: import("@platform/api-client").PriorDeedRegistrationDto,
+  deedNumber: string,
+  scope: CopyPriorScope,
+  target: CopyPriorTarget,
+): Promise<StorageOk<PoPropertyIntake> | StorageError> {
+  const draft = priorDeedToPropertyIntake(prior, deedNumber, scope);
+
+  if (target.kind === "empty-slot") {
+    const added = await addPropertyToPo(poNumber, draft, {
+      assignToTaskId: target.taskId,
+    });
+    if (!added.ok) return added;
+    return finishBourseIfNeeded(
+      poNumber,
+      added.data.id,
+      { ...draft, id: added.data.id },
+      prior,
+      scope,
+      added,
+    );
+  }
+
+  const record = await getPoRecord(poNumber);
+  const existing = record?.properties.find((p) => p.id === target.propertyId);
+  if (!existing) {
+    return { ok: false, error: "العقار المستهدف غير موجود في أمر العمل" };
+  }
+  if (existing.isRemoved) {
+    return { ok: false, error: "لا يمكن النسخ إلى عقار محذوف" };
+  }
+
+  const merged = mergePriorOntoExisting(existing, draft, scope);
+  const updated = await updatePropertyInPo(poNumber, target.propertyId, merged);
+  if (!updated.ok) return updated;
+
+  return finishBourseIfNeeded(
+    poNumber,
+    target.propertyId,
+    { ...merged, id: target.propertyId },
+    prior,
+    scope,
+    updated,
+  );
 }
 
 function propertyRowId(poNumber: string, prop: PoPropertyIntake): string {
@@ -581,7 +827,10 @@ export async function deedExistsInPo(
   if (!record) return false;
   const n = deedNumber.trim();
   return record.properties.some(
-    (p) => p.deedNumber.trim() === n && p.id !== excludePropertyId,
+    (p) =>
+      !p.isRemoved &&
+      p.deedNumber.trim() === n &&
+      p.id !== excludePropertyId,
   );
 }
 
@@ -626,11 +875,20 @@ export async function addPropertyToPo(
 export async function removePropertyFromPo(
   poNumber: string,
   propertyId: string,
+  reason: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const trimmed = reason.trim();
+  if (!trimmed) return { ok: false, error: "سبب الحذف مطلوب" };
+
   const config = workOrdersApiConfig();
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
 
-  const result = await deleteWorkOrderProperty(config, poNumber, propertyId);
+  const result = await deleteWorkOrderProperty(
+    config,
+    poNumber,
+    propertyId,
+    trimmed,
+  );
   if (!result.ok) {
     return {
       ok: false,
@@ -652,6 +910,9 @@ export async function updatePropertyInPo(
   propertyId: string,
   property: PoPropertyIntake,
 ): Promise<StorageOk<PoPropertyIntake> | StorageError> {
+  if (property.isRemoved) {
+    return { ok: false, error: "لا يمكن تعديل عقار محذوف" };
+  }
   const config = workOrdersApiConfig();
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
 

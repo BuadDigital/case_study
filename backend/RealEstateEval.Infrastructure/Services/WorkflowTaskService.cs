@@ -151,6 +151,17 @@ public class WorkflowTaskService : IWorkflowTaskService
             });
         }
 
+        var confirmProperty = await _db.WorkOrderProperties
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == parent.PropertyId.Value, cancellationToken);
+        if (confirmProperty is null || confirmProperty.IsRemoved)
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "لا يمكن توزيع معاملة لعقار محذوف أو غير موجود",
+            });
+        }
+
         var propertyIdText = parent.PropertyId.Value.ToString();
         var hasBlockingFailure = await _db.PropertyFailures.AnyAsync(
             f => f.PoNumber == parent.PoNumber
@@ -303,10 +314,18 @@ public class WorkflowTaskService : IWorkflowTaskService
         var entity = await _db.WorkflowTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
         if (entity is null) return null;
 
+        var propertyId = Guid.TryParse(request.PropertyId, out var pid) ? pid : entity.PropertyId;
+        if (propertyId is Guid advancePropertyId)
+        {
+            var prop = await _db.WorkOrderProperties.AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == advancePropertyId, cancellationToken);
+            if (prop is null || prop.IsRemoved) return null;
+        }
+
         var phase = PhaseAfterEnfath(request.IdentifierType, request.BourseDataCompleted);
         var deed = request.DeedNumber.Trim();
         var po = entity.PoNumber.Trim();
-        entity.PropertyId = Guid.TryParse(request.PropertyId, out var pid) ? pid : entity.PropertyId;
+        entity.PropertyId = propertyId;
         entity.Phase = phase;
         entity.Title = phase == "distribution"
             ? $"توزيع الأطراف — {(string.IsNullOrEmpty(deed) ? po : deed)}"
@@ -323,6 +342,13 @@ public class WorkflowTaskService : IWorkflowTaskService
     {
         var entity = await _db.WorkflowTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
         if (entity is null) return null;
+
+        if (entity.PropertyId is Guid boursePropertyId)
+        {
+            var prop = await _db.WorkOrderProperties.AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == boursePropertyId, cancellationToken);
+            if (prop is null || prop.IsRemoved) return null;
+        }
 
         var deed = request.DeedNumber.Trim();
         var po = entity.PoNumber.Trim();
@@ -382,7 +408,7 @@ public class WorkflowTaskService : IWorkflowTaskService
 
         var current = entity.Phase;
         var allowed =
-            (current == "distribution" && target is "bourse" or "enfath")
+            (current == "distribution" && target == "bourse")
             || (current == "bourse" && target == "enfath");
         if (!allowed)
         {
@@ -396,17 +422,33 @@ public class WorkflowTaskService : IWorkflowTaskService
         {
             var property = await _db.WorkOrderProperties
                 .FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
-            if (property is not null)
+            if (property is null || property.IsRemoved)
             {
-                property.BourseDataCompleted = false;
-                property.BourseCompletedAtUtc = null;
+                return (null, new Dictionary<string, string>
+                {
+                    ["_"] = "لا يمكن إرجاع معاملة لعقار محذوف أو غير موجود",
+                });
             }
+
+            property.BourseDataCompleted = false;
+            property.BourseCompletedAtUtc = null;
         }
 
         if (current == "distribution")
         {
             entity.DistributionJson = WorkflowTaskMapper.SerializeDistribution(
                 WorkflowTaskMapper.DefaultDistribution());
+
+            var children = await _db.WorkflowTasks
+                .Where(t => t.ParentTaskId == entity.Id)
+                .ToListAsync(cancellationToken);
+            if (children.Count > 0)
+            {
+                await RemovePartySubmissionsForTasksAsync(
+                    children.Select(c => c.Id).ToList(),
+                    cancellationToken);
+                _db.WorkflowTasks.RemoveRange(children);
+            }
         }
 
         var po = entity.PoNumber.Trim();
@@ -495,6 +537,122 @@ public class WorkflowTaskService : IWorkflowTaskService
         }
 
         return WorkflowTaskMapper.ToDto(entity);
+    }
+
+    public async Task<(bool Ok, IReadOnlyDictionary<string, string>? Errors)> DeleteCaseStudySlotAsync(
+        Guid id,
+        DeleteCaseStudySlotRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var reason = (request.Reason ?? "").Trim();
+        if (reason.Length == 0)
+        {
+            return (false, new Dictionary<string, string>
+            {
+                ["reason"] = "سبب الحذف مطلوب",
+            });
+        }
+
+        if (reason.Length > 500)
+        {
+            return (false, new Dictionary<string, string>
+            {
+                ["reason"] = "سبب الحذف طويل جداً",
+            });
+        }
+
+        var task = await _db.WorkflowTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        if (task is null) return (false, null);
+
+        if (!string.Equals(task.Kind, CaseStudyPropertyKind, StringComparison.OrdinalIgnoreCase))
+        {
+            return (false, new Dictionary<string, string>
+            {
+                ["_"] = "يمكن حذف مهام دراسة الحالة فقط",
+            });
+        }
+
+        if (task.Phase is "done" or "case-study")
+        {
+            return (false, new Dictionary<string, string>
+            {
+                ["_"] = "لا يمكن حذف معاملة أكملت دراسة الحالة",
+            });
+        }
+
+        var po = task.PoNumber.Trim();
+        var order = await _db.WorkOrders
+            .Include(o => o.Properties)
+            .FirstOrDefaultAsync(o => o.PoNumber == po, cancellationToken);
+
+        if (task.PropertyId is Guid propertyId)
+        {
+            if (order is not null)
+            {
+                var prop = order.Properties.FirstOrDefault(p => p.Id == propertyId);
+                if (prop is not null)
+                {
+                    if (prop.IsRemoved)
+                    {
+                        return (false, new Dictionary<string, string>
+                        {
+                            ["_"] = "العقار محذوف مسبقاً",
+                        });
+                    }
+
+                    prop.IsRemoved = true;
+                    prop.RemovalReason = reason;
+                    prop.RemovedAtUtc = DateTime.UtcNow;
+                }
+            }
+        }
+
+        var allForPo = await _db.WorkflowTasks
+            .Where(t => t.PoNumber == po)
+            .ToListAsync(cancellationToken);
+
+        var toRemove = allForPo
+            .Where(t =>
+                t.Id == task.Id
+                || t.ParentTaskId == task.Id
+                || (task.PropertyId.HasValue
+                    && t.PropertyId == task.PropertyId
+                    && t.Id != task.Id))
+            .ToList();
+
+        if (toRemove.All(t => t.Id != task.Id))
+            toRemove.Add(task);
+
+        await RemovePartySubmissionsForTasksAsync(
+            toRemove.Select(t => t.Id).ToList(),
+            cancellationToken);
+        _db.WorkflowTasks.RemoveRange(toRemove);
+
+        if (order is not null)
+        {
+            order.ExpectedPropertyCount = Math.Max(1, order.ExpectedPropertyCount - 1);
+            var remaining = allForPo.Where(t => toRemove.All(r => r.Id != t.Id)).ToList();
+            var excess = remaining
+                .Where(t =>
+                    t.Kind == CaseStudyPropertyKind
+                    && t.PropertyId is null
+                    && t.Phase == "enfath"
+                    && t.PropertyOrdinal > order.ExpectedPropertyCount)
+                .ToList();
+            if (excess.Count > 0)
+            {
+                await RemovePartySubmissionsForTasksAsync(
+                    excess.Select(t => t.Id).ToList(),
+                    cancellationToken);
+                _db.WorkflowTasks.RemoveRange(excess);
+                remaining = remaining.Where(t => excess.All(e => e.Id != t.Id)).ToList();
+            }
+
+            SyncPoSlots(order, remaining);
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+        return (true, null);
     }
 
     public async Task DeleteForPoAsync(
@@ -628,14 +786,34 @@ public class WorkflowTaskService : IWorkflowTaskService
         tasks = allTasks
             .Where(t => t.Kind == CaseStudyPropertyKind && t.PoNumber == poNumber)
             .ToList();
+
+        var removedPropertyIds = order.Properties
+            .Where(p => p.IsRemoved)
+            .Select(p => p.Id)
+            .ToHashSet();
+        foreach (var orphan in tasks.Where(t =>
+                     t.PropertyId.HasValue && removedPropertyIds.Contains(t.PropertyId.Value)))
+        {
+            orphan.PropertyId = null;
+            orphan.Phase = "enfath";
+            orphan.Status = WorkflowTaskStatus.Open;
+            orphan.Title = SlotTaskTitle(poNumber, orphan.PropertyOrdinal, expected);
+            orphan.DistributionJson = WorkflowTaskMapper.SerializeDistribution(
+                WorkflowTaskMapper.DefaultDistribution());
+            orphan.ObstructionReason = null;
+            orphan.ObstructionPriorPhase = null;
+            orphan.UpdatedAtUtc = DateTime.UtcNow;
+        }
+
         var linkedIds = tasks
             .Where(t => t.PropertyId.HasValue)
             .Select(t => t.PropertyId!.Value)
             .ToHashSet();
 
-        for (var i = 0; i < order.Properties.Count; i++)
+        var liveOrdinal = 0;
+        foreach (var prop in order.Properties.Where(p => !p.IsRemoved))
         {
-            var prop = order.Properties.ElementAt(i);
+            liveOrdinal++;
             if (linkedIds.Contains(prop.Id))
             {
                 var linked = tasks.FirstOrDefault(t => t.PropertyId == prop.Id);
@@ -658,7 +836,7 @@ public class WorkflowTaskService : IWorkflowTaskService
             }
 
             var preferred = tasks.FirstOrDefault(t =>
-                t.PropertyId is null && t.PropertyOrdinal == i + 1);
+                t.PropertyId is null && t.PropertyOrdinal == liveOrdinal);
             var slot = preferred ?? tasks
                 .Where(t => t.PropertyId is null)
                 .OrderBy(t => t.PropertyOrdinal)

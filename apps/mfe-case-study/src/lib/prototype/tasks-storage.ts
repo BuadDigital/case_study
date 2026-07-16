@@ -4,6 +4,7 @@ import {
   advanceWorkflowTaskAfterBourse,
   advanceWorkflowTaskAfterEnfath,
   confirmWorkflowTaskDistribution,
+  deleteWorkflowTaskSlot,
   deleteWorkflowTasksForPo,
   deleteWorkflowTasksForProperty,
   listWorkflowTasks,
@@ -14,6 +15,7 @@ import {
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
 import { apiErrorMessage, resolveApiError, workOrdersApiConfig } from "../work-orders-api-config";
+import { notifyWorkOrdersChanged } from "@platform/app-shared/prototype/work-orders-api-config";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import { hasRuntimeCapability } from "@platform/app-shared/prototype/runtime-access";
 import {
@@ -420,10 +422,40 @@ export async function deleteTasksForPo(poNumber: string): Promise<void> {
   notifyTasksChanged();
 }
 
+/** حذف خانة/معاملة دراسة حالة (العقار يُعلَّم محذوفاً مع السبب إن وُجد). */
+export async function deletePrimaryDataTransaction(
+  taskId: string,
+  reason: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const trimmed = reason.trim();
+  if (!trimmed) {
+    return { ok: false, error: "سبب الحذف مطلوب" };
+  }
+  const config = workOrdersApiConfig();
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
+  const result = await deleteWorkflowTaskSlot(config, taskId, trimmed);
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: resolveApiError(
+        result.kind,
+        "errors" in result ? result.errors : undefined,
+        "تعذّر حذف المعاملة",
+      ),
+    };
+  }
+  notifyTasksChanged();
+  notifyWorkOrdersChanged();
+  return { ok: true };
+}
+
 export async function advanceTaskAfterEnfath(
   taskId: string,
   property: PoPropertyIntake,
 ): Promise<AdvanceTaskResult> {
+  if (property.isRemoved) {
+    return { ok: false, error: "لا يمكن تقديم معاملة لعقار محذوف" };
+  }
   const config = workOrdersApiConfig();
   if (!config || !property.id) {
     return { ok: false, error: apiErrorMessage("auth") };

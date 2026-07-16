@@ -18,7 +18,8 @@ public interface IWorkOrderService
     Task<PriorDeedRegistrationDto?> FindPriorDeedAsync(
         string deedNumber,
         string? excludePoNumber,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        Guid? excludePropertyId = null);
     Task<IReadOnlyList<PendingBoursePropertyDto>> ListPendingBourseAsync(
         CancellationToken cancellationToken);
     Task<(WorkOrderDto? Result, Dictionary<string, string>? Errors)> CreateAsync(
@@ -51,6 +52,7 @@ public interface IWorkOrderService
     Task<(bool Ok, string? Error)> DeletePropertyAsync(
         string poNumber,
         Guid propertyId,
+        string reason,
         CancellationToken cancellationToken);
     Task<(bool Ok, string? Error)> CancelAsync(string poNumber, CancellationToken cancellationToken);
     Task<(bool Ok, string? Error)> StopAsync(string poNumber, CancellationToken cancellationToken);

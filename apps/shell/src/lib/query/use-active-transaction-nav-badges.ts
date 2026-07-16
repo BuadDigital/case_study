@@ -92,7 +92,7 @@ export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>>
       failures,
     ).length;
 
-    const distributionOpen = filterTasksForDistribution(mine).filter(
+    const distributionOpen = filterTasksForDistribution(mine, poByNumber).filter(
       (t) => t.status === "open" || t.status === "blocked",
     ).length;
 

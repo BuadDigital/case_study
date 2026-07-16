@@ -1733,6 +1733,9 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<int>("IdentifierType")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("IsRemoved")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("LocationMapUrl")
                         .HasMaxLength(1024)
                         .HasColumnType("character varying(1024)");
@@ -1767,6 +1770,13 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
 
                     b.Property<string>("RealEstateRegFileName")
                         .HasColumnType("text");
+
+                    b.Property<string>("RemovalReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("RemovedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("RequestNumber")
                         .HasMaxLength(64)

@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace RealEstateEval.Application.Contracts;
 
 public class TaskDistributionDraftDto
@@ -70,6 +72,13 @@ public class RevertWorkflowTaskPhaseRequest
 {
     /// <summary>Target phase: <c>enfath</c> or <c>bourse</c>.</summary>
     public string TargetPhase { get; set; } = "";
+}
+
+public class DeleteCaseStudySlotRequest
+{
+    /// <summary>سبب الحذف — إلزامي ويُحفظ مع العقار إن وُجد.</summary>
+    [MaxLength(500)]
+    public string Reason { get; set; } = "";
 }
 
 public class PatchWorkflowTaskRequest
