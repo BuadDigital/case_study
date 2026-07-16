@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { PoRow } from "@platform/app-shared/prototype/constants";
 import {
   isPoListStatusTerminal,
@@ -14,6 +14,8 @@ import {
 import {
   Button,
   Input,
+  KpiBand,
+  KpiCell,
   OperationalPanel,
   PageGutter,
   PageShell,
@@ -56,6 +58,7 @@ import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import {
   usePoListRowsQuery,
   usePropertyListItemsQuery,
+  useWorkflowTasksQuery,
 } from "@case-study/mfe/query/case-study-queries";
 import {
   canDeletePo,
@@ -70,6 +73,64 @@ type StatusFilter = PoListStatus | "";
 
 const PO_LIST_TOOLBAR_FIELD =
   "!h-[38px] !py-0 !leading-[38px] border-border-md bg-surface px-3 text-[13px] shadow-none";
+
+const TEAM_COLORS = ["#12284C", "#a4906f", "#22406e", "#8c7857", "#3f8f5f"];
+
+function teamInitial(name: string): string {
+  const trimmed = name.trim();
+  return trimmed ? trimmed.charAt(0) : "?";
+}
+
+function TeamStack({ members }: { members: string[] }) {
+  if (members.length === 0) {
+    return <span className="font-normal text-text-3">—</span>;
+  }
+  const shown = members.slice(0, 3);
+  const extra = members.length - shown.length;
+  return (
+    <div className="group/team relative inline-flex w-fit items-center">
+      {shown.map((name, i) => (
+        <span
+          key={`${name}-${i}`}
+          className={cn(
+            "grid size-7 shrink-0 place-items-center rounded-full border-2 border-surface text-[11px] font-bold text-white",
+            i > 0 && "-ms-2",
+          )}
+          style={{ backgroundColor: TEAM_COLORS[i % TEAM_COLORS.length] }}
+          title={name}
+        >
+          {teamInitial(name)}
+        </span>
+      ))}
+      {extra > 0 ? (
+        <span className="-ms-2 grid size-7 shrink-0 place-items-center rounded-full border-2 border-surface bg-surface-2 text-[11px] font-bold text-heading">
+          +{extra}
+        </span>
+      ) : null}
+      <div className="pointer-events-none invisible absolute end-0 top-[calc(100%+8px)] z-20 min-w-[190px] rounded-[10px] border border-border-md bg-surface p-2 opacity-0 shadow-[0_8px_24px_-8px_rgba(18,40,76,.28)] transition-[opacity,transform,visibility] duration-150 group-hover/team:visible group-hover/team:opacity-100">
+        <div className="px-2 pb-1.5 pt-0.5 text-[11px] font-bold text-text-3">
+          فريق المعاملة ({members.length})
+        </div>
+        {members.map((name, i) => (
+          <div
+            key={`pop-${name}-${i}`}
+            className="flex items-center gap-2.5 rounded-md px-2 py-1.5"
+          >
+            <span
+              className="grid size-[26px] shrink-0 place-items-center rounded-full text-[11px] font-bold text-white"
+              style={{ backgroundColor: TEAM_COLORS[i % TEAM_COLORS.length] }}
+            >
+              {teamInitial(name)}
+            </span>
+            <span className="whitespace-nowrap text-[13px] font-semibold text-heading">
+              {name}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function isDueSoon(iso: string): boolean {
   if (!iso) return false;
@@ -140,63 +201,6 @@ function PoStatusPill({ status }: { status: PoRow["status"] }) {
       />
       {label}
     </span>
-  );
-}
-
-function KpiCell({
-  first = false,
-  last = false,
-  icon,
-  iconClass,
-  label,
-  value,
-  valueClass,
-  sub,
-  dot = false,
-}: {
-  first?: boolean;
-  last?: boolean;
-  icon: ReactNode;
-  iconClass: string;
-  label: string;
-  value: ReactNode;
-  valueClass?: string;
-  sub: string;
-  dot?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "relative flex-1 px-6 py-5",
-        !last && "border-e border-border",
-        first &&
-          "before:absolute before:inset-y-0 before:start-0 before:w-[3px] before:bg-gold before:content-['']",
-      )}
-    >
-      <div className="mb-3.5 flex items-center gap-2.5">
-        <span
-          className={cn(
-            "grid size-[30px] shrink-0 place-items-center rounded-md",
-            iconClass,
-          )}
-        >
-          {icon}
-        </span>
-        <span className="text-[12.5px] font-medium text-text-2">{label}</span>
-      </div>
-      <div
-        className={cn(
-          "text-start text-[32px] font-extrabold leading-none text-heading tabular-nums",
-          valueClass,
-        )}
-      >
-        <bdi>{value}</bdi>
-      </div>
-      <div className="mt-2 flex items-center gap-1.5 text-[12px] text-text-3">
-        {dot ? <span className="size-1.5 rounded-full bg-gold" /> : null}
-        {sub}
-      </div>
-    </div>
   );
 }
 
@@ -385,7 +389,20 @@ export function PoListView() {
 
   const { data: rows, isPending: rowsPending } = usePoListRowsQuery();
   const { data: propertyItems } = usePropertyListItemsQuery();
+  const { data: workflowTasks } = useWorkflowTasksQuery();
   const list = useMemo(() => rows ?? [], [rows]);
+  const teamByPo = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const task of workflowTasks ?? []) {
+      const po = task.poNumber?.trim();
+      const name = task.assigneeName?.trim();
+      if (!po || !name || name === "—" || name === "-") continue;
+      const current = map.get(po) ?? [];
+      if (!current.includes(name)) current.push(name);
+      map.set(po, current);
+    }
+    return map;
+  }, [workflowTasks]);
   const deedIndex = useMemo(
     () => buildPoDeedIndex(propertyItems ?? []),
     [propertyItems],
@@ -561,10 +578,11 @@ export function PoListView() {
         />
       ) : null}
 
-      <PageShell variant="canvas" className="min-h-0 flex-1">
-        <div className="mb-6 flex shrink-0 flex-wrap overflow-hidden rounded-xl border border-border bg-surface shadow-card sm:flex-nowrap">
+      <PageShell variant="canvas" className="gap-3 py-4 sm:py-5">
+        <KpiBand className="mb-0 shrink-0">
           <KpiCell
             first
+            className="px-5 py-4"
             icon={<KpiClipboardIcon />}
             iconClass="bg-gold-soft text-gold-d"
             label="أوامر نشطة"
@@ -573,6 +591,7 @@ export function PoListView() {
             dot
           />
           <KpiCell
+            className="px-5 py-4"
             icon={<KpiAlertIcon />}
             iconClass="bg-[color-mix(in_srgb,var(--red)_15%,transparent)] text-red"
             label="متأخرة عن الاستحقاق"
@@ -581,6 +600,7 @@ export function PoListView() {
             sub="تحتاج معالجة فورية"
           />
           <KpiCell
+            className="px-5 py-4"
             icon={<KpiClockIcon />}
             iconClass="bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#b8791a]"
             label="تستحق خلال 48 ساعة"
@@ -589,6 +609,7 @@ export function PoListView() {
           />
           <KpiCell
             last
+            className="px-5 py-4"
             icon={<KpiCheckIcon />}
             iconClass="bg-[color-mix(in_srgb,#2f9e6b_16%,transparent)] text-[#2f9e6b]"
             label="عقارات أُنجزت اليوم"
@@ -596,9 +617,9 @@ export function PoListView() {
             valueClass="!text-[#2f9e6b]"
             sub="عبر جميع الأوامر"
           />
-        </div>
+        </KpiBand>
 
-        <PageToolbar className="mb-3 shrink-0 border-b-0 bg-transparent px-0 py-0">
+        <PageToolbar className="mb-0 shrink-0 border-b-0 bg-transparent px-0 py-0">
               <div className="relative min-w-[min(100%,220px)] flex-1 basis-[240px] max-w-[320px]">
                 <span className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-text-3">
                   <SearchIcon />
@@ -676,7 +697,7 @@ export function PoListView() {
               ) : null}
           </PageToolbar>
 
-        <OperationalPanel className="min-h-0 shrink-0">
+        <OperationalPanel className="shrink-0 overflow-visible">
           <Table pending={!statsReady}>
                 <THead>
                   <Tr hoverable={false}>
@@ -691,7 +712,7 @@ export function PoListView() {
                       </button>
                     </Th>
                     <Th>نوع الإسناد</Th>
-                    <Th className="text-center">العقارات</Th>
+                    <Th className="text-center">عدد الصكوك</Th>
                     <Th className="text-center">المكتملة</Th>
                     <Th>التقدم</Th>
                     <Th>الحالة</Th>
@@ -716,16 +737,17 @@ export function PoListView() {
                       </button>
                     </Th>
                     <Th>أخصائي الإسناد</Th>
+                    <Th>الفريق</Th>
                     <ThAction aria-label="إجراءات" />
                   </Tr>
                 </THead>
                 <TBody>
                   {!statsReady ? (
-                    <SkeletonTableRows rows={8} cols={10} />
+                    <SkeletonTableRows rows={10} cols={11} />
                   ) : filtered.length === 0 ? (
                     <Tr hoverable={false}>
                       <Td
-                        colSpan={10}
+                        colSpan={11}
                         className="cursor-default py-10 text-center text-[13px] text-text-3"
                       >
                         <div className="flex flex-col items-center justify-center gap-2">
@@ -762,6 +784,16 @@ export function PoListView() {
                         entry.view === "property"
                           ? `${p.id}-${deedEntry!.propertyId}`
                           : p.id;
+                      const projectTip = p.project?.trim() || "";
+                      const teamMembers = (() => {
+                        const fromTasks = teamByPo.get(p.id) ?? [];
+                        if (fromTasks.length > 0) return fromTasks;
+                        const specialist =
+                          p.specialist?.trim() && p.specialist !== "—"
+                            ? [p.specialist.trim()]
+                            : [];
+                        return specialist;
+                      })();
 
                       return (
                         <Tr
@@ -774,12 +806,19 @@ export function PoListView() {
                           )}
                           onClick={() => router.push(target)}
                         >
-                          <Td>
-                            <PoNumber
-                              value={p.id}
-                              link
-                              className="text-[13.5px] !font-bold text-primary"
-                            />
+                          <Td className="overflow-visible">
+                            <span className="group/po relative inline-block w-fit">
+                              <PoNumber
+                                value={p.id}
+                                link
+                                className="text-[13.5px] !font-bold text-primary"
+                              />
+                              {projectTip ? (
+                                <span className="pointer-events-none invisible absolute start-0 top-[calc(100%+8px)] z-25 max-w-[260px] whitespace-normal rounded-lg bg-ink px-2.5 py-1.5 text-[12px] font-semibold leading-snug text-white opacity-0 shadow-[0_8px_22px_-8px_rgba(18,40,76,.4)] transition-[opacity,transform,visibility] duration-150 group-hover/po:visible group-hover/po:opacity-100">
+                                  {projectTip}
+                                </span>
+                              ) : null}
+                            </span>
                           </Td>
                           <Td className="whitespace-nowrap">
                             <span className="inline-flex items-center rounded-md border border-border-md bg-surface-2 px-2.5 py-[3px] text-[12px] font-medium text-text-2">
@@ -841,11 +880,14 @@ export function PoListView() {
                             )}
                           </Td>
                           <Td className="whitespace-nowrap text-[13px] font-semibold text-heading">
-                            {p.specialist ? (
+                            {p.specialist && p.specialist !== "—" ? (
                               p.specialist
                             ) : (
                               <span className="font-normal text-text-3">—</span>
                             )}
+                          </Td>
+                          <Td className="overflow-visible whitespace-nowrap">
+                            <TeamStack members={teamMembers} />
                           </Td>
                           <TdAction onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-center">
@@ -875,38 +917,67 @@ export function PoListView() {
         </OperationalPanel>
 
           <PageGutter className="flex shrink-0 items-center justify-between bg-transparent px-0 py-3">
-              <span className="text-xs text-text-3">
+              <span className="text-[13px] text-text-3">
                 {statsReady
-                  ? `عرض ${rangeStart}–${rangeEnd} من ${filtered.length} نتيجة`
+                  ? (
+                      <>
+                        عرض{" "}
+                        <b className="font-bold text-heading">
+                          {rangeStart}–{rangeEnd}
+                        </b>{" "}
+                        من{" "}
+                        <b className="font-bold text-heading">
+                          {filtered.length}
+                        </b>{" "}
+                        نتيجة
+                      </>
+                    )
                   : "—"}
               </span>
-              <div className="flex gap-1">
+              <div className="flex items-center gap-1.5">
                 <Button
                   type="button"
                   size="sm"
                   variant="default"
-                  className="h-[30px] w-[30px] p-0"
+                  className="h-[30px] w-[30px] p-0 disabled:opacity-40"
                   disabled={safePage <= 1}
                   onClick={() => setPage((n) => Math.max(1, n - 1))}
                   aria-label="الصفحة السابقة"
                 >
                   ›
                 </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="primary"
-                  className="h-[30px] w-[30px] p-0"
-                  aria-current="page"
-                  disabled
-                >
-                  {safePage}
-                </Button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((n) => {
+                    if (totalPages <= 7) return true;
+                    if (n === 1 || n === totalPages) return true;
+                    return Math.abs(n - safePage) <= 1;
+                  })
+                  .map((n, idx, arr) => {
+                    const prev = arr[idx - 1];
+                    const showGap = prev != null && n - prev > 1;
+                    return (
+                      <span key={n} className="contents">
+                        {showGap ? (
+                          <span className="px-1 text-[12px] text-text-3">…</span>
+                        ) : null}
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={n === safePage ? "primary" : "default"}
+                          className="h-[30px] min-w-[30px] px-1.5"
+                          aria-current={n === safePage ? "page" : undefined}
+                          onClick={() => setPage(n)}
+                        >
+                          {n}
+                        </Button>
+                      </span>
+                    );
+                  })}
                 <Button
                   type="button"
                   size="sm"
                   variant="default"
-                  className="h-[30px] w-[30px] p-0"
+                  className="h-[30px] w-[30px] p-0 disabled:opacity-40"
                   disabled={safePage >= totalPages}
                   onClick={() => setPage((n) => Math.min(totalPages, n + 1))}
                   aria-label="الصفحة التالية"

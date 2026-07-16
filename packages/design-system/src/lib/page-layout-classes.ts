@@ -12,13 +12,14 @@ export const pageToolbarClassName =
 
 export const emptyStateClassName = "px-4 py-8 text-center";
 
-/** KPI-style canvas — light gray background with padded content rhythm. */
+/** KPI-style canvas — light gray background with padded content rhythm.
+ *  Height follows content (no nested scroll); the shell `#content` scrolls the page. */
 export const operationalPageBodyClassName =
-  "flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-bg px-4 py-4 sm:py-5";
+  "flex w-full flex-col gap-3 bg-bg px-4 py-4 sm:py-5";
 
 /** White content panel on the operational canvas (tables, toolbars, forms). */
 export const operationalPanelClassName =
-  "flex min-w-0 flex-col overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-none";
+  "flex min-w-0 flex-col overflow-visible rounded-[var(--radius-lg)] border border-border bg-surface shadow-none";
 
 /** Stats row flush with queue tables — full width, shared dividers. */
 export const statGridFlushClassName =

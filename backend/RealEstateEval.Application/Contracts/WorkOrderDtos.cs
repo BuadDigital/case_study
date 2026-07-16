@@ -176,6 +176,8 @@ public class WorkOrderListItemDto
     public string ReceivedFromEnfathAt { get; set; } = "";
     public string DueDateAt { get; set; } = "";
     public string? AssignmentSpecialist { get; set; }
+    public string? WorkOrderDescription { get; set; }
+    public string? PropertiesRegion { get; set; }
     public string CreatedAtUtc { get; set; } = "";
 }
 

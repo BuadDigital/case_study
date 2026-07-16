@@ -4,10 +4,20 @@ import { cn } from "../lib/cn";
 export function Table({
   className,
   pending,
+  wrapClassName,
   ...props
-}: TableHTMLAttributes<HTMLTableElement> & { pending?: boolean }) {
+}: TableHTMLAttributes<HTMLTableElement> & {
+  pending?: boolean;
+  /** Classes for the outer scroll/clip wrapper around the `<table>`. */
+  wrapClassName?: string;
+}) {
   return (
-    <div className="min-w-0 overflow-x-auto [-webkit-overflow-scrolling:touch]">
+    <div
+      className={cn(
+        "min-w-0 overflow-x-auto overflow-y-hidden [-webkit-overflow-scrolling:touch]",
+        wrapClassName,
+      )}
+    >
       <table
         data-pending={pending ? "true" : undefined}
         className={cn(

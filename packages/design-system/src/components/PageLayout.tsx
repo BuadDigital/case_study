@@ -40,8 +40,9 @@ export function PageShell({
   return (
     <div
       className={cn(
-        "flex min-h-0 w-full flex-1 flex-col rounded-none border-none shadow-none",
-        variant === "sheet" && "overflow-hidden bg-surface",
+        "w-full rounded-none border-none shadow-none",
+        variant === "sheet" &&
+          "flex min-h-0 flex-1 flex-col overflow-hidden bg-surface",
         variant === "canvas" && operationalPageBodyClassName,
         className,
       )}

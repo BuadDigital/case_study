@@ -87,6 +87,8 @@ export type WorkOrderListItemDto = {
   receivedFromEnfathAt: string;
   dueDateAt: string;
   assignmentSpecialist?: string;
+  workOrderDescription?: string;
+  propertiesRegion?: string;
   createdAtUtc?: string;
 };
 
