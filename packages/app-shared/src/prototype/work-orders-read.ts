@@ -18,6 +18,8 @@ import {
 
 function listItemToPoRow(item: WorkOrderListItemDto): PoRow {
   const expected = item.expectedPropertyCount || item.propertyCount || 0;
+  const specialist = item.assignmentSpecialist?.trim() || "";
+  const project = item.workOrderDescription?.trim() || undefined;
   return {
     id: item.poNumber,
     type: item.assignmentType || "—",
@@ -27,7 +29,10 @@ function listItemToPoRow(item: WorkOrderListItemDto): PoRow {
     status: normalizePoListStatus(item.status),
     date: item.receivedFromEnfathAt,
     dueDate: item.dueDateAt,
-    specialist: item.assignmentSpecialist?.trim() || "—",
+    specialist: specialist || "—",
+    project,
+    /** يُستبدل في الواجهة بمسندي مهام أمر العمل عند توفرهم */
+    team: specialist ? [specialist] : [],
     createdAtUtc: item.createdAtUtc,
   };
 }

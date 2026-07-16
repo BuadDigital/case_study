@@ -47,6 +47,7 @@ export {
   StatSkeleton,
   type StatAccent,
 } from "./components/StatCard";
+export { KpiBand, KpiCell } from "./components/KpiBand";
 export {
   ModalOverlay,
   ModalCard,

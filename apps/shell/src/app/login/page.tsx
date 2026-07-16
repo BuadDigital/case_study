@@ -8,6 +8,7 @@ import { PROTOTYPE_LOGIN_USERS, sortLoginUsersForPicker } from "@platform/app-sh
 import { defaultLandingPath } from "@platform/app-shared/prototype/page-access";
 import { pagesFromPermissions } from "@platform/app-shared/prototype/permissions-pages";
 import { Button, Card, Label, Select, useToast } from "@platform/design-system";
+import { EjadaLogo } from "@/components/views/EjadaLogo";
 
 type LoginResponse = {
   token: string;
@@ -150,33 +151,13 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-svh w-full items-center justify-center bg-surface-2 p-4 sm:p-10">
-      <Card className="w-full max-w-md border-s-[3px] border-s-primary p-6 sm:p-10">
-        <div className="mb-7 flex items-center gap-3">
-          <div
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary text-white"
-            aria-hidden
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-              <polyline points="9,22 9,12 15,12 15,22" />
-            </svg>
-          </div>
-          <div>
-            <div className="text-lg font-semibold text-text">
-              نظام إجادة الداخلي
-            </div>
-            <div className="text-sm text-text-3">دراسة الحالة</div>
-          </div>
+      <Card className="w-full max-w-md border-s-[3px] border-s-gold p-6 sm:p-10">
+        <div className="mb-7 flex flex-col items-center gap-3 text-center">
+          <EjadaLogo variant="onLight" className="h-auto w-[180px] max-w-full" />
+          <div className="text-sm text-text-3">نظام دراسة الحالة</div>
         </div>
 
-        <h1 className="mb-1 text-xl font-semibold text-text">تسجيل الدخول</h1>
+        <h1 className="mb-1 text-xl font-semibold text-heading">تسجيل الدخول</h1>
         <p className="mb-6 text-[15px] leading-relaxed text-text-2">
           اختر حسابًا نشطًا من قاعدة البيانات للدخول مباشرة — بدون كلمة مرور.
         </p>

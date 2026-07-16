@@ -338,6 +338,10 @@ export type PoRow = {
   date: string;
   dueDate: string;
   specialist: string;
+  /** اسم المشروع / وصف أمر العمل — يظهر كتلميح على رقم PO */
+  project?: string;
+  /** أعضاء فريق المعاملة (أفاتارات متراكبة في القائمة) */
+  team?: string[];
   /** ISO-8601 — used to show newest POs first in the list. */
   createdAtUtc?: string;
 };

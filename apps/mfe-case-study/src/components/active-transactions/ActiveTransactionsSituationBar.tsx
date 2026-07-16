@@ -2,71 +2,55 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import {
-  StatCard,
-  StatGrid,
-  StatLabel,
-  StatSub,
-  StatValue,
-  cn,
-  type StatAccent,
-} from "@platform/design-system";
+import { KpiBand, KpiCell, cn } from "@platform/design-system";
 import type { PageId } from "@platform/types";
 import { useActiveTransactionPageSituation } from "@case-study/mfe/query/use-active-transaction-page-situation";
 import type { SituationTone } from "@case-study/mfe/lib/prototype/active-transaction-page-situation";
 
-const toneAccent: Record<SituationTone, StatAccent> = {
-  blue: "blue",
-  warn: "amber",
-  green: "green",
-  red: "red",
+const toneIconClass: Record<SituationTone, string> = {
+  blue: "bg-[color-mix(in_srgb,var(--info)_16%,transparent)] text-info-text",
+  warn: "bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#b8791a]",
+  green: "bg-[color-mix(in_srgb,#2f9e6b_16%,transparent)] text-[#2f9e6b]",
+  red: "bg-[color-mix(in_srgb,var(--red)_15%,transparent)] text-red",
 };
 
-function SituationCard({
-  label,
-  value,
-  sub,
-  tone,
-  href,
-  unifiedTypography = false,
-}: {
-  label: string;
-  value: number | undefined;
-  sub: string;
-  tone: SituationTone;
-  href?: string;
-  unifiedTypography?: boolean;
-}) {
-  const inner = (
-    <>
-      <StatLabel>{label}</StatLabel>
-      <StatValue
-        value={value}
-        countUp
-        className={unifiedTypography ? "font-semibold" : undefined}
-      />
-      {sub ? (
-        <StatSub className={unifiedTypography ? "text-[11px]" : undefined}>
-          {sub}
-        </StatSub>
-      ) : null}
-    </>
-  );
+const toneValueClass: Partial<Record<SituationTone, string>> = {
+  green: "!text-[#2f9e6b]",
+  red: "!text-red",
+};
 
-  if (href) {
+function SituationIcon({ tone }: { tone: SituationTone }) {
+  if (tone === "red") {
     return (
-      <Link
-        href={href}
-        className={cn(
-          "block text-inherit no-underline transition-[box-shadow,transform] duration-150 hover:-translate-y-px hover:shadow-[0_2px_10px_rgba(0,0,0,0.08)]",
-        )}
-      >
-        <StatCard accent={toneAccent[tone]}>{inner}</StatCard>
-      </Link>
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+        <path d="M12 9v4M12 17h.01" />
+      </svg>
     );
   }
-
-  return <StatCard accent={toneAccent[tone]}>{inner}</StatCard>;
+  if (tone === "warn") {
+    return (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 6v6l4 2" />
+      </svg>
+    );
+  }
+  if (tone === "green") {
+    return (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+        <path d="m9 11 3 3L22 4" />
+      </svg>
+    );
+  }
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="8" y="2" width="8" height="4" rx="1" />
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+      <path d="M9 12h6M9 16h6" />
+    </svg>
+  );
 }
 
 export function ActiveTransactionsSituationBar({
@@ -78,25 +62,49 @@ export function ActiveTransactionsSituationBar({
   if (!situation) return null;
 
   const { cards, values } = situation;
-  const gridCols = (cards.length <= 4 ? cards.length : 4) as 2 | 3 | 4;
-  const gridClassName =
-    cards.length === 5 ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : undefined;
 
-  const rendered: ReactNode[] = cards.map((card) => (
-    <SituationCard
-      key={card.key}
-      label={card.label}
-      value={values[card.key]}
-      sub={card.sub}
-      tone={card.tone}
-      href={card.href}
-      unifiedTypography={pageId === "active-primary-data"}
-    />
-  ));
+  const rendered: ReactNode[] = cards.map((card, index) => {
+    const isFirst = index === 0;
+    const isLast = index === cards.length - 1;
+    const cell = (
+      <KpiCell
+        first={isFirst}
+        last={isLast}
+        icon={<SituationIcon tone={card.tone} />}
+        iconClass={toneIconClass[card.tone]}
+        label={card.label}
+        value={values[card.key] ?? "—"}
+        valueClass={toneValueClass[card.tone]}
+        sub={card.sub}
+        dot={isFirst}
+      />
+    );
 
-  return (
-    <StatGrid cols={gridCols} className={gridClassName}>
-      {rendered}
-    </StatGrid>
-  );
+    if (!card.href) return <div key={card.key} className="contents">{cell}</div>;
+
+    return (
+      <Link
+        key={card.key}
+        href={card.href}
+        className={cn(
+          "flex min-w-0 flex-1 text-inherit no-underline transition-opacity hover:opacity-90",
+          !isLast && "border-e border-border [&_.relative]:border-e-0",
+        )}
+      >
+        <KpiCell
+          first={isFirst}
+          last
+          icon={<SituationIcon tone={card.tone} />}
+          iconClass={toneIconClass[card.tone]}
+          label={card.label}
+          value={values[card.key] ?? "—"}
+          valueClass={toneValueClass[card.tone]}
+          sub={card.sub}
+          dot={isFirst}
+        />
+      </Link>
+    );
+  });
+
+  return <KpiBand className="mb-3">{rendered}</KpiBand>;
 }
