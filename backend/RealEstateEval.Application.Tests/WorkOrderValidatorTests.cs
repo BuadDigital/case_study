@@ -87,7 +87,7 @@ public class WorkOrderValidatorTests
     public void ValidatePropertyEnfath_requires_assignment_doc_for_execution()
     {
         var dto = ValidDeedProperty();
-        dto.AssignmentDocFileName = null;
+        dto.AssignmentDocFileNames = [];
 
         var errors = WorkOrderValidator.ValidatePropertyEnfath(
             dto,
@@ -98,7 +98,7 @@ public class WorkOrderValidatorTests
 
         Assert.Equal(
             "ارفع قرار الإسناد الخاص بهذا العقار (مطلوب لمسار التنفيذ)",
-            errors["assignmentDocFileName"]);
+            errors["assignmentDocFileNames"]);
     }
 
     [Fact]
@@ -107,7 +107,7 @@ public class WorkOrderValidatorTests
         var dto = ValidDeedProperty();
         dto.IdentifierType = PropertyIdentifierTypeLabels.RealEstateReg;
         dto.RealEstateRegFileName = null;
-        dto.AssignmentDocFileName = "decree.pdf";
+        dto.AssignmentDocFileNames = ["decree.pdf"];
 
         var errors = WorkOrderValidator.ValidatePropertyEnfath(
             dto,
@@ -117,7 +117,7 @@ public class WorkOrderValidatorTests
             (_, _) => false);
 
         Assert.Contains("realEstateRegFileName", errors.Keys);
-        Assert.DoesNotContain(errors, e => e.Key == "assignmentDocFileName");
+        Assert.DoesNotContain(errors, e => e.Key == "assignmentDocFileNames");
     }
 
     [Fact]
@@ -194,8 +194,8 @@ public class WorkOrderValidatorTests
 
         Assert.Contains("city", errors.Keys);
         Assert.Contains("district", errors.Keys);
-        Assert.Contains("classification", errors.Keys);
-        Assert.Contains("propertyType", errors.Keys);
+        Assert.DoesNotContain("classification", errors.Keys);
+        Assert.DoesNotContain("propertyType", errors.Keys);
     }
 
     [Fact]
@@ -213,6 +213,33 @@ public class WorkOrderValidatorTests
 
         Assert.Equal("قيمة القيود غير صالحة", errors["restrictionsPresent"]);
         Assert.Equal("قيمة توفر الحدود غير صالحة", errors["boundariesAvailability"]);
+    }
+
+    [Fact]
+    public void ValidatePropertyBourse_requires_restriction_type_when_restrictions_present()
+    {
+        var errors = WorkOrderValidator.ValidatePropertyBourse(new UpdatePropertyBourseRequest
+        {
+            City = "Riyadh",
+            District = "Al Olaya",
+            RestrictionsPresent = "yes",
+        });
+
+        Assert.Equal("نوع القيد مطلوب", errors["restrictionType"]);
+    }
+
+    [Fact]
+    public void ValidatePropertyBourse_requires_other_reason_when_restriction_type_other()
+    {
+        var errors = WorkOrderValidator.ValidatePropertyBourse(new UpdatePropertyBourseRequest
+        {
+            City = "Riyadh",
+            District = "Al Olaya",
+            RestrictionsPresent = "yes",
+            RestrictionType = "other",
+        });
+
+        Assert.Equal("سبب القيد مطلوب عند اختيار أخرى", errors["restrictionOtherReason"]);
     }
 
     [Fact]
@@ -249,7 +276,7 @@ public class WorkOrderValidatorTests
         AssignmentMandateDate = "2026-01-01",
         DeedDate = "2026-01-01",
         OwnerName = "Owner",
-        DelegationLetterFileName = "letter.pdf",
+        DelegationLetterFileNames = ["letter.pdf"],
         Contacts =
         [
             new PropertyContactDto { Phone = "0501234567", Role = "ضابط" },

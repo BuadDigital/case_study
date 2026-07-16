@@ -5,9 +5,9 @@ import {
   boundariesAvailabilityLabel,
   formatPropertyDeedDisplay,
   formatPropertyLocation,
+  formatPropertyRestrictionsLine,
   formatPropertyTypeLine,
   hasBourseDetailFields,
-  restrictionsPresentLabel,
   showsCourtFields,
   skipsBourseForIdentifier,
   type PoIntakeRecord,
@@ -113,7 +113,7 @@ export function PoDetailPropertyCard({
                 القيود
               </span>
               <span className="text-xs leading-snug text-text">
-                {restrictionsPresentLabel(property.restrictionsPresent) || "—"}
+                {formatPropertyRestrictionsLine(property) || "—"}
               </span>
             </div>
             <div className="flex min-w-0 flex-col gap-0.5">
@@ -153,12 +153,19 @@ export function PoDetailPropertyCard({
           <span className="text-[10px] font-semibold text-text-3">
             مرفق قرار الإسناد
           </span>
-          <AssignmentDocAttachment
-            poNumber={poNumber}
-            propertyId={property.id}
-            fileName={property.assignmentDocFileName}
-            variant="card"
-          />
+          {property.assignmentDocFileNames.length === 0 ? (
+            <span className="text-[11px] text-text-3">غير مرفق</span>
+          ) : (
+            property.assignmentDocFileNames.map((fileName) => (
+              <AssignmentDocAttachment
+                key={fileName}
+                poNumber={poNumber}
+                propertyId={property.id}
+                fileName={fileName}
+                variant="card"
+              />
+            ))
+          )}
         </div>
       ) : null}
     </article>

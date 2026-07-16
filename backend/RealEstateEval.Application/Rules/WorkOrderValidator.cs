@@ -94,8 +94,8 @@ public static class WorkOrderValidator
                 errors["court"] = "المحكمة مطلوبة";
             if (string.IsNullOrWhiteSpace(dto.Circuit))
                 errors["circuit"] = "الدائرة مطلوبة";
-            if (string.IsNullOrWhiteSpace(dto.DelegationLetterFileName))
-                errors["delegationLetterFileName"] = "خطاب التفويض مطلوب";
+            if (dto.DelegationLetterFileNames.All(string.IsNullOrWhiteSpace))
+                errors["delegationLetterFileNames"] = "خطاب التفويض مطلوب";
 
             if (idType == PropertyIdentifierType.RealEstateRegistration &&
                 string.IsNullOrWhiteSpace(dto.RealEstateRegFileName))
@@ -112,9 +112,9 @@ public static class WorkOrderValidator
         }
 
         if (RequiresAssignmentDecree(assignmentType) &&
-            string.IsNullOrWhiteSpace(dto.AssignmentDocFileName))
+            dto.AssignmentDocFileNames.All(string.IsNullOrWhiteSpace))
         {
-            errors["assignmentDocFileName"] =
+            errors["assignmentDocFileNames"] =
                 "ارفع قرار الإسناد الخاص بهذا العقار (مطلوب لمسار التنفيذ)";
         }
 
@@ -132,16 +132,30 @@ public static class WorkOrderValidator
             errors["city"] = "المدينة مطلوبة";
         if (string.IsNullOrWhiteSpace(dto.District))
             errors["district"] = "الحي مطلوب";
-        if (string.IsNullOrWhiteSpace(dto.Classification))
-            errors["classification"] = "التصنيف مطلوب";
-        if (string.IsNullOrWhiteSpace(dto.PropertyType))
-            errors["propertyType"] = "نوع العقار مطلوب";
 
         if (!string.IsNullOrWhiteSpace(dto.RestrictionsPresent))
         {
             var r = dto.RestrictionsPresent.Trim().ToLowerInvariant();
             if (r is not "yes" and not "no")
                 errors["restrictionsPresent"] = "قيمة القيود غير صالحة";
+        }
+
+        var hasRestrictions = string.Equals(
+            dto.RestrictionsPresent?.Trim(),
+            "yes",
+            StringComparison.OrdinalIgnoreCase);
+        var restrictionType = dto.RestrictionType?.Trim().ToLowerInvariant() ?? "";
+        if (hasRestrictions)
+        {
+            if (restrictionType is not "mortgaged" and not "seized" and not "suspended" and not "other")
+                errors["restrictionType"] = "نوع القيد مطلوب";
+            else if (restrictionType == "other" && string.IsNullOrWhiteSpace(dto.RestrictionOtherReason))
+                errors["restrictionOtherReason"] = "سبب القيد مطلوب عند اختيار أخرى";
+        }
+        else if (!string.IsNullOrWhiteSpace(restrictionType) &&
+                 restrictionType is not "mortgaged" and not "seized" and not "suspended" and not "other")
+        {
+            errors["restrictionType"] = "قيمة نوع القيد غير صالحة";
         }
 
         if (!string.IsNullOrWhiteSpace(dto.BoundariesAvailability))
@@ -188,22 +202,32 @@ public static class WorkOrderValidator
         for (var i = 0; i < dto.Contacts.Count; i++)
         {
             var c = dto.Contacts[i];
-            var phone = c.Phone.Trim();
+            var phones = SplitPhones(c.Phone);
             var role = c.Role.Trim();
-            if (string.IsNullOrEmpty(phone) && string.IsNullOrEmpty(role))
+            if (phones.Count == 0 && string.IsNullOrEmpty(role))
                 continue;
-            if (string.IsNullOrEmpty(phone))
+            if (phones.Count == 0)
                 errors[$"contact_phone_{i}"] = "رقم الجوال مطلوب";
-            else if (CountPhoneDigits(phone) < 10)
-                errors[$"contact_phone_{i}"] = "رقم الجوال يجب أن يكون 10 أرقام على الأقل";
+            else if (phones.Any(p => CountPhoneDigits(p) < 10))
+                errors[$"contact_phone_{i}"] =
+                    "كل رقم جوال يجب أن يكون 10 أرقام على الأقل (افصل بينها بمسافة)";
             if (string.IsNullOrEmpty(role))
                 errors[$"contact_role_{i}"] = "صفة الضابط مطلوبة";
-            if (CountPhoneDigits(phone) >= 10 && !string.IsNullOrEmpty(role))
+            if (phones.Count > 0 &&
+                phones.All(p => CountPhoneDigits(p) >= 10) &&
+                !string.IsNullOrEmpty(role))
                 hasContact = true;
         }
         if (!hasContact)
             errors["_contacts"] = "أضف ضابط اتصال واحداً على الأقل (جوال + صفة)";
     }
+
+    private static List<string> SplitPhones(string? phone) =>
+        (phone ?? "")
+            .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
+            .Select(p => new string(p.Where(char.IsDigit).ToArray()))
+            .Where(p => p.Length > 0)
+            .ToList();
 
     private static int CountPhoneDigits(string phone) =>
         phone.Count(char.IsDigit);

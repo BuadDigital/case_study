@@ -20,6 +20,8 @@ public class WorkOrderPropertyDto
     public string? DeedDate { get; set; }
     public string? OwnerName { get; set; }
     public string? RestrictionsPresent { get; set; }
+    public string? RestrictionType { get; set; }
+    public string? RestrictionOtherReason { get; set; }
     public string? BoundariesAvailability { get; set; }
     public string? BoundariesExternalDocName { get; set; }
     public string? NorthBoundary { get; set; }
@@ -38,8 +40,8 @@ public class WorkOrderPropertyDto
     public string? Circuit { get; set; }
     public string Classification { get; set; } = "";
     public string PropertyType { get; set; } = "";
-    public string? AssignmentDocFileName { get; set; }
-    public string? DelegationLetterFileName { get; set; }
+    public List<string> AssignmentDocFileNames { get; set; } = [];
+    public List<string> DelegationLetterFileNames { get; set; } = [];
     public List<string> OtherDocumentFileNames { get; set; } = [];
     public string? RealEstateRegFileName { get; set; }
     public bool BourseDataCompleted { get; set; }
@@ -132,6 +134,8 @@ public class UpdatePropertyBourseRequest
     public string? Area { get; set; }
     public string? DeedStatus { get; set; }
     public string? RestrictionsPresent { get; set; }
+    public string? RestrictionType { get; set; }
+    public string? RestrictionOtherReason { get; set; }
     public string? BoundariesAvailability { get; set; }
     public string? BoundariesExternalDocName { get; set; }
     public string? NorthBoundary { get; set; }
@@ -204,6 +208,8 @@ public class PriorDeedRegistrationDto
     public string? Area { get; set; }
     public string? DeedStatus { get; set; }
     public string? RestrictionsPresent { get; set; }
+    public string? RestrictionType { get; set; }
+    public string? RestrictionOtherReason { get; set; }
     public string? BoundariesAvailability { get; set; }
     public string? BoundariesExternalDocName { get; set; }
     public string? NorthBoundary { get; set; }

@@ -361,10 +361,7 @@ function ActiveTransactionsNavDropdown({
 
   const childActive = (tx: ActiveTransactionNavItem) =>
     currentPage === tx.id ||
-    (tx.id === "active-case-study" && onCaseStudyWorkspace) ||
-    (isPartyTaskPage(tx.id) && onTaskWork) ||
-    ((tx.id === "active-primary-data" || tx.id === "active-distribution") &&
-      onTaskWork);
+    (tx.id === "active-case-study" && onCaseStudyWorkspace);
 
   return (
     <div className="my-0.5">

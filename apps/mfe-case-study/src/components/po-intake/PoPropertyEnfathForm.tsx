@@ -1,10 +1,8 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BOURSE_INQUIRY_IDENTIFIER_STATUS,
-  CLASSIFICATION_OPTIONS,
   isBourseInquiryIdentifier,
-  PROPERTY_CLASSIFICATIONS,
   requiresAssignmentDecree,
   requiredPropertyIdentifierDigitLength,
   sanitizePropertyIdentifierInput,
@@ -16,6 +14,7 @@ import {
 import {
   cacheAssignmentDoc,
   cacheDelegationDoc,
+  removeCachedPropertyDoc,
 } from "../../lib/prototype/assignment-doc-attachments";
 import { findPriorDeedFull } from "../../lib/prototype/po-intake-storage";
 import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
@@ -64,7 +63,7 @@ function selectIdentifierType(
 ) {
   onPatch("identifierType", type);
   if (type === "bourse_inquiry") {
-    onPatch("delegationLetterFileName", "");
+    onPatch("delegationLetterFileNames", []);
   } else if (type === "deed" || type === "real_estate_reg") {
     onPatch("city", "");
   }
@@ -83,6 +82,9 @@ export function PoPropertyEnfathForm({
 }: Props) {
   const { showToast } = useToast();
   const attachPo = poNumber?.trim() || excludePoNumber?.trim() || "";
+  /** Current PO must never count as a "prior" registration (e.g. after phase revert). */
+  const priorExcludePo = excludePoNumber?.trim() || poNumber?.trim() || undefined;
+  const priorExcludePropertyId = property.id?.trim() || undefined;
   const [priorPo, setPriorPo] = useState<string | null>(null);
   const showAssignmentDecree = requiresAssignmentDecree(assignmentType);
   const showCourt = showsCourtFields(assignmentType);
@@ -96,19 +98,23 @@ export function PoPropertyEnfathForm({
       sanitizePropertyIdentifierInput(value, property.identifierType),
     );
   };
-  const propertyTypes = useMemo(() => {
-    const c = property.classification;
-    return c ? (PROPERTY_CLASSIFICATIONS[c] ?? []) : [];
-  }, [property.classification]);
 
   useEffect(() => {
     const deed = property.deedNumber.trim();
-    if (!deed) return;
+    if (!deed) {
+      setPriorPo(null);
+      return;
+    }
     let cancelled = false;
-    void findPriorDeedFull(deed, excludePoNumber)
+    void findPriorDeedFull(deed, priorExcludePo, priorExcludePropertyId)
       .then((hit) => {
         if (cancelled) return;
-        setPriorPo(hit?.poNumber ?? null);
+        const hitPo = hit?.poNumber?.trim() || null;
+        if (hitPo && priorExcludePo && hitPo === priorExcludePo) {
+          setPriorPo(null);
+          return;
+        }
+        setPriorPo(hitPo);
         if (hit) {
           if (hit.deedDate && !property.deedDate) onPatch("deedDate", hit.deedDate);
           if (hit.ownerName && !property.ownerName) onPatch("ownerName", hit.ownerName);
@@ -137,7 +143,8 @@ export function PoPropertyEnfathForm({
     };
   }, [
     property.deedNumber,
-    excludePoNumber,
+    priorExcludePo,
+    priorExcludePropertyId,
     isBourseId,
     property.deedDate,
     property.ownerName,
@@ -158,7 +165,7 @@ export function PoPropertyEnfathForm({
         <Note tone="info" className="mb-3">
           {isBourseId
             ? "مسار استعلام البورصة — أدخل البيانات الأولية وبيانات البورصة معاً."
-            : "بيانات مرحلة إنفاذ — تُكمّل بيانات البورصة (المدينة، التصنيف، الحدود) لاحقاً من «استعلام البورصة»."}
+            : "بيانات مرحلة إنفاذ — تُكمّل بيانات البورصة (المدينة، الحي، الحدود) لاحقاً من «استعلام البورصة»."}
         </Note>
       ) : null}
 
@@ -244,15 +251,6 @@ export function PoPropertyEnfathForm({
             onChange={(v) => onPatch("deedDate", v)}
           />
           <RegField
-            id="request_number_bourse"
-            label="رقم الطلب"
-            required
-            dir="ltr"
-            value={property.requestNumber}
-            error={fieldErrors.requestNumber}
-            onChange={(v) => onPatch("requestNumber", v)}
-          />
-          <RegField
             id="assignment_mandate_number_bourse"
             label="رقم التكليف"
             required
@@ -271,21 +269,32 @@ export function PoPropertyEnfathForm({
             onChange={(v) => onPatch("assignmentMandateDate", v)}
           />
           <RegField
-            id="plan_number_bourse"
-            label="رقم المخطط"
+            id="request_number_bourse"
+            label="رقم الطلب"
+            required
             dir="ltr"
-            value={property.planNumber}
-            error={fieldErrors.planNumber}
-            onChange={(v) => onPatch("planNumber", v)}
+            value={property.requestNumber}
+            error={fieldErrors.requestNumber}
+            onChange={(v) => onPatch("requestNumber", v)}
           />
-          <RegField
-            id="plot_number_bourse"
-            label="رقم القطعة"
-            dir="ltr"
-            value={property.plotNumber}
-            error={fieldErrors.plotNumber}
-            onChange={(v) => onPatch("plotNumber", v)}
-          />
+          <div className="grid grid-cols-1 gap-3 sm:col-span-2 sm:grid-cols-2">
+            <RegField
+              id="plan_number_bourse"
+              label="رقم المخطط"
+              dir="ltr"
+              value={property.planNumber}
+              error={fieldErrors.planNumber}
+              onChange={(v) => onPatch("planNumber", v)}
+            />
+            <RegField
+              id="plot_number_bourse"
+              label="رقم القطعة"
+              dir="ltr"
+              value={property.plotNumber}
+              error={fieldErrors.plotNumber}
+              onChange={(v) => onPatch("plotNumber", v)}
+            />
+          </div>
           <RegField
             id="location_map_url_bourse"
             label="رابط موقع الخريطة"
@@ -348,15 +357,6 @@ export function PoPropertyEnfathForm({
           onChange={(v) => onPatch("deedDate", v)}
         />
         <RegField
-          id="request_number"
-          label="رقم الطلب"
-          required
-          dir="ltr"
-          value={property.requestNumber}
-          error={fieldErrors.requestNumber}
-          onChange={(v) => onPatch("requestNumber", v)}
-        />
-        <RegField
           id="assignment_mandate_number"
           label="رقم التكليف"
           required
@@ -375,21 +375,32 @@ export function PoPropertyEnfathForm({
           onChange={(v) => onPatch("assignmentMandateDate", v)}
         />
         <RegField
-          id="plan_number"
-          label="رقم المخطط"
+          id="request_number"
+          label="رقم الطلب"
+          required
           dir="ltr"
-          value={property.planNumber}
-          error={fieldErrors.planNumber}
-          onChange={(v) => onPatch("planNumber", v)}
+          value={property.requestNumber}
+          error={fieldErrors.requestNumber}
+          onChange={(v) => onPatch("requestNumber", v)}
         />
-        <RegField
-          id="plot_number"
-          label="رقم القطعة"
-          dir="ltr"
-          value={property.plotNumber}
-          error={fieldErrors.plotNumber}
-          onChange={(v) => onPatch("plotNumber", v)}
-        />
+        <div className="grid grid-cols-1 gap-3 sm:col-span-2 sm:grid-cols-2">
+          <RegField
+            id="plan_number"
+            label="رقم المخطط"
+            dir="ltr"
+            value={property.planNumber}
+            error={fieldErrors.planNumber}
+            onChange={(v) => onPatch("planNumber", v)}
+          />
+          <RegField
+            id="plot_number"
+            label="رقم القطعة"
+            dir="ltr"
+            value={property.plotNumber}
+            error={fieldErrors.plotNumber}
+            onChange={(v) => onPatch("plotNumber", v)}
+          />
+        </div>
         <RegField
           id="location_map_url"
           label="رابط موقع الخريطة"
@@ -434,24 +445,42 @@ export function PoPropertyEnfathForm({
         <PropertyFileUploadField
           id={`delegation_${property.id}`}
           label="خطاب التفويض *"
-          fileName={property.delegationLetterFileName}
-          error={fieldErrors.delegationLetterFileName}
+          fileNames={property.delegationLetterFileNames}
+          error={fieldErrors.delegationLetterFileNames}
           attachPo={attachPo}
           propertyId={property.id}
           docKind="delegation"
+          multiple
           onUpload={(file) => {
-            onPatch("delegationLetterFileName", file.name);
+            onPatch("delegationLetterFileNames", [
+              ...property.delegationLetterFileNames,
+              file.name,
+            ]);
             if (attachPo) {
-              void cacheDelegationDoc(attachPo, property.id, file).then(
-                (result) => {
+              void cacheDelegationDoc(attachPo, property.id, file)
+                .then((result) => {
                   if (!result.ok) showToast(result.error, "error");
-                },
-              ).catch(() => {
-                showToast("تعذّر حفظ مرفق التفويض — حاول مرة أخرى", "error");
-              });
+                })
+                .catch(() => {
+                  showToast("تعذّر حفظ مرفق التفويض — حاول مرة أخرى", "error");
+                });
             }
           }}
-          onClear={() => onPatch("delegationLetterFileName", "")}
+          onRemove={(name) => {
+            onPatch(
+              "delegationLetterFileNames",
+              property.delegationLetterFileNames.filter((n) => n !== name),
+            );
+            if (attachPo) {
+              void removeCachedPropertyDoc(
+                "delegation",
+                attachPo,
+                property.id,
+                name,
+              );
+            }
+          }}
+          onClear={() => onPatch("delegationLetterFileNames", [])}
         />
       ) : null}
 
@@ -472,24 +501,40 @@ export function PoPropertyEnfathForm({
         <PropertyFileUploadField
           id={`assignment_doc_${property.id}`}
           label={<>قرار الإسناد *</>}
-          fileName={property.assignmentDocFileName}
-          error={fieldErrors.assignmentDocFileName}
+          fileNames={property.assignmentDocFileNames}
+          error={fieldErrors.assignmentDocFileNames}
           attachPo={attachPo}
           propertyId={property.id}
           docKind="decree"
+          multiple
           onUpload={(file) => {
-            onPatch("assignmentDocFileName", file.name);
+            onPatch("assignmentDocFileNames", [
+              ...property.assignmentDocFileNames,
+              file.name,
+            ]);
             if (attachPo) {
-              void cacheAssignmentDoc(attachPo, property.id, file).then(
-                (result) => {
+              void cacheAssignmentDoc(attachPo, property.id, file)
+                .then((result) => {
                   if (!result.ok) showToast(result.error, "error");
-                },
-              ).catch(() => {
-                showToast("تعذّر حفظ مرفق قرار الإسناد — حاول مرة أخرى", "error");
-              });
+                })
+                .catch(() => {
+                  showToast(
+                    "تعذّر حفظ مرفق قرار الإسناد — حاول مرة أخرى",
+                    "error",
+                  );
+                });
             }
           }}
-          onClear={() => onPatch("assignmentDocFileName", "")}
+          onRemove={(name) => {
+            onPatch(
+              "assignmentDocFileNames",
+              property.assignmentDocFileNames.filter((n) => n !== name),
+            );
+            if (attachPo) {
+              void removeCachedPropertyDoc("decree", attachPo, property.id, name);
+            }
+          }}
+          onClear={() => onPatch("assignmentDocFileNames", [])}
         />
       ) : null}
 

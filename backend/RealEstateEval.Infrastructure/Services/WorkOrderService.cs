@@ -348,7 +348,7 @@ public class WorkOrderService : IWorkOrderService
         if (WorkOrderValidator.RequiresAssignmentDecree(assignmentType))
         {
             var missingDecree = entity.Properties.Any(p =>
-                string.IsNullOrWhiteSpace(p.AssignmentDocFileName));
+                !WorkOrderMapper.HasStoredFileNames(p.AssignmentDocFileName));
             if (missingDecree)
                 return (null, new Dictionary<string, string>
                 {
@@ -534,6 +534,8 @@ public class WorkOrderService : IWorkOrderService
                 Area = property.Area,
                 DeedStatus = property.DeedStatus,
                 RestrictionsPresent = property.RestrictionsPresent,
+                RestrictionType = property.RestrictionType,
+                RestrictionOtherReason = property.RestrictionOtherReason,
                 BoundariesAvailability = property.BoundariesAvailability,
                 BoundariesExternalDocName = property.BoundariesExternalDocName,
             });
@@ -655,6 +657,11 @@ public class WorkOrderService : IWorkOrderService
         existing.Area = request.Area?.Trim();
         existing.DeedStatus = request.DeedStatus?.Trim();
         existing.RestrictionsPresent = request.RestrictionsPresent?.Trim();
+        existing.RestrictionType = NormalizeRestrictionType(request.RestrictionsPresent, request.RestrictionType);
+        existing.RestrictionOtherReason = NormalizeRestrictionOtherReason(
+            request.RestrictionsPresent,
+            request.RestrictionType,
+            request.RestrictionOtherReason);
         existing.BoundariesAvailability = request.BoundariesAvailability?.Trim();
         existing.BoundariesExternalDocName = request.BoundariesExternalDocName?.Trim();
         existing.NorthBoundary = NormalizeOptionalText(request.NorthBoundary);
@@ -750,6 +757,25 @@ public class WorkOrderService : IWorkOrderService
     private static string? NormalizeOptionalText(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
+    private static string? NormalizeRestrictionType(string? present, string? type)
+    {
+        if (!string.Equals(present?.Trim(), "yes", StringComparison.OrdinalIgnoreCase))
+            return null;
+        return NormalizeOptionalText(type)?.ToLowerInvariant();
+    }
+
+    private static string? NormalizeRestrictionOtherReason(
+        string? present,
+        string? type,
+        string? reason)
+    {
+        if (!string.Equals(present?.Trim(), "yes", StringComparison.OrdinalIgnoreCase))
+            return null;
+        if (!string.Equals(type?.Trim(), "other", StringComparison.OrdinalIgnoreCase))
+            return null;
+        return NormalizeOptionalText(reason);
+    }
+
     private WorkOrderProperty MapPropertyEnfath(
         WorkOrderPropertyDto dto,
         Guid workOrderId,
@@ -788,11 +814,9 @@ public class WorkOrderService : IWorkOrderService
         entity.AssignmentMandateDate = dto.AssignmentMandateDate?.Trim();
         entity.DeedDate = dto.DeedDate?.Trim();
         entity.OwnerName = dto.OwnerName?.Trim();
-        entity.AssignmentDocFileName = dto.AssignmentDocFileName?.Trim();
-        entity.DelegationLetterFileName = dto.DelegationLetterFileName?.Trim();
-        entity.OtherDocumentFileNames = dto.OtherDocumentFileNames.Count > 0
-            ? JsonSerializer.Serialize(dto.OtherDocumentFileNames)
-            : null;
+        entity.AssignmentDocFileName = WorkOrderMapper.SerializeFileNameList(dto.AssignmentDocFileNames);
+        entity.DelegationLetterFileName = WorkOrderMapper.SerializeFileNameList(dto.DelegationLetterFileNames);
+        entity.OtherDocumentFileNames = WorkOrderMapper.SerializeFileNameList(dto.OtherDocumentFileNames);
         entity.RealEstateRegFileName = dto.RealEstateRegFileName?.Trim();
         entity.Court = dto.Court?.Trim();
         entity.Circuit = dto.Circuit?.Trim();
@@ -882,6 +906,11 @@ public class WorkOrderService : IWorkOrderService
         entity.Area = dto.Area?.Trim();
         entity.DeedStatus = dto.DeedStatus?.Trim();
         entity.RestrictionsPresent = dto.RestrictionsPresent?.Trim();
+        entity.RestrictionType = NormalizeRestrictionType(dto.RestrictionsPresent, dto.RestrictionType);
+        entity.RestrictionOtherReason = NormalizeRestrictionOtherReason(
+            dto.RestrictionsPresent,
+            dto.RestrictionType,
+            dto.RestrictionOtherReason);
         entity.BoundariesAvailability = dto.BoundariesAvailability?.Trim();
         entity.BoundariesExternalDocName = dto.BoundariesExternalDocName?.Trim();
         entity.NorthBoundary = NormalizeOptionalText(dto.NorthBoundary);

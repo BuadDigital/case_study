@@ -6,6 +6,12 @@ import {
 } from "@platform/app-shared/domain/form/field-errors";
 
 const RESTRICTIONS_VALUES = new Set(["yes", "no"]);
+const RESTRICTION_TYPE_VALUES = new Set([
+  "mortgaged",
+  "seized",
+  "suspended",
+  "other",
+]);
 const BOUNDARIES_VALUES = new Set(["deed", "bourse", "doc", "no"]);
 
 export function validatePropertyBourseFields(
@@ -16,16 +22,23 @@ export function validatePropertyBourseFields(
       {
         city: p.city,
         district: p.district,
-        classification: p.classification,
-        propertyType: p.propertyType,
       },
-      ["city", "district", "classification", "propertyType"],
+      ["city", "district"],
     ),
   );
 
   const restrictions = p.restrictionsPresent.trim().toLowerCase();
   if (restrictions && !RESTRICTIONS_VALUES.has(restrictions)) {
     errors.restrictionsPresent = "قيمة القيود غير صالحة";
+  }
+
+  if (restrictions === "yes") {
+    const type = p.restrictionType.trim().toLowerCase();
+    if (!RESTRICTION_TYPE_VALUES.has(type)) {
+      errors.restrictionType = "نوع القيد مطلوب";
+    } else if (type === "other" && !p.restrictionOtherReason.trim()) {
+      errors.restrictionOtherReason = "سبب القيد مطلوب عند اختيار أخرى";
+    }
   }
 
   const boundaries = p.boundariesAvailability.trim().toLowerCase();
@@ -40,9 +53,9 @@ export function firstBourseValidationMessage(errors: FieldErrors): string {
   return (
     errors.city ??
     errors.district ??
-    errors.classification ??
-    errors.propertyType ??
     errors.restrictionsPresent ??
+    errors.restrictionType ??
+    errors.restrictionOtherReason ??
     errors.boundariesAvailability ??
     errors.boundariesExternalDocName ??
     errors._ ??
