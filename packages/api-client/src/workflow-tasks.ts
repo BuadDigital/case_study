@@ -187,6 +187,38 @@ export async function advanceWorkflowTaskAfterBourse(
   }
 }
 
+export async function revertWorkflowTaskPhase(
+  config: WorkOrdersApiConfig,
+  taskId: string,
+  targetPhase: "enfath" | "bourse",
+): Promise<ApiOk<WorkflowTaskDto> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/workflow-tasks/${taskId}/revert-phase`,
+      {
+        method: "POST",
+        headers: headers(config.token),
+        body: JSON.stringify({ targetPhase }),
+      },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (res.status === 400) {
+      const body = await res.json().catch(() => null);
+      const errors =
+        body && typeof body === "object" && "errors" in body
+          ? (body as { errors?: Record<string, unknown> }).errors
+          : undefined;
+      return { ok: false, kind: "validation", errors };
+    }
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: await readJson<WorkflowTaskDto>(res) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
 export async function patchWorkflowTask(
   config: WorkOrdersApiConfig,
   taskId: string,

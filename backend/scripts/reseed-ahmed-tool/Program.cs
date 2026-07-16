@@ -22,5 +22,14 @@ services.AddPersistence(config, connectionString);
 services.AddIdentityInfrastructure();
 
 await using var provider = services.BuildServiceProvider();
-await DataSeeder.ReseedHrStaffByLoginAsync(provider, login);
-Console.WriteLine($"[reseed] restored HR demo user '{login}'.");
+
+if (string.Equals(login, "all", StringComparison.OrdinalIgnoreCase))
+{
+    await DataSeeder.ReseedAllDemoUsersAsync(provider);
+    Console.WriteLine("[reseed] restored all demo HR and proc users.");
+}
+else
+{
+    await DataSeeder.ReseedHrStaffByLoginAsync(provider, login);
+    Console.WriteLine($"[reseed] restored HR demo user '{login}'.");
+}

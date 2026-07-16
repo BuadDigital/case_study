@@ -107,6 +107,7 @@ export {
   listWorkflowTasks,
   patchWorkflowTask,
   patchWorkflowTaskDistribution,
+  revertWorkflowTaskPhase,
   syncWorkflowTasks,
   type ConfirmTaskDistributionResponseDto,
   type TaskDistributionDraftDto,

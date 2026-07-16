@@ -15,10 +15,6 @@ export function poPropertiesPath(poNumber: string): string {
   return `/po/${encodeURIComponent(poNumber.trim())}/${PO_PROPERTY_SEGMENT}`;
 }
 
-export function poPropertyNewPath(poNumber: string): string {
-  return `${poPropertiesPath(poNumber)}/new`;
-}
-
 export function poPropertyPath(poNumber: string, propertyId: string): string {
   return `${poPropertiesPath(poNumber)}/${encodeURIComponent(propertyId)}`;
 }

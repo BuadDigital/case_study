@@ -38,7 +38,6 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
   const [assignmentSpecialist, setAssignmentSpecialist] = useState("");
   const [assignmentSpecialistEmail, setAssignmentSpecialistEmail] = useState("");
   const [expectedPropertyCount, setExpectedPropertyCount] = useState("1");
-  const [propertiesRegion, setPropertiesRegion] = useState("");
   const [workOrderDescription, setWorkOrderDescription] = useState("");
 
   useEffect(() => {
@@ -52,7 +51,6 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
           setAssignmentSpecialistEmail(draft.assignmentSpecialistEmail);
           const count = draft.expectedPropertyCount;
           setExpectedPropertyCount(count && count > 0 ? String(count) : "1");
-          setPropertiesRegion(draft.propertiesRegion ?? "");
           setWorkOrderDescription(draft.workOrderDescription ?? "");
         }
         setDraftReady(true);
@@ -85,7 +83,6 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
       !!assignmentType ||
       !!assignmentSpecialist.trim() ||
       !!assignmentSpecialistEmail.trim() ||
-      !!propertiesRegion.trim() ||
       !!workOrderDescription.trim() ||
       expectedPropertyCount !== "1",
     [
@@ -94,7 +91,6 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
       assignmentType,
       assignmentSpecialist,
       assignmentSpecialistEmail,
-      propertiesRegion,
       workOrderDescription,
       expectedPropertyCount,
     ],
@@ -113,7 +109,7 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
         1,
         parseInt(expectedPropertyCount, 10) || 1,
       ),
-      propertiesRegion,
+      propertiesRegion: "",
       workOrderDescription,
     });
   }, [
@@ -124,7 +120,6 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
     assignmentSpecialist,
     assignmentSpecialistEmail,
     expectedPropertyCount,
-    propertiesRegion,
     workOrderDescription,
   ]);
 
@@ -180,7 +175,7 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
       assignmentSpecialist: assignmentSpecialist.trim(),
       assignmentSpecialistEmail: assignmentSpecialistEmail.trim(),
       expectedPropertyCount: Math.max(1, parseInt(expectedPropertyCount, 10) || 1),
-      propertiesRegion: propertiesRegion.trim(),
+      propertiesRegion: "",
       workOrderDescription: workOrderDescription.trim(),
       properties: [],
     });
@@ -215,8 +210,6 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
     setAssignmentSpecialistEmail,
     expectedPropertyCount,
     setExpectedPropertyCount,
-    propertiesRegion,
-    setPropertiesRegion,
     workOrderDescription,
     setWorkOrderDescription,
     save,

@@ -72,9 +72,6 @@ export function PoHeaderEdit({
   const [expectedPropertyCount, setExpectedPropertyCount] = useState(
     String(record.expectedPropertyCount ?? 1),
   );
-  const [propertiesRegion, setPropertiesRegion] = useState(
-    record.propertiesRegion ?? "",
-  );
   const [workOrderDescription, setWorkOrderDescription] = useState(
     record.workOrderDescription ?? "",
   );
@@ -96,7 +93,6 @@ export function PoHeaderEdit({
     promulgationDate !== (record.promulgationDate || record.receivedFromEnfathAt) ||
     assignmentSpecialist.trim() !== record.assignmentSpecialist ||
     assignmentSpecialistEmail.trim() !== record.assignmentSpecialistEmail ||
-    propertiesRegion.trim() !== (record.propertiesRegion ?? "").trim() ||
     workOrderDescription.trim() !== (record.workOrderDescription ?? "").trim() ||
     Math.max(1, parseInt(expectedPropertyCount, 10) || 1) !==
       (record.expectedPropertyCount ?? 1);
@@ -138,7 +134,6 @@ export function PoHeaderEdit({
       assignmentSpecialist: assignmentSpecialist.trim(),
       assignmentSpecialistEmail: assignmentSpecialistEmail.trim(),
       expectedPropertyCount: Math.max(1, count || 1),
-      propertiesRegion: propertiesRegion.trim(),
       workOrderDescription: workOrderDescription.trim(),
     };
 
@@ -220,13 +215,6 @@ export function PoHeaderEdit({
               const digits = v.replace(/\D/g, "").slice(0, 3);
               setExpectedPropertyCount(digits || "");
             }}
-          />
-          <RegField
-            id="properties_region_edit"
-            label="منطقة العقارات"
-            value={propertiesRegion}
-            onChange={setPropertiesRegion}
-            maxLength={256}
           />
           <div className="col-span-full">
             <RegTextarea

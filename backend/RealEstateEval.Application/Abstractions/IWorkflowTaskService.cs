@@ -28,6 +28,10 @@ public interface IWorkflowTaskService
         Guid id,
         AdvanceTaskAfterBourseRequest request,
         CancellationToken cancellationToken = default);
+    Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> RevertPhaseAsync(
+        Guid id,
+        RevertWorkflowTaskPhaseRequest request,
+        CancellationToken cancellationToken = default);
     Task<WorkflowTaskDto?> PatchAsync(
         Guid id,
         PatchWorkflowTaskRequest request,

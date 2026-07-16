@@ -235,6 +235,15 @@ export function PoPropertyEnfathForm({
             onChange={patchDeedNumber}
           />
           <RegField
+            id="deed_date_bourse"
+            label="تاريخ الصك"
+            required
+            type="date"
+            value={property.deedDate}
+            error={fieldErrors.deedDate}
+            onChange={(v) => onPatch("deedDate", v)}
+          />
+          <RegField
             id="request_number_bourse"
             label="رقم الطلب"
             required
@@ -287,15 +296,6 @@ export function PoPropertyEnfathForm({
             onChange={(v) => onPatch("locationMapUrl", v)}
           />
           <RegField
-            id="deed_date_bourse"
-            label="تاريخ الصك"
-            required
-            type="date"
-            value={property.deedDate}
-            error={fieldErrors.deedDate}
-            onChange={(v) => onPatch("deedDate", v)}
-          />
-          <RegField
             id="owner_name_bourse"
             label="اسم المالك"
             required
@@ -337,6 +337,15 @@ export function PoPropertyEnfathForm({
           value={property.deedNumber}
           error={fieldErrors.deedNumber}
           onChange={patchDeedNumber}
+        />
+        <RegField
+          id="deed_date"
+          label="تاريخ الصك"
+          required
+          type="date"
+          value={property.deedDate}
+          error={fieldErrors.deedDate}
+          onChange={(v) => onPatch("deedDate", v)}
         />
         <RegField
           id="request_number"
@@ -389,15 +398,6 @@ export function PoPropertyEnfathForm({
           value={property.locationMapUrl}
           error={fieldErrors.locationMapUrl}
           onChange={(v) => onPatch("locationMapUrl", v)}
-        />
-        <RegField
-          id="deed_date"
-          label="تاريخ الصك"
-          required
-          type="date"
-          value={property.deedDate}
-          error={fieldErrors.deedDate}
-          onChange={(v) => onPatch("deedDate", v)}
         />
         <RegField
           id="owner_name"

@@ -113,14 +113,6 @@ export function PoIntakeModal({
               form.setExpectedPropertyCount(digits || "");
             }}
           />
-          <RegField
-            id="properties_region_modal"
-            label="منطقة العقارات"
-            value={form.propertiesRegion}
-            onChange={form.setPropertiesRegion}
-            placeholder="مثال: مكة — الشوقية"
-            maxLength={256}
-          />
           <div className="col-span-full">
             <RegTextarea
               id="work_order_description_modal"

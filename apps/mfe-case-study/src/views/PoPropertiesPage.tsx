@@ -37,7 +37,6 @@ import {
   requiresAssignmentDecree,
 } from "../lib/prototype/po-intake-data";
 import {
-  poPropertyNewPath,
   poPropertyPath,
   poListPath,
 } from "../lib/po-routes";
@@ -196,21 +195,7 @@ export function PoPropertiesPage({
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg">
       <PageShell>
-        <PageShellHeader
-          actions={
-            showEdit ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="primary"
-                className="shrink-0"
-                onClick={() => router.push(poPropertyNewPath(poNumber))}
-              >
-                + إضافة عقار
-              </Button>
-            ) : null
-          }
-        >
+        <PageShellHeader>
           <Link
             href={poListPath()}
             className="mb-2 inline-flex w-fit items-center gap-1.5 py-1 text-[11px] font-medium text-text-2 no-underline transition-colors hover:text-primary [&_svg]:-scale-x-100"
@@ -294,19 +279,7 @@ export function PoPropertiesPage({
         </PageShellHeader>
 
         {count === 0 ? (
-          <EmptyState line="لا توجد عقارات في هذا الأمر.">
-            {showEdit ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="primary"
-                className="mt-3"
-                onClick={() => router.push(poPropertyNewPath(poNumber))}
-              >
-                إضافة أول عقار
-              </Button>
-            ) : null}
-          </EmptyState>
+          <EmptyState line="لا توجد عقارات في هذا الأمر." />
         ) : (
           <>
             <div className="w-full overflow-x-auto">

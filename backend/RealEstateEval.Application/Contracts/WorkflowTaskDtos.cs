@@ -66,6 +66,12 @@ public class AdvanceTaskAfterBourseRequest
     public string DeedNumber { get; set; } = "";
 }
 
+public class RevertWorkflowTaskPhaseRequest
+{
+    /// <summary>Target phase: <c>enfath</c> or <c>bourse</c>.</summary>
+    public string TargetPhase { get; set; } = "";
+}
+
 public class PatchWorkflowTaskRequest
 {
     public string? Phase { get; set; }

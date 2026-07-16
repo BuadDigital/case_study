@@ -84,6 +84,7 @@ public class SystemMaintenanceService : ISystemMaintenanceService
 
                 var registeredUsersDeleted =
                     await _users.DeleteAllRegisteredAsync(cancellationToken);
+                await DataSeeder.ReseedAllDemoUsersAsync(_services, cancellationToken);
                 await DataSeeder.ReseedPrototypeModuleDataAsync(_db, cancellationToken);
 
                 await transaction.CommitAsync(cancellationToken);
