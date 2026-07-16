@@ -37,6 +37,8 @@ import { RowMoreMenu } from "@case-study/mfe/components/ui/RowMoreMenu";
 import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
 import { PartyAssigneeCell } from "../components/ui/PartyAssigneeCell";
 import { buildActiveQueueRowMoreItems } from "../lib/prototype/active-queue-row-menu";
+import { CopyFromPriorTransactionModal } from "../components/po-intake/CopyFromPriorTransactionModal";
+import { buildCopyPriorTargetOptions } from "../lib/prototype/po-intake-storage";
 import { buildCaseStudyPartyAssignees } from "../lib/prototype/case-study-tracks";
 import { getAuthSession } from "@platform/auth-client";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
@@ -53,7 +55,10 @@ import {
 import type { PoIntakeRecord } from "../lib/prototype/po-intake-data";
 import { skipsBourseForIdentifier } from "../lib/prototype/po-intake-data";
 import { isTaskOnSuspendedProperty } from "../lib/prototype/suspended-transactions-storage";
-import { type WorkflowTask } from "../lib/prototype/tasks-storage";
+import {
+  TASKS_CHANGED_EVENT,
+  type WorkflowTask,
+} from "../lib/prototype/tasks-storage";
 import { resolveQueueTasksForViewer } from "../lib/prototype/viewer-task-access";
 import {
   buildDistributionQueueRowMeta,
@@ -113,6 +118,10 @@ export type ActiveTransactionQueueConfig = {
   buildRowMoreItems?: (ctx: ActiveQueueRowMoreContext) => RowMoreMenuItem[];
   /** Enable «إرجاع لمرحلة سابقة» in the default ⋮ menu. */
   allowPhaseRevert?: boolean;
+  /** Enable «نسخ من معاملة سابقة» in the default ⋮ menu (target = this row). */
+  allowCopyFromPrior?: boolean;
+  /** Enable «حذف المعاملة» in the default ⋮ menu. */
+  allowDeleteTransaction?: boolean;
   /** When false, row click does not open the work panel. */
   canOpenTask?: (task: WorkflowTask) => boolean;
   /** Replaces remaining-time cell when set (e.g. submission status). */
@@ -215,6 +224,9 @@ export function ActiveTransactionQueueView({
   const advancingRef = useRef(false);
   const [, bump] = useState(0);
   const [submissionCacheGen, setSubmissionCacheGen] = useState(0);
+  const [copyModalOpen, setCopyModalOpen] = useState(false);
+  const [copyPoNumber, setCopyPoNumber] = useState("");
+  const [copyTargetKey, setCopyTargetKey] = useState<string | null>(null);
 
   const retryQueueLoad = useCallback(() => {
     void refetchPoRecords();
@@ -227,12 +239,19 @@ export function ActiveTransactionQueueView({
       setSubmissionCacheGen((n) => n + 1);
     }
     void refetchTasks();
+    void refetchPoRecords();
     if (needsInspectionWorkspaces) {
       void queryClient.invalidateQueries({
         queryKey: prototypeKeys.fieldInspectionWorkspaces(),
       });
     }
-  }, [refetchTasks, queryClient, needsInspectionWorkspaces, needsPartySubmissions]);
+  }, [
+    refetchTasks,
+    refetchPoRecords,
+    queryClient,
+    needsInspectionWorkspaces,
+    needsPartySubmissions,
+  ]);
 
   const syncQueue = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: prototypeKeys.poRecords() });
@@ -256,12 +275,29 @@ export function ActiveTransactionQueueView({
   useEffect(() => {
     const events = config.refreshOnWindowEvents;
     if (!events?.length) return;
-    const handler = () => refreshWork();
+    // TASKS_CHANGED must not call refetchPoRecords: that re-runs sync and
+    // notifyTasksChanged, which would loop while this queue is open.
+    const handler = (ev: Event) => {
+      if (ev.type === TASKS_CHANGED_EVENT) {
+        bump((n) => n + 1);
+        if (needsPartySubmissions) {
+          setSubmissionCacheGen((n) => n + 1);
+        }
+        void refetchTasks();
+        return;
+      }
+      refreshWork();
+    };
     for (const ev of events) window.addEventListener(ev, handler);
     return () => {
       for (const ev of events) window.removeEventListener(ev, handler);
     };
-  }, [config.refreshOnWindowEvents, refreshWork]);
+  }, [
+    config.refreshOnWindowEvents,
+    refreshWork,
+    refetchTasks,
+    needsPartySubmissions,
+  ]);
 
   useEffect(() => {
     if (selectedId) setPanelOpen(true);
@@ -393,6 +429,14 @@ export function ActiveTransactionQueueView({
     (task: WorkflowTask, propertyId: string | undefined) => {
       const record = poByNumber.get(task.poNumber.trim());
       const property = findPropertyForTask(record, task);
+      const openCopyFromPrior = () => {
+        const key = propertyId?.trim()
+          ? `property:${propertyId.trim()}`
+          : `slot:${task.id}`;
+        setCopyPoNumber(task.poNumber.trim());
+        setCopyTargetKey(key);
+        setCopyModalOpen(true);
+      };
       const ctx: ActiveQueueRowMoreContext = {
         task,
         propertyId,
@@ -411,6 +455,11 @@ export function ActiveTransactionQueueView({
         skipsBourse: property
           ? skipsBourseForIdentifier(property.identifierType)
           : false,
+        onCopyFromPrior: config.allowCopyFromPrior
+          ? openCopyFromPrior
+          : undefined,
+        allowDeleteTransaction: Boolean(config.allowDeleteTransaction),
+        viewerRole: role,
       });
     },
     [
@@ -420,8 +469,32 @@ export function ActiveTransactionQueueView({
       refreshWork,
       showToast,
       poByNumber,
+      role,
     ],
   );
+
+  const copyTargets = useMemo(() => {
+    if (!copyPoNumber) return [];
+    const record = poByNumber.get(copyPoNumber);
+    if (!record) return [];
+    return buildCopyPriorTargetOptions(record, tasks ?? []);
+  }, [copyPoNumber, poByNumber, tasks]);
+
+  const handleCopiedFromPrior = useCallback(() => {
+    void queryClient.invalidateQueries({
+      queryKey: prototypeKeys.poRecord(copyPoNumber),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: prototypeKeys.poRecords(),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: prototypeKeys.workflowTasks(),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: prototypeKeys.pendingBourseItems(),
+    });
+    refreshWork();
+  }, [queryClient, copyPoNumber, refreshWork]);
 
   useEffect(() => {
     if (!needsPartySubmissions || listedTaskIdsKey.length === 0) return;
@@ -687,7 +760,7 @@ export function ActiveTransactionQueueView({
                           cols={distributionSkeletonCols}
                         />
                       ) : (
-                        filteredListed.map((task) => {
+                        filteredListed.map((task, index) => {
                         const record = poByNumber.get(task.poNumber.trim());
                         const property = findPropertyForTask(record, task);
                         const row = buildDistributionTableRow(
@@ -710,27 +783,35 @@ export function ActiveTransactionQueueView({
                             }
                           >
                             <Td>
-                              {property?.id ? (
-                                <Link
-                                  href={poPropertyDetailPath(
-                                    task.poNumber,
-                                    property.id,
-                                    "basic",
-                                  )}
-                                  dir="ltr"
-                                  className="relative z-[1] inline-block text-[13px] font-medium text-primary no-underline hover:underline"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  {row.deedLabel}
-                                </Link>
-                              ) : (
+                              <span className="inline-flex min-w-0 items-center justify-end gap-2">
                                 <span
-                                  dir="ltr"
-                                  className="inline-block text-[13px] font-medium text-primary"
+                                  className="inline-flex h-[22px] min-w-[22px] shrink-0 items-center justify-center rounded-md bg-surface-3 text-[10px] font-semibold text-text-3"
+                                  aria-hidden
                                 >
-                                  {row.deedLabel}
+                                  {index + 1}
                                 </span>
-                              )}
+                                {property?.id ? (
+                                  <Link
+                                    href={poPropertyDetailPath(
+                                      task.poNumber,
+                                      property.id,
+                                      "basic",
+                                    )}
+                                    dir="ltr"
+                                    className="relative z-[1] inline-block text-[13px] font-medium text-primary no-underline hover:underline"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {row.deedLabel}
+                                  </Link>
+                                ) : (
+                                  <span
+                                    dir="ltr"
+                                    className="inline-block text-[13px] font-medium text-primary"
+                                  >
+                                    {row.deedLabel}
+                                  </span>
+                                )}
+                              </span>
                             </Td>
                             <Td className="text-text-2">
                               <PoNumber value={task.poNumber} link />
@@ -855,12 +936,29 @@ export function ActiveTransactionQueueView({
     ) : null;
 
   return (
-    <ActiveTransactionPageLayout
-      pageId={config.pageId ?? "active-primary-data"}
-      hasRail={hasRail}
-      panelOpen={panelOpen}
-      queuePanel={queuePanel}
-      sidePanel={sidePanel}
-    />
+    <>
+      <ActiveTransactionPageLayout
+        pageId={config.pageId ?? "active-primary-data"}
+        hasRail={hasRail}
+        panelOpen={panelOpen}
+        queuePanel={queuePanel}
+        sidePanel={sidePanel}
+      />
+      {config.allowCopyFromPrior && copyPoNumber ? (
+        <CopyFromPriorTransactionModal
+          open={copyModalOpen}
+          poNumber={copyPoNumber}
+          targets={copyTargets}
+          initialTargetKey={copyTargetKey}
+          lockTarget
+          onClose={() => {
+            setCopyModalOpen(false);
+            setCopyTargetKey(null);
+            setCopyPoNumber("");
+          }}
+          onCopied={handleCopiedFromPrior}
+        />
+      ) : null}
+    </>
   );
 }

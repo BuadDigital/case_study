@@ -169,6 +169,8 @@ export function CaseStudyTaskWork({
     }
   }, [poRecord, task.propertyId, task.poNumber, task.assignmentType]);
 
+  const linkedPropertyRemoved = Boolean(property.isRemoved);
+
   const patchProperty = useCallback(
     <K extends keyof PoPropertyIntake>(key: K, value: PoPropertyIntake[K]) => {
       setProperty((p) => {
@@ -219,6 +221,10 @@ export function CaseStudyTaskWork({
 
   async function saveEnfath() {
     setFormError(null);
+    if (linkedPropertyRemoved) {
+      setFormError("هذه المعاملة مرتبطة بعقار محذوف — لا يمكن الحفظ.");
+      return;
+    }
     const errors = mergePropertyEnfathValidation(property, assignmentType);
     if (hasFieldErrors(errors)) {
       setFieldErrors(errors);
@@ -239,9 +245,7 @@ export function CaseStudyTaskWork({
 
     const persisted = skipsBourseForIdentifier(property.identifierType)
       ? { ...property, bourseDataCompleted: true }
-      : isBourseInquiryIdentifier(property.identifierType)
-        ? { ...property, bourseDataCompleted: false }
-        : property;
+      : { ...property, bourseDataCompleted: false };
 
     await runWithActionToast("حفظ", async () => {
       setSaving(true);
@@ -255,8 +259,7 @@ export function CaseStudyTaskWork({
         if (!result.ok) {
           setFormError(result.error);
           if (result.errors) setFieldErrors(result.errors);
-          showToast(result.error, "error");
-          throw new Error("save-failed");
+          throw new Error(result.error);
         }
 
         const savedProperty = skipsBourseForIdentifier(property.identifierType)
@@ -265,8 +268,7 @@ export function CaseStudyTaskWork({
         const updatedTask = await advanceTaskAfterEnfath(task.id, savedProperty);
         if (!updatedTask.ok) {
           setFormError(updatedTask.error);
-          showToast(updatedTask.error, "error");
-          throw new Error("advance-failed");
+          throw new Error(updatedTask.error);
         }
         setPhaseOverride(updatedTask.task.phase);
         if (onEnfathSaved) {
@@ -279,11 +281,17 @@ export function CaseStudyTaskWork({
       } finally {
         setSaving(false);
       }
+    }).catch(() => {
+      /* error toast already shown by runWithActionToast */
     });
   }
 
   async function saveBourse() {
     setFormError(null);
+    if (linkedPropertyRemoved) {
+      setFormError("هذه المعاملة مرتبطة بعقار محذوف — لا يمكن الحفظ.");
+      return;
+    }
 
     if (!deedVitality) {
       setFormError("اختر حالة الصك: فعال أو غير فعال.");
@@ -373,11 +381,10 @@ export function CaseStudyTaskWork({
           const insert = await addPropertyToPo(task.poNumber, property, {
             assignToTaskId: task.id,
           });
-          if (!insert.ok) {
+            if (!insert.ok) {
             setFormError(insert.error);
             if (insert.errors) setFieldErrors(insert.errors);
-            showToast(insert.error, "error");
-            throw new Error("save-failed");
+            throw new Error(insert.error);
           }
           prop = insert.data;
           propertyId = insert.data.id;
@@ -390,15 +397,13 @@ export function CaseStudyTaskWork({
           if (!updated.ok) {
             setFormError(updated.error);
             if (updated.errors) setFieldErrors(updated.errors);
-            showToast(updated.error, "error");
-            throw new Error("save-failed");
+            throw new Error(updated.error);
           }
           prop = updated.data;
           const enfathAdvance = await advanceTaskAfterEnfath(task.id, updated.data);
           if (!enfathAdvance.ok) {
             setFormError(enfathAdvance.error);
-            showToast(enfathAdvance.error, "error");
-            throw new Error("advance-failed");
+            throw new Error(enfathAdvance.error);
           }
           setPhaseOverride(enfathAdvance.task.phase);
         }
@@ -412,21 +417,21 @@ export function CaseStudyTaskWork({
         if (!result.ok) {
           setFormError(result.error);
           if (result.errors) setFieldErrors(result.errors);
-          showToast(result.error, "error");
-          throw new Error("save-failed");
+          throw new Error(result.error);
         }
 
         const advancedTask = await advanceTaskAfterBourse(task.id, result.data);
         if (!advancedTask.ok) {
           setFormError(advancedTask.error);
-          showToast(advancedTask.error, "error");
-          throw new Error("advance-failed");
+          throw new Error(advancedTask.error);
         }
         setPhaseOverride(advancedTask.task.phase);
         onRefresh();
       } finally {
         setSaving(false);
       }
+    }).catch(() => {
+      /* error toast already shown by runWithActionToast */
     });
   }
 
@@ -463,8 +468,7 @@ export function CaseStudyTaskWork({
         if (!result.parent) {
           const message = result.error ?? CONFIRM_DISTRIBUTION_ERROR;
           setFormError(message);
-          showToast(message, "error");
-          throw new Error("save-failed");
+          throw new Error(message);
         }
 
         setPhaseOverride(result.parent.phase);
@@ -475,6 +479,8 @@ export function CaseStudyTaskWork({
       } finally {
         setSaving(false);
       }
+    }).catch(() => {
+      /* error toast already shown by runWithActionToast */
     });
   }
 
@@ -546,6 +552,28 @@ export function CaseStudyTaskWork({
         showFooter={false}
       >
         <InlineLoadingSkeleton className={LOADING_TEXT} />
+      </TaskWorkChrome>
+    );
+  }
+
+  if (linkedPropertyRemoved) {
+    return (
+      <TaskWorkChrome
+        layout={layout}
+        title={deedTitle}
+        subtitle={workSubtitle}
+        onClose={exit}
+        onSave={exit}
+        saveLabel="إغلاق"
+        showFooter
+      >
+        <Note tone="warn" className="mb-3" role="alert">
+          هذا العقار محذوف
+          {property.removalReason.trim()
+            ? ` — ${property.removalReason.trim()}`
+            : ""}
+          . لا يمكن متابعة المعاملة.
+        </Note>
       </TaskWorkChrome>
     );
   }

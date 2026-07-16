@@ -49,7 +49,6 @@ export function PoPropertyEdit({
   onDeletedAction?: () => void;
 }) {
   const { role } = usePrototype();
-  const showDeleteProperty = canDeleteProperty(role);
   const [initialRecord, setInitialRecord] = useState<PoIntakeRecord | null>(null);
   const [property, setProperty] = useState<PoPropertyIntake | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,6 +56,8 @@ export function PoPropertyEdit({
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const { showToast } = useToast();
+  const showDeleteProperty =
+    canDeleteProperty(role) && Boolean(property && !property.isRemoved);
 
   useEffect(() => {
     let cancelled = false;
@@ -170,8 +171,31 @@ export function PoPropertyEdit({
     );
   }
 
+  if (property.isRemoved) {
+    return (
+      <PoEditShell
+        title={`عقار محذوف — ${property.deedNumber || poNumber}`}
+        onBack={onBackAction}
+        onSave={onBackAction}
+        saveLabel="رجوع"
+      >
+        <Note tone="warn" role="alert">
+          هذا العقار محذوف
+          {property.removalReason.trim()
+            ? ` — ${property.removalReason.trim()}`
+            : ""}
+          . لا يمكن تعديله.
+        </Note>
+      </PoEditShell>
+    );
+  }
+
   async function handleSave() {
     if (!initialRecord || !property) return;
+    if (property.isRemoved) {
+      setFormError("لا يمكن تعديل عقار محذوف");
+      return;
+    }
 
     const enfathErrors = mergePropertyEnfathValidation(
       property,
@@ -222,15 +246,22 @@ export function PoPropertyEdit({
   }
 
   async function handleDelete() {
+    const reason = window.prompt("سبب الحذف (مطلوب):");
+    if (reason == null) return;
+    const trimmed = reason.trim();
+    if (!trimmed) {
+      showToast("سبب الحذف مطلوب", "error");
+      return;
+    }
     if (
       !window.confirm(
-        "حذف هذا العقار من أمر العمل؟ لا يمكن التراجع عن الحذف.",
+        "حذف هذا العقار؟ يبقى في قائمة أمر العمل مع سبب الحذف، ولا يمكن التراجع.",
       )
     ) {
       return;
     }
     setSaving(true);
-    const result = await removePropertyFromPo(poNumber, propertyId);
+    const result = await removePropertyFromPo(poNumber, propertyId, trimmed);
     setSaving(false);
     if (!result.ok) {
       setFormError(result.error);

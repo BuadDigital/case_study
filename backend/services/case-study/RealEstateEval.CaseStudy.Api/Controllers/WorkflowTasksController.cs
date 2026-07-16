@@ -119,6 +119,22 @@ public class WorkflowTasksController : ControllerBase
         return Ok(dto);
     }
 
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public async Task<IActionResult> DeleteSlot(
+        Guid id,
+        [FromBody] DeleteCaseStudySlotRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var (ok, errors) = await _tasks.DeleteCaseStudySlotAsync(
+            id,
+            request ?? new DeleteCaseStudySlotRequest(),
+            cancellationToken);
+        if (!ok && errors is null) return NotFound();
+        if (errors is not null) return UnprocessableEntity(errors);
+        return NoContent();
+    }
+
     [HttpDelete("by-po/{poNumber}")]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<IActionResult> DeleteForPo(

@@ -42,4 +42,9 @@ public interface IWorkflowTaskService
         Guid propertyId,
         int expectedPropertyCount = 1,
         CancellationToken cancellationToken = default);
+    /// <summary>حذف خانة/معاملة دراسة حالة (والعقار المرتبط يُعلَّم محذوفاً مع السبب إن وُجد).</summary>
+    Task<(bool Ok, IReadOnlyDictionary<string, string>? Errors)> DeleteCaseStudySlotAsync(
+        Guid id,
+        DeleteCaseStudySlotRequest request,
+        CancellationToken cancellationToken = default);
 }

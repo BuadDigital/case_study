@@ -263,7 +263,7 @@ export function filterTasksForPage(
     case "active-primary-data":
       return filterTasksForPrimaryData(tasks, poByNumber);
     case "active-distribution":
-      return filterTasksForDistribution(tasks);
+      return filterTasksForDistribution(tasks, poByNumber);
     case "active-case-study":
       return filterTasksForCaseStudy(tasks);
     case "bourse-inquiry":

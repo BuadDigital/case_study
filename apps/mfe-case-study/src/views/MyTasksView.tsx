@@ -35,6 +35,8 @@ const PRIMARY_DATA_QUEUE: ActiveTransactionQueueConfig = {
   queueSort: "newest-first",
   statusColumnLabel: "المدة المتبقية",
   filterListed: (mine, poByNumber) => filterTasksForPrimaryData(mine, poByNumber),
+  allowCopyFromPrior: true,
+  allowDeleteTransaction: true,
 };
 
 export function MyTasksView() {

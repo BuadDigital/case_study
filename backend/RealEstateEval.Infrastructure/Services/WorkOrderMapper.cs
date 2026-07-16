@@ -83,6 +83,9 @@ public static class WorkOrderMapper
             PlanNumber = p.PlanNumber,
             PlotNumber = p.PlotNumber,
             LocationMapUrl = p.LocationMapUrl,
+            IsRemoved = p.IsRemoved,
+            RemovalReason = p.RemovalReason,
+            RemovedAtUtc = p.RemovedAtUtc?.ToString("o"),
             Contacts = p.Contacts
                 .OrderBy(c => c.SortOrder)
                 .Select(c => new PropertyContactDto
@@ -100,7 +103,8 @@ public static class WorkOrderMapper
         IReadOnlyDictionary<Guid, bool>? studiedByProperty = null,
         bool hasEnfazInvoice = false)
     {
-        var studiedCount = entity.Properties.Count(p =>
+        var liveProperties = entity.Properties.Where(p => !p.IsRemoved).ToList();
+        var studiedCount = liveProperties.Count(p =>
             studiedByProperty is not null
             && studiedByProperty.TryGetValue(p.Id, out var studied)
             && studied);
@@ -109,7 +113,7 @@ public static class WorkOrderMapper
         {
             PoNumber = entity.PoNumber,
             AssignmentType = AssignmentTypeLabels.ToLabel(entity.AssignmentType),
-            PropertyCount = entity.Properties.Count,
+            PropertyCount = liveProperties.Count,
             ExpectedPropertyCount = entity.ExpectedPropertyCount,
             CompletedCount = studiedCount,
             Status = WorkOrderListStatus.Resolve(entity, studiedCount, hasEnfazInvoice),
@@ -146,8 +150,15 @@ public static class WorkOrderMapper
         return new PriorDeedRegistrationDto
         {
             PoNumber = poNumber,
+            DeedNumber = p.DeedNumber,
+            IdentifierType = PropertyIdentifierTypeLabels.ToApiValue(p.IdentifierType),
             DeedDate = p.DeedDate,
             OwnerName = p.OwnerName,
+            RequestNumber = p.RequestNumber,
+            AssignmentMandateNumber = p.AssignmentMandateNumber,
+            AssignmentMandateDate = p.AssignmentMandateDate,
+            Court = p.Court,
+            Circuit = p.Circuit,
             Contacts = p.Contacts
                 .OrderBy(c => c.SortOrder)
                 .Select(c => new PropertyContactDto
@@ -177,6 +188,7 @@ public static class WorkOrderMapper
             PlanNumber = p.PlanNumber,
             PlotNumber = p.PlotNumber,
             LocationMapUrl = p.LocationMapUrl,
+            BourseDataCompleted = p.BourseDataCompleted,
         };
     }
 

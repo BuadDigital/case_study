@@ -1,6 +1,5 @@
 import { getPropertyFailure, isBlockingFailureStatus } from "@failures/mfe";
 import type { PoIntakeRecord } from "./po-intake-data";
-import { isBourseInquiryIdentifier } from "./po-intake-data";
 import { findPropertyForTask } from "./my-task-row";
 import type { WorkflowTask } from "./tasks-storage";
 
@@ -12,21 +11,42 @@ function hasActiveFailureOnTask(task: WorkflowTask): boolean {
   return isBlockingFailureStatus(failure.status);
 }
 
-export function taskMatchesPrimaryData(task: WorkflowTask): boolean {
+function isLinkedToRemovedProperty(
+  task: WorkflowTask,
+  poByNumber?: Map<string, PoIntakeRecord>,
+): boolean {
+  if (!poByNumber || !task.propertyId?.trim()) return false;
+  const record = poByNumber.get(task.poNumber.trim());
+  const property = findPropertyForTask(record, task);
+  return Boolean(property?.isRemoved);
+}
+
+export function taskMatchesPrimaryData(
+  task: WorkflowTask,
+  poByNumber?: Map<string, PoIntakeRecord>,
+): boolean {
   if (task.kind !== "case-study-property") return false;
+  if (isLinkedToRemovedProperty(task, poByNumber)) return false;
   return task.phase === "enfath";
 }
 
-export function taskMatchesDistribution(task: WorkflowTask): boolean {
+export function taskMatchesDistribution(
+  task: WorkflowTask,
+  poByNumber?: Map<string, PoIntakeRecord>,
+): boolean {
   if (task.kind !== "case-study-property") return false;
+  if (isLinkedToRemovedProperty(task, poByNumber)) return false;
   if (task.phase === "obstruction") return false;
   if (task.phase !== "distribution") return false;
   if (hasActiveFailureOnTask(task)) return false;
   return true;
 }
 
-export function filterTasksForDistribution(tasks: WorkflowTask[]): WorkflowTask[] {
-  return tasks.filter((t) => taskMatchesDistribution(t));
+export function filterTasksForDistribution(
+  tasks: WorkflowTask[],
+  poByNumber?: Map<string, PoIntakeRecord>,
+): WorkflowTask[] {
+  return tasks.filter((t) => taskMatchesDistribution(t, poByNumber));
 }
 
 export function taskMatchesBourseInquiry(
@@ -35,18 +55,17 @@ export function taskMatchesBourseInquiry(
 ): boolean {
   if (task.kind !== "case-study-property") return false;
   const property = findPropertyForTask(record, task);
-  if (property && isBourseInquiryIdentifier(property.identifierType)) {
-    return task.phase === "bourse" || task.phase === "enfath";
-  }
+  if (property?.isRemoved) return false;
+  // Revert to enfath must leave استعلام البورصة — do not keep enfath rows here
+  // even for identifierType = bourse_inquiry (those are edited from البيانات الأولية).
   return task.phase === "bourse";
 }
 
 export function filterTasksForPrimaryData(
   tasks: WorkflowTask[],
-  _poByNumber: Map<string, PoIntakeRecord>,
+  poByNumber: Map<string, PoIntakeRecord>,
 ): WorkflowTask[] {
-  void _poByNumber;
-  return tasks.filter((t) => taskMatchesPrimaryData(t));
+  return tasks.filter((t) => taskMatchesPrimaryData(t, poByNumber));
 }
 
 export function filterTasksForBourseInquiry(

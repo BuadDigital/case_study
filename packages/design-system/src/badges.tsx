@@ -68,6 +68,7 @@ const STATUS_MAP: Record<string, readonly [string, BadgeTone]> = {
   approved: ["معتمد", "success"],
   pending: ["معلّق", "info"],
   under_study: ["قيد الدراسة", "warning"],
+  removed: ["محذوف", "danger"],
 };
 
 export function StatusBadge({ status }: { status: string }) {

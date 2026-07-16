@@ -287,7 +287,7 @@ export function BourseInquiryView() {
                       );
                       const moreItems = task
                         ? buildBourseQueueRowMoreItems({
-                            task: { ...task, phase: "bourse" },
+                            task,
                             propertyId: item.propertyId,
                             openTask: () => void openItem(item),
                             router,
@@ -295,6 +295,8 @@ export function BourseInquiryView() {
                               void refresh();
                             },
                             showToast,
+                            allowDeleteTransaction: true,
+                            viewerRole: role,
                           })
                         : [
                             {

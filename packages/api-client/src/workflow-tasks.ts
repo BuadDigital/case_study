@@ -240,6 +240,34 @@ export async function patchWorkflowTask(
   }
 }
 
+export async function deleteWorkflowTaskSlot(
+  config: WorkOrdersApiConfig,
+  taskId: string,
+  reason: string,
+): Promise<ApiOk<void> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/workflow-tasks/${encodeURIComponent(taskId)}`,
+      {
+        method: "DELETE",
+        headers: headers(config.token),
+        body: JSON.stringify({ reason }),
+      },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (res.status === 422) {
+      const errors = await parseFieldErrorsFromResponse(res);
+      return { ok: false, kind: "validation", errors };
+    }
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: undefined };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
 export async function deleteWorkflowTasksForPo(
   config: WorkOrdersApiConfig,
   poNumber: string,

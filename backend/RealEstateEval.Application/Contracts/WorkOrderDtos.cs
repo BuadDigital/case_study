@@ -46,6 +46,9 @@ public class WorkOrderPropertyDto
     public string? PlanNumber { get; set; }
     public string? PlotNumber { get; set; }
     public string? LocationMapUrl { get; set; }
+    public bool IsRemoved { get; set; }
+    public string? RemovalReason { get; set; }
+    public string? RemovedAtUtc { get; set; }
     public List<PropertyContactDto> Contacts { get; set; } = [];
 }
 
@@ -184,8 +187,15 @@ public class WorkOrderListItemDto
 public class PriorDeedRegistrationDto
 {
     public string PoNumber { get; set; } = "";
+    public string DeedNumber { get; set; } = "";
+    public string IdentifierType { get; set; } = "deed";
     public string? DeedDate { get; set; }
     public string? OwnerName { get; set; }
+    public string? RequestNumber { get; set; }
+    public string? AssignmentMandateNumber { get; set; }
+    public string? AssignmentMandateDate { get; set; }
+    public string? Court { get; set; }
+    public string? Circuit { get; set; }
     public List<PropertyContactDto> Contacts { get; set; } = [];
     public string? City { get; set; }
     public string? District { get; set; }
@@ -207,11 +217,18 @@ public class PriorDeedRegistrationDto
     public string? PlanNumber { get; set; }
     public string? PlotNumber { get; set; }
     public string? LocationMapUrl { get; set; }
+    public bool BourseDataCompleted { get; set; }
 }
 
 public class UpdateLocationMapUrlRequest
 {
     public string? LocationMapUrl { get; set; }
+}
+
+public class DeleteWorkOrderPropertyRequest
+{
+    [MaxLength(500)]
+    public string Reason { get; set; } = "";
 }
 
 public class PendingBoursePropertyDto

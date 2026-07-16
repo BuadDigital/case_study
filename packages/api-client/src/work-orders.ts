@@ -56,6 +56,9 @@ export type WorkOrderPropertyDto = {
   planNumber?: string;
   plotNumber?: string;
   locationMapUrl?: string;
+  isRemoved?: boolean;
+  removalReason?: string;
+  removedAtUtc?: string;
   contacts: PropertyContactDto[];
 };
 
@@ -138,8 +141,15 @@ export type UpdatePropertyBourseRequest = {
 
 export type PriorDeedRegistrationDto = {
   poNumber: string;
+  deedNumber?: string;
+  identifierType?: string;
   deedDate?: string;
   ownerName?: string;
+  requestNumber?: string;
+  assignmentMandateNumber?: string;
+  assignmentMandateDate?: string;
+  court?: string;
+  circuit?: string;
   contacts?: PropertyContactDto[];
   city?: string;
   district?: string;
@@ -161,6 +171,7 @@ export type PriorDeedRegistrationDto = {
   planNumber?: string;
   plotNumber?: string;
   locationMapUrl?: string;
+  bourseDataCompleted?: boolean;
 };
 
 export type PropertyTimelineEventDto = {
@@ -343,10 +354,14 @@ export async function findPriorDeed(
   config: WorkOrdersApiConfig,
   deedNumber: string,
   excludePo?: string,
+  excludePropertyId?: string,
 ): Promise<ApiOk<PriorDeedRegistrationDto | null> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   const params = new URLSearchParams({ deedNumber: deedNumber.trim() });
   if (excludePo?.trim()) params.set("excludePo", excludePo.trim());
+  if (excludePropertyId?.trim()) {
+    params.set("excludePropertyId", excludePropertyId.trim());
+  }
   try {
     const res = await fetch(`${base}/api/work-orders/deeds/prior?${params}`, {
       headers: headers(config.token),
@@ -618,12 +633,17 @@ export async function deleteWorkOrderProperty(
   config: WorkOrdersApiConfig,
   poNumber: string,
   propertyId: string,
+  reason: string,
 ): Promise<ApiOk<void> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties/${propertyId}`,
-      { method: "DELETE", headers: headers(config.token) },
+      {
+        method: "DELETE",
+        headers: headers(config.token),
+        body: JSON.stringify({ reason }),
+      },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) {
