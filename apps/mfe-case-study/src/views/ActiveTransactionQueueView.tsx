@@ -5,16 +5,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  Badge,
   Button,
-  Input,
   Note,
   OperationalPanel,
+  OperationalToolbarSearch,
+  OperationalToolbarSelect,
   PageShellHeader,
   PageToolbar,
   QueueTableHint,
-  Select,
   SkeletonTableRows,
+  StatusPill,
   Table,
   TBody,
   Td,
@@ -25,10 +25,10 @@ import {
   Tr,
   cn,
   EmptyState,
+  queueLegacyStatusStyle,
   queueTableRowActiveClassName,
   queueTableRowClassName,
   queueTableWrapClassName,
-  type BadgeTone,
 } from "@platform/design-system";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import { RemainingTimeCell } from "@case-study/mfe/components/ui/RemainingTimeCell";
@@ -58,7 +58,6 @@ import {
   buildPrimaryQueueRowMeta,
   filterDistributionQueueRows,
   filterPrimaryQueueRows,
-  QUEUE_LIST_TOOLBAR_FIELD,
   resolveQueueTaskStatusBadge,
   uniqueSortedLabels,
 } from "../lib/prototype/active-queue-list-filters";
@@ -152,31 +151,6 @@ type PanelRenderProps = {
 
 const ROW = queueTableRowClassName;
 const ROW_ACTIVE = queueTableRowActiveClassName;
-
-function SearchIcon() {
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden
-    >
-      <circle cx="11" cy="11" r="7" />
-      <path d="M20 20l-3-3" />
-    </svg>
-  );
-}
-
-function legacyBadgeTone(className: string): BadgeTone {
-  if (className.includes("done")) return "success";
-  if (className.includes("fail")) return "danger";
-  if (className.includes("prog")) return "warning";
-  if (className.includes("new")) return "info";
-  return "default";
-}
 
 export function ActiveTransactionQueueView({
   config,
@@ -452,9 +426,10 @@ export function ActiveTransactionQueueView({
       });
       if (badge) {
         return (
-          <Badge tone={legacyBadgeTone(badge.className)} dot>
-            {badge.label}
-          </Badge>
+          <StatusPill
+            label={badge.label}
+            style={queueLegacyStatusStyle(badge.className)}
+          />
         );
       }
       return <RemainingTimeCell state={remainingTime} />;
@@ -556,13 +531,9 @@ export function ActiveTransactionQueueView({
   }, [selectedId, selectedTask, queuePending, listed, closePanel, tasks]);
 
   const queueToolbar = queueReady ? (
-    <PageToolbar className="shrink-0 border-b border-border bg-surface-2">
-      <div className="relative min-w-[min(100%,220px)] flex-1 basis-[240px] max-w-[320px]">
-        <span className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-text-3">
-          <SearchIcon />
-        </span>
-        <Input
-          className={cn(QUEUE_LIST_TOOLBAR_FIELD, "pe-8 text-[12.5px]")}
+    <PageToolbar className="shrink-0 flex-wrap items-center justify-between gap-2.5 border-b border-border bg-surface-2">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
+        <OperationalToolbarSearch
           type="search"
           placeholder={
             isDistributionTable
@@ -573,14 +544,9 @@ export function ActiveTransactionQueueView({
           onChange={(e) => setSearch(e.target.value)}
           aria-label="بحث المعاملات"
         />
-      </div>
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:flex-none">
         {!isDistributionTable ? (
-          <Select
-            className={cn(
-              QUEUE_LIST_TOOLBAR_FIELD,
-              "!w-auto min-w-[148px] max-w-full shrink-0 sm:w-[148px]",
-            )}
+          <OperationalToolbarSelect
+            className="!w-auto min-w-[148px] max-w-full shrink-0 sm:w-[148px]"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             aria-label="تصفية الحالة"
@@ -591,13 +557,10 @@ export function ActiveTransactionQueueView({
                 {status}
               </option>
             ))}
-          </Select>
+          </OperationalToolbarSelect>
         ) : null}
-        <Select
-          className={cn(
-            QUEUE_LIST_TOOLBAR_FIELD,
-            "!w-auto min-w-[168px] max-w-full shrink-0 sm:w-[168px]",
-          )}
+        <OperationalToolbarSelect
+          className="!w-auto min-w-[168px] max-w-full shrink-0 sm:w-[168px]"
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
           aria-label="تصفية نوع الإسناد"
@@ -608,9 +571,9 @@ export function ActiveTransactionQueueView({
               {type}
             </option>
           ))}
-        </Select>
+        </OperationalToolbarSelect>
       </div>
-      <span className="w-full text-[11.5px] text-text-3 sm:ms-auto sm:w-auto">
+      <span className="shrink-0 text-[11.5px] text-text-3">
         {queueReady ? `${filteredListed.length} نتيجة` : "—"}
       </span>
     </PageToolbar>

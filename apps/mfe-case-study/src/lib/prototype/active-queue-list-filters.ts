@@ -12,9 +12,6 @@ import { fieldInspectionTaskStatusBadge } from "./field-inspection-work-queue";
 import { governmentReviewTaskStatusBadge } from "./government-review-work-queue";
 import { valuationCoordinationTaskStatusBadge } from "./valuation-coordination-work-queue";
 
-export const QUEUE_LIST_TOOLBAR_FIELD =
-  "!h-8 !py-0 !leading-8 border-border-md bg-surface px-2.5 text-xs shadow-none";
-
 export type QueueTaskStatusBadge = { label: string; className: string };
 
 export function resolveQueueTaskStatusBadge(

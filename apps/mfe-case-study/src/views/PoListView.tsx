@@ -13,15 +13,17 @@ import {
 } from "@platform/app-shared/prototype/po-list-status";
 import {
   Button,
-  Input,
   KpiBand,
   KpiCell,
   OperationalPanel,
+  OperationalToolbarPrimaryButton,
+  OperationalToolbarSearch,
+  OperationalToolbarSelect,
   PageGutter,
   PageShell,
   PageToolbar,
-  Select,
   SkeletonTableRows,
+  StatusPill,
   Table,
   TBody,
   Td,
@@ -70,9 +72,6 @@ import {
 type SortKey = "created" | "po" | "received" | "due";
 type SortDir = "asc" | "desc";
 type StatusFilter = PoListStatus | "";
-
-const PO_LIST_TOOLBAR_FIELD =
-  "!h-[38px] !py-0 !leading-[38px] border-border-md bg-surface px-3 text-[13px] shadow-none";
 
 const TEAM_COLORS = ["#12284C", "#a4906f", "#22406e", "#8c7857", "#3f8f5f"];
 
@@ -182,26 +181,8 @@ function poStatusStyle(status: PoRow["status"]): {
 }
 
 function PoStatusPill({ status }: { status: PoRow["status"] }) {
-  const s = poStatusStyle(status);
   const { label } = poListStatusMeta(status);
-  return (
-    <span
-      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-1 text-[12px] font-bold"
-      style={{
-        background: `color-mix(in srgb, ${s.base} 14%, transparent)`,
-        color: s.fg,
-      }}
-    >
-      <span
-        className={cn(
-          "size-1.5 shrink-0 rounded-full",
-          s.live && "ui-status-dot-live",
-        )}
-        style={{ background: s.base }}
-      />
-      {label}
-    </span>
-  );
+  return <StatusPill label={label} style={poStatusStyle(status)} />;
 }
 
 function KpiClipboardIcon() {
@@ -241,23 +222,6 @@ function KpiCheckIcon() {
   );
 }
 
-
-function SearchIcon() {
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden
-    >
-      <circle cx="11" cy="11" r="7" />
-      <path d="M20 20l-3-3" />
-    </svg>
-  );
-}
 
 function ListIcon() {
   return (
@@ -619,83 +583,58 @@ export function PoListView() {
           />
         </KpiBand>
 
-        <PageToolbar className="mb-0 shrink-0 border-b-0 bg-transparent px-0 py-0">
-              <div className="relative min-w-[min(100%,220px)] flex-1 basis-[240px] max-w-[320px]">
-                <span className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-text-3">
-                  <SearchIcon />
-                </span>
-                <Input
-                  className={cn(
-                    PO_LIST_TOOLBAR_FIELD,
-                    "pe-9",
-                    search.trim() && searchModeLabel && "ps-[6.25rem]",
-                  )}
-                  type="search"
-                  placeholder="PO أو رقم الصك أو نوع الإسناد…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  aria-label="بحث أوامر العمل"
-                />
-                {search.trim() && searchModeLabel ? (
-                  <span className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2 rounded-full bg-info-bg px-2 py-0.5 text-[10px] font-medium text-info-text">
+        <PageToolbar className="mb-0 flex shrink-0 flex-wrap items-center justify-between gap-2 border-b-0 bg-transparent px-0 py-0">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
+            <OperationalToolbarSearch
+              type="search"
+              placeholder="PO أو رقم الصك أو نوع الإسناد…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="بحث أوامر العمل"
+              endAdornment={
+                search.trim() && searchModeLabel ? (
+                  <span className="pointer-events-none absolute inset-inline-end-2.5 top-1/2 -translate-y-1/2 rounded-full bg-info-bg px-2 py-0.5 text-[10px] font-medium text-info-text">
                     {searchModeLabel}
                   </span>
-                ) : null}
-              </div>
-              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:flex-none">
-                <Select
-                  className={cn(
-                    PO_LIST_TOOLBAR_FIELD,
-                    "!w-auto min-w-[148px] max-w-full shrink-0 sm:w-[148px]",
-                  )}
-                  value={statusFilter}
-                  onChange={(e) =>
-                    setStatusFilter(e.target.value as StatusFilter)
-                  }
-                  aria-label="تصفية الحالة"
-                >
-                  <option value="">جميع الحالات</option>
-                  {PO_LIST_STATUS_OPTIONS.filter((o) => o.value !== "").map(
-                    (option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ),
-                  )}
-                </Select>
-                <Select
-                  className={cn(
-                    PO_LIST_TOOLBAR_FIELD,
-                    "!w-auto min-w-[168px] max-w-full shrink-0 sm:w-[168px]",
-                  )}
-                  value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value)}
-                  aria-label="تصفية نوع الإسناد"
-                >
-                  <option value="">جميع أنواع الإسناد</option>
-                  {assignmentTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <span className="w-full text-[11.5px] text-text-3 sm:ms-auto sm:w-auto">
-                {statsReady ? `${filtered.length} نتيجة` : "—"}
-              </span>
-              {showIntake ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="primary"
-                  className="h-[38px] shrink-0 px-4 text-[13px] font-bold shadow-[0_6px_16px_-8px_rgba(18,40,76,.6)] transition-transform hover:-translate-y-px"
-                  onClick={() => setIntakeOpen(true)}
-                >
-                  <PlusIcon />
-                  أمر عمل جديد
-                </Button>
-              ) : null}
-          </PageToolbar>
+                ) : null
+              }
+            />
+            <OperationalToolbarSelect
+              className="!w-auto min-w-[148px] max-w-full shrink-0 sm:w-[148px]"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+              aria-label="تصفية الحالة"
+            >
+              <option value="">جميع الحالات</option>
+              {PO_LIST_STATUS_OPTIONS.filter((o) => o.value !== "").map(
+                (option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ),
+              )}
+            </OperationalToolbarSelect>
+            <OperationalToolbarSelect
+              className="!w-auto min-w-[168px] max-w-full shrink-0 sm:w-[168px]"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              aria-label="تصفية نوع الإسناد"
+            >
+              <option value="">جميع أنواع الإسناد</option>
+              {assignmentTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </OperationalToolbarSelect>
+          </div>
+          {showIntake ? (
+            <OperationalToolbarPrimaryButton onClick={() => setIntakeOpen(true)}>
+              <PlusIcon />
+              أمر عمل جديد
+            </OperationalToolbarPrimaryButton>
+          ) : null}
+        </PageToolbar>
 
         <OperationalPanel className="shrink-0 overflow-visible">
           <Table pending={!statsReady}>
@@ -944,7 +883,7 @@ export function PoListView() {
                   onClick={() => setPage((n) => Math.max(1, n - 1))}
                   aria-label="الصفحة السابقة"
                 >
-                  ›
+                  ‹
                 </Button>
                 {Array.from({ length: totalPages }, (_, i) => i + 1)
                   .filter((n) => {
@@ -982,7 +921,7 @@ export function PoListView() {
                   onClick={() => setPage((n) => Math.min(totalPages, n + 1))}
                   aria-label="الصفحة التالية"
                 >
-                  ‹
+                  ›
                 </Button>
               </div>
           </PageGutter>
