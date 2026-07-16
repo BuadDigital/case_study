@@ -15,7 +15,9 @@ import {
   Table,
   TBody,
   Td,
+  TdAction,
   Th,
+  ThAction,
   THead,
   Tr,
   cn,
@@ -32,6 +34,7 @@ import {
 } from "../lib/prototype/bourse-obstruction";
 import type { BourseDeedVitality } from "../lib/prototype/po-intake-data";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
+import { RowMoreMenu } from "@case-study/mfe/components/ui/RowMoreMenu";
 import {
   emptyProperty,
   formatDateAr,
@@ -45,7 +48,10 @@ import {
 } from "../lib/prototype/po-intake-storage";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
-import { usePendingBourseItemsQuery } from "../query/case-study-queries";
+import {
+  usePendingBourseItemsQuery,
+  useWorkflowTasksQuery,
+} from "../query/case-study-queries";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import {
   hasFieldErrors,
@@ -59,12 +65,17 @@ import {
 import type { PendingBoursePropertyDto } from "@platform/api-client";
 import { filterActionablePendingBourseItems } from "../lib/prototype/pending-bourse-queue";
 import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
+import { buildBourseQueueRowMoreItems } from "../lib/prototype/active-queue-row-menu";
+import { caseStudyTaskForProperty } from "../lib/prototype/tasks-storage";
+import { useRouter } from "next/navigation";
+import { poPropertyPath } from "../lib/po-routes";
 
 const ROW = queueTableRowClassName;
 const ROW_ACTIVE = queueTableRowActiveClassName;
 
 export function BourseInquiryView() {
   const { role } = usePrototype();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const {
     data: rawItems = [],
@@ -72,6 +83,7 @@ export function BourseInquiryView() {
     refetch,
   } = usePendingBourseItemsQuery();
   const { data: failures = [] } = useFailuresQuery();
+  const { data: workflowTasks = [] } = useWorkflowTasksQuery({ live: true });
 
   const items = filterActionablePendingBourseItems(rawItems, failures);
   const queuePending = !isFetched;
@@ -90,9 +102,14 @@ export function BourseInquiryView() {
   >();
 
   const refresh = useCallback(async () => {
-    await queryClient.invalidateQueries({
-      queryKey: prototypeKeys.pendingBourseItems(),
-    });
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: prototypeKeys.pendingBourseItems(),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: prototypeKeys.workflowTasks(),
+      }),
+    ]);
     await refetch();
   }, [queryClient, refetch]);
 
@@ -251,17 +268,49 @@ export function BourseInquiryView() {
                       <Th>رقم الطلب</Th>
                       <Th>المالك</Th>
                       <Th>الاستحقاق</Th>
+                      <ThAction aria-label="المزيد" />
                     </Tr>
                   </THead>
                   <TBody>
                     {queuePending && items.length === 0 ? (
-                      <SkeletonTableRows rows={5} cols={6} />
+                      <SkeletonTableRows rows={5} cols={7} />
                     ) : (
                       items.map((item) => {
                       const active =
                         selected?.poNumber === item.poNumber &&
                         selected?.propertyId === item.propertyId;
                       const deedLabel = formatPendingBourseDeedDisplay(item);
+                      const task = caseStudyTaskForProperty(
+                        item.poNumber,
+                        item.propertyId,
+                        workflowTasks,
+                      );
+                      const moreItems = task
+                        ? buildBourseQueueRowMoreItems({
+                            task: { ...task, phase: "bourse" },
+                            propertyId: item.propertyId,
+                            openTask: () => void openItem(item),
+                            router,
+                            refreshQueue: () => {
+                              void refresh();
+                            },
+                            showToast,
+                          })
+                        : [
+                            {
+                              id: "open",
+                              label: "فتح المعاملة",
+                              onClick: () => void openItem(item),
+                            },
+                            {
+                              id: "property-detail",
+                              label: "تفاصيل العقار",
+                              onClick: () =>
+                                router.push(
+                                  poPropertyPath(item.poNumber, item.propertyId),
+                                ),
+                            },
+                          ];
 
                       return (
                         <Tr
@@ -304,6 +353,9 @@ export function BourseInquiryView() {
                           <Td className="text-text-2">
                             {formatDateAr(item.dueDateAt)}
                           </Td>
+                          <TdAction>
+                            <RowMoreMenu items={moreItems} />
+                          </TdAction>
                         </Tr>
                       );
                     })

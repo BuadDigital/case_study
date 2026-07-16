@@ -113,6 +113,33 @@ public static class DataSeeder
         CancellationToken cancellationToken = default) =>
         EnsurePrototypeModuleDataAsync(db, cancellationToken);
 
+    /// <summary>Re-create all seeded HR staff and proc demo accounts (idempotent).</summary>
+    public static async Task ReseedAllDemoUsersAsync(
+        IServiceProvider services,
+        CancellationToken cancellationToken = default)
+    {
+        var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var db = services.GetRequiredService<ApplicationDbContext>();
+
+        foreach (var role in LegacyRoles.Concat(OrgRoles.All).Concat(DepartmentRoles.All))
+        {
+            if (!await roleManager.RoleExistsAsync(role))
+                await roleManager.CreateAsync(new IdentityRole(role));
+        }
+
+        await EnsureLegacyAdminAsync(userManager);
+
+        foreach (var staff in HrStaffSeeds)
+            await EnsureHrStaffAsync(userManager, db, staff, cancellationToken);
+
+        await EnsureProcProviderAsync(
+            userManager,
+            db,
+            JeddahSurveyOfficeSeed,
+            cancellationToken);
+    }
+
     /// <summary>Re-create a seeded HR demo account by login username (e.g. ahmed).</summary>
     public static async Task ReseedHrStaffByLoginAsync(
         IServiceProvider services,

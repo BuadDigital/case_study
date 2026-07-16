@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { PoPropertiesPageClient } from "@/components/po/PoPropertiesPageClient";
 import {
   PoHeaderEditRoute,
-  PoPropertyCreateRoute,
   PoPropertyDetailPage,
   PoPropertyEditRoute,
   PoPropertyFailureRoute,
@@ -40,7 +39,7 @@ export default async function PoNestedRoutePage({
     segments[1] === PO_PROPERTY_SEGMENT &&
     segments[2] === "new"
   ) {
-    return <PoPropertyCreateRoute poNumber={segments[0]!} />;
+    notFound();
   }
 
   if (segments.length === 3 && segments[1] === PO_PROPERTY_SEGMENT) {

@@ -10,6 +10,7 @@ import {
   SubpagePanel,
 } from "@platform/design-system";
 import { useOrganizationQuery } from "../../query/settings-queries";
+import { DevSystemResetPanel } from "../../components/DevSystemResetPanel";
 
 function roleLabel(systemRole: string) {
   if (systemRole === "CDO") return "مسؤول التحول الرقمي";
@@ -121,6 +122,8 @@ export function UsersOrganizationView() {
           <DepartmentCard key={dept.code} dept={dept} />
         ))
       )}
+
+      <DevSystemResetPanel />
     </>
   );
 }

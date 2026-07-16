@@ -31,7 +31,6 @@ export { CaseStudyTaskWork } from "./views/MyTaskWorkView";
 export { SuspendedTransactionsView } from "./views/SuspendedTransactionsView";
 export { PartyFeesView } from "./views/PartyFeesView";
 export { PoHeaderEditRoute } from "./views/po-routes/PoHeaderEditRoute";
-export { PoPropertyCreateRoute } from "./views/po-routes/PoPropertyCreateRoute";
 export { PoPropertyEditRoute } from "./views/po-routes/PoPropertyEditRoute";
 export { PoPropertyFailureRoute } from "./views/po-routes/PoPropertyFailureRoute";
 

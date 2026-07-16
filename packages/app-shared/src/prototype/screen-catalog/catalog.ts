@@ -213,14 +213,6 @@ function buildPoSubRoutes(): SystemScreenEntry[] {
       group,
     }),
     subRouteEntry({
-      id: "po-property-new",
-      name: "إضافة عقار لأمر العمل",
-      path: "/po/{poNumber}/property/new",
-      whereToFind: "أوامر العمل ← أمر ← إضافة عقار",
-      pageId: "po",
-      group,
-    }),
-    subRouteEntry({
       id: "po-property-detail",
       name: "تفاصيل العقار",
       path: "/po/{poNumber}/property/{propertyId}",

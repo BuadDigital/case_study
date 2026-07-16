@@ -93,6 +93,20 @@ public class WorkflowTasksController : ControllerBase
         return Ok(dto);
     }
 
+    [HttpPost("{id:guid}/revert-phase")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public async Task<ActionResult<WorkflowTaskDto>> RevertPhase(
+        Guid id,
+        [FromBody] RevertWorkflowTaskPhaseRequest request,
+        CancellationToken cancellationToken)
+    {
+        var (result, errors) = await _tasks.RevertPhaseAsync(id, request, cancellationToken);
+        if (errors is not null)
+            return BadRequest(new { errors });
+        if (result is null) return NotFound();
+        return Ok(result);
+    }
+
     [HttpPatch("{id:guid}")]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<WorkflowTaskDto>> Patch(

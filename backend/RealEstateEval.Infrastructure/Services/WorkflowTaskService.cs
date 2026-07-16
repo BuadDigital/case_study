@@ -347,6 +347,102 @@ public class WorkflowTaskService : IWorkflowTaskService
         return WorkflowTaskMapper.ToDto(entity);
     }
 
+    public async Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> RevertPhaseAsync(
+        Guid id,
+        RevertWorkflowTaskPhaseRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var target = (request.TargetPhase ?? "").Trim().ToLowerInvariant();
+        if (target is not ("enfath" or "bourse"))
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["targetPhase"] = "المرحلة المستهدفة يجب أن تكون البيانات الأولية أو استعلام البورصة",
+            });
+        }
+
+        var entity = await _db.WorkflowTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        if (entity is null) return (null, null);
+
+        if (!string.Equals(entity.Kind, CaseStudyPropertyKind, StringComparison.OrdinalIgnoreCase))
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "يمكن إرجاع مهام دراسة الحالة فقط",
+            });
+        }
+
+        if (WorkflowTaskStatus.IsTerminal(entity.Status) || entity.Phase is "done" or "case-study")
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "لا يمكن إرجاع هذه المعاملة — أكملت دراسة الحالة أو أُغلقت",
+            });
+        }
+
+        var current = entity.Phase;
+        var allowed =
+            (current == "distribution" && target is "bourse" or "enfath")
+            || (current == "bourse" && target == "enfath");
+        if (!allowed)
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "لا يمكن الإرجاع إلى هذه المرحلة من المرحلة الحالية",
+            });
+        }
+
+        if (entity.PropertyId is Guid propertyId)
+        {
+            var property = await _db.WorkOrderProperties
+                .FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
+            if (property is not null)
+            {
+                property.BourseDataCompleted = false;
+                property.BourseCompletedAtUtc = null;
+            }
+        }
+
+        if (current == "distribution")
+        {
+            entity.DistributionJson = WorkflowTaskMapper.SerializeDistribution(
+                WorkflowTaskMapper.DefaultDistribution());
+        }
+
+        var po = entity.PoNumber.Trim();
+        var deed = "";
+        if (entity.PropertyId is Guid pid)
+        {
+            var prop = await _db.WorkOrderProperties.AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == pid, cancellationToken);
+            deed = prop?.DeedNumber?.Trim() ?? "";
+        }
+
+        entity.Phase = target;
+        entity.Status = WorkflowTaskStatus.Open;
+        entity.Title = PropertyTaskTitle(deed, po);
+        entity.UpdatedAtUtc = DateTime.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken);
+
+        if (entity.PropertyId is Guid timelinePropertyId)
+        {
+            var label = target == "enfath"
+                ? "إرجاع للبيانات الأولية"
+                : "إرجاع لاستعلام البورصة";
+            await _timeline.RecordAsync(
+                entity.PoNumber,
+                timelinePropertyId,
+                $"task:{entity.Id}:phase-revert:{target}",
+                label,
+                null,
+                "active",
+                entity.UpdatedAtUtc,
+                cancellationToken);
+        }
+
+        return (WorkflowTaskMapper.ToDto(entity), null);
+    }
+
     public async Task<WorkflowTaskDto?> PatchAsync(
         Guid id,
         PatchWorkflowTaskRequest request,
@@ -544,7 +640,7 @@ public class WorkflowTaskService : IWorkflowTaskService
             {
                 var linked = tasks.FirstOrDefault(t => t.PropertyId == prop.Id);
                 if (linked is not null &&
-                    linked.Phase is not "done" and not "obstruction" and not "case-study")
+                    linked.Phase is not "done" and not "obstruction" and not "case-study" and not "enfath")
                 {
                     var targetPhase = PhaseAfterEnfath(
                         PropertyIdentifierTypeLabels.ToApiValue(prop.IdentifierType),

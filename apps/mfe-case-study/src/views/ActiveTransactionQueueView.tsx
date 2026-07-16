@@ -29,6 +29,7 @@ import {
   queueTableRowActiveClassName,
   queueTableRowClassName,
   queueTableWrapClassName,
+  useToast,
 } from "@platform/design-system";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import { RemainingTimeCell } from "@case-study/mfe/components/ui/RemainingTimeCell";
@@ -50,6 +51,7 @@ import {
   findPropertyForTask,
 } from "../lib/prototype/my-task-row";
 import type { PoIntakeRecord } from "../lib/prototype/po-intake-data";
+import { skipsBourseForIdentifier } from "../lib/prototype/po-intake-data";
 import { isTaskOnSuspendedProperty } from "../lib/prototype/suspended-transactions-storage";
 import { type WorkflowTask } from "../lib/prototype/tasks-storage";
 import { resolveQueueTasksForViewer } from "../lib/prototype/viewer-task-access";
@@ -109,6 +111,8 @@ export type ActiveTransactionQueueConfig = {
   ) => WorkflowTask[];
   /** Override row ⋮ menu (e.g. appraiser recall). */
   buildRowMoreItems?: (ctx: ActiveQueueRowMoreContext) => RowMoreMenuItem[];
+  /** Enable «إرجاع لمرحلة سابقة» in the default ⋮ menu. */
+  allowPhaseRevert?: boolean;
   /** When false, row click does not open the work panel. */
   canOpenTask?: (task: WorkflowTask) => boolean;
   /** Replaces remaining-time cell when set (e.g. submission status). */
@@ -132,6 +136,8 @@ export type ActiveQueueRowMoreContext = {
   openTask: () => void;
   router: { push: (href: string) => void };
   refreshQueue: () => void;
+  showToast: (message: string, tone?: "success" | "error" | "info") => void;
+  poByNumber: Map<string, PoIntakeRecord>;
 };
 
 export type ActiveQueueApi = {
@@ -164,6 +170,7 @@ export function ActiveTransactionQueueView({
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const selectedId = searchParams.get("task");
   const { role, viewerEmail, distributionAssigneeId } = usePrototype();
   const { data: staffResult } = useStaffUsersQuery();
@@ -384,19 +391,36 @@ export function ActiveTransactionQueueView({
 
   const resolveRowMoreItems = useCallback(
     (task: WorkflowTask, propertyId: string | undefined) => {
+      const record = poByNumber.get(task.poNumber.trim());
+      const property = findPropertyForTask(record, task);
       const ctx: ActiveQueueRowMoreContext = {
         task,
         propertyId,
         openTask: () => handleRowClick(task.id),
         router,
         refreshQueue: refreshWork,
+        showToast,
+        poByNumber,
       };
       if (config.buildRowMoreItems) {
         return config.buildRowMoreItems(ctx);
       }
-      return buildActiveQueueRowMoreItems(ctx);
+      return buildActiveQueueRowMoreItems({
+        ...ctx,
+        allowPhaseRevert: Boolean(config.allowPhaseRevert),
+        skipsBourse: property
+          ? skipsBourseForIdentifier(property.identifierType)
+          : false,
+      });
     },
-    [config, handleRowClick, router, refreshWork],
+    [
+      config,
+      handleRowClick,
+      router,
+      refreshWork,
+      showToast,
+      poByNumber,
+    ],
   );
 
   useEffect(() => {

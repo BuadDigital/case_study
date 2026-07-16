@@ -92,17 +92,6 @@ export function resolvePoChrome(
     };
   }
 
-  if (parts[3] === "new") {
-    return {
-      segments: [
-        ...poTrailBase(poNumber),
-        { label: "إضافة عقار", current: true },
-      ],
-      title: "إضافة عقار —",
-      titlePo: poNumber,
-    };
-  }
-
   const propertyId = decodePoParam(parts[3]);
 
   if (parts[4] === "edit") {

@@ -28,6 +28,7 @@ const DISTRIBUTION_QUEUE: ActiveTransactionQueueConfig = {
   getTaskPath: distributionTaskPath,
   queueSort: "newest-first",
   filterListed: (mine) => filterTasksForDistribution(mine),
+  allowPhaseRevert: true,
   refreshOnWindowEvents: [FAILURES_CHANGED_EVENT, TASKS_CHANGED_EVENT],
 };
 

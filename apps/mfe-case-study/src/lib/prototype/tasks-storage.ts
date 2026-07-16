@@ -9,6 +9,7 @@ import {
   listWorkflowTasks,
   patchWorkflowTask,
   patchWorkflowTaskDistribution,
+  revertWorkflowTaskPhase,
   syncWorkflowTasks,
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
@@ -375,7 +376,7 @@ export async function syncTaskSlotsForPo(
   };
 }
 
-/** Link a property registered outside مهامي (e.g. PO → إضافة عقار) to the next empty slot. */
+/** Link a property registered in البيانات الأولية to the next empty workflow slot. */
 export async function linkNewPropertyToTaskSlot(
   record: PoIntakeRecord,
   property: PoPropertyIntake,
@@ -465,6 +466,32 @@ export async function advanceTaskAfterBourse(
         result.kind,
         "errors" in result ? result.errors : undefined,
         "تعذّر تقديم مهمة البورصة",
+      ),
+    };
+  }
+  notifyTasksChanged();
+  return { ok: true, task: dtoToTask(result.data) };
+}
+
+export type RevertTaskPhaseResult =
+  | { ok: true; task: WorkflowTask }
+  | { ok: false; error: string };
+
+/** إرجاع مهمة دراسة حالة لمرحلة سابقة (بورصة أو بيانات أولية). */
+export async function revertTaskToPhase(
+  taskId: string,
+  targetPhase: "enfath" | "bourse",
+): Promise<RevertTaskPhaseResult> {
+  const config = workOrdersApiConfig();
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
+  const result = await revertWorkflowTaskPhase(config, taskId, targetPhase);
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: resolveApiError(
+        result.kind,
+        "errors" in result ? result.errors : undefined,
+        "تعذّر إرجاع المعاملة للمرحلة السابقة",
       ),
     };
   }
