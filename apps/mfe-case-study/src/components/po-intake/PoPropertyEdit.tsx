@@ -82,7 +82,6 @@ export function PoPropertyEdit({
       setProperty((p) => {
         if (!p) return p;
         const next = { ...p, [key]: value };
-        if (key === "classification") next.propertyType = "";
         return next;
       });
       setFieldErrors((e) => {
@@ -108,9 +107,9 @@ export function PoPropertyEdit({
       if (key === "ownerName") return isBourse ? "owner_name_bourse" : "owner_name";
       if (key === "court") return isBourse ? "court_bourse" : "court";
       if (key === "circuit") return isBourse ? "circuit_bourse" : "circuit";
-      if (key === "delegationLetterFileName") return `delegation_${prop.id}`;
+      if (key === "delegationLetterFileNames") return `delegation_${prop.id}`;
       if (key === "realEstateRegFileName") return `real_estate_reg_${prop.id}`;
-      if (key === "assignmentDocFileName") return `assignment_doc_${prop.id}`;
+      if (key === "assignmentDocFileNames") return `assignment_doc_${prop.id}`;
       if (key.startsWith("contact_phone_")) {
         const idx = key.replace("contact_phone_", "");
         return `po_contact_phone_${idx}`;
@@ -306,6 +305,7 @@ export function PoPropertyEdit({
           fieldErrors={fieldErrors}
           onPatch={patchProperty}
           poNumber={poNumber}
+          excludePoNumber={poNumber}
         />
       </RegistrationFormCard>
 

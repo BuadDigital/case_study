@@ -16,6 +16,10 @@ public class WorkOrderProperty
     public string? OwnerName { get; set; }
     /// <summary>yes / no — القيود على العقار (مرحلة البورصة).</summary>
     public string? RestrictionsPresent { get; set; }
+    /// <summary>mortgaged / seized / suspended / other — نوع القيد عند وجود قيود.</summary>
+    public string? RestrictionType { get; set; }
+    /// <summary>سبب القيد عند اختيار «أخرى».</summary>
+    public string? RestrictionOtherReason { get; set; }
     /// <summary>deed / bourse / doc / no</summary>
     public string? BoundariesAvailability { get; set; }
     public string? BoundariesExternalDocName { get; set; }

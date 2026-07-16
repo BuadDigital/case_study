@@ -43,9 +43,9 @@ export function validatePropertyEnfathFields(
     );
     if (
       requiresAssignmentDecree(assignmentType) &&
-      !p.assignmentDocFileName.trim()
+      p.assignmentDocFileNames.length === 0
     ) {
-      errors.assignmentDocFileName =
+      errors.assignmentDocFileNames =
         "ارفع قرار الإسناد الخاص بهذا العقار (مطلوب لمسار التنفيذ)";
     }
     const identifierError = validatePropertyIdentifierNumber(
@@ -67,7 +67,6 @@ export function validatePropertyEnfathFields(
         ownerName: p.ownerName,
         court: p.court,
         circuit: p.circuit,
-        delegationLetterFileName: p.delegationLetterFileName,
       },
       [
         "deedNumber",
@@ -78,10 +77,13 @@ export function validatePropertyEnfathFields(
         "ownerName",
         "court",
         "circuit",
-        "delegationLetterFileName",
       ],
     ),
   );
+
+  if (p.delegationLetterFileNames.length === 0) {
+    errors.delegationLetterFileNames = "خطاب التفويض مطلوب";
+  }
 
   if (
     p.identifierType === "real_estate_reg" &&
@@ -93,9 +95,9 @@ export function validatePropertyEnfathFields(
 
   if (
     requiresAssignmentDecree(assignmentType) &&
-    !p.assignmentDocFileName.trim()
+    p.assignmentDocFileNames.length === 0
   ) {
-    errors.assignmentDocFileName =
+    errors.assignmentDocFileNames =
       "ارفع قرار الإسناد الخاص بهذا العقار (مطلوب لمسار التنفيذ)";
   }
 
@@ -141,11 +143,9 @@ export function firstEnfathValidationMessage(errors: FieldErrors): string {
     errors.court ??
     errors.circuit ??
     errors.district ??
-    errors.classification ??
-    errors.propertyType ??
-    errors.delegationLetterFileName ??
+    errors.delegationLetterFileNames ??
     errors.realEstateRegFileName ??
-    errors.assignmentDocFileName ??
+    errors.assignmentDocFileNames ??
     (contactPhoneKey ? errors[contactPhoneKey] : undefined) ??
     (contactRoleKey ? errors[contactRoleKey] : undefined) ??
     (contactNameKey ? errors[contactNameKey] : undefined) ??

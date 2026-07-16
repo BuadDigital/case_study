@@ -246,11 +246,11 @@ export function DashboardView() {
                         </Td>
                         <Td className="min-w-[100px]">
                           <div className="mb-0.5 text-[10px] text-text-3">
-                            {p.done}/{p.count}
+                            {p.done}/{p.count} دراسة مكتملة
                           </div>
                           <ProgressBar
                             value={p.done}
-                            max={p.count}
+                            max={Math.max(1, p.count)}
                             tone="primary"
                           />
                         </Td>

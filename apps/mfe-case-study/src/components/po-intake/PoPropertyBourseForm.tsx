@@ -1,16 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
 import {
   BOUNDARIES_AVAILABILITY_OPTIONS,
   BOURSE_DEED_VITALITY_ACTIVE,
   BOURSE_DEED_VITALITY_INACTIVE,
   BOURSE_OBSTRUCTION_LABEL,
   CITY_OPTIONS,
-  CLASSIFICATION_OPTIONS,
   DEED_STATUS_OPTIONS,
-  PROPERTY_CLASSIFICATIONS,
   RESTRICTIONS_PRESENT_OPTIONS,
+  RESTRICTION_TYPE_OPTIONS,
   boundariesDetailFieldsOptional,
   boundariesMarkedUnavailable,
   clearPropertyBoundaryFields,
@@ -60,10 +58,6 @@ export function PoPropertyBourseForm({
   obstructionReasonError,
 }: Props) {
   const obstructionPath = showDeedVitalityFlow && deedVitality === "inactive";
-  const propertyTypes = useMemo(() => {
-    const c = property.classification;
-    return c ? (PROPERTY_CLASSIFICATIONS[c] ?? []) : [];
-  }, [property.classification]);
 
   return (
     <>
@@ -122,8 +116,7 @@ export function PoPropertyBourseForm({
 
       {showIntroNote && !obstructionPath ? (
         <Note tone="info" className="mb-3">
-          بيانات البورصة — التصنيف ونوع العقار من القائمة الهرمية المعتمدة في
-          النظام (5 تصنيفات / 47 نوعاً).
+          بيانات البورصة — المدينة والحي والمساحة والحدود حسب استعلام البورصة.
         </Note>
       ) : null}
 
@@ -145,33 +138,6 @@ export function PoPropertyBourseForm({
             value={property.district}
             error={fieldErrors.district}
             onChange={(v) => onPatch("district", v)}
-          />
-          <RegSelect
-            id="classification"
-            label="التصنيف"
-            required
-            options={CLASSIFICATION_OPTIONS}
-            value={property.classification}
-            error={fieldErrors.classification}
-            onChange={(v) => {
-              onPatch("classification", v);
-              onPatch("propertyType", "");
-            }}
-          />
-          <RegSelect
-            id="property_type"
-            label="نوع العقار"
-            required
-            options={propertyTypes}
-            value={property.classification ? property.propertyType : ""}
-            error={fieldErrors.propertyType}
-            disabled={!property.classification}
-            placeholder={
-              property.classification
-                ? "اختر نوع العقار..."
-                : "اختر التصنيف أولاً"
-            }
-            onChange={(v) => onPatch("propertyType", v)}
           />
           <RegField
             id="area"
@@ -201,12 +167,45 @@ export function PoPropertyBourseForm({
                   key={opt.value}
                   type="button"
                   className={pillClass(property.restrictionsPresent === opt.value)}
-                  onClick={() => onPatch("restrictionsPresent", opt.value)}
+                  onClick={() => {
+                    onPatch("restrictionsPresent", opt.value);
+                    if (opt.value !== "yes") {
+                      onPatch("restrictionType", "");
+                      onPatch("restrictionOtherReason", "");
+                    }
+                  }}
                 >
                   {opt.label}
                 </button>
               ))}
             </div>
+            {property.restrictionsPresent === "yes" ? (
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <RegSelect
+                  id="restriction_type"
+                  label="نوع القيد"
+                  required
+                  options={[...RESTRICTION_TYPE_OPTIONS]}
+                  value={property.restrictionType}
+                  error={fieldErrors.restrictionType}
+                  onChange={(v) => {
+                    onPatch("restrictionType", v);
+                    if (v !== "other") onPatch("restrictionOtherReason", "");
+                  }}
+                />
+                {property.restrictionType === "other" ? (
+                  <RegField
+                    id="restriction_other_reason"
+                    label="سبب القيد"
+                    required
+                    value={property.restrictionOtherReason}
+                    error={fieldErrors.restrictionOtherReason}
+                    onChange={(v) => onPatch("restrictionOtherReason", v)}
+                    placeholder="اذكر سبب القيد…"
+                  />
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-3 w-full">

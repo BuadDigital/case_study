@@ -47,6 +47,13 @@ export const RESTRICTIONS_PRESENT_OPTIONS = [
   { value: "no", label: "لا توجد قيود" },
 ] as const;
 
+export const RESTRICTION_TYPE_OPTIONS = [
+  { value: "mortgaged", label: "مرهون" },
+  { value: "seized", label: "محجوز" },
+  { value: "suspended", label: "موقوف" },
+  { value: "other", label: "أخرى" },
+] as const;
+
 export const BOUNDARIES_AVAILABILITY_OPTIONS = [
   { value: "deed", label: "موضحة في الصك" },
   { value: "bourse", label: "موضحة في البورصة" },
@@ -154,8 +161,7 @@ export const CONTACT_ROLE_OPTIONS = [
   "مالك",
   "وكيل",
   "ممثل قانوني",
-  "مورث",
-  "ولي",
+  "وارث",
   "وصي",
   "شاهد",
   "أخرى",
@@ -290,6 +296,32 @@ export function restrictionsPresentLabel(value: string): string {
   return (
     RESTRICTIONS_PRESENT_OPTIONS.find((o) => o.value === v)?.label ?? v
   );
+}
+
+export function restrictionTypeLabel(value: string): string {
+  const v = value.trim().toLowerCase();
+  if (!v) return "";
+  return RESTRICTION_TYPE_OPTIONS.find((o) => o.value === v)?.label ?? v;
+}
+
+/** عرض موحّد للقيود + نوع القيد + سبب أخرى. */
+export function formatPropertyRestrictionsLine(
+  property: Pick<
+    PoPropertyIntake,
+    "restrictionsPresent" | "restrictionType" | "restrictionOtherReason"
+  >,
+): string {
+  const present = property.restrictionsPresent.trim().toLowerCase();
+  if (present === "no") return "لا توجد قيود";
+  if (present !== "yes") return restrictionsPresentLabel(property.restrictionsPresent);
+
+  const typeLabel = restrictionTypeLabel(property.restrictionType);
+  if (!typeLabel) return "توجد قيود";
+  if (property.restrictionType.trim().toLowerCase() === "other") {
+    const reason = property.restrictionOtherReason.trim();
+    return reason ? `أخرى — ${reason}` : "أخرى";
+  }
+  return typeLabel;
 }
 
 export function boundariesAvailabilityLabel(value: string): string {
@@ -562,6 +594,8 @@ export type PoPropertyIntake = {
   deedDate: string;
   ownerName: string;
   restrictionsPresent: string;
+  restrictionType: string;
+  restrictionOtherReason: string;
   boundariesAvailability: string;
   boundariesExternalDocName: string;
   northBoundary: string;
@@ -580,8 +614,8 @@ export type PoPropertyIntake = {
   circuit: string;
   classification: string;
   propertyType: string;
-  assignmentDocFileName: string;
-  delegationLetterFileName: string;
+  assignmentDocFileNames: string[];
+  delegationLetterFileNames: string[];
   otherDocumentFileNames: string[];
   realEstateRegFileName: string;
   planNumber: string;
@@ -633,6 +667,8 @@ export function emptyProperty(): PoPropertyIntake {
     deedDate: "",
     ownerName: "",
     restrictionsPresent: "",
+    restrictionType: "",
+    restrictionOtherReason: "",
     boundariesAvailability: "",
     boundariesExternalDocName: "",
     ...clearPropertyBoundaryFields(),
@@ -644,8 +680,8 @@ export function emptyProperty(): PoPropertyIntake {
     circuit: "",
     classification: "",
     propertyType: "",
-    assignmentDocFileName: "",
-    delegationLetterFileName: "",
+    assignmentDocFileNames: [],
+    delegationLetterFileNames: [],
     otherDocumentFileNames: [],
     realEstateRegFileName: "",
     planNumber: "",

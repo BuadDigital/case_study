@@ -33,19 +33,6 @@ public static class WorkOrderMapper
 
     public static WorkOrderPropertyDto ToPropertyDto(WorkOrderProperty p)
     {
-        List<string> otherDocs = [];
-        if (!string.IsNullOrWhiteSpace(p.OtherDocumentFileNames))
-        {
-            try
-            {
-                otherDocs = JsonSerializer.Deserialize<List<string>>(p.OtherDocumentFileNames) ?? [];
-            }
-            catch
-            {
-                otherDocs = [];
-            }
-        }
-
         return new WorkOrderPropertyDto
         {
             Id = p.Id,
@@ -57,6 +44,8 @@ public static class WorkOrderMapper
             DeedDate = p.DeedDate,
             OwnerName = p.OwnerName,
             RestrictionsPresent = p.RestrictionsPresent,
+            RestrictionType = p.RestrictionType,
+            RestrictionOtherReason = p.RestrictionOtherReason,
             BoundariesAvailability = p.BoundariesAvailability,
             BoundariesExternalDocName = p.BoundariesExternalDocName,
             NorthBoundary = p.NorthBoundary,
@@ -75,9 +64,9 @@ public static class WorkOrderMapper
             Circuit = p.Circuit,
             Classification = p.Classification,
             PropertyType = p.PropertyType,
-            AssignmentDocFileName = p.AssignmentDocFileName,
-            DelegationLetterFileName = p.DelegationLetterFileName,
-            OtherDocumentFileNames = otherDocs,
+            AssignmentDocFileNames = ParseFileNameList(p.AssignmentDocFileName),
+            DelegationLetterFileNames = ParseFileNameList(p.DelegationLetterFileName),
+            OtherDocumentFileNames = ParseFileNameList(p.OtherDocumentFileNames),
             RealEstateRegFileName = p.RealEstateRegFileName,
             BourseDataCompleted = p.BourseDataCompleted,
             PlanNumber = p.PlanNumber,
@@ -97,6 +86,43 @@ public static class WorkOrderMapper
                 .ToList(),
         };
     }
+
+    /// <summary>
+    /// Accepts legacy plain filename or JSON array string in the same column.
+    /// </summary>
+    public static List<string> ParseFileNameList(string? stored)
+    {
+        if (string.IsNullOrWhiteSpace(stored)) return [];
+        var trimmed = stored.Trim();
+        if (trimmed.StartsWith('['))
+        {
+            try
+            {
+                return (JsonSerializer.Deserialize<List<string>>(trimmed) ?? [])
+                    .Select(s => s.Trim())
+                    .Where(s => s.Length > 0)
+                    .ToList();
+            }
+            catch
+            {
+                return [];
+            }
+        }
+
+        return [trimmed];
+    }
+
+    public static string? SerializeFileNameList(IEnumerable<string>? names)
+    {
+        var list = (names ?? [])
+            .Select(s => s.Trim())
+            .Where(s => s.Length > 0)
+            .ToList();
+        return list.Count == 0 ? null : JsonSerializer.Serialize(list);
+    }
+
+    public static bool HasStoredFileNames(string? stored) =>
+        ParseFileNameList(stored).Count > 0;
 
     public static WorkOrderListItemDto ToListItem(
         WorkOrder entity,
@@ -175,6 +201,8 @@ public static class WorkOrderMapper
             Area = p.Area,
             DeedStatus = p.DeedStatus,
             RestrictionsPresent = p.RestrictionsPresent,
+            RestrictionType = p.RestrictionType,
+            RestrictionOtherReason = p.RestrictionOtherReason,
             BoundariesAvailability = p.BoundariesAvailability,
             BoundariesExternalDocName = p.BoundariesExternalDocName,
             NorthBoundary = p.NorthBoundary,

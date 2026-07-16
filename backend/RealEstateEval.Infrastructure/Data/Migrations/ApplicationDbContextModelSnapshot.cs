@@ -1714,8 +1714,8 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("DelegationLetterFileName")
-                        .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
 
                     b.Property<string>("District")
                         .IsRequired()
@@ -1782,9 +1782,17 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<string>("RestrictionOtherReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<string>("RestrictionsPresent")
                         .HasMaxLength(8)
                         .HasColumnType("character varying(8)");
+
+                    b.Property<string>("RestrictionType")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<string>("SouthBoundary")
                         .HasMaxLength(512)

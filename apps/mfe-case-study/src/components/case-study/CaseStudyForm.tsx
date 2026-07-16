@@ -123,19 +123,23 @@ function RemarksBlock({
 
 function FormProgressRings({
   summary,
+  submitted,
 }: {
   summary: { total: number; answered: number; pending: number; pct: number };
+  submitted: boolean;
 }) {
+  const pct = submitted ? 100 : summary.pct;
+  const answered = submitted ? summary.total : summary.answered;
   return (
     <div
       className="flex shrink-0 items-center justify-center gap-2.5"
       aria-label="تقدم النموذج"
     >
       <CaseStudyProgressDonut
-        pct={summary.pct}
+        pct={pct}
         color="var(--success, #16a34a)"
-        label="اكتمال النموذج"
-        sub={`${summary.answered} / ${summary.total}`}
+        label={submitted ? "تم رفع النموذج" : "اكتمال النموذج"}
+        sub={`${answered} / ${summary.total}`}
       />
     </div>
   );
@@ -870,7 +874,10 @@ export function CaseStudyForm({
               );
             })}
           </nav>
-          <FormProgressRings summary={summary} />
+          <FormProgressRings
+            summary={summary}
+            submitted={draft.status === "submitted" || parentFormSubmitted}
+          />
         </div>
       ) : null}
 

@@ -60,45 +60,49 @@ export function collectIntakeDocuments(input: {
     });
   }
 
-  if (showDecree && property.assignmentDocFileName?.trim()) {
-    const cached = getCachedPropertyDocMatching(
-      "decree",
-      poNumber,
-      property.id,
-      property.assignmentDocFileName,
-    );
-    pushEntry(docs, {
-      id: "intake-assignment",
-      name: "قرار الإسناد",
-      fileName: property.assignmentDocFileName.trim(),
-      source,
-      kind: fileKind(
-        property.assignmentDocFileName,
-        cached?.mimeType,
-      ),
-      dataUrl: cached?.dataUrl,
+  if (showDecree) {
+    property.assignmentDocFileNames.forEach((fileName, index) => {
+      const name = fileName.trim();
+      if (!name) return;
+      const cached = getCachedPropertyDocMatching(
+        "decree",
+        poNumber,
+        property.id,
+        name,
+      );
+      pushEntry(docs, {
+        id: `intake-assignment-${index}-${name}`,
+        name: property.assignmentDocFileNames.length > 1
+          ? `قرار الإسناد (${index + 1})`
+          : "قرار الإسناد",
+        fileName: name,
+        source,
+        kind: fileKind(name, cached?.mimeType),
+        dataUrl: cached?.dataUrl,
+      });
     });
   }
 
-  if (property.delegationLetterFileName?.trim()) {
+  property.delegationLetterFileNames.forEach((fileName, index) => {
+    const name = fileName.trim();
+    if (!name) return;
     const cached = getCachedPropertyDocMatching(
       "delegation",
       poNumber,
       property.id,
-      property.delegationLetterFileName,
+      name,
     );
     pushEntry(docs, {
-      id: "intake-delegation",
-      name: "خطاب التفويض",
-      fileName: property.delegationLetterFileName.trim(),
+      id: `intake-delegation-${index}-${name}`,
+      name: property.delegationLetterFileNames.length > 1
+        ? `خطاب التفويض (${index + 1})`
+        : "خطاب التفويض",
+      fileName: name,
       source,
-      kind: fileKind(
-        property.delegationLetterFileName,
-        cached?.mimeType,
-      ),
+      kind: fileKind(name, cached?.mimeType),
       dataUrl: cached?.dataUrl,
     });
-  }
+  });
 
   if (
     property.boundariesAvailability === "doc" &&

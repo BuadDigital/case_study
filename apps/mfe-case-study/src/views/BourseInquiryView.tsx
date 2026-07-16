@@ -117,7 +117,6 @@ export function BourseInquiryView() {
     <K extends keyof PoPropertyIntake>(key: K, value: PoPropertyIntake[K]) => {
       setProperty((p) => {
         const next = { ...p, [key]: value };
-        if (key === "classification") next.propertyType = "";
         return next;
       });
       setFieldErrors((e) => {
@@ -413,7 +412,7 @@ export function BourseInquiryView() {
 
                 <RegistrationFormCard
                   title="بيانات البورصة"
-                  subtitle="المدينة · التصنيف · نوع العقار · الحدود"
+                  subtitle="المدينة · الحي · الحدود"
                 >
                   <PoPropertyBourseForm
                     property={property}
@@ -481,8 +480,7 @@ export function BourseInquiryView() {
                 اختر صكاً من القائمة
               </h3>
               <p className="m-0 mb-4 text-xs leading-relaxed text-text-3">
-                يفتح نموذج إكمال بيانات البورصة هنا — المدينة، التصنيف، نوع
-                العقار، والحدود.
+                يفتح نموذج إكمال بيانات البورصة هنا — المدينة، الحي، والحدود.
               </p>
               <ul className="m-0 list-none p-0 text-end text-[11px] leading-loose text-text-2">
                 <li className="border-b border-border py-1">

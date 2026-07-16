@@ -141,17 +141,12 @@ public static class PropertyListRowBuilder
             .ToList();
         if (active.Count == 0) return "fail";
 
+        // «مكتمل» فقط عند رفع نموذج الدراسة للنظام (اكتمال مهمة دراسة الحالة).
         var parent = active.FirstOrDefault(t =>
             string.Equals(t.Kind, CaseStudyPropertyKind, StringComparison.Ordinal));
         if (parent is not null &&
             (string.Equals(parent.Status, WorkflowTaskStatus.Completed, StringComparison.Ordinal) ||
              string.Equals(parent.Phase, "done", StringComparison.Ordinal)))
-        {
-            return "done";
-        }
-
-        if (active.All(t =>
-                string.Equals(t.Status, WorkflowTaskStatus.Completed, StringComparison.Ordinal)))
         {
             return "done";
         }

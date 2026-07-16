@@ -30,6 +30,8 @@ export type WorkOrderPropertyDto = {
   deedDate?: string;
   ownerName?: string;
   restrictionsPresent?: string;
+  restrictionType?: string;
+  restrictionOtherReason?: string;
   boundariesAvailability?: string;
   boundariesExternalDocName?: string;
   northBoundary?: string;
@@ -48,8 +50,8 @@ export type WorkOrderPropertyDto = {
   circuit?: string;
   classification?: string;
   propertyType?: string;
-  assignmentDocFileName?: string;
-  delegationLetterFileName?: string;
+  assignmentDocFileNames?: string[];
+  delegationLetterFileNames?: string[];
   otherDocumentFileNames?: string[];
   realEstateRegFileName?: string;
   bourseDataCompleted?: boolean;
@@ -127,6 +129,8 @@ export type UpdatePropertyBourseRequest = {
   area?: string;
   deedStatus?: string;
   restrictionsPresent?: string;
+  restrictionType?: string;
+  restrictionOtherReason?: string;
   boundariesAvailability?: string;
   boundariesExternalDocName?: string;
   northBoundary?: string;
@@ -158,6 +162,8 @@ export type PriorDeedRegistrationDto = {
   area?: string;
   deedStatus?: string;
   restrictionsPresent?: string;
+  restrictionType?: string;
+  restrictionOtherReason?: string;
   boundariesAvailability?: string;
   boundariesExternalDocName?: string;
   northBoundary?: string;

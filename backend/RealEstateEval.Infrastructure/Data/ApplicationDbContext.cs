@@ -127,7 +127,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.RequestNumber).HasMaxLength(64);
             e.Property(x => x.AssignmentMandateNumber).HasMaxLength(64);
             e.Property(x => x.AssignmentMandateDate).HasMaxLength(32);
-            e.Property(x => x.DelegationLetterFileName).HasMaxLength(512);
+            e.Property(x => x.DelegationLetterFileName).HasMaxLength(2000);
             e.Property(x => x.OtherDocumentFileNames).HasMaxLength(2000);
             e.Property(x => x.BoundariesAvailability).HasMaxLength(32);
             e.Property(x => x.BoundariesExternalDocName).HasMaxLength(512);
@@ -140,6 +140,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.WestBoundary).HasMaxLength(512);
             e.Property(x => x.WestBoundaryLengthM).HasMaxLength(32);
             e.Property(x => x.RestrictionsPresent).HasMaxLength(8);
+            e.Property(x => x.RestrictionType).HasMaxLength(32);
+            e.Property(x => x.RestrictionOtherReason).HasMaxLength(500);
             e.Property(x => x.PlanNumber).HasMaxLength(128);
             e.Property(x => x.PlotNumber).HasMaxLength(128);
             e.Property(x => x.LocationMapUrl).HasMaxLength(1024);

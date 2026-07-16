@@ -4,6 +4,7 @@ import type { WorkflowTask } from "./tasks-storage";
 /**
  * Derive list-row workflow status from tasks for one property.
  * Returns null when there are no tasks (caller keeps intake/failure rules).
+ * «done» only after case-study form upload (parent task completed).
  */
 export function resolvePropertyStatusFromTasks(
   poNumber: string,
@@ -20,11 +21,7 @@ export function resolvePropertyStatusFromTasks(
   if (active.length === 0) return "fail";
 
   const parent = active.find((t) => t.kind === "case-study-property");
-  if (
-    parent?.status === "completed" ||
-    parent?.phase === "done" ||
-    active.every((t) => t.status === "completed")
-  ) {
+  if (parent?.status === "completed" || parent?.phase === "done") {
     return "done";
   }
 

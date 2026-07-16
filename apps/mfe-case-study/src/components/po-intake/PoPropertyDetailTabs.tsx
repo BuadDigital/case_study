@@ -43,7 +43,7 @@ import {
   ownershipStatusLabel,
   propertyLocationMapUrl,
   propertySurveyEmptyLabel,
-  restrictionsPresentLabel,
+  formatPropertyRestrictionsLine,
   showsCourtFields,
   skipsBourseForIdentifier,
   type PoIntakeRecord,
@@ -203,7 +203,7 @@ function BasicTab({
       hasBourseDetailFields(property) ||
       property.bourseDataCompleted);
   const validContacts = property.contacts.filter((c) => isValidContactEntry(c));
-  const restrictions = restrictionsPresentLabel(property.restrictionsPresent);
+  const restrictions = formatPropertyRestrictionsLine(property);
   const courtLine = [property.court, property.circuit]
     .filter(Boolean)
     .join(" · ");
@@ -221,7 +221,6 @@ function BasicTab({
         <SectionHeader>بيانات الصك</SectionHeader>
         <FieldsGrid>
           <FieldBox label="رقم الصك" value={property.deedNumber} ltr />
-          <FieldBox label="رقم الطلب" value={property.requestNumber} ltr />
           <FieldBox
             label="رقم التكليف"
             value={property.assignmentMandateNumber}
@@ -232,6 +231,7 @@ function BasicTab({
             value={property.assignmentMandateDate}
             ltr
           />
+          <FieldBox label="رقم الطلب" value={property.requestNumber} ltr />
           <FieldBox label="تاريخ الصك" value={property.deedDate} ltr />
           <FieldBox label="حالة الصك">
             {property.deedStatus.trim() ? (

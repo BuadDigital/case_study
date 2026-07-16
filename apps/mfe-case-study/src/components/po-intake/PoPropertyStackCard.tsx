@@ -78,13 +78,15 @@ export function PoPropertyStackCard({
               <span aria-hidden>·</span>
               <span
                 className={cn(
-                  property.assignmentDocFileName.trim()
+                  property.assignmentDocFileNames.length > 0
                     ? "text-success-text"
                     : "font-semibold text-danger-text",
                 )}
               >
                 قرار الإسناد:{" "}
-                {property.assignmentDocFileName.trim() || "غير مرفق"}
+                {property.assignmentDocFileNames.length > 0
+                  ? `${property.assignmentDocFileNames.length} مرفق`
+                  : "غير مرفق"}
               </span>
             </>
           ) : null}

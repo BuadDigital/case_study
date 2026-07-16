@@ -54,18 +54,14 @@ export function isPoListStatusTerminal(status: PoListStatus): boolean {
   );
 }
 
-/** شريط التقدم: تسجيل الصكوك حتى يبدأ أول إكمال دراسة، ثم نسبة الدراسات المكتملة. */
+/** شريط التقدم: نسبة العقارات التي اكتملت دراستها (رفع النموذج للنظام). */
 export function poProgressPct(
-  registered: number | undefined,
+  _registered: number | undefined,
   studied: number | undefined,
   expected: number | undefined,
 ): number {
-  const reg = Math.max(0, Number(registered) || 0);
   const done = Math.max(0, Number(studied) || 0);
   const exp = Math.max(0, Number(expected) || 0);
   if (exp <= 0) return 0;
-  if (done > 0) {
-    return Math.min(100, Math.round((done / exp) * 100));
-  }
-  return Math.min(100, Math.round((reg / exp) * 100));
+  return Math.min(100, Math.round((done / exp) * 100));
 }

@@ -175,7 +175,6 @@ export function CaseStudyTaskWork({
     <K extends keyof PoPropertyIntake>(key: K, value: PoPropertyIntake[K]) => {
       setProperty((p) => {
         const next = { ...p, [key]: value };
-        if (key === "classification") next.propertyType = "";
         return next;
       });
       setFieldErrors((e) => {
@@ -747,6 +746,7 @@ export function CaseStudyTaskWork({
             fieldErrors={fieldErrors}
             onPatch={patchProperty}
             poNumber={task.poNumber}
+            excludePoNumber={task.poNumber}
             fieldsMode={
               bourseInquiryFastPath ? "bourse-inquiry-primary" : "all"
             }
@@ -772,6 +772,7 @@ export function CaseStudyTaskWork({
               fieldErrors={fieldErrors}
               onPatch={patchProperty}
               poNumber={task.poNumber}
+              excludePoNumber={task.poNumber}
               fieldsMode="bourse-inquiry-primary"
             />
           ) : null}
