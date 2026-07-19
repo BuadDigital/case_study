@@ -35,6 +35,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<SurveyOffice> SurveyOffices => Set<SurveyOffice>();
     public DbSet<ValuationRequest> ValuationRequests => Set<ValuationRequest>();
     public DbSet<PropertyKeyRecord> PropertyKeyRecords => Set<PropertyKeyRecord>();
+    public DbSet<KeyEnvelope> KeyEnvelopes => Set<KeyEnvelope>();
+    public DbSet<KeyEnvelopeAssignment> KeyEnvelopeAssignments => Set<KeyEnvelopeAssignment>();
+    public DbSet<KeyEnvelopeHandoff> KeyEnvelopeHandoffs => Set<KeyEnvelopeHandoff>();
+    public DbSet<KeyEnvelopeTimelineEntry> KeyEnvelopeTimelineEntries => Set<KeyEnvelopeTimelineEntry>();
+    public DbSet<PropertyCourtAccess> PropertyCourtAccesses => Set<PropertyCourtAccess>();
+    public DbSet<KeyReceiptFeeCharge> KeyReceiptFeeCharges => Set<KeyReceiptFeeCharge>();
     public DbSet<FileAttachment> FileAttachments => Set<FileAttachment>();
     public DbSet<InternalDelegationLetterSet> InternalDelegationLetterSets => Set<InternalDelegationLetterSet>();
     public DbSet<DocumentReferenceCounter> DocumentReferenceCounters => Set<DocumentReferenceCounter>();
@@ -156,6 +162,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.PropertyType).HasMaxLength(128);
             e.HasIndex(x => x.CourtId);
             e.HasIndex(x => x.CircuitId);
+            e.HasIndex(x => x.RequestNumber);
             e.HasIndex(x => new { x.WorkOrderId, x.DeedNumber });
             e.HasIndex(x => x.DeedNumber);
             e.HasMany(x => x.Contacts)
@@ -436,6 +443,107 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(x => new { x.PoNumber, x.PropertyId }).IsUnique();
         });
 
+        builder.Entity<KeyEnvelope>(e =>
+        {
+            e.ToTable("KeyEnvelopes", DatabaseSchemas.Operations);
+            e.Property(x => x.RequestNumber).HasMaxLength(128);
+            e.Property(x => x.Court).HasMaxLength(256);
+            e.Property(x => x.Circuit).HasMaxLength(150);
+            e.Property(x => x.ContactPhones).HasMaxLength(1000);
+            e.Property(x => x.Notes).HasMaxLength(4000);
+            e.Property(x => x.ReceiveScenario).HasMaxLength(32);
+            e.Property(x => x.Status).HasMaxLength(32);
+            e.Property(x => x.FeeAmountSar).HasPrecision(12, 2);
+            e.Property(x => x.CreatedByUserId).HasMaxLength(450);
+            e.Property(x => x.CreatedByName).HasMaxLength(256);
+            e.HasIndex(x => x.RequestNumber);
+            e.HasIndex(x => x.CreatedAtUtc);
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.FeeGenerated);
+            e.HasMany(x => x.Assignments)
+                .WithOne(x => x.Envelope!)
+                .HasForeignKey(x => x.EnvelopeId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Handoffs)
+                .WithOne(x => x.Envelope!)
+                .HasForeignKey(x => x.EnvelopeId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Timeline)
+                .WithOne(x => x.Envelope!)
+                .HasForeignKey(x => x.EnvelopeId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<KeyEnvelopeAssignment>(e =>
+        {
+            e.ToTable("KeyEnvelopeAssignments", DatabaseSchemas.Operations);
+            e.Property(x => x.DeedNumber).HasMaxLength(128);
+            e.Property(x => x.Status).HasMaxLength(32);
+            e.Property(x => x.Notes).HasMaxLength(2000);
+            e.Property(x => x.ConfirmedByUserId).HasMaxLength(450);
+            e.Property(x => x.ConfirmedByName).HasMaxLength(256);
+            e.HasIndex(x => x.EnvelopeId);
+            e.HasIndex(x => new { x.EnvelopeId, x.DeedNumber });
+        });
+
+        builder.Entity<KeyEnvelopeHandoff>(e =>
+        {
+            e.ToTable("KeyEnvelopeHandoffs", DatabaseSchemas.Operations);
+            e.Property(x => x.Kind).HasMaxLength(32);
+            e.Property(x => x.FromParty).HasMaxLength(256);
+            e.Property(x => x.ToParty).HasMaxLength(256);
+            e.Property(x => x.ToUserId).HasMaxLength(450);
+            e.Property(x => x.LetterNumber).HasMaxLength(128);
+            e.Property(x => x.Notes).HasMaxLength(2000);
+            e.Property(x => x.Status).HasMaxLength(32);
+            e.Property(x => x.ConfirmedByUserId).HasMaxLength(450);
+            e.Property(x => x.ConfirmedByName).HasMaxLength(256);
+            e.Property(x => x.CreatedByUserId).HasMaxLength(450);
+            e.Property(x => x.CreatedByName).HasMaxLength(256);
+            e.HasIndex(x => x.EnvelopeId);
+            e.HasIndex(x => x.Status);
+        });
+
+        builder.Entity<KeyEnvelopeTimelineEntry>(e =>
+        {
+            e.ToTable("KeyEnvelopeTimelineEntries", DatabaseSchemas.Operations);
+            e.Property(x => x.EventType).HasMaxLength(64);
+            e.Property(x => x.Summary).HasMaxLength(1000);
+            e.Property(x => x.ActorUserId).HasMaxLength(450);
+            e.Property(x => x.ActorName).HasMaxLength(256);
+            e.HasIndex(x => new { x.EnvelopeId, x.CreatedAtUtc });
+        });
+
+        builder.Entity<PropertyCourtAccess>(e =>
+        {
+            e.ToTable("PropertyCourtAccesses", DatabaseSchemas.Operations);
+            e.Property(x => x.PoNumber).HasMaxLength(64);
+            e.Property(x => x.DeedNumber).HasMaxLength(128);
+            e.Property(x => x.RequestNumber).HasMaxLength(128);
+            e.Property(x => x.StudyHoldStatus).HasMaxLength(32);
+            e.Property(x => x.ContactPhones).HasMaxLength(1000);
+            e.Property(x => x.Notes).HasMaxLength(4000);
+            e.Property(x => x.UpdatedByUserId).HasMaxLength(450);
+            e.Property(x => x.UpdatedByName).HasMaxLength(256);
+            e.HasIndex(x => x.PropertyId).IsUnique();
+            e.HasIndex(x => x.RequestNumber);
+            e.HasIndex(x => x.StudyHoldStatus);
+        });
+
+        builder.Entity<KeyReceiptFeeCharge>(e =>
+        {
+            e.ToTable("KeyReceiptFeeCharges", DatabaseSchemas.Financial);
+            e.Property(x => x.RequestNumber).HasMaxLength(128);
+            e.Property(x => x.AmountSar).HasPrecision(12, 2);
+            e.Property(x => x.CollectionStatus).HasMaxLength(32);
+            e.Property(x => x.InvoiceReference).HasMaxLength(128);
+            e.Property(x => x.CreatedByUserId).HasMaxLength(450);
+            e.Property(x => x.CreatedByName).HasMaxLength(256);
+            e.HasIndex(x => x.EnvelopeId).IsUnique();
+            e.HasIndex(x => x.RequestNumber);
+            e.HasIndex(x => x.CollectionStatus);
+        });
+
         builder.Entity<FileAttachment>(e =>
         {
             e.ToTable("FileAttachments", DatabaseSchemas.Attachments);
@@ -498,6 +606,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.HasKey(x => x.Id);
             e.Property(x => x.EngineeringSurveyFeeSar).HasPrecision(12, 2);
             e.Property(x => x.GovernmentReviewFeeSar).HasPrecision(12, 2);
+            e.Property(x => x.KeyReceiptFeeSar).HasPrecision(12, 2);
             e.Property(x => x.FieldInspectorIndividualFeeSar).HasPrecision(12, 2);
             e.Property(x => x.FieldInspectorOrganizationFeeSar).HasPrecision(12, 2);
             e.Property(x => x.FieldInspectorEmployeeFeeSar).HasPrecision(12, 2);

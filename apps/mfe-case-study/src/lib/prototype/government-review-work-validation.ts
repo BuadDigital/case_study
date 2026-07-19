@@ -1,8 +1,10 @@
 import type { GovernmentReviewSubmission } from "./government-review-work-data";
 import {
-  canFinalizeGovernmentReview,
+  canFinalizeGovernmentReviewWithGate,
   isGovernmentReviewAwaitingKeyHandoff,
   isGovernmentReviewAwaitingVisit,
+  mergeGovernmentReviewWithKeyGate,
+  type GovernmentReviewKeyGateOverlay,
 } from "./government-review-work-data";
 import {
   governmentReviewSubmitFieldErrors,
@@ -79,21 +81,22 @@ export function validateGovernmentReviewSubmission(
     assignmentMandateNumber?: string | null;
     assignmentMandateDate?: string | null;
   },
+  gate?: GovernmentReviewKeyGateOverlay | null,
 ): GovernmentReviewFieldErrors & Record<string, string> {
   const errors: GovernmentReviewFieldErrors & Record<string, string> = {};
+  const merged = mergeGovernmentReviewWithKeyGate(submission, gate);
 
   if (!submission.visitStatus) {
     errors.visitStatus = "حدّد حالة زيارة المحكمة";
   }
 
-  if (!canFinalizeGovernmentReview(submission)) {
+  if (!canFinalizeGovernmentReviewWithGate(submission, gate)) {
     if (submission.visitStatus !== "completed") {
       errors.visitStatus =
         "لا يمكن إتمام المراجعة قبل تأكيد «تمت الزيارة» — احفظ كمسودة بالانتظار";
-    } else if (submission.keysStatus === "not_required") {
-      // unreachable when canFinalize is correct — keep defensive message
+    } else if (merged.keysStatus === "not_required") {
       errors.keysStatus = "حدّد حالة المفاتيح";
-    } else if (submission.keyHandedToInspector !== "yes") {
+    } else if (merged.keyHandedToInspector !== "yes") {
       errors.keyHandedToInspector =
         "لإتمام المعاملة اختر «نعم» بعد تسليم المفتاح للمعاين — أو احفظ كقيد التنفيذ (أو اختر مفاتيح غير مطلوبة)";
     }

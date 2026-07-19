@@ -193,3 +193,81 @@ export function normalizeGovernmentReviewSubmission(
       : "";
   return { ...rest, keysProofFiles, keyHandedToInspector };
 }
+
+/** Overlay from PropertyKeyGateResolver onto legacy submission fields. */
+export type GovernmentReviewKeyGateOverlay = {
+  keysStatus?: string;
+  keyHandedToInspector?: string;
+  keyAvailable?: boolean;
+  source?: string;
+  envelopeMissingWarning?: boolean;
+  studyHoldStatus?: string;
+};
+
+/**
+ * Prefer envelope/court-access gate when present; keep submission as fallback.
+ * Does not mutate the original draft — returns a view for finalize/queue badges.
+ */
+export function mergeGovernmentReviewWithKeyGate(
+  submission: Pick<
+    GovernmentReviewSubmission,
+    "visitStatus" | "keyHandedToInspector" | "keysStatus"
+  >,
+  gate?: GovernmentReviewKeyGateOverlay | null,
+): Pick<
+  GovernmentReviewSubmission,
+  "visitStatus" | "keyHandedToInspector" | "keysStatus"
+> & {
+  keyAvailable: boolean;
+  envelopeMissingWarning: boolean;
+  gateSource: string;
+} {
+  const source = gate?.source ?? "none";
+  const preferGate = source === "envelope" || source === "court_access";
+
+  const keysStatus = (
+    preferGate && gate?.keysStatus
+      ? gate.keysStatus
+      : submission.keysStatus
+  ) as GovernmentReviewKeysStatus | "";
+
+  const keyHandedToInspector = (
+    preferGate && gate?.keyHandedToInspector
+      ? gate.keyHandedToInspector
+      : submission.keyHandedToInspector
+  ) as GovernmentReviewKeyHandedToInspector | "";
+
+  const keyAvailable =
+    gate?.keyAvailable === true ||
+    keyHandedToInspector === "yes" ||
+    keysStatus === "not_required" ||
+    keysStatus === "received";
+
+  const envelopeMissingWarning =
+    gate?.envelopeMissingWarning === true ||
+    (submission.keysStatus === "received" &&
+      source !== "envelope" &&
+      source !== "court_access");
+
+  return {
+    visitStatus: submission.visitStatus,
+    keysStatus,
+    keyHandedToInspector,
+    keyAvailable,
+    envelopeMissingWarning,
+    gateSource: source,
+  };
+}
+
+/** Finalize using gate overlay when envelope/court-access is the source of truth. */
+export function canFinalizeGovernmentReviewWithGate(
+  submission: Pick<
+    GovernmentReviewSubmission,
+    "visitStatus" | "keyHandedToInspector" | "keysStatus"
+  >,
+  gate?: GovernmentReviewKeyGateOverlay | null,
+): boolean {
+  return canFinalizeGovernmentReview(
+    mergeGovernmentReviewWithKeyGate(submission, gate),
+  );
+}

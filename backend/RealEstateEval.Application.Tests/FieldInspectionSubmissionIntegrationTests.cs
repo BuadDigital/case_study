@@ -172,13 +172,16 @@ public class FieldInspectionSubmissionIntegrationTests
     private static PartyTaskSubmissionService CreateService(ApplicationDbContext db)
     {
         var timeline = new PropertyTimelineService(db);
+        var holds = new PropertyAccessHoldService(db);
         return new(
             db,
             TestInspectorFeeServiceFactory.CreateWorkflow(db),
             new FieldInspectionAttachmentVerifier(db),
             timeline,
             new NullHttpContextAccessor(),
-            new NullPermissionService());
+            new NullPermissionService(),
+            new PropertyKeyGateResolver(db),
+            new KeyEnvelopesService(db, holds));
     }
 
     private sealed class NullHttpContextAccessor : IHttpContextAccessor

@@ -14,6 +14,10 @@ export const prototypeKeys = {
   fieldDictionary: () => [...prototypeKeys.all, "field-dictionary"] as const,
   surveyOffices: () => [...prototypeKeys.all, "survey-offices"] as const,
   propertyKeys: () => [...prototypeKeys.all, "property-keys"] as const,
+  keyEnvelopes: () => [...prototypeKeys.all, "key-envelopes"] as const,
+  keyEnvelopeFees: () => [...prototypeKeys.all, "key-envelope-fees"] as const,
+  propertyCourtAccess: () =>
+    [...prototypeKeys.all, "property-court-access"] as const,
   valuationRequests: () => [...prototypeKeys.all, "valuation-requests"] as const,
   suspendedTransactions: () =>
     [...prototypeKeys.all, "suspended-transactions"] as const,

@@ -629,7 +629,8 @@ export function ActiveTransactionQueueView({
 
   useEffect(() => {
     if (!showPartyColumns || !tasks) {
-      setPartyProgressByTask(new Map());
+      // Avoid a new Map() every run — that re-renders and can loop when deps churn.
+      setPartyProgressByTask((prev) => (prev.size === 0 ? prev : new Map()));
       return;
     }
 
@@ -662,7 +663,8 @@ export function ActiveTransactionQueueView({
     };
   }, [
     showPartyColumns,
-    listed,
+    // Prefer id key over `listed` identity — a fresh array each render was looping with setState.
+    listedTaskIdsKey,
     tasks,
     infoRolesMatrix,
     partyProgressRevision,

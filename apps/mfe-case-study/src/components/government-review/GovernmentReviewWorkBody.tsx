@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type RefObject } from "react";
+import { getPropertyKeyGate } from "@platform/api-client";
 import {
   FormGroup,
   FormRow,
@@ -17,12 +18,15 @@ import {
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 import { usePoRecordQuery } from "../../query/case-study-queries";
 import {
+  canFinalizeGovernmentReviewWithGate,
   governmentReviewKeyHandedToInspectorLabel,
   governmentReviewKeysStatusLabel,
   governmentReviewVisitStatusLabel,
   isGovernmentReviewFormLocked,
+  type GovernmentReviewKeyGateOverlay,
   type GovernmentReviewKeyHandedToInspector,
   type GovernmentReviewKeysStatus,
   type GovernmentReviewSubmission,
@@ -35,7 +39,6 @@ import {
   updateGovernmentReviewDraft,
 } from "../../lib/prototype/government-review-work-storage";
 import {
-  canFinalizeGovernmentReview,
   isGovernmentReviewAwaitingKeyHandoff,
   isGovernmentReviewAwaitingVisit,
 } from "../../lib/prototype/government-review-work-data";
@@ -120,6 +123,10 @@ export function GovernmentReviewWorkBody({
     {},
   );
   const [formError, setFormError] = useState<string | null>(null);
+  const [envelopeMissingWarning, setEnvelopeMissingWarning] = useState(false);
+  const [keyGate, setKeyGate] = useState<GovernmentReviewKeyGateOverlay | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!propertyId) return;
@@ -136,6 +143,55 @@ export function GovernmentReviewWorkBody({
       cancelled = true;
     };
   }, [task.id, task.poNumber, propertyId, property?.court]);
+
+  useEffect(() => {
+    if (!draft || draft.keysStatus !== "received" || !propertyId) {
+      setEnvelopeMissingWarning(false);
+      return;
+    }
+    const config = prototypeModulesApiConfig();
+    if (!config) {
+      setEnvelopeMissingWarning(false);
+      return;
+    }
+    let cancelled = false;
+    void getPropertyKeyGate(config, {
+      propertyId,
+      poNumber: task.poNumber,
+      deedNumber: property?.deedNumber,
+      requestNumber: property?.requestNumber,
+    }).then((result) => {
+      if (cancelled) return;
+      if (!result.ok) {
+        setKeyGate(null);
+        setEnvelopeMissingWarning(draft.keysStatus === "received");
+        return;
+      }
+      const overlay: GovernmentReviewKeyGateOverlay = {
+        keysStatus: result.data.keysStatus,
+        keyHandedToInspector: result.data.keyHandedToInspector,
+        keyAvailable: result.data.keyAvailable,
+        source: result.data.source,
+        envelopeMissingWarning: result.data.envelopeMissingWarning,
+        studyHoldStatus: result.data.studyHoldStatus,
+      };
+      setKeyGate(overlay);
+      setEnvelopeMissingWarning(
+        Boolean(result.data.envelopeMissingWarning) ||
+          (result.data.source !== "envelope" &&
+            result.data.source !== "court_access"),
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    draft?.keysStatus,
+    propertyId,
+    property?.deedNumber,
+    property?.requestNumber,
+    task.poNumber,
+  ]);
 
   const locked = draft ? isGovernmentReviewFormLocked(draft.status) : false;
   const formDisabled = locked;
@@ -233,7 +289,7 @@ export function GovernmentReviewWorkBody({
       }
     }
 
-    if (!canFinalizeGovernmentReview(draft)) {
+    if (!canFinalizeGovernmentReviewWithGate(draft, keyGate)) {
       const message =
         draft.visitStatus !== "completed"
           ? "حدّد «تمت الزيارة» لإتمام المراجعة"
@@ -243,17 +299,21 @@ export function GovernmentReviewWorkBody({
       return false;
     }
 
-    const errors = validateGovernmentReviewSubmission(draft, {
-      role,
-      deedNumber: property?.deedNumber,
-      requestNumber: property?.requestNumber,
-      city: property?.city,
-      district: property?.district,
-      circuit: property?.circuit,
-      poNumber: task.poNumber,
-      assignmentMandateNumber: property?.assignmentMandateNumber,
-      assignmentMandateDate: property?.assignmentMandateDate,
-    });
+    const errors = validateGovernmentReviewSubmission(
+      draft,
+      {
+        role,
+        deedNumber: property?.deedNumber,
+        requestNumber: property?.requestNumber,
+        city: property?.city,
+        district: property?.district,
+        circuit: property?.circuit,
+        poNumber: task.poNumber,
+        assignmentMandateNumber: property?.assignmentMandateNumber,
+        assignmentMandateDate: property?.assignmentMandateDate,
+      },
+      keyGate,
+    );
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
       const message = firstGovernmentReviewError(errors);
@@ -276,7 +336,7 @@ export function GovernmentReviewWorkBody({
     setFormError(message);
     showToast(message, "error");
     return false;
-  }, [draft, locked, hostRef, task.id, task.poNumber, showToast, role, property]);
+  }, [draft, locked, hostRef, task.id, task.poNumber, showToast, role, property, keyGate]);
 
   useEffect(() => {
     if (!hostRef.current) return;
@@ -461,6 +521,12 @@ export function GovernmentReviewWorkBody({
               <p className="mt-1 text-[10px] text-danger-text" role="alert">
                 {fieldErrors.keysStatus}
               </p>
+            ) : null}
+            {envelopeMissingWarning ? (
+              <Note tone="warning" className="mt-2">
+                ظرف غير مسجّل لرقم الطلب — يمكن إتمام المراجعة، ويُفضّل تسجيل
+                الظرف من وحدة المفاتيح لمزامنة الطوابير.
+              </Note>
             ) : null}
           </FormGroup>
 

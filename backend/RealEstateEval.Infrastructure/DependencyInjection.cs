@@ -120,6 +120,9 @@ public static class DependencyInjection
         services.AddScoped<IFieldInspectionAttachmentVerifier, FieldInspectionAttachmentVerifier>();
         services.AddScoped<IPropertyTimelineService, PropertyTimelineService>();
         services.AddScoped<IFailureService, FailureService>();
+        services.AddScoped<IPropertyKeyGateResolver, PropertyKeyGateResolver>();
+        services.AddScoped<IPropertyAccessHoldService, PropertyAccessHoldService>();
+        services.AddScoped<IKeyEnvelopesService, KeyEnvelopesService>();
         return services;
     }
 
@@ -175,6 +178,9 @@ public static class DependencyInjection
     {
         services.AddScoped<ISurveyOfficesService, SurveyOfficesService>();
         services.AddScoped<IPropertyKeysService, PropertyKeysService>();
+        services.AddScoped<IPropertyKeyGateResolver, PropertyKeyGateResolver>();
+        services.AddScoped<IPropertyAccessHoldService, PropertyAccessHoldService>();
+        services.AddScoped<IKeyEnvelopesService, KeyEnvelopesService>();
         return services;
     }
 

@@ -32,6 +32,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
     private readonly IPropertyTimelineService _timeline;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IPermissionService _permissions;
+    private readonly IPropertyKeyGateResolver _keyGates;
+    private readonly IKeyEnvelopesService _keyEnvelopes;
 
     public PartyTaskSubmissionService(
         ApplicationDbContext db,
@@ -39,7 +41,9 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         IFieldInspectionAttachmentVerifier fieldInspectionAttachments,
         IPropertyTimelineService timeline,
         IHttpContextAccessor httpContextAccessor,
-        IPermissionService permissions)
+        IPermissionService permissions,
+        IPropertyKeyGateResolver keyGates,
+        IKeyEnvelopesService keyEnvelopes)
     {
         _db = db;
         _tasks = tasks;
@@ -47,6 +51,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         _timeline = timeline;
         _httpContextAccessor = httpContextAccessor;
         _permissions = permissions;
+        _keyGates = keyGates;
+        _keyEnvelopes = keyEnvelopes;
     }
 
     public async Task<PartyTaskSubmissionDto?> GetAsync(
@@ -130,6 +136,9 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
         await _db.SaveChangesAsync(cancellationToken);
 
+        if (task.Kind == "government-review")
+            await BridgeGovernmentReviewToEnvelopeAsync(task, payloadJson, cancellationToken);
+
         return (ToDto(entity), null);
     }
 
@@ -169,6 +178,9 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             await SyncFieldInspectionWorkspaceAsync(entity, cancellationToken);
 
         await _db.SaveChangesAsync(cancellationToken);
+
+        if (entity.Kind == "government-review")
+            await BridgeGovernmentReviewToEnvelopeAsync(task, entity.PayloadJson, cancellationToken);
 
         await _tasks.PatchAsync(
             taskId,
@@ -356,7 +368,14 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
                 var vacantLand = GetBool(root, "vacantLand")
                     || string.Equals(GetString(root, "vacantLand"), "yes", StringComparison.OrdinalIgnoreCase);
-                var keyAvailable = GetBool(root, "keyAvailable")
+                var gate = await _keyGates.ResolveAsync(
+                    entity.PropertyId,
+                    entity.PoNumber,
+                    property?.DeedNumber,
+                    property?.RequestNumber,
+                    cancellationToken);
+                var keyAvailable = gate.KeyAvailable
+                    || GetBool(root, "keyAvailable")
                     || string.Equals(GetString(root, "keyHandedToInspector"), "yes", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(GetString(root, "keysStatus"), "received", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(GetString(root, "keysStatus"), "not_required", StringComparison.OrdinalIgnoreCase);
@@ -415,6 +434,103 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
     {
         if (!root.TryGetProperty(name, out var prop)) return null;
         return prop.ValueKind == JsonValueKind.String ? prop.GetString() : prop.ToString();
+    }
+
+    /// <summary>
+    /// Light write bridge: when gov-review marks keys received/handed, sync envelope assignment/handoff.
+    /// Missing envelope is a UI warning only — never blocks finalize.
+    /// </summary>
+    private async Task BridgeGovernmentReviewToEnvelopeAsync(
+        WorkflowTask task,
+        string payloadJson,
+        CancellationToken cancellationToken)
+    {
+        if (task.PropertyId is not Guid propertyId) return;
+
+        string keysStatus;
+        string handed;
+        try
+        {
+            using var doc = JsonDocument.Parse(payloadJson);
+            keysStatus = GetString(doc.RootElement, "keysStatus")?.Trim() ?? "";
+            handed = GetString(doc.RootElement, "keyHandedToInspector")?.Trim() ?? "";
+        }
+        catch
+        {
+            return;
+        }
+
+        if (!string.Equals(keysStatus, "received", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(handed, "yes", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        var property = await _db.WorkOrderProperties.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == propertyId && !p.IsRemoved, cancellationToken);
+        if (property is null) return;
+
+        var requestNumber = property.RequestNumber?.Trim() ?? "";
+        if (requestNumber.Length == 0) return;
+
+        var envelope = await _db.KeyEnvelopes.AsNoTracking()
+            .Include(e => e.Assignments)
+            .Include(e => e.Handoffs)
+            .Where(e => e.RequestNumber == requestNumber)
+            .OrderByDescending(e => e.CreatedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (envelope is null) return;
+
+        var actorId = _httpContextAccessor.HttpContext?.User
+            ?.FindFirstValue(ClaimTypes.NameIdentifier) ?? "system";
+        var actorName = task.AssigneeName?.Trim();
+        if (string.IsNullOrWhiteSpace(actorName))
+            actorName = _httpContextAccessor.HttpContext?.User?.FindFirstValue("name") ?? "مراجع حكومي";
+
+        if (string.Equals(keysStatus, "received", StringComparison.OrdinalIgnoreCase))
+        {
+            var deed = property.DeedNumber?.Trim() ?? "";
+            var hasAssignment = envelope.Assignments.Any(a =>
+                string.Equals(a.DeedNumber, deed, StringComparison.OrdinalIgnoreCase)
+                || a.PropertyId == propertyId);
+            if (!hasAssignment && deed.Length > 0)
+            {
+                await _keyEnvelopes.AddAssignmentAsync(
+                    envelope.Id,
+                    new AddKeyEnvelopeAssignmentRequest
+                    {
+                        DeedNumber = deed,
+                        PropertyId = propertyId,
+                        Notes = "مزامنة من المراجعة الحكومية",
+                    },
+                    actorId,
+                    actorName,
+                    cancellationToken);
+            }
+        }
+
+        if (string.Equals(handed, "yes", StringComparison.OrdinalIgnoreCase)
+            && envelope.Status == KeyEnvelopeStatuses.Reviewer)
+        {
+            var hasPendingOrConfirmed = envelope.Handoffs.Any(h =>
+                h.Kind == KeyHandoffKinds.Internal
+                && h.Status is KeyHandoffStatuses.PendingConfirm
+                    or KeyHandoffStatuses.Confirmed
+                    or KeyHandoffStatuses.Completed);
+            if (!hasPendingOrConfirmed)
+            {
+                await _keyEnvelopes.CreateHandoffAsync(
+                    envelope.Id,
+                    new CreateKeyEnvelopeHandoffRequest
+                    {
+                        Kind = KeyHandoffKinds.Internal,
+                        FromParty = "مراجع حكومي",
+                        ToParty = "معاين ميداني",
+                        Notes = "مزامنة من المراجعة الحكومية (تسليم للمعاين)",
+                    },
+                    actorId,
+                    actorName,
+                    cancellationToken);
+            }
+        }
     }
 
     private async Task SyncFieldInspectionWorkspaceAsync(
