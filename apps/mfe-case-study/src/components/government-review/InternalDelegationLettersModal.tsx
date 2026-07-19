@@ -4,55 +4,79 @@ import { Note } from "@platform/design-system";
 import { AppModal } from "../ui/AppModal";
 import { InternalDelegationLetterPanel } from "./InternalDelegationLetterPanel";
 import { useGovernmentReviewDelegationLetters } from "./use-government-review-delegation-letters";
-import { formatPoDisplay, type PoIntakeRecord } from "../../lib/prototype/po-intake-data";
-import { showsCourtFields } from "../../lib/prototype/po-intake-data";
+import type { DelegationAgentInfo } from "../../lib/prototype/internal-delegation-letters";
+import {
+  formatPoDisplay,
+  showsCourtFields,
+  type PoIntakeRecord,
+} from "../../lib/prototype/po-intake-data";
 
 type Props = {
   open: boolean;
-  record: PoIntakeRecord | null;
+  records: PoIntakeRecord[];
+  scopeKey: string;
+  agent: DelegationAgentInfo;
+  focusPoNumber?: string | null;
   onClose: () => void;
 };
 
 export function InternalDelegationLettersModal({
   open,
-  record,
+  records,
+  scopeKey,
+  agent,
+  focusPoNumber,
   onClose,
 }: Props) {
   const { letters, refreshLetters } = useGovernmentReviewDelegationLetters(
-    record ?? undefined,
+    records,
+    scopeKey,
+    focusPoNumber,
   );
-  const supportsCourts = record
-    ? showsCourtFields(record.assignmentType)
-    : false;
+
+  const focusRecord = focusPoNumber
+    ? records.find((r) => r.poNumber.trim() === focusPoNumber.trim())
+    : null;
+  const supportsCourts = focusRecord
+    ? showsCourtFields(focusRecord.assignmentType)
+    : records.some((r) => showsCourtFields(r.assignmentType));
 
   return (
     <AppModal
       open={open}
       wide
       title={
-        record
-          ? `خطاب التفويض الداخلي — ${formatPoDisplay(record.poNumber)}`
+        focusPoNumber
+          ? `خطاب التفويض الداخلي — ${formatPoDisplay(focusPoNumber)}`
           : "خطاب التفويض الداخلي"
       }
       onClose={onClose}
     >
-      {!record ? (
-        <Note tone="warn">تعذّر تحميل أمر العمل.</Note>
+      {!scopeKey ? (
+        <Note tone="warn">تعذّر تحديد نطاق المراجع.</Note>
       ) : !supportsCourts ? (
         <Note tone="info">
-          نوع الإسناد الحالي لا يتطلّب محاكم — لا يوجد خطاب تفويض داخلي لهذا الأمر.
+          نوع الإسناد الحالي لا يتطلّب محاكم — لا يوجد خطاب تفويض داخلي لهذا
+          الأمر.
         </Note>
       ) : letters.length === 0 ? (
         <Note tone="info">
-          لا توجد محاكم مسجّلة على عقارات هذا الأمر بعد. أكمل بيانات المحكمة أولاً.
+          لا توجد محاكم/دوائر مسجّلة على عقارات هذا النطاق بعد. أكمل بيانات
+          المحكمة والدائرة أولاً.
         </Note>
       ) : (
         <div className="flex flex-col gap-3">
+          <Note tone="info" className="text-[11px]">
+            يُجمَّع الخطاب حسب المحكمة + الدائرة، وقد يضم أوامر عمل متعددة لنفس
+            الدائرة.
+          </Note>
           {letters.map((letter) => (
             <InternalDelegationLetterPanel
               key={letter.id}
               letter={letter}
-              record={record}
+              records={records}
+              scopeKey={scopeKey}
+              agent={agent}
               onRefresh={refreshLetters}
             />
           ))}

@@ -443,22 +443,42 @@ export async function downloadAttachmentBlob(
 
 // --- Internal delegation letters ---
 
+export type DelegationLetterPropertyDto = {
+  propertyId: string;
+  workOrder: string;
+  deedNo: string;
+  owner: string;
+  requestNo: string;
+};
+
+export type DelegationLetterAgentDto = {
+  name: string;
+  nationality: string;
+  nationalId: string;
+  mobile: string;
+};
+
 export type InternalDelegationLetterDto = {
   id: string;
-  poNumber: string;
   city: string;
   court: string;
   circuit: string;
-  selectedPropertyIds: string[];
+  selectedProperties: DelegationLetterPropertyDto[];
+  reference?: string | null;
+  dateHijri?: string | null;
+  dateGreg?: string | null;
+  issuedAt?: string | null;
+  agent?: DelegationLetterAgentDto | null;
+  issuedProperties?: DelegationLetterPropertyDto[] | null;
   createdAt: string;
 };
 
 export async function getInternalDelegationLetters(
   config: PrototypeModulesApiConfig,
-  poNumber: string,
+  scopeKey: string,
 ): Promise<PrototypeModulesResult<InternalDelegationLetterDto[]>> {
   const base = config.baseUrl ?? getApiBase();
-  const qs = new URLSearchParams({ poNumber });
+  const qs = new URLSearchParams({ scopeKey });
   try {
     const res = await fetch(`${base}/api/internal-delegation-letters?${qs}`, {
       headers: headers(config.token),
@@ -474,7 +494,7 @@ export async function getInternalDelegationLetters(
 
 export async function saveInternalDelegationLetters(
   config: PrototypeModulesApiConfig,
-  poNumber: string,
+  scopeKey: string,
   letters: InternalDelegationLetterDto[],
 ): Promise<PrototypeModulesResult<InternalDelegationLetterDto[]>> {
   const base = config.baseUrl ?? getApiBase();
@@ -482,12 +502,41 @@ export async function saveInternalDelegationLetters(
     const res = await fetch(`${base}/api/internal-delegation-letters`, {
       method: "PUT",
       headers: headers(config.token),
-      body: JSON.stringify({ poNumber, letters }),
+      body: JSON.stringify({ scopeKey, letters }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
     const data = await parseJson<InternalDelegationLetterDto[]>(res);
     return { ok: true, data: Array.isArray(data) ? data : [] };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export async function issueInternalDelegationLetter(
+  config: PrototypeModulesApiConfig,
+  body: {
+    scopeKey: string;
+    letterId: string;
+    selectedProperties: DelegationLetterPropertyDto[];
+    agent?: DelegationLetterAgentDto;
+    city?: string;
+    court?: string;
+    circuit?: string;
+  },
+): Promise<PrototypeModulesResult<InternalDelegationLetterDto>> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/internal-delegation-letters/issue`, {
+      method: "POST",
+      headers: headers(config.token),
+      body: JSON.stringify(body),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    const data = await parseJson<InternalDelegationLetterDto>(res);
+    if (!data) return { ok: false, kind: "server" };
+    return { ok: true, data };
   } catch {
     return { ok: false, kind: "network" };
   }

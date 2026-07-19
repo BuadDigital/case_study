@@ -17,6 +17,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<CourtCatalogEntry> CourtCatalogEntries => Set<CourtCatalogEntry>();
     public DbSet<Court> Courts => Set<Court>();
     public DbSet<CourtCircuit> CourtCircuits => Set<CourtCircuit>();
+    public DbSet<CourtAuditLog> CourtAuditLogs => Set<CourtAuditLog>();
     public DbSet<WorkflowTask> WorkflowTasks => Set<WorkflowTask>();
     public DbSet<CaseStudyForm> CaseStudyForms => Set<CaseStudyForm>();
     public DbSet<CaseStudyInfoRolesConfig> CaseStudyInfoRolesConfigs => Set<CaseStudyInfoRolesConfig>();
@@ -36,6 +37,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<PropertyKeyRecord> PropertyKeyRecords => Set<PropertyKeyRecord>();
     public DbSet<FileAttachment> FileAttachments => Set<FileAttachment>();
     public DbSet<InternalDelegationLetterSet> InternalDelegationLetterSets => Set<InternalDelegationLetterSet>();
+    public DbSet<DocumentReferenceCounter> DocumentReferenceCounters => Set<DocumentReferenceCounter>();
     public DbSet<EvaluatorRecallRecord> EvaluatorRecallRecords => Set<EvaluatorRecallRecord>();
     public DbSet<PoIntakeDraft> PoIntakeDrafts => Set<PoIntakeDraft>();
     public DbSet<FinancialReportConfig> FinancialReportConfigs => Set<FinancialReportConfig>();
@@ -204,6 +206,18 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.UpdatedBy).HasMaxLength(128);
             e.HasIndex(x => new { x.CourtId, x.CircuitNo }).IsUnique();
             e.HasIndex(x => x.IsActive);
+        });
+
+        builder.Entity<CourtAuditLog>(e =>
+        {
+            e.ToTable("CourtAuditLogs", DatabaseSchemas.Platform);
+            e.Property(x => x.Action).HasMaxLength(64).IsRequired();
+            e.Property(x => x.EntityType).HasMaxLength(32).IsRequired();
+            e.Property(x => x.ActorId).HasMaxLength(128).IsRequired();
+            e.Property(x => x.ChangesJson).HasColumnType("jsonb");
+            e.HasIndex(x => new { x.EntityType, x.EntityId });
+            e.HasIndex(x => x.TimestampUtc);
+            e.HasIndex(x => x.Action);
         });
 
         builder.Entity<WorkflowTask>(e =>
@@ -437,9 +451,18 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<InternalDelegationLetterSet>(e =>
         {
             e.ToTable("InternalDelegationLetterSets", DatabaseSchemas.CaseStudy);
-            e.Property(x => x.PoNumber).HasMaxLength(64);
+            e.Property(x => x.ScopeKey).HasMaxLength(128);
             e.Property(x => x.LettersJson).HasColumnType("jsonb");
-            e.HasIndex(x => x.PoNumber).IsUnique();
+            e.HasIndex(x => x.ScopeKey).IsUnique();
+        });
+
+        builder.Entity<DocumentReferenceCounter>(e =>
+        {
+            e.ToTable("DocumentReferenceCounters", DatabaseSchemas.CaseStudy);
+            e.Property(x => x.Dept).HasMaxLength(8);
+            e.Property(x => x.Type).HasMaxLength(8);
+            e.Property(x => x.DateKey).HasMaxLength(8);
+            e.HasIndex(x => new { x.Dept, x.Type, x.DateKey }).IsUnique();
         });
 
         builder.Entity<EvaluatorRecallRecord>(e =>
