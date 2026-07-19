@@ -3,9 +3,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
-
 namespace RealEstateEval.Infrastructure.Services;
-
 public sealed class KeyEnvelopesService : IKeyEnvelopesService
 {
     private const decimal DefaultKeyReceiptFeeSar = 350m;
@@ -95,6 +93,31 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
                 CreatedAtUtc = c.CreatedAtUtc,
             };
         }).ToList();
+    }
+
+    public async Task<bool> DeleteAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var envelope = await _db.KeyEnvelopes
+            .Include(e => e.Assignments)
+            .Include(e => e.Handoffs)
+            .Include(e => e.Timeline)
+            .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
+        if (envelope is null) return false;
+
+        // The fee charge is intentionally independent of the envelope FK,
+        // so remove it explicitly. Assignments, handoffs, and timeline entries
+        // are deleted through the envelope cascade configuration.
+        var charges = await _db.KeyReceiptFeeCharges
+            .Where(c => c.EnvelopeId == id)
+            .ToListAsync(cancellationToken);
+        if (charges.Count > 0)
+            _db.KeyReceiptFeeCharges.RemoveRange(charges);
+
+        _db.KeyEnvelopes.Remove(envelope);
+        await _db.SaveChangesAsync(cancellationToken);
+        return true;
     }
 
     public async Task<(KeyEnvelopeFeeReportRowDto? Row, string? Error)> MarkFeeCollectedAsync(

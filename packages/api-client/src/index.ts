@@ -217,6 +217,7 @@ export {
   confirmKeyEnvelopeHandoff,
   createKeyEnvelope,
   createKeyEnvelopeHandoff,
+  deleteKeyEnvelope,
   getKeyEnvelope,
   getPropertyKeyGate,
   patchPropertyKey,

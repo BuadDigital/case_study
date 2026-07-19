@@ -561,6 +561,26 @@ export async function getKeyEnvelope(
   return keyEnvelopeMutation(config, `/api/key-envelopes/${id}`);
 }
 
+export async function deleteKeyEnvelope(
+  config: PrototypeModulesApiConfig,
+  id: string,
+): Promise<PrototypeModulesResult<true>> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/key-envelopes/${id}`, {
+      method: "DELETE",
+      headers: headers(config.token),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403) return { ok: false, kind: "forbidden" };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: true };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
 export async function listKeyEnvelopeLinkedProperties(
   config: PrototypeModulesApiConfig,
   requestNumber: string,

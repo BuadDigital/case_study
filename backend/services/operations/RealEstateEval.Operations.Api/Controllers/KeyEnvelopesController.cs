@@ -93,6 +93,11 @@ public class KeyEnvelopesController : ControllerBase
         return row is null ? NotFound() : Ok(row);
     }
 
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = CapabilityPolicyNames.SubmitPartyWork)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+        => await _envelopes.DeleteAsync(id, ct) ? NoContent() : NotFound();
+
     [HttpPost]
     [Authorize(Policy = CapabilityPolicyNames.SubmitPartyWork)]
     public async Task<ActionResult<KeyEnvelopeDto>> Create(
