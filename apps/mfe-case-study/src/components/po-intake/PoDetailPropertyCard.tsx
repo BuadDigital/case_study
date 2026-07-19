@@ -142,7 +142,7 @@ export function PoDetailPropertyCard({
                 المحكمة / الدائرة
               </span>
               <span className="text-xs leading-snug text-text">
-                {[property.court, property.circuit].filter(Boolean).join(" · ")}
+                {[property.court, property.circuit].filter(Boolean).join(" / ")}
               </span>
             </div>
           )}

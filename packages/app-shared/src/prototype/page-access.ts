@@ -79,6 +79,17 @@ export function isPoPropertyDetailPath(pathname: string): boolean {
   );
 }
 
+/** Property edit — `/po/{po}/property/{id}/edit`. */
+export function isPoPropertyEditPath(pathname: string): boolean {
+  const parts = pathname.split("/").filter(Boolean);
+  return (
+    parts.length === 5 &&
+    parts[0] === "po" &&
+    parts[2] === "property" &&
+    parts[4] === "edit"
+  );
+}
+
 /** Party / queue roles that may open property detail without PO list access. */
 const PROPERTY_DETAIL_WITHOUT_PO_LIST: readonly PageId[] = [
   "government-review",
@@ -88,6 +99,14 @@ const PROPERTY_DETAIL_WITHOUT_PO_LIST: readonly PageId[] = [
   "valuation-coordination",
   // "all-transactions",
   "failures",
+];
+
+/** Case-study specialist queues — may open property edit without full PO list. */
+const PROPERTY_EDIT_WITHOUT_PO_LIST: readonly PageId[] = [
+  "active-primary-data",
+  "bourse-inquiry",
+  "active-distribution",
+  "active-case-study",
 ];
 
 export function canAccessPage(
@@ -108,6 +127,12 @@ export function canAccessPathname(
   if (
     isPoPropertyDetailPath(pathname) &&
     PROPERTY_DETAIL_WITHOUT_PO_LIST.some((id) => rolePages.includes(id))
+  ) {
+    return true;
+  }
+  if (
+    isPoPropertyEditPath(pathname) &&
+    PROPERTY_EDIT_WITHOUT_PO_LIST.some((id) => rolePages.includes(id))
   ) {
     return true;
   }

@@ -2,6 +2,7 @@ import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu"
 import { getPropertyFailure } from "@failures/mfe";
 import { activeSurveyEntryPath, caseStudyWorkspacePath } from "../my-task-routes";
 import {
+  poPropertyEditPath,
   poPropertyFailurePath,
   poPropertyPath,
 } from "../po-routes";
@@ -11,7 +12,7 @@ import {
   revertTaskToPhase,
   type WorkflowTask,
 } from "./tasks-storage";
-import { canDeleteTransaction } from "./po-roles";
+import { canDeleteTransaction, canEditProperty } from "./po-roles";
 import type { RoleId } from "@platform/types";
 
 export type ActiveQueueRowMoreOptions = {
@@ -187,6 +188,14 @@ export function buildActiveQueueRowMoreItems(
       label: "تفاصيل العقار",
       onClick: () => options.router.push(poPropertyPath(po, propertyId)),
     });
+    if (options.viewerRole && canEditProperty(options.viewerRole)) {
+      items.push({
+        id: "property-edit",
+        label: "تعديل العقار",
+        onClick: () =>
+          options.router.push(poPropertyEditPath(po, propertyId)),
+      });
+    }
   }
 
   return items;
@@ -226,6 +235,7 @@ export function buildCaseStudyQueueRowMoreItems(options: {
   task: WorkflowTask;
   propertyId?: string;
   router: { push: (href: string) => void };
+  viewerRole?: RoleId;
 }): RowMoreMenuItem[] {
   const po = options.task.poNumber.trim();
   const propertyId = options.propertyId?.trim();
@@ -233,7 +243,7 @@ export function buildCaseStudyQueueRowMoreItems(options: {
     ? Boolean(getPropertyFailure(po, propertyId))
     : false;
 
-  return [
+  const items: RowMoreMenuItem[] = [
     {
       id: "case-study",
       label: "دراسة العقار",
@@ -257,4 +267,22 @@ export function buildCaseStudyQueueRowMoreItems(options: {
         options.router.push(caseStudyWorkspacePath(options.task.id)),
     },
   ];
+
+  if (propertyId) {
+    items.push({
+      id: "property-detail",
+      label: "تفاصيل العقار",
+      onClick: () => options.router.push(poPropertyPath(po, propertyId)),
+    });
+    if (options.viewerRole && canEditProperty(options.viewerRole)) {
+      items.push({
+        id: "property-edit",
+        label: "تعديل العقار",
+        onClick: () =>
+          options.router.push(poPropertyEditPath(po, propertyId)),
+      });
+    }
+  }
+
+  return items;
 }

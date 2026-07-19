@@ -376,7 +376,7 @@ export function PoPropertiesPage({
                     const courtCircuit =
                       [prop.court.trim(), prop.circuit.trim()]
                         .filter(Boolean)
-                        .join(" · ") || "—";
+                        .join(" / ") || "—";
                     const detailHref = poPropertyPath(poNumber, prop.id);
                     const label = deedLabel(prop);
 

@@ -206,7 +206,7 @@ function BasicTab({
   const restrictions = formatPropertyRestrictionsLine(property);
   const courtLine = [property.court, property.circuit]
     .filter(Boolean)
-    .join(" · ");
+    .join(" / ");
   const primaryContact = validContacts[0];
   const mapUrl = propertyLocationMapUrl(property);
   const boundaryDimensions = formatPropertyBoundaryDimensionsDisplay(property);
