@@ -342,6 +342,7 @@ export function PoPropertiesPage({
                   <Tr hoverable={false}>
                     <Th>رقم الصك</Th>
                     <Th>الموقع</Th>
+                    <Th>المحكمة / الدائرة</Th>
                     <Th>التصنيف / النوع</Th>
                     <Th>حالة الصك</Th>
                     <Th>الحالة</Th>
@@ -372,6 +373,10 @@ export function PoPropertiesPage({
                       boursePending && !hasBourseDetailFields(prop)
                         ? "بانتظار البورصة"
                         : typeLine || "—";
+                    const courtCircuit =
+                      [prop.court.trim(), prop.circuit.trim()]
+                        .filter(Boolean)
+                        .join(" · ") || "—";
                     const detailHref = poPropertyPath(poNumber, prop.id);
                     const label = deedLabel(prop);
 
@@ -399,6 +404,7 @@ export function PoPropertiesPage({
                           </span>
                         </Td>
                         <Td className="text-text-2">{location}</Td>
+                        <Td className="text-text-2">{courtCircuit}</Td>
                         <Td>{typeDisplay}</Td>
                         <Td className="text-text-2">
                           {prop.deedStatus || "—"}

@@ -38,6 +38,8 @@ public class WorkOrderPropertyDto
     public string? Area { get; set; }
     public string? Court { get; set; }
     public string? Circuit { get; set; }
+    public Guid? CourtId { get; set; }
+    public Guid? CircuitId { get; set; }
     public string Classification { get; set; } = "";
     public string PropertyType { get; set; } = "";
     public List<string> AssignmentDocFileNames { get; set; } = [];

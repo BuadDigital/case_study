@@ -15,6 +15,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<WorkOrderProperty> WorkOrderProperties => Set<WorkOrderProperty>();
     public DbSet<PropertyContact> PropertyContacts => Set<PropertyContact>();
     public DbSet<CourtCatalogEntry> CourtCatalogEntries => Set<CourtCatalogEntry>();
+    public DbSet<Court> Courts => Set<Court>();
+    public DbSet<CourtCircuit> CourtCircuits => Set<CourtCircuit>();
     public DbSet<WorkflowTask> WorkflowTasks => Set<WorkflowTask>();
     public DbSet<CaseStudyForm> CaseStudyForms => Set<CaseStudyForm>();
     public DbSet<CaseStudyInfoRolesConfig> CaseStudyInfoRolesConfigs => Set<CaseStudyInfoRolesConfig>();
@@ -150,6 +152,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.District).HasMaxLength(128);
             e.Property(x => x.Classification).HasMaxLength(128);
             e.Property(x => x.PropertyType).HasMaxLength(128);
+            e.HasIndex(x => x.CourtId);
+            e.HasIndex(x => x.CircuitId);
             e.HasIndex(x => new { x.WorkOrderId, x.DeedNumber });
             e.HasIndex(x => x.DeedNumber);
             e.HasMany(x => x.Contacts)
@@ -172,6 +176,34 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.City).HasMaxLength(128);
             e.Property(x => x.Court).HasMaxLength(256);
             e.Property(x => x.CircuitsJson).HasColumnType("jsonb");
+        });
+
+        builder.Entity<Court>(e =>
+        {
+            e.ToTable("Courts", DatabaseSchemas.Platform);
+            e.Property(x => x.Name).HasMaxLength(150).IsRequired();
+            e.Property(x => x.Region).HasMaxLength(80).IsRequired();
+            e.Property(x => x.City).HasMaxLength(80).IsRequired();
+            e.Property(x => x.CreatedBy).HasMaxLength(128).IsRequired();
+            e.Property(x => x.UpdatedBy).HasMaxLength(128);
+            e.HasIndex(x => new { x.Name, x.City }).IsUnique();
+            e.HasIndex(x => new { x.Region, x.City });
+            e.HasIndex(x => x.IsActive);
+            e.HasMany(x => x.Circuits)
+                .WithOne(x => x.Court)
+                .HasForeignKey(x => x.CourtId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CourtCircuit>(e =>
+        {
+            e.ToTable("CourtCircuits", DatabaseSchemas.Platform);
+            e.Property(x => x.CircuitNo).HasMaxLength(50).IsRequired();
+            e.Property(x => x.CircuitName).HasMaxLength(150);
+            e.Property(x => x.CreatedBy).HasMaxLength(128).IsRequired();
+            e.Property(x => x.UpdatedBy).HasMaxLength(128);
+            e.HasIndex(x => new { x.CourtId, x.CircuitNo }).IsUnique();
+            e.HasIndex(x => x.IsActive);
         });
 
         builder.Entity<WorkflowTask>(e =>

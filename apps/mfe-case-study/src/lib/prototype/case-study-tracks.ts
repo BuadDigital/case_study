@@ -1,4 +1,5 @@
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
+import type { CaseStudyInfoPartyId } from "@settings/mfe/lib/prototype/case-study-info-roles-data";
 import {
   assigneeLabel,
   getEngineeringOffices,
@@ -167,16 +168,17 @@ export type CaseStudyPartyAssignee = {
 };
 
 const CASE_STUDY_PARTY_DEFS = [
-  { trackId: "inspection", shortLabel: "المعاين" },
-  { trackId: "government", shortLabel: "المراجع الحكومي" },
-  { trackId: "appraisal", shortLabel: "المقيم" },
-  { trackId: "survey", shortLabel: "المكتب الهندسي" },
+  { trackId: "inspection", shortLabel: "المعاين", partyId: "insp" },
+  { trackId: "government", shortLabel: "المراجع الحكومي", partyId: "gov" },
+  { trackId: "appraisal", shortLabel: "المقيم", partyId: "val" },
+  { trackId: "survey", shortLabel: "المكتب الهندسي", partyId: "eng" },
 ] as const;
 
 /** Party columns for دراسة حالة العقارات queue table. */
 export function buildCaseStudyPartyAssignees(
   parent: WorkflowTask,
   allTasks: WorkflowTask[],
+  progressByParty?: Partial<Record<CaseStudyInfoPartyId, number>>,
 ): CaseStudyPartyAssignee[] {
   const tracks = buildCaseStudyTracks(parent, allTasks);
   const distribution = migrateDistribution(parent.distribution);
@@ -196,7 +198,10 @@ export function buildCaseStudyPartyAssignees(
       enabled,
       name: track?.assigneeName ?? "—",
       state: track?.state ?? "new",
-      progressPct: track?.progressPct ?? 0,
+      progressPct:
+        progressByParty === undefined
+          ? (track?.progressPct ?? 0)
+          : (progressByParty[def.partyId] ?? 0),
     };
   });
 }

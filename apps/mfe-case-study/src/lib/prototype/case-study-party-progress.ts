@@ -45,6 +45,11 @@ export type PartyCaseStudyProgress = {
   pct: number;
 };
 
+export type ComputePartyCaseStudyProgressOptions = {
+  /** Count the specialist's official answer when a party has not answered. */
+  includeSpecialistAnswers?: boolean;
+};
+
 /** RTL row: first → right (أخصائي), last → left (المكتب الهندسي). */
 export const PARTY_PROGRESS_DISPLAY_ORDER: CaseStudyInfoPartyId[] = [
   "specA",
@@ -92,9 +97,11 @@ export function computePartyCaseStudyProgress(
       Record<string, CaseStudyFormAnswer | null | undefined>
     >
   >,
+  options: ComputePartyCaseStudyProgressOptions = {},
 ): PartyCaseStudyProgress[] {
   const keys = allQuestionKeys();
   const specialistAnswers = answersByParty.specA ?? {};
+  const includeSpecialistAnswers = options.includeSpecialistAnswers ?? true;
 
   const rows = CASE_STUDY_INFO_PARTIES.map((party) => {
     const visibleKeys = keys.filter((key) =>
@@ -104,7 +111,7 @@ export function computePartyCaseStudyProgress(
     const answered = visibleKeys.filter((key) => {
       const value = partyAnswers[key];
       if (value === "A" || value === "B") return true;
-      if (party.id === "specA") return false;
+      if (party.id === "specA" || !includeSpecialistAnswers) return false;
       const official = specialistAnswers[key];
       return official === "A" || official === "B";
     }).length;

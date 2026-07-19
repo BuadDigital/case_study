@@ -23,8 +23,12 @@ export function pagesFromPermissions(
   if (!dashboardAllowed) {
     merged.delete("dashboard");
   }
-  // أخصائي دراسة الحالة — بدون «جميع المعاملات»
-  if (role === "case-specialist") {
+  // أخصائي/مشرف دراسة الحالة والمراجع الحكومي — بدون «جميع المعاملات»
+  if (
+    role === "case-specialist" ||
+    role === "section-supervisor" ||
+    role === "government-reviewer"
+  ) {
     merged.delete("all-transactions");
   }
 

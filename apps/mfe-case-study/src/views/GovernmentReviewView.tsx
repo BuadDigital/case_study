@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Badge,
@@ -12,13 +13,17 @@ import {
   Table,
   TBody,
   Td,
+  TdAction,
   Th,
+  ThAction,
   THead,
   Tr,
   cn,
   queueTableRowClassName,
   queueTableWrapClassName,
 } from "@platform/design-system";
+import { RowMoreMenu } from "../components/ui/RowMoreMenu";
+import type { RowMoreMenuItem } from "../components/ui/RowMoreMenu";
 import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
 import { getAuthSession } from "@platform/auth-client";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
@@ -28,8 +33,8 @@ import {
   decodeTaskParam,
   governmentReviewWorkspacePath,
 } from "../lib/my-task-routes";
+import { poPropertiesPath } from "../lib/po-routes";
 import {
-  taskDisplayPropertyLabel,
   tasksForPartyAssignee,
   type WorkflowTask,
 } from "../lib/prototype/tasks-storage";
@@ -39,7 +44,6 @@ import {
   poCitiesForReviewerScope,
 } from "../lib/prototype/reviewer-coverage";
 import {
-  formatPropertyDeedDisplay,
   type PoIntakeRecord,
 } from "../lib/prototype/po-intake-data";
 import {
@@ -49,12 +53,13 @@ import {
 
 const ROW = queueTableRowClassName;
 
-type GovernmentReviewDeedRow = {
-  task: WorkflowTask;
+type GovernmentReviewPoRow = {
+  tasks: WorkflowTask[];
   poNumber: string;
-  deedLabel: string;
+  propertyCount: number;
   assignmentType: string;
-  courtLine: string;
+  createdAt: string;
+  status: WorkflowTask["status"];
 };
 
 export function GovernmentReviewView() {
@@ -103,7 +108,16 @@ export function GovernmentReviewView() {
 
   const rows = useMemo(() => {
     const govTasks = mine.filter((task) => task.kind === "government-review");
-    const list: GovernmentReviewDeedRow[] = [];
+    const grouped = new Map<
+      string,
+      {
+        tasks: WorkflowTask[];
+        assignmentType: string;
+        propertyIds: Set<string>;
+        createdAt: string;
+      }
+    >();
+
     for (const task of govTasks) {
       const poNumber = task.poNumber.trim();
       const record = poByNumber.get(poNumber);
@@ -111,27 +125,78 @@ export function GovernmentReviewView() {
         ? record?.properties.find((p) => p.id === task.propertyId)
         : undefined;
       const court = property?.court.trim() ?? "";
-      const circuit = property?.circuit.trim() ?? "";
       const courts = court ? [court] : [];
       const cities = poCitiesForReviewerScope(record, [task]);
       if (!poInReviewerScope(courts, reviewerScope, cities)) continue;
-      const deedLabel =
-        (property ? formatPropertyDeedDisplay(property) : "") ||
-        taskDisplayPropertyLabel(task);
-      list.push({
-        task,
-        poNumber,
-        deedLabel,
+
+      const current = grouped.get(poNumber);
+      if (current) {
+        current.tasks.push(task);
+        if (task.propertyId) current.propertyIds.add(task.propertyId);
+        if (task.createdAt > current.createdAt) current.createdAt = task.createdAt;
+        continue;
+      }
+
+      grouped.set(poNumber, {
+        tasks: [task],
         assignmentType: record?.assignmentType ?? task.assignmentType ?? "—",
-        courtLine: [court, circuit].filter(Boolean).join(" · ") || "—",
+        propertyIds: new Set(task.propertyId ? [task.propertyId] : []),
+        createdAt: task.createdAt,
       });
     }
+
+    const list: GovernmentReviewPoRow[] = [...grouped.entries()].map(
+      ([poNumber, group]) => {
+        const status: WorkflowTask["status"] = group.tasks.every(
+          (task) => task.status === "completed",
+        )
+          ? "completed"
+          : group.tasks.some((task) => task.status === "open")
+            ? "open"
+            : "blocked";
+
+        return {
+          tasks: group.tasks,
+          poNumber,
+          propertyCount: group.propertyIds.size || group.tasks.length,
+          assignmentType: group.assignmentType,
+          createdAt: group.createdAt,
+          status,
+        };
+      },
+    );
+
     return list.sort((a, b) => {
-      const createdCmp = b.task.createdAt.localeCompare(a.task.createdAt);
+      const createdCmp = b.createdAt.localeCompare(a.createdAt);
       if (createdCmp !== 0) return createdCmp;
-      return a.deedLabel.localeCompare(b.deedLabel, "ar", { numeric: true });
+      return a.poNumber.localeCompare(b.poNumber, "ar", { numeric: true });
     });
   }, [mine, poByNumber, reviewerScope]);
+
+  const openPo = useCallback(
+    (row: GovernmentReviewPoRow) => {
+      router.push(poPropertiesPath(row.poNumber));
+    },
+    [router],
+  );
+
+  const rowMoreItems = useCallback(
+    (row: GovernmentReviewPoRow): RowMoreMenuItem[] => {
+      const task =
+        row.tasks.find((item) => item.status === "open") ??
+        row.tasks.find((item) => item.status === "blocked") ??
+        row.tasks[0];
+      if (!task) return [];
+      return [
+        {
+          id: "start-transaction",
+          label: "بدء المعاملة",
+          onClick: () => router.push(governmentReviewWorkspacePath(task.id)),
+        },
+      ];
+    },
+    [router],
+  );
 
   const hasRail = false;
 
@@ -146,17 +211,17 @@ export function GovernmentReviewView() {
               <Table pending>
                 <THead>
                   <Tr hoverable={false}>
-                      <Th>الصك</Th>
-                    <Th>المحاكم</Th>
-                      <Th>نوع الإسناد</Th>
-                      <Th>أمر العمل</Th>
-                      <Th>حالة المهمة</Th>
-                    </Tr>
-                  </THead>
-                  <TBody>
-                    <SkeletonTableRows rows={5} cols={5} />
-                  </TBody>
-                </Table>
+                    <Th>أمر العمل</Th>
+                    <Th>عدد الصكوك</Th>
+                    <Th>نوع الإسناد</Th>
+                    <Th>حالة المهمة</Th>
+                    <ThAction aria-label="المزيد" />
+                  </Tr>
+                </THead>
+                <TBody>
+                  <SkeletonTableRows rows={5} cols={5} />
+                </TBody>
+              </Table>
             </div>
           ) : rows.length === 0 ? (
             <EmptyState
@@ -172,41 +237,49 @@ export function GovernmentReviewView() {
                 <Table>
                   <THead>
                     <Tr hoverable={false}>
-                      <Th>الصك</Th>
-                      <Th>المحاكم</Th>
-                      <Th>نوع الإسناد</Th>
                       <Th>أمر العمل</Th>
+                      <Th>عدد الصكوك</Th>
+                      <Th>نوع الإسناد</Th>
                       <Th>حالة المهمة</Th>
+                      <ThAction aria-label="المزيد" />
                     </Tr>
                   </THead>
                   <TBody>
                     {rows.map((row) => {
+                      const poHref = poPropertiesPath(row.poNumber);
                       return (
                         <Tr
-                          key={row.task.id}
+                          key={row.poNumber}
                           hoverable={false}
                           className={ROW}
-                          onClick={() =>
-                            router.push(governmentReviewWorkspacePath(row.task.id))
-                          }
+                          onClick={() => openPo(row)}
                         >
                           <Td className="text-text-2">
-                            <span className="font-medium text-text">
-                              {row.deedLabel}
-                            </span>
+                            <Link
+                              href={poHref}
+                              dir="ltr"
+                              className="relative z-[1] font-medium text-primary underline decoration-primary underline-offset-2 hover:text-primary-mid"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {row.poNumber}
+                            </Link>
                           </Td>
-                          <Td className="text-text-2">{row.courtLine}</Td>
+                          <Td className="text-text-2">
+                            {row.propertyCount}
+                          </Td>
                           <Td className="text-text-2">{row.assignmentType}</Td>
-                          <Td className="text-text-2">{row.poNumber}</Td>
                           <Td>
-                            {row.task.status === "open" ? (
+                            {row.status === "open" ? (
                               <Badge tone="warning">قيد الإجراء</Badge>
-                            ) : row.task.status === "blocked" ? (
+                            ) : row.status === "blocked" ? (
                               <Badge tone="default">موقوفة</Badge>
                             ) : (
                               <Badge tone="success">مكتملة</Badge>
                             )}
                           </Td>
+                          <TdAction>
+                            <RowMoreMenu items={rowMoreItems(row)} />
+                          </TdAction>
                         </Tr>
                       );
                     })}
@@ -214,8 +287,8 @@ export function GovernmentReviewView() {
                 </Table>
               </div>
               <QueueTableHint>
-                اضغط على الصك لفتح نموذج المراجعة الحكومية ونموذج الدراسة لنفس
-                العقار مباشرة.
+                اضغط على رقم أمر العمل أو الصف لعرض عقاراته. لبدء المراجعة
+                استخدم «بدء المعاملة» من قائمة ⋮.
               </QueueTableHint>
             </>
           )}

@@ -48,6 +48,8 @@ export type WorkOrderPropertyDto = {
   area?: string;
   court?: string;
   circuit?: string;
+  courtId?: string;
+  circuitId?: string;
   classification?: string;
   propertyType?: string;
   assignmentDocFileNames?: string[];
@@ -154,6 +156,8 @@ export type PriorDeedRegistrationDto = {
   assignmentMandateDate?: string;
   court?: string;
   circuit?: string;
+  courtId?: string;
+  circuitId?: string;
   contacts?: PropertyContactDto[];
   city?: string;
   district?: string;

@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
@@ -8,15 +7,23 @@ using RealEstateEval.Infrastructure.Data;
 
 namespace RealEstateEval.Infrastructure.Services;
 
+/// <summary>
+/// Legacy catalog shape (city + court + circuits[]) backed by Courts / CourtCircuits.
+/// </summary>
 public sealed class CourtsCatalogService : ICourtsCatalogService
 {
     private readonly ApplicationDbContext _db;
     private readonly ApiResponseCache _cache;
+    private readonly ICourtsService _courts;
 
-    public CourtsCatalogService(ApplicationDbContext db, ApiResponseCache cache)
+    public CourtsCatalogService(
+        ApplicationDbContext db,
+        ApiResponseCache cache,
+        ICourtsService courts)
     {
         _db = db;
         _cache = cache;
+        _courts = courts;
     }
 
     public async Task<IReadOnlyList<CourtCatalogEntryDto>> ListAsync(
@@ -25,7 +32,27 @@ public sealed class CourtsCatalogService : ICourtsCatalogService
         return await _cache.GetOrCreateAsync(
             CacheKeys.CourtsCatalog,
             CacheDurations.CourtsCatalog,
-            _ => LoadCourtsAsync(cancellationToken),
+            async _ =>
+            {
+                await _courts.EnsureSeededAsync(cancellationToken);
+                var rows = await _db.Courts
+                    .AsNoTracking()
+                    .Include(c => c.Circuits)
+                    .OrderBy(c => c.City)
+                    .ThenBy(c => c.Name)
+                    .ToListAsync(cancellationToken);
+                return rows.Select(c => new CourtCatalogEntryDto
+                {
+                    Id = c.Id,
+                    City = c.City,
+                    Court = c.Name,
+                    Circuits = c.Circuits
+                        .Where(x => x.IsActive)
+                        .OrderBy(x => x.CircuitNo)
+                        .Select(x => x.CircuitNo)
+                        .ToList(),
+                }).ToList();
+            },
             cancellationToken);
     }
 
@@ -33,62 +60,46 @@ public sealed class CourtsCatalogService : ICourtsCatalogService
         SaveCourtsCatalogRequest request,
         CancellationToken cancellationToken = default)
     {
-        var existing = await _db.CourtCatalogEntries.ToListAsync(cancellationToken);
-        _db.CourtCatalogEntries.RemoveRange(existing);
+        await _courts.EnsureSeededAsync(cancellationToken);
+
+        var existingCourts = await _db.Courts.Include(c => c.Circuits).ToListAsync(cancellationToken);
+        var existingCircuits = existingCourts.SelectMany(c => c.Circuits).ToList();
+        _db.CourtCircuits.RemoveRange(existingCircuits);
+        _db.Courts.RemoveRange(existingCourts);
+        await _db.SaveChangesAsync(cancellationToken);
 
         foreach (var dto in request.Entries)
         {
-            _db.CourtCatalogEntries.Add(new CourtCatalogEntry
+            var court = new Court
             {
                 Id = dto.Id == Guid.Empty ? Guid.NewGuid() : dto.Id,
+                Name = dto.Court.Trim(),
+                Region = dto.City.Trim(),
                 City = dto.City.Trim(),
-                Court = dto.Court.Trim(),
-                CircuitsJson = JsonSerializer.Serialize(dto.Circuits),
-            });
+                IsActive = true,
+                CreatedBy = "system",
+                CreatedAtUtc = DateTime.UtcNow,
+            };
+            _db.Courts.Add(court);
+            foreach (var circuitNo in dto.Circuits
+                         .Select(c => c.Trim())
+                         .Where(c => c.Length > 0)
+                         .Distinct(StringComparer.Ordinal))
+            {
+                _db.CourtCircuits.Add(new CourtCircuit
+                {
+                    Id = Guid.NewGuid(),
+                    CourtId = court.Id,
+                    CircuitNo = circuitNo,
+                    IsActive = true,
+                    CreatedBy = "system",
+                    CreatedAtUtc = DateTime.UtcNow,
+                });
+            }
         }
 
         await _db.SaveChangesAsync(cancellationToken);
         await _cache.RemoveAsync(CacheKeys.CourtsCatalog, cancellationToken);
         return await ListAsync(cancellationToken);
-    }
-
-    private async Task<IReadOnlyList<CourtCatalogEntryDto>> LoadCourtsAsync(
-        CancellationToken cancellationToken)
-    {
-        if (!await _db.CourtCatalogEntries.AnyAsync(cancellationToken))
-            await SeedDefaultsAsync(cancellationToken);
-
-        var rows = await _db.CourtCatalogEntries
-            .AsNoTracking()
-            .OrderBy(c => c.City)
-            .ThenBy(c => c.Court)
-            .ToListAsync(cancellationToken);
-
-        return rows.Select(WorkOrderMapper.ToCourtDto).ToList();
-    }
-
-    private async Task SeedDefaultsAsync(CancellationToken cancellationToken)
-    {
-        var defaults = new (string City, string Court, string[] Circuits)[]
-        {
-            ("مكة المكرمة", "محكمة التنفيذ بمكة المكرمة", ["الدائرة الأولى", "الدائرة الثانية"]),
-            ("مكة المكرمة", "محكمة الاستئناف بمكة المكرمة", ["دائرة الأحوال"]),
-            ("جدة", "محكمة التنفيذ بجدة", ["الدائرة الأولى", "الدائرة الثانية", "الدائرة الثالثة"]),
-            ("الرياض", "محكمة التنفيذ بالرياض", ["الدائرة الأولى", "الدائرة الثانية"]),
-            ("الطائف", "محكمة التنفيذ بالطائف", ["الدائرة الأولى"]),
-        };
-
-        foreach (var d in defaults)
-        {
-            _db.CourtCatalogEntries.Add(new CourtCatalogEntry
-            {
-                Id = Guid.NewGuid(),
-                City = d.City,
-                Court = d.Court,
-                CircuitsJson = JsonSerializer.Serialize(d.Circuits),
-            });
-        }
-
-        await _db.SaveChangesAsync(cancellationToken);
     }
 }

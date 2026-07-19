@@ -40,9 +40,19 @@ import { buildActiveQueueRowMoreItems } from "../lib/prototype/active-queue-row-
 import { CopyFromPriorTransactionModal } from "../components/po-intake/CopyFromPriorTransactionModal";
 import { buildCopyPriorTargetOptions } from "../lib/prototype/po-intake-storage";
 import { buildCaseStudyPartyAssignees } from "../lib/prototype/case-study-tracks";
+import {
+  computePartyCaseStudyProgress,
+  loadPartyCaseStudyAnswersByParty,
+} from "../lib/prototype/case-study-party-progress";
+import { PARTY_CASE_STUDY_FORM_CHANGED_EVENT } from "../lib/prototype/case-study-form-storage";
 import { getAuthSession } from "@platform/auth-client";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
+import { emptyCaseStudyInfoRolesConfig } from "@settings/mfe";
+import {
+  useCaseStudyInfoRolesQuery,
+  useStaffUsersQuery,
+} from "@settings/mfe/query/settings-queries";
+import type { CaseStudyInfoPartyId } from "@settings/mfe/lib/prototype/case-study-info-roles-data";
 import type { PageId, RoleId } from "@platform/types";
 import { poPropertyDetailPath } from "../lib/po-routes";
 import {
@@ -166,6 +176,12 @@ type PanelRenderProps = {
 
 const ROW = queueTableRowClassName;
 const ROW_ACTIVE = queueTableRowActiveClassName;
+const DEFAULT_INFO_ROLES = emptyCaseStudyInfoRolesConfig();
+
+type PartyProgressByTask = Map<
+  string,
+  Partial<Record<CaseStudyInfoPartyId, number>>
+>;
 
 export function ActiveTransactionQueueView({
   config,
@@ -183,6 +199,8 @@ export function ActiveTransactionQueueView({
   const selectedId = searchParams.get("task");
   const { role, viewerEmail, distributionAssigneeId } = usePrototype();
   const { data: staffResult } = useStaffUsersQuery();
+  const { data: infoRolesData } = useCaseStudyInfoRolesQuery();
+  const infoRolesMatrix = infoRolesData?.matrix ?? DEFAULT_INFO_ROLES.matrix;
   const staffUsers = staffResult?.users ?? [];
   const needsInspectionWorkspaces = Boolean(config.getTaskStatusBadge);
   const needsPartySubmissions = Boolean(config.getTaskStatusBadge);
@@ -227,6 +245,9 @@ export function ActiveTransactionQueueView({
   const [copyModalOpen, setCopyModalOpen] = useState(false);
   const [copyPoNumber, setCopyPoNumber] = useState("");
   const [copyTargetKey, setCopyTargetKey] = useState<string | null>(null);
+  const [partyProgressRevision, setPartyProgressRevision] = useState(0);
+  const [partyProgressByTask, setPartyProgressByTask] =
+    useState<PartyProgressByTask>(() => new Map());
 
   const retryQueueLoad = useCallback(() => {
     void refetchPoRecords();
@@ -598,6 +619,54 @@ export function ActiveTransactionQueueView({
   ]);
 
   useEffect(() => {
+    const refresh = () => setPartyProgressRevision((revision) => revision + 1);
+    window.addEventListener(PARTY_CASE_STUDY_FORM_CHANGED_EVENT, refresh);
+    return () =>
+      window.removeEventListener(PARTY_CASE_STUDY_FORM_CHANGED_EVENT, refresh);
+  }, []);
+
+  useEffect(() => {
+    if (!showPartyColumns || !tasks) {
+      setPartyProgressByTask(new Map());
+      return;
+    }
+
+    let cancelled = false;
+    void Promise.all(
+      listed.map(async (parent) => {
+        try {
+          const answers = await loadPartyCaseStudyAnswersByParty(parent, tasks);
+          const rows = computePartyCaseStudyProgress(
+            infoRolesMatrix,
+            answers,
+            { includeSpecialistAnswers: false },
+          );
+          const progress: Partial<Record<CaseStudyInfoPartyId, number>> = {};
+          for (const row of rows) progress[row.partyId] = row.pct;
+          return [parent.id, progress] as const;
+        } catch {
+          return [
+            parent.id,
+            {} as Partial<Record<CaseStudyInfoPartyId, number>>,
+          ] as const;
+        }
+      }),
+    ).then((entries) => {
+      if (!cancelled) setPartyProgressByTask(new Map(entries));
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    showPartyColumns,
+    listed,
+    tasks,
+    infoRolesMatrix,
+    partyProgressRevision,
+  ]);
+
+  useEffect(() => {
     setStatusFilter("");
     setTypeFilter("");
     setSearch("");
@@ -769,7 +838,11 @@ export function ActiveTransactionQueueView({
                           record,
                         );
                         const parties = showPartyColumns
-                          ? buildCaseStudyPartyAssignees(task, tasks ?? [])
+                          ? buildCaseStudyPartyAssignees(
+                              task,
+                              tasks ?? [],
+                              partyProgressByTask.get(task.id) ?? {},
+                            )
                           : [];
                         const active = selectedId === task.id;
                         const moreItems = resolveRowMoreItems(task, property?.id);

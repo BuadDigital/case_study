@@ -75,7 +75,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
     tc: "var(--warning)",
     pages: [
       "po",
-      "all-transactions",
       "active-primary-data",
       "bourse-inquiry",
       "active-distribution",
@@ -158,7 +157,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     bg: "var(--orange-bg)",
     tc: "var(--orange)",
     pages: [
-      "all-transactions",
+      "po",
       "government-review",
       "party-fees",
       "keys",

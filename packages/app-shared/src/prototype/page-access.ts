@@ -69,6 +69,27 @@ export function isPoPropertyFailurePath(pathname: string): boolean {
   );
 }
 
+/** Property detail view — `/po/{po}/property/{id}` (not list/edit/failure). */
+export function isPoPropertyDetailPath(pathname: string): boolean {
+  const parts = pathname.split("/").filter(Boolean);
+  return (
+    parts.length === 4 &&
+    parts[0] === "po" &&
+    parts[2] === "property"
+  );
+}
+
+/** Party / queue roles that may open property detail without PO list access. */
+const PROPERTY_DETAIL_WITHOUT_PO_LIST: readonly PageId[] = [
+  "government-review",
+  "property-inspection",
+  "property-appraisal",
+  "active-survey",
+  "valuation-coordination",
+  // "all-transactions",
+  "failures",
+];
+
 export function canAccessPage(
   pageId: PageId,
   rolePages: readonly PageId[],
@@ -82,6 +103,12 @@ export function canAccessPathname(
   rolePages: readonly PageId[],
 ): boolean {
   if (isPoPropertyFailurePath(pathname) && rolePages.includes("failures")) {
+    return true;
+  }
+  if (
+    isPoPropertyDetailPath(pathname) &&
+    PROPERTY_DETAIL_WITHOUT_PO_LIST.some((id) => rolePages.includes(id))
+  ) {
     return true;
   }
   const pageId = pageIdFromPathname(pathname);

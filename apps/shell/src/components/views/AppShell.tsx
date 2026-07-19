@@ -677,7 +677,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       ? "po"
       : null;
   const insertActiveTxAtNavStart =
-    (role === "engineering-office" || role === "field-inspector") &&
+    (role === "engineering-office" ||
+      role === "field-inspector" ||
+      role === "government-reviewer") &&
     !activeTxInsertAnchor;
   const activeTxAnchorId = useMemo(() => {
     if (activeTxInsertAnchor) return activeTxInsertAnchor;

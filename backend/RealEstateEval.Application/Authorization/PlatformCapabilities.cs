@@ -16,6 +16,7 @@ public static class PlatformCapabilities
     public const string ManageAttachments = "manage-attachments";
     public const string ManageFinancial = "manage-financial";
     public const string ManageOperations = "manage-operations";
+    public const string ManageCourts = "courts.manage";
     public const string Authenticated = "authenticated";
 
     public static readonly IReadOnlyList<string> All =
@@ -31,5 +32,6 @@ public static class PlatformCapabilities
         ManageAttachments,
         ManageFinancial,
         ManageOperations,
+        ManageCourts,
     ];
 }

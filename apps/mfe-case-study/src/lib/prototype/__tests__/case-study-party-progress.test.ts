@@ -40,4 +40,30 @@ describe("computePartyCaseStudyProgress", () => {
       pct: 67,
     });
   });
+
+  it("can report only data entered by each party", () => {
+    const rows = computePartyCaseStudyProgress(
+      matrix,
+      {
+        specA: {
+          survey_0: "A",
+          survey_1: "A",
+        },
+        eng: {},
+        insp: { comp_0: "B" },
+      },
+      { includeSpecialistAnswers: false },
+    );
+
+    expect(rows.find((r) => r.partyId === "eng")).toMatchObject({
+      answered: 0,
+      total: 2,
+      pct: 0,
+    });
+    expect(rows.find((r) => r.partyId === "insp")).toMatchObject({
+      answered: 1,
+      total: 3,
+      pct: 33,
+    });
+  });
 });
