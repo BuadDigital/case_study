@@ -17,7 +17,7 @@ import {
   removeCachedPropertyDoc,
 } from "../../lib/prototype/assignment-doc-attachments";
 import { findPriorDeedFull } from "../../lib/prototype/po-intake-storage";
-import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
+import { RegField } from "@platform/app-shared/registration/FormFields";
 import type { FieldErrors } from "@platform/app-shared/registration/registration-utils";
 import {
   Badge,
@@ -31,6 +31,7 @@ import {
 } from "@platform/design-system";
 import { PropertyFileUploadField } from "./PropertyFileUploadField";
 import { PoContactEditor } from "./PoContactEditor";
+import { CourtCircuitSelects } from "./CourtCircuitSelects";
 
 type Props = {
   property: PoPropertyIntake;
@@ -312,21 +313,15 @@ export function PoPropertyEnfathForm({
             error={fieldErrors.ownerName}
             onChange={(v) => onPatch("ownerName", v)}
           />
-          <RegField
-            id="court_bourse"
-            label="المحكمة"
-            required
-            value={property.court}
-            error={fieldErrors.court}
-            onChange={(v) => onPatch("court", v)}
-          />
-          <RegField
-            id="circuit_bourse"
-            label="الدائرة"
-            required
-            value={property.circuit}
-            error={fieldErrors.circuit}
-            onChange={(v) => onPatch("circuit", v)}
+          <CourtCircuitSelects
+            courtId="court_bourse"
+            circuitId="circuit_bourse"
+            court={property.court}
+            circuit={property.circuit}
+            propertyCourtId={property.courtId}
+            propertyCircuitId={property.circuitId}
+            fieldErrors={fieldErrors}
+            onPatch={onPatch}
           />
         </FormRow>
       ) : showDeedFields ? (
@@ -419,24 +414,16 @@ export function PoPropertyEnfathForm({
           onChange={(v) => onPatch("ownerName", v)}
         />
         {showCourt ? (
-          <>
-            <RegField
-              id="court"
-              label="المحكمة"
-              required
-              value={property.court}
-              error={fieldErrors.court}
-              onChange={(v) => onPatch("court", v)}
-            />
-            <RegField
-              id="circuit"
-              label="الدائرة"
-              required
-              value={property.circuit}
-              error={fieldErrors.circuit}
-              onChange={(v) => onPatch("circuit", v)}
-            />
-          </>
+          <CourtCircuitSelects
+            courtId="court"
+            circuitId="circuit"
+            court={property.court}
+            circuit={property.circuit}
+            propertyCourtId={property.courtId}
+            propertyCircuitId={property.circuitId}
+            fieldErrors={fieldErrors}
+            onPatch={onPatch}
+          />
         ) : null}
       </FormRow>
       ) : null}

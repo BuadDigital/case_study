@@ -15,6 +15,7 @@ export type MyTasksChromeOptions = {
 export function resolveMyTasksChrome(
   pathname: string,
   taskId?: string | null,
+  options?: MyTasksChromeOptions,
 ): MyTasksChrome | null {
   const parts = pathname.split("/").filter(Boolean);
   const page = parts[0] as PageId | undefined;
@@ -120,8 +121,11 @@ export function resolveMyTasksChrome(
   }
   if (parts[0] === "case-study" && parts[1]) {
     decodeTaskParam(parts[1]);
+    const deed = options?.deedLabel?.trim();
     return {
-      breadcrumb: "",
+      breadcrumb: deed
+        ? `دراسة الحالة / المعاملات النشطة / دراسة حالة العقار / ${deed}`
+        : "",
       title: "",
     };
   }

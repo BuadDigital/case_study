@@ -26,7 +26,7 @@ export function PoNumber({
   const cls = cn(
     poNumBase,
     link &&
-      "text-primary decoration-primary underline-offset-2 hover:underline hover:text-primary-mid",
+      "text-primary underline decoration-primary underline-offset-2 hover:text-primary-mid",
     className,
   );
 

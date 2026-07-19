@@ -62,6 +62,8 @@ public static class WorkOrderMapper
             Area = p.Area,
             Court = p.Court,
             Circuit = p.Circuit,
+            CourtId = p.CourtId,
+            CircuitId = p.CircuitId,
             Classification = p.Classification,
             PropertyType = p.PropertyType,
             AssignmentDocFileNames = ParseFileNameList(p.AssignmentDocFileName),

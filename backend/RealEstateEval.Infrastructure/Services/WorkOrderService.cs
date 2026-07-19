@@ -818,6 +818,8 @@ public class WorkOrderService : IWorkOrderService
         entity.DelegationLetterFileName = WorkOrderMapper.SerializeFileNameList(dto.DelegationLetterFileNames);
         entity.OtherDocumentFileNames = WorkOrderMapper.SerializeFileNameList(dto.OtherDocumentFileNames);
         entity.RealEstateRegFileName = dto.RealEstateRegFileName?.Trim();
+        entity.CourtId = dto.CourtId;
+        entity.CircuitId = dto.CircuitId;
         entity.Court = dto.Court?.Trim();
         entity.Circuit = dto.Circuit?.Trim();
         entity.District = dto.District?.Trim() ?? "";

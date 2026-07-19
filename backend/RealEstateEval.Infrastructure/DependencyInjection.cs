@@ -181,6 +181,7 @@ public static class DependencyInjection
     public static IServiceCollection AddPlatformInfrastructure(this IServiceCollection services)
     {
         services.AddScoped<IFieldDictionaryService, FieldDictionaryService>();
+        services.AddScoped<ICourtsService, CourtsService>();
         services.AddScoped<ICourtsCatalogService, CourtsCatalogService>();
         services.AddScoped<ICaseStudyInfoRolesConfigService, CaseStudyInfoRolesConfigService>();
         return services;

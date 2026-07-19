@@ -37,6 +37,10 @@ public class WorkOrderProperty
     public string? Area { get; set; }
     public string? Court { get; set; }
     public string? Circuit { get; set; }
+    /// <summary>مرجع محكمة الدليل (اختياري؛ الاسم يُنسخ في Court).</summary>
+    public Guid? CourtId { get; set; }
+    /// <summary>مرجع دائرة الدليل (اختياري؛ الرقم يُنسخ في Circuit).</summary>
+    public Guid? CircuitId { get; set; }
     public string Classification { get; set; } = "";
     public string PropertyType { get; set; } = "";
     public string? AssignmentDocFileName { get; set; }

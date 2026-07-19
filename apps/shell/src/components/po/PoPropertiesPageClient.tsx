@@ -35,14 +35,14 @@ export function PoPropertiesPageClient({ poNumber }: { poNumber: string }) {
           t.propertyId === ctx.property.id,
       );
       if (!task) return [];
-      return buildAppraiserRecallMenuItems(task, ctx.refresh, {
+      return buildAppraiserRecallMenuItems(task, () => void refetch(), {
         onRecallSent: () =>
           showToast("تم إرسال طلب استرجاع المعاملة", "success"),
         onRecallFailed: () =>
           showToast("تعذّر إرسال الطلب — حاول لاحقاً", "error"),
       });
     },
-    [role, tasks, showToast],
+    [role, tasks, showToast, refetch],
   );
 
   return (

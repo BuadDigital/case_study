@@ -26,6 +26,7 @@ public static class PlatformPermissionCatalog
         "manage-attachments",
         "manage-financial",
         "manage-operations",
+        "courts.manage",
     ];
 
     public static bool IsSuperAdminIdentityRole(string role) =>
@@ -58,7 +59,7 @@ public static class PlatformPermissionCatalog
         ],
         ["section-supervisor"] =
         [
-            "po", "all-transactions", "active-primary-data", "bourse-inquiry", "active-distribution",
+            "po", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "keys", "failures", "suspended-transactions", "failure-types",
             "party-fees",
             "system-fields-catalog", "system-screen-catalog",
@@ -86,7 +87,7 @@ public static class PlatformPermissionCatalog
         ],
         ["government-reviewer"] =
         [
-            "all-transactions", "government-review", "party-fees", "keys", "failures",
+            "po", "government-review", "party-fees", "keys", "failures",
             "system-fields-catalog", "system-screen-catalog",
         ],
         ["engineering-office"] =
@@ -123,7 +124,7 @@ public static class PlatformPermissionCatalog
         ["section-supervisor"] =
         [
             "manage-failures", "manage-work-orders", "submit-party-work",
-            "manage-attachments", "manage-operations",
+            "manage-attachments", "manage-operations", "courts.manage",
         ],
         ["case-specialist"] =
         [

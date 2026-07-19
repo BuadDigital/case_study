@@ -612,6 +612,10 @@ export type PoPropertyIntake = {
   area: string;
   court: string;
   circuit: string;
+  /** دليل المحاكم — مرجع المحكمة (اختياري). */
+  courtId: string;
+  /** دليل المحاكم — مرجع الدائرة (اختياري). */
+  circuitId: string;
   classification: string;
   propertyType: string;
   assignmentDocFileNames: string[];
@@ -678,6 +682,8 @@ export function emptyProperty(): PoPropertyIntake {
     area: "",
     court: "",
     circuit: "",
+    courtId: "",
+    circuitId: "",
     classification: "",
     propertyType: "",
     assignmentDocFileNames: [],
