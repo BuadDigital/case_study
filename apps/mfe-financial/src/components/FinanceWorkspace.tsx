@@ -24,6 +24,7 @@ import { useFinanceTabCounts } from "../query/finance-tab-counts";
 import { FinancePartyDisburse } from "./FinancePartyDisburse";
 import { FinanceEnfazPoBilling } from "./FinanceEnfazPoBilling";
 import { FinancePartyBrowse } from "./FinancePartyBrowse";
+import { FinancePartyFeePricing } from "./FinancePartyFeePricing";
 
 function ContractBadge({ type }: { type: string }) {
   const tone = type === "ext" ? "default" : type === "int" ? "info" : "warning";
@@ -73,9 +74,9 @@ export function FinanceWorkspace({
   summary: FinancialSummaryDto | null | undefined;
   ready: boolean;
 }) {
-  const [tab, setTab] = useState<"disburse" | "enfaz" | "browse" | "reports">(
-    "disburse",
-  );
+  const [tab, setTab] = useState<
+    "disburse" | "enfaz" | "browse" | "reports" | "pricing"
+  >("disburse");
   const counts = useFinanceTabCounts();
   const revenueRows = summary?.revenueRows ?? [];
   const costRows = summary?.costRows ?? [];
@@ -99,6 +100,9 @@ export function FinanceWorkspace({
         </Tab>
         <Tab active={tab === "reports"} onClick={() => setTab("reports")}>
           التقارير
+        </Tab>
+        <Tab active={tab === "pricing"} onClick={() => setTab("pricing")}>
+          تسعير الأتعاب
         </Tab>
       </TabBar>
 
@@ -128,6 +132,7 @@ export function FinanceWorkspace({
         ) : null}
         {tab === "enfaz" ? <FinanceEnfazPoBilling /> : null}
         {tab === "browse" ? <FinancePartyBrowse /> : null}
+        {tab === "pricing" ? <FinancePartyFeePricing /> : null}
         {tab === "reports" ? (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <ReportTableSection title="إيرادات إنفاذ">

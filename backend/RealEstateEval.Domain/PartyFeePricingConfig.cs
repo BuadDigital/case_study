@@ -11,6 +11,9 @@ public class PartyFeePricingConfig
     /// <summary>Government reviewer — متعاون فرد only.</summary>
     public decimal GovernmentReviewFeeSar { get; set; }
 
+    /// <summary>أتعاب استلام مفاتيح من المحكمة (تحصيل من إنفاذ).</summary>
+    public decimal KeyReceiptFeeSar { get; set; }
+
     public decimal FieldInspectorIndividualFeeSar { get; set; }
     public decimal FieldInspectorOrganizationFeeSar { get; set; }
     public decimal FieldInspectorEmployeeFeeSar { get; set; }

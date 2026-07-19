@@ -71,6 +71,7 @@ internal sealed class StubPartyFeePricingService : IPartyFeePricingService
     {
         EngineeringSurveyFeeSar = 500,
         GovernmentReviewFeeSar = 350,
+        KeyReceiptFeeSar = 350,
         FieldInspectorIndividualFeeSar = 400,
         FieldInspectorOrganizationFeeSar = 500,
         FieldInspectorEmployeeFeeSar = 100,

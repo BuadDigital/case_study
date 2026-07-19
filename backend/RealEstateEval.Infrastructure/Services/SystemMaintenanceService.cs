@@ -77,6 +77,12 @@ public class SystemMaintenanceService : ISystemMaintenanceService
                 await _db.FieldDictionaryConfigs.ExecuteDeleteAsync(cancellationToken);
                 await _db.FailureTypesCatalogConfigs.ExecuteDeleteAsync(cancellationToken);
                 await _db.PropertyKeyRecords.ExecuteDeleteAsync(cancellationToken);
+                await _db.KeyEnvelopeTimelineEntries.ExecuteDeleteAsync(cancellationToken);
+                await _db.KeyEnvelopeHandoffs.ExecuteDeleteAsync(cancellationToken);
+                await _db.KeyEnvelopeAssignments.ExecuteDeleteAsync(cancellationToken);
+                await _db.KeyReceiptFeeCharges.ExecuteDeleteAsync(cancellationToken);
+                await _db.KeyEnvelopes.ExecuteDeleteAsync(cancellationToken);
+                await _db.PropertyCourtAccesses.ExecuteDeleteAsync(cancellationToken);
                 await _db.ValuationRequests.ExecuteDeleteAsync(cancellationToken);
                 await _db.SurveyOffices.ExecuteDeleteAsync(cancellationToken);
                 await _db.FinancialReportConfigs.ExecuteDeleteAsync(cancellationToken);

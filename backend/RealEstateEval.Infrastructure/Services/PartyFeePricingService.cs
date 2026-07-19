@@ -29,6 +29,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         var row = await EnsureRowAsync(cancellationToken);
         row.EngineeringSurveyFeeSar = Math.Max(0m, request.EngineeringSurveyFeeSar);
         row.GovernmentReviewFeeSar = Math.Max(0m, request.GovernmentReviewFeeSar);
+        row.KeyReceiptFeeSar = Math.Max(0m, request.KeyReceiptFeeSar);
         row.FieldInspectorIndividualFeeSar = Math.Max(0m, request.FieldInspectorIndividualFeeSar);
         row.FieldInspectorOrganizationFeeSar = Math.Max(0m, request.FieldInspectorOrganizationFeeSar);
         row.FieldInspectorEmployeeFeeSar = Math.Max(0m, request.FieldInspectorEmployeeFeeSar);
@@ -77,6 +78,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             Id = SingletonId,
             EngineeringSurveyFeeSar = EngineeringSurveyFeeRules.FallbackFeeSar,
             GovernmentReviewFeeSar = GovernmentReviewFeeRules.FallbackFeeSar,
+            KeyReceiptFeeSar = GovernmentReviewFeeRules.FallbackFeeSar,
             FieldInspectorIndividualFeeSar = InspectorFeeRules.CooperatorIndividualFeeSar,
             FieldInspectorOrganizationFeeSar = InspectorFeeRules.CooperatorOrganizationFeeSar,
             FieldInspectorEmployeeFeeSar = InspectorFeeRules.EmployeeFeeSar,
@@ -91,6 +93,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
     {
         EngineeringSurveyFeeSar = row.EngineeringSurveyFeeSar,
         GovernmentReviewFeeSar = row.GovernmentReviewFeeSar,
+        KeyReceiptFeeSar = row.KeyReceiptFeeSar > 0 ? row.KeyReceiptFeeSar : row.GovernmentReviewFeeSar,
         FieldInspectorIndividualFeeSar = row.FieldInspectorIndividualFeeSar,
         FieldInspectorOrganizationFeeSar = row.FieldInspectorOrganizationFeeSar,
         FieldInspectorEmployeeFeeSar = row.FieldInspectorEmployeeFeeSar,

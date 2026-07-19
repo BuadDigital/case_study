@@ -95,10 +95,27 @@ public sealed class FinancialReportService : IFinancialReportService
             .Sum(l => NetFee(l));
 
         var enfazLines = await _db.PoEnfazRevenueLines.AsNoTracking().ToListAsync(cancellationToken);
+        var keyReceiptFees = await _db.KeyReceiptFeeCharges.AsNoTracking().ToListAsync(cancellationToken);
+        var keyReceiptTotal = keyReceiptFees.Sum(c => c.AmountSar);
         var revenueTotal = enfazLines
             .Where(l => l.IncludedInBilling && l.TotalFeeSar > 0)
-            .Sum(l => l.TotalFeeSar);
+            .Sum(l => l.TotalFeeSar) + keyReceiptTotal;
         var profitMargin = revenueTotal - externalCosts;
+
+        if (keyReceiptTotal > 0)
+        {
+            revenueRows.Add(new FinancialRevenueRowDto
+            {
+                Po = "أتعاب استلام مفاتيح",
+                Billed = keyReceiptFees.Count(c => c.CollectionStatus == KeyReceiptFeeStatuses.Collected),
+                Excluded = keyReceiptFees.Count(c => c.CollectionStatus != KeyReceiptFeeStatuses.Collected),
+                Value = FormatSar(keyReceiptTotal),
+                Status = keyReceiptFees.All(c => c.CollectionStatus == KeyReceiptFeeStatuses.Collected)
+                    ? "done"
+                    : "progress",
+                InvoiceNumber = null,
+            });
+        }
 
         return new FinancialSummaryDto
         {

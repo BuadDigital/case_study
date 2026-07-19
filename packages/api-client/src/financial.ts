@@ -29,9 +29,20 @@ export type FinancialSummaryDto = {
   revenueGrandTotal: string;
 };
 
+export type PartyFeePricingDto = {
+  engineeringSurveyFeeSar: number;
+  governmentReviewFeeSar: number;
+  keyReceiptFeeSar: number;
+  fieldInspectorIndividualFeeSar: number;
+  fieldInspectorOrganizationFeeSar: number;
+  fieldInspectorEmployeeFeeSar: number;
+  updatedAtUtc?: string | null;
+};
+
 function headers(token: string): HeadersInit {
   return {
     Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
   };
 }
 
@@ -49,6 +60,40 @@ export async function fetchFinancialSummary(
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
     return { ok: true, data: (await res.json()) as FinancialSummaryDto };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export async function fetchPartyFeePricing(
+  config: PrototypeModulesApiConfig,
+): Promise<PrototypeModulesResult<PartyFeePricingDto>> {
+  try {
+    const res = await fetch(`${baseUrl(config)}/api/financial/v1/party-fee-pricing`, {
+      headers: headers(config.token),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: (await res.json()) as PartyFeePricingDto };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export async function savePartyFeePricing(
+  config: PrototypeModulesApiConfig,
+  body: PartyFeePricingDto,
+): Promise<PrototypeModulesResult<PartyFeePricingDto>> {
+  try {
+    const res = await fetch(`${baseUrl(config)}/api/financial/v1/party-fee-pricing`, {
+      method: "PUT",
+      headers: headers(config.token),
+      body: JSON.stringify(body),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403) return { ok: false, kind: "forbidden" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: (await res.json()) as PartyFeePricingDto };
   } catch {
     return { ok: false, kind: "network" };
   }

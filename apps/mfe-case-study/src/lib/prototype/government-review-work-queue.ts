@@ -1,7 +1,9 @@
 import type { PartyTaskSubmissionDto } from "@platform/api-client";
 import {
   isGovernmentReviewFormLocked,
+  mergeGovernmentReviewWithKeyGate,
   normalizeGovernmentReviewSubmission,
+  type GovernmentReviewKeyGateOverlay,
   type GovernmentReviewSubmission,
 } from "./government-review-work-data";
 import type { WorkflowTask } from "./tasks-storage";
@@ -36,8 +38,12 @@ function submissionFromDto(
 export function governmentReviewTaskStatusBadge(
   task: WorkflowTask,
   submissionDto?: PartyTaskSubmissionDto | null,
+  gate?: GovernmentReviewKeyGateOverlay | null,
 ): { label: string; className: string } | null {
   const sub = submissionFromDto(submissionDto);
+  const keysView = sub
+    ? mergeGovernmentReviewWithKeyGate(sub, gate)
+    : null;
 
   if (sub?.status === "submitted" || task.status === "completed") {
     return { label: "مكتملة", className: "b-done" };
@@ -53,14 +59,17 @@ export function governmentReviewTaskStatusBadge(
   }
   if (
     sub.visitStatus === "completed" &&
-    sub.keyHandedToInspector === "no"
+    keysView?.keyHandedToInspector === "no"
   ) {
     return { label: "قيد التنفيذ", className: "b-prog" };
   }
-  if (sub.visitStatus && sub.keysStatus) {
+  if (keysView?.envelopeMissingWarning) {
+    return { label: "بانتظار الظرف", className: "b-prog" };
+  }
+  if (sub.visitStatus && keysView?.keysStatus) {
     return { label: "قيد التنفيذ", className: "b-prog" };
   }
-  if (sub.visitStatus || sub.keysStatus) {
+  if (sub.visitStatus || keysView?.keysStatus) {
     return { label: "مسودة", className: "b-new" };
   }
   return { label: "جديدة", className: "b-new" };
