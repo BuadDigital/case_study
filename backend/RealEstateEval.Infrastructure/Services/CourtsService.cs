@@ -10,6 +10,11 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class CourtsService : ICourtsService
 {
+    private static readonly JsonSerializerOptions AuditJsonOpts = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    };
+
     private readonly ApplicationDbContext _db;
     private readonly ApiResponseCache _cache;
 
@@ -194,6 +199,18 @@ public sealed class CourtsService : ICourtsService
             CreatedAtUtc = DateTime.UtcNow,
         };
         _db.Courts.Add(entity);
+        AddAudit(
+            CourtAuditActions.CourtCreated,
+            CourtAuditEntityTypes.Court,
+            entity.Id,
+            actorId,
+            new Dictionary<string, object?>
+            {
+                ["name"] = Diff(null, entity.Name),
+                ["region"] = Diff(null, entity.Region),
+                ["city"] = Diff(null, entity.City),
+                ["isActive"] = Diff(null, entity.IsActive),
+            });
         await _db.SaveChangesAsync(cancellationToken);
         await _cache.RemoveAsync(CacheKeys.CourtsCatalog, cancellationToken);
         return (ToDto(entity, 0), null);
@@ -220,12 +237,38 @@ public sealed class CourtsService : ICourtsService
             cancellationToken);
         if (clash) return (null, "توجد محكمة بنفس الاسم في هذه المدينة");
 
+        var beforeName = entity.Name;
+        var beforeRegion = entity.Region;
+        var beforeCity = entity.City;
+        var beforeActive = entity.IsActive;
+
         entity.Name = name;
         entity.Region = region;
         entity.City = city;
         if (request.IsActive.HasValue) entity.IsActive = request.IsActive.Value;
         entity.UpdatedBy = actorId;
         entity.UpdatedAtUtc = DateTime.UtcNow;
+
+        var changes = new Dictionary<string, object?>();
+        if (!string.Equals(beforeName, entity.Name, StringComparison.Ordinal))
+            changes["name"] = Diff(beforeName, entity.Name);
+        if (!string.Equals(beforeRegion, entity.Region, StringComparison.Ordinal))
+            changes["region"] = Diff(beforeRegion, entity.Region);
+        if (!string.Equals(beforeCity, entity.City, StringComparison.Ordinal))
+            changes["city"] = Diff(beforeCity, entity.City);
+        if (beforeActive != entity.IsActive)
+            changes["isActive"] = Diff(beforeActive, entity.IsActive);
+
+        if (changes.Count > 0)
+        {
+            AddAudit(
+                CourtAuditActions.CourtUpdated,
+                CourtAuditEntityTypes.Court,
+                entity.Id,
+                actorId,
+                changes);
+        }
+
         await _db.SaveChangesAsync(cancellationToken);
         await _cache.RemoveAsync(CacheKeys.CourtsCatalog, cancellationToken);
         return (ToDto(entity, entity.Circuits.Count), null);
@@ -239,9 +282,19 @@ public sealed class CourtsService : ICourtsService
     {
         var entity = await _db.Courts.Include(c => c.Circuits).FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
         if (entity is null) return (null, "المحكمة غير موجودة");
+        if (entity.IsActive == isActive)
+            return (ToDto(entity, entity.Circuits.Count), null);
+
+        var before = entity.IsActive;
         entity.IsActive = isActive;
         entity.UpdatedBy = actorId;
         entity.UpdatedAtUtc = DateTime.UtcNow;
+        AddAudit(
+            isActive ? CourtAuditActions.CourtActivated : CourtAuditActions.CourtDeactivated,
+            CourtAuditEntityTypes.Court,
+            entity.Id,
+            actorId,
+            new Dictionary<string, object?> { ["isActive"] = Diff(before, isActive) });
         await _db.SaveChangesAsync(cancellationToken);
         await _cache.RemoveAsync(CacheKeys.CourtsCatalog, cancellationToken);
         return (ToDto(entity, entity.Circuits.Count), null);
@@ -274,6 +327,18 @@ public sealed class CourtsService : ICourtsService
             CreatedAtUtc = DateTime.UtcNow,
         };
         _db.CourtCircuits.Add(entity);
+        AddAudit(
+            CourtAuditActions.CircuitCreated,
+            CourtAuditEntityTypes.Circuit,
+            entity.Id,
+            actorId,
+            new Dictionary<string, object?>
+            {
+                ["courtId"] = Diff(null, entity.CourtId),
+                ["circuitNo"] = Diff(null, entity.CircuitNo),
+                ["circuitName"] = Diff(null, entity.CircuitName),
+                ["isActive"] = Diff(null, entity.IsActive),
+            });
         await _db.SaveChangesAsync(cancellationToken);
         await _cache.RemoveAsync(CacheKeys.CourtsCatalog, cancellationToken);
         return (ToCircuitDto(entity), null);
@@ -298,6 +363,10 @@ public sealed class CourtsService : ICourtsService
             cancellationToken);
         if (clash) return (null, "الدائرة مكرّرة في هذه المحكمة");
 
+        var beforeNo = entity.CircuitNo;
+        var beforeName = entity.CircuitName;
+        var beforeActive = entity.IsActive;
+
         entity.CircuitNo = circuitNo;
         if (request.CircuitName is not null)
             entity.CircuitName = string.IsNullOrWhiteSpace(request.CircuitName)
@@ -306,6 +375,25 @@ public sealed class CourtsService : ICourtsService
         if (request.IsActive.HasValue) entity.IsActive = request.IsActive.Value;
         entity.UpdatedBy = actorId;
         entity.UpdatedAtUtc = DateTime.UtcNow;
+
+        var changes = new Dictionary<string, object?>();
+        if (!string.Equals(beforeNo, entity.CircuitNo, StringComparison.Ordinal))
+            changes["circuitNo"] = Diff(beforeNo, entity.CircuitNo);
+        if (!string.Equals(beforeName, entity.CircuitName, StringComparison.Ordinal))
+            changes["circuitName"] = Diff(beforeName, entity.CircuitName);
+        if (beforeActive != entity.IsActive)
+            changes["isActive"] = Diff(beforeActive, entity.IsActive);
+
+        if (changes.Count > 0)
+        {
+            AddAudit(
+                CourtAuditActions.CircuitUpdated,
+                CourtAuditEntityTypes.Circuit,
+                entity.Id,
+                actorId,
+                changes);
+        }
+
         await _db.SaveChangesAsync(cancellationToken);
         await _cache.RemoveAsync(CacheKeys.CourtsCatalog, cancellationToken);
         return (ToCircuitDto(entity), null);
@@ -322,9 +410,19 @@ public sealed class CourtsService : ICourtsService
             c => c.Id == circuitId && c.CourtId == courtId,
             cancellationToken);
         if (entity is null) return (null, "الدائرة غير موجودة");
+        if (entity.IsActive == isActive)
+            return (ToCircuitDto(entity), null);
+
+        var before = entity.IsActive;
         entity.IsActive = isActive;
         entity.UpdatedBy = actorId;
         entity.UpdatedAtUtc = DateTime.UtcNow;
+        AddAudit(
+            isActive ? CourtAuditActions.CircuitActivated : CourtAuditActions.CircuitDeactivated,
+            CourtAuditEntityTypes.Circuit,
+            entity.Id,
+            actorId,
+            new Dictionary<string, object?> { ["isActive"] = Diff(before, isActive) });
         await _db.SaveChangesAsync(cancellationToken);
         await _cache.RemoveAsync(CacheKeys.CourtsCatalog, cancellationToken);
         return (ToCircuitDto(entity), null);
@@ -432,4 +530,26 @@ public sealed class CourtsService : ICourtsService
         UpdatedBy = c.UpdatedBy,
         UpdatedAtUtc = c.UpdatedAtUtc?.ToString("o"),
     };
+
+    private void AddAudit(
+        string action,
+        string entityType,
+        Guid entityId,
+        string actorId,
+        Dictionary<string, object?> changes)
+    {
+        _db.CourtAuditLogs.Add(new CourtAuditLog
+        {
+            Id = Guid.NewGuid(),
+            Action = action,
+            EntityType = entityType,
+            EntityId = entityId,
+            ActorId = actorId,
+            ChangesJson = JsonSerializer.Serialize(changes, AuditJsonOpts),
+            TimestampUtc = DateTime.UtcNow,
+        });
+    }
+
+    private static object Diff(object? before, object? after) =>
+        new { before, after };
 }

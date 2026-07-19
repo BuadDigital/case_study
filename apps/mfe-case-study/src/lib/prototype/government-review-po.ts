@@ -117,6 +117,41 @@ export function propertiesForCourt(
   return record.properties.filter((p) => p.court.trim() === normalized);
 }
 
+export function courtCircuitGroupsForPo(
+  record: PoIntakeRecord | undefined,
+): {
+  id: string;
+  court: string;
+  city: string;
+  circuit: string;
+  propertyIds: string[];
+}[] {
+  if (!record) return [];
+  const map = new Map<
+    string,
+    { court: string; city: string; circuit: string; propertyIds: string[] }
+  >();
+  for (const property of record.properties) {
+    const court = property.court.trim();
+    if (!court) continue;
+    const circuit = property.circuit.trim() || "—";
+    const id = `${court}::${circuit}`;
+    const existing = map.get(id);
+    if (existing) {
+      existing.propertyIds.push(property.id);
+    } else {
+      map.set(id, {
+        court,
+        circuit,
+        city: propertyCourtCity(property, record),
+        propertyIds: [property.id],
+      });
+    }
+  }
+  return [...map.entries()].map(([id, g]) => ({ id, ...g }));
+}
+
+/** @deprecated استخدم courtCircuitGroupsForPo */
 export function courtGroupsForPo(
   record: PoIntakeRecord | undefined,
   courts: string[],

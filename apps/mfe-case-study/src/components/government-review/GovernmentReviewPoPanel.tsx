@@ -10,10 +10,12 @@ import {
 import { PoNumber } from "../ui/PoNumber";
 import { InternalDelegationLetterPanel } from "./InternalDelegationLetterPanel";
 import type { GovernmentReviewPoRow } from "../../lib/prototype/government-review-po";
-import { courtGroupsForPo } from "../../lib/prototype/government-review-po";
+import { courtCircuitGroupsForPo } from "../../lib/prototype/government-review-po";
 import {
-  delegationLetterForCourt,
+  agentInfoFromStaff,
   hydrateInternalDelegationLetters,
+  letterIdForCourtCircuit,
+  loadInternalDelegationLetters,
   syncInternalDelegationLetters,
 } from "../../lib/prototype/internal-delegation-letters";
 import {
@@ -22,6 +24,10 @@ import {
 } from "../../lib/prototype/po-intake-data";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 import { usePoRecordsQuery } from "../../query/case-study-queries";
+import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
+import { partyAccountForRole } from "../../lib/prototype/distribution-parties";
+import { reviewerScopeForRole } from "../../lib/prototype/reviewer-coverage";
 
 function PanelSection({
   title,
@@ -93,6 +99,27 @@ export function GovernmentReviewPoPanel({
   onRefresh: () => void;
   onOpenTask: (taskId: string) => void;
 }) {
+  const { role, viewerEmail } = usePrototype();
+  const { data: staffResult } = useStaffUsersQuery();
+  const staffUsers = useMemo(() => staffResult?.users ?? [], [staffResult?.users]);
+  const reviewerScope = reviewerScopeForRole(role, staffUsers);
+  const reviewerAccount = useMemo(
+    () => partyAccountForRole(role, staffUsers),
+    [role, staffUsers],
+  );
+  const scopeKey =
+    reviewerScope?.assigneeId?.trim() ||
+    reviewerAccount?.assigneeId?.trim() ||
+    viewerEmail?.trim() ||
+    "government-review";
+  const agent = useMemo(() => {
+    const assigneeId = reviewerScope?.assigneeId ?? reviewerAccount?.assigneeId;
+    const staff = assigneeId
+      ? staffUsers.find((u) => u.distributionAssigneeId?.trim() === assigneeId)
+      : null;
+    return agentInfoFromStaff(staff);
+  }, [staffUsers, reviewerScope, reviewerAccount]);
+
   const { data: poRecords = [] } = usePoRecordsQuery();
   const record = useMemo(
     () => poRecords.find((r) => r.poNumber.trim() === row.poNumber.trim()),
@@ -101,21 +128,38 @@ export function GovernmentReviewPoPanel({
   const [, bump] = useState(0);
   const refreshLetters = useCallback(() => bump((n) => n + 1), []);
 
+  const recordsFingerprint = useMemo(
+    () =>
+      poRecords
+        .map((r) =>
+          `${r.poNumber}:${r.properties
+            .map((p) => `${p.id}:${p.court}:${p.circuit}`)
+            .join(",")}`,
+        )
+        .join("|"),
+    [poRecords],
+  );
+
   useEffect(() => {
-    if (!record) return;
-    void hydrateInternalDelegationLetters(record.poNumber)
+    if (!record || !scopeKey) return;
+    let cancelled = false;
+    void hydrateInternalDelegationLetters(scopeKey)
       .then(() => {
-        syncInternalDelegationLetters(record);
+        if (cancelled) return;
+        syncInternalDelegationLetters(poRecords, scopeKey);
         refreshLetters();
       })
       .catch((err: unknown) => {
         console.warn("Delegation letters hydrate failed:", err);
       });
-  }, [record, refreshLetters]);
+    return () => {
+      cancelled = true;
+    };
+  }, [record?.poNumber, scopeKey, recordsFingerprint, refreshLetters, poRecords, record]);
 
   const courtGroups = useMemo(
-    () => courtGroupsForPo(record, row.courts),
-    [record, row.courts],
+    () => courtCircuitGroupsForPo(record),
+    [record],
   );
 
   const circuits = useMemo(() => {
@@ -293,17 +337,21 @@ export function GovernmentReviewPoPanel({
 
         {record
           ? courtGroups.map((group) => {
-              const letter = delegationLetterForCourt(
-                row.poNumber,
-                group.court,
-                record,
-              );
+              const letters = loadInternalDelegationLetters(scopeKey);
+              const letter =
+                letters.find(
+                  (l) =>
+                    l.id ===
+                    letterIdForCourtCircuit(group.court, group.circuit),
+                ) ?? null;
               if (!letter) return null;
               return (
                 <InternalDelegationLetterPanel
-                  key={group.court}
+                  key={group.id}
                   letter={letter}
-                  record={record}
+                  records={poRecords}
+                  scopeKey={scopeKey}
+                  agent={agent}
                   onRefresh={() => {
                     refreshLetters();
                     onRefresh();

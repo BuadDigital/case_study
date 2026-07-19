@@ -436,6 +436,48 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.ToTable("Courts", "platform");
                 });
 
+            modelBuilder.Entity("RealEstateEval.Domain.CourtAuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ActorId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("ChangesJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("EntityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTime>("TimestampUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Action");
+
+                    b.HasIndex("TimestampUtc");
+
+                    b.HasIndex("EntityType", "EntityId");
+
+                    b.ToTable("CourtAuditLogs", "platform");
+                });
+
             modelBuilder.Entity("RealEstateEval.Domain.CourtCatalogEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -983,6 +1025,41 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.ToTable("InspectorFeeTransitions", "case_study");
                 });
 
+            modelBuilder.Entity("RealEstateEval.Domain.DocumentReferenceCounter", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DateKey")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<string>("Dept")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<int>("Seq")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Dept", "Type", "DateKey")
+                        .IsUnique();
+
+                    b.ToTable("DocumentReferenceCounters", "case_study");
+                });
+
             modelBuilder.Entity("RealEstateEval.Domain.InternalDelegationLetterSet", b =>
                 {
                     b.Property<Guid>("Id")
@@ -993,17 +1070,17 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasColumnType("jsonb");
 
-                    b.Property<string>("PoNumber")
+                    b.Property<string>("ScopeKey")
                         .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PoNumber")
+                    b.HasIndex("ScopeKey")
                         .IsUnique();
 
                     b.ToTable("InternalDelegationLetterSets", "case_study");

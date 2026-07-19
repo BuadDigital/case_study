@@ -18,24 +18,38 @@ public class InternalDelegationLettersController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<InternalDelegationLetterDto>>> Get(
-        [FromQuery] string poNumber,
+        [FromQuery] string? scopeKey,
+        [FromQuery] string? poNumber,
         CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(poNumber))
-            return BadRequest(new { error = "poNumber is required" });
+        // توافق مؤقت: poNumber يُعامل كـ scopeKey إن لم يُمرَّر scopeKey.
+        var key = (scopeKey ?? poNumber ?? "").Trim();
+        if (key.Length == 0)
+            return BadRequest(new { error = "scopeKey is required" });
 
-        return Ok(await _letters.GetForPoAsync(poNumber, ct));
+        return Ok(await _letters.GetForScopeAsync(key, ct));
     }
 
     [HttpPut]
-    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    [Authorize(Policy = CapabilityPolicyNames.SubmitPartyWork)]
     public async Task<ActionResult<IReadOnlyList<InternalDelegationLetterDto>>> Save(
         [FromBody] SaveInternalDelegationLettersRequest request,
         CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.PoNumber))
-            return BadRequest(new { error = "poNumber is required" });
+        if (string.IsNullOrWhiteSpace(request.ScopeKey))
+            return BadRequest(new { error = "scopeKey is required" });
 
         return Ok(await _letters.SaveAsync(request, ct));
+    }
+
+    [HttpPost("issue")]
+    [Authorize(Policy = CapabilityPolicyNames.SubmitPartyWork)]
+    public async Task<ActionResult<InternalDelegationLetterDto>> Issue(
+        [FromBody] IssueInternalDelegationLetterRequest request,
+        CancellationToken ct)
+    {
+        var (letter, error) = await _letters.IssueAsync(request, ct);
+        if (error is not null) return BadRequest(new { error });
+        return Ok(letter);
     }
 }

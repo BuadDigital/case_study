@@ -51,9 +51,13 @@ import {
 import { ltrValueClass } from "../components/po-intake/PropertyDetailFields";
 import { InternalDelegationLettersModal } from "../components/government-review/InternalDelegationLettersModal";
 import {
+  agentInfoFromStaff,
+} from "../lib/prototype/internal-delegation-letters";
+import {
   usePoRecordsQuery,
   useWorkflowTasksQuery,
 } from "../query/case-study-queries";
+import { partyAccountForRole } from "../lib/prototype/distribution-parties";
 
 const ROW = queueTableRowClassName;
 const TABLE_COLS = 7;
@@ -79,6 +83,27 @@ export function GovernmentReviewView() {
   const staffUsers = useMemo(() => staffResult?.users ?? [], [staffResult?.users]);
   const def = partyTaskPageDef("government-review");
   const reviewerScope = reviewerScopeForRole(role, staffUsers);
+  const reviewerAccount = useMemo(
+    () => partyAccountForRole(role, staffUsers),
+    [role, staffUsers],
+  );
+  const reviewerStaff = useMemo(() => {
+    const assigneeId = reviewerScope?.assigneeId ?? reviewerAccount?.assigneeId;
+    if (!assigneeId) return null;
+    return (
+      staffUsers.find((u) => u.distributionAssigneeId?.trim() === assigneeId) ??
+      null
+    );
+  }, [staffUsers, reviewerScope, reviewerAccount]);
+  const delegationScopeKey =
+    reviewerScope?.assigneeId?.trim() ||
+    reviewerAccount?.assigneeId?.trim() ||
+    viewerEmail?.trim() ||
+    "government-review";
+  const delegationAgent = useMemo(
+    () => agentInfoFromStaff(reviewerStaff),
+    [reviewerStaff],
+  );
 
   const {
     data: tasks,
@@ -105,14 +130,6 @@ export function GovernmentReviewView() {
     return map;
   }, [poRecords]);
 
-  const delegationRecord = useMemo(
-    () =>
-      delegationPoNumber
-        ? poByNumber.get(delegationPoNumber.trim()) ?? null
-        : null,
-    [delegationPoNumber, poByNumber],
-  );
-
   const mine = useMemo(
     () =>
       tasksForPartyAssignee(
@@ -124,6 +141,19 @@ export function GovernmentReviewView() {
       ),
     [viewerEmail, role, tasks, staffUsers],
   );
+
+  const inScopeRecords = useMemo(() => {
+    const poNumbers = new Set(mine.map((t) => t.poNumber.trim()));
+    return poRecords.filter((r) => {
+      if (!poNumbers.has(r.poNumber.trim())) return false;
+      const courts = r.properties.map((p) => p.court.trim()).filter(Boolean);
+      const cities = poCitiesForReviewerScope(
+        r,
+        mine.filter((t) => t.poNumber.trim() === r.poNumber.trim()),
+      );
+      return poInReviewerScope(courts, reviewerScope, cities);
+    });
+  }, [mine, poRecords, reviewerScope]);
 
   const rows = useMemo(() => {
     const govTasks = mine.filter((task) => task.kind === "government-review");
@@ -369,7 +399,10 @@ export function GovernmentReviewView() {
       />
       <InternalDelegationLettersModal
         open={Boolean(delegationPoNumber)}
-        record={delegationRecord}
+        records={inScopeRecords}
+        scopeKey={delegationScopeKey}
+        agent={delegationAgent}
+        focusPoNumber={delegationPoNumber}
         onClose={() => setDelegationPoNumber(null)}
       />
     </>
