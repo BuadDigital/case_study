@@ -157,6 +157,7 @@ export type ActiveQueueRowMoreContext = {
   refreshQueue: () => void;
   showToast: (message: string, tone?: "success" | "error" | "info") => void;
   poByNumber: Map<string, PoIntakeRecord>;
+  viewerRole: RoleId;
 };
 
 export type ActiveQueueApi = {
@@ -466,6 +467,7 @@ export function ActiveTransactionQueueView({
         refreshQueue: refreshWork,
         showToast,
         poByNumber,
+        viewerRole: role,
       };
       if (config.buildRowMoreItems) {
         return config.buildRowMoreItems(ctx);

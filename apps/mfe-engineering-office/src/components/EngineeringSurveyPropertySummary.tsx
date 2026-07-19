@@ -32,7 +32,7 @@ export function EngineeringSurveyPropertySummary({
   const restrictions = restrictionsPresentLabel(property.restrictionsPresent);
   const courtLine = [property.court, property.circuit]
     .filter(Boolean)
-    .join(" · ");
+    .join(" / ");
   const showCourt =
     record != null && showsCourtFields(record.assignmentType);
 

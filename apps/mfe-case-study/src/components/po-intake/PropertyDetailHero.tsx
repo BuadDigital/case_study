@@ -57,7 +57,7 @@ export function PropertyDetailHero({
   const typeLine = formatPropertyTypeLine(property);
   const courtLine = [property.court, property.circuit]
     .filter(Boolean)
-    .join(" · ");
+    .join(" / ");
   const dueUrgent = record.dueDateAt ? isDueSoon(record.dueDateAt) : false;
 
   return (

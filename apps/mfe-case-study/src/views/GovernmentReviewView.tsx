@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -44,20 +44,28 @@ import {
   poCitiesForReviewerScope,
 } from "../lib/prototype/reviewer-coverage";
 import {
+  formatDateAr,
+  isPastDue,
   type PoIntakeRecord,
 } from "../lib/prototype/po-intake-data";
+import { ltrValueClass } from "../components/po-intake/PropertyDetailFields";
+import { InternalDelegationLettersModal } from "../components/government-review/InternalDelegationLettersModal";
 import {
   usePoRecordsQuery,
   useWorkflowTasksQuery,
 } from "../query/case-study-queries";
 
 const ROW = queueTableRowClassName;
+const TABLE_COLS = 7;
 
 type GovernmentReviewPoRow = {
   tasks: WorkflowTask[];
   poNumber: string;
   propertyCount: number;
+  expectedPropertyCount: number;
   assignmentType: string;
+  receivedFromEnfathAt: string;
+  dueDateAt: string;
   createdAt: string;
   status: WorkflowTask["status"];
 };
@@ -82,6 +90,9 @@ export function GovernmentReviewView() {
   } = usePoRecordsQuery();
 
   const queueReady = tasksFetched && poRecordsFetched;
+  const [delegationPoNumber, setDelegationPoNumber] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!selectedTaskId) return;
@@ -93,6 +104,14 @@ export function GovernmentReviewView() {
     for (const record of poRecords) map.set(record.poNumber.trim(), record);
     return map;
   }, [poRecords]);
+
+  const delegationRecord = useMemo(
+    () =>
+      delegationPoNumber
+        ? poByNumber.get(delegationPoNumber.trim()) ?? null
+        : null,
+    [delegationPoNumber, poByNumber],
+  );
 
   const mine = useMemo(
     () =>
@@ -115,6 +134,9 @@ export function GovernmentReviewView() {
         assignmentType: string;
         propertyIds: Set<string>;
         createdAt: string;
+        receivedFromEnfathAt: string;
+        dueDateAt: string;
+        expectedPropertyCount: number;
       }
     >();
 
@@ -129,6 +151,13 @@ export function GovernmentReviewView() {
       const cities = poCitiesForReviewerScope(record, [task]);
       if (!poInReviewerScope(courts, reviewerScope, cities)) continue;
 
+      const activeCount =
+        record?.properties.filter((p) => !p.isRemoved).length ?? 0;
+      const expected =
+        record?.expectedPropertyCount && record.expectedPropertyCount > 0
+          ? record.expectedPropertyCount
+          : activeCount;
+
       const current = grouped.get(poNumber);
       if (current) {
         current.tasks.push(task);
@@ -142,6 +171,9 @@ export function GovernmentReviewView() {
         assignmentType: record?.assignmentType ?? task.assignmentType ?? "—",
         propertyIds: new Set(task.propertyId ? [task.propertyId] : []),
         createdAt: task.createdAt,
+        receivedFromEnfathAt: record?.receivedFromEnfathAt?.trim() ?? "",
+        dueDateAt: record?.dueDateAt?.trim() ?? "",
+        expectedPropertyCount: expected,
       });
     }
 
@@ -154,12 +186,19 @@ export function GovernmentReviewView() {
           : group.tasks.some((task) => task.status === "open")
             ? "open"
             : "blocked";
+        const propertyCount = group.propertyIds.size || group.tasks.length;
 
         return {
           tasks: group.tasks,
           poNumber,
-          propertyCount: group.propertyIds.size || group.tasks.length,
+          propertyCount,
+          expectedPropertyCount: Math.max(
+            group.expectedPropertyCount,
+            propertyCount,
+          ),
           assignmentType: group.assignmentType,
+          receivedFromEnfathAt: group.receivedFromEnfathAt,
+          dueDateAt: group.dueDateAt,
           createdAt: group.createdAt,
           status,
         };
@@ -181,21 +220,14 @@ export function GovernmentReviewView() {
   );
 
   const rowMoreItems = useCallback(
-    (row: GovernmentReviewPoRow): RowMoreMenuItem[] => {
-      const task =
-        row.tasks.find((item) => item.status === "open") ??
-        row.tasks.find((item) => item.status === "blocked") ??
-        row.tasks[0];
-      if (!task) return [];
-      return [
-        {
-          id: "start-transaction",
-          label: "بدء المعاملة",
-          onClick: () => router.push(governmentReviewWorkspacePath(task.id)),
-        },
-      ];
-    },
-    [router],
+    (row: GovernmentReviewPoRow): RowMoreMenuItem[] => [
+      {
+        id: "internal-delegation-letter",
+        label: "خطاب التفويض الداخلي",
+        onClick: () => setDelegationPoNumber(row.poNumber),
+      },
+    ],
+    [],
   );
 
   const hasRail = false;
@@ -204,22 +236,26 @@ export function GovernmentReviewView() {
     return <PanelSkeleton className="p-4" />;
   }
 
+  const tableHead = (
+    <Tr hoverable={false}>
+      <Th>أمر العمل</Th>
+      <Th className="text-center">عدد الصكوك</Th>
+      <Th>نوع الإسناد</Th>
+      <Th>تاريخ الاستلام</Th>
+      <Th>تاريخ الاستحقاق</Th>
+      <Th>حالة المهمة</Th>
+      <ThAction aria-label="المزيد" />
+    </Tr>
+  );
+
   const queuePanel = (
         <OperationalPanel className={cn("min-h-0 flex-1")}>
           {!queueReady ? (
             <div className={queueTableWrapClassName}>
               <Table pending>
-                <THead>
-                  <Tr hoverable={false}>
-                    <Th>أمر العمل</Th>
-                    <Th>عدد الصكوك</Th>
-                    <Th>نوع الإسناد</Th>
-                    <Th>حالة المهمة</Th>
-                    <ThAction aria-label="المزيد" />
-                  </Tr>
-                </THead>
+                <THead>{tableHead}</THead>
                 <TBody>
-                  <SkeletonTableRows rows={5} cols={5} />
+                  <SkeletonTableRows rows={5} cols={TABLE_COLS} />
                 </TBody>
               </Table>
             </div>
@@ -235,18 +271,12 @@ export function GovernmentReviewView() {
             <>
               <div className={queueTableWrapClassName}>
                 <Table>
-                  <THead>
-                    <Tr hoverable={false}>
-                      <Th>أمر العمل</Th>
-                      <Th>عدد الصكوك</Th>
-                      <Th>نوع الإسناد</Th>
-                      <Th>حالة المهمة</Th>
-                      <ThAction aria-label="المزيد" />
-                    </Tr>
-                  </THead>
+                  <THead>{tableHead}</THead>
                   <TBody>
                     {rows.map((row) => {
                       const poHref = poPropertiesPath(row.poNumber);
+                      const dueUrgent =
+                        Boolean(row.dueDateAt) && isPastDue(row.dueDateAt);
                       return (
                         <Tr
                           key={row.poNumber}
@@ -258,16 +288,49 @@ export function GovernmentReviewView() {
                             <Link
                               href={poHref}
                               dir="ltr"
-                              className="relative z-[1] font-medium text-primary underline decoration-primary underline-offset-2 hover:text-primary-mid"
+                              className="relative z-[1] text-[13.5px] font-bold text-primary underline decoration-primary underline-offset-2 hover:text-primary-mid"
                               onClick={(e) => e.stopPropagation()}
                             >
                               {row.poNumber}
                             </Link>
                           </Td>
-                          <Td className="text-text-2">
-                            {row.propertyCount}
+                          <Td className="whitespace-nowrap text-center text-[13px] text-text-2 tabular-nums">
+                            <span className="font-extrabold text-heading">
+                              {row.propertyCount}
+                            </span>
+                            <span className="mx-1 text-text-3">من</span>
+                            <span className="font-bold text-text-2">
+                              {row.expectedPropertyCount}
+                            </span>
                           </Td>
-                          <Td className="text-text-2">{row.assignmentType}</Td>
+                          <Td className="whitespace-nowrap">
+                            <span className="inline-flex items-center rounded-md border border-border-md bg-surface-2 px-2.5 py-[3px] text-[12px] font-medium text-text-2">
+                              {row.assignmentType}
+                            </span>
+                          </Td>
+                          <Td className="whitespace-nowrap text-[13px] text-text-2">
+                            {row.receivedFromEnfathAt ? (
+                              <bdi dir="ltr" className={ltrValueClass}>
+                                {formatDateAr(row.receivedFromEnfathAt)}
+                              </bdi>
+                            ) : (
+                              "—"
+                            )}
+                          </Td>
+                          <Td
+                            className={cn(
+                              "whitespace-nowrap text-[13px] font-semibold",
+                              dueUrgent ? "text-red" : "text-heading",
+                            )}
+                          >
+                            {row.dueDateAt ? (
+                              <bdi dir="ltr" className={ltrValueClass}>
+                                {formatDateAr(row.dueDateAt)}
+                              </bdi>
+                            ) : (
+                              "—"
+                            )}
+                          </Td>
                           <Td>
                             {row.status === "open" ? (
                               <Badge tone="warning">قيد الإجراء</Badge>
@@ -287,8 +350,8 @@ export function GovernmentReviewView() {
                 </Table>
               </div>
               <QueueTableHint>
-                اضغط على رقم أمر العمل أو الصف لعرض عقاراته. لبدء المراجعة
-                استخدم «بدء المعاملة» من قائمة ⋮.
+                اضغط على رقم أمر العمل أو الصف لعرض عقاراته. لخطاب التفويض
+                الداخلي استخدم قائمة ⋮.
               </QueueTableHint>
             </>
           )}
@@ -296,12 +359,19 @@ export function GovernmentReviewView() {
   );
 
   return (
-    <ActiveTransactionPageLayout
-      pageId="government-review"
-      hasRail={hasRail}
-      panelOpen={false}
-      queuePanel={queuePanel}
-      sidePanel={null}
-    />
+    <>
+      <ActiveTransactionPageLayout
+        pageId="government-review"
+        hasRail={hasRail}
+        panelOpen={false}
+        queuePanel={queuePanel}
+        sidePanel={null}
+      />
+      <InternalDelegationLettersModal
+        open={Boolean(delegationPoNumber)}
+        record={delegationRecord}
+        onClose={() => setDelegationPoNumber(null)}
+      />
+    </>
   );
 }

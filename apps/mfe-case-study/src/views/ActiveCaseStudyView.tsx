@@ -30,8 +30,13 @@ const CASE_STUDY_QUEUE: ActiveTransactionQueueConfig = {
   fullPageTaskPath: caseStudyWorkspacePath,
   queueSort: "newest-first",
   filterListed: (mine) => filterTasksForCaseStudy(mine),
-  buildRowMoreItems: ({ task, propertyId, router }) =>
-    buildCaseStudyQueueRowMoreItems({ task, propertyId, router }),
+  buildRowMoreItems: ({ task, propertyId, router, viewerRole }) =>
+    buildCaseStudyQueueRowMoreItems({
+      task,
+      propertyId,
+      router,
+      viewerRole,
+    }),
 };
 
 export function ActiveCaseStudyView() {
