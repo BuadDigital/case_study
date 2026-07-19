@@ -25,10 +25,12 @@ import {
   Tr,
   cn,
   queueTableRowClassName,
+  useToast,
 } from "@platform/design-system";
 import { KeyEnvelopeDetailModal } from "../components/KeyEnvelopeDetailModal";
 import { RegisterKeyEnvelopeModal } from "../components/RegisterKeyEnvelopeModal";
 import { RowMoreMenu } from "../components/ui/RowMoreMenu";
+import { removeKeyEnvelope } from "../lib/keys-envelope-api";
 import type { KeyEnvelopeRow } from "../lib/keys-envelope-types";
 import {
   useInvalidateKeyEnvelopes,
@@ -179,6 +181,7 @@ function keysCountLabel(env: KeyEnvelopeRow): string {
 }
 
 export function KeysView() {
+  const { showToast } = useToast();
   const { role } = usePrototype();
   const viewOnly = !isSuperAdmin(role) && role === "general-manager";
   const canEditEnvelope =
@@ -206,6 +209,7 @@ export function KeysView() {
   const [page, setPage] = useState(1);
   const [registerOpen, setRegisterOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const withReviewer = envelopes.filter((e) => e.status === "reviewer").length;
   const withAssessor = envelopes.filter((e) => e.status === "assessor").length;
@@ -256,6 +260,24 @@ export function KeysView() {
     } else {
       setSortKey(key);
       setSortDir("asc");
+    }
+  }
+
+  async function deleteEnvelope(env: KeyEnvelopeRow) {
+    const confirmed = window.confirm(
+      `هل تريد حذف الظرف ${envelopeCode(env.id)}؟ لا يمكن التراجع عن الحذف.`,
+    );
+    if (!confirmed) return;
+
+    setDeletingId(env.id);
+    const result = await removeKeyEnvelope(env.id);
+    setDeletingId(null);
+    if (result.ok) {
+      if (detailId === env.id) setDetailId(null);
+      invalidateEnvelopes();
+      showToast("تم حذف الظرف.", "success");
+    } else {
+      showToast(result.error, "error");
     }
   }
 
@@ -425,6 +447,20 @@ export function KeysView() {
                             label: "تفاصيل الظرف",
                             onClick: () => setDetailId(env.id),
                           },
+                          ...(canRegisterEnvelope
+                            ? [
+                                {
+                                  id: "delete",
+                                  label:
+                                    deletingId === env.id
+                                      ? "جاري الحذف…"
+                                      : "حذف الظرف",
+                                  disabled: deletingId !== null,
+                                  danger: true,
+                                  onClick: () => void deleteEnvelope(env),
+                                },
+                              ]
+                            : []),
                         ]}
                       />
                     </div>

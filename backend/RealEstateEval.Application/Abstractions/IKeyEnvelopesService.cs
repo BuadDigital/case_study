@@ -8,6 +8,8 @@ public interface IKeyEnvelopesService
 
     Task<KeyEnvelopeDto?> GetAsync(Guid id, CancellationToken cancellationToken = default);
 
+    Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<KeyEnvelopeLinkedPropertyDto>> ListLinkedPropertiesAsync(
         string requestNumber,
         CancellationToken cancellationToken = default);

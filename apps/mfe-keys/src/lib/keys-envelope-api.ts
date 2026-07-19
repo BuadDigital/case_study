@@ -4,6 +4,7 @@ import {
   confirmKeyEnvelopeHandoff,
   createKeyEnvelope,
   createKeyEnvelopeHandoff,
+  deleteKeyEnvelope,
   getKeyEnvelope,
   listKeyEnvelopeFeeReport,
   listKeyEnvelopeLinkedProperties,
@@ -85,6 +86,16 @@ export async function loadKeyEnvelope(
   const result = await getKeyEnvelope(config, id);
   if (!result.ok) return fail(result, "تعذّر تحميل الظرف");
   return { ok: true, data: mapEnvelope(result.data) };
+}
+
+export async function removeKeyEnvelope(
+  id: string,
+): Promise<MutationResult<true>> {
+  const config = prototypeModulesApiConfig();
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
+  const result = await deleteKeyEnvelope(config, id);
+  if (!result.ok) return fail(result, "تعذّر حذف الظرف");
+  return { ok: true, data: true };
 }
 
 export async function loadKeyEnvelopeFeeReport(): Promise<KeyEnvelopeFeeReportRow[]> {

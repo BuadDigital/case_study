@@ -331,6 +331,23 @@ public class KeyEnvelopesServiceTests
     }
 
     [Fact]
+    public async Task DeleteAsync_removes_envelope_children_and_fee_charge()
+    {
+        await using var db = CreateDb();
+        var service = CreateService(db);
+        var envelope = await CreateCourtEnvelopeAsync(db, service);
+
+        var deleted = await service.DeleteAsync(envelope.Id);
+
+        Assert.True(deleted);
+        Assert.False(await db.KeyEnvelopes.AnyAsync(e => e.Id == envelope.Id));
+        Assert.False(await db.KeyEnvelopeAssignments.AnyAsync(a => a.EnvelopeId == envelope.Id));
+        Assert.False(await db.KeyEnvelopeTimelineEntries.AnyAsync(t => t.EnvelopeId == envelope.Id));
+        Assert.False(await db.KeyReceiptFeeCharges.AnyAsync(c => c.EnvelopeId == envelope.Id));
+        Assert.False(await service.DeleteAsync(envelope.Id));
+    }
+
+    [Fact]
     public async Task PropertyKeys_projection_marks_done_when_assignment_matched()
     {
         await using var db = CreateDb();
