@@ -48,8 +48,8 @@ const TOAST_DURATION_MS = 4000;
 const toneClasses: Record<ToastTone, string> = {
   success: "border-success/40 bg-success-bg text-success-text",
   error: "border-danger/40 bg-danger-bg text-danger-text",
-  info: "border-border bg-surface text-text-2",
-  progress: "border-primary/30 bg-teal-light text-primary",
+  info: "border-ink/30 bg-navy-soft text-ink",
+  progress: "border-ink/30 bg-navy-soft text-ink",
 };
 
 const GENERIC_ACTION_ERROR = "تعذّر تنفيذ العملية — حاول مرة أخرى";

@@ -3,11 +3,15 @@
 import { useEffect, useState } from "react";
 import {
   Button,
+  Card,
+  CardBody,
+  CardHeader,
   FormGroup,
   Label,
   Note,
   useToast,
 } from "@platform/design-system";
+import { Can, useCapability } from "@platform/app-shared/components/Can";
 import { RegField } from "@platform/app-shared/registration/FormFields";
 import type { PartyFeePricingDto } from "@platform/api-client";
 import {
@@ -29,12 +33,44 @@ function num(value: string): number {
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
+function FeeField({
+  id,
+  label,
+  value,
+  locked,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: number;
+  locked: boolean;
+  onChange: (n: number) => void;
+}) {
+  return (
+    <FormGroup>
+      <Label htmlFor={id} className="mb-1 text-[11px] font-semibold text-text-2">
+        {label}
+      </Label>
+      <RegField
+        id={id}
+        label=""
+        value={String(value || "")}
+        readOnly={locked}
+        inputMode="decimal"
+        dir="ltr"
+        onChange={(v) => onChange(num(v))}
+      />
+    </FormGroup>
+  );
+}
+
 export function FinancePartyFeePricing() {
   const { showToast } = useToast();
+  const canEdit = useCapability("manage-system-config");
   const [draft, setDraft] = useState<PartyFeePricingDto>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const locked = loading || saving;
+  const locked = loading || saving || !canEdit;
 
   useEffect(() => {
     let cancelled = false;
@@ -72,111 +108,123 @@ export function FinancePartyFeePricing() {
   };
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
-      <Note tone="info">
-        تسعير الأتعاب الافتراضي لمزوّدي الخدمة وأتعاب استلام المفاتيح من إنفاذ.
-        لا يظهر بند استلام المفاتيح في شاشات صرف الأطراف.
-      </Note>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <FormGroup>
-          <Label className="text-[11px] font-semibold text-text-2">
-            أتعاب استلام المفاتيح (ر.س)
-          </Label>
-          <RegField
-            id="fee-key-receipt"
-            label=""
-            value={String(draft.keyReceiptFeeSar || "")}
-            readOnly={locked}
-            onChange={(v) =>
-              setDraft((d) => ({ ...d, keyReceiptFeeSar: num(v) }))
-            }
-          />
-        </FormGroup>
-        <FormGroup>
-          <Label className="text-[11px] font-semibold text-text-2">
-            أتعاب المراجعة الحكومية (ر.س)
-          </Label>
-          <RegField
-            id="fee-gov-review"
-            label=""
-            value={String(draft.governmentReviewFeeSar || "")}
-            readOnly={locked}
-            onChange={(v) =>
-              setDraft((d) => ({ ...d, governmentReviewFeeSar: num(v) }))
-            }
-          />
-        </FormGroup>
-        <FormGroup>
-          <Label className="text-[11px] font-semibold text-text-2">
-            أتعاب الرفع المساحي (ر.س)
-          </Label>
-          <RegField
-            id="fee-survey"
-            label=""
-            value={String(draft.engineeringSurveyFeeSar || "")}
-            readOnly={locked}
-            onChange={(v) =>
-              setDraft((d) => ({ ...d, engineeringSurveyFeeSar: num(v) }))
-            }
-          />
-        </FormGroup>
-        <FormGroup>
-          <Label className="text-[11px] font-semibold text-text-2">
-            معاين — فرد (ر.س)
-          </Label>
-          <RegField
-            id="fee-insp-ind"
-            label=""
-            value={String(draft.fieldInspectorIndividualFeeSar || "")}
-            readOnly={locked}
-            onChange={(v) =>
-              setDraft((d) => ({
-                ...d,
-                fieldInspectorIndividualFeeSar: num(v),
-              }))
-            }
-          />
-        </FormGroup>
-        <FormGroup>
-          <Label className="text-[11px] font-semibold text-text-2">
-            معاين — منشأة (ر.س)
-          </Label>
-          <RegField
-            id="fee-insp-org"
-            label=""
-            value={String(draft.fieldInspectorOrganizationFeeSar || "")}
-            readOnly={locked}
-            onChange={(v) =>
-              setDraft((d) => ({
-                ...d,
-                fieldInspectorOrganizationFeeSar: num(v),
-              }))
-            }
-          />
-        </FormGroup>
-        <FormGroup>
-          <Label className="text-[11px] font-semibold text-text-2">
-            معاين — موظف (ر.س)
-          </Label>
-          <RegField
-            id="fee-insp-emp"
-            label=""
-            value={String(draft.fieldInspectorEmployeeFeeSar || "")}
-            readOnly={locked}
-            onChange={(v) =>
-              setDraft((d) => ({
-                ...d,
-                fieldInspectorEmployeeFeeSar: num(v),
-              }))
-            }
-          />
-        </FormGroup>
-      </div>
-      <div className="flex justify-end">
-        <Button type="button" disabled={locked} onClick={() => void save()}>
-          {saving ? "جاري الحفظ…" : "حفظ التسعير"}
-        </Button>
-      </div>
+    <div className="mx-auto w-full max-w-3xl space-y-4">
+      {!canEdit ? (
+        <Note tone="default">
+          عرض فقط — تعديل التسعيرة مقصور على المسؤول.
+        </Note>
+      ) : null}
+
+      <Card className="overflow-hidden shadow-none">
+        <CardHeader className="bg-surface">
+          <div>
+            <h3 className="text-[13px] font-semibold text-text">
+              مزوّدو الخدمة وإنفاذ
+            </h3>
+            <p className="m-0 text-[11px] text-text-3">
+              لا يظهر بند استلام المفاتيح في شاشات صرف الأطراف
+            </p>
+          </div>
+        </CardHeader>
+        <CardBody>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FeeField
+              id="fee-key-receipt"
+              label="أتعاب استلام المفاتيح (ر.س)"
+              value={draft.keyReceiptFeeSar}
+              locked={locked}
+              onChange={(n) =>
+                setDraft((d) => ({ ...d, keyReceiptFeeSar: n }))
+              }
+            />
+            <FeeField
+              id="fee-gov-review"
+              label="أتعاب المراجعة الحكومية (ر.س)"
+              value={draft.governmentReviewFeeSar}
+              locked={locked}
+              onChange={(n) =>
+                setDraft((d) => ({ ...d, governmentReviewFeeSar: n }))
+              }
+            />
+            <FeeField
+              id="fee-survey"
+              label="أتعاب الرفع المساحي (ر.س)"
+              value={draft.engineeringSurveyFeeSar}
+              locked={locked}
+              onChange={(n) =>
+                setDraft((d) => ({ ...d, engineeringSurveyFeeSar: n }))
+              }
+            />
+          </div>
+        </CardBody>
+      </Card>
+
+      <Card className="overflow-hidden shadow-none">
+        <CardHeader className="bg-surface">
+          <div>
+            <h3 className="text-[13px] font-semibold text-text">
+              المعاين العقاري
+            </h3>
+            <p className="m-0 text-[11px] text-text-3">
+              حسب نوع التعاقد مع المعاين
+            </p>
+          </div>
+        </CardHeader>
+        <CardBody>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FeeField
+              id="fee-insp-ind"
+              label="معاين — فرد (ر.س)"
+              value={draft.fieldInspectorIndividualFeeSar}
+              locked={locked}
+              onChange={(n) =>
+                setDraft((d) => ({
+                  ...d,
+                  fieldInspectorIndividualFeeSar: n,
+                }))
+              }
+            />
+            <FeeField
+              id="fee-insp-org"
+              label="معاين — منشأة (ر.س)"
+              value={draft.fieldInspectorOrganizationFeeSar}
+              locked={locked}
+              onChange={(n) =>
+                setDraft((d) => ({
+                  ...d,
+                  fieldInspectorOrganizationFeeSar: n,
+                }))
+              }
+            />
+            <FeeField
+              id="fee-insp-emp"
+              label="معاين — موظف (ر.س)"
+              value={draft.fieldInspectorEmployeeFeeSar}
+              locked={locked}
+              onChange={(n) =>
+                setDraft((d) => ({
+                  ...d,
+                  fieldInspectorEmployeeFeeSar: n,
+                }))
+              }
+            />
+          </div>
+        </CardBody>
+      </Card>
+
+      <Can capability="manage-system-config">
+        <div className="flex justify-end border-t border-border pt-3">
+          <Button
+            type="button"
+            variant="primary"
+            size="lg"
+            disabled={locked}
+            onClick={() => void save()}
+          >
+            {saving ? "جاري الحفظ…" : "حفظ التسعير"}
+          </Button>
+        </div>
+      </Can>
     </div>
   );
 }

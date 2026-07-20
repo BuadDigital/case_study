@@ -274,7 +274,7 @@ function isDueWithin48(iso: string): boolean {
 
 /** خلفية شريط التقدم — أخضر عند ≥60٪، ذهبي عند وجود تقدم، شفاف عند الصفر. */
 function progFill(pct: number): string {
-  if (pct >= 60) return "linear-gradient(90deg, #2f9e6b, #48c78e)";
+  if (pct >= 60) return "linear-gradient(90deg, var(--ink), var(--navy-3))";
   if (pct > 0) return "linear-gradient(90deg, var(--gold-d), var(--gold))";
   return "transparent";
 }
@@ -696,10 +696,10 @@ export function PoListView() {
             last
             className="px-5 py-4"
             icon={<KpiCheckIcon />}
-            iconClass="bg-[color-mix(in_srgb,#2f9e6b_16%,transparent)] text-[#2f9e6b]"
+            iconClass="bg-[color-mix(in_srgb,var(--success)_16%,transparent)] text-success-text"
             label="عقارات أُنجزت اليوم"
             value={kpi ? kpi.doneProps : "—"}
-            valueClass="!text-[#2f9e6b]"
+            valueClass="!text-success-text"
             sub="عبر جميع الأوامر"
           />
         </KpiBand>

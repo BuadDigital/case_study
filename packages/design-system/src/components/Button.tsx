@@ -14,7 +14,7 @@ const variantClasses = {
   danger:
     "border-red/30 bg-danger-bg text-danger-text hover:bg-[#f7ddd4]",
   success:
-    "border-teal bg-teal text-white hover:bg-teal-text",
+    "border-ink bg-ink text-white hover:border-navy-3 hover:bg-navy-3",
   dangerOutline:
     "border-red/30 bg-transparent text-danger-text hover:bg-danger-bg",
   ghost:

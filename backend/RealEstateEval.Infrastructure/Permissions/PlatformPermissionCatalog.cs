@@ -11,6 +11,7 @@ public static class PlatformPermissionCatalog
         "valuation-coordination", "property-appraisal", "active-survey", "party-fees",
         "system-fields-catalog", "system-screen-catalog", "financial", "kpi",
         "users", "courts", "failure-types", "case-study-info-roles",
+        "audit-log", "fee-pricing",
     ];
 
     public static readonly IReadOnlyList<string> AllCapabilities =
@@ -36,9 +37,9 @@ public static class PlatformPermissionCatalog
     private static readonly Dictionary<string, string[]> IdentityRolePages = new(StringComparer.OrdinalIgnoreCase)
     {
         ["CDO"] = AllPages.ToArray(),
-        ["HrAdmin"] = ["users", "system-fields-catalog", "system-screen-catalog"],
-        ["ProcAdmin"] = ["financial", "users", "system-fields-catalog", "system-screen-catalog"],
-        ["CrmAdmin"] = ["users", "system-fields-catalog", "system-screen-catalog"],
+        ["HrAdmin"] = ["users", "system-screen-catalog"],
+        ["ProcAdmin"] = ["financial", "users", "system-screen-catalog"],
+        ["CrmAdmin"] = ["users", "system-screen-catalog"],
         ["HR"] = ["users"],
         ["PROC"] = ["users"],
         ["CRM"] = ["users"],
@@ -47,14 +48,14 @@ public static class PlatformPermissionCatalog
     private static readonly Dictionary<string, string[]> PrototypeRolePages = new(StringComparer.OrdinalIgnoreCase)
     {
         ["cdo"] = AllPages.ToArray(),
-        ["hr-admin"] = ["users", "system-fields-catalog", "system-screen-catalog"],
-        ["proc-admin"] = ["financial", "users", "system-fields-catalog", "system-screen-catalog"],
-        ["crm-admin"] = ["users", "system-fields-catalog", "system-screen-catalog"],
+        ["hr-admin"] = ["users", "system-screen-catalog"],
+        ["proc-admin"] = ["financial", "users", "system-screen-catalog"],
+        ["crm-admin"] = ["users", "system-screen-catalog"],
         ["general-manager"] =
         [
             "po", "all-transactions", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "survey", "keys", "failures", "suspended-transactions",
-            "valuation-requests", "system-fields-catalog", "system-screen-catalog",
+            "valuation-requests", "system-screen-catalog",
             "financial", "kpi", "users", "courts", "failure-types", "case-study-info-roles",
         ],
         ["section-supervisor"] =
@@ -62,43 +63,43 @@ public static class PlatformPermissionCatalog
             "po", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "keys", "failures", "suspended-transactions", "failure-types",
             "party-fees",
-            "system-fields-catalog", "system-screen-catalog",
+            "system-screen-catalog",
         ],
         ["case-specialist"] =
         [
             "po", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "failures", "suspended-transactions",
-            "system-fields-catalog", "system-screen-catalog",
+            "system-screen-catalog",
         ],
         ["valuation-coordinator"] =
         [
             "all-transactions", "valuation-coordination",
-            "system-fields-catalog", "system-screen-catalog",
+            "system-screen-catalog",
         ],
         ["real-estate-appraiser"] =
         [
             "po", "all-transactions", "property-appraisal", "failures", "suspended-transactions",
-            "system-fields-catalog", "system-screen-catalog",
+            "system-screen-catalog",
         ],
         ["field-inspector"] =
         [
             "all-transactions", "property-inspection", "party-fees", "failures",
-            "system-fields-catalog", "system-screen-catalog",
+            "system-screen-catalog",
         ],
         ["government-reviewer"] =
         [
             "po", "government-review", "party-fees", "keys", "failures",
-            "system-fields-catalog", "system-screen-catalog",
+            "system-screen-catalog",
         ],
         ["engineering-office"] =
         [
             "all-transactions", "active-survey", "party-fees", "failures",
-            "system-fields-catalog", "system-screen-catalog",
+            "system-screen-catalog",
         ],
         ["financial-officer"] =
         [
             "financial",
-            "system-fields-catalog", "system-screen-catalog",
+            "system-screen-catalog",
         ],
     };
 
