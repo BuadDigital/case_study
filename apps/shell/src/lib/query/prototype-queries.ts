@@ -208,6 +208,11 @@ export function usePrototypeDataSync(): void {
       void queryClient.invalidateQueries({
         queryKey: prototypeKeys.workflowTasks(),
       });
+      // Phase revert distribution → bourse (and similar) updates ListPendingBourse;
+      // badges / استعلام بورصة read this key, not workflowTasks alone.
+      void queryClient.invalidateQueries({
+        queryKey: prototypeKeys.pendingBourseItems(),
+      });
     };
 
     const invalidateFailures = () => {
