@@ -11,6 +11,10 @@ import {
   ModalOverlay,
   ModalTitle,
 } from "@platform/design-system";
+import {
+  opsModalClose,
+  opsModalFooter,
+} from "../../lib/prototype/ops-tasks-tw";
 
 export function AppModal({
   open,
@@ -22,6 +26,8 @@ export function AppModal({
   wide,
   /** Explicit max width (e.g. 720 for HTML task create). Overrides wide default. */
   maxWidthPx,
+  /** Ops create-task look: start title, gray X, surface-2 footer */
+  look,
 }: {
   open: boolean;
   title: string;
@@ -32,10 +38,12 @@ export function AppModal({
   /** Wider card for two-column forms (PO intake, etc.). */
   wide?: boolean;
   maxWidthPx?: number;
+  look?: "ops-html";
 }) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const maxPx = maxWidthPx ?? (wide ? 720 : 420);
+  const opsHtml = look === "ops-html";
 
   useEffect(() => {
     if (!open) return;
@@ -88,9 +96,16 @@ export function AppModal({
           aria-labelledby={titleId}
           className="max-w-none"
         >
-          <ModalHeader className={subtitle ? "items-start px-[22px] py-4" : undefined}>
+          <ModalHeader
+            className={
+              subtitle || opsHtml ? "items-start px-[22px] py-4" : undefined
+            }
+          >
             <div className="min-w-0 flex-1">
-              <ModalTitle id={titleId} className="text-start text-[16px] font-extrabold">
+              <ModalTitle
+                id={titleId}
+                className="text-start text-[16px] font-extrabold"
+              >
                 {title}
               </ModalTitle>
               {subtitle ? (
@@ -99,14 +114,35 @@ export function AppModal({
                 </p>
               ) : null}
             </div>
-            <ModalClose onClick={onClose} aria-label="إغلاق">
-              ×
-            </ModalClose>
+            {opsHtml ? (
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="إغلاق"
+                className={opsModalClose}
+              >
+                ×
+              </button>
+            ) : (
+              <ModalClose onClick={onClose} aria-label="إغلاق">
+                ×
+              </ModalClose>
+            )}
           </ModalHeader>
-          <ModalBody className={wide || maxWidthPx ? "px-[22px] py-5" : undefined}>
+          <ModalBody
+            className={
+              wide || maxWidthPx || opsHtml ? "px-[22px] py-5" : undefined
+            }
+          >
             {children}
           </ModalBody>
-          {footer ? <ModalFooter>{footer}</ModalFooter> : null}
+          {footer ? (
+            opsHtml ? (
+              <footer className={opsModalFooter}>{footer}</footer>
+            ) : (
+              <ModalFooter>{footer}</ModalFooter>
+            )
+          ) : null}
         </ModalCard>
       </div>
     </ModalOverlay>

@@ -74,6 +74,100 @@ import {
   CreateOperationsTaskModal,
   type CreateOperationsTaskPrefill,
 } from "../components/CreateOperationsTaskModal";
+import {
+  opsAttachBtn,
+  opsBackLink,
+  opsBulk,
+  opsBulkClear,
+  opsBtnGhost,
+  opsBtnPrimary,
+  opsCdDot,
+  opsCdTip,
+  opsCdWrap,
+  opsCmt,
+  opsCmtAv,
+  opsCmtBar,
+  opsCmtBody,
+  opsCmtComposer,
+  opsCmtFiles,
+  opsCmtH,
+  opsCmtName,
+  opsCmtRole,
+  opsCmtText,
+  opsCmtTextarea,
+  opsCmtThread,
+  opsCmtTime,
+  opsCmtEvent,
+  opsDueCd,
+  opsDueCdOver,
+  opsDotSep,
+  opsFileSize,
+  opsBulkCount,
+  opsListCount,
+  opsLetterRow,
+  opsTdPo,
+  opsTdDeed,
+  opsTdPlain,
+  opsTdCourt,
+  opsThStart,
+  opsTypeIconSm,
+  opsRowTitle,
+  opsRowMeta,
+  opsEmptyHint,
+  opsEventAv,
+  opsFileChip,
+  opsFileChipFx,
+  opsFilters,
+  opsGridRow,
+  opsGridRowOn,
+  opsHeadRow,
+  opsIconBoxGold,
+  opsLetterBodyPad,
+  opsLetterCard,
+  opsLetterHead,
+  opsLetterMeta,
+  opsLetterSub,
+  opsLetterTitle,
+  opsMutedHint,
+  opsPpBadge,
+  opsPpCell,
+  opsPpCellK,
+  opsPpCellV,
+  opsPpHead,
+  opsPpMeta,
+  opsPpSummary,
+  opsPpTitle,
+  opsRemindBtn,
+  opsRemindCard,
+  opsRemindMini,
+  opsShowAllBtn,
+  opsShowAllBtnOn,
+  opsStep,
+  opsStepDot,
+  opsStepDotActive,
+  opsStepDotCancel,
+  opsStepDotDone,
+  opsStepDotIdle,
+  opsStepFlow,
+  opsStepLbl,
+  opsStepLblOn,
+  opsStepLine,
+  opsStepLineOn,
+  opsTaskDesc,
+  opsTd,
+  opsTdC,
+  opsTh,
+  opsThead,
+  opsTkCheck,
+  opsTkCheckInput,
+  opsToolbar,
+  opsTfActions,
+  opsTfChip,
+  opsTfLbl,
+  opsTfSeg,
+  opsTfSegActive,
+  opsTfSegRow,
+} from "../lib/prototype/ops-tasks-tw";
 import "./operations-tasks-look.css";
 
 const COLS =
@@ -185,15 +279,15 @@ function DraftFileChips({
 }) {
   if (files.length === 0) return null;
   return (
-    <div className="cmt-files">
+    <div className={opsCmtFiles}>
       {files.map((f, i) => (
-        <span key={`${f.name}-${i}`} className="file-chip">
+        <span key={`${f.name}-${i}`} className={opsFileChip}>
           <span>{f.name}</span>
-          <span style={{ color: "var(--text-3)", fontWeight: 500 }}>{f.size}</span>
+          <span className={opsFileSize}>{f.size}</span>
           {onRemove ? (
             <button
               type="button"
-              className="fx"
+              className={opsFileChipFx}
               aria-label="إزالة المرفق"
               onClick={() => onRemove(i)}
             >
@@ -226,16 +320,16 @@ function CloseTaskModalBody({
   onConfirm: () => void;
 }) {
   return (
-    <div className="ops-tasks flex flex-col gap-3">
-      <p style={{ fontSize: 11.5, color: "var(--text-3)", margin: 0 }}>
+    <div className="flex flex-col gap-3">
+      <p className={opsMutedHint}>
         أضف تعليق الإنجاز مع إمكانية إرفاق المستندات الداعمة
       </p>
       <Note tone="success" className="text-[12.5px]">
-        سيتم تحويل حالة المهمة إلى <b style={{ color: "#2f7a4d" }}>مكتملة</b> وإشعار
+        سيتم تحويل حالة المهمة إلى <b className="text-[#2f7a4d]">مكتملة</b> وإشعار
         المنشئ.
       </Note>
       <label className="flex flex-col gap-1.5">
-        <span className="tf-lbl">تعليق الإغلاق</span>
+        <span className={opsTfLbl}>تعليق الإغلاق</span>
         <Textarea
           value={closeText}
           onChange={(e) => setCloseText(e.target.value)}
@@ -262,21 +356,20 @@ function CloseTaskModalBody({
       />
       <button
         type="button"
-        className="attach-btn"
+        className={cn(opsAttachBtn, "self-start")}
         disabled={busy}
         onClick={() => fileInputRef.current?.click()}
-        style={{ alignSelf: "flex-start" }}
       >
         <PaperclipIcon />
         <span>إرفاق مستند</span>
       </button>
       <div className="flex justify-end gap-2">
-        <button type="button" className="btn-ghost" onClick={onCancel}>
+        <button type="button" className={opsBtnGhost} onClick={onCancel}>
           إلغاء
         </button>
         <button
           type="button"
-          className="btn-primary"
+          className={opsBtnPrimary}
           disabled={busy}
           onClick={onConfirm}
         >
@@ -318,59 +411,50 @@ function PriorityModalBody({
 }) {
   const prColor = OPERATIONS_TASK_PRIORITY_COLORS[task.priority] ?? "#8a8d96";
   return (
-    <div className="ops-tasks flex flex-col gap-3">
-      <p style={{ fontSize: 11.5, color: "var(--text-3)", margin: 0 }}>
+    <div className="flex flex-col gap-3">
+      <p className={opsMutedHint}>
         طرأ ما يستعجل الإنجاز؟ صعّد الأولوية — يُحدَّث تواتر التذكير تلقائياً
       </p>
-      <div style={{ fontSize: 12.5, color: "var(--text-2)" }}>
+      <div className="text-[12.5px] text-text-2">
         الأولوية الحالية:{" "}
         <b style={{ color: prColor }}>{operationsTaskPriorityLabel(task.priority)}</b>
       </div>
       <div>
-        <span className="tf-lbl">الأولوية الجديدة</span>
-        <div className="tf-seg-row">
+        <span className={opsTfLbl}>الأولوية الجديدة</span>
+        <div className={opsTfSegRow}>
           {Object.entries(OPERATIONS_TASK_PRIORITY_LABELS).map(([id, label]) => (
             <button
               key={id}
               type="button"
-              className={cn("tf-seg", prioValue === id && "active")}
+              className={prioValue === id ? opsTfSegActive : opsTfSeg}
               onClick={() => setPrioValue(id)}
             >
               {label}
             </button>
           ))}
         </div>
-        <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 9 }}>
+        <div className="mt-[9px] text-[11.5px] text-text-3">
           تذكير تلقائي{" "}
           {OPERATIONS_TASK_REMIND_LABELS[prioValue] ?? OPERATIONS_TASK_REMIND_LABELS.medium}
         </div>
       </div>
-      <label
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 9,
-          fontSize: 12.5,
-          color: "var(--text-2)",
-          cursor: "pointer",
-        }}
-      >
+      <label className="flex cursor-pointer items-center gap-[9px] text-[12.5px] text-text-2">
         <input
           type="checkbox"
+          className="h-4 w-4 shrink-0 accent-gold-d"
           checked={prioEditDue}
           onChange={(e) => setPrioEditDue(e.target.checked)}
-          style={{ width: 16, height: 16, accentColor: "var(--gold-d)", flex: "none" }}
         />
         <span>تعديل موعد الاستحقاق</span>
       </label>
       {prioEditDue ? (
         <div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-            <button type="button" className="tf-chip" onClick={onFitPriorityDue}>
+          <div className="mb-2.5 flex flex-wrap gap-2">
+            <button type="button" className={opsTfChip} onClick={onFitPriorityDue}>
               ضبط حسب الأولوية الجديدة
             </button>
           </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <div className="flex flex-wrap gap-2.5">
             <Input
               type="date"
               value={prioDueDate}
@@ -387,12 +471,12 @@ function PriorityModalBody({
         </div>
       ) : null}
       <div className="flex justify-end gap-2">
-        <button type="button" className="btn-ghost" onClick={onCancel}>
+        <button type="button" className={opsBtnGhost} onClick={onCancel}>
           إلغاء
         </button>
         <button
           type="button"
-          className="btn-primary"
+          className={opsBtnPrimary}
           disabled={busy}
           onClick={onApply}
         >
@@ -528,23 +612,18 @@ function DueCell({ task, now }: { task: OperationsTask; now: number }) {
     );
   }
   return (
-    <div className="cd-wrap">
+    <div className={opsCdWrap}>
       <span
-        className={cn("cd-dot", urgency?.pulse && "live")}
+        className={cn(opsCdDot, urgency?.pulse && "ops-cd-dot-live")}
         style={{ background: urgency?.color ?? "#3f8f5f" }}
       />
       <span
-        className="due-cd"
-        style={{
-          fontSize: 12.5,
-          fontWeight: 700,
-          color: cd.over ? "#d9694f" : "var(--heading)",
-        }}
+        className={cd.over ? opsDueCdOver : opsDueCd}
         dir="ltr"
       >
         {cd.txt}
       </span>
-      <span className="cd-tip">الاستحقاق: {formatTaskDueLabel(task.dueAt)}</span>
+      <span className={opsCdTip}>الاستحقاق: {formatTaskDueLabel(task.dueAt)}</span>
     </div>
   );
 }
@@ -552,35 +631,46 @@ function DueCell({ task, now }: { task: OperationsTask; now: number }) {
 function TaskStepper({ status }: { status: string }) {
   if (status === "cancelled") {
     return (
-      <div className="step-flow">
-        <div className="step done">
-          <span className="step-dot">✓</span>
-          <span className="step-lbl">منشأة</span>
+      <div className={opsStepFlow}>
+        <div className={opsStep}>
+          <span className={cn(opsStepDot, opsStepDotDone)}>✓</span>
+          <span className={opsStepLblOn}>منشأة</span>
         </div>
-        <div className="step-line" />
-        <div className="step cancel">
-          <span className="step-dot">✕</span>
-          <span className="step-lbl">ملغاة</span>
+        <div className={opsStepLine} />
+        <div className={opsStep}>
+          <span className={cn(opsStepDot, opsStepDotCancel)}>✕</span>
+          <span className={opsStepLblOn}>ملغاة</span>
         </div>
       </div>
     );
   }
   const idx = taskStepperIndex(status);
   return (
-    <div className="step-flow">
+    <div className={opsStepFlow}>
       {TASK_STEPPER_STEPS.map((step, i) => {
         const done = idx != null && i < idx;
         const current = idx != null && i === idx;
         return (
           <div key={step.id} className="contents">
-            <div
-              className={cn("step", done && "done", current && "active")}
-            >
-              <span className="step-dot">{done ? "✓" : i + 1}</span>
-              <span className="step-lbl">{step.label}</span>
+            <div className={opsStep}>
+              <span
+                className={cn(
+                  opsStepDot,
+                  done
+                    ? opsStepDotDone
+                    : current
+                      ? opsStepDotActive
+                      : opsStepDotIdle,
+                )}
+              >
+                {done ? "✓" : i + 1}
+              </span>
+              <span className={done || current ? opsStepLblOn : opsStepLbl}>
+                {step.label}
+              </span>
             </div>
             {i < TASK_STEPPER_STEPS.length - 1 ? (
-              <div className={cn("step-line", done && "on")} />
+              <div className={done ? opsStepLineOn : opsStepLine} />
             ) : null}
           </div>
         );
@@ -614,20 +704,10 @@ function CommentThread({
   const comments = task.comments;
   const canSend = Boolean(commentText.trim() || draftFiles.length);
   return (
-    <div className="letter-card" style={{ marginTop: 20 }}>
-      <div className="letter-head">
-        <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-          <span
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              background: "var(--gold-soft)",
-              color: "var(--gold-d)",
-              display: "grid",
-              placeItems: "center",
-            }}
-          >
+    <div className={cn(opsLetterCard, "mt-5")}>
+      <div className={opsLetterHead}>
+        <div className={opsHeadRow}>
+          <span className={opsIconBoxGold}>
             <svg
               width="18"
               height="18"
@@ -643,79 +723,33 @@ function CommentThread({
             </svg>
           </span>
           <div>
-            <div
-              style={{
-                fontWeight: 800,
-                color: "var(--heading)",
-                fontSize: 13.5,
-              }}
-            >
-              التحديثات والاستفسارات
-            </div>
-            <div style={{ fontSize: 11.5, color: "var(--text-3)" }}>
+            <div className={opsLetterTitle}>التحديثات والاستفسارات</div>
+            <div className={opsLetterSub}>
               سجل التواصل بين المنشئ والمنفّذ — مع إرفاق المستندات من الطرفين
             </div>
           </div>
         </div>
-        <span style={{ fontSize: 11.5, color: "var(--text-3)", fontWeight: 600 }}>
-          {comments.length} تحديث
-        </span>
+        <span className={opsLetterMeta}>{comments.length} تحديث</span>
       </div>
-      <div style={{ padding: "4px 18px 18px" }}>
-        <div className="cmt-thread">
+      <div className={opsLetterBodyPad}>
+        <div className={opsCmtThread}>
           {comments.length === 0 ? (
-            <div
-              style={{
-                padding: "20px 2px",
-                color: "var(--text-3)",
-                fontSize: 12.5,
-                textAlign: "center",
-              }}
-            >
+            <div className={opsEmptyHint}>
               لا توجد تحديثات بعد — أضف أول تحديث أو استفسار على المهمة.
             </div>
           ) : (
             comments.map((c, i) => {
               if (c.kind === "reminder" || c.kind === "update") {
                 return (
-                  <div
-                    key={`${c.at}-${i}`}
-                    className="cmt"
-                    style={{ alignItems: "center", padding: "11px 2px" }}
-                  >
-                    <span
-                      style={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: 7,
-                        flex: "none",
-                        display: "grid",
-                        placeItems: "center",
-                        background: "color-mix(in srgb, var(--gold) 20%, transparent)",
-                        color: "var(--gold-d)",
-                      }}
-                    >
+                  <div key={`${c.at}-${i}`} className={opsCmtEvent}>
+                    <span className={opsEventAv}>
                       {c.kind === "update" ? <FlagIcon size={15} /> : <BellIcon size={15} />}
                     </span>
-                    <div
-                      className="cmt-body"
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 9,
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: 12.5,
-                          color: "var(--text-2)",
-                          fontWeight: 600,
-                        }}
-                      >
+                    <div className={cn(opsCmtBody, "flex flex-wrap items-center gap-[9px]")}>
+                      <span className="text-[12.5px] font-semibold text-text-2">
                         {c.text}
                       </span>
-                      <span className="cmt-time">{formatTaskDueLabel(c.at)}</span>
+                      <span className={opsCmtTime}>{formatTaskDueLabel(c.at)}</span>
                     </div>
                   </div>
                 );
@@ -727,15 +761,15 @@ function CommentThread({
               const role = isC ? "منشئ المهمة" : assigneeRole;
               const col = isC ? "var(--ink)" : "var(--gold-d)";
               return (
-                <div key={`${c.at}-${i}`} className="cmt">
-                  <span className="cmt-av" style={{ background: col }}>
+                <div key={`${c.at}-${i}`} className={opsCmt}>
+                  <span className={opsCmtAv} style={{ background: col }}>
                     {name.charAt(0)}
                   </span>
-                  <div className="cmt-body">
-                    <div className="cmt-h">
-                      <span className="cmt-name">{name}</span>
+                  <div className={opsCmtBody}>
+                    <div className={opsCmtH}>
+                      <span className={opsCmtName}>{name}</span>
                       <span
-                        className="cmt-role"
+                        className={opsCmtRole}
                         style={{
                           background: `color-mix(in srgb, ${col} 13%, transparent)`,
                           color: col,
@@ -745,7 +779,7 @@ function CommentThread({
                       </span>
                       {c.kind === "close" ? (
                         <span
-                          className="cmt-role"
+                          className={opsCmtRole}
                           style={{
                             background: "color-mix(in srgb, #3f8f5f 15%, transparent)",
                             color: "#2f7a4d",
@@ -754,17 +788,15 @@ function CommentThread({
                           تعليق إغلاق
                         </span>
                       ) : null}
-                      <span className="cmt-time">{formatTaskDueLabel(c.at)}</span>
+                      <span className={opsCmtTime}>{formatTaskDueLabel(c.at)}</span>
                     </div>
-                    {c.text ? <div className="cmt-text">{c.text}</div> : null}
+                    {c.text ? <div className={opsCmtText}>{c.text}</div> : null}
                     {c.files && c.files.length > 0 ? (
-                      <div className="cmt-files">
+                      <div className={opsCmtFiles}>
                         {c.files.map((f, fi) => (
-                          <span key={`${f.name}-${fi}`} className="file-chip">
+                          <span key={`${f.name}-${fi}`} className={opsFileChip}>
                             <span>{f.name}</span>
-                            <span style={{ color: "var(--text-3)", fontWeight: 500 }}>
-                              {f.size}
-                            </span>
+                            <span className={opsFileSize}>{f.size}</span>
                           </span>
                         ))}
                       </div>
@@ -776,8 +808,9 @@ function CommentThread({
           )}
         </div>
         {task.status !== "cancelled" ? (
-          <div className="cmt-composer">
+          <div className={opsCmtComposer}>
             <textarea
+              className={opsCmtTextarea}
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               placeholder="أضف تحديثاً أو استفساراً على المهمة…"
@@ -800,10 +833,10 @@ function CommentThread({
                 e.target.value = "";
               }}
             />
-            <div className="cmt-bar">
+            <div className={opsCmtBar}>
               <button
                 type="button"
-                className="attach-btn"
+                className={opsAttachBtn}
                 disabled={busy}
                 onClick={() => fileInputRef.current?.click()}
               >
@@ -812,8 +845,8 @@ function CommentThread({
               </button>
               <button
                 type="button"
-                className="btn-primary"
-                style={{ marginInlineStart: "auto" }}
+                className={opsBtnPrimary}
+                className="ms-auto"
                 disabled={busy || !canSend}
                 onClick={onSend}
               >
@@ -844,14 +877,7 @@ function CommentThread({
 function LetterTable({ rows }: { rows: OperationsTask["letterRows"] }) {
   if (rows.length === 0) {
     return (
-      <div
-        style={{
-          padding: 24,
-          textAlign: "center",
-          color: "var(--text-3)",
-          fontSize: 12.5,
-        }}
-      >
+      <div className="p-6 text-center text-[12.5px] text-text-3">
         اختر الصكوك المرتبطة لعرض معاينة الخطاب.
       </div>
     );
@@ -859,17 +885,12 @@ function LetterTable({ rows }: { rows: OperationsTask["letterRows"] }) {
   return (
     <div className="overflow-x-auto rounded-[12px] border border-border bg-surface shadow-card">
       <div className="min-w-[720px]">
-        <div className="ops-thead" style={{ gridTemplateColumns: LETTER_COLS }}>
+        <div className={opsThead} style={{ gridTemplateColumns: LETTER_COLS }}>
           {["م", "أمر العمل", "رقم الصك", "المالك", "رقم الطلب", "المحكمة / الدائرة"].map(
             (h, i) => (
               <div
                 key={h}
-                className={cn("ops-th", i === 0 && "c")}
-                style={
-                  i > 0
-                    ? { justifyContent: "flex-start", textAlign: "start" }
-                    : undefined
-                }
+                className={i === 0 ? cn(opsTh, opsTdC) : opsThStart}
               >
                 {h}
               </div>
@@ -879,40 +900,23 @@ function LetterTable({ rows }: { rows: OperationsTask["letterRows"] }) {
         {rows.map((row, i) => (
           <div
             key={`${row.po}-${row.deed}-${i}`}
-            className="ops-grid-row"
-            style={{
-              gridTemplateColumns: LETTER_COLS,
-              minHeight: 48,
-              fontSize: 13,
-              cursor: "default",
-            }}
+            className={opsLetterRow}
+            style={{ gridTemplateColumns: LETTER_COLS }}
           >
-            <div className="ops-td c" style={{ color: "var(--text-2)" }}>
-              {i + 1}
-            </div>
-            <div
-              className="ops-td"
-              dir="ltr"
-              style={{ fontWeight: 600, color: "var(--text-2)", fontSize: 13 }}
-            >
+            <div className={cn(opsTd, opsTdC, "text-text-2")}>{i + 1}</div>
+            <div className={opsTdPo} dir="ltr">
               {row.po}
             </div>
-            <div
-              className="ops-td"
-              dir="ltr"
-              style={{ fontWeight: 700, color: "var(--gold-d)", fontSize: 13 }}
-            >
+            <div className={opsTdDeed} dir="ltr">
               صك {row.deed}
             </div>
-            <div className="ops-td" style={{ fontSize: 13 }}>
-              {row.owner}
-            </div>
-            <div className="ops-td" dir="ltr" style={{ fontSize: 13 }}>
+            <div className={opsTdPlain}>{row.owner}</div>
+            <div className={opsTdPlain} dir="ltr">
               {row.request}
             </div>
-            <div className="ops-td" style={{ fontSize: 12.5 }}>
-              <span style={{ fontWeight: 600, color: "var(--text)" }}>{row.court}</span>{" "}
-              <span style={{ color: "var(--text-3)" }}>· {row.circuit}</span>
+            <div className={opsTdCourt}>
+              <span className="font-semibold text-text">{row.court}</span>{" "}
+              <span className="text-text-3">· {row.circuit}</span>
             </div>
           </div>
         ))}
@@ -1400,10 +1404,10 @@ export function OperationsTasksView() {
         : `${operationsTaskScopeLabel(detail.scope)} · ${operationsTaskLinkLabel(detail)}`;
 
     return (
-      <PageShell variant="canvas" className="ops-tasks gap-0 p-4 sm:p-6">
+      <PageShell variant="canvas" className="gap-0 p-4 sm:p-6">
         <button
           type="button"
-          className="back-link"
+          className={opsBackLink}
           onClick={() => setDetailId(null)}
         >
           <BackChevron />
@@ -1412,85 +1416,67 @@ export function OperationsTasksView() {
 
         {error ? <Note tone="danger">{error}</Note> : null}
 
-        <div className="pp-head">
-          <h1 className="pp-title">
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 9 }}>
-              <span
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  background: "var(--gold-soft)",
-                  color: "var(--gold-d)",
-                  display: "grid",
-                  placeItems: "center",
-                }}
-              >
+        <div className={opsPpHead}>
+          <h1 className={opsPpTitle}>
+            <span className="inline-flex items-center gap-[9px]">
+              <span className={opsIconBoxGold}>
                 <TypeIcon type={detail.type} size={20} />
               </span>
               {detail.title}
             </span>
           </h1>
-          <div className="pp-meta">
-            <span className="pp-badge">{operationsTaskTypeLabel(detail.type)}</span>
-            <span style={{ color: "var(--text-3)" }}>·</span>
+          <div className={opsPpMeta}>
+            <span className={opsPpBadge}>{operationsTaskTypeLabel(detail.type)}</span>
+<span className={opsDotSep}>·</span>
             <TaskStatusPill status={detail.status} />
-            <span style={{ color: "var(--text-3)" }}>·</span>
+<span className={opsDotSep}>·</span>
             <span dir="ltr">{detail.displayId}</span>
             {detail.reference ? (
               <>
-                <span style={{ color: "var(--text-3)" }}>·</span>
+    <span className={opsDotSep}>·</span>
                 <span>خطاب {detail.reference}</span>
               </>
             ) : null}
           </div>
-          <div style={{ marginTop: 16 }}>
+          <div className="mt-4">
             <TaskStepper status={detail.status} />
           </div>
-          <div className="pp-summary">
-            <div className="pp-cell">
-              <div className="k">المنفّذ</div>
-              <div className="v">
+          <div className={opsPpSummary}>
+            <div className={opsPpCell}>
+              <div className={opsPpCellK}>المنفّذ</div>
+              <div className={opsPpCellV}>
                 {detail.assigneeName || detail.assigneeId} —{" "}
                 {assigneeRoleLabel(staffUsers, detail.assigneeId)}
               </div>
             </div>
-            <div className="pp-cell">
-              <div className="k">المنشئ</div>
-              <div className="v">{detail.createdByName || detail.createdBy}</div>
+            <div className={opsPpCell}>
+              <div className={opsPpCellK}>المنشئ</div>
+              <div className={opsPpCellV}>{detail.createdByName || detail.createdBy}</div>
             </div>
-            <div className="pp-cell">
-              <div className="k">النطاق / الربط</div>
-              <div className="v">{linkChip}</div>
+            <div className={opsPpCell}>
+              <div className={opsPpCellK}>النطاق / الربط</div>
+              <div className={opsPpCellV}>{linkChip}</div>
             </div>
-            <div className="pp-cell">
-              <div className="k">الأولوية</div>
-              <div className="v">
+            <div className={opsPpCell}>
+              <div className={opsPpCellK}>الأولوية</div>
+              <div className={opsPpCellV}>
                 <StatusPill
                   label={operationsTaskPriorityLabel(detail.priority)}
                   style={{ base: prColor, fg: prColor }}
                 />
               </div>
             </div>
-            <div className="pp-cell">
-              <div className="k">تاريخ الإنشاء</div>
-              <div className="v">{formatTaskDueLabel(detail.createdAt)}</div>
+            <div className={opsPpCell}>
+              <div className={opsPpCellK}>تاريخ الإنشاء</div>
+              <div className={opsPpCellV}>{formatTaskDueLabel(detail.createdAt)}</div>
             </div>
-            <div className="pp-cell">
-              <div className="k">موعد الاستحقاق</div>
-              <div className="v" style={overdue ? { color: "#d9694f" } : undefined}>
-                <span dir="ltr" style={{ fontWeight: 700 }}>
+            <div className={opsPpCell}>
+              <div className={opsPpCellK}>موعد الاستحقاق</div>
+              <div className={opsPpCellV} style={overdue ? { color: "#d9694f" } : undefined}>
+                <span dir="ltr" className="font-bold">
                   {taskCountdown(detail.dueAt, detail.status, now).txt}
                 </span>
-                <span
-                  style={{
-                    display: "block",
-                    marginTop: 2,
-                    fontSize: 11,
-                    color: "var(--text-3)",
-                    fontWeight: 500,
-                  }}
-                >
+                <span className="mt-0.5 block text-[11px] font-medium text-text-3">
                   {formatTaskDueLabel(detail.dueAt)}
                 </span>
               </div>
@@ -1499,43 +1485,18 @@ export function OperationsTasksView() {
         </div>
 
         {detail.description ? (
-          <div className="task-desc">{detail.description}</div>
+          <div className={opsTaskDesc}>{detail.description}</div>
         ) : null}
 
         {isActiveOperationsTask(detail) ? (
-          <div className="remind-card">
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 10,
-                  flex: "none",
-                  display: "grid",
-                  placeItems: "center",
-                  background: "color-mix(in srgb, var(--gold) 18%, transparent)",
-                  color: "var(--gold-d)",
-                }}
-              >
+          <div className={opsRemindCard}>
+            <div className="flex items-center gap-3">
+              <span className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-[10px] bg-[color-mix(in_srgb,var(--gold)_18%,transparent)] text-gold-d">
                 <BellIcon size={19} />
               </span>
               <div>
-                <div
-                  style={{
-                    fontWeight: 800,
-                    color: "var(--heading)",
-                    fontSize: 13.5,
-                  }}
-                >
-                  التذكير التلقائي
-                </div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "var(--text-2)",
-                    marginTop: 2,
-                  }}
-                >
+                <div className={opsLetterTitle}>التذكير التلقائي</div>
+                <div className="mt-0.5 text-xs text-text-2">
                   أولوية{" "}
                   <b style={{ color: prColor }}>
                     {operationsTaskPriorityLabel(detail.priority)}
@@ -1544,10 +1505,7 @@ export function OperationsTasksView() {
                   {OPERATIONS_TASK_REMIND_LABELS[detail.priority] ??
                     OPERATIONS_TASK_REMIND_LABELS.medium}{" "}
                   — التذكير القادم خلال{" "}
-                  <span
-                    style={{ fontWeight: 700, color: "var(--heading)" }}
-                    dir="ltr"
-                  >
+                  <span className="font-bold text-heading" dir="ltr">
                     {remindCountdownLabelForTask(detail, now)}
                   </span>
                   {nSent ? ` · أُرسل ${nSent} تذكير` : ""}
@@ -1557,7 +1515,7 @@ export function OperationsTasksView() {
             {canRemind ? (
             <button
               type="button"
-              className="remind-btn"
+              className={opsRemindBtn}
               disabled={busy}
               onClick={() => void remindTask(detail)}
             >
@@ -1569,53 +1527,29 @@ export function OperationsTasksView() {
         ) : null}
 
         {detail.type === "court_visit" ? (
-          <div className="letter-card">
-            <div className="letter-head">
-              <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-                <span
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    background: "var(--gold-soft)",
-                    color: "var(--gold-d)",
-                    display: "grid",
-                    placeItems: "center",
-                  }}
-                >
+          <div className={cn(opsLetterCard, "mt-5")}>
+            <div className={opsLetterHead}>
+              <div className={opsHeadRow}>
+                <span className={opsIconBoxGold}>
                   <TypeIcon type="court_visit" size={18} />
                 </span>
                 <div>
-                  <div
-                    style={{
-                      fontWeight: 800,
-                      color: "var(--heading)",
-                      fontSize: 13.5,
-                    }}
-                  >
-                    خطاب التفويض الداخلي
-                  </div>
-                  <div style={{ fontSize: 11.5, color: "var(--text-3)" }}>
+                  <div className={opsLetterTitle}>خطاب التفويض الداخلي</div>
+                  <div className={opsLetterSub}>
                     مفتاح التجميع: المحكمة + الدائرة · لقطة (snapshot) عند الإصدار
                   </div>
                 </div>
               </div>
-              <span style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 700 }}>
+              <span className="text-xs font-bold text-text-2">
                 الرقم المرجعي:{" "}
-                <span dir="ltr" style={{ color: "var(--gold-d)" }}>
+                <span dir="ltr" className="text-gold-d">
                   {detail.reference || "—"}
                 </span>
               </span>
             </div>
-            <div style={{ padding: "16px 18px" }}>
+            <div className="px-[18px] py-4">
               <LetterTable rows={detail.letterRows} />
-              <p
-                style={{
-                  fontSize: 11.5,
-                  color: "var(--text-3)",
-                  margin: "12px 2px 0",
-                }}
-              >
+              <p className="mx-0.5 mt-3 text-[11.5px] text-text-3">
                 الترميز المرجعي الموحّد + snapshot للبيانات وقت الإصدار — يُطبع على
                 الترويسة الرسمية.
               </p>
@@ -1623,11 +1557,11 @@ export function OperationsTasksView() {
           </div>
         ) : null}
 
-        <div className="tf-actions">
+        <div className={opsTfActions}>
           {detail.status === "created" && isAssignee ? (
             <button
               type="button"
-              className="btn-primary"
+              className={opsBtnPrimary}
               disabled={busy}
               onClick={() => void runStatus(detail.id, "in_progress")}
             >
@@ -1650,7 +1584,7 @@ export function OperationsTasksView() {
           {detail.status === "in_progress" && isAssignee ? (
             <button
               type="button"
-              className="btn-primary"
+              className={opsBtnPrimary}
               disabled={busy}
               onClick={() => openCloseModal(detail)}
             >
@@ -1661,7 +1595,7 @@ export function OperationsTasksView() {
           (detail.status === "created" || detail.status === "in_progress") ? (
             <button
               type="button"
-              className="btn-ghost"
+              className={opsBtnGhost}
               disabled={busy}
               onClick={() => void runStatus(detail.id, "paused")}
             >
@@ -1671,7 +1605,7 @@ export function OperationsTasksView() {
           {canCreate && detail.status === "paused" ? (
             <button
               type="button"
-              className="btn-primary"
+              className={opsBtnPrimary}
               disabled={busy}
               onClick={() => void runStatus(detail.id, "in_progress")}
             >
@@ -1681,7 +1615,7 @@ export function OperationsTasksView() {
           {detail.type === "court_visit" && detail.letterRows.length > 0 ? (
             <button
               type="button"
-              className="btn-ghost"
+              className={opsBtnGhost}
               onClick={() =>
                 printOperationsTaskDelegationLetter(
                   detail,
@@ -1695,7 +1629,7 @@ export function OperationsTasksView() {
           {canCreate && isActiveOperationsTask(detail) ? (
             <button
               type="button"
-              className="btn-ghost"
+              className={opsBtnGhost}
               onClick={() => openReassign(detail)}
             >
               إعادة توجيه وإسناد
@@ -1704,7 +1638,7 @@ export function OperationsTasksView() {
           {canCreate && isActiveOperationsTask(detail) ? (
             <button
               type="button"
-              className="btn-ghost"
+              className={opsBtnGhost}
               onClick={() => openPriorityModal(detail)}
             >
               تغيير الأولوية
@@ -1713,8 +1647,8 @@ export function OperationsTasksView() {
           {canCreate && !isTerminalOperationsTask(detail) ? (
             <button
               type="button"
-              className="btn-ghost"
-              style={{ color: "#c0553d" }}
+              className={opsBtnGhost}
+              className="text-[#c0553d]"
               disabled={busy}
               onClick={() => void runStatus(detail.id, "cancelled")}
             >
@@ -1797,10 +1731,10 @@ export function OperationsTasksView() {
           wide
           onClose={() => setReassignOpen(false)}
         >
-          <div className="ops-tasks flex flex-col gap-3.5">
+          <div className="flex flex-col gap-3.5">
             {reassignError ? <Note tone="danger">{reassignError}</Note> : null}
             <label className="flex flex-col gap-1.5">
-              <span className="tf-lbl">مُسندة إلى *</span>
+              <span className={opsTfLbl}>مُسندة إلى *</span>
               <Select
                 value={reassignAssigneeId}
                 onChange={(e) => {
@@ -1824,7 +1758,7 @@ export function OperationsTasksView() {
               </Select>
             </label>
             <div>
-              <span className="tf-lbl">
+              <span className={opsTfLbl}>
                 موعد الاستحقاق *{" "}
                 <span className="font-medium text-text-3">(يوم + ساعة)</span>
               </span>
@@ -1844,7 +1778,7 @@ export function OperationsTasksView() {
               </div>
             </div>
             <label className="flex flex-col gap-1.5">
-              <span className="tf-lbl">سبب إعادة التوجيه *</span>
+              <span className={opsTfLbl}>سبب إعادة التوجيه *</span>
               <Textarea
                 value={reassignReason}
                 onChange={(e) => setReassignReason(e.target.value)}
@@ -1855,14 +1789,14 @@ export function OperationsTasksView() {
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                className="btn-ghost"
+                className={opsBtnGhost}
                 onClick={() => setReassignOpen(false)}
               >
                 إلغاء
               </button>
               <button
                 type="button"
-                className="btn-primary"
+                className={opsBtnPrimary}
                 disabled={busy}
                 onClick={() => void submitReassign()}
               >
@@ -1876,7 +1810,7 @@ export function OperationsTasksView() {
   }
 
   return (
-    <PageShell variant="canvas" className="ops-tasks gap-3.5 p-4 sm:gap-3.5 sm:p-6">
+    <PageShell variant="canvas" className="gap-3.5 p-4 sm:gap-3.5 sm:p-6">
       <KpiBand className="mb-0 shrink-0 !rounded-[12px]">
         <KpiCell
           first
@@ -1925,8 +1859,8 @@ export function OperationsTasksView() {
         />
       </KpiBand>
 
-      <div className="toolbar">
-        <div className="filters" style={{ flex: 1 }}>
+      <div className={opsToolbar}>
+        <div className={cn(opsFilters, "flex-1")}>
           <OperationalToolbarSearch
             type="search"
             placeholder="عنوان المهمة أو المنفّذ أو رقم الصك…"
@@ -1960,7 +1894,10 @@ export function OperationsTasksView() {
           </OperationalToolbarSelect>
           <button
             type="button"
-            className={cn("show-all-btn", showAll && "on")}
+            className={cn(
+              showAll ? opsShowAllBtnOn : opsShowAllBtn,
+              "show-all-btn-motion",
+            )}
             onClick={() => {
               setShowAll((v) => {
                 const next = !v;
@@ -1975,20 +1912,13 @@ export function OperationsTasksView() {
             <EyeIcon open={showAll} blink={eyeBlink} />
             <span>{showAll ? "النشطة فقط" : "إظهار جميع المهام"}</span>
           </button>
-          <span
-            style={{
-              marginInlineStart: "auto",
-              fontSize: 12.5,
-              color: "var(--text-3)",
-              fontWeight: 600,
-            }}
-          >
+          <span className={opsListCount}>
             {visibleTasks.length} مهمة
           </span>
         </div>
         {canCreate ? (
           <OperationalToolbarPrimaryButton
-            style={{ marginInlineStart: 12 }}
+            className="ms-3"
             onClick={() => {
               setCreatePrefill(null);
               setCreateOpen(true);
@@ -2001,12 +1931,12 @@ export function OperationsTasksView() {
       </div>
 
       {selectedCount > 0 && canRemind ? (
-        <div className="ops-bulk">
+        <div className={opsBulk}>
           <BellIcon size={16} />
-          <span style={{ fontWeight: 700, fontSize: 13 }}>{selectedCount} مهمة محددة</span>
+          <span className={opsBulkCount}>{selectedCount} مهمة محددة</span>
           <button
             type="button"
-            className="remind-btn"
+            className={cn(opsRemindBtn, "ms-auto")}
             disabled={busy}
             onClick={() => void bulkRemind()}
           >
@@ -2015,18 +1945,18 @@ export function OperationsTasksView() {
           </button>
           <button
             type="button"
-            className="ops-bulk-clear"
+            className={opsBulkClear}
             onClick={() => setSelectedIds({})}
           >
             إلغاء التحديد
           </button>
         </div>
       ) : selectedCount > 0 ? (
-        <div className="ops-bulk">
-          <span style={{ fontWeight: 700, fontSize: 13 }}>{selectedCount} مهمة محددة</span>
+        <div className={opsBulk}>
+          <span className={opsBulkCount}>{selectedCount} مهمة محددة</span>
           <button
             type="button"
-            className="ops-bulk-clear"
+            className={opsBulkClear}
             onClick={() => setSelectedIds({})}
           >
             إلغاء التحديد
@@ -2039,8 +1969,8 @@ export function OperationsTasksView() {
       <OperationalPanel className="min-h-0 flex-1 overflow-hidden !rounded-[12px] p-0">
         <div className="overflow-x-auto">
           <div className="min-w-[900px]">
-            <div className="ops-thead" style={{ gridTemplateColumns: COLS }}>
-              <div className="ops-th c">
+            <div className={opsThead} style={{ gridTemplateColumns: COLS }}>
+              <div className={cn(opsTh, opsTdC)}>
                 <input
                   ref={selAllRef}
                   type="checkbox"
@@ -2067,21 +1997,14 @@ export function OperationsTasksView() {
                 "الحالة",
                 "إجراءات",
               ].map((h) => (
-                <div key={h} className={cn("ops-th", h === "إجراءات" && "c")}>
+                <div key={h} className={cn(opsTh, h === "إجراءات" && opsTdC)}>
                   {h}
                 </div>
               ))}
             </div>
 
             {visibleTasks.length === 0 ? (
-              <div
-                style={{
-                  padding: "44px 16px",
-                  textAlign: "center",
-                  color: "var(--text-3)",
-                  fontSize: 13.5,
-                }}
-              >
+              <div className="px-4 py-11 text-center text-[13.5px] text-text-3">
                 <div>لا توجد مهام مطابقة.</div>
               </div>
             ) : (
@@ -2094,8 +2017,8 @@ export function OperationsTasksView() {
                     role="button"
                     tabIndex={0}
                     className={cn(
-                      "ops-grid-row",
-                      selectedId === task.id && "on",
+                      opsGridRow,
+                      selectedId === task.id && opsGridRowOn,
                     )}
                     style={{ gridTemplateColumns: COLS }}
                     onClick={() => {
@@ -2110,13 +2033,14 @@ export function OperationsTasksView() {
                     }}
                   >
                     <div
-                      className="ops-td c"
+                      className={cn(opsTd, opsTdC)}
                       onClick={(e) => e.stopPropagation()}
                     >
                       {isActiveOperationsTask(task) ? (
-                        <label className="tk-check">
+                        <label className={opsTkCheck}>
                           <input
                             type="checkbox"
+                            className={opsTkCheckInput}
                             checked={Boolean(selectedIds[task.id])}
                             onChange={(e) => {
                               const on = e.target.checked;
@@ -2131,56 +2055,14 @@ export function OperationsTasksView() {
                         </label>
                       ) : null}
                     </div>
-                    <div className="ops-td">
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 11,
-                          minWidth: 0,
-                        }}
-                      >
-                        <span
-                          style={{
-                            width: 30,
-                            height: 30,
-                            borderRadius: 8,
-                            flex: "none",
-                            display: "grid",
-                            placeItems: "center",
-                            background: "var(--gold-soft)",
-                            color: "var(--gold-d)",
-                          }}
-                        >
+                    <div className={opsTd}>
+                      <div className="flex min-w-0 items-center gap-[11px]">
+                        <span className={opsTypeIconSm}>
                           <TypeIcon type={task.type} size={15} />
                         </span>
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 2,
-                            minWidth: 0,
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontWeight: 700,
-                              color: "var(--heading)",
-                              fontSize: 13.5,
-                            }}
-                          >
-                            {task.title}
-                          </span>
-                          <span
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 6,
-                              color: "var(--text-3)",
-                              fontSize: 11.5,
-                              flexWrap: "wrap",
-                            }}
-                          >
+                        <div className="flex min-w-0 flex-col gap-0.5">
+                          <span className={opsRowTitle}>{task.title}</span>
+                          <span className={opsRowMeta}>
                             <span dir="ltr">{task.displayId}</span>
                             <span>·</span>
                             <span>{operationsTaskTypeLabel(task.type)}</span>
@@ -2208,78 +2090,41 @@ export function OperationsTasksView() {
                         </div>
                       </div>
                     </div>
-                    <div className="ops-td">
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 2,
-                          minWidth: 0,
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 600,
-                            color: "var(--text)",
-                          }}
-                        >
+                    <div className={opsTd}>
+                      <div className="flex min-w-0 flex-col gap-0.5">
+                        <span className="text-[13px] font-semibold text-text">
                           {operationsTaskScopeLabel(task.scope)}
                         </span>
-                        <span
-                          dir="ltr"
-                          style={{ fontSize: 11.5, color: "var(--text-3)" }}
-                        >
+                        <span dir="ltr" className="text-[11.5px] text-text-3">
                           {operationsTaskLinkLabel(task)}
                         </span>
                       </div>
                     </div>
-                    <div className="ops-td">
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 2,
-                          minWidth: 0,
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontWeight: 600,
-                            color: "var(--heading)",
-                            fontSize: 13,
-                          }}
-                        >
+                    <div className={opsTd}>
+                      <div className="flex min-w-0 flex-col gap-0.5">
+                        <span className="text-[13px] font-semibold text-heading">
                           {task.assigneeName || task.assigneeId}
                         </span>
-                        <span style={{ color: "var(--text-3)", fontSize: 11.5 }}>
+                        <span className="text-[11.5px] text-text-3">
                           {assigneeRoleLabel(staffUsers, task.assigneeId)}
                         </span>
                       </div>
                     </div>
-                    <div className="ops-td">
+                    <div className={opsTd}>
                       <DueCell task={task} now={now} />
                     </div>
-                    <div className="ops-td">
+                    <div className={opsTd}>
                       <TaskStatusPill status={task.status} />
                     </div>
                     <div
-                      className="ops-td"
+                      className={opsTd}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 2,
-                          justifyContent: "center",
-                          width: "100%",
-                        }}
-                      >
+                      <div className="flex w-full items-center justify-center gap-0.5">
                         {canRemind && isActiveOperationsTask(task) ? (
                           <button
                             type="button"
-                            className="remind-mini"
+                            className={opsRemindMini}
                             title="تذكير المنفّذ"
                             aria-label="تذكير"
                             onClick={() => void remindTask(task)}
@@ -2296,14 +2141,7 @@ export function OperationsTasksView() {
             )}
           </div>
         </div>
-        <div
-          style={{
-            padding: "11px 16px",
-            borderTop: "1px solid var(--border)",
-            fontSize: 12,
-            color: "var(--text-3)",
-          }}
-        >
+        <div className="border-t border-border px-4 py-[11px] text-xs text-text-3">
           اضغط الصف لعرض تفاصيل المهمة. المراجعة الحكومية وخطاب التفويض حالتان من
           هذه الطبقة.
         </div>
@@ -2370,10 +2208,10 @@ export function OperationsTasksView() {
         wide
         onClose={() => setReassignOpen(false)}
       >
-        <div className="ops-tasks flex flex-col gap-3.5">
+        <div className="flex flex-col gap-3.5">
           {reassignError ? <Note tone="danger">{reassignError}</Note> : null}
           <label className="flex flex-col gap-1.5">
-            <span className="tf-lbl">مُسندة إلى *</span>
+            <span className={opsTfLbl}>مُسندة إلى *</span>
             <Select
               value={reassignAssigneeId}
               onChange={(e) => {
@@ -2397,7 +2235,7 @@ export function OperationsTasksView() {
             </Select>
           </label>
           <div>
-            <span className="tf-lbl">
+            <span className={opsTfLbl}>
               موعد الاستحقاق *{" "}
               <span className="font-medium text-text-3">(يوم + ساعة)</span>
             </span>
@@ -2417,7 +2255,7 @@ export function OperationsTasksView() {
             </div>
           </div>
           <label className="flex flex-col gap-1.5">
-            <span className="tf-lbl">سبب إعادة التوجيه *</span>
+            <span className={opsTfLbl}>سبب إعادة التوجيه *</span>
             <Textarea
               value={reassignReason}
               onChange={(e) => setReassignReason(e.target.value)}
@@ -2428,14 +2266,14 @@ export function OperationsTasksView() {
           <div className="flex justify-end gap-2">
             <button
               type="button"
-              className="btn-ghost"
+              className={opsBtnGhost}
               onClick={() => setReassignOpen(false)}
             >
               إلغاء
             </button>
             <button
               type="button"
-              className="btn-primary"
+              className={opsBtnPrimary}
               disabled={busy}
               onClick={() => void submitReassign()}
             >

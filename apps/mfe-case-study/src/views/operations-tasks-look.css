@@ -1,446 +1,9 @@
-/* Pixel-matched tasks layer styles from Case Study.html (طبقة المهام). Scoped under .ops-tasks */
+/* Residual motion / pseudo styles — layout & chrome live in ops-tasks-tw.ts */
 
-.ops-tasks {
-  --ops-red: #d9694f;
-  /* Case Study.html token alias */
-  --border-2: var(--border-md);
-}
-
-/* Toolbar layout only — search/select/primary من operational-toolbar.css */
-.ops-tasks .toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 14px;
-  flex-wrap: wrap;
-}
-.ops-tasks .filters {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.ops-tasks .back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 6px 0;
-  margin-bottom: 8px;
-  background: none;
-  border: none;
-  color: var(--text-2);
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: color 0.15s;
-  font-family: inherit;
-}
-.ops-tasks .back-link:hover {
-  color: var(--gold-d);
-}
-.ops-tasks .back-link svg {
-  transform: scaleX(-1);
-}
-
-.ops-tasks .pp-head {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: var(--shadow);
-  padding: 18px 22px;
-  margin-bottom: 18px;
-}
-.ops-tasks .pp-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--heading);
-  margin: 0;
-}
-.ops-tasks .pp-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 8px;
-  font-size: 12.5px;
-  color: var(--text-2);
-}
-.ops-tasks .pp-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 11px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  background: var(--gold-soft);
-  color: var(--gold-d);
-}
-.ops-tasks .pp-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0;
-  margin-top: 16px;
-  border-top: 1px solid var(--border);
-  padding-top: 14px;
-}
-.ops-tasks .pp-cell {
-  padding: 0 18px;
-  border-inline-start: 1px solid var(--border);
-  min-width: 140px;
-  margin-bottom: 10px;
-}
-.ops-tasks .pp-cell:first-child {
-  padding-inline-start: 0;
-  border-inline-start: none;
-}
-.ops-tasks .pp-cell .k {
-  font-size: 11px;
-  color: var(--text-3);
-  margin-bottom: 3px;
-}
-.ops-tasks .pp-cell .v {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--heading);
-}
-
-.ops-tasks .step-flow {
-  display: flex;
-  align-items: center;
-  margin: 6px 0 4px;
-  flex-wrap: wrap;
-  gap: 6px 0;
-}
-.ops-tasks .step {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-}
-.ops-tasks .step-dot {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  font-size: 12px;
-  font-weight: 700;
-  border: 2px solid var(--border-2);
-  color: var(--text-3);
-  background: var(--surface);
-  flex: none;
-}
-.ops-tasks .step.done .step-dot {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: #fff;
-}
-.ops-tasks .step.active .step-dot {
-  background: var(--gold);
-  border-color: var(--gold);
-  color: #fff;
-}
-.ops-tasks .step.cancel .step-dot {
-  background: var(--ops-red);
-  border-color: var(--ops-red);
-  color: #fff;
-}
-.ops-tasks .step-lbl {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--text-3);
-}
-.ops-tasks .step.done .step-lbl,
-.ops-tasks .step.active .step-lbl,
-.ops-tasks .step.cancel .step-lbl {
-  color: var(--heading);
-}
-.ops-tasks .step-line {
-  width: 34px;
-  height: 2px;
-  background: var(--border-2);
-  margin: 0 8px;
-}
-.ops-tasks .step-line.on {
-  background: var(--ink);
-}
-
-.ops-tasks .task-desc {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 14px 16px;
-  font-size: 13px;
-  color: var(--text);
-  line-height: 1.7;
-  margin-top: 16px;
-}
-
-.ops-tasks .remind-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  flex-wrap: wrap;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: var(--shadow);
-  padding: 14px 18px;
-  margin-top: 16px;
-}
-.ops-tasks .remind-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
-  border: none;
-  border-radius: 9px;
-  background: var(--gold-d);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  font-family: inherit;
-  box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--gold-d) 60%, transparent);
-  transition: background 0.15s, transform 0.12s;
-}
-.ops-tasks .remind-btn:hover:not(:disabled) {
-  background: var(--gold);
-  transform: translateY(-1px);
-}
-.ops-tasks .remind-btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.ops-tasks .letter-card {
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  overflow: hidden;
-  background: var(--surface);
-  margin-top: 20px;
-}
-.ops-tasks .letter-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 15px 18px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface-2);
-  flex-wrap: wrap;
-}
-
-.ops-tasks .tf-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 20px;
-}
-.ops-tasks .btn-ghost {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 18px;
-  border: 1px solid var(--border-2);
-  border-radius: 9px;
-  background: var(--surface);
-  color: var(--text-2);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: background 0.15s;
-}
-.ops-tasks .btn-ghost:hover:not(:disabled) {
-  background: var(--row-hover);
-}
-.ops-tasks .btn-ghost:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.ops-tasks .btn-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
-  border: none;
-  border-radius: 9px;
-  background: var(--ink);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  font-family: inherit;
-}
-.ops-tasks .btn-primary:hover:not(:disabled) {
-  background: var(--navy-3, #1a3a66);
-}
-.ops-tasks .btn-primary:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.ops-tasks .cmt-thread {
-  display: flex;
-  flex-direction: column;
-}
-.ops-tasks .cmt {
-  display: flex;
-  gap: 11px;
-  padding: 14px 2px;
-  border-top: 1px solid var(--border);
-}
-.ops-tasks .cmt:first-child {
-  border-top: none;
-}
-.ops-tasks .cmt-av {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  flex: none;
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-  font-size: 12px;
-  color: #fff;
-}
-.ops-tasks .cmt-body {
-  flex: 1;
-  min-width: 0;
-}
-.ops-tasks .cmt-h {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 5px;
-}
-.ops-tasks .cmt-name {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--heading);
-}
-.ops-tasks .cmt-role {
-  font-size: 10.5px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 99px;
-}
-.ops-tasks .cmt-time {
-  font-size: 11px;
-  color: var(--text-3);
-  margin-inline-start: auto;
-}
-.ops-tasks .cmt-text {
-  font-size: 13px;
-  color: var(--text);
-  line-height: 1.75;
-  white-space: pre-wrap;
-}
-.ops-tasks .cmt-files {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-top: 9px;
-}
-.ops-tasks .file-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 6px 11px;
-  border: 1px solid var(--border-2);
-  border-radius: 8px;
-  background: var(--surface-2);
-  font-size: 12px;
-  color: var(--text-2);
-  font-weight: 600;
-}
-.ops-tasks .file-chip .fx {
-  cursor: pointer;
-  color: var(--text-3);
-  display: grid;
-  place-items: center;
-  background: none;
-  border: none;
-  padding: 0;
-  font: inherit;
-}
-.ops-tasks .file-chip .fx:hover {
-  color: #d9694f;
-}
-.ops-tasks .cmt-composer {
-  border-top: 1px solid var(--border);
-  padding-top: 15px;
-  margin-top: 4px;
-}
-.ops-tasks .cmt-composer textarea {
-  width: 100%;
-  font-family: inherit;
-  padding: 11px 13px;
-  border: 1px solid var(--border-2);
-  border-radius: 10px;
-  background: var(--surface-2);
-  color: var(--text);
-  font-size: 13px;
-  outline: none;
-  resize: vertical;
-  min-height: 62px;
-}
-.ops-tasks .cmt-composer textarea:focus {
-  border-color: var(--gold);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 20%, transparent);
-}
-.ops-tasks .cmt-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 11px;
-}
-.ops-tasks .attach-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 9px 14px;
-  border: 1px solid var(--border-2);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--text-2);
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: background 0.13s;
-}
-.ops-tasks .attach-btn:hover {
-  background: var(--row-hover);
-  color: var(--heading);
-}
-
-.ops-tasks .cd-wrap {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-}
-.ops-tasks .cd-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  flex: none;
-  position: relative;
-  display: inline-block;
-  margin-inline-end: 8px;
-}
-.ops-tasks .cd-dot.live {
+.ops-cd-dot-live {
   animation: opsPulseFade 1.4s ease-in-out infinite;
 }
-.ops-tasks .cd-dot.live::after {
+.ops-cd-dot-live::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -448,26 +11,8 @@
   background: inherit;
   animation: opsPulseRing 1.6s ease-out infinite;
 }
-.ops-tasks .cd-tip {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  inset-inline-start: 0;
-  white-space: nowrap;
-  background: var(--ink);
-  color: #fff;
-  font-size: 11.5px;
-  font-weight: 600;
-  padding: 6px 10px;
-  border-radius: 8px;
-  box-shadow: 0 8px 22px -8px rgba(18, 40, 76, 0.42);
-  z-index: 25;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-4px);
-  transition: opacity 0.16s, transform 0.16s, visibility 0.16s;
-  pointer-events: none;
-}
-.ops-tasks .cd-tip::before {
+
+.ops-cd-tip::before {
   content: "";
   position: absolute;
   top: 100%;
@@ -475,207 +20,14 @@
   border: 5px solid transparent;
   border-top-color: var(--ink);
 }
-.ops-tasks .cd-wrap:hover .cd-tip {
-  opacity: 1;
-  visibility: visible;
-  transform: none;
-}
 
-.ops-tasks .remind-mini {
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: none;
-  color: var(--gold-d);
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-.ops-tasks .remind-mini:hover {
-  background: color-mix(in srgb, var(--gold) 14%, transparent);
-  border-color: var(--gold-2);
-}
-
-.ops-tasks .tk-check {
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-}
-.ops-tasks .tk-check input {
-  width: 17px;
-  height: 17px;
-  accent-color: var(--gold-d);
-  cursor: pointer;
-  margin: 0;
-  flex: none;
-}
-
-.ops-tasks .ops-grid-row {
-  display: grid;
-  align-items: center;
-  border-bottom: 1px solid var(--border);
-  transition: background 0.12s;
-  min-height: 58px;
-  cursor: pointer;
-}
-.ops-tasks .ops-grid-row:hover {
-  background: var(--row-hover);
-}
-.ops-tasks .ops-grid-row.on {
-  background: color-mix(in srgb, var(--gold) 10%, transparent);
-}
-.ops-tasks .ops-td {
-  padding: 14px 16px;
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  overflow: visible;
-}
-.ops-tasks .ops-td.c {
-  justify-content: center;
-}
-.ops-tasks .ops-th {
-  padding: 14px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--heading);
-  white-space: nowrap;
-}
-.ops-tasks .ops-thead {
-  display: grid;
-  background: var(--surface-2);
-  border-bottom: 2px solid var(--gold);
-}
-
-.ops-tasks .tf-seg-row {
-  display: inline-flex;
-  flex-wrap: wrap;
-}
-.ops-tasks .tf-seg {
-  padding: 9px 15px;
-  border: 1px solid var(--border-2);
-  background: var(--surface-2);
-  color: var(--text-2);
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: background 0.13s, color 0.13s;
-}
-.ops-tasks .tf-seg + .tf-seg {
-  border-inline-start: none;
-}
-.ops-tasks .tf-seg:first-child {
-  border-radius: 0 9px 9px 0;
-}
-.ops-tasks .tf-seg:last-child {
-  border-radius: 9px 0 0 9px;
-}
-.ops-tasks .tf-seg.active {
-  background: var(--ink);
-  color: #fff;
-  border-color: var(--ink);
-}
-.ops-tasks .tf-chip {
-  padding: 8px 15px;
-  border: 1px solid var(--border-2);
-  border-radius: 99px;
-  background: var(--surface);
-  color: var(--text-2);
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: background 0.13s, color 0.13s;
-}
-.ops-tasks .tf-chip.active {
-  background: var(--gold-soft);
-  color: var(--gold-d);
-  border-color: var(--gold-2);
-}
-.ops-tasks .tf-note {
-  padding: 12px 14px;
-  background: var(--surface-2);
-  border: 1px dashed var(--border-2);
-  border-radius: 10px;
-  color: var(--text-3);
-  font-size: 12.5px;
-}
-.ops-tasks .tf-lbl {
-  display: block;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-2);
-  margin-bottom: 7px;
-}
-.ops-tasks .tf-deeds {
-  max-height: 200px;
-  overflow-y: auto;
-  border: 1px solid var(--border-2);
-  border-radius: 10px;
-  padding: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  background: var(--surface-2);
-}
-.ops-tasks .tf-deed {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 12.5px;
-  color: var(--text);
-}
-.ops-tasks .tf-deed:hover {
-  background: var(--row-hover);
-}
-.ops-tasks .tf-deed input {
-  accent-color: var(--gold-d);
-  width: 16px;
-  height: 16px;
-  flex: none;
-}
-
-.ops-tasks .show-all-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 8px 13px;
-  border: 1px solid var(--border-2);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--text-2);
-  font-size: 12.5px;
-  font-weight: 700;
-  cursor: pointer;
-  font-family: inherit;
-  transition:
-    background 0.22s ease,
-    color 0.22s ease,
-    border-color 0.22s ease;
-}
-.ops-tasks .show-all-btn.on {
-  background: var(--ink);
-  color: #fff;
-  border-color: var(--ink);
-}
-
-/* عين الزر: تفتح مع «إظهار الكل» وتقفل مع العرض المضيّق */
-.ops-tasks .show-all-eye .show-all-eye-ball {
+/* عين زر «إظهار الكل» */
+.show-all-eye .show-all-eye-ball {
   transform-origin: 12px 12px;
   transform: scaleY(0.08);
   transition: transform 0.32s cubic-bezier(0.34, 1.2, 0.64, 1);
 }
-.ops-tasks .show-all-eye .show-all-eye-pupil {
+.show-all-eye .show-all-eye-pupil {
   transform-origin: 12px 12px;
   opacity: 0;
   transform: scale(0.2);
@@ -683,7 +35,7 @@
     opacity 0.2s ease,
     transform 0.28s cubic-bezier(0.34, 1.2, 0.64, 1);
 }
-.ops-tasks .show-all-eye .show-all-eye-lid {
+.show-all-eye .show-all-eye-lid {
   opacity: 1;
   stroke-dasharray: 18;
   stroke-dashoffset: 0;
@@ -691,18 +43,18 @@
     opacity 0.18s ease,
     stroke-dashoffset 0.32s cubic-bezier(0.34, 1.2, 0.64, 1);
 }
-.ops-tasks .show-all-eye.is-open .show-all-eye-ball {
+.show-all-eye.is-open .show-all-eye-ball {
   transform: scaleY(1);
 }
-.ops-tasks .show-all-eye.is-open .show-all-eye-pupil {
+.show-all-eye.is-open .show-all-eye-pupil {
   opacity: 1;
   transform: scale(1);
 }
-.ops-tasks .show-all-eye.is-open .show-all-eye-lid {
+.show-all-eye.is-open .show-all-eye-lid {
   opacity: 0;
   stroke-dashoffset: 18;
 }
-.ops-tasks .show-all-eye.is-blink .show-all-eye-ball {
+.show-all-eye.is-blink .show-all-eye-ball {
   animation: show-all-eye-blink 0.42s ease;
 }
 @keyframes show-all-eye-blink {
@@ -720,41 +72,15 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ops-tasks .show-all-btn,
-  .ops-tasks .show-all-eye .show-all-eye-ball,
-  .ops-tasks .show-all-eye .show-all-eye-pupil,
-  .ops-tasks .show-all-eye .show-all-eye-lid {
+  .show-all-btn-motion,
+  .show-all-eye .show-all-eye-ball,
+  .show-all-eye .show-all-eye-pupil,
+  .show-all-eye .show-all-eye-lid {
     transition: none;
   }
-  .ops-tasks .show-all-eye.is-blink .show-all-eye-ball {
+  .show-all-eye.is-blink .show-all-eye-ball {
     animation: none;
   }
-}
-
-.ops-tasks .ops-bulk {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: var(--ink);
-  color: #fff;
-  border-radius: 11px;
-  padding: 11px 16px;
-  margin-bottom: 14px;
-  flex-wrap: wrap;
-}
-.ops-tasks .ops-bulk .remind-btn {
-  margin-inline-start: auto;
-}
-.ops-tasks .ops-bulk-clear {
-  background: none;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  color: #fff;
-  font-size: 12.5px;
-  font-weight: 600;
-  padding: 9px 14px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-family: inherit;
 }
 
 @keyframes opsPulseFade {
