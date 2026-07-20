@@ -41,7 +41,7 @@ export const CASE_STUDY_INFO_PARTIES: CaseStudyInfoParty[] = [
     id: "insp",
     name: "المعاين العقاري",
     abbr: "مع",
-    color: "#059669",
+    color: "#102b4e",
     roleId: "field-inspector",
   },
   {
@@ -139,7 +139,7 @@ export const CASE_STUDY_INFO_SECTIONS = CASE_STUDY_FORM_STEPS.map((s, i) => {
       id === "deed"
         ? "#0284C7"
         : id === "survey"
-          ? "#059669"
+          ? "#102b4e"
           : id === "comp"
             ? "#D97706"
             : id === "occ"

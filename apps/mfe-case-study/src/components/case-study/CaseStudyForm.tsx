@@ -137,7 +137,7 @@ function FormProgressRings({
     >
       <CaseStudyProgressDonut
         pct={pct}
-        color="var(--success, #16a34a)"
+        color="var(--success, #102b4e)"
         label={submitted ? "تم رفع النموذج" : "اكتمال النموذج"}
         sub={`${answered} / ${summary.total}`}
       />

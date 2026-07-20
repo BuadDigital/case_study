@@ -8,12 +8,18 @@ export type SettingsNavItem = {
   placeholder?: boolean;
 };
 
-/** عناصر قائمة الإعدادات */
+/** عناصر قائمة الإعدادات — التسعيرة للمسؤول فقط عبر صلاحية الصفحة */
 export const SETTINGS_NAV: SettingsNavItem[] = [
   {
     id: "users",
     label: "إدارة المستخدمين",
     icon: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
+    available: true,
+  },
+  {
+    id: "fee-pricing",
+    label: "التسعيرة",
+    icon: "M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6",
     available: true,
   },
   {

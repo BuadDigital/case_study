@@ -27,6 +27,8 @@ export const SCREEN_CATALOG_PAGE_NAMES: Partial<Record<PageId, string>> = {
   "case-study-info-roles": "علاقة المستخدم بالمعلومة",
   "system-fields-catalog": "قاموس الحقول المركزي",
   "system-screen-catalog": "دليل الشاشات",
+  "fee-pricing": "التسعيرة — أسعار الأتعاب",
+  "audit-log": "سجل التدقيق",
 };
 
 export function screenCatalogPageName(

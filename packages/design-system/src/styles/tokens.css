@@ -19,18 +19,21 @@
   --text-1: #3a3f4d;
   --text-2: #73767f;
   --text-3: #a4a6ad;
-  --teal: #1d9e75;
-  --teal-light: #e1f5ee;
-  --teal-text: #0f6e56;
+  --blue: #378add;
+  --blue-light: #e6f1fb;
+  --blue-text: #185fa5;
+  /* Soft navy wash — tinted from page cream so surfaces match the site */
+  --navy-soft: color-mix(in srgb, var(--ink) 8%, var(--bg));
+  /* Teal aliases → brand navy (matches sidebar / primary CTA) */
+  --teal: var(--ink);
+  --teal-light: var(--navy-soft);
+  --teal-text: var(--navy-3);
   --amber: #ef9f27;
   --amber-light: #faeeda;
   --amber-text: #854f0b;
   --red: #d9694f;
   --red-light: #fbe9e4;
   --red-text: #b03d24;
-  --blue: #378add;
-  --blue-light: #e6f1fb;
-  --blue-text: #185fa5;
   --sidebar-w: 260px;
   --topbar-h: 66px;
   --tabs-h: 42px;
@@ -59,8 +62,9 @@
   --text: var(--text-1);
   --text2: var(--text-2);
   --text3: var(--text-3);
-  --success: var(--teal);
-  --success-bg: var(--teal-light);
+  --success: var(--ink);
+  --success-bg: var(--navy-soft);
+  --success-text: var(--ink);
   --warning: var(--amber);
   --warning-bg: var(--amber-light);
   --danger: var(--red);
@@ -96,7 +100,7 @@ html[data-theme="dark"] {
   --text-3: #727c90;
 
   --surface3: rgba(194, 168, 120, 0.16);
-  --teal-light: rgba(63, 143, 95, 0.18);
+  --navy-soft: color-mix(in srgb, var(--ink) 18%, transparent);
   --amber-light: rgba(217, 164, 65, 0.18);
   --red-light: rgba(217, 105, 79, 0.18);
   --blue-light: rgba(55, 138, 221, 0.18);

@@ -38,7 +38,7 @@ public class FinancialController : ControllerBase
         => Ok(await _pricing.GetAsync(ct));
 
     [HttpPut("party-fee-pricing")]
-    [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
+    [Authorize(Policy = CapabilityPolicyNames.ManageSystemConfig)]
     public async Task<ActionResult<PartyFeePricingDto>> SavePartyFeePricing(
         [FromBody] PartyFeePricingDto request,
         CancellationToken ct)

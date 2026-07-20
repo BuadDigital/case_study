@@ -175,10 +175,10 @@ export function DashboardView() {
         />
         <KpiCell
           icon={<KpiCheckIcon />}
-          iconClass="bg-[color-mix(in_srgb,#2f9e6b_16%,transparent)] text-[#2f9e6b]"
+          iconClass="bg-[color-mix(in_srgb,var(--success)_16%,transparent)] text-success-text"
           label="مكتملة"
           value={propertyPending ? "—" : propertyStats?.done}
-          valueClass="!text-[#2f9e6b]"
+          valueClass="!text-success-text"
           sub={propertyStats?.donePct ?? "—"}
         />
         <KpiCell

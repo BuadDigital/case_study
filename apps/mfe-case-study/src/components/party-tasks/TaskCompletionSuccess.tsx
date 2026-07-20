@@ -42,7 +42,7 @@ export function TaskCompletionSuccess({
     >
       <div
         className={cn(
-          "mb-4 flex items-center justify-center rounded-full bg-success text-white shadow-[0_4px_14px_rgba(14,102,85,0.22)]",
+          "mb-4 flex items-center justify-center rounded-full bg-success text-white shadow-[0_4px_14px_rgba(16,43,78,0.22)]",
           compact ? "h-12 w-12" : "h-16 w-16",
         )}
         aria-hidden

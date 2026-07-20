@@ -28,7 +28,7 @@ export type PartyQuestionContribution = {
 const KIND_PARTY_LABEL: Partial<
   Record<WorkflowTaskKind, { partyId: CaseStudyInfoPartyId | null; name: string; color: string }>
 > = {
-  "field-inspection": { partyId: "insp", name: "المعاين العقاري", color: "#059669" },
+  "field-inspection": { partyId: "insp", name: "المعاين العقاري", color: "#102b4e" },
   "government-review": { partyId: "gov", name: "المراجع الحكومي", color: "#0284C7" },
   "property-appraisal": { partyId: "val", name: "المقيم العقاري", color: "#DC2626" },
   "engineering-survey": { partyId: "eng", name: "المكتب الهندسي", color: "#D97706" },

@@ -79,10 +79,10 @@ export function KpiView() {
         <KpiCell
           first
           icon={<KpiCheckIcon />}
-          iconClass="bg-[color-mix(in_srgb,#2f9e6b_16%,transparent)] text-[#2f9e6b]"
+          iconClass="bg-[color-mix(in_srgb,var(--success)_16%,transparent)] text-success-text"
           label="معدل الإنجاز في الموعد"
           value={kpi ? `${kpi.onTimeCompletionRate}%` : "—"}
-          valueClass="!text-[#2f9e6b]"
+          valueClass="!text-success-text"
           sub="هدف: 90%"
           dot
         />

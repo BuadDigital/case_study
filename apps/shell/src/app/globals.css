@@ -65,6 +65,8 @@
 
   --color-navy-3: var(--navy-3);
 
+  --color-navy-soft: var(--navy-soft);
+
   --color-gold: var(--gold);
 
   --color-gold-d: var(--gold-d);
@@ -119,7 +121,7 @@
 
   --color-success: var(--success);
 
-  --color-success-text: var(--teal-text);
+  --color-success-text: var(--success-text);
 
   --color-success-bg: var(--success-bg);
 

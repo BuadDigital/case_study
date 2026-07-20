@@ -194,6 +194,7 @@ export const MODULE_PAGES: { id: string; title: string }[] = [
   { id: "financial", title: "التقارير المالية" },
   { id: "kpi", title: "مؤشرات الأداء" },
   { id: "users", title: "إدارة المستخدمين" },
+  { id: "fee-pricing", title: "التسعيرة" },
   { id: "courts", title: "المحاكم و الدوائر" },
   { id: "failure-types", title: "أنواع التعذرات" },
   { id: "case-study-info-roles", title: "علاقة المستخدم بالمعلومة" },
@@ -210,40 +211,33 @@ export const ROLE_MODULE_PAGES: Record<string, string[]> = {
     "active-case-study",
     "failures",
     "suspended-transactions",
-    "system-fields-catalog",
     "system-screen-catalog",
   ],
   [RELEASE_USERS.fieldInspector]: [
     "property-inspection",
-    "system-fields-catalog",
     "system-screen-catalog",
   ],
   [RELEASE_USERS.valuationCoordinator]: [
     "valuation-coordination",
-    "system-fields-catalog",
     "system-screen-catalog",
   ],
   [RELEASE_USERS.appraiser]: [
     "po",
     "property-appraisal",
     "suspended-transactions",
-    "system-fields-catalog",
     "system-screen-catalog",
   ],
   [RELEASE_USERS.governmentReviewer]: [
     "government-review",
     "keys",
-    "system-fields-catalog",
     "system-screen-catalog",
   ],
   [RELEASE_USERS.engineeringOffice]: [
     "active-survey",
-    "system-fields-catalog",
     "system-screen-catalog",
   ],
   [RELEASE_USERS.financialOfficer]: [
     "financial",
-    "system-fields-catalog",
     "system-screen-catalog",
   ],
 };

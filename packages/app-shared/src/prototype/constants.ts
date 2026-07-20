@@ -22,7 +22,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "آق",
     bg: "var(--info-bg)",
     tc: "var(--info)",
-    pages: ["users", "system-fields-catalog", "system-screen-catalog"],
+    pages: ["users", "system-screen-catalog"],
   },
   "proc-admin": {
     name: "علي الأمين",
@@ -30,7 +30,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "عل",
     bg: "var(--warning-bg)",
     tc: "var(--warning)",
-    pages: ["financial", "users", "system-fields-catalog", "system-screen-catalog"],
+    pages: ["financial", "users", "system-screen-catalog"],
   },
   "crm-admin": {
     name: "شهد العماري",
@@ -38,7 +38,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "شع",
     bg: "var(--success-bg)",
     tc: "var(--success)",
-    pages: ["users", "system-fields-catalog", "system-screen-catalog"],
+    pages: ["users", "system-screen-catalog"],
   },
   "general-manager": {
     name: "سالم الغريب",
@@ -57,7 +57,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
       "failures",
       "suspended-transactions",
       "valuation-requests",
-      "system-fields-catalog",
       "system-screen-catalog",
       "financial",
       "kpi",
@@ -84,7 +83,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
       "suspended-transactions",
       "failure-types",
       "party-fees",
-      "system-fields-catalog",
       "system-screen-catalog",
     ],
   },
@@ -102,7 +100,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
       "active-case-study",
       "failures",
       "suspended-transactions",
-      "system-fields-catalog",
       "system-screen-catalog",
     ],
   },
@@ -115,7 +112,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
     pages: [
       "all-transactions",
       "valuation-coordination",
-      "system-fields-catalog",
       "system-screen-catalog",
     ],
   },
@@ -131,7 +127,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
       "property-appraisal",
       "failures",
       "suspended-transactions",
-      "system-fields-catalog",
       "system-screen-catalog",
     ],
   },
@@ -146,7 +141,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
       "property-inspection",
       "party-fees",
       "failures",
-      "system-fields-catalog",
       "system-screen-catalog",
     ],
   },
@@ -162,7 +156,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
       "party-fees",
       "keys",
       "failures",
-      "system-fields-catalog",
       "system-screen-catalog",
     ],
   },
@@ -177,7 +170,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
       "active-survey",
       "party-fees",
       "failures",
-      "system-fields-catalog",
       "system-screen-catalog",
     ],
   },
@@ -187,7 +179,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "إن",
     bg: "var(--danger-bg)",
     tc: "var(--danger)",
-    pages: ["financial", "system-fields-catalog", "system-screen-catalog"],
+    pages: ["financial", "system-screen-catalog"],
   },
 };
 
@@ -290,6 +282,7 @@ export const PAGE_TITLES: Record<PageId, string> = {
   "failure-types": "أنواع التعذرات",
   "case-study-info-roles": "علاقة المستخدم بالمعلومة",
   "audit-log": "سجل التدقيق",
+  "fee-pricing": "التسعيرة",
 };
 
 export const PAGE_BREADCRUMB: Record<PageId, string> = {
@@ -319,6 +312,7 @@ export const PAGE_BREADCRUMB: Record<PageId, string> = {
   "failure-types": "جميع حقول النظام / أنواع التعذرات",
   "case-study-info-roles": "جميع حقول النظام / علاقة المستخدم بالمعلومة",
   "audit-log": "الإعدادات / سجل التدقيق",
+  "fee-pricing": "الإعدادات / التسعيرة",
 };
 
 import type { PoListStatus } from "./po-list-status";

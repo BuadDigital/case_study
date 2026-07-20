@@ -10,12 +10,12 @@ import type { SituationTone } from "@case-study/mfe/lib/prototype/active-transac
 const toneIconClass: Record<SituationTone, string> = {
   blue: "bg-[color-mix(in_srgb,var(--info)_16%,transparent)] text-info-text",
   warn: "bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#b8791a]",
-  green: "bg-[color-mix(in_srgb,#2f9e6b_16%,transparent)] text-[#2f9e6b]",
+  green: "bg-[color-mix(in_srgb,var(--success)_16%,transparent)] text-success-text",
   red: "bg-[color-mix(in_srgb,var(--red)_15%,transparent)] text-red",
 };
 
 const toneValueClass: Partial<Record<SituationTone, string>> = {
-  green: "!text-[#2f9e6b]",
+  green: "!text-success-text",
   red: "!text-red",
 };
 

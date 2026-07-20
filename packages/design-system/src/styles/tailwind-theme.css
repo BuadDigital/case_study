@@ -25,6 +25,7 @@
 
   --color-ink: var(--ink);
   --color-navy-3: var(--navy-3);
+  --color-navy-soft: var(--navy-soft);
   --color-gold: var(--gold);
   --color-gold-d: var(--gold-d);
   --color-gold-2: var(--gold-2);
@@ -53,7 +54,7 @@
   --color-sidebar-border: rgba(255, 255, 255, 0.07);
 
   --color-success: var(--success);
-  --color-success-text: var(--teal-text);
+  --color-success-text: var(--success-text);
   --color-success-bg: var(--success-bg);
 
   --color-warning: var(--warning);
