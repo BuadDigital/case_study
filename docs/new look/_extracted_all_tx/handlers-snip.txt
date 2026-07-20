@@ -1,0 +1,69 @@
+﻿textContent = rows.length;
+---
+textContent = rows.length;
+---
+textContent = rows.length ? ('1–' + rows.length) : '0';
+---
+textContent = state.sortKey === k ? (state.sortDir === 'asc' ? '↑' : '↓') : '';
+---
+textContent = v; };
+---
+textContent = 'من ' + ORDERS.length + ' إجمالي';
+---
+setHeader(title, crumbHtml)
+---
+textContent = title;
+---
+showView(name)
+---
+textContent.trim() === label);
+---
+setHeader('عقارات ' + o.po, crumb(['لوحة التحكم','دراسة الحالة','أوامر العمل','عقارات'])
+---
+showView('properties')
+---
+setHeader('تفاصيل العقار', crumb(['أوامر العمل','عقارات ' + o.po,'العقار'])
+---
+showView('property')
+---
+setHeader('لوحة التحكم', crumb(['الرئيسية','لوحة التحكم'])
+---
+showView('dashboard')
+---
+setHeader('مؤشرات الأداء', crumb(['لوحة التحكم','مؤشرات الأداء'])
+---
+showView('generic')
+---
+setHeader('التقارير المالية', crumb(['لوحة التحكم','التقارير المالية'])
+---
+showView('generic')
+---
+setHeader(label, crumb(['لوحة التحكم', label])
+---
+showView('generic')
+---
+textContent.indexOf(q)!==-1)?\'\':\'none\';});})(this)" /></div>' +
+---
+setHeader(label, crumb(['لوحة التحكم', label])
+---
+showView('generic')
+---
+textContent = rows.length + ' نتيجة';
+---
+setHeader('جميع المعاملات', crumb(['لوحة التحكم','جميع المعاملات'])
+---
+showView('generic')
+---
+setHeader('أوامر العمل (PO)
+---
+showView('po')
+---
+textContent.trim();
+---
+textContent=''; });
+---
+textContent=msg; }
+---
+textContent='يرجى تصحيح الحقول المشار إليها.'; e.hidden=false; return; }
+---
+textContent='من '+ORDERS.length+' إجمالي';

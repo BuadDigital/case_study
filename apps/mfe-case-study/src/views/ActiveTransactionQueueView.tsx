@@ -1,9 +1,10 @@
 "use client";
 
 import type { MutableRefObject, ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import "./active-queue-group-by-po.css";
 import {
   Button,
   Note,
@@ -54,7 +55,7 @@ import {
 } from "@settings/mfe/query/settings-queries";
 import type { CaseStudyInfoPartyId } from "@settings/mfe/lib/prototype/case-study-info-roles-data";
 import type { PageId, RoleId } from "@platform/types";
-import { poPropertyDetailPath } from "../lib/po-routes";
+import { poPropertiesPath, poPropertyDetailPath } from "../lib/po-routes";
 import {
   buildDistributionTableRow,
   buildPrimaryDataTableRow,
@@ -78,6 +79,12 @@ import {
   resolveQueueTaskStatusBadge,
   uniqueSortedLabels,
 } from "../lib/prototype/active-queue-list-filters";
+import {
+  allTransactionsPhaseStyle,
+  buildAllTransactionsQueueRowMeta,
+  filterAllTransactionsQueueRows,
+  uniqueSortedPoOrder,
+} from "../lib/prototype/all-transactions-queue";
 import { useFieldInspectionWorkspacesQuery } from "../query/field-inspection-workspaces-queries";
 import {
   getCachedPartySubmission,
@@ -95,7 +102,8 @@ import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 export type ActiveTransactionQueueTableLayout =
   | "primary-data"
   | "distribution"
-  | "case-study";
+  | "case-study"
+  | "all-transactions";
 
 export type ActiveTransactionQueueConfig = {
   pageTitle: string;
@@ -240,6 +248,10 @@ export function ActiveTransactionQueueView({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
+  const [groupByPo, setGroupByPo] = useState(false);
+  const [groupGatherAnim, setGroupGatherAnim] = useState(false);
+  const groupGatherTimerRef = useRef<number | null>(null);
+  const [collapsedPo, setCollapsedPo] = useState<Record<string, boolean>>({});
   const advancingRef = useRef(false);
   const [, bump] = useState(0);
   const [submissionCacheGen, setSubmissionCacheGen] = useState(0);
@@ -586,14 +598,28 @@ export function ActiveTransactionQueueView({
   const isDistributionTable =
     config.tableLayout === "distribution" ||
     config.tableLayout === "case-study";
+  const isAllTransactionsTable = config.tableLayout === "all-transactions";
   const showPartyColumns = config.tableLayout === "case-study";
   const distributionSkeletonCols = 8 + (showPartyColumns ? 4 : 0);
   const primarySkeletonCols = 6;
+  const allTransactionsSkeletonCols = 7;
+
+  const allTransactionsRowMeta = useMemo(() => {
+    if (!isAllTransactionsTable) return [];
+    return buildAllTransactionsQueueRowMeta(listed, poByNumber, now);
+  }, [isAllTransactionsTable, listed, poByNumber, now]);
 
   const primaryRowMeta = useMemo(() => {
-    if (isDistributionTable) return [];
+    if (isDistributionTable || isAllTransactionsTable) return [];
     return buildPrimaryQueueRowMeta(listed, poByNumber, now, resolveTaskBadge);
-  }, [isDistributionTable, listed, poByNumber, now, resolveTaskBadge]);
+  }, [
+    isDistributionTable,
+    isAllTransactionsTable,
+    listed,
+    poByNumber,
+    now,
+    resolveTaskBadge,
+  ]);
 
   const distributionRowMeta = useMemo(() => {
     if (!isDistributionTable) return [];
@@ -603,19 +629,39 @@ export function ActiveTransactionQueueView({
   const assignmentTypes = useMemo(
     () =>
       uniqueSortedLabels(
-        isDistributionTable
-          ? distributionRowMeta.map((row) => row.assignmentType)
-          : primaryRowMeta.map((row) => row.assignmentType),
+        isAllTransactionsTable
+          ? allTransactionsRowMeta.map((row) => row.assignmentType)
+          : isDistributionTable
+            ? distributionRowMeta.map((row) => row.assignmentType)
+            : primaryRowMeta.map((row) => row.assignmentType),
       ),
-    [isDistributionTable, distributionRowMeta, primaryRowMeta],
+    [
+      isAllTransactionsTable,
+      isDistributionTable,
+      allTransactionsRowMeta,
+      distributionRowMeta,
+      primaryRowMeta,
+    ],
   );
 
   const statusOptions = useMemo(
-    () => uniqueSortedLabels(primaryRowMeta.map((row) => row.statusLabel)),
-    [primaryRowMeta],
+    () =>
+      uniqueSortedLabels(
+        isAllTransactionsTable
+          ? allTransactionsRowMeta.map((row) => row.phaseLabel)
+          : primaryRowMeta.map((row) => row.statusLabel),
+      ),
+    [isAllTransactionsTable, allTransactionsRowMeta, primaryRowMeta],
   );
 
   const filteredListed = useMemo(() => {
+    if (isAllTransactionsTable) {
+      return filterAllTransactionsQueueRows(allTransactionsRowMeta, {
+        search,
+        statusFilter,
+        typeFilter,
+      });
+    }
     if (isDistributionTable) {
       return filterDistributionQueueRows(distributionRowMeta, {
         search,
@@ -628,13 +674,67 @@ export function ActiveTransactionQueueView({
       typeFilter,
     });
   }, [
+    isAllTransactionsTable,
     isDistributionTable,
+    allTransactionsRowMeta,
     distributionRowMeta,
     primaryRowMeta,
     search,
     statusFilter,
     typeFilter,
   ]);
+
+  const filteredAllTxMeta = useMemo(() => {
+    if (!isAllTransactionsTable) return [];
+    const ids = new Set(filteredListed.map((t) => t.id));
+    return allTransactionsRowMeta.filter((row) => ids.has(row.task.id));
+  }, [isAllTransactionsTable, filteredListed, allTransactionsRowMeta]);
+
+  const allTxPoGroups = useMemo(() => {
+    if (!isAllTransactionsTable || !groupByPo) return [];
+    const byPo = new Map<string, typeof filteredAllTxMeta>();
+    for (const row of filteredAllTxMeta) {
+      const list = byPo.get(row.poNumber) ?? [];
+      list.push(row);
+      byPo.set(row.poNumber, list);
+    }
+    return uniqueSortedPoOrder(filteredAllTxMeta.map((r) => r.poNumber)).map(
+      (po) => ({
+        po,
+        rows: byPo.get(po) ?? [],
+      }),
+    );
+  }, [isAllTransactionsTable, groupByPo, filteredAllTxMeta]);
+
+  const toggleGroupByPo = useCallback(() => {
+    setGroupByPo((prev) => {
+      const next = !prev;
+      if (next) {
+        const collapsed: Record<string, boolean> = {};
+        for (const row of allTransactionsRowMeta) {
+          collapsed[row.poNumber] = true;
+        }
+        setCollapsedPo(collapsed);
+        if (groupGatherTimerRef.current != null) {
+          window.clearTimeout(groupGatherTimerRef.current);
+        }
+        setGroupGatherAnim(true);
+        groupGatherTimerRef.current = window.setTimeout(() => {
+          setGroupGatherAnim(false);
+          groupGatherTimerRef.current = null;
+        }, 520);
+      }
+      return next;
+    });
+  }, [allTransactionsRowMeta]);
+
+  useEffect(() => {
+    return () => {
+      if (groupGatherTimerRef.current != null) {
+        window.clearTimeout(groupGatherTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const refresh = () => setPartyProgressRevision((revision) => revision + 1);
@@ -732,10 +832,12 @@ export function ActiveTransactionQueueView({
         />
         {!isDistributionTable ? (
           <OperationalToolbarSelect
-            className="!w-auto min-w-[148px] max-w-full shrink-0 sm:w-[148px]"
+            className="shrink-0"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            aria-label="تصفية الحالة"
+            aria-label={
+              isAllTransactionsTable ? "تصفية المرحلة" : "تصفية الحالة"
+            }
           >
             <option value="">جميع الحالات</option>
             {statusOptions.map((status) => (
@@ -746,7 +848,7 @@ export function ActiveTransactionQueueView({
           </OperationalToolbarSelect>
         ) : null}
         <OperationalToolbarSelect
-          className="!w-auto min-w-[168px] max-w-full shrink-0 sm:w-[168px]"
+          className="shrink-0"
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
           aria-label="تصفية نوع الإسناد"
@@ -758,8 +860,59 @@ export function ActiveTransactionQueueView({
             </option>
           ))}
         </OperationalToolbarSelect>
+        {isAllTransactionsTable ? (
+          <button
+            type="button"
+            onClick={toggleGroupByPo}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-lg border px-[13px] py-2 text-[12.5px] font-bold transition-colors",
+              groupByPo
+                ? "border-ink bg-ink text-white"
+                : "border-border-md bg-surface text-text-2 hover:bg-surface-2",
+            )}
+            aria-pressed={groupByPo}
+          >
+            <span
+              className={cn(
+                "atq-group-ico",
+                groupByPo && "is-on",
+                groupGatherAnim && "is-gathering",
+              )}
+              aria-hidden
+            >
+              <svg
+                className="ico-grid"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="3" y="3" width="7" height="7" rx="1.2" />
+                <rect x="14" y="3" width="7" height="7" rx="1.2" />
+                <rect x="3" y="14" width="7" height="7" rx="1.2" />
+                <rect x="14" y="14" width="7" height="7" rx="1.2" />
+              </svg>
+              <svg
+                className="ico-stack"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M4 7h16" />
+                <path d="M6 12h12" />
+                <path d="M8 17h8" />
+              </svg>
+            </span>
+            <span>تجميع حسب أمر العمل</span>
+          </button>
+        ) : null}
       </div>
-      <span className="shrink-0 text-[11.5px] text-text-3">
+      <span className="shrink-0 text-[12.5px] font-semibold text-text-3">
         {queueReady ? `${filteredListed.length} نتيجة` : "—"}
       </span>
     </PageToolbar>
@@ -811,10 +964,226 @@ export function ActiveTransactionQueueView({
               <div
                 className={cn(
                   queueTableWrapClassName,
-                  isDistributionTable && "overflow-x-auto",
+                  (isDistributionTable || isAllTransactionsTable) &&
+                    "overflow-x-auto",
                 )}
               >
-                {isDistributionTable ? (
+                {isAllTransactionsTable ? (
+                  <Table className="w-full min-w-[720px]" pending={queuePending}>
+                    <THead>
+                      <Tr hoverable={false}>
+                        <Th>رقم الصك</Th>
+                        <Th>أمر العمل</Th>
+                        <Th>نوع الإسناد</Th>
+                        <Th>المدينة</Th>
+                        <Th>الحي</Th>
+                        <Th>المرحلة</Th>
+                        <ThAction aria-label="المزيد" />
+                      </Tr>
+                    </THead>
+                    <TBody>
+                      {queuePending && listed.length === 0 ? (
+                        <SkeletonTableRows
+                          rows={6}
+                          cols={allTransactionsSkeletonCols}
+                        />
+                      ) : filteredAllTxMeta.length === 0 ? (
+                        <Tr hoverable={false}>
+                          <Td
+                            colSpan={allTransactionsSkeletonCols}
+                            className="!py-11 text-center text-[13.5px] text-text-3"
+                          >
+                            لا توجد معاملات مطابقة.
+                          </Td>
+                        </Tr>
+                      ) : groupByPo ? (
+                        allTxPoGroups.map(({ po, rows }, groupIndex) => {
+                          const open = !collapsedPo[po];
+                          return (
+                            <Fragment key={po}>
+                              <Tr
+                                hoverable={false}
+                                className="atq-po-group-row cursor-pointer bg-surface-2"
+                                style={{
+                                  animationDelay: `${Math.min(groupIndex, 8) * 35}ms`,
+                                }}
+                                onClick={() =>
+                                  router.push(poPropertiesPath(po))
+                                }
+                              >
+                                <Td colSpan={allTransactionsSkeletonCols}>
+                                  <div className="flex items-center gap-2.5">
+                                    <button
+                                      type="button"
+                                      className="grid place-items-center rounded-md p-0.5 text-text-3 hover:bg-surface"
+                                      title={open ? "طي" : "فتح"}
+                                      aria-label={open ? "طي المجموعة" : "فتح المجموعة"}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setCollapsedPo((prev) => ({
+                                          ...prev,
+                                          [po]: !prev[po],
+                                        }));
+                                      }}
+                                    >
+                                      <svg
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        className={cn(
+                                          "transition-transform duration-150",
+                                          !open && "-rotate-90",
+                                        )}
+                                        aria-hidden
+                                      >
+                                        <path d="m6 9 6 6 6-6" />
+                                      </svg>
+                                    </button>
+                                    <span
+                                      dir="ltr"
+                                      className="text-[13px] font-extrabold text-heading"
+                                    >
+                                      {po}
+                                    </span>
+                                    <span className="rounded-full bg-gold-soft px-2.5 py-0.5 text-[11.5px] font-bold text-gold-d">
+                                      {rows.length} معاملة
+                                    </span>
+                                    <span className="ms-auto inline-flex items-center gap-1 text-[12px] font-bold text-gold-d">
+                                      دخول أمر العمل
+                                      <svg
+                                        width="15"
+                                        height="15"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        aria-hidden
+                                      >
+                                        <path d="m15 18-6-6 6-6" />
+                                      </svg>
+                                    </span>
+                                  </div>
+                                </Td>
+                              </Tr>
+                              {open
+                                ? rows.map((meta) => {
+                                    const active =
+                                      selectedId === meta.task.id;
+                                    const moreItems = resolveRowMoreItems(
+                                      meta.task,
+                                      meta.propertyId,
+                                    );
+                                    return (
+                                      <Tr
+                                        key={meta.task.id}
+                                        hoverable={false}
+                                        className={cn(
+                                          ROW,
+                                          active && ROW_ACTIVE,
+                                        )}
+                                        onClick={() =>
+                                          handleRowClick(meta.task.id)
+                                        }
+                                      >
+                                        <Td className="whitespace-nowrap">
+                                          <span
+                                            dir="ltr"
+                                            className="inline-block text-[12.5px] font-bold text-primary"
+                                          >
+                                            {meta.deedCell}
+                                          </span>
+                                        </Td>
+                                        <Td>
+                                          <PoNumber
+                                            value={meta.poNumber}
+                                            link
+                                            className="!text-[12.5px] !font-semibold text-text-2"
+                                          />
+                                        </Td>
+                                        <Td className="text-text-2">
+                                          {meta.assignmentType}
+                                        </Td>
+                                        <Td className="text-text-2">
+                                          {meta.city}
+                                        </Td>
+                                        <Td className="text-text-2">
+                                          {meta.district}
+                                        </Td>
+                                        <Td>
+                                          <StatusPill
+                                            label={meta.phaseLabel}
+                                            style={allTransactionsPhaseStyle(
+                                              meta.task,
+                                            )}
+                                          />
+                                        </Td>
+                                        <TdAction>
+                                          <RowMoreMenu items={moreItems} />
+                                        </TdAction>
+                                      </Tr>
+                                    );
+                                  })
+                                : null}
+                            </Fragment>
+                          );
+                        })
+                      ) : (
+                        filteredAllTxMeta.map((meta) => {
+                          const active = selectedId === meta.task.id;
+                          const moreItems = resolveRowMoreItems(
+                            meta.task,
+                            meta.propertyId,
+                          );
+                          return (
+                            <Tr
+                              key={meta.task.id}
+                              hoverable={false}
+                              className={cn(ROW, active && ROW_ACTIVE)}
+                              onClick={() => handleRowClick(meta.task.id)}
+                            >
+                              <Td className="whitespace-nowrap">
+                                <span
+                                  dir="ltr"
+                                  className="inline-block text-[12.5px] font-bold text-primary"
+                                >
+                                  {meta.deedCell}
+                                </span>
+                              </Td>
+                              <Td>
+                                <PoNumber
+                                  value={meta.poNumber}
+                                  link
+                                  className="!text-[12.5px] !font-semibold text-text-2"
+                                />
+                              </Td>
+                              <Td className="text-text-2">
+                                {meta.assignmentType}
+                              </Td>
+                              <Td className="text-text-2">{meta.city}</Td>
+                              <Td className="text-text-2">{meta.district}</Td>
+                              <Td>
+                                <StatusPill
+                                  label={meta.phaseLabel}
+                                  style={allTransactionsPhaseStyle(meta.task)}
+                                />
+                              </Td>
+                              <TdAction>
+                                <RowMoreMenu items={moreItems} />
+                              </TdAction>
+                            </Tr>
+                          );
+                        })
+                      )}
+                    </TBody>
+                  </Table>
+                ) : isDistributionTable ? (
                   <Table
                     className={cn(
                       "w-full",

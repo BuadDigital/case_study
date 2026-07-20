@@ -12,7 +12,7 @@ import {
 } from "./ActiveTransactionQueueView";
 import { filterOpenAssignedTransactions } from "../lib/prototype/assigned-transactions-filter";
 import { isTaskOnSuspendedProperty } from "../lib/prototype/suspended-transactions-storage";
-import { taskPhaseLabel, taskStatusLabel, type WorkflowTask } from "../lib/prototype/tasks-storage";
+import type { WorkflowTask } from "../lib/prototype/tasks-storage";
 import { ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-engineering-survey-events";
 import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-evaluator-events";
 import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-field-inspection-events";
@@ -25,6 +25,10 @@ import {
   decodeTaskParam,
   partyTaskWorkspacePath,
 } from "../lib/my-task-routes";
+import {
+  allTransactionsPhaseLabel,
+  buildAllTransactionsRowMoreItems,
+} from "../lib/prototype/all-transactions-queue";
 
 const PARTY_QUEUE_REFRESH_EVENTS = [
   FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
@@ -68,35 +72,39 @@ export function AllAssignedTransactionsView() {
       pageId: "all-transactions",
       pageTitle: "جميع المعاملات",
       hidePageTitle: true,
-      emptyLine: "لا توجد معاملات مسندة إليك.",
+      tableLayout: "all-transactions",
+      emptyLine: "لا توجد معاملات مطابقة.",
       emptyHint: isPartyRole
         ? "تظهر هنا جميع المعاملات المسندة إليك من توزيع المعاملات — المفتوحة والمكتملة."
         : "تظهر هنا جميع المعاملات المسندة لك في كل المراحل — البيانات الأولية، البورصة، التوزيع، ودراسة الحالة — المفتوحة والمكتملة.",
       panelId: "all-assigned-transactions-panel",
-      tableHint: isPartyRole
-        ? "اضغط الصف لفتح المعاملة في صفحتها المخصصة."
-        : "اضغط الصف لفتح المعاملة في مرحلتها الحالية — اضغط نفس الصف مرة أخرى للإغلاق.",
+      tableHint:
+        "اضغط الصف لفتح المعاملة في مرحلتها الحالية — اضغط نفس الصف مرة أخرى للإغلاق.",
       partyAssignee: isPartyRole,
       assigneeRole: isPartyRole ? role : undefined,
       getBasePath: allTransactionsPath,
       getTaskPath: allTransactionsTaskPath,
       queueSort: "newest-first",
       includeAllStatuses: true,
-      statusColumnLabel: isPartyRole ? "الحالة" : "المرحلة",
+      statusColumnLabel: "المرحلة",
+      buildRowMoreItems: (ctx) =>
+        buildAllTransactionsRowMoreItems({
+          task: ctx.task,
+          propertyId: ctx.propertyId,
+          openTask: ctx.openTask,
+          router: ctx.router,
+        }),
       getTaskStatusBadge: (task) => {
-        if (task.status === "completed") {
-          return {
-            label: taskStatusLabel(task.status),
-            className: "b-done",
-          };
-        }
-        if (task.kind === "case-study-property") {
-          return {
-            label: taskPhaseLabel(task.phase),
-            className: "b-prog",
-          };
-        }
-        return null;
+        const label = allTransactionsPhaseLabel(task);
+        const className =
+          label === "مكتمل"
+            ? "b-done"
+            : label === "البورصة" || label === "تعذر"
+              ? "b-fail"
+              : label === "البيانات الأولية"
+                ? "b-new"
+                : "b-prog";
+        return { label, className };
       },
       resolveFullPageTaskPath: isPartyRole ? partyTaskWorkspacePath : undefined,
       refreshOnWindowEvents: isPartyRole ? PARTY_QUEUE_REFRESH_EVENTS : undefined,
