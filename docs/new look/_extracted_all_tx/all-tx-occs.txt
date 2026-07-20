@@ -1,0 +1,63 @@
+
+==== 29022 ====
+stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>جميع المعاملات</span></div>
+      <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><span>المعاملات النشطة</span></di
+
+==== 86405 ====
+v></div>';
+    setHeader(label, crumb(['لوحة التحكم', label]));
+    navActive(label); showView('generic');
+  }
+
+  /* ── جميع المعاملات (مطابق لـ AllAssignedTransactionsView) ── */
+  var CARET = '<span class="caret"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>';
+
+==== 97132 ====
+po-open]');
+      if (head) { renderProperties(head.getAttribute('data-po-open')); }
+    });
+    draw();
+    setHeader('جميع المعاملات', crumb(['لوحة التحكم','جميع المعاملات']));
+    navActive('جميع المعاملات'); showView('generic');
+  }
+
+  var PAGES = {
+    'المعاملات النشطة': { stats:[[41,'معاملات نشطة','قيد المعالجة'],[9,'استعلام بورصة',''],[12,'التوزيع',''],[20,'دراسة الحالة','']],
+      cols:[
+
+==== 97171 ====
+perties(head.getAttribute('data-po-open')); }
+    });
+    draw();
+    setHeader('جميع المعاملات', crumb(['لوحة التحكم','جميع المعاملات']));
+    navActive('جميع المعاملات'); showView('generic');
+  }
+
+  var PAGES = {
+    'المعاملات النشطة': { stats:[[41,'معاملات نشطة','قيد المعالجة'],[9,'استعلام بورصة',''],[12,'التوزيع',''],[20,'دراسة الحالة','']],
+      cols:[{label:'رقم المعاملة',first:true},{labe
+
+==== 97206 ====
+open')); }
+    });
+    draw();
+    setHeader('جميع المعاملات', crumb(['لوحة التحكم','جميع المعاملات']));
+    navActive('جميع المعاملات'); showView('generic');
+  }
+
+  var PAGES = {
+    'المعاملات النشطة': { stats:[[41,'معاملات نشطة','قيد المعالجة'],[9,'استعلام بورصة',''],[12,'التوزيع',''],[20,'دراسة الحالة','']],
+      cols:[{label:'رقم المعاملة',first:true},{label:'العقار / الصك'},{label:'المرحلة'
+
+==== 103971 ====
+'مؤشرات الأداء') renderKpi();
+      else if (label === 'التقارير المالية') renderFinancial();
+      else if (label === 'جميع المعاملات') renderAllTransactions();
+      else if (PAGES[label]) renderList(label, PAGES[label]);
+      else renderGeneric(label);
+    });
+  });
+
+  // delegated navigation for links / rows
+  document.addEventListener('click', function(e){
+    if (e.target.closest('.kebab'))

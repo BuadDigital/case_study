@@ -331,7 +331,7 @@ export function KeysView() {
             aria-label="بحث الظروف"
           />
           <OperationalToolbarSelect
-            className="!w-auto min-w-[148px] max-w-full shrink-0 sm:w-[148px]"
+            className="shrink-0"
             value={statusFilter}
             onChange={(e) => {
               setStatusFilter(e.target.value as StatusFilter);

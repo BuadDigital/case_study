@@ -1,0 +1,33 @@
+" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>تجميع حسب أمر العمل</span></button>' +
+        '<span id="txCount" style="margin-inline-start:auto;font-size:12.5px;color:var(--text-3);font-weight:600"></span>' +
+      '</div></div>' +
+      '<div class="card"><div class="scroll"><div class="grid" style="min-width:100%">' +
+        '<div class="thead" style="grid-template-columns:' + cols + '">' +
+          '<div class="th">رقم الصك</div><div class="th">أمر العمل</div><div class="th">نوع الإسناد</div><div class="th">المدينة</div><div class="th">الحي</div><div class="th">المرحلة</div><div class="th c">المزيد</div>' +
+        '</div><div id="txRows"></div></div></div>' +
+        '<div style="padding:11px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--text-3)">اضغط الصف لفتح المعاملة في مرحلتها الحالية — اضغط نفس الصف مرة أخرى للإغلاق.</div>' +
+      '</div>';
+    var draw = function(){
+      var q = TX_STATE.search.trim();
+      var rows = ALL_TX.filter(function(t){
+        var okQ = !q || (t.deed + ' ' + t.po + ' ' + t.type + ' ' + t.city + ' ' + t.district).indexOf(q) !== -1;
+        var okS = !TX_STATE.status || t.phase === TX_STATE.status;
+        var okT = !TX_STATE.type || t.type === TX_STATE.type;
+        return okQ && okS && okT;
+      });
+      var rowHtml = function(t){
+        return '<div class="row" data-open-po="' + esc(t.po) + '" style="grid-template-columns:' + cols + ';cursor:pointer">' +
+          '<div class="td"><span dir="ltr" style="font-weight:700;color:var(--gold-d);font-size:12.5px">صك ' + esc(t.deed) + '</span></div>' +
+          '<div class="td"><span dir="ltr" style="font-weight:600;color:var(--text-2);font-size:12.5px">' + esc(t.po) + '</span></div>' +
+          '<div class="td">' + esc(t.type) + '</div>' +
+          '<div class="td">' + esc(t.city) + '</div>' +
+          '<div class="td">' + esc(t.district) + '</div>' +
+          '<div class="td">' + pill(t.phase, t.pc) + '</div>' +
+          '<div class="td c">' + txMoreMenu() + '</div>' +
+        '</div>';
+      };
+      var html;
+      if (!rows.length) {
+        html = '<div style="padding:44px 16px;text-align:center;color:var(--text-3);font-size:13.5px">لا توجد معاملات مطابقة.</div>';
+      } else if (TX_STATE.group) {
+        var orde
