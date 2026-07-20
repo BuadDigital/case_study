@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -13,17 +13,13 @@ import {
   Table,
   TBody,
   Td,
-  TdAction,
   Th,
-  ThAction,
   THead,
   Tr,
   cn,
   queueTableRowClassName,
   queueTableWrapClassName,
 } from "@platform/design-system";
-import { RowMoreMenu } from "../components/ui/RowMoreMenu";
-import type { RowMoreMenuItem } from "../components/ui/RowMoreMenu";
 import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
 import { getAuthSession } from "@platform/auth-client";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
@@ -49,15 +45,17 @@ import {
   type PoIntakeRecord,
 } from "../lib/prototype/po-intake-data";
 import { ltrValueClass } from "../components/po-intake/PropertyDetailFields";
-import { InternalDelegationLettersModal } from "../components/government-review/InternalDelegationLettersModal";
-import {
-  agentInfoFromStaff,
-} from "../lib/prototype/internal-delegation-letters";
 import {
   usePoRecordsQuery,
   useWorkflowTasksQuery,
 } from "../query/case-study-queries";
+import { useOperationsTasksQuery } from "../query/operations-tasks-queries";
 import { partyAccountForRole } from "../lib/prototype/distribution-parties";
+import {
+  isActiveOperationsTask,
+  type OperationsTask,
+} from "../lib/prototype/operations-tasks-storage";
+import { operationsTaskStatusLabel } from "../lib/prototype/operations-task-display";
 
 const ROW = queueTableRowClassName;
 const TABLE_COLS = 7;
@@ -74,6 +72,19 @@ type GovernmentReviewPoRow = {
   status: WorkflowTask["status"];
 };
 
+function courtVisitForPo(
+  opsTasks: OperationsTask[],
+  poNumber: string,
+  options?: { activeOnly?: boolean },
+): OperationsTask | undefined {
+  const po = poNumber.trim();
+  return opsTasks.find((t) => {
+    if (t.type !== "court_visit" || t.poNumber?.trim() !== po) return false;
+    if (options?.activeOnly) return isActiveOperationsTask(t);
+    return t.status !== "cancelled";
+  });
+}
+
 export function GovernmentReviewView() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -87,23 +98,6 @@ export function GovernmentReviewView() {
     () => partyAccountForRole(role, staffUsers),
     [role, staffUsers],
   );
-  const reviewerStaff = useMemo(() => {
-    const assigneeId = reviewerScope?.assigneeId ?? reviewerAccount?.assigneeId;
-    if (!assigneeId) return null;
-    return (
-      staffUsers.find((u) => u.distributionAssigneeId?.trim() === assigneeId) ??
-      null
-    );
-  }, [staffUsers, reviewerScope, reviewerAccount]);
-  const delegationScopeKey =
-    reviewerScope?.assigneeId?.trim() ||
-    reviewerAccount?.assigneeId?.trim() ||
-    viewerEmail?.trim() ||
-    "government-review";
-  const delegationAgent = useMemo(
-    () => agentInfoFromStaff(reviewerStaff),
-    [reviewerStaff],
-  );
 
   const {
     data: tasks,
@@ -114,10 +108,12 @@ export function GovernmentReviewView() {
     isFetched: poRecordsFetched,
   } = usePoRecordsQuery();
 
+  const assigneeFilter = reviewerAccount?.assigneeId?.trim();
+  const { data: opsTasks = [] } = useOperationsTasksQuery({
+    assigneeId: assigneeFilter,
+  });
+
   const queueReady = tasksFetched && poRecordsFetched;
-  const [delegationPoNumber, setDelegationPoNumber] = useState<string | null>(
-    null,
-  );
 
   useEffect(() => {
     if (!selectedTaskId) return;
@@ -141,19 +137,6 @@ export function GovernmentReviewView() {
       ),
     [viewerEmail, role, tasks, staffUsers],
   );
-
-  const inScopeRecords = useMemo(() => {
-    const poNumbers = new Set(mine.map((t) => t.poNumber.trim()));
-    return poRecords.filter((r) => {
-      if (!poNumbers.has(r.poNumber.trim())) return false;
-      const courts = r.properties.map((p) => p.court.trim()).filter(Boolean);
-      const cities = poCitiesForReviewerScope(
-        r,
-        mine.filter((t) => t.poNumber.trim() === r.poNumber.trim()),
-      );
-      return poInReviewerScope(courts, reviewerScope, cities);
-    });
-  }, [mine, poRecords, reviewerScope]);
 
   const rows = useMemo(() => {
     const govTasks = mine.filter((task) => task.kind === "government-review");
@@ -249,17 +232,6 @@ export function GovernmentReviewView() {
     [router],
   );
 
-  const rowMoreItems = useCallback(
-    (row: GovernmentReviewPoRow): RowMoreMenuItem[] => [
-      {
-        id: "internal-delegation-letter",
-        label: "خطاب التفويض الداخلي",
-        onClick: () => setDelegationPoNumber(row.poNumber),
-      },
-    ],
-    [],
-  );
-
   const hasRail = false;
 
   if (selectedTaskId) {
@@ -274,7 +246,7 @@ export function GovernmentReviewView() {
       <Th>تاريخ الاستلام</Th>
       <Th>تاريخ الاستحقاق</Th>
       <Th>حالة المهمة</Th>
-      <ThAction aria-label="المزيد" />
+      <Th>مهمة زيارة المحكمة</Th>
     </Tr>
   );
 
@@ -307,6 +279,7 @@ export function GovernmentReviewView() {
                       const poHref = poPropertiesPath(row.poNumber);
                       const dueUrgent =
                         Boolean(row.dueDateAt) && isPastDue(row.dueDateAt);
+                      const courtVisit = courtVisitForPo(opsTasks, row.poNumber);
                       return (
                         <Tr
                           key={row.poNumber}
@@ -370,9 +343,26 @@ export function GovernmentReviewView() {
                               <Badge tone="success">مكتملة</Badge>
                             )}
                           </Td>
-                          <TdAction>
-                            <RowMoreMenu items={rowMoreItems(row)} />
-                          </TdAction>
+                          <Td onClick={(e) => e.stopPropagation()}>
+                            {courtVisit ? (
+                              <Link
+                                href={`/operations-tasks?task=${encodeURIComponent(courtVisit.id)}`}
+                                className="relative z-[1] inline-flex flex-col gap-0.5 text-start no-underline"
+                              >
+                                <span className="text-[12px] font-semibold text-primary underline decoration-primary underline-offset-2">
+                                  {courtVisit.displayId}
+                                </span>
+                                <span className="text-[10px] text-text-3">
+                                  {operationsTaskStatusLabel(courtVisit.status)}
+                                  {isActiveOperationsTask(courtVisit)
+                                    ? " · افتح الخطاب من المهام"
+                                    : ""}
+                                </span>
+                              </Link>
+                            ) : (
+                              <span className="text-[12px] text-text-3">—</span>
+                            )}
+                          </Td>
                         </Tr>
                       );
                     })}
@@ -380,8 +370,8 @@ export function GovernmentReviewView() {
                 </Table>
               </div>
               <QueueTableHint>
-                اضغط على رقم أمر العمل أو الصف لعرض عقاراته. لخطاب التفويض
-                الداخلي استخدم قائمة ⋮.
+                اضغط على رقم أمر العمل أو الصف لعرض عقاراته. خطاب التفويض يُنشأ
+                عبر المهام التشغيلية — افتح عمود «مهمة زيارة المحكمة» عند وجودها.
               </QueueTableHint>
             </>
           )}
@@ -389,22 +379,12 @@ export function GovernmentReviewView() {
   );
 
   return (
-    <>
-      <ActiveTransactionPageLayout
-        pageId="government-review"
-        hasRail={hasRail}
-        panelOpen={false}
-        queuePanel={queuePanel}
-        sidePanel={null}
-      />
-      <InternalDelegationLettersModal
-        open={Boolean(delegationPoNumber)}
-        records={inScopeRecords}
-        scopeKey={delegationScopeKey}
-        agent={delegationAgent}
-        focusPoNumber={delegationPoNumber}
-        onClose={() => setDelegationPoNumber(null)}
-      />
-    </>
+    <ActiveTransactionPageLayout
+      pageId="government-review"
+      hasRail={hasRail}
+      panelOpen={false}
+      queuePanel={queuePanel}
+      sidePanel={null}
+    />
   );
 }

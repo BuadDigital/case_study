@@ -77,6 +77,7 @@ import {
   canReceivePo,
   isPoViewOnly,
 } from "../lib/prototype/po-roles";
+import { canManageOperationsTasks } from "../lib/prototype/operations-task-roles";
 
 type SortKey = "created" | "po" | "received" | "due";
 type SortDir = "asc" | "desc";
@@ -453,6 +454,7 @@ export function PoListView() {
   const showIntake = canReceivePo(role);
   const showEdit = canEditPoHeader(role);
   const showDelete = canDeletePo(role);
+  const showCreateOperationsTask = canManageOperationsTasks(role);
   const { showToast } = useToast();
   const [deletingPo, setDeletingPo] = useState<string | null>(null);
   const [lifecyclePo, setLifecyclePo] = useState<string | null>(null);
@@ -721,7 +723,7 @@ export function PoListView() {
               }
             />
             <OperationalToolbarSelect
-              className="!w-auto min-w-[148px] max-w-full shrink-0 sm:w-[148px]"
+              className="shrink-0"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
               aria-label="تصفية الحالة"
@@ -736,7 +738,7 @@ export function PoListView() {
               )}
             </OperationalToolbarSelect>
             <OperationalToolbarSelect
-              className="!w-auto min-w-[168px] max-w-full shrink-0 sm:w-[168px]"
+              className="shrink-0"
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
               aria-label="تصفية نوع الإسناد"
@@ -966,6 +968,7 @@ export function PoListView() {
                                   showEdit,
                                   showDelete,
                                   showLifecycleActions: showEdit,
+                                  showCreateOperationsTask,
                                   deleting: deletingPo === p.id,
                                   lifecycleBusy: lifecyclePo === p.id,
                                   router,

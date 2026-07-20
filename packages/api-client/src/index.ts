@@ -137,6 +137,24 @@ export {
 } from "./workflow-tasks";
 
 export {
+  addOperationsTaskComment,
+  createOperationsTask,
+  getOperationsTask,
+  listOperationsTasks,
+  patchOperationsTask,
+  reassignOperationsTask,
+  remindOperationsTask,
+  type CreateOperationsTaskRequest,
+  type OperationsTaskCommentDto,
+  type OperationsTaskCommentFileDto,
+  type OperationsTaskDto,
+  type OperationsTaskLetterRowDto,
+  type PatchOperationsTaskRequest,
+  type ReassignOperationsTaskRequest,
+  type RemindOperationsTaskRequest,
+} from "./operations-tasks";
+
+export {
   getCaseStudyForm,
   getPartyCaseStudyForm,
   saveCaseStudyForm,

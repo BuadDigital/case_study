@@ -22,6 +22,14 @@ import {
 } from "../../lib/prototype/po-intake-storage";
 import { loadCaseStudyFormDraft } from "../../lib/prototype/case-study-form-storage";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useOperationsTasksQuery } from "../../query/operations-tasks-queries";
+import {
+  operationsTaskStatusLabel,
+  operationsTaskTypeLabel,
+} from "../../lib/prototype/operations-task-display";
+import { canManageOperationsTasks } from "../../lib/prototype/operations-task-roles";
+import { isActiveOperationsTask } from "../../lib/prototype/operations-tasks-storage";
 
 type LinkedSamePo = {
   kind: "same-po";
@@ -61,8 +69,30 @@ export function PropertyDetailLinkedTab({
   property: PoPropertyIntake;
   caseStudyTask: WorkflowTask | null;
 }) {
+  const { role } = usePrototype();
+  const canCreateOps = canManageOperationsTasks(role);
+  const { data: opsTasks = [] } = useOperationsTasksQuery({ live: true });
   const poNumber = record.poNumber.trim();
   const deedNumber = property.deedNumber.trim();
+  const deedDisplay = formatPropertyDeedDisplay(property) || deedNumber;
+
+  const propertyOpsTasks = useMemo(() => {
+    return opsTasks.filter((t) => {
+      if (t.poNumber?.trim() === poNumber) {
+        if (t.scope === "work_order" || t.scope === "multi") return true;
+        if (t.scope === "transaction") {
+          return t.deeds.some(
+            (d) => d === deedDisplay || d === deedNumber || d.includes(deedNumber),
+          );
+        }
+      }
+      return t.deeds.some(
+        (d) => d === deedDisplay || d === deedNumber || (deedNumber && d.includes(deedNumber)),
+      );
+    });
+  }, [opsTasks, poNumber, deedDisplay, deedNumber]);
+
+  const createHref = `/operations-tasks?create=1&type=general&scope=transaction&po=${encodeURIComponent(poNumber)}&deed=${encodeURIComponent(deedDisplay)}`;
 
   const samePoLinks = useMemo<LinkedSamePo[]>(
     () =>
@@ -178,8 +208,49 @@ export function PropertyDetailLinkedTab({
       <SectionHeader>العقارات المرتبطة</SectionHeader>
       <InfoBox icon="ℹ">
         الارتباطات تشمل عقارات نفس أمر العمل، وتسجيلات سابقة لنفس الصك، والأصول
-        المرتبطة المصرّح بها في دراسة الحالة.
+        المرتبطة المصرّح بها في دراسة الحالة، والمهام التشغيلية المرتبطة.
       </InfoBox>
+
+      <div className="mt-3">
+        <h4 className="mb-2 flex items-center justify-between gap-2 text-[12px] font-semibold text-text">
+          <span>المهام التشغيلية</span>
+          {canCreateOps ? (
+            <Link
+              href={createHref}
+              className="text-[11px] font-semibold text-primary-light no-underline hover:underline"
+            >
+              إنشاء مهمة
+            </Link>
+          ) : null}
+        </h4>
+        {propertyOpsTasks.length === 0 ? (
+          <p className="m-0 text-[12px] text-text-3">لا مهام مرتبطة بهذا الصك.</p>
+        ) : (
+          <ul className="m-0 flex list-none flex-col gap-2 p-0">
+            {propertyOpsTasks.map((task) => (
+              <li key={task.id} className="m-0">
+                <Link
+                  href={`/operations-tasks?task=${encodeURIComponent(task.id)}`}
+                  className="flex flex-col gap-1 rounded-[var(--radius-DEFAULT)] border border-border bg-surface-2 px-3.5 py-3 no-underline transition-colors hover:border-primary-light hover:bg-info-bg"
+                >
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="text-[13px] font-semibold text-primary-light">
+                      {task.title}
+                    </span>
+                    <DetailBadge tone={isActiveOperationsTask(task) ? "amber" : "gray"}>
+                      {operationsTaskStatusLabel(task.status)}
+                    </DetailBadge>
+                  </span>
+                  <span className="text-[11px] text-text-3">
+                    {task.displayId} · {operationsTaskTypeLabel(task.type)} ·{" "}
+                    {task.assigneeName || "—"}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {samePoLinks.length > 0 ? (
         <div className="mt-3">

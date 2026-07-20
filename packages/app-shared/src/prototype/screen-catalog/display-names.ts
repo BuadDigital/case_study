@@ -21,6 +21,7 @@ export const SCREEN_CATALOG_PAGE_NAMES: Partial<Record<PageId, string>> = {
   "government-review": "المراجعة الحكومية — قائمة المهام",
   "valuation-coordination": "استلام التقييم — قائمة المهام",
   "property-appraisal": "تقييم العقار — قائمة المهام",
+  "operations-tasks": "المهام التشغيلية — السجل والتذكير",
   users: "إدارة المستخدمين",
   courts: "المحاكم والدوائر",
   "failure-types": "أنواع التعذرات",

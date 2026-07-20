@@ -9,6 +9,7 @@ export { AllAssignedTransactionsView } from "./views/AllAssignedTransactionsView
 export { ActiveDistributionView } from "./views/ActiveDistributionView";
 export { ActiveCaseStudyView } from "./views/ActiveCaseStudyView";
 export { GovernmentReviewView } from "./views/GovernmentReviewView";
+export { OperationsTasksView } from "./views/OperationsTasksView";
 export { PartyActiveTaskView } from "./views/PartyActiveTaskView";
 export { PartyActiveTaskWorkPage } from "./views/PartyActiveTaskWorkPage";
 export type {

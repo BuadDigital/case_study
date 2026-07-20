@@ -61,14 +61,14 @@ public static class PlatformPermissionCatalog
         ["section-supervisor"] =
         [
             "po", "active-primary-data", "bourse-inquiry", "active-distribution",
-            "active-case-study", "keys", "failures", "suspended-transactions", "failure-types",
+            "active-case-study", "operations-tasks", "keys", "failures", "suspended-transactions", "failure-types",
             "party-fees",
             "system-screen-catalog",
         ],
         ["case-specialist"] =
         [
             "po", "active-primary-data", "bourse-inquiry", "active-distribution",
-            "active-case-study", "failures", "suspended-transactions",
+            "active-case-study", "operations-tasks", "failures", "suspended-transactions",
             "system-screen-catalog",
         ],
         ["valuation-coordinator"] =
@@ -88,7 +88,7 @@ public static class PlatformPermissionCatalog
         ],
         ["government-reviewer"] =
         [
-            "po", "government-review", "party-fees", "keys", "failures",
+            "po", "government-review", "operations-tasks", "party-fees", "keys", "failures",
             "system-screen-catalog",
         ],
         ["engineering-office"] =

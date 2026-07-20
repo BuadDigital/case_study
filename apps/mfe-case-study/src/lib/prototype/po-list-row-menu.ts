@@ -8,6 +8,8 @@ export function buildPoListRowMoreItems(options: {
   showEdit: boolean;
   showDelete: boolean;
   showLifecycleActions: boolean;
+  /** أخصائي/مشرف — إنشاء مهمة تشغيلية مربوطة بهذا الأمر */
+  showCreateOperationsTask?: boolean;
   deleting: boolean;
   lifecycleBusy: boolean;
   router: { push: (href: string) => void };
@@ -23,6 +25,17 @@ export function buildPoListRowMoreItems(options: {
       onClick: () => options.router.push(poPropertiesPath(po)),
     },
   ];
+
+  if (options.showCreateOperationsTask) {
+    items.push({
+      id: "create-operations-task",
+      label: "إنشاء مهمة (زيارة محكمة)",
+      onClick: () =>
+        options.router.push(
+          `/operations-tasks?create=1&type=court_visit&po=${encodeURIComponent(po)}`,
+        ),
+    });
+  }
 
   if (options.showEdit) {
     items.push({
