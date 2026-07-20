@@ -21,7 +21,7 @@ import {
 } from "@platform/design-system";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
-import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
+import { useStaffUsersQuery, useDistributionAssigneesQuery } from "@settings/mfe/query/settings-queries";
 import { usePoRecordsQuery } from "../query/case-study-queries";
 import { useOperationsTasksQuery } from "../query/operations-tasks-queries";
 import {
@@ -562,22 +562,34 @@ function assigneesForType(
   type: string,
   staffUsers: StaffUser[],
 ): DistributionAssignee[] {
-  if (type === "court_visit") return getGovernmentAuditors(staffUsers);
-  if (type === "reshoot" || type === "field_visit") {
-    return getFieldInspectors(staffUsers);
+  let list: DistributionAssignee[] = [];
+  if (type === "court_visit") list = getGovernmentAuditors(staffUsers);
+  else if (type === "reshoot" || type === "field_visit") {
+    list = getFieldInspectors(staffUsers);
+  } else {
+    const seen = new Set<string>();
+    for (const a of [
+      ...getGovernmentAuditors(staffUsers),
+      ...getFieldInspectors(staffUsers),
+      ...getValuators(staffUsers),
+    ]) {
+      if (seen.has(a.id)) continue;
+      seen.add(a.id);
+      list.push(a);
+    }
   }
-  const seen = new Set<string>();
-  const list: DistributionAssignee[] = [];
-  for (const a of [
-    ...getGovernmentAuditors(staffUsers),
-    ...getFieldInspectors(staffUsers),
-    ...getValuators(staffUsers),
-  ]) {
-    if (seen.has(a.id)) continue;
-    seen.add(a.id);
-    list.push(a);
-  }
-  return list;
+  if (list.length > 0) return list;
+  return staffUsers
+    .filter(
+      (u) =>
+        u.status !== "Inactive" && Boolean(u.distributionAssigneeId?.trim()),
+    )
+    .map((u) => ({
+      id: u.distributionAssigneeId!.trim(),
+      name: u.name,
+      subtitle: u.role,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, "ar"));
 }
 
 function assigneeRoleLabel(staffUsers: StaffUser[], assigneeId: string): string {
@@ -937,7 +949,17 @@ export function OperationsTasksView() {
 
   const { role } = usePrototype();
   const { data: staffResult } = useStaffUsersQuery();
-  const staffUsers = useMemo(() => staffResult?.users ?? [], [staffResult?.users]);
+  const { data: distResult } = useDistributionAssigneesQuery();
+  const staffUsers = useMemo(() => {
+    const byId = new Map<string, StaffUser>();
+    for (const u of staffResult?.users ?? []) byId.set(u.id, u);
+    for (const u of distResult?.users ?? []) {
+      if (!byId.has(u.id)) byId.set(u.id, u);
+    }
+    return [...byId.values()];
+  }, [staffResult?.users, distResult?.users]);
+  const staffLoadError =
+    staffResult?.loadError ?? distResult?.loadError ?? null;
   const { data: poRecords = [] } = usePoRecordsQuery();
 
   const canCreate = canManageOperationsTasks(role);
@@ -2151,6 +2173,7 @@ export function OperationsTasksView() {
         open={createOpen}
         poRecords={poRecords}
         staffUsers={staffUsers}
+        staffLoadError={staffLoadError}
         prefill={createPrefill}
         onClose={() => {
           setCreateOpen(false);

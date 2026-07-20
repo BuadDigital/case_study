@@ -219,16 +219,13 @@ export const opsGridRow = "grid min-h-[58px] cursor-pointer items-center border-
 
 export const opsGridRowOn = "bg-[color-mix(in_srgb,var(--gold)_10%,transparent)]";
 
-export const opsTd =
-  "flex min-w-0 items-center overflow-visible px-4 py-3.5";
+export const opsTd = "flex min-w-0 items-center overflow-visible px-4 py-3.5";
 
 export const opsTdC = "justify-center";
 
-export const opsTh =
-  "flex items-center justify-center whitespace-nowrap px-4 py-3.5 text-center text-xs font-bold text-heading";
+export const opsTh = "flex items-center justify-center whitespace-nowrap px-4 py-3.5 text-center text-xs font-bold text-heading";
 
-export const opsThead =
-  "grid border-b-2 border-gold bg-surface-2";
+export const opsThead = "grid border-b-2 border-gold bg-surface-2";
 
 const opsShowAllBtnBase =
   "inline-flex cursor-pointer items-center gap-[7px] rounded-lg border px-[13px] py-2 font-[inherit] text-[12.5px] font-bold transition-[background,color,border-color] duration-[220ms] ease-in-out";
@@ -240,35 +237,27 @@ export const opsShowAllBtnOn = `${opsShowAllBtnBase} border-ink bg-ink text-whit
 export const opsBulk =
   "mb-3.5 flex flex-wrap items-center gap-3 rounded-[11px] bg-ink px-4 py-[11px] text-white";
 
-export const opsBulkClear =
-  "cursor-pointer rounded-lg border border-white/35 bg-transparent px-3.5 py-[9px] font-[inherit] text-[12.5px] font-semibold text-white";
+export const opsBulkClear = "cursor-pointer rounded-lg border border-white/35 bg-transparent px-3.5 py-[9px] font-[inherit] text-[12.5px] font-semibold text-white";
 
 export const opsDotSep = "text-text-3";
 
-export const opsTypeIconSm =
-  "grid h-[30px] w-[30px] shrink-0 place-items-center rounded-lg bg-gold-soft text-gold-d";
+export const opsTypeIconSm = "grid h-[30px] w-[30px] shrink-0 place-items-center rounded-lg bg-gold-soft text-gold-d";
 
 export const opsRowTitle = "text-[13.5px] font-bold text-heading";
 
-export const opsRowMeta =
-  "inline-flex flex-wrap items-center gap-1.5 text-[11.5px] text-text-3";
+export const opsRowMeta = "inline-flex flex-wrap items-center gap-1.5 text-[11.5px] text-text-3";
 
-export const opsLetterRow =
-  "grid min-h-12 cursor-default items-center border-b border-border text-[13px]";
+export const opsLetterRow = "grid min-h-12 cursor-default items-center border-b border-border text-[13px]";
 
 export const opsTdPo = "flex min-w-0 items-center overflow-visible px-4 py-3.5 text-[13px] font-semibold text-text-2";
 
-export const opsTdDeed =
-  "flex min-w-0 items-center overflow-visible px-4 py-3.5 text-[13px] font-bold text-gold-d";
+export const opsTdDeed = "flex min-w-0 items-center overflow-visible px-4 py-3.5 text-[13px] font-bold text-gold-d";
 
-export const opsTdPlain =
-  "flex min-w-0 items-center overflow-visible px-4 py-3.5 text-[13px]";
+export const opsTdPlain = "flex min-w-0 items-center overflow-visible px-4 py-3.5 text-[13px]";
 
-export const opsTdCourt =
-  "flex min-w-0 items-center overflow-visible px-4 py-3.5 text-[12.5px]";
+export const opsTdCourt = "flex min-w-0 items-center overflow-visible px-4 py-3.5 text-[12.5px]";
 
-export const opsThStart =
-  "flex items-center justify-start whitespace-nowrap px-4 py-3.5 text-start text-xs font-bold text-heading";
+export const opsThStart = "flex items-center justify-start whitespace-nowrap px-4 py-3.5 text-start text-xs font-bold text-heading";
 
 export const opsFileSize = "font-medium text-text-3";
 

@@ -12,6 +12,7 @@ import {
   getFieldInspectors,
   getGovernmentAuditors,
   getValuators,
+  getEngineeringOffices,
   type DistributionAssignee,
 } from "../lib/prototype/distribution-parties";
 import {
@@ -182,12 +183,13 @@ function assigneesForType(
   if (type === "court_visit") list = getGovernmentAuditors(staffUsers);
   else if (type === "reshoot" || type === "field_visit") {
     list = getFieldInspectors(staffUsers);
-  } else {
+  }   else {
     const seen = new Set<string>();
     for (const a of [
       ...getGovernmentAuditors(staffUsers),
       ...getFieldInspectors(staffUsers),
       ...getValuators(staffUsers),
+      ...getEngineeringOffices(staffUsers),
     ]) {
       if (seen.has(a.id)) continue;
       seen.add(a.id);
@@ -195,14 +197,18 @@ function assigneesForType(
     }
   }
   if (list.length > 0) return list;
-  // Fallback when party role filters yield no staff (demo / incomplete profiles)
+  // Fallback: anyone with a distribution assignee id (demo / incomplete job titles)
   return staffUsers
-    .filter((u) => Boolean(u.distributionAssigneeId?.trim()))
+    .filter(
+      (u) =>
+        u.status !== "Inactive" && Boolean(u.distributionAssigneeId?.trim()),
+    )
     .map((u) => ({
       id: u.distributionAssigneeId!.trim(),
       name: u.name,
       subtitle: u.role,
-    }));
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, "ar"));
 }
 
 function deedOptions(record: PoIntakeRecord | undefined): string[] {
@@ -217,6 +223,7 @@ type Props = {
   open: boolean;
   poRecords: PoIntakeRecord[];
   staffUsers: StaffUser[];
+  staffLoadError?: string | null;
   prefill?: CreateOperationsTaskPrefill | null;
   onClose: () => void;
   onCreated: (taskId: string) => void;
@@ -226,6 +233,7 @@ export function CreateOperationsTaskModal({
   open,
   poRecords,
   staffUsers,
+  staffLoadError = null,
   prefill,
   onClose,
   onCreated,
@@ -521,7 +529,11 @@ export function CreateOperationsTaskModal({
             </select>
             {assignees.length === 0 ? (
               <span className="text-[11px] text-text-3">
-                لا يوجد منفّذون مطابقون لهذا النوع في بيانات الموظفين.
+                {staffLoadError
+                  ? staffLoadError
+                  : staffUsers.length === 0
+                    ? "تعذّر تحميل المنفّذين — تحقق من تشغيل خادم الهوية وصلاحية إدارة أوامر العمل."
+                    : "لا يوجد منفّذون بمُعرّف توزيع لهذا النوع. تأكد أن للموظفين DistributionAssigneeId ومسمى وظيفي صحيح."}
               </span>
             ) : null}
           </div>

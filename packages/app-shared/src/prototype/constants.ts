@@ -89,7 +89,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
   },
   "case-specialist": {
     name: "أسامة الصالحي",
-    dept: "أخصائي دراسة الحالة",
+    dept: "أخصائي دراسة حالة",
     init: "أص",
     bg: "var(--success-bg)",
     tc: "var(--success)",
@@ -126,6 +126,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     pages: [
       "po",
       "all-transactions",
+      "operations-tasks",
       "property-appraisal",
       "failures",
       "suspended-transactions",
@@ -140,6 +141,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     tc: "var(--info)",
     pages: [
       "all-transactions",
+      "operations-tasks",
       "property-inspection",
       "party-fees",
       "failures",

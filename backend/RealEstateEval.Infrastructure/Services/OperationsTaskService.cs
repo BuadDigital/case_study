@@ -516,8 +516,12 @@ public sealed class OperationsTaskService : IOperationsTaskService
         return (Map(entity), null);
     }
 
-    private static bool IsManager(string actorRole) =>
-        actorRole is "case-specialist" or "section-supervisor" or "cdo" or "general-manager";
+    private static bool IsManager(string actorRole)
+    {
+        var role = actorRole.Trim();
+        return role is "case-specialist" or "section-supervisor" or "general-manager"
+            || string.Equals(role, "cdo", StringComparison.OrdinalIgnoreCase);
+    }
 
     private async Task NotifyAssigneeAsync(OperationsTask entity, CancellationToken cancellationToken)
     {

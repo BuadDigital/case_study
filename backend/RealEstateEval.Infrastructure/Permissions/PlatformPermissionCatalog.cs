@@ -78,12 +78,12 @@ public static class PlatformPermissionCatalog
         ],
         ["real-estate-appraiser"] =
         [
-            "po", "all-transactions", "property-appraisal", "failures", "suspended-transactions",
+            "po", "all-transactions", "operations-tasks", "property-appraisal", "failures", "suspended-transactions",
             "system-screen-catalog",
         ],
         ["field-inspector"] =
         [
-            "all-transactions", "property-inspection", "party-fees", "failures",
+            "all-transactions", "operations-tasks", "property-inspection", "party-fees", "failures",
             "system-screen-catalog",
         ],
         ["government-reviewer"] =
