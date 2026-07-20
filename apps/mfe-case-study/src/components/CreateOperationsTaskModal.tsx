@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Button, Input, Note, Select, Textarea, cn } from "@platform/design-system";
+import { Note, cn } from "@platform/design-system";
 import type {
   CreateOperationsTaskRequest,
   OperationsTaskLetterRowDto,
@@ -25,7 +25,40 @@ import {
   OPERATIONS_TASK_TYPE_LABELS,
 } from "../lib/prototype/operations-task-display";
 import { createOperationsTaskRecord } from "../lib/prototype/operations-tasks-storage";
-import "../views/operations-tasks-look.css";
+import {
+  opsBtnGhost,
+  opsBtnPrimary,
+  opsFld,
+  opsFldControl,
+  opsFldFull,
+  opsFldTextarea,
+  opsFormGrid,
+  opsLetterCard,
+  opsLetterHead,
+  opsLetterSub,
+  opsLetterTitle,
+  opsLetterRow,
+  opsTdCourt,
+  opsTdDeed,
+  opsTdPlain,
+  opsTdPo,
+  opsThStart,
+  opsFileSize,
+  opsTd,
+  opsTdC,
+  opsTh,
+  opsThead,
+  opsTfChip,
+  opsTfChipActive,
+  opsTfDeed,
+  opsTfDeedCheck,
+  opsTfDeeds,
+  opsTfLblInFld,
+  opsTfNote,
+  opsTfSeg,
+  opsTfSegActive,
+  opsTfSegRow,
+} from "../lib/prototype/ops-tasks-tw";
 
 const LETTER_COLS =
   "44px minmax(84px,.9fr) minmax(120px,1.2fr) minmax(100px,1fr) minmax(78px,.8fr) minmax(160px,1.5fr)";
@@ -76,12 +109,12 @@ function SegRow({
   onChange: (id: string) => void;
 }) {
   return (
-    <div className="tf-seg-row">
+    <div className={opsTfSegRow}>
       {options.map((opt) => (
         <button
           key={opt.id}
           type="button"
-          className={cn("tf-seg", value === opt.id && "active")}
+          className={value === opt.id ? opsTfSegActive : opsTfSeg}
           onClick={() => onChange(opt.id)}
         >
           {opt.label}
@@ -145,22 +178,31 @@ function assigneesForType(
   type: string,
   staffUsers: StaffUser[],
 ): DistributionAssignee[] {
-  if (type === "court_visit") return getGovernmentAuditors(staffUsers);
-  if (type === "reshoot" || type === "field_visit") {
-    return getFieldInspectors(staffUsers);
+  let list: DistributionAssignee[] = [];
+  if (type === "court_visit") list = getGovernmentAuditors(staffUsers);
+  else if (type === "reshoot" || type === "field_visit") {
+    list = getFieldInspectors(staffUsers);
+  } else {
+    const seen = new Set<string>();
+    for (const a of [
+      ...getGovernmentAuditors(staffUsers),
+      ...getFieldInspectors(staffUsers),
+      ...getValuators(staffUsers),
+    ]) {
+      if (seen.has(a.id)) continue;
+      seen.add(a.id);
+      list.push(a);
+    }
   }
-  const seen = new Set<string>();
-  const list: DistributionAssignee[] = [];
-  for (const a of [
-    ...getGovernmentAuditors(staffUsers),
-    ...getFieldInspectors(staffUsers),
-    ...getValuators(staffUsers),
-  ]) {
-    if (seen.has(a.id)) continue;
-    seen.add(a.id);
-    list.push(a);
-  }
-  return list;
+  if (list.length > 0) return list;
+  // Fallback when party role filters yield no staff (demo / incomplete profiles)
+  return staffUsers
+    .filter((u) => Boolean(u.distributionAssigneeId?.trim()))
+    .map((u) => ({
+      id: u.distributionAssigneeId!.trim(),
+      name: u.name,
+      subtitle: u.role,
+    }));
 }
 
 function deedOptions(record: PoIntakeRecord | undefined): string[] {
@@ -289,12 +331,6 @@ export function CreateOperationsTaskModal({
     setAssigneeName(first.name);
   }, [assignees, assigneeId]);
 
-  useEffect(() => {
-    if (type === "court_visit" && scope === "general") {
-      setScope("work_order");
-    }
-  }, [type, scope]);
-
   const toggleDeed = (value: string) => {
     setSelectedDeeds((prev) =>
       prev.includes(value) ? prev.filter((d) => d !== value) : [...prev, value],
@@ -408,91 +444,117 @@ export function CreateOperationsTaskModal({
       onClose={onClose}
       wide
       maxWidthPx={720}
+      look="ops-html"
       footer={
-        <>
-          <Button variant="ghost" onClick={onClose} disabled={busy}>
+        <div className="flex w-full justify-end gap-2.5">
+          <button type="button" className={opsBtnGhost} onClick={onClose} disabled={busy}>
             إلغاء
-          </Button>
-          <Button disabled={busy} onClick={() => void handleSubmit()}>
-            إنشاء المهمة
-          </Button>
-        </>
+          </button>
+          <button
+            type="button"
+            className={opsBtnPrimary}
+            disabled={busy}
+            onClick={() => void handleSubmit()}
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+            <span>إنشاء المهمة</span>
+          </button>
+        </div>
       }
     >
-      <div className="ops-tasks">
-        <div className="flex flex-col gap-3.5">
-          {error ? <Note tone="danger">{error}</Note> : null}
+      <div className={opsFormGrid}>
+          {error ? (
+            <div className={opsFldFull}>
+              <Note tone="danger">{error}</Note>
+            </div>
+          ) : null}
 
-          <div className="grid gap-3.5 sm:grid-cols-2">
-            <label className="flex flex-col gap-1.5">
-              <span className="tf-lbl">نوع المهمة *</span>
-              <Select
-                value={type}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  setType(next);
-                  setTitle(DEFAULT_TITLES[next] ?? "مهمة");
-                  if (next === "court_visit") setScope("work_order");
-                }}
-              >
-                {TASK_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {OPERATIONS_TASK_TYPE_LABELS[t]}
-                  </option>
-                ))}
-              </Select>
-            </label>
-
-            <label className="flex flex-col gap-1.5">
-              <span className="tf-lbl">مُسندة إلى *</span>
-              <Select
-                value={assigneeId}
-                onChange={(e) => {
-                  const id = e.target.value;
-                  setAssigneeId(id);
-                  setAssigneeName(assignees.find((a) => a.id === id)?.name ?? "");
-                }}
-              >
-                {assignees.length === 0 ? (
-                  <option value="">لا يوجد منفّذون</option>
-                ) : (
-                  <>
-                    <option value="">اختر المنفّذ…</option>
-                    {assignees.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name}
-                        {a.subtitle ? ` — ${a.subtitle}` : ""}
-                      </option>
-                    ))}
-                  </>
-                )}
-              </Select>
-            </label>
+          <div className={opsFld}>
+            <label className={opsTfLblInFld}>نوع المهمة *</label>
+            <select
+              className={opsFldControl}
+              value={type}
+              onChange={(e) => {
+                const next = e.target.value;
+                setType(next);
+                setTitle(DEFAULT_TITLES[next] ?? "مهمة");
+              }}
+            >
+              {TASK_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {OPERATIONS_TASK_TYPE_LABELS[t]}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <label className="flex flex-col gap-1.5">
-            <span className="tf-lbl">عنوان المهمة *</span>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} />
-          </label>
+          <div className={opsFld}>
+            <label className={opsTfLblInFld}>مُسندة إلى *</label>
+            <select
+              className={opsFldControl}
+              value={assigneeId}
+              onChange={(e) => {
+                const id = e.target.value;
+                setAssigneeId(id);
+                setAssigneeName(assignees.find((a) => a.id === id)?.name ?? "");
+              }}
+            >
+              <option value="">اختر المنفّذ…</option>
+              {assignees.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                  {a.subtitle ? ` — ${a.subtitle}` : ""}
+                </option>
+              ))}
+            </select>
+            {assignees.length === 0 ? (
+              <span className="text-[11px] text-text-3">
+                لا يوجد منفّذون مطابقون لهذا النوع في بيانات الموظفين.
+              </span>
+            ) : null}
+          </div>
 
-          <label className="flex flex-col gap-1.5">
-            <span className="tf-lbl">الوصف</span>
-            <Textarea
+          <div className={opsFldFull}>
+            <label className={opsTfLblInFld}>عنوان المهمة *</label>
+            <input
+              className={opsFldControl}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="مثال: زيارة محكمة التنفيذ بجدة"
+            />
+          </div>
+
+          <div className={opsFldFull}>
+            <label className={opsTfLblInFld}>الوصف</label>
+            <textarea
+              className={opsFldTextarea}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
               placeholder="تفاصيل إضافية للمنفّذ (اختياري)"
             />
-          </label>
+          </div>
 
-          <div>
-            <span className="tf-lbl">نطاق الربط *</span>
+          <div className={opsFldFull}>
+            <label className={opsTfLblInFld}>نطاق الربط *</label>
             <SegRow
               value={scope}
-              onChange={setScope}
-              options={SCOPES.filter(
-                (s) => type !== "court_visit" || s !== "general",
-              ).map((s) => ({
+              onChange={(id) => {
+                setScope(id);
+              }}
+              options={SCOPES.map((s) => ({
                 id: s,
                 label: OPERATIONS_TASK_SCOPE_LABELS[s] ?? s,
               }))}
@@ -500,9 +562,10 @@ export function CreateOperationsTaskModal({
           </div>
 
           {scope !== "general" && scope !== "multi" ? (
-            <label className="flex flex-col gap-1.5">
-              <span className="tf-lbl">أمر العمل *</span>
-              <Select
+            <div className={opsFldFull}>
+              <label className={opsTfLblInFld}>أمر العمل *</label>
+              <select
+                className={opsFldControl}
                 value={poNumber}
                 onChange={(e) => {
                   setPoNumber(e.target.value);
@@ -516,47 +579,56 @@ export function CreateOperationsTaskModal({
                     {r.poNumber.trim()}
                   </option>
                 ))}
-              </Select>
-            </label>
+              </select>
+            </div>
           ) : null}
 
           {scope === "general" ? (
-            <div className="tf-note">
-              مهمة مستقلة تماماً بلا ربط بمعاملة أو أمر عمل.
+            <div className={opsFldFull}>
+              <div className={opsTfNote}>
+                مهمة مستقلة تماماً بلا ربط بمعاملة أو أمر عمل.
+              </div>
             </div>
           ) : null}
 
           {scope === "multi" ? (
-            <div className="tf-note">
-              اختر صكوكاً من أي أوامر عمل — يُجمَّع خطاب التفويض حسب المحكمة/الدائرة.
+            <div className={opsFldFull}>
+              <div className={opsTfNote}>
+                اختر صكوكاً من أي أوامر عمل — يُجمَّع خطاب التفويض حسب المحكمة/الدائرة.
+              </div>
             </div>
           ) : null}
 
           {scope === "transaction" && selectedPo ? (
-            <label className="flex flex-col gap-1.5">
-              <span className="tf-lbl">المعاملة (الصك) *</span>
-              <Select value={deed} onChange={(e) => setDeed(e.target.value)}>
+            <div className={opsFldFull}>
+              <label className={opsTfLblInFld}>المعاملة (الصك) *</label>
+              <select
+                className={opsFldControl}
+                value={deed}
+                onChange={(e) => setDeed(e.target.value)}
+              >
                 <option value="">اختر الصك…</option>
                 {deeds.map((d) => (
                   <option key={d} value={d}>
                     {d}
                   </option>
                 ))}
-              </Select>
-            </label>
+              </select>
+            </div>
           ) : null}
 
           {scope === "multi" ? (
-            <div>
-              <span className="tf-lbl">
+            <div className={opsFldFull}>
+              <span className={opsTfLblInFld}>
                 المعاملات المرتبطة *{" "}
                 <span className="font-medium text-text-3">(صكّان فأكثر)</span>
               </span>
-              <div className="tf-deeds">
+              <div className={opsTfDeeds}>
                 {multiDeedOptions.map(({ deed: d, po }) => (
-                  <label key={`${po}-${d}`} className="tf-deed">
+                  <label key={`${po}-${d}`} className={opsTfDeed}>
                     <input
                       type="checkbox"
+                      className={opsTfDeedCheck}
                       checked={selectedDeeds.includes(d)}
                       onChange={() => toggleDeed(d)}
                     />
@@ -570,8 +642,8 @@ export function CreateOperationsTaskModal({
             </div>
           ) : null}
 
-          <div>
-            <span className="tf-lbl">الأولوية *</span>
+          <div className={opsFldFull}>
+            <label className={opsTfLblInFld}>الأولوية *</label>
             <SegRow
               value={priority}
               onChange={applyPriorityDue}
@@ -580,16 +652,18 @@ export function CreateOperationsTaskModal({
               )}
             />
             <span className="mt-1.5 block text-[11px] text-text-3">
-              تضبط الأولوية موعد الاستحقاق المقترح — «متوسطة» تعادل نصف يوم.
+              تضبط الأولوية موعد الاستحقاق المقترح — «متوسطة» (الافتراضي) تعادل نصف يوم.
             </span>
           </div>
 
-          <div>
-            <span className="tf-lbl">
+          <div className={opsFldFull}>
+            <label className={opsTfLblInFld}>
               موعد الاستحقاق *{" "}
-              <span className="font-medium text-text-3">(يوم + ساعة)</span>
-            </span>
-            <div className="mb-2.5 flex flex-wrap gap-2">
+              <span className={opsFileSize}>
+                (يوم + ساعة)
+              </span>
+            </label>
+            <div className="mb-[11px] flex flex-wrap gap-2">
               {(
                 [
                   ["today", "اليوم"],
@@ -600,7 +674,7 @@ export function CreateOperationsTaskModal({
                 <button
                   key={id}
                   type="button"
-                  className={cn("tf-chip", dueChip === id && "active")}
+                  className={dueChip === id ? opsTfChipActive : opsTfChip}
                   onClick={() => applyDueChip(id)}
                 >
                   {label}
@@ -608,131 +682,96 @@ export function CreateOperationsTaskModal({
               ))}
             </div>
             <div className="flex flex-wrap gap-2.5">
-              <Input
+              <input
                 type="date"
+                className={cn(opsFldControl, "max-w-[190px]")}
                 value={dueDate}
                 onChange={(e) => {
                   setDueDate(e.target.value);
                   setDueChip(null);
                 }}
-                className="max-w-[190px]"
               />
-              <Input
+              <input
                 type="time"
+                className={cn(opsFldControl, "max-w-[150px]")}
                 value={dueTime}
                 onChange={(e) => setDueTime(e.target.value)}
-                className="max-w-[150px]"
               />
             </div>
           </div>
 
           {type === "court_visit" && letterPreview.length > 0 ? (
-            <div className="letter-card" style={{ marginTop: 4 }}>
-              <div className="letter-head">
-                <div>
-                  <div
-                    style={{
-                      fontWeight: 800,
-                      color: "var(--heading)",
-                      fontSize: 13.5,
-                    }}
-                  >
-                    خطاب التفويض الداخلي
+            <div className={opsFldFull}>
+              <div className={cn(opsLetterCard, "mt-1")}>
+                <div className={opsLetterHead}>
+                  <div>
+                    <div className={opsLetterTitle}>خطاب التفويض الداخلي</div>
+                    <div className={opsLetterSub}>
+                      مفتاح التجميع: المحكمة + الدائرة · لقطة (snapshot) عند الإصدار
+                    </div>
                   </div>
-                  <div style={{ fontSize: 11.5, color: "var(--text-3)" }}>
-                    مفتاح التجميع: المحكمة + الدائرة · لقطة (snapshot) عند الإصدار
-                  </div>
+                  <span className="text-xs font-bold text-text-2">
+                    الرقم المرجعي:{" "}
+                    <span className="text-gold-d">يُصدر عند الإنشاء</span>
+                  </span>
                 </div>
-                <span style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 700 }}>
-                  الرقم المرجعي:{" "}
-                  <span style={{ color: "var(--gold-d)" }}>يُصدر عند الإنشاء</span>
-                </span>
-              </div>
-              <div style={{ padding: "12px 14px 14px" }}>
-                <div className="overflow-x-auto rounded-[12px] border border-border bg-surface">
-                  <div className="min-w-[640px]">
-                    <div
-                      className="ops-thead"
-                      style={{ gridTemplateColumns: LETTER_COLS }}
-                    >
-                      {[
-                        "م",
-                        "أمر العمل",
-                        "رقم الصك",
-                        "المالك",
-                        "رقم الطلب",
-                        "المحكمة / الدائرة",
-                      ].map((h, i) => (
+                <div className="px-3.5 py-3">
+                  <div className="overflow-x-auto rounded-[12px] border border-border bg-surface">
+                    <div className="min-w-[640px]">
+                      <div
+                        className={opsThead}
+                        style={{ gridTemplateColumns: LETTER_COLS }}
+                      >
+                        {[
+                          "م",
+                          "أمر العمل",
+                          "رقم الصك",
+                          "المالك",
+                          "رقم الطلب",
+                          "المحكمة / الدائرة",
+                        ].map((h, i) => (
+                          <div
+                            key={h}
+                            className={i === 0 ? cn(opsTh, opsTdC) : opsThStart}
+                          >
+                            {h}
+                          </div>
+                        ))}
+                      </div>
+                      {letterPreview.map((row, i) => (
                         <div
-                          key={h}
-                          className={cn("ops-th", i === 0 && "c")}
-                          style={
-                            i > 0
-                              ? { justifyContent: "flex-start", textAlign: "start" }
-                              : undefined
-                          }
+                          key={`${row.po}-${row.deed}-${i}`}
+                          className={opsLetterRow}
+                          style={{ gridTemplateColumns: LETTER_COLS }}
                         >
-                          {h}
+                          <div className={cn(opsTd, opsTdC, "text-text-2")}>{i + 1}</div>
+                          <div className={opsTdPo} dir="ltr">
+                            {row.po}
+                          </div>
+                          <div className={opsTdDeed} dir="ltr">
+                            صك {row.deed}
+                          </div>
+                          <div className={opsTdPlain}>{row.owner}</div>
+                          <div className={opsTdPlain} dir="ltr">
+                            {row.request}
+                          </div>
+                          <div className={opsTdCourt}>
+                            <span className="font-semibold text-text">{row.court}</span>{" "}
+                            <span className="text-text-3">· {row.circuit}</span>
+                          </div>
                         </div>
                       ))}
                     </div>
-                    {letterPreview.map((row, i) => (
-                      <div
-                        key={`${row.po}-${row.deed}-${i}`}
-                        className="ops-grid-row"
-                        style={{
-                          gridTemplateColumns: LETTER_COLS,
-                          minHeight: 44,
-                          fontSize: 12.5,
-                          cursor: "default",
-                        }}
-                      >
-                        <div className="ops-td c" style={{ color: "var(--text-2)" }}>
-                          {i + 1}
-                        </div>
-                        <div
-                          className="ops-td"
-                          dir="ltr"
-                          style={{ fontWeight: 600, color: "var(--text-2)" }}
-                        >
-                          {row.po}
-                        </div>
-                        <div
-                          className="ops-td"
-                          dir="ltr"
-                          style={{ fontWeight: 700, color: "var(--gold-d)" }}
-                        >
-                          صك {row.deed}
-                        </div>
-                        <div className="ops-td">{row.owner}</div>
-                        <div className="ops-td" dir="ltr">
-                          {row.request}
-                        </div>
-                        <div className="ops-td" style={{ fontSize: 12 }}>
-                          <span style={{ fontWeight: 600, color: "var(--text)" }}>
-                            {row.court}
-                          </span>{" "}
-                          <span style={{ color: "var(--text-3)" }}>· {row.circuit}</span>
-                        </div>
-                      </div>
-                    ))}
                   </div>
+                  <p className="mx-0.5 mt-2.5 text-[11.5px] text-text-3">
+                    لقطة (snapshot) لبيانات الصكوك والمحاكم وقت إنشاء المهمة — تُثبَّت على
+                    الخطاب ولا تتأثر بتعديلات لاحقة على أمر العمل.
+                  </p>
                 </div>
-                <p
-                  style={{
-                    fontSize: 11.5,
-                    color: "var(--text-3)",
-                    margin: "10px 2px 0",
-                  }}
-                >
-                  لقطة (snapshot) لبيانات الصكوك والمحاكم وقت إنشاء المهمة — تُثبَّت على
-                  الخطاب ولا تتأثر بتعديلات لاحقة على أمر العمل.
-                </p>
               </div>
             </div>
           ) : null}
         </div>
-      </div>
     </AppModal>
   );
 }
