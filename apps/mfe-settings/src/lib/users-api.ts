@@ -39,7 +39,8 @@ export async function fetchStaffUsers(): Promise<FetchStaffUsersResult> {
 
   const result = hasRuntimeCapability("manage-users")
     ? await listUsers(config)
-    : hasRuntimeCapability("manage-work-orders")
+    : hasRuntimeCapability("manage-work-orders") ||
+        hasRuntimeCapability("manage-operations")
       ? await listDistributionAssignees(config)
       : { ok: true as const, users: [] };
   if (!result.ok) {

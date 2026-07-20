@@ -7,11 +7,24 @@ export type DistributionAssignee = {
   subtitle?: string;
 };
 
-const JOB_TITLE_PARTY_ROLE: Record<string, RoleId> = {
+/**
+ * Exact JobTitle values from seeded prototype users → English RoleId.
+ * No fuzzy / contains matching.
+ */
+const EXACT_JOB_TITLE_TO_ROLE: Record<string, RoleId> = {
+  "مسؤول التحول الرقمي (CDO)": "cdo",
+  "أخصائية موارد بشرية": "hr-admin",
+  "مدير المالية والعقود": "proc-admin",
+  "مدير علاقات العملاء": "crm-admin",
+  "مدير إدارة التقييم العقاري": "general-manager",
+  "مشرف قسم دراسة الحالة": "section-supervisor",
+  "أخصائي دراسة حالة": "case-specialist",
   "مراجع حكومي": "government-reviewer",
   "منسق عمليات التقييم": "valuation-coordinator",
-  "معاين ميداني": "field-inspector",
   "مقيم عقاري": "real-estate-appraiser",
+  "معاين ميداني": "field-inspector",
+  "موظف الشؤون المالية": "financial-officer",
+  "مقدم خدمة — جهة": "engineering-office",
 };
 
 function employmentSubtitle(user: StaffUser): string | undefined {
@@ -27,7 +40,9 @@ export function partyRoleForStaffUser(user: StaffUser): RoleId | null {
   if (user.distributionAssigneeId?.startsWith("eo-")) {
     return "engineering-office";
   }
-  return JOB_TITLE_PARTY_ROLE[user.role.trim()] ?? null;
+  const t = user.role.trim();
+  if (!t) return null;
+  return EXACT_JOB_TITLE_TO_ROLE[t] ?? null;
 }
 
 export function staffUsersForPartyRole(

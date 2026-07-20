@@ -3,8 +3,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Application.Authorization;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Permissions;
 using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
@@ -36,7 +38,7 @@ public class OperationsTasksController : ControllerBase
             status,
             ActorId(),
             await ActorAssigneeIdAsync(ct),
-            ActorRole(),
+            await ActorPrototypeRoleAsync(ct),
             ct));
     }
 
@@ -73,7 +75,7 @@ public class OperationsTasksController : ControllerBase
             request,
             await ActorAssigneeIdAsync(ct) ?? ActorId(),
             ActorName(),
-            ActorRole(),
+            await ActorPrototypeRoleAsync(ct),
             ActorId(),
             ct);
         if (error is not null) return BadRequest(new { error });
@@ -91,7 +93,7 @@ public class OperationsTasksController : ControllerBase
             id,
             request,
             await ActorAssigneeIdAsync(ct) ?? ActorId(),
-            ActorRole(),
+            await ActorPrototypeRoleAsync(ct),
             ActorName(),
             ct);
         if (error is not null) return BadRequest(new { error });
@@ -111,7 +113,7 @@ public class OperationsTasksController : ControllerBase
             request,
             await ActorAssigneeIdAsync(ct) ?? ActorId(),
             ActorName(),
-            ActorRole(),
+            await ActorPrototypeRoleAsync(ct),
             ct);
         if (error is not null) return BadRequest(new { error });
         if (result is null) return NotFound();
@@ -128,7 +130,7 @@ public class OperationsTasksController : ControllerBase
             id,
             request?.Auto ?? false,
             ActorName(),
-            ActorRole(),
+            await ActorPrototypeRoleAsync(ct),
             ct);
         if (error is not null) return BadRequest(new { error });
         if (result is null) return NotFound();
@@ -144,17 +146,51 @@ public class OperationsTasksController : ControllerBase
         return profile?.DistributionAssigneeId?.Trim();
     }
 
+    /// <summary>
+    /// JWT carries identity roles (Editor/CDO), not prototype roles. Resolve like PermissionService.
+    /// </summary>
+    private async Task<string> ActorPrototypeRoleAsync(CancellationToken ct)
+    {
+        var userId = ActorId();
+        if (userId.Length == 0) return "";
+
+        var profile = await _db.UserProfiles.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.UserId == userId, ct);
+
+        var identityRoles = await (
+            from ur in _db.UserRoles.AsNoTracking()
+            join r in _db.Roles.AsNoTracking() on ur.RoleId equals r.Id
+            where ur.UserId == userId
+            select r.Name!
+        ).ToListAsync(ct);
+
+        var resolved = PrototypeRoleResolver.Resolve(profile, identityRoles);
+        if (!string.IsNullOrWhiteSpace(resolved))
+            return resolved;
+
+        // Capability fallback: anyone who can manage WOs/ops is an ops manager.
+        if (HasCapability(PlatformCapabilities.ManageWorkOrders)
+            || HasCapability(PlatformCapabilities.ManageOperations)
+            || HasCapability(PlatformCapabilities.ManageSystemConfig))
+        {
+            return "case-specialist";
+        }
+
+        return User.FindFirstValue("role")?.Trim()
+            ?? User.FindFirstValue(ClaimTypes.Role)?.Trim()
+            ?? "";
+    }
+
+    private bool HasCapability(string capability) =>
+        User.HasClaim(PlatformCapabilities.ClaimType, capability);
+
     private string ActorId() =>
         User.FindFirstValue(ClaimTypes.NameIdentifier)?.Trim()
         ?? User.FindFirstValue("sub")?.Trim()
         ?? "";
 
     private string? ActorName() =>
-        User.FindFirstValue("name")?.Trim()
+        User.FindFirstValue("displayName")?.Trim()
+        ?? User.FindFirstValue("name")?.Trim()
         ?? User.Identity?.Name?.Trim();
-
-    private string ActorRole() =>
-        User.FindFirstValue("prototype_role")?.Trim()
-        ?? User.FindFirstValue(ClaimTypes.Role)?.Trim()
-        ?? "";
 }
