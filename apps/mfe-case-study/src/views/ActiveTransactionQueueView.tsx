@@ -262,6 +262,11 @@ export function ActiveTransactionQueueView({
     }
     void refetchTasks();
     void refetchPoRecords();
+    if (config.allowPhaseRevert) {
+      void queryClient.invalidateQueries({
+        queryKey: prototypeKeys.pendingBourseItems(),
+      });
+    }
     if (needsInspectionWorkspaces) {
       void queryClient.invalidateQueries({
         queryKey: prototypeKeys.fieldInspectionWorkspaces(),
@@ -273,6 +278,7 @@ export function ActiveTransactionQueueView({
     queryClient,
     needsInspectionWorkspaces,
     needsPartySubmissions,
+    config.allowPhaseRevert,
   ]);
 
   const syncQueue = useCallback(async () => {
@@ -280,6 +286,11 @@ export function ActiveTransactionQueueView({
     await queryClient.invalidateQueries({
       queryKey: prototypeKeys.workflowTasks(),
     });
+    if (config.allowPhaseRevert) {
+      await queryClient.invalidateQueries({
+        queryKey: prototypeKeys.pendingBourseItems(),
+      });
+    }
     if (needsInspectionWorkspaces) {
       await queryClient.invalidateQueries({
         queryKey: prototypeKeys.fieldInspectionWorkspaces(),
@@ -287,7 +298,12 @@ export function ActiveTransactionQueueView({
     }
     bump((n) => n + 1);
     await refetchTasks();
-  }, [queryClient, refetchTasks, needsInspectionWorkspaces]);
+  }, [
+    queryClient,
+    refetchTasks,
+    needsInspectionWorkspaces,
+    config.allowPhaseRevert,
+  ]);
 
   useEffect(() => {
     const tick = setInterval(() => setNow(new Date()), 1000);
