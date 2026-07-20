@@ -24,8 +24,8 @@ export function ModalCard({
   return (
     <div
       className={cn(
-        "max-h-[90vh] w-full overflow-y-auto rounded-[var(--radius-lg)] border border-border bg-surface shadow-modal",
-        wide ? "max-w-[640px]" : "max-w-[420px]",
+        "flex max-h-[90vh] w-full flex-col overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-modal",
+        wide ? "max-w-[720px]" : "max-w-[420px]",
         className,
       )}
       {...props}
@@ -40,7 +40,7 @@ export function ModalHeader({
   return (
     <header
       className={cn(
-        "flex items-center gap-2.5 border-b border-border px-4 py-3.5",
+        "flex shrink-0 items-center gap-2.5 border-b border-border px-4 py-3.5",
         className,
       )}
       {...props}
@@ -83,7 +83,12 @@ export function ModalBody({
   className,
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("p-4", className)} {...props} />;
+  return (
+    <div
+      className={cn("min-h-0 flex-1 overflow-y-auto p-4", className)}
+      {...props}
+    />
+  );
 }
 
 export function ModalFooter({
@@ -94,7 +99,7 @@ export function ModalFooter({
   return (
     <footer
       className={cn(
-        "flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3",
+        "flex shrink-0 flex-wrap justify-end gap-2 border-t border-border px-4 py-3",
         className,
       )}
       {...props}

@@ -131,6 +131,8 @@ public static class DependencyInjection
     {
         services.AddScoped<IPoIntakeDraftService, PoIntakeDraftService>();
         services.AddScoped<IInternalDelegationLettersService, InternalDelegationLettersService>();
+        services.AddScoped<IOperationsTaskService, OperationsTaskService>();
+        services.AddHostedService<OperationsTaskReminderHostedService>();
         services.AddScoped<ISuspendedTransactionsService, SuspendedTransactionsService>();
         return services;
     }

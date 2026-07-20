@@ -59,14 +59,13 @@ export function OperationalToolbarSearch({
 }) {
   return (
     <div className={cn(operationalToolbarSearchWrapClassName, className)}>
-      <span className="pointer-events-none absolute inset-inline-start-3 top-1/2 -translate-y-1/2 text-text-3">
+      <span className="ot-search__icon">
         <SearchGlyph />
       </span>
       {startAdornment}
       <input
         className={cn(
           operationalToolbarSearchInputClassName,
-          "ps-9",
           endAdornment ? "pe-[6.25rem]" : null,
           inputClassName,
         )}

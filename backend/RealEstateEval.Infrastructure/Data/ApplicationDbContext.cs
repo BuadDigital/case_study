@@ -43,6 +43,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<KeyReceiptFeeCharge> KeyReceiptFeeCharges => Set<KeyReceiptFeeCharge>();
     public DbSet<FileAttachment> FileAttachments => Set<FileAttachment>();
     public DbSet<InternalDelegationLetterSet> InternalDelegationLetterSets => Set<InternalDelegationLetterSet>();
+    public DbSet<OperationsTask> OperationsTasks => Set<OperationsTask>();
+    public DbSet<OperationsTaskSequence> OperationsTaskSequences => Set<OperationsTaskSequence>();
     public DbSet<DocumentReferenceCounter> DocumentReferenceCounters => Set<DocumentReferenceCounter>();
     public DbSet<EvaluatorRecallRecord> EvaluatorRecallRecords => Set<EvaluatorRecallRecord>();
     public DbSet<PoIntakeDraft> PoIntakeDrafts => Set<PoIntakeDraft>();
@@ -562,6 +564,39 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.ScopeKey).HasMaxLength(128);
             e.Property(x => x.LettersJson).HasColumnType("jsonb");
             e.HasIndex(x => x.ScopeKey).IsUnique();
+        });
+
+        builder.Entity<OperationsTask>(e =>
+        {
+            e.ToTable("OperationsTasks", DatabaseSchemas.CaseStudy);
+            e.Property(x => x.DisplayId).HasMaxLength(32);
+            e.Property(x => x.Type).HasMaxLength(32);
+            e.Property(x => x.Title).HasMaxLength(500);
+            e.Property(x => x.Description).HasMaxLength(4000);
+            e.Property(x => x.Scope).HasMaxLength(32);
+            e.Property(x => x.DeedsJson).HasColumnType("jsonb");
+            e.Property(x => x.PoNumber).HasMaxLength(64);
+            e.Property(x => x.AssigneeId).HasMaxLength(128);
+            e.Property(x => x.AssigneeName).HasMaxLength(256);
+            e.Property(x => x.CreatedBy).HasMaxLength(128);
+            e.Property(x => x.CreatedByName).HasMaxLength(256);
+            e.Property(x => x.Status).HasMaxLength(32);
+            e.Property(x => x.PrevStatus).HasMaxLength(32);
+            e.Property(x => x.Priority).HasMaxLength(16);
+            e.Property(x => x.Reference).HasMaxLength(64);
+            e.Property(x => x.LetterRowsJson).HasColumnType("jsonb");
+            e.Property(x => x.CommentsJson).HasColumnType("jsonb");
+            e.Property(x => x.RemindersJson).HasColumnType("jsonb");
+            e.HasIndex(x => x.DisplayId).IsUnique();
+            e.HasIndex(x => x.AssigneeId);
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.DueAtUtc);
+        });
+
+        builder.Entity<OperationsTaskSequence>(e =>
+        {
+            e.ToTable("OperationsTaskSequences", DatabaseSchemas.CaseStudy);
+            e.HasIndex(x => x.Year).IsUnique();
         });
 
         builder.Entity<DocumentReferenceCounter>(e =>

@@ -1,23 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
+import Link from "next/link";
 import {
   Badge,
   Button,
+  Note,
   cn,
   workspaceStickyPanelMaxHClassName,
 } from "@platform/design-system";
 import { PoNumber } from "../ui/PoNumber";
-import { InternalDelegationLetterPanel } from "./InternalDelegationLetterPanel";
 import type { GovernmentReviewPoRow } from "../../lib/prototype/government-review-po";
-import { courtCircuitGroupsForPo } from "../../lib/prototype/government-review-po";
-import {
-  agentInfoFromStaff,
-  hydrateInternalDelegationLetters,
-  letterIdForCourtCircuit,
-  loadInternalDelegationLetters,
-  syncInternalDelegationLetters,
-} from "../../lib/prototype/internal-delegation-letters";
 import {
   formatPropertyDeedDisplay,
   type PoIntakeRecord,
@@ -27,7 +20,15 @@ import { usePoRecordsQuery } from "../../query/case-study-queries";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { partyAccountForRole } from "../../lib/prototype/distribution-parties";
-import { reviewerScopeForRole } from "../../lib/prototype/reviewer-coverage";
+import { useOperationsTasksQuery } from "../../query/operations-tasks-queries";
+import {
+  isActiveOperationsTask,
+  type OperationsTask,
+} from "../../lib/prototype/operations-tasks-storage";
+import {
+  operationsTaskStatusLabel,
+  operationsTaskTypeLabel,
+} from "../../lib/prototype/operations-task-display";
 
 function PanelSection({
   title,
@@ -88,10 +89,35 @@ function reviewTaskPropertyLabel(
   return deedFromTitle || `عقار ${task.propertyOrdinal}`;
 }
 
+function courtVisitForPo(
+  opsTasks: OperationsTask[],
+  poNumber: string,
+  options?: { activeOnly?: boolean },
+): OperationsTask | undefined {
+  const po = poNumber.trim();
+  return opsTasks.find((t) => {
+    if (t.type !== "court_visit" || t.poNumber?.trim() !== po) return false;
+    if (options?.activeOnly) return isActiveOperationsTask(t);
+    return t.status !== "cancelled";
+  });
+}
+
+function courtVisitsForPo(
+  opsTasks: OperationsTask[],
+  poNumber: string,
+): OperationsTask[] {
+  const po = poNumber.trim();
+  return opsTasks.filter(
+    (t) =>
+      t.type === "court_visit" &&
+      t.poNumber?.trim() === po &&
+      t.status !== "cancelled",
+  );
+}
+
 export function GovernmentReviewPoPanel({
   row,
   onClose,
-  onRefresh,
   onOpenTask,
 }: {
   row: GovernmentReviewPoRow;
@@ -99,67 +125,30 @@ export function GovernmentReviewPoPanel({
   onRefresh: () => void;
   onOpenTask: (taskId: string) => void;
 }) {
-  const { role, viewerEmail } = usePrototype();
+  const { role } = usePrototype();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = useMemo(() => staffResult?.users ?? [], [staffResult?.users]);
-  const reviewerScope = reviewerScopeForRole(role, staffUsers);
   const reviewerAccount = useMemo(
     () => partyAccountForRole(role, staffUsers),
     [role, staffUsers],
   );
-  const scopeKey =
-    reviewerScope?.assigneeId?.trim() ||
-    reviewerAccount?.assigneeId?.trim() ||
-    viewerEmail?.trim() ||
-    "government-review";
-  const agent = useMemo(() => {
-    const assigneeId = reviewerScope?.assigneeId ?? reviewerAccount?.assigneeId;
-    const staff = assigneeId
-      ? staffUsers.find((u) => u.distributionAssigneeId?.trim() === assigneeId)
-      : null;
-    return agentInfoFromStaff(staff);
-  }, [staffUsers, reviewerScope, reviewerAccount]);
 
   const { data: poRecords = [] } = usePoRecordsQuery();
   const record = useMemo(
     () => poRecords.find((r) => r.poNumber.trim() === row.poNumber.trim()),
     [poRecords, row.poNumber],
   );
-  const [, bump] = useState(0);
-  const refreshLetters = useCallback(() => bump((n) => n + 1), []);
 
-  const recordsFingerprint = useMemo(
-    () =>
-      poRecords
-        .map((r) =>
-          `${r.poNumber}:${r.properties
-            .map((p) => `${p.id}:${p.court}:${p.circuit}`)
-            .join(",")}`,
-        )
-        .join("|"),
-    [poRecords],
+  const { data: opsTasks = [] } = useOperationsTasksQuery({
+    assigneeId: reviewerAccount?.assigneeId?.trim(),
+  });
+  const courtVisits = useMemo(
+    () => courtVisitsForPo(opsTasks, row.poNumber),
+    [opsTasks, row.poNumber],
   );
-
-  useEffect(() => {
-    if (!record || !scopeKey) return;
-    let cancelled = false;
-    void hydrateInternalDelegationLetters(scopeKey)
-      .then(() => {
-        if (cancelled) return;
-        syncInternalDelegationLetters(poRecords, scopeKey);
-        refreshLetters();
-      })
-      .catch((err: unknown) => {
-        console.warn("Delegation letters hydrate failed:", err);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [record?.poNumber, scopeKey, recordsFingerprint, refreshLetters, poRecords, record]);
-
-  const courtGroups = useMemo(
-    () => courtCircuitGroupsForPo(record),
-    [record],
+  const activeCourtVisit = useMemo(
+    () => courtVisitForPo(opsTasks, row.poNumber, { activeOnly: true }),
+    [opsTasks, row.poNumber],
   );
 
   const circuits = useMemo(() => {
@@ -221,6 +210,19 @@ export function GovernmentReviewPoPanel({
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3 py-3">
+        {activeCourtVisit ? (
+          <Note tone="info" className="text-[12px]">
+            توجد مهمة زيارة محكمة نشطة — أكمل الزيارة أو اطبع الخطاب قبل إغلاق
+            المراجعة.{" "}
+            <Link
+              href={`/operations-tasks?task=${encodeURIComponent(activeCourtVisit.id)}`}
+              className="font-semibold text-primary underline decoration-primary underline-offset-2"
+            >
+              فتح المهمة
+            </Link>
+          </Note>
+        ) : null}
+
         <PanelSection title="ملخص أمر العمل">
           <div className="flex flex-col gap-2.5">
             <div
@@ -286,6 +288,52 @@ export function GovernmentReviewPoPanel({
         </PanelSection>
 
         <PanelSection
+          title="مهام زيارة المحكمة"
+          subtitle="خطاب التفويض من سجل المهام — لا يُنشأ من هنا"
+        >
+          {courtVisits.length === 0 ? (
+            <p className="m-0 text-[11px] leading-relaxed text-text-3">
+              لا توجد مهمة زيارة محكمة لهذا الأمر بعد. ينشئها أخصائي دراسة
+              الحالة من صفحة المهام.
+            </p>
+          ) : (
+            <ul className="m-0 flex list-none flex-col gap-2 p-0">
+              {courtVisits.map((task) => (
+                <li key={task.id}>
+                  <Link
+                    href={`/operations-tasks?task=${encodeURIComponent(task.id)}`}
+                    className={cn(
+                      "group flex w-full items-center justify-between gap-2 rounded-md border border-border bg-surface px-3 py-2.5 text-start no-underline transition-colors",
+                      "hover:border-primary/40 hover:bg-primary-light/30",
+                    )}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-[12px] font-semibold text-text">
+                        {task.title}
+                      </div>
+                      <div className="mt-0.5 truncate text-[10px] text-text-3">
+                        {task.displayId} · {operationsTaskTypeLabel(task.type)}
+                        {task.reference ? ` · ${task.reference}` : ""}
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <Badge
+                        tone={
+                          isActiveOperationsTask(task) ? "warning" : "success"
+                        }
+                      >
+                        {operationsTaskStatusLabel(task.status)}
+                      </Badge>
+                      <ChevronStartIcon />
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </PanelSection>
+
+        <PanelSection
           title="مهام المراجعة"
           subtitle="حسب العقار — اضغط لفتح مهمة المراجعة"
         >
@@ -334,32 +382,6 @@ export function GovernmentReviewPoPanel({
             </ul>
           )}
         </PanelSection>
-
-        {record
-          ? courtGroups.map((group) => {
-              const letters = loadInternalDelegationLetters(scopeKey);
-              const letter =
-                letters.find(
-                  (l) =>
-                    l.id ===
-                    letterIdForCourtCircuit(group.court, group.circuit),
-                ) ?? null;
-              if (!letter) return null;
-              return (
-                <InternalDelegationLetterPanel
-                  key={group.id}
-                  letter={letter}
-                  records={poRecords}
-                  scopeKey={scopeKey}
-                  agent={agent}
-                  onRefresh={() => {
-                    refreshLetters();
-                    onRefresh();
-                  }}
-                />
-              );
-            })
-          : null}
       </div>
     </div>
   );

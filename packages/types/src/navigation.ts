@@ -13,6 +13,7 @@ export type PageId =
   | "valuation-requests"
   | "property-inspection"
   | "government-review"
+  | "operations-tasks"
   | "valuation-coordination"
   | "property-appraisal"
   | "active-survey"
@@ -97,6 +98,7 @@ export function isPageId(value: string): value is PageId {
     value === "valuation-requests" ||
     value === "property-inspection" ||
     value === "government-review" ||
+    value === "operations-tasks" ||
     value === "valuation-coordination" ||
     value === "property-appraisal" ||
     value === "active-survey" ||

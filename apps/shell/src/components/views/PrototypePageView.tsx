@@ -35,6 +35,10 @@ const GovernmentReviewView = dynamic(
   () => import("@case-study/mfe").then((m) => m.GovernmentReviewView),
   { ssr: false },
 );
+const OperationsTasksView = dynamic(
+  () => import("@case-study/mfe").then((m) => m.OperationsTasksView),
+  { ssr: false },
+);
 const SuspendedTransactionsView = dynamic(
   () => import("@case-study/mfe").then((m) => m.SuspendedTransactionsView),
   { ssr: false },
@@ -117,6 +121,7 @@ const VIEWS: Partial<Record<PageId, ComponentType>> = {
   "suspended-transactions": SuspendedTransactionsView,
   "valuation-requests": ValuationRequestsView,
   "government-review": GovernmentReviewView,
+  "operations-tasks": OperationsTasksView,
   "system-fields-catalog": SystemFieldsCatalogView,
   "system-screen-catalog": SystemScreenCatalogView,
   financial: FinancialView,
@@ -147,6 +152,7 @@ export function PrototypePageView({ page }: { page: PageId }) {
     page === "active-distribution" ||
     page === "active-case-study" ||
     page === "government-review" ||
+    page === "operations-tasks" ||
     PARTY_TASK_PAGE_IDS.includes(page);
 
   if (needsSuspense) {
