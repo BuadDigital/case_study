@@ -46,17 +46,6 @@ public class ReportingController : ControllerBase
         return Ok(dto);
     }
 
-    [HttpGet("kpi")]
-    public async Task<ActionResult<ReportingKpiDto>> Kpi(CancellationToken ct)
-    {
-        var dto = await _cache.GetOrCreateAsync(
-            CacheKeys.ReportingKpi,
-            CacheDurations.Reporting,
-            _ => BuildKpiAsync(ct),
-            ct);
-        return Ok(dto);
-    }
-
     private async Task<ReportingDashboardDto> BuildDashboardAsync(CancellationToken ct)
     {
         var allTasks = await _upstream.GetWorkflowTasksAsync(ct);
@@ -165,70 +154,6 @@ public class ReportingController : ControllerBase
             TeamFieldMembers = teamField,
             SpecialistLoad = specialistLoad,
             FieldInspectionProgress = await _upstream.GetFieldInspectionSummaryAsync(ct),
-        };
-    }
-
-    private async Task<ReportingKpiDto> BuildKpiAsync(CancellationToken ct)
-    {
-        var tasks = await _upstream.GetWorkflowTasksAsync(ct);
-        var failures = await _upstream.GetFailureCountAsync(ct);
-        var properties = await _upstream.GetPropertyCountAsync(ct);
-
-        var completed = tasks.Count(t => t.Status == WorkflowTaskStatus.Completed);
-        var total = tasks.Count;
-        var onTime = total > 0 ? (int)Math.Round(completed * 100.0 / total) : 0;
-
-        var today = DateTime.UtcNow.Date;
-        var completedToday = tasks.Count(t =>
-            t.Status == WorkflowTaskStatus.Completed
-            && DateTime.TryParse(t.UpdatedAt, out var updated)
-            && updated.Date == today);
-
-        var failureRate = properties > 0
-            ? Math.Round(failures * 100.0 / properties, 1)
-            : 0;
-
-        var specialistScores = tasks
-            .Where(t => t.AssigneeRole == "case-specialist")
-            .GroupBy(t => t.AssigneeName)
-            .Select(g =>
-            {
-                var done = g.Count(t => t.Status == WorkflowTaskStatus.Completed);
-                var score = g.Any()
-                    ? (int)Math.Round(done * 100.0 / g.Count())
-                    : 0;
-                return new ReportingKpiScoreDto { Name = g.Key, ScorePercent = score };
-            })
-            .OrderByDescending(x => x.ScorePercent)
-            .Take(6)
-            .ToList();
-
-        var providerScores = tasks
-            .Where(t =>
-                t.Kind == "property-inspection"
-                || t.Kind == "property-appraisal"
-                || t.Kind == "engineering-survey")
-            .GroupBy(t => t.AssigneeName)
-            .Select(g =>
-            {
-                var done = g.Count(t => t.Status == WorkflowTaskStatus.Completed);
-                var score = g.Any()
-                    ? (int)Math.Round(done * 100.0 / g.Count())
-                    : 0;
-                return new ReportingKpiScoreDto { Name = g.Key, ScorePercent = score };
-            })
-            .OrderByDescending(x => x.ScorePercent)
-            .Take(6)
-            .ToList();
-
-        return new ReportingKpiDto
-        {
-            OnTimeCompletionRate = onTime,
-            AvgPropertyDaysLabel = "3.6 يوم",
-            FailureRatePercent = failureRate,
-            CompletedToday = completedToday,
-            SpecialistScores = specialistScores,
-            ProviderScores = providerScores,
         };
     }
 

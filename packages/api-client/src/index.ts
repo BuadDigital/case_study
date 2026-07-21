@@ -40,15 +40,9 @@ export {
 } from "./pagination";
 
 export {
-  createCrmUser,
-  createHrUser,
-  createProcUser,
-  deactivateUser,
   fetchOrganizationOverview,
   listDistributionAssignees,
   listUsers,
-  updateUser,
-  type CreateUserResult,
   type ListUsersResult,
   type OrganizationOverviewResult,
   type UsersApiConfig,
@@ -291,12 +285,21 @@ export {
 export {
   fetchFinancialSummary,
   fetchPartyFeePricing,
-  financialApiEnabled,
+  fetchPartyFeePricingTables,
+  fetchPartyFeePricingById,
+  createPartyFeePricing,
   savePartyFeePricing,
+  activatePartyFeePricing,
+  deletePartyFeePricing,
+  financialApiEnabled,
   type FinancialCostRowDto,
   type FinancialRevenueRowDto,
   type FinancialSummaryDto,
   type PartyFeePricingDto,
+  type PartyFeePricingTierDto,
+  type PartyFeePricingTableSummaryDto,
+  type PartyFeePricingCategory,
+  type CreatePartyFeePricingTableRequest,
 } from "./financial";
 
 export {
@@ -323,10 +326,7 @@ export {
 
 export {
   fetchReportingDashboard,
-  fetchReportingKpi,
   type ReportingDashboardDto,
-  type ReportingKpiDto,
-  type ReportingKpiScoreDto,
   type ReportingSpecialistLoadDto,
   type ReportingTeamMemberDto,
 } from "./reporting";

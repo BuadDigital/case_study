@@ -25,12 +25,6 @@ export type UserListItem = {
   details?: UserDetailField[];
 };
 
-export type RegistrationPayload = Record<string, string>;
-
 export type FieldErrorsResponse = {
   errors: Record<string, string>;
-};
-
-export type CreateUserResponse = {
-  user: UserListItem;
 };

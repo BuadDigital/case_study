@@ -9,7 +9,7 @@ public static class PlatformPermissionCatalog
         "po", "all-transactions", "bourse-inquiry", "survey", "keys", "failures", "suspended-transactions",
         "valuation-requests", "property-inspection", "government-review",
         "valuation-coordination", "property-appraisal", "active-survey", "party-fees",
-        "system-fields-catalog", "system-screen-catalog", "financial", "kpi",
+        "system-fields-catalog", "system-screen-catalog", "financial",
         "users", "courts", "failure-types", "case-study-info-roles",
         "audit-log", "fee-pricing",
     ];
@@ -37,26 +37,20 @@ public static class PlatformPermissionCatalog
     private static readonly Dictionary<string, string[]> IdentityRolePages = new(StringComparer.OrdinalIgnoreCase)
     {
         ["CDO"] = AllPages.ToArray(),
-        ["HrAdmin"] = ["users", "system-screen-catalog"],
-        ["ProcAdmin"] = ["financial", "users", "system-screen-catalog"],
-        ["CrmAdmin"] = ["users", "system-screen-catalog"],
-        ["HR"] = ["users"],
-        ["PROC"] = ["users"],
-        ["CRM"] = ["users"],
+        ["HR"] = ["system-screen-catalog"],
+        ["PROC"] = ["system-screen-catalog"],
+        ["CRM"] = ["system-screen-catalog"],
     };
 
     private static readonly Dictionary<string, string[]> PrototypeRolePages = new(StringComparer.OrdinalIgnoreCase)
     {
         ["cdo"] = AllPages.ToArray(),
-        ["hr-admin"] = ["users", "system-screen-catalog"],
-        ["proc-admin"] = ["financial", "users", "system-screen-catalog"],
-        ["crm-admin"] = ["users", "system-screen-catalog"],
         ["general-manager"] =
         [
             "po", "all-transactions", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "survey", "keys", "failures", "suspended-transactions",
             "valuation-requests", "system-screen-catalog",
-            "financial", "kpi", "users", "courts", "failure-types", "case-study-info-roles",
+            "financial", "courts", "failure-types", "case-study-info-roles",
         ],
         ["section-supervisor"] =
         [
@@ -106,17 +100,11 @@ public static class PlatformPermissionCatalog
     private static readonly Dictionary<string, string[]> IdentityRoleCapabilities = new(StringComparer.OrdinalIgnoreCase)
     {
         ["CDO"] = AllCapabilities.ToArray(),
-        ["HrAdmin"] = ["manage-users"],
-        ["ProcAdmin"] = ["manage-users", "manage-financial", "manage-attachments"],
-        ["CrmAdmin"] = ["manage-users"],
     };
 
     private static readonly Dictionary<string, string[]> PrototypeRoleCapabilities = new(StringComparer.OrdinalIgnoreCase)
     {
         ["cdo"] = AllCapabilities.ToArray(),
-        ["hr-admin"] = ["manage-users"],
-        ["proc-admin"] = ["manage-users", "manage-financial", "manage-attachments"],
-        ["crm-admin"] = ["manage-users"],
         ["general-manager"] =
         [
             "manage-valuation-requests", "manage-failures", "manage-work-orders",

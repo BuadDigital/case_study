@@ -1,11 +1,6 @@
-using System.ComponentModel.DataAnnotations;
 using RealEstateEval.Domain;
 
 namespace RealEstateEval.Application.Contracts;
-
-public class RegistrationPayloadDto : Dictionary<string, string>
-{
-}
 
 public class UserDetailFieldDto
 {
@@ -30,11 +25,6 @@ public class UserListItemDto
     public DateTime CreatedAtUtc { get; init; }
     public IReadOnlyList<string> SystemRoles { get; init; } = [];
     public IReadOnlyList<UserDetailFieldDto> Details { get; init; } = [];
-}
-
-public class CreateUserResponseDto
-{
-    public required UserListItemDto User { get; init; }
 }
 
 public class FieldErrorsResponseDto

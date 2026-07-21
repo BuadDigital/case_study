@@ -1,18 +1,11 @@
 import {
-  createCrmUser,
-  createHrUser,
-  createProcUser,
-  deactivateUser,
   getApiBase,
   listDistributionAssignees,
   listUsers,
-  type CreateUserResult,
   type UsersApiConfig,
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
-import type { RegistrationPayload, UserListItem } from "@platform/types";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
-import type { RegistrationSource } from "@platform/app-shared/prototype/registration-data";
 import {
   contractTypeToStaffType,
   userListItemToStaff,
@@ -74,37 +67,4 @@ export async function fetchDistributionAssignees(): Promise<FetchStaffUsersResul
     users: result.users.map(userListItemToStaff),
     loadError: null,
   };
-}
-
-export async function submitRegistration(
-  source: RegistrationSource,
-  data: RegistrationPayload,
-): Promise<CreateUserResult> {
-  const config = apiConfig();
-  if (!config) {
-    return { ok: false, errors: { _form: "يجب تسجيل الدخول أولاً" } };
-  }
-  if (source === "hr") return createHrUser(config, data);
-  if (source === "proc") return createProcUser(config, data);
-  return createCrmUser(config, data);
-}
-
-export async function deactivateStaffUser(
-  userId: string,
-): Promise<{ ok: true } | { ok: false; message: string }> {
-  const config = apiConfig();
-  if (!config) {
-    return { ok: false, message: "يجب تسجيل الدخول أولاً" };
-  }
-  const result = await deactivateUser(config, userId);
-  if (!result.ok) {
-    const message =
-      result.kind === "forbidden"
-        ? "لا تملك صلاحية تعطيل هذا المستخدم"
-        : result.kind === "not_found"
-          ? "المستخدم غير موجود"
-          : "تعذّر تعطيل المستخدم";
-    return { ok: false, message };
-  }
-  return { ok: true };
 }

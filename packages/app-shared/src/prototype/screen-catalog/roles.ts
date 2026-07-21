@@ -14,9 +14,7 @@ export function screenCatalogRoleGroup(roleId: RoleId): string {
   const opt = ROLES[roleId];
   if (!opt) return roleId;
   if (roleId === "cdo") return "التحول الرقمي";
-  if (roleId === "hr-admin" || roleId === "crm-admin")
-    return "إدارة المنظمة";
-  if (roleId === "proc-admin" || roleId === "financial-officer")
+  if (roleId === "financial-officer")
     return "المالية والعقود";
   if (
     roleId === "general-manager" ||

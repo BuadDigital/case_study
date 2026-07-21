@@ -52,7 +52,7 @@ public sealed class PermissionService : IPermissionService
         }
 
         if (pages.Count == 0)
-            pages.Add("users");
+            pages.Add("system-screen-catalog");
 
         capabilities.Add("authenticated");
 

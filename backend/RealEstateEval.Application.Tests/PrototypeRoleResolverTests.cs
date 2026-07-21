@@ -7,9 +7,6 @@ public class PrototypeRoleResolverTests
 {
     [Theory]
     [InlineData("مسؤول التحول الرقمي (CDO)", "cdo")]
-    [InlineData("أخصائية موارد بشرية", "hr-admin")]
-    [InlineData("مدير المالية والعقود", "proc-admin")]
-    [InlineData("مدير علاقات العملاء", "crm-admin")]
     [InlineData("مدير إدارة التقييم العقاري", "general-manager")]
     [InlineData("مشرف قسم دراسة الحالة", "section-supervisor")]
     [InlineData("أخصائي دراسة حالة", "case-specialist")]

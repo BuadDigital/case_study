@@ -1,12 +1,16 @@
 namespace RealEstateEval.Domain;
 
-/// <summary>Singleton default party-fee pricing (editable; not hardcoded business rates).</summary>
-public class PartyFeePricingConfig
+/// <summary>Named party-fee pricing schedule. Exactly one row should be <see cref="IsActive"/>.</summary>
+public class PartyFeePricingTable
 {
     public Guid Id { get; set; }
 
-    /// <summary>Engineering office — external survey completion default.</summary>
-    public decimal EngineeringSurveyFeeSar { get; set; }
+    public string Name { get; set; } = "";
+
+    /// <see cref="RealEstateEval.Application.PartyFeePricingCategories"/>
+    public string Category { get; set; } = "";
+
+    public bool IsActive { get; set; }
 
     /// <summary>Government reviewer — متعاون فرد only.</summary>
     public decimal GovernmentReviewFeeSar { get; set; }
@@ -16,7 +20,8 @@ public class PartyFeePricingConfig
 
     public decimal FieldInspectorIndividualFeeSar { get; set; }
     public decimal FieldInspectorOrganizationFeeSar { get; set; }
-    public decimal FieldInspectorEmployeeFeeSar { get; set; }
 
     public DateTime UpdatedAtUtc { get; set; }
+
+    public List<PartyFeePricingTier> AreaTiers { get; set; } = [];
 }

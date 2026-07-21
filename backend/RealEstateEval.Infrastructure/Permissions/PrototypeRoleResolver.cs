@@ -14,9 +14,6 @@ public static class PrototypeRoleResolver
     private static readonly Dictionary<string, string> ExactJobTitleToRoleId = new(StringComparer.Ordinal)
     {
         ["مسؤول التحول الرقمي (CDO)"] = "cdo",
-        ["أخصائية موارد بشرية"] = "hr-admin",
-        ["مدير المالية والعقود"] = "proc-admin",
-        ["مدير علاقات العملاء"] = "crm-admin",
         ["مدير إدارة التقييم العقاري"] = "general-manager",
         ["مشرف قسم دراسة الحالة"] = "section-supervisor",
         ["أخصائي دراسة حالة"] = "case-specialist",
@@ -32,16 +29,6 @@ public static class PrototypeRoleResolver
     {
         if (identityRoles.Any(PlatformPermissionCatalog.IsSuperAdminIdentityRole))
             return "cdo";
-
-        foreach (var role in identityRoles)
-        {
-            if (string.Equals(role, OrgRoles.HrAdmin, StringComparison.OrdinalIgnoreCase))
-                return "hr-admin";
-            if (string.Equals(role, OrgRoles.ProcAdmin, StringComparison.OrdinalIgnoreCase))
-                return "proc-admin";
-            if (string.Equals(role, OrgRoles.CrmAdmin, StringComparison.OrdinalIgnoreCase))
-                return "crm-admin";
-        }
 
         var level = profile?.PermissionLevel?.Trim().ToLowerInvariant();
         if (level == "cdo")

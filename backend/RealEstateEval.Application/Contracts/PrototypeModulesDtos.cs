@@ -176,15 +176,6 @@ public class UploadAttachmentRequest
     public string ContentBase64 { get; init; } = "";
 }
 
-public class UpdateUserRequest
-{
-    [MaxLength(256)]
-    public string? DisplayName { get; init; }
-    [MaxLength(256)]
-    public string? JobTitle { get; init; }
-    public UserStatus? Status { get; init; }
-}
-
 public class SuspendedTransactionDto
 {
     public Guid Id { get; init; }

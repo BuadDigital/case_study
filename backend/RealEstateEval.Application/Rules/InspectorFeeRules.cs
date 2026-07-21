@@ -1,8 +1,9 @@
 namespace RealEstateEval.Application.Rules;
 
 /// <summary>
-/// Field-inspection party types and seed/fallback fees.
-/// Live defaults come from <c>PartyFeePricingConfig</c>; each ledger remains editable.
+/// Field-inspection party types and seed/fallback fees for cooperator rates.
+/// Employee inspectors are outside the pricing table — agreed fee is entered manually.
+/// Live cooperator defaults come from the active <c>PartyFeePricingTable</c>.
 /// </summary>
 public static class InspectorFeeRules
 {
@@ -14,7 +15,6 @@ public static class InspectorFeeRules
 
     public const decimal CooperatorIndividualFeeSar = 400m;
     public const decimal CooperatorOrganizationFeeSar = 500m;
-    public const decimal EmployeeFeeSar = 100m;
 
     private static readonly HashSet<string> CooperatorAssigneeIds = new(StringComparer.Ordinal)
     {
@@ -26,12 +26,15 @@ public static class InspectorFeeRules
             ? TypeCooperatorIndividual
             : TypeEmployee;
 
+    /// <summary>
+    /// Seed/fallback for cooperator types only. Employees have no table default (returns 0).
+    /// </summary>
     public static decimal DefaultAgreedFee(string inspectorType) =>
         inspectorType switch
         {
             TypeCooperatorOrganization => CooperatorOrganizationFeeSar,
             TypeCooperatorIndividual or TypeCooperatorLegacy => CooperatorIndividualFeeSar,
-            _ => EmployeeFeeSar,
+            _ => 0m,
         };
 
     public static bool IsEmployee(string? inspectorType) =>
@@ -44,4 +47,7 @@ public static class InspectorFeeRules
 
     public static decimal NetFee(decimal agreedFeeSar, decimal supervisorDiscountSar) =>
         Math.Max(0m, agreedFeeSar - Math.Max(0m, supervisorDiscountSar));
+
+    /// <summary>Agreed fee must be entered before leaving draft (employees / deferred survey).</summary>
+    public static bool HasBillableAgreedFee(decimal agreedFeeSar) => agreedFeeSar > 0m;
 }

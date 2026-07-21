@@ -4,9 +4,6 @@ import { ROLES } from "../constants";
 /** أدوار لا تُعرض في إسناد الحقول (إدارة منظمة / مسؤول تقني). */
 export const FIELD_DICTIONARY_EXCLUDED_ROLES: RoleId[] = [
   "cdo",
-  "hr-admin",
-  "proc-admin",
-  "crm-admin",
 ];
 
 /** أدوار النظام التشغيلية — مأخوذة من `ROLES` وليس من وثائق خارجية. */

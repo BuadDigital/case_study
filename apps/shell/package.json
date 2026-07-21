@@ -19,7 +19,6 @@
     "@failures/mfe": "*",
     "@financial/mfe": "*",
     "@keys/mfe": "*",
-    "@kpi/mfe": "*",
     "@settings/mfe": "*",
     "@valuation/mfe": "*",
     "@platform/app-shared": "*",
