@@ -192,7 +192,7 @@ export const MODULE_PAGES: { id: string; title: string }[] = [
   { id: "system-fields-catalog", title: "قاموس الحقول المركزي" },
   { id: "system-screen-catalog", title: "دليل الشاشات" },
   { id: "financial", title: "التقارير المالية" },
-  { id: "users", title: "الهيكل التنظيمي" },
+  { id: "users", title: "المستخدمون" },
   { id: "fee-pricing", title: "التسعيرة" },
   { id: "courts", title: "المحاكم و الدوائر" },
   { id: "failure-types", title: "أنواع التعذرات" },

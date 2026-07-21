@@ -1,7 +1,12 @@
 import {
+  createStaffUser,
+  deleteStaffUser,
   getApiBase,
   listDistributionAssignees,
   listUsers,
+  type CreateStaffUserRequest,
+  type CreateStaffUserResult,
+  type DeleteStaffUserResult,
   type UsersApiConfig,
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
@@ -67,4 +72,20 @@ export async function fetchDistributionAssignees(): Promise<FetchStaffUsersResul
     users: result.users.map(userListItemToStaff),
     loadError: null,
   };
+}
+
+export async function submitCreateStaffUser(
+  body: CreateStaffUserRequest,
+): Promise<CreateStaffUserResult> {
+  const config = apiConfig();
+  if (!config) return { ok: false, kind: "network" };
+  return createStaffUser(config, body);
+}
+
+export async function submitDeleteStaffUser(
+  userId: string,
+): Promise<DeleteStaffUserResult> {
+  const config = apiConfig();
+  if (!config) return { ok: false, kind: "network" };
+  return deleteStaffUser(config, userId);
 }

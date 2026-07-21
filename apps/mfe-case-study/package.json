@@ -20,6 +20,7 @@
     "@engineering-office/mfe": "*",
     "@evaluator/mfe": "*",
     "@failures/mfe": "*",
+    "@keys/mfe": "*",
     "@platform/api-client": "*",
     "@platform/app-shared": "*",
     "@platform/auth-client": "*",

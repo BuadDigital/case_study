@@ -7,7 +7,7 @@ import {
   getPropertyKeyGate,
   type PropertyKeyGateDto,
 } from "@platform/api-client";
-import { Button, Note } from "@platform/design-system";
+import { Badge, Button, Note, cn } from "@platform/design-system";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 import {
   FieldBox,
@@ -86,7 +86,6 @@ export function useInspectorKeyAvailability(
         return;
       }
 
-      // Legacy fallback if gate API unavailable
       const govTask = allTasks?.find(
         (t) =>
           t.kind === "government-review" &&
@@ -138,17 +137,35 @@ export function useInspectorKeyHandedStatus(
   return useInspectorKeyAvailability(task).keyHandedToInspector;
 }
 
-function assignmentStatusLabel(status?: string | null): string {
-  switch (status) {
-    case "matched":
-      return "مطابق";
-    case "unmatched":
-      return "غير مطابق";
-    case "pending":
-      return "بانتظار التأكيد";
-    default:
-      return "—";
-  }
+function AssignmentStatusBadge({ status }: { status?: string | null }) {
+  const label =
+    status === "matched"
+      ? "مطابق"
+      : status === "unmatched"
+        ? "غير مطابق"
+        : status === "pending"
+          ? "غير مؤكد"
+          : "مفقود";
+  return (
+    <span
+      className={cn(
+        "inline-flex min-w-[4.5rem] flex-col items-center justify-center rounded-md border bg-surface px-2.5 py-1 text-[11px] font-bold leading-tight",
+        status === "matched" && "border-success/45 text-success-text",
+        status === "unmatched" && "border-danger/45 text-danger-text",
+        status === "pending" && "border-border-md text-text-2",
+        !status && "border-danger/45 text-danger-text",
+      )}
+    >
+      {status === "unmatched" ? (
+        <>
+          <span>غير</span>
+          <span>مطابق</span>
+        </>
+      ) : (
+        label
+      )}
+    </span>
+  );
 }
 
 export function InspectorKeyStatusTab({
@@ -194,6 +211,7 @@ export function InspectorKeyStatusTab({
         );
   const available = local.keyAvailable || keyAvailable;
   const blocksCompletion = !vacantLand && !available;
+  const status = local.assignmentStatus || assignmentStatus;
 
   const refreshGate = async () => {
     const config = prototypeModulesApiConfig();
@@ -205,19 +223,16 @@ export function InspectorKeyStatusTab({
     if (result.ok) setLocal(mapGate(result.data));
   };
 
-  const confirmAssignment = async (status: "matched" | "unmatched") => {
+  const confirmAssignment = async (next: "matched" | "unmatched") => {
     const config = prototypeModulesApiConfig();
     const envId = local.envelopeId || envelopeId;
     const asgId = local.assignmentId || assignmentId;
     if (!config || !envId || !asgId) return;
     setBusy(true);
     setActionError(null);
-    const result = await confirmKeyEnvelopeAssignment(
-      config,
-      envId,
-      asgId,
-      { status },
-    );
+    const result = await confirmKeyEnvelopeAssignment(config, envId, asgId, {
+      status: next,
+    });
     setBusy(false);
     if (!result.ok) {
       setActionError("تعذّر تحديث حالة المطابقة");
@@ -245,8 +260,8 @@ export function InspectorKeyStatusTab({
   const showAssignmentActions =
     Boolean(local.envelopeId || envelopeId) &&
     Boolean(local.assignmentId || assignmentId) &&
-    (local.assignmentStatus || assignmentStatus) !== "matched" &&
-    (local.assignmentStatus || assignmentStatus) !== "unmatched";
+    status !== "matched" &&
+    status !== "unmatched";
   const showHandoffConfirm = Boolean(
     (local.pendingHandoffId || pendingHandoffId) &&
       (local.envelopeId || envelopeId),
@@ -261,12 +276,12 @@ export function InspectorKeyStatusTab({
       <FieldsGrid>
         <FieldBox label="حالة المفاتيح" value={keysLabel} />
         <FieldBox label="التسليم للمعاين" value={handedLabel} />
-        <FieldBox
-          label="حالة الإسناد"
-          value={assignmentStatusLabel(
-            local.assignmentStatus || assignmentStatus,
-          )}
-        />
+        <div>
+          <div className="mb-1 text-[11px] font-medium text-text-3">
+            حالة الإسناد
+          </div>
+          <AssignmentStatusBadge status={status} />
+        </div>
         {studyHoldStatus && studyHoldStatus !== "none" ? (
           <FieldBox label="تمكين/إخلاء" value={studyHoldStatus} />
         ) : null}

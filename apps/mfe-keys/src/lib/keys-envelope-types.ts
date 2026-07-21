@@ -128,9 +128,28 @@ export function envelopeStatusLabel(status: string): string {
     case "external":
       return "بعهدة طرف خارجي";
     case "returned":
-      return "مُرجع للمحكمة";
+      return "مُرجَع للمحكمة";
+    case "cancelled":
+      return "ملغى";
     default:
       return status || "—";
+  }
+}
+
+/** HTML Case Study.html `keyStat` colors. */
+export function envelopeStatusColor(status: string): string {
+  switch (status) {
+    case "reviewer":
+      return "#378add";
+    case "assessor":
+      return "#2f7a4d";
+    case "external":
+      return "#b58a3c";
+    case "returned":
+    case "cancelled":
+      return "#8a8d96";
+    default:
+      return "#8a8d96";
   }
 }
 
@@ -141,38 +160,95 @@ export function envelopeStatusTone(
     case "reviewer":
       return "info";
     case "assessor":
-      return "warning";
-    case "external":
-      return "default";
-    case "returned":
       return "success";
+    case "external":
+      return "warning";
+    case "returned":
+      return "default";
     default:
       return "default";
   }
 }
 
+/** HTML Case Study.html `keyScen` labels. */
 export function scenarioLabel(scenario: string): string {
   switch (scenario) {
     case "missing":
-      return "ب — مفاتيح غير موجودة";
+      return "مفقودة (ميدانياً)";
+    case "party":
     case "third_party":
-      return "ج — عند طرف آخر";
+      return "استلام من طرف آخر";
+    case "court":
     default:
-      return "أ — استلام من المحكمة";
+      return "استلام من المحكمة";
   }
 }
 
+export function scenarioColor(scenario: string): string {
+  switch (scenario) {
+    case "missing":
+      return "#d9694f";
+    case "third_party":
+    case "party":
+      return "#b58a3c";
+    case "court":
+    default:
+      return "#2f7a4d";
+  }
+}
+
+/** Display ref like HTML `keyRef` → ENV-2026-NNN */
+export function envelopeDisplayRef(id: string, createdAtUtc?: string): string {
+  const digits = id.replace(/\D/g, "");
+  const n = (digits.slice(-3) || "1").padStart(3, "0");
+  const year = createdAtUtc
+    ? new Date(createdAtUtc).getFullYear() || 2026
+    : 2026;
+  return `ENV-${year}-${n}`;
+}
+
+export function isEnvelopeOutOfCustody(status: string): boolean {
+  return status === "returned" || status === "external";
+}
+
+/** HTML Case Study.html `keyAssign` labels. */
 export function assignmentStatusLabel(status: string): string {
   switch (status) {
     case "matched":
       return "مطابق";
+    case "partial":
+      return "مطابقة جزئية";
     case "unmatched":
       return "غير مطابق";
+    case "unmatched_inspected":
+      return "غير مطابق — تمت المعاينة";
+    case "missing":
+      return "مفقود";
+    case "pending":
     default:
-      return "غير مؤكد";
+      return "لم تتم التجربة";
   }
 }
 
+export function assignmentStatusColor(status: string): string {
+  switch (status) {
+    case "matched":
+      return "#2f7a4d";
+    case "partial":
+      return "#b58a3c";
+    case "unmatched":
+      return "#d9694f";
+    case "unmatched_inspected":
+      return "#8a5e14";
+    case "missing":
+      return "#c0553d";
+    case "pending":
+    default:
+      return "#d9a441";
+  }
+}
+
+/** HTML Case Study.html `keyHoType` labels. */
 export function handoffKindLabel(kind: string): string {
   switch (kind) {
     case "internal":
@@ -180,11 +256,50 @@ export function handoffKindLabel(kind: string): string {
     case "external":
       return "تسليم خارجي";
     case "receive_back":
-      return "استلام من طرف";
+      return "استرداد الظرف";
     case "return_court":
       return "إرجاع للمحكمة";
     default:
       return kind;
+  }
+}
+
+export function handoffKindColor(kind: string): string {
+  switch (kind) {
+    case "internal":
+      return "#2f7a4d";
+    case "external":
+      return "#b58a3c";
+    case "receive_back":
+      return "#378add";
+    case "return_court":
+      return "#8a8d96";
+    default:
+      return "#8a8d96";
+  }
+}
+
+export function handoffStateLabel(status: string): string {
+  switch (status) {
+    case "pending_confirm":
+      return "بانتظار التأكيد";
+    case "completed":
+    case "confirmed":
+      return "مكتمل";
+    default:
+      return status || "—";
+  }
+}
+
+export function handoffStateColor(status: string): string {
+  switch (status) {
+    case "pending_confirm":
+      return "#d9a441";
+    case "completed":
+    case "confirmed":
+      return "#2f7a4d";
+    default:
+      return "#8a8d96";
   }
 }
 

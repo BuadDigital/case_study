@@ -1,0 +1,61 @@
+/* عين زر «إظهار المستلمة» — نفس حركة «إظهار جميع المهام» */
+.show-all-eye .show-all-eye-ball {
+  transform-origin: 12px 12px;
+  transform: scaleY(0.08);
+  transition: transform 0.32s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+.show-all-eye .show-all-eye-pupil {
+  transform-origin: 12px 12px;
+  opacity: 0;
+  transform: scale(0.2);
+  transition:
+    opacity 0.2s ease,
+    transform 0.28s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+.show-all-eye .show-all-eye-lid {
+  opacity: 1;
+  stroke-dasharray: 18;
+  stroke-dashoffset: 0;
+  transition:
+    opacity 0.18s ease,
+    stroke-dashoffset 0.32s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+.show-all-eye.is-open .show-all-eye-ball {
+  transform: scaleY(1);
+}
+.show-all-eye.is-open .show-all-eye-pupil {
+  opacity: 1;
+  transform: scale(1);
+}
+.show-all-eye.is-open .show-all-eye-lid {
+  opacity: 0;
+  stroke-dashoffset: 18;
+}
+.show-all-eye.is-blink .show-all-eye-ball {
+  animation: show-all-eye-blink 0.42s ease;
+}
+@keyframes show-all-eye-blink {
+  0% {
+    transform: scaleY(0.08);
+  }
+  45% {
+    transform: scaleY(1);
+  }
+  62% {
+    transform: scaleY(0.18);
+  }
+  100% {
+    transform: scaleY(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .show-all-btn-motion,
+  .show-all-eye .show-all-eye-ball,
+  .show-all-eye .show-all-eye-pupil,
+  .show-all-eye .show-all-eye-lid {
+    transition: none;
+  }
+  .show-all-eye.is-blink .show-all-eye-ball {
+    animation: none;
+  }
+}

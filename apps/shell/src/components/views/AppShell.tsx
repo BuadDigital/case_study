@@ -60,7 +60,6 @@ import {
   poPropertiesPath,
 } from "@case-study/mfe";
 import { AppBreadcrumb } from "@/components/views/AppBreadcrumb";
-import { GlobalSearch } from "@/components/GlobalSearch";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { resolvePoChrome, buildPoPropertyDetailSegments } from "@/lib/po-chrome";
 import { resolveMyTasksChrome } from "@/lib/my-tasks-chrome";
@@ -929,6 +928,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const onPoPropertyDetail = Boolean(poChrome?.propertyDetail);
   const onActiveSurveyPropertyDetail = onActiveSurveyEntry;
+  // Keys HTML setHeader: list / fees report / envelope file.
+  const keysChrome = useMemo(() => {
+    if (currentPage !== "keys") return null;
+    const envelope = searchParams.get("envelope")?.trim();
+    if (envelope) {
+      return {
+        title: "ملف الظرف",
+        breadcrumb: "دراسة الحالة / محفظة المفاتيح / ملف الظرف",
+      };
+    }
+    if (searchParams.get("tab") === "fees") {
+      return {
+        title: "تقرير الأتعاب",
+        breadcrumb: "دراسة الحالة / محفظة المفاتيح / تقرير الأتعاب",
+      };
+    }
+    return null;
+  }, [currentPage, searchParams]);
+
   const breadcrumbSegments =
     poChrome?.segments ??
     activeSurveyBreadcrumb ??
@@ -938,35 +956,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           .split(" / ")
           .map((label) => ({ label: label.trim() }))
           .filter((s) => s.label)
-      : PAGE_BREADCRUMB[currentPage]
-        ? PAGE_BREADCRUMB[currentPage]
+      : keysChrome?.breadcrumb
+        ? keysChrome.breadcrumb
             .split(" / ")
             .map((label) => ({ label: label.trim() }))
             .filter((s) => s.label)
-        : undefined);
+        : PAGE_BREADCRUMB[currentPage]
+          ? PAGE_BREADCRUMB[currentPage]
+              .split(" / ")
+              .map((label) => ({ label: label.trim() }))
+              .filter((s) => s.label)
+          : undefined);
 
   const resolvedPageTitle =
     poChrome?.title ??
     myTasksChrome?.title ??
+    keysChrome?.title ??
     PAGE_TITLES[currentPage] ??
     "";
 
-  const displayBreadcrumbSegments = useMemo(() => {
-    if (
-      onPoPropertyDetail ||
-      onActiveSurveyPropertyDetail ||
-      !breadcrumbSegments?.length
-    ) {
-      return breadcrumbSegments ?? [];
-    }
-    const lastLabel =
-      breadcrumbSegments[breadcrumbSegments.length - 1]!.label.trim();
-    const titleTrimmed = resolvedPageTitle.trim();
-    if (!poChrome?.titlePo && titleTrimmed && titleTrimmed === lastLabel) {
-      return breadcrumbSegments.slice(0, -1);
-    }
-    return breadcrumbSegments;
-  }, [onPoPropertyDetail, onActiveSurveyPropertyDetail, breadcrumbSegments, resolvedPageTitle, poChrome?.titlePo]);
+  // Full trail from PAGE_BREADCRUMB / chrome (including current page label),
+  // matching HTML setHeader(title, crumb([…, current])).
+  const displayBreadcrumbSegments = breadcrumbSegments ?? [];
 
   return (
     <div id="app" className="flex h-svh overflow-hidden bg-bg">
@@ -1203,7 +1214,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-3">
-            <GlobalSearch />
             <NotificationCenter />
             <div className="h-[26px] w-px shrink-0 bg-border-md" aria-hidden />
             {poChrome?.propertyDetail ? (

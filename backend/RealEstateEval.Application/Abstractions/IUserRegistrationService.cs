@@ -18,4 +18,14 @@ public interface IUserRegistrationService
 
     Task<OrganizationOverviewDto> GetOrganizationOverviewAsync(
         CancellationToken cancellationToken = default);
+
+    Task<(CreateStaffUserResponseDto? Result, Dictionary<string, string>? Errors)> CreateStaffAsync(
+        CreateStaffUserRequest request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Deletes one staff user. Protects the caller and seeded primary admin accounts.</summary>
+    Task<(bool Ok, string? Error)> DeleteStaffAsync(
+        string userId,
+        string? requestingUserId,
+        CancellationToken cancellationToken = default);
 }

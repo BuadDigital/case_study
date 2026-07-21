@@ -65,7 +65,11 @@ export { ActiveTransactionsSituationBar } from "./components/active-transactions
 export { TaskWorkChrome } from "./components/primary-data/TaskWorkChrome";
 export { DistributionPartiesForm } from "./components/distribution/DistributionPartiesForm";
 export { PoNumber } from "./components/ui/PoNumber";
-export { RowMoreMenu, type RowMoreMenuItem } from "./components/ui/RowMoreMenu";
+export {
+  RowMoreMenu,
+  RowMoreMenuIcons,
+  type RowMoreMenuItem,
+} from "./components/ui/RowMoreMenu";
 export { RemainingTimeCell } from "./components/ui/RemainingTimeCell";
 export { useActiveTransactionPageSituation } from "./query/use-active-transaction-page-situation";
 export * from "./query/case-study-queries";

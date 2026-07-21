@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { getPropertyKeyGate } from "@platform/api-client";
 import {
   Badge,
   EmptyState,
@@ -24,6 +26,7 @@ import { ActiveTransactionPageLayout } from "../components/active-transactions/A
 import { GovernmentReviewPoPanel } from "../components/government-review/GovernmentReviewPoPanel";
 import { getAuthSession } from "@platform/auth-client";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { partyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import {
@@ -256,6 +259,51 @@ export function GovernmentReviewView() {
     });
   }, [mine, poByNumber, reviewerScope]);
 
+  const openGateTargets = useMemo(() => {
+    const seen = new Set<string>();
+    const targets: { propertyId: string; poNumber: string }[] = [];
+    for (const row of rows) {
+      if (row.status !== "open") continue;
+      for (const task of row.panelRow.tasks) {
+        if (task.status !== "open" || !task.propertyId?.trim()) continue;
+        const key = `${task.propertyId}:${task.poNumber}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        targets.push({
+          propertyId: task.propertyId.trim(),
+          poNumber: task.poNumber.trim(),
+        });
+      }
+    }
+    return targets;
+  }, [rows]);
+
+  const { data: awaitingEnvelopeByPo = new Set<string>() } = useQuery({
+    queryKey: [
+      "government-review-envelope-missing",
+      openGateTargets.map((t) => `${t.propertyId}:${t.poNumber}`).join("|"),
+    ],
+    enabled: openGateTargets.length > 0,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const config = prototypeModulesApiConfig();
+      const missing = new Set<string>();
+      if (!config) return missing;
+      await Promise.all(
+        openGateTargets.map(async (target) => {
+          const result = await getPropertyKeyGate(config, {
+            propertyId: target.propertyId,
+            poNumber: target.poNumber,
+          });
+          if (result.ok && result.data.envelopeMissingWarning) {
+            missing.add(target.poNumber);
+          }
+        }),
+      );
+      return missing;
+    },
+  });
+
   const selectedRow = useMemo(
     () =>
       selectedPoNumber
@@ -400,7 +448,11 @@ export function GovernmentReviewView() {
                       </Td>
                       <Td>
                         {row.status === "open" ? (
-                          <Badge tone="warning">قيد الإجراء</Badge>
+                          awaitingEnvelopeByPo.has(row.panelRow.poNumber) ? (
+                            <Badge tone="warning">بانتظار الظرف</Badge>
+                          ) : (
+                            <Badge tone="warning">قيد الإجراء</Badge>
+                          )
                         ) : row.status === "blocked" ? (
                           <Badge tone="default">موقوفة</Badge>
                         ) : (
@@ -435,7 +487,7 @@ export function GovernmentReviewView() {
           </div>
           <QueueTableHint>
             {def?.tableHint ??
-              "اضغط الصف لفتح لوحة المهام — ثم اختر عقاراً لتعبئة نموذج المراجعة. خطاب التفويض من عمود «مهمة زيارة المحكمة» أو من اللوحة."}
+              "اضغط الصف لفتح نموذج المراجعة (أو لوحة اختيار العقار إن وُجد أكثر من مهمة). خطاب التفويض من عمود «مهمة زيارة المحكمة»."}
           </QueueTableHint>
         </>
       )}

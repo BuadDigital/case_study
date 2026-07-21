@@ -16,7 +16,6 @@ import {
   fetchDistributionAssignees,
   fetchStaffUsers,
 } from "../lib/users-api";
-import { fetchOrganization } from "../lib/users-org-api";
 
 const STALE_MS = 60_000;
 const GC_MS = 10 * 60_000;
@@ -56,14 +55,6 @@ export function useDistributionAssigneesQuery() {
     queryKey: [...prototypeKeys.distributionAssignees(), userId],
     queryFn: fetchDistributionAssignees,
     enabled: authReady,
-    ...queryDefaults,
-  });
-}
-
-export function useOrganizationQuery() {
-  return useQuery({
-    queryKey: prototypeKeys.organization(),
-    queryFn: fetchOrganization,
     ...queryDefaults,
   });
 }

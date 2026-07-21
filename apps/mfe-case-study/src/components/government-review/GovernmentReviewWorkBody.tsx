@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type RefObject } from "react";
+import Link from "next/link";
 import { getPropertyKeyGate } from "@platform/api-client";
 import {
   FormGroup,
@@ -524,8 +525,14 @@ export function GovernmentReviewWorkBody({
             ) : null}
             {envelopeMissingWarning ? (
               <Note tone="warning" className="mt-2">
-                ظرف غير مسجّل لرقم الطلب — يمكن إتمام المراجعة، ويُفضّل تسجيل
-                الظرف من وحدة المفاتيح لمزامنة الطوابير.
+                ظرف غير مسجّل لرقم الطلب — يمكن إتمام المراجعة، ويُفضّل{" "}
+                <Link
+                  href="/keys?register=1"
+                  className="font-semibold text-primary underline decoration-primary underline-offset-2"
+                >
+                  تسجيل الظرف من إدارة المفاتيح
+                </Link>{" "}
+                لمزامنة الطوابير.
               </Note>
             ) : null}
           </FormGroup>

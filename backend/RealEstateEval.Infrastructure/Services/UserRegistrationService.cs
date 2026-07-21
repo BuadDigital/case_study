@@ -4,6 +4,9 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Permissions;
+using System.Security.Cryptography;
+using System.Text.RegularExpressions;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -47,14 +50,6 @@ public class UserRegistrationService : IUserRegistrationService
 
         return rows
             .Where(p => sourceScope is null || p.RegistrationSource == sourceScope.Value)
-            .Where(p =>
-            {
-                if (sourceScope is not null)
-                    return true;
-
-                var roles = rolesByUser.GetValueOrDefault(p.UserId, []);
-                return !roles.Any(OrgRoles.IsOrgRole);
-            })
             .Select(p => RegistrationMapper.ToListItem(
                 p.User,
                 p,
@@ -186,5 +181,289 @@ public class UserRegistrationService : IUserRegistrationService
         }
 
         return deleted;
+    }
+
+    public async Task<(CreateStaffUserResponseDto? Result, Dictionary<string, string>? Errors)> CreateStaffAsync(
+        CreateStaffUserRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var errors = ValidateCreateStaffRequest(request);
+        if (errors.Count > 0)
+            return (null, errors);
+
+        var roleId = request.RoleId.Trim();
+        var jobTitle = PrototypeRoleResolver.JobTitleForRoleId(roleId)!;
+        var defaults = StaffRoleDefaults.For(roleId);
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+        var displayName = request.DisplayName.Trim();
+
+        var existingEmail = await _userManager.FindByEmailAsync(normalizedEmail);
+        if (existingEmail is not null)
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["email"] = "البريد الإلكتروني مستخدم مسبقاً.",
+            });
+        }
+
+        var userName = await AllocateUniqueUserNameAsync(normalizedEmail, cancellationToken);
+        var temporaryPassword = GenerateTemporaryPassword();
+
+        var user = new ApplicationUser
+        {
+            UserName = userName,
+            Email = normalizedEmail,
+            EmailConfirmed = true,
+            DisplayName = displayName,
+        };
+
+        var createResult = await _userManager.CreateAsync(user, temporaryPassword);
+        if (!createResult.Succeeded)
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_form"] = string.Join(" ", createResult.Errors.Select(e => e.Description)),
+            });
+        }
+
+        foreach (var identityRole in defaults.IdentityRoles.Distinct())
+        {
+            await _userManager.AddToRoleAsync(user, identityRole);
+        }
+
+        var profile = new UserProfile
+        {
+            UserId = user.Id,
+            RegistrationSource = RegistrationSource.Hr,
+            ContractType = defaults.ContractType,
+            JobTitle = jobTitle,
+            DistributionAssigneeId = BuildDistributionAssigneeId(roleId, userName),
+            PermissionLevel = defaults.PermissionLevel,
+            Status = UserStatus.Active,
+            CreatedAtUtc = DateTime.UtcNow,
+            HrEmployee = new HrEmployeeProfile
+            {
+                UserId = user.Id,
+                EmploymentType = defaults.EmploymentType,
+                Department = defaults.Department,
+                Section = defaults.Section,
+                NationalId = string.IsNullOrWhiteSpace(request.NationalId)
+                    ? null
+                    : request.NationalId.Trim(),
+                EmployeeNumber = string.IsNullOrWhiteSpace(request.EmployeeNumber)
+                    ? null
+                    : request.EmployeeNumber.Trim(),
+            },
+        };
+
+        _db.UserProfiles.Add(profile);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        var roles = (IReadOnlyList<string>)[.. await _userManager.GetRolesAsync(user)];
+        var dto = RegistrationMapper.ToListItem(user, profile, roles);
+        return (new CreateStaffUserResponseDto
+        {
+            User = dto,
+            UserName = userName,
+            TemporaryPassword = temporaryPassword,
+        }, null);
+    }
+
+    public async Task<(bool Ok, string? Error)> DeleteStaffAsync(
+        string userId,
+        string? requestingUserId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            return (false, "معرّف المستخدم غير صالح.");
+
+        if (!string.IsNullOrWhiteSpace(requestingUserId)
+            && string.Equals(userId, requestingUserId, StringComparison.Ordinal))
+        {
+            return (false, "لا يمكنك حذف حسابك الحالي.");
+        }
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null)
+            return (false, "المستخدم غير موجود.");
+
+        var email = (user.Email ?? "").Trim().ToLowerInvariant();
+        var userName = (user.UserName ?? "").Trim().ToLowerInvariant();
+        if (email is "admin@local.dev" or "s.salhy@gmail.com"
+            || userName is "sliman" or "admin")
+        {
+            return (false, "لا يمكن حذف حساب المسؤول الأساسي.");
+        }
+
+        var result = await _userManager.DeleteAsync(user);
+        if (!result.Succeeded)
+        {
+            return (
+                false,
+                string.Join(" ", result.Errors.Select(e => e.Description)));
+        }
+
+        return (true, null);
+    }
+
+    private static Dictionary<string, string> ValidateCreateStaffRequest(CreateStaffUserRequest request)
+    {
+        var errors = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        if (string.IsNullOrWhiteSpace(request.DisplayName))
+            errors["displayName"] = "الاسم مطلوب.";
+        if (string.IsNullOrWhiteSpace(request.Email))
+            errors["email"] = "البريد الإلكتروني مطلوب.";
+        else if (!IsValidEmail(request.Email.Trim()))
+            errors["email"] = "صيغة البريد الإلكتروني غير صحيحة.";
+        if (string.IsNullOrWhiteSpace(request.RoleId))
+            errors["roleId"] = "الدور مطلوب.";
+        else if (!PrototypeRoleResolver.IsCreatableStaffRoleId(request.RoleId))
+            errors["roleId"] = "الدور المحدد غير مدعوم.";
+
+        return errors;
+    }
+
+    private static bool IsValidEmail(string email) =>
+        Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+
+    private async Task<string> AllocateUniqueUserNameAsync(
+        string normalizedEmail,
+        CancellationToken cancellationToken)
+    {
+        var baseName = DeriveUserNameFromEmail(normalizedEmail);
+        var candidate = baseName;
+        var suffix = 2;
+
+        while (await _db.Users.AsNoTracking().AnyAsync(u => u.UserName == candidate, cancellationToken))
+        {
+            candidate = $"{baseName}-{suffix}";
+            suffix++;
+        }
+
+        return candidate;
+    }
+
+    private static string DeriveUserNameFromEmail(string normalizedEmail)
+    {
+        var local = normalizedEmail.Split('@')[0].Trim().ToLowerInvariant();
+        var sanitized = Regex.Replace(local, @"[^a-z0-9._-]", "_");
+        sanitized = sanitized.Trim('_', '.', '-');
+        if (string.IsNullOrWhiteSpace(sanitized))
+            sanitized = "user";
+        return sanitized.Length > 50 ? sanitized[..50] : sanitized;
+    }
+
+    private static string BuildDistributionAssigneeId(string roleId, string userName)
+    {
+        var prefix = roleId switch
+        {
+            "cdo" => "cdo",
+            "general-manager" => "gm",
+            "section-supervisor" => "ss",
+            "case-specialist" => "cs",
+            "government-reviewer" => "gov",
+            "valuation-coordinator" => "vc",
+            "real-estate-appraiser" => "val",
+            "field-inspector" => "fi",
+            "financial-officer" => "fo",
+            _ => "usr",
+        };
+
+        var slug = Regex.Replace(userName.ToLowerInvariant(), @"[^a-z0-9]+", "-").Trim('-');
+        if (string.IsNullOrWhiteSpace(slug))
+            slug = "user";
+
+        return $"{prefix}-{slug}";
+    }
+
+    private static string GenerateTemporaryPassword()
+    {
+        const string alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+        Span<char> chars = stackalloc char[12];
+        for (var i = 0; i < chars.Length; i++)
+        {
+            chars[i] = alphabet[RandomNumberGenerator.GetInt32(alphabet.Length)];
+        }
+
+        return new string(chars);
+    }
+
+    private sealed record StaffRoleDefaults(
+        string PermissionLevel,
+        string EmploymentType,
+        string Department,
+        string? Section,
+        ContractType ContractType,
+        IReadOnlyList<string> IdentityRoles)
+    {
+        public static StaffRoleDefaults For(string roleId) =>
+            roleId switch
+            {
+                "cdo" => new(
+                    "cdo",
+                    "دوام كامل",
+                    "الإدارة التنفيذية",
+                    null,
+                    ContractType.Internal,
+                    [OrgRoles.Cdo, DepartmentRoles.Hr]),
+                "general-manager" => new(
+                    "مدير",
+                    "دوام كامل",
+                    "إدارة التقييم العقاري",
+                    null,
+                    ContractType.Internal,
+                    [DepartmentRoles.Hr, "Editor"]),
+                "section-supervisor" => new(
+                    "مشرف",
+                    "دوام كامل",
+                    "إدارة التقييم العقاري",
+                    "قسم دراسة الحالة",
+                    ContractType.Internal,
+                    [DepartmentRoles.Hr, "Supervisor"]),
+                "case-specialist" => new(
+                    "محرر",
+                    "دوام كامل",
+                    "إدارة التقييم العقاري",
+                    "قسم دراسة الحالة",
+                    ContractType.Internal,
+                    [DepartmentRoles.Hr, "Editor"]),
+                "government-reviewer" => new(
+                    "محرر",
+                    "دوام كامل",
+                    "إدارة التقييم العقاري",
+                    "قسم دراسة الحالة",
+                    ContractType.Internal,
+                    [DepartmentRoles.Hr, "Editor"]),
+                "valuation-coordinator" => new(
+                    "مشرف",
+                    "دوام كامل",
+                    "إدارة التقييم العقاري",
+                    "قسم تقييم الأفراد",
+                    ContractType.Internal,
+                    [DepartmentRoles.Hr, "Supervisor"]),
+                "real-estate-appraiser" => new(
+                    "محرر",
+                    "دوام كامل",
+                    "إدارة التقييم العقاري",
+                    "قسم تقييم الأفراد",
+                    ContractType.Internal,
+                    [DepartmentRoles.Hr, "Editor"]),
+                "field-inspector" => new(
+                    "محرر",
+                    "دوام كامل",
+                    "إدارة التقييم العقاري",
+                    "قسم تقييم الأفراد",
+                    ContractType.Internal,
+                    [DepartmentRoles.Hr, "Editor"]),
+                "financial-officer" => new(
+                    "محرر",
+                    "دوام كامل",
+                    "الإدارة المالية",
+                    "قسم المحاسبة",
+                    ContractType.Internal,
+                    [DepartmentRoles.Hr, "Editor"]),
+                _ => throw new ArgumentOutOfRangeException(nameof(roleId), roleId, null),
+            };
     }
 }

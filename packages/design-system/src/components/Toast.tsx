@@ -17,7 +17,6 @@ import {
   UPLOAD_FAILURE_MESSAGE,
 } from "../lib/action-progress-message";
 import { bindGlobalActionToast } from "../lib/action-toast-listener";
-import { cn } from "../lib/cn";
 
 export type ToastTone = "success" | "error" | "info" | "progress";
 
@@ -43,14 +42,8 @@ type ToastContextValue = {
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
-const TOAST_DURATION_MS = 4000;
-
-const toneClasses: Record<ToastTone, string> = {
-  success: "border-success/40 bg-success-bg text-success-text",
-  error: "border-danger/40 bg-danger-bg text-danger-text",
-  info: "border-ink/30 bg-navy-soft text-ink",
-  progress: "border-ink/30 bg-navy-soft text-ink",
-};
+/** Matches Case Study.html showToast (~2.6s + fade). */
+const TOAST_DURATION_MS = 2800;
 
 const GENERIC_ACTION_ERROR = "تعذّر تنفيذ العملية — حاول مرة أخرى";
 
@@ -77,6 +70,82 @@ function newToastId(): string {
     return crypto.randomUUID();
   }
   return `toast-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function ToastIcon({ tone }: { tone: ToastTone }) {
+  if (tone === "error") {
+    return (
+      <svg
+        width="17"
+        height="17"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#f0a8a0"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+        className="shrink-0"
+      >
+        <circle cx="12" cy="12" r="9" />
+        <path d="M15 9 9 15M9 9l6 6" />
+      </svg>
+    );
+  }
+  if (tone === "progress") {
+    return (
+      <svg
+        width="17"
+        height="17"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="var(--gold-2)"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+        className="shrink-0 animate-spin"
+      >
+        <path d="M12 3a9 9 0 1 0 9 9" />
+      </svg>
+    );
+  }
+  if (tone === "info") {
+    return (
+      <svg
+        width="17"
+        height="17"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="var(--gold-2)"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+        className="shrink-0"
+      >
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 10v6M12 7h.01" />
+      </svg>
+    );
+  }
+  /* success — Case Study.html check */
+  return (
+    <svg
+      width="17"
+      height="17"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="#8fd0a5"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="shrink-0"
+    >
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
@@ -166,7 +235,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={value}>
       {children}
       <div
-        className="pointer-events-none fixed bottom-4 start-4 z-[200] flex max-w-sm flex-col gap-2"
+        className="pointer-events-none fixed bottom-6 left-1/2 z-[400] flex max-w-[90vw] -translate-x-1/2 flex-col items-center gap-2"
         aria-live="polite"
         aria-relevant="additions"
       >
@@ -174,12 +243,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={toast.id}
             role="status"
-            className={cn(
-              "pointer-events-auto rounded-[var(--radius-DEFAULT)] border px-3 py-2 text-[12px] shadow-sm ui-animate-fade-in",
-              toneClasses[toast.tone],
-            )}
+            className="pointer-events-auto flex items-center gap-2.5 ui-animate-fade-in"
+            style={{
+              background: "var(--ink)",
+              color: "#fff",
+              padding: "12px 20px",
+              borderRadius: 10,
+              fontSize: 13,
+              fontWeight: 600,
+              boxShadow: "0 12px 30px -8px rgba(18,43,78,.5)",
+              maxWidth: "90vw",
+            }}
           >
-            {toast.message}
+            <ToastIcon tone={toast.tone} />
+            <span>{toast.message}</span>
           </div>
         ))}
       </div>

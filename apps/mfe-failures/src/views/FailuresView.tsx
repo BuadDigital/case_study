@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, Fragment } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { ROLES } from "@platform/app-shared/prototype/constants";
@@ -10,7 +10,6 @@ import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import type { RoleId } from "@platform/types";
 import {
-  Badge,
   Button,
   cn,
   EmptyState,
@@ -19,12 +18,22 @@ import {
   KpiCell,
   Note,
   OperationalPanel,
+  OperationalToolbarSearch,
   PageShell,
   PageToolbar,
   QueueTableHint,
+  SkeletonTableRows,
+  StatusPill,
+  Table,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tr,
+  queueTableRowClassName,
   useToast,
 } from "@platform/design-system";
-import { formatDateAr, formatPoDisplay } from "@case-study/mfe";
+import { formatPoDisplay } from "@case-study/mfe";
 import { poPropertyPath } from "@case-study/mfe/lib/po-routes";
 import { suspendPropertyTransaction } from "@case-study/mfe/lib/prototype/suspend-property-transaction";
 import { usePoRecordsQuery } from "@case-study/mfe/query/case-study-queries";
@@ -32,9 +41,24 @@ import {
   failuresForPartyRole,
   isPartyScopedFailuresRole,
 } from "../lib/failures-party-raiser-scope";
-import { approveFailure, resolveFailure, returnFailure, submitFailureForReview, upgradeFailureToInternal } from "../lib/failures-repository";
-import { failureRecordTitle, failureSeverityLabel, failureStatusLabel } from "../lib/failures-labels";
-import { countOpenFailures, isActiveFailureStatus, type FailureRecord } from "../lib/failures-types";
+import {
+  approveFailure,
+  resolveFailure,
+  returnFailure,
+  submitFailureForReview,
+  upgradeFailureToInternal,
+} from "../lib/failures-repository";
+import {
+  failureListSeverityLabel,
+  failureListStatusColor,
+  failureListStatusLabel,
+  failureRecordTitle,
+} from "../lib/failures-labels";
+import {
+  countOpenFailures,
+  isActiveFailureStatus,
+  type FailureRecord,
+} from "../lib/failures-types";
 import { useFailuresQuery } from "../query/failures-queries";
 
 function KpiAlertIcon() {
@@ -82,22 +106,6 @@ function isSupervisor(role: RoleId) {
   return isSuperAdmin(role) || role === "section-supervisor";
 }
 
-
-function partyScopedFailuresNote(role: RoleId): string | null {
-  switch (role) {
-    case "government-reviewer":
-      return "تعرض هنا تعذراتك التي رفعتها من المراجعة الحكومية فقط — للمتابعة والاطلاع.";
-    case "engineering-office":
-      return "تعرض هنا تعذراتك التي سجّلتها من الرفع المساحي فقط — للمتابعة والاطلاع.";
-    case "field-inspector":
-      return "تعرض هنا تعذراتك التي سجّلتها من المعاينة الميدانية فقط — للمتابعة والاطلاع.";
-    case "real-estate-appraiser":
-      return "تعرض هنا تعذراتك التي سجّلتها من تقييم العقار فقط — للمتابعة والاطلاع.";
-    default:
-      return null;
-  }
-}
-
 function partyScopedFailuresEmptyLine(role: RoleId): string | null {
   switch (role) {
     case "engineering-office":
@@ -126,7 +134,8 @@ export function FailuresView() {
   const { role } = usePrototype();
   const ce = isCaseEditor(role);
   const ca = isSupervisor(role);
-  const { data: items = [], isFetched, isError, error, refetch } = useFailuresQuery();
+  const { data: items = [], isFetched, isError, error, refetch } =
+    useFailuresQuery();
   const visibleItems = useMemo(() => {
     const scoped = failuresForPartyRole(role, items);
     if (scoped) return scoped;
@@ -141,7 +150,11 @@ export function FailuresView() {
     }
     return map;
   }, [poRecords]);
-  const [supervisorNote, setSupervisorNote] = useState<Record<string, string>>({});
+  const [search, setSearch] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(highlightId);
+  const [supervisorNote, setSupervisorNote] = useState<Record<string, string>>(
+    {},
+  );
   const [resolveDraft, setResolveDraft] = useState<Record<string, ResolveDraft>>(
     {},
   );
@@ -149,6 +162,7 @@ export function FailuresView() {
 
   useEffect(() => {
     if (!highlightId || !isFetched) return;
+    setExpandedId(highlightId);
     const el = document.getElementById(`failure-${highlightId}`);
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -193,52 +207,83 @@ export function FailuresView() {
       });
   }, [visibleItems]);
 
-  function handleSubmit(id: string) {
-    void submitFailureForReview(id).then((result) => {
-      if (!result.ok) {
-        showToast(result.error, "error");
-        return;
-      }
-      refresh();
-    }).catch(() => {
-      showToast("تعذّر إرسال التعذر للمراجعة — حاول مرة أخرى", "error");
+  const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return sortedItems;
+    return sortedItems.filter((f) => {
+      const hay = [
+        f.deedNumber,
+        f.poNumber,
+        failureRecordTitle(f),
+        failureListSeverityLabel(f.severity),
+        failureListStatusLabel(f.status, f.severity),
+        f.raisedByRole,
+        f.specialist,
+      ]
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
     });
+  }, [sortedItems, search]);
+
+  function handleSubmit(id: string) {
+    void submitFailureForReview(id)
+      .then((result) => {
+        if (!result.ok) {
+          showToast(result.error, "error");
+          return;
+        }
+        showToast("تم تصعيد التعذر", "success");
+        refresh();
+      })
+      .catch(() => {
+        showToast("تعذّر إرسال التعذر للمراجعة — حاول مرة أخرى", "error");
+      });
   }
 
   function handleUpgrade(id: string) {
-    void upgradeFailureToInternal(id).then((result) => {
-      if (!result.ok) {
-        showToast(result.error, "error");
-        return;
-      }
-      refresh();
-    }).catch(() => {
-      showToast("تعذّر ترقية التعذر — حاول مرة أخرى", "error");
-    });
+    void upgradeFailureToInternal(id)
+      .then((result) => {
+        if (!result.ok) {
+          showToast(result.error, "error");
+          return;
+        }
+        showToast("تم تأكيد التعذر الداخلي", "success");
+        refresh();
+      })
+      .catch(() => {
+        showToast("تعذّر ترقية التعذر — حاول مرة أخرى", "error");
+      });
   }
 
   function handleApprove(id: string) {
-    void approveFailure(id, supervisorNote[id] ?? "").then((result) => {
-      if (!result.ok) {
-        showToast(result.error, "error");
-        return;
-      }
-      refresh();
-    }).catch(() => {
-      showToast("تعذّر اعتماد التعذر — حاول مرة أخرى", "error");
-    });
+    void approveFailure(id, supervisorNote[id] ?? "")
+      .then((result) => {
+        if (!result.ok) {
+          showToast(result.error, "error");
+          return;
+        }
+        showToast("تم اعتماد التعذر", "success");
+        refresh();
+      })
+      .catch(() => {
+        showToast("تعذّر اعتماد التعذر — حاول مرة أخرى", "error");
+      });
   }
 
   function handleReturn(id: string) {
-    void returnFailure(id, supervisorNote[id] ?? "").then((result) => {
-      if (!result.ok) {
-        showToast(result.error, "error");
-        return;
-      }
-      refresh();
-    }).catch(() => {
-      showToast("تعذّر إرجاع التعذر — حاول مرة أخرى", "error");
-    });
+    void returnFailure(id, supervisorNote[id] ?? "")
+      .then((result) => {
+        if (!result.ok) {
+          showToast(result.error, "error");
+          return;
+        }
+        showToast("أُعيد التعذر للأخصائي", "success");
+        refresh();
+      })
+      .catch(() => {
+        showToast("تعذّر إرجاع التعذر — حاول مرة أخرى", "error");
+      });
   }
 
   async function handleSuspend(id: string) {
@@ -250,6 +295,7 @@ export function FailuresView() {
       suspendedBy: ROLES[role]?.name ?? "مشرف",
     });
     if (ok) {
+      showToast("تم تعليق المعاملة", "success");
       refresh();
       return;
     }
@@ -262,16 +308,19 @@ export function FailuresView() {
     void resolveFailure(id, {
       resolutionReason: draft.reason,
       continueInstructions: draft.instructions,
-    }).then((result) => {
-      if (!result.ok) {
-        showToast(result.error, "error");
-        return;
-      }
-      setResolveOpen((o) => ({ ...o, [id]: false }));
-      refresh();
-    }).catch(() => {
-      showToast("تعذّر حل التعذر — حاول مرة أخرى", "error");
-    });
+    })
+      .then((result) => {
+        if (!result.ok) {
+          showToast(result.error, "error");
+          return;
+        }
+        setResolveOpen((o) => ({ ...o, [id]: false }));
+        showToast("تم حل التعذر", "success");
+        refresh();
+      })
+      .catch(() => {
+        showToast("تعذّر حل التعذر — حاول مرة أخرى", "error");
+      });
   }
 
   function toggleResolve(id: string) {
@@ -285,28 +334,220 @@ export function FailuresView() {
     });
   }
 
+  function renderExpandedActions(f: FailureRecord) {
+    const active = isActiveFailureStatus(f.status);
+    const canSpecialistAct =
+      ce && active && (f.status === "internal" || f.status === "returned");
+    const canSupervisorAct = ca && active && f.status === "review";
+    const canResolve = canSpecialistAct && f.status !== "approved";
+    const draft = resolveDraft[f.id] ?? { reason: "", instructions: "" };
+    const displayTitle = failureRecordTitle(f);
+
+    return (
+      <div className="space-y-3 border-t border-border bg-surface-2/40 px-4 py-3 text-[12px]">
+        <div className="font-semibold text-heading">{displayTitle}</div>
+        {f.internalNote ? (
+          <div className="text-text-2">
+            <strong>ملاحظات:</strong> {f.internalNote}
+          </div>
+        ) : null}
+        {f.finalNote ? (
+          <div className="text-text-2">
+            <strong>قرار المشرف:</strong> {f.finalNote}
+          </div>
+        ) : null}
+        {f.resolutionReason ? (
+          <div className="text-text-2">
+            <strong>سبب الحل:</strong> {f.resolutionReason}
+            {f.continueInstructions ? (
+              <>
+                <br />
+                <strong>توجيه استمرار العمل:</strong> {f.continueInstructions}
+              </>
+            ) : null}
+          </div>
+        ) : null}
+        {f.status === "review" ? (
+          <div className="text-text-3">
+            أخصائي الإسناد:{" "}
+            {assignmentSpecialistByPo.get(f.poNumber.trim()) || "—"}
+          </div>
+        ) : null}
+        {f.propertyId ? (
+          <Link
+            href={poPropertyPath(f.poNumber, f.propertyId)}
+            className="inline-flex items-center justify-center rounded-[var(--radius-DEFAULT)] border border-border-md bg-surface px-2 py-1 text-[11px] text-text no-underline hover:bg-surface-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            عرض العقار
+          </Link>
+        ) : null}
+
+        {canSpecialistAct ? (
+          <div className="flex flex-wrap gap-1.5">
+            {f.severity === "suspected" ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="primary"
+                showActionToast={false}
+                onClick={() => handleUpgrade(f.id)}
+              >
+                تأكيد تعذر داخلي
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                variant="primary"
+                showActionToast={false}
+                onClick={() => handleSubmit(f.id)}
+              >
+                تصعيد على المشرف
+              </Button>
+            )}
+            {canResolve ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="success"
+                showActionToast={false}
+                onClick={() => toggleResolve(f.id)}
+              >
+                {resolveOpen[f.id] ? "إلغاء الحل" : "تم الحل"}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+
+        {canSupervisorAct ? (
+          <div>
+            <textarea
+              className={fieldTextareaClass}
+              rows={2}
+              placeholder="ملاحظة الاعتماد أو الإعادة"
+              value={supervisorNote[f.id] ?? ""}
+              onChange={(e) =>
+                setSupervisorNote((n) => ({
+                  ...n,
+                  [f.id]: e.target.value,
+                }))
+              }
+              onClick={(e) => e.stopPropagation()}
+            />
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <Button
+                type="button"
+                size="sm"
+                variant="success"
+                showActionToast={false}
+                onClick={() => handleApprove(f.id)}
+              >
+                اعتماد التعذر
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="danger"
+                showActionToast={false}
+                onClick={() => handleReturn(f.id)}
+              >
+                إعادة للأخصائي
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="primary"
+                showActionToast={false}
+                onClick={() => void handleSuspend(f.id)}
+              >
+                تعليق المعاملة
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        {resolveOpen[f.id] && canResolve && !canSupervisorAct ? (
+          <div className="rounded-lg border border-border bg-surface p-3">
+            <label
+              className="mb-1 block text-[11px] font-semibold text-text-2"
+              htmlFor={`resolve_reason_${f.id}`}
+            >
+              سبب الحل *
+            </label>
+            <textarea
+              id={`resolve_reason_${f.id}`}
+              className={fieldTextareaClass}
+              rows={2}
+              value={draft.reason}
+              onChange={(e) =>
+                patchResolveDraft(f.id, { reason: e.target.value })
+              }
+              onClick={(e) => e.stopPropagation()}
+            />
+            <label
+              className="mb-1 mt-2 block text-[11px] font-semibold text-text-2"
+              htmlFor={`resolve_instructions_${f.id}`}
+            >
+              توجيه استمرار العمل *
+            </label>
+            <textarea
+              id={`resolve_instructions_${f.id}`}
+              className={fieldTextareaClass}
+              rows={2}
+              value={draft.instructions}
+              onChange={(e) =>
+                patchResolveDraft(f.id, {
+                  instructions: e.target.value,
+                })
+              }
+              onClick={(e) => e.stopPropagation()}
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="success"
+              className="mt-2"
+              showActionToast={false}
+              disabled={!draft.reason.trim() || !draft.instructions.trim()}
+              onClick={() => handleResolve(f.id)}
+            >
+              تأكيد الحل وإغلاق التعذر
+            </Button>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
-    <PageShell variant="canvas" className="min-h-0 flex-1">
+    <PageShell variant="canvas" className="min-h-0 flex-1 space-y-4">
       {isError ? (
-        <Note tone="warn" className="mb-4">
+        <Note tone="warn" className="mb-0">
           {error instanceof Error
             ? error.message
             : "تعذّر تحميل التعذرات — حاول مرة أخرى"}
           <div className="mt-2">
-            <Button type="button" size="sm" variant="outline" onClick={() => void refetch()}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              showActionToast={false}
+              onClick={() => void refetch()}
+            >
               إعادة المحاولة
             </Button>
           </div>
         </Note>
       ) : null}
+
       <KpiBand>
         <KpiCell
           first
           icon={<KpiAlertIcon />}
-          iconClass="bg-[color-mix(in_srgb,var(--red)_15%,transparent)] text-red"
+          iconClass="bg-[var(--gold-soft)] text-[var(--gold-d)]"
           label="تعذرات مفتوحة"
           value={!isFetched ? "—" : stats.open}
-          valueClass="!text-red"
           sub={
             isFetched
               ? stats.open > 0
@@ -318,283 +559,143 @@ export function FailuresView() {
         />
         <KpiCell
           icon={<KpiClockIcon />}
-          iconClass="bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#b8791a]"
+          iconClass="bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#8a5e14]"
           label="عند مشرف دراسة الحالة"
           value={!isFetched ? "—" : stats.review}
-          sub="بانتظار اعتماد المشرف"
+          sub="بانتظار الاعتماد"
         />
         <KpiCell
           icon={<KpiCheckIcon />}
-          iconClass="bg-[color-mix(in_srgb,var(--success)_16%,transparent)] text-success-text"
+          iconClass="bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-ink"
           label="معتمدة / تم الحل"
           value={!isFetched ? "—" : stats.closed}
-          valueClass="!text-success-text"
           sub={isFetched ? stats.closedPct : "—"}
         />
         <KpiCell
           last
           icon={<KpiClipboardIcon />}
-          iconClass="bg-info-bg text-info-text"
+          iconClass="bg-[color-mix(in_srgb,#3f8f5f_16%,transparent)] text-[#2f7a4d]"
           label="الإجمالي"
           value={!isFetched ? "—" : stats.total}
-          sub="سجلات التعذر في النظام"
+          sub="سجلات التعذر"
         />
       </KpiBand>
 
-      <OperationalPanel className="min-h-0 flex-1 overflow-y-auto">
-          {!ce && !ca ? (
-            <PageToolbar className="border-b-0 bg-surface-2/50">
-              <Note tone="info" className="m-0 flex-1">
-                {role === "general-manager"
-                  ? "أنت في وضع الاطلاع — صلاحية التعديل للمشرف والأخصائي"
-                  : role === "cdo"
-                    ? "صلاحيات كاملة — يمكنك اعتماد التعذرات وإنشاؤها"
-                    : isPartyScopedFailuresRole(role)
-                      ? partyScopedFailuresNote(role)
-                      : "أنت في وضع المراقبة — لا تملك صلاحية تعديل التعذرات"}
-              </Note>
-            </PageToolbar>
-          ) : null}
-          {ca ? (
-            <PageToolbar className="border-b-0 bg-surface-2/50">
-              <Note tone="success" className="m-0 flex-1">
-                مسار التعذر: رفع (احتمال / داخلي) → معالجة الأخصائي → مراجعة
-                المشرف مع أخصائي الإسناد → اعتماد التعذر أو تعليق المعاملة.
-              </Note>
-            </PageToolbar>
-          ) : null}
+      <PageToolbar className="mb-0 flex shrink-0 flex-wrap items-center justify-between gap-2 border-b-0 bg-transparent px-0 py-0">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
+          <OperationalToolbarSearch
+            type="search"
+            placeholder="بحث…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="بحث التعذرات"
+          />
+        </div>
+      </PageToolbar>
 
-          {sortedItems.length === 0 ? (
-            <EmptyState
-              line={
-                partyScopedFailuresEmptyLine(role) ??
-                "لا توجد تعذرات — سجّل تعذراً من شاشة العقارات."
-              }
-            />
-          ) : (
-            <>
-              <div className="flex flex-col gap-2.5 px-4 py-4">
-                {sortedItems.map((f) => {
-          const active = isActiveFailureStatus(f.status);
-          const displayTitle = failureRecordTitle(f);
-          const canSpecialistAct =
-            ce &&
-            active &&
-            (f.status === "internal" || f.status === "returned");
-          const canSupervisorAct = ca && active && f.status === "review";
-          const canResolve = canSpecialistAct && f.status !== "approved";
-          const draft = resolveDraft[f.id] ?? { reason: "", instructions: "" };
+      {!ce && !ca && !isPartyScopedFailuresRole(role) ? (
+        <Note tone="info" className="m-0">
+          {role === "general-manager"
+            ? "أنت في وضع الاطلاع — صلاحية التعديل للمشرف والأخصائي"
+            : role === "cdo"
+              ? "صلاحيات كاملة — يمكنك اعتماد التعذرات وإنشاؤها"
+              : "أنت في وضع المراقبة — لا تملك صلاحية تعديل التعذرات"}
+        </Note>
+      ) : null}
 
-          return (
-            <div
-              id={`failure-${f.id}`}
-              key={f.id}
-              className={cn(
-                "mb-2.5 rounded-lg border border-border border-e-[3px] border-e-danger bg-surface p-3.5",
-                highlightId === f.id && "ring-2 ring-primary/40",
-              )}
-              style={active ? undefined : { opacity: 0.72 }}
-            >
-              <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                <span className="text-[13px] font-medium">
-                  {f.deedNumber || displayTitle}{" "}
-                  <span className="text-[11px] text-text-3">
-                    · {formatPoDisplay(f.poNumber)}
-                  </span>
-                </span>
-                <div className="flex items-center gap-2">
-                  <Badge tone="default" className="border-0 text-[11px] font-normal">
-                    {failureSeverityLabel(f.severity)}
-                  </Badge>
-                  <Badge tone="default" className="border-0 text-[11px] font-normal">
-                    {failureStatusLabel(f.status)}
-                  </Badge>
-                  <span className="text-[11px] text-text-3">
-                    <bdi dir="ltr" className="[direction:ltr] [unicode-bidi:isolate]">
-                      {formatDateAr(f.updatedAt.slice(0, 10))}
-                    </bdi>
-                  </span>
-                </div>
-              </div>
-              <div className="mb-1 text-[13px] font-semibold">{displayTitle}</div>
-              {f.internalNote ? (
-                <div className="text-xs leading-relaxed text-text-2">
-                  <strong>ملاحظات:</strong> {f.internalNote}
-                </div>
-              ) : null}
-              {f.finalNote ? (
-                <div className="mt-1 text-xs text-text-2">
-                  <strong>قرار المشرف:</strong> {f.finalNote}
-                </div>
-              ) : null}
-              {f.resolutionReason ? (
-                <div className="mt-1 text-xs text-text-2">
-                  <strong>سبب الحل:</strong> {f.resolutionReason}
-                  {f.continueInstructions ? (
-                    <>
-                      <br />
-                      <strong>توجيه استمرار العمل:</strong>{" "}
-                      {f.continueInstructions}
-                    </>
-                  ) : null}
-                </div>
-              ) : null}
-              <div className="mt-1 text-[11px] text-text-3">
-                الرافع: {f.raisedByRole || "—"} · الأخصائي: {f.specialist}
-                {f.status === "review" ? (
-                  <>
-                    {" "}
-                    · أخصائي الإسناد:{" "}
-                    {assignmentSpecialistByPo.get(f.poNumber.trim()) || "—"}
-                  </>
-                ) : null}
-              </div>
-              {f.propertyId ? (
-                <div className="mt-2">
-                  <Link
-                    href={poPropertyPath(f.poNumber, f.propertyId)}
-                    className="inline-flex items-center justify-center rounded-[var(--radius-DEFAULT)] border border-border-md bg-surface px-2 py-1 text-[11px] text-text no-underline transition-colors hover:bg-surface-2"
-                  >
-                    عرض العقار
-                  </Link>
-                </div>
-              ) : null}
-
-              {canSpecialistAct ? (
-                <div className="mt-2.5 flex flex-wrap gap-1.5">
-                  {f.severity === "suspected" ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="primary"
-                      onClick={() => handleUpgrade(f.id)}
-                    >
-                      تأكيد تعذر داخلي
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="primary"
-                      onClick={() => handleSubmit(f.id)}
-                    >
-                      تصعيد على المشرف
-                    </Button>
-                  )}
-                  {canResolve ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="success"
-                      onClick={() => toggleResolve(f.id)}
-                    >
-                      {resolveOpen[f.id] ? "إلغاء الحل" : "تم الحل"}
-                    </Button>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {canSupervisorAct ? (
-                <div className="mt-2.5">
-                  <textarea
-                    className={fieldTextareaClass}
-                    rows={2}
-                    placeholder="ملاحظة الاعتماد أو الإعادة"
-                    value={supervisorNote[f.id] ?? ""}
-                    onChange={(e) =>
-                      setSupervisorNote((n) => ({
-                        ...n,
-                        [f.id]: e.target.value,
-                      }))
+      <OperationalPanel className="shrink-0 overflow-visible">
+        <Table pending={!isFetched}>
+          <THead>
+            <Tr hoverable={false}>
+              <Th className="text-start">الصك</Th>
+              <Th className="text-start">أمر العمل</Th>
+              <Th className="text-start">الخطورة</Th>
+              <Th className="text-start">الحالة</Th>
+              <Th className="text-start">الرافع</Th>
+              <Th className="text-start">الأخصائي</Th>
+            </Tr>
+          </THead>
+          <TBody>
+            {!isFetched ? (
+              <SkeletonTableRows rows={6} cols={6} />
+            ) : filteredItems.length === 0 ? (
+              <Tr hoverable={false}>
+                <Td colSpan={6} className="cursor-default py-10">
+                  <EmptyState
+                    line={
+                      partyScopedFailuresEmptyLine(role) ??
+                      "لا توجد تعذرات — سجّل تعذراً من شاشة العقارات."
                     }
                   />
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="success"
-                      onClick={() => handleApprove(f.id)}
+                </Td>
+              </Tr>
+            ) : (
+              filteredItems.map((f) => {
+                const active = isActiveFailureStatus(f.status);
+                const statusColor = failureListStatusColor(
+                  f.status,
+                  f.severity,
+                );
+                const expanded = expandedId === f.id;
+                return (
+                  <Fragment key={f.id}>
+                    <Tr
+                      id={`failure-${f.id}`}
+                      hoverable={false}
+                      className={cn(
+                        "group",
+                        queueTableRowClassName,
+                        !active && "opacity-70",
+                        highlightId === f.id && "bg-primary-light/30",
+                        expanded && "bg-row-hover",
+                      )}
+                      onClick={() =>
+                        setExpandedId((prev) => (prev === f.id ? null : f.id))
+                      }
                     >
-                      اعتماد التعذر
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="danger"
-                      onClick={() => handleReturn(f.id)}
-                    >
-                      إعادة للأخصائي
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="primary"
-                      onClick={() => void handleSuspend(f.id)}
-                    >
-                      تعليق المعاملة
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
+                      <Td>
+                        <span className="text-[13.5px] font-bold text-primary">
+                          {f.deedNumber
+                            ? f.deedNumber.startsWith("صك")
+                              ? f.deedNumber
+                              : `صك ${f.deedNumber}`
+                            : failureRecordTitle(f)}
+                        </span>
+                      </Td>
+                      <Td className="font-semibold text-text-2">
+                        {formatPoDisplay(f.poNumber)}
+                      </Td>
+                      <Td className="text-[13px] font-semibold text-heading">
+                        {failureListSeverityLabel(f.severity)}
+                      </Td>
+                      <Td>
+                        <StatusPill
+                          label={failureListStatusLabel(f.status, f.severity)}
+                          style={{ base: statusColor, fg: statusColor }}
+                        />
+                      </Td>
+                      <Td className="text-text-2">{f.raisedByRole || "—"}</Td>
+                      <Td className="text-text-2">{f.specialist || "—"}</Td>
+                    </Tr>
+                    {expanded ? (
+                      <Tr hoverable={false}>
+                        <Td colSpan={6} className="cursor-default p-0">
+                          {renderExpandedActions(f)}
+                        </Td>
+                      </Tr>
+                    ) : null}
+                  </Fragment>
+                );
+              })
+            )}
+          </TBody>
+        </Table>
+      </OperationalPanel>
 
-              {resolveOpen[f.id] && canResolve && !canSupervisorAct ? (
-                <div className="mt-2.5 rounded-lg border border-border bg-[#FAFBFC] p-3">
-                  <label
-                    className="mb-1 block text-[11px] font-semibold text-text-2"
-                    htmlFor={`resolve_reason_${f.id}`}
-                  >
-                    سبب الحل *
-                  </label>
-                  <textarea
-                    id={`resolve_reason_${f.id}`}
-                    className={fieldTextareaClass}
-                    rows={2}
-                    value={draft.reason}
-                    onChange={(e) =>
-                      patchResolveDraft(f.id, { reason: e.target.value })
-                    }
-                  />
-                  <label
-                    className="mb-1 mt-2 block text-[11px] font-semibold text-text-2"
-                    htmlFor={`resolve_instructions_${f.id}`}
-                  >
-                    توجيه استمرار العمل *
-                  </label>
-                  <textarea
-                    id={`resolve_instructions_${f.id}`}
-                    className={fieldTextareaClass}
-                    rows={2}
-                    value={draft.instructions}
-                    onChange={(e) =>
-                      patchResolveDraft(f.id, {
-                        instructions: e.target.value,
-                      })
-                    }
-                  />
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="success"
-                    className="mt-2"
-                    disabled={
-                      !draft.reason.trim() || !draft.instructions.trim()
-                    }
-                    onClick={() => handleResolve(f.id)}
-                  >
-                    تأكيد الحل وإغلاق التعذر
-                  </Button>
-                </div>
-              ) : null}
-            </div>
-          );
-            })}
-              </div>
-              <QueueTableHint>
-                سجّل تعذراً جديداً من شاشة العقار (⋮ → إبلاغ عن تعذر).
-              </QueueTableHint>
-            </>
-          )}
-        </OperationalPanel>
+      <QueueTableHint>
+        اضغط الصف لفتح التفاصيل والإجراءات. سجّل تعذراً جديداً من شاشة العقار
+        (⋮ → إبلاغ عن تعذر).
+      </QueueTableHint>
     </PageShell>
   );
 }
