@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -21,6 +21,7 @@ import {
   queueTableWrapClassName,
 } from "@platform/design-system";
 import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
+import { GovernmentReviewPoPanel } from "../components/government-review/GovernmentReviewPoPanel";
 import { getAuthSession } from "@platform/auth-client";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
@@ -44,6 +45,8 @@ import {
   isPastDue,
   type PoIntakeRecord,
 } from "../lib/prototype/po-intake-data";
+import { poPrimaryDataReadiness } from "../lib/prototype/po-primary-data-readiness";
+import type { GovernmentReviewPoRow } from "../lib/prototype/government-review-po";
 import { ltrValueClass } from "../components/po-intake/PropertyDetailFields";
 import {
   usePoRecordsQuery,
@@ -60,17 +63,32 @@ import { operationsTaskStatusLabel } from "../lib/prototype/operations-task-disp
 const ROW = queueTableRowClassName;
 const TABLE_COLS = 7;
 
-type GovernmentReviewPoRow = {
-  tasks: WorkflowTask[];
-  poNumber: string;
-  propertyCount: number;
+type QueuePoRow = {
+  panelRow: GovernmentReviewPoRow;
   expectedPropertyCount: number;
-  assignmentType: string;
   receivedFromEnfathAt: string;
   dueDateAt: string;
-  createdAt: string;
   status: WorkflowTask["status"];
 };
+
+function uniqueCourtsForTasks(
+  record: PoIntakeRecord | undefined,
+  tasks: WorkflowTask[],
+): string[] {
+  const courts = new Set<string>();
+  for (const task of tasks) {
+    const property = record?.properties.find((p) => p.id === task.propertyId);
+    const court = property?.court.trim();
+    if (court) courts.add(court);
+  }
+  if (record) {
+    for (const property of record.properties) {
+      const court = property.court.trim();
+      if (court) courts.add(court);
+    }
+  }
+  return [...courts].sort((a, b) => a.localeCompare(b, "ar"));
+}
 
 function courtVisitForPo(
   opsTasks: OperationsTask[],
@@ -99,9 +117,12 @@ export function GovernmentReviewView() {
     [role, staffUsers],
   );
 
+  const [selectedPoNumber, setSelectedPoNumber] = useState<string | null>(null);
+
   const {
     data: tasks,
     isFetched: tasksFetched,
+    refetch: refetchTasks,
   } = useWorkflowTasksQuery();
   const {
     data: poRecords = [],
@@ -190,49 +211,90 @@ export function GovernmentReviewView() {
       });
     }
 
-    const list: GovernmentReviewPoRow[] = [...grouped.entries()].map(
-      ([poNumber, group]) => {
-        const status: WorkflowTask["status"] = group.tasks.every(
-          (task) => task.status === "completed",
-        )
-          ? "completed"
-          : group.tasks.some((task) => task.status === "open")
-            ? "open"
-            : "blocked";
-        const propertyCount = group.propertyIds.size || group.tasks.length;
+    const list: QueuePoRow[] = [...grouped.entries()].map(([poNumber, group]) => {
+      const record = poByNumber.get(poNumber);
+      const status: WorkflowTask["status"] = group.tasks.every(
+        (task) => task.status === "completed",
+      )
+        ? "completed"
+        : group.tasks.some((task) => task.status === "open")
+          ? "open"
+          : "blocked";
+      const propertyCount = group.propertyIds.size || group.tasks.length;
+      const readiness = record
+        ? poPrimaryDataReadiness(record)
+        : {
+            ready: false,
+            label: "لا توجد بيانات أمر العمل",
+          };
 
-        return {
-          tasks: group.tasks,
+      return {
+        panelRow: {
           poNumber,
+          tasks: group.tasks,
+          openCount: group.tasks.filter((t) => t.status === "open").length,
           propertyCount,
-          expectedPropertyCount: Math.max(
-            group.expectedPropertyCount,
-            propertyCount,
-          ),
+          courts: uniqueCourtsForTasks(record, group.tasks),
           assignmentType: group.assignmentType,
-          receivedFromEnfathAt: group.receivedFromEnfathAt,
-          dueDateAt: group.dueDateAt,
+          primaryDataReady: readiness.ready,
+          primaryDataLabel: readiness.label,
           createdAt: group.createdAt,
-          status,
-        };
-      },
-    );
+        },
+        expectedPropertyCount: Math.max(group.expectedPropertyCount, propertyCount),
+        receivedFromEnfathAt: group.receivedFromEnfathAt,
+        dueDateAt: group.dueDateAt,
+        status,
+      };
+    });
 
     return list.sort((a, b) => {
-      const createdCmp = b.createdAt.localeCompare(a.createdAt);
+      const createdCmp = b.panelRow.createdAt.localeCompare(a.panelRow.createdAt);
       if (createdCmp !== 0) return createdCmp;
-      return a.poNumber.localeCompare(b.poNumber, "ar", { numeric: true });
+      return a.panelRow.poNumber.localeCompare(b.panelRow.poNumber, "ar", {
+        numeric: true,
+      });
     });
   }, [mine, poByNumber, reviewerScope]);
 
-  const openPo = useCallback(
-    (row: GovernmentReviewPoRow) => {
-      router.push(poPropertiesPath(row.poNumber));
+  const selectedRow = useMemo(
+    () =>
+      selectedPoNumber
+        ? (rows.find((r) => r.panelRow.poNumber === selectedPoNumber) ?? null)
+        : null,
+    [rows, selectedPoNumber],
+  );
+
+  const togglePo = useCallback((poNumber: string) => {
+    setSelectedPoNumber((prev) => (prev === poNumber ? null : poNumber));
+  }, []);
+
+  const openReviewTask = useCallback(
+    (taskId: string) => {
+      router.push(governmentReviewWorkspacePath(taskId));
     },
     [router],
   );
 
-  const hasRail = false;
+  /** صف واحد بمهمة مفتوحة → نموذج التعبئة مباشرة؛ أكثر من مهمة → لوحة الاختيار. */
+  const selectQueueRow = useCallback(
+    (row: QueuePoRow) => {
+      const po = row.panelRow.poNumber;
+      if (selectedPoNumber === po) {
+        setSelectedPoNumber(null);
+        return;
+      }
+      const openTasks = row.panelRow.tasks.filter((t) => t.status === "open");
+      if (openTasks.length === 1) {
+        openReviewTask(openTasks[0]!.id);
+        return;
+      }
+      setSelectedPoNumber(po);
+    },
+    [openReviewTask, selectedPoNumber],
+  );
+
+  const panelOpen = Boolean(selectedRow);
+  const hasRail = true;
 
   if (selectedTaskId) {
     return <PanelSkeleton className="p-4" />;
@@ -251,140 +313,162 @@ export function GovernmentReviewView() {
   );
 
   const queuePanel = (
-        <OperationalPanel className={cn("min-h-0 flex-1")}>
-          {!queueReady ? (
-            <div className={queueTableWrapClassName}>
-              <Table pending>
-                <THead>{tableHead}</THead>
-                <TBody>
-                  <SkeletonTableRows rows={5} cols={TABLE_COLS} />
-                </TBody>
-              </Table>
-            </div>
-          ) : rows.length === 0 ? (
-            <EmptyState
-              line={def?.emptyLine ?? "لا توجد مهام مراجعة حكومية."}
-              hint={
-                def?.emptyHint ??
-                "تظهر هنا بعد تأكيد التوزيع عند تفعيل المراجع الحكومي."
-              }
-            />
-          ) : (
-            <>
-              <div className={queueTableWrapClassName}>
-                <Table>
-                  <THead>{tableHead}</THead>
-                  <TBody>
-                    {rows.map((row) => {
-                      const poHref = poPropertiesPath(row.poNumber);
-                      const dueUrgent =
-                        Boolean(row.dueDateAt) && isPastDue(row.dueDateAt);
-                      const courtVisit = courtVisitForPo(opsTasks, row.poNumber);
-                      return (
-                        <Tr
-                          key={row.poNumber}
-                          hoverable={false}
-                          className={ROW}
-                          onClick={() => openPo(row)}
+    <OperationalPanel className={cn("min-h-0 flex-1")}>
+      {!queueReady ? (
+        <div className={queueTableWrapClassName}>
+          <Table pending>
+            <THead>{tableHead}</THead>
+            <TBody>
+              <SkeletonTableRows rows={5} cols={TABLE_COLS} />
+            </TBody>
+          </Table>
+        </div>
+      ) : rows.length === 0 ? (
+        <EmptyState
+          line={def?.emptyLine ?? "لا توجد مهام مراجعة حكومية."}
+          hint={
+            def?.emptyHint ??
+            "تظهر هنا بعد تأكيد التوزيع عند تفعيل المراجع الحكومي."
+          }
+        />
+      ) : (
+        <>
+          <div className={queueTableWrapClassName}>
+            <Table>
+              <THead>{tableHead}</THead>
+              <TBody>
+                {rows.map((row) => {
+                  const po = row.panelRow.poNumber;
+                  const poHref = poPropertiesPath(po);
+                  const dueUrgent =
+                    Boolean(row.dueDateAt) && isPastDue(row.dueDateAt);
+                  const courtVisit = courtVisitForPo(opsTasks, po);
+                  const selected = selectedPoNumber === po;
+                  return (
+                    <Tr
+                      key={po}
+                      hoverable={false}
+                      className={cn(ROW, selected && "bg-primary-light/40")}
+                      onClick={() => selectQueueRow(row)}
+                    >
+                      <Td className="text-text-2">
+                        <Link
+                          href={poHref}
+                          dir="ltr"
+                          className="relative z-[1] text-[13.5px] font-bold text-primary underline decoration-primary underline-offset-2 hover:text-primary-mid"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          <Td className="text-text-2">
-                            <Link
-                              href={poHref}
-                              dir="ltr"
-                              className="relative z-[1] text-[13.5px] font-bold text-primary underline decoration-primary underline-offset-2 hover:text-primary-mid"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {row.poNumber}
-                            </Link>
-                          </Td>
-                          <Td className="whitespace-nowrap text-center text-[13px] text-text-2 tabular-nums">
-                            <span className="font-extrabold text-heading">
-                              {row.propertyCount}
-                            </span>
-                            <span className="mx-1 text-text-3">من</span>
-                            <span className="font-bold text-text-2">
-                              {row.expectedPropertyCount}
-                            </span>
-                          </Td>
-                          <Td className="whitespace-nowrap">
-                            <span className="inline-flex items-center rounded-md border border-border-md bg-surface-2 px-2.5 py-[3px] text-[12px] font-medium text-text-2">
-                              {row.assignmentType}
-                            </span>
-                          </Td>
-                          <Td className="whitespace-nowrap text-[13px] text-text-2">
-                            {row.receivedFromEnfathAt ? (
-                              <bdi dir="ltr" className={ltrValueClass}>
-                                {formatDateAr(row.receivedFromEnfathAt)}
-                              </bdi>
-                            ) : (
-                              "—"
-                            )}
-                          </Td>
-                          <Td
-                            className={cn(
-                              "whitespace-nowrap text-[13px] font-semibold",
-                              dueUrgent ? "text-red" : "text-heading",
-                            )}
+                          {po}
+                        </Link>
+                      </Td>
+                      <Td className="whitespace-nowrap text-center text-[13px] text-text-2 tabular-nums">
+                        <span className="font-extrabold text-heading">
+                          {row.panelRow.propertyCount}
+                        </span>
+                        <span className="mx-1 text-text-3">من</span>
+                        <span className="font-bold text-text-2">
+                          {row.expectedPropertyCount}
+                        </span>
+                      </Td>
+                      <Td className="whitespace-nowrap">
+                        <span className="inline-flex items-center rounded-md border border-border-md bg-surface-2 px-2.5 py-[3px] text-[12px] font-medium text-text-2">
+                          {row.panelRow.assignmentType}
+                        </span>
+                      </Td>
+                      <Td className="whitespace-nowrap text-[13px] text-text-2">
+                        {row.receivedFromEnfathAt ? (
+                          <bdi dir="ltr" className={ltrValueClass}>
+                            {formatDateAr(row.receivedFromEnfathAt)}
+                          </bdi>
+                        ) : (
+                          "—"
+                        )}
+                      </Td>
+                      <Td
+                        className={cn(
+                          "whitespace-nowrap text-[13px] font-semibold",
+                          dueUrgent ? "text-red" : "text-heading",
+                        )}
+                      >
+                        {row.dueDateAt ? (
+                          <bdi dir="ltr" className={ltrValueClass}>
+                            {formatDateAr(row.dueDateAt)}
+                          </bdi>
+                        ) : (
+                          "—"
+                        )}
+                      </Td>
+                      <Td>
+                        {row.status === "open" ? (
+                          <Badge tone="warning">قيد الإجراء</Badge>
+                        ) : row.status === "blocked" ? (
+                          <Badge tone="default">موقوفة</Badge>
+                        ) : (
+                          <Badge tone="success">مكتملة</Badge>
+                        )}
+                      </Td>
+                      <Td onClick={(e) => e.stopPropagation()}>
+                        {courtVisit ? (
+                          <Link
+                            href={`/operations-tasks?task=${encodeURIComponent(courtVisit.id)}`}
+                            className="relative z-[1] inline-flex flex-col gap-0.5 text-start no-underline"
                           >
-                            {row.dueDateAt ? (
-                              <bdi dir="ltr" className={ltrValueClass}>
-                                {formatDateAr(row.dueDateAt)}
-                              </bdi>
-                            ) : (
-                              "—"
-                            )}
-                          </Td>
-                          <Td>
-                            {row.status === "open" ? (
-                              <Badge tone="warning">قيد الإجراء</Badge>
-                            ) : row.status === "blocked" ? (
-                              <Badge tone="default">موقوفة</Badge>
-                            ) : (
-                              <Badge tone="success">مكتملة</Badge>
-                            )}
-                          </Td>
-                          <Td onClick={(e) => e.stopPropagation()}>
-                            {courtVisit ? (
-                              <Link
-                                href={`/operations-tasks?task=${encodeURIComponent(courtVisit.id)}`}
-                                className="relative z-[1] inline-flex flex-col gap-0.5 text-start no-underline"
-                              >
-                                <span className="text-[12px] font-semibold text-primary underline decoration-primary underline-offset-2">
-                                  {courtVisit.displayId}
-                                </span>
-                                <span className="text-[10px] text-text-3">
-                                  {operationsTaskStatusLabel(courtVisit.status)}
-                                  {isActiveOperationsTask(courtVisit)
-                                    ? " · افتح الخطاب من المهام"
-                                    : ""}
-                                </span>
-                              </Link>
-                            ) : (
-                              <span className="text-[12px] text-text-3">—</span>
-                            )}
-                          </Td>
-                        </Tr>
-                      );
-                    })}
-                  </TBody>
-                </Table>
-              </div>
-              <QueueTableHint>
-                اضغط على رقم أمر العمل أو الصف لعرض عقاراته. خطاب التفويض يُنشأ
-                عبر المهام التشغيلية — افتح عمود «مهمة زيارة المحكمة» عند وجودها.
-              </QueueTableHint>
-            </>
-          )}
-        </OperationalPanel>
+                            <span className="text-[12px] font-semibold text-primary underline decoration-primary underline-offset-2">
+                              {courtVisit.displayId}
+                            </span>
+                            <span className="text-[10px] text-text-3">
+                              {operationsTaskStatusLabel(courtVisit.status)}
+                              {isActiveOperationsTask(courtVisit)
+                                ? " · افتح الخطاب من المهام"
+                                : ""}
+                            </span>
+                          </Link>
+                        ) : (
+                          <span className="text-[12px] text-text-3">—</span>
+                        )}
+                      </Td>
+                    </Tr>
+                  );
+                })}
+              </TBody>
+            </Table>
+          </div>
+          <QueueTableHint>
+            {def?.tableHint ??
+              "اضغط الصف لفتح لوحة المهام — ثم اختر عقاراً لتعبئة نموذج المراجعة. خطاب التفويض من عمود «مهمة زيارة المحكمة» أو من اللوحة."}
+          </QueueTableHint>
+        </>
+      )}
+    </OperationalPanel>
+  );
+
+  const sidePanel = (
+    <OperationalPanel
+      className={cn(
+        "min-h-0 min-w-0 self-stretch opacity-0 invisible",
+        panelOpen && "visible opacity-100",
+      )}
+    >
+      {panelOpen && selectedRow ? (
+        <GovernmentReviewPoPanel
+          row={selectedRow.panelRow}
+          onClose={() => setSelectedPoNumber(null)}
+          onRefresh={() => {
+            void refetchTasks();
+          }}
+          onOpenTask={openReviewTask}
+        />
+      ) : null}
+    </OperationalPanel>
   );
 
   return (
     <ActiveTransactionPageLayout
       pageId="government-review"
       hasRail={hasRail}
-      panelOpen={false}
+      panelOpen={panelOpen}
       queuePanel={queuePanel}
-      sidePanel={null}
+      sidePanel={sidePanel}
     />
   );
 }

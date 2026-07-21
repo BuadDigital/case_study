@@ -1,4 +1,5 @@
-import type { RegistrationFormData } from "../prototype/map-registration-to-staff";
+/** Generic form bag used by intake / validation helpers (not user registration). */
+export type RegistrationFormData = Record<string, string>;
 
 export type FieldErrors = Record<string, string>;
 

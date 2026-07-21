@@ -84,20 +84,6 @@ export type FieldInspectionWorkspaceSummaryDto = {
   incompleteRequiredPhotos: number;
 };
 
-export type ReportingKpiScoreDto = {
-  name: string;
-  scorePercent: number;
-};
-
-export type ReportingKpiDto = {
-  onTimeCompletionRate: number;
-  avgPropertyDaysLabel: string;
-  failureRatePercent: number;
-  completedToday: number;
-  specialistScores: ReportingKpiScoreDto[];
-  providerScores: ReportingKpiScoreDto[];
-};
-
 function headers(token: string): HeadersInit {
   return {
     Authorization: `Bearer ${token}`,
@@ -140,21 +126,6 @@ export async function fetchReportingDashboard(
       };
     }
     return { ok: true, data };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
-export async function fetchReportingKpi(
-  config: PrototypeModulesApiConfig,
-): Promise<PrototypeModulesResult<ReportingKpiDto>> {
-  try {
-    const res = await fetch(`${baseUrl(config)}/api/reporting/v1/kpi`, {
-      headers: headers(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: (await res.json()) as ReportingKpiDto };
   } catch {
     return { ok: false, kind: "network" };
   }

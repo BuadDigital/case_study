@@ -53,28 +53,85 @@ public sealed class FinancialApiWebApplicationFactory
 
 internal sealed class StubPartyFeePricingService : IPartyFeePricingService
 {
-    public Task<PartyFeePricingDto> GetAsync(CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<PartyFeePricingTableSummaryDto>> ListAsync(
+        string? category = null,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<PartyFeePricingTableSummaryDto>>(
+        [
+            new PartyFeePricingTableSummaryDto
+            {
+                Id = Sample().Id,
+                Category = category ?? "engineering-survey",
+                Name = Sample().Name,
+                IsActive = true,
+            },
+        ]);
+
+    public Task<PartyFeePricingDto> GetActiveAsync(CancellationToken cancellationToken = default)
         => Task.FromResult(Sample());
 
+    public Task<PartyFeePricingDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        => Task.FromResult<PartyFeePricingDto?>(id == Sample().Id ? Sample() : null);
+
+    public Task<PartyFeePricingDto> CreateAsync(
+        CreatePartyFeePricingTableRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var row = Sample();
+        row.Id = Guid.NewGuid();
+        row.Category = string.IsNullOrWhiteSpace(request.Category)
+            ? row.Category
+            : request.Category.Trim();
+        row.Name = string.IsNullOrWhiteSpace(request.Name) ? row.Name : request.Name.Trim();
+        row.IsActive = false;
+        return Task.FromResult(row);
+    }
+
     public Task<PartyFeePricingDto> SaveAsync(
+        Guid id,
         PartyFeePricingDto request,
         CancellationToken cancellationToken = default)
-        => Task.FromResult(request);
+    {
+        request.Id = id;
+        return Task.FromResult(request);
+    }
 
-    public Task<decimal> ResolveDefaultFeeAsync(
+    public Task<PartyFeePricingDto> ActivateAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var row = Sample();
+        row.Id = id;
+        row.IsActive = true;
+        return Task.FromResult(row);
+    }
+
+    public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+        => Task.FromResult(true);
+
+    public Task<decimal?> ResolveDefaultFeeAsync(
         string taskKind,
         string partyType,
+        decimal? areaM2 = null,
         CancellationToken cancellationToken = default)
-        => Task.FromResult(0m);
+        => Task.FromResult<decimal?>(0m);
 
     private static PartyFeePricingDto Sample() => new()
     {
-        EngineeringSurveyFeeSar = 500,
+        Id = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+        Category = "engineering-survey",
+        Name = "التسعيرة الافتراضية",
+        IsActive = true,
+        AreaTiers =
+        [
+            new PartyFeePricingTierDto { SortOrder = 0, MaxAreaM2 = 500, FeeSar = 300 },
+            new PartyFeePricingTierDto { SortOrder = 1, MaxAreaM2 = 1000, FeeSar = 450 },
+            new PartyFeePricingTierDto { SortOrder = 2, MaxAreaM2 = 1500, FeeSar = 900 },
+            new PartyFeePricingTierDto { SortOrder = 3, MaxAreaM2 = 10000, FeeSar = 1500 },
+            new PartyFeePricingTierDto { SortOrder = 4, MaxAreaM2 = null, FeeSar = 4000 },
+        ],
         GovernmentReviewFeeSar = 350,
         KeyReceiptFeeSar = 350,
         FieldInspectorIndividualFeeSar = 400,
         FieldInspectorOrganizationFeeSar = 500,
-        FieldInspectorEmployeeFeeSar = 100,
     };
 }
 

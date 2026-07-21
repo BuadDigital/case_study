@@ -2,101 +2,241 @@
 
 import { useEffect, useState } from "react";
 import {
+  Badge,
   Button,
   Card,
   CardBody,
-  CardHeader,
   FormGroup,
+  Input,
   Label,
   Note,
+  Table,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tr,
+  cn,
   useToast,
 } from "@platform/design-system";
 import { Can, useCapability } from "@platform/app-shared/components/Can";
-import { RegField } from "@platform/app-shared/registration/FormFields";
-import type { PartyFeePricingDto } from "@platform/api-client";
+import type {
+  PartyFeePricingCategory,
+  PartyFeePricingDto,
+  PartyFeePricingTableSummaryDto,
+  PartyFeePricingTierDto,
+} from "@platform/api-client";
 import {
-  loadPartyFeePricing,
+  activatePartyFeePricingTable,
+  createPartyFeePricingTable,
+  deletePartyFeePricingTable,
+  loadPartyFeePricingById,
+  loadPartyFeePricingTables,
   savePartyFeePricingConfig,
 } from "../lib/financial-api";
 
-const EMPTY: PartyFeePricingDto = {
-  engineeringSurveyFeeSar: 0,
-  governmentReviewFeeSar: 0,
-  keyReceiptFeeSar: 0,
-  fieldInspectorIndividualFeeSar: 0,
-  fieldInspectorOrganizationFeeSar: 0,
-  fieldInspectorEmployeeFeeSar: 0,
-};
+const CATEGORIES: {
+  id: PartyFeePricingCategory;
+  label: string;
+  hint: string;
+}[] = [
+  {
+    id: "engineering-survey",
+    label: "المكاتب الهندسية",
+    hint: "شرائح المساحة والأتعاب",
+  },
+  {
+    id: "government-review",
+    label: "المراجعين الحكوميين",
+    hint: "أتعاب المراجع واستلام المفاتيح",
+  },
+  {
+    id: "field-inspector",
+    label: "المعاينين الميدانيين",
+    hint: "متعاون فرد أو منشأة",
+  },
+];
+
+function emptyDraft(
+  category: PartyFeePricingCategory,
+  partial?: Partial<PartyFeePricingDto>,
+): PartyFeePricingDto {
+  return {
+    id: "",
+    category,
+    name: "",
+    isActive: false,
+    areaTiers:
+      category === "engineering-survey"
+        ? [
+            { sortOrder: 0, maxAreaM2: 500, feeSar: 0 },
+            { sortOrder: 1, maxAreaM2: null, feeSar: 0 },
+          ]
+        : [],
+    governmentReviewFeeSar: 0,
+    keyReceiptFeeSar: 0,
+    fieldInspectorIndividualFeeSar: 0,
+    fieldInspectorOrganizationFeeSar: 0,
+    ...partial,
+  };
+}
 
 function num(value: string): number {
   const n = Number(value.replace(/,/g, ""));
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
-function FeeField({
+function reindexTiers(tiers: PartyFeePricingTierDto[]): PartyFeePricingTierDto[] {
+  return tiers.map((t, i) => ({
+    ...t,
+    sortOrder: i,
+    maxAreaM2: i === tiers.length - 1 ? null : t.maxAreaM2,
+  }));
+}
+
+function tierFromValue(tiers: PartyFeePricingTierDto[], index: number): number {
+  if (index === 0) return 0;
+  const prev = tiers[index - 1]?.maxAreaM2;
+  if (prev == null || prev <= 0) return 0;
+  return prev;
+}
+
+function defaultTableName(count: number): string {
+  return count === 0 ? "افتراضي" : `جدول ${count + 1}`;
+}
+
+function MoneyInput({
   id,
-  label,
   value,
   locked,
   onChange,
+  className,
 }: {
-  id: string;
-  label: string;
+  id?: string;
   value: number;
   locked: boolean;
   onChange: (n: number) => void;
+  className?: string;
 }) {
   return (
-    <FormGroup>
-      <Label htmlFor={id} className="mb-1 text-[11px] font-semibold text-text-2">
-        {label}
-      </Label>
-      <RegField
-        id={id}
-        label=""
-        value={String(value || "")}
-        readOnly={locked}
-        inputMode="decimal"
-        dir="ltr"
-        onChange={(v) => onChange(num(v))}
-      />
-    </FormGroup>
+    <Input
+      id={id}
+      type="text"
+      inputMode="decimal"
+      dir="ltr"
+      readOnly={locked}
+      disabled={locked}
+      className={cn("text-start tabular-nums", className)}
+      value={value === 0 ? "" : String(value)}
+      placeholder="0"
+      onChange={(e) => onChange(num(e.target.value))}
+    />
   );
 }
 
 export function FinancePartyFeePricing() {
   const { showToast } = useToast();
   const canEdit = useCapability("manage-system-config");
-  const [draft, setDraft] = useState<PartyFeePricingDto>(EMPTY);
+  const [selectedCategory, setSelectedCategory] =
+    useState<PartyFeePricingCategory>("engineering-survey");
+  const [tables, setTables] = useState<PartyFeePricingTableSummaryDto[]>([]);
+  const [selectedId, setSelectedId] = useState("");
+  const [draft, setDraft] = useState<PartyFeePricingDto>(
+    emptyDraft("engineering-survey"),
+  );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const locked = loading || saving || !canEdit;
+  const [busy, setBusy] = useState(false);
+  const locked = loading || saving || busy || !canEdit;
+
+  const refreshTables = async (
+    category: PartyFeePricingCategory,
+    preferId?: string,
+  ) => {
+    const list = await loadPartyFeePricingTables(category);
+    setTables(list);
+    const nextId =
+      preferId && list.some((t) => t.id === preferId)
+        ? preferId
+        : list.find((t) => t.isActive)?.id ?? list[0]?.id ?? "";
+    setSelectedId(nextId);
+    return nextId;
+  };
+
+  const loadTable = async (id: string, category: PartyFeePricingCategory) => {
+    if (!id) {
+      setDraft(emptyDraft(category));
+      return;
+    }
+    setDraft(await loadPartyFeePricingById(id));
+  };
 
   useEffect(() => {
     let cancelled = false;
-    void loadPartyFeePricing()
-      .then((row) => {
-        if (!cancelled) setDraft(row);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          showToast("تعذّر تحميل تسعير الأتعاب", "error");
-        }
-      })
-      .finally(() => {
+    void (async () => {
+      try {
+        const id = await refreshTables(selectedCategory);
+        if (cancelled) return;
+        if (id) await loadTable(id, selectedCategory);
+      } catch {
+        if (!cancelled) showToast("تعذّر تحميل تسعير الأتعاب", "error");
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    })();
     return () => {
       cancelled = true;
     };
-  }, [showToast]);
+  }, [showToast, selectedCategory]);
+
+  const selectCategory = async (category: PartyFeePricingCategory) => {
+    if (category === selectedCategory) return;
+    setSelectedCategory(category);
+    setLoading(true);
+    try {
+      const id = await refreshTables(category);
+      if (id) await loadTable(id, category);
+      else setDraft(emptyDraft(category));
+    } catch {
+      showToast("تعذّر تحميل الفئة", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const selectTable = async (id: string) => {
+    if (id === selectedId) return;
+    setSelectedId(id);
+    setLoading(true);
+    try {
+      await loadTable(id, selectedCategory);
+    } catch {
+      showToast("تعذّر تحميل الجدول", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const save = async () => {
+    if (!draft.id) return;
     setSaving(true);
     try {
-      const saved = await savePartyFeePricingConfig(draft);
+      const saved = await savePartyFeePricingConfig(draft.id, {
+        ...draft,
+        category: selectedCategory,
+        areaTiers:
+          selectedCategory === "engineering-survey"
+            ? reindexTiers(draft.areaTiers)
+            : [],
+      });
       setDraft(saved);
-      showToast("تم حفظ تسعير الأتعاب", "success");
+      setTables((prev) =>
+        prev.map((t) =>
+          t.id === saved.id ? { ...t, name: saved.name, isActive: saved.isActive } : t,
+        ),
+      );
+      await refreshTables(selectedCategory, saved.id);
+      showToast("تم حفظ التسعيرة", "success");
     } catch (err: unknown) {
       showToast(
         err instanceof Error ? err.message : "تعذّر حفظ التسعير",
@@ -107,124 +247,494 @@ export function FinancePartyFeePricing() {
     }
   };
 
+  const createTable = async () => {
+    setBusy(true);
+    try {
+      const created = await createPartyFeePricingTable(
+        selectedCategory,
+        defaultTableName(tables.length),
+        selectedId || null,
+      );
+      await refreshTables(selectedCategory, created.id);
+      setDraft(created);
+      showToast("تم إنشاء جدول جديد", "success");
+    } catch (err: unknown) {
+      showToast(
+        err instanceof Error ? err.message : "تعذّر إنشاء الجدول",
+        "error",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const activate = async () => {
+    if (!draft.id || draft.isActive) return;
+    setBusy(true);
+    try {
+      const activated = await activatePartyFeePricingTable(draft.id);
+      setDraft(activated);
+      await refreshTables(selectedCategory, activated.id);
+      showToast("هذا الجدول مفعّل الآن في الفئة", "success");
+    } catch (err: unknown) {
+      showToast(
+        err instanceof Error ? err.message : "تعذّر التفعيل",
+        "error",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeTable = async () => {
+    if (!draft.id || tables.length <= 1) return;
+    if (!window.confirm(`حذف جدول «${draft.name}»؟ لا يمكن التراجع.`)) return;
+    setBusy(true);
+    try {
+      await deletePartyFeePricingTable(draft.id);
+      const nextId = await refreshTables(selectedCategory);
+      if (nextId) await loadTable(nextId, selectedCategory);
+      else setDraft(emptyDraft(selectedCategory));
+      showToast("تم حذف الجدول", "success");
+    } catch (err: unknown) {
+      showToast(
+        err instanceof Error ? err.message : "تعذّر حذف الجدول",
+        "error",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const updateTier = (index: number, patch: Partial<PartyFeePricingTierDto>) => {
+    setDraft((d) => {
+      const next = d.areaTiers.map((t, i) =>
+        i === index ? { ...t, ...patch } : t,
+      );
+      return { ...d, areaTiers: reindexTiers(next) };
+    });
+  };
+
+  const updateTierFrom = (index: number, fromM2: number) => {
+    if (index <= 0) return;
+    setDraft((d) => {
+      const next = d.areaTiers.map((t, i) =>
+        i === index - 1 ? { ...t, maxAreaM2: fromM2 } : t,
+      );
+      return { ...d, areaTiers: reindexTiers(next) };
+    });
+  };
+
+  const addTier = () => {
+    setDraft((d) => {
+      const closed = d.areaTiers.filter((t) => t.maxAreaM2 != null);
+      const lastClosedMax =
+        closed.length > 0
+          ? Math.max(...closed.map((t) => t.maxAreaM2 ?? 0))
+          : 500;
+      const openFee =
+        d.areaTiers.find((t) => t.maxAreaM2 == null)?.feeSar ?? 0;
+      const next: PartyFeePricingTierDto[] = [
+        ...closed,
+        {
+          sortOrder: closed.length,
+          maxAreaM2: lastClosedMax + 500,
+          feeSar: openFee,
+        },
+        { sortOrder: closed.length + 1, maxAreaM2: null, feeSar: openFee },
+      ];
+      return { ...d, areaTiers: reindexTiers(next) };
+    });
+  };
+
+  const removeTier = (index: number) => {
+    setDraft((d) => {
+      if (d.areaTiers.length <= 1) return d;
+      const next = d.areaTiers.filter((_, i) => i !== index);
+      if (next.every((t) => t.maxAreaM2 != null)) {
+        next[next.length - 1] = { ...next[next.length - 1], maxAreaM2: null };
+      }
+      return { ...d, areaTiers: reindexTiers(next) };
+    });
+  };
+
+  const activeCategory = CATEGORIES.find((c) => c.id === selectedCategory);
+
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-4">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
       {!canEdit ? (
         <Note tone="default">
           عرض فقط — تعديل التسعيرة مقصور على المسؤول.
         </Note>
       ) : null}
 
-      <Card className="overflow-hidden shadow-none">
-        <CardHeader className="bg-surface">
-          <div>
-            <h3 className="text-[13px] font-semibold text-text">
-              مزوّدو الخدمة وإنفاذ
-            </h3>
-            <p className="m-0 text-[11px] text-text-3">
-              لا يظهر بند استلام المفاتيح في شاشات صرف الأطراف
-            </p>
-          </div>
-        </CardHeader>
-        <CardBody>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <FeeField
-              id="fee-key-receipt"
-              label="أتعاب استلام المفاتيح (ر.س)"
-              value={draft.keyReceiptFeeSar}
-              locked={locked}
-              onChange={(n) =>
-                setDraft((d) => ({ ...d, keyReceiptFeeSar: n }))
-              }
-            />
-            <FeeField
-              id="fee-gov-review"
-              label="أتعاب المراجعة الحكومية (ر.س)"
-              value={draft.governmentReviewFeeSar}
-              locked={locked}
-              onChange={(n) =>
-                setDraft((d) => ({ ...d, governmentReviewFeeSar: n }))
-              }
-            />
-            <FeeField
-              id="fee-survey"
-              label="أتعاب الرفع المساحي (ر.س)"
-              value={draft.engineeringSurveyFeeSar}
-              locked={locked}
-              onChange={(n) =>
-                setDraft((d) => ({ ...d, engineeringSurveyFeeSar: n }))
-              }
-            />
-          </div>
-        </CardBody>
-      </Card>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        {/* يمين في RTL */}
+        <aside className="w-full shrink-0 lg:w-60">
+          <h2 className="m-0 mb-2 text-[13px] font-semibold text-text">الفئات</h2>
+          <ul className="m-0 list-none space-y-1 rounded-md border border-border bg-surface p-1">
+            {CATEGORIES.map((cat) => {
+              const selected = cat.id === selectedCategory;
+              return (
+                <li key={cat.id}>
+                  <button
+                    type="button"
+                    disabled={loading || busy}
+                    onClick={() => void selectCategory(cat.id)}
+                    className={cn(
+                      "w-full rounded px-2.5 py-2 text-start transition-colors",
+                      selected
+                        ? "bg-primary/10 text-text"
+                        : "text-text-2 hover:bg-surface-2",
+                    )}
+                  >
+                    <span className="block text-[12.5px] font-semibold">
+                      {cat.label}
+                    </span>
+                    <span className="mt-0.5 block text-[10px] text-text-3">
+                      {cat.hint}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
 
-      <Card className="overflow-hidden shadow-none">
-        <CardHeader className="bg-surface">
-          <div>
-            <h3 className="text-[13px] font-semibold text-text">
-              المعاين العقاري
+          <div className="mt-4 flex items-center justify-between gap-2">
+            <h3 className="m-0 text-[12px] font-semibold text-text">
+              جداول {activeCategory?.label}
             </h3>
-            <p className="m-0 text-[11px] text-text-3">
-              حسب نوع التعاقد مع المعاين
-            </p>
+            <Can capability="manage-system-config">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={locked}
+                onClick={() => void createTable()}
+              >
+                إضافة
+              </Button>
+            </Can>
           </div>
-        </CardHeader>
-        <CardBody>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <FeeField
-              id="fee-insp-ind"
-              label="معاين — فرد (ر.س)"
-              value={draft.fieldInspectorIndividualFeeSar}
-              locked={locked}
-              onChange={(n) =>
-                setDraft((d) => ({
-                  ...d,
-                  fieldInspectorIndividualFeeSar: n,
-                }))
-              }
-            />
-            <FeeField
-              id="fee-insp-org"
-              label="معاين — منشأة (ر.س)"
-              value={draft.fieldInspectorOrganizationFeeSar}
-              locked={locked}
-              onChange={(n) =>
-                setDraft((d) => ({
-                  ...d,
-                  fieldInspectorOrganizationFeeSar: n,
-                }))
-              }
-            />
-            <FeeField
-              id="fee-insp-emp"
-              label="معاين — موظف (ر.س)"
-              value={draft.fieldInspectorEmployeeFeeSar}
-              locked={locked}
-              onChange={(n) =>
-                setDraft((d) => ({
-                  ...d,
-                  fieldInspectorEmployeeFeeSar: n,
-                }))
-              }
-            />
-          </div>
-        </CardBody>
-      </Card>
 
-      <Can capability="manage-system-config">
-        <div className="flex justify-end border-t border-border pt-3">
-          <Button
-            type="button"
-            variant="primary"
-            size="lg"
-            disabled={locked}
-            onClick={() => void save()}
-          >
-            {saving ? "جاري الحفظ…" : "حفظ التسعير"}
-          </Button>
-        </div>
-      </Can>
+          <ul className="mt-2 list-none space-y-1 rounded-md border border-border bg-surface p-1">
+            {tables.length === 0 ? (
+              <li className="px-3 py-4 text-center text-[12px] text-text-3">
+                لا توجد جداول — أضف واحدًا
+              </li>
+            ) : (
+              tables.map((t) => {
+                const selected = t.id === selectedId;
+                return (
+                  <li key={t.id}>
+                    <button
+                      type="button"
+                      disabled={loading || busy}
+                      onClick={() => void selectTable(t.id)}
+                      className={cn(
+                        "flex w-full items-center justify-between gap-2 rounded px-2.5 py-2 text-start transition-colors",
+                        selected
+                          ? "bg-primary/10 text-text"
+                          : "text-text-2 hover:bg-surface-2",
+                      )}
+                    >
+                      <span className="min-w-0 truncate text-[12px] font-medium">
+                        {t.name || "بدون اسم"}
+                      </span>
+                      {t.isActive ? (
+                        <Badge tone="success" className="shrink-0 text-[10px]">
+                          مفعّل
+                        </Badge>
+                      ) : null}
+                    </button>
+                  </li>
+                );
+              })
+            )}
+          </ul>
+          <p className="mt-2 m-0 text-[11px] leading-relaxed text-text-3">
+            لكل فئة جدول مفعّل واحد يُستخدم عند ختم الأتعاب.
+          </p>
+        </aside>
+
+        <Card className="min-w-0 flex-1 overflow-hidden shadow-none">
+          <CardBody className="space-y-6">
+            {loading && !draft.id ? (
+              <p className="m-0 text-[13px] text-text-3">جاري التحميل…</p>
+            ) : !draft.id ? (
+              <p className="m-0 text-[13px] text-text-3">
+                اختر فئة وأضف جدولًا للبدء.
+              </p>
+            ) : (
+              <>
+                <div className="space-y-2 border-b border-border pb-4">
+                  <Label
+                    htmlFor="pricing-name"
+                    className="m-0 text-[11px] font-semibold text-text-2"
+                  >
+                    اسم الجدول
+                  </Label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Input
+                      id="pricing-name"
+                      className="min-w-0 flex-1"
+                      value={draft.name}
+                      readOnly={locked}
+                      disabled={locked}
+                      onChange={(e) =>
+                        setDraft((d) => ({ ...d, name: e.target.value }))
+                      }
+                    />
+                    {draft.isActive ? (
+                      <Badge tone="success" className="shrink-0">
+                        مفعّل في الفئة
+                      </Badge>
+                    ) : (
+                      <Can capability="manage-system-config">
+                        <Button
+                          type="button"
+                          variant="accent"
+                          size="sm"
+                          className="shrink-0"
+                          disabled={locked}
+                          onClick={() => void activate()}
+                        >
+                          تفعيل
+                        </Button>
+                      </Can>
+                    )}
+                    <Can capability="manage-system-config">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="shrink-0"
+                        disabled={locked || tables.length <= 1}
+                        onClick={() => void removeTable()}
+                      >
+                        حذف
+                      </Button>
+                    </Can>
+                  </div>
+                </div>
+
+                {selectedCategory === "engineering-survey" ? (
+                  <section className="space-y-3">
+                    <div className="flex items-end justify-between gap-3">
+                      <div>
+                        <h3 className="m-0 text-[13px] font-semibold text-text">
+                          شرائح المساحة
+                        </h3>
+                        <p className="m-0 mt-0.5 text-[11px] text-text-3">
+                          حدّد من/حتى والأتعاب. الصف الأخير لما فوقه.
+                        </p>
+                      </div>
+                      <Can capability="manage-system-config">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={locked}
+                          onClick={addTier}
+                        >
+                          إضافة شريحة
+                        </Button>
+                      </Can>
+                    </div>
+                    <div className="overflow-x-auto rounded-md border border-border">
+                      <Table>
+                        <THead>
+                          <Tr>
+                            <Th className="w-[28%]">من (م²)</Th>
+                            <Th className="w-[28%]">حتى (م²)</Th>
+                            <Th className="w-[32%]">الأتعاب (ر.س)</Th>
+                            <Th className="w-[12%]" />
+                          </Tr>
+                        </THead>
+                        <TBody>
+                          {draft.areaTiers.map((tier, index) => {
+                            const isLast = index === draft.areaTiers.length - 1;
+                            return (
+                              <Tr key={`${tier.sortOrder}-${index}`}>
+                                <Td className="align-middle">
+                                  <MoneyInput
+                                    id={`tier-from-${index}`}
+                                    value={tierFromValue(draft.areaTiers, index)}
+                                    locked={locked || index === 0}
+                                    onChange={(n) => updateTierFrom(index, n)}
+                                  />
+                                </Td>
+                                <Td className="align-middle">
+                                  {isLast ? (
+                                    <span className="block px-1 text-[12.5px] text-text-2">
+                                      فأكثر
+                                    </span>
+                                  ) : (
+                                    <MoneyInput
+                                      id={`tier-max-${index}`}
+                                      value={tier.maxAreaM2 ?? 0}
+                                      locked={locked}
+                                      onChange={(n) =>
+                                        updateTier(index, { maxAreaM2: n })
+                                      }
+                                    />
+                                  )}
+                                </Td>
+                                <Td className="align-middle">
+                                  <MoneyInput
+                                    id={`tier-fee-${index}`}
+                                    value={tier.feeSar}
+                                    locked={locked}
+                                    onChange={(n) =>
+                                      updateTier(index, { feeSar: n })
+                                    }
+                                  />
+                                </Td>
+                                <Td className="align-middle text-center">
+                                  <Can capability="manage-system-config">
+                                    <button
+                                      type="button"
+                                      title="حذف الشريحة"
+                                      disabled={
+                                        locked || draft.areaTiers.length <= 1
+                                      }
+                                      onClick={() => removeTier(index)}
+                                      className="rounded px-2 py-1 text-[12px] text-danger-text hover:bg-danger-bg disabled:cursor-not-allowed disabled:opacity-40"
+                                    >
+                                      حذف
+                                    </button>
+                                  </Can>
+                                </Td>
+                              </Tr>
+                            );
+                          })}
+                        </TBody>
+                      </Table>
+                    </div>
+                  </section>
+                ) : null}
+
+                {selectedCategory === "government-review" ? (
+                  <section className="space-y-3">
+                    <div>
+                      <h3 className="m-0 text-[13px] font-semibold text-text">
+                        أتعاب المراجع الحكومي
+                      </h3>
+                      <p className="m-0 mt-0.5 text-[11px] text-text-3">
+                        متعاون فرد فقط.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <FormGroup>
+                        <Label
+                          htmlFor="fee-gov-review"
+                          className="mb-1 text-[11px] font-semibold text-text-2"
+                        >
+                          مراجع حكومي — فرد (ر.س)
+                        </Label>
+                        <MoneyInput
+                          id="fee-gov-review"
+                          value={draft.governmentReviewFeeSar}
+                          locked={locked}
+                          onChange={(n) =>
+                            setDraft((d) => ({
+                              ...d,
+                              governmentReviewFeeSar: n,
+                            }))
+                          }
+                        />
+                      </FormGroup>
+                      <FormGroup>
+                        <Label
+                          htmlFor="fee-key-receipt"
+                          className="mb-1 text-[11px] font-semibold text-text-2"
+                        >
+                          استلام المفاتيح (ر.س)
+                        </Label>
+                        <MoneyInput
+                          id="fee-key-receipt"
+                          value={draft.keyReceiptFeeSar}
+                          locked={locked}
+                          onChange={(n) =>
+                            setDraft((d) => ({ ...d, keyReceiptFeeSar: n }))
+                          }
+                        />
+                      </FormGroup>
+                    </div>
+                  </section>
+                ) : null}
+
+                {selectedCategory === "field-inspector" ? (
+                  <section className="space-y-3">
+                    <div>
+                      <h3 className="m-0 text-[13px] font-semibold text-text">
+                        أتعاب المعاين الميداني
+                      </h3>
+                      <p className="m-0 mt-0.5 text-[11px] text-text-3">
+                        معاين الموظف خارج التسعيرة — يُدخل يدويًا على السجل.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <FormGroup>
+                        <Label
+                          htmlFor="fee-insp-ind"
+                          className="mb-1 text-[11px] font-semibold text-text-2"
+                        >
+                          معاين — فرد (ر.س)
+                        </Label>
+                        <MoneyInput
+                          id="fee-insp-ind"
+                          value={draft.fieldInspectorIndividualFeeSar}
+                          locked={locked}
+                          onChange={(n) =>
+                            setDraft((d) => ({
+                              ...d,
+                              fieldInspectorIndividualFeeSar: n,
+                            }))
+                          }
+                        />
+                      </FormGroup>
+                      <FormGroup>
+                        <Label
+                          htmlFor="fee-insp-org"
+                          className="mb-1 text-[11px] font-semibold text-text-2"
+                        >
+                          معاين — منشأة (ر.س)
+                        </Label>
+                        <MoneyInput
+                          id="fee-insp-org"
+                          value={draft.fieldInspectorOrganizationFeeSar}
+                          locked={locked}
+                          onChange={(n) =>
+                            setDraft((d) => ({
+                              ...d,
+                              fieldInspectorOrganizationFeeSar: n,
+                            }))
+                          }
+                        />
+                      </FormGroup>
+                    </div>
+                  </section>
+                ) : null}
+
+                <Can capability="manage-system-config">
+                  <div className="flex justify-end border-t border-border pt-4">
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="lg"
+                      disabled={locked || !draft.id}
+                      onClick={() => void save()}
+                    >
+                      {saving ? "جاري الحفظ…" : "حفظ التسعيرة"}
+                    </Button>
+                  </div>
+                </Can>
+              </>
+            )}
+          </CardBody>
+        </Card>
+      </div>
     </div>
   );
 }

@@ -49,10 +49,12 @@ public class InspectorFeeService : IInspectorFeeService
             if (existingSet.Contains(task.Id)) continue;
 
             var partyType = await ResolvePartyTypeAsync(task, cancellationToken);
+            var areaM2 = await ResolvePropertyAreaM2Async(task, cancellationToken);
             var agreedFee = await _pricing.ResolveDefaultFeeAsync(
                 task.Kind,
                 partyType,
-                cancellationToken);
+                areaM2,
+                cancellationToken) ?? 0m;
 
             _db.InspectorFeeLedgers.Add(new InspectorFeeLedger
             {
@@ -77,6 +79,7 @@ public class InspectorFeeService : IInspectorFeeService
         }
 
         await _db.SaveChangesAsync(cancellationToken);
+        await StampDeferredEngineeringSurveyFeesAsync(cancellationToken);
     }
 
     public async Task EnsureLedgersForPropertyAsync(
@@ -105,6 +108,7 @@ public class InspectorFeeService : IInspectorFeeService
         CancellationToken cancellationToken = default)
     {
         await BackfillMissingLedgersAsync(cancellationToken);
+        await StampDeferredEngineeringSurveyFeesAsync(cancellationToken);
         await SyncLedgerSnapshotsFromTasksAsync(cancellationToken);
 
         var query = _db.InspectorFeeLedgers.AsNoTracking();
@@ -210,6 +214,7 @@ public class InspectorFeeService : IInspectorFeeService
         CancellationToken cancellationToken = default)
     {
         await BackfillMissingLedgersAsync(cancellationToken);
+        await StampDeferredEngineeringSurveyFeesAsync(cancellationToken);
         await SyncLedgerSnapshotsFromTasksAsync(cancellationToken);
 
         var ledger = await _db.InspectorFeeLedgers.AsNoTracking()
@@ -568,6 +573,9 @@ public class InspectorFeeService : IInspectorFeeService
             if (ledger.ExcludedFromBatch)
                 return "لا يمكن رفع عقار مستبعد.";
 
+            if (!InspectorFeeRules.HasBillableAgreedFee(ledger.AgreedFeeSar))
+                return "يجب إدخال مبلغ الأتعاب المتفق عليه قبل الرفع.";
+
             if (!InspectorFeeBillingRules.ValidateDiscount(
                     ledger.SupervisorDiscountSar,
                     ledger.DiscountReason,
@@ -596,6 +604,9 @@ public class InspectorFeeService : IInspectorFeeService
         {
             if (ledger.ExcludedFromBatch)
                 return "لا يمكن اعتماد عقار مستبعد.";
+
+            if (!InspectorFeeRules.HasBillableAgreedFee(ledger.AgreedFeeSar))
+                return "يجب إدخال مبلغ الأتعاب المتفق عليه قبل الاعتماد.";
 
             if (!InspectorFeeBillingRules.ValidateDiscount(
                     ledger.SupervisorDiscountSar,
@@ -794,9 +805,102 @@ public class InspectorFeeService : IInspectorFeeService
         var missing = feeTasks
             .Where(t => !existing.Contains(t.Id))
             .ToList();
-        if (missing.Count == 0) return;
+        if (missing.Count == 0)
+        {
+            await StampDeferredEngineeringSurveyFeesAsync(cancellationToken);
+            return;
+        }
 
         await EnsureLedgersForTasksAsync(missing, cancellationToken);
+    }
+
+    /// <summary>
+    /// Stamps engineering-survey ledgers that were created without area once area becomes available.
+    /// Only updates draft ledgers still at AgreedFeeSar = 0.
+    /// </summary>
+    private async Task StampDeferredEngineeringSurveyFeesAsync(CancellationToken cancellationToken)
+    {
+        var pending = await _db.InspectorFeeLedgers
+            .Where(x =>
+                x.AgreedFeeSar <= 0m
+                && x.BillingStatus == InspectorFeeBillingStatus.Draft)
+            .ToListAsync(cancellationToken);
+        if (pending.Count == 0) return;
+
+        var taskIds = pending.Select(x => x.WorkflowTaskId).ToList();
+        var surveyTasks = await _db.WorkflowTasks.AsNoTracking()
+            .Where(t =>
+                taskIds.Contains(t.Id)
+                && t.Kind == "engineering-survey")
+            .ToListAsync(cancellationToken);
+        if (surveyTasks.Count == 0) return;
+
+        var byTaskId = surveyTasks.ToDictionary(t => t.Id);
+        var any = false;
+        foreach (var ledger in pending)
+        {
+            if (!byTaskId.TryGetValue(ledger.WorkflowTaskId, out var task))
+                continue;
+
+            var areaM2 = await ResolvePropertyAreaM2Async(task, cancellationToken);
+            if (areaM2 is not > 0m) continue;
+
+            var fee = await _pricing.ResolveDefaultFeeAsync(
+                task.Kind,
+                ledger.InspectorType,
+                areaM2,
+                cancellationToken);
+            if (fee is not > 0m) continue;
+
+            ledger.AgreedFeeSar = fee.Value;
+            ledger.UpdatedAtUtc = DateTime.UtcNow;
+            any = true;
+        }
+
+        if (any)
+            await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Decision 3: task property → sole property in PO → max area among PO properties.
+    /// </summary>
+    private async Task<decimal?> ResolvePropertyAreaM2Async(
+        WorkflowTask task,
+        CancellationToken cancellationToken)
+    {
+        if (task.PropertyId is Guid linkedId)
+        {
+            var linked = await _db.WorkOrderProperties.AsNoTracking()
+                .Where(p => p.Id == linkedId)
+                .Select(p => p.Area)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (EngineeringSurveyFeeRules.TryParseAreaM2(linked, out var linkedArea))
+                return linkedArea;
+        }
+
+        var po = task.PoNumber.Trim();
+        if (string.IsNullOrEmpty(po)) return null;
+
+        var workOrderId = await _db.WorkOrders.AsNoTracking()
+            .Where(w => w.PoNumber == po)
+            .Select(w => (Guid?)w.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (workOrderId is null) return null;
+
+        var areas = await _db.WorkOrderProperties.AsNoTracking()
+            .Where(p => p.WorkOrderId == workOrderId.Value)
+            .Select(p => p.Area)
+            .ToListAsync(cancellationToken);
+        if (areas.Count == 0) return null;
+
+        var parsed = areas
+            .Select(a => EngineeringSurveyFeeRules.TryParseAreaM2(a, out var m2) ? m2 : (decimal?)null)
+            .Where(m => m is > 0m)
+            .Select(m => m!.Value)
+            .ToList();
+        if (parsed.Count == 0) return null;
+        if (parsed.Count == 1) return parsed[0];
+        return parsed.Max();
     }
 
     private async Task<List<InspectorFeeLedger>> FilterLedgersWithCompletedCaseStudyAsync(
@@ -1081,13 +1185,6 @@ public class InspectorFeeService : IInspectorFeeService
         var recipientIds = await _recipients.ResolveUserIdsWithPrototypeRoleAsync(
             "financial-officer",
             cancellationToken);
-        var procAdminIds = await _recipients.ResolveUserIdsWithPrototypeRoleAsync(
-            "proc-admin",
-            cancellationToken);
-        recipientIds = recipientIds
-            .Concat(procAdminIds)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
 
         if (recipientIds.Count == 0) return;
 

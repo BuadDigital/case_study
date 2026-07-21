@@ -21,7 +21,6 @@ export type PageId =
   | "system-fields-catalog"
   | "system-screen-catalog"
   | "financial"
-  | "kpi"
   | "users"
   | "courts"
   | "failure-types"
@@ -31,9 +30,6 @@ export type PageId =
 
 export type RoleId =
   | "cdo"
-  | "hr-admin"
-  | "proc-admin"
-  | "crm-admin"
   | "general-manager"
   | "section-supervisor"
   | "case-specialist"
@@ -69,9 +65,6 @@ export function isRoleId(value: string): value is RoleId {
 
 const ROLE_ID_SET: Record<RoleId, true> = {
   cdo: true,
-  "hr-admin": true,
-  "proc-admin": true,
-  "crm-admin": true,
   "general-manager": true,
   "section-supervisor": true,
   "case-specialist": true,
@@ -106,7 +99,6 @@ export function isPageId(value: string): value is PageId {
     value === "system-fields-catalog" ||
     value === "system-screen-catalog" ||
     value === "financial" ||
-    value === "kpi" ||
     value === "users" ||
     value === "courts" ||
     value === "failure-types" ||

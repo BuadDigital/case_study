@@ -9,9 +9,6 @@ export const PROTOTYPE_CDO_LOGIN_USERNAME = "sliman";
 /** Dev login quick-pick — usernames match `DataSeeder` HR staff and proc providers. */
 export const PROTOTYPE_LOGIN_USERS: PrototypeLoginUser[] = [
   { username: "sliman", label: "سليمان — مسؤول التحول الرقمي (CDO)" },
-  { username: "alaa", label: "آلاء قمصاني — أخصائية موارد بشرية" },
-  { username: "ali", label: "علي الأمين — مدير المالية والعقود" },
-  { username: "shahd", label: "شهد العماري — مدير علاقات العملاء" },
   { username: "salam", label: "سالم الغريب — مدير إدارة التقييم العقاري" },
   { username: "abdulrahman", label: "عبدالرحمن النفيعي — مشرف قسم دراسة الحالة" },
   { username: "osama", label: "أسامة الصالحي — أخصائي دراسة حالة" },

@@ -2,20 +2,14 @@
 
 import { cn } from "@platform/design-system";
 import { Fragment } from "react";
-import type { RegistrationSource } from "../prototype/registration-data";
-import { FLOW_THEME } from "./registration-layout";
 
 export function StepIndicator({
   steps,
   current,
-  source = "proc",
 }: {
   steps: string[];
   current: number;
-  source?: RegistrationSource;
 }) {
-  const theme = FLOW_THEME[source];
-
   return (
     <div className="shrink-0 border-b border-border bg-transparent px-4 py-2.5 sm:px-5">
       <div className="mx-auto flex max-w-none items-center justify-center gap-0 overflow-x-auto">
@@ -32,7 +26,7 @@ export function StepIndicator({
                   className={cn(
                     "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-border-md bg-surface text-[10px] font-bold text-text-3 transition-all",
                     done && "border-success bg-success-bg text-success-text text-[0]",
-                    active && theme.stepActive,
+                    active && "border-primary bg-primary text-white",
                   )}
                 >
                   {done ? (
@@ -47,7 +41,7 @@ export function StepIndicator({
                 <span
                   className={cn(
                     "max-w-full truncate text-[11px] font-medium text-text-3",
-                    active && theme.stepLabelActive,
+                    active && "font-bold text-primary",
                     done && "text-text-2",
                   )}
                 >

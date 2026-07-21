@@ -2,7 +2,7 @@ namespace RealEstateEval.Application.Rules;
 
 /// <summary>
 /// Government-review: classification is always «متعاون فرد».
-/// Seed/fallback only — live defaults come from <c>PartyFeePricingConfig</c>.
+/// Seed/fallback only — live defaults come from the active <c>PartyFeePricingTable</c>.
 /// </summary>
 public static class GovernmentReviewFeeRules
 {

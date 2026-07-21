@@ -1569,19 +1569,16 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.ToTable("OutboxMessages", "messaging");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.PartyFeePricingConfig", b =>
+            modelBuilder.Entity("RealEstateEval.Domain.PartyFeePricingTable", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<decimal>("EngineeringSurveyFeeSar")
-                        .HasPrecision(12, 2)
-                        .HasColumnType("numeric(12,2)");
-
-                    b.Property<decimal>("FieldInspectorEmployeeFeeSar")
-                        .HasPrecision(12, 2)
-                        .HasColumnType("numeric(12,2)");
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<decimal>("FieldInspectorIndividualFeeSar")
                         .HasPrecision(12, 2)
@@ -1595,16 +1592,55 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasPrecision(12, 2)
                         .HasColumnType("numeric(12,2)");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
                     b.Property<decimal>("KeyReceiptFeeSar")
                         .HasPrecision(12, 2)
                         .HasColumnType("numeric(12,2)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
-                    b.ToTable("PartyFeePricingConfigs", "financial");
+                    b.HasIndex("Category")
+                        .IsUnique()
+                        .HasFilter("\"IsActive\" = true");
+
+                    b.ToTable("PartyFeePricingTables", "financial");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Domain.PartyFeePricingTier", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("FeeSar")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<decimal?>("MaxAreaM2")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TableId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TableId", "SortOrder");
+
+                    b.ToTable("PartyFeePricingTiers", "financial");
                 });
 
             modelBuilder.Entity("RealEstateEval.Domain.PartyTaskSubmission", b =>
@@ -2757,6 +2793,17 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Navigation("Profile");
                 });
 
+            modelBuilder.Entity("RealEstateEval.Domain.PartyFeePricingTier", b =>
+                {
+                    b.HasOne("RealEstateEval.Domain.PartyFeePricingTable", "Table")
+                        .WithMany("AreaTiers")
+                        .HasForeignKey("TableId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Table");
+                });
+
             modelBuilder.Entity("RealEstateEval.Domain.PropertyContact", b =>
                 {
                     b.HasOne("RealEstateEval.Domain.WorkOrderProperty", "Property")
@@ -2788,6 +2835,11 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("WorkOrder");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Domain.PartyFeePricingTable", b =>
+                {
+                    b.Navigation("AreaTiers");
                 });
 
             modelBuilder.Entity("RealEstateEval.Domain.Court", b =>

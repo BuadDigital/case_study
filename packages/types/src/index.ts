@@ -16,9 +16,7 @@ export type {
 } from "./organization";
 export type {
   ContractType,
-  CreateUserResponse,
   FieldErrorsResponse,
-  RegistrationPayload,
   RegistrationSourceApi,
   UserDetailField,
   UserListItem,

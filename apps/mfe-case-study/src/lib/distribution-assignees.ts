@@ -13,9 +13,6 @@ export type DistributionAssignee = {
  */
 const EXACT_JOB_TITLE_TO_ROLE: Record<string, RoleId> = {
   "مسؤول التحول الرقمي (CDO)": "cdo",
-  "أخصائية موارد بشرية": "hr-admin",
-  "مدير المالية والعقود": "proc-admin",
-  "مدير علاقات العملاء": "crm-admin",
   "مدير إدارة التقييم العقاري": "general-manager",
   "مشرف قسم دراسة الحالة": "section-supervisor",
   "أخصائي دراسة حالة": "case-specialist",

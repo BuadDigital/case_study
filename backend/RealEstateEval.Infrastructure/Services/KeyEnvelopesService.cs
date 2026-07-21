@@ -724,7 +724,8 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
 
     private async Task<decimal> ResolveKeyReceiptFeeAsync(CancellationToken cancellationToken)
     {
-        var pricing = await _db.PartyFeePricingConfigs.AsNoTracking()
+        var pricing = await _db.PartyFeePricingTables.AsNoTracking()
+            .Where(x => x.Category == "government-review" && x.IsActive)
             .OrderByDescending(x => x.UpdatedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
         if (pricing is not null && pricing.KeyReceiptFeeSar > 0)

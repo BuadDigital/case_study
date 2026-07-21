@@ -49,7 +49,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<EvaluatorRecallRecord> EvaluatorRecallRecords => Set<EvaluatorRecallRecord>();
     public DbSet<PoIntakeDraft> PoIntakeDrafts => Set<PoIntakeDraft>();
     public DbSet<FinancialReportConfig> FinancialReportConfigs => Set<FinancialReportConfig>();
-    public DbSet<PartyFeePricingConfig> PartyFeePricingConfigs => Set<PartyFeePricingConfig>();
+    public DbSet<PartyFeePricingTable> PartyFeePricingTables => Set<PartyFeePricingTable>();
+    public DbSet<PartyFeePricingTier> PartyFeePricingTiers => Set<PartyFeePricingTier>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
 
@@ -635,16 +636,32 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.ReportJson).HasColumnType("jsonb");
         });
 
-        builder.Entity<PartyFeePricingConfig>(e =>
+        builder.Entity<PartyFeePricingTable>(e =>
         {
-            e.ToTable("PartyFeePricingConfigs", DatabaseSchemas.Financial);
+            e.ToTable("PartyFeePricingTables", DatabaseSchemas.Financial);
             e.HasKey(x => x.Id);
-            e.Property(x => x.EngineeringSurveyFeeSar).HasPrecision(12, 2);
+            e.Property(x => x.Name).HasMaxLength(128).IsRequired();
+            e.Property(x => x.Category).HasMaxLength(32).IsRequired();
             e.Property(x => x.GovernmentReviewFeeSar).HasPrecision(12, 2);
             e.Property(x => x.KeyReceiptFeeSar).HasPrecision(12, 2);
             e.Property(x => x.FieldInspectorIndividualFeeSar).HasPrecision(12, 2);
             e.Property(x => x.FieldInspectorOrganizationFeeSar).HasPrecision(12, 2);
-            e.Property(x => x.FieldInspectorEmployeeFeeSar).HasPrecision(12, 2);
+            e.HasIndex(x => x.Category)
+                .IsUnique()
+                .HasFilter("\"IsActive\" = true");
+            e.HasMany(x => x.AreaTiers)
+                .WithOne(x => x.Table)
+                .HasForeignKey(x => x.TableId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<PartyFeePricingTier>(e =>
+        {
+            e.ToTable("PartyFeePricingTiers", DatabaseSchemas.Financial);
+            e.HasKey(x => x.Id);
+            e.Property(x => x.MaxAreaM2).HasPrecision(12, 2);
+            e.Property(x => x.FeeSar).HasPrecision(12, 2);
+            e.HasIndex(x => new { x.TableId, x.SortOrder });
         });
 
         builder.Entity<PropertyTimelineEntry>(e =>

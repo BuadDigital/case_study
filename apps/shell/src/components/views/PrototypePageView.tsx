@@ -63,10 +63,6 @@ const FinancialView = dynamic(
   () => import("@financial/mfe").then((m) => m.FinancialView),
   { ssr: false },
 );
-const KpiView = dynamic(
-  () => import("@kpi/mfe").then((m) => m.KpiView),
-  { ssr: false },
-);
 const UsersView = dynamic(
   () => import("@settings/mfe").then((m) => m.UsersView),
   { ssr: false },
@@ -125,7 +121,6 @@ const VIEWS: Partial<Record<PageId, ComponentType>> = {
   "system-fields-catalog": SystemFieldsCatalogView,
   "system-screen-catalog": SystemScreenCatalogView,
   financial: FinancialView,
-  kpi: KpiView,
   users: UsersView,
   courts: CourtsView,
   "failure-types": FailureTypesView,

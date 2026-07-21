@@ -18,7 +18,7 @@ backend/
 
 │   ├── operations/RealEstateEval.Operations.Api/    # Survey offices, property keys (:5163)
 
-│   ├── reporting/RealEstateEval.Reporting.Api/      # Dashboard BFF, KPI (:5164)
+│   ├── reporting/RealEstateEval.Reporting.Api/      # Dashboard BFF (:5164)
 
 │   ├── financial/RealEstateEval.Financial.Api/      # Financial summary (:5165)
 
@@ -173,7 +173,6 @@ Constants: `RealEstateEval.Infrastructure/Data/DatabaseSchemas.cs`. EF maps each
 | Key                            | Endpoint                          | TTL                          |
 | ------------------------------ | --------------------------------- | ---------------------------- |
 | `reporting:dashboard:v1`       | `GET /api/reporting/v1/dashboard` | 60s                          |
-| `reporting:kpi:v1`             | `GET /api/reporting/v1/kpi`       | 60s                          |
 | `financial:summary:v1`         | `GET /api/financial/v1/summary`   | 60s (invalidated on PUT)     |
 | `operations:survey-offices:v1` | `GET /api/survey-offices`         | 120s (invalidated on writes) |
 | `platform:courts:v1`           | `GET /api/courts`                 | 5m (invalidated on PUT)      |

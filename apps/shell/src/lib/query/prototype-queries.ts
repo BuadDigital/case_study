@@ -18,7 +18,6 @@ import {
   loadCaseStudyInfoRolesConfig,
   loadCourtsCatalog,
   fetchOrganization,
-  fetchStaffUsers,
 } from "@settings/mfe";
 import {
   loadPoRecordsWithTaskSync,
@@ -126,11 +125,6 @@ export function prefetchPrototypePage(
       break;
     case "users":
       void queryClient.prefetchQuery({
-        queryKey: prototypeKeys.staffUsers(),
-        queryFn: fetchStaffUsers,
-        ...opts,
-      });
-      void queryClient.prefetchQuery({
         queryKey: prototypeKeys.organization(),
         queryFn: fetchOrganization,
         ...opts,
@@ -166,7 +160,6 @@ export function prefetchPrototypePage(
       });
       break;
     case "financial":
-    case "kpi":
       break;
     default:
       break;

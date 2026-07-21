@@ -15,9 +15,6 @@ const DEED_OWNERSHIP_ONLY: RoleId[] = [
   "valuation-coordinator",
   "general-manager",
   "financial-officer",
-  "hr-admin",
-  "proc-admin",
-  "crm-admin",
 ];
 
 describe("failure category role visibility — full matrix", () => {

@@ -45,6 +45,7 @@ public static class DataSeeder
             }
             await RemoveDemoPropertyKeyRecordsAsync(db, cancellationToken);
             await RemoveSeededFinancialReportConfigAsync(db, cancellationToken);
+            await RemoveRetiredOrgAdminUsersAsync(userManager, cancellationToken);
             return;
         }
 
@@ -130,6 +131,8 @@ public static class DataSeeder
 
         await EnsureLegacyAdminAsync(userManager);
 
+        await RemoveRetiredOrgAdminUsersAsync(userManager, cancellationToken);
+
         foreach (var staff in HrStaffSeeds)
             await EnsureHrStaffAsync(userManager, db, staff, cancellationToken);
 
@@ -209,84 +212,6 @@ public static class DataSeeder
             ContractType.Internal,
 
             OrgRoles.Cdo,
-
-            DepartmentRoles.Hr),
-
-        new(
-
-            "alaa",
-
-            "a.alamin@gmail.com",
-
-            "ali123",
-
-            "آلاء قمصاني",
-
-            "أخصائية موارد بشرية",
-
-            "دوام كامل",
-
-            "الإدارة التنفيذية",
-
-            null,
-
-            "مدير",
-
-            ContractType.Internal,
-
-            OrgRoles.HrAdmin,
-
-            DepartmentRoles.Hr),
-
-        new(
-
-            "ali",
-
-            "a.alqadri@gmail.com",
-
-            "ahmad123",
-
-            "علي الأمين",
-
-            "مدير المالية والعقود",
-
-            "دوام كامل",
-
-            "الإدارة المالية",
-
-            "قسم المحاسبة",
-
-            "مدير",
-
-            ContractType.Internal,
-
-            OrgRoles.ProcAdmin,
-
-            DepartmentRoles.Hr),
-
-        new(
-
-            "shahd",
-
-            "g.abdo@gmail.com",
-
-            "gamal123",
-
-            "شهد العماري",
-
-            "مدير علاقات العملاء",
-
-            "دوام كامل",
-
-            "الإدارة التنفيذية",
-
-            null,
-
-            "مدير",
-
-            ContractType.Internal,
-
-            OrgRoles.CrmAdmin,
 
             DepartmentRoles.Hr),
 
@@ -1355,6 +1280,31 @@ public static class DataSeeder
             .Where(x => x.Id == SeededFinancialReportConfigId)
             .ExecuteDeleteAsync(cancellationToken);
     }
+
+    private static readonly string[] RetiredOrgAdminUsernames =
+        ["alaa", "ali", "shahd"];
+
+    /// <summary>Drops retired HR/PROC/CRM admin demo accounts (alaa / ali / shahd).</summary>
+    private static async Task RemoveRetiredOrgAdminUsersAsync(
+        UserManager<ApplicationUser> userManager,
+        CancellationToken cancellationToken)
+    {
+        foreach (var username in RetiredOrgAdminUsernames)
+        {
+            var user = await userManager.FindByNameAsync(username);
+            if (user is null)
+                continue;
+
+            var result = await userManager.DeleteAsync(user);
+            if (!result.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    "Failed to remove retired org admin " + username + ": "
+                    + string.Join("; ", result.Errors.Select(e => e.Description)));
+            }
+        }
+    }
+
 
 }
 

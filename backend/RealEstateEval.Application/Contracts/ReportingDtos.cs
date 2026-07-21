@@ -71,19 +71,3 @@ public class ReportingSpecialistLoadDto
     public int MaxLoad { get; init; }
     public required string Tone { get; init; }
 }
-
-public class ReportingKpiDto
-{
-    public int OnTimeCompletionRate { get; init; }
-    public required string AvgPropertyDaysLabel { get; init; }
-    public double FailureRatePercent { get; init; }
-    public int CompletedToday { get; init; }
-    public IReadOnlyList<ReportingKpiScoreDto> SpecialistScores { get; init; } = [];
-    public IReadOnlyList<ReportingKpiScoreDto> ProviderScores { get; init; } = [];
-}
-
-public class ReportingKpiScoreDto
-{
-    public required string Name { get; init; }
-    public int ScorePercent { get; init; }
-}

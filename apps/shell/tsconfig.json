@@ -28,8 +28,6 @@
       "@keys/mfe/*": ["../mfe-keys/src/*"],
       "@financial/mfe": ["../mfe-financial/src/index.ts"],
       "@financial/mfe/*": ["../mfe-financial/src/*"],
-      "@kpi/mfe": ["../mfe-kpi/src/index.ts"],
-      "@kpi/mfe/*": ["../mfe-kpi/src/*"],
       "@valuation/mfe": ["../mfe-valuation/src/index.ts"],
       "@valuation/mfe/*": ["../mfe-valuation/src/*"],
       "@platform/app-shared": ["../../packages/app-shared/src/index.ts"],

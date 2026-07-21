@@ -19,7 +19,6 @@ public class PlatformPermissionCatalogTests
     [InlineData("case-specialist", "manage-attachments")]
     [InlineData("field-inspector", "submit-party-work")]
     [InlineData("financial-officer", "manage-financial")]
-    [InlineData("proc-admin", "manage-financial")]
     [InlineData("government-reviewer", "manage-operations")]
     [InlineData("real-estate-appraiser", "submit-valuation-report")]
     public void Prototype_role_grants_expected_capability(string role, string capability)
@@ -44,7 +43,7 @@ public class PlatformPermissionCatalogTests
     [InlineData("government-reviewer", "party-fees")]
     [InlineData("government-reviewer", "po")]
     [InlineData("section-supervisor", "failures")]
-    [InlineData("proc-admin", "financial")]
+    [InlineData("financial-officer", "financial")]
     public void Prototype_role_grants_expected_page(string role, string page)
     {
         var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

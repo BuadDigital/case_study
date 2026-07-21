@@ -42,6 +42,7 @@ import {
   poPropertyPath,
   poListPath,
 } from "../lib/po-routes";
+import { governmentReviewWorkspacePath } from "../lib/my-task-routes";
 import { poPropertyToPropertyRow, buildCopyPriorTargetOptions } from "../lib/prototype/po-intake-storage";
 import {
   buildPoPropertiesRowMoreItems,
@@ -57,6 +58,21 @@ import {
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import type { PoPropertyIntake } from "../lib/prototype/po-intake-data";
+import type { WorkflowTask } from "../lib/prototype/tasks-storage";
+
+function governmentReviewTaskForProperty(
+  tasks: WorkflowTask[],
+  poNumber: string,
+  propertyId: string,
+): WorkflowTask | undefined {
+  const po = poNumber.trim();
+  return tasks.find(
+    (t) =>
+      t.kind === "government-review" &&
+      t.poNumber.trim() === po &&
+      t.propertyId === propertyId,
+  );
+}
 
 function assignmentTypeBadgeTone(type: string): BadgeTone {
   if (type === "تنفيذ") return "info";
@@ -118,6 +134,7 @@ export function PoPropertiesPage({
   const router = useRouter();
   const queryClient = useQueryClient();
   const { role } = usePrototype();
+  const isGovernmentReviewer = role === "government-reviewer";
   const showEdit = canEditProperty(role);
   const showFailureRaise = canRaisePropertyFailure(role);
   const showEye = canViewPoEye(role);
@@ -379,13 +396,29 @@ export function PoPropertiesPage({
                         .join(" / ") || "—";
                     const detailHref = poPropertyPath(poNumber, prop.id);
                     const label = deedLabel(prop);
+                    const govReviewTask = isGovernmentReviewer
+                      ? governmentReviewTaskForProperty(
+                          workflowTasks,
+                          poNumber,
+                          prop.id,
+                        )
+                      : undefined;
+                    const deedOpensReview = Boolean(govReviewTask);
 
                     return (
                       <Tr
                         key={prop.id}
                         hoverable={false}
                         className="cursor-pointer transition-colors hover:bg-[color-mix(in_srgb,var(--info-bg)_40%,var(--surface))]"
-                        onClick={() => router.push(detailHref)}
+                        onClick={() => {
+                          if (deedOpensReview && govReviewTask) {
+                            router.push(
+                              governmentReviewWorkspacePath(govReviewTask.id),
+                            );
+                            return;
+                          }
+                          router.push(detailHref);
+                        }}
                       >
                         <Td>
                           <span className="inline-flex min-w-0 items-center justify-end gap-2">
@@ -397,7 +430,16 @@ export function PoPropertiesPage({
                             </span>
                             <span
                               dir="ltr"
-                              className="inline-block text-[13px] font-medium text-primary"
+                              className={cn(
+                                "inline-block text-[13px] font-medium text-primary",
+                                deedOpensReview &&
+                                  "underline decoration-primary underline-offset-2",
+                              )}
+                              title={
+                                deedOpensReview
+                                  ? "فتح نموذج المراجعة الحكومية"
+                                  : undefined
+                              }
                             >
                               {label}
                             </span>
@@ -439,15 +481,19 @@ export function PoPropertiesPage({
             {showDecree ? (
               <p className="px-4 py-2 pb-3 text-[11px] text-text-3 sm:px-6">
                 مسار التنفيذ — قرار إسناد مستقل لكل صك.
-                {showRowMenu
-                  ? " اضغط الصف للتفاصيل أو ⋮ للإجراءات."
-                  : " اضغط الصف للتفاصيل."}
+                {isGovernmentReviewer
+                  ? " اضغط رقم الصك (أو الصف) لفتح نموذج المراجعة عند وجود مهمة."
+                  : showRowMenu
+                    ? " اضغط الصف للتفاصيل أو ⋮ للإجراءات."
+                    : " اضغط الصف للتفاصيل."}
               </p>
             ) : (
               <p className="px-4 py-2 pb-3 text-[11px] text-text-3 sm:px-6">
-                {showRowMenu
-                  ? "اضغط الصف لمعاينة العقار أو ⋮ للإجراءات (تفاصيل · طلب استرجاع المعاملة…)."
-                  : "اضغط الصف لمعاينة تفاصيل العقار."}
+                {isGovernmentReviewer
+                  ? "اضغط رقم الصك لفتح نموذج المراجعة الحكومية — إن لم توجد مهمة يُفتح تفاصيل العقار."
+                  : showRowMenu
+                    ? "اضغط الصف لمعاينة العقار أو ⋮ للإجراءات (تفاصيل · طلب استرجاع المعاملة…)."
+                    : "اضغط الصف لمعاينة تفاصيل العقار."}
               </p>
             )}
           </>

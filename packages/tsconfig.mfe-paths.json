@@ -19,8 +19,6 @@
       "@keys/mfe/*": ["../apps/mfe-keys/src/*"],
       "@financial/mfe": ["../apps/mfe-financial/src/index.ts"],
       "@financial/mfe/*": ["../apps/mfe-financial/src/*"],
-      "@kpi/mfe": ["../apps/mfe-kpi/src/index.ts"],
-      "@kpi/mfe/*": ["../apps/mfe-kpi/src/*"],
       "@valuation/mfe": ["../apps/mfe-valuation/src/index.ts"],
       "@valuation/mfe/*": ["../apps/mfe-valuation/src/*"],
       "@platform/api-client": ["./api-client/src/index.ts"],
