@@ -162,8 +162,6 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
         {
             if (request.KeysCountActual < 1)
                 return (null, "عدد المفاتيح الفعلي يجب أن يكون 1 على الأقل");
-            if (request.ReceiptAttachmentId is null || request.ReceiptAttachmentId == Guid.Empty)
-                return (null, "خطاب الاستلام مطلوب");
             if (request.PhotoAttachmentId is null || request.PhotoAttachmentId == Guid.Empty)
                 return (null, "صورة الظرف مطلوبة");
         }
@@ -174,9 +172,10 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
         }
         else if (scenario == KeyReceiveScenarios.ThirdParty)
         {
-            if (request.ThirdPartyLetterAttachmentId is null
-                || request.ThirdPartyLetterAttachmentId == Guid.Empty)
-                return (null, "خطاب حامل المفتاح مطلوب");
+            if (string.IsNullOrWhiteSpace(request.ContactPhones)
+                && (request.ThirdPartyLetterAttachmentId is null
+                    || request.ThirdPartyLetterAttachmentId == Guid.Empty))
+                return (null, "بيانات الطرف المسلِّم أو خطاب حامل المفتاح مطلوبان");
         }
 
         if (request.ReceiptAttachmentId is { } rid && rid != Guid.Empty)
@@ -387,15 +386,15 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
         if (fromParty.Length == 0 || toParty.Length == 0)
             return (null, "من وإلى مطلوبان");
 
-        var needsLetter = kind != KeyHandoffKinds.Internal;
+        // HTML parity: internal / return_court / receive_back need no letter.
+        // External delivery requires proof file (or explicit letter fields).
+        var needsLetter = kind == KeyHandoffKinds.External;
         if (needsLetter)
         {
-            if (string.IsNullOrWhiteSpace(request.LetterNumber))
-                return (null, "رقم الخطاب الرسمي مطلوب");
             if (request.LetterAttachmentId is null || request.LetterAttachmentId == Guid.Empty)
-                return (null, "ملف الخطاب الرسمي مطلوب");
+                return (null, "ملف إثبات التسليم مطلوب");
             if (!await AttachmentExistsAsync(request.LetterAttachmentId.Value, cancellationToken))
-                return (null, "ملف الخطاب الرسمي غير موجود");
+                return (null, "ملف إثبات التسليم غير موجود");
         }
 
         var now = DateTime.UtcNow;

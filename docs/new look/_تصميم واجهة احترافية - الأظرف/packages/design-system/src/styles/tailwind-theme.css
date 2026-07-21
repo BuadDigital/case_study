@@ -1,0 +1,75 @@
+/**
+ * Tailwind v4 theme — values reference tokens.css (:root) as single source of truth.
+ * Duplicated in apps/shell/src/app/globals.css @theme (required for utility generation).
+ */
+@theme inline {
+  --font-sans:
+    var(--font-arabic), "IBM Plex Sans Arabic", "Segoe UI", Tahoma, system-ui,
+    sans-serif;
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface3);
+  --color-border: var(--border);
+  --color-border-md: var(--border-md);
+
+  --color-text: var(--text-1);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+
+  --color-primary: var(--teal);
+  --color-primary-mid: var(--primary-mid);
+  --color-teal-light: var(--teal-light);
+  --color-teal-text: var(--teal-text);
+
+  --color-amber: var(--amber);
+  --color-amber-light: var(--amber-light);
+  --color-amber-text: var(--amber-text);
+
+  /* Fills/borders use hue; labels use *-text (prototype.css) */
+  --color-danger: var(--red);
+  --color-danger-text: var(--red-text);
+  --color-danger-bg: var(--red-light);
+  --color-red: var(--red);
+
+  --color-info: var(--blue);
+  --color-info-text: var(--blue-text);
+  --color-info-bg: var(--blue-light);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-muted: rgba(255, 255, 255, 0.55);
+  --color-sidebar-muted-strong: rgba(255, 255, 255, 0.85);
+  --color-sidebar-label: rgba(255, 255, 255, 0.35);
+  --color-sidebar-border: rgba(255, 255, 255, 0.07);
+
+  --color-success: var(--success);
+  --color-success-text: var(--teal-text);
+  --color-success-bg: var(--success-bg);
+
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+
+  --color-purple: var(--purple);
+  --color-purple-bg: var(--purple-bg);
+
+  --color-orange: var(--orange);
+  --color-orange-bg: var(--orange-bg);
+
+  --color-primary-light: var(--primary-light);
+  --color-teal: var(--teal);
+
+  --radius-DEFAULT: var(--radius);
+  --radius-lg: var(--radius-lg);
+  --radius-sm: var(--radius-sm);
+
+  --spacing-topbar: var(--topbar-h);
+  --spacing-sidebar: var(--sidebar-w);
+  --spacing-tabs: var(--tabs-h);
+
+  --shadow-card: var(--shadow);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-modal: 0 8px 32px rgba(15, 52, 96, 0.18);
+
+  --default-border-color: var(--color-border);
+}

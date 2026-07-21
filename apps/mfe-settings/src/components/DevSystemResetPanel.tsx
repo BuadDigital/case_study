@@ -12,8 +12,6 @@ import {
   ModalOverlay,
   ModalTitle,
   Note,
-  SubpageHeader,
-  SubpagePanel,
   useToast,
 } from "@platform/design-system";
 import { resetAllOperationalData } from "../lib/system-maintenance-api";
@@ -50,13 +48,14 @@ export function DevSystemResetPanel() {
 
   return (
     <Can capability="reset-system-data">
-      <SubpagePanel className="mt-4 border-danger/30">
-        <SubpageHeader title="مسح بيانات التطوير">
+      <section className="overflow-hidden rounded-xl border border-danger/25 bg-surface shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4 sm:px-6">
+          <h2 className="m-0 text-[15px] font-bold text-heading">مسح بيانات التطوير</h2>
           <span className="rounded bg-danger-bg px-2 py-0.5 text-[10px] font-semibold text-danger-text">
             DEV فقط
           </span>
-        </SubpageHeader>
-        <div className="space-y-3 px-4 pb-4 sm:px-6">
+        </div>
+        <div className="space-y-3 px-5 py-5 sm:px-6">
           <Note tone="warning" className="text-xs leading-relaxed">
             يحذف <strong>جميع أوامر العمل (PO)</strong> والمهام والمرفقات وبيانات النموذج
             التشغيلية. يبقي حسابات الإدارة (CDO ومديري الأنظمة) ويعيد المستخدمين
@@ -71,7 +70,7 @@ export function DevSystemResetPanel() {
             حذف جميع أوامر العمل
           </Button>
         </div>
-      </SubpagePanel>
+      </section>
 
       {open ? (
         <ModalOverlay role="presentation" onClick={() => !loading && setOpen(false)}>

@@ -17,7 +17,6 @@ import {
   CASE_STUDY_INFO_ROLES_CHANGED_EVENT,
   loadCaseStudyInfoRolesConfig,
   loadCourtsCatalog,
-  fetchOrganization,
 } from "@settings/mfe";
 import {
   loadPoRecordsWithTaskSync,
@@ -120,13 +119,6 @@ export function prefetchPrototypePage(
       void queryClient.prefetchQuery({
         queryKey: prototypeKeys.pendingBourseItems(),
         queryFn: loadPendingBourseItems,
-        ...opts,
-      });
-      break;
-    case "users":
-      void queryClient.prefetchQuery({
-        queryKey: prototypeKeys.organization(),
-        queryFn: fetchOrganization,
         ...opts,
       });
       break;
@@ -260,7 +252,6 @@ export {
   useCourtsCatalogQuery,
   useCaseStudyInfoRolesQuery,
   useStaffUsersQuery,
-  useOrganizationQuery,
   setCaseStudyInfoRolesCache,
 } from "@settings/mfe/query/settings-queries";
 

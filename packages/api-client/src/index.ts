@@ -40,9 +40,15 @@ export {
 } from "./pagination";
 
 export {
+  createStaffUser,
+  deleteStaffUser,
   fetchOrganizationOverview,
   listDistributionAssignees,
   listUsers,
+  type CreateStaffUserRequest,
+  type CreateStaffUserResponse,
+  type CreateStaffUserResult,
+  type DeleteStaffUserResult,
   type ListUsersResult,
   type OrganizationOverviewResult,
   type UsersApiConfig,

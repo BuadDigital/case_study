@@ -36,11 +36,47 @@ export function failureStatusLabel(status: FailureStatus): string {
   return "معاد للأخصائي";
 }
 
+/** HTML Case Study list vocabulary for إدارة التعذرات. */
+export function failureListStatusLabel(
+  status: FailureStatus,
+  severity?: FailureRecord["severity"],
+): string {
+  if (status === "review") return "مراجعة";
+  if (status === "returned") return "مفتوح";
+  if (status === "internal") {
+    return severity === "suspected" ? "داخلي" : "مفتوح";
+  }
+  if (status === "approved") return "معتمد";
+  if (status === "resolved") return "تم الحل";
+  if (status === "suspended") return "معلقة";
+  return failureStatusLabel(status);
+}
+
+export function failureListStatusColor(
+  status: FailureStatus,
+  severity?: FailureRecord["severity"],
+): string {
+  const label = failureListStatusLabel(status, severity);
+  if (label === "مراجعة") return "#d9a441";
+  if (label === "داخلي") return "#102B4E";
+  if (label === "مفتوح") return "#d9694f";
+  if (label === "معتمد" || label === "تم الحل") return "#3f8f5f";
+  return "#8a8d96";
+}
+
 export function failureSeverityLabel(
   severity: FailureRecord["severity"],
 ): string {
   if (severity === "suspected") return "احتمال تعذر";
   return "تعذر داخلي";
+}
+
+/** HTML list: مؤكد / احتمال */
+export function failureListSeverityLabel(
+  severity: FailureRecord["severity"],
+): string {
+  if (severity === "suspected") return "احتمال";
+  return "مؤكد";
 }
 
 export type GroupedFailureRow = {

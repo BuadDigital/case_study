@@ -11,6 +11,8 @@
       "@evaluator/mfe/*": ["../mfe-evaluator/src/*"],
       "@failures/mfe": ["../mfe-failures/src/index.ts"],
       "@failures/mfe/*": ["../mfe-failures/src/*"],
+      "@keys/mfe": ["../mfe-keys/src/index.ts"],
+      "@keys/mfe/*": ["../mfe-keys/src/*"],
       "@settings/mfe": ["../mfe-settings/src/index.ts"],
       "@settings/mfe/*": ["../mfe-settings/src/*"],
       "@platform/app-shared": ["../../packages/app-shared/src/index.ts"],

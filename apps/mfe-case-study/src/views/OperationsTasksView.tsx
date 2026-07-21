@@ -68,7 +68,10 @@ import {
   type DistributionAssignee,
 } from "../lib/prototype/distribution-parties";
 import { AppModal } from "../components/ui/AppModal";
-import { RowMoreMenu } from "../components/ui/RowMoreMenu";
+import {
+  RowMoreMenu,
+  RowMoreMenuIcons,
+} from "../components/ui/RowMoreMenu";
 import type { RowMoreMenuItem } from "../components/ui/RowMoreMenu";
 import {
   CreateOperationsTaskModal,
@@ -1324,6 +1327,7 @@ export function OperationsTasksView() {
         {
           id: "detail",
           label: "عرض التفاصيل",
+          icon: RowMoreMenuIcons.eye,
           onClick: () => setDetailId(task.id),
         },
       ];
@@ -1331,6 +1335,7 @@ export function OperationsTasksView() {
         items.push({
           id: "start",
           label: "بدء التنفيذ",
+          icon: RowMoreMenuIcons.play,
           onClick: () => void runStatus(task.id, "in_progress"),
         });
       }
@@ -1338,6 +1343,7 @@ export function OperationsTasksView() {
         items.push({
           id: "complete",
           label: "إغلاق المهمة (إكمال)",
+          icon: RowMoreMenuIcons.checkCircle,
           onClick: () => openCloseModal(task),
         });
       }
@@ -1345,6 +1351,7 @@ export function OperationsTasksView() {
         items.push({
           id: "pause",
           label: "إيقاف مؤقت",
+          icon: RowMoreMenuIcons.pause,
           onClick: () => void runStatus(task.id, "paused"),
         });
       }
@@ -1352,6 +1359,7 @@ export function OperationsTasksView() {
         items.push({
           id: "resume",
           label: "استئناف المهمة",
+          icon: RowMoreMenuIcons.play,
           onClick: () => void runStatus(task.id, "in_progress"),
         });
       }
@@ -1359,6 +1367,7 @@ export function OperationsTasksView() {
         items.push({
           id: "letter",
           label: "عرض خطاب التفويض",
+          icon: RowMoreMenuIcons.building,
           onClick: () => setDetailId(task.id),
         });
       }
@@ -1366,37 +1375,31 @@ export function OperationsTasksView() {
         items.push({
           id: "remind",
           label: "تذكير المنفّذ",
+          icon: RowMoreMenuIcons.bell,
           onClick: () => void remindTask(task),
         });
-        if (canCreate) {
-          items.push({
-            id: "reassign",
-            label: "إعادة توجيه وإسناد",
-            onClick: () => openReassign(task),
-          });
-          items.push({
-            id: "prio",
-            label: "تغيير الأولوية",
-            onClick: () => openPriorityModal(task),
-          });
-        }
-      } else if (canCreate && isActiveOperationsTask(task)) {
-        items.push({
-          id: "reassign",
-          label: "إعادة توجيه وإسناد",
-          onClick: () => openReassign(task),
-        });
+      }
+      if (canCreate && isActiveOperationsTask(task)) {
         items.push({
           id: "prio",
           label: "تغيير الأولوية",
+          icon: RowMoreMenuIcons.flag,
           onClick: () => openPriorityModal(task),
+        });
+        items.push({
+          id: "reassign",
+          label: "إعادة توجيه وإسناد",
+          icon: RowMoreMenuIcons.arrowRight,
+          onClick: () => openReassign(task),
         });
       }
       if (canCreate && !isTerminalOperationsTask(task)) {
         items.push({
           id: "cancel",
           label: "إلغاء المهمة",
+          icon: RowMoreMenuIcons.cancel,
           danger: true,
+          separatorBefore: true,
           onClick: () => void runStatus(task.id, "cancelled"),
         });
       }

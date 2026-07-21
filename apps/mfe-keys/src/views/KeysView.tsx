@@ -1,26 +1,32 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import {
   Button,
   KpiBand,
   KpiCell,
+  ModalBody,
+  ModalCard,
+  ModalClose,
+  ModalFooter,
+  ModalHeader,
+  ModalOverlay,
+  ModalTitle,
   OperationalPanel,
   OperationalToolbarPrimaryButton,
   OperationalToolbarSearch,
   OperationalToolbarSelect,
-  PageGutter,
   PageShell,
   PageToolbar,
   SkeletonTableRows,
+  StatusPill,
   Table,
   TBody,
   Td,
-  TdAction,
   Th,
-  ThAction,
   THead,
   Tr,
   cn,
@@ -28,50 +34,38 @@ import {
   useToast,
 } from "@platform/design-system";
 import { KeyEnvelopeDetailModal } from "../components/KeyEnvelopeDetailModal";
+import { KeyEnvelopeFeesPanel } from "../components/KeyEnvelopeFeesPanel";
 import { RegisterKeyEnvelopeModal } from "../components/RegisterKeyEnvelopeModal";
-import { RowMoreMenu } from "../components/ui/RowMoreMenu";
 import { removeKeyEnvelope } from "../lib/keys-envelope-api";
-import type { KeyEnvelopeRow } from "../lib/keys-envelope-types";
+import {
+  envelopeDisplayRef,
+  envelopeStatusColor,
+  envelopeStatusLabel,
+  isEnvelopeOutOfCustody,
+  scenarioColor,
+  scenarioLabel,
+  type KeyEnvelopeRow,
+} from "../lib/keys-envelope-types";
+import "./keys-look.css";
 import {
   useInvalidateKeyEnvelopes,
   useKeyEnvelopesQuery,
 } from "../query/keys-queries";
 
-const PAGE_SIZE = 10;
-
-type StatusFilter = "" | "reviewer" | "assessor" | "external" | "returned";
-type SortKey = "envelope" | "request" | "keys";
-
-function envelopeCode(id: string): string {
-  return id.replace(/-/g, "").slice(0, 8).toUpperCase();
-}
-
-function SortIcon() {
-  return (
-    <svg
-      className="ms-0.5 opacity-70"
-      width="11"
-      height="11"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden
-    >
-      <path d="M8 9l4-4 4 4M8 15l4 4 4-4" />
-    </svg>
-  );
-}
+type StatusFilter = "all" | "reviewer" | "assessor" | "external" | "returned";
+type ListTab = "envelopes" | "fees";
 
 function PlusIcon() {
   return (
     <svg
-      width="14"
-      height="14"
+      width="16"
+      height="16"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
       strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       aria-hidden
     >
       <path d="M12 5v14M5 12h14" />
@@ -79,25 +73,68 @@ function PlusIcon() {
   );
 }
 
-function InboxIcon() {
+function SearchEmptyIcon() {
   return (
     <svg
-      width="28"
-      height="28"
+      width="34"
+      height="34"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       className="text-text-3"
       aria-hidden
     >
-      <path d="M22 12h-6l-2 3h-4l-2-3H2" />
-      <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.3-4.3" />
     </svg>
   );
 }
 
-function KpiKeyIcon() {
+function ChevronIcon() {
+  return (
+    <svg
+      width="17"
+      height="17"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="m15 18-6-6 6-6" />
+    </svg>
+  );
+}
+
+function EyeIcon({ open, blink }: { open: boolean; blink?: boolean }) {
+  return (
+    <svg
+      className={cn("show-all-eye", open && "is-open", blink && "is-blink")}
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <g className="show-all-eye-ball">
+        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+        <circle className="show-all-eye-pupil" cx="12" cy="12" r="3" />
+      </g>
+      <path className="show-all-eye-lid" d="M3 12h18" />
+    </svg>
+  );
+}
+
+function KpiEnvIcon() {
   return (
     <svg
       width="17"
@@ -110,27 +147,8 @@ function KpiKeyIcon() {
       strokeLinejoin="round"
       aria-hidden
     >
-      <circle cx="8" cy="8" r="5" />
-      <path d="M11.5 11.5 21 21M17 17l2-2M14 14l2-2" />
-    </svg>
-  );
-}
-
-function KpiCheckIcon() {
-  return (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-      <path d="m9 11 3 3L22 4" />
+      <path d="M22 7 12 13 2 7" />
+      <rect x="2" y="4" width="20" height="16" rx="2" />
     </svg>
   );
 }
@@ -173,15 +191,66 @@ function KpiAlertIcon() {
   );
 }
 
-function keysCountLabel(env: KeyEnvelopeRow): string {
-  if (env.countMismatch) {
-    return `${env.keysCountActual} (مكتوب ${env.keysCountLabeled})`;
-  }
-  return String(env.keysCountActual);
+function KpiReadyIcon() {
+  return (
+    <svg
+      width="17"
+      height="17"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M22 7 12 13 2 7" />
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="M12 13v4" />
+    </svg>
+  );
+}
+
+function MismatchIcon() {
+  return (
+    <span
+      title="تعارض في العدد"
+      className="ms-1.5 inline-grid size-[18px] place-items-center rounded-full"
+      style={{
+        background: "color-mix(in srgb, #d9694f 15%, transparent)",
+        color: "#c0553d",
+      }}
+    >
+      <svg
+        width="12"
+        height="12"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+      >
+        <path d="M12 9v4M12 17h.01" />
+        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+      </svg>
+    </span>
+  );
+}
+
+function keysListHref(opts?: { tab?: "fees"; envelope?: string }): string {
+  const params = new URLSearchParams();
+  if (opts?.tab === "fees") params.set("tab", "fees");
+  if (opts?.envelope) params.set("envelope", opts.envelope);
+  const qs = params.toString();
+  return qs ? `/keys?${qs}` : "/keys";
 }
 
 export function KeysView() {
   const { showToast } = useToast();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { role } = usePrototype();
   const viewOnly = !isSuperAdmin(role) && role === "general-manager";
   const canEditEnvelope =
@@ -203,82 +272,178 @@ export function KeysView() {
   const ready = !envelopesQuery.isPending;
 
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
-  const [sortKey, setSortKey] = useState<SortKey>("envelope");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [showOut, setShowOut] = useState(false);
+  const [eyeBlink, setEyeBlink] = useState(false);
+  const [listTab, setListTab] = useState<ListTab>("envelopes");
   const [registerOpen, setRegisterOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<KeyEnvelopeRow | null>(
+    null,
+  );
 
-  const withReviewer = envelopes.filter((e) => e.status === "reviewer").length;
-  const withAssessor = envelopes.filter((e) => e.status === "assessor").length;
-  const withFees = envelopes.filter((e) => e.feeGenerated).length;
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    setListTab(tab === "fees" ? "fees" : "envelopes");
+    if (searchParams.get("register") === "1" && canRegisterEnvelope) {
+      setRegisterOpen(true);
+    }
+    const envelope = searchParams.get("envelope")?.trim() || null;
+    setDetailId(envelope);
+  }, [searchParams, canRegisterEnvelope]);
+
+  function openEnvelope(id: string) {
+    const fromFees =
+      listTab === "fees" || searchParams.get("tab") === "fees";
+    router.replace(
+      keysListHref(
+        fromFees ? { tab: "fees", envelope: id } : { envelope: id },
+      ),
+    );
+  }
+
+  function closeEnvelope() {
+    const backToFees = searchParams.get("tab") === "fees";
+    router.replace(keysListHref(backToFees ? { tab: "fees" } : undefined));
+  }
+
+  function backToList() {
+    router.replace(keysListHref());
+  }
+
+  const kpis = useMemo(() => {
+    const total = envelopes.length;
+    const delivered = envelopes.filter((e) =>
+      isEnvelopeOutOfCustody(e.status),
+    ).length;
+    const inCustody = total - delivered;
+    const active = envelopes.filter(
+      (e) => !isEnvelopeOutOfCustody(e.status),
+    ).length;
+    const pendingMatch = envelopes.reduce(
+      (n, e) => n + e.assignments.filter((a) => a.status === "pending").length,
+      0,
+    );
+    const readyToDeliver = envelopes.filter((e) => {
+      if (isEnvelopeOutOfCustody(e.status)) return false;
+      if (e.assignments.length === 0) return false;
+      return e.assignments.every((a) => a.status !== "pending");
+    }).length;
+    return { total, delivered, inCustody, active, pendingMatch, readyToDeliver };
+  }, [envelopes]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    let rows = envelopes;
-    if (statusFilter) {
-      rows = rows.filter((e) => e.status === statusFilter);
-    }
-    if (q) {
-      rows = rows.filter((e) => {
-        const code = envelopeCode(e.id).toLowerCase();
-        const court = `${e.court} ${e.circuit}`.toLowerCase();
-        return (
-          code.includes(q) ||
-          e.requestNumber.toLowerCase().includes(q) ||
-          court.includes(q) ||
-          e.id.toLowerCase().includes(q)
-        );
-      });
-    }
-    const dir = sortDir === "asc" ? 1 : -1;
-    return [...rows].sort((a, b) => {
-      if (sortKey === "request") {
-        return a.requestNumber.localeCompare(b.requestNumber, "ar") * dir;
-      }
-      if (sortKey === "keys") {
-        return (a.keysCountActual - b.keysCountActual) * dir;
-      }
-      return envelopeCode(a.id).localeCompare(envelopeCode(b.id)) * dir;
+    return envelopes.filter((e) => {
+      const deeds = e.assignments.map((a) => a.deedNumber).join(" ");
+      const ref = envelopeDisplayRef(e.id, e.createdAtUtc).toLowerCase();
+      const hay =
+        `${ref} ${e.requestNumber} ${e.court} ${e.circuit} ${deeds}`.toLowerCase();
+      const okQ = !q || hay.includes(q);
+      const okSt = statusFilter === "all" || e.status === statusFilter;
+      const okOut =
+        showOut ||
+        statusFilter !== "all" ||
+        !isEnvelopeOutOfCustody(e.status);
+      return okQ && okSt && okOut;
     });
-  }, [envelopes, search, statusFilter, sortKey, sortDir]);
+  }, [envelopes, search, statusFilter, showOut]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const pageRows = filtered.slice(
-    (safePage - 1) * PAGE_SIZE,
-    safePage * PAGE_SIZE,
-  );
-  const rangeStart = filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
-  const rangeEnd = Math.min(safePage * PAGE_SIZE, filtered.length);
-
-  function toggleSort(key: SortKey) {
-    if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir("asc");
-    }
-  }
-
-  async function deleteEnvelope(env: KeyEnvelopeRow) {
-    const confirmed = window.confirm(
-      `هل تريد حذف الظرف ${envelopeCode(env.id)}؟ لا يمكن التراجع عن الحذف.`,
-    );
-    if (!confirmed) return;
+  async function confirmDeleteEnvelope() {
+    const env = pendingDelete;
+    if (!env) return;
 
     setDeletingId(env.id);
     const result = await removeKeyEnvelope(env.id);
     setDeletingId(null);
+    setPendingDelete(null);
     if (result.ok) {
-      if (detailId === env.id) setDetailId(null);
+      if (detailId === env.id) closeEnvelope();
       invalidateEnvelopes();
-      showToast("تم حذف الظرف.", "success");
+      showToast("تم حذف الظرف", "success");
     } else {
       showToast(result.error, "error");
     }
+  }
+
+  if (detailId) {
+    return (
+      <PageShell variant="canvas" className="min-h-0 flex-1 space-y-4">
+        <button
+          type="button"
+          className="inline-flex items-center gap-1.5 border-none bg-transparent p-0 text-[12.5px] font-semibold text-text-2 hover:text-primary"
+          onClick={closeEnvelope}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden
+          >
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+          {listTab === "fees" ? "تقرير الأتعاب" : "محفظة المفاتيح"}
+        </button>
+        <KeyEnvelopeDetailModal
+          envelopeId={detailId}
+          canEdit={canEditEnvelope}
+          presentation="page"
+          onClose={closeEnvelope}
+          onChanged={() => invalidateEnvelopes()}
+        />
+        <RegisterKeyEnvelopeModal
+          open={registerOpen}
+          busy={false}
+          onClose={() => setRegisterOpen(false)}
+          onRegistered={(id) => {
+            invalidateEnvelopes();
+            openEnvelope(id);
+          }}
+        />
+      </PageShell>
+    );
+  }
+
+  if (listTab === "fees") {
+    return (
+      <PageShell variant="canvas" className="min-h-0 flex-1 space-y-4">
+        <button
+          type="button"
+          className="inline-flex items-center gap-1.5 border-none bg-transparent p-0 text-[12.5px] font-semibold text-text-2 hover:text-primary"
+          onClick={backToList}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden
+          >
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+          محفظة المفاتيح
+        </button>
+        <KeyEnvelopeFeesPanel
+          canCollect={canRegisterEnvelope || isSuperAdmin(role)}
+          onOpenEnvelope={(id) => openEnvelope(id)}
+        />
+        <RegisterKeyEnvelopeModal
+          open={registerOpen}
+          busy={false}
+          onClose={() => setRegisterOpen(false)}
+          onRegistered={(id) => {
+            invalidateEnvelopes();
+            openEnvelope(id);
+          }}
+        />
+      </PageShell>
+    );
   }
 
   return (
@@ -286,272 +451,278 @@ export function KeysView() {
       <KpiBand>
         <KpiCell
           first
-          icon={<KpiKeyIcon />}
-          iconClass="bg-info-bg text-info-text"
-          label="الظروف المسجّلة"
-          value={ready ? envelopes.length : "—"}
-          sub="وحدة تتبع المفاتيح"
-          dot
+          icon={<KpiEnvIcon />}
+          iconClass="bg-[var(--gold-soft)] text-[var(--gold-d)]"
+          label="إجمالي الأظرف"
+          value={ready ? kpis.total : "—"}
+          sub={
+            ready ? (
+              <>
+                <span className="size-1.5 rounded-full bg-gold" />
+                {kpis.delivered} مستلمة، المتبقي في العهدة{" "}
+                <b className="text-[12.5px] text-[var(--gold-d)]">
+                  {kpis.inCustody}
+                </b>
+              </>
+            ) : (
+              "—"
+            )
+          }
         />
         <KpiCell
           icon={<KpiClockIcon />}
-          iconClass="bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#b8791a]"
-          label="بعهدة المراجع"
-          value={ready ? withReviewer : "—"}
-          sub="جاهزة للمناولة"
+          iconClass="bg-[color-mix(in_srgb,#378add_15%,transparent)] text-[#378add]"
+          label="الأظرف النشطة"
+          value={ready ? kpis.active : "—"}
+          sub="لها معاملات لم تكتمل في النظام"
         />
         <KpiCell
           icon={<KpiAlertIcon />}
-          iconClass="bg-[color-mix(in_srgb,var(--red)_15%,transparent)] text-red"
-          label="أتعاب مولَّدة"
-          value={ready ? withFees : "—"}
-          valueClass="!text-red"
-          sub="سيناريو استلام محكمة"
+          iconClass="bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#8a5e14]"
+          label="بانتظار المطابقة الميدانية"
+          value={ready ? kpis.pendingMatch : "—"}
+          sub="صكوك لم تُجرّب مفاتيحها"
         />
         <KpiCell
           last
-          icon={<KpiCheckIcon />}
-          iconClass="bg-[color-mix(in_srgb,var(--success)_16%,transparent)] text-success-text"
-          label="بعهدة المعاين"
-          value={ready ? withAssessor : "—"}
-          sub="بعد تأكيد المناولة"
+          icon={<KpiReadyIcon />}
+          iconClass="bg-[color-mix(in_srgb,#d9694f_16%,transparent)] text-[#c0553d]"
+          label="أظرف جاهزة للتسليم"
+          value={ready ? kpis.readyToDeliver : "—"}
+          sub="اكتملت معاملاتها — بانتظار الإرجاع أو التسليم"
         />
       </KpiBand>
 
-      <PageToolbar className="mb-0 flex shrink-0 flex-wrap items-center justify-between gap-2 border-b-0 bg-transparent px-0 py-0">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
+      <PageToolbar className="mb-0 flex shrink-0 flex-wrap items-center justify-between gap-2.5 border-b-0 bg-transparent px-0 py-0">
+        <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+          <h2 className="m-0 text-[17px] font-extrabold text-heading">
+            ظروف المفاتيح
+          </h2>
+          <span className="inline-flex items-center rounded-[6px] bg-[var(--gold-soft)] px-2.5 py-[3px] text-[12px] font-bold text-[var(--gold-d)]">
+            {ready ? `${filtered.length} نتيجة` : "…"}
+          </span>
+        </div>
+        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
           <OperationalToolbarSearch
             type="search"
-            placeholder="رقم الظرف أو رقم الطلب أو المحكمة…"
+            placeholder="رقم الطلب، أو المحكمة أو الصك..."
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setSearch(e.target.value)}
             aria-label="بحث الظروف"
           />
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            className="show-all-btn-motion h-[38px] gap-[7px] border border-border-md bg-surface px-3.5 text-[12.5px] font-medium text-text-2 hover:border-gold hover:bg-surface hover:text-gold-d"
+            showActionToast={false}
+            onClick={() => {
+              setShowOut((v) => {
+                const next = !v;
+                if (next) {
+                  setEyeBlink(true);
+                  window.setTimeout(() => setEyeBlink(false), 420);
+                }
+                return next;
+              });
+            }}
+          >
+            <EyeIcon open={showOut} blink={eyeBlink} />
+            <span>
+              {showOut
+                ? "إخفاء المستلمة (خارج العهدة)"
+                : "إظهار المستلمة (خارج العهدة)"}
+            </span>
+          </Button>
           <OperationalToolbarSelect
             className="shrink-0"
             value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value as StatusFilter);
-              setPage(1);
-            }}
-            aria-label="تصفية الحالة"
+            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+            aria-label="تصفية العهدة"
           >
-            <option value="">جميع الحالات</option>
+            <option value="all">كل حالات العهدة</option>
             <option value="reviewer">بعهدة المراجع</option>
             <option value="assessor">بعهدة المعاين</option>
             <option value="external">بعهدة طرف خارجي</option>
-            <option value="returned">مُرجع للمحكمة</option>
+            <option value="returned">مُرجَع للمحكمة</option>
           </OperationalToolbarSelect>
+          {canRegisterEnvelope ? (
+            <OperationalToolbarPrimaryButton
+              onClick={() => setRegisterOpen(true)}
+            >
+              <PlusIcon />
+              تسجيل ظرف مفاتيح
+            </OperationalToolbarPrimaryButton>
+          ) : null}
         </div>
-        {canRegisterEnvelope ? (
-          <OperationalToolbarPrimaryButton
-            onClick={() => setRegisterOpen(true)}
-          >
-            <PlusIcon />
-            تسجيل ظرف
-          </OperationalToolbarPrimaryButton>
-        ) : null}
       </PageToolbar>
 
       <OperationalPanel className="shrink-0 overflow-visible">
         <Table pending={!ready}>
           <THead>
             <Tr hoverable={false}>
-              <Th>
-                <button
-                  type="button"
-                  className="inline-flex cursor-pointer items-center gap-0.5 border-none bg-transparent p-0 font-inherit text-inherit"
-                  onClick={() => toggleSort("envelope")}
-                >
-                  رقم الظرف
-                  <SortIcon />
-                </button>
-              </Th>
-              <Th>
-                <button
-                  type="button"
-                  className="inline-flex cursor-pointer items-center gap-0.5 border-none bg-transparent p-0 font-inherit text-inherit"
-                  onClick={() => toggleSort("request")}
-                >
-                  رقم الطلب
-                  <SortIcon />
-                </button>
-              </Th>
-              <Th>المحكمة / الدائرة</Th>
-              <Th className="text-center">
-                <button
-                  type="button"
-                  className="inline-flex cursor-pointer items-center gap-0.5 border-none bg-transparent p-0 font-inherit text-inherit"
-                  onClick={() => toggleSort("keys")}
-                >
-                  عدد المفاتيح
-                  <SortIcon />
-                </button>
-              </Th>
-              <ThAction aria-label="إجراءات" />
+              <Th className="text-start">الرقم المرجعي</Th>
+              <Th className="text-start">المحكمة / الدائرة</Th>
+              <Th className="text-center">عدد المفاتيح</Th>
+              <Th className="text-start">رقم الطلب</Th>
+              <Th className="text-center">الصكوك</Th>
+              <Th className="text-start">سيناريو الاستلام</Th>
+              <Th className="text-start">العهدة</Th>
+              <Th className="w-11" aria-label="فتح" />
             </Tr>
           </THead>
           <TBody>
             {!ready ? (
-              <SkeletonTableRows rows={8} cols={5} />
+              <SkeletonTableRows rows={8} cols={8} />
             ) : filtered.length === 0 ? (
               <Tr hoverable={false}>
                 <Td
-                  colSpan={5}
-                  className="cursor-default py-10 text-center text-[13px] text-text-3"
+                  colSpan={8}
+                  className="cursor-default px-5 py-[54px] text-center text-text-3"
                 >
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    <InboxIcon />
-                    <span>
-                      {envelopes.length === 0
-                        ? "لا توجد ظروف مسجّلة بعد."
-                        : "لا توجد نتائج مطابقة"}
+                  <div className="flex flex-col items-center justify-center">
+                    <span className="mb-3 opacity-60">
+                      <SearchEmptyIcon />
+                    </span>
+                    <span className="text-[14px] font-bold text-text-2">
+                      لا توجد ظروف مطابقة
+                    </span>
+                    <span className="mt-1 text-[13px]">
+                      جرب تعديل البحث أو الفلاتر
                     </span>
                   </div>
                 </Td>
               </Tr>
             ) : (
-              pageRows.map((env) => (
-                <Tr
-                  key={env.id}
-                  hoverable={false}
-                  className={cn("group", queueTableRowClassName)}
-                  onClick={() => setDetailId(env.id)}
-                >
-                  <Td>
-                    <span className="text-[13.5px] font-bold text-primary">
-                      {envelopeCode(env.id)}
-                    </span>
-                  </Td>
-                  <Td className="whitespace-nowrap text-[13px] font-semibold text-heading">
-                    {env.requestNumber || "—"}
-                  </Td>
-                  <Td className="whitespace-nowrap">
-                    <span className="inline-flex items-center rounded-md border border-border-md bg-surface-2 px-2.5 py-[3px] text-[12px] font-medium text-text-2">
-                      {env.court || "—"}
-                      {env.circuit ? ` / ${env.circuit}` : ""}
-                    </span>
-                  </Td>
-                  <Td className="whitespace-nowrap text-center text-[14px] font-extrabold text-heading tabular-nums">
-                    {keysCountLabel(env)}
-                  </Td>
-                  <TdAction onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-center">
-                      <RowMoreMenu
-                        items={[
-                          {
-                            id: "details",
-                            label: "تفاصيل الظرف",
-                            onClick: () => setDetailId(env.id),
-                          },
-                          ...(canRegisterEnvelope
-                            ? [
-                                {
-                                  id: "delete",
-                                  label:
-                                    deletingId === env.id
-                                      ? "جاري الحذف…"
-                                      : "حذف الظرف",
-                                  disabled: deletingId !== null,
-                                  danger: true,
-                                  onClick: () => void deleteEnvelope(env),
-                                },
-                              ]
-                            : []),
-                        ]}
+              filtered.map((env) => {
+                const out = isEnvelopeOutOfCustody(env.status);
+                const scenColor = scenarioColor(env.receiveScenario);
+                const stColor = envelopeStatusColor(env.status);
+                return (
+                  <Tr
+                    key={env.id}
+                    hoverable={false}
+                    className={cn(
+                      "group",
+                      queueTableRowClassName,
+                      out && "opacity-55 saturate-[0.6]",
+                    )}
+                    onClick={() => openEnvelope(env.id)}
+                    onContextMenu={(e) => {
+                      if (!canRegisterEnvelope) return;
+                      e.preventDefault();
+                      setPendingDelete(env);
+                    }}
+                  >
+                    <Td>
+                      <span className="text-[13.5px] font-bold text-primary">
+                        {envelopeDisplayRef(env.id, env.createdAtUtc)}
+                      </span>
+                    </Td>
+                    <Td>
+                      <div className="flex flex-col items-start gap-0.5">
+                        <span className="text-[13px] font-semibold text-heading">
+                          {env.court || "—"}
+                        </span>
+                        <span className="text-[11px] text-text-3">
+                          {env.circuit || "—"}
+                        </span>
+                      </div>
+                    </Td>
+                    <Td className="text-center">
+                      <span className="inline-flex items-center justify-center tabular-nums font-extrabold text-heading">
+                        {env.keysCountActual}
+                        {env.countMismatch ? <MismatchIcon /> : null}
+                      </span>
+                    </Td>
+                    <Td className="font-semibold text-text-2">
+                      {env.requestNumber || "—"}
+                    </Td>
+                    <Td className="text-center tabular-nums font-bold text-heading">
+                      {env.assignments.length}
+                    </Td>
+                    <Td>
+                      <StatusPill
+                        label={scenarioLabel(env.receiveScenario)}
+                        style={{ base: scenColor, fg: scenColor }}
                       />
-                    </div>
-                  </TdAction>
-                </Tr>
-              ))
+                    </Td>
+                    <Td>
+                      <StatusPill
+                        label={envelopeStatusLabel(env.status)}
+                        style={{ base: stColor, fg: stColor }}
+                      />
+                    </Td>
+                    <Td className="text-center text-text-3">
+                      <ChevronIcon />
+                    </Td>
+                  </Tr>
+                );
+              })
             )}
           </TBody>
         </Table>
       </OperationalPanel>
 
-      <PageGutter className="flex shrink-0 items-center justify-between bg-transparent px-0 py-3">
-        <span className="text-[13px] text-text-3">
-          {ready ? (
-            <>
-              عرض{" "}
-              <b className="font-bold text-heading">
-                {rangeStart}–{rangeEnd}
-              </b>{" "}
-              من <b className="font-bold text-heading">{filtered.length}</b>{" "}
-              نتيجة
-            </>
-          ) : (
-            "—"
-          )}
-        </span>
-        <div className="flex items-center gap-1.5">
-          <Button
-            type="button"
-            size="sm"
-            variant="default"
-            className="h-[30px] w-[30px] p-0 disabled:opacity-40"
-            disabled={safePage <= 1}
-            onClick={() => setPage((n) => Math.max(1, n - 1))}
-            aria-label="الصفحة السابقة"
-          >
-            ‹
-          </Button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1)
-            .filter((n) => {
-              if (totalPages <= 7) return true;
-              if (n === 1 || n === totalPages) return true;
-              return Math.abs(n - safePage) <= 1;
-            })
-            .map((n, idx, arr) => {
-              const prev = arr[idx - 1];
-              const showGap = prev != null && n - prev > 1;
-              return (
-                <span key={n} className="contents">
-                  {showGap ? (
-                    <span className="px-1 text-[12px] text-text-3">…</span>
-                  ) : null}
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={n === safePage ? "primary" : "default"}
-                    className="h-[30px] min-w-[30px] px-1.5"
-                    aria-current={n === safePage ? "page" : undefined}
-                    onClick={() => setPage(n)}
-                  >
-                    {n}
-                  </Button>
-                </span>
-              );
-            })}
-          <Button
-            type="button"
-            size="sm"
-            variant="default"
-            className="h-[30px] w-[30px] p-0 disabled:opacity-40"
-            disabled={safePage >= totalPages}
-            onClick={() => setPage((n) => Math.min(totalPages, n + 1))}
-            aria-label="الصفحة التالية"
-          >
-            ›
-          </Button>
-        </div>
-      </PageGutter>
+      {canRegisterEnvelope && filtered.length > 0 ? (
+        <p className="m-0 text-[11px] text-text-3">
+          زر يمين على الصف لفتح تأكيد حذف الظرف.
+        </p>
+      ) : null}
 
       <RegisterKeyEnvelopeModal
         open={registerOpen}
         busy={false}
         onClose={() => setRegisterOpen(false)}
-        onRegistered={() => invalidateEnvelopes()}
+        onRegistered={(id) => {
+          invalidateEnvelopes();
+          openEnvelope(id);
+        }}
       />
-      <KeyEnvelopeDetailModal
-        envelopeId={detailId}
-        canEdit={canEditEnvelope}
-        onClose={() => setDetailId(null)}
-        onChanged={() => invalidateEnvelopes()}
-      />
+      {pendingDelete ? (
+        <ModalOverlay onClick={() => setPendingDelete(null)}>
+          <ModalCard
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-[420px] p-0"
+          >
+            <ModalHeader>
+              <ModalTitle>حذف الظرف</ModalTitle>
+              <ModalClose onClick={() => setPendingDelete(null)}>×</ModalClose>
+            </ModalHeader>
+            <ModalBody className="space-y-2 p-5 text-[13px] text-text-2">
+              <p>
+                هل تريد حذف الظرف{" "}
+                <span className="font-bold text-heading">
+                  {envelopeDisplayRef(
+                    pendingDelete.id,
+                    pendingDelete.createdAtUtc,
+                  )}
+                </span>
+                ؟
+              </p>
+              <p className="text-[12px] text-text-3">لا يمكن التراجع عن الحذف.</p>
+            </ModalBody>
+            <ModalFooter className="justify-start gap-2">
+              <Button
+                variant="danger"
+                disabled={deletingId !== null}
+                showActionToast={false}
+                onClick={() => void confirmDeleteEnvelope()}
+              >
+                {deletingId === pendingDelete.id ? "جاري الحذف…" : "حذف"}
+              </Button>
+              <Button
+                variant="outline"
+                disabled={deletingId !== null}
+                showActionToast={false}
+                onClick={() => setPendingDelete(null)}
+              >
+                إلغاء
+              </Button>
+            </ModalFooter>
+          </ModalCard>
+        </ModalOverlay>
+      ) : null}
     </PageShell>
   );
 }

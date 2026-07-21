@@ -1,3 +1,5 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
@@ -38,6 +40,18 @@ public class UsersController : ControllerBase
         return Ok(overview);
     }
 
+    [HttpPost]
+    public async Task<ActionResult<CreateStaffUserResponseDto>> Create(
+        [FromBody] CreateStaffUserRequest request,
+        CancellationToken cancellationToken)
+    {
+        var (result, errors) = await _users.CreateStaffAsync(request, cancellationToken);
+        if (errors is not null)
+            return BadRequest(new FieldErrorsResponseDto { Errors = errors });
+
+        return Ok(result);
+    }
+
     [HttpDelete("registered")]
     public async Task<ActionResult<DeleteRegisteredUsersResponseDto>> DeleteAllRegistered(
         CancellationToken cancellationToken)
@@ -47,5 +61,31 @@ public class UsersController : ControllerBase
 
         var deleted = await _users.DeleteAllRegisteredAsync(cancellationToken);
         return Ok(new DeleteRegisteredUsersResponseDto { DeletedCount = deleted });
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(
+        string id,
+        CancellationToken cancellationToken)
+    {
+        var requestingUserId =
+            User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+
+        var (ok, error) = await _users.DeleteStaffAsync(
+            id,
+            requestingUserId,
+            cancellationToken);
+
+        if (!ok)
+            return BadRequest(new FieldErrorsResponseDto
+            {
+                Errors = new Dictionary<string, string>
+                {
+                    ["_form"] = error ?? "تعذر حذف المستخدم.",
+                },
+            });
+
+        return NoContent();
     }
 }

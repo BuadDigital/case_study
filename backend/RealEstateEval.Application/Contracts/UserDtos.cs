@@ -36,3 +36,19 @@ public class DeleteRegisteredUsersResponseDto
 {
     public int DeletedCount { get; init; }
 }
+
+public sealed class CreateStaffUserRequest
+{
+    public required string DisplayName { get; init; }
+    public required string Email { get; init; }
+    public required string RoleId { get; init; }
+    public string? EmployeeNumber { get; init; }
+    public string? NationalId { get; init; }
+}
+
+public sealed class CreateStaffUserResponseDto
+{
+    public required UserListItemDto User { get; init; }
+    public required string UserName { get; init; }
+    public required string TemporaryPassword { get; init; }
+}

@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { EmptyState, QueueTableHint, Tab, TabBar, TabPanel } from "@platform/design-system";
+import { KeyEnvelopeFeesPanel } from "@keys/mfe/components/KeyEnvelopeFeesPanel";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import { InspectorFeesBillingTable } from "../field-inspection/InspectorFeesBillingTable";
 import { PartyFeeWorkflowTable } from "./PartyFeeWorkflowTable";
@@ -16,7 +18,7 @@ import {
 } from "@platform/app-shared/fees/party-fee-meta";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 
-type PartyFeesTab = "fees" | "disburse" | "returned" | "financial" | "browse";
+type PartyFeesTab = "fees" | "key-fees" | "disburse" | "returned" | "financial" | "browse";
 
 export function PartyFeesWorkspace({
   variant,
@@ -58,6 +60,9 @@ export function PartyFeesWorkspace({
     [rows],
   );
 
+  const showKeyReceiptFees =
+    variant === "government-review" || isSupervisor;
+
   return (
     <div className="flex min-h-0 flex-col gap-3 px-4 py-4">
       {isSupervisor ? (
@@ -71,6 +76,9 @@ export function PartyFeesWorkspace({
           <Tab active={tab === "fees"} onClick={() => setTab("fees")}>
             الحسم والمراجعة
           </Tab>
+          <Tab active={tab === "key-fees"} onClick={() => setTab("key-fees")}>
+            أتعاب المفاتيح
+          </Tab>
         </TabBar>
       ) : (
         <TabBar className="mb-3">
@@ -80,6 +88,11 @@ export function PartyFeesWorkspace({
           <Tab active={tab === "fees"} onClick={() => setTab("fees")}>
             أتعاب المعاملة
           </Tab>
+          {showKeyReceiptFees ? (
+            <Tab active={tab === "key-fees"} onClick={() => setTab("key-fees")}>
+              أتعاب المفاتيح
+            </Tab>
+          ) : null}
           <Tab active={tab === "disburse"} onClick={() => setTab("disburse")}>
             طلب صرف
           </Tab>
@@ -116,6 +129,29 @@ export function PartyFeesWorkspace({
               </QueueTableHint>
             </>
           )
+        ) : null}
+
+        {tab === "key-fees" && showKeyReceiptFees ? (
+          <>
+            <KeyEnvelopeFeesPanel
+              canCollect
+              onOpenEnvelope={(envelopeId) => {
+                window.location.assign(
+                  `/keys?envelope=${encodeURIComponent(envelopeId)}`,
+                );
+              }}
+            />
+            <QueueTableHint className="mt-3">
+              أتعاب استلام ظرف المفاتيح (سيناريو المحكمة). التفاصيل الكاملة من{" "}
+              <Link
+                href="/keys?tab=fees"
+                className="font-semibold text-primary underline underline-offset-2"
+              >
+                إدارة المفاتيح → تقرير الأتعاب
+              </Link>
+              .
+            </QueueTableHint>
+          </>
         ) : null}
 
         {tab === "financial" && isSupervisor ? (

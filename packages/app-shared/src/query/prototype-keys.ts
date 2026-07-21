@@ -28,7 +28,6 @@ export const prototypeKeys = {
   staffUsers: () => [...prototypeKeys.all, "staff-users"] as const,
   distributionAssignees: () =>
     [...prototypeKeys.all, "distribution-assignees"] as const,
-  organization: () => [...prototypeKeys.all, "organization"] as const,
   propertyDetailPartySubmissions: (parentTaskId: string) =>
     [...prototypeKeys.all, "property-detail-party-submissions", parentTaskId] as const,
   propertyTimeline: (poNumber: string, propertyId: string) =>

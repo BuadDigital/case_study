@@ -86,6 +86,33 @@ export const PAGE_SITUATION_CARDS: Partial<Record<PageId, PageSituationCardDef[]
     "property-inspection": partyCards("مكتملة"),
     "property-appraisal": partyCards(),
     "active-survey": partyCards(),
+    /** HTML Case Study «الأتعاب والصرف» KPI vocabulary. */
+    "party-fees": [
+      {
+        key: "total",
+        label: "إجمالي المطالبات",
+        sub: "سجلات الأتعاب",
+        tone: "blue",
+      },
+      {
+        key: "toSupervisor",
+        label: "رفعت للمشرف",
+        sub: "بانتظار الاعتماد",
+        tone: "warn",
+      },
+      {
+        key: "atFinance",
+        label: "معتمدة للمالية",
+        sub: "جاهزة أو ضمن أمر صرف",
+        tone: "green",
+      },
+      {
+        key: "disbursed",
+        label: "مصروفة",
+        sub: "أُتم الصرف",
+        tone: "green",
+      },
+    ],
   };
 
 export function pageSituationCards(pageId: PageId): PageSituationCardDef[] | null {
@@ -224,33 +251,28 @@ export function computeFeesPageSituation(
   rows: InspectorFeeRowDto[],
 ): Pick<
   PageSituationValues,
-  "total" | "inProgress" | "ready" | "disbursed" | "returned"
+  "total" | "toSupervisor" | "atFinance" | "disbursed"
 > {
-  let inProgress = 0;
-  let ready = 0;
+  let toSupervisor = 0;
+  let atFinance = 0;
   let disbursed = 0;
-  let returned = 0;
 
   for (const row of rows) {
-    if (row.workStatus === "in_progress") inProgress += 1;
+    if (row.billingStatus === "sup-review") toSupervisor += 1;
     if (
-      row.workStatus === "done" &&
-      (row.billingStatus === "at-finance" || row.billingStatus === "disb-req")
+      row.billingStatus === "at-finance" ||
+      row.billingStatus === "disb-req"
     ) {
-      ready += 1;
+      atFinance += 1;
     }
     if (row.billingStatus === "disbursed") disbursed += 1;
-    if (row.billingStatus === "returned" || row.billingStatus === "inquiry") {
-      returned += 1;
-    }
   }
 
   return {
     total: rows.length,
-    inProgress,
-    ready,
+    toSupervisor,
+    atFinance,
     disbursed,
-    returned,
   };
 }
 
@@ -316,10 +338,6 @@ export function computePageSituationValues(
       obstructedCount: input.obstructedCount ?? 0,
       now: input.now,
     });
-  }
-
-  if (pageId === "party-fees") {
-    return null;
   }
 
   if (

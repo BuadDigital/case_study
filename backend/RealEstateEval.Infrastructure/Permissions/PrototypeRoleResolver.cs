@@ -25,6 +25,39 @@ public static class PrototypeRoleResolver
         ["مقدم خدمة — جهة"] = "engineering-office",
     };
 
+    /// <summary>Prototype roles the CDO can assign when creating staff.</summary>
+    public static readonly IReadOnlyList<string> CreatableStaffRoleIds =
+    [
+        "cdo",
+        "general-manager",
+        "section-supervisor",
+        "case-specialist",
+        "government-reviewer",
+        "valuation-coordinator",
+        "real-estate-appraiser",
+        "field-inspector",
+        "financial-officer",
+    ];
+
+    public static bool IsCreatableStaffRoleId(string? roleId) =>
+        !string.IsNullOrWhiteSpace(roleId)
+        && CreatableStaffRoleIds.Contains(roleId.Trim(), StringComparer.Ordinal);
+
+    public static string? JobTitleForRoleId(string? roleId)
+    {
+        if (string.IsNullOrWhiteSpace(roleId))
+            return null;
+
+        var trimmed = roleId.Trim();
+        foreach (var (jobTitle, mappedRoleId) in ExactJobTitleToRoleId)
+        {
+            if (string.Equals(mappedRoleId, trimmed, StringComparison.Ordinal))
+                return jobTitle;
+        }
+
+        return null;
+    }
+
     public static string? Resolve(UserProfile? profile, IReadOnlyList<string> identityRoles)
     {
         if (identityRoles.Any(PlatformPermissionCatalog.IsSuperAdminIdentityRole))
