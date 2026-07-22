@@ -1,11 +1,20 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+
 namespace RealEstateEval.Infrastructure.Services;
+
 public sealed class KeyEnvelopesService : IKeyEnvelopesService
 {
+    private static readonly JsonSerializerOptions JsonOpts = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
+    };
+
     private const decimal DefaultKeyReceiptFeeSar = 350m;
     private readonly ApplicationDbContext _db;
     private readonly IPropertyAccessHoldService _holds;
@@ -197,6 +206,14 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
                 return (null, "ملف خطاب الطرف الثالث غير موجود");
         }
 
+        Guid? operationsTaskId = null;
+        if (request.OperationsTaskId is { } linkedTaskId && linkedTaskId != Guid.Empty)
+        {
+            var linkError = await ValidateCourtVisitTaskLinkAsync(linkedTaskId, cancellationToken);
+            if (linkError is not null) return (null, linkError);
+            operationsTaskId = linkedTaskId;
+        }
+
         var now = DateTime.UtcNow;
         var entity = new KeyEnvelope
         {
@@ -217,6 +234,7 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
             CreatedByName = actorDisplayName.Trim(),
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
+            OperationsTaskId = operationsTaskId,
         };
 
         foreach (var item in request.Assignments ?? [])
@@ -922,6 +940,45 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
         await _db.FileAttachments.AsNoTracking()
             .AnyAsync(a => a.Id == id, cancellationToken);
 
+    private async Task<string?> ValidateCourtVisitTaskLinkAsync(
+        Guid taskId,
+        CancellationToken cancellationToken)
+    {
+        var task = await _db.OperationsTasks.AsNoTracking()
+            .Where(t => t.Id == taskId)
+            .Select(t => new { t.Type, t.Status, t.CourtVisitResultJson })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (task is null)
+            return "مهمة العمليات المرتبطة غير موجودة";
+        if (task.Type != "court_visit")
+            return "ربط الظرف مسموح فقط بمهمة زيارة محكمة";
+        if (task.Status is not ("in_progress" or "completed"))
+            return "يجب أن تكون مهمة زيارة المحكمة قيد التنفيذ أو مكتملة لربط الظرف";
+
+        if (task.Status == "completed" && !string.IsNullOrWhiteSpace(task.CourtVisitResultJson))
+        {
+            try
+            {
+                var result = JsonSerializer.Deserialize<OperationsTaskCourtVisitResultDto>(
+                    task.CourtVisitResultJson,
+                    JsonOpts);
+                if (result is not null
+                    && !string.IsNullOrWhiteSpace(result.Kind)
+                    && result.Kind.Trim() != "received")
+                {
+                    return "تسجيل الظرف مرتبط بنتيجة «استُلم ظرف» فقط";
+                }
+            }
+            catch
+            {
+                // Legacy / malformed JSON — allow link for completed court_visit.
+            }
+        }
+
+        return null;
+    }
+
     private async Task<decimal> ResolveKeyReceiptFeeAsync(CancellationToken cancellationToken)
     {
         var pricing = await _db.PartyFeePricingTables.AsNoTracking()
@@ -1011,6 +1068,7 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
         CreatedByName = row.CreatedByName,
         CreatedAtUtc = row.CreatedAtUtc,
         UpdatedAtUtc = row.UpdatedAtUtc,
+        OperationsTaskId = row.OperationsTaskId,
         Assignments = row.Assignments
             .OrderBy(a => a.DeedNumber)
             .Select(a => new KeyEnvelopeAssignmentDto

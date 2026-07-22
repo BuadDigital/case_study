@@ -1,0 +1,1 @@
+function keyTlMeta(ev){ return ({created:['إنشاء الظرف','#378add'],fee:['توليد أتعاب','#b58a3c'],assign:['إضافة إسناد صك','#8c7857'],handoff:['مناولة','#2f7a4d'],confirm:['تأكيد ميداني','#2f7a4d'],note:['ملاحظة','#8a8d96']})[ev]||['حدث','#8a8d96']; }

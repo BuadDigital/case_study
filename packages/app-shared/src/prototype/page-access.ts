@@ -1,13 +1,13 @@
 import type { PageId } from "@platform/types";
 import { ACTIVE_TRANSACTIONS_NAV } from "./active-transactions";
 import { NAV } from "./constants";
-import { SETTINGS_NAV } from "./settings-nav";
 import { SYSTEM_FIELDS_PAGE_IDS } from "./system-fields-nav";
+import { SYSTEM_SETTINGS_PRIMARY_PAGE_IDS } from "./system-settings-nav";
 
 const NAV_PAGE_ORDER: PageId[] = [
   ...NAV.map((item) => item.id),
   ...ACTIVE_TRANSACTIONS_NAV.map((item) => item.id),
-  ...SETTINGS_NAV.map((item) => item.id),
+  ...SYSTEM_SETTINGS_PRIMARY_PAGE_IDS,
   ...SYSTEM_FIELDS_PAGE_IDS,
 ];
 

@@ -31,6 +31,8 @@ public class OperationsTask
     public string? CommentsJson { get; set; }
     /// <summary>JSON array of reminder log entries.</summary>
     public string? RemindersJson { get; set; }
+    /// <summary>JSON court-visit close outcome (kind, statement, contacts, …).</summary>
+    public string? CourtVisitResultJson { get; set; }
 }
 
 public class OperationsTaskSequence

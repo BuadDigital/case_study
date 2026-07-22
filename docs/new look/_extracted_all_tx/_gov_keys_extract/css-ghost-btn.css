@@ -1,0 +1,4 @@
+.ghost-btn{display:flex;align-items:center;gap:7px;height:38px;padding:0 13px;border:1px solid var(--border-2);border-radius:8px;background:var(--surface);color:var(--text-2);font-size:13px;font-weight:500;cursor:pointer;transition:border-color .15s,color .15s;}
+  .ghost-btn:hover{border-color:var(--gold);color:var(--gold-d);}
+  .logout:hover{border-color:#d9694f;color:#d9694f;}
+  .dot-red{positio

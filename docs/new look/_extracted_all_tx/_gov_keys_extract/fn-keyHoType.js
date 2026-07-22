@@ -1,0 +1,1 @@
+function keyHoType(t){ return ({internal:['تسليم داخلي','#2f7a4d'],external:['تسليم خارجي','#b58a3c'],receive_back:['استرداد الظرف','#378add'],return_court:['إرجاع للمحكمة','#8a8d96']})[t]||[t,'#8a8d96']; }

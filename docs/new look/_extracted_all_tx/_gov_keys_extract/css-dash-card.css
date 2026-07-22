@@ -1,0 +1,4 @@
+.dash-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:18px 20px;}
+  .dash-card h3{font-size:14px;font-weight:700;color:var(--heading);margin:0 0 14px;}
+  .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:12.5px;}
+  .bar-row .lbl{width:120px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-over

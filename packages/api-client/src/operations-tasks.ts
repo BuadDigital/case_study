@@ -23,6 +23,29 @@ export type OperationsTaskCommentDto = {
   files?: OperationsTaskCommentFileDto[];
 };
 
+export type OperationsTaskCourtVisitDeedStatementDto = {
+  deed: string;
+  text: string;
+};
+
+export type OperationsTaskCourtVisitContactDto = {
+  /** property | deed number */
+  scope: string;
+  name: string;
+  role?: string | null;
+  phone?: string | null;
+  note?: string | null;
+};
+
+export type OperationsTaskCourtVisitResultDto = {
+  /** received | other_party | none | other */
+  kind: string;
+  other?: string | null;
+  statement?: string | null;
+  perDeed?: OperationsTaskCourtVisitDeedStatementDto[];
+  contacts?: OperationsTaskCourtVisitContactDto[];
+};
+
 export type OperationsTaskDto = {
   id: string;
   displayId: string;
@@ -46,6 +69,7 @@ export type OperationsTaskDto = {
   letterRows: OperationsTaskLetterRowDto[];
   comments: OperationsTaskCommentDto[];
   reminders: { at: string; auto: boolean }[];
+  courtVisitResult?: OperationsTaskCourtVisitResultDto | null;
 };
 
 export type CreateOperationsTaskRequest = {
@@ -68,6 +92,7 @@ export type PatchOperationsTaskRequest = {
   dueAtUtc?: string;
   title?: string;
   description?: string;
+  courtVisitResult?: OperationsTaskCourtVisitResultDto;
 };
 
 export type ReassignOperationsTaskRequest = {

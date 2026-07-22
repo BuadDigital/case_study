@@ -1,0 +1,10 @@
+.status{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:6px;font-size:12px;font-weight:700;white-space:nowrap;}
+  .status .sd{width:6px;height:6px;border-radius:99px;}
+  @keyframes pulseRing{0%{transform:scale(1);opacity:.55;}80%,100%{transform:scale(2.6);opacity:0;}}
+  @keyframes pulseFade{0%,100%{opacity:1;}50%{opacity:.4;}}
+  .status .sd.live{position:relative;animation:pulseFade 1.4s ease-in-out infinite;}
+  .status .sd.live::after{content:'';position:absolute;inset:0;border-radius:99px;background:inherit;animation:pulseRing 1.6s ease-out infinite;}
+  .date{font-size:13px;color:var(--text-2);white-space:nowrap;}
+  .date.due{color:var(--text-2);font-weight:500;}
+  .spec{display:flex;align-items:center;gap:9px;min-width:0;}
+  .spec-av{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;background:var(--ink);color:var(--gold-2);font-wei

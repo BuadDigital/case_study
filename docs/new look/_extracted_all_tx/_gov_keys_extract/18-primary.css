@@ -1,0 +1,6 @@
+.primary{display:flex;align-items:center;gap:7px;padding:10px 16px;border:none;border-radius:8px;background:var(--ink);color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 6px 16px -8px rgba(18,40,76,.6);transition:transform .12s,background .15s;}
+  .primary:hover{background:var(--navy-3);transform:translateY(-1px);}
+
+  /* table */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);}
+  .scroll{overflow:visible;border-radi

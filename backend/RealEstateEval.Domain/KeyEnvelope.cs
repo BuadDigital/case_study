@@ -28,6 +28,8 @@ public class KeyEnvelope
     public string CreatedByName { get; set; } = "";
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
+    /// <summary>Optional link to the court_visit operations task that received this envelope.</summary>
+    public Guid? OperationsTaskId { get; set; }
 
     public List<KeyEnvelopeAssignment> Assignments { get; set; } = [];
     public List<KeyEnvelopeHandoff> Handoffs { get; set; } = [];

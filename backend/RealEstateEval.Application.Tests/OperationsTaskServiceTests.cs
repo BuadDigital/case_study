@@ -216,6 +216,121 @@ public class OperationsTaskServiceTests
         Assert.Equal("التذكير للمنشئ أو المشرف فقط", error);
     }
 
+    [Fact]
+    public async Task PatchAsync_complete_court_visit_requires_outcome()
+    {
+        await using var db = CreateDb();
+        var service = CreateService(db);
+        var (created, _) = await service.CreateAsync(
+            new CreateOperationsTaskRequest
+            {
+                Type = "court_visit",
+                Title = "زيارة محكمة",
+                Scope = "work_order",
+                PoNumber = "PO-1",
+                AssigneeId = "a1",
+                AssigneeName = "مراجع",
+                LetterRows =
+                [
+                    new OperationsTaskLetterRowDto
+                    {
+                        Po = "PO-1",
+                        Deed = "D-1",
+                        Owner = "مالك",
+                        Request = "REQ-1",
+                        Court = "محكمة",
+                        Circuit = "دائرة",
+                    },
+                ],
+            },
+            "creator-1",
+            "منشئ");
+
+        await service.PatchAsync(
+            Guid.Parse(created!.Id),
+            new PatchOperationsTaskRequest { Status = "in_progress" },
+            "a1",
+            "مراجع",
+            "government-reviewer",
+            "user-1");
+
+        var (failed, error) = await service.PatchAsync(
+            Guid.Parse(created.Id),
+            new PatchOperationsTaskRequest { Status = "completed" },
+            "a1",
+            "مراجع",
+            "government-reviewer",
+            "user-1");
+
+        Assert.Null(failed);
+        Assert.Equal("نتيجة زيارة المحكمة مطلوبة عند إغلاق مهمة زيارة محكمة", error);
+    }
+
+    [Fact]
+    public async Task PatchAsync_complete_court_visit_persists_outcome()
+    {
+        await using var db = CreateDb();
+        var service = CreateService(db);
+        var (created, _) = await service.CreateAsync(
+            new CreateOperationsTaskRequest
+            {
+                Type = "court_visit",
+                Title = "زيارة محكمة",
+                Scope = "work_order",
+                PoNumber = "PO-1",
+                AssigneeId = "a1",
+                AssigneeName = "مراجع",
+                LetterRows =
+                [
+                    new OperationsTaskLetterRowDto
+                    {
+                        Po = "PO-1",
+                        Deed = "D-1",
+                        Owner = "مالك",
+                        Request = "REQ-1",
+                        Court = "محكمة",
+                        Circuit = "دائرة",
+                    },
+                ],
+            },
+            "creator-1",
+            "منشئ");
+
+        await service.PatchAsync(
+            Guid.Parse(created!.Id),
+            new PatchOperationsTaskRequest { Status = "in_progress" },
+            "a1",
+            "مراجع",
+            "government-reviewer",
+            "user-1");
+
+        var (done, error) = await service.PatchAsync(
+            Guid.Parse(created.Id),
+            new PatchOperationsTaskRequest
+            {
+                Status = "completed",
+                CourtVisitResult = new OperationsTaskCourtVisitResultDto
+                {
+                    Kind = "received",
+                    Statement = "استُلم الظرف من الدائرة",
+                },
+            },
+            "a1",
+            "مراجع",
+            "government-reviewer",
+            "user-1");
+
+        Assert.Null(error);
+        Assert.NotNull(done);
+        Assert.Equal("completed", done!.Status);
+        Assert.NotNull(done.CourtVisitResult);
+        Assert.Equal("received", done.CourtVisitResult!.Kind);
+        Assert.Equal("استُلم الظرف من الدائرة", done.CourtVisitResult.Statement);
+        Assert.Contains(
+            done.Comments,
+            c => c.Text.Contains("استُلم ظرف مفاتيح", StringComparison.Ordinal));
+    }
+
     private static ApplicationDbContext CreateDb() =>
         new(new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase($"ops-tasks-{Guid.NewGuid():N}")

@@ -291,6 +291,7 @@ export function KeysView() {
   );
   const registerRequestPrefill =
     searchParams.get("request")?.trim() || undefined;
+  const registerTaskId = searchParams.get("task")?.trim() || undefined;
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -429,6 +430,7 @@ export function KeysView() {
           busy={false}
           onClose={closeRegisterModal}
           initialRequestNumber={registerRequestPrefill}
+          operationsTaskId={registerTaskId}
           onRegistered={(id) => {
             invalidateEnvelopes();
             openEnvelope(id);
@@ -667,6 +669,7 @@ export function KeysView() {
         busy={false}
         onClose={closeRegisterModal}
         initialRequestNumber={registerRequestPrefill}
+        operationsTaskId={registerTaskId}
         onRegistered={(id) => {
           invalidateEnvelopes();
           openEnvelope(id);

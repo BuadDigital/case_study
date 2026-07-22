@@ -1,0 +1,7 @@
+.thead{display:grid;grid-template-columns:var(--cols);background:var(--surface-2);border-bottom:2px solid var(--gold);}
+  .th{padding:14px 16px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:12px;font-weight:700;color:var(--heading);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+  .th.c{justify-content:center;}
+  .th.sortable{cursor:pointer;gap:4px;}
+  .th.sortable:hover{color:var(--gold-d);}
+  .th .ind{font-size:11px;color:var(--gold-d);}
+  .row{display:grid;grid-template-columns:var(--cols);align-items:center;border-bottom:1px soli

@@ -1,0 +1,1 @@
+function keyAssign(s){ return ({pending:['لم تتم التجربة','#d9a441'],matched:['مطابق','#2f7a4d'],partial:['مطابقة جزئية','#b58a3c'],unmatched:['غير مطابق','#d9694f'],unmatched_inspected:['غير مطابق — تمت المعاينة','#8a5e14'],missing:['مفقود','#c0553d']})[s]||[s,'#8a8d96']; }

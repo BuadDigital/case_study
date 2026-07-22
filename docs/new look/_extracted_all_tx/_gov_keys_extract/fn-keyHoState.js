@@ -1,0 +1,1 @@
+function keyHoState(s){ return ({pending_confirm:['بانتظار التأكيد','#d9a441'],confirmed:['مؤكّد','#2f7a4d'],completed:['منجز','#2f7a4d']})[s]||[s,'#8a8d96']; }

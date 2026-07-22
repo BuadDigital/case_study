@@ -4,6 +4,7 @@ import { SETTINGS_NAV } from "@platform/app-shared/prototype/settings-nav";
 import { SYSTEM_FIELDS_NAV } from "@platform/app-shared/prototype/system-fields-nav";
 import { SYSTEM_FIELDS_CATALOG_NAV_ITEM } from "@platform/app-shared/prototype/system-fields-catalog-nav";
 import { SYSTEM_SCREEN_CATALOG_NAV_ITEM } from "@platform/app-shared/prototype/system-screen-catalog-nav";
+import { SYSTEM_SETTINGS_PRIMARY_PAGE_IDS } from "./system-settings-nav";
 
 export type { NavItem, PageId, RoleDef, RoleId };
 
@@ -199,24 +200,6 @@ export const NAV: NavItem[] = [
     icon: "M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z",
     grp: null,
   },
-  {
-    id: "valuation-requests",
-    label: "طلبات التقييم",
-    icon: "M9 11l3 3L22 4",
-    grp: "قسم التقييم العقاري",
-  },
-  {
-    id: "financial",
-    label: "التقارير المالية",
-    icon: "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z",
-    grp: null,
-  },
-  {
-    id: "party-fees",
-    label: "الأتعاب والصرف",
-    icon: "M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6",
-    grp: null,
-  },
 ];
 
 /** CDO (super admin) — union of every prototype route. Filled after NAV is defined. */
@@ -226,6 +209,7 @@ export const ALL_PROTOTYPE_PAGES: PageId[] = [
     ...ACTIVE_TRANSACTIONS_NAV.map((n) => n.id),
     ...SETTINGS_NAV.map((n) => n.id),
     ...SYSTEM_FIELDS_NAV.map((n) => n.id),
+    ...SYSTEM_SETTINGS_PRIMARY_PAGE_IDS,
     SYSTEM_FIELDS_CATALOG_NAV_ITEM.id,
     SYSTEM_SCREEN_CATALOG_NAV_ITEM.id,
   ]),
@@ -275,23 +259,23 @@ export const PAGE_BREADCRUMB: Record<PageId, string> = {
   keys: "لوحة التحكم / دراسة الحالة / محفظة المفاتيح",
   failures: "دراسة الحالة / إدارة التعذرات",
   "suspended-transactions": "دراسة الحالة",
-  "valuation-requests": "التقييم العقاري",
+  "valuation-requests": "عام / إعدادات النظام / طلبات التقييم",
   "property-inspection": "المعاملات النشطة / معاينة العقار",
   "government-review": "المعاملات النشطة / المراجعة الحكومية",
   "operations-tasks": "دراسة الحالة / المهام",
   "valuation-coordination": "المعاملات النشطة / استلام التقييم",
   "property-appraisal": "المعاملات النشطة / تقييم العقار",
   "active-survey": "المعاملات النشطة / الرفع المساحي",
-  "party-fees": "دراسة الحالة / الأتعاب والصرف",
-  "system-fields-catalog": "عام / قاموس الحقول المركزي",
-  "system-screen-catalog": "عام / دليل الشاشات",
-  financial: "المالية / التقارير المالية",
-  users: "الإدارة",
-  courts: "جميع حقول النظام / المحاكم و الدوائر",
-  "failure-types": "جميع حقول النظام / أنواع التعذرات",
-  "case-study-info-roles": "جميع حقول النظام / علاقة المستخدم بالمعلومة",
-  "audit-log": "الإعدادات / سجل التدقيق",
-  "fee-pricing": "الإعدادات / التسعيرة",
+  "party-fees": "عام / إعدادات النظام / الأتعاب والصرف",
+  "system-fields-catalog": "عام / إعدادات النظام / قاموس الحقول المركزي",
+  "system-screen-catalog": "عام / إعدادات النظام / دليل الشاشات",
+  financial: "عام / إعدادات النظام / التقارير المالية",
+  users: "عام / إعدادات النظام / المستخدمون",
+  courts: "عام / إعدادات النظام / المحاكم و الدوائر",
+  "failure-types": "عام / إعدادات النظام / أنواع التعذرات",
+  "case-study-info-roles": "عام / إعدادات النظام / علاقة المستخدم بالمعلومة",
+  "audit-log": "عام / إعدادات النظام / سجل التدقيق",
+  "fee-pricing": "عام / إعدادات النظام / التسعيرة",
   profile: "البروفايل",
 };
 
@@ -395,6 +379,7 @@ export const VALID_PAGE_IDS = new Set<PageId>([
   ...ACTIVE_TRANSACTIONS_NAV.map((n) => n.id),
   ...SETTINGS_NAV.map((n) => n.id),
   ...SYSTEM_FIELDS_NAV.map((n) => n.id),
+  ...SYSTEM_SETTINGS_PRIMARY_PAGE_IDS,
   SYSTEM_FIELDS_CATALOG_NAV_ITEM.id,
   SYSTEM_SCREEN_CATALOG_NAV_ITEM.id,
   "profile",

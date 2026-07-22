@@ -36,6 +36,11 @@ public sealed class OperationsTaskService : IOperationsTaskService
         "completed", "cancelled",
     ];
 
+    private static readonly HashSet<string> ValidCourtVisitKinds =
+    [
+        "received", "other_party", "none", "other",
+    ];
+
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -247,6 +252,15 @@ public sealed class OperationsTaskService : IOperationsTaskService
             if (next == "paused")
                 entity.PrevStatus = entity.Status;
 
+            if (next == "completed" && entity.Type == "court_visit")
+            {
+                var (normalized, courtError) = NormalizeCourtVisitResult(request.CourtVisitResult);
+                if (courtError is not null) return (null, courtError);
+                AppendCourtVisitResultComments(comments, normalized!, now);
+                entity.CourtVisitResultJson = JsonSerializer.Serialize(normalized, JsonOpts);
+                changed = true;
+            }
+
             if (entity.Status != next)
             {
                 comments.Add(new OperationsTaskCommentDto
@@ -265,6 +279,14 @@ public sealed class OperationsTaskService : IOperationsTaskService
                         becameCompletedCourtVisit = true;
                 }
             }
+        }
+        else if (request.CourtVisitResult is not null && entity.Type == "court_visit")
+        {
+            var (normalized, courtError) = NormalizeCourtVisitResult(request.CourtVisitResult);
+            if (courtError is not null) return (null, courtError);
+            AppendCourtVisitResultComments(comments, normalized!, now);
+            entity.CourtVisitResultJson = JsonSerializer.Serialize(normalized, JsonOpts);
+            changed = true;
         }
 
         if (!string.IsNullOrWhiteSpace(request.Priority))
@@ -632,7 +654,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
                     Body =
                         $"اكتملت زيارة المحكمة ({entity.DisplayId}) لأمر العمل {poLabel}.",
                     Tone = "success",
-                    Href = "/government-review",
+                    Href = OperationsTaskHref(entity.Id),
                     Category = "workflow",
                     EntityType = "operations-task",
                     EntityId = entity.Id.ToString(),
@@ -812,7 +834,125 @@ public sealed class OperationsTaskService : IOperationsTaskService
         LetterRows = DeserializeLetterRows(row.LetterRowsJson),
         Comments = DeserializeComments(row.CommentsJson),
         Reminders = DeserializeReminders(row.RemindersJson),
+        CourtVisitResult = DeserializeCourtVisitResult(row.CourtVisitResultJson),
     };
+
+    private static (OperationsTaskCourtVisitResultDto? Result, string? Error) NormalizeCourtVisitResult(
+        OperationsTaskCourtVisitResultDto? raw)
+    {
+        if (raw is null)
+            return (null, "نتيجة زيارة المحكمة مطلوبة عند إغلاق مهمة زيارة محكمة");
+
+        var kind = (raw.Kind ?? "").Trim();
+        if (!ValidCourtVisitKinds.Contains(kind))
+            return (null, "نتيجة زيارة المحكمة غير مدعومة");
+
+        var other = (raw.Other ?? "").Trim();
+        if (kind == "other" && other.Length == 0)
+            return (null, "يلزم توضيح النتيجة عند اختيار «أخرى»");
+
+        var statement = NullIfBlank(raw.Statement);
+        var perDeed = (raw.PerDeed ?? [])
+            .Select(p => new OperationsTaskCourtVisitDeedStatementDto
+            {
+                Deed = (p.Deed ?? "").Trim(),
+                Text = (p.Text ?? "").Trim(),
+            })
+            .Where(p => p.Deed.Length > 0 && p.Text.Length > 0)
+            .ToList();
+
+        var contacts = (raw.Contacts ?? [])
+            .Select(c => new OperationsTaskCourtVisitContactDto
+            {
+                Scope = string.IsNullOrWhiteSpace(c.Scope) ? "property" : c.Scope.Trim(),
+                Name = (c.Name ?? "").Trim(),
+                Role = NullIfBlank(c.Role),
+                Phone = NullIfBlank(c.Phone),
+                Note = NullIfBlank(c.Note),
+            })
+            .Where(c => c.Name.Length > 0 || !string.IsNullOrWhiteSpace(c.Phone))
+            .ToList();
+
+        if (kind == "other_party" && contacts.Count == 0)
+            return (null, "يلزم إدخال جهة اتصال واحدة على الأقل عندما يكون الظرف عند طرف آخر");
+
+        return (new OperationsTaskCourtVisitResultDto
+        {
+            Kind = kind,
+            Other = kind == "other" ? other : null,
+            Statement = statement,
+            PerDeed = perDeed,
+            Contacts = contacts,
+        }, null);
+    }
+
+    private static void AppendCourtVisitResultComments(
+        List<OperationsTaskCommentDto> comments,
+        OperationsTaskCourtVisitResultDto result,
+        DateTime now)
+    {
+        var at = now.ToString("O");
+        comments.Add(new OperationsTaskCommentDto
+        {
+            Who = "system",
+            At = at,
+            Text = "🏛 موقف المفاتيح لدى المحكمة: " + CourtVisitKindLabel(result),
+            Kind = "update",
+        });
+        if (!string.IsNullOrWhiteSpace(result.Statement))
+        {
+            comments.Add(new OperationsTaskCommentDto
+            {
+                Who = "system",
+                At = at,
+                Text = "📄 إفادة عامة للطلب: " + result.Statement.Trim(),
+                Kind = "update",
+            });
+        }
+        foreach (var pd in result.PerDeed)
+        {
+            comments.Add(new OperationsTaskCommentDto
+            {
+                Who = "system",
+                At = at,
+                Text = $"📄 إفادة الصك {pd.Deed}: {pd.Text}",
+                Kind = "update",
+            });
+        }
+        foreach (var c in result.Contacts)
+        {
+            var scopeLabel = c.Scope == "property" ? "العقار" : $"صك {c.Scope}";
+            var parts = new List<string> { c.Name };
+            if (!string.IsNullOrWhiteSpace(c.Role)) parts.Add(c.Role!);
+            if (!string.IsNullOrWhiteSpace(c.Phone)) parts.Add(c.Phone!);
+            var note = string.IsNullOrWhiteSpace(c.Note) ? "" : $" ({c.Note})";
+            comments.Add(new OperationsTaskCommentDto
+            {
+                Who = "system",
+                At = at,
+                Text = $"☎ جهة اتصال [{scopeLabel}]: {string.Join(" — ", parts)}{note}",
+                Kind = "update",
+            });
+        }
+    }
+
+    private static string CourtVisitKindLabel(OperationsTaskCourtVisitResultDto result) =>
+        result.Kind switch
+        {
+            "received" => "استُلم ظرف مفاتيح",
+            "other_party" => "الظرف عند طرف آخر",
+            "none" => "لا توجد مفاتيح مسجلة لدى الدائرة",
+            "other" => string.IsNullOrWhiteSpace(result.Other)
+                ? "أخرى"
+                : "أخرى — " + result.Other.Trim(),
+            _ => result.Kind,
+        };
+
+    private static string? NullIfBlank(string? value)
+    {
+        var t = value?.Trim() ?? "";
+        return t.Length == 0 ? null : t;
+    }
 
     private static IReadOnlyList<string> DeserializeStrings(string? json)
     {
@@ -863,6 +1003,19 @@ public sealed class OperationsTaskService : IOperationsTaskService
         catch
         {
             return [];
+        }
+    }
+
+    private static OperationsTaskCourtVisitResultDto? DeserializeCourtVisitResult(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            return JsonSerializer.Deserialize<OperationsTaskCourtVisitResultDto>(json, JsonOpts);
+        }
+        catch
+        {
+            return null;
         }
     }
 }

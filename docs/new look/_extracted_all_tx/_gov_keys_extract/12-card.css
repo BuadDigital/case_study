@@ -1,0 +1,16 @@
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);}
+  .scroll{overflow:visible;border-radius:12px;}
+  .grid{min-width:100%;}
+  .thead{display:grid;grid-template-columns:var(--cols);background:var(--surface-2);border-bottom:2px solid var(--gold);}
+  .th{padding:14px 16px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:12px;font-weight:700;color:var(--heading);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+  .th.c{justify-content:center;}
+  .th.sortable{cursor:pointer;gap:4px;}
+  .th.sortable:hover{color:var(--gold-d);}
+  .th .ind{font-size:11px;color:var(--gold-d);}
+  .row{display:grid;grid-template-columns:var(--cols);align-items:center;border-bottom:1px solid var(--border);transition:background .12s;min-height:58px;}
+  .row:hover{background:var(--row-hover);position:relative;z-index:6;}
+  .td{padding:14px 16px;display:flex;align-items:center;min-width:0;overflow:hidden;}
+  .td:has(.team),.td:has(.po-wrap),.td:has(.actions){overflow:visible;}
+  .td > *{min-width:0;}
+  .td.c{justify-content:center;}
+  .po{color:var(--gold-d);font-weight:700;font-size:13.5px;cursor:poi

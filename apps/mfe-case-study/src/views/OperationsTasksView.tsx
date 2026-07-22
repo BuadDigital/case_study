@@ -303,34 +303,286 @@ function DraftFileChips({
   );
 }
 
+type CourtVisitKind = "received" | "other_party" | "none" | "other" | "";
+
+type CourtVisitContactDraft = {
+  scope: string;
+  name: string;
+  role: string;
+  phone: string;
+  note: string;
+};
+
+const COURT_VISIT_KIND_OPTIONS: { id: Exclude<CourtVisitKind, "">; label: string }[] = [
+  { id: "received", label: "استُلم ظرف مفاتيح" },
+  { id: "other_party", label: "الظرف عند طرف آخر (إفادة الدائرة)" },
+  { id: "none", label: "لا توجد مفاتيح مسجلة لدى الدائرة" },
+  { id: "other", label: "أخرى" },
+];
+
+function emptyCourtContact(): CourtVisitContactDraft {
+  return { scope: "property", name: "", role: "", phone: "", note: "" };
+}
+
 function CloseTaskModalBody({
+  taskType,
+  letterRows,
   closeText,
   setCloseText,
   closeFiles,
   setCloseFiles,
   fileInputRef,
+  courtKind,
+  setCourtKind,
+  courtOtherText,
+  setCourtOtherText,
+  courtStatement,
+  setCourtStatement,
+  courtPerDeed,
+  setCourtPerDeed,
+  courtContacts,
+  setCourtContacts,
+  formError,
   busy,
   onCancel,
   onConfirm,
 }: {
+  taskType?: string;
+  letterRows?: OperationsTask["letterRows"];
   closeText: string;
   setCloseText: (v: string) => void;
   closeFiles: DraftFile[];
   setCloseFiles: (v: DraftFile[] | ((prev: DraftFile[]) => DraftFile[])) => void;
   fileInputRef: RefObject<HTMLInputElement | null>;
+  courtKind: CourtVisitKind;
+  setCourtKind: (v: CourtVisitKind) => void;
+  courtOtherText: string;
+  setCourtOtherText: (v: string) => void;
+  courtStatement: string;
+  setCourtStatement: (v: string) => void;
+  courtPerDeed: Record<string, string>;
+  setCourtPerDeed: (
+    v: Record<string, string> | ((prev: Record<string, string>) => Record<string, string>),
+  ) => void;
+  courtContacts: CourtVisitContactDraft[];
+  setCourtContacts: (
+    v:
+      | CourtVisitContactDraft[]
+      | ((prev: CourtVisitContactDraft[]) => CourtVisitContactDraft[]),
+  ) => void;
+  formError: string | null;
   busy: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const isCourtVisit = taskType === "court_visit";
+  const rows = letterRows ?? [];
+
   return (
     <div className="flex flex-col gap-3">
       <p className={opsMutedHint}>
-        أضف تعليق الإنجاز مع إمكانية إرفاق المستندات الداعمة
+        {isCourtVisit
+          ? "سجّل موقف المفاتيح لدى المحكمة ثم علّق على الإنجاز عند الحاجة"
+          : "أضف تعليق الإنجاز مع إمكانية إرفاق المستندات الداعمة"}
       </p>
       <Note tone="success" className="text-[12.5px]">
         سيتم تحويل حالة المهمة إلى <b className="text-[#2f7a4d]">مكتملة</b> وإشعار
         المنشئ.
       </Note>
+      {formError ? (
+        <Note tone="danger" className="text-[12.5px]">
+          {formError}
+        </Note>
+      ) : null}
+
+      {isCourtVisit ? (
+        <div className="flex flex-col gap-3">
+          <div>
+            <span className={opsTfLbl}>
+              موقف المفاتيح لدى المحكمة *{" "}
+              <span className="font-semibold text-text-3">(اختيار واحد)</span>
+            </span>
+            <div className="mt-2 grid gap-[7px]">
+              {COURT_VISIT_KIND_OPTIONS.map((opt) => (
+                <label
+                  key={opt.id}
+                  className="flex cursor-pointer items-center gap-[9px] text-[12.5px] text-text"
+                >
+                  <input
+                    type="radio"
+                    name="cvKind"
+                    value={opt.id}
+                    checked={courtKind === opt.id}
+                    className="h-[15px] w-[15px] shrink-0 accent-gold-d"
+                    onChange={() => {
+                      setCourtKind(opt.id);
+                      if (opt.id === "other_party" && courtContacts.length === 0) {
+                        setCourtContacts([emptyCourtContact()]);
+                      }
+                    }}
+                  />
+                  <span>{opt.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {courtKind === "other" ? (
+            <label className="flex flex-col gap-1.5">
+              <span className={opsTfLbl}>اذكر النتيجة *</span>
+              <Input
+                value={courtOtherText}
+                onChange={(e) => setCourtOtherText(e.target.value)}
+                placeholder="اذكر النتيجة…"
+              />
+            </label>
+          ) : null}
+
+          <label className="flex flex-col gap-1.5">
+            <span className={opsTfLbl}>إفادة المحكمة على مستوى الطلب</span>
+            <Textarea
+              value={courtStatement}
+              onChange={(e) => setCourtStatement(e.target.value)}
+              placeholder="نص الإفادة العامة للطلب…"
+              rows={2}
+            />
+          </label>
+
+          {rows.length > 0 ? (
+            <div>
+              <span className={opsTfLbl}>
+                إفادات الصكوك{" "}
+                <span className="font-semibold text-text-3">(إن وجدت)</span>
+              </span>
+              <div className="mt-2 grid gap-2">
+                {rows.map((rw) => (
+                  <div key={rw.deed} className="flex items-center gap-[9px]">
+                    <span
+                      dir="ltr"
+                      className="min-w-[96px] shrink-0 text-[11.5px] font-bold text-gold-d"
+                    >
+                      صك {rw.deed}
+                    </span>
+                    <Input
+                      value={courtPerDeed[rw.deed] ?? ""}
+                      onChange={(e) =>
+                        setCourtPerDeed((prev) => ({
+                          ...prev,
+                          [rw.deed]: e.target.value,
+                        }))
+                      }
+                      placeholder="إفادة هذا الصك…"
+                      className="flex-1"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {courtKind === "other_party" ? (
+            <div>
+              <span className={opsTfLbl}>
+                بيانات التواصل مع الأطراف *{" "}
+                <span className="font-semibold text-text-3">
+                  (على مستوى العقار أو الصك)
+                </span>
+              </span>
+              <div className="mt-2 grid gap-2">
+                {courtContacts.map((c, idx) => (
+                  <div
+                    key={idx}
+                    className="grid grid-cols-[.9fr_1.2fr_1fr_1fr_1.1fr_auto] items-center gap-[7px]"
+                  >
+                    <Select
+                      value={c.scope}
+                      onChange={(e) =>
+                        setCourtContacts((prev) =>
+                          prev.map((row, i) =>
+                            i === idx ? { ...row, scope: e.target.value } : row,
+                          ),
+                        )
+                      }
+                    >
+                      <option value="property">العقار</option>
+                      {rows.map((rw) => (
+                        <option key={rw.deed} value={rw.deed}>
+                          صك {rw.deed}
+                        </option>
+                      ))}
+                    </Select>
+                    <Input
+                      value={c.name}
+                      placeholder="الاسم *"
+                      onChange={(e) =>
+                        setCourtContacts((prev) =>
+                          prev.map((row, i) =>
+                            i === idx ? { ...row, name: e.target.value } : row,
+                          ),
+                        )
+                      }
+                    />
+                    <Input
+                      value={c.role}
+                      placeholder="الصفة"
+                      onChange={(e) =>
+                        setCourtContacts((prev) =>
+                          prev.map((row, i) =>
+                            i === idx ? { ...row, role: e.target.value } : row,
+                          ),
+                        )
+                      }
+                    />
+                    <Input
+                      dir="ltr"
+                      value={c.phone}
+                      placeholder="05xxxxxxxx"
+                      onChange={(e) =>
+                        setCourtContacts((prev) =>
+                          prev.map((row, i) =>
+                            i === idx ? { ...row, phone: e.target.value } : row,
+                          ),
+                        )
+                      }
+                    />
+                    <Input
+                      value={c.note}
+                      placeholder="ملاحظات"
+                      onChange={(e) =>
+                        setCourtContacts((prev) =>
+                          prev.map((row, i) =>
+                            i === idx ? { ...row, note: e.target.value } : row,
+                          ),
+                        )
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="h-[30px] w-[30px] border-none bg-transparent text-[15px] text-text-3"
+                      aria-label="حذف"
+                      onClick={() =>
+                        setCourtContacts((prev) => prev.filter((_, i) => i !== idx))
+                      }
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                className={cn(opsAttachBtn, "mt-2 self-start")}
+                onClick={() =>
+                  setCourtContacts((prev) => [...prev, emptyCourtContact()])
+                }
+              >
+                <span>+ إضافة جهة اتصال</span>
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       <label className="flex flex-col gap-1.5">
         <span className={opsTfLbl}>تعليق الإغلاق</span>
         <Textarea
@@ -860,8 +1112,7 @@ function CommentThread({
               </button>
               <button
                 type="button"
-                className={opsBtnPrimary}
-                className="ms-auto"
+                className={cn(opsBtnPrimary, "ms-auto")}
                 disabled={busy || !canSend}
                 onClick={onSend}
               >
@@ -1003,6 +1254,12 @@ export function OperationsTasksView() {
   const [closeText, setCloseText] = useState("");
   const [closeFiles, setCloseFiles] = useState<DraftFile[]>([]);
   const [closeOpen, setCloseOpen] = useState(false);
+  const [closeFormError, setCloseFormError] = useState<string | null>(null);
+  const [courtKind, setCourtKind] = useState<CourtVisitKind>("");
+  const [courtOtherText, setCourtOtherText] = useState("");
+  const [courtStatement, setCourtStatement] = useState("");
+  const [courtPerDeed, setCourtPerDeed] = useState<Record<string, string>>({});
+  const [courtContacts, setCourtContacts] = useState<CourtVisitContactDraft[]>([]);
   const [prioOpen, setPrioOpen] = useState(false);
   const [prioValue, setPrioValue] = useState("medium");
   const [prioEditDue, setPrioEditDue] = useState(false);
@@ -1135,6 +1392,12 @@ export function OperationsTasksView() {
     setDetailId(task.id);
     setCloseText("");
     setCloseFiles([]);
+    setCloseFormError(null);
+    setCourtKind("");
+    setCourtOtherText("");
+    setCourtStatement("");
+    setCourtPerDeed({});
+    setCourtContacts([]);
     setCloseOpen(true);
   }, []);
 
@@ -1168,6 +1431,7 @@ export function OperationsTasksView() {
       status: string,
       closeComment?: string,
       files?: DraftFile[],
+      courtVisitResult?: Parameters<typeof patchOperationsTaskRecord>[1]["courtVisitResult"],
     ) => {
       const taskBefore = tasks.find((t) => t.id === id) ?? null;
       if (
@@ -1187,19 +1451,91 @@ export function OperationsTasksView() {
           return;
         }
       }
-      const ok = await runPatch(id, { status });
+      const patchBody: Parameters<typeof patchOperationsTaskRecord>[1] = { status };
+      if (status === "completed" && courtVisitResult) {
+        patchBody.courtVisitResult = courtVisitResult;
+      }
+      const ok = await runPatch(id, patchBody);
       if (!ok) return;
       setCloseOpen(false);
       setCloseText("");
       setCloseFiles([]);
+      setCloseFormError(null);
+      setCourtKind("");
+      setCourtOtherText("");
+      setCourtStatement("");
+      setCourtPerDeed({});
+      setCourtContacts([]);
       if (status === "completed" && taskBefore?.type === "court_visit") {
+        if (courtVisitResult?.kind === "received") {
+          showToast("أُغلقت المهمة — سجّل الظرف المستلم الآن", "success");
+          const params = new URLSearchParams({ register: "1" });
+          const request = taskBefore.letterRows[0]?.request?.trim();
+          if (request) params.set("request", request);
+          params.set("task", taskBefore.id);
+          router.push(`/keys?${params.toString()}`);
+          return;
+        }
         showToast(
-          "تم إكمال زيارة المحكمة — يمكنك تسجيل ظرف المفاتيح الآن من محفظة المفاتيح",
+          "تم إكمال زيارة المحكمة",
           "success",
         );
       }
     },
-    [runPatch, tasks, showToast],
+    [runPatch, tasks, showToast, router],
+  );
+
+  const confirmCloseTask = useCallback(
+    (task: OperationsTask) => {
+      if (task.type === "court_visit") {
+        if (!courtKind) {
+          setCloseFormError("اختر موقف المفاتيح لدى المحكمة");
+          return;
+        }
+        if (courtKind === "other" && !courtOtherText.trim()) {
+          setCloseFormError("يلزم توضيح النتيجة عند اختيار «أخرى»");
+          return;
+        }
+        const contacts = courtContacts
+          .map((c) => ({
+            scope: c.scope || "property",
+            name: c.name.trim(),
+            role: c.role.trim() || null,
+            phone: c.phone.trim() || null,
+            note: c.note.trim() || null,
+          }))
+          .filter((c) => c.name || c.phone);
+        if (courtKind === "other_party" && contacts.length === 0) {
+          setCloseFormError(
+            "يلزم إدخال جهة اتصال واحدة على الأقل عندما يكون الظرف عند طرف آخر",
+          );
+          return;
+        }
+        setCloseFormError(null);
+        const perDeed = Object.entries(courtPerDeed)
+          .map(([deed, text]) => ({ deed, text: text.trim() }))
+          .filter((p) => p.deed && p.text);
+        void runStatus(task.id, "completed", closeText, closeFiles, {
+          kind: courtKind,
+          other: courtKind === "other" ? courtOtherText.trim() : null,
+          statement: courtStatement.trim() || null,
+          perDeed,
+          contacts,
+        });
+        return;
+      }
+      void runStatus(task.id, "completed", closeText, closeFiles);
+    },
+    [
+      courtKind,
+      courtOtherText,
+      courtContacts,
+      courtPerDeed,
+      courtStatement,
+      closeText,
+      closeFiles,
+      runStatus,
+    ],
   );
 
   const openKeysRegisterFromTask = useCallback(
@@ -1688,7 +2024,23 @@ export function OperationsTasksView() {
             </button>
           ) : null}
           {detail.type === "court_visit" &&
-          (detail.status === "completed" || detail.status === "in_progress") ? (
+          detail.courtVisitResult?.kind === "received" &&
+          detail.status === "completed" ? (
+            <div className="mt-3.5 flex flex-wrap items-center gap-3 rounded-[13px] border border-gold bg-gold-soft px-[18px] py-3.5">
+              <span className="text-[13px] font-bold text-heading">
+                استُلم ظرف مفاتيح في هذه الزيارة ولم يُسجَّل بعد — سجّله مربوطاً
+                بالمهمة.
+              </span>
+              <button
+                type="button"
+                className={cn(opsBtnPrimary, "ms-auto")}
+                onClick={() => openKeysRegisterFromTask(detail)}
+              >
+                تسجيل الظرف الآن
+              </button>
+            </div>
+          ) : detail.type === "court_visit" &&
+            (detail.status === "completed" || detail.status === "in_progress") ? (
             <button
               type="button"
               className={
@@ -1762,16 +2114,27 @@ export function OperationsTasksView() {
 
         <AppModal open={closeOpen} title="إغلاق المهمة" onClose={() => setCloseOpen(false)}>
           <CloseTaskModalBody
+            taskType={detail.type}
+            letterRows={detail.letterRows}
             closeText={closeText}
             setCloseText={setCloseText}
             closeFiles={closeFiles}
             setCloseFiles={setCloseFiles}
             fileInputRef={closeFileInputRef}
+            courtKind={courtKind}
+            setCourtKind={setCourtKind}
+            courtOtherText={courtOtherText}
+            setCourtOtherText={setCourtOtherText}
+            courtStatement={courtStatement}
+            setCourtStatement={setCourtStatement}
+            courtPerDeed={courtPerDeed}
+            setCourtPerDeed={setCourtPerDeed}
+            courtContacts={courtContacts}
+            setCourtContacts={setCourtContacts}
+            formError={closeFormError}
             busy={busy}
             onCancel={() => setCloseOpen(false)}
-            onConfirm={() =>
-              void runStatus(detail.id, "completed", closeText, closeFiles)
-            }
+            onConfirm={() => confirmCloseTask(detail)}
           />
         </AppModal>
 
@@ -2238,16 +2601,30 @@ export function OperationsTasksView() {
 
       <AppModal open={closeOpen} title="إغلاق المهمة" onClose={() => setCloseOpen(false)}>
         <CloseTaskModalBody
+          taskType={tasks.find((t) => t.id === selectedId)?.type}
+          letterRows={tasks.find((t) => t.id === selectedId)?.letterRows}
           closeText={closeText}
           setCloseText={setCloseText}
           closeFiles={closeFiles}
           setCloseFiles={setCloseFiles}
           fileInputRef={closeFileInputRef}
+          courtKind={courtKind}
+          setCourtKind={setCourtKind}
+          courtOtherText={courtOtherText}
+          setCourtOtherText={setCourtOtherText}
+          courtStatement={courtStatement}
+          setCourtStatement={setCourtStatement}
+          courtPerDeed={courtPerDeed}
+          setCourtPerDeed={setCourtPerDeed}
+          courtContacts={courtContacts}
+          setCourtContacts={setCourtContacts}
+          formError={closeFormError}
           busy={busy}
           onCancel={() => setCloseOpen(false)}
           onConfirm={() => {
-            if (!selectedId) return;
-            void runStatus(selectedId, "completed", closeText, closeFiles);
+            const task = tasks.find((t) => t.id === selectedId);
+            if (!task) return;
+            confirmCloseTask(task);
           }}
         />
       </AppModal>
