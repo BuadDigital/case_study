@@ -57,6 +57,34 @@ public class UserRegistrationService : IUserRegistrationService
             .ToList();
     }
 
+    public async Task<UserListItemDto?> GetByUserIdAsync(
+        string userId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            return null;
+
+        var profile = await _db.UserProfiles
+            .AsNoTracking()
+            .Include(p => p.User)
+            .Include(p => p.HrEmployee)
+            .Include(p => p.ProcProvider)
+            .Include(p => p.CrmClient)
+            .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
+
+        if (profile is null)
+            return null;
+
+        var roles = await (
+            from ur in _db.UserRoles.AsNoTracking()
+            join r in _db.Roles.AsNoTracking() on ur.RoleId equals r.Id
+            where ur.UserId == userId && r.Name != null
+            select r.Name!
+        ).ToListAsync(cancellationToken);
+
+        return RegistrationMapper.ToListItem(profile.User, profile, roles);
+    }
+
     public async Task<IReadOnlyList<UserListItemDto>> ListDistributionAssigneesAsync(
         CancellationToken cancellationToken = default)
     {

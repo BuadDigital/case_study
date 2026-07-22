@@ -33,7 +33,7 @@ import {
   queueTableRowClassName,
   useToast,
 } from "@platform/design-system";
-import { KeyEnvelopeDetailModal } from "../components/KeyEnvelopeDetailModal";
+import { KeyEnvelopeDetailPage } from "../components/KeyEnvelopeDetailModal";
 import { KeyEnvelopeFeesPanel } from "../components/KeyEnvelopeFeesPanel";
 import { RegisterKeyEnvelopeModal } from "../components/RegisterKeyEnvelopeModal";
 import { removeKeyEnvelope } from "../lib/keys-envelope-api";
@@ -239,10 +239,17 @@ function MismatchIcon() {
   );
 }
 
-function keysListHref(opts?: { tab?: "fees"; envelope?: string }): string {
+function keysListHref(opts?: {
+  tab?: "fees";
+  envelope?: string;
+  register?: boolean;
+  request?: string;
+}): string {
   const params = new URLSearchParams();
   if (opts?.tab === "fees") params.set("tab", "fees");
   if (opts?.envelope) params.set("envelope", opts.envelope);
+  if (opts?.register) params.set("register", "1");
+  if (opts?.request) params.set("request", opts.request);
   const qs = params.toString();
   return qs ? `/keys?${qs}` : "/keys";
 }
@@ -282,6 +289,8 @@ export function KeysView() {
   const [pendingDelete, setPendingDelete] = useState<KeyEnvelopeRow | null>(
     null,
   );
+  const registerRequestPrefill =
+    searchParams.get("request")?.trim() || undefined;
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -292,6 +301,14 @@ export function KeysView() {
     const envelope = searchParams.get("envelope")?.trim() || null;
     setDetailId(envelope);
   }, [searchParams, canRegisterEnvelope]);
+
+  function closeRegisterModal() {
+    setRegisterOpen(false);
+    if (searchParams.get("register") === "1") {
+      const fromFees = searchParams.get("tab") === "fees";
+      router.replace(keysListHref(fromFees ? { tab: "fees" } : undefined));
+    }
+  }
 
   function openEnvelope(id: string) {
     const fromFees =
@@ -368,41 +385,15 @@ export function KeysView() {
   }
 
   if (detailId) {
+    const fromFees = searchParams.get("tab") === "fees";
     return (
       <PageShell variant="canvas" className="min-h-0 flex-1 space-y-4">
-        <button
-          type="button"
-          className="inline-flex items-center gap-1.5 border-none bg-transparent p-0 text-[12.5px] font-semibold text-text-2 hover:text-primary"
-          onClick={closeEnvelope}
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden
-          >
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
-          {listTab === "fees" ? "تقرير الأتعاب" : "محفظة المفاتيح"}
-        </button>
-        <KeyEnvelopeDetailModal
+        <KeyEnvelopeDetailPage
           envelopeId={detailId}
           canEdit={canEditEnvelope}
-          presentation="page"
-          onClose={closeEnvelope}
+          onBack={closeEnvelope}
           onChanged={() => invalidateEnvelopes()}
-        />
-        <RegisterKeyEnvelopeModal
-          open={registerOpen}
-          busy={false}
-          onClose={() => setRegisterOpen(false)}
-          onRegistered={(id) => {
-            invalidateEnvelopes();
-            openEnvelope(id);
-          }}
+          backLabel={fromFees ? "تقرير الأتعاب" : "محفظة المفاتيح"}
         />
       </PageShell>
     );
@@ -436,7 +427,8 @@ export function KeysView() {
         <RegisterKeyEnvelopeModal
           open={registerOpen}
           busy={false}
-          onClose={() => setRegisterOpen(false)}
+          onClose={closeRegisterModal}
+          initialRequestNumber={registerRequestPrefill}
           onRegistered={(id) => {
             invalidateEnvelopes();
             openEnvelope(id);
@@ -673,7 +665,8 @@ export function KeysView() {
       <RegisterKeyEnvelopeModal
         open={registerOpen}
         busy={false}
-        onClose={() => setRegisterOpen(false)}
+        onClose={closeRegisterModal}
+        initialRequestNumber={registerRequestPrefill}
         onRegistered={(id) => {
           invalidateEnvelopes();
           openEnvelope(id);

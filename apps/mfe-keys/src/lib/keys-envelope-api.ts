@@ -26,6 +26,7 @@ import {
 } from "@platform/app-shared/prototype/work-orders-api-config";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 import type {
+  KeyAssignmentMatchStatus,
   KeyEnvelopeFeeReportRow,
   KeyEnvelopeLinkedProperty,
   KeyEnvelopeRow,
@@ -249,7 +250,7 @@ export async function addEnvelopeAssignment(
 export async function confirmEnvelopeAssignment(
   envelopeId: string,
   assignmentId: string,
-  status: "matched" | "unmatched",
+  status: KeyAssignmentMatchStatus,
   notes?: string,
 ): Promise<MutationResult<KeyEnvelopeRow>> {
   const config = prototypeModulesApiConfig();

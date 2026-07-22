@@ -211,6 +211,14 @@ export function isEnvelopeOutOfCustody(status: string): boolean {
   return status === "returned" || status === "external";
 }
 
+/** Field match result statuses from HTML `openKeyResult` / `keyAssign`. */
+export type KeyAssignmentMatchStatus =
+  | "matched"
+  | "partial"
+  | "unmatched"
+  | "unmatched_inspected"
+  | "missing";
+
 /** HTML Case Study.html `keyAssign` labels. */
 export function assignmentStatusLabel(status: string): string {
   switch (status) {

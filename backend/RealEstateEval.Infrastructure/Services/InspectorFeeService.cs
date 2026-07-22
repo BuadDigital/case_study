@@ -54,6 +54,7 @@ public class InspectorFeeService : IInspectorFeeService
                 task.Kind,
                 partyType,
                 areaM2,
+                task.AssigneeId,
                 cancellationToken) ?? 0m;
 
             _db.InspectorFeeLedgers.Add(new InspectorFeeLedger
@@ -849,6 +850,7 @@ public class InspectorFeeService : IInspectorFeeService
                 task.Kind,
                 ledger.InspectorType,
                 areaM2,
+                ledger.AssigneeId ?? task.AssigneeId,
                 cancellationToken);
             if (fee is not > 0m) continue;
 

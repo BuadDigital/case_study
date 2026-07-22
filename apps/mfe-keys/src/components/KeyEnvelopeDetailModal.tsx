@@ -37,6 +37,7 @@ import {
   handoffStateLabel,
   scenarioColor,
   scenarioLabel,
+  type KeyAssignmentMatchStatus,
   type KeyEnvelopeAssignment,
   type KeyEnvelopeHandoff,
   type KeyEnvelopeRow,
@@ -46,22 +47,24 @@ import { KeyEnvelopeAttachmentPreview } from "./KeyEnvelopeAttachmentPreview";
 /** Exact JobTitle — same allowlist as distribution assignees. */
 const FIELD_INSPECTOR_JOB_TITLE = "معاين ميداني";
 
+/** HTML detail dates show as DD/MM/YYYY (screenshot + sample data). */
 function formatDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("en-CA");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
 }
 
-function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString("ar-SA", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+/** Hide raw user ids that were wrongly stored as display names. */
+function displayPersonName(value: string | null | undefined): string {
+  const v = value?.trim() || "";
+  if (!v) return "—";
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)) {
+    return "—";
+  }
+  return v;
 }
 
 function EnvIcon() {
@@ -120,6 +123,24 @@ function FileIcon() {
   );
 }
 
+function PhoneIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" />
+    </svg>
+  );
+}
+
 function AlertIcon() {
   return (
     <svg
@@ -136,6 +157,25 @@ function AlertIcon() {
     >
       <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
       <path d="M12 9v4M12 17h.01" />
+    </svg>
+  );
+}
+
+function BackChevron() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="-scale-x-100"
+      aria-hidden
+    >
+      <path d="M19 12H5M12 19l-7-7 7-7" />
     </svg>
   );
 }
@@ -168,16 +208,21 @@ function poForAssignment(
 
 type DetailTab = "assign" | "custody";
 
-export function KeyEnvelopeDetailModal({
+const ASSIGN_COLS =
+  "minmax(112px,1fr) minmax(118px,1fr) minmax(105px,.95fr) 128px minmax(85px,.75fr) 218px";
+
+export function KeyEnvelopeDetailPage({
   envelopeId,
   canEdit,
-  onClose,
+  onBack,
   onChanged,
+  backLabel = "محفظة المفاتيح",
 }: {
-  envelopeId: string | null;
+  envelopeId: string;
   canEdit: boolean;
-  onClose: () => void;
+  onBack: () => void;
   onChanged: () => void;
+  backLabel?: string;
 }) {
   const { showToast } = useToast();
   const { data: staffResult } = useDistributionAssigneesQuery();
@@ -198,7 +243,7 @@ export function KeyEnvelopeDetailModal({
   }, [staffResult?.users]);
 
   const [env, setEnv] = useState<KeyEnvelopeRow | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<DetailTab>("assign");
   const [busy, setBusy] = useState(false);
   const [matchTarget, setMatchTarget] = useState<KeyEnvelopeAssignment | null>(
@@ -206,32 +251,32 @@ export function KeyEnvelopeDetailModal({
   );
   const [handoffOpen, setHandoffOpen] = useState(false);
 
+  const onBackRef = useRef(onBack);
+  onBackRef.current = onBack;
+  const showToastRef = useRef(showToast);
+  showToastRef.current = showToast;
+
   useEffect(() => {
-    if (!envelopeId) {
-      setEnv(null);
-      setTab("assign");
-      setMatchTarget(null);
-      setHandoffOpen(false);
-      return;
-    }
     let cancelled = false;
     void (async () => {
       setLoading(true);
       setTab("assign");
+      setMatchTarget(null);
+      setHandoffOpen(false);
       const result = await loadKeyEnvelope(envelopeId);
       if (cancelled) return;
       setLoading(false);
       if (result.ok) {
         setEnv(result.data);
       } else {
-        showToast(result.error, "error");
-        onClose();
+        showToastRef.current(result.error, "error");
+        onBackRef.current();
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [envelopeId, onClose, showToast]);
+  }, [envelopeId]);
 
   const sortedAssignments = useMemo(() => {
     if (!env) return [];
@@ -242,15 +287,12 @@ export function KeyEnvelopeDetailModal({
     });
   }, [env]);
 
-  if (!envelopeId) return null;
-
   async function refresh(next?: KeyEnvelopeRow) {
     if (next) {
       setEnv(next);
       onChanged();
       return;
     }
-    if (!envelopeId) return;
     const result = await loadKeyEnvelope(envelopeId);
     if (result.ok) {
       setEnv(result.data);
@@ -260,10 +302,12 @@ export function KeyEnvelopeDetailModal({
 
   async function handleConfirmAssignment(
     assignmentId: string,
-    status: "matched" | "unmatched",
+    status: KeyAssignmentMatchStatus,
     notes?: string,
   ) {
     if (!env) return;
+    const deed =
+      env.assignments.find((a) => a.id === assignmentId)?.deedNumber ?? "";
     setBusy(true);
     const result = await confirmEnvelopeAssignment(
       env.id,
@@ -277,7 +321,10 @@ export function KeyEnvelopeDetailModal({
       return;
     }
     setMatchTarget(null);
-    showToast("سُجّلت نتيجة المطابقة.", "success");
+    showToast(
+      `سُجّلت نتيجة الصك ${deed} — ${assignmentStatusLabel(status)}.`,
+      "success",
+    );
     await refresh(result.data);
   }
 
@@ -303,270 +350,206 @@ export function KeyEnvelopeDetailModal({
         ? "مناولة"
         : "استلام الظرف";
 
+  const hasAttachments = Boolean(
+    env?.photoAttachmentId ||
+      env?.receiptAttachmentId ||
+      env?.thirdPartyLetterAttachmentId ||
+      env?.contactPhones,
+  );
+
   return (
     <>
-      <ModalOverlay onClick={onClose}>
-        <ModalCard
-          wide
-          onClick={(e) => e.stopPropagation()}
-          className="max-w-[960px] p-0"
-        >
-          <ModalHeader className="relative border-b border-border px-5 py-3.5">
-            <ModalTitle className="text-center text-[16px] font-extrabold text-heading">
-              ملف الظرف
-            </ModalTitle>
-            <ModalClose
-              className="absolute start-3 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-[9px] bg-surface-2 text-[15px] text-text-2 hover:bg-row-hover hover:text-heading"
-              onClick={onClose}
-              aria-label="إغلاق"
-            >
-              ✕
-            </ModalClose>
-          </ModalHeader>
+      <button
+        type="button"
+        className="mb-2 inline-flex items-center gap-[7px] border-none bg-transparent p-0 py-1.5 font-[inherit] text-[12.5px] font-semibold text-text-2 transition-colors hover:text-[var(--gold-d)]"
+        onClick={onBack}
+      >
+        <BackChevron />
+        <span>{backLabel}</span>
+      </button>
 
-          <ModalBody className="max-h-[min(82vh,820px)] space-y-0 overflow-y-auto p-0">
-            {loading || !env ? (
-              <p className="p-6 text-sm text-text-3">جاري التحميل…</p>
-            ) : (
-              <>
-                {/* pp-head */}
-                <div className="border-b border-border px-5 pb-4 pt-5 sm:px-6">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="flex min-w-0 items-center gap-3.5">
-                      <span className="grid size-[50px] shrink-0 place-items-center rounded-[13px] bg-[var(--gold-soft)] text-[var(--gold-d)]">
-                        <EnvIcon />
-                      </span>
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2.5">
-                          <span className="text-[19px] font-extrabold text-primary">
-                            {envelopeDisplayRef(env.id, env.createdAtUtc)}
-                          </span>
-                          <span className="text-[13px] font-semibold text-text-3">
-                            طلب {env.requestNumber}
-                          </span>
-                          <StatusPill
-                            label={envelopeStatusLabel(env.status)}
-                            style={{ base: stColor, fg: stColor }}
-                          />
-                        </div>
-                        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[13px] text-text-2">
-                          <span>{env.court || "—"}</span>
-                          <span className="text-text-3">·</span>
-                          <span>{env.circuit || "—"}</span>
-                        </div>
-                      </div>
-                    </div>
-                    {canEdit && env.status !== "returned" ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-[38px] gap-1.5 px-3.5 text-[12.5px]"
-                        showActionToast={false}
-                        onClick={() => setHandoffOpen(true)}
-                      >
-                        <HandoffIcon />
-                        {handoffBtnLabel}
-                      </Button>
-                    ) : null}
-                  </div>
-
-                  {env.countMismatch ? (
-                    <div
-                      className="mt-3.5 flex items-center gap-2.5 rounded-[10px] px-4 py-3 text-[12.5px] font-semibold leading-relaxed"
-                      style={{
-                        background:
-                          "color-mix(in srgb, #d9694f 9%, transparent)",
-                        color: "#a32d2d",
-                      }}
+      {loading || !env ? (
+        <div className="rounded-[14px] border border-border bg-surface px-5 py-8 text-sm text-text-3 shadow-[var(--shadow)]">
+          جاري التحميل…
+        </div>
+      ) : (
+        <>
+          {/* pp-head — summary card */}
+          <div className="mb-[18px] rounded-[14px] border border-border bg-surface px-[22px] py-[18px] shadow-[var(--shadow)]">
+            <div className="flex flex-wrap items-start justify-between gap-[18px]">
+              <div className="flex min-w-0 items-center gap-[15px]">
+                <span className="grid size-[50px] shrink-0 place-items-center rounded-[13px] bg-[var(--gold-soft)] text-[var(--gold-d)]">
+                  <EnvIcon />
+                </span>
+                <div className="min-w-0">
+                  <h1 className="m-0 flex flex-wrap items-center gap-2.5 text-[18px] font-extrabold text-heading">
+                    <span
+                      className="text-[19px] font-bold text-[var(--gold-d)]"
+                      dir="ltr"
                     >
-                      <AlertIcon />
-                      <span>
-                        تعارض في العدد: المكتوب على الظرف{" "}
-                        {env.keysCountLabeled} والفعلي بعد العد{" "}
-                        {env.keysCountActual}. يلزم تعديل خطاب الاستلام في
-                        المحكمة.
-                      </span>
-                    </div>
-                  ) : null}
-
-                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                    <SummaryCell label="سيناريو الاستلام">
-                      <StatusPill
-                        label={scenarioLabel(env.receiveScenario)}
-                        style={{ base: scColor, fg: scColor }}
-                      />
-                    </SummaryCell>
-                    <SummaryCell label="مستلم الظرف">
-                      <span className="text-[13px] font-bold text-heading">
-                        {env.createdByName || "—"}
-                      </span>
-                    </SummaryCell>
-                    <SummaryCell label="عدد المفاتيح">
-                      <span className="text-[13px] font-bold text-heading tabular-nums">
-                        {env.keysCountActual}
-                      </span>
-                    </SummaryCell>
-                    <SummaryCell label="الصكوك المرتبطة بالطلب">
-                      <span className="text-[13px] font-bold text-heading tabular-nums">
-                        {env.assignments.length}
-                      </span>
-                    </SummaryCell>
-                    <SummaryCell label="تاريخ التسجيل">
-                      <span
-                        className="text-[13px] font-bold text-heading"
-                        dir="ltr"
-                      >
-                        {formatDate(env.createdAtUtc)}
-                      </span>
-                    </SummaryCell>
+                      {envelopeDisplayRef(env.id, env.createdAtUtc)}
+                    </span>
+                    <span className="text-[13px] font-semibold text-text-3">
+                      طلب {env.requestNumber}
+                    </span>
+                    <StatusPill
+                      label={envelopeStatusLabel(env.status)}
+                      style={{ base: stColor, fg: stColor }}
+                    />
+                  </h1>
+                  <div className="mt-2 flex flex-wrap items-center gap-2.5 text-[12.5px] text-text-2">
+                    <span>{env.court || "—"}</span>
+                    <span className="text-text-3">·</span>
+                    <span>{env.circuit || "—"}</span>
                   </div>
-
-                  {env.photoAttachmentId ||
-                  env.receiptAttachmentId ||
-                  env.thirdPartyLetterAttachmentId ||
-                  env.contactPhones ? (
-                    <div className="mt-3.5 space-y-3 border-t border-border pt-3.5">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[12px] font-semibold text-text-3">
-                          المرفقات:
-                        </span>
-                        {env.photoAttachmentId ? (
-                          <span
-                            className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12px] font-semibold"
-                            style={{
-                              background:
-                                "color-mix(in srgb, #8c7857 12%, transparent)",
-                              color: "#8c7857",
-                            }}
-                          >
-                            <FileIcon />
-                            صورة الظرف
-                          </span>
-                        ) : null}
-                        {env.receiptAttachmentId ? (
-                          <span
-                            className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12px] font-semibold"
-                            style={{
-                              background:
-                                "color-mix(in srgb, #8c7857 12%, transparent)",
-                              color: "#8c7857",
-                            }}
-                          >
-                            <FileIcon />
-                            خطاب الاستلام
-                          </span>
-                        ) : null}
-                        {env.thirdPartyLetterAttachmentId ? (
-                          <span
-                            className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12px] font-semibold"
-                            style={{
-                              background:
-                                "color-mix(in srgb, #8c7857 12%, transparent)",
-                              color: "#8c7857",
-                            }}
-                          >
-                            <FileIcon />
-                            خطاب الطرف الثالث
-                          </span>
-                        ) : null}
-                        {env.contactPhones ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-md bg-surface-2 px-2.5 py-1 text-[12px] font-semibold text-text-2">
-                            {env.contactPhones}
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        {env.photoAttachmentId ? (
-                          <KeyEnvelopeAttachmentPreview
-                            attachmentId={env.photoAttachmentId}
-                            label="صورة الظرف"
-                          />
-                        ) : null}
-                        {env.receiptAttachmentId ? (
-                          <KeyEnvelopeAttachmentPreview
-                            attachmentId={env.receiptAttachmentId}
-                            label="خطاب الاستلام"
-                          />
-                        ) : null}
-                        {env.thirdPartyLetterAttachmentId ? (
-                          <KeyEnvelopeAttachmentPreview
-                            attachmentId={env.thirdPartyLetterAttachmentId}
-                            label="خطاب الطرف الثالث"
-                          />
-                        ) : null}
-                      </div>
-                    </div>
-                  ) : null}
                 </div>
+              </div>
+              {canEdit ? (
+                <button
+                  type="button"
+                  className="inline-flex h-[38px] items-center gap-[7px] rounded-lg border border-border-md bg-surface px-[13px] text-[13px] font-medium text-text-2 transition-colors hover:border-[var(--gold)] hover:text-[var(--gold-d)]"
+                  onClick={() => setHandoffOpen(true)}
+                >
+                  <HandoffIcon />
+                  <span>{handoffBtnLabel}</span>
+                </button>
+              ) : null}
+            </div>
 
-                {/* tabs */}
-                <div className="flex gap-1 border-b border-border px-5 pt-2 sm:px-6">
-                  {(
-                    [
-                      {
-                        id: "assign" as const,
-                        label: "إسناد الصكوك",
-                        count: env.assignments.length,
-                      },
-                      {
-                        id: "custody" as const,
-                        label: "سلسلة العهدة",
-                        count: env.handoffs.length + 1,
-                      },
-                    ] as const
-                  ).map((t) => {
-                    const on = tab === t.id;
-                    return (
-                      <button
-                        key={t.id}
-                        type="button"
-                        className={cn(
-                          "relative -mb-px border-b-2 px-3.5 py-2.5 text-[13px] font-bold transition-colors",
-                          on
-                            ? "border-[var(--gold)] text-heading"
-                            : "border-transparent text-text-3 hover:text-text-2",
-                        )}
-                        onClick={() => setTab(t.id)}
-                      >
-                        {t.label}
-                        <span className="ms-1.5 inline-flex rounded-full border border-border-md bg-surface-2 px-1.5 py-px text-[11px] font-bold text-text-3">
-                          {t.count}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+            {env.countMismatch ? (
+              <div
+                className="mt-3.5 flex items-center gap-[11px] rounded-[10px] px-[22px] py-3 text-[12.5px] font-semibold leading-relaxed"
+                style={{
+                  background: "color-mix(in srgb, #d9694f 9%, transparent)",
+                  color: "#a32d2d",
+                }}
+              >
+                <AlertIcon />
+                <span>
+                  تعارض في العدد: المكتوب على الظرف {env.keysCountLabeled}{" "}
+                  والفعلي بعد العد {env.keysCountActual}. يلزم تعديل خطاب
+                  الاستلام في المحكمة.
+                </span>
+              </div>
+            ) : null}
 
-                <div className="px-5 py-4 sm:px-6">
-                  {tab === "assign" ? (
-                    <AssignmentsPanel
-                      env={env}
-                      rows={sortedAssignments}
-                      canEdit={canEdit}
-                      busy={busy}
-                      onMatch={(a) => setMatchTarget(a)}
-                    />
-                  ) : (
-                    <CustodyPanel
-                      env={env}
-                      canEdit={canEdit}
-                      busy={busy}
-                      onConfirm={(id) => void handleConfirmHandoff(id)}
-                    />
+            {/* pp-summary — divider cells */}
+            <div className="mt-4 flex flex-wrap border-t border-border pt-3.5">
+              <SummaryCell label="سيناريو الاستلام">
+                <StatusPill
+                  label={scenarioLabel(env.receiveScenario)}
+                  style={{ base: scColor, fg: scColor }}
+                />
+              </SummaryCell>
+              <SummaryCell label="مستلم الظرف">
+                {displayPersonName(env.createdByName)}
+              </SummaryCell>
+              <SummaryCell label="عدد المفاتيح">
+                <span className="tabular-nums">{env.keysCountActual}</span>
+              </SummaryCell>
+              <SummaryCell label="الصكوك المرتبطة بالطلب">
+                <span className="tabular-nums">{env.assignments.length}</span>
+              </SummaryCell>
+              <SummaryCell label="تاريخ التسجيل" last>
+                <span dir="ltr">{formatDate(env.createdAtUtc)}</span>
+              </SummaryCell>
+            </div>
+
+            {hasAttachments ? (
+              <div className="mt-3.5 flex flex-wrap items-center gap-2.5 border-t border-border pt-3.5">
+                <span className="text-[12px] font-semibold text-text-3">
+                  المرفقات:
+                </span>
+                {env.receiptAttachmentId ? (
+                  <KeyEnvelopeAttachmentPreview
+                    attachmentId={env.receiptAttachmentId}
+                    label="خطاب الاستلام"
+                    variant="chip"
+                    attKind="receipt"
+                  />
+                ) : null}
+                {env.photoAttachmentId ? (
+                  <KeyEnvelopeAttachmentPreview
+                    attachmentId={env.photoAttachmentId}
+                    label="صورة الظرف"
+                    variant="chip"
+                    attKind="photo"
+                  />
+                ) : null}
+                {env.thirdPartyLetterAttachmentId ? (
+                  <KeyEnvelopeAttachmentPreview
+                    attachmentId={env.thirdPartyLetterAttachmentId}
+                    label="خطاب الطرف الثالث"
+                    variant="chip"
+                    attKind="letter"
+                  />
+                ) : null}
+                {env.contactPhones ? (
+                  <span className="inline-flex items-center gap-[7px] rounded-lg border border-border-md bg-surface-2 px-[11px] py-1.5 text-[12px] font-semibold text-text-2">
+                    <PhoneIcon />
+                    <span dir="ltr">{env.contactPhones}</span>
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+
+          {/* tabs */}
+          <div className="mb-4 flex flex-wrap gap-1 border-b border-border">
+            {(
+              [
+                {
+                  id: "assign" as const,
+                  label: "إسناد الصكوك",
+                  count: env.assignments.length,
+                },
+                {
+                  id: "custody" as const,
+                  label: "سلسلة العهدة",
+                  count: env.handoffs.length + 1,
+                },
+              ] as const
+            ).map((t) => {
+              const on = tab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={cn(
+                    "relative -mb-px border-b-2 px-[15px] py-2.5 text-[13px] font-semibold transition-colors",
+                    on
+                      ? "border-[var(--gold)] text-[var(--gold-d)]"
+                      : "border-transparent text-text-2 hover:text-heading",
                   )}
-                </div>
-              </>
-            )}
-          </ModalBody>
+                  onClick={() => setTab(t.id)}
+                >
+                  {t.label}
+                  <span className="ms-[5px] inline-flex rounded-full border border-border-md bg-surface-2 px-[7px] py-px text-[11px] text-text-3">
+                    {t.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
-          <ModalFooter className="justify-start border-t border-border px-5 py-3.5">
-            <Button variant="outline" showActionToast={false} onClick={onClose}>
-              إغلاق
-            </Button>
-          </ModalFooter>
-        </ModalCard>
-      </ModalOverlay>
+          {tab === "assign" ? (
+            <AssignmentsPanel
+              env={env}
+              rows={sortedAssignments}
+              canEdit={canEdit}
+              busy={busy}
+              onMatch={(a) => setMatchTarget(a)}
+            />
+          ) : (
+            <CustodyPanel
+              env={env}
+              canEdit={canEdit}
+              busy={busy}
+              onConfirm={(id) => void handleConfirmHandoff(id)}
+            />
+          )}
+        </>
+      )}
 
       {matchTarget && env ? (
         <MatchResultModal
@@ -596,17 +579,29 @@ export function KeyEnvelopeDetailModal({
   );
 }
 
+/** @deprecated Use KeyEnvelopeDetailPage — kept for import compatibility. */
+export const KeyEnvelopeDetailModal = KeyEnvelopeDetailPage;
+
 function SummaryCell({
   label,
   children,
+  last,
 }: {
   label: string;
   children: ReactNode;
+  last?: boolean;
 }) {
   return (
-    <div className="rounded-[10px] border border-border bg-surface-2/40 px-3 py-2.5">
-      <div className="mb-1 text-[11.5px] font-semibold text-text-3">{label}</div>
-      <div className="min-h-[22px]">{children}</div>
+    <div
+      className={cn(
+        "mb-2.5 min-w-[140px] flex-1 border-s border-border px-[18px] first:border-s-0 first:ps-0",
+        last && "pe-0",
+      )}
+    >
+      <div className="mb-[3px] text-[11px] text-text-3">{label}</div>
+      <div className="min-h-[22px] text-[13.5px] font-semibold text-heading">
+        {children}
+      </div>
     </div>
   );
 }
@@ -626,77 +621,82 @@ function AssignmentsPanel({
 }) {
   if (rows.length === 0) {
     return (
-      <div className="rounded-[10px] border border-dashed border-border-md bg-surface-2/30 px-4 py-6 text-center text-[13px] text-text-3">
+      <div className="rounded-xl border border-dashed border-border-md bg-surface px-[26px] py-[26px] text-center text-[13px] text-text-3">
         لا توجد إسنادات صكوك لهذا الظرف بعد.
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-[12px] border border-border">
+    <div className="overflow-x-auto rounded-xl border border-border bg-surface shadow-[var(--shadow)]">
       <div className="min-w-[780px]">
         <div
-          className="grid border-b-2 border-[var(--gold)] bg-surface-2/50 text-[12px] font-bold text-text-3"
-          style={{
-            gridTemplateColumns:
-              "minmax(112px,1fr) minmax(118px,1fr) minmax(105px,.95fr) 128px minmax(85px,.75fr) 218px",
-          }}
+          className="grid border-b-2 border-[var(--gold)] bg-surface-2 text-[12px] font-bold text-heading"
+          style={{ gridTemplateColumns: ASSIGN_COLS }}
         >
-          <div className="px-3 py-2.5 text-start">رقم الصك</div>
-          <div className="px-3 py-2.5 text-start">العقار</div>
-          <div className="px-3 py-2.5 text-start">أمر العمل</div>
-          <div className="px-3 py-2.5 text-start">حالة التجربة</div>
-          <div className="px-3 py-2.5 text-start">ملاحظة</div>
-          <div className="px-3 py-2.5 text-center">تأكيد ميداني</div>
+          <div className="flex items-center justify-start px-4 py-3.5 text-start">
+            رقم الصك
+          </div>
+          <div className="flex items-center justify-start px-4 py-3.5 text-start">
+            العقار
+          </div>
+          <div className="flex items-center justify-start px-4 py-3.5 text-start">
+            أمر العمل
+          </div>
+          <div className="flex items-center justify-start px-4 py-3.5 text-start">
+            حالة التجربة
+          </div>
+          <div className="flex items-center justify-start px-4 py-3.5 text-start">
+            ملاحظة
+          </div>
+          <div className="flex items-center justify-center px-4 py-3.5">
+            تأكيد ميداني
+          </div>
         </div>
         {rows.map((a) => {
           const color = assignmentStatusColor(a.status);
           return (
             <div
               key={a.id}
-              className="grid min-h-[52px] items-center border-b border-border last:border-b-0"
-              style={{
-                gridTemplateColumns:
-                  "minmax(112px,1fr) minmax(118px,1fr) minmax(105px,.95fr) 128px minmax(85px,.75fr) 218px",
-              }}
+              className="grid min-h-[52px] items-center border-b border-border transition-colors hover:bg-[var(--row-hover)] last:border-b-0"
+              style={{ gridTemplateColumns: ASSIGN_COLS }}
             >
-              <div className="px-3 py-2">
-                <span className="text-[13.5px] font-bold text-primary">
+              <div className="px-4 py-3.5">
+                <span className="text-[13.5px] font-bold text-[var(--gold-d)]">
                   {a.deedNumber}
                 </span>
               </div>
-              <div className="px-3 py-2 text-[12.5px] text-text-2">
+              <div className="truncate px-4 py-3.5 text-[13px] text-text-2">
                 {propertyLabel(env, a)}
               </div>
-              <div className="px-3 py-2 text-[12px] font-semibold text-text-2">
-                {poForAssignment(env, a)}
+              <div className="flex flex-col items-start justify-center gap-[3px] px-4 py-3.5">
+                <span className="text-[12px] font-semibold text-text-2">
+                  {poForAssignment(env, a)}
+                </span>
               </div>
-              <div className="px-3 py-2">
+              <div className="px-4 py-3.5">
                 <StatusPill
                   label={assignmentStatusLabel(a.status)}
                   style={{ base: color, fg: color }}
                 />
               </div>
-              <div className="px-3 py-2 text-[12px] text-text-3">
+              <div className="truncate px-4 py-3.5 text-[13px] text-text-2">
                 {a.notes || "—"}
               </div>
-              <div className="px-3 py-2 text-center">
+              <div className="flex items-center justify-center px-4 py-3.5">
                 {a.status === "pending" && canEdit ? (
-                  <Button
+                  <button
                     type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-[30px] px-3.5 text-[12px] text-[var(--gold-d)]"
                     disabled={busy}
-                    showActionToast={false}
+                    className="inline-flex h-[30px] items-center whitespace-nowrap rounded-lg border border-border-md bg-surface px-3.5 text-[12px] font-medium text-[var(--gold-d)] transition-colors hover:border-[var(--gold)] disabled:opacity-60"
                     onClick={() => onMatch(a)}
                   >
                     تسجيل نتيجة المطابقة…
-                  </Button>
+                  </button>
                 ) : (
                   <span className="text-[11.5px] text-text-3">
-                    {a.confirmedByName
-                      ? `أكّده ${a.confirmedByName}`
+                    {displayPersonName(a.confirmedByName) !== "—"
+                      ? `أكّده ${displayPersonName(a.confirmedByName)}`
                       : a.status !== "pending"
                         ? "مؤكّد"
                         : "—"}
@@ -746,7 +746,7 @@ function CustodyPanel({
       key: "initial",
       title: `استلام الظرف — بداية العهدة (من ${initialFrom})`,
       color: "#378add",
-      person: env.createdByName || "—",
+      person: displayPersonName(env.createdByName),
       role: "مراجع حكومي",
       date: formatDate(env.createdAtUtc),
       stateLabel: "مكتمل",
@@ -759,8 +759,15 @@ function CustodyPanel({
         key: h.id,
         title: handoffKindLabel(h.kind),
         color: hc,
-        person: h.toParty || h.fromParty,
-        role: h.kind === "internal" ? "معاين ميداني" : handoffKindLabel(h.kind),
+        person: displayPersonName(h.toParty || h.fromParty),
+        role:
+          h.kind === "internal"
+            ? "معاين ميداني"
+            : h.kind === "return_court"
+              ? "محكمة"
+              : h.kind === "external"
+                ? "طرف خارجي"
+                : handoffKindLabel(h.kind),
         date: formatDate(h.createdAtUtc),
         letter: h.letterNumber,
         letterId: h.letterAttachmentId,
@@ -776,12 +783,12 @@ function CustodyPanel({
       <div className="mb-3 text-[13px] font-extrabold text-heading">
         سلسلة العهدة (من استلم ومن سلّم)
       </div>
-      <div className="rounded-[12px] border border-border px-[22px] py-1.5">
+      <div className="rounded-xl border border-border bg-surface px-[22px] py-1.5 shadow-[var(--shadow)]">
         {chain.map((item, i) => (
           <div
             key={item.key}
             className={cn(
-              "flex items-start gap-3.5 py-4",
+              "flex items-start gap-[15px] py-4",
               i > 0 && "border-t border-border",
             )}
           >
@@ -809,22 +816,19 @@ function CustodyPanel({
                   {item.stateLabel}
                 </span>
               </div>
-              <div className="mt-1 text-[13px] text-text-2">
+              <div className="mt-[5px] text-[13px] text-text-2">
                 {item.person} — {item.role}
               </div>
               {item.handoff?.status === "pending_confirm" && canEdit ? (
                 <div className="mt-2.5">
-                  <Button
+                  <button
                     type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-8 px-3.5 text-[12px]"
                     disabled={busy}
-                    showActionToast={false}
+                    className="inline-flex h-8 items-center gap-2 rounded-[9px] border-none bg-[var(--gold-d)] px-3.5 text-[12px] font-bold text-white shadow-[0_6px_16px_-6px_color-mix(in_srgb,var(--gold-d)_60%,transparent)] transition-[background,transform] hover:enabled:-translate-y-px hover:enabled:bg-[var(--gold)] disabled:opacity-60"
                     onClick={() => onConfirm(item.handoff!.id)}
                   >
                     تأكيد استلام المعاين
-                  </Button>
+                  </button>
                 </div>
               ) : null}
               {item.letter || item.letterId ? (
@@ -834,7 +838,9 @@ function CustodyPanel({
                     <KeyEnvelopeAttachmentPreview
                       attachmentId={item.letterId}
                       label={item.letter || "خطاب المناولة"}
-                      className="!m-0 !border-0 !bg-transparent !p-0 text-[12px]"
+                      variant="chip"
+                      chipColor="var(--gold-d)"
+                      className="!m-0 !border-0 !bg-transparent !p-0"
                     />
                   ) : (
                     item.letter
@@ -864,45 +870,83 @@ function MatchResultModal({
   deed: string;
   busy: boolean;
   onClose: () => void;
-  onSave: (status: "matched" | "unmatched", note?: string) => void;
+  onSave: (status: KeyAssignmentMatchStatus, note?: string) => void;
 }) {
-  const [sel, setSel] = useState<"matched" | "unmatched" | "">("");
+  const [sel, setSel] = useState<KeyAssignmentMatchStatus | "">("");
   const [note, setNote] = useState("");
   const [err, setErr] = useState("");
 
-  const tiles = [
+  /** Exact tiles from HTML `openKeyResult` / Case Study.html. */
+  const tiles: {
+    id: KeyAssignmentMatchStatus;
+    label: string;
+    hint: string;
+    color: string;
+  }[] = [
     {
-      id: "matched" as const,
+      id: "matched",
       label: "مطابق",
       hint: "فُتح العقار بالمفاتيح",
       color: "#2f7a4d",
     },
     {
-      id: "unmatched" as const,
+      id: "partial",
+      label: "مطابقة جزئية",
+      hint: "بعض الوحدات فقط",
+      color: "#b58a3c",
+    },
+    {
+      id: "unmatched",
       label: "غير مطابق",
       hint: "لا مفتاح مناسب",
       color: "#d9694f",
     },
+    {
+      id: "unmatched_inspected",
+      label: "غير مطابق — تمت المعاينة",
+      hint: "عوين العقار بالكامل رغم عدم المطابقة",
+      color: "#8a5e14",
+    },
+    {
+      id: "missing",
+      label: "مفقود",
+      hint: "لم يُعثر على المفتاح",
+      color: "#c0553d",
+    },
   ];
 
   return (
-    <ModalOverlay onClick={onClose}>
-      <ModalCard
+    <div
+      className="fixed inset-0 z-[1100] flex items-start justify-center overflow-y-auto bg-[rgba(16,43,78,0.42)] px-4 py-[6vh] backdrop-blur-[2px]"
+      role="presentation"
+      onClick={onClose}
+    >
+      <style>{`@keyframes keyModalIn{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}`}</style>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="kr-match-title"
+        className="w-full max-w-[520px] overflow-hidden rounded-[16px] border border-border bg-surface shadow-[0_24px_60px_-18px_rgba(16,43,78,0.5)] [animation:keyModalIn_0.22s_ease_both]"
         onClick={(e) => e.stopPropagation()}
-        className="max-w-[520px] p-0"
       >
-        <ModalHeader className="relative border-b border-border px-5 py-4">
-          <ModalTitle className="text-center text-[16px] font-extrabold text-heading">
+        <div className="relative flex items-center justify-center border-b border-border px-[22px] py-4">
+          <h2
+            id="kr-match-title"
+            className="m-0 text-center text-[16px] font-extrabold text-heading"
+          >
             تسجيل نتيجة المطابقة
-          </ModalTitle>
-          <ModalClose
-            className="absolute start-3 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-[9px] bg-surface-2 text-[15px] text-text-2"
+          </h2>
+          <button
+            type="button"
+            className="absolute start-3 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-[9px] border-none bg-surface-2 text-[15px] leading-none text-text-2 transition-[background,color] duration-150 hover:bg-row-hover hover:text-heading"
             onClick={onClose}
+            aria-label="إغلاق"
           >
             ✕
-          </ModalClose>
-        </ModalHeader>
-        <ModalBody className="space-y-4 px-5 py-5">
+          </button>
+        </div>
+
+        <div className="space-y-4 px-[22px] py-5">
           {err ? (
             <div className="rounded-[10px] border border-[color-mix(in_srgb,#d9694f_30%,transparent)] bg-[color-mix(in_srgb,#d9694f_12%,transparent)] px-3 py-2.5 text-[12.5px] font-semibold text-[#a32d2d]">
               {err}
@@ -922,7 +966,7 @@ function MatchResultModal({
                     key={t.id}
                     type="button"
                     className={cn(
-                      "flex min-h-[52px] items-center gap-3 rounded-xl border-[1.5px] px-3.5 py-2.5 text-start transition-colors",
+                      "flex min-h-[52px] items-center gap-3 rounded-xl border-[1.5px] px-3.5 py-2.5 text-start font-[inherit] transition-all duration-100",
                       on
                         ? "border-[var(--gold)] bg-[var(--gold-soft)]"
                         : "border-border-md bg-surface-2",
@@ -961,13 +1005,14 @@ function MatchResultModal({
               <Input
                 id="kr-note"
                 value={note}
-                placeholder="مثال: لا مفتاح مناسب للوحدة"
+                placeholder="مثال: عمارة 6 شقق — 5 مفاتيح مطابقة، شقة رقم 3 بدون مفتاح"
                 onChange={(e) => setNote(e.target.value)}
               />
             </div>
           ) : null}
-        </ModalBody>
-        <ModalFooter className="justify-start gap-2 border-t border-border px-5 py-3.5">
+        </div>
+
+        <div className="flex flex-wrap justify-start gap-2 border-t border-border px-[22px] py-3.5">
           <Button
             variant="outline"
             disabled={busy}
@@ -999,11 +1044,24 @@ function MatchResultModal({
               );
             }}
           >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
             حفظ النتيجة
           </Button>
-        </ModalFooter>
-      </ModalCard>
-    </ModalOverlay>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1048,10 +1106,13 @@ function HandoffModal({
     const pending = [...env.handoffs]
       .reverse()
       .find((h) => h.status === "pending_confirm");
-    const holder =
+    const rawHolder =
       pending?.toParty ||
       env.handoffs[env.handoffs.length - 1]?.toParty ||
-      "الطرف الحالي";
+      "";
+    const resolvedHolder = displayPersonName(rawHolder);
+    const holder =
+      resolvedHolder === "—" ? "الطرف الحالي" : resolvedHolder;
 
     return (
       <ModalOverlay onClick={onClose}>

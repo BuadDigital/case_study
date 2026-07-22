@@ -174,7 +174,7 @@ export {
   type SavePartyTaskSubmissionRequest,
 } from "./party-task-submissions";
 
-export { fetchDevLoginUsers, type DevLoginUserDto } from "./auth";
+export { fetchDevLoginUsers, fetchMyProfile, type DevLoginUserDto, type FetchMyProfileResult } from "./auth";
 
 export {
   getCaseStudyInfoRoles,
@@ -296,6 +296,8 @@ export {
   createPartyFeePricing,
   savePartyFeePricing,
   activatePartyFeePricing,
+  fetchPartyFeePricingAssignments,
+  setPartyFeePricingAssignments,
   deletePartyFeePricing,
   financialApiEnabled,
   type FinancialCostRowDto,
@@ -306,6 +308,7 @@ export {
   type PartyFeePricingTableSummaryDto,
   type PartyFeePricingCategory,
   type CreatePartyFeePricingTableRequest,
+  type SetPartyFeePricingAssignmentsRequest,
 } from "./financial";
 
 export {

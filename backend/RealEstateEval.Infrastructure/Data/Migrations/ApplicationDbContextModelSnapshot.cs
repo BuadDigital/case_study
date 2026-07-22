@@ -1569,6 +1569,38 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.ToTable("OutboxMessages", "messaging");
                 });
 
+            modelBuilder.Entity("RealEstateEval.Domain.PartyFeePricingAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AssigneeId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("TableId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TableId");
+
+                    b.HasIndex("Category", "AssigneeId")
+                        .IsUnique();
+
+                    b.ToTable("PartyFeePricingAssignments", "financial");
+                });
+
             modelBuilder.Entity("RealEstateEval.Domain.PartyFeePricingTable", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2782,15 +2814,15 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Navigation("Envelope");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.ProcServiceProviderProfile", b =>
+            modelBuilder.Entity("RealEstateEval.Domain.PartyFeePricingAssignment", b =>
                 {
-                    b.HasOne("RealEstateEval.Domain.UserProfile", "Profile")
-                        .WithOne("ProcProvider")
-                        .HasForeignKey("RealEstateEval.Domain.ProcServiceProviderProfile", "UserId")
+                    b.HasOne("RealEstateEval.Domain.PartyFeePricingTable", "Table")
+                        .WithMany("Assignments")
+                        .HasForeignKey("TableId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Profile");
+                    b.Navigation("Table");
                 });
 
             modelBuilder.Entity("RealEstateEval.Domain.PartyFeePricingTier", b =>
@@ -2802,6 +2834,17 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Table");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Domain.ProcServiceProviderProfile", b =>
+                {
+                    b.HasOne("RealEstateEval.Domain.UserProfile", "Profile")
+                        .WithOne("ProcProvider")
+                        .HasForeignKey("RealEstateEval.Domain.ProcServiceProviderProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Profile");
                 });
 
             modelBuilder.Entity("RealEstateEval.Domain.PropertyContact", b =>
@@ -2837,11 +2880,6 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Navigation("WorkOrder");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.PartyFeePricingTable", b =>
-                {
-                    b.Navigation("AreaTiers");
-                });
-
             modelBuilder.Entity("RealEstateEval.Domain.Court", b =>
                 {
                     b.Navigation("Circuits");
@@ -2854,6 +2892,13 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Navigation("Handoffs");
 
                     b.Navigation("Timeline");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Domain.PartyFeePricingTable", b =>
+                {
+                    b.Navigation("AreaTiers");
+
+                    b.Navigation("Assignments");
                 });
 
             modelBuilder.Entity("RealEstateEval.Domain.UserProfile", b =>

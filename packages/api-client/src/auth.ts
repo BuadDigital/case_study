@@ -1,9 +1,19 @@
+import type { UserListItem } from "@platform/types";
 import { getApiBase } from "./index";
 
 export type DevLoginUserDto = {
   username: string;
   label: string;
 };
+
+export type AuthApiConfig = {
+  baseUrl?: string;
+  token: string;
+};
+
+export type FetchMyProfileResult =
+  | { ok: true; user: UserListItem }
+  | { ok: false; kind: "network" | "server" | "auth" };
 
 export type DevLoginUsersResult =
   | { ok: true; users: DevLoginUserDto[] }
@@ -28,6 +38,26 @@ export async function fetchDevLoginUsers(
         })
       : [];
     return { ok: true, users: users.filter((u) => u.username) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export async function fetchMyProfile(
+  config: AuthApiConfig,
+): Promise<FetchMyProfileResult> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/auth/profile`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.token}`,
+      },
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    const user = (await res.json()) as UserListItem;
+    return { ok: true, user };
   } catch {
     return { ok: false, kind: "network" };
   }

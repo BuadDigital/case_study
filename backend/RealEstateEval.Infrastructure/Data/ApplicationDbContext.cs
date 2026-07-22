@@ -51,6 +51,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<FinancialReportConfig> FinancialReportConfigs => Set<FinancialReportConfig>();
     public DbSet<PartyFeePricingTable> PartyFeePricingTables => Set<PartyFeePricingTable>();
     public DbSet<PartyFeePricingTier> PartyFeePricingTiers => Set<PartyFeePricingTier>();
+    public DbSet<PartyFeePricingAssignment> PartyFeePricingAssignments => Set<PartyFeePricingAssignment>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
 
@@ -653,6 +654,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .WithOne(x => x.Table)
                 .HasForeignKey(x => x.TableId)
                 .OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Assignments)
+                .WithOne(x => x.Table)
+                .HasForeignKey(x => x.TableId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<PartyFeePricingTier>(e =>
@@ -662,6 +667,16 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.MaxAreaM2).HasPrecision(12, 2);
             e.Property(x => x.FeeSar).HasPrecision(12, 2);
             e.HasIndex(x => new { x.TableId, x.SortOrder });
+        });
+
+        builder.Entity<PartyFeePricingAssignment>(e =>
+        {
+            e.ToTable("PartyFeePricingAssignments", DatabaseSchemas.Financial);
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Category).HasMaxLength(32).IsRequired();
+            e.Property(x => x.AssigneeId).HasMaxLength(128).IsRequired();
+            e.HasIndex(x => new { x.Category, x.AssigneeId }).IsUnique();
+            e.HasIndex(x => x.TableId);
         });
 
         builder.Entity<PropertyTimelineEntry>(e =>

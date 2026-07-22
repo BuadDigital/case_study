@@ -5,7 +5,9 @@ public sealed class PartyFeePricingTableSummaryDto
     public Guid Id { get; set; }
     public string Category { get; set; } = "";
     public string Name { get; set; } = "";
+    /// <summary>Category default (fallback when assignee has no assignment).</summary>
     public bool IsActive { get; set; }
+    public int AssignedCount { get; set; }
     public DateTime? UpdatedAtUtc { get; set; }
 }
 
@@ -27,6 +29,8 @@ public sealed class PartyFeePricingDto
     public string Category { get; set; } = "";
     public string Name { get; set; } = "";
     public bool IsActive { get; set; }
+    public int AssignedCount { get; set; }
+    public List<string> AssignedAssigneeIds { get; set; } = [];
 
     public List<PartyFeePricingTierDto> AreaTiers { get; set; } = [];
 
@@ -44,4 +48,9 @@ public sealed class CreatePartyFeePricingTableRequest
 
     /// <summary>Optional source table to clone fees/tiers from.</summary>
     public Guid? CopyFromTableId { get; set; }
+}
+
+public sealed class SetPartyFeePricingAssignmentsRequest
+{
+    public List<string> AssigneeIds { get; set; } = [];
 }

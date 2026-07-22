@@ -125,6 +125,23 @@ function LogoutIcon() {
   );
 }
 
+function ProfileIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
 function BackChevronIcon() {
   return (
     <svg
@@ -473,7 +490,9 @@ function ProfileMenu({
 
   const hasMenu = systemFieldsItems.length > 0 || settingsItems.length > 0;
   const inMenuSection =
-    isInSystemFieldsSection(currentPage) || isInSettingsSection(currentPage);
+    isInSystemFieldsSection(currentPage) ||
+    isInSettingsSection(currentPage) ||
+    currentPage === "profile";
 
   useEffect(() => {
     if (!open) return;
@@ -562,6 +581,22 @@ function ProfileMenu({
               {chipName}
             </div>
             <div className="truncate text-[11px] text-text-3">{dept}</div>
+          </div>
+          <div className="border-b border-border p-1.5">
+            <Link
+              href="/profile"
+              role="menuitem"
+              className={cn(
+                "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-semibold no-underline transition-colors [&>svg]:size-4 [&>svg]:shrink-0",
+                currentPage === "profile"
+                  ? "bg-primary/10 text-primary"
+                  : "text-text hover:bg-surface-2",
+              )}
+              onClick={() => setOpen(false)}
+            >
+              <ProfileIcon />
+              <span>البروفايل</span>
+            </Link>
           </div>
           {hasMenu ? (
           <div className="max-h-80 overflow-y-auto py-1.5">

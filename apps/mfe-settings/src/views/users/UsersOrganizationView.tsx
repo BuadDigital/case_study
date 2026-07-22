@@ -34,7 +34,9 @@ import {
   useToast,
 } from "@platform/design-system";
 import { getAuthSession } from "@platform/auth-client";
+import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { DevSystemResetPanel } from "../../components/DevSystemResetPanel";
+import { UserProfileModal } from "../../components/UserProfileModal";
 import {
   submitCreateStaffUser,
   submitDeleteStaffUser,
@@ -122,6 +124,7 @@ export function UsersOrganizationView() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [profileUser, setProfileUser] = useState<StaffUser | null>(null);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [createdCredentials, setCreatedCredentials] = useState<{
@@ -406,16 +409,20 @@ export function UsersOrganizationView() {
                   <Th>البريد</Th>
                   <Th>اسم الدخول</Th>
                   <Th className="w-28 text-center">الحالة</Th>
-                  {canManage ? <ThAction>إجراءات</ThAction> : null}
+                  <ThAction>إجراءات</ThAction>
                 </Tr>
               </THead>
               <TBody>
                 {filteredUsers.map((user) => (
                   <Tr key={user.id}>
                     <Td className="py-3.5">
-                      <span className="text-[13px] font-semibold text-text">
+                      <button
+                        type="button"
+                        className="cursor-pointer border-0 bg-transparent p-0 text-start text-[13px] font-semibold text-primary hover:underline"
+                        onClick={() => setProfileUser(user)}
+                      >
                         {user.name}
-                      </span>
+                      </button>
                     </Td>
                     <Td className="py-3.5">
                       <span className="rounded-md border border-border-md bg-surface-2 px-2.5 py-[3px] text-[12px] font-medium text-text-2">
@@ -437,9 +444,17 @@ export function UsersOrganizationView() {
                         {statusLabel(user.status)}
                       </Badge>
                     </Td>
-                    {canManage ? (
-                      <TdAction>
-                        {canDeleteUser(user, currentUserId) ? (
+                    <TdAction>
+                      <div className="flex flex-wrap items-center justify-end gap-1.5">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setProfileUser(user)}
+                        >
+                          البروفايل
+                        </Button>
+                        {canManage && canDeleteUser(user, currentUserId) ? (
                           <Button
                             type="button"
                             variant="dangerOutline"
@@ -450,11 +465,9 @@ export function UsersOrganizationView() {
                           >
                             حذف
                           </Button>
-                        ) : (
-                          <span className="text-[11px] text-text-3">—</span>
-                        )}
-                      </TdAction>
-                    ) : null}
+                        ) : null}
+                      </div>
+                    </TdAction>
                   </Tr>
                 ))}
               </TBody>
@@ -464,6 +477,13 @@ export function UsersOrganizationView() {
       </section>
 
       <DevSystemResetPanel />
+
+      {profileUser ? (
+        <UserProfileModal
+          user={profileUser}
+          onClose={() => setProfileUser(null)}
+        />
+      ) : null}
     </div>
   );
 }

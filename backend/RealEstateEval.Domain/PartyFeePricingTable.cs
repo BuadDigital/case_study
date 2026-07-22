@@ -1,6 +1,6 @@
 namespace RealEstateEval.Domain;
 
-/// <summary>Named party-fee pricing schedule. Exactly one row should be <see cref="IsActive"/>.</summary>
+/// <summary>Named party-fee pricing schedule. Exactly one row per category should be <see cref="IsActive"/> (category default).</summary>
 public class PartyFeePricingTable
 {
     public Guid Id { get; set; }
@@ -10,6 +10,7 @@ public class PartyFeePricingTable
     /// <see cref="RealEstateEval.Application.PartyFeePricingCategories"/>
     public string Category { get; set; } = "";
 
+    /// <summary>Category default used when the assignee has no explicit assignment.</summary>
     public bool IsActive { get; set; }
 
     /// <summary>Government reviewer — متعاون فرد only.</summary>
@@ -24,4 +25,6 @@ public class PartyFeePricingTable
     public DateTime UpdatedAtUtc { get; set; }
 
     public List<PartyFeePricingTier> AreaTiers { get; set; } = [];
+
+    public List<PartyFeePricingAssignment> Assignments { get; set; } = [];
 }

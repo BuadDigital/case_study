@@ -14,7 +14,6 @@ public static class RegistrationMapper
     private const string SecCrmClass = "تصنيف العميل";
     private const string SecCrmBasic = "البيانات الأساسية";
     private const string SecCrmContact = "التواصل";
-    private const string SecSystem = "النظام";
 
     public static UserListItemDto ToListItem(
         ApplicationUser user,
@@ -35,7 +34,7 @@ public static class RegistrationMapper
             PhoneNumber = user.PhoneNumber,
             CreatedAtUtc = profile.CreatedAtUtc,
             SystemRoles = systemRoles,
-            Details = BuildDetails(user, profile, systemRoles),
+            Details = BuildDetails(user, profile),
         };
 
     private static IReadOnlyList<string> ParseReviewerCityCoverage(string? json)
@@ -54,27 +53,9 @@ public static class RegistrationMapper
         }
     }
 
-    public static string MapRoleToArabic(string roleName) =>
-        roleName switch
-        {
-            "Admin" => "مدير النظام",
-            "Supervisor" => "مشرف",
-            "Editor" => "محرر",
-            "Reader" => "قارئ",
-            OrgRoles.Cdo => "مسؤول التحول الرقمي (CDO)",
-            OrgRoles.HrAdmin => "أخصائية موارد بشرية",
-            OrgRoles.ProcAdmin => "مدير المالية والعقود",
-            OrgRoles.CrmAdmin => "مدير علاقات العملاء",
-            DepartmentRoles.Hr => "دور الموارد البشرية (HR)",
-            DepartmentRoles.Proc => "دور المالية والعقود (PROC)",
-            DepartmentRoles.Crm => "دور علاقات العملاء (CRM)",
-            _ => roleName,
-        };
-
     public static IReadOnlyList<UserDetailFieldDto> BuildDetails(
         ApplicationUser user,
-        UserProfile profile,
-        IReadOnlyList<string> systemRoles)
+        UserProfile profile)
     {
         var fields = new List<UserDetailFieldDto>();
 
@@ -101,14 +82,7 @@ public static class RegistrationMapper
                 RegistrationSource.Crm => "عميل",
                 _ => null,
             });
-        Add(SecAccount, "اسم المستخدم", user.UserName);
-        if (systemRoles.Count > 0)
-        {
-            Add(
-                SecAccount,
-                "دور النظام",
-                string.Join("، ", systemRoles.Select(MapRoleToArabic)));
-        }
+        Add(SecAccount, "المسمى الوظيفي", profile.JobTitle);
 
         Add(SecAccount, "مستوى الصلاحيات", profile.PermissionLevel);
         Add(SecAccount, "الجوال", user.PhoneNumber);
@@ -120,7 +94,7 @@ public static class RegistrationMapper
                 Add(SecHr, "الإدارة", hr.Department);
                 Add(SecHr, "القسم", hr.Section);
                 Add(SecHr, "رقم الهوية", hr.NationalId);
-                Add(SecHr, "رقم الموظف", hr.EmployeeNumber);
+                Add(SecHr, "رقم العضوية", hr.EmployeeNumber);
                 if (hr.JoinDate is { } join)
                     Add(SecHr, "تاريخ الالتحاق", join.ToString("yyyy/MM/dd"));
                 break;
@@ -173,11 +147,6 @@ public static class RegistrationMapper
                 break;
         }
 
-        Add(SecSystem, "معرّف المستخدم", user.Id);
-        Add(
-            SecSystem,
-            "تاريخ التسجيل",
-            profile.CreatedAtUtc.ToLocalTime().ToString("yyyy/MM/dd HH:mm"));
         return fields;
     }
 }

@@ -7,6 +7,7 @@ import {
   fetchPartyFeePricingTables,
   financialApiEnabled as apiEnabled,
   savePartyFeePricing,
+  setPartyFeePricingAssignments,
   type FinancialSummaryDto,
   type PartyFeePricingCategory,
   type PartyFeePricingDto,
@@ -73,7 +74,16 @@ export async function activatePartyFeePricingTable(
 ): Promise<PartyFeePricingDto> {
   const config = requirePrototypeModulesApiConfig();
   const result = await activatePartyFeePricing(config, id);
-  return unwrapApiResult(result, "تعذّر تفعيل جدول التسعير");
+  return unwrapApiResult(result, "تعذّر تعيين الجدول كافتراضي");
+}
+
+export async function savePartyFeePricingAssignments(
+  id: string,
+  assigneeIds: string[],
+): Promise<PartyFeePricingDto> {
+  const config = requirePrototypeModulesApiConfig();
+  const result = await setPartyFeePricingAssignments(config, id, { assigneeIds });
+  return unwrapApiResult(result, "تعذّر حفظ إسناد التسعيرة");
 }
 
 export async function deletePartyFeePricingTable(id: string): Promise<void> {

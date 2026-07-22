@@ -467,7 +467,13 @@ export type AddKeyEnvelopeAssignmentRequest = {
 };
 
 export type ConfirmKeyAssignmentRequest = {
-  status: "matched" | "unmatched" | string;
+  status:
+    | "matched"
+    | "partial"
+    | "unmatched"
+    | "unmatched_inspected"
+    | "missing"
+    | string;
   notes?: string | null;
 };
 

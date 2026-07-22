@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.Operations.Api.Controllers;
@@ -24,16 +25,9 @@ public class KeyEnvelopesController : ControllerBase
         _gates = gates;
     }
 
-    private static string ActorId(ClaimsPrincipal user) =>
-        user.FindFirstValue(ClaimTypes.NameIdentifier)
-        ?? user.FindFirstValue("sub")
-        ?? "unknown";
+    private string ActorId() => ActorClaims.Id(User);
 
-    private static string ActorName(ClaimsPrincipal user) =>
-        user.FindFirstValue("name")
-        ?? user.FindFirstValue(ClaimTypes.Name)
-        ?? user.Identity?.Name
-        ?? "";
+    private string ActorName() => ActorClaims.DisplayName(User);
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<KeyEnvelopeDto>>> List(CancellationToken ct)
@@ -106,8 +100,8 @@ public class KeyEnvelopesController : ControllerBase
     {
         var (envelope, error) = await _envelopes.CreateAsync(
             request,
-            ActorId(User),
-            ActorName(User),
+            ActorId(),
+            ActorName(),
             ct);
         if (error is not null) return BadRequest(new { message = error });
         return CreatedAtAction(nameof(Get), new { id = envelope!.Id }, envelope);
@@ -121,7 +115,7 @@ public class KeyEnvelopesController : ControllerBase
         CancellationToken ct)
     {
         var (envelope, error) = await _envelopes.AddAssignmentAsync(
-            id, request, ActorId(User), ActorName(User), ct);
+            id, request, ActorId(), ActorName(), ct);
         if (error is not null)
             return error.Contains("غير موجود") ? NotFound(new { message = error })
                 : BadRequest(new { message = error });
@@ -137,7 +131,7 @@ public class KeyEnvelopesController : ControllerBase
         CancellationToken ct)
     {
         var (envelope, error) = await _envelopes.ConfirmAssignmentAsync(
-            id, assignmentId, request, ActorId(User), ActorName(User), ct);
+            id, assignmentId, request, ActorId(), ActorName(), ct);
         if (error is not null)
             return error.Contains("غير موجود") ? NotFound(new { message = error })
                 : BadRequest(new { message = error });
@@ -152,7 +146,7 @@ public class KeyEnvelopesController : ControllerBase
         CancellationToken ct)
     {
         var (envelope, error) = await _envelopes.CreateHandoffAsync(
-            id, request, ActorId(User), ActorName(User), ct);
+            id, request, ActorId(), ActorName(), ct);
         if (error is not null)
             return error.Contains("غير موجود") ? NotFound(new { message = error })
                 : BadRequest(new { message = error });
@@ -167,7 +161,7 @@ public class KeyEnvelopesController : ControllerBase
         CancellationToken ct)
     {
         var (envelope, error) = await _envelopes.ConfirmHandoffAsync(
-            id, handoffId, ActorId(User), ActorName(User), ct);
+            id, handoffId, ActorId(), ActorName(), ct);
         if (error is not null)
             return error.Contains("غير موجود") ? NotFound(new { message = error })
                 : BadRequest(new { message = error });
@@ -181,7 +175,7 @@ public class KeyEnvelopesController : ControllerBase
         CancellationToken ct)
     {
         var (access, error) = await _envelopes.UpsertCourtAccessAsync(
-            request, ActorId(User), ActorName(User), ct);
+            request, ActorId(), ActorName(), ct);
         if (error is not null)
             return error.Contains("غير موجود") ? NotFound(new { message = error })
                 : BadRequest(new { message = error });

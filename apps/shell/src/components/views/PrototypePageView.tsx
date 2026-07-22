@@ -67,6 +67,10 @@ const UsersView = dynamic(
   () => import("@settings/mfe").then((m) => m.UsersView),
   { ssr: false },
 );
+const ProfileView = dynamic(
+  () => import("@settings/mfe").then((m) => m.ProfileView),
+  { ssr: false },
+);
 const CourtsView = dynamic(
   () => import("@settings/mfe").then((m) => m.CourtsView),
   { ssr: false },
@@ -122,6 +126,7 @@ const VIEWS: Partial<Record<PageId, ComponentType>> = {
   "system-screen-catalog": SystemScreenCatalogView,
   financial: FinancialView,
   users: UsersView,
+  profile: ProfileView,
   courts: CourtsView,
   "failure-types": FailureTypesView,
   "case-study-info-roles": CaseStudyInfoRolesView,

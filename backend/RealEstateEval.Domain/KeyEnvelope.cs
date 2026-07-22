@@ -58,7 +58,7 @@ public class KeyEnvelopeAssignment
     public Guid EnvelopeId { get; set; }
     public string DeedNumber { get; set; } = "";
     public Guid? PropertyId { get; set; }
-    /// <summary>pending | matched | unmatched</summary>
+    /// <summary>pending | matched | partial | unmatched | unmatched_inspected | missing</summary>
     public string Status { get; set; } = KeyAssignmentStatuses.Pending;
     public string? Notes { get; set; }
     public string? ConfirmedByUserId { get; set; }
@@ -72,7 +72,17 @@ public static class KeyAssignmentStatuses
 {
     public const string Pending = "pending";
     public const string Matched = "matched";
+    public const string Partial = "partial";
     public const string Unmatched = "unmatched";
+    public const string UnmatchedInspected = "unmatched_inspected";
+    public const string Missing = "missing";
+
+    public static bool IsConfirmResult(string status) =>
+        status is Matched or Partial or Unmatched or UnmatchedInspected or Missing;
+
+    /// <summary>Statuses that mean the key did not fully open the property.</summary>
+    public static bool IsUnmatchedOutcome(string status) =>
+        status is Unmatched or UnmatchedInspected or Missing;
 }
 
 /// <summary>مناولة عهدة الظرف.</summary>
