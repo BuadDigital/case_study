@@ -1,0 +1,30 @@
+.stats)
+  var setKpi = function(id, v){ var el = document.getElementById(id); if (el) el.textContent = v; };
+  var propertyCount = ORDERS.reduce(function(n, o){ return n + o.count; }, 0);
+  var doneBilled = ORDERS.filter(function(o){
+    return o.status === 'مكتمل' || o.status === 'مفوتر بالكامل' || o.status === 'مفوتر جزئي';
+  }).length;
+  setKpi('kpiTotal', ORDERS.length);
+  setKpi('kpiProps', propertyCount);
+  setKpi('kpiAvg', ORDERS.length ? (propertyCount / ORDERS.length).toFixed(1) : '0');
+  setKpi('kpiDone', doneBilled);
+  var kpiDoneSub = document.getElementById('kpiDoneSub');
+  if (kpiDoneSub) kpiDoneSub.textContent = 'من ' + ORDERS.length + ' إجمالي';
+
+  // user dropdown
+  var userMenu = document.querySelector('.user-menu');
+  var userToggle = document.getElementById('userToggle');
+  userToggle.addEventListener('click', function(e){ e.stopPropagation(); userMenu.classList.toggle('open'); });
+  document.addEventListener('click', function(e){ if (!userMenu.contains(e.target)) userMenu.classList.remove('open'); });
+
+  // row action menus (event delegation — rows re-render)
+  document.addEventListener('click', function(e){
+    var k = e.target.closest('.kebab');
+    if (k){
+      e.stopPropagation();
+      var a = k.parentElement, wasOpen = a.classList.contains('open');
+      document.querySelectorAll('.actions.open').forEach(function(x){ x.classList.remove('open'); });
+      if (!wasOpen) a.classList.add('open');
+      return;
+    }
+    if (!e.target.closest('.act-pop'

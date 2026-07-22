@@ -384,6 +384,7 @@ export type KeyEnvelopeDto = {
   createdByName: string;
   createdAtUtc: string;
   updatedAtUtc: string;
+  operationsTaskId?: string | null;
   assignments: KeyEnvelopeAssignmentDto[];
   handoffs: KeyEnvelopeHandoffDto[];
   timeline: KeyEnvelopeTimelineEntryDto[];
@@ -457,6 +458,7 @@ export type CreateKeyEnvelopeRequest = {
   thirdPartyLetterAttachmentId?: string | null;
   contactPhones?: string | null;
   notes?: string | null;
+  operationsTaskId?: string | null;
   assignments?: KeyEnvelopeAssignmentInput[];
 };
 

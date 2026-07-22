@@ -1,0 +1,4 @@
+.back-link{display:inline-flex;align-items:center;gap:7px;padding:6px 0;margin-bottom:8px;background:none;border:none;color:var(--text-2);font-size:12.5px;font-weight:600;cursor:pointer;transition:color .15s;}
+  .back-link:hover{color:var(--gold-d);}
+  .back-link svg{transform:scaleX(-1);}
+  .pp-hea

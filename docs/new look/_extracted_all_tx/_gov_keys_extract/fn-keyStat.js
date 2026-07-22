@@ -1,0 +1,1 @@
+function keyStat(s){ return ({cancelled:['ملغى','#8a8d96'],reviewer:['بعهدة المراجع','#378add'],assessor:['بعهدة المعاين','#2f7a4d'],external:['بعهدة طرف خارجي','#b58a3c'],returned:['مُرجَع للمحكمة','#8a8d96']})[s]||[s,'#8a8d96']; }

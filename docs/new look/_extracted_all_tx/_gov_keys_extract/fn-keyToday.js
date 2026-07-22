@@ -1,0 +1,1 @@
+function keyToday(){ var d=new Date(); var D=String(d.getDate()).padStart(2,'0'),M=String(d.getMonth()+1).padStart(2,'0'),h=String(d.getHours()).padStart(2,'0'),m=String(d.getMinutes()).padStart(2,'0'); return {date:D+'/'+M+'/'+d.getFullYear(), dt:D+'/'+M+'/'+d.getFullYear()+' '+h+':'+m}; }

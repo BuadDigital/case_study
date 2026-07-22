@@ -28,27 +28,16 @@ import {
   isInActiveTransactionsSection,
 } from "@platform/app-shared/prototype/active-transactions";
 import {
-  SETTINGS_GROUP,
-  SETTINGS_GROUP_ICON,
-  settingsNavForRole,
-  type SettingsNavItem,
-  isInSettingsSection,
-} from "@platform/app-shared/prototype/settings-nav";
-import {
+  SYSTEM_SETTINGS_GROUP,
+  SYSTEM_SETTINGS_GROUP_ICON,
   SYSTEM_FIELDS_GROUP,
   SYSTEM_FIELDS_GROUP_ICON,
-  systemFieldsNavForRole,
+  systemSettingsPrimaryNavForRole,
+  systemSettingsFieldsNavForRole,
+  isInSystemSettingsSection,
+  type SystemSettingsNavItem,
   type SystemFieldsNavItem,
-  isInSystemFieldsSection,
-} from "@platform/app-shared/prototype/system-fields-nav";
-import {
-  SYSTEM_FIELDS_CATALOG_NAV_ITEM,
-  isSystemFieldsCatalogPage,
-} from "@platform/app-shared/prototype/system-fields-catalog-nav";
-import {
-  SYSTEM_SCREEN_CATALOG_NAV_ITEM,
-  isSystemScreenCatalogPage,
-} from "@platform/app-shared/prototype/system-screen-catalog-nav";
+} from "@platform/app-shared/prototype/system-settings-nav";
 import { isPartyTaskPage } from "@platform/app-shared/prototype/party-task-pages";
 import { decodeTaskParam, isPartyTaskWorkPath } from "@case-study/mfe";
 import { findPropertyForTask } from "@case-study/mfe";
@@ -121,23 +110,6 @@ function LogoutIcon() {
     >
       <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
       <path d="M10 17l5-5-5-5M15 12H3" />
-    </svg>
-  );
-}
-
-function ProfileIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
     </svg>
   );
 }
@@ -420,49 +392,81 @@ function ActiveTransactionsNavDropdown({
   );
 }
 
-type ProfileMenuItem = SettingsNavItem | SystemFieldsNavItem;
-
-function ProfileMenuLink({
-  item,
-  active,
+function SystemSettingsNavDropdown({
+  primaryItems,
+  fieldsItems,
+  currentPage,
   onPrefetch,
-  onNavigate,
 }: {
-  item: ProfileMenuItem;
-  active: boolean;
+  primaryItems: SystemSettingsNavItem[];
+  fieldsItems: SystemFieldsNavItem[];
+  currentPage: PageId;
   onPrefetch: (page: PageId) => void;
-  onNavigate: () => void;
 }) {
-  const cls = cn(
-    "flex items-center gap-2 rounded-md px-2.5 py-2 text-[12.5px] no-underline transition-colors",
-    active
-      ? "bg-primary/10 font-medium text-primary"
-      : "text-text-2 hover:bg-surface-2 hover:text-text",
-    !item.available && "cursor-default opacity-45",
-  );
-  const inner = (
-    <>
-      <NavIcon d={item.icon} size={14} />
-      <span className="min-w-0 flex-1 truncate">{item.label}</span>
-      {!item.available ? (
-        <span className="shrink-0 text-[10px] text-text-3">بدون صلاحية</span>
-      ) : null}
-    </>
-  );
-  if (!item.available) {
-    return <div className={cls}>{inner}</div>;
-  }
+  const inSection = isInSystemSettingsSection(currentPage);
+  const [open, setOpen] = useState(inSection);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- auto-expand when route is under system settings.
+    if (inSection) setOpen(true);
+  }, [inSection]);
+
   return (
-    <Link
-      href={`/${item.id}`}
-      className={cls}
-      prefetch
-      onMouseEnter={() => onPrefetch(item.id)}
-      onFocus={() => onPrefetch(item.id)}
-      onClick={onNavigate}
-    >
-      {inner}
-    </Link>
+    <div className="my-0.5">
+      <button
+        type="button"
+        className={navItemClasses({
+          active: inSection,
+          toggle: true,
+        })}
+        aria-expanded={open}
+        aria-controls="nav-system-settings"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <NavIcon d={SYSTEM_SETTINGS_GROUP_ICON} size={16} />
+        <span>{SYSTEM_SETTINGS_GROUP}</span>
+        <NavDropdownChevron open={open} />
+      </button>
+      {open ? (
+        <div
+          id="nav-system-settings"
+          className="ms-3 flex flex-col border-s border-white/[0.06] py-0.5 pb-1"
+          role="group"
+          aria-label={SYSTEM_SETTINGS_GROUP}
+        >
+          {primaryItems.map((item) => (
+            <ActiveTransactionNavRow
+              key={item.id}
+              id={item.id}
+              label={item.label}
+              icon={item.icon}
+              available
+              active={currentPage === item.id}
+              onPrefetch={onPrefetch}
+            />
+          ))}
+          {fieldsItems.length > 0 ? (
+            <>
+              <div className="mx-2 mb-0.5 mt-1.5 flex items-center gap-1.5 px-2.5 pb-1 pt-1 text-[10px] font-medium tracking-wider text-[#6f7b90]">
+                <NavIcon d={SYSTEM_FIELDS_GROUP_ICON} size={11} />
+                <span>{SYSTEM_FIELDS_GROUP}</span>
+              </div>
+              {fieldsItems.map((item) => (
+                <ActiveTransactionNavRow
+                  key={item.id}
+                  id={item.id}
+                  label={item.label}
+                  icon={item.icon}
+                  available
+                  active={currentPage === item.id}
+                  onPrefetch={onPrefetch}
+                />
+              ))}
+            </>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -470,29 +474,19 @@ function ProfileMenu({
   chipName,
   initials,
   dept,
-  systemFieldsItems,
-  settingsItems,
   currentPage,
-  onPrefetch,
   onLogout,
 }: {
   chipName: string;
   initials: string;
   dept: string;
-  systemFieldsItems: SystemFieldsNavItem[];
-  settingsItems: SettingsNavItem[];
   currentPage: PageId;
-  onPrefetch: (page: PageId) => void;
   onLogout: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  const hasMenu = systemFieldsItems.length > 0 || settingsItems.length > 0;
-  const inMenuSection =
-    isInSystemFieldsSection(currentPage) ||
-    isInSettingsSection(currentPage) ||
-    currentPage === "profile";
+  const inMenuSection = currentPage === "profile";
 
   useEffect(() => {
     if (!open) return;
@@ -539,24 +533,35 @@ function ProfileMenu({
   );
 
   return (
-    <div className="relative" ref={panelRef}>
+    <div className="relative flex items-center" ref={panelRef}>
+      <Link
+        href="/profile"
+        className={cn(
+          "flex items-center gap-2.5 rounded-lg py-1 pe-2 ps-2.5 no-underline transition-colors",
+          "hover:bg-surface-2",
+          inMenuSection && "bg-surface-2",
+        )}
+        aria-label="البروفايل"
+        aria-current={inMenuSection ? "page" : undefined}
+      >
+        {avatar}
+        {identity}
+      </Link>
       <button
         type="button"
         className={cn(
-          "flex items-center gap-2.5 rounded-lg py-1 pe-1.5 ps-2.5 transition-colors",
-          "hover:bg-surface-2",
-          (open || inMenuSection) && "bg-surface-2",
+          "flex size-8 shrink-0 items-center justify-center rounded-lg text-text-3 transition-colors",
+          "hover:bg-surface-2 hover:text-text",
+          open && "bg-surface-2 text-text",
         )}
-        aria-label="قائمة الملف الشخصي"
+        aria-label="قائمة الحساب"
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen((v) => !v)}
       >
-        {avatar}
-        {identity}
         <svg
           className={cn(
-            "ms-0.5 hidden size-3.5 shrink-0 text-text-3 transition-transform sm:block",
+            "size-3.5 transition-transform",
             open && "rotate-180",
           )}
           viewBox="0 0 24 24"
@@ -574,7 +579,7 @@ function ProfileMenu({
         <div
           className="absolute end-0 top-[calc(100%+6px)] z-50 w-64 overflow-hidden rounded-md border border-border bg-surface shadow-modal"
           role="menu"
-          aria-label="قائمة الملف الشخصي"
+          aria-label="قائمة الحساب"
         >
           <div className="border-b border-border px-3 py-2.5">
             <div className="truncate text-sm font-semibold text-text">
@@ -582,64 +587,7 @@ function ProfileMenu({
             </div>
             <div className="truncate text-[11px] text-text-3">{dept}</div>
           </div>
-          <div className="border-b border-border p-1.5">
-            <Link
-              href="/profile"
-              role="menuitem"
-              className={cn(
-                "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-semibold no-underline transition-colors [&>svg]:size-4 [&>svg]:shrink-0",
-                currentPage === "profile"
-                  ? "bg-primary/10 text-primary"
-                  : "text-text hover:bg-surface-2",
-              )}
-              onClick={() => setOpen(false)}
-            >
-              <ProfileIcon />
-              <span>البروفايل</span>
-            </Link>
-          </div>
-          {hasMenu ? (
-          <div className="max-h-80 overflow-y-auto py-1.5">
-            {systemFieldsItems.length > 0 ? (
-              <div className="px-1.5 pb-1" role="group" aria-label={SYSTEM_FIELDS_GROUP}>
-                <div className="flex items-center gap-1.5 px-2.5 pb-1 pt-1 text-[10px] font-medium uppercase tracking-wider text-text-3">
-                  <NavIcon d={SYSTEM_FIELDS_GROUP_ICON} size={12} />
-                  <span>{SYSTEM_FIELDS_GROUP}</span>
-                </div>
-                {systemFieldsItems.map((item) => (
-                  <ProfileMenuLink
-                    key={item.id}
-                    item={item}
-                    active={currentPage === item.id}
-                    onPrefetch={onPrefetch}
-                    onNavigate={() => setOpen(false)}
-                  />
-                ))}
-              </div>
-            ) : null}
-            {systemFieldsItems.length > 0 && settingsItems.length > 0 ? (
-              <div className="mx-2 my-1 border-t border-border" />
-            ) : null}
-            {settingsItems.length > 0 ? (
-              <div className="px-1.5 pb-1" role="group" aria-label={SETTINGS_GROUP}>
-                <div className="flex items-center gap-1.5 px-2.5 pb-1 pt-1 text-[10px] font-medium uppercase tracking-wider text-text-3">
-                  <NavIcon d={SETTINGS_GROUP_ICON} size={12} />
-                  <span>{SETTINGS_GROUP}</span>
-                </div>
-                {settingsItems.map((item) => (
-                  <ProfileMenuLink
-                    key={item.id}
-                    item={item}
-                    active={currentPage === item.id}
-                    onPrefetch={onPrefetch}
-                    onNavigate={() => setOpen(false)}
-                  />
-                ))}
-              </div>
-            ) : null}
-          </div>
-          ) : null}
-          <div className={cn(hasMenu && "border-t border-border")}>
+          <div>
             <ThemeSwitch />
           </div>
           <div className="border-t border-border p-1.5">
@@ -674,26 +622,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const navPages = useMemo(() => rolePages, [rolePages]);
 
-  const settingsNavItems = useMemo(
-    () => settingsNavForRole(rolePages),
+  const systemSettingsPrimaryItems = useMemo(
+    () => systemSettingsPrimaryNavForRole(rolePages),
     [rolePages],
   );
-
-  const systemFieldsNavItems = useMemo(
-    () => systemFieldsNavForRole(rolePages),
+  const systemSettingsFieldsItems = useMemo(
+    () => systemSettingsFieldsNavForRole(rolePages),
     [rolePages],
   );
-
-  const showSystemFieldsCatalog = rolePages.includes(
-    SYSTEM_FIELDS_CATALOG_NAV_ITEM.id,
-  );
-  const showSystemScreenCatalog = rolePages.includes(
-    SYSTEM_SCREEN_CATALOG_NAV_ITEM.id,
-  );
-  const showGeneralGroup = showSystemFieldsCatalog || showSystemScreenCatalog;
-
-  const showSystemFieldsGroup = systemFieldsNavItems.some((i) => i.available);
-  const showSettingsGroup = settingsNavItems.some((i) => i.available);
+  const showGeneralGroup =
+    systemSettingsPrimaryItems.length > 0 ||
+    systemSettingsFieldsItems.length > 0;
 
   const navRuns = useMemo(() => navRunsForRole(navPages, role), [navPages, role]);
 
@@ -1093,7 +1032,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   const shouldInsertGeneral =
                     !generalNavInserted &&
                     showGeneralGroup &&
-                    item.id === "financial";
+                    run.items[run.items.length - 1]?.id === item.id &&
+                    ri === navRuns.length - 1;
                   if (shouldInsertGeneral) {
                     // eslint-disable-next-line react-hooks/immutability -- render-local marker used only within this render pass.
                     generalNavInserted = true;
@@ -1103,27 +1043,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           عام
                         </div>
                       </div>,
+                      <SystemSettingsNavDropdown
+                        key="system-settings-dropdown"
+                        primaryItems={systemSettingsPrimaryItems}
+                        fieldsItems={systemSettingsFieldsItems}
+                        currentPage={currentPage}
+                        onPrefetch={prefetchPage}
+                      />,
                     );
-                    if (showSystemFieldsCatalog) {
-                      nodes.push(
-                        <NavRow
-                          key={SYSTEM_FIELDS_CATALOG_NAV_ITEM.id}
-                          item={SYSTEM_FIELDS_CATALOG_NAV_ITEM}
-                          active={isSystemFieldsCatalogPage(currentPage)}
-                          onPrefetch={prefetchPage}
-                        />,
-                      );
-                    }
-                    if (showSystemScreenCatalog) {
-                      nodes.push(
-                        <NavRow
-                          key={SYSTEM_SCREEN_CATALOG_NAV_ITEM.id}
-                          item={SYSTEM_SCREEN_CATALOG_NAV_ITEM}
-                          active={isSystemScreenCatalogPage(currentPage)}
-                          onPrefetch={prefetchPage}
-                        />,
-                      );
-                    }
                   }
                   const shouldInsertActiveTx =
                     !activeTransactionsInserted &&
@@ -1170,22 +1097,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   عام
                 </div>
               </div>
-              {showSystemFieldsCatalog ? (
-                <NavRow
-                  key={SYSTEM_FIELDS_CATALOG_NAV_ITEM.id}
-                  item={SYSTEM_FIELDS_CATALOG_NAV_ITEM}
-                  active={isSystemFieldsCatalogPage(currentPage)}
-                  onPrefetch={prefetchPage}
-                />
-              ) : null}
-              {showSystemScreenCatalog ? (
-                <NavRow
-                  key={SYSTEM_SCREEN_CATALOG_NAV_ITEM.id}
-                  item={SYSTEM_SCREEN_CATALOG_NAV_ITEM}
-                  active={isSystemScreenCatalogPage(currentPage)}
-                  onPrefetch={prefetchPage}
-                />
-              ) : null}
+              <SystemSettingsNavDropdown
+                key="system-settings-dropdown-fallback"
+                primaryItems={systemSettingsPrimaryItems}
+                fieldsItems={systemSettingsFieldsItems}
+                currentPage={currentPage}
+                onPrefetch={prefetchPage}
+              />
             </>
           ) : null}
           </nav>
@@ -1266,12 +1184,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               chipName={chipName}
               initials={def.init}
               dept={def.dept}
-              systemFieldsItems={
-                showSystemFieldsGroup ? systemFieldsNavItems : []
-              }
-              settingsItems={showSettingsGroup ? settingsNavItems : []}
               currentPage={currentPage}
-              onPrefetch={prefetchPage}
               onLogout={handleLogout}
             />
           </div>

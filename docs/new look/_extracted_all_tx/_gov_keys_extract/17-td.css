@@ -1,0 +1,8 @@
+.td{padding:14px 16px;display:flex;align-items:center;min-width:0;overflow:hidden;}
+  .td:has(.team),.td:has(.po-wrap),.td:has(.actions){overflow:visible;}
+  .td > *{min-width:0;}
+  .td.c{justify-content:center;}
+  .po{color:var(--gold-d);font-weight:700;font-size:13.5px;cursor:pointer;}
+  .po:hover{text-decoration:underline;}
+  .po-wrap{position:relative;width:fit-content;}
+  .po-tip{position:abs

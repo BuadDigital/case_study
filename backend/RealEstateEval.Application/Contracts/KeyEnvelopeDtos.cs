@@ -73,6 +73,7 @@ public class KeyEnvelopeDto
     public string CreatedByName { get; init; } = "";
     public DateTime CreatedAtUtc { get; init; }
     public DateTime UpdatedAtUtc { get; init; }
+    public Guid? OperationsTaskId { get; init; }
     public IReadOnlyList<KeyEnvelopeAssignmentDto> Assignments { get; init; } = [];
     public IReadOnlyList<KeyEnvelopeHandoffDto> Handoffs { get; init; } = [];
     public IReadOnlyList<KeyEnvelopeTimelineEntryDto> Timeline { get; init; } = [];
@@ -132,6 +133,8 @@ public class CreateKeyEnvelopeRequest
     public string? ContactPhones { get; init; }
     [MaxLength(4000)]
     public string? Notes { get; init; }
+    /// <summary>Optional link to the court_visit operations task.</summary>
+    public Guid? OperationsTaskId { get; init; }
     public IReadOnlyList<KeyEnvelopeAssignmentInput>? Assignments { get; init; }
 }
 

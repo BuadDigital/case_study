@@ -1,0 +1,1 @@
+function keyAtt(k){ return ({receipt:['خطاب الاستلام','#2f7a4d'],photo:['صورة الظرف','#378add'],letter:['خطاب الطرف الثالث','#b58a3c']})[k]||[k,'#8a8d96']; }

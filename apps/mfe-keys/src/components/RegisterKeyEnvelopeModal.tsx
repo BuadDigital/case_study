@@ -135,6 +135,7 @@ export function RegisterKeyEnvelopeModal({
   onClose,
   onRegistered,
   initialRequestNumber = "",
+  operationsTaskId,
 }: {
   open: boolean;
   busy: boolean;
@@ -142,6 +143,8 @@ export function RegisterKeyEnvelopeModal({
   onRegistered: (envelopeId: string) => void;
   /** Prefill رقم الطلب when opening from a court-visit task. */
   initialRequestNumber?: string;
+  /** Link envelope to the court_visit operations task (from ?task=). */
+  operationsTaskId?: string;
 }) {
   const { showToast } = useToast();
   const [source, setSource] = useState<SourceKind>("court");
@@ -351,6 +354,7 @@ export function RegisterKeyEnvelopeModal({
       photoAttachmentId: photo?.attachmentId,
       contactPhones: contact,
       notes,
+      operationsTaskId: operationsTaskId?.trim() || undefined,
       assignments: linked.map((p) => ({
         deedNumber: p.deedNumber,
         propertyId: p.propertyId,

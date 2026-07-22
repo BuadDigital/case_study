@@ -1,0 +1,2 @@
+function keyRef(e){ var r=e.ref; if(!r){ var n=(''+e.id).replace(/\D/g,'').slice(-3)||'1'; r='000'+n; } return ('ENV-2026-'+(''+r).replace(/^.*?(\d+)$/,'$1')).replace(/-(\d+)$/,function(_,d){ return '-'+('000'+d).slice(-3); }); }
+  var KEY_LS='cs_key_env_v1';

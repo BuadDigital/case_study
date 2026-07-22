@@ -1136,6 +1136,9 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
+                    b.Property<Guid?>("OperationsTaskId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("PhotoAttachmentId")
                         .HasColumnType("uuid");
 
@@ -1168,6 +1171,8 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.HasIndex("CreatedAtUtc");
 
                     b.HasIndex("FeeGenerated");
+
+                    b.HasIndex("OperationsTaskId");
 
                     b.HasIndex("RequestNumber");
 
@@ -1436,6 +1441,9 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
+
+                    b.Property<string>("CourtVisitResultJson")
+                        .HasColumnType("jsonb");
 
                     b.Property<string>("DeedsJson")
                         .HasColumnType("jsonb");

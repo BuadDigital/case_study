@@ -1,0 +1,7 @@
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 22px;border-bottom:1px solid var(--border);}
+  .modal-head h2{margin:0;font-size:16px;font-weight:800;color:var(--heading);}
+  .modal-x{width:32px;height:32px;display:grid;place-items:center;border:none;background:var(--surface-2);border-radius:9px;color:var(--text-2);font-size:15px;cursor:pointer;transition:background .15s,color .15s;}
+  .modal-x:hover{background:var(--row-hover);color:var(--heading);}
+  .modal-body{padding:20px 22px;}
+  .modal-error{background:color-mix(in srgb,#d9694f 12%,transparent);color:#a32d2d;border:1px solid color-mix(in srgb,#d9694f 30%,transparent);border-radius:10px;padding:10px 13px;font-size:12.5px;font-weight:600;margin-bottom:16px;}
+  .modal-error[hidden]{display:none;}

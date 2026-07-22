@@ -464,6 +464,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(x => x.CreatedAtUtc);
             e.HasIndex(x => x.Status);
             e.HasIndex(x => x.FeeGenerated);
+            e.HasIndex(x => x.OperationsTaskId);
             e.HasMany(x => x.Assignments)
                 .WithOne(x => x.Envelope!)
                 .HasForeignKey(x => x.EnvelopeId)
@@ -589,6 +590,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.LetterRowsJson).HasColumnType("jsonb");
             e.Property(x => x.CommentsJson).HasColumnType("jsonb");
             e.Property(x => x.RemindersJson).HasColumnType("jsonb");
+            e.Property(x => x.CourtVisitResultJson).HasColumnType("jsonb");
             e.HasIndex(x => x.DisplayId).IsUnique();
             e.HasIndex(x => x.AssigneeId);
             e.HasIndex(x => x.Status);

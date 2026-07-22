@@ -1,0 +1,9 @@
+.fld{display:flex;flex-direction:column;gap:6px;}
+  .fld.full{grid-column:1 / -1;}
+  .fld label{font-size:12px;font-weight:600;color:var(--text-2);}
+  .fld input,.fld select,.fld textarea{font-family:inherit;padding:9px 12px;border:1px solid var(--border-2);border-radius:9px;background:var(--surface-2);color:var(--text);font-size:13px;outline:none;transition:border-color .15s,box-shadow .15s;}
+  .fld textarea{resize:vertical;}
+  .fld input:focus,.fld select:focus,.fld textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px color-mix(in srgb,var(--gold) 20%,transparent);}
+  .fld.err input,.fld.err select{border-color:#d9694f;box-shadow:0 0 0 3px color-mix(in srgb,#d9694f 18%,transparent);}
+  .fld .msg{font-size:11px;color:#d9694f;font-weight:600;}
+  .modal-foot{display:flex;justify-con

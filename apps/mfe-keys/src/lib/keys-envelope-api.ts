@@ -53,6 +53,7 @@ function mapEnvelope(dto: KeyEnvelopeDto): KeyEnvelopeRow {
     feeAmountSar: dto.feeAmountSar,
     createdByName: dto.createdByName,
     createdAtUtc: dto.createdAtUtc,
+    operationsTaskId: dto.operationsTaskId ?? null,
     assignments: dto.assignments ?? [],
     handoffs: dto.handoffs ?? [],
     timeline: dto.timeline ?? [],
@@ -200,6 +201,7 @@ export type CreateEnvelopeInput = {
   thirdPartyLetterAttachmentId?: string;
   contactPhones?: string;
   notes?: string;
+  operationsTaskId?: string;
   assignments?: { deedNumber: string; propertyId?: string }[];
 };
 
@@ -221,6 +223,7 @@ export async function registerKeyEnvelope(
     thirdPartyLetterAttachmentId: input.thirdPartyLetterAttachmentId ?? null,
     contactPhones: input.contactPhones?.trim() || null,
     notes: input.notes?.trim() || null,
+    operationsTaskId: input.operationsTaskId?.trim() || null,
     assignments: input.assignments?.map((a) => ({
       deedNumber: a.deedNumber,
       propertyId: a.propertyId ?? null,

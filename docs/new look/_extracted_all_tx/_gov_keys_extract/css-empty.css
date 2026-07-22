@@ -1,0 +1,8 @@
+.empty{padding:54px 20px;text-align:center;color:var(--text-3);}
+  .empty svg{margin-bottom:12px;opacity:.6;}
+  .empty .t{font-size:14px;font-weight:700;color:var(--text-2);}
+  .empty .s{font-size:13px;margin-top:4px;}
+
+  /* pagination */
+  .pager{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 4px 0;flex-wrap:wrap;}
+  .pager .info{font-size:13px;color:var(--tex

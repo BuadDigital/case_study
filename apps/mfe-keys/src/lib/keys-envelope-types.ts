@@ -71,6 +71,7 @@ export type KeyEnvelopeRow = {
   feeAmountSar?: number | null;
   createdByName: string;
   createdAtUtc: string;
+  operationsTaskId?: string | null;
   assignments: KeyEnvelopeAssignment[];
   handoffs: KeyEnvelopeHandoff[];
   timeline: KeyEnvelopeTimelineEntry[];

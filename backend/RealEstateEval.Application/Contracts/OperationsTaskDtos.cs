@@ -33,6 +33,36 @@ public class OperationsTaskReminderDto
     public bool Auto { get; set; }
 }
 
+public class OperationsTaskCourtVisitDeedStatementDto
+{
+    public string Deed { get; set; } = "";
+    public string Text { get; set; } = "";
+}
+
+public class OperationsTaskCourtVisitContactDto
+{
+    /// <summary>property | deed number</summary>
+    public string Scope { get; set; } = "property";
+    public string Name { get; set; } = "";
+    public string? Role { get; set; }
+    public string? Phone { get; set; }
+    public string? Note { get; set; }
+}
+
+/// <summary>
+/// Court-visit close outcome. Kind: received | other_party | none | other.
+/// </summary>
+public class OperationsTaskCourtVisitResultDto
+{
+    public string Kind { get; set; } = "";
+    /// <summary>Required when Kind = other.</summary>
+    public string? Other { get; set; }
+    /// <summary>Unified court statement at request level.</summary>
+    public string? Statement { get; set; }
+    public IReadOnlyList<OperationsTaskCourtVisitDeedStatementDto> PerDeed { get; set; } = [];
+    public IReadOnlyList<OperationsTaskCourtVisitContactDto> Contacts { get; set; } = [];
+}
+
 public class OperationsTaskDto
 {
     public string Id { get; set; } = "";
@@ -57,6 +87,7 @@ public class OperationsTaskDto
     public IReadOnlyList<OperationsTaskLetterRowDto> LetterRows { get; set; } = [];
     public IReadOnlyList<OperationsTaskCommentDto> Comments { get; set; } = [];
     public IReadOnlyList<OperationsTaskReminderDto> Reminders { get; set; } = [];
+    public OperationsTaskCourtVisitResultDto? CourtVisitResult { get; set; }
 }
 
 public class CreateOperationsTaskRequest
@@ -97,6 +128,8 @@ public class PatchOperationsTaskRequest
     public DateTime? DueAtUtc { get; set; }
     public string? Title { get; set; }
     public string? Description { get; set; }
+    /// <summary>Required when completing a court_visit task.</summary>
+    public OperationsTaskCourtVisitResultDto? CourtVisitResult { get; set; }
 }
 
 public class ReassignOperationsTaskRequest
