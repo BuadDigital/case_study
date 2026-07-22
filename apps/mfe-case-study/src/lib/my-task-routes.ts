@@ -75,7 +75,7 @@ export function isPropertyInspectionWorkspacePath(pathname: string): boolean {
   return parts[0] === "property-inspection" && parts.length >= 2;
 }
 
-/** Full-page workspace for المراجع الحكومي (المراجعة الحكومية). */
+/** Full-page workspace for legacy party government-review tasks (CDO / in-flight). */
 export function governmentReviewWorkspacePath(taskId: string): string {
   return `/government-review/${encodeURIComponent(taskId)}`;
 }
@@ -83,6 +83,15 @@ export function governmentReviewWorkspacePath(taskId: string): string {
 export function isGovernmentReviewWorkspacePath(pathname: string): boolean {
   const parts = pathname.split("/").filter(Boolean);
   return parts[0] === "government-review" && parts.length >= 2;
+}
+
+/** Operations tasks hub (court visits / reviewer work). */
+export function operationsTasksPath(): string {
+  return "/operations-tasks";
+}
+
+export function operationsTaskPath(taskId: string): string {
+  return `/operations-tasks?task=${encodeURIComponent(taskId)}`;
 }
 
 /** Full-page workspace for منسق التقييم (استلام التقييم). */
@@ -124,7 +133,9 @@ export function partyTaskWorkspacePath(task: WorkflowTask): string | undefined {
     case "valuation-coordination":
       return valuationCoordinationWorkspacePath(task.id);
     case "government-review":
-      return governmentReviewWorkspacePath(task.id);
+      // Reviewer/CDO hub is operations-tasks; party form remains at
+      // governmentReviewWorkspacePath for GovernmentReviewView only.
+      return operationsTasksPath();
     default:
       return undefined;
   }

@@ -41,6 +41,7 @@ export * from "./prototype/page-access";
 export * from "./prototype/settings-nav";
 export * from "./prototype/system-fields-nav";
 export * from "./prototype/system-settings-nav";
+export * from "./prototype/orphan-screens-nav";
 export * from "./prototype/property-fields-catalog";
 export * from "./prototype/field-dictionary";
 export * from "./prototype/prototype-modules-api-config";

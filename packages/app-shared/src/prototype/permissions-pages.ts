@@ -1,11 +1,13 @@
 import type { PageId } from "@platform/types";
 import { ALL_PROTOTYPE_PAGES } from "@platform/app-shared/prototype/constants";
 import { SYSTEM_FIELDS_PAGE_IDS } from "@platform/app-shared/prototype/system-fields-nav";
+import { ORPHAN_SCREENS_PAGE_IDS } from "@platform/app-shared/prototype/orphan-screens-nav";
 import { defaultLandingPage } from "./page-access";
 
 const ALL_PAGE_SET = new Set<string>([
   ...ALL_PROTOTYPE_PAGES,
   ...SYSTEM_FIELDS_PAGE_IDS,
+  ...ORPHAN_SCREENS_PAGE_IDS,
 ]);
 
 /** Map API permission page ids to shell navigation pages. */
@@ -23,6 +25,12 @@ export function pagesFromPermissions(
   if (!dashboardAllowed) {
     merged.delete("dashboard");
   }
+  // الشاشات اليتيمة (مثل مكاتب الرفع والمراجعة الحكومية القديمة) — للمسؤول فقط
+  if (role !== "cdo") {
+    for (const pageId of ORPHAN_SCREENS_PAGE_IDS) {
+      merged.delete(pageId);
+    }
+  }
   // أخصائي/مشرف دراسة الحالة والمراجع الحكومي — بدون «جميع المعاملات»
   if (
     role === "case-specialist" ||
@@ -30,6 +38,10 @@ export function pagesFromPermissions(
     role === "government-reviewer"
   ) {
     merged.delete("all-transactions");
+  }
+  // المراجع الحكومي يعمل من المهام التشغيلية — لا يُدفع لقائمة المراجعة الحكومية القديمة
+  if (role === "government-reviewer") {
+    merged.delete("government-review");
   }
 
   if (merged.size === 0) merged.add(defaultLandingPage([]));

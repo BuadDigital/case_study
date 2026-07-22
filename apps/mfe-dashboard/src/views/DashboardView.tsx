@@ -311,7 +311,7 @@ export function DashboardView() {
           </SubpagePanel>
           <SubpagePanel>
             <SubpageHeader title="المراجعة الحكومية">
-              {panelLink("/government-review", "عرض الكل")}
+              {panelLink("/operations-tasks", "عرض الكل")}
             </SubpageHeader>
             <Table pending={!reportingReady}>
               <THead>
@@ -335,11 +335,7 @@ export function DashboardView() {
                   (reporting?.recentGovernmentReviews ?? []).map((row) => (
                     <Tr
                       key={row.taskId}
-                      onClick={() =>
-                        router.push(
-                          `/government-review/${encodeURIComponent(row.taskId)}`,
-                        )
-                      }
+                      onClick={() => router.push("/operations-tasks")}
                     >
                       <Td className="font-medium text-primary-light">
                         {row.poNumber}

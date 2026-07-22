@@ -96,11 +96,24 @@ public sealed class FinancialReportService : IFinancialReportService
 
         var enfazLines = await _db.PoEnfazRevenueLines.AsNoTracking().ToListAsync(cancellationToken);
         var keyReceiptFees = await _db.KeyReceiptFeeCharges.AsNoTracking().ToListAsync(cancellationToken);
+        var visitFees = await _db.CourtVisitFeeCharges.AsNoTracking().ToListAsync(cancellationToken);
         var keyReceiptTotal = keyReceiptFees.Sum(c => c.AmountSar);
+        var visitFeeTotal = visitFees.Sum(c => c.AmountSar);
         var revenueTotal = enfazLines
             .Where(l => l.IncludedInBilling && l.TotalFeeSar > 0)
             .Sum(l => l.TotalFeeSar) + keyReceiptTotal;
-        var profitMargin = revenueTotal - externalCosts;
+        var profitMargin = revenueTotal - (externalCosts + visitFeeTotal);
+
+        if (visitFeeTotal > 0)
+        {
+            costRows.Add(new FinancialCostRowDto
+            {
+                Name = "أتعاب الزيارة",
+                Type = "free",
+                Cost = FormatSar(visitFeeTotal),
+                Category = "زيارة محكمة",
+            });
+        }
 
         if (keyReceiptTotal > 0)
         {
@@ -121,10 +134,12 @@ public sealed class FinancialReportService : IFinancialReportService
         {
             PeriodLabel = CurrentPeriodLabel(),
             RevenueTotal = FormatSar(revenueTotal),
-            ExternalCostsTotal = FormatSar(externalCosts),
+            ExternalCostsTotal = FormatSar(externalCosts + visitFeeTotal),
             ProfitMarginTotal = FormatSar(profitMargin),
             ProfitMarginPercentLabel = MarginPercentLabel(revenueTotal, profitMargin),
-            PendingPayablesTotal = FormatSar(pendingPayables),
+            PendingPayablesTotal = FormatSar(pendingPayables + visitFees
+                .Where(c => c.Status == CourtVisitFeeStatuses.Open)
+                .Sum(c => c.AmountSar)),
             RevenueGrandTotal = FormatSar(revenueTotal),
             RevenueRows = revenueRows,
             CostRows = costRows,

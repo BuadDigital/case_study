@@ -400,6 +400,30 @@ public class KeyEnvelopesServiceTests
         Assert.True(row.Key);
     }
 
+    [Fact]
+    public async Task CreateAsync_court_envelope_does_not_create_visit_fee_charge()
+    {
+        await using var db = CreateDb();
+        // Seed distinct pricing so visit vs key-receipt amounts differ.
+        db.PartyFeePricingTables.Add(new PartyFeePricingTable
+        {
+            Id = Guid.NewGuid(),
+            Name = "gov-test",
+            Category = "government-review",
+            IsActive = true,
+            GovernmentReviewFeeSar = 400m,
+            KeyReceiptFeeSar = 275m,
+            UpdatedAtUtc = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        var envelope = await CreateCourtEnvelopeAsync(db, CreateService(db));
+        Assert.True(envelope.FeeGenerated);
+        Assert.Equal(275m, envelope.FeeAmountSar);
+        Assert.Single(db.KeyReceiptFeeCharges);
+        Assert.Empty(db.CourtVisitFeeCharges);
+    }
+
     private static KeyEnvelopesService CreateService(ApplicationDbContext db) =>
         new(db, new PropertyAccessHoldService(db));
 

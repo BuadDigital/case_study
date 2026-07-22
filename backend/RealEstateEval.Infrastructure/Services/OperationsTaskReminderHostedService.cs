@@ -42,6 +42,9 @@ public sealed class OperationsTaskReminderHostedService : BackgroundService
                 var n = await tasks.ProcessDueAutoRemindersAsync(stoppingToken);
                 if (n > 0)
                     _logger.LogInformation("Operations tasks auto-reminded: {Count}", n);
+                var paused = await tasks.ProcessOverLimitPauseRemindersAsync(stoppingToken);
+                if (paused > 0)
+                    _logger.LogInformation("Operations tasks pause over-limit reminded: {Count}", paused);
             }
             catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
             {

@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { LIVE_QUEUE_POLL_INTERVAL_MS } from "@platform/app-shared/query/live-query";
-import { loadOperationsTasks } from "../lib/prototype/operations-tasks-storage";
+import { loadOperationsTasks, loadCourtVisitFees } from "../lib/prototype/operations-tasks-storage";
 
 const STALE_MS = 30_000;
 
@@ -22,5 +22,18 @@ export function useOperationsTasksQuery(options?: {
     queryFn: () => loadOperationsTasks({ assigneeId, createdBy, status }),
     staleTime: STALE_MS,
     refetchInterval: options?.live ? LIVE_QUEUE_POLL_INTERVAL_MS : false,
+  });
+}
+
+export function useCourtVisitFeesQuery(options?: {
+  creditAssigneeId?: string;
+  enabled?: boolean;
+}) {
+  const creditAssigneeId = options?.creditAssigneeId?.trim() || undefined;
+  return useQuery({
+    queryKey: prototypeKeys.courtVisitFees({ creditAssigneeId }),
+    queryFn: () => loadCourtVisitFees({ creditAssigneeId }),
+    enabled: options?.enabled ?? true,
+    staleTime: STALE_MS,
   });
 }

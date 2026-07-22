@@ -41,6 +41,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<KeyEnvelopeTimelineEntry> KeyEnvelopeTimelineEntries => Set<KeyEnvelopeTimelineEntry>();
     public DbSet<PropertyCourtAccess> PropertyCourtAccesses => Set<PropertyCourtAccess>();
     public DbSet<KeyReceiptFeeCharge> KeyReceiptFeeCharges => Set<KeyReceiptFeeCharge>();
+    public DbSet<CourtVisitFeeCharge> CourtVisitFeeCharges => Set<CourtVisitFeeCharge>();
     public DbSet<FileAttachment> FileAttachments => Set<FileAttachment>();
     public DbSet<InternalDelegationLetterSet> InternalDelegationLetterSets => Set<InternalDelegationLetterSet>();
     public DbSet<OperationsTask> OperationsTasks => Set<OperationsTask>();
@@ -549,6 +550,20 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(x => x.CollectionStatus);
         });
 
+        builder.Entity<CourtVisitFeeCharge>(e =>
+        {
+            e.ToTable("CourtVisitFeeCharges", DatabaseSchemas.Financial);
+            e.Property(x => x.TaskDisplayId).HasMaxLength(32);
+            e.Property(x => x.PoNumber).HasMaxLength(64);
+            e.Property(x => x.CreditAssigneeId).HasMaxLength(128);
+            e.Property(x => x.CreditAssigneeName).HasMaxLength(256);
+            e.Property(x => x.AmountSar).HasPrecision(12, 2);
+            e.Property(x => x.Status).HasMaxLength(32);
+            e.HasIndex(x => x.OperationsTaskId).IsUnique();
+            e.HasIndex(x => x.CreditAssigneeId);
+            e.HasIndex(x => x.Status);
+        });
+
         builder.Entity<FileAttachment>(e =>
         {
             e.ToTable("FileAttachments", DatabaseSchemas.Attachments);
@@ -591,6 +606,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.CommentsJson).HasColumnType("jsonb");
             e.Property(x => x.RemindersJson).HasColumnType("jsonb");
             e.Property(x => x.CourtVisitResultJson).HasColumnType("jsonb");
+            e.Property(x => x.PauseReason).HasMaxLength(2000);
+            e.Property(x => x.CancelReason).HasMaxLength(2000);
+            e.Property(x => x.OriginalAssigneeId).HasMaxLength(128);
+            e.Property(x => x.OriginalAssigneeName).HasMaxLength(256);
+            e.Property(x => x.CreditAssigneeId).HasMaxLength(128);
+            e.Property(x => x.CreditAssigneeName).HasMaxLength(256);
             e.HasIndex(x => x.DisplayId).IsUnique();
             e.HasIndex(x => x.AssigneeId);
             e.HasIndex(x => x.Status);

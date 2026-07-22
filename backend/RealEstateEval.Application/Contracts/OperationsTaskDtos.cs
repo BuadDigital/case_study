@@ -88,6 +88,34 @@ public class OperationsTaskDto
     public IReadOnlyList<OperationsTaskCommentDto> Comments { get; set; } = [];
     public IReadOnlyList<OperationsTaskReminderDto> Reminders { get; set; } = [];
     public OperationsTaskCourtVisitResultDto? CourtVisitResult { get; set; }
+    public string? PauseReason { get; set; }
+    public string? PausedAt { get; set; }
+    public string? OriginalAssigneeId { get; set; }
+    public string? OriginalAssigneeName { get; set; }
+    public string? CreditAssigneeId { get; set; }
+    public string? CreditAssigneeName { get; set; }
+    /// <summary>ISO when assignee confirmed receipt; null = بانتظار المنفّذ.</summary>
+    public string? ReceiptConfirmedAt { get; set; }
+    /// <summary>Required reason when status is cancelled.</summary>
+    public string? CancelReason { get; set; }
+    /// <summary>Linked key envelope id when registered against this task.</summary>
+    public string? LinkedEnvelopeId { get; set; }
+    /// <summary>Visit fee stamped when court_visit completed (null if not generated).</summary>
+    public decimal? VisitFeeAmountSar { get; set; }
+}
+
+/// <summary>أتعاب الزيارة report row (ops court_visit complete).</summary>
+public class CourtVisitFeeReportRowDto
+{
+    public Guid Id { get; set; }
+    public Guid OperationsTaskId { get; set; }
+    public string TaskDisplayId { get; set; } = "";
+    public string? PoNumber { get; set; }
+    public string CreditAssigneeId { get; set; } = "";
+    public string CreditAssigneeName { get; set; } = "";
+    public decimal AmountSar { get; set; }
+    public string Status { get; set; } = "";
+    public DateTime CreatedAtUtc { get; set; }
 }
 
 public class CreateOperationsTaskRequest
@@ -130,6 +158,15 @@ public class PatchOperationsTaskRequest
     public string? Description { get; set; }
     /// <summary>Required when completing a court_visit task.</summary>
     public OperationsTaskCourtVisitResultDto? CourtVisitResult { get; set; }
+    /// <summary>Required when Status = paused.</summary>
+    [MaxLength(2000)]
+    public string? PauseReason { get; set; }
+    /// <summary>Required when Status = cancelled.</summary>
+    [MaxLength(2000)]
+    public string? CancelReason { get; set; }
+    /// <summary>Execution-credit assignee when closing a reassigned task.</summary>
+    public string? CreditAssigneeId { get; set; }
+    public string? CreditAssigneeName { get; set; }
 }
 
 public class ReassignOperationsTaskRequest

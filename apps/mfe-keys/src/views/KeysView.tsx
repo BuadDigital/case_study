@@ -453,7 +453,7 @@ export function KeysView() {
             ready ? (
               <>
                 <span className="size-1.5 rounded-full bg-gold" />
-                {kpis.delivered} مستلمة، المتبقي في العهدة{" "}
+                {kpis.delivered} مسلَّمة · المتبقي في العهدة{" "}
                 <b className="text-[12.5px] text-[var(--gold-d)]">
                   {kpis.inCustody}
                 </b>
@@ -475,7 +475,7 @@ export function KeysView() {
           iconClass="bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#8a5e14]"
           label="بانتظار المطابقة الميدانية"
           value={ready ? kpis.pendingMatch : "—"}
-          sub="صكوك لم تُجرّب مفاتيحها"
+          sub="صكوك لم تُجرَّب مفاتيحها"
         />
         <KpiCell
           last
@@ -499,7 +499,7 @@ export function KeysView() {
         <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
           <OperationalToolbarSearch
             type="search"
-            placeholder="رقم الطلب، أو المحكمة أو الصك..."
+            placeholder="رقم الطلب أو المحكمة أو الصك..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             aria-label="بحث الظروف"
@@ -524,8 +524,8 @@ export function KeysView() {
             <EyeIcon open={showOut} blink={eyeBlink} />
             <span>
               {showOut
-                ? "إخفاء المستلمة (خارج العهدة)"
-                : "إظهار المستلمة (خارج العهدة)"}
+                ? "إخفاء المسلَّمة (خارج العهدة)"
+                : "إظهار المسلَّمة (خارج العهدة)"}
             </span>
           </Button>
           <OperationalToolbarSelect
@@ -582,7 +582,7 @@ export function KeysView() {
                       لا توجد ظروف مطابقة
                     </span>
                     <span className="mt-1 text-[13px]">
-                      جرب تعديل البحث أو الفلاتر
+                      جرّب تعديل البحث أو الفلاتر
                     </span>
                   </div>
                 </Td>

@@ -20,6 +20,7 @@
     "@financial/mfe": "*",
     "@keys/mfe": "*",
     "@settings/mfe": "*",
+    "@survey/mfe": "*",
     "@valuation/mfe": "*",
     "@platform/app-shared": "*",
     "@platform/api-client": "*",

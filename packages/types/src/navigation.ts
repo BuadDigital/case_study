@@ -17,6 +17,7 @@ export type PageId =
   | "valuation-coordination"
   | "property-appraisal"
   | "active-survey"
+  | "survey"
   | "party-fees"
   | "system-fields-catalog"
   | "system-screen-catalog"
@@ -96,6 +97,7 @@ export function isPageId(value: string): value is PageId {
     value === "valuation-coordination" ||
     value === "property-appraisal" ||
     value === "active-survey" ||
+    value === "survey" ||
     value === "party-fees" ||
     value === "system-fields-catalog" ||
     value === "system-screen-catalog" ||

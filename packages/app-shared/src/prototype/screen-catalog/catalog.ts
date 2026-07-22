@@ -10,6 +10,7 @@ import { SETTINGS_GROUP, SETTINGS_NAV } from "../settings-nav";
 import { SYSTEM_FIELDS_CATALOG_NAV_ITEM } from "../system-fields-catalog-nav";
 import { SYSTEM_SCREEN_CATALOG_NAV_ITEM } from "../system-screen-catalog-nav";
 import { SYSTEM_FIELDS_GROUP, SYSTEM_FIELDS_NAV } from "../system-fields-nav";
+import { ORPHAN_SCREENS_GROUP, ORPHAN_SCREENS_NAV } from "../orphan-screens-nav";
 import { screenCatalogPageName } from "./display-names";
 import { rolesWithPageAccess } from "./roles";
 import type { ScreenCatalogStatus, SystemScreenEntry } from "./types";
@@ -182,6 +183,15 @@ function buildMainPages(): SystemScreenEntry[] {
     }),
   );
 
+  ORPHAN_SCREENS_NAV.forEach((item) => {
+    add(
+      pageEntry(item, ORPHAN_SCREENS_GROUP, {
+        whereToFind: `القائمة الجانبية ← ${ORPHAN_SCREENS_GROUP} ← ${item.label}`,
+        notes: "شاشة يتيمة قديمة خارج سير العمل الحالي — ظاهرة للمسؤول فقط.",
+      }),
+    );
+  });
+
   return [...byPageId.values()];
 }
 
@@ -263,8 +273,11 @@ function buildTaskWorkRoutes(): SystemScreenEntry[] {
       id: "government-review-work",
       name: "إنجاز المراجعة الحكومية",
       path: "/government-review/{taskId}",
-      whereToFind: "المعاملات النشطة ← المراجعة الحكومية ← اختيار مهمة",
+      whereToFind:
+        "الشاشات اليتيمة ← المراجعة الحكومية (يتيم) ← اختيار مهمة (مسار عميق للمسؤول)",
       pageId: "government-review",
+      notes:
+        "مسار عمل قديم للمعاملات الجارية — القائمة تحت الشاشات اليتيمة للمسؤول فقط.",
     }),
     taskWorkEntry({
       id: "valuation-coordination-work",

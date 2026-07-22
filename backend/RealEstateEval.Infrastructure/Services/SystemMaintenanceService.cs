@@ -81,6 +81,7 @@ public class SystemMaintenanceService : ISystemMaintenanceService
                 await _db.KeyEnvelopeHandoffs.ExecuteDeleteAsync(cancellationToken);
                 await _db.KeyEnvelopeAssignments.ExecuteDeleteAsync(cancellationToken);
                 await _db.KeyReceiptFeeCharges.ExecuteDeleteAsync(cancellationToken);
+                await _db.CourtVisitFeeCharges.ExecuteDeleteAsync(cancellationToken);
                 await _db.KeyEnvelopes.ExecuteDeleteAsync(cancellationToken);
                 await _db.PropertyCourtAccesses.ExecuteDeleteAsync(cancellationToken);
                 await _db.ValuationRequests.ExecuteDeleteAsync(cancellationToken);

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -981,12 +982,15 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
 
     private async Task<decimal> ResolveKeyReceiptFeeAsync(CancellationToken cancellationToken)
     {
+        // Key-receipt fee only — never create a visit fee here.
+        // Visit fees are stamped on court_visit ops-task completion (CourtVisitFeeCharge).
         var pricing = await _db.PartyFeePricingTables.AsNoTracking()
-            .Where(x => x.Category == "government-review" && x.IsActive)
+            .Where(x => x.Category == PartyFeePricingCategories.GovernmentReview && x.IsActive)
             .OrderByDescending(x => x.UpdatedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
         if (pricing is not null && pricing.KeyReceiptFeeSar > 0)
             return pricing.KeyReceiptFeeSar;
+        // Legacy fallback when KeyReceiptFeeSar was never set independently.
         if (pricing is not null && pricing.GovernmentReviewFeeSar > 0)
             return pricing.GovernmentReviewFeeSar;
         return DefaultKeyReceiptFeeSar;

@@ -42,7 +42,7 @@ import {
   poPropertyPath,
   poListPath,
 } from "../lib/po-routes";
-import { governmentReviewWorkspacePath } from "../lib/my-task-routes";
+import { operationsTasksPath } from "../lib/my-task-routes";
 import { poPropertyToPropertyRow, buildCopyPriorTargetOptions } from "../lib/prototype/po-intake-storage";
 import {
   buildPoPropertiesRowMoreItems,
@@ -412,9 +412,7 @@ export function PoPropertiesPage({
                         className="cursor-pointer transition-colors hover:bg-[color-mix(in_srgb,var(--info-bg)_40%,var(--surface))]"
                         onClick={() => {
                           if (deedOpensReview && govReviewTask) {
-                            router.push(
-                              governmentReviewWorkspacePath(govReviewTask.id),
-                            );
+                            router.push(operationsTasksPath());
                             return;
                           }
                           router.push(detailHref);
@@ -437,7 +435,7 @@ export function PoPropertiesPage({
                               )}
                               title={
                                 deedOpensReview
-                                  ? "فتح نموذج المراجعة الحكومية"
+                                  ? "فتح المهام التشغيلية"
                                   : undefined
                               }
                             >

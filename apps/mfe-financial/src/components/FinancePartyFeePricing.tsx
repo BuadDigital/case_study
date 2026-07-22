@@ -65,7 +65,7 @@ const CATEGORIES: {
   {
     id: "government-review",
     label: "المراجعين الحكوميين",
-    hint: "أتعاب المراجع واستلام المفاتيح",
+    hint: "أتعاب الزيارة واستلام المفاتيح",
     partyLabel: "المراجعون",
   },
   {
@@ -733,7 +733,8 @@ export function FinancePartyFeePricing() {
                         أتعاب المراجع الحكومي
                       </h3>
                       <p className="m-0 mt-0.5 text-[11px] text-text-3">
-                        متعاون فرد فقط.
+                        أتعاب الزيارة تُستحق بإكمال مهمة زيارة محكمة؛ أتعاب
+                        الاستلام عند تسجيل الظرف مع الصورة. متعاون فرد فقط.
                       </p>
                     </div>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -742,7 +743,7 @@ export function FinancePartyFeePricing() {
                           htmlFor="fee-gov-review"
                           className="mb-1 text-[11px] font-semibold text-text-2"
                         >
-                          مراجع حكومي — فرد (ر.س)
+                          أتعاب الزيارة — فرد (ر.س)
                         </Label>
                         <MoneyInput
                           id="fee-gov-review"
@@ -761,14 +762,17 @@ export function FinancePartyFeePricing() {
                           htmlFor="fee-key-receipt"
                           className="mb-1 text-[11px] font-semibold text-text-2"
                         >
-                          استلام المفاتيح (ر.س)
+                          أتعاب استلام المفاتيح (ر.س)
                         </Label>
                         <MoneyInput
                           id="fee-key-receipt"
                           value={draft.keyReceiptFeeSar}
                           locked={locked}
                           onChange={(n) =>
-                            setDraft((d) => ({ ...d, keyReceiptFeeSar: n }))
+                            setDraft((d) => ({
+                              ...d,
+                              keyReceiptFeeSar: n,
+                            }))
                           }
                         />
                       </FormGroup>

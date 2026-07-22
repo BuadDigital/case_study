@@ -30,10 +30,10 @@ test.describe("Failures module", () => {
   });
 });
 
-test.describe("Government review queue", () => {
-  test("reviewer reaches government review and keys", async ({ page }) => {
+test.describe("Government reviewer ops hub", () => {
+  test("reviewer reaches operations tasks and keys", async ({ page }) => {
     await loginAs(page, RELEASE_USERS.governmentReviewer);
-    for (const pageId of ["government-review", "keys"] as const) {
+    for (const pageId of ["operations-tasks", "keys"] as const) {
       const meta = MODULE_PAGES.find((p) => p.id === pageId)!;
       await page.goto(pagePath(pageId), { waitUntil: "commit" });
       await waitForPageTitle(page, meta.title);

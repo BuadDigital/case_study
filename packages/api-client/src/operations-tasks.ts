@@ -70,6 +70,29 @@ export type OperationsTaskDto = {
   comments: OperationsTaskCommentDto[];
   reminders: { at: string; auto: boolean }[];
   courtVisitResult?: OperationsTaskCourtVisitResultDto | null;
+  pauseReason?: string | null;
+  pausedAt?: string | null;
+  originalAssigneeId?: string | null;
+  originalAssigneeName?: string | null;
+  creditAssigneeId?: string | null;
+  creditAssigneeName?: string | null;
+  /** ISO when assignee confirmed receipt; null = بانتظار المنفّذ */
+  receiptConfirmedAt?: string | null;
+  cancelReason?: string | null;
+  linkedEnvelopeId?: string | null;
+  visitFeeAmountSar?: number | null;
+};
+
+export type CourtVisitFeeReportRowDto = {
+  id: string;
+  operationsTaskId: string;
+  taskDisplayId: string;
+  poNumber?: string | null;
+  creditAssigneeId: string;
+  creditAssigneeName: string;
+  amountSar: number;
+  status: string;
+  createdAtUtc: string;
 };
 
 export type CreateOperationsTaskRequest = {
@@ -93,6 +116,10 @@ export type PatchOperationsTaskRequest = {
   title?: string;
   description?: string;
   courtVisitResult?: OperationsTaskCourtVisitResultDto;
+  pauseReason?: string;
+  cancelReason?: string;
+  creditAssigneeId?: string;
+  creditAssigneeName?: string;
 };
 
 export type ReassignOperationsTaskRequest = {
@@ -144,6 +171,27 @@ export async function listOperationsTasks(
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
     const data = await readJson<OperationsTaskDto[]>(res);
+    return { ok: true, data: Array.isArray(data) ? data : [] };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export async function listCourtVisitFees(
+  config: WorkOrdersApiConfig,
+  query?: { creditAssigneeId?: string },
+): Promise<ApiOk<CourtVisitFeeReportRowDto[]> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/operations-tasks/court-visit-fees${buildQuery({
+        creditAssigneeId: query?.creditAssigneeId,
+      })}`,
+      { headers: headers(config.token) },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    const data = await readJson<CourtVisitFeeReportRowDto[]>(res);
     return { ok: true, data: Array.isArray(data) ? data : [] };
   } catch {
     return { ok: false, kind: "network" };
