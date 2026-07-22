@@ -42,6 +42,12 @@ public class OperationsTasksController : ControllerBase
             ct));
     }
 
+    [HttpGet("court-visit-fees")]
+    public async Task<ActionResult<IReadOnlyList<CourtVisitFeeReportRowDto>>> ListCourtVisitFees(
+        [FromQuery] string? creditAssigneeId,
+        CancellationToken ct)
+        => Ok(await _tasks.ListCourtVisitFeesAsync(creditAssigneeId, ct));
+
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<OperationsTaskDto>> Get(Guid id, CancellationToken ct)
     {

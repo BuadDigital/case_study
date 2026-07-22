@@ -84,8 +84,8 @@ const POST_LOGIN_LANDING: Record<string, { path: string; title: string }> = {
   },
   [RELEASE_USERS.appraiser]: { path: "/po", title: "أوامر العمل" },
   [RELEASE_USERS.governmentReviewer]: {
-    path: "/government-review",
-    title: "المراجعة الحكومية",
+    path: "/operations-tasks",
+    title: "المهام",
   },
   [RELEASE_USERS.engineeringOffice]: {
     path: "/active-survey",
@@ -186,6 +186,7 @@ export const MODULE_PAGES: { id: string; title: string }[] = [
   { id: "valuation-requests", title: "طلبات التقييم" },
   { id: "property-inspection", title: "معاينة العقار" },
   { id: "government-review", title: "المراجعة الحكومية" },
+  { id: "operations-tasks", title: "المهام" },
   { id: "valuation-coordination", title: "استلام التقييم" },
   { id: "property-appraisal", title: "تقييم العقار" },
   { id: "active-survey", title: "الرفع المساحي" },
@@ -227,7 +228,7 @@ export const ROLE_MODULE_PAGES: Record<string, string[]> = {
     "system-screen-catalog",
   ],
   [RELEASE_USERS.governmentReviewer]: [
-    "government-review",
+    "operations-tasks",
     "keys",
     "system-screen-catalog",
   ],

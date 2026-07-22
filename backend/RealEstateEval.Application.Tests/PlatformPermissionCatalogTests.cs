@@ -42,6 +42,7 @@ public class PlatformPermissionCatalogTests
     [InlineData("government-reviewer", "failures")]
     [InlineData("government-reviewer", "party-fees")]
     [InlineData("government-reviewer", "po")]
+    [InlineData("government-reviewer", "operations-tasks")]
     [InlineData("section-supervisor", "failures")]
     [InlineData("financial-officer", "financial")]
     public void Prototype_role_grants_expected_page(string role, string page)
@@ -50,6 +51,22 @@ public class PlatformPermissionCatalogTests
         var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         PlatformPermissionCatalog.ApplyPrototypeRole(role, pages, capabilities);
         Assert.Contains(page, pages);
+    }
+
+    [Fact]
+    public void Government_reviewer_excludes_legacy_government_review_page()
+    {
+        var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        PlatformPermissionCatalog.ApplyPrototypeRole("government-reviewer", pages, capabilities);
+        Assert.DoesNotContain("government-review", pages);
+        Assert.Contains("operations-tasks", pages);
+    }
+
+    [Fact]
+    public void AllPages_includes_operations_tasks()
+    {
+        Assert.Contains("operations-tasks", PlatformPermissionCatalog.AllPages);
     }
 
     [Fact]
@@ -93,5 +110,23 @@ public class PlatformPermissionCatalogTests
         var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         PlatformPermissionCatalog.ApplyPrototypeRole("cdo", pages, capabilities);
         Assert.Contains("dashboard", pages);
+    }
+
+    [Fact]
+    public void Cdo_includes_orphan_survey_page()
+    {
+        var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        PlatformPermissionCatalog.ApplyPrototypeRole("cdo", pages, capabilities);
+        Assert.Contains("survey", pages);
+    }
+
+    [Fact]
+    public void General_manager_excludes_orphan_survey_page()
+    {
+        var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        PlatformPermissionCatalog.ApplyPrototypeRole("general-manager", pages, capabilities);
+        Assert.DoesNotContain("survey", pages);
     }
 }

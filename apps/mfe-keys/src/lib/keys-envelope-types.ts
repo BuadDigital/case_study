@@ -292,9 +292,10 @@ export function handoffStateLabel(status: string): string {
   switch (status) {
     case "pending_confirm":
       return "بانتظار التأكيد";
-    case "completed":
     case "confirmed":
-      return "مكتمل";
+      return "مؤكّد";
+    case "completed":
+      return "منجز";
     default:
       return status || "—";
   }

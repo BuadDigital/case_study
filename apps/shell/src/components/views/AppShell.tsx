@@ -38,6 +38,13 @@ import {
   type SystemSettingsNavItem,
   type SystemFieldsNavItem,
 } from "@platform/app-shared/prototype/system-settings-nav";
+import {
+  ORPHAN_SCREENS_GROUP,
+  ORPHAN_SCREENS_GROUP_ICON,
+  orphanScreensNavForRole,
+  isInOrphanScreensSection,
+  type OrphanScreenNavItem,
+} from "@platform/app-shared/prototype/orphan-screens-nav";
 import { isPartyTaskPage } from "@platform/app-shared/prototype/party-task-pages";
 import { decodeTaskParam, isPartyTaskWorkPath } from "@case-study/mfe";
 import { findPropertyForTask } from "@case-study/mfe";
@@ -470,6 +477,63 @@ function SystemSettingsNavDropdown({
   );
 }
 
+function OrphanScreensNavDropdown({
+  items,
+  currentPage,
+  onPrefetch,
+}: {
+  items: OrphanScreenNavItem[];
+  currentPage: PageId;
+  onPrefetch: (page: PageId) => void;
+}) {
+  const inSection = isInOrphanScreensSection(currentPage);
+  const [open, setOpen] = useState(inSection);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- auto-expand when route is under orphan screens.
+    if (inSection) setOpen(true);
+  }, [inSection]);
+
+  return (
+    <div className="my-0.5">
+      <button
+        type="button"
+        className={navItemClasses({
+          active: inSection,
+          toggle: true,
+        })}
+        aria-expanded={open}
+        aria-controls="nav-orphan-screens"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <NavIcon d={ORPHAN_SCREENS_GROUP_ICON} size={16} />
+        <span>{ORPHAN_SCREENS_GROUP}</span>
+        <NavDropdownChevron open={open} />
+      </button>
+      {open ? (
+        <div
+          id="nav-orphan-screens"
+          className="ms-3 flex flex-col border-s border-white/[0.06] py-0.5 pb-1"
+          role="group"
+          aria-label={ORPHAN_SCREENS_GROUP}
+        >
+          {items.map((item) => (
+            <ActiveTransactionNavRow
+              key={item.id}
+              id={item.id}
+              label={item.label}
+              icon={item.icon}
+              available={item.available}
+              active={currentPage === item.id}
+              onPrefetch={onPrefetch}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ProfileMenu({
   chipName,
   initials,
@@ -633,6 +697,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const showGeneralGroup =
     systemSettingsPrimaryItems.length > 0 ||
     systemSettingsFieldsItems.length > 0;
+
+  const orphanScreenItems = useMemo(
+    () => orphanScreensNavForRole(rolePages),
+    [rolePages],
+  );
+  const showOrphanScreensGroup = orphanScreenItems.length > 0;
 
   const navRuns = useMemo(() => navRunsForRole(navPages, role), [navPages, role]);
 
@@ -899,6 +969,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   let activeTransactionsInserted =
     insertActiveTxAtNavStart && showActiveTransactionsGroup;
   let generalNavInserted = false;
+  let orphanScreensInserted = false;
 
   const onPoPropertyDetail = Boolean(poChrome?.propertyDetail);
   const onActiveSurveyPropertyDetail = onActiveSurveyEntry;
@@ -1051,6 +1122,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         onPrefetch={prefetchPage}
                       />,
                     );
+                    if (showOrphanScreensGroup) {
+                      // eslint-disable-next-line react-hooks/immutability -- render-local marker used only within this render pass.
+                      orphanScreensInserted = true;
+                      nodes.push(
+                        <OrphanScreensNavDropdown
+                          key="orphan-screens-dropdown"
+                          items={orphanScreenItems}
+                          currentPage={currentPage}
+                          onPrefetch={prefetchPage}
+                        />,
+                      );
+                    }
                   }
                   const shouldInsertActiveTx =
                     !activeTransactionsInserted &&
@@ -1105,6 +1188,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 onPrefetch={prefetchPage}
               />
             </>
+          ) : null}
+          {!orphanScreensInserted && showOrphanScreensGroup ? (
+            <OrphanScreensNavDropdown
+              key="orphan-screens-dropdown-fallback"
+              items={orphanScreenItems}
+              currentPage={currentPage}
+              onPrefetch={prefetchPage}
+            />
           ) : null}
           </nav>
         </div>

@@ -10,6 +10,7 @@ import { PartyFeeWorkflowTable } from "./PartyFeeWorkflowTable";
 import { PartyDisbursementRequest } from "./PartyDisbursementRequest";
 import { PartyReturnedQueue } from "./PartyReturnedQueue";
 import { SupervisorEnfazTracking } from "./SupervisorEnfazTracking";
+import { CourtVisitFeesPanel } from "./CourtVisitFeesPanel";
 import { PartyPropertyBrowse } from "@platform/app-shared/fees/PartyPropertyBrowse";
 import {
   resolvePartyCategory,
@@ -18,7 +19,14 @@ import {
 } from "@platform/app-shared/fees/party-fee-meta";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 
-type PartyFeesTab = "fees" | "key-fees" | "disburse" | "returned" | "financial" | "browse";
+type PartyFeesTab =
+  | "fees"
+  | "visit-fees"
+  | "key-fees"
+  | "disburse"
+  | "returned"
+  | "financial"
+  | "browse";
 
 export function PartyFeesWorkspace({
   variant,
@@ -60,7 +68,7 @@ export function PartyFeesWorkspace({
     [rows],
   );
 
-  const showKeyReceiptFees =
+  const showVisitAndKeyFees =
     variant === "government-review" || isSupervisor;
 
   return (
@@ -76,8 +84,11 @@ export function PartyFeesWorkspace({
           <Tab active={tab === "fees"} onClick={() => setTab("fees")}>
             الحسم والمراجعة
           </Tab>
+          <Tab active={tab === "visit-fees"} onClick={() => setTab("visit-fees")}>
+            أتعاب الزيارة
+          </Tab>
           <Tab active={tab === "key-fees"} onClick={() => setTab("key-fees")}>
-            أتعاب المفاتيح
+            أتعاب استلام المفاتيح
           </Tab>
         </TabBar>
       ) : (
@@ -88,9 +99,17 @@ export function PartyFeesWorkspace({
           <Tab active={tab === "fees"} onClick={() => setTab("fees")}>
             أتعاب المعاملة
           </Tab>
-          {showKeyReceiptFees ? (
+          {showVisitAndKeyFees ? (
+            <Tab
+              active={tab === "visit-fees"}
+              onClick={() => setTab("visit-fees")}
+            >
+              أتعاب الزيارة
+            </Tab>
+          ) : null}
+          {showVisitAndKeyFees ? (
             <Tab active={tab === "key-fees"} onClick={() => setTab("key-fees")}>
-              أتعاب المفاتيح
+              أتعاب استلام المفاتيح
             </Tab>
           ) : null}
           <Tab active={tab === "disburse"} onClick={() => setTab("disburse")}>
@@ -113,6 +132,9 @@ export function PartyFeesWorkspace({
               />
               <QueueTableHint className="mt-3">
                 الحسم هنا — الاعتماد والإرسال للمالية من تبويب «الأمور المالية».
+                {variant === "government-review" || isSupervisor
+                  ? " مسار المهام التشغيلية (زيارة محكمة) يظهر في «أتعاب الزيارة»."
+                  : ""}
               </QueueTableHint>
             </>
           ) : (
@@ -126,12 +148,21 @@ export function PartyFeesWorkspace({
                 بعد إنجاز العمل ارفع المعاملة للمشرف. الأتعاب تظهر بعد اكتمال
                 دراسة الحالة للصك. وعند جاهزيتها للصرف أنشئ «أمر صرف» من تبويب
                 طلب الصرف.
+                {showVisitAndKeyFees
+                  ? " أتعاب زيارة المحكمة من المهام التشغيلية في تبويب «أتعاب الزيارة»."
+                  : ""}
               </QueueTableHint>
             </>
           )
         ) : null}
 
-        {tab === "key-fees" && showKeyReceiptFees ? (
+        {tab === "visit-fees" && showVisitAndKeyFees ? (
+          <CourtVisitFeesPanel
+            creditAssigneeId={isSupervisor ? undefined : assigneeId}
+          />
+        ) : null}
+
+        {tab === "key-fees" && showVisitAndKeyFees ? (
           <>
             <KeyEnvelopeFeesPanel
               canCollect
@@ -142,7 +173,8 @@ export function PartyFeesWorkspace({
               }}
             />
             <QueueTableHint className="mt-3">
-              أتعاب استلام ظرف المفاتيح (سيناريو المحكمة). التفاصيل الكاملة من{" "}
+              أتعاب استلام ظرف المفاتيح (سيناريو المحكمة + صورة). منفصلة عن أتعاب
+              الزيارة. التفاصيل الكاملة من{" "}
               <Link
                 href="/keys?tab=fees"
                 className="font-semibold text-primary underline underline-offset-2"

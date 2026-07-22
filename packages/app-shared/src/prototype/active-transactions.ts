@@ -2,6 +2,7 @@ import type { PageId } from "@platform/types";
 import { CASE_STUDY_READY_NAV } from "@platform/types";
 import type { WorkflowTask } from "@case-study/mfe";
 import { PARTY_ACTIVE_TRANSACTIONS_NAV } from "./party-task-pages";
+import { isInOrphanScreensSection } from "./orphan-screens-nav";
 
 /** عناصر الشريط الجانبي — المعاملات النشطة */
 export type ActiveTransactionNavItem = {
@@ -64,6 +65,9 @@ export function isInActiveTransactionsSection(
   page: PageId,
   onTaskWork: boolean,
 ): boolean {
+  // Orphan legacy lists (e.g. government-review) keep task work routes but
+  // highlight under الشاشات اليتيمة, not المعاملات النشطة.
+  if (isInOrphanScreensSection(page)) return false;
   return onTaskWork || isActiveTransactionPage(page);
 }
 

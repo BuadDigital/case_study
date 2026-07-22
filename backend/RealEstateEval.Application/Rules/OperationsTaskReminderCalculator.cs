@@ -77,4 +77,31 @@ public static class OperationsTaskReminderCalculator
         } while (!IsWorkDay(nd));
         return AtHourLocal(nd, WorkStartHour);
     }
+
+    /// <summary>
+    /// Instant (UTC) when a pause exceeds the one-workday limit from <paramref name="pausedAtUtc"/>.
+    /// </summary>
+    public static DateTime PauseLimitDeadlineUtc(DateTime pausedAtUtc)
+    {
+        var utc = DateTime.SpecifyKind(pausedAtUtc.ToUniversalTime(), DateTimeKind.Utc);
+        var local = TimeZoneInfo.ConvertTimeFromUtc(utc, RiyadhTz);
+        var nextLocal = NextWorkDaySameTime(local);
+        return TimeZoneInfo.ConvertTimeToUtc(
+            DateTime.SpecifyKind(nextLocal, DateTimeKind.Unspecified),
+            RiyadhTz);
+    }
+
+    /// <summary>Same clock time on the next Saudi workday.</summary>
+    public static DateTime NextWorkDaySameTime(DateTime localTs)
+    {
+        var d = localTs;
+        do
+        {
+            d = d.AddDays(1);
+        } while (!IsWorkDay(d));
+        return new DateTime(
+            d.Year, d.Month, d.Day,
+            localTs.Hour, localTs.Minute, localTs.Second,
+            DateTimeKind.Unspecified);
+    }
 }

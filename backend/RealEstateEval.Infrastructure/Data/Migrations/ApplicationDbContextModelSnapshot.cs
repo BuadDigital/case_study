@@ -1346,6 +1346,61 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.ToTable("KeyEnvelopeTimelineEntries", "operations");
                 });
 
+            modelBuilder.Entity("RealEstateEval.Domain.CourtVisitFeeCharge", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("AmountSar")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreditAssigneeId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("CreditAssigneeName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Guid>("OperationsTaskId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PoNumber")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("TaskDisplayId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreditAssigneeId");
+
+                    b.HasIndex("OperationsTaskId")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("CourtVisitFeeCharges", "financial");
+                });
+
             modelBuilder.Entity("RealEstateEval.Domain.KeyReceiptFeeCharge", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1426,6 +1481,10 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
                     b.Property<string>("CommentsJson")
                         .HasColumnType("jsonb");
 
@@ -1445,6 +1504,14 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<string>("CourtVisitResultJson")
                         .HasColumnType("jsonb");
 
+                    b.Property<string>("CreditAssigneeId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("CreditAssigneeName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
                     b.Property<string>("DeedsJson")
                         .HasColumnType("jsonb");
 
@@ -1463,6 +1530,24 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<string>("LetterRowsJson")
                         .HasColumnType("jsonb");
 
+                    b.Property<string>("OriginalAssigneeId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("OriginalAssigneeName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTime?>("PauseOverLimitRemindedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PauseReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime?>("PausedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("PoNumber")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
@@ -1475,6 +1560,9 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
+
+                    b.Property<DateTime?>("ReceiptConfirmedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Reference")
                         .HasMaxLength(64)

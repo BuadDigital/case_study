@@ -749,7 +749,7 @@ function CustodyPanel({
       person: displayPersonName(env.createdByName),
       role: "مراجع حكومي",
       date: formatDate(env.createdAtUtc),
-      stateLabel: "مكتمل",
+      stateLabel: "منجز",
       stateColor: "#2f7a4d",
     },
     ...env.handoffs.map((h) => {

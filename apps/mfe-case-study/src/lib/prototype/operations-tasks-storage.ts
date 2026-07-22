@@ -16,6 +16,8 @@ import {
 
   createOperationsTask,
 
+  listCourtVisitFees,
+
   listOperationsTasks,
 
   patchOperationsTask,
@@ -23,6 +25,8 @@ import {
   reassignOperationsTask,
 
   remindOperationsTask,
+
+  type CourtVisitFeeReportRowDto,
 
 } from "@platform/api-client";
 
@@ -269,6 +273,34 @@ export function isActiveOperationsTask(task: OperationsTask): boolean {
 export function isTerminalOperationsTask(task: OperationsTask): boolean {
 
   return task.status === "completed" || task.status === "cancelled";
+
+}
+
+
+
+export async function loadCourtVisitFees(query?: {
+
+  creditAssigneeId?: string;
+
+}): Promise<CourtVisitFeeReportRowDto[]> {
+
+  const config = workOrdersApiConfig();
+
+  if (!config) return [];
+
+  const result = await listCourtVisitFees(config, query);
+
+  if (!result.ok) {
+
+    throw new Error(
+
+      result.message ?? resolveApiError(result.kind, undefined, "تعذّر تحميل أتعاب الزيارة"),
+
+    );
+
+  }
+
+  return result.data;
 
 }
 

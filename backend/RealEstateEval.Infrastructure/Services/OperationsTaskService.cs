@@ -49,11 +49,16 @@ public sealed class OperationsTaskService : IOperationsTaskService
 
     private readonly ApplicationDbContext _db;
     private readonly INotificationService _notifications;
+    private readonly IPartyFeePricingService _pricing;
 
-    public OperationsTaskService(ApplicationDbContext db, INotificationService notifications)
+    public OperationsTaskService(
+        ApplicationDbContext db,
+        INotificationService notifications,
+        IPartyFeePricingService pricing)
     {
         _db = db;
         _notifications = notifications;
+        _pricing = pricing;
     }
 
     public async Task<IReadOnlyList<OperationsTaskDto>> ListAsync(
@@ -110,14 +115,20 @@ public sealed class OperationsTaskService : IOperationsTaskService
             .OrderByDescending(t => t.CreatedAtUtc)
             .ToListAsync(cancellationToken);
 
-        return rows.Select(Map).ToList();
+        var links = await LoadLinkedEnvelopeIdsAsync(rows.Select(r => r.Id), cancellationToken);
+        var visitFees = await LoadVisitFeeAmountsAsync(rows.Select(r => r.Id), cancellationToken);
+        return rows.Select(r => Map(
+            r,
+            links.GetValueOrDefault(r.Id),
+            visitFees.GetValueOrDefault(r.Id))).ToList();
     }
 
     public async Task<OperationsTaskDto?> GetAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var row = await _db.OperationsTasks.AsNoTracking()
             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
-        return row is null ? null : Map(row);
+        if (row is null) return null;
+        return await MapAsync(row, cancellationToken);
     }
 
     public async Task<(OperationsTaskDto? Result, string? Error)> CreateAsync(
@@ -250,7 +261,23 @@ public sealed class OperationsTaskService : IOperationsTaskService
             if (error is not null) return (null, error);
 
             if (next == "paused")
+            {
+                var pauseReason = request.PauseReason?.Trim() ?? "";
+                if (pauseReason.Length == 0)
+                    return (null, "سبب الإيقاف المؤقت مطلوب");
                 entity.PrevStatus = entity.Status;
+                entity.PauseReason = pauseReason;
+                entity.PausedAtUtc = now;
+                entity.PauseOverLimitRemindedAtUtc = null;
+            }
+
+            if (next == "cancelled")
+            {
+                var cancelReason = request.CancelReason?.Trim() ?? "";
+                if (cancelReason.Length == 0)
+                    return (null, "سبب الإلغاء مطلوب");
+                entity.CancelReason = cancelReason;
+            }
 
             if (next == "completed" && entity.Type == "court_visit")
             {
@@ -261,15 +288,32 @@ public sealed class OperationsTaskService : IOperationsTaskService
                 changed = true;
             }
 
+            if (next == "completed")
+                ApplyExecutionCredit(entity, request, comments, now, actorName);
+
             if (entity.Status != next)
             {
+                var fromStatus = entity.Status;
+                if (fromStatus == "created" && next == "in_progress")
+                    entity.ReceiptConfirmedAtUtc ??= now;
+
                 comments.Add(new OperationsTaskCommentDto
                 {
                     Who = "system",
                     At = now.ToString("O"),
-                    Text = StatusUpdateText(entity.Status, next, actorName),
+                    Text = StatusUpdateText(
+                        fromStatus,
+                        next,
+                        actorName,
+                        entity.PauseReason,
+                        entity.CancelReason),
                     Kind = "update",
                 });
+                if (fromStatus == "paused" && next != "paused")
+                {
+                    entity.PausedAtUtc = null;
+                    entity.PauseOverLimitRemindedAtUtc = null;
+                }
                 entity.Status = next;
                 changed = true;
                 if (next == "completed")
@@ -341,10 +385,14 @@ public sealed class OperationsTaskService : IOperationsTaskService
             changed = true;
         }
 
-        if (!changed) return (Map(entity), null);
+        if (!changed) return (await MapAsync(entity, cancellationToken), null);
 
         entity.UpdatedAtUtc = now;
         entity.CommentsJson = JsonSerializer.Serialize(comments, JsonOpts);
+
+        if (becameCompletedCourtVisit)
+            await EnsureCourtVisitFeeChargeAsync(entity, cancellationToken);
+
         await _db.SaveChangesAsync(cancellationToken);
 
         if (becameCompleted)
@@ -353,7 +401,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
         if (becameCompletedCourtVisit)
             await NotifyCourtVisitCompletedAsync(entity, cancellationToken);
 
-        return (Map(entity), null);
+        return (await MapAsync(entity, cancellationToken), null);
     }
 
     public async Task<(OperationsTaskDto? Result, string? Error)> ReassignAsync(
@@ -387,6 +435,12 @@ public sealed class OperationsTaskService : IOperationsTaskService
             ? newAssigneeId
             : request.AssigneeName.Trim();
 
+        if (string.IsNullOrWhiteSpace(entity.OriginalAssigneeId))
+        {
+            entity.OriginalAssigneeId = entity.AssigneeId;
+            entity.OriginalAssigneeName = entity.AssigneeName;
+        }
+
         var dueChanged = request.DueAtUtc.HasValue && entity.DueAtUtc != request.DueAtUtc.Value;
         var text = dueChanged
             ? $"➤ أُعيد توجيه المهمة من «{oldName}» إلى «{newName}» — موعد التسليم {FormatDueLabel(request.DueAtUtc!.Value)} — السبب: {reason}"
@@ -411,7 +465,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
         await _db.SaveChangesAsync(cancellationToken);
 
         await NotifyAssigneeAsync(entity, cancellationToken);
-        return (Map(entity), null);
+        return (await MapAsync(entity, cancellationToken), null);
     }
 
     public async Task<(OperationsTaskDto? Result, string? Error)> RemindAsync(
@@ -448,6 +502,44 @@ public sealed class OperationsTaskService : IOperationsTaskService
             var (result, error) = await ApplyReminderAsync(entity, auto: true, cancellationToken);
             if (result is not null && error is null)
                 successes++;
+        }
+
+        return successes;
+    }
+
+    public async Task<int> ProcessOverLimitPauseRemindersAsync(CancellationToken cancellationToken = default)
+    {
+        var paused = await _db.OperationsTasks
+            .Where(t => t.Status == "paused" && t.PausedAtUtc != null)
+            .ToListAsync(cancellationToken);
+
+        var now = DateTime.UtcNow;
+        var successes = 0;
+
+        foreach (var entity in paused)
+        {
+            var pausedAt = entity.PausedAtUtc!.Value;
+            var deadline = OperationsTaskReminderCalculator.PauseLimitDeadlineUtc(pausedAt);
+            if (now < deadline) continue;
+
+            if (entity.PauseOverLimitRemindedAtUtc is DateTime last
+                && now < last.AddHours(20))
+                continue;
+
+            var comments = DeserializeComments(entity.CommentsJson).ToList();
+            comments.Add(new OperationsTaskCommentDto
+            {
+                Who = "system",
+                At = now.ToString("O"),
+                Text = "⏸ تذكير: تجاوزت المهمة حد الإيقاف المؤقت (يوم عمل واحد) — يلزم الاستئناف.",
+                Kind = "reminder",
+            });
+            entity.CommentsJson = JsonSerializer.Serialize(comments, JsonOpts);
+            entity.PauseOverLimitRemindedAtUtc = now;
+            entity.UpdatedAtUtc = now;
+            await _db.SaveChangesAsync(cancellationToken);
+            await NotifyPauseOverLimitAsync(entity, cancellationToken);
+            successes++;
         }
 
         return successes;
@@ -499,7 +591,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
         entity.CommentsJson = JsonSerializer.Serialize(comments, JsonOpts);
         entity.UpdatedAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
-        return (Map(entity), null);
+        return (await MapAsync(entity, cancellationToken), null);
     }
 
     private async Task<(OperationsTaskDto? Result, string? Error)> ApplyReminderAsync(
@@ -524,7 +616,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
             Who = "system",
             At = now.ToString("O"),
             Text = auto
-                ? "⏰ تذكير تلقائي ضمن ساعات العمل."
+                ? "⏰ تذكير تلقائي ضمن ساعات العمل (المنفّذ والمنشئ)."
                 : "🔔 تم إرسال تذكير فوري إلى المنفّذ.",
             Kind = "reminder",
         });
@@ -534,8 +626,73 @@ public sealed class OperationsTaskService : IOperationsTaskService
         entity.UpdatedAtUtc = now;
         await _db.SaveChangesAsync(cancellationToken);
 
-        await NotifyReminderAsync(entity, cancellationToken);
-        return (Map(entity), null);
+        await NotifyReminderAsync(entity, auto, cancellationToken);
+        return (await MapAsync(entity, cancellationToken), null);
+    }
+
+    public async Task<IReadOnlyList<CourtVisitFeeReportRowDto>> ListCourtVisitFeesAsync(
+        string? creditAssigneeId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _db.CourtVisitFeeCharges.AsNoTracking();
+        var assignee = creditAssigneeId?.Trim();
+        if (!string.IsNullOrEmpty(assignee))
+            query = query.Where(c => c.CreditAssigneeId == assignee);
+
+        return await query
+            .OrderByDescending(c => c.CreatedAtUtc)
+            .Select(c => new CourtVisitFeeReportRowDto
+            {
+                Id = c.Id,
+                OperationsTaskId = c.OperationsTaskId,
+                TaskDisplayId = c.TaskDisplayId,
+                PoNumber = c.PoNumber,
+                CreditAssigneeId = c.CreditAssigneeId,
+                CreditAssigneeName = c.CreditAssigneeName,
+                AmountSar = c.AmountSar,
+                Status = c.Status,
+                CreatedAtUtc = c.CreatedAtUtc,
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    private async Task EnsureCourtVisitFeeChargeAsync(
+        OperationsTask entity,
+        CancellationToken cancellationToken)
+    {
+        var exists = await _db.CourtVisitFeeCharges
+            .AnyAsync(c => c.OperationsTaskId == entity.Id, cancellationToken);
+        if (exists) return;
+
+        var creditId = (entity.CreditAssigneeId ?? entity.AssigneeId).Trim();
+        var creditName = string.IsNullOrWhiteSpace(entity.CreditAssigneeName)
+            ? entity.AssigneeName
+            : entity.CreditAssigneeName.Trim();
+
+        var amount = await _pricing.ResolveDefaultFeeAsync(
+            "government-review",
+            GovernmentReviewFeeRules.PartyType,
+            areaM2: null,
+            assigneeId: creditId,
+            cancellationToken) ?? GovernmentReviewFeeRules.FallbackFeeSar;
+
+        if (amount <= 0)
+            amount = GovernmentReviewFeeRules.FallbackFeeSar;
+
+        var now = DateTime.UtcNow;
+        _db.CourtVisitFeeCharges.Add(new CourtVisitFeeCharge
+        {
+            Id = Guid.NewGuid(),
+            OperationsTaskId = entity.Id,
+            TaskDisplayId = entity.DisplayId,
+            PoNumber = NullIfBlank(entity.PoNumber),
+            CreditAssigneeId = creditId,
+            CreditAssigneeName = creditName,
+            AmountSar = amount,
+            Status = CourtVisitFeeStatuses.Open,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+        });
     }
 
     private static bool IsManager(string actorRole)
@@ -594,24 +751,102 @@ public sealed class OperationsTaskService : IOperationsTaskService
             cancellationToken);
     }
 
-    private async Task NotifyReminderAsync(OperationsTask entity, CancellationToken cancellationToken)
+    private async Task NotifyPauseOverLimitAsync(
+        OperationsTask entity,
+        CancellationToken cancellationToken)
     {
-        var userId = await ResolveUserIdForAssigneeAsync(entity.AssigneeId, cancellationToken);
-        if (userId is null) return;
-
         var unix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var body = $"المهمة {entity.DisplayId} متوقفة مؤقتاً لأكثر من يوم عمل — يلزم الاستئناف.";
+        var href = OperationsTaskHref(entity.Id);
+
+        var assigneeUserId = await ResolveUserIdForAssigneeAsync(entity.AssigneeId, cancellationToken);
+        if (assigneeUserId is not null)
+        {
+            await _notifications.CreateForUserAsync(
+                assigneeUserId,
+                new CreateUserNotificationRequest
+                {
+                    Title = "تجاوز حد الإيقاف المؤقت",
+                    Body = body,
+                    Tone = "warning",
+                    Href = href,
+                    Category = "workflow",
+                    EntityType = "operations-task",
+                    EntityId = entity.Id.ToString(),
+                    SourceEvent = $"ops-task-pause-limit:{entity.Id}:{unix}:assignee",
+                },
+                cancellationToken);
+        }
+
+        var creatorId = entity.CreatedBy.Trim();
+        if (creatorId.Length > 0
+            && !string.Equals(creatorId, assigneeUserId, StringComparison.Ordinal))
+        {
+            await _notifications.CreateForUserAsync(
+                creatorId,
+                new CreateUserNotificationRequest
+                {
+                    Title = "تجاوز حد الإيقاف المؤقت",
+                    Body = body,
+                    Tone = "warning",
+                    Href = href,
+                    Category = "workflow",
+                    EntityType = "operations-task",
+                    EntityId = entity.Id.ToString(),
+                    SourceEvent = $"ops-task-pause-limit:{entity.Id}:{unix}:creator",
+                },
+                cancellationToken);
+        }
+    }
+
+    private async Task NotifyReminderAsync(
+        OperationsTask entity,
+        bool auto,
+        CancellationToken cancellationToken)
+    {
+        var unix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var body = $"تذكير بالمهمة {entity.DisplayId}: {entity.Title}.";
+        var href = OperationsTaskHref(entity.Id);
+
+        var assigneeUserId = await ResolveUserIdForAssigneeAsync(entity.AssigneeId, cancellationToken);
+        if (assigneeUserId is not null)
+        {
+            await _notifications.CreateForUserAsync(
+                assigneeUserId,
+                new CreateUserNotificationRequest
+                {
+                    Title = "تذكير بمهمة",
+                    Body = body,
+                    Tone = "warning",
+                    Href = href,
+                    Category = "workflow",
+                    EntityType = "operations-task",
+                    EntityId = entity.Id.ToString(),
+                    SourceEvent = $"ops-task-remind:{entity.Id}:{unix}:assignee",
+                },
+                cancellationToken);
+        }
+
+        // Auto reminders escalate to creator until close (دورة اسناد المهام §9).
+        if (!auto) return;
+
+        var creatorId = entity.CreatedBy.Trim();
+        if (creatorId.Length == 0
+            || string.Equals(creatorId, assigneeUserId, StringComparison.Ordinal))
+            return;
+
         await _notifications.CreateForUserAsync(
-            userId,
+            creatorId,
             new CreateUserNotificationRequest
             {
                 Title = "تذكير بمهمة",
-                Body = $"تذكير بالمهمة {entity.DisplayId}: {entity.Title}.",
+                Body = body,
                 Tone = "warning",
-                Href = OperationsTaskHref(entity.Id),
+                Href = href,
                 Category = "workflow",
                 EntityType = "operations-task",
                 EntityId = entity.Id.ToString(),
-                SourceEvent = $"ops-task-remind:{entity.Id}:{unix}",
+                SourceEvent = $"ops-task-remind:{entity.Id}:{unix}:creator",
             },
             cancellationToken);
     }
@@ -750,9 +985,9 @@ public sealed class OperationsTaskService : IOperationsTaskService
         return next switch
         {
             "in_progress" when entity.Status is "created" or "paused" => null,
-            "completed" when entity.Status is "in_progress" => null,
+            "completed" when entity.Status is "in_progress" or "paused" => null,
             "paused" when entity.Status is "created" or "in_progress" => null,
-            "cancelled" => null,
+            "cancelled" when entity.Status is "created" or "in_progress" or "paused" => null,
             _ => "انتقال حالة غير مسموح",
         };
     }
@@ -796,21 +1031,119 @@ public sealed class OperationsTaskService : IOperationsTaskService
         return (displayId, reference);
     }
 
-    private static string StatusUpdateText(string from, string to, string? actorName)
+    private static string StatusUpdateText(
+        string from,
+        string to,
+        string? actorName,
+        string? pauseReason = null,
+        string? cancelReason = null)
     {
         var actor = string.IsNullOrWhiteSpace(actorName) ? "النظام" : actorName.Trim();
         return to switch
         {
-            "in_progress" => $"{actor} بدأ التنفيذ",
+            "in_progress" => from == "paused"
+                ? $"{actor} استأنف المهمة"
+                : $"{actor} أكّد الاستلام",
             "completed" => $"{actor} أكمل المهمة",
-            "paused" => $"{actor} أوقف المهمة مؤقتاً",
-            "cancelled" => $"{actor} ألغى المهمة",
+            "paused" => string.IsNullOrWhiteSpace(pauseReason)
+                ? $"{actor} أوقف المهمة مؤقتاً"
+                : $"⏸ {actor} أوقف المهمة مؤقتاً — السبب: {pauseReason.Trim()}",
+            "cancelled" => string.IsNullOrWhiteSpace(cancelReason)
+                ? $"{actor} ألغى المهمة"
+                : $"✕ {actor} ألغى المهمة — السبب: {cancelReason.Trim()}",
             _ when from == "paused" => $"{actor} استأنف المهمة",
             _ => $"{actor} غيّر الحالة إلى {to}",
         };
     }
 
-    private static OperationsTaskDto Map(OperationsTask row) => new()
+    private static void ApplyExecutionCredit(
+        OperationsTask entity,
+        PatchOperationsTaskRequest request,
+        List<OperationsTaskCommentDto> comments,
+        DateTime now,
+        string? actorName)
+    {
+        var creditId = request.CreditAssigneeId?.Trim() ?? "";
+        var creditName = request.CreditAssigneeName?.Trim() ?? "";
+
+        if (creditId.Length == 0)
+        {
+            if (!string.IsNullOrWhiteSpace(entity.OriginalAssigneeId))
+            {
+                creditId = entity.OriginalAssigneeId.Trim();
+                creditName = entity.OriginalAssigneeName?.Trim() ?? "";
+            }
+            else
+            {
+                creditId = entity.AssigneeId;
+                creditName = entity.AssigneeName;
+            }
+        }
+
+        entity.CreditAssigneeId = creditId;
+        entity.CreditAssigneeName = creditName;
+
+        if (!string.IsNullOrWhiteSpace(entity.OriginalAssigneeId)
+            && !string.Equals(entity.OriginalAssigneeId, entity.AssigneeId, StringComparison.Ordinal))
+        {
+            var label = string.IsNullOrWhiteSpace(creditName) ? creditId : creditName;
+            var actor = string.IsNullOrWhiteSpace(actorName) ? "النظام" : actorName.Trim();
+            comments.Add(new OperationsTaskCommentDto
+            {
+                Who = "system",
+                At = now.ToString("O"),
+                Text = $"◎ مسؤولية التنفيذ عند الإغلاق: «{label}» — بواسطة {actor}",
+                Kind = "update",
+            });
+        }
+    }
+
+    private async Task<OperationsTaskDto> MapAsync(OperationsTask row, CancellationToken cancellationToken)
+    {
+        var links = await LoadLinkedEnvelopeIdsAsync([row.Id], cancellationToken);
+        var visitFees = await LoadVisitFeeAmountsAsync([row.Id], cancellationToken);
+        return Map(
+            row,
+            links.GetValueOrDefault(row.Id),
+            visitFees.GetValueOrDefault(row.Id));
+    }
+
+    private async Task<Dictionary<Guid, decimal?>> LoadVisitFeeAmountsAsync(
+        IEnumerable<Guid> taskIds,
+        CancellationToken cancellationToken)
+    {
+        var ids = taskIds.Distinct().ToList();
+        if (ids.Count == 0) return new Dictionary<Guid, decimal?>();
+
+        var rows = await _db.CourtVisitFeeCharges.AsNoTracking()
+            .Where(c => ids.Contains(c.OperationsTaskId))
+            .Select(c => new { c.OperationsTaskId, c.AmountSar })
+            .ToListAsync(cancellationToken);
+
+        return rows.ToDictionary(x => x.OperationsTaskId, x => (decimal?)x.AmountSar);
+    }
+
+    private async Task<Dictionary<Guid, Guid>> LoadLinkedEnvelopeIdsAsync(
+        IEnumerable<Guid> taskIds,
+        CancellationToken cancellationToken)
+    {
+        var ids = taskIds.Distinct().ToList();
+        if (ids.Count == 0) return new Dictionary<Guid, Guid>();
+
+        var rows = await _db.KeyEnvelopes.AsNoTracking()
+            .Where(e => e.OperationsTaskId != null && ids.Contains(e.OperationsTaskId.Value))
+            .Select(e => new { TaskId = e.OperationsTaskId!.Value, e.Id, e.CreatedAtUtc })
+            .ToListAsync(cancellationToken);
+
+        return rows
+            .GroupBy(x => x.TaskId)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.CreatedAtUtc).First().Id);
+    }
+
+    private static OperationsTaskDto Map(
+        OperationsTask row,
+        Guid? linkedEnvelopeId = null,
+        decimal? visitFeeAmountSar = null) => new()
     {
         Id = row.Id.ToString(),
         DisplayId = row.DisplayId,
@@ -835,6 +1168,16 @@ public sealed class OperationsTaskService : IOperationsTaskService
         Comments = DeserializeComments(row.CommentsJson),
         Reminders = DeserializeReminders(row.RemindersJson),
         CourtVisitResult = DeserializeCourtVisitResult(row.CourtVisitResultJson),
+        PauseReason = row.PauseReason,
+        PausedAt = row.PausedAtUtc?.ToString("O"),
+        OriginalAssigneeId = row.OriginalAssigneeId,
+        OriginalAssigneeName = row.OriginalAssigneeName,
+        CreditAssigneeId = row.CreditAssigneeId,
+        CreditAssigneeName = row.CreditAssigneeName,
+        ReceiptConfirmedAt = row.ReceiptConfirmedAtUtc?.ToString("O"),
+        CancelReason = row.CancelReason,
+        LinkedEnvelopeId = linkedEnvelopeId?.ToString(),
+        VisitFeeAmountSar = visitFeeAmountSar,
     };
 
     private static (OperationsTaskCourtVisitResultDto? Result, string? Error) NormalizeCourtVisitResult(

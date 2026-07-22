@@ -4,6 +4,7 @@ import { SETTINGS_NAV } from "@platform/app-shared/prototype/settings-nav";
 import { SYSTEM_FIELDS_NAV } from "@platform/app-shared/prototype/system-fields-nav";
 import { SYSTEM_FIELDS_CATALOG_NAV_ITEM } from "@platform/app-shared/prototype/system-fields-catalog-nav";
 import { SYSTEM_SCREEN_CATALOG_NAV_ITEM } from "@platform/app-shared/prototype/system-screen-catalog-nav";
+import { ORPHAN_SCREENS_PAGE_IDS } from "@platform/app-shared/prototype/orphan-screens-nav";
 import { SYSTEM_SETTINGS_PRIMARY_PAGE_IDS } from "./system-settings-nav";
 
 export type { NavItem, PageId, RoleDef, RoleId };
@@ -212,6 +213,7 @@ export const ALL_PROTOTYPE_PAGES: PageId[] = [
     ...SYSTEM_SETTINGS_PRIMARY_PAGE_IDS,
     SYSTEM_FIELDS_CATALOG_NAV_ITEM.id,
     SYSTEM_SCREEN_CATALOG_NAV_ITEM.id,
+    ...ORPHAN_SCREENS_PAGE_IDS,
   ]),
 ];
 
@@ -235,6 +237,7 @@ export const PAGE_TITLES: Record<PageId, string> = {
   "valuation-coordination": "استلام التقييم",
   "property-appraisal": "تقييم العقار",
   "active-survey": "الرفع المساحي",
+  survey: "مكاتب الرفع",
   "party-fees": "الأتعاب والصرف",
   "system-fields-catalog": "قاموس الحقول المركزي",
   "system-screen-catalog": "دليل الشاشات",
@@ -261,11 +264,12 @@ export const PAGE_BREADCRUMB: Record<PageId, string> = {
   "suspended-transactions": "دراسة الحالة",
   "valuation-requests": "عام / إعدادات النظام / طلبات التقييم",
   "property-inspection": "المعاملات النشطة / معاينة العقار",
-  "government-review": "المعاملات النشطة / المراجعة الحكومية",
+  "government-review": "الشاشات اليتيمة / المراجعة الحكومية",
   "operations-tasks": "دراسة الحالة / المهام",
   "valuation-coordination": "المعاملات النشطة / استلام التقييم",
   "property-appraisal": "المعاملات النشطة / تقييم العقار",
   "active-survey": "المعاملات النشطة / الرفع المساحي",
+  survey: "الشاشات اليتيمة / مكاتب الرفع",
   "party-fees": "عام / إعدادات النظام / الأتعاب والصرف",
   "system-fields-catalog": "عام / إعدادات النظام / قاموس الحقول المركزي",
   "system-screen-catalog": "عام / إعدادات النظام / دليل الشاشات",
@@ -382,6 +386,7 @@ export const VALID_PAGE_IDS = new Set<PageId>([
   ...SYSTEM_SETTINGS_PRIMARY_PAGE_IDS,
   SYSTEM_FIELDS_CATALOG_NAV_ITEM.id,
   SYSTEM_SCREEN_CATALOG_NAV_ITEM.id,
+  ...ORPHAN_SCREENS_PAGE_IDS,
   "profile",
 ]);
 

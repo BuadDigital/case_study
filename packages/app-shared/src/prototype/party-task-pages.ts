@@ -164,15 +164,18 @@ export function partyTaskPageDefForKind(
   return Object.values(PARTY_TASK_PAGES).find((d) => d.kind === kind) ?? null;
 }
 
-/** Sidebar — المعاملات النشطة for distributed party roles */
-export const PARTY_ACTIVE_TRANSACTIONS_NAV = PARTY_TASK_PAGE_IDS.map(
-  (pageId) => {
-    const def = PARTY_TASK_PAGES[pageId];
-    return {
-      id: def.pageId,
-      label: def.pageTitle,
-      icon: def.icon,
-      available: true,
-    };
-  },
-);
+/**
+ * Sidebar — المعاملات النشطة for distributed party roles.
+ * Legacy government-review list lives under الشاشات اليتيمة (CDO only).
+ */
+export const PARTY_ACTIVE_TRANSACTIONS_NAV = PARTY_TASK_PAGE_IDS.filter(
+  (pageId) => pageId !== "government-review",
+).map((pageId) => {
+  const def = PARTY_TASK_PAGES[pageId];
+  return {
+    id: def.pageId,
+    label: def.pageTitle,
+    icon: def.icon,
+    available: true,
+  };
+});

@@ -3,12 +3,14 @@ import { ACTIVE_TRANSACTIONS_NAV } from "./active-transactions";
 import { NAV } from "./constants";
 import { SYSTEM_FIELDS_PAGE_IDS } from "./system-fields-nav";
 import { SYSTEM_SETTINGS_PRIMARY_PAGE_IDS } from "./system-settings-nav";
+import { ORPHAN_SCREENS_PAGE_IDS } from "./orphan-screens-nav";
 
 const NAV_PAGE_ORDER: PageId[] = [
   ...NAV.map((item) => item.id),
   ...ACTIVE_TRANSACTIONS_NAV.map((item) => item.id),
   ...SYSTEM_SETTINGS_PRIMARY_PAGE_IDS,
   ...SYSTEM_FIELDS_PAGE_IDS,
+  ...ORPHAN_SCREENS_PAGE_IDS,
 ];
 
 /** Map shell page id to app route. */
@@ -19,6 +21,16 @@ export function pagePathFromId(pageId: PageId): string {
 /** First permitted page in sidebar order — post-login and access-denied redirect. */
 export function defaultLandingPage(rolePages: readonly PageId[]): PageId {
   if (rolePages.includes("dashboard")) return "dashboard";
+  // Government reviewer (and similar): work from ops tasks, not legacy /government-review or PO.
+  if (
+    rolePages.includes("operations-tasks") &&
+    rolePages.includes("keys") &&
+    !rolePages.includes("government-review") &&
+    !rolePages.includes("all-transactions") &&
+    !rolePages.includes("active-case-study")
+  ) {
+    return "operations-tasks";
+  }
   for (const pageId of NAV_PAGE_ORDER) {
     if (rolePages.includes(pageId)) return pageId;
   }

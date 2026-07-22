@@ -29,7 +29,7 @@ export const OPERATIONS_TASK_STATUS_LABELS: Record<string, string> = {
   created: "منشأة",
   in_progress: "قيد التنفيذ",
   paused: "متوقفة مؤقتاً",
-  completed: "مكتملة",
+  completed: "منجزة",
   cancelled: "ملغاة",
 };
 
@@ -215,6 +215,14 @@ export function isTerminalOperationsTaskStatus(status: string): boolean {
   return status === "completed" || status === "cancelled";
 }
 
+/** Creator-facing receipt indicator (دورة اسناد المهام §9). */
+export function operationsTaskReceiptLabel(
+  task: Pick<OperationsTaskDto, "receiptConfirmedAt" | "status">,
+): "مؤكَّد" | "بانتظار المنفّذ" | null {
+  if (isTerminalOperationsTaskStatus(task.status)) return null;
+  return task.receiptConfirmedAt ? "مؤكَّد" : "بانتظار المنفّذ";
+}
+
 export type TaskCountdown = { txt: string; over: boolean };
 
 export function formatTaskDueLabel(iso: string): string {
@@ -284,7 +292,7 @@ export function taskUrgency(
 export const TASK_STEPPER_STEPS = [
   { id: "created", label: "منشأة" },
   { id: "in_progress", label: "قيد التنفيذ" },
-  { id: "completed", label: "مكتملة" },
+  { id: "completed", label: "منجزة" },
 ] as const;
 
 /** Matches HTML: only created / in_progress / completed map; paused has no active step. */

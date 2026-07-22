@@ -46,7 +46,12 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: "/welcome", destination: "/dashboard", permanent: true },
-      { source: "/survey", destination: "/dashboard", permanent: false },
+      { source: "/my-tasks", destination: "/active-primary-data", permanent: false },
+      {
+        source: "/my-tasks/:taskId",
+        destination: "/active-primary-data?task=:taskId",
+        permanent: false,
+      },
     ];
   },
   async rewrites() {
@@ -61,6 +66,7 @@ const nextConfig: NextConfig = {
     "@case-study/mfe",
     "@failures/mfe",
     "@settings/mfe",
+    "@survey/mfe",
     "@platform/app-shared",
     "@platform/api-client",
     "@platform/auth-client",

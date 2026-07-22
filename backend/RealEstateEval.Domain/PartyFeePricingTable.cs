@@ -13,10 +13,10 @@ public class PartyFeePricingTable
     /// <summary>Category default used when the assignee has no explicit assignment.</summary>
     public bool IsActive { get; set; }
 
-    /// <summary>Government reviewer — متعاون فرد only.</summary>
+    /// <summary>أتعاب الزيارة — earned on ops <c>court_visit</c> complete (متعاون فرد).</summary>
     public decimal GovernmentReviewFeeSar { get; set; }
 
-    /// <summary>أتعاب استلام مفاتيح من المحكمة (تحصيل من إنفاذ).</summary>
+    /// <summary>أتعاب استلام المفاتيح — earned on court envelope register + photo (تحصيل من إنفاذ).</summary>
     public decimal KeyReceiptFeeSar { get; set; }
 
     public decimal FieldInspectorIndividualFeeSar { get; set; }

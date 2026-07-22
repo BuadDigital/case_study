@@ -101,6 +101,10 @@ const FeePricingView = dynamic(
     import("@/components/views/FeePricingView").then((m) => m.FeePricingView),
   { ssr: false },
 );
+const SurveyView = dynamic(
+  () => import("@survey/mfe").then((m) => m.SurveyView),
+  { ssr: false },
+);
 const PartyActiveTaskViewHost = dynamic(
   () =>
     import("@/components/party-tasks/PartyActiveTaskViewHost").then(
@@ -133,6 +137,7 @@ const VIEWS: Partial<Record<PageId, ComponentType>> = {
   "party-fees": PartyFeesView,
   "audit-log": AuditLogView,
   "fee-pricing": FeePricingView,
+  survey: SurveyView,
 };
 
 for (const pageId of PARTY_TASK_PAGE_IDS) {

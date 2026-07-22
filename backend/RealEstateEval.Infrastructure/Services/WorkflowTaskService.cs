@@ -1015,7 +1015,7 @@ public class WorkflowTaskService : IWorkflowTaskService
             var single = assignedTasks.Count == 1 ? assignedTasks[0] : null;
             var href = single is not null
                 ? TaskHref(single.Kind, single.Id)
-                : "/my-tasks";
+                : "/active-primary-data";
             var body = single is not null
                 ? $"أُسندت إليك مهمة جديدة: {TaskNotificationLabel(single.Kind)} على {refLabel}."
                 : $"أُسندت إليك {assignedTasks.Count} مهام جديدة على {refLabel}.";
@@ -1057,9 +1057,10 @@ public class WorkflowTaskService : IWorkflowTaskService
             "engineering-survey" => $"/active-survey/{id}",
             "field-inspection" => $"/property-inspection/{id}",
             "property-appraisal" => $"/property-appraisal/{id}",
-            "government-review" => $"/government-review/{id}",
+            // Reviewers use operations-tasks; CDO can still open /government-review manually.
+            "government-review" => "/operations-tasks",
             "valuation-coordination" => $"/valuation-coordination/{id}",
-            _ => "/my-tasks",
+            _ => "/active-primary-data",
         };
     }
 

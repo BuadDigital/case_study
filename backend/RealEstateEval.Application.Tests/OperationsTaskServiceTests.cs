@@ -102,9 +102,195 @@ public class OperationsTaskServiceTests
         Assert.NotNull(result);
         Assert.Equal("a2", result!.AssigneeId);
         Assert.Equal("سعد", result.AssigneeName);
+        Assert.Equal("a1", result.OriginalAssigneeId);
+        Assert.Equal("أحمد", result.OriginalAssigneeName);
         Assert.Contains(
             result.Comments,
             c => c.Kind == "update" && c.Text.Contains("أُعيد توجيه") && c.Text.Contains("انشغال"));
+    }
+
+    [Fact]
+    public async Task PatchAsync_cancel_requires_reason_and_persists()
+    {
+        await using var db = CreateDb();
+        var service = CreateService(db);
+        var (created, _) = await service.CreateAsync(
+            new CreateOperationsTaskRequest
+            {
+                Type = "general",
+                Title = "إلغاء",
+                Scope = "general",
+                AssigneeId = "a1",
+                AssigneeName = "منفّذ",
+            },
+            "creator-1",
+            "منشئ");
+
+        var (rejected, rejectError) = await service.PatchAsync(
+            Guid.Parse(created!.Id),
+            new PatchOperationsTaskRequest { Status = "cancelled" },
+            "creator-1",
+            "منشئ",
+            "case-specialist",
+            "creator-1");
+        Assert.Null(rejected);
+        Assert.Equal("سبب الإلغاء مطلوب", rejectError);
+
+        var (cancelled, error) = await service.PatchAsync(
+            Guid.Parse(created.Id),
+            new PatchOperationsTaskRequest
+            {
+                Status = "cancelled",
+                CancelReason = "لم تعد مطلوبة",
+            },
+            "creator-1",
+            "منشئ",
+            "case-specialist",
+            "creator-1");
+
+        Assert.Null(error);
+        Assert.NotNull(cancelled);
+        Assert.Equal("cancelled", cancelled!.Status);
+        Assert.Equal("لم تعد مطلوبة", cancelled.CancelReason);
+        Assert.Contains(cancelled.Comments, c => c.Text.Contains("لم تعد مطلوبة", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task PatchAsync_confirm_receipt_sets_receipt_confirmed_at()
+    {
+        await using var db = CreateDb();
+        var service = CreateService(db);
+        var (created, _) = await service.CreateAsync(
+            new CreateOperationsTaskRequest
+            {
+                Type = "general",
+                Title = "استلام",
+                Scope = "general",
+                AssigneeId = "a1",
+                AssigneeName = "منفّذ",
+            },
+            "creator-1",
+            "منشئ");
+
+        Assert.Null(created!.ReceiptConfirmedAt);
+
+        var (started, error) = await service.PatchAsync(
+            Guid.Parse(created.Id),
+            new PatchOperationsTaskRequest { Status = "in_progress" },
+            "a1",
+            "منفّذ",
+            "government-reviewer",
+            "user-a1");
+
+        Assert.Null(error);
+        Assert.NotNull(started);
+        Assert.Equal("in_progress", started!.Status);
+        Assert.False(string.IsNullOrWhiteSpace(started.ReceiptConfirmedAt));
+        Assert.Contains(started.Comments, c => c.Text.Contains("أكّد الاستلام", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task PatchAsync_pause_requires_reason_and_persists()
+    {
+        await using var db = CreateDb();
+        var service = CreateService(db);
+        var (created, _) = await service.CreateAsync(
+            new CreateOperationsTaskRequest
+            {
+                Type = "general",
+                Title = "إيقاف",
+                Scope = "general",
+                AssigneeId = "a1",
+                AssigneeName = "منفّذ",
+            },
+            "creator-1",
+            "منشئ");
+
+        var (rejected, rejectError) = await service.PatchAsync(
+            Guid.Parse(created!.Id),
+            new PatchOperationsTaskRequest { Status = "paused" },
+            "creator-1",
+            "منشئ",
+            "case-specialist",
+            "creator-1");
+        Assert.Null(rejected);
+        Assert.Equal("سبب الإيقاف المؤقت مطلوب", rejectError);
+
+        var (paused, error) = await service.PatchAsync(
+            Guid.Parse(created.Id),
+            new PatchOperationsTaskRequest
+            {
+                Status = "paused",
+                PauseReason = "ظرف طارئ",
+            },
+            "creator-1",
+            "منشئ",
+            "case-specialist",
+            "creator-1");
+
+        Assert.Null(error);
+        Assert.NotNull(paused);
+        Assert.Equal("paused", paused!.Status);
+        Assert.Equal("ظرف طارئ", paused.PauseReason);
+        Assert.False(string.IsNullOrWhiteSpace(paused.PausedAt));
+        Assert.Contains(paused.Comments, c => c.Text.Contains("ظرف طارئ", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task PatchAsync_complete_after_reassign_records_execution_credit()
+    {
+        await using var db = CreateDb();
+        var service = CreateService(db);
+        var (created, _) = await service.CreateAsync(
+            new CreateOperationsTaskRequest
+            {
+                Type = "general",
+                Title = "ائتمان",
+                Scope = "general",
+                AssigneeId = "a1",
+                AssigneeName = "الأول",
+            },
+            "creator-1",
+            "منشئ");
+
+        await service.ReassignAsync(
+            Guid.Parse(created!.Id),
+            new ReassignOperationsTaskRequest
+            {
+                AssigneeId = "a2",
+                AssigneeName = "الثاني",
+                Reason = "إعادة توجيه",
+            },
+            "creator-1",
+            "منشئ",
+            "case-specialist");
+
+        await service.PatchAsync(
+            Guid.Parse(created.Id),
+            new PatchOperationsTaskRequest { Status = "in_progress" },
+            "a2",
+            "الثاني",
+            "government-reviewer",
+            "user-a2");
+
+        var (done, error) = await service.PatchAsync(
+            Guid.Parse(created.Id),
+            new PatchOperationsTaskRequest
+            {
+                Status = "completed",
+                CreditAssigneeId = "a2",
+                CreditAssigneeName = "الثاني",
+            },
+            "creator-1",
+            "منشئ",
+            "case-specialist",
+            "creator-1");
+
+        Assert.Null(error);
+        Assert.NotNull(done);
+        Assert.Equal("a2", done!.CreditAssigneeId);
+        Assert.Equal("الثاني", done.CreditAssigneeName);
+        Assert.Contains(done.Comments, c => c.Text.Contains("مسؤولية التنفيذ", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -329,6 +515,169 @@ public class OperationsTaskServiceTests
         Assert.Contains(
             done.Comments,
             c => c.Text.Contains("استُلم ظرف مفاتيح", StringComparison.Ordinal));
+        Assert.Equal(350m, done.VisitFeeAmountSar);
+        Assert.Single(db.CourtVisitFeeCharges);
+        var visitCharge = await db.CourtVisitFeeCharges.SingleAsync();
+        Assert.Equal(Guid.Parse(created.Id), visitCharge.OperationsTaskId);
+        Assert.Equal("a1", visitCharge.CreditAssigneeId);
+        Assert.Equal(350m, visitCharge.AmountSar);
+        Assert.Equal(CourtVisitFeeStatuses.Open, visitCharge.Status);
+        Assert.Empty(db.KeyReceiptFeeCharges);
+    }
+
+    [Fact]
+    public async Task PatchAsync_complete_court_visit_is_idempotent_for_visit_fee()
+    {
+        await using var db = CreateDb();
+        var service = CreateService(db);
+        var (created, _) = await service.CreateAsync(
+            new CreateOperationsTaskRequest
+            {
+                Type = "court_visit",
+                Title = "زيارة محكمة",
+                Scope = "work_order",
+                PoNumber = "PO-2",
+                AssigneeId = "a1",
+                AssigneeName = "مراجع",
+                LetterRows =
+                [
+                    new OperationsTaskLetterRowDto
+                    {
+                        Po = "PO-2",
+                        Deed = "D-2",
+                        Owner = "مالك",
+                        Request = "REQ-2",
+                        Court = "محكمة",
+                        Circuit = "دائرة",
+                    },
+                ],
+            },
+            "creator-1",
+            "منشئ");
+
+        Assert.NotNull(created);
+
+        await service.PatchAsync(
+            Guid.Parse(created!.Id),
+            new PatchOperationsTaskRequest { Status = "in_progress" },
+            "a1",
+            "مراجع",
+            "government-reviewer",
+            "user-1");
+
+        await service.PatchAsync(
+            Guid.Parse(created.Id),
+            new PatchOperationsTaskRequest
+            {
+                Status = "completed",
+                CourtVisitResult = new OperationsTaskCourtVisitResultDto
+                {
+                    Kind = "none",
+                    Statement = "لا مفاتيح",
+                },
+            },
+            "a1",
+            "مراجع",
+            "government-reviewer",
+            "user-1");
+
+        Assert.Single(db.CourtVisitFeeCharges);
+
+        // Already completed — second patch with same status should not add another charge.
+        await service.PatchAsync(
+            Guid.Parse(created.Id),
+            new PatchOperationsTaskRequest
+            {
+                Status = "completed",
+                CourtVisitResult = new OperationsTaskCourtVisitResultDto
+                {
+                    Kind = "none",
+                    Statement = "لا مفاتيح",
+                },
+            },
+            "a1",
+            "مراجع",
+            "government-reviewer",
+            "user-1");
+
+        Assert.Single(db.CourtVisitFeeCharges);
+    }
+
+    [Fact]
+    public async Task PatchAsync_complete_court_visit_credits_execution_assignee()
+    {
+        await using var db = CreateDb();
+        var service = CreateService(db);
+        var (created, _) = await service.CreateAsync(
+            new CreateOperationsTaskRequest
+            {
+                Type = "court_visit",
+                Title = "زيارة محكمة",
+                Scope = "work_order",
+                PoNumber = "PO-3",
+                AssigneeId = "original-1",
+                AssigneeName = "أصلي",
+                LetterRows =
+                [
+                    new OperationsTaskLetterRowDto
+                    {
+                        Po = "PO-3",
+                        Deed = "D-3",
+                        Owner = "مالك",
+                        Request = "REQ-3",
+                        Court = "محكمة",
+                        Circuit = "دائرة",
+                    },
+                ],
+            },
+            "creator-1",
+            "منشئ");
+
+        Assert.NotNull(created);
+
+        await service.ReassignAsync(
+            Guid.Parse(created!.Id),
+            new ReassignOperationsTaskRequest
+            {
+                AssigneeId = "new-1",
+                AssigneeName = "جديد",
+                Reason = "انشغال",
+            },
+            "creator-1",
+            "منشئ",
+            "case-specialist");
+
+        await service.PatchAsync(
+            Guid.Parse(created.Id),
+            new PatchOperationsTaskRequest { Status = "in_progress" },
+            "new-1",
+            "جديد",
+            "government-reviewer",
+            "user-1");
+
+        var (done, error) = await service.PatchAsync(
+            Guid.Parse(created.Id),
+            new PatchOperationsTaskRequest
+            {
+                Status = "completed",
+                CourtVisitResult = new OperationsTaskCourtVisitResultDto
+                {
+                    Kind = "none",
+                    Statement = "لا مفاتيح في الدائرة",
+                },
+                CreditAssigneeId = "new-1",
+                CreditAssigneeName = "جديد",
+            },
+            "new-1",
+            "جديد",
+            "government-reviewer",
+            "user-1");
+
+        Assert.Null(error);
+        Assert.NotNull(done);
+        var charge = await db.CourtVisitFeeCharges.SingleAsync();
+        Assert.Equal("new-1", charge.CreditAssigneeId);
+        Assert.Equal("جديد", charge.CreditAssigneeName);
     }
 
     private static ApplicationDbContext CreateDb() =>
@@ -339,7 +688,7 @@ public class OperationsTaskServiceTests
             .Options);
 
     private static OperationsTaskService CreateService(ApplicationDbContext db) =>
-        new(db, new NullNotificationService());
+        new(db, new NullNotificationService(), new PartyFeePricingService(db));
 
     private sealed class NullNotificationService : INotificationService
     {
