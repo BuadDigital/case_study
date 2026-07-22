@@ -107,10 +107,28 @@ internal sealed class StubPartyFeePricingService : IPartyFeePricingService
     public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
         => Task.FromResult(true);
 
+    public Task<IReadOnlyList<string>> ListAssignmentsAsync(
+        Guid tableId,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<string>>([]);
+
+    public Task<PartyFeePricingDto> SetAssignmentsAsync(
+        Guid tableId,
+        IReadOnlyList<string> assigneeIds,
+        CancellationToken cancellationToken = default)
+    {
+        var row = Sample();
+        row.Id = tableId;
+        row.AssignedAssigneeIds = assigneeIds.ToList();
+        row.AssignedCount = assigneeIds.Count;
+        return Task.FromResult(row);
+    }
+
     public Task<decimal?> ResolveDefaultFeeAsync(
         string taskKind,
         string partyType,
         decimal? areaM2 = null,
+        string? assigneeId = null,
         CancellationToken cancellationToken = default)
         => Task.FromResult<decimal?>(0m);
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Input,
   KpiBand,
@@ -941,6 +941,7 @@ function LetterTable({ rows }: { rows: OperationsTask["letterRows"] }) {
 }
 
 export function OperationsTasksView() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const deepLinkTaskId = searchParams.get("task")?.trim() || null;
   const createFlag = searchParams.get("create");
@@ -973,8 +974,14 @@ export function OperationsTasksView() {
     [role, staffUsers],
   );
 
+  const assigneeScopeId =
+    role === "government-reviewer"
+      ? reviewerAccount?.assigneeId?.trim() || undefined
+      : undefined;
+
   const { data: tasks = [], isFetched, refetch, isFetching } = useOperationsTasksQuery({
     live: true,
+    assigneeId: assigneeScopeId,
   });
 
   const [search, setSearch] = useState("");
@@ -1162,6 +1169,7 @@ export function OperationsTasksView() {
       closeComment?: string,
       files?: DraftFile[],
     ) => {
+      const taskBefore = tasks.find((t) => t.id === id) ?? null;
       if (
         status === "completed" &&
         (closeComment?.trim() || (files && files.length > 0))
@@ -1184,8 +1192,25 @@ export function OperationsTasksView() {
       setCloseOpen(false);
       setCloseText("");
       setCloseFiles([]);
+      if (status === "completed" && taskBefore?.type === "court_visit") {
+        showToast(
+          "تم إكمال زيارة المحكمة — يمكنك تسجيل ظرف المفاتيح الآن من محفظة المفاتيح",
+          "success",
+        );
+      }
     },
-    [runPatch],
+    [runPatch, tasks, showToast],
+  );
+
+  const openKeysRegisterFromTask = useCallback(
+    (task: OperationsTask) => {
+      const params = new URLSearchParams({ register: "1" });
+      const request = task.letterRows[0]?.request?.trim();
+      if (request) params.set("request", request);
+      params.set("task", task.id);
+      router.push(`/keys?${params.toString()}`);
+    },
+    [router],
   );
 
   const applyPriority = useCallback(
@@ -1334,7 +1359,7 @@ export function OperationsTasksView() {
       if (task.status === "created") {
         items.push({
           id: "start",
-          label: "بدء التنفيذ",
+          label: "تأكيد الاستلام",
           icon: RowMoreMenuIcons.play,
           onClick: () => void runStatus(task.id, "in_progress"),
         });
@@ -1345,6 +1370,17 @@ export function OperationsTasksView() {
           label: "إغلاق المهمة (إكمال)",
           icon: RowMoreMenuIcons.checkCircle,
           onClick: () => openCloseModal(task),
+        });
+      }
+      if (
+        task.type === "court_visit" &&
+        (task.status === "completed" || task.status === "in_progress")
+      ) {
+        items.push({
+          id: "register-envelope",
+          label: "تسجيل الظرف الآن",
+          icon: RowMoreMenuIcons.checkCircle,
+          onClick: () => openKeysRegisterFromTask(task),
         });
       }
       if (canCreate && (task.status === "created" || task.status === "in_progress")) {
@@ -1405,7 +1441,7 @@ export function OperationsTasksView() {
       }
       return items;
     },
-    [canCreate, canRemind, runStatus, remindTask, openReassign, openCloseModal, openPriorityModal],
+    [canCreate, canRemind, runStatus, remindTask, openReassign, openCloseModal, openPriorityModal, openKeysRegisterFromTask],
   );
 
   const isAssignee =
@@ -1603,7 +1639,7 @@ export function OperationsTasksView() {
               >
                 <polygon points="5 3 19 12 5 21 5 3" />
               </svg>
-              <span>بدء التنفيذ</span>
+              <span>تأكيد الاستلام</span>
             </button>
           ) : null}
           {detail.status === "in_progress" && isAssignee ? (
@@ -1651,6 +1687,18 @@ export function OperationsTasksView() {
               طباعة خطاب التفويض
             </button>
           ) : null}
+          {detail.type === "court_visit" &&
+          (detail.status === "completed" || detail.status === "in_progress") ? (
+            <button
+              type="button"
+              className={
+                detail.status === "completed" ? opsBtnPrimary : opsBtnGhost
+              }
+              onClick={() => openKeysRegisterFromTask(detail)}
+            >
+              تسجيل الظرف الآن
+            </button>
+          ) : null}
           {canCreate && isActiveOperationsTask(detail) ? (
             <button
               type="button"
@@ -1672,8 +1720,7 @@ export function OperationsTasksView() {
           {canCreate && !isTerminalOperationsTask(detail) ? (
             <button
               type="button"
-              className={opsBtnGhost}
-              className="text-[#c0553d]"
+              className={cn(opsBtnGhost, "text-[#c0553d]")}
               disabled={busy}
               onClick={() => void runStatus(detail.id, "cancelled")}
             >

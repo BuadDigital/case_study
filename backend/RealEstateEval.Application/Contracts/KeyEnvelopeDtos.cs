@@ -146,7 +146,7 @@ public class AddKeyEnvelopeAssignmentRequest
 
 public class ConfirmKeyAssignmentRequest
 {
-    /// <summary>matched | unmatched</summary>
+    /// <summary>matched | partial | unmatched | unmatched_inspected | missing</summary>
     [Required, MaxLength(32)]
     public string Status { get; init; } = "";
     [MaxLength(2000)]

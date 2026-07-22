@@ -9,6 +9,11 @@ public interface IUserRegistrationService
         RegistrationSource? sourceScope = null,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Single user profile for the given identity user id, or null if none.</summary>
+    Task<UserListItemDto?> GetByUserIdAsync(
+        string userId,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Active operational users eligible for work-order distribution.</summary>
     Task<IReadOnlyList<UserListItemDto>> ListDistributionAssigneesAsync(
         CancellationToken cancellationToken = default);

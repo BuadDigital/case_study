@@ -111,7 +111,7 @@ export const DOMAIN_NOTIFICATION_RULES: DomainNotificationRule[] = [
       title: "مراجعة حكومية",
       body: "تم إرسال المراجعة الحكومية.",
       tone: "success",
-      href: "/government-review",
+      href: "/operations-tasks",
       category: "workflow",
       entityType: "task",
       sourceEvent: GOVERNMENT_REVIEW_SUBMITTED_EVENT,

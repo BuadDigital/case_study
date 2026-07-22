@@ -29,13 +29,6 @@ export type FinancialSummaryDto = {
   revenueGrandTotal: string;
 };
 
-export type PartyFeePricingTierDto = {
-  id?: string | null;
-  sortOrder: number;
-  maxAreaM2?: number | null;
-  feeSar: number;
-};
-
 export type PartyFeePricingCategory =
   | "engineering-survey"
   | "government-review"
@@ -46,7 +39,15 @@ export type PartyFeePricingTableSummaryDto = {
   category: PartyFeePricingCategory;
   name: string;
   isActive: boolean;
+  assignedCount?: number;
   updatedAtUtc?: string | null;
+};
+
+export type PartyFeePricingTierDto = {
+  id?: string | null;
+  sortOrder: number;
+  maxAreaM2?: number | null;
+  feeSar: number;
 };
 
 export type PartyFeePricingDto = {
@@ -54,6 +55,8 @@ export type PartyFeePricingDto = {
   category: PartyFeePricingCategory;
   name: string;
   isActive: boolean;
+  assignedCount?: number;
+  assignedAssigneeIds?: string[];
   areaTiers: PartyFeePricingTierDto[];
   governmentReviewFeeSar: number;
   keyReceiptFeeSar: number;
@@ -66,6 +69,10 @@ export type CreatePartyFeePricingTableRequest = {
   category: PartyFeePricingCategory;
   name: string;
   copyFromTableId?: string | null;
+};
+
+export type SetPartyFeePricingAssignmentsRequest = {
+  assigneeIds: string[];
 };
 
 function headers(token: string): HeadersInit {
@@ -192,6 +199,41 @@ export async function activatePartyFeePricing(
     const res = await fetch(
       `${baseUrl(config)}/api/financial/v1/party-fee-pricing/${id}/activate`,
       { method: "POST", headers: headers(config.token) },
+    );
+    return readResult<PartyFeePricingDto>(res);
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export async function fetchPartyFeePricingAssignments(
+  config: PrototypeModulesApiConfig,
+  id: string,
+): Promise<PrototypeModulesResult<string[]>> {
+  try {
+    const res = await fetch(
+      `${baseUrl(config)}/api/financial/v1/party-fee-pricing/${id}/assignments`,
+      { headers: headers(config.token) },
+    );
+    return readResult<string[]>(res);
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export async function setPartyFeePricingAssignments(
+  config: PrototypeModulesApiConfig,
+  id: string,
+  body: SetPartyFeePricingAssignmentsRequest,
+): Promise<PrototypeModulesResult<PartyFeePricingDto>> {
+  try {
+    const res = await fetch(
+      `${baseUrl(config)}/api/financial/v1/party-fee-pricing/${id}/assignments`,
+      {
+        method: "PUT",
+        headers: headers(config.token),
+        body: JSON.stringify(body),
+      },
     );
     return readResult<PartyFeePricingDto>(res);
   } catch {

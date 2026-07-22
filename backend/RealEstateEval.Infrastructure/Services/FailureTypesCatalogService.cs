@@ -10,6 +10,13 @@ namespace RealEstateEval.Infrastructure.Services;
 public sealed class FailureTypesCatalogService : IFailureTypesCatalogService
 {
     private static readonly Guid SingletonId = Guid.Parse("c2d3e4f5-a6b7-8901-cdef-123456789012");
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
+    };
+
     private readonly ApplicationDbContext _db;
 
     public FailureTypesCatalogService(ApplicationDbContext db) => _db = db;
@@ -29,7 +36,7 @@ public sealed class FailureTypesCatalogService : IFailureTypesCatalogService
         {
             categories = request.Categories ?? [],
             problemTypes = request.ProblemTypes ?? [],
-        });
+        }, JsonOptions);
 
         var row = await _db.FailureTypesCatalogConfigs.FirstOrDefaultAsync(cancellationToken);
         var now = DateTime.UtcNow;
@@ -65,10 +72,10 @@ public sealed class FailureTypesCatalogService : IFailureTypesCatalogService
         using var doc = JsonDocument.Parse(row.CatalogJson);
         var root = doc.RootElement;
         var categories = root.TryGetProperty("categories", out var c)
-            ? JsonSerializer.Deserialize<List<FailureTypeCategoryDto>>(c.GetRawText()) ?? []
+            ? JsonSerializer.Deserialize<List<FailureTypeCategoryDto>>(c.GetRawText(), JsonOptions) ?? []
             : [];
         var problemTypes = root.TryGetProperty("problemTypes", out var p)
-            ? JsonSerializer.Deserialize<List<FailureProblemTypeDto>>(p.GetRawText()) ?? []
+            ? JsonSerializer.Deserialize<List<FailureProblemTypeDto>>(p.GetRawText(), JsonOptions) ?? []
             : [];
         return new FailureTypesCatalogDto
         {

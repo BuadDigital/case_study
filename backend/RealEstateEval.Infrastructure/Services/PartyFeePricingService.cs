@@ -36,7 +36,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         if (normalizedCategory is not null)
             query = query.Where(x => x.Category == normalizedCategory);
 
-        return await query
+        var tables = await query
             .OrderByDescending(x => x.IsActive)
             .ThenBy(x => x.Name)
             .Select(x => new PartyFeePricingTableSummaryDto
@@ -48,6 +48,21 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
                 UpdatedAtUtc = x.UpdatedAtUtc,
             })
             .ToListAsync(cancellationToken);
+
+        if (tables.Count == 0) return tables;
+
+        var tableIds = tables.Select(t => t.Id).ToList();
+        var counts = await _db.PartyFeePricingAssignments.AsNoTracking()
+            .Where(a => tableIds.Contains(a.TableId))
+            .GroupBy(a => a.TableId)
+            .Select(g => new { TableId = g.Key, Count = g.Count() })
+            .ToListAsync(cancellationToken);
+        var countByTable = counts.ToDictionary(x => x.TableId, x => x.Count);
+
+        foreach (var table in tables)
+            table.AssignedCount = countByTable.GetValueOrDefault(table.Id);
+
+        return tables;
     }
 
     public async Task<PartyFeePricingDto> GetActiveAsync(CancellationToken cancellationToken = default)
@@ -62,7 +77,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
     {
         await EnsureAllCategoriesSeededAsync(cancellationToken);
         var table = await LoadTableAsync(id, tracking: false, cancellationToken);
-        return table is null ? null : ToDto(table);
+        return table is null ? null : await ToDtoAsync(table, cancellationToken);
     }
 
     public async Task<PartyFeePricingDto> CreateAsync(
@@ -118,7 +133,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
 
         _db.PartyFeePricingTables.Add(table);
         await _db.SaveChangesAsync(cancellationToken);
-        return ToDto(table);
+        return await ToDtoAsync(table, cancellationToken);
     }
 
     public async Task<PartyFeePricingDto> SaveAsync(
@@ -160,7 +175,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         await _db.SaveChangesAsync(cancellationToken);
         var reloaded = await LoadTableAsync(id, tracking: false, cancellationToken)
             ?? throw new KeyNotFoundException($"Pricing table {id} was not found after save.");
-        return ToDto(reloaded);
+        return await ToDtoAsync(reloaded, cancellationToken);
     }
 
     public async Task<PartyFeePricingDto> ActivateAsync(
@@ -180,7 +195,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         table.IsActive = true;
         table.UpdatedAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
-        return ToDto(table);
+        return await ToDtoAsync(table, cancellationToken);
     }
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
@@ -213,13 +228,87 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         return true;
     }
 
+    public async Task<IReadOnlyList<string>> ListAssignmentsAsync(
+        Guid tableId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _db.PartyFeePricingAssignments.AsNoTracking()
+            .Where(a => a.TableId == tableId)
+            .OrderBy(a => a.AssigneeId)
+            .Select(a => a.AssigneeId)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<PartyFeePricingDto> SetAssignmentsAsync(
+        Guid tableId,
+        IReadOnlyList<string> assigneeIds,
+        CancellationToken cancellationToken = default)
+    {
+        await EnsureAllCategoriesSeededAsync(cancellationToken);
+        var table = await LoadTableAsync(tableId, tracking: true, cancellationToken)
+            ?? throw new KeyNotFoundException($"Pricing table {tableId} was not found.");
+
+        var normalized = assigneeIds
+            .Select(id => (id ?? "").Trim())
+            .Where(id => id.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var now = DateTime.UtcNow;
+
+        if (normalized.Count > 0)
+        {
+            var conflicting = await _db.PartyFeePricingAssignments
+                .Where(a =>
+                    a.Category == table.Category
+                    && a.TableId != tableId
+                    && normalized.Contains(a.AssigneeId))
+                .ToListAsync(cancellationToken);
+            if (conflicting.Count > 0)
+                _db.PartyFeePricingAssignments.RemoveRange(conflicting);
+        }
+
+        var existing = await _db.PartyFeePricingAssignments
+            .Where(a => a.TableId == tableId)
+            .ToListAsync(cancellationToken);
+        _db.PartyFeePricingAssignments.RemoveRange(existing);
+
+        foreach (var assigneeId in normalized)
+        {
+            _db.PartyFeePricingAssignments.Add(new PartyFeePricingAssignment
+            {
+                Id = Guid.NewGuid(),
+                TableId = tableId,
+                Category = table.Category,
+                AssigneeId = assigneeId,
+                UpdatedAtUtc = now,
+            });
+        }
+
+        table.UpdatedAtUtc = now;
+        await _db.SaveChangesAsync(cancellationToken);
+
+        var reloaded = await LoadTableAsync(tableId, tracking: false, cancellationToken)
+            ?? throw new KeyNotFoundException($"Pricing table {tableId} was not found after assign.");
+        return await ToDtoAsync(reloaded, cancellationToken);
+    }
+
     public async Task<decimal?> ResolveDefaultFeeAsync(
         string taskKind,
         string partyType,
         decimal? areaM2 = null,
+        string? assigneeId = null,
         CancellationToken cancellationToken = default)
     {
-        var pricing = await GetActiveAsync(cancellationToken);
+        var category = CategoryForTaskKind(taskKind);
+        if (category is null) return null;
+
+        var pricing = await ResolveTableDtoForAssigneeAsync(
+            category,
+            assigneeId,
+            cancellationToken);
+        if (pricing is null) return null;
+
         return ResolveFromDto(pricing, taskKind, partyType, areaM2);
     }
 
@@ -252,6 +341,50 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
                 or InspectorFeeRules.TypeCooperatorLegacy => pricing.FieldInspectorIndividualFeeSar,
             _ => null,
         };
+    }
+
+    private static string? CategoryForTaskKind(string taskKind)
+    {
+        if (string.Equals(taskKind, "engineering-survey", StringComparison.OrdinalIgnoreCase))
+            return PartyFeePricingCategories.EngineeringSurvey;
+        if (string.Equals(taskKind, "government-review", StringComparison.OrdinalIgnoreCase))
+            return PartyFeePricingCategories.GovernmentReview;
+        if (string.Equals(taskKind, "field-inspection", StringComparison.OrdinalIgnoreCase))
+            return PartyFeePricingCategories.FieldInspector;
+        return null;
+    }
+
+    private async Task<PartyFeePricingDto?> ResolveTableDtoForAssigneeAsync(
+        string category,
+        string? assigneeId,
+        CancellationToken cancellationToken)
+    {
+        await EnsureAllCategoriesSeededAsync(cancellationToken);
+        var trimmed = assigneeId?.Trim();
+
+        if (!string.IsNullOrEmpty(trimmed))
+        {
+            var assignedTableId = await _db.PartyFeePricingAssignments.AsNoTracking()
+                .Where(a => a.Category == category && a.AssigneeId == trimmed)
+                .Select(a => (Guid?)a.TableId)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (assignedTableId is Guid tableId)
+            {
+                var assigned = await LoadTableAsync(tableId, tracking: false, cancellationToken);
+                if (assigned is not null)
+                    return await ToDtoAsync(assigned, cancellationToken);
+            }
+
+            // Engineering office: no table until explicitly assigned (no silent default).
+            if (category == PartyFeePricingCategories.EngineeringSurvey)
+                return null;
+        }
+
+        var fallback = await _db.PartyFeePricingTables.AsNoTracking()
+            .Include(x => x.AreaTiers)
+            .FirstOrDefaultAsync(x => x.Category == category && x.IsActive, cancellationToken);
+        return fallback is null ? null : await ToDtoAsync(fallback, cancellationToken);
     }
 
     private async Task EnsureAllCategoriesSeededAsync(CancellationToken cancellationToken)
@@ -336,7 +469,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         var inspector = await _db.PartyFeePricingTables.AsNoTracking()
             .FirstAsync(x => x.Category == PartyFeePricingCategories.FieldInspector && x.IsActive, cancellationToken);
 
-        var engDto = ToDto(engineering);
+        var engDto = await ToDtoAsync(engineering, cancellationToken);
         return new PartyFeePricingDto
         {
             Id = engineering.Id,
@@ -415,8 +548,16 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         return "افتراضي";
     }
 
-    private static PartyFeePricingDto ToDto(PartyFeePricingTable table)
+    private async Task<PartyFeePricingDto> ToDtoAsync(
+        PartyFeePricingTable table,
+        CancellationToken cancellationToken)
     {
+        var assigneeIds = await _db.PartyFeePricingAssignments.AsNoTracking()
+            .Where(a => a.TableId == table.Id)
+            .OrderBy(a => a.AssigneeId)
+            .Select(a => a.AssigneeId)
+            .ToListAsync(cancellationToken);
+
         var tiers = table.AreaTiers
             .OrderBy(t => t.SortOrder)
             .Select(t => new EngineeringSurveyFeeRules.AreaFeeTier(t.MaxAreaM2, t.FeeSar))
@@ -429,6 +570,8 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             Category = table.Category,
             Name = table.Name,
             IsActive = table.IsActive,
+            AssignedCount = assigneeIds.Count,
+            AssignedAssigneeIds = assigneeIds,
             AreaTiers = normalized
                 .Select((t, i) => new PartyFeePricingTierDto
                 {

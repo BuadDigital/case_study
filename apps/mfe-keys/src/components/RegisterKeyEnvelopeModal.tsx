@@ -134,11 +134,14 @@ export function RegisterKeyEnvelopeModal({
   busy,
   onClose,
   onRegistered,
+  initialRequestNumber = "",
 }: {
   open: boolean;
   busy: boolean;
   onClose: () => void;
   onRegistered: (envelopeId: string) => void;
+  /** Prefill رقم الطلب when opening from a court-visit task. */
+  initialRequestNumber?: string;
 }) {
   const { showToast } = useToast();
   const [source, setSource] = useState<SourceKind>("court");
@@ -165,7 +168,7 @@ export function RegisterKeyEnvelopeModal({
   useEffect(() => {
     if (!open) return;
     setSource("court");
-    setRequestNumber("");
+    setRequestNumber(initialRequestNumber.trim());
     setCourt("");
     setCircuit("");
     setKeysCount("1");
@@ -179,7 +182,7 @@ export function RegisterKeyEnvelopeModal({
     setListOpen(false);
     setDragOver(false);
     setFormError("");
-  }, [open]);
+  }, [open, initialRequestNumber]);
 
   useEffect(() => {
     if (!open) return;

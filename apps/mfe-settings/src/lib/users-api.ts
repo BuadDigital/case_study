@@ -1,6 +1,7 @@
 import {
   createStaffUser,
   deleteStaffUser,
+  fetchMyProfile,
   getApiBase,
   listDistributionAssignees,
   listUsers,
@@ -88,4 +89,28 @@ export async function submitDeleteStaffUser(
   const config = apiConfig();
   if (!config) return { ok: false, kind: "network" };
   return deleteStaffUser(config, userId);
+}
+
+/** Current signed-in user's staff profile (for header / self profile). */
+export async function fetchCurrentStaffProfile(
+  fallback?: Pick<StaffUser, "id" | "name" | "role" | "email"> &
+    Partial<StaffUser>,
+): Promise<StaffUser | null> {
+  const config = apiConfig();
+  if (!config) {
+    if (!fallback) return null;
+    return {
+      type: "internal",
+      ...fallback,
+    };
+  }
+
+  const result = await fetchMyProfile(config);
+  if (result.ok) return userListItemToStaff(result.user);
+
+  if (!fallback) return null;
+  return {
+    type: "internal",
+    ...fallback,
+  };
 }

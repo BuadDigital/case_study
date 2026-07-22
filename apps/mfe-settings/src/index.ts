@@ -3,9 +3,12 @@
 export { CourtsView } from "./views/CourtsView";
 export { UsersView } from "./views/UsersView";
 export { UsersOrganizationView } from "./views/users/UsersOrganizationView";
+export { ProfileView } from "./views/ProfileView";
 export { CaseStudyInfoRolesView } from "./views/CaseStudyInfoRolesView";
 export { SystemFieldsCatalogView } from "./views/SystemFieldsCatalogView";
 export { SystemScreenCatalogView } from "./views/SystemScreenCatalogView";
+export { UserProfileModal } from "./components/UserProfileModal";
+export { UserProfileContent } from "./components/UserProfileContent";
 
 export * from "./lib/settings-api-config";
 export * from "./lib/settings-roles";

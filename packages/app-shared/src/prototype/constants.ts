@@ -129,11 +129,10 @@ export const ROLES: Record<RoleId, RoleDef> = {
     bg: "var(--orange-bg)",
     tc: "var(--orange)",
     pages: [
-      "po",
-      "government-review",
       "operations-tasks",
-      "party-fees",
       "keys",
+      "po",
+      "party-fees",
       "failures",
       "system-screen-catalog",
     ],
@@ -262,6 +261,7 @@ export const PAGE_TITLES: Record<PageId, string> = {
   "case-study-info-roles": "علاقة المستخدم بالمعلومة",
   "audit-log": "سجل التدقيق",
   "fee-pricing": "التسعيرة",
+  profile: "البروفايل",
 };
 
 export const PAGE_BREADCRUMB: Record<PageId, string> = {
@@ -292,6 +292,7 @@ export const PAGE_BREADCRUMB: Record<PageId, string> = {
   "case-study-info-roles": "جميع حقول النظام / علاقة المستخدم بالمعلومة",
   "audit-log": "الإعدادات / سجل التدقيق",
   "fee-pricing": "الإعدادات / التسعيرة",
+  profile: "البروفايل",
 };
 
 import type { PoListStatus } from "./po-list-status";
@@ -396,5 +397,6 @@ export const VALID_PAGE_IDS = new Set<PageId>([
   ...SYSTEM_FIELDS_NAV.map((n) => n.id),
   SYSTEM_FIELDS_CATALOG_NAV_ITEM.id,
   SYSTEM_SCREEN_CATALOG_NAV_ITEM.id,
+  "profile",
 ]);
 

@@ -113,6 +113,8 @@ export function canAccessPage(
   pageId: PageId,
   rolePages: readonly PageId[],
 ): boolean {
+  // Self profile is available to every signed-in role.
+  if (pageId === "profile") return true;
   return rolePages.includes(pageId);
 }
 

@@ -90,6 +90,30 @@ public class FinancialController : ControllerBase
         }
     }
 
+    [HttpGet("party-fee-pricing/{id:guid}/assignments")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageSystemConfig)]
+    public async Task<ActionResult<IReadOnlyList<string>>> ListPartyFeePricingAssignments(
+        Guid id,
+        CancellationToken ct)
+        => Ok(await _pricing.ListAssignmentsAsync(id, ct));
+
+    [HttpPut("party-fee-pricing/{id:guid}/assignments")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageSystemConfig)]
+    public async Task<ActionResult<PartyFeePricingDto>> SetPartyFeePricingAssignments(
+        Guid id,
+        [FromBody] SetPartyFeePricingAssignmentsRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            return Ok(await _pricing.SetAssignmentsAsync(id, request.AssigneeIds ?? [], ct));
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
     [HttpDelete("party-fee-pricing/{id:guid}")]
     [Authorize(Policy = CapabilityPolicyNames.ManageSystemConfig)]
     public async Task<IActionResult> DeletePartyFeePricing(Guid id, CancellationToken ct)

@@ -19,6 +19,7 @@ public class AuthController : ControllerBase
     private readonly ApplicationDbContext _db;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IPermissionService _permissions;
+    private readonly IUserRegistrationService _users;
     private readonly IWebHostEnvironment _environment;
 
     public AuthController(
@@ -26,12 +27,14 @@ public class AuthController : ControllerBase
         ApplicationDbContext db,
         IJwtTokenService jwtTokenService,
         IPermissionService permissions,
+        IUserRegistrationService users,
         IWebHostEnvironment environment)
     {
         _userManager = userManager;
         _db = db;
         _jwtTokenService = jwtTokenService;
         _permissions = permissions;
+        _users = users;
         _environment = environment;
     }
 
@@ -150,6 +153,44 @@ public class AuthController : ControllerBase
             Email = user.Email ?? string.Empty,
             DisplayName = user.DisplayName,
             Permissions = permissions,
+        });
+    }
+
+    /// <summary>Full staff profile for the signed-in user (same shape as users list).</summary>
+    [HttpGet("profile")]
+    [Authorize]
+    public async Task<ActionResult<UserListItemDto>> Profile(
+        CancellationToken cancellationToken = default)
+    {
+        var userId =
+            User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var profile = await _users.GetByUserIdAsync(userId, cancellationToken);
+        if (profile is not null)
+            return Ok(profile);
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null)
+            return Unauthorized();
+
+        var roles = await _userManager.GetRolesAsync(user);
+        return Ok(new UserListItemDto
+        {
+            Id = user.Id,
+            DisplayName = user.DisplayName,
+            JobTitle = string.Empty,
+            Email = user.Email ?? string.Empty,
+            UserName = user.UserName ?? string.Empty,
+            ContractType = ContractType.Internal,
+            Status = UserStatus.Active,
+            RegistrationSource = RegistrationSource.Hr,
+            PhoneNumber = user.PhoneNumber,
+            CreatedAtUtc = DateTime.UtcNow,
+            SystemRoles = roles.ToList(),
+            Details = [],
         });
     }
 }
