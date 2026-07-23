@@ -9,11 +9,13 @@ export type FinanceDisburseBuckets = {
 
 const ATTENTION_STATUSES: InspectorFeeBillingStatus[] = ["returned", "inquiry"];
 
-/** Engineering office at-finance rows are ready for future invoicing — not party صرف. */
-function isEngSurveyAwaitingInvoice(row: InspectorFeeRowDto): boolean {
+/** Engineering office ready/deferred/statement lines are not party صرف. */
+function isEngSurveyBillingPath(row: InspectorFeeRowDto): boolean {
   return (
     row.taskKind === "engineering-survey" &&
-    row.billingStatus === "at-finance"
+    (row.billingStatus === "at-finance" ||
+      row.billingStatus === "deferred" ||
+      row.billingStatus === "in-statement")
   );
 }
 
@@ -24,7 +26,7 @@ export function financeDisburseVisibleRows(rows: InspectorFeeRowDto[]): Inspecto
       r.billingStatus !== "disbursed" &&
       r.billingStatus !== "draft" &&
       r.billingStatus !== "sup-review" &&
-      !isEngSurveyAwaitingInvoice(r),
+      !isEngSurveyBillingPath(r),
   );
 }
 

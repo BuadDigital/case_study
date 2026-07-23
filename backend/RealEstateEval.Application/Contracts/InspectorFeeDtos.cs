@@ -22,6 +22,7 @@ public class InspectorFeeRowDto
     public string? ReturnTo { get; set; }
     public string? DisbursementBatchId { get; set; }
     public string? DisbursementVoucher { get; set; }
+    public string? EngineeringBillingStatementId { get; set; }
     public string? LastTransitionReason { get; set; }
     public DateTime? UpdatedAtUtc { get; set; }
     public DateTime? AccruedAtUtc { get; set; }

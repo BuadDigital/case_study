@@ -13,6 +13,8 @@ export type InspectorFeeBillingStatus =
   | "disputed"
   | "sup-review"
   | "at-finance"
+  | "deferred"
+  | "in-statement"
   | "disb-req"
   | "disbursed"
   | "returned"
@@ -59,6 +61,7 @@ export type InspectorFeeRowDto = {
   returnTo: string | null;
   disbursementBatchId: string | null;
   disbursementVoucher: string | null;
+  engineeringBillingStatementId: string | null;
   lastTransitionReason: string | null;
   updatedAtUtc: string | null;
   accruedAtUtc: string | null;
@@ -186,6 +189,9 @@ function normalizeRow(raw: Record<string, unknown>): InspectorFeeRowDto {
       null) as string | null,
     disbursementVoucher: (raw.disbursementVoucher ??
       raw.DisbursementVoucher ??
+      null) as string | null,
+    engineeringBillingStatementId: (raw.engineeringBillingStatementId ??
+      raw.EngineeringBillingStatementId ??
       null) as string | null,
     lastTransitionReason: (raw.lastTransitionReason ??
       raw.LastTransitionReason ??
@@ -454,6 +460,10 @@ export function inspectorFeeStatusLabel(
       return "بانتظار اعتماد المشرف";
     case "at-finance":
       return "جاهز للفوترة";
+    case "deferred":
+      return "جاهز — مرحَّل";
+    case "in-statement":
+      return "مدرج";
     case "disb-req":
       return "ضمن أمر صرف";
     case "disbursed":
@@ -479,6 +489,9 @@ export function inspectorFeeStatusTone(
       return "warning";
     case "at-finance":
       return "info";
+    case "deferred":
+      return "warning";
+    case "in-statement":
     case "disb-req":
       return "info";
     case "disbursed":

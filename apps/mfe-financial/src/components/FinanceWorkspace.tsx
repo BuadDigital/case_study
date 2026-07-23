@@ -24,6 +24,7 @@ import { useFinanceTabCounts } from "../query/finance-tab-counts";
 import { FinancePartyDisburse } from "./FinancePartyDisburse";
 import { FinanceEnfazPoBilling } from "./FinanceEnfazPoBilling";
 import { FinancePartyBrowse } from "./FinancePartyBrowse";
+import { FinanceEngBillingStatements } from "./FinanceEngBillingStatements";
 
 function ContractBadge({ type }: { type: string }) {
   const tone = type === "ext" ? "default" : type === "int" ? "info" : "warning";
@@ -74,7 +75,7 @@ export function FinanceWorkspace({
   ready: boolean;
 }) {
   const [tab, setTab] = useState<
-    "disburse" | "enfaz" | "browse" | "reports"
+    "disburse" | "eng-billing" | "enfaz" | "browse" | "reports"
   >("disburse");
   const counts = useFinanceTabCounts();
   const revenueRows = summary?.revenueRows ?? [];
@@ -89,6 +90,13 @@ export function FinanceWorkspace({
           {!counts.isPending && counts.readyToDisburse === 0 && counts.waitingOffice > 0
             ? tabBadge(counts.waitingOffice, "info")
             : null}
+        </Tab>
+        <Tab
+          active={tab === "eng-billing"}
+          onClick={() => setTab("eng-billing")}
+        >
+          فوترة المكتب الهندسي
+          {!counts.isPending ? tabBadge(counts.engReady, "info") : null}
         </Tab>
         <Tab active={tab === "enfaz"} onClick={() => setTab("enfaz")}>
           فوترة إنفاذ
@@ -126,6 +134,7 @@ export function FinanceWorkspace({
             <FinancePartyDisburse />
           </>
         ) : null}
+        {tab === "eng-billing" ? <FinanceEngBillingStatements /> : null}
         {tab === "enfaz" ? <FinanceEnfazPoBilling /> : null}
         {tab === "browse" ? <FinancePartyBrowse /> : null}
         {tab === "reports" ? (

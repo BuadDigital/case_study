@@ -117,6 +117,7 @@ public static class DependencyInjection
         services.AddScoped<IInspectorFeeService, InspectorFeeService>();
         services.AddScoped<IPartyFeePricingService, PartyFeePricingService>();
         services.AddScoped<IPoEnfazBillingService, PoEnfazBillingService>();
+        services.AddScoped<IEngineeringBillingStatementService, EngineeringBillingStatementService>();
         services.AddScoped<IFieldInspectionAttachmentVerifier, FieldInspectionAttachmentVerifier>();
         services.AddScoped<IPropertyTimelineService, PropertyTimelineService>();
         services.AddScoped<IFailureService, FailureService>();
@@ -156,6 +157,7 @@ public static class DependencyInjection
         services.AddScoped<IInspectorFeeService, InspectorFeeService>();
         services.AddScoped<IPartyFeePricingService, PartyFeePricingService>();
         services.AddScoped<IPoEnfazBillingService, PoEnfazBillingService>();
+        services.AddScoped<IEngineeringBillingStatementService, EngineeringBillingStatementService>();
         services.AddScoped<IPropertyTimelineService, PropertyTimelineService>();
         services.AddScoped<IWorkflowTaskService, WorkflowTaskService>();
         services.AddScoped<IFailureService, FailureService>();

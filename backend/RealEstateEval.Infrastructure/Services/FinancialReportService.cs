@@ -91,6 +91,8 @@ public sealed class FinancialReportService : IFinancialReportService
             .Sum(l => NetFee(l));
         var pendingPayables = ledgers
             .Where(l => l.BillingStatus is InspectorFeeBillingStatus.AtFinance
+                or InspectorFeeBillingStatus.Deferred
+                or InspectorFeeBillingStatus.InStatement
                 or InspectorFeeBillingStatus.DisbReq)
             .Sum(l => NetFee(l));
 
