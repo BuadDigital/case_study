@@ -5,29 +5,20 @@ namespace RealEstateEval.Application.Tests;
 public class InspectorFeeRulesTests
 {
     [Theory]
-    [InlineData("fi-ahmed", "متعاون فرد", 400)]
-    [InlineData("fi-abdullah-abdulmane", "موظف", 0)]
-    [InlineData(null, "موظف", 0)]
-    public void Resolves_inspector_type_and_default_fee(
-        string? assigneeId,
-        string expectedType,
-        decimal expectedFee)
+    [InlineData("fi-ahmed", "متعاون فرد")]
+    [InlineData("fi-abdullah-abdulmane", "موظف")]
+    [InlineData(null, "موظف")]
+    public void Resolves_inspector_type(string? assigneeId, string expectedType)
     {
-        var type = InspectorFeeRules.ResolveInspectorType(assigneeId);
-        Assert.Equal(expectedType, type);
-        Assert.Equal(expectedFee, InspectorFeeRules.DefaultAgreedFee(type));
+        Assert.Equal(expectedType, InspectorFeeRules.ResolveInspectorType(assigneeId));
     }
 
-    [Theory]
-    [InlineData("jeddah_survey")]
-    [InlineData("eo-jeddah")]
-    [InlineData("eo-internal")]
-    [InlineData(null)]
-    public void Engineering_office_is_always_external(string? assigneeId)
+    [Fact]
+    public void Engineering_office_party_type_is_always_external()
     {
         Assert.Equal(
             InspectorFeeRules.TypeCooperatorOrganization,
-            EngineeringSurveyFeeRules.ResolveOfficeType(assigneeId));
+            EngineeringSurveyFeeRules.OfficePartyType);
     }
 
     [Theory]
@@ -97,23 +88,18 @@ public class InspectorFeeRulesTests
         if (ok) Assert.Equal(expected, area);
     }
 
-    [Theory]
-    [InlineData("متعاون فرد")]
-    [InlineData("متعاون شركة")]
-    [InlineData("موظف")]
-    [InlineData(null)]
-    public void Government_review_is_always_individual_cooperator_at_350(string? partyType)
+    [Fact]
+    public void Government_review_is_always_individual_cooperator_at_350()
     {
         Assert.Equal(InspectorFeeRules.TypeCooperatorIndividual, GovernmentReviewFeeRules.PartyType);
-        Assert.Equal(350m, GovernmentReviewFeeRules.DefaultAgreedFee(partyType));
         Assert.Equal(350m, GovernmentReviewFeeRules.FallbackFeeSar);
-        Assert.Equal(350m, GovernmentReviewFeeRules.DefaultAgreedFee());
     }
 
     [Fact]
-    public void Legacy_cooperator_maps_to_individual_fee()
+    public void Seed_cooperator_fee_constants_and_classification_helpers()
     {
-        Assert.Equal(400m, InspectorFeeRules.DefaultAgreedFee("متعاون"));
+        Assert.Equal(400m, InspectorFeeRules.CooperatorIndividualFeeSar);
+        Assert.Equal(500m, InspectorFeeRules.CooperatorOrganizationFeeSar);
         Assert.True(InspectorFeeRules.IsCooperator("متعاون"));
         Assert.True(InspectorFeeRules.IsCooperator("متعاون فرد"));
         Assert.True(InspectorFeeRules.IsCooperator("متعاون شركة"));

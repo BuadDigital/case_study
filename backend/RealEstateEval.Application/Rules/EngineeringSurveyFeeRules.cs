@@ -21,8 +21,6 @@ public static class EngineeringSurveyFeeRules
 
     public readonly record struct AreaFeeTier(decimal? MaxAreaM2, decimal FeeSar);
 
-    public static string ResolveOfficeType(string? assigneeId) => OfficePartyType;
-
     public static IReadOnlyList<AreaFeeTier> SeedTiers() =>
     [
         new(SeedTier1MaxM2, SeedTier1FeeSar),

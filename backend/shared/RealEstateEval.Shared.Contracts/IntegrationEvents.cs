@@ -9,13 +9,10 @@ public sealed record IntegrationEventEnvelope<TPayload>(
 
 public static class IntegrationEventTypes
 {
-    public const string PropertyCreated = "case.property.created.v1";
     public const string ValuationRequestCreated = "valuation.request.created.v1";
     public const string ValuationReportSubmitted = "valuation.report.submitted.v1";
     public const string NotificationUserCreated = "notification.user.created.v1";
 }
-
-public sealed record PropertyCreatedPayload(string PropertyId, string PoNumber);
 
 public sealed record ValuationRequestCreatedPayload(
     string ValuationRequestId,

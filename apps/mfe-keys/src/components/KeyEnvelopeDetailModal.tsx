@@ -579,9 +579,6 @@ export function KeyEnvelopeDetailPage({
   );
 }
 
-/** @deprecated Use KeyEnvelopeDetailPage — kept for import compatibility. */
-export const KeyEnvelopeDetailModal = KeyEnvelopeDetailPage;
-
 function SummaryCell({
   label,
   children,

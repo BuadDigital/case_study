@@ -1,7 +1,6 @@
 import type { PoIntakeRecord } from "./po-intake-data";
 import { poPrimaryDataReadiness } from "./po-primary-data-readiness";
 import {
-  courtCityFromName,
   poCitiesForReviewerScope,
   poInReviewerScope,
   propertyCourtCity,
@@ -149,21 +148,4 @@ export function courtCircuitGroupsForPo(
     }
   }
   return [...map.entries()].map(([id, g]) => ({ id, ...g }));
-}
-
-/** @deprecated استخدم courtCircuitGroupsForPo */
-export function courtGroupsForPo(
-  record: PoIntakeRecord | undefined,
-  courts: string[],
-): { court: string; city: string; circuit: string; propertyIds: string[] }[] {
-  return courts.map((court) => {
-    const properties = propertiesForCourt(record, court);
-    const sample = properties[0];
-    return {
-      court,
-      city: sample ? propertyCourtCity(sample, record) : courtCityFromName(court),
-      circuit: sample?.circuit.trim() || "—",
-      propertyIds: properties.map((p) => p.id),
-    };
-  });
 }

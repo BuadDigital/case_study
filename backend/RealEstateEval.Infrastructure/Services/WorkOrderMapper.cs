@@ -221,16 +221,4 @@ public static class WorkOrderMapper
             BourseDataCompleted = p.BourseDataCompleted,
         };
     }
-
-    public static CourtCatalogEntryDto ToCourtDto(CourtCatalogEntry e)
-    {
-        var circuits = JsonSerializer.Deserialize<List<string>>(e.CircuitsJson) ?? [];
-        return new CourtCatalogEntryDto
-        {
-            Id = e.Id,
-            City = e.City,
-            Court = e.Court,
-            Circuits = circuits,
-        };
-    }
 }

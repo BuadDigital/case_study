@@ -1,11 +1,7 @@
 export { PrototypeProvider, usePrototype } from "./contexts/PrototypeContext";
 export { Can, useCapability } from "./components/Can";
 export { useAuth } from "./hooks/useAuth";
-export { useQueryErrorState } from "./hooks/useQueryErrorState";
 export { useOnlineStatus } from "./hooks/useOnlineStatus";
-export { useFocusTrap } from "./hooks/useFocusTrap";
-export { useDraftAutosave } from "./hooks/useDraftAutosave";
-export { useBulkSelection } from "./hooks/useBulkSelection";
 export { getAppEnv } from "./env";
 export { isFeatureEnabled, type FeatureFlag } from "./feature-flags";
 export { LIVE_QUEUE_POLL_INTERVAL_MS } from "./query/live-query";
