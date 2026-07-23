@@ -10,6 +10,7 @@ public static class InspectorFeeBillingRules
             or InspectorFeeBillingStatus.Disputed
             or InspectorFeeBillingStatus.SupReview
             or InspectorFeeBillingStatus.AtFinance
+            or InspectorFeeBillingStatus.Deferred
             or InspectorFeeBillingStatus.Returned
             or InspectorFeeBillingStatus.Inquiry;
 
@@ -177,12 +178,19 @@ public static class InspectorFeeBillingRules
         InspectorFeeBillingStatus.Disputed => "خلاف تسعير",
         InspectorFeeBillingStatus.SupReview => "بانتظار اعتماد المشرف",
         InspectorFeeBillingStatus.AtFinance => "جاهز للفوترة",
+        InspectorFeeBillingStatus.Deferred => "جاهز — مرحَّل",
+        InspectorFeeBillingStatus.InStatement => "مدرج",
         InspectorFeeBillingStatus.DisbReq => "ضمن أمر صرف",
         InspectorFeeBillingStatus.Disbursed => "مفوترة / مدفوعة",
         InspectorFeeBillingStatus.Returned => "مُعاد للتعديل",
         InspectorFeeBillingStatus.Inquiry => "استفسار مفتوح",
         _ => "—",
     };
+
+    /// <summary>Lines eligible for inclusion in an engineering billing statement.</summary>
+    public static bool IsReadyForEngStatement(string? status) =>
+        status is InspectorFeeBillingStatus.AtFinance
+            or InspectorFeeBillingStatus.Deferred;
 
     public static string WorkStatusLabel(string workStatus) => workStatus switch
     {

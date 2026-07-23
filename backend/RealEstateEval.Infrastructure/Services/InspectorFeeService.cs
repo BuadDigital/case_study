@@ -1230,6 +1230,7 @@ public class InspectorFeeService : IInspectorFeeService
             ReturnTo = ledger.ReturnTo,
             DisbursementBatchId = ledger.DisbursementBatchId?.ToString(),
             DisbursementVoucher = ledger.DisbursementVoucher,
+            EngineeringBillingStatementId = ledger.EngineeringBillingStatementId?.ToString(),
             LastTransitionReason = lastTransitionReason,
             UpdatedAtUtc = ledger.UpdatedAtUtc,
             AccruedAtUtc = ledger.AccruedAtUtc,

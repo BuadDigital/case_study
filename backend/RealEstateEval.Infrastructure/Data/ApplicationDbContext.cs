@@ -25,6 +25,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<InspectorFeeLedger> InspectorFeeLedgers => Set<InspectorFeeLedger>();
     public DbSet<InspectorFeeTransition> InspectorFeeTransitions => Set<InspectorFeeTransition>();
     public DbSet<DisbursementBatch> DisbursementBatches => Set<DisbursementBatch>();
+    public DbSet<EngineeringBillingStatement> EngineeringBillingStatements => Set<EngineeringBillingStatement>();
+    public DbSet<EngineeringBillingStatementLine> EngineeringBillingStatementLines => Set<EngineeringBillingStatementLine>();
     public DbSet<PoEnfazRevenueLine> PoEnfazRevenueLines => Set<PoEnfazRevenueLine>();
     public DbSet<PoEnfazInvoice> PoEnfazInvoices => Set<PoEnfazInvoice>();
     public DbSet<PropertyFailure> PropertyFailures => Set<PropertyFailure>();
@@ -299,6 +301,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(x => x.BillingStatus);
             e.HasIndex(x => x.ExcludedFromBatch);
             e.HasIndex(x => x.DisbursementBatchId);
+            e.HasIndex(x => x.EngineeringBillingStatementId);
         });
 
         builder.Entity<DisbursementBatch>(e =>
@@ -310,6 +313,39 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.TotalNetSar).HasPrecision(14, 2);
             e.HasIndex(x => x.AssigneeId);
             e.HasIndex(x => x.CreatedAtUtc);
+        });
+
+        builder.Entity<EngineeringBillingStatement>(e =>
+        {
+            e.ToTable("EngineeringBillingStatements", DatabaseSchemas.Financial);
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ReferenceNumber).HasMaxLength(32);
+            e.Property(x => x.AssigneeId).HasMaxLength(128);
+            e.Property(x => x.Status).HasMaxLength(32);
+            e.Property(x => x.CreatedByUserId).HasMaxLength(450);
+            e.Property(x => x.IssuedByUserId).HasMaxLength(450);
+            e.Property(x => x.ClosedByUserId).HasMaxLength(450);
+            e.Property(x => x.ExternalInvoiceNumber).HasMaxLength(128);
+            e.Property(x => x.TransferReceiptRef).HasMaxLength(256);
+            e.Property(x => x.Notes).HasMaxLength(2000);
+            e.Property(x => x.TotalNetSar).HasPrecision(14, 2);
+            e.HasIndex(x => x.ReferenceNumber).IsUnique();
+            e.HasIndex(x => x.AssigneeId);
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.CreatedAtUtc);
+            e.HasMany(x => x.Lines)
+                .WithOne(x => x.Statement!)
+                .HasForeignKey(x => x.StatementId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<EngineeringBillingStatementLine>(e =>
+        {
+            e.ToTable("EngineeringBillingStatementLines", DatabaseSchemas.Financial);
+            e.HasKey(x => x.Id);
+            e.Property(x => x.NetFeeSar).HasPrecision(12, 2);
+            e.HasIndex(x => x.StatementId);
+            e.HasIndex(x => x.WorkflowTaskId).IsUnique();
         });
 
         builder.Entity<PoEnfazRevenueLine>(e =>

@@ -11,6 +11,7 @@ import { PartyDisbursementRequest } from "./PartyDisbursementRequest";
 import { PartyReturnedQueue } from "./PartyReturnedQueue";
 import { SupervisorEnfazTracking } from "./SupervisorEnfazTracking";
 import { CourtVisitFeesPanel } from "./CourtVisitFeesPanel";
+import { EngOfficeBillingStatementsPanel } from "./EngOfficeBillingStatementsPanel";
 import { PartyPropertyBrowse } from "@platform/app-shared/fees/PartyPropertyBrowse";
 import {
   resolvePartyCategory,
@@ -22,6 +23,7 @@ import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 type PartyFeesTab =
   | "fees"
   | "preliminary"
+  | "statements"
   | "visit-fees"
   | "key-fees"
   | "disburse"
@@ -83,6 +85,9 @@ export function PartyFeesWorkspace({
       rows.filter(
         (r) =>
           r.billingStatus === "at-finance" ||
+          r.billingStatus === "deferred" ||
+          r.billingStatus === "in-statement" ||
+          r.billingStatus === "disbursed" ||
           r.billingStatus === "disb-req",
       ),
     [rows],
@@ -103,6 +108,12 @@ export function PartyFeesWorkspace({
           </Tab>
           <Tab active={tab === "fees"} onClick={() => setTab("fees")}>
             الحسم والمراجعة
+          </Tab>
+          <Tab
+            active={tab === "statements"}
+            onClick={() => setTab("statements")}
+          >
+            كشوف الفوترة
           </Tab>
           <Tab active={tab === "visit-fees"} onClick={() => setTab("visit-fees")}>
             أتعاب الزيارة
@@ -130,6 +141,14 @@ export function PartyFeesWorkspace({
           <Tab active={tab === "fees"} onClick={() => setTab("fees")}>
             {isEngineering ? "الجاهزة للفوترة" : "أتعاب المعاملة"}
           </Tab>
+          {isEngineering ? (
+            <Tab
+              active={tab === "statements"}
+              onClick={() => setTab("statements")}
+            >
+              كشوف الفوترة
+            </Tab>
+          ) : null}
           {showVisitAndKeyFees ? (
             <Tab
               active={tab === "visit-fees"}
@@ -195,8 +214,8 @@ export function PartyFeesWorkspace({
                 pending={isLoading && !isFetched}
               />
               <QueueTableHint className="mt-3">
-                البنود الجاهزة للفوترة بعد موافقة المكتب أو بسعر الجدول. ستُدرج لاحقاً
-                في كشف/فاتورة المكتب — لا يُنشأ لها أمر صرف من هذا المسار.
+                حالات البنود: جاهز للفوترة، جاهز — مرحَّل، مدرج، مفوترة /
+                مدفوعة. بعد إرسال المالية للكشف يظهر في تبويب «كشوف الفوترة».
               </QueueTableHint>
             </>
           ) : (
@@ -286,7 +305,20 @@ export function PartyFeesWorkspace({
               </h3>
               <SupervisorEnfazTracking />
             </section>
+            <section>
+              <h3 className="mb-2 text-[13px] font-semibold text-text">
+                كشوف فوترة المكتب الهندسي
+              </h3>
+              <EngOfficeBillingStatementsPanel issuedOrLaterOnly />
+            </section>
           </div>
+        ) : null}
+
+        {tab === "statements" ? (
+          <EngOfficeBillingStatementsPanel
+            assigneeId={isSupervisor ? undefined : assigneeId}
+            issuedOrLaterOnly
+          />
         ) : null}
 
         {tab === "disburse" && !isSupervisor && !isEngineering ? (

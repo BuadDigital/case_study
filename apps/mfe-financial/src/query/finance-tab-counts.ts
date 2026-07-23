@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { loadInspectorFeesSummary } from "@platform/app-shared/prototype/inspector-fees-api";
 import { loadReadyEnfazPoSummaries } from "@platform/app-shared/prototype/enfaz-billing-api";
+import { loadEngBillingReadyLines } from "@platform/app-shared/prototype/eng-billing-statements-api";
 import { countFinanceDisburseActions } from "../lib/finance-queue-stats";
 
 export function useFinanceTabCounts() {
@@ -23,13 +24,21 @@ export function useFinanceTabCounts() {
     staleTime: 30_000,
   });
 
+  const engQuery = useQuery({
+    queryKey: [...prototypeKeys.all, "eng-billing", "ready-lines", "counts"],
+    queryFn: () => loadEngBillingReadyLines(),
+    staleTime: 30_000,
+  });
+
   const disburse = countFinanceDisburseActions(feesQuery.data?.rows ?? []);
 
   return {
-    isPending: feesQuery.isPending || enfazQuery.isPending,
+    isPending:
+      feesQuery.isPending || enfazQuery.isPending || engQuery.isPending,
     readyToDisburse: disburse.readyToDisburse,
     waitingOffice: disburse.waitingOffice,
     needsAttention: disburse.needsAttention,
     enfazReady: enfazQuery.data?.length ?? 0,
+    engReady: engQuery.data?.length ?? 0,
   };
 }

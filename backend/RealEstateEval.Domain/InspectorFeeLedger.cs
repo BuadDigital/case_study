@@ -18,7 +18,8 @@ public class InspectorFeeLedger
     public decimal SupervisorDiscountSar { get; set; }
     public string? DiscountReason { get; set; }
     /// <summary>
-    /// draft | office-review | disputed | sup-review | at-finance | disb-req | disbursed | returned | inquiry
+    /// draft | office-review | disputed | sup-review | at-finance | deferred |
+    /// in-statement | disb-req | disbursed | returned | inquiry
     /// </summary>
     public string BillingStatus { get; set; } = InspectorFeeBillingStatus.Draft;
     public bool ExcludedFromBatch { get; set; }
@@ -27,6 +28,8 @@ public class InspectorFeeLedger
     public string? ReturnTo { get; set; }
     public Guid? DisbursementBatchId { get; set; }
     public string? DisbursementVoucher { get; set; }
+    /// <summary>Engineering-office monthly billing statement membership (stages 6–8).</summary>
+    public Guid? EngineeringBillingStatementId { get; set; }
     /// <summary>
     /// When the engineering-office fee became payable (specialist acceptance).
     /// Null until acceptance; re-uploads after accrual do not create a new fee.

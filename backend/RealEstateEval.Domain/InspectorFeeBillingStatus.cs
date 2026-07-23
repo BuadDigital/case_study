@@ -12,6 +12,10 @@ public static class InspectorFeeBillingStatus
     public const string Disputed = "disputed";
     public const string SupReview = "sup-review";
     public const string AtFinance = "at-finance";
+    /// <summary>Ready for billing but deferred by accountant to a later cycle.</summary>
+    public const string Deferred = "deferred";
+    /// <summary>Included in an engineering-office billing statement (مدرج).</summary>
+    public const string InStatement = "in-statement";
     public const string DisbReq = "disb-req";
     public const string Disbursed = "disbursed";
     public const string Returned = "returned";
@@ -24,6 +28,8 @@ public static class InspectorFeeBillingStatus
         Disputed,
         SupReview,
         AtFinance,
+        Deferred,
+        InStatement,
         DisbReq,
         Disbursed,
         Returned,

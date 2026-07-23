@@ -319,6 +319,8 @@ export function computeFeesPageSituation(
     }
     if (
       row.billingStatus === "at-finance" ||
+      row.billingStatus === "deferred" ||
+      row.billingStatus === "in-statement" ||
       row.billingStatus === "disb-req"
     ) {
       atFinance += 1;
