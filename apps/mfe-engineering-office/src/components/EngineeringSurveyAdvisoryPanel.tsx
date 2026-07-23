@@ -12,9 +12,12 @@ import {
   loadEngineeringSurveySubmissionAsync,
   acceptEngineeringSurveySubmission,
   reopenEngineeringSurveySubmission,
+  isEngineeringSurveyOutputsAccepted,
+  wasEngineeringSurveyAcceptanceCleared,
 } from "../lib/engineering-survey-submission-storage";
 import { PartyRecallAdvisorySection } from "@case-study/mfe/components/party-tasks/PartyRecallAdvisorySection";
 import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/prototype/party-task-recall-storage";
+import { loadInspectorFeesSummary } from "@platform/app-shared/prototype/inspector-fees-api";
 
 function formatCoordsDisplay(lat: string, lng: string): string {
   const latTrim = lat.trim();
@@ -45,11 +48,11 @@ export function EngineeringSurveyAdvisoryPanel({
   const [returnError, setReturnError] = useState<string | null>(null);
   const [acceptError, setAcceptError] = useState<string | null>(null);
   const [acceptBusy, setAcceptBusy] = useState(false);
-  const [feeAccrued, setFeeAccrued] = useState(false);
   const [submission, setSubmission] = useState<EngineeringSurveySubmission | null>(
     null,
   );
   const [loadingSubmission, setLoadingSubmission] = useState(false);
+  const [legacyFeeAccrued, setLegacyFeeAccrued] = useState(false);
 
   useEffect(() => {
     const refresh = () => setRefreshKey((k) => k + 1);
@@ -90,6 +93,36 @@ export function EngineeringSurveyAdvisoryPanel({
       cancelled = true;
     };
   }, [surveyTask, refreshKey]);
+
+  useEffect(() => {
+    if (
+      !surveyTask ||
+      !submission ||
+      submission.status !== "submitted" ||
+      isEngineeringSurveyOutputsAccepted(submission) ||
+      wasEngineeringSurveyAcceptanceCleared(submission)
+    ) {
+      setLegacyFeeAccrued(false);
+      return;
+    }
+    let cancelled = false;
+    void loadInspectorFeesSummary({
+      workflowTaskId: surveyTask.id,
+      submittedOnly: false,
+      taskKind: "engineering-survey",
+    })
+      .then((summary) => {
+        if (cancelled) return;
+        const row = summary.rows.find((r) => r.workflowTaskId === surveyTask.id);
+        setLegacyFeeAccrued(Boolean(row?.accruedAtUtc));
+      })
+      .catch(() => {
+        if (!cancelled) setLegacyFeeAccrued(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [surveyTask, submission, refreshKey]);
 
   if (!surveyTask) {
     return (
@@ -138,7 +171,6 @@ export function EngineeringSurveyAdvisoryPanel({
     setReturnOpen(false);
     setReturnNote("");
     setReturnError(null);
-    setFeeAccrued(false);
     setRefreshKey((k) => k + 1);
     onReturned?.();
   }
@@ -154,13 +186,15 @@ export function EngineeringSurveyAdvisoryPanel({
         return;
       }
       setSubmission(accepted.data);
-      setFeeAccrued(true);
       setRefreshKey((k) => k + 1);
       onReturned?.();
     } finally {
       setAcceptBusy(false);
     }
   }
+
+  const feeAccrued =
+    isEngineeringSurveyOutputsAccepted(submission) || legacyFeeAccrued;
 
   const coords = formatCoordsDisplay(submission.latitude, submission.longitude);
   const answeredCount = submission.checklist.filter(

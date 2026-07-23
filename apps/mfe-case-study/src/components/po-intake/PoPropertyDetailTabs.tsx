@@ -106,7 +106,9 @@ function docIconLabel(kind: PropertyDetailDocumentEntry["kind"]): string {
 }
 
 function DocumentRow({ doc }: { doc: PropertyDetailDocumentEntry }) {
-  const canDownload = Boolean(doc.dataUrl);
+  const canDownload = Boolean(
+    doc.dataUrl || doc.attachmentId || doc.engineeringTaskId,
+  );
   const isPdf = doc.kind === "pdf";
 
   return (
