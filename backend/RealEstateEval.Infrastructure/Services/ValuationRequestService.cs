@@ -72,36 +72,6 @@ public sealed class ValuationRequestService : IValuationRequestService
         return ToDto(row);
     }
 
-    public async Task<ValuationRequestDto?> UpdateAsync(
-        Guid id,
-        SaveValuationRequestRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        var row = await _db.ValuationRequests.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (row is null) return null;
-
-        if (!string.IsNullOrWhiteSpace(request.DisplayId))
-            row.DisplayId = request.DisplayId.Trim();
-        row.PropertyId = request.PropId.Trim();
-        row.Area = request.Area.Trim();
-        row.PropertyType = request.Type.Trim();
-        row.Appraiser = request.Appraiser.Trim();
-        row.Status = request.Status.Trim();
-        row.RequestDate = request.Date.Trim();
-        row.UpdatedAtUtc = DateTime.UtcNow;
-        await _db.SaveChangesAsync(cancellationToken);
-        return ToDto(row);
-    }
-
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
-    {
-        var row = await _db.ValuationRequests.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (row is null) return false;
-        _db.ValuationRequests.Remove(row);
-        await _db.SaveChangesAsync(cancellationToken);
-        return true;
-    }
-
     public async Task<(ValuationRequestDto? Result, string? Error)> SubmitReportAsync(
         Guid id,
         CancellationToken cancellationToken = default)

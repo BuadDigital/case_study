@@ -9,6 +9,8 @@ export type InspectorFeesApiConfig = WorkOrdersApiConfig;
 
 export type InspectorFeeBillingStatus =
   | "draft"
+  | "office-review"
+  | "disputed"
   | "sup-review"
   | "at-finance"
   | "disb-req"
@@ -20,6 +22,9 @@ export type InspectorFeeWorkStatus = "in_progress" | "done" | "cancelled";
 
 export type InspectorFeeAction =
   | "submit-to-supervisor"
+  | "office-approve-discount"
+  | "office-dispute"
+  | "resolve-dispute"
   | "approve-to-finance"
   | "resend-to-finance"
   | "return-to-office"
@@ -56,12 +61,16 @@ export type InspectorFeeRowDto = {
   disbursementVoucher: string | null;
   lastTransitionReason: string | null;
   updatedAtUtc: string | null;
+  accruedAtUtc: string | null;
   workSubmittedAtUtc: string | null;
   poReceivedAtUtc: string | null;
   isEditable: boolean;
   canSubmitToSupervisor: boolean;
   canApproveToFinance: boolean;
   canCreateDisbursementRequest: boolean;
+  canOfficeApproveDiscount: boolean;
+  canOfficeDispute: boolean;
+  canResolveDispute: boolean;
 };
 
 export type InspectorFeesSummaryDto = {
@@ -182,6 +191,7 @@ function normalizeRow(raw: Record<string, unknown>): InspectorFeeRowDto {
       raw.LastTransitionReason ??
       null) as string | null,
     updatedAtUtc: (raw.updatedAtUtc ?? raw.UpdatedAtUtc ?? null) as string | null,
+    accruedAtUtc: (raw.accruedAtUtc ?? raw.AccruedAtUtc ?? null) as string | null,
     workSubmittedAtUtc: (raw.workSubmittedAtUtc ??
       raw.WorkSubmittedAtUtc ??
       null) as string | null,
@@ -197,6 +207,15 @@ function normalizeRow(raw: Record<string, unknown>): InspectorFeeRowDto {
     ),
     canCreateDisbursementRequest: Boolean(
       raw.canCreateDisbursementRequest ?? raw.CanCreateDisbursementRequest ?? false,
+    ),
+    canOfficeApproveDiscount: Boolean(
+      raw.canOfficeApproveDiscount ?? raw.CanOfficeApproveDiscount ?? false,
+    ),
+    canOfficeDispute: Boolean(
+      raw.canOfficeDispute ?? raw.CanOfficeDispute ?? false,
+    ),
+    canResolveDispute: Boolean(
+      raw.canResolveDispute ?? raw.CanResolveDispute ?? false,
     ),
   };
 }
@@ -427,20 +446,24 @@ export function inspectorFeeStatusLabel(
   status: InspectorFeeBillingStatus,
 ): string {
   switch (status) {
+    case "office-review":
+      return "بانتظار موافقة المكتب";
+    case "disputed":
+      return "خلاف تسعير";
     case "sup-review":
       return "بانتظار اعتماد المشرف";
     case "at-finance":
-      return "جاهز للصرف (لدى المالية)";
+      return "جاهز للفوترة";
     case "disb-req":
       return "ضمن أمر صرف";
     case "disbursed":
-      return "مصروف";
+      return "مفوترة / مدفوعة";
     case "returned":
       return "مُعاد للتعديل";
     case "inquiry":
       return "استفسار مفتوح";
     default:
-      return "مسودة";
+      return "مستحق";
   }
 }
 
@@ -448,6 +471,10 @@ export function inspectorFeeStatusTone(
   status: InspectorFeeBillingStatus,
 ): "default" | "warning" | "success" | "danger" | "info" {
   switch (status) {
+    case "office-review":
+      return "warning";
+    case "disputed":
+      return "danger";
     case "sup-review":
       return "warning";
     case "at-finance":

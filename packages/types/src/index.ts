@@ -10,11 +10,6 @@ export {
   type CaseStudyReadyNavItem,
 } from "./case-study-nav";
 export type {
-  OrgDepartment,
-  OrgPerson,
-  OrganizationOverview,
-} from "./organization";
-export type {
   ContractType,
   FieldErrorsResponse,
   RegistrationSourceApi,

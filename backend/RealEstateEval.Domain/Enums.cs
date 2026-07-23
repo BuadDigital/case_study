@@ -11,7 +11,6 @@ public enum RegistrationSource
 {
     Hr = 0,
     Proc = 1,
-    Crm = 2,
 }
 
 public enum UserStatus
@@ -24,22 +23,4 @@ public enum ProcProviderKind
 {
     Individual = 0,
     Organization = 1,
-}
-
-public enum CrmEntityKind
-{
-    Individual = 0,
-    Company = 1,
-}
-
-public enum CrmClientStatus
-{
-    Lead = 0,
-    Active = 1,
-}
-
-public enum CrmClientType
-{
-    Direct = 0,
-    Contract = 1,
 }

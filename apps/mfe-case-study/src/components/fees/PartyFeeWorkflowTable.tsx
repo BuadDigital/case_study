@@ -55,7 +55,10 @@ export function PartyFeeWorkflowTable({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [reasonModal, setReasonModal] = useState<{
     row: InspectorFeeRowDto;
-    action: "return-to-supervisor" | "inquiry-to-office";
+    action:
+      | "return-to-supervisor"
+      | "inquiry-to-office"
+      | "office-dispute";
   } | null>(null);
 
   const invalidate = useCallback(async () => {
@@ -114,7 +117,17 @@ export function PartyFeeWorkflowTable({
                     <PoNumber value={row.poNumber} link />
                   </Td>
                   <Td className="text-end">
-                    <Sar value={row.netFeeSar} />
+                    <div className="flex flex-col items-end gap-0.5">
+                      <Sar value={row.netFeeSar} />
+                      {row.supervisorDiscountSar > 0 ? (
+                        <span className="text-[10px] text-text-3">
+                          حسم {row.supervisorDiscountSar.toLocaleString("ar-SA")}
+                          {row.discountReason
+                            ? ` — ${row.discountReason}`
+                            : ""}
+                        </span>
+                      ) : null}
+                    </div>
                   </Td>
                   <Td>
                     <Badge tone={inspectorFeeWorkStatusTone(row.workStatus)}>
@@ -150,6 +163,35 @@ export function PartyFeeWorkflowTable({
                             رفع للمشرف
                           </Button>
                         ) : null}
+                        {role === "office" && row.canOfficeApproveDiscount ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="primary"
+                            disabled={busy}
+                            onClick={() =>
+                              void act(row, "office-approve-discount")
+                            }
+                          >
+                            موافقة على الحسم
+                          </Button>
+                        ) : null}
+                        {role === "office" && row.canOfficeDispute ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={busy}
+                            onClick={() =>
+                              setReasonModal({
+                                row,
+                                action: "office-dispute",
+                              })
+                            }
+                          >
+                            اعتراض
+                          </Button>
+                        ) : null}
                         {role === "supervisor" && row.canApproveToFinance ? (
                           <Button
                             type="button"
@@ -161,6 +203,17 @@ export function PartyFeeWorkflowTable({
                             }
                           >
                             اعتماد ← المالية
+                          </Button>
+                        ) : null}
+                        {role === "supervisor" && row.canResolveDispute ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="primary"
+                            disabled={busy}
+                            onClick={() => void act(row, "resolve-dispute")}
+                          >
+                            حسم الخلاف ← جاهز
                           </Button>
                         ) : null}
                         {role === "supervisor" &&
@@ -251,12 +304,16 @@ export function PartyFeeWorkflowTable({
         title={
           reasonModal?.action === "inquiry-to-office"
             ? "استفسار للمكتب"
-            : "إرجاع للمشرف"
+            : reasonModal?.action === "office-dispute"
+              ? "اعتراض على الحسم"
+              : "إرجاع للمشرف"
         }
         label={
           reasonModal?.action === "inquiry-to-office"
             ? "نص الاستفسار"
-            : "سبب الإرجاع"
+            : reasonModal?.action === "office-dispute"
+              ? "سبب الاعتراض"
+              : "سبب الإرجاع"
         }
         confirmLabel="تأكيد"
         onClose={() => setReasonModal(null)}

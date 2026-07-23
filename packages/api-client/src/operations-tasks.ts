@@ -198,24 +198,6 @@ export async function listCourtVisitFees(
   }
 }
 
-export async function getOperationsTask(
-  config: WorkOrdersApiConfig,
-  id: string,
-): Promise<ApiOk<OperationsTaskDto> | ApiErr> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/operations-tasks/${encodeURIComponent(id)}`, {
-      headers: headers(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await readJson<OperationsTaskDto>(res) };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
 export async function createOperationsTask(
   config: WorkOrdersApiConfig,
   body: CreateOperationsTaskRequest,

@@ -10,6 +10,7 @@ import {
   ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
   engineeringSurveyStatusLabel,
   loadEngineeringSurveySubmissionAsync,
+  acceptEngineeringSurveySubmission,
   reopenEngineeringSurveySubmission,
 } from "../lib/engineering-survey-submission-storage";
 import { PartyRecallAdvisorySection } from "@case-study/mfe/components/party-tasks/PartyRecallAdvisorySection";
@@ -42,6 +43,9 @@ export function EngineeringSurveyAdvisoryPanel({
   const [returnOpen, setReturnOpen] = useState(false);
   const [returnNote, setReturnNote] = useState("");
   const [returnError, setReturnError] = useState<string | null>(null);
+  const [acceptError, setAcceptError] = useState<string | null>(null);
+  const [acceptBusy, setAcceptBusy] = useState(false);
+  const [feeAccrued, setFeeAccrued] = useState(false);
   const [submission, setSubmission] = useState<EngineeringSurveySubmission | null>(
     null,
   );
@@ -134,8 +138,28 @@ export function EngineeringSurveyAdvisoryPanel({
     setReturnOpen(false);
     setReturnNote("");
     setReturnError(null);
+    setFeeAccrued(false);
     setRefreshKey((k) => k + 1);
     onReturned?.();
+  }
+
+  async function handleAcceptOutputs() {
+    if (!surveyTask) return;
+    setAcceptBusy(true);
+    setAcceptError(null);
+    try {
+      const accepted = await acceptEngineeringSurveySubmission(surveyTask.id);
+      if (!accepted.ok) {
+        setAcceptError(accepted.error);
+        return;
+      }
+      setSubmission(accepted.data);
+      setFeeAccrued(true);
+      setRefreshKey((k) => k + 1);
+      onReturned?.();
+    } finally {
+      setAcceptBusy(false);
+    }
   }
 
   const coords = formatCoordsDisplay(submission.latitude, submission.longitude);
@@ -146,8 +170,8 @@ export function EngineeringSurveyAdvisoryPanel({
   return (
     <RegistrationFormCard title="بيانات المكتب الهندسي (استرشادي — للقراءة فقط)">
       <p className="mb-3 text-[11px] leading-relaxed text-text-3">
-        هذه البيانات من المكتب الهندسي — يمكنك إعادة الرفع للتصحيح مع ملاحظة
-        إلزامية. طلب الاسترجاع من المكتب يحتاج موافقتك.
+        هذه البيانات من المكتب الهندسي — قبول المخرجات يُنشئ استحقاق الأتعاب من
+        جدول التسعير. إعادة الرفع للتصحيح لا تُنشئ أتعاباً جديدة.
       </p>
 
       <PartyRecallAdvisorySection
@@ -168,20 +192,40 @@ export function EngineeringSurveyAdvisoryPanel({
         </div>
       ) : null}
 
+      {feeAccrued ? (
+        <div className="mb-3 rounded-[var(--radius-DEFAULT)] border border-success/30 border-e-[3px] border-e-success bg-[color-mix(in_srgb,var(--success)_10%,transparent)] px-3.5 py-2.5 text-xs leading-relaxed text-success-text">
+          تم قبول المخرجات واستحقاق أتعاب المكتب الهندسي من جدول التسعير.
+        </div>
+      ) : null}
+
       {submission.status === "submitted" ? (
         <div className="mb-3 flex flex-wrap items-center gap-2">
           {!returnOpen ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setReturnOpen(true);
-                setReturnError(null);
-              }}
-            >
-              إعادة للتصحيح
-            </Button>
+            <>
+              <Button
+                type="button"
+                size="sm"
+                variant="primary"
+                disabled={acceptBusy || feeAccrued}
+                onClick={() => {
+                  void handleAcceptOutputs();
+                }}
+              >
+                {feeAccrued ? "تم القبول" : "قبول المخرجات"}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={acceptBusy}
+                onClick={() => {
+                  setReturnOpen(true);
+                  setReturnError(null);
+                }}
+              >
+                إعادة للتصحيح
+              </Button>
+            </>
           ) : (
             <div className="w-full">
               <Label htmlFor="eng-return-note" className="text-xs">
@@ -230,6 +274,9 @@ export function EngineeringSurveyAdvisoryPanel({
               </div>
             </div>
           )}
+          {acceptError ? (
+            <p className="w-full text-[11px] text-danger-text">{acceptError}</p>
+          ) : null}
         </div>
       ) : null}
 

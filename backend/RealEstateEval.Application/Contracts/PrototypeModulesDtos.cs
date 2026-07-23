@@ -81,20 +81,6 @@ public class SurveyOfficeDto
     public int SortOrder { get; init; }
 }
 
-public class SaveSurveyOfficeRequest
-{
-    [Required, MaxLength(256)]
-    public string Name { get; init; } = "";
-    public int Active { get; init; }
-    public int DoneMonth { get; init; }
-    [MaxLength(64)]
-    public string AvgDays { get; init; } = "";
-    [MaxLength(128)]
-    public string Contract { get; init; } = "";
-    public bool StatusBusy { get; init; }
-    public int SortOrder { get; init; }
-}
-
 public class ValuationRequestDto
 {
     public Guid Id { get; init; }

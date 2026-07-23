@@ -1,4 +1,5 @@
 using RealEstateEval.Application.Rules;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -114,5 +115,37 @@ public class InspectorFeeRulesTests
         Assert.Equal(350m, InspectorFeeRules.NetFee(400m, 50m));
         Assert.Equal(0m, InspectorFeeRules.NetFee(100m, 200m));
         Assert.Equal(350m, EngineeringSurveyFeeRules.NetFee(500m, 150m));
+    }
+
+    [Fact]
+    public void Office_discount_transitions_match_billing_doc()
+    {
+        Assert.True(InspectorFeeBillingRules.TryResolveTransition(
+            InspectorFeeBillingStatus.OfficeReview,
+            InspectorFeeActions.OfficeApproveDiscount,
+            out var approved,
+            out _,
+            out _));
+        Assert.Equal(InspectorFeeBillingStatus.AtFinance, approved);
+
+        Assert.True(InspectorFeeBillingRules.TryResolveTransition(
+            InspectorFeeBillingStatus.OfficeReview,
+            InspectorFeeActions.OfficeDispute,
+            out var disputed,
+            out _,
+            out _));
+        Assert.Equal(InspectorFeeBillingStatus.Disputed, disputed);
+
+        Assert.True(InspectorFeeBillingRules.TryResolveTransition(
+            InspectorFeeBillingStatus.Disputed,
+            InspectorFeeActions.ResolveDispute,
+            out var resolved,
+            out _,
+            out _));
+        Assert.Equal(InspectorFeeBillingStatus.AtFinance, resolved);
+
+        Assert.Equal("بانتظار موافقة المكتب", InspectorFeeBillingRules.StatusLabel(InspectorFeeBillingStatus.OfficeReview));
+        Assert.Equal("خلاف تسعير", InspectorFeeBillingRules.StatusLabel(InspectorFeeBillingStatus.Disputed));
+        Assert.Equal("جاهز للفوترة", InspectorFeeBillingRules.StatusLabel(InspectorFeeBillingStatus.AtFinance));
     }
 }

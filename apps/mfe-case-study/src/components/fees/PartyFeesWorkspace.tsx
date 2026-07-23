@@ -21,6 +21,7 @@ import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 
 type PartyFeesTab =
   | "fees"
+  | "preliminary"
   | "visit-fees"
   | "key-fees"
   | "disburse"
@@ -37,8 +38,9 @@ export function PartyFeesWorkspace({
   assigneeId?: string;
   isSupervisor: boolean;
 }) {
+  const isEngineering = variant === "engineering-survey";
   const [tab, setTab] = useState<PartyFeesTab>(
-    isSupervisor ? "financial" : "fees",
+    isSupervisor ? "financial" : isEngineering ? "preliminary" : "fees",
   );
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
@@ -68,6 +70,24 @@ export function PartyFeesWorkspace({
     [rows],
   );
 
+  const officeReviewRows = useMemo(
+    () => rows.filter((r) => r.billingStatus === "office-review"),
+    [rows],
+  );
+  const disputedRows = useMemo(
+    () => rows.filter((r) => r.billingStatus === "disputed"),
+    [rows],
+  );
+  const readyBillingRows = useMemo(
+    () =>
+      rows.filter(
+        (r) =>
+          r.billingStatus === "at-finance" ||
+          r.billingStatus === "disb-req",
+      ),
+    [rows],
+  );
+
   const showVisitAndKeyFees =
     variant === "government-review" || isSupervisor;
 
@@ -77,8 +97,8 @@ export function PartyFeesWorkspace({
         <TabBar className="mb-3">
           <Tab active={tab === "financial"} onClick={() => setTab("financial")}>
             الأمور المالية
-            {supReviewRows.length + returnedToSup.length > 0
-              ? ` (${supReviewRows.length + returnedToSup.length})`
+            {supReviewRows.length + returnedToSup.length + disputedRows.length > 0
+              ? ` (${supReviewRows.length + returnedToSup.length + disputedRows.length})`
               : ""}
           </Tab>
           <Tab active={tab === "fees"} onClick={() => setTab("fees")}>
@@ -93,11 +113,22 @@ export function PartyFeesWorkspace({
         </TabBar>
       ) : (
         <TabBar className="mb-3">
+          {isEngineering ? (
+            <Tab
+              active={tab === "preliminary"}
+              onClick={() => setTab("preliminary")}
+            >
+              الكشف المبدئي
+              {officeReviewRows.length > 0
+                ? ` (${officeReviewRows.length})`
+                : ""}
+            </Tab>
+          ) : null}
           <Tab active={tab === "browse"} onClick={() => setTab("browse")}>
             عقاراتي وحالاتها
           </Tab>
           <Tab active={tab === "fees"} onClick={() => setTab("fees")}>
-            أتعاب المعاملة
+            {isEngineering ? "الجاهزة للفوترة" : "أتعاب المعاملة"}
           </Tab>
           {showVisitAndKeyFees ? (
             <Tab
@@ -112,16 +143,35 @@ export function PartyFeesWorkspace({
               أتعاب استلام المفاتيح
             </Tab>
           ) : null}
-          <Tab active={tab === "disburse"} onClick={() => setTab("disburse")}>
-            طلب صرف
-          </Tab>
-          <Tab active={tab === "returned"} onClick={() => setTab("returned")}>
-            المُعاد لي
-          </Tab>
+          {!isEngineering ? (
+            <Tab active={tab === "disburse"} onClick={() => setTab("disburse")}>
+              طلب صرف
+            </Tab>
+          ) : null}
+          {!isEngineering ? (
+            <Tab active={tab === "returned"} onClick={() => setTab("returned")}>
+              المُعاد لي
+            </Tab>
+          ) : null}
         </TabBar>
       )}
 
       <TabPanel>
+        {tab === "preliminary" && isEngineering && !isSupervisor ? (
+          <>
+            <PartyFeeWorkflowTable
+              rows={rows}
+              role="office"
+              pending={isLoading && !isFetched}
+            />
+            <QueueTableHint className="mt-3">
+              الكشف المبدئي: معاملاتك المستحقة بعد قبول الأخصائي للمخرجات. البنود
+              بسعر الجدول جاهزة تلقائياً. البنود المخصومة تحتاج موافقتك أو
+              اعتراضك قبل وصولها للمالية.
+            </QueueTableHint>
+          </>
+        ) : null}
+
         {tab === "fees" ? (
           isSupervisor ? (
             <>
@@ -131,10 +181,22 @@ export function PartyFeesWorkspace({
                 pending={isLoading && !isFetched}
               />
               <QueueTableHint className="mt-3">
-                الحسم هنا — الاعتماد والإرسال للمالية من تبويب «الأمور المالية».
+                الحسم هنا — للمكتب الهندسي: الخصم يُرسل لموافقة المكتب قبل المالية.
                 {variant === "government-review" || isSupervisor
                   ? " مسار المهام التشغيلية (زيارة محكمة) يظهر في «أتعاب الزيارة»."
                   : ""}
+              </QueueTableHint>
+            </>
+          ) : isEngineering ? (
+            <>
+              <PartyFeeWorkflowTable
+                rows={readyBillingRows}
+                role="office"
+                pending={isLoading && !isFetched}
+              />
+              <QueueTableHint className="mt-3">
+                البنود الجاهزة للفوترة بعد موافقة المكتب أو بسعر الجدول. ستُدرج لاحقاً
+                في كشف/فاتورة المكتب — لا يُنشأ لها أمر صرف من هذا المسار.
               </QueueTableHint>
             </>
           ) : (
@@ -200,6 +262,16 @@ export function PartyFeesWorkspace({
             </section>
             <section>
               <h3 className="mb-2 text-[13px] font-semibold text-text">
+                خلاف تسعير (مكتب هندسي)
+              </h3>
+              {disputedRows.length === 0 ? (
+                <EmptyState line="لا بنود خلاف تسعير." />
+              ) : (
+                <PartyFeeWorkflowTable rows={disputedRows} role="supervisor" />
+              )}
+            </section>
+            <section>
+              <h3 className="mb-2 text-[13px] font-semibold text-text">
                 المُعاد من المالية
               </h3>
               {returnedToSup.length === 0 ? (
@@ -217,13 +289,13 @@ export function PartyFeesWorkspace({
           </div>
         ) : null}
 
-        {tab === "disburse" && !isSupervisor ? (
+        {tab === "disburse" && !isSupervisor && !isEngineering ? (
           <PartyDisbursementRequest
             rows={rows.filter((r) => r.canCreateDisbursementRequest)}
           />
         ) : null}
 
-        {tab === "returned" && !isSupervisor ? (
+        {tab === "returned" && !isSupervisor && !isEngineering ? (
           <PartyReturnedQueue rows={rows} />
         ) : null}
 

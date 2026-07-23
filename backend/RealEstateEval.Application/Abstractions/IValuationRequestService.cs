@@ -9,11 +9,6 @@ public interface IValuationRequestService
     Task<ValuationRequestDto> CreateAsync(
         SaveValuationRequestRequest request,
         CancellationToken cancellationToken = default);
-    Task<ValuationRequestDto?> UpdateAsync(
-        Guid id,
-        SaveValuationRequestRequest request,
-        CancellationToken cancellationToken = default);
-    Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
     Task<(ValuationRequestDto? Result, string? Error)> SubmitReportAsync(
         Guid id,
         CancellationToken cancellationToken = default);

@@ -858,8 +858,6 @@ public static class DataSeeder
                 profile.ProcProvider = null;
             }
 
-            profile.CrmClient = null;
-
             if (profile.HrEmployee is null)
 
             {
@@ -1057,8 +1055,6 @@ public static class DataSeeder
                 db.HrEmployeeProfiles.Remove(profile.HrEmployee);
                 profile.HrEmployee = null;
             }
-
-            profile.CrmClient = null;
 
             if (profile.ProcProvider is null)
 

@@ -1,3 +1,5 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
@@ -76,6 +78,20 @@ public class PartyTaskSubmissionsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var (result, errors) = await _submissions.ReopenAsync(taskId, request, cancellationToken);
+        if (errors is not null) return BadRequest(new { errors });
+        return Ok(result);
+    }
+
+    [HttpPost("{taskId:guid}/accept")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public async Task<ActionResult<PartyTaskSubmissionDto>> Accept(
+        Guid taskId,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+            ?? "";
+        var (result, errors) = await _submissions.AcceptAsync(taskId, userId, cancellationToken);
         if (errors is not null) return BadRequest(new { errors });
         return Ok(result);
     }

@@ -147,6 +147,32 @@ export async function reopenPartyTaskSubmission(
   }
 }
 
+/** Specialist accepts engineering-survey outputs — accrues office fee from pricing table. */
+export async function acceptPartyTaskSubmission(
+  config: WorkOrdersApiConfig,
+  taskId: string,
+): Promise<
+  | ApiOk<PartyTaskSubmissionDto>
+  | (ApiErr & { errors?: Record<string, string> })
+> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/party-task-submissions/${taskId}/accept`, {
+      method: "POST",
+      headers: headers(config.token),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 400) {
+      const errors = await parseFieldErrorsFromResponse(res);
+      return { ok: false, kind: "validation", errors };
+    }
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: normalizeSubmissionDto(await res.json()) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
 export async function listPartyTaskSubmissions(
   config: WorkOrdersApiConfig,
   workflowTaskIds: string[],
@@ -173,17 +199,4 @@ export async function listPartyTaskSubmissions(
   } catch {
     return { ok: false, kind: "network" };
   }
-}
-
-export async function prefetchPartyTaskSubmissions(
-  config: WorkOrdersApiConfig,
-  taskIds: string[],
-): Promise<void> {
-  const ids = taskIds.map((id) => id.trim()).filter(Boolean);
-  if (ids.length === 0) return;
-  if (ids.length === 1) {
-    await getPartyTaskSubmission(config, ids[0]);
-    return;
-  }
-  await listPartyTaskSubmissions(config, ids);
 }

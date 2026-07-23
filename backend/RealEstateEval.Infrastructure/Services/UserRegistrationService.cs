@@ -32,7 +32,6 @@ public class UserRegistrationService : IUserRegistrationService
             .Include(p => p.User)
             .Include(p => p.HrEmployee)
             .Include(p => p.ProcProvider)
-            .Include(p => p.CrmClient)
             .OrderByDescending(p => p.CreatedAtUtc)
             .ToListAsync(cancellationToken);
 
@@ -69,7 +68,6 @@ public class UserRegistrationService : IUserRegistrationService
             .Include(p => p.User)
             .Include(p => p.HrEmployee)
             .Include(p => p.ProcProvider)
-            .Include(p => p.CrmClient)
             .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
 
         if (profile is null)

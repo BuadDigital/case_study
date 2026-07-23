@@ -181,7 +181,8 @@ public class FieldInspectionSubmissionIntegrationTests
             new NullHttpContextAccessor(),
             new NullPermissionService(),
             new PropertyKeyGateResolver(db),
-            new KeyEnvelopesService(db, holds));
+            new KeyEnvelopesService(db, holds),
+            TestInspectorFeeServiceFactory.Create(db));
     }
 
     private sealed class NullHttpContextAccessor : IHttpContextAccessor

@@ -23,4 +23,12 @@ public interface IPartyTaskSubmissionService
         Guid taskId,
         ReopenPartyTaskSubmissionRequest request,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Specialist accepts engineering-survey outputs — triggers fee accrual from the pricing table.
+    /// </summary>
+    Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> AcceptAsync(
+        Guid taskId,
+        string actorUserId,
+        CancellationToken cancellationToken = default);
 }

@@ -18,5 +18,4 @@ public class UserProfile
 
     public HrEmployeeProfile? HrEmployee { get; set; }
     public ProcServiceProviderProfile? ProcProvider { get; set; }
-    public CrmClientProfile? CrmClient { get; set; }
 }

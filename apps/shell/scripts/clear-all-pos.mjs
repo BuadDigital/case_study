@@ -1,17 +1,16 @@
 /**
  * Wipes all operational system data from the API (dev/maintenance).
  * Usage: node apps/shell/scripts/clear-all-pos.mjs
- * Env: API_URL (default http://localhost:5160)
+ * Env: API_URL (default http://localhost:5160), ADMIN_USERNAME (default sliman)
  */
 const API = (process.env.API_URL ?? "http://localhost:5160").replace(/\/$/, "");
-const EMAIL = process.env.ADMIN_EMAIL ?? "s.salhy@gmail.com";
-const PASSWORD = process.env.ADMIN_PASSWORD ?? "sliman123";
+const USERNAME = process.env.ADMIN_USERNAME ?? "sliman";
 
 async function main() {
-  const loginRes = await fetch(`${API}/api/auth/login`, {
+  const loginRes = await fetch(`${API}/api/auth/login-username`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+    body: JSON.stringify({ username: USERNAME }),
   });
   if (!loginRes.ok) {
     console.error("Login failed:", loginRes.status, await loginRes.text());

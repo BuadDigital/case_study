@@ -110,20 +110,6 @@ export async function fetchFinancialSummary(
   }
 }
 
-/** Active pricing schedule. */
-export async function fetchPartyFeePricing(
-  config: PrototypeModulesApiConfig,
-): Promise<PrototypeModulesResult<PartyFeePricingDto>> {
-  try {
-    const res = await fetch(`${baseUrl(config)}/api/financial/v1/party-fee-pricing`, {
-      headers: headers(config.token),
-    });
-    return readResult<PartyFeePricingDto>(res);
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
 export async function fetchPartyFeePricingTables(
   config: PrototypeModulesApiConfig,
   category?: PartyFeePricingCategory,
@@ -201,21 +187,6 @@ export async function activatePartyFeePricing(
       { method: "POST", headers: headers(config.token) },
     );
     return readResult<PartyFeePricingDto>(res);
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
-export async function fetchPartyFeePricingAssignments(
-  config: PrototypeModulesApiConfig,
-  id: string,
-): Promise<PrototypeModulesResult<string[]>> {
-  try {
-    const res = await fetch(
-      `${baseUrl(config)}/api/financial/v1/party-fee-pricing/${id}/assignments`,
-      { headers: headers(config.token) },
-    );
-    return readResult<string[]>(res);
   } catch {
     return { ok: false, kind: "network" };
   }

@@ -39,22 +39,6 @@ public class ValuationRequestsController : ControllerBase
         return CreatedAtAction(nameof(Get), new { id = dto.Id }, dto);
     }
 
-    [HttpPut("{id:guid}")]
-    [Authorize(Policy = CapabilityPolicyNames.ManageValuationRequests)]
-    public async Task<ActionResult<ValuationRequestDto>> Update(
-        Guid id,
-        [FromBody] SaveValuationRequestRequest request,
-        CancellationToken ct)
-    {
-        var dto = await _service.UpdateAsync(id, request, ct);
-        return dto is null ? NotFound() : Ok(dto);
-    }
-
-    [HttpDelete("{id:guid}")]
-    [Authorize(Policy = CapabilityPolicyNames.ManageValuationRequests)]
-    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
-        => await _service.DeleteAsync(id, ct) ? NoContent() : NotFound();
-
     [HttpPost("{id:guid}/submit-report")]
     [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
     public async Task<ActionResult<ValuationRequestDto>> SubmitReport(Guid id, CancellationToken ct)

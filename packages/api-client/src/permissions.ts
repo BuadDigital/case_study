@@ -22,13 +22,6 @@ export type PermissionsDto = {
   capabilities: string[];
 };
 
-export type MeDto = {
-  id: string;
-  email: string;
-  displayName: string;
-  permissions?: PermissionsDto | null;
-};
-
 function headers(token: string): HeadersInit {
   return {
     "Content-Type": "application/json",
@@ -51,18 +44,4 @@ export async function fetchPermissions(config: PermissionsApiConfig): Promise<Pe
   } finally {
     clearTimeout(timer);
   }
-}
-
-export async function fetchMe(
-  config: PermissionsApiConfig,
-  includePermissions = true,
-): Promise<MeDto> {
-  const base = config.baseUrl ?? getApiBase();
-  const q = includePermissions ? "?includePermissions=true" : "?includePermissions=false";
-  const res = await fetch(`${base}/api/auth/me${q}`, {
-    headers: headers(config.token),
-  });
-  if (res.status === 401) throw new ApiAuthError();
-  if (!res.ok) throw new Error(`me ${res.status}`);
-  return res.json() as Promise<MeDto>;
 }

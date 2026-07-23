@@ -1,6 +1,7 @@
 import {
   getPartyTaskSubmission,
   listPartyTaskSubmissions,
+  acceptPartyTaskSubmission,
   reopenPartyTaskSubmission,
   savePartyTaskSubmission,
   submitPartyTaskSubmission,
@@ -88,6 +89,17 @@ export async function reopenPartySubmission(
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
   const result = await reopenPartyTaskSubmission(config, taskId, returnNote);
   const mapped = mutationFromApiResult(result, "تعذّر إعادة فتح مهمة الطرف");
+  if (mapped.ok) setCachedPartySubmission(mapped.data, taskId);
+  return mapped;
+}
+
+export async function acceptPartySubmission(
+  taskId: string,
+): Promise<PartySubmissionMutationResult> {
+  const config = workOrdersApiConfig();
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
+  const result = await acceptPartyTaskSubmission(config, taskId);
+  const mapped = mutationFromApiResult(result, "تعذّر قبول مخرجات المهمة");
   if (mapped.ok) setCachedPartySubmission(mapped.data, taskId);
   return mapped;
 }

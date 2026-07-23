@@ -13,6 +13,15 @@ public interface IInspectorFeeService
         Guid propertyId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Accrues an engineering-survey fee from the pricing table when the specialist
+    /// accepts survey outputs. Idempotent if already accrued. Re-uploads do not create a second fee.
+    /// </summary>
+    Task<(InspectorFeeRowDto? Row, string? Error)> AccrueEngineeringSurveyFeeAsync(
+        Guid workflowTaskId,
+        string actorUserId,
+        CancellationToken cancellationToken = default);
+
     Task<InspectorFeesSummaryDto> GetSummaryAsync(
         string? assigneeId,
         string? workflowTaskId,
