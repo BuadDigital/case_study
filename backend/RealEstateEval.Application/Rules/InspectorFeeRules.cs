@@ -26,17 +26,6 @@ public static class InspectorFeeRules
             ? TypeCooperatorIndividual
             : TypeEmployee;
 
-    /// <summary>
-    /// Seed/fallback for cooperator types only. Employees have no table default (returns 0).
-    /// </summary>
-    public static decimal DefaultAgreedFee(string inspectorType) =>
-        inspectorType switch
-        {
-            TypeCooperatorOrganization => CooperatorOrganizationFeeSar,
-            TypeCooperatorIndividual or TypeCooperatorLegacy => CooperatorIndividualFeeSar,
-            _ => 0m,
-        };
-
     public static bool IsEmployee(string? inspectorType) =>
         string.Equals(inspectorType, TypeEmployee, StringComparison.Ordinal);
 

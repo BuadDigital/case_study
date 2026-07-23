@@ -130,13 +130,6 @@ export function useInspectorKeyAvailability(
   return state;
 }
 
-/** @deprecated use useInspectorKeyAvailability */
-export function useInspectorKeyHandedStatus(
-  task: WorkflowTask,
-): GovernmentReviewKeyHandedToInspector | "" {
-  return useInspectorKeyAvailability(task).keyHandedToInspector;
-}
-
 function AssignmentStatusBadge({ status }: { status?: string | null }) {
   const label =
     status === "matched"

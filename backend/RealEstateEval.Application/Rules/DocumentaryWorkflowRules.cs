@@ -55,17 +55,6 @@ public static class DocumentaryWorkflowRules
         return false;
     }
 
-    public static bool HasAnyPartyPhoneDto(
-        IEnumerable<(string Phone, string Role)>? contacts)
-    {
-        if (contacts is null) return false;
-        foreach (var (phone, _) in contacts)
-        {
-            if (phone.Count(char.IsDigit) >= 10) return true;
-        }
-        return false;
-    }
-
     public static bool BoundariesUnavailable(string? boundariesAvailability) =>
         string.Equals(boundariesAvailability?.Trim(), "no", StringComparison.OrdinalIgnoreCase);
 

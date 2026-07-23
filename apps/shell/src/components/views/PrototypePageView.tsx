@@ -151,23 +151,6 @@ export function PrototypePageView({ page }: { page: PageId }) {
   const View = VIEWS[page];
   if (!View) return null;
 
-  const needsSuspense =
-    page === "active-primary-data" ||
-    page === "all-transactions" ||
-    page === "active-distribution" ||
-    page === "active-case-study" ||
-    page === "government-review" ||
-    page === "operations-tasks" ||
-    PARTY_TASK_PAGE_IDS.includes(page);
-
-  if (needsSuspense) {
-    return (
-      <Suspense fallback={<PanelSkeleton className="p-4" />}>
-        <View />
-      </Suspense>
-    );
-  }
-
   return (
     <Suspense fallback={<PanelSkeleton className="p-4" />}>
       <View />

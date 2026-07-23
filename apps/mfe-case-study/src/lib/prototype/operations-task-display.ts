@@ -268,11 +268,6 @@ export function taskCountdown(dueAt: string, status: string, now = Date.now()): 
   };
 }
 
-/** @deprecated use taskCountdown */
-export function dueCountdownLabel(dueAt: string, status: string): string {
-  return taskCountdown(dueAt, status).txt;
-}
-
 export type TaskUrgency = { color: string; pulse: boolean } | null;
 
 export function taskUrgency(

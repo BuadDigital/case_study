@@ -14,8 +14,4 @@ public static class GovernmentReviewFeeRules
 
     /// <summary>Seed fallback when pricing config row is first created.</summary>
     public const decimal FallbackFeeSar = 350m;
-
-    public static string ResolvePartyType(string? assigneeId = null) => PartyType;
-
-    public static decimal DefaultAgreedFee(string? partyType = null) => FallbackFeeSar;
 }
