@@ -6,6 +6,10 @@ namespace RealEstateEval.Domain;
 public static class InspectorFeeBillingStatus
 {
     public const string Draft = "draft";
+    /// <summary>Engineering office — discounted line awaiting explicit office approval.</summary>
+    public const string OfficeReview = "office-review";
+    /// <summary>Engineering office — office disputed the discount (supervisor negotiation).</summary>
+    public const string Disputed = "disputed";
     public const string SupReview = "sup-review";
     public const string AtFinance = "at-finance";
     public const string DisbReq = "disb-req";
@@ -16,6 +20,8 @@ public static class InspectorFeeBillingStatus
     public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.Ordinal)
     {
         Draft,
+        OfficeReview,
+        Disputed,
         SupReview,
         AtFinance,
         DisbReq,
@@ -35,6 +41,15 @@ public static class InspectorFeeActions
 {
     /// <summary>Office — draft → sup-review (work must be submitted).</summary>
     public const string SubmitToSupervisor = "submit-to-supervisor";
+
+    /// <summary>Engineering office — office-review → at-finance (accept discounted amount).</summary>
+    public const string OfficeApproveDiscount = "office-approve-discount";
+
+    /// <summary>Engineering office — office-review → disputed.</summary>
+    public const string OfficeDispute = "office-dispute";
+
+    /// <summary>Supervisor — disputed → at-finance (agreed amount after negotiation).</summary>
+    public const string ResolveDispute = "resolve-dispute";
 
     /// <summary>Supervisor — sup-review → at-finance.</summary>
     public const string ApproveToFinance = "approve-to-finance";

@@ -1,5 +1,4 @@
 import type {
-  OrganizationOverview,
   UserListItem,
 } from "@platform/types";
 import { getApiBase } from "./index";
@@ -55,10 +54,6 @@ export async function listDistributionAssignees(
     return { ok: false, kind: "network" };
   }
 }
-
-export type OrganizationOverviewResult =
-  | { ok: true; overview: OrganizationOverview }
-  | { ok: false; kind: "network" | "server" };
 
 export type CreateStaffUserRequest = {
   displayName: string;
@@ -129,22 +124,6 @@ export async function deleteStaffUser(
     }
     if (!res.ok) return { ok: false, kind: "server" };
     return { ok: true };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
-export async function fetchOrganizationOverview(
-  config: UsersApiConfig,
-): Promise<OrganizationOverviewResult> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/users/organization`, {
-      headers: headers(config.token),
-    });
-    if (!res.ok) return { ok: false, kind: "server" };
-    const overview = (await res.json()) as OrganizationOverview;
-    return { ok: true, overview };
   } catch {
     return { ok: false, kind: "network" };
   }

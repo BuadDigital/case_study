@@ -261,14 +261,7 @@ export function SuspendedTransactionsView() {
                 دراسة الحالة.
               </Note>
             </PageToolbar>
-          ) : (
-            <PageToolbar className="border-b-0 bg-surface-2/50">
-              <Note tone="info" className="m-0 flex-1">
-                مسار التعليق: مراجعة المشرف → تعليق المعاملة → إيقاف جميع
-                الأطراف — المؤقت يستمر حتى موعد الاستحقاق.
-              </Note>
-            </PageToolbar>
-          )}
+          ) : null}
 
           {isFetched && sortedItems.length === 0 ? (
             <EmptyState

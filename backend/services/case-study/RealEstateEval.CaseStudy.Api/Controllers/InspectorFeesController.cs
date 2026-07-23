@@ -150,12 +150,15 @@ public class InspectorFeesController : ControllerBase
         return action switch
         {
             InspectorFeeActions.SubmitToSupervisor
-                or InspectorFeeActions.CreateDisbursementRequest =>
+                or InspectorFeeActions.CreateDisbursementRequest
+                or InspectorFeeActions.OfficeApproveDiscount
+                or InspectorFeeActions.OfficeDispute =>
                 !string.IsNullOrWhiteSpace(ctx.AssigneeId),
 
             InspectorFeeActions.ApproveToFinance
                 or InspectorFeeActions.ResendToFinance
-                or InspectorFeeActions.ReturnToOffice => ctx.IsOperationsManager,
+                or InspectorFeeActions.ReturnToOffice
+                or InspectorFeeActions.ResolveDispute => ctx.IsOperationsManager,
 
             InspectorFeeActions.Disburse
                 or InspectorFeeActions.ReturnToSupervisor

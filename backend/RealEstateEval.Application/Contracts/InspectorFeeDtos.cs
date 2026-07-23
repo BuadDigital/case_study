@@ -24,12 +24,16 @@ public class InspectorFeeRowDto
     public string? DisbursementVoucher { get; set; }
     public string? LastTransitionReason { get; set; }
     public DateTime? UpdatedAtUtc { get; set; }
+    public DateTime? AccruedAtUtc { get; set; }
     public DateTime? WorkSubmittedAtUtc { get; set; }
     public DateTime? PoReceivedAtUtc { get; set; }
     public bool IsEditable { get; set; }
     public bool CanSubmitToSupervisor { get; set; }
     public bool CanApproveToFinance { get; set; }
     public bool CanCreateDisbursementRequest { get; set; }
+    public bool CanOfficeApproveDiscount { get; set; }
+    public bool CanOfficeDispute { get; set; }
+    public bool CanResolveDispute { get; set; }
 }
 
 public class InspectorFeesSummaryDto

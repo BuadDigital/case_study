@@ -6,6 +6,8 @@ public static class InspectorFeeBillingRules
 {
     public static bool IsEditableStatus(string? status) =>
         status is InspectorFeeBillingStatus.Draft
+            or InspectorFeeBillingStatus.OfficeReview
+            or InspectorFeeBillingStatus.Disputed
             or InspectorFeeBillingStatus.SupReview
             or InspectorFeeBillingStatus.AtFinance
             or InspectorFeeBillingStatus.Returned
@@ -48,6 +50,39 @@ public static class InspectorFeeBillingRules
                 }
 
                 error = "لا يمكن رفع الأتعاب للمشرف من هذه الحالة.";
+                return false;
+
+            case InspectorFeeActions.OfficeApproveDiscount:
+                if (currentStatus == InspectorFeeBillingStatus.OfficeReview)
+                {
+                    nextStatus = InspectorFeeBillingStatus.AtFinance;
+                    returnTo = null;
+                    return true;
+                }
+
+                error = "لا يمكن الموافقة إلا على بند بانتظار موافقة المكتب.";
+                return false;
+
+            case InspectorFeeActions.OfficeDispute:
+                if (currentStatus == InspectorFeeBillingStatus.OfficeReview)
+                {
+                    nextStatus = InspectorFeeBillingStatus.Disputed;
+                    returnTo = null;
+                    return true;
+                }
+
+                error = "لا يمكن الاعتراض إلا على بند بانتظار موافقة المكتب.";
+                return false;
+
+            case InspectorFeeActions.ResolveDispute:
+                if (currentStatus == InspectorFeeBillingStatus.Disputed)
+                {
+                    nextStatus = InspectorFeeBillingStatus.AtFinance;
+                    returnTo = null;
+                    return true;
+                }
+
+                error = "لا يمكن حسم الخلاف إلا لبنود خلاف التسعير.";
                 return false;
 
             case InspectorFeeActions.ApproveToFinance:
@@ -137,11 +172,13 @@ public static class InspectorFeeBillingRules
 
     public static string StatusLabel(string? status) => status switch
     {
-        InspectorFeeBillingStatus.Draft => "مسودة",
+        InspectorFeeBillingStatus.Draft => "مستحق",
+        InspectorFeeBillingStatus.OfficeReview => "بانتظار موافقة المكتب",
+        InspectorFeeBillingStatus.Disputed => "خلاف تسعير",
         InspectorFeeBillingStatus.SupReview => "بانتظار اعتماد المشرف",
-        InspectorFeeBillingStatus.AtFinance => "جاهز للصرف (لدى المالية)",
+        InspectorFeeBillingStatus.AtFinance => "جاهز للفوترة",
         InspectorFeeBillingStatus.DisbReq => "ضمن أمر صرف",
-        InspectorFeeBillingStatus.Disbursed => "مصروف",
+        InspectorFeeBillingStatus.Disbursed => "مفوترة / مدفوعة",
         InspectorFeeBillingStatus.Returned => "مُعاد للتعديل",
         InspectorFeeBillingStatus.Inquiry => "استفسار مفتوح",
         _ => "—",

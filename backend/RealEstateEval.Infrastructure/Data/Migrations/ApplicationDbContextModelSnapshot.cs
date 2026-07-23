@@ -549,61 +549,6 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.ToTable("CourtCircuits", "platform");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.CrmClientProfile", b =>
-                {
-                    b.Property<string>("UserId")
-                        .HasColumnType("text");
-
-                    b.Property<string>("AccountRepresentative")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Address")
-                        .HasColumnType("text");
-
-                    b.Property<int>("ClientStatus")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ClientType")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("CommercialRegistration")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ContactPerson")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ContactPhone")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ContactRole")
-                        .HasColumnType("text");
-
-                    b.Property<int>("EntityKind")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("FullName")
-                        .HasColumnType("text");
-
-                    b.Property<string>("NationalId")
-                        .HasColumnType("text");
-
-                    b.Property<string>("OrganizationName")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Region")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Sector")
-                        .HasColumnType("text");
-
-                    b.Property<string>("VatRegistration")
-                        .HasColumnType("text");
-
-                    b.HasKey("UserId");
-
-                    b.ToTable("CrmClientProfiles", "identity");
-                });
-
             modelBuilder.Entity("RealEstateEval.Domain.DisbursementBatch", b =>
                 {
                     b.Property<Guid>("Id")
@@ -948,6 +893,9 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasPrecision(12, 2)
                         .HasColumnType("numeric(12,2)");
 
+                    b.Property<DateTime?>("AccruedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("AssigneeId")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
@@ -1006,6 +954,8 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("WorkflowTaskId");
+
+                    b.HasIndex("AccruedAtUtc");
 
                     b.HasIndex("AssigneeId");
 
@@ -2855,17 +2805,6 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Navigation("Court");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.CrmClientProfile", b =>
-                {
-                    b.HasOne("RealEstateEval.Domain.UserProfile", "Profile")
-                        .WithOne("CrmClient")
-                        .HasForeignKey("RealEstateEval.Domain.CrmClientProfile", "UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Profile");
-                });
-
             modelBuilder.Entity("RealEstateEval.Domain.HrEmployeeProfile", b =>
                 {
                     b.HasOne("RealEstateEval.Domain.UserProfile", "Profile")
@@ -2999,8 +2938,6 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("RealEstateEval.Domain.UserProfile", b =>
                 {
-                    b.Navigation("CrmClient");
-
                     b.Navigation("HrEmployee");
 
                     b.Navigation("ProcProvider");

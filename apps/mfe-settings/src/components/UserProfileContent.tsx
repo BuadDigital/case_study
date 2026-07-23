@@ -53,7 +53,7 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
   }, [user.details]);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="m-0 text-[18px] font-extrabold text-heading">{user.name}</h2>

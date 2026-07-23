@@ -10,7 +10,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
     public DbSet<HrEmployeeProfile> HrEmployeeProfiles => Set<HrEmployeeProfile>();
     public DbSet<ProcServiceProviderProfile> ProcServiceProviderProfiles => Set<ProcServiceProviderProfile>();
-    public DbSet<CrmClientProfile> CrmClientProfiles => Set<CrmClientProfile>();
     public DbSet<WorkOrder> WorkOrders => Set<WorkOrder>();
     public DbSet<WorkOrderProperty> WorkOrderProperties => Set<WorkOrderProperty>();
     public DbSet<PropertyContact> PropertyContacts => Set<PropertyContact>();
@@ -105,16 +104,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .HasForeignKey<ProcServiceProviderProfile>(x => x.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
             e.Property(x => x.ServiceType).HasMaxLength(128);
-        });
-
-        builder.Entity<CrmClientProfile>(e =>
-        {
-            e.ToTable("CrmClientProfiles", DatabaseSchemas.Identity);
-            e.HasKey(x => x.UserId);
-            e.HasOne(x => x.Profile)
-                .WithOne(x => x.CrmClient)
-                .HasForeignKey<CrmClientProfile>(x => x.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<WorkOrder>(e =>
@@ -304,6 +293,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.DisbursementVoucher).HasMaxLength(128);
             e.Property(x => x.AgreedFeeSar).HasPrecision(12, 2);
             e.Property(x => x.SupervisorDiscountSar).HasPrecision(12, 2);
+            e.HasIndex(x => x.AccruedAtUtc);
             e.HasIndex(x => x.PoNumber);
             e.HasIndex(x => x.AssigneeId);
             e.HasIndex(x => x.BillingStatus);

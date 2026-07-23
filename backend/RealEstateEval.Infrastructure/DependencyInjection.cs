@@ -246,7 +246,6 @@ public static class DependencyInjection
     public static IServiceCollection AddValuationIntegrationHandlers(this IServiceCollection services)
     {
         services.AddScoped<ValuationReportWorkflowHandler>();
-        services.AddScoped<ValuationRequestCreatedHandler>();
         return services;
     }
 

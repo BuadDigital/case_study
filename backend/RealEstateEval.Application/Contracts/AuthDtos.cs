@@ -2,17 +2,6 @@ using System.ComponentModel.DataAnnotations;
 
 namespace RealEstateEval.Application.Contracts;
 
-public class LoginRequest
-{
-    [Required]
-    [EmailAddress]
-    public string Email { get; set; } = string.Empty;
-
-    [Required]
-    [MinLength(6)]
-    public string Password { get; set; } = string.Empty;
-}
-
 /// <summary>Prototype login — username only, no password check.</summary>
 public class UsernameLoginRequest
 {

@@ -7,6 +7,7 @@ import {
   payloadFromDto,
   persistPartySubmissionPayload,
   prefetchPartySubmissionsForTasks,
+  acceptPartySubmission,
   reopenPartySubmission,
   setCachedPartySubmission,
   submitPartySubmission,
@@ -232,6 +233,21 @@ export async function reopenEngineeringSurveySubmission(
   const data = dtoToSubmission(reopened.data);
   if (!data) {
     return { ok: false, error: "تعذّر قراءة بيانات إعادة الفتح" };
+  }
+  return { ok: true, data };
+}
+
+/** Specialist acceptance — accrues engineering-office fee from the pricing table. */
+export async function acceptEngineeringSurveySubmission(
+  taskId: string,
+): Promise<PartyWorkMutationResult<EngineeringSurveySubmission>> {
+  const accepted = await acceptPartySubmission(taskId);
+  if (!accepted.ok) return { ok: false, error: accepted.error };
+  notifyChanged();
+  notifyTasksChanged();
+  const data = dtoToSubmission(accepted.data);
+  if (!data) {
+    return { ok: false, error: "تعذّر قراءة بيانات القبول" };
   }
   return { ok: true, data };
 }

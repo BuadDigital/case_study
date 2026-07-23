@@ -1,5 +1,5 @@
 export type ContractType = "Internal" | "Freelance" | "ServiceProvider";
-export type RegistrationSourceApi = "Hr" | "Proc" | "Crm";
+export type RegistrationSourceApi = "Hr" | "Proc";
 export type UserStatusApi = "Active" | "Inactive";
 
 export type UserDetailField = {

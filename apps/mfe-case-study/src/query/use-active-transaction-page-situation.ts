@@ -9,6 +9,7 @@ import type { PageId, RoleId } from "@platform/types";
 import {
   computeFeesPageSituation,
   computePageSituationValues,
+  computeUnbilledFeeCount,
   pageSituationCards,
   type PageSituationCardDef,
   type PageSituationValues,
@@ -54,6 +55,7 @@ export function useActiveTransactionPageSituation(
   const cards = pageId ? pageSituationCards(pageId) : null;
 
   const isFeesPage = pageId === "party-fees";
+  const isSurveyPage = pageId === "active-survey";
   const needsTasks = Boolean(cards && !isFeesPage);
   const needsPo = Boolean(cards && pageId !== "bourse-inquiry" && !isFeesPage);
   const needsBourse = pageId === "bourse-inquiry";
@@ -63,9 +65,16 @@ export function useActiveTransactionPageSituation(
 
   const isSupervisorFees =
     isFeesPage && (role === "section-supervisor" || role === "cdo" || role === "general-manager");
-  const feesTaskKind = isFeesPage && !isSupervisorFees ? feesTaskKindForRole(role) : undefined;
+  const feesTaskKind =
+    isFeesPage && !isSupervisorFees
+      ? feesTaskKindForRole(role)
+      : isSurveyPage
+        ? "engineering-survey"
+        : undefined;
   const feesAssigneeId =
-    isFeesPage && !isSupervisorFees ? distributionAssigneeId ?? undefined : undefined;
+    (isFeesPage && !isSupervisorFees) || isSurveyPage
+      ? distributionAssigneeId ?? undefined
+      : undefined;
 
   const { data: feesSummary, isFetched: feesFetched } = useInspectorFeesQuery(
     {
@@ -76,8 +85,9 @@ export function useActiveTransactionPageSituation(
     {
       enabled:
         Boolean(cards) &&
-        isFeesPage &&
-        (isSupervisorFees || Boolean(feesTaskKind && feesAssigneeId)),
+        (isFeesPage
+          ? isSupervisorFees || Boolean(feesTaskKind && feesAssigneeId)
+          : isSurveyPage && Boolean(feesAssigneeId)),
     },
   );
 
@@ -148,7 +158,7 @@ export function useActiveTransactionPageSituation(
   }, [viewerTaskIdsKey]);
 
   const ready =
-    (isFeesPage ? feesFetched : true) &&
+    (isFeesPage || isSurveyPage ? feesFetched : true) &&
     (!needsTasks || tasksFetched) &&
     (!needsPo || poRecordsFetched) &&
     (!needsBourse || bourseFetched) &&
@@ -203,6 +213,9 @@ export function useActiveTransactionPageSituation(
           pendingBourse: visiblePendingBourse,
           obstructedCount,
           inspectionWorkspaces: inspectionWorkspaceByTaskId,
+          unbilledFeeCount: isSurveyPage
+            ? computeUnbilledFeeCount(feesSummary?.rows ?? [])
+            : undefined,
         }) ?? {})
       : Object.fromEntries(cards.map((card) => [card.key, undefined]));
 
@@ -211,6 +224,7 @@ export function useActiveTransactionPageSituation(
     pageId,
     cards,
     isFeesPage,
+    isSurveyPage,
     ready,
     feesSummary,
     role,

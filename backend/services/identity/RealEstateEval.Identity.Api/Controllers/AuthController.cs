@@ -96,37 +96,6 @@ public class AuthController : ControllerBase
         });
     }
 
-    [HttpPost("login")]
-    [AllowAnonymous]
-    public async Task<ActionResult<LoginResponse>> Login(
-        [FromBody] LoginRequest request,
-        CancellationToken cancellationToken)
-    {
-        if (!ModelState.IsValid)
-            return ValidationProblem(ModelState);
-
-        var user = await _userManager.FindByEmailAsync(request.Email.Trim());
-        if (user is null || !await _userManager.CheckPasswordAsync(user, request.Password))
-            return Unauthorized(new { message = "بيانات الدخول غير صحيحة" });
-
-        var roles = await _userManager.GetRolesAsync(user);
-        var permissions = await _permissions.GetForUserIdAsync(user.Id, cancellationToken);
-        var capabilities = permissions?.Capabilities ?? [];
-        var (token, expiresAtUtc) = _jwtTokenService.CreateToken(user, roles, capabilities);
-
-        return Ok(new LoginResponse
-        {
-            Token = token,
-            ExpiresAtUtc = expiresAtUtc,
-            User = new UserInfoDto
-            {
-                Id = user.Id,
-                Email = user.Email ?? string.Empty,
-                DisplayName = user.DisplayName,
-            },
-        });
-    }
-
     [HttpGet("me")]
     [Authorize]
     public async Task<ActionResult<MeDto>> Me(

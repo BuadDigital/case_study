@@ -34,6 +34,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
     private readonly IPermissionService _permissions;
     private readonly IPropertyKeyGateResolver _keyGates;
     private readonly IKeyEnvelopesService _keyEnvelopes;
+    private readonly IInspectorFeeService _inspectorFees;
 
     public PartyTaskSubmissionService(
         ApplicationDbContext db,
@@ -43,7 +44,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         IHttpContextAccessor httpContextAccessor,
         IPermissionService permissions,
         IPropertyKeyGateResolver keyGates,
-        IKeyEnvelopesService keyEnvelopes)
+        IKeyEnvelopesService keyEnvelopes,
+        IInspectorFeeService inspectorFees)
     {
         _db = db;
         _tasks = tasks;
@@ -53,6 +55,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         _permissions = permissions;
         _keyGates = keyGates;
         _keyEnvelopes = keyEnvelopes;
+        _inspectorFees = inspectorFees;
     }
 
     public async Task<PartyTaskSubmissionDto?> GetAsync(
@@ -243,6 +246,53 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             taskId,
             new PatchWorkflowTaskRequest { Status = WorkflowTaskStatus.Open, Phase = "done" },
             cancellationToken);
+
+        return (ToDto(entity), null);
+    }
+
+    public async Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> AcceptAsync(
+        Guid taskId,
+        string actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var task = await _db.WorkflowTasks
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
+        if (task is null)
+            return (null, new Dictionary<string, string> { ["_"] = "المهمة غير موجودة" });
+
+        if (task.Kind != "engineering-survey")
+            return (null, new Dictionary<string, string> { ["_"] = "قبول المخرجات متاح لمهام الرفع المساحي فقط" });
+
+        var entity = await _db.PartyTaskSubmissions
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.WorkflowTaskId == taskId, cancellationToken);
+
+        if (entity is null || entity.Status != PartyTaskSubmissionStatus.Submitted)
+            return (null, new Dictionary<string, string> { ["_"] = "لا يوجد إرسال مكتمل لقبوله" });
+
+        if (task.Status != WorkflowTaskStatus.Completed)
+            return (null, new Dictionary<string, string> { ["_"] = "مهمة الرفع المساحي غير مكتملة" });
+
+        var (_, feeError) = await _inspectorFees.AccrueEngineeringSurveyFeeAsync(
+            taskId,
+            string.IsNullOrWhiteSpace(actorUserId) ? "system" : actorUserId,
+            cancellationToken);
+        if (feeError is not null)
+            return (null, new Dictionary<string, string> { ["_"] = feeError });
+
+        if (task.PropertyId is Guid propertyId)
+        {
+            await _timeline.RecordAsync(
+                task.PoNumber,
+                propertyId,
+                $"party:{taskId}:accepted",
+                "قبول مخرجات الرفع المساحي",
+                task.AssigneeName,
+                "done",
+                DateTime.UtcNow,
+                cancellationToken);
+        }
 
         return (ToDto(entity), null);
     }

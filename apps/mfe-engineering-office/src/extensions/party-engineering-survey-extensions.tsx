@@ -27,7 +27,8 @@ export const partyEngineeringSurveyExtensions: PartyEngineeringSurveyExtensions 
         hidePageTitle: true,
         emptyHint:
           "تظهر هنا بعد تأكيد التوزيع عند تفعيل المكتب الهندسي — اضغط الصف لفتح مهمة الرفع.",
-        tableHint: "اضغط الصف لفتح مهمة الرفع المساحي في صفحة مستقلة.",
+        tableHint:
+          "اضغط الصف لفتح مهمة الرفع المساحي. الأتعاب تُستحق عند قبول الأخصائي للمخرجات — راجع «الاتعاب والفوترة».",
         fullPageTaskPath: activeSurveyWorkspacePath,
         statusColumnLabel: "الحالة",
         filterListed: (

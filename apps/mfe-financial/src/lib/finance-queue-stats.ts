@@ -9,13 +9,22 @@ export type FinanceDisburseBuckets = {
 
 const ATTENTION_STATUSES: InspectorFeeBillingStatus[] = ["returned", "inquiry"];
 
+/** Engineering office at-finance rows are ready for future invoicing — not party صرف. */
+function isEngSurveyAwaitingInvoice(row: InspectorFeeRowDto): boolean {
+  return (
+    row.taskKind === "engineering-survey" &&
+    row.billingStatus === "at-finance"
+  );
+}
+
 export function financeDisburseVisibleRows(rows: InspectorFeeRowDto[]): InspectorFeeRowDto[] {
   return rows.filter(
     (r) =>
       r.workStatus !== "cancelled" &&
       r.billingStatus !== "disbursed" &&
       r.billingStatus !== "draft" &&
-      r.billingStatus !== "sup-review",
+      r.billingStatus !== "sup-review" &&
+      !isEngSurveyAwaitingInvoice(r),
   );
 }
 
@@ -36,7 +45,11 @@ export function bucketFinanceDisburseRows(rows: InspectorFeeRowDto[]): FinanceDi
 
   return {
     readyToDisburse: sorted.filter((r) => r.billingStatus === "disb-req"),
-    waitingOffice: sorted.filter((r) => r.billingStatus === "at-finance"),
+    waitingOffice: sorted.filter(
+      (r) =>
+        r.billingStatus === "at-finance" &&
+        r.taskKind !== "engineering-survey",
+    ),
     needsAttention: sorted.filter((r) =>
       ATTENTION_STATUSES.includes(r.billingStatus),
     ),
@@ -47,7 +60,11 @@ export function countFinanceDisburseActions(rows: InspectorFeeRowDto[]) {
   const visible = financeDisburseVisibleRows(rows);
   return {
     readyToDisburse: visible.filter((r) => r.billingStatus === "disb-req").length,
-    waitingOffice: visible.filter((r) => r.billingStatus === "at-finance").length,
+    waitingOffice: visible.filter(
+      (r) =>
+        r.billingStatus === "at-finance" &&
+        r.taskKind !== "engineering-survey",
+    ).length,
     needsAttention: visible.filter((r) =>
       ATTENTION_STATUSES.includes(r.billingStatus),
     ).length,

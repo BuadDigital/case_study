@@ -41,61 +41,6 @@ public sealed class SurveyOfficesService : ISurveyOfficesService
         return row is null ? null : ToDto(row);
     }
 
-    public async Task<SurveyOfficeDto> CreateAsync(
-        SaveSurveyOfficeRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        var now = DateTime.UtcNow;
-        var row = new SurveyOffice
-        {
-            Id = Guid.NewGuid(),
-            Name = request.Name.Trim(),
-            ActiveCount = request.Active,
-            DoneMonth = request.DoneMonth,
-            AvgDaysLabel = request.AvgDays.Trim(),
-            ContractLabel = request.Contract.Trim(),
-            StatusBusy = request.StatusBusy,
-            SortOrder = request.SortOrder,
-            UpdatedAtUtc = now,
-        };
-        _db.SurveyOffices.Add(row);
-        await _db.SaveChangesAsync(cancellationToken);
-        await _cache.RemoveAsync(CacheKeys.SurveyOfficesList, cancellationToken);
-        return ToDto(row);
-    }
-
-    public async Task<SurveyOfficeDto?> UpdateAsync(
-        Guid id,
-        SaveSurveyOfficeRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        var row = await _db.SurveyOffices.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (row is null) return null;
-
-        row.Name = request.Name.Trim();
-        row.ActiveCount = request.Active;
-        row.DoneMonth = request.DoneMonth;
-        row.AvgDaysLabel = request.AvgDays.Trim();
-        row.ContractLabel = request.Contract.Trim();
-        row.StatusBusy = request.StatusBusy;
-        if (request.SortOrder > 0) row.SortOrder = request.SortOrder;
-        row.UpdatedAtUtc = DateTime.UtcNow;
-        await _db.SaveChangesAsync(cancellationToken);
-        await _cache.RemoveAsync(CacheKeys.SurveyOfficesList, cancellationToken);
-        return ToDto(row);
-    }
-
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
-    {
-        var row = await _db.SurveyOffices.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (row is null) return false;
-
-        _db.SurveyOffices.Remove(row);
-        await _db.SaveChangesAsync(cancellationToken);
-        await _cache.RemoveAsync(CacheKeys.SurveyOfficesList, cancellationToken);
-        return true;
-    }
-
     private static SurveyOfficeDto ToDto(SurveyOffice row) => new()
     {
         Id = row.Id,

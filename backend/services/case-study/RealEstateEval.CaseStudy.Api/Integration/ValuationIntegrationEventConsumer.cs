@@ -7,7 +7,7 @@ using RealEstateEval.Shared.Contracts;
 
 namespace RealEstateEval.CaseStudy.Api.Integration;
 
-/// <summary>Consumes valuation integration events and updates case-study workflow.</summary>
+/// <summary>Consumes valuation report events and updates case-study workflow.</summary>
 public sealed class ValuationIntegrationEventConsumer : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
@@ -80,12 +80,6 @@ public sealed class ValuationIntegrationEventConsumer : BackgroundService
             routingKey: IntegrationEventTypes.ValuationReportSubmitted,
             cancellationToken: stoppingToken);
 
-        await channel.QueueBindAsync(
-            queue.QueueName,
-            _options.Exchange,
-            routingKey: IntegrationEventTypes.ValuationRequestCreated,
-            cancellationToken: stoppingToken);
-
         var consumer = new AsyncEventingBasicConsumer(channel);
         consumer.ReceivedAsync += async (_, args) =>
         {
@@ -94,9 +88,7 @@ public sealed class ValuationIntegrationEventConsumer : BackgroundService
             {
                 using var scope = _scopeFactory.CreateScope();
                 var reportHandler = scope.ServiceProvider.GetRequiredService<ValuationReportWorkflowHandler>();
-                var createdHandler = scope.ServiceProvider.GetRequiredService<ValuationRequestCreatedHandler>();
                 await reportHandler.HandleEnvelopeAsync(json, stoppingToken);
-                await createdHandler.HandleEnvelopeAsync(json, stoppingToken);
                 await channel.BasicAckAsync(args.DeliveryTag, multiple: false, stoppingToken);
             }
             catch (Exception ex)
@@ -113,9 +105,8 @@ public sealed class ValuationIntegrationEventConsumer : BackgroundService
             cancellationToken: stoppingToken);
 
         _logger.LogInformation(
-            "Valuation integration consumer listening for {ReportEvent} and {CreatedEvent}",
-            IntegrationEventTypes.ValuationReportSubmitted,
-            IntegrationEventTypes.ValuationRequestCreated);
+            "Valuation integration consumer listening for {ReportEvent}",
+            IntegrationEventTypes.ValuationReportSubmitted);
 
         try
         {

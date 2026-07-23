@@ -85,7 +85,33 @@ export const PAGE_SITUATION_CARDS: Partial<Record<PageId, PageSituationCardDef[]
     "valuation-coordination": partyCards(),
     "property-inspection": partyCards("مكتملة"),
     "property-appraisal": partyCards(),
-    "active-survey": partyCards(),
+    "active-survey": [
+      {
+        key: "waiting",
+        label: "بانتظار البدء",
+        sub: "تتطلب المباشرة",
+        tone: "blue",
+      },
+      {
+        key: "inProgress",
+        label: "قيد التنفيذ",
+        sub: "جارية الآن",
+        tone: "warn",
+      },
+      {
+        key: "submitted",
+        label: "مكتملة",
+        sub: "أُرسلت للاعتماد",
+        tone: "green",
+      },
+      {
+        key: "unbilled",
+        label: "غير مفوترة",
+        sub: "أتعاب مستحقة للمكتب",
+        tone: "warn",
+        href: "/party-fees",
+      },
+    ],
     /** HTML Case Study «الأتعاب والصرف» KPI vocabulary. */
     "party-fees": [
       {
@@ -96,20 +122,20 @@ export const PAGE_SITUATION_CARDS: Partial<Record<PageId, PageSituationCardDef[]
       },
       {
         key: "toSupervisor",
-        label: "رفعت للمشرف",
-        sub: "بانتظار الاعتماد",
+        label: "بانتظار موافقة",
+        sub: "مكتب أو مشرف",
         tone: "warn",
       },
       {
         key: "atFinance",
-        label: "معتمدة للمالية",
-        sub: "جاهزة أو ضمن أمر صرف",
+        label: "جاهزة للفوترة",
+        sub: "لدى المالية",
         tone: "green",
       },
       {
         key: "disbursed",
-        label: "مصروفة",
-        sub: "أُتم الصرف",
+        label: "مفوترة / مدفوعة",
+        sub: "أُغلقت مالياً",
         tone: "green",
       },
     ],
@@ -175,8 +201,12 @@ export function computePartySubmissionSituation(
   options?: {
     inspectionWorkspaces?: Map<string, FieldInspectionWorkspaceListItemDto>;
   },
-): Pick<PageSituationValues, "total" | "inProgress" | "submitted" | "returned"> {
+): Pick<
+  PageSituationValues,
+  "total" | "inProgress" | "submitted" | "returned" | "waiting"
+> {
   const open = openWorkflowTasks(tasks);
+  let waiting = 0;
   let inProgress = 0;
   let submitted = 0;
   let returned = 0;
@@ -185,11 +215,13 @@ export function computePartySubmissionSituation(
     const bucket = classifyPartyTask(task, options?.inspectionWorkspaces);
     if (bucket === "submitted") submitted += 1;
     else if (bucket === "returned") returned += 1;
+    else if (bucket === "waiting") waiting += 1;
     else inProgress += 1;
   }
 
   return {
     total: open.length,
+    waiting,
     inProgress,
     submitted,
     returned,
@@ -199,13 +231,14 @@ export function computePartySubmissionSituation(
 function classifyPartyTask(
   task: WorkflowTask,
   inspectionWorkspaces?: Map<string, FieldInspectionWorkspaceListItemDto>,
-): "in_progress" | "submitted" | "returned" {
+): "waiting" | "in_progress" | "submitted" | "returned" {
   if (task.kind === "field-inspection") {
     const workspace = inspectionWorkspaces?.get(task.id);
     if (task.status === "completed" || workspace?.status === "submitted") {
       return "submitted";
     }
     if (workspace?.status === "reopened") return "returned";
+    if (!workspace) return "waiting";
     return "in_progress";
   }
 
@@ -213,6 +246,25 @@ function classifyPartyTask(
   const status = dto?.status;
   if (status === "submitted" || task.status === "completed") return "submitted";
   if (status === "reopened") return "returned";
+  if (!dto || status === "draft") {
+    // Engineering survey: treat empty/new drafts as waiting to start.
+    if (task.kind === "engineering-survey") {
+      const hasProgress =
+        Boolean(dto) &&
+        ((typeof (dto.payload as { latitude?: string })?.latitude === "string" &&
+          Boolean((dto.payload as { latitude?: string }).latitude?.trim())) ||
+          (typeof (dto.payload as { surveyReportFileName?: string })
+            ?.surveyReportFileName === "string" &&
+            Boolean(
+              (
+                dto.payload as { surveyReportFileName?: string }
+              ).surveyReportFileName?.trim(),
+            )));
+      if (!hasProgress) return "waiting";
+    } else if (!dto) {
+      return "waiting";
+    }
+  }
   return "in_progress";
 }
 
@@ -258,7 +310,13 @@ export function computeFeesPageSituation(
   let disbursed = 0;
 
   for (const row of rows) {
-    if (row.billingStatus === "sup-review") toSupervisor += 1;
+    if (
+      row.billingStatus === "sup-review" ||
+      row.billingStatus === "office-review" ||
+      row.billingStatus === "disputed"
+    ) {
+      toSupervisor += 1;
+    }
     if (
       row.billingStatus === "at-finance" ||
       row.billingStatus === "disb-req"
@@ -274,6 +332,14 @@ export function computeFeesPageSituation(
     atFinance,
     disbursed,
   };
+}
+
+export function computeUnbilledFeeCount(rows: InspectorFeeRowDto[]): number {
+  return rows.filter(
+    (r) =>
+      r.billingStatus !== "disbursed" &&
+      r.taskKind === "engineering-survey",
+  ).length;
 }
 
 export function filterTasksForPage(
@@ -317,6 +383,7 @@ export function computePageSituationValues(
     pendingBourse?: PendingBoursePropertyDto[];
     obstructedCount?: number;
     inspectionWorkspaces?: Map<string, FieldInspectionWorkspaceListItemDto>;
+    unbilledFeeCount?: number;
     now?: Date;
   },
 ): PageSituationValues | null {
@@ -340,11 +407,37 @@ export function computePageSituationValues(
     });
   }
 
+  if (pageId === "active-survey") {
+    const allSurvey = filterTasksForPage(pageId, input.tasks, input.poByNumber).filter(
+      (t) => !isTaskOnSuspendedProperty(t),
+    );
+    const open = openWorkflowTasks(allSurvey);
+    let waiting = 0;
+    let inProgress = 0;
+    let submitted = 0;
+    for (const task of allSurvey) {
+      const bucket = classifyPartyTask(task);
+      if (bucket === "submitted" || task.status === "completed") {
+        submitted += 1;
+        continue;
+      }
+      if (!open.includes(task)) continue;
+      if (bucket === "waiting") waiting += 1;
+      else if (bucket === "returned") inProgress += 1;
+      else inProgress += 1;
+    }
+    return {
+      waiting,
+      inProgress,
+      submitted,
+      unbilled: input.unbilledFeeCount ?? 0,
+    };
+  }
+
   if (
     pageId === "valuation-coordination" ||
     pageId === "property-inspection" ||
-    pageId === "property-appraisal" ||
-    pageId === "active-survey"
+    pageId === "property-appraisal"
   ) {
     return computePartySubmissionSituation(scoped, {
       inspectionWorkspaces: input.inspectionWorkspaces,

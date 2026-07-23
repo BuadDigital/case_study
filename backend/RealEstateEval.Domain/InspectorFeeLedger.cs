@@ -1,7 +1,9 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// Per-property party fee row — created when field-inspection or engineering-survey task is spawned.
+/// Per-property party fee row.
+/// Field-inspection / government-review: created when case-study completes.
+/// Engineering-survey: accrued when the specialist accepts survey outputs (not on upload alone).
 /// </summary>
 public class InspectorFeeLedger
 {
@@ -15,7 +17,9 @@ public class InspectorFeeLedger
     public decimal AgreedFeeSar { get; set; }
     public decimal SupervisorDiscountSar { get; set; }
     public string? DiscountReason { get; set; }
-    /// <summary>draft | sup-review | at-finance | disb-req | disbursed | returned | inquiry</summary>
+    /// <summary>
+    /// draft | office-review | disputed | sup-review | at-finance | disb-req | disbursed | returned | inquiry
+    /// </summary>
     public string BillingStatus { get; set; } = InspectorFeeBillingStatus.Draft;
     public bool ExcludedFromBatch { get; set; }
     public string? ExclusionReason { get; set; }
@@ -23,6 +27,11 @@ public class InspectorFeeLedger
     public string? ReturnTo { get; set; }
     public Guid? DisbursementBatchId { get; set; }
     public string? DisbursementVoucher { get; set; }
+    /// <summary>
+    /// When the engineering-office fee became payable (specialist acceptance).
+    /// Null until acceptance; re-uploads after accrual do not create a new fee.
+    /// </summary>
+    public DateTime? AccruedAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 }

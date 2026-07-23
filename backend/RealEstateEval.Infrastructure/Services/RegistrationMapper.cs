@@ -11,9 +11,6 @@ public static class RegistrationMapper
     private const string SecProcIdentity = "بيانات المزود";
     private const string SecProcService = "الخدمة والموقع";
     private const string SecProcBilling = "الفوترة";
-    private const string SecCrmClass = "تصنيف العميل";
-    private const string SecCrmBasic = "البيانات الأساسية";
-    private const string SecCrmContact = "التواصل";
 
     public static UserListItemDto ToListItem(
         ApplicationUser user,
@@ -79,7 +76,6 @@ public static class RegistrationMapper
             {
                 RegistrationSource.Hr => "موارد بشرية",
                 RegistrationSource.Proc => "مقدم خدمة",
-                RegistrationSource.Crm => "عميل",
                 _ => null,
             });
         Add(SecAccount, "المسمى الوظيفي", profile.JobTitle);
@@ -117,33 +113,6 @@ public static class RegistrationMapper
                 Add(SecProcBilling, "الآيبان", proc.Iban);
                 Add(SecProcBilling, "بريد الفوترة", proc.BillingEmail);
                 Add(SecProcBilling, "الرقم الضريبي", proc.VatRegistration);
-                break;
-
-            case RegistrationSource.Crm when profile.CrmClient is { } crm:
-                Add(
-                    SecCrmClass,
-                    "نوع الكيان",
-                    crm.EntityKind == CrmEntityKind.Company ? "شركة" : "فرد");
-                Add(
-                    SecCrmClass,
-                    "حالة العميل",
-                    crm.ClientStatus == CrmClientStatus.Lead ? "عميل محتمل" : "عميل فعلي");
-                Add(
-                    SecCrmClass,
-                    "نوع العميل",
-                    crm.ClientType == CrmClientType.Contract ? "بعقد" : "مباشر");
-                Add(SecCrmBasic, "الاسم", crm.FullName);
-                Add(SecCrmBasic, "اسم المنشأة", crm.OrganizationName);
-                Add(SecCrmBasic, "السجل التجاري", crm.CommercialRegistration);
-                Add(SecCrmBasic, "رقم الهوية", crm.NationalId);
-                Add(SecCrmBasic, "المنطقة", crm.Region);
-                Add(SecCrmBasic, "القطاع", crm.Sector);
-                Add(SecCrmBasic, "العنوان", crm.Address);
-                Add(SecCrmBasic, "ممثل الحساب", crm.AccountRepresentative);
-                Add(SecCrmBasic, "الرقم الضريبي", crm.VatRegistration);
-                Add(SecCrmContact, "جهة التواصل", crm.ContactPerson);
-                Add(SecCrmContact, "دور جهة التواصل", crm.ContactRole);
-                Add(SecCrmContact, "جوال جهة التواصل", crm.ContactPhone);
                 break;
         }
 

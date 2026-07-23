@@ -53,11 +53,13 @@ export function ProfileView() {
   }, []);
 
   return (
-    /* Scroll عبر #content في الـ shell — بدون flex-1/overflow داخلي يمنع النزول */
-    <div className="bg-surface-2 px-4 pb-8 pt-5 sm:px-6 sm:pb-10 sm:pt-6" dir="rtl">
-      <section className="overflow-hidden rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
+    <div
+      className="w-full flex-none self-start px-4 pb-6 pt-5 sm:px-6"
+      dir="rtl"
+    >
+      <section className="h-fit w-full overflow-hidden rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
         {loading ? (
-          <div className="flex items-center justify-center gap-2 py-16 text-text-3">
+          <div className="flex items-center justify-center gap-2 py-10 text-text-3">
             <Spinner />
             <span className="text-[13px]">جاري تحميل البروفايل…</span>
           </div>

@@ -66,19 +66,6 @@ public class ValuationIntegrationHandlerTests
   }
 
   [Fact]
-  public async Task ValuationRequestCreated_does_not_throw_when_no_appraisal_task()
-  {
-    await using var db = CreateDb();
-    var handler = new ValuationRequestCreatedHandler(
-      db,
-      NullLogger<ValuationRequestCreatedHandler>.Instance);
-
-    await handler.HandleAsync(
-      new ValuationRequestCreatedPayload("vr-1", PropertyId.ToString(), "PO-200"),
-      CancellationToken.None);
-  }
-
-  [Fact]
   public async Task Outbox_publisher_queues_valuation_event_json()
   {
     await using var db = CreateDb();
@@ -94,11 +81,6 @@ public class ValuationIntegrationHandlerTests
     var row = await db.OutboxMessages.SingleAsync();
     Assert.Equal(IntegrationEventTypes.ValuationRequestCreated, row.EventType);
     Assert.Contains("PO-300", row.PayloadJson);
-
-    var createdHandler = new ValuationRequestCreatedHandler(
-      db,
-      NullLogger<ValuationRequestCreatedHandler>.Instance);
-    await createdHandler.HandleEnvelopeAsync(row.PayloadJson);
   }
 
   private static ApplicationDbContext CreateDb()

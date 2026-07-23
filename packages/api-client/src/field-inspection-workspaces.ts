@@ -22,15 +22,6 @@ export type FieldInspectionWorkspaceListItemDto = {
   updatedAtUtc: string;
 };
 
-export type FieldInspectionWorkspaceSummaryDto = {
-  total: number;
-  draft: number;
-  reopened: number;
-  submitted: number;
-  photosPendingApproval: number;
-  incompleteRequiredPhotos: number;
-};
-
 function headers(token: string): HeadersInit {
   return {
     Authorization: `Bearer ${token}`,
@@ -69,23 +60,6 @@ function normalizeListItem(
   };
 }
 
-function normalizeSummary(
-  raw: Record<string, unknown>,
-): FieldInspectionWorkspaceSummaryDto {
-  return {
-    total: Number(raw.total ?? raw.Total ?? 0),
-    draft: Number(raw.draft ?? raw.Draft ?? 0),
-    reopened: Number(raw.reopened ?? raw.Reopened ?? 0),
-    submitted: Number(raw.submitted ?? raw.Submitted ?? 0),
-    photosPendingApproval: Number(
-      raw.photosPendingApproval ?? raw.PhotosPendingApproval ?? 0,
-    ),
-    incompleteRequiredPhotos: Number(
-      raw.incompleteRequiredPhotos ?? raw.IncompleteRequiredPhotos ?? 0,
-    ),
-  };
-}
-
 export async function listFieldInspectionWorkspaces(
   config: FieldInspectionWorkspacesApiConfig,
   query?: { poNumber?: string; status?: string },
@@ -104,23 +78,6 @@ export async function listFieldInspectionWorkspaces(
     if (!res.ok) return { ok: false, kind: "server" };
     const raw = (await res.json()) as Record<string, unknown>[];
     return { ok: true, data: raw.map(normalizeListItem) };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
-export async function fetchFieldInspectionWorkspaceSummary(
-  config: FieldInspectionWorkspacesApiConfig,
-): Promise<ApiOk<FieldInspectionWorkspaceSummaryDto> | ApiErr> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/field-inspection-workspaces/summary`, {
-      headers: headers(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    const raw = (await res.json()) as Record<string, unknown>;
-    return { ok: true, data: normalizeSummary(raw) };
   } catch {
     return { ok: false, kind: "network" };
   }

@@ -31,8 +31,9 @@ public class InspectorFeeService : IInspectorFeeService
         IEnumerable<WorkflowTask> tasks,
         CancellationToken cancellationToken = default)
     {
+        // Engineering-survey fees accrue only on specialist acceptance — not here.
         var feeTasks = tasks
-            .Where(t => t.Kind is "field-inspection" or "engineering-survey" or "government-review")
+            .Where(t => t.Kind is "field-inspection" or "government-review")
             .ToList();
         if (feeTasks.Count == 0) return;
 
@@ -74,13 +75,119 @@ public class InspectorFeeService : IInspectorFeeService
                 ReturnTo = null,
                 DisbursementBatchId = null,
                 DisbursementVoucher = null,
+                AccruedAtUtc = now,
                 CreatedAtUtc = now,
                 UpdatedAtUtc = now,
             });
         }
 
         await _db.SaveChangesAsync(cancellationToken);
-        await StampDeferredEngineeringSurveyFeesAsync(cancellationToken);
+    }
+
+    public async Task<(InspectorFeeRowDto? Row, string? Error)> AccrueEngineeringSurveyFeeAsync(
+        Guid workflowTaskId,
+        string actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var task = await _db.WorkflowTasks.AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == workflowTaskId, cancellationToken);
+        if (task is null)
+            return (null, "المهمة غير موجودة.");
+
+        if (!string.Equals(task.Kind, "engineering-survey", StringComparison.OrdinalIgnoreCase))
+            return (null, "الاستحقاق خاص بمهام الرفع المساحي فقط.");
+
+        var submission = await _db.PartyTaskSubmissions.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.WorkflowTaskId == workflowTaskId, cancellationToken);
+        if (submission is null || submission.Status != PartyTaskSubmissionStatus.Submitted)
+            return (null, "لا يمكن الاستحقاق قبل إرسال المخرجات وقبولها.");
+
+        if (task.Status != WorkflowTaskStatus.Completed)
+            return (null, "مهمة الرفع المساحي غير مكتملة.");
+
+        var ledger = await _db.InspectorFeeLedgers
+            .FirstOrDefaultAsync(x => x.WorkflowTaskId == workflowTaskId, cancellationToken);
+
+        // Idempotent: already accrued — do not create a second fee on re-accept after correction.
+        if (ledger is not null && ledger.AccruedAtUtc is not null && ledger.AgreedFeeSar > 0m)
+            return (await GetByWorkflowTaskIdAsync(workflowTaskId, cancellationToken), null);
+
+        var partyType = ledger?.InspectorType
+            ?? await ResolvePartyTypeAsync(task, cancellationToken);
+        var areaM2 = await ResolvePropertyAreaM2Async(task, cancellationToken);
+        var agreedFee = await _pricing.ResolveDefaultFeeAsync(
+            task.Kind,
+            partyType,
+            areaM2,
+            ledger?.AssigneeId ?? task.AssigneeId,
+            cancellationToken) ?? 0m;
+
+        if (agreedFee <= 0m)
+            return (null, "تعذر تحديد الأتعاب من جدول التسعير — راجع ضبط الأسعار.");
+
+        var now = DateTime.UtcNow;
+        if (ledger is null)
+        {
+            ledger = new InspectorFeeLedger
+            {
+                WorkflowTaskId = task.Id,
+                PoNumber = task.PoNumber.Trim(),
+                PropertyId = task.PropertyId,
+                PropertyOrdinal = task.PropertyOrdinal,
+                AssigneeId = task.AssigneeId,
+                InspectorType = partyType,
+                AgreedFeeSar = agreedFee,
+                SupervisorDiscountSar = 0m,
+                DiscountReason = null,
+                // Table price → ready for billing without office approval.
+                BillingStatus = InspectorFeeBillingStatus.AtFinance,
+                ExcludedFromBatch = false,
+                ExclusionReason = null,
+                ReturnTo = null,
+                DisbursementBatchId = null,
+                DisbursementVoucher = null,
+                AccruedAtUtc = now,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now,
+            };
+            _db.InspectorFeeLedgers.Add(ledger);
+        }
+        else
+        {
+            ledger.AgreedFeeSar = agreedFee;
+            ledger.InspectorType = partyType;
+            ledger.AssigneeId = task.AssigneeId;
+            ledger.PropertyId = task.PropertyId;
+            ledger.PropertyOrdinal = task.PropertyOrdinal;
+            ledger.PoNumber = task.PoNumber.Trim();
+            if (ledger.SupervisorDiscountSar <= 0m)
+            {
+                ledger.SupervisorDiscountSar = 0m;
+                ledger.DiscountReason = null;
+                ledger.BillingStatus = InspectorFeeBillingStatus.AtFinance;
+            }
+            else
+            {
+                ledger.BillingStatus = InspectorFeeBillingStatus.OfficeReview;
+            }
+
+            ledger.AccruedAtUtc = now;
+            ledger.UpdatedAtUtc = now;
+        }
+
+        _db.InspectorFeeTransitions.Add(new InspectorFeeTransition
+        {
+            Id = Guid.NewGuid(),
+            WorkflowTaskId = ledger.WorkflowTaskId,
+            FromStatus = "—",
+            ToStatus = ledger.BillingStatus,
+            Reason = "استحقاق عند قبول الأخصائي لمخرجات الرفع المساحي",
+            ActorUserId = actorUserId,
+            CreatedAtUtc = now,
+        });
+
+        await _db.SaveChangesAsync(cancellationToken);
+        return (await GetByWorkflowTaskIdAsync(workflowTaskId, cancellationToken), null);
     }
 
     public async Task EnsureLedgersForPropertyAsync(
@@ -91,7 +198,6 @@ public class InspectorFeeService : IInspectorFeeService
             .Where(t =>
                 t.PropertyId == propertyId
                 && (t.Kind == "field-inspection"
-                    || t.Kind == "engineering-survey"
                     || t.Kind == "government-review"))
             .ToListAsync(cancellationToken);
         if (feeTasks.Count == 0) return;
@@ -109,7 +215,6 @@ public class InspectorFeeService : IInspectorFeeService
         CancellationToken cancellationToken = default)
     {
         await BackfillMissingLedgersAsync(cancellationToken);
-        await StampDeferredEngineeringSurveyFeesAsync(cancellationToken);
         await SyncLedgerSnapshotsFromTasksAsync(cancellationToken);
 
         var query = _db.InspectorFeeLedgers.AsNoTracking();
@@ -215,7 +320,6 @@ public class InspectorFeeService : IInspectorFeeService
         CancellationToken cancellationToken = default)
     {
         await BackfillMissingLedgersAsync(cancellationToken);
-        await StampDeferredEngineeringSurveyFeesAsync(cancellationToken);
         await SyncLedgerSnapshotsFromTasksAsync(cancellationToken);
 
         var ledger = await _db.InspectorFeeLedgers.AsNoTracking()
@@ -304,6 +408,27 @@ public class InspectorFeeService : IInspectorFeeService
                 out _))
         {
             return null;
+        }
+
+        // Engineering-office billing: discounted lines need explicit office approval.
+        var taskKind = await _db.WorkflowTasks.AsNoTracking()
+            .Where(t => t.Id == workflowTaskId)
+            .Select(t => t.Kind)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (string.Equals(taskKind, "engineering-survey", StringComparison.OrdinalIgnoreCase)
+            && ledger.AccruedAtUtc is not null
+            && ledger.BillingStatus is InspectorFeeBillingStatus.Draft
+                or InspectorFeeBillingStatus.AtFinance
+                or InspectorFeeBillingStatus.OfficeReview
+                or InspectorFeeBillingStatus.Disputed
+                or InspectorFeeBillingStatus.SupReview)
+        {
+            if (ledger.SupervisorDiscountSar > 0m)
+                ledger.BillingStatus = InspectorFeeBillingStatus.OfficeReview;
+            else if (ledger.BillingStatus is InspectorFeeBillingStatus.OfficeReview
+                or InspectorFeeBillingStatus.Disputed
+                or InspectorFeeBillingStatus.Draft)
+                ledger.BillingStatus = InspectorFeeBillingStatus.AtFinance;
         }
 
         ledger.UpdatedAtUtc = DateTime.UtcNow;
@@ -559,6 +684,21 @@ public class InspectorFeeService : IInspectorFeeService
         if (!CanPerformAction(action, ledger, actorAssigneeId, isOperationsManager, isFinancialOfficer))
             return "غير مصرّح بتنفيذ هذا الإجراء.";
 
+        if (action is InspectorFeeActions.SubmitToSupervisor
+            or InspectorFeeActions.CreateDisbursementRequest)
+        {
+            var taskKind = await _db.WorkflowTasks.AsNoTracking()
+                .Where(t => t.Id == ledger.WorkflowTaskId)
+                .Select(t => t.Kind)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (string.Equals(taskKind, "engineering-survey", StringComparison.OrdinalIgnoreCase))
+            {
+                return action == InspectorFeeActions.SubmitToSupervisor
+                    ? "مسار المكتب الهندسي لا يدعم رفع الأتعاب للمشرف — استخدم موافقة الحسم أو الاعتراض من الكشف المبدئي."
+                    : "مسار المكتب الهندسي لا يدعم إنشاء طلب صرف — البنود الجاهزة تُفوتر لاحقاً عبر كشف المكتب.";
+            }
+        }
+
         if (!InspectorFeeBillingRules.TryResolveTransition(
                 fromStatus,
                 action,
@@ -619,6 +759,39 @@ public class InspectorFeeService : IInspectorFeeService
 
             if (!await IsLedgerWorkSubmittedAsync(ledger.WorkflowTaskId, cancellationToken))
                 return "لا يمكن اعتماد الأتعاب قبل إتمام عمل الطرف.";
+        }
+
+        if (action is InspectorFeeActions.OfficeApproveDiscount
+            or InspectorFeeActions.OfficeDispute)
+        {
+            if (ledger.ExcludedFromBatch)
+                return "لا يمكن معالجة عقار مستبعد.";
+
+            if (ledger.SupervisorDiscountSar <= 0m)
+                return "لا يوجد حسم يحتاج موافقة المكتب.";
+
+            if (action == InspectorFeeActions.OfficeDispute
+                && string.IsNullOrWhiteSpace(request.Reason))
+            {
+                return "سبب الاعتراض مطلوب.";
+            }
+        }
+
+        if (action == InspectorFeeActions.ResolveDispute)
+        {
+            if (ledger.ExcludedFromBatch)
+                return "لا يمكن حسم خلاف لعقار مستبعد.";
+
+            if (!InspectorFeeRules.HasBillableAgreedFee(ledger.AgreedFeeSar))
+                return "يجب إدخال مبلغ الأتعاب المتفق عليه قبل الحسم.";
+
+            if (!InspectorFeeBillingRules.ValidateDiscount(
+                    ledger.SupervisorDiscountSar,
+                    ledger.DiscountReason,
+                    out var resolveDiscountError))
+            {
+                return resolveDiscountError;
+            }
         }
 
         if (action == InspectorFeeActions.ResendToFinance)
@@ -693,13 +866,17 @@ public class InspectorFeeService : IInspectorFeeService
     {
         return action switch
         {
-            InspectorFeeActions.SubmitToSupervisor or InspectorFeeActions.CreateDisbursementRequest =>
+            InspectorFeeActions.SubmitToSupervisor
+                or InspectorFeeActions.CreateDisbursementRequest
+                or InspectorFeeActions.OfficeApproveDiscount
+                or InspectorFeeActions.OfficeDispute =>
                 !string.IsNullOrWhiteSpace(actorAssigneeId)
                 && string.Equals(ledger.AssigneeId?.Trim(), actorAssigneeId.Trim(), StringComparison.Ordinal),
 
             InspectorFeeActions.ApproveToFinance
                 or InspectorFeeActions.ResendToFinance
-                or InspectorFeeActions.ReturnToOffice => isOperationsManager,
+                or InspectorFeeActions.ReturnToOffice
+                or InspectorFeeActions.ResolveDispute => isOperationsManager,
 
             InspectorFeeActions.Disburse
                 or InspectorFeeActions.ReturnToSupervisor
@@ -782,10 +959,10 @@ public class InspectorFeeService : IInspectorFeeService
 
     private async Task BackfillMissingLedgersAsync(CancellationToken cancellationToken)
     {
+        // Engineering-survey ledgers are created only via AccrueEngineeringSurveyFeeAsync.
         var feeTasks = await _db.WorkflowTasks.AsNoTracking()
             .Where(t =>
                 t.Kind == "field-inspection"
-                || t.Kind == "engineering-survey"
                 || t.Kind == "government-review")
             .ToListAsync(cancellationToken);
         if (feeTasks.Count == 0) return;
@@ -806,61 +983,9 @@ public class InspectorFeeService : IInspectorFeeService
         var missing = feeTasks
             .Where(t => !existing.Contains(t.Id))
             .ToList();
-        if (missing.Count == 0)
-        {
-            await StampDeferredEngineeringSurveyFeesAsync(cancellationToken);
-            return;
-        }
+        if (missing.Count == 0) return;
 
         await EnsureLedgersForTasksAsync(missing, cancellationToken);
-    }
-
-    /// <summary>
-    /// Stamps engineering-survey ledgers that were created without area once area becomes available.
-    /// Only updates draft ledgers still at AgreedFeeSar = 0.
-    /// </summary>
-    private async Task StampDeferredEngineeringSurveyFeesAsync(CancellationToken cancellationToken)
-    {
-        var pending = await _db.InspectorFeeLedgers
-            .Where(x =>
-                x.AgreedFeeSar <= 0m
-                && x.BillingStatus == InspectorFeeBillingStatus.Draft)
-            .ToListAsync(cancellationToken);
-        if (pending.Count == 0) return;
-
-        var taskIds = pending.Select(x => x.WorkflowTaskId).ToList();
-        var surveyTasks = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t =>
-                taskIds.Contains(t.Id)
-                && t.Kind == "engineering-survey")
-            .ToListAsync(cancellationToken);
-        if (surveyTasks.Count == 0) return;
-
-        var byTaskId = surveyTasks.ToDictionary(t => t.Id);
-        var any = false;
-        foreach (var ledger in pending)
-        {
-            if (!byTaskId.TryGetValue(ledger.WorkflowTaskId, out var task))
-                continue;
-
-            var areaM2 = await ResolvePropertyAreaM2Async(task, cancellationToken);
-            if (areaM2 is not > 0m) continue;
-
-            var fee = await _pricing.ResolveDefaultFeeAsync(
-                task.Kind,
-                ledger.InspectorType,
-                areaM2,
-                ledger.AssigneeId ?? task.AssigneeId,
-                cancellationToken);
-            if (fee is not > 0m) continue;
-
-            ledger.AgreedFeeSar = fee.Value;
-            ledger.UpdatedAtUtc = DateTime.UtcNow;
-            any = true;
-        }
-
-        if (any)
-            await _db.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>
@@ -911,12 +1036,30 @@ public class InspectorFeeService : IInspectorFeeService
     {
         if (ledgers.Count == 0) return ledgers;
 
+        var taskIds = ledgers.Select(l => l.WorkflowTaskId).Distinct().ToList();
+        var engSurveyIds = await _db.WorkflowTasks.AsNoTracking()
+            .Where(t => taskIds.Contains(t.Id) && t.Kind == "engineering-survey")
+            .Select(t => t.Id)
+            .ToListAsync(cancellationToken);
+        var engSet = engSurveyIds.ToHashSet();
+
+        // Engineering-survey: visible after specialist acceptance (AccruedAtUtc).
+        // Other party fees: still gated on completed case-study for the property.
+        var nonEng = ledgers.Where(l => !engSet.Contains(l.WorkflowTaskId)).ToList();
+        var engVisible = ledgers
+            .Where(l => engSet.Contains(l.WorkflowTaskId) && l.AccruedAtUtc is not null)
+            .ToList();
+
+        if (nonEng.Count == 0) return engVisible;
+
         var readyPropertyIds = await GetCompletedCaseStudyPropertyIdsAsync(
-            ledgers.Select(l => l.PropertyId),
+            nonEng.Select(l => l.PropertyId),
             cancellationToken);
-        return ledgers
+        var nonEngVisible = nonEng
             .Where(l => l.PropertyId is Guid pid && readyPropertyIds.Contains(pid))
             .ToList();
+
+        return engVisible.Concat(nonEngVisible).ToList();
     }
 
     private async Task<HashSet<Guid>> GetCompletedCaseStudyPropertyIdsAsync(
@@ -1089,6 +1232,7 @@ public class InspectorFeeService : IInspectorFeeService
             DisbursementVoucher = ledger.DisbursementVoucher,
             LastTransitionReason = lastTransitionReason,
             UpdatedAtUtc = ledger.UpdatedAtUtc,
+            AccruedAtUtc = ledger.AccruedAtUtc,
             WorkSubmittedAtUtc = workSubmittedAtUtc,
             PoReceivedAtUtc = poReceivedAtUtc,
             IsEditable = InspectorFeeBillingRules.IsEditableStatus(ledger.BillingStatus),
@@ -1100,13 +1244,32 @@ public class InspectorFeeService : IInspectorFeeService
                 && (ledger.BillingStatus != InspectorFeeBillingStatus.Returned
                     || ledger.ReturnTo == InspectorFeeReturnTo.Office)
                 && (ledger.BillingStatus != InspectorFeeBillingStatus.Inquiry
-                    || ledger.ReturnTo == InspectorFeeReturnTo.Office),
+                    || ledger.ReturnTo == InspectorFeeReturnTo.Office)
+                // Engineering office: table-price lines go straight to at-finance on accrual;
+                // discounted lines use office-approve / dispute instead of submit-to-supervisor.
+                && task.Kind != "engineering-survey",
             CanApproveToFinance = workStatus == "done"
                 && !ledger.ExcludedFromBatch
                 && ledger.BillingStatus == InspectorFeeBillingStatus.SupReview,
             CanCreateDisbursementRequest = workStatus == "done"
                 && !ledger.ExcludedFromBatch
-                && ledger.BillingStatus == InspectorFeeBillingStatus.AtFinance,
+                && ledger.BillingStatus == InspectorFeeBillingStatus.AtFinance
+                // Engineering office uses future office invoicing/statements — not party disbursement requests.
+                && task.Kind != "engineering-survey",
+            CanOfficeApproveDiscount = workStatus == "done"
+                && !ledger.ExcludedFromBatch
+                && task.Kind == "engineering-survey"
+                && ledger.BillingStatus == InspectorFeeBillingStatus.OfficeReview
+                && discount > 0m,
+            CanOfficeDispute = workStatus == "done"
+                && !ledger.ExcludedFromBatch
+                && task.Kind == "engineering-survey"
+                && ledger.BillingStatus == InspectorFeeBillingStatus.OfficeReview
+                && discount > 0m,
+            CanResolveDispute = workStatus == "done"
+                && !ledger.ExcludedFromBatch
+                && task.Kind == "engineering-survey"
+                && ledger.BillingStatus == InspectorFeeBillingStatus.Disputed,
         };
     }
 
