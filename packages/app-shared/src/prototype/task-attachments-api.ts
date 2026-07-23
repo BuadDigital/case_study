@@ -80,14 +80,54 @@ export async function prefetchTaskAttachment(
   if (!listed.ok || listed.data.length === 0) return null;
 
   const meta = listed.data[0]!;
-  const blobResult = await downloadAttachmentBlob(config, meta.id);
-  const preview: TaskAttachmentPreview = {
+  return hydrateAttachmentPreview({
     fileName: meta.fileName,
     mimeType: meta.contentType,
     attachmentId: meta.id,
     sizeBytes: meta.sizeBytes,
+  }, scope, taskId);
+}
+
+/** Resolve preview bytes from attachmentId (or reuse in-memory cache). */
+export async function ensureTaskAttachmentPreview(
+  attachment: TaskAttachmentPreview,
+  scope?: string,
+  taskId?: string,
+): Promise<TaskAttachmentPreview | null> {
+  if (attachment.dataUrl) return attachment;
+
+  if (scope && taskId) {
+    const cached = getCachedTaskAttachment(scope, taskId);
+    if (cached?.dataUrl) return cached;
+  }
+
+  if (attachment.attachmentId) {
+    return hydrateAttachmentPreview(attachment, scope, taskId);
+  }
+
+  if (scope && taskId) {
+    return prefetchTaskAttachment(scope, taskId);
+  }
+
+  return null;
+}
+
+async function hydrateAttachmentPreview(
+  base: TaskAttachmentPreview,
+  scope?: string,
+  taskId?: string,
+): Promise<TaskAttachmentPreview | null> {
+  const config = prototypeModulesApiConfig();
+  if (!config || !base.attachmentId) return null;
+
+  const preview: TaskAttachmentPreview = {
+    fileName: base.fileName,
+    mimeType: base.mimeType,
+    attachmentId: base.attachmentId,
+    sizeBytes: base.sizeBytes,
   };
 
+  const blobResult = await downloadAttachmentBlob(config, base.attachmentId);
   if (blobResult.ok) {
     try {
       preview.dataUrl = await blobToDataUrl(blobResult.data);
@@ -96,7 +136,9 @@ export async function prefetchTaskAttachment(
     }
   }
 
-  previewCache.set(cacheKey(scope, taskId), preview);
+  if (scope && taskId) {
+    previewCache.set(cacheKey(scope, taskId), preview);
+  }
   return preview;
 }
 
@@ -154,9 +196,18 @@ export async function clearTaskScopedAttachments(
 export function openTaskAttachmentPreview(
   attachment: TaskAttachmentPreview,
 ): void {
-  if (!attachment.dataUrl) return;
+  void openTaskAttachmentPreviewAsync(attachment);
+}
 
-  const dataUrl = attachment.dataUrl;
+export async function openTaskAttachmentPreviewAsync(
+  attachment: TaskAttachmentPreview,
+  scope?: string,
+  taskId?: string,
+): Promise<void> {
+  const resolved = await ensureTaskAttachmentPreview(attachment, scope, taskId);
+  const dataUrl = resolved?.dataUrl;
+  if (!dataUrl) return;
+
   try {
     if (dataUrl.startsWith("data:")) {
       const comma = dataUrl.indexOf(",");
@@ -164,7 +215,11 @@ export function openTaskAttachmentPreview(
         const header = dataUrl.slice(0, comma);
         const base64 = dataUrl.slice(comma + 1);
         const mimeMatch = /^data:([^;]+)/.exec(header);
-        const mimeType = mimeMatch?.[1] || attachment.mimeType || "application/octet-stream";
+        const mimeType =
+          mimeMatch?.[1] ||
+          resolved?.mimeType ||
+          attachment.mimeType ||
+          "application/octet-stream";
         const binary = atob(base64);
         const bytes = new Uint8Array(binary.length);
         for (let i = 0; i < binary.length; i += 1) {
@@ -185,4 +240,20 @@ export function openTaskAttachmentPreview(
   }
 
   window.open(dataUrl, "_blank", "noopener,noreferrer");
+}
+
+export async function downloadTaskAttachmentAsync(
+  attachment: TaskAttachmentPreview,
+  scope?: string,
+  taskId?: string,
+): Promise<void> {
+  const resolved = await ensureTaskAttachmentPreview(attachment, scope, taskId);
+  if (!resolved?.dataUrl) return;
+  const link = document.createElement("a");
+  link.href = resolved.dataUrl;
+  link.download = resolved.fileName || attachment.fileName || "download";
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
 }

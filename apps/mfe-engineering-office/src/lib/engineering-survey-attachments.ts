@@ -1,7 +1,9 @@
 import {
   clearTaskScopedAttachments,
+  downloadTaskAttachmentAsync,
+  ensureTaskAttachmentPreview,
   getCachedTaskAttachment,
-  openTaskAttachmentPreview,
+  openTaskAttachmentPreviewAsync,
   prefetchTaskAttachment,
   uploadTaskScopedAttachment,
   type TaskAttachmentPreview,
@@ -55,6 +57,15 @@ function notifyChanged(): void {
   dispatchPartySubmissionChanged(ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT);
 }
 
+function stripDataUrl(file: CachedEngineeringSurveyFile): CachedEngineeringSurveyFile {
+  return {
+    fileName: file.fileName,
+    mimeType: file.mimeType,
+    sizeBytes: file.sizeBytes,
+    attachmentId: file.attachmentId,
+  };
+}
+
 function attachmentFromPayload(
   payload: Record<string, unknown>,
   field: EngineeringSurveyDocField,
@@ -63,7 +74,14 @@ function attachmentFromPayload(
   const raw = payload[attachmentKey];
   if (raw && typeof raw === "object" && "fileName" in raw) {
     const att = raw as CachedEngineeringSurveyFile;
-    if (att.fileName?.trim()) return att;
+    if (att.fileName?.trim()) {
+      return stripDataUrl({
+        fileName: att.fileName,
+        mimeType: att.mimeType || "application/pdf",
+        sizeBytes: att.sizeBytes,
+        attachmentId: att.attachmentId,
+      });
+    }
   }
   const fileName = String(payload[fileNameKey] ?? "").trim();
   if (!fileName) return null;
@@ -78,7 +96,15 @@ export function getEngineeringSurveyAttachment(
 
   const scope = FIELD_META[field].scope;
   const cached = getCachedTaskAttachment(scope, taskId);
-  if (cached?.fileName) return cached;
+  if (cached?.fileName) {
+    return {
+      fileName: cached.fileName,
+      mimeType: cached.mimeType,
+      dataUrl: cached.dataUrl,
+      sizeBytes: cached.sizeBytes,
+      attachmentId: cached.attachmentId,
+    };
+  }
 
   const dto = getCachedPartySubmission(taskId);
   if (dto?.payload) {
@@ -96,7 +122,27 @@ export async function prefetchEngineeringSurveyAttachment(
   field: EngineeringSurveyDocField,
 ): Promise<CachedEngineeringSurveyFile | null> {
   if (!taskId) return null;
-  return prefetchTaskAttachment(FIELD_META[field].scope, taskId);
+  const meta = FIELD_META[field];
+  const fromPayload = getEngineeringSurveyAttachment(taskId, field);
+  if (fromPayload?.attachmentId) {
+    const hydrated = await ensureTaskAttachmentPreview(
+      fromPayload,
+      meta.scope,
+      taskId,
+    );
+    return hydrated ?? fromPayload;
+  }
+  return prefetchTaskAttachment(meta.scope, taskId);
+}
+
+export async function prefetchEngineeringSurveyDocuments(
+  taskId: string | null | undefined,
+): Promise<void> {
+  if (!taskId) return;
+  await Promise.all([
+    prefetchEngineeringSurveyAttachment(taskId, "surveyReport"),
+    prefetchEngineeringSurveyAttachment(taskId, "siteLetter"),
+  ]);
 }
 
 export type EngineeringSurveyDocumentEntry = {
@@ -153,14 +199,17 @@ export async function cacheEngineeringSurveyFile(
   }
 
   const uploaded = await uploadTaskScopedAttachment(meta.scope, taskId, file);
-  if (!uploaded) return { ok: false, error: "تعذّر حفظ الملف." };
+  if (!uploaded?.attachmentId) {
+    return { ok: false, error: "تعذّر حفظ الملف عبر خدمة المرفقات." };
+  }
 
-  const attachment: CachedEngineeringSurveyFile = {
+  // Persist metadata + attachmentId only — never dataUrl bytes in the payload.
+  const attachment = stripDataUrl({
     fileName: uploaded.fileName,
     mimeType: uploaded.mimeType,
     sizeBytes: uploaded.sizeBytes,
     attachmentId: uploaded.attachmentId,
-  };
+  });
 
   const dto = getCachedPartySubmission(taskId);
   const payload: Record<string, unknown> = {
@@ -203,20 +252,18 @@ export async function clearEngineeringSurveyFile(
 
 export function openEngineeringSurveyDocumentPreview(
   attachment: CachedEngineeringSurveyFile,
+  field?: EngineeringSurveyDocField,
+  taskId?: string,
 ): void {
-  if (!attachment.dataUrl) return;
-  openTaskAttachmentPreview(attachment as TaskAttachmentPreview);
+  const scope = field ? FIELD_META[field].scope : undefined;
+  void openTaskAttachmentPreviewAsync(attachment as TaskAttachmentPreview, scope, taskId);
 }
 
 export function downloadEngineeringSurveyDocument(
   attachment: CachedEngineeringSurveyFile,
+  field?: EngineeringSurveyDocField,
+  taskId?: string,
 ): void {
-  if (!attachment.dataUrl) return;
-  const link = document.createElement("a");
-  link.href = attachment.dataUrl;
-  link.download = attachment.fileName;
-  link.rel = "noopener";
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
+  const scope = field ? FIELD_META[field].scope : undefined;
+  void downloadTaskAttachmentAsync(attachment as TaskAttachmentPreview, scope, taskId);
 }

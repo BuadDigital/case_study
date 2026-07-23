@@ -1,5 +1,7 @@
 import {
   listEngineeringSurveyDocuments,
+  openEngineeringSurveyDocumentPreview,
+  downloadEngineeringSurveyDocument,
   type EngineeringSurveyDocumentEntry,
 } from "@engineering-office/mfe";
 import { getCachedEvaluatorReport } from "@evaluator/mfe";
@@ -22,6 +24,10 @@ export type PropertyDetailDocumentEntry = {
   source: string;
   kind: "pdf" | "file" | "image";
   dataUrl?: string;
+  attachmentId?: string;
+  /** Engineering survey field — used to resolve blob via attachments API. */
+  engineeringField?: "surveyReport" | "siteLetter";
+  engineeringTaskId?: string;
 };
 
 function fileKind(fileName: string, mimeType?: string): "pdf" | "file" | "image" {
@@ -132,15 +138,9 @@ export function collectIntakeDocuments(input: {
   return docs;
 }
 
-export function collectEngineeringDocuments(
-  surveyTaskId: string | null | undefined,
-): PropertyDetailDocumentEntry[] {
-  if (!surveyTaskId) return [];
-  return listEngineeringSurveyDocuments(surveyTaskId).map(mapEngineeringDoc);
-}
-
 function mapEngineeringDoc(
   doc: EngineeringSurveyDocumentEntry,
+  surveyTaskId: string,
 ): PropertyDetailDocumentEntry {
   return {
     id: doc.id,
@@ -149,7 +149,19 @@ function mapEngineeringDoc(
     source: "المكتب الهندسي",
     kind: "pdf",
     dataUrl: doc.attachment.dataUrl,
+    attachmentId: doc.attachment.attachmentId,
+    engineeringField: doc.field,
+    engineeringTaskId: surveyTaskId,
   };
+}
+
+export function collectEngineeringDocuments(
+  surveyTaskId: string | null | undefined,
+): PropertyDetailDocumentEntry[] {
+  if (!surveyTaskId) return [];
+  return listEngineeringSurveyDocuments(surveyTaskId).map((doc) =>
+    mapEngineeringDoc(doc, surveyTaskId),
+  );
 }
 
 export function collectAppraisalDocuments(
@@ -372,6 +384,19 @@ export function sectionTitleForPreviewHint(source: string): boolean {
 export function openPropertyDetailDocumentPreview(
   entry: PropertyDetailDocumentEntry,
 ): void {
+  if (entry.engineeringField && entry.engineeringTaskId) {
+    openEngineeringSurveyDocumentPreview(
+      {
+        fileName: entry.fileName,
+        mimeType: "application/pdf",
+        dataUrl: entry.dataUrl,
+        attachmentId: entry.attachmentId,
+      },
+      entry.engineeringField,
+      entry.engineeringTaskId,
+    );
+    return;
+  }
   if (!entry.dataUrl) return;
   window.open(entry.dataUrl, "_blank", "noopener,noreferrer");
 }
@@ -379,6 +404,19 @@ export function openPropertyDetailDocumentPreview(
 export function downloadPropertyDetailDocument(
   entry: PropertyDetailDocumentEntry,
 ): void {
+  if (entry.engineeringField && entry.engineeringTaskId) {
+    downloadEngineeringSurveyDocument(
+      {
+        fileName: entry.fileName,
+        mimeType: "application/pdf",
+        dataUrl: entry.dataUrl,
+        attachmentId: entry.attachmentId,
+      },
+      entry.engineeringField,
+      entry.engineeringTaskId,
+    );
+    return;
+  }
   if (!entry.dataUrl) return;
   const link = document.createElement("a");
   link.href = entry.dataUrl;

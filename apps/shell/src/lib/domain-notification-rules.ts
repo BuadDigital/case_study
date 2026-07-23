@@ -5,6 +5,8 @@ import {
 } from "@case-study/mfe";
 import { FAILURE_TYPES_CHANGED_EVENT } from "@failures/mfe/lib/failure-types-events";
 import {
+  ENGINEERING_SURVEY_ACCEPTED_EVENT,
+  ENGINEERING_SURVEY_RETURNED_EVENT,
   ENGINEERING_SURVEY_SUBMITTED_EVENT,
   EVALUATOR_SUBMITTED_EVENT,
   FIELD_INSPECTION_SUBMITTED_EVENT,
@@ -75,6 +77,34 @@ export const DOMAIN_NOTIFICATION_RULES: DomainNotificationRule[] = [
       sourceEvent: ENGINEERING_SURVEY_SUBMITTED_EVENT,
     },
     auditAction: "إرسال الرفع المساحي",
+    auditEntity: "active-survey",
+  },
+  {
+    event: ENGINEERING_SURVEY_RETURNED_EVENT,
+    notification: {
+      title: "إعادة للتصحيح",
+      body: "أُعيدت مخرجات الرفع المساحي للتصحيح.",
+      tone: "warn",
+      href: "/active-survey",
+      category: "workflow",
+      entityType: "task",
+      sourceEvent: ENGINEERING_SURVEY_RETURNED_EVENT,
+    },
+    auditAction: "إعادة الرفع المساحي للتصحيح",
+    auditEntity: "active-survey",
+  },
+  {
+    event: ENGINEERING_SURVEY_ACCEPTED_EVENT,
+    notification: {
+      title: "قبول المخرجات",
+      body: "تم قبول مخرجات الرفع المساحي واستحقاق الأتعاب.",
+      tone: "success",
+      href: "/active-survey",
+      category: "workflow",
+      entityType: "task",
+      sourceEvent: ENGINEERING_SURVEY_ACCEPTED_EVENT,
+    },
+    auditAction: "قبول مخرجات الرفع المساحي",
     auditEntity: "active-survey",
   },
   {

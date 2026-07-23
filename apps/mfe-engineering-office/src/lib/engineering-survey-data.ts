@@ -56,6 +56,8 @@ export type EngineeringSurveySubmission = {
   surveyNotes: string;
   updatedAtUtc: string;
   submittedAtUtc?: string;
+  /** Specialist acceptance timestamp — survives reload; cleared on return-for-correction. */
+  outputsAcceptedAtUtc?: string | null;
 };
 
 export function emptyChecklistRows(): EngineeringSurveyChecklistRow[] {

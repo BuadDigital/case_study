@@ -2,6 +2,7 @@
 
 import {
   fetchEngineeringSurveySubmission,
+  prefetchEngineeringSurveyDocuments,
   ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
 } from "@engineering-office/mfe";
 import { fetchEvaluatorSubmission } from "@evaluator/mfe";
@@ -65,7 +66,9 @@ export function usePropertyDetailDocuments(input: {
 
     void Promise.all([
       surveyTaskId
-        ? fetchEngineeringSurveySubmission(surveyTaskId)
+        ? fetchEngineeringSurveySubmission(surveyTaskId).then(async () => {
+            await prefetchEngineeringSurveyDocuments(surveyTaskId);
+          })
         : Promise.resolve(null),
       appraisalTaskId
         ? fetchEvaluatorSubmission(appraisalTaskId)
