@@ -108,11 +108,23 @@ public class WorkOrderService : IWorkOrderService
                 .Select(p => p.Trim())
                 .ToHashSet(StringComparer.Ordinal);
 
+        var specialistNames = await PersonLabelResolver.ResolveManyAsync(
+            _db,
+            orders.Select(w => w.AssignmentSpecialist),
+            cancellationToken);
+
         return orders
-            .Select(w => WorkOrderMapper.ToListItem(
-                w,
-                studiedByProperty,
-                billedPos.Contains(w.PoNumber.Trim())))
+            .Select(w =>
+            {
+                var item = WorkOrderMapper.ToListItem(
+                    w,
+                    studiedByProperty,
+                    billedPos.Contains(w.PoNumber.Trim()));
+                item.AssignmentSpecialist = PersonLabelResolver.ApplyResolved(
+                    item.AssignmentSpecialist,
+                    specialistNames);
+                return item;
+            })
             .ToList();
     }
 
@@ -125,7 +137,38 @@ public class WorkOrderService : IWorkOrderService
             .ThenInclude(p => p.Contacts)
             .OrderByDescending(w => w.CreatedAtUtc)
             .ToListAsync(cancellationToken);
-        return list.Select(WorkOrderMapper.ToDto).ToList();
+        return await WithResolvedSpecialistsAsync(
+            list.Select(WorkOrderMapper.ToDto).ToList(),
+            cancellationToken);
+    }
+
+    private async Task<WorkOrderDto> WithResolvedSpecialistAsync(
+        WorkOrderDto dto,
+        CancellationToken cancellationToken)
+    {
+        dto.AssignmentSpecialist = await PersonLabelResolver.ResolveAsync(
+            _db,
+            dto.AssignmentSpecialist,
+            cancellationToken);
+        return dto;
+    }
+
+    private async Task<IReadOnlyList<WorkOrderDto>> WithResolvedSpecialistsAsync(
+        IReadOnlyList<WorkOrderDto> rows,
+        CancellationToken cancellationToken)
+    {
+        var names = await PersonLabelResolver.ResolveManyAsync(
+            _db,
+            rows.Select(r => r.AssignmentSpecialist),
+            cancellationToken);
+        foreach (var row in rows)
+        {
+            row.AssignmentSpecialist = PersonLabelResolver.ApplyResolved(
+                row.AssignmentSpecialist,
+                names);
+        }
+
+        return rows;
     }
 
     public async Task<IReadOnlyList<PropertyListItemDto>> ListPropertyListItemsAsync(
@@ -166,7 +209,22 @@ public class WorkOrderService : IWorkOrderService
                 g => g.Key,
                 g => (IReadOnlyList<WorkflowTask>)g.ToList());
 
-        return PropertyListRowBuilder.Build(list, failureKeys, tasksByProperty);
+        return await WithResolvedPropertySpecialistsAsync(
+            PropertyListRowBuilder.Build(list, failureKeys, tasksByProperty),
+            cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<PropertyListItemDto>> WithResolvedPropertySpecialistsAsync(
+        IReadOnlyList<PropertyListItemDto> rows,
+        CancellationToken cancellationToken)
+    {
+        var names = await PersonLabelResolver.ResolveManyAsync(
+            _db,
+            rows.Select(r => r.Row.Specialist),
+            cancellationToken);
+        foreach (var row in rows)
+            row.Row.Specialist = PersonLabelResolver.ApplyResolved(row.Row.Specialist, names);
+        return rows;
     }
 
     public async Task<WorkOrderDto?> GetByPoNumberAsync(
@@ -174,7 +232,9 @@ public class WorkOrderService : IWorkOrderService
         CancellationToken cancellationToken)
     {
         var entity = await LoadWorkOrderTrackedAsync(poNumber, cancellationToken, asNoTracking: true);
-        return entity is null ? null : WorkOrderMapper.ToDto(entity);
+        return entity is null
+            ? null
+            : await WithResolvedSpecialistAsync(WorkOrderMapper.ToDto(entity), cancellationToken);
     }
 
     public Task<bool> ExistsAsync(string poNumber, CancellationToken cancellationToken) =>
@@ -328,7 +388,9 @@ public class WorkOrderService : IWorkOrderService
         await _timeline.RecordManyAsync(timelineEvents, cancellationToken);
 
         var loaded = await LoadWorkOrderTrackedAsync(po, cancellationToken, asNoTracking: true);
-        return (loaded is null ? null : WorkOrderMapper.ToDto(loaded), null);
+        return (loaded is null
+            ? null
+            : await WithResolvedSpecialistAsync(WorkOrderMapper.ToDto(loaded), cancellationToken), null);
     }
 
     public async Task<(WorkOrderDto? Result, Dictionary<string, string>? Errors)> UpdateHeaderAsync(
@@ -370,7 +432,7 @@ public class WorkOrderService : IWorkOrderService
         entity.DueDateAt = BusinessDueDateCalculator.Compute(promulgation, request.ReceivedFromEnfathTime);
 
         await _db.SaveChangesAsync(cancellationToken);
-        return (WorkOrderMapper.ToDto(entity), null);
+        return (await WithResolvedSpecialistAsync(WorkOrderMapper.ToDto(entity), cancellationToken), null);
     }
 
     public async Task<(bool Ok, string? Error)> DeleteAsync(
@@ -680,6 +742,10 @@ public class WorkOrderService : IWorkOrderService
 
         if (DocumentaryWorkflowRules.BoundariesUnavailable(existing.BoundariesAvailability))
         {
+            var specialist = await PersonLabelResolver.ResolveAsync(
+                _db,
+                entity.AssignmentSpecialist ?? DocumentaryWorkflowRules.SystemRaiserRole,
+                cancellationToken);
             await _failures.EnsureSystemInternalFailureAsync(
                 NormalizePo(poNumber),
                 propertyId.ToString(),
@@ -687,7 +753,7 @@ public class WorkOrderService : IWorkOrderService
                 "unknown-boundaries",
                 "عدم معرفة حدود العقار",
                 "توفر الحدود = غير متوفرة حسب استعلام البورصة.",
-                entity.AssignmentSpecialist ?? "النظام",
+                specialist,
                 cancellationToken);
         }
 
@@ -931,7 +997,10 @@ public class WorkOrderService : IWorkOrderService
         string? previousLocationMapUrl,
         CancellationToken cancellationToken)
     {
-        var specialist = workOrder.AssignmentSpecialist ?? DocumentaryWorkflowRules.SystemRaiserRole;
+        var specialist = await PersonLabelResolver.ResolveAsync(
+            _db,
+            workOrder.AssignmentSpecialist ?? DocumentaryWorkflowRules.SystemRaiserRole,
+            cancellationToken);
         var propertyId = property.Id.ToString();
 
         if (DocumentaryWorkflowRules.BoundariesUnavailable(property.BoundariesAvailability)

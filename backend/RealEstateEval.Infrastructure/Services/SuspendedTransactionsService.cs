@@ -20,6 +20,11 @@ public sealed class SuspendedTransactionsService : ISuspendedTransactionsService
             .OrderByDescending(x => x.UpdatedAtUtc)
             .ToListAsync(cancellationToken);
 
+        var names = await PersonLabelResolver.ResolveManyAsync(
+            _db,
+            rows.Select(x => x.Specialist),
+            cancellationToken);
+
         return rows.Select(x => new SuspendedTransactionDto
         {
             Id = x.Id,
@@ -29,11 +34,11 @@ public sealed class SuspendedTransactionsService : ISuspendedTransactionsService
             DeedNumber = x.DeedNumber,
             Title = x.Title,
             InternalNote = x.InternalNote,
-            RaisedByRole = x.RaisedByRole,
-            Specialist = x.Specialist,
+            RaisedByRole = PersonLabelResolver.NormalizeSystemLabel(x.RaisedByRole),
+            Specialist = PersonLabelResolver.ApplyResolved(x.Specialist, names),
             SupervisorNote = x.FinalNote,
             SuspendedAt = x.UpdatedAtUtc,
-            SuspendedBy = x.RaisedByRole,
+            SuspendedBy = PersonLabelResolver.NormalizeSystemLabel(x.RaisedByRole),
         }).ToList();
     }
 }

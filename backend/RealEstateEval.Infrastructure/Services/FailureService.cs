@@ -41,7 +41,11 @@ public class FailureService : IFailureService
             .AsNoTracking()
             .OrderByDescending(f => f.UpdatedAtUtc)
             .ToListAsync(cancellationToken);
-        return list.Select(ToDto).ToList();
+        var names = await PersonLabelResolver.ResolveManyAsync(
+            _db,
+            list.Select(f => f.Specialist),
+            cancellationToken);
+        return list.Select(f => ToDto(f, names)).ToList();
     }
 
     public async Task<FailureRecordDto?> GetActiveForPropertyAsync(
@@ -50,7 +54,7 @@ public class FailureService : IFailureService
         CancellationToken cancellationToken = default)
     {
         var entity = await FindActiveForPropertyAsync(poNumber, propertyId, cancellationToken);
-        return entity is null ? null : ToDto(entity);
+        return entity is null ? null : await ToDtoAsync(entity, cancellationToken);
     }
 
     public async Task<(FailureRecordDto? Result, Dictionary<string, string>? Errors)> CreateAsync(
@@ -81,12 +85,16 @@ public class FailureService : IFailureService
             Title = title,
             ProblemTypeId = request.ProblemTypeId.Trim(),
             Severity = NormalizeSeverity(request.Severity),
-            RaisedByRole = string.IsNullOrWhiteSpace(request.RaisedByRole)
-                ? "الأخصائي"
-                : request.RaisedByRole.Trim(),
+            RaisedByRole = PersonLabelResolver.NormalizeSystemLabel(
+                string.IsNullOrWhiteSpace(request.RaisedByRole)
+                    ? "الأخصائي"
+                    : request.RaisedByRole.Trim()),
             InternalNote = request.InternalNote?.Trim() ?? "",
             Status = PropertyFailureStatus.Internal,
-            Specialist = request.Specialist.Trim(),
+            Specialist = await PersonLabelResolver.ResolveAsync(
+                _db,
+                request.Specialist,
+                cancellationToken),
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         };
@@ -110,7 +118,7 @@ public class FailureService : IFailureService
         if (entity.Severity == "internal")
             await ApplyInternalSideEffectsAsync(entity, cancellationToken);
 
-        return (ToDto(entity), null);
+        return (await ToDtoAsync(entity, cancellationToken), null);
     }
 
     public async Task<(FailureRecordDto? Result, Dictionary<string, string>? Errors)> ReportBourseObstructionAsync(
@@ -153,8 +161,18 @@ public class FailureService : IFailureService
         if (active is not null)
         {
             if (string.Equals(active.ProblemTypeId, problemTypeId, StringComparison.OrdinalIgnoreCase))
-                return ToDto(active);
-            return ToDto(active);
+                return await ToDtoAsync(active, cancellationToken);
+            return await ToDtoAsync(active, cancellationToken);
+        }
+
+        var resolvedSpecialist = await PersonLabelResolver.ResolveAsync(
+            _db,
+            specialist,
+            cancellationToken);
+        if (string.IsNullOrWhiteSpace(resolvedSpecialist)
+            || string.Equals(resolvedSpecialist, "system", StringComparison.OrdinalIgnoreCase))
+        {
+            resolvedSpecialist = DocumentaryWorkflowRules.SystemRaiserRole;
         }
 
         var (result, _) = await CreateAsync(new CreateFailureRequest
@@ -167,9 +185,7 @@ public class FailureService : IFailureService
             RaisedByRole = DocumentaryWorkflowRules.SystemRaiserRole,
             Title = title,
             InternalNote = note,
-            Specialist = string.IsNullOrWhiteSpace(specialist)
-                ? DocumentaryWorkflowRules.SystemRaiserRole
-                : specialist,
+            Specialist = resolvedSpecialist,
         }, cancellationToken);
 
         return result;
@@ -187,7 +203,7 @@ public class FailureService : IFailureService
         entity.UpdatedAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
         await ApplyInternalSideEffectsAsync(entity, cancellationToken);
-        return ToDto(entity);
+        return await ToDtoAsync(entity, cancellationToken);
     }
 
     public async Task<FailureRecordDto?> SubmitForReviewAsync(
@@ -206,7 +222,7 @@ public class FailureService : IFailureService
             entity.Title.Trim().Length > 0 ? entity.Title : entity.InternalNote,
             cancellationToken);
         await NotifyFailureSubmittedAsync(entity, cancellationToken);
-        return ToDto(entity);
+        return await ToDtoAsync(entity, cancellationToken);
     }
 
     public async Task<FailureRecordDto?> SuspendAsync(
@@ -235,7 +251,7 @@ public class FailureService : IFailureService
                 cancellationToken);
         }
 
-        return ToDto(entity);
+        return await ToDtoAsync(entity, cancellationToken);
     }
 
     public async Task<FailureRecordDto?> ResolveAsync(
@@ -254,7 +270,7 @@ public class FailureService : IFailureService
 
         await SetPropertyDeedStatusAsync(entity, "فعال", cancellationToken);
         await ResolveTaskObstructionAsync(entity, cancellationToken);
-        return ToDto(entity);
+        return await ToDtoAsync(entity, cancellationToken);
     }
 
     public async Task<FailureRecordDto?> ApproveAsync(
@@ -273,7 +289,7 @@ public class FailureService : IFailureService
         await SetPropertyDeedStatusAsync(entity, "موقوف", cancellationToken);
         await BlockPropertyTasksForApprovedFailureAsync(entity, cancellationToken);
         await NotifyFailureApprovedAsync(entity, cancellationToken);
-        return ToDto(entity);
+        return await ToDtoAsync(entity, cancellationToken);
     }
 
     public async Task<FailureRecordDto?> ReturnAsync(
@@ -291,7 +307,7 @@ public class FailureService : IFailureService
 
         await SetPropertyDeedStatusAsync(entity, "فعال", cancellationToken);
         await ResolveTaskObstructionAsync(entity, cancellationToken);
-        return ToDto(entity);
+        return await ToDtoAsync(entity, cancellationToken);
     }
 
     public async Task DeleteForPoAsync(string poNumber, CancellationToken cancellationToken = default)
@@ -559,7 +575,20 @@ public class FailureService : IFailureService
             cancellationToken);
     }
 
-    private static FailureRecordDto ToDto(PropertyFailure entity) => new()
+    private async Task<FailureRecordDto> ToDtoAsync(
+        PropertyFailure entity,
+        CancellationToken cancellationToken)
+    {
+        var names = await PersonLabelResolver.ResolveManyAsync(
+            _db,
+            [entity.Specialist],
+            cancellationToken);
+        return ToDto(entity, names);
+    }
+
+    private static FailureRecordDto ToDto(
+        PropertyFailure entity,
+        IReadOnlyDictionary<string, string>? namesById = null) => new()
     {
         Id = entity.Id.ToString(),
         PoNumber = entity.PoNumber,
@@ -568,13 +597,15 @@ public class FailureService : IFailureService
         Title = entity.Title,
         ProblemTypeId = entity.ProblemTypeId,
         Severity = entity.Severity,
-        RaisedByRole = entity.RaisedByRole,
+        RaisedByRole = PersonLabelResolver.NormalizeSystemLabel(entity.RaisedByRole),
         InternalNote = entity.InternalNote,
         FinalNote = entity.FinalNote,
         ResolutionReason = entity.ResolutionReason,
         ContinueInstructions = entity.ContinueInstructions,
         Status = entity.Status,
-        Specialist = entity.Specialist,
+        Specialist = namesById is null
+            ? PersonLabelResolver.NormalizeSystemLabel(entity.Specialist)
+            : PersonLabelResolver.ApplyResolved(entity.Specialist, namesById),
         CreatedAt = entity.CreatedAtUtc.ToString("O"),
         UpdatedAt = entity.UpdatedAtUtc.ToString("O"),
     };

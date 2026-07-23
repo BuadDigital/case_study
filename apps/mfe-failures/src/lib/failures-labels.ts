@@ -36,6 +36,17 @@ export function failureStatusLabel(status: FailureStatus): string {
   return "معاد للأخصائي";
 }
 
+/** Display labels for raiser / specialist cells (system token + raw user ids). */
+export function failureActorLabel(raw: string | null | undefined): string {
+  const value = (raw ?? "").trim();
+  if (!value) return "—";
+  if (value.toLowerCase() === "system" || value === "النظام") return "النظام";
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) {
+    return "—";
+  }
+  return value;
+}
+
 /** HTML Case Study list vocabulary for إدارة التعذرات. */
 export function failureListStatusLabel(
   status: FailureStatus,
