@@ -49,6 +49,7 @@ import {
   upgradeFailureToInternal,
 } from "../lib/failures-repository";
 import {
+  failureActorLabel,
   failureListSeverityLabel,
   failureListStatusColor,
   failureListStatusLabel,
@@ -674,8 +675,12 @@ export function FailuresView() {
                           style={{ base: statusColor, fg: statusColor }}
                         />
                       </Td>
-                      <Td className="text-text-2">{f.raisedByRole || "—"}</Td>
-                      <Td className="text-text-2">{f.specialist || "—"}</Td>
+                      <Td className="text-text-2">
+                        {failureActorLabel(f.raisedByRole)}
+                      </Td>
+                      <Td className="text-text-2">
+                        {failureActorLabel(f.specialist)}
+                      </Td>
                     </Tr>
                     {expanded ? (
                       <Tr hoverable={false}>

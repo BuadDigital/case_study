@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 
@@ -65,11 +66,16 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
             Title = "محظر إخلاء — تعليق الدراسة",
             ProblemTypeId = EvictionProblemTypeId,
             Severity = "internal",
-            RaisedByRole = "system",
+            RaisedByRole = DocumentaryWorkflowRules.SystemRaiserRole,
             InternalNote = "تسجيل محظر إخلاء من وحدة الظروف/مسار الدخول.",
             FinalNote = "عُلّقت الدراسة تلقائياً بسبب تسجيل محظر إخلاء.",
             Status = PropertyFailureStatus.Suspended,
-            Specialist = string.IsNullOrWhiteSpace(actorName) ? "system" : actorName.Trim(),
+            Specialist = await PersonLabelResolver.ResolveAsync(
+                _db,
+                string.IsNullOrWhiteSpace(actorName)
+                    ? DocumentaryWorkflowRules.SystemRaiserRole
+                    : actorName,
+                cancellationToken),
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         });
@@ -109,10 +115,15 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
             Title = "مفتاح العقار غير مطابق",
             ProblemTypeId = KeyUnmatchedProblemTypeId,
             Severity = "internal",
-            RaisedByRole = "system",
+            RaisedByRole = DocumentaryWorkflowRules.SystemRaiserRole,
             InternalNote = "تأكيد ميداني: المفتاح غير مطابق للصك.",
             Status = PropertyFailureStatus.Internal,
-            Specialist = string.IsNullOrWhiteSpace(actorName) ? "system" : actorName.Trim(),
+            Specialist = await PersonLabelResolver.ResolveAsync(
+                _db,
+                string.IsNullOrWhiteSpace(actorName)
+                    ? DocumentaryWorkflowRules.SystemRaiserRole
+                    : actorName,
+                cancellationToken),
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         });
