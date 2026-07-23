@@ -1,6 +1,12 @@
 /** Fired only after an explicit user submit action (e.g. حفظ وإرسال الرفع). */
 export const ENGINEERING_SURVEY_SUBMITTED_EVENT = "engineering-survey-submitted";
 
+/** Specialist returned survey outputs for correction. */
+export const ENGINEERING_SURVEY_RETURNED_EVENT = "engineering-survey-returned";
+
+/** Specialist accepted survey outputs (fee accrual). */
+export const ENGINEERING_SURVEY_ACCEPTED_EVENT = "engineering-survey-accepted";
+
 /** Fired only after the appraiser submits their report. */
 export const EVALUATOR_SUBMITTED_EVENT = "evaluator-submitted";
 

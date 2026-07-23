@@ -34,6 +34,13 @@ internal static class TestInspectorFeeServiceFactory
         return new WorkflowTaskService(db, fees, notifications, recipients, timeline);
     }
 
+    public static (INotificationService Notifications, NotificationRecipientResolver Recipients)
+        CreateNotificationDeps(ApplicationDbContext db)
+    {
+        var userManager = CreateUserManager();
+        return (new NullNotificationService(), new NotificationRecipientResolver(db, userManager));
+    }
+
     private static UserManager<ApplicationUser> CreateUserManager() =>
         new(
             new NullUserStore(),

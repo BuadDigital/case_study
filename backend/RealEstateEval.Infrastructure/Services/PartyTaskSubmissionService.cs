@@ -7,6 +7,7 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Notifications;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -35,6 +36,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
     private readonly IPropertyKeyGateResolver _keyGates;
     private readonly IKeyEnvelopesService _keyEnvelopes;
     private readonly IInspectorFeeService _inspectorFees;
+    private readonly INotificationService _notifications;
+    private readonly NotificationRecipientResolver _recipients;
 
     public PartyTaskSubmissionService(
         ApplicationDbContext db,
@@ -45,7 +48,9 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         IPermissionService permissions,
         IPropertyKeyGateResolver keyGates,
         IKeyEnvelopesService keyEnvelopes,
-        IInspectorFeeService inspectorFees)
+        IInspectorFeeService inspectorFees,
+        INotificationService notifications,
+        NotificationRecipientResolver recipients)
     {
         _db = db;
         _tasks = tasks;
@@ -56,6 +61,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         _keyGates = keyGates;
         _keyEnvelopes = keyEnvelopes;
         _inspectorFees = inspectorFees;
+        _notifications = notifications;
+        _recipients = recipients;
     }
 
     public async Task<PartyTaskSubmissionDto?> GetAsync(
@@ -247,6 +254,17 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             new PatchWorkflowTaskRequest { Status = WorkflowTaskStatus.Open, Phase = "done" },
             cancellationToken);
 
+        if (task.Kind == "engineering-survey")
+            await NotifyEngineeringSurveyAssigneeAsync(
+                task,
+                title: "إعادة الرفع المساحي للتصحيح",
+                body: string.IsNullOrWhiteSpace(returnNote)
+                    ? "أُعيدت مخرجات الرفع المساحي للتصحيح."
+                    : $"أُعيدت مخرجات الرفع المساحي للتصحيح: {returnNote.Trim()}",
+                tone: "warn",
+                sourceEvent: $"engineering-survey-returned:{taskId}",
+                cancellationToken);
+
         return (ToDto(entity), null);
     }
 
@@ -265,7 +283,6 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             return (null, new Dictionary<string, string> { ["_"] = "قبول المخرجات متاح لمهام الرفع المساحي فقط" });
 
         var entity = await _db.PartyTaskSubmissions
-            .AsNoTracking()
             .FirstOrDefaultAsync(s => s.WorkflowTaskId == taskId, cancellationToken);
 
         if (entity is null || entity.Status != PartyTaskSubmissionStatus.Submitted)
@@ -274,6 +291,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (task.Status != WorkflowTaskStatus.Completed)
             return (null, new Dictionary<string, string> { ["_"] = "مهمة الرفع المساحي غير مكتملة" });
 
+        var alreadyAccepted = TryReadPayloadString(entity.PayloadJson, "outputsAcceptedAtUtc") is { Length: > 0 };
+
         var (_, feeError) = await _inspectorFees.AccrueEngineeringSurveyFeeAsync(
             taskId,
             string.IsNullOrWhiteSpace(actorUserId) ? "system" : actorUserId,
@@ -281,20 +300,69 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (feeError is not null)
             return (null, new Dictionary<string, string> { ["_"] = feeError });
 
-        if (task.PropertyId is Guid propertyId)
+        var now = DateTime.UtcNow;
+        if (!alreadyAccepted)
         {
-            await _timeline.RecordAsync(
-                task.PoNumber,
-                propertyId,
-                $"party:{taskId}:accepted",
-                "قبول مخرجات الرفع المساحي",
-                task.AssigneeName,
-                "done",
-                DateTime.UtcNow,
+            entity.UpdatedAtUtc = now;
+            entity.PayloadJson = SetPayloadAccepted(entity.PayloadJson, now);
+            await _db.SaveChangesAsync(cancellationToken);
+
+            if (task.PropertyId is Guid propertyId)
+            {
+                await _timeline.RecordAsync(
+                    task.PoNumber,
+                    propertyId,
+                    $"party:{taskId}:accepted",
+                    "قبول مخرجات الرفع المساحي",
+                    task.AssigneeName,
+                    "done",
+                    now,
+                    cancellationToken);
+            }
+
+            await NotifyEngineeringSurveyAssigneeAsync(
+                task,
+                title: "قبول مخرجات الرفع المساحي",
+                body: "تم قبول مخرجات الرفع المساحي واستحقاق الأتعاب.",
+                tone: "success",
+                sourceEvent: $"engineering-survey-accepted:{taskId}",
                 cancellationToken);
         }
 
         return (ToDto(entity), null);
+    }
+
+    private async Task NotifyEngineeringSurveyAssigneeAsync(
+        WorkflowTask task,
+        string title,
+        string body,
+        string tone,
+        string sourceEvent,
+        CancellationToken cancellationToken)
+    {
+        var assigneeId = task.AssigneeId?.Trim();
+        if (string.IsNullOrWhiteSpace(assigneeId)) return;
+
+        var userId = await _recipients.ResolveUserIdForDistributionAssigneeAsync(
+            assigneeId,
+            cancellationToken);
+        if (string.IsNullOrWhiteSpace(userId)) return;
+
+        var href = $"/active-survey/{Uri.EscapeDataString(task.Id.ToString())}";
+        await _notifications.CreateForUserAsync(
+            userId,
+            new CreateUserNotificationRequest
+            {
+                Title = title,
+                Body = body,
+                Tone = tone,
+                Href = href,
+                Category = "workflow",
+                EntityType = "task",
+                EntityId = task.Id.ToString(),
+                SourceEvent = sourceEvent,
+            },
+            cancellationToken);
     }
 
     private async Task<Dictionary<string, string>> ValidateForSubmitAsync(
@@ -723,6 +791,9 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             mutable["status"] = PartyTaskSubmissionStatus.Reopened;
             mutable["returnNote"] = returnNote;
             mutable["submittedAtUtc"] = null;
+            // Clear acceptance so «قبول المخرجات» can show again after correction + re-submit.
+            // AccruedAtUtc on the fee ledger stays (no second fee on re-accept).
+            mutable["outputsAcceptedAtUtc"] = null;
             mutable["updatedAtUtc"] = now.ToString("O");
             return JsonSerializer.Serialize(mutable, JsonOpts);
         }
@@ -730,6 +801,44 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         {
             return payloadJson;
         }
+    }
+
+    private static string SetPayloadAccepted(string payloadJson, DateTime acceptedAt)
+    {
+        try
+        {
+            var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(payloadJson, JsonOpts)
+                       ?? new Dictionary<string, JsonElement>();
+            var mutable = dict.ToDictionary(
+                kv => kv.Key,
+                kv => (object?)DeserializeElement(kv.Value));
+            mutable["outputsAcceptedAtUtc"] = acceptedAt.ToString("O");
+            mutable["updatedAtUtc"] = acceptedAt.ToString("O");
+            return JsonSerializer.Serialize(mutable, JsonOpts);
+        }
+        catch
+        {
+            return payloadJson;
+        }
+    }
+
+    private static string? TryReadPayloadString(string payloadJson, string key)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(payloadJson);
+            if (doc.RootElement.TryGetProperty(key, out var value) &&
+                value.ValueKind == JsonValueKind.String)
+            {
+                return value.GetString();
+            }
+        }
+        catch
+        {
+            // ignore
+        }
+
+        return null;
     }
 
     private static object? DeserializeElement(JsonElement element) =>

@@ -1,6 +1,11 @@
 import { notifyTasksChanged } from "@case-study/mfe/lib/prototype/tasks-storage";
 import { dispatchPartySubmissionChanged } from "@platform/app-shared/prototype/party-submission-changed-event";
-import { dispatchWorkflowSubmitted, ENGINEERING_SURVEY_SUBMITTED_EVENT } from "@platform/app-shared/prototype/party-workflow-events";
+import {
+  dispatchWorkflowSubmitted,
+  ENGINEERING_SURVEY_ACCEPTED_EVENT,
+  ENGINEERING_SURVEY_RETURNED_EVENT,
+  ENGINEERING_SURVEY_SUBMITTED_EVENT,
+} from "@platform/app-shared/prototype/party-workflow-events";
 import {
   fetchPartySubmission,
   getCachedPartySubmission,
@@ -38,7 +43,12 @@ function dtoToSubmission(
 ): EngineeringSurveySubmission | null {
   if (!dto) return null;
   const payload = payloadFromDto<EngineeringSurveySubmission>(dto);
+  const raw = dto.payload ?? {};
   const checklist = normalizeEngineeringSurveyChecklist(payload.checklist);
+  const hasAcceptedKey = Object.prototype.hasOwnProperty.call(
+    raw,
+    "outputsAcceptedAtUtc",
+  );
   return {
     ...payload,
     taskId: dto.taskId,
@@ -48,6 +58,9 @@ function dtoToSubmission(
     returnNote: dto.returnNote ?? payload.returnNote,
     submittedAtUtc: dto.submittedAtUtc ?? payload.submittedAtUtc,
     updatedAtUtc: dto.updatedAtUtc ?? payload.updatedAtUtc,
+    outputsAcceptedAtUtc: hasAcceptedKey
+      ? (raw.outputsAcceptedAtUtc as string | null)
+      : undefined,
     checklist,
   };
 }
@@ -230,6 +243,7 @@ export async function reopenEngineeringSurveySubmission(
   if (!reopened.ok) return { ok: false, error: reopened.error };
   notifyChanged();
   notifyTasksChanged();
+  dispatchWorkflowSubmitted(ENGINEERING_SURVEY_RETURNED_EVENT);
   const data = dtoToSubmission(reopened.data);
   if (!data) {
     return { ok: false, error: "تعذّر قراءة بيانات إعادة الفتح" };
@@ -245,6 +259,7 @@ export async function acceptEngineeringSurveySubmission(
   if (!accepted.ok) return { ok: false, error: accepted.error };
   notifyChanged();
   notifyTasksChanged();
+  dispatchWorkflowSubmitted(ENGINEERING_SURVEY_ACCEPTED_EVENT);
   const data = dtoToSubmission(accepted.data);
   if (!data) {
     return { ok: false, error: "تعذّر قراءة بيانات القبول" };
@@ -281,6 +296,24 @@ export function engineeringSurveyStatusLabel(
   if (status === "submitted") return "مُرسَل";
   if (status === "reopened") return "مُعاد";
   return "قيد العمل";
+}
+
+/** True when specialist acceptance is stamped on the submission payload. */
+export function isEngineeringSurveyOutputsAccepted(
+  submission: Pick<EngineeringSurveySubmission, "outputsAcceptedAtUtc"> | null | undefined,
+): boolean {
+  const stamp = submission?.outputsAcceptedAtUtc;
+  return typeof stamp === "string" && stamp.trim().length > 0;
+}
+
+/**
+ * Explicit null means acceptance was cleared on return-for-correction.
+ * Undefined means legacy payload before the flag existed.
+ */
+export function wasEngineeringSurveyAcceptanceCleared(
+  submission: Pick<EngineeringSurveySubmission, "outputsAcceptedAtUtc"> | null | undefined,
+): boolean {
+  return submission?.outputsAcceptedAtUtc === null;
 }
 
 /** Seed cache without API (tests / migration). */

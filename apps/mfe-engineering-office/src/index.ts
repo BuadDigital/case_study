@@ -11,6 +11,7 @@ export {
   listEngineeringSurveyDocuments,
   openEngineeringSurveyDocumentPreview,
   downloadEngineeringSurveyDocument,
+  prefetchEngineeringSurveyDocuments,
   type EngineeringSurveyDocumentEntry,
 } from "./lib/engineering-survey-attachments";
 export { fetchEngineeringSurveySubmission } from "./lib/engineering-survey-submission-storage";
