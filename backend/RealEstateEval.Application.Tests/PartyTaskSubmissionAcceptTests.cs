@@ -118,6 +118,7 @@ public class PartyTaskSubmissionAcceptTests
     {
         var timeline = new PropertyTimelineService(db);
         var holds = new PropertyAccessHoldService(db);
+        var (notifications, recipients) = TestInspectorFeeServiceFactory.CreateNotificationDeps(db);
         return new(
             db,
             TestInspectorFeeServiceFactory.CreateWorkflow(db),
@@ -127,7 +128,9 @@ public class PartyTaskSubmissionAcceptTests
             new NullPermissionService(),
             new PropertyKeyGateResolver(db),
             new KeyEnvelopesService(db, holds),
-            TestInspectorFeeServiceFactory.Create(db));
+            TestInspectorFeeServiceFactory.Create(db),
+            notifications,
+            recipients);
     }
 
     private sealed class NullHttpContextAccessor : IHttpContextAccessor
