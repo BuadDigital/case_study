@@ -45,7 +45,6 @@ export function EngineeringSurveyAdvisoryPanel({
   const [returnError, setReturnError] = useState<string | null>(null);
   const [acceptError, setAcceptError] = useState<string | null>(null);
   const [acceptBusy, setAcceptBusy] = useState(false);
-  const [feeAccrued, setFeeAccrued] = useState(false);
   const [submission, setSubmission] = useState<EngineeringSurveySubmission | null>(
     null,
   );
@@ -138,7 +137,6 @@ export function EngineeringSurveyAdvisoryPanel({
     setReturnOpen(false);
     setReturnNote("");
     setReturnError(null);
-    setFeeAccrued(false);
     setRefreshKey((k) => k + 1);
     onReturned?.();
   }
@@ -154,7 +152,6 @@ export function EngineeringSurveyAdvisoryPanel({
         return;
       }
       setSubmission(accepted.data);
-      setFeeAccrued(true);
       setRefreshKey((k) => k + 1);
       onReturned?.();
     } finally {
@@ -162,6 +159,8 @@ export function EngineeringSurveyAdvisoryPanel({
     }
   }
 
+  // Persisted on the submission (backfilled from the fee ledger), so it survives reload.
+  const feeAccrued = !!submission.acceptedAtUtc;
   const coords = formatCoordsDisplay(submission.latitude, submission.longitude);
   const answeredCount = submission.checklist.filter(
     (row) => row.answer === "yes" || row.answer === "no",

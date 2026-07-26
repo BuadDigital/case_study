@@ -1,9 +1,39 @@
 /**
  * Inspector fees API — per-property fee ledger persisted in PostgreSQL.
  */
-import { parseFieldErrorsFromResponse } from "./field-errors";
+import { normalizeFieldErrors } from "./field-errors";
 import { getApiBase } from "./index";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
+
+async function readError(res: Response): Promise<string> {
+  try {
+    const body = (await res.json()) as Record<string, unknown>;
+    return String(body.error ?? body.Error ?? `HTTP ${res.status}`);
+  } catch {
+    return `HTTP ${res.status}`;
+  }
+}
+
+/** Prefer field errors when present; otherwise surface `{ error }` like eng-billing. */
+async function readMutationError(res: Response): Promise<ApiErr> {
+  try {
+    const body = (await res.json()) as {
+      errors?: Record<string, string | string[]>;
+      error?: unknown;
+      Error?: unknown;
+    };
+    const fieldErrors = normalizeFieldErrors(body.errors);
+    if (Object.keys(fieldErrors).length > 0) {
+      return { ok: false, kind: "validation", errors: fieldErrors };
+    }
+    const message = String(
+      body.error ?? body.Error ?? `HTTP ${res.status}`,
+    );
+    return { ok: false, kind: "server", message };
+  } catch {
+    return { ok: false, kind: "server", message: `HTTP ${res.status}` };
+  }
+}
 
 export type InspectorFeesApiConfig = WorkOrdersApiConfig;
 
@@ -288,13 +318,7 @@ export async function patchInspectorFee(
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) {
-      const fieldErrors = await parseFieldErrorsFromResponse(res);
-      if (fieldErrors) {
-        return { ok: false, kind: "validation", errors: fieldErrors };
-      }
-      return { ok: false, kind: "server" };
-    }
+    if (!res.ok) return readMutationError(res);
     const raw = (await res.json()) as Record<string, unknown>;
     return { ok: true, data: normalizeRow(raw) };
   } catch {
@@ -320,7 +344,9 @@ export async function transitionInspectorFee(
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) {
+      return { ok: false, kind: "server", message: await readError(res) };
+    }
     const raw = (await res.json()) as Record<string, unknown>;
     return { ok: true, data: normalizeRow(raw) };
   } catch {
@@ -341,7 +367,9 @@ export async function batchTransitionInspectorFees(
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) {
+      return { ok: false, kind: "server", message: await readError(res) };
+    }
     const raw = (await res.json()) as Record<string, unknown>;
     const succeededRaw = (raw.succeeded ?? raw.Succeeded ?? []) as Record<
       string,
@@ -452,6 +480,8 @@ export function inspectorFeeStatusLabel(
   status: InspectorFeeBillingStatus,
 ): string {
   switch (status) {
+    case "draft":
+      return "مستحق";
     case "office-review":
       return "بانتظار موافقة المكتب";
     case "disputed":
@@ -473,7 +503,7 @@ export function inspectorFeeStatusLabel(
     case "inquiry":
       return "استفسار مفتوح";
     default:
-      return "مستحق";
+      return "—";
   }
 }
 

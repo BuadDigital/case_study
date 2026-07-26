@@ -48,13 +48,6 @@ public class OperationsTasksController : ControllerBase
         CancellationToken ct)
         => Ok(await _tasks.ListCourtVisitFeesAsync(creditAssigneeId, ct));
 
-    [HttpGet("{id:guid}")]
-    public async Task<ActionResult<OperationsTaskDto>> Get(Guid id, CancellationToken ct)
-    {
-        var row = await _tasks.GetAsync(id, ct);
-        return row is null ? NotFound() : Ok(row);
-    }
-
     [HttpPost]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<OperationsTaskDto>> Create(

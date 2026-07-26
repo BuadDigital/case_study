@@ -63,7 +63,7 @@ export type WorkflowTaskKind =
   | "valuation-coordination"
   | "property-appraisal";
 
-export type WorkflowTaskStatus = "open" | "completed" | "blocked";
+export type WorkflowTaskStatus = "open" | "completed" | "blocked" | "cancelled";
 
 /** Party selection on توزيع المعاملات — checkbox gates each dropdown group. */
 export type TaskDistributionDraft = {
@@ -246,6 +246,7 @@ export function taskPhaseLabel(phase: CaseStudyTaskPhase): string {
 export function taskStatusLabel(status: WorkflowTaskStatus): string {
   if (status === "open") return "قيد الإجراء";
   if (status === "blocked") return "موقوفة";
+  if (status === "cancelled") return "ملغاة";
   return "مكتملة";
 }
 

@@ -33,10 +33,6 @@ public class FinancialController : ControllerBase
         CancellationToken ct)
         => Ok(await _financial.SaveSummaryAsync(request, ct));
 
-    [HttpGet("party-fee-pricing")]
-    public async Task<ActionResult<PartyFeePricingDto>> GetActivePartyFeePricing(CancellationToken ct)
-        => Ok(await _pricing.GetActiveAsync(ct));
-
     [HttpGet("party-fee-pricing/tables")]
     public async Task<ActionResult<IReadOnlyList<PartyFeePricingTableSummaryDto>>> ListPartyFeePricingTables(
         [FromQuery] string? category,
@@ -89,13 +85,6 @@ public class FinancialController : ControllerBase
             return NotFound();
         }
     }
-
-    [HttpGet("party-fee-pricing/{id:guid}/assignments")]
-    [Authorize(Policy = CapabilityPolicyNames.ManageSystemConfig)]
-    public async Task<ActionResult<IReadOnlyList<string>>> ListPartyFeePricingAssignments(
-        Guid id,
-        CancellationToken ct)
-        => Ok(await _pricing.ListAssignmentsAsync(id, ct));
 
     [HttpPut("party-fee-pricing/{id:guid}/assignments")]
     [Authorize(Policy = CapabilityPolicyNames.ManageSystemConfig)]

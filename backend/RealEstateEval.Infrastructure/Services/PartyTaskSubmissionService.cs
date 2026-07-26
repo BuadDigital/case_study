@@ -265,7 +265,6 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             return (null, new Dictionary<string, string> { ["_"] = "قبول المخرجات متاح لمهام الرفع المساحي فقط" });
 
         var entity = await _db.PartyTaskSubmissions
-            .AsNoTracking()
             .FirstOrDefaultAsync(s => s.WorkflowTaskId == taskId, cancellationToken);
 
         if (entity is null || entity.Status != PartyTaskSubmissionStatus.Submitted)
@@ -280,6 +279,13 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             cancellationToken);
         if (feeError is not null)
             return (null, new Dictionary<string, string> { ["_"] = feeError });
+
+        // Fee accrual is idempotent; keep the first acceptance timestamp on re-accept.
+        if (entity.AcceptedAtUtc is null)
+        {
+            entity.AcceptedAtUtc = DateTime.UtcNow;
+            await _db.SaveChangesAsync(cancellationToken);
+        }
 
         if (task.PropertyId is Guid propertyId)
         {
@@ -632,10 +638,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                     break;
 
                 case "government-review":
-                    if (!HasNonEmpty(root, "visitStatus"))
-                        errors["visitStatus"] = "حالة الزيارة مطلوبة";
-                    if (!GetBool(root, "confirmed"))
-                        errors["confirmed"] = "يجب تأكيد صحة البيانات";
+                    foreach (var (key, message) in GovernmentReviewSubmissionValidator.Validate(root))
+                        errors[key] = message;
                     break;
 
                 case "valuation-coordination":
@@ -765,6 +769,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             Payload = payload,
             ReturnNote = entity.ReturnNote,
             SubmittedAtUtc = entity.SubmittedAtUtc?.ToString("O"),
+            AcceptedAtUtc = entity.AcceptedAtUtc?.ToString("O"),
             UpdatedAtUtc = entity.UpdatedAtUtc.ToString("O"),
         };
     }

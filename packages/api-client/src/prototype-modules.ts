@@ -1,4 +1,5 @@
 import { getApiBase } from "./index";
+import { parseFieldErrorsFromResponse } from "./field-errors";
 
 export type PrototypeModulesApiConfig = {
   baseUrl?: string;
@@ -11,6 +12,7 @@ export type PrototypeModulesResult<T> =
       ok: false;
       kind: "auth" | "forbidden" | "network" | "server" | "not_found" | "validation";
       message?: string;
+      errors?: Record<string, string>;
     };
 
 function headers(token: string): HeadersInit {
@@ -964,12 +966,10 @@ export type EvaluatorRecallDto = {
 
 export async function listEvaluatorRecallsApi(
   config: PrototypeModulesApiConfig,
-  status?: string,
 ): Promise<PrototypeModulesResult<EvaluatorRecallDto[]>> {
   const base = config.baseUrl ?? getApiBase();
-  const qs = status ? `?status=${encodeURIComponent(status)}` : "";
   try {
-    const res = await fetch(`${base}/api/evaluator-recalls${qs}`, {
+    const res = await fetch(`${base}/api/evaluator-recalls`, {
       headers: headers(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -1016,6 +1016,13 @@ export async function requestEvaluatorRecallApi(
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 400) {
+      return {
+        ok: false,
+        kind: "validation",
+        errors: await parseFieldErrorsFromResponse(res),
+      };
+    }
     if (!res.ok) return { ok: false, kind: "server" };
     return { ok: true, data: await parseJson<EvaluatorRecallDto>(res) };
   } catch {

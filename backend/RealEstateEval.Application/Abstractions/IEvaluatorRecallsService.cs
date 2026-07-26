@@ -5,7 +5,6 @@ namespace RealEstateEval.Application.Abstractions;
 public interface IEvaluatorRecallsService
 {
     Task<IReadOnlyList<EvaluatorRecallDto>> ListAsync(
-        string? status,
         CancellationToken cancellationToken = default);
 
     Task<EvaluatorRecallDto?> GetAsync(string taskId, CancellationToken cancellationToken = default);

@@ -1,3 +1,4 @@
+import { shouldUseJeddahDefaultCoords } from "@engineering-office/mfe/lib/jeddah-default-coords";
 import {
   listInspectorPhotoValidationIssues,
   type InspectorWorkspaceDraft,
@@ -31,7 +32,13 @@ export function validateInspectorWorkspace(
   if (!submission.inspectionTime.trim()) {
     errors.inspectionTime = "وقت المعاينة مطلوب";
   }
-  if (!submission.mapLatitude.trim() || !submission.mapLongitude.trim()) {
+  // Mirror FieldInspectionSubmissionValidator.ValidateGps (Saudi box + legacy sea).
+  if (
+    shouldUseJeddahDefaultCoords(
+      submission.mapLatitude,
+      submission.mapLongitude,
+    )
+  ) {
     errors.mapLatitude = "يجب تحديد موقع العقار (GPS)";
   }
   if (!submission.inspectionConfirmed) {
@@ -52,8 +59,7 @@ export function validateInspectorWorkspace(
     if (featureIssue) errors.featurePhotos = featureIssue;
 
     const componentIssue = photoIssues.find(
-      (issue) =>
-        issue.includes("عدد المعارض") || issue.includes("عدد الآبار"),
+      (issue) => issue.includes("المعرض") || issue.includes("البئر"),
     );
     if (componentIssue) errors.componentPhotos = componentIssue;
 
@@ -61,7 +67,8 @@ export function validateInspectorWorkspace(
       (issue) =>
         issue.includes("الموثّقة") ||
         issue.includes("بانتظار الاعتماد") ||
-        issue.includes("إضافية"),
+        issue.includes("إضافية") ||
+        issue.includes("الخادم"),
     );
     if (definedIssue) errors.definedPhotos = definedIssue;
   }

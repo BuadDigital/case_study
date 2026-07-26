@@ -10,7 +10,10 @@ import {
   resolveApiError,
 } from "@platform/app-shared/prototype/work-orders-api-config";
 import { prototypeModulesApiConfig } from "./prototype-modules-api-config";
-import { reopenPartySubmission } from "./party-submission-api";
+import {
+  fetchPartySubmission,
+  reopenPartySubmission,
+} from "./party-submission-api";
 
 export type PartyTaskRecallStatus = "pending" | "approved" | "rejected";
 
@@ -33,7 +36,7 @@ const memoryByTask = new Map<string, PartyTaskRecallRequest>();
 
 export const PARTY_TASK_RECALL_CHANGED_EVENT = "party-task-recall-changed";
 export const PARTY_TASK_RECALL_HYDRATED_EVENT = "party-task-recall-hydrated";
-/** Fired only when a party submits a new recall request (not on clear/approve/reject). */
+
 export const PARTY_TASK_RECALL_REQUESTED_EVENT = "party-task-recall-requested";
 
 let recallsHydrated = false;
@@ -132,10 +135,6 @@ export function getPartyTaskRecall(
   return memoryByTask.get(taskId) ?? null;
 }
 
-export function listPartyTaskRecalls(): PartyTaskRecallRequest[] {
-  return [...memoryByTask.values()];
-}
-
 export function partyTaskRecallStatusLabel(
   status: PartyTaskRecallStatus,
 ): string {
@@ -168,7 +167,11 @@ export async function requestPartyTaskRecall(input: {
   if (!result.ok) {
     return {
       ok: false,
-      error: resolveApiError(result.kind, undefined, "تعذّر إرسال طلب الاسترجاع"),
+      error: resolveApiError(
+        result.kind,
+        result.errors,
+        "تعذّر إرسال طلب الاسترجاع",
+      ),
     };
   }
 
@@ -179,13 +182,71 @@ export async function requestPartyTaskRecall(input: {
   return { ok: true, request: mapped };
 }
 
+/**
+ * The recall reason is optional for the party, but the server requires a
+ * non-empty return note to reopen engineering-survey, field-inspection and
+ * government-review work.
+ */
+const DEFAULT_RECALL_RETURN_NOTE = "طلب استرجاع من الطرف";
+
+export function partyTaskRecallReturnNote(reason: string): string {
+  return reason.trim() || DEFAULT_RECALL_RETURN_NOTE;
+}
+
+/**
+ * Approve and reopen are two calls against two services, so an approved recall
+ * can be left with the work still submitted. Re-running this is safe and is how
+ * a half-applied approval recovers.
+ */
+async function reopenForApprovedRecall(
+  taskId: string,
+  reason: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  let submission;
+  try {
+    submission = await fetchPartySubmission(taskId);
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error && error.message
+          ? error.message
+          : "وُوفّق على الاسترجاع لكن تعذّر التحقق من حالة الإرسال",
+    };
+  }
+
+  if (!submission || submission.status !== "submitted") return { ok: true };
+
+  const reopened = await reopenPartySubmission(
+    taskId,
+    partyTaskRecallReturnNote(reason),
+  );
+  if (!reopened.ok) {
+    return {
+      ok: false,
+      error:
+        reopened.error ||
+        "وُوفّق على الاسترجاع لكن تعذّر إعادة فتح المسودة على الخادم",
+    };
+  }
+  return { ok: true };
+}
+
 export async function approvePartyTaskRecall(
   taskId: string,
 ): Promise<PartyTaskRecallResult> {
   const current = getPartyTaskRecall(taskId);
-  if (current?.status !== "pending") {
-    if (current) return { ok: true, request: current };
+  if (!current) {
     return { ok: false, error: "لا يوجد طلب استرجاع لهذه المهمة" };
+  }
+
+  if (current.status === "rejected") return { ok: true, request: current };
+
+  if (current.status === "approved") {
+    const retried = await reopenForApprovedRecall(taskId, current.reason);
+    if (!retried.ok) return { ok: false, error: retried.error };
+    notifyPartyTaskRecallChanged();
+    return { ok: true, request: current };
   }
 
   const config = prototypeModulesApiConfig();
@@ -203,12 +264,9 @@ export async function approvePartyTaskRecall(
 
   const mapped = mapDto(result.data);
   memoryByTask.set(taskId, mapped);
-  const reopened = await reopenPartySubmission(taskId, current.reason);
+  const reopened = await reopenForApprovedRecall(taskId, current.reason);
   if (!reopened.ok) {
-    return {
-      ok: false,
-      error: reopened.error || "وُوفّق على الاسترجاع لكن تعذّر إعادة فتح المسودة على الخادم",
-    };
+    return { ok: false, error: reopened.error };
   }
   notifyPartyTaskRecallChanged();
   return { ok: true, request: mapped };

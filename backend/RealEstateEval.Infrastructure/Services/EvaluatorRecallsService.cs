@@ -13,14 +13,11 @@ public sealed class EvaluatorRecallsService : IEvaluatorRecallsService
     public EvaluatorRecallsService(ApplicationDbContext db) => _db = db;
 
     public async Task<IReadOnlyList<EvaluatorRecallDto>> ListAsync(
-        string? status,
         CancellationToken cancellationToken = default)
     {
-        var query = _db.EvaluatorRecallRecords.AsNoTracking().AsQueryable();
-        if (!string.IsNullOrWhiteSpace(status))
-            query = query.Where(x => x.Status == status.Trim());
-
-        var rows = await query.OrderByDescending(x => x.RequestedAtUtc).ToListAsync(cancellationToken);
+        var rows = await _db.EvaluatorRecallRecords.AsNoTracking()
+            .OrderByDescending(x => x.RequestedAtUtc)
+            .ToListAsync(cancellationToken);
         return rows.Select(ToDto).ToList();
     }
 

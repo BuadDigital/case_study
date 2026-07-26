@@ -83,6 +83,42 @@ public class CaseStudyPartyFormLockTests
     }
 
     [Fact]
+    public async Task Parent_save_rejected_when_parent_form_submitted()
+    {
+        await using var db = CreateDb();
+        SeedWorkflow(db);
+        db.CaseStudyForms.Add(new CaseStudyForm
+        {
+            Id = Guid.NewGuid(),
+            TaskId = ParentTaskId,
+            IsPartyForm = false,
+            Status = "submitted",
+            AnswersJson = """{"deed_2":"A"}""",
+            CreatedAtUtc = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        var forms = CreateFormService(db);
+        var (result, errors) = await forms.SaveAsync(
+            ParentTaskId,
+            party: false,
+            new CaseStudyFormDto
+            {
+                TaskId = ParentTaskId.ToString(),
+                Status = "submitted",
+                Answers = new Dictionary<string, object?> { ["deed_2"] = "B" },
+            });
+
+        Assert.Null(result);
+        Assert.NotNull(errors);
+        Assert.Contains("لا يمكن تعديله", errors!["_"]);
+
+        var stored = await db.CaseStudyForms.SingleAsync(f => !f.IsPartyForm);
+        Assert.Contains("\"A\"", stored.AnswersJson);
+    }
+
+    [Fact]
     public async Task Party_save_rejected_when_party_form_locked()
     {
         await using var db = CreateDb();

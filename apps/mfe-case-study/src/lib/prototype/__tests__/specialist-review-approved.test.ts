@@ -22,7 +22,6 @@ function markSpecialistPartyReviewOnAnswer(
 describe("specialistReviewApproved", () => {
   it("marks party review approved when specialist sets official answer", () => {
     const draft: CaseStudyFormDraft = {
-      version: 1,
       taskId: "task-1",
       status: "draft",
       currentStep: 0,
@@ -50,7 +49,6 @@ describe("specialistReviewApproved", () => {
 
   it("does not mark review when answer is cleared", () => {
     const draft: CaseStudyFormDraft = {
-      version: 1,
       taskId: "task-1",
       status: "draft",
       currentStep: 0,
