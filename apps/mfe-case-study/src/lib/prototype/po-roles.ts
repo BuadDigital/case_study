@@ -47,3 +47,12 @@ export function canDeleteTransaction(role: RoleId): boolean {
 export function canRaisePropertyFailure(role: RoleId): boolean {
   return canEditProperty(role) || canEditPoHeader(role);
 }
+
+/** إعادة إسناد أطراف دراسة الحالة — صلاحية مشرف القسم فأعلى. */
+export function canRedistributeParties(role: RoleId): boolean {
+  return (
+    isSuperAdmin(role) ||
+    role === "section-supervisor" ||
+    role === "general-manager"
+  );
+}

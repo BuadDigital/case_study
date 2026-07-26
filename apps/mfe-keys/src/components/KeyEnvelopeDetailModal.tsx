@@ -23,6 +23,8 @@ import {
   confirmEnvelopeHandoff,
   createEnvelopeHandoff,
   loadKeyEnvelope,
+  loadPropertyCourtAccess,
+  savePropertyCourtAccess,
   uploadEnvelopeAttachment,
 } from "../lib/keys-envelope-api";
 import {
@@ -37,10 +39,13 @@ import {
   handoffStateLabel,
   scenarioColor,
   scenarioLabel,
+  studyHoldLabel,
   type KeyAssignmentMatchStatus,
   type KeyEnvelopeAssignment,
   type KeyEnvelopeHandoff,
+  type KeyEnvelopeLinkedProperty,
   type KeyEnvelopeRow,
+  type PropertyCourtAccessRow,
 } from "../lib/keys-envelope-types";
 import { KeyEnvelopeAttachmentPreview } from "./KeyEnvelopeAttachmentPreview";
 
@@ -206,7 +211,19 @@ function poForAssignment(
   return linked?.poNumber || "—";
 }
 
-type DetailTab = "assign" | "custody";
+type DetailTab = "assign" | "custody" | "timeline" | "court";
+
+/** HTML Case Study.html `keyHold` colors. */
+function studyHoldColor(status: string): string {
+  switch (status) {
+    case "suspended_eviction":
+      return "#d9694f";
+    case "enabled_no_key":
+      return "#b58a3c";
+    default:
+      return "#8a8d96";
+  }
+}
 
 const ASSIGN_COLS =
   "minmax(112px,1fr) minmax(118px,1fr) minmax(105px,.95fr) 128px minmax(85px,.75fr) 218px";
@@ -250,6 +267,9 @@ export function KeyEnvelopeDetailPage({
     null,
   );
   const [handoffOpen, setHandoffOpen] = useState(false);
+  const [courtAccess, setCourtAccess] = useState<PropertyCourtAccessRow[]>([]);
+  const [courtEditTarget, setCourtEditTarget] =
+    useState<KeyEnvelopeLinkedProperty | null>(null);
 
   const onBackRef = useRef(onBack);
   onBackRef.current = onBack;
@@ -263,11 +283,17 @@ export function KeyEnvelopeDetailPage({
       setTab("assign");
       setMatchTarget(null);
       setHandoffOpen(false);
+      setCourtAccess([]);
+      setCourtEditTarget(null);
       const result = await loadKeyEnvelope(envelopeId);
       if (cancelled) return;
       setLoading(false);
       if (result.ok) {
         setEnv(result.data);
+        const access = await loadPropertyCourtAccess(
+          result.data.requestNumber,
+        );
+        if (!cancelled) setCourtAccess(access);
       } else {
         showToastRef.current(result.error, "error");
         onBackRef.current();
@@ -339,6 +365,17 @@ export function KeyEnvelopeDetailPage({
     }
     showToast("تم تأكيد استلام المناولة.", "success");
     await refresh(result.data);
+  }
+
+  function handleCourtAccessSaved(row: PropertyCourtAccessRow) {
+    setCourtAccess((prev) => {
+      const idx = prev.findIndex((r) => r.propertyId === row.propertyId);
+      if (idx === -1) return [...prev, row];
+      const next = [...prev];
+      next[idx] = row;
+      return next;
+    });
+    setCourtEditTarget(null);
   }
 
   const stColor = env ? envelopeStatusColor(env.status) : "#8a8d96";
@@ -446,6 +483,11 @@ export function KeyEnvelopeDetailPage({
               </SummaryCell>
               <SummaryCell label="عدد المفاتيح">
                 <span className="tabular-nums">{env.keysCountActual}</span>
+                {env.countMismatch ? (
+                  <span className="ms-1.5 text-[11px] font-semibold text-[#a32d2d]">
+                    (مكتوب {env.keysCountLabeled})
+                  </span>
+                ) : null}
               </SummaryCell>
               <SummaryCell label="الصكوك المرتبطة بالطلب">
                 <span className="tabular-nums">{env.assignments.length}</span>
@@ -508,6 +550,16 @@ export function KeyEnvelopeDetailPage({
                   label: "سلسلة العهدة",
                   count: env.handoffs.length + 1,
                 },
+                {
+                  id: "timeline" as const,
+                  label: "سجل الحركات",
+                  count: env.timeline.length,
+                },
+                {
+                  id: "court" as const,
+                  label: "التمكين / محظر الإخلاء",
+                  count: env.linkedProperties.length,
+                },
               ] as const
             ).map((t) => {
               const on = tab === t.id;
@@ -540,14 +592,24 @@ export function KeyEnvelopeDetailPage({
               busy={busy}
               onMatch={(a) => setMatchTarget(a)}
             />
-          ) : (
+          ) : null}
+          {tab === "custody" ? (
             <CustodyPanel
               env={env}
               canEdit={canEdit}
               busy={busy}
               onConfirm={(id) => void handleConfirmHandoff(id)}
             />
-          )}
+          ) : null}
+          {tab === "timeline" ? <TimelinePanel env={env} /> : null}
+          {tab === "court" ? (
+            <CourtAccessPanel
+              env={env}
+              rows={courtAccess}
+              canEdit={canEdit}
+              onEdit={(p) => setCourtEditTarget(p)}
+            />
+          ) : null}
         </>
       )}
 
@@ -573,6 +635,17 @@ export function KeyEnvelopeDetailPage({
             setHandoffOpen(false);
             await refresh(next);
           }}
+        />
+      ) : null}
+
+      {courtEditTarget ? (
+        <CourtAccessModal
+          property={courtEditTarget}
+          current={courtAccess.find(
+            (r) => r.propertyId === courtEditTarget.propertyId,
+          )}
+          onClose={() => setCourtEditTarget(null)}
+          onSaved={handleCourtAccessSaved}
         />
       ) : null}
     </>
@@ -918,6 +991,157 @@ function CustodyPanel({
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function timelineEventColor(eventType: string): string {
+  const t = eventType.toLowerCase();
+  if (t.includes("handoff") || t.includes("transfer")) return "#378add";
+  if (t.includes("confirm") || t.includes("match")) return "#2f7a4d";
+  if (t.includes("mismatch") || t.includes("missing") || t.includes("evict"))
+    return "#d9694f";
+  return "#8a8d96";
+}
+
+function TimelinePanel({ env }: { env: KeyEnvelopeRow }) {
+  if (env.timeline.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-border-md bg-surface px-[26px] py-[26px] text-center text-[13px] text-text-3">
+        لا توجد حركات مسجّلة على هذا الظرف بعد.
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="mb-3 text-[13px] font-extrabold text-heading">
+        سجل الحركات
+      </div>
+      <div className="rounded-xl border border-border bg-surface px-[22px] py-1.5 shadow-[var(--shadow)]">
+        {env.timeline.map((item, i) => {
+          const color = timelineEventColor(item.eventType);
+          return (
+            <div
+              key={item.id}
+              className={cn(
+                "flex items-start gap-[15px] py-4",
+                i > 0 && "border-t border-border",
+              )}
+            >
+              <span
+                className="grid size-10 shrink-0 place-items-center rounded-[10px]"
+                style={{
+                  background: `color-mix(in srgb, ${color} 14%, transparent)`,
+                  color,
+                }}
+              >
+                <HandoffIcon size={19} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[14px] font-bold text-heading">
+                  {item.eventType}
+                </div>
+                <div className="mt-[5px] text-[13px] text-text-2">
+                  {item.summary || "—"}
+                </div>
+                <div className="mt-[3px] text-[12px] text-text-3">
+                  {displayPersonName(item.actorName)}
+                </div>
+              </div>
+              <div
+                className="shrink-0 whitespace-nowrap text-[12px] text-text-3"
+                dir="ltr"
+              >
+                {formatDate(item.createdAtUtc)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CourtAccessPanel({
+  env,
+  rows,
+  canEdit,
+  onEdit,
+}: {
+  env: KeyEnvelopeRow;
+  rows: PropertyCourtAccessRow[];
+  canEdit: boolean;
+  onEdit: (property: KeyEnvelopeLinkedProperty) => void;
+}) {
+  if (env.linkedProperties.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-border-md bg-surface px-[26px] py-[26px] text-center text-[13px] text-text-3">
+        لا توجد عقارات مرتبطة بهذا الطلب.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2.5">
+      {env.linkedProperties.map((p) => {
+        const access = rows.find((r) => r.propertyId === p.propertyId);
+        const status = access?.studyHoldStatus || "none";
+        const color = studyHoldColor(status);
+        return (
+          <div
+            key={p.propertyId}
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3.5 shadow-[var(--shadow)]"
+          >
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <span
+                  className="text-[13.5px] font-bold text-[var(--gold-d)]"
+                  dir="ltr"
+                >
+                  صك {p.deedNumber}
+                </span>
+                <StatusPill
+                  label={studyHoldLabel(status)}
+                  style={{ base: color, fg: color }}
+                />
+              </div>
+              <div className="mt-1.5 text-[12.5px] text-text-2">
+                {[p.city, p.ownerName].filter(Boolean).join(" · ") ||
+                  p.poNumber ||
+                  "العقار"}
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {access?.enablingLetterAttachmentId ? (
+                <KeyEnvelopeAttachmentPreview
+                  attachmentId={access.enablingLetterAttachmentId}
+                  label="خطاب التمكين"
+                  variant="chip"
+                  chipColor="#b58a3c"
+                />
+              ) : null}
+              {access?.evictionNoticeAttachmentId ? (
+                <KeyEnvelopeAttachmentPreview
+                  attachmentId={access.evictionNoticeAttachmentId}
+                  label="محضر الإخلاء"
+                  variant="chip"
+                  chipColor="#d9694f"
+                />
+              ) : null}
+              {canEdit ? (
+                <button
+                  type="button"
+                  className="inline-flex h-9 items-center whitespace-nowrap rounded-lg border border-border-md bg-surface px-3.5 text-[12px] font-medium text-[var(--gold-d)] transition-colors hover:border-[var(--gold)]"
+                  onClick={() => onEdit(p)}
+                >
+                  تحديث مسار الدخول…
+                </button>
+              ) : null}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1498,6 +1722,271 @@ function HandoffModal({
             }}
           >
             تسليم
+          </Button>
+        </ModalFooter>
+      </ModalCard>
+    </ModalOverlay>
+  );
+}
+
+function CourtAccessModal({
+  property,
+  current,
+  onClose,
+  onSaved,
+}: {
+  property: KeyEnvelopeLinkedProperty;
+  current?: PropertyCourtAccessRow;
+  onClose: () => void;
+  onSaved: (row: PropertyCourtAccessRow) => void;
+}) {
+  const { showToast } = useToast();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  const [hasEnablingLetter, setHasEnablingLetter] = useState(
+    current?.hasEnablingLetter ?? false,
+  );
+  const [enablingLetterId, setEnablingLetterId] = useState<string | null>(
+    current?.enablingLetterAttachmentId ?? null,
+  );
+  const [enablingLetterName, setEnablingLetterName] = useState("");
+
+  const [hasEvictionNotice, setHasEvictionNotice] = useState(
+    current?.hasEvictionNotice ?? false,
+  );
+  const [evictionNoticeId, setEvictionNoticeId] = useState<string | null>(
+    current?.evictionNoticeAttachmentId ?? null,
+  );
+  const [evictionNoticeName, setEvictionNoticeName] = useState("");
+
+  const [contactPhones, setContactPhones] = useState(
+    current?.contactPhones ?? "",
+  );
+  const [notes, setNotes] = useState(current?.notes ?? "");
+
+  const enablingFileRef = useRef<HTMLInputElement>(null);
+  const evictionFileRef = useRef<HTMLInputElement>(null);
+
+  const previewStatus: string = hasEvictionNotice
+    ? "suspended_eviction"
+    : hasEnablingLetter
+      ? "enabled_no_key"
+      : "none";
+  const previewColor = studyHoldColor(previewStatus);
+
+  return (
+    <ModalOverlay onClick={onClose}>
+      <ModalCard
+        onClick={(e) => e.stopPropagation()}
+        className="max-w-[560px] p-0 max-lg:max-h-[min(92dvh,100%)]"
+      >
+        <ModalHeader className="relative border-b border-border px-5 py-4">
+          <ModalTitle className="text-center text-[16px] font-extrabold text-heading">
+            التمكين / محظر الإخلاء — صك {property.deedNumber}
+          </ModalTitle>
+          <ModalClose
+            className="absolute start-3 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-[9px] bg-surface-2"
+            onClick={onClose}
+          >
+            ✕
+          </ModalClose>
+        </ModalHeader>
+        <ModalBody className="max-h-[min(70vh,560px)] space-y-3.5 overflow-y-auto px-5 py-5 max-lg:max-h-none">
+          {err ? (
+            <div className="rounded-[10px] border border-[color-mix(in_srgb,#d9694f_30%,transparent)] bg-[color-mix(in_srgb,#d9694f_12%,transparent)] px-3 py-2.5 text-[12.5px] font-semibold text-[#a32d2d]">
+              {err}
+            </div>
+          ) : null}
+
+          <div className="flex items-center justify-between rounded-[10px] border border-border bg-surface-2/50 px-3.5 py-2.5">
+            <span className="text-[12.5px] font-semibold text-text-2">
+              الحالة الحالية
+            </span>
+            <StatusPill
+              label={studyHoldLabel(previewStatus)}
+              style={{ base: previewColor, fg: previewColor }}
+            />
+          </div>
+
+          <div>
+            <Label>خطاب التمكين (بدون مفتاح)</Label>
+            <input
+              ref={enablingFileRef}
+              type="file"
+              accept="image/*,application/pdf"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (!file) return;
+                const upload = await uploadEnvelopeAttachment(
+                  "enabling",
+                  property.propertyId,
+                  file,
+                );
+                if (!upload.ok) {
+                  showToast(upload.error, "error");
+                  return;
+                }
+                setEnablingLetterId(upload.data.id);
+                setEnablingLetterName(upload.data.fileName);
+                setHasEnablingLetter(true);
+              }}
+            />
+            <button
+              type="button"
+              className={cn(
+                "mt-1 flex min-h-[52px] w-full items-center gap-3 rounded-xl border-[1.5px] border-dashed px-3.5 py-2.5 text-start",
+                enablingLetterId
+                  ? "border-[var(--gold)] bg-[var(--gold-soft)]"
+                  : "border-border-md bg-surface-2",
+              )}
+              onClick={() => enablingFileRef.current?.click()}
+            >
+              <span className="grid size-[34px] shrink-0 place-items-center rounded-[9px] bg-[color-mix(in_srgb,#b58a3c_12%,transparent)] text-[#b58a3c]">
+                <FileIcon />
+              </span>
+              <span>
+                <span className="block text-[13px] font-extrabold text-heading">
+                  {enablingLetterName
+                    ? `تم الإرفاق: ${enablingLetterName}`
+                    : current?.enablingLetterAttachmentId
+                      ? "استبدال خطاب التمكين المرفق"
+                      : "رفع خطاب التمكين"}
+                </span>
+                <span className="mt-px block text-[11.5px] text-text-3">
+                  إثبات السماح بدخول العقار دون تسليم مفتاح
+                </span>
+              </span>
+            </button>
+          </div>
+
+          <div>
+            <Label>محظر الإخلاء (تعليق الدراسة)</Label>
+            <input
+              ref={evictionFileRef}
+              type="file"
+              accept="image/*,application/pdf"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (!file) return;
+                const upload = await uploadEnvelopeAttachment(
+                  "eviction",
+                  property.propertyId,
+                  file,
+                );
+                if (!upload.ok) {
+                  showToast(upload.error, "error");
+                  return;
+                }
+                setEvictionNoticeId(upload.data.id);
+                setEvictionNoticeName(upload.data.fileName);
+                setHasEvictionNotice(true);
+              }}
+            />
+            <button
+              type="button"
+              className={cn(
+                "mt-1 flex min-h-[52px] w-full items-center gap-3 rounded-xl border-[1.5px] border-dashed px-3.5 py-2.5 text-start",
+                evictionNoticeId
+                  ? "border-[#d9694f] bg-[color-mix(in_srgb,#d9694f_10%,transparent)]"
+                  : "border-border-md bg-surface-2",
+              )}
+              onClick={() => evictionFileRef.current?.click()}
+            >
+              <span className="grid size-[34px] shrink-0 place-items-center rounded-[9px] bg-[color-mix(in_srgb,#d9694f_12%,transparent)] text-[#d9694f]">
+                <FileIcon />
+              </span>
+              <span>
+                <span className="block text-[13px] font-extrabold text-heading">
+                  {evictionNoticeName
+                    ? `تم الإرفاق: ${evictionNoticeName}`
+                    : current?.evictionNoticeAttachmentId
+                      ? "استبدال محضر الإخلاء المرفق"
+                      : "رفع محظر الإخلاء"}
+                </span>
+                <span className="mt-px block text-[11.5px] text-text-3">
+                  يعلّق الدراسة تلقائياً حتى رفع محظر الإخلاء
+                </span>
+              </span>
+            </button>
+          </div>
+
+          <div>
+            <Label htmlFor="ca-phones">أرقام تواصل (اختياري)</Label>
+            <Input
+              id="ca-phones"
+              dir="ltr"
+              placeholder="05xxxxxxxx"
+              value={contactPhones}
+              onChange={(e) => setContactPhones(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="ca-notes">ملاحظات (اختياري)</Label>
+            <Input
+              id="ca-notes"
+              value={notes}
+              placeholder="ملاحظات إضافية عن مسار الدخول"
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+        </ModalBody>
+        <ModalFooter className="justify-start gap-2 border-t border-border px-5 py-3.5">
+          <Button
+            variant="outline"
+            disabled={busy}
+            showActionToast={false}
+            onClick={onClose}
+          >
+            إلغاء
+          </Button>
+          <Button
+            variant="primary"
+            loading={busy}
+            showActionToast={false}
+            onClick={async () => {
+              setErr("");
+              setBusy(true);
+              const result = await savePropertyCourtAccess({
+                propertyId: property.propertyId,
+                hasEnablingLetter,
+                enablingLetterAttachmentId: enablingLetterId,
+                hasEvictionNotice,
+                evictionNoticeAttachmentId: evictionNoticeId,
+                contactPhones: contactPhones.trim() || null,
+                notes: notes.trim() || null,
+              });
+              setBusy(false);
+              if (!result.ok) {
+                setErr(result.error);
+                return;
+              }
+              showToast(
+                `تم تحديث مسار الدخول لصك ${property.deedNumber}.`,
+                "success",
+              );
+              onSaved(result.data);
+            }}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+            حفظ
           </Button>
         </ModalFooter>
       </ModalCard>

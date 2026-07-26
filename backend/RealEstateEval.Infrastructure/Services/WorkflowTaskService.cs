@@ -306,6 +306,143 @@ public class WorkflowTaskService : IWorkflowTaskService
         }, null);
     }
 
+    public async Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)>
+        RedistributePartiesAsync(
+            Guid id,
+            RedistributePartiesRequest request,
+            string actorRole,
+            string? actorName,
+            CancellationToken cancellationToken = default)
+    {
+        if (!SectionSupervisorOrAboveRoles.Contains((actorRole ?? "").Trim()))
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "إعادة إسناد الأطراف صلاحية مشرف القسم فأعلى",
+            });
+        }
+
+        var parent = await _db.WorkflowTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        if (parent is null) return (null, null);
+
+        if (!string.Equals(parent.Kind, CaseStudyPropertyKind, StringComparison.OrdinalIgnoreCase))
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "يمكن إعادة إسناد الأطراف لمعاملات دراسة الحالة فقط",
+            });
+        }
+
+        if (parent.Phase != "case-study")
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "إعادة إسناد الأطراف متاحة فقط بعد تأكيد التوزيع (مرحلة دراسة الحالة)",
+            });
+        }
+
+        var reason = (request.Reason ?? "").Trim();
+        if (reason.Length == 0)
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["reason"] = "سبب إعادة الإسناد مطلوب",
+            });
+        }
+
+        if (reason.Length > 500)
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["reason"] = "السبب طويل جداً",
+            });
+        }
+
+        var distribution = NormalizeDistribution(request.Distribution);
+        var names = request.AssigneeNames ?? new Dictionary<string, string>();
+
+        var children = await _db.WorkflowTasks
+            .Where(t => t.ParentTaskId == parent.Id)
+            .ToListAsync(cancellationToken);
+
+        var mappings = new (bool Enabled, string Kind, string Role, string AssigneeId, string Fallback)[]
+        {
+            (distribution.GovernmentAuditor, "government-review", "government-reviewer",
+                distribution.GovernmentAuditorId, "مراجع حكومي"),
+            (distribution.ValuationDepartment, "valuation-coordination", "valuation-coordinator",
+                distribution.OperationsCoordinatorId, "منسق التقييم"),
+            (distribution.ValuationDepartment, "field-inspection", "field-inspector",
+                distribution.InspectorId, "معاين ميداني"),
+            (distribution.ValuationDepartment, "property-appraisal", "real-estate-appraiser",
+                distribution.ValuatorId, "مقيم عقاري"),
+            (distribution.EngineeringOffice, "engineering-survey", "engineering-office",
+                distribution.EngineeringOfficeId, "مكتب هندسي"),
+        };
+
+        var now = DateTime.UtcNow;
+        var changed = new List<WorkflowTask>();
+        var timelineEvents = new List<PropertyTimelineRecordRequest>();
+
+        foreach (var mapping in mappings)
+        {
+            if (!mapping.Enabled) continue;
+
+            var child = children.FirstOrDefault(c =>
+                string.Equals(c.Kind, mapping.Kind, StringComparison.OrdinalIgnoreCase));
+            if (child is null || child.Status != WorkflowTaskStatus.Open) continue;
+
+            var newAssigneeId = string.IsNullOrWhiteSpace(mapping.AssigneeId)
+                ? null
+                : mapping.AssigneeId.Trim();
+            if (string.Equals(child.AssigneeId, newAssigneeId, StringComparison.Ordinal)) continue;
+
+            var newName = ResolveName(names, mapping.Kind, mapping.Fallback);
+            child.AssigneeId = newAssigneeId;
+            child.AssigneeName = newName;
+            child.AssigneeRole = mapping.Role;
+            child.UpdatedAtUtc = now;
+            changed.Add(child);
+
+            if (parent.PropertyId is Guid propertyId)
+            {
+                var detail = string.IsNullOrWhiteSpace(actorName)
+                    ? $"{newName} — {reason}"
+                    : $"{actorName}: {newName} — {reason}";
+                timelineEvents.Add(new PropertyTimelineRecordRequest(
+                    parent.PoNumber,
+                    propertyId,
+                    $"party:{child.Id}:redistributed:{now.Ticks}",
+                    $"إعادة إسناد — {PartyAssignedTitle(child.Kind)}",
+                    detail,
+                    "active",
+                    now));
+            }
+        }
+
+        parent.DistributionJson = WorkflowTaskMapper.SerializeDistribution(distribution);
+        parent.UpdatedAtUtc = now;
+        await _db.SaveChangesAsync(cancellationToken);
+
+        if (timelineEvents.Count > 0)
+        {
+            await _timeline.RecordManyAsync(timelineEvents, cancellationToken);
+        }
+
+        if (changed.Count > 0)
+        {
+            var deed = "";
+            if (parent.PropertyId is Guid deedPropertyId)
+            {
+                var prop = await _db.WorkOrderProperties.AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.Id == deedPropertyId, cancellationToken);
+                deed = prop?.DeedNumber?.Trim() ?? "";
+            }
+            await NotifyDistributionAssignedAsync(parent, changed, deed, cancellationToken);
+        }
+
+        return (WorkflowTaskMapper.ToDto(parent), null);
+    }
+
     public async Task<WorkflowTaskDto?> AdvanceAfterEnfathAsync(
         Guid id,
         AdvanceTaskAfterEnfathRequest request,
@@ -653,6 +790,81 @@ public class WorkflowTaskService : IWorkflowTaskService
 
         await _db.SaveChangesAsync(cancellationToken);
         return (true, null);
+    }
+
+    private static readonly HashSet<string> SectionSupervisorOrAboveRoles = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "section-supervisor",
+        "general-manager",
+        "cdo",
+    };
+
+    public async Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> ReopenCompletedAsync(
+        Guid id,
+        ReopenCompletedWorkflowTaskRequest request,
+        string actorRole,
+        string? actorName,
+        CancellationToken cancellationToken = default)
+    {
+        if (!SectionSupervisorOrAboveRoles.Contains((actorRole ?? "").Trim()))
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "إعادة فتح المعاملة صلاحية مشرف القسم فأعلى",
+            });
+        }
+
+        var reason = (request.Reason ?? "").Trim();
+        if (reason.Length == 0)
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["reason"] = "سبب إعادة الفتح مطلوب",
+            });
+        }
+
+        if (reason.Length > 500)
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["reason"] = "السبب طويل جداً",
+            });
+        }
+
+        var entity = await _db.WorkflowTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        if (entity is null) return (null, null);
+
+        if (entity.Status != WorkflowTaskStatus.Completed)
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "لا يمكن إعادة فتح معاملة غير مكتملة",
+            });
+        }
+
+        entity.Status = WorkflowTaskStatus.Open;
+        if (string.Equals(entity.Kind, CaseStudyPropertyKind, StringComparison.OrdinalIgnoreCase))
+        {
+            entity.Phase = "case-study";
+        }
+        entity.UpdatedAtUtc = DateTime.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken);
+
+        if (entity.PropertyId is Guid propertyId)
+        {
+            var detail = string.IsNullOrWhiteSpace(actorName) ? reason : $"{actorName}: {reason}";
+            await _timeline.RecordAsync(
+                entity.PoNumber,
+                propertyId,
+                $"task:{entity.Id}:reopened",
+                "إعادة فتح المعاملة",
+                detail,
+                "active",
+                entity.UpdatedAtUtc,
+                cancellationToken);
+        }
+
+        return (WorkflowTaskMapper.ToDto(entity), null);
     }
 
     public async Task DeleteForPoAsync(

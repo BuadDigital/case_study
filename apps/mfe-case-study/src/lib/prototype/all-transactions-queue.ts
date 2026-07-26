@@ -1,5 +1,7 @@
 import type { StatusPillStyle } from "@platform/design-system";
 import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
+import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
+import type { RoleId } from "@platform/types";
 import {
   buildPrimaryDataTableRow,
   findPropertyForTask,
@@ -132,11 +134,23 @@ export function uniqueSortedPoOrder(poNumbers: string[]): string[] {
   return order;
 }
 
+/** Section-supervisor and above may reopen a completed transaction. */
+export function canReopenCompletedTransaction(role: RoleId): boolean {
+  return (
+    isSuperAdmin(role) ||
+    role === "section-supervisor" ||
+    role === "general-manager"
+  );
+}
+
 export function buildAllTransactionsRowMoreItems(options: {
   task: WorkflowTask;
   propertyId?: string;
   openTask: () => void;
   router: { push: (href: string) => void };
+  viewerRole?: RoleId;
+  /** Opens the «إعادة فتح المعاملة» modal for this row (completed tasks only). */
+  onReopenCompleted?: () => void;
 }): RowMoreMenuItem[] {
   const po = options.task.poNumber.trim();
   const propertyId = options.propertyId?.trim();
@@ -156,6 +170,20 @@ export function buildAllTransactionsRowMoreItems(options: {
       onClick: options.openTask,
     },
   ];
+
+  if (
+    options.task.status === "completed" &&
+    options.onReopenCompleted &&
+    options.viewerRole &&
+    canReopenCompletedTransaction(options.viewerRole)
+  ) {
+    items.push({
+      id: "reopen-completed",
+      label: "إعادة فتح المعاملة",
+      danger: true,
+      onClick: options.onReopenCompleted,
+    });
+  }
 
   if (propertyHref) {
     items.push({

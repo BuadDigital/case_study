@@ -33,6 +33,7 @@ import {
 } from "@platform/app-shared/prototype/inspector-fees-api";
 import { FeeDiscountModal } from "@platform/app-shared/fees/FeeDiscountModal";
 import { FeeActionReasonModal } from "@platform/app-shared/fees/FeeActionReasonModal";
+import { ENG_DISCOUNT_REASONS } from "@platform/app-shared/fees/party-fee-meta";
 
 export type FeesBillingMode = "readonly" | "supervisor" | "finance";
 
@@ -160,6 +161,8 @@ export function InspectorFeesBillingTable({
   pending = false,
   partyTypeColumn = "نوع الطرف",
   partyTypeEmployeeHint = "",
+  discountModalTitle,
+  discountReasons,
   onChanged,
 }: {
   rows: InspectorFeeRowDto[];
@@ -167,6 +170,10 @@ export function InspectorFeesBillingTable({
   pending?: boolean;
   partyTypeColumn?: string;
   partyTypeEmployeeHint?: string;
+  /** Override modal title for party-specific pricing edits (e.g. engineering office). */
+  discountModalTitle?: string;
+  /** Override reason presets for party-specific pricing edits. */
+  discountReasons?: readonly string[];
   onChanged?: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -573,6 +580,16 @@ export function InspectorFeesBillingTable({
       <FeeDiscountModal
         open={discountRow !== null}
         row={discountRow}
+        title={
+          discountRow?.taskKind === "engineering-survey"
+            ? "تعديل تسعير المكتب الهندسي"
+            : discountModalTitle
+        }
+        reasons={
+          discountRow?.taskKind === "engineering-survey"
+            ? ENG_DISCOUNT_REASONS
+            : discountReasons
+        }
         onClose={() => setDiscountRow(null)}
         onSave={async (patch) => {
           if (!discountRow) return;

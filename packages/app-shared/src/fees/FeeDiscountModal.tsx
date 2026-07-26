@@ -18,11 +18,17 @@ import { DISCOUNT_REASONS } from "./party-fee-meta";
 export function FeeDiscountModal({
   open,
   row,
+  title = "حسم من أتعاب الطرف",
+  reasons = DISCOUNT_REASONS,
   onClose,
   onSave,
 }: {
   open: boolean;
   row: InspectorFeeRowDto | null;
+  /** Override for the party type (e.g. engineering office pricing edits). */
+  title?: string;
+  /** Reason presets — defaults to the general discount reasons. */
+  reasons?: readonly string[];
   onClose: () => void;
   onSave: (patch: {
     supervisorDiscountSar: number;
@@ -78,7 +84,7 @@ export function FeeDiscountModal({
     <ModalOverlay onClick={onClose}>
       <ModalCard wide onClick={(e) => e.stopPropagation()}>
         <ModalHeader>
-          <ModalTitle>حسم من أتعاب الطرف</ModalTitle>
+          <ModalTitle>{title}</ModalTitle>
           <ModalClose onClick={onClose} aria-label="إغلاق">
             ×
           </ModalClose>
@@ -111,7 +117,7 @@ export function FeeDiscountModal({
             }}
           >
             <option value="">— اختر سبباً —</option>
-            {DISCOUNT_REASONS.map((item) => (
+            {reasons.map((item) => (
               <option key={item} value={item}>
                 {item}
               </option>

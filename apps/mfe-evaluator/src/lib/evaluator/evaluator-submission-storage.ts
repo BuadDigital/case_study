@@ -60,6 +60,12 @@ function dtoToSubmission(
     reportWorkers: Array.isArray(payload.reportWorkers)
       ? payload.reportWorkers
       : base.reportWorkers,
+    assetDataConfirmed: Boolean(payload.assetDataConfirmed),
+    assetDataVarianceNotes:
+      typeof payload.assetDataVarianceNotes === "string"
+        ? payload.assetDataVarianceNotes
+        : base.assetDataVarianceNotes,
+    signedAppraisalFileName: payload.signedAppraisalFileName ?? null,
     submittedAtUtc: dto.submittedAtUtc ?? payload.submittedAtUtc ?? null,
     updatedAtUtc: dto.updatedAtUtc ?? payload.updatedAtUtc,
   };

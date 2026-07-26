@@ -16,6 +16,9 @@ public class OperationsTaskCommentFileDto
 {
     public string Name { get; set; } = "";
     public string Size { get; set; } = "";
+    /// <summary>Backing attachment id when the file was actually uploaded via /api/attachments.</summary>
+    public string? AttachmentId { get; set; }
+    public string? ContentType { get; set; }
 }
 
 public class OperationsTaskCommentDto

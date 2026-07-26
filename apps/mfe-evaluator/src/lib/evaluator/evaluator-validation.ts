@@ -15,6 +15,8 @@ export function validateEvaluatorSubmission(input: {
   forcedSaleDiscountPct?: string;
   independenceDeclared?: boolean;
   reportWorkers?: EvaluatorReportWorker[];
+  assetDataConfirmed?: boolean;
+  assetDataVarianceNotes?: string;
 }): EvaluatorValidationErrors {
   const errors: EvaluatorValidationErrors = {};
   const {
@@ -25,6 +27,8 @@ export function validateEvaluatorSubmission(input: {
     forcedSaleDiscountPct = "",
     independenceDeclared = false,
     reportWorkers = [],
+    assetDataConfirmed = false,
+    assetDataVarianceNotes = "",
   } = input;
 
   const report = getCachedEvaluatorReport(taskId);
@@ -66,6 +70,11 @@ export function validateEvaluatorSubmission(input: {
   if (!independenceDeclared) {
     errors.independence_declared =
       "يجب تأكيد إقرار الاستقلالية وعدم تضارب المصالح.";
+  }
+
+  if (!assetDataConfirmed && !assetDataVarianceNotes.trim()) {
+    errors.asset_data_confirmed =
+      "أكّد مراجعة بيانات الأصل، أو دوّن ملاحظات التباين إن وُجدت.";
   }
 
   const filledWorkers = reportWorkers.filter((w) => w.name.trim());

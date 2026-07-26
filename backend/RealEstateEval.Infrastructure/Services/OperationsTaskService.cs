@@ -564,6 +564,8 @@ public sealed class OperationsTaskService : IOperationsTaskService
             {
                 Name = f.Name.Trim(),
                 Size = string.IsNullOrWhiteSpace(f.Size) ? "—" : f.Size.Trim(),
+                AttachmentId = string.IsNullOrWhiteSpace(f.AttachmentId) ? null : f.AttachmentId.Trim(),
+                ContentType = string.IsNullOrWhiteSpace(f.ContentType) ? null : f.ContentType.Trim(),
             })
             .Take(20)
             .ToList();
