@@ -46,6 +46,12 @@ function parseEvaluatorPayload(
     reportWorkers: Array.isArray(raw.reportWorkers)
       ? (raw.reportWorkers as EvaluatorSubmissionSnapshot["reportWorkers"])
       : [],
+    assetDataConfirmed: Boolean(raw.assetDataConfirmed),
+    assetDataVarianceNotes: String(raw.assetDataVarianceNotes ?? ""),
+    signedAppraisalFileName:
+      typeof raw.signedAppraisalFileName === "string"
+        ? raw.signedAppraisalFileName
+        : null,
   };
 }
 

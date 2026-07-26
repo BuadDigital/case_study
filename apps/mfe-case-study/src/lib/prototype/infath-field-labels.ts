@@ -72,6 +72,8 @@ export const INFATH_FIELD_LABELS = {
   otherNotes: "ملاحظات",
   closingNotes: "ملاحظات ختامية",
   signedAppraisal: "مرفق التقييم المعتمد",
+  assetDataConfirmed: "مراجعة بيانات الأصل",
+  assetDataVarianceNotes: "ملاحظات تباين بيانات الأصل",
   onSiteArea: "المساحة على الطبيعة (م²)",
   deedAreaRef: "المساحة حسب الصك (م²)",
   areaDiff: "يوجد اختلاف في المساحة",

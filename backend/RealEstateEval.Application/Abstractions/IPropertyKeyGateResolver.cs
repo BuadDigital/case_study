@@ -19,6 +19,11 @@ public interface IPropertyAccessHoldService
         string actorName,
         CancellationToken cancellationToken = default);
 
+    Task ResolveEvictionHoldAsync(
+        Guid propertyId,
+        string actorName,
+        CancellationToken cancellationToken = default);
+
     Task EnsureKeyUnmatchedFailureAsync(
         Guid propertyId,
         string deedNumber,

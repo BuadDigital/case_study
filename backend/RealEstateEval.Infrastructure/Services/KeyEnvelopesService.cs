@@ -177,6 +177,8 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
                 return (null, "عدد المفاتيح الفعلي يجب أن يكون 1 على الأقل");
             if (request.PhotoAttachmentId is null || request.PhotoAttachmentId == Guid.Empty)
                 return (null, "صورة الظرف مطلوبة");
+            if (request.ReceiptAttachmentId is null || request.ReceiptAttachmentId == Guid.Empty)
+                return (null, "خطاب الاستلام مطلوب");
         }
         else if (scenario == KeyReceiveScenarios.Missing)
         {
@@ -185,10 +187,11 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
         }
         else if (scenario == KeyReceiveScenarios.ThirdParty)
         {
-            if (string.IsNullOrWhiteSpace(request.ContactPhones)
-                && (request.ThirdPartyLetterAttachmentId is null
-                    || request.ThirdPartyLetterAttachmentId == Guid.Empty))
-                return (null, "بيانات الطرف المسلِّم أو خطاب حامل المفتاح مطلوبان");
+            if (string.IsNullOrWhiteSpace(request.ContactPhones))
+                return (null, "بيانات الطرف المسلِّم مطلوبة");
+            if (request.ThirdPartyLetterAttachmentId is null
+                || request.ThirdPartyLetterAttachmentId == Guid.Empty)
+                return (null, "خطاب حامل المفتاح مطلوب");
         }
 
         if (request.ReceiptAttachmentId is { } rid && rid != Guid.Empty)
@@ -576,6 +579,8 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
             _db.PropertyCourtAccesses.Add(row);
         }
 
+        var previousHold = row.StudyHoldStatus;
+
         row.PoNumber = property.WorkOrder?.PoNumber ?? "";
         row.DeedNumber = property.DeedNumber;
         row.RequestNumber = property.RequestNumber ?? "";
@@ -585,24 +590,32 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
             row.HasEnablingLetter = true;
             row.EnablingLetterAttachmentId = request.EnablingLetterAttachmentId;
         }
+        else
+        {
+            row.HasEnablingLetter = false;
+            row.EnablingLetterAttachmentId = null;
+        }
 
         if (request.HasEvictionNotice)
         {
             row.HasEvictionNotice = true;
             row.EvictionNoticeAttachmentId = request.EvictionNoticeAttachmentId;
         }
+        else
+        {
+            row.HasEvictionNotice = false;
+            row.EvictionNoticeAttachmentId = null;
+        }
 
-        if (request.HasEvictionNotice)
+        if (row.HasEvictionNotice)
             row.StudyHoldStatus = PropertyCourtAccessStatuses.SuspendedEviction;
-        else if (row.HasEnablingLetter || request.HasEnablingLetter)
+        else if (row.HasEnablingLetter)
             row.StudyHoldStatus = PropertyCourtAccessStatuses.EnabledNoKey;
         else
             row.StudyHoldStatus = PropertyCourtAccessStatuses.None;
 
-        if (!string.IsNullOrWhiteSpace(request.ContactPhones))
-            row.ContactPhones = request.ContactPhones.Trim();
-        if (!string.IsNullOrWhiteSpace(request.Notes))
-            row.Notes = request.Notes.Trim();
+        row.ContactPhones = NullIfBlank(request.ContactPhones);
+        row.Notes = NullIfBlank(request.Notes);
         row.UpdatedByUserId = actorUserId;
         row.UpdatedByName = actorDisplayName.Trim();
         row.UpdatedAtUtc = now;
@@ -614,6 +627,13 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
         if (holdStatus == PropertyCourtAccessStatuses.SuspendedEviction)
         {
             await _holds.EnsureEvictionHoldAsync(
+                propertyId,
+                actorDisplayName,
+                cancellationToken);
+        }
+        else if (previousHold == PropertyCourtAccessStatuses.SuspendedEviction)
+        {
+            await _holds.ResolveEvictionHoldAsync(
                 propertyId,
                 actorDisplayName,
                 cancellationToken);

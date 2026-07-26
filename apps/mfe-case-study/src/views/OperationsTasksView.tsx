@@ -372,6 +372,7 @@ function CloseTaskModalBody({
   closeOutcome,
   setCloseOutcome,
   canCancel,
+  allowCompleteOutcome = true,
   cancelReason,
   setCancelReason,
   closeText,
@@ -404,6 +405,8 @@ function CloseTaskModalBody({
   closeOutcome: "completed" | "cancelled";
   setCloseOutcome: (v: "completed" | "cancelled") => void;
   canCancel: boolean;
+  /** When false (e.g. status still created), only cancellation is offered. */
+  allowCompleteOutcome?: boolean;
   cancelReason: string;
   setCancelReason: (v: string) => void;
   closeText: string;
@@ -444,24 +447,35 @@ function CloseTaskModalBody({
   return (
     <div className="flex flex-col gap-3">
       <p className={opsMutedHint}>
-        اختر نتيجة الإغلاق: <b>منجزة</b> أو <b>ملغاة</b>
+        {allowCompleteOutcome ? (
+          <>
+            اختر نتيجة الإغلاق: <b>منجزة</b> أو <b>ملغاة</b>
+          </>
+        ) : (
+          <>
+            المهمة لم تُستلم بعد — يمكن <b>إلغاؤها</b> فقط. لإتمامها أكّد الاستلام
+            أولاً.
+          </>
+        )}
       </p>
 
       {canCancel ? (
         <div>
           <span className={opsTfLbl}>نتيجة الإغلاق *</span>
           <div className="mt-2 grid gap-[7px]">
-            <label className="flex cursor-pointer items-center gap-[9px] text-[12.5px] text-text">
-              <input
-                type="radio"
-                name="closeOutcome"
-                value="completed"
-                checked={closeOutcome === "completed"}
-                className="h-[15px] w-[15px] shrink-0 accent-gold-d"
-                onChange={() => setCloseOutcome("completed")}
-              />
-              <span>منجزة</span>
-            </label>
+            {allowCompleteOutcome ? (
+              <label className="flex cursor-pointer items-center gap-[9px] text-[12.5px] text-text">
+                <input
+                  type="radio"
+                  name="closeOutcome"
+                  value="completed"
+                  checked={closeOutcome === "completed"}
+                  className="h-[15px] w-[15px] shrink-0 accent-gold-d"
+                  onChange={() => setCloseOutcome("completed")}
+                />
+                <span>منجزة</span>
+              </label>
+            ) : null}
             <label className="flex cursor-pointer items-center gap-[9px] text-[12.5px] text-text">
               <input
                 type="radio"
@@ -2551,6 +2565,9 @@ export function OperationsTasksView() {
             closeOutcome={closeOutcome}
             setCloseOutcome={setCloseOutcome}
             canCancel={canCreate}
+            allowCompleteOutcome={
+              detail.status === "in_progress" || detail.status === "paused"
+            }
             cancelReason={cancelReason}
             setCancelReason={setCancelReason}
             closeText={closeText}
@@ -3242,6 +3259,10 @@ export function OperationsTasksView() {
           closeOutcome={closeOutcome}
           setCloseOutcome={setCloseOutcome}
           canCancel={canCreate}
+          allowCompleteOutcome={(() => {
+            const st = tasks.find((t) => t.id === selectedId)?.status;
+            return st === "in_progress" || st === "paused";
+          })()}
           cancelReason={cancelReason}
           setCancelReason={setCancelReason}
           closeText={closeText}

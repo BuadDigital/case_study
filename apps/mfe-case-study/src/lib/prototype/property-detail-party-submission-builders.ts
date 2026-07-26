@@ -593,6 +593,12 @@ export function buildFromEvaluator(
       value: "مُؤكَّد",
     });
   }
+  if (submission.assetDataConfirmed) {
+    fields.push({
+      label: INFATH_FIELD_LABELS.assetDataConfirmed,
+      value: "مُؤكَّد",
+    });
+  }
   for (const worker of submission.reportWorkers ?? []) {
     const name = worker.name?.trim() ?? "";
     if (!name) continue;
@@ -611,10 +617,14 @@ export function buildFromEvaluator(
       value: bits.join(" · "),
     });
   }
-  if (submission.reportFileName?.trim()) {
+  const signedName =
+    submission.signedAppraisalFileName?.trim() ||
+    submission.reportFileName?.trim() ||
+    "";
+  if (signedName) {
     fields.push({
       label: INFATH_FIELD_LABELS.signedAppraisal,
-      value: submission.reportFileName.trim(),
+      value: signedName,
     });
   }
 
@@ -625,6 +635,12 @@ export function buildFromEvaluator(
     remarks.push({
       label: INFATH_FIELD_LABELS.searchScope,
       value: submission.searchScopeNotes.trim(),
+    });
+  }
+  if (submission.assetDataVarianceNotes?.trim()) {
+    remarks.push({
+      label: INFATH_FIELD_LABELS.assetDataVarianceNotes,
+      value: submission.assetDataVarianceNotes.trim(),
     });
   }
 

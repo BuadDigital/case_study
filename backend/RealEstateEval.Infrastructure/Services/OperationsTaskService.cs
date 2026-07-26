@@ -977,7 +977,21 @@ public sealed class OperationsTaskService : IOperationsTaskService
         var actor = actorAssigneeId.Trim();
         var isManager = IsManager(actorRole);
 
-        if (next is "in_progress" or "completed")
+        if (next == "in_progress")
+        {
+            var confirmingReceipt = entity.Status == "created";
+            if (confirmingReceipt)
+            {
+                if (entity.AssigneeId != actor)
+                    return "هذا الإجراء للمنفّذ المكلّف فقط";
+            }
+            else if (entity.AssigneeId != actor && !isManager)
+            {
+                return "هذا الإجراء للمنفّذ المكلّف فقط";
+            }
+        }
+
+        if (next == "completed")
         {
             if (entity.AssigneeId != actor && !isManager)
                 return "هذا الإجراء للمنفّذ المكلّف فقط";

@@ -40,6 +40,7 @@ import {
   scenarioColor,
   scenarioLabel,
   studyHoldLabel,
+  timelineEventLabel,
   type KeyAssignmentMatchStatus,
   type KeyEnvelopeAssignment,
   type KeyEnvelopeHandoff,
@@ -1040,7 +1041,7 @@ function TimelinePanel({ env }: { env: KeyEnvelopeRow }) {
               </span>
               <div className="min-w-0 flex-1">
                 <div className="text-[14px] font-bold text-heading">
-                  {item.eventType}
+                  {timelineEventLabel(item.eventType)}
                 </div>
                 <div className="mt-[5px] text-[13px] text-text-2">
                   {item.summary || "—"}
@@ -1810,6 +1811,68 @@ function CourtAccessModal({
           </div>
 
           <div>
+            <Label>مسار الدخول</Label>
+            <div className="mt-1 grid grid-cols-3 gap-1.5">
+              {(
+                [
+                  { id: "none" as const, label: "لا يوجد" },
+                  { id: "enabling" as const, label: "تمكين" },
+                  { id: "eviction" as const, label: "محظر إخلاء" },
+                ] as const
+              ).map((opt) => {
+                const active =
+                  opt.id === "none"
+                    ? !hasEnablingLetter && !hasEvictionNotice
+                    : opt.id === "enabling"
+                      ? hasEnablingLetter && !hasEvictionNotice
+                      : hasEvictionNotice;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    className={cn(
+                      "min-h-[40px] rounded-[10px] border text-[12.5px] font-extrabold transition-colors",
+                      active
+                        ? "border-gold bg-gold-soft text-gold-d"
+                        : "border-border bg-surface text-text-2 hover:bg-row-hover",
+                    )}
+                    onClick={() => {
+                      if (opt.id === "none") {
+                        setHasEnablingLetter(false);
+                        setEnablingLetterId(null);
+                        setEnablingLetterName("");
+                        setHasEvictionNotice(false);
+                        setEvictionNoticeId(null);
+                        setEvictionNoticeName("");
+                      } else if (opt.id === "enabling") {
+                        setHasEvictionNotice(false);
+                        setEvictionNoticeId(null);
+                        setEvictionNoticeName("");
+                        if (!hasEnablingLetter && !enablingLetterId) {
+                          enablingFileRef.current?.click();
+                        } else {
+                          setHasEnablingLetter(true);
+                        }
+                      } else {
+                        if (!hasEvictionNotice && !evictionNoticeId) {
+                          evictionFileRef.current?.click();
+                        } else {
+                          setHasEvictionNotice(true);
+                        }
+                      }
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-1.5 text-[11.5px] text-text-3">
+              «لا يوجد» يلغي التمكين ومحظر الإخلاء ويرفع تعليق الدراسة إن وُجد.
+            </p>
+          </div>
+
+          <div>
             <Label>خطاب التمكين (بدون مفتاح)</Label>
             <input
               ref={enablingFileRef}
@@ -1860,6 +1923,19 @@ function CourtAccessModal({
                 </span>
               </span>
             </button>
+            {hasEnablingLetter || enablingLetterId ? (
+              <button
+                type="button"
+                className="mt-1.5 text-[12px] font-semibold text-[#a32d2d] hover:underline"
+                onClick={() => {
+                  setHasEnablingLetter(false);
+                  setEnablingLetterId(null);
+                  setEnablingLetterName("");
+                }}
+              >
+                إزالة خطاب التمكين
+              </button>
+            ) : null}
           </div>
 
           <div>
@@ -1913,6 +1989,19 @@ function CourtAccessModal({
                 </span>
               </span>
             </button>
+            {hasEvictionNotice || evictionNoticeId ? (
+              <button
+                type="button"
+                className="mt-1.5 text-[12px] font-semibold text-[#a32d2d] hover:underline"
+                onClick={() => {
+                  setHasEvictionNotice(false);
+                  setEvictionNoticeId(null);
+                  setEvictionNoticeName("");
+                }}
+              >
+                إزالة محظر الإخلاء
+              </button>
+            ) : null}
           </div>
 
           <div>
@@ -1955,9 +2044,17 @@ function CourtAccessModal({
               const result = await savePropertyCourtAccess({
                 propertyId: property.propertyId,
                 hasEnablingLetter,
-                enablingLetterAttachmentId: enablingLetterId,
+                enablingLetterAttachmentId:
+                  enablingLetterId ??
+                  (hasEnablingLetter
+                    ? current?.enablingLetterAttachmentId ?? null
+                    : null),
                 hasEvictionNotice,
-                evictionNoticeAttachmentId: evictionNoticeId,
+                evictionNoticeAttachmentId:
+                  evictionNoticeId ??
+                  (hasEvictionNotice
+                    ? current?.evictionNoticeAttachmentId ?? null
+                    : null),
                 contactPhones: contactPhones.trim() || null,
                 notes: notes.trim() || null,
               });
