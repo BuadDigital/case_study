@@ -29,14 +29,14 @@ export function ActiveTransactionPageLayout({
     "lg:grid-cols-[minmax(0,1.05fr)_minmax(300px,1fr)]";
 
   return (
-    <PageShell variant="canvas" className="min-h-0 flex-1">
+    <PageShell variant="canvas">
       {aboveSituation}
       <ActiveTransactionsSituationBar pageId={pageId} />
 
       {split ? (
         <div
           className={cn(
-            "grid min-h-0 flex-1 gap-3",
+            "grid gap-3",
             panelOpen
               ? cn("grid-cols-1 lg:items-stretch", openGrid)
               : "grid-cols-1 items-start content-start",

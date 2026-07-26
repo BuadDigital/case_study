@@ -10,7 +10,9 @@ import {
 import { cn } from "@platform/design-system";
 
 type PreviewState =
-  | { status: "idle" | "loading" | "error" }
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "error" }
   | { status: "ready"; preview: TaskAttachmentPreview };
 
 function isImageMime(mime: string): boolean {

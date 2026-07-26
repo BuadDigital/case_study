@@ -56,7 +56,7 @@ export function DevSystemResetPanel() {
           </span>
         </div>
         <div className="space-y-3 px-5 py-5 sm:px-6">
-          <Note tone="warning" className="text-xs leading-relaxed">
+          <Note tone="warn" className="text-xs leading-relaxed">
             يحذف <strong>جميع أوامر العمل (PO)</strong> والمهام والمرفقات وبيانات النموذج
             التشغيلية. يبقي حسابات الإدارة (CDO ومديري الأنظمة) ويعيد المستخدمين
             التشغيليين تلقائياً.
