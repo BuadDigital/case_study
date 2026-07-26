@@ -40,6 +40,15 @@ export type EvaluatorSubmissionSnapshot = {
   appraiserAddress?: string;
   appraiserPhone?: string;
   reportIssueDate?: string;
+  independenceDeclared?: boolean;
+  reportWorkers?: {
+    id?: string;
+    role?: string;
+    name?: string;
+    licenseNumber?: string;
+    licenseDate?: string;
+    licenseFileName?: string | null;
+  }[];
 };
 
 export type EngineeringSurveyChecklistAnswer = "yes" | "no" | null;

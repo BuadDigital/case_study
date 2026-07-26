@@ -377,7 +377,7 @@ export function RegisterKeyEnvelopeModal({
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-[rgba(16,43,78,0.42)] px-4 py-[6vh] backdrop-blur-[2px]"
+      className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-[rgba(16,43,78,0.42)] px-4 py-[6vh] backdrop-blur-[2px] max-lg:items-stretch max-lg:px-0 max-lg:py-0"
       role="presentation"
       onClick={onClose}
     >
@@ -386,11 +386,11 @@ export function RegisterKeyEnvelopeModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="kf-register-title"
-        className="w-full max-w-[640px] overflow-hidden rounded-[16px] border border-border bg-surface shadow-[0_24px_60px_-18px_rgba(16,43,78,0.5)] [animation:keyModalIn_0.22s_ease_both]"
+        className="flex w-full max-w-[640px] flex-col overflow-hidden rounded-[16px] border border-border bg-surface shadow-[0_24px_60px_-18px_rgba(16,43,78,0.5)] [animation:keyModalIn_0.22s_ease_both] max-lg:min-h-dvh max-lg:max-w-none max-lg:rounded-none max-lg:border-0"
         onClick={(e) => e.stopPropagation()}
       >
         {/* .modal-head */}
-        <div className="flex items-center justify-between border-b border-border px-[22px] py-4">
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-4 sm:px-[22px]">
           <h2
             id="kf-register-title"
             className="m-0 text-[16px] font-extrabold text-heading"
@@ -399,7 +399,7 @@ export function RegisterKeyEnvelopeModal({
           </h2>
           <button
             type="button"
-            className="grid size-8 place-items-center rounded-[9px] border-none bg-surface-2 text-[15px] leading-none text-text-2 transition-[background,color] duration-150 hover:bg-row-hover hover:text-heading"
+            className="grid size-10 place-items-center rounded-[9px] border-none bg-surface-2 text-[15px] leading-none text-text-2 transition-[background,color] duration-150 hover:bg-row-hover hover:text-heading"
             onClick={onClose}
             aria-label="إغلاق"
           >
@@ -408,7 +408,7 @@ export function RegisterKeyEnvelopeModal({
         </div>
 
         {/* .modal-body */}
-        <div className="px-[22px] py-5">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-[22px]">
           {formError ? (
             <div className="mb-4 rounded-[10px] border border-[color-mix(in_srgb,#d9694f_30%,transparent)] bg-[color-mix(in_srgb,#d9694f_12%,transparent)] px-[13px] py-2.5 text-[12.5px] font-semibold text-[#a32d2d]">
               {formError}
@@ -416,7 +416,7 @@ export function RegisterKeyEnvelopeModal({
           ) : null}
 
           {/* .form-grid */}
-          <div className="grid grid-cols-2 gap-3.5">
+          <div className="grid grid-cols-1 gap-3.5 min-[561px]:grid-cols-2">
             <Fld full>
               <FldLabel htmlFor="kf-request">رقم الطلب *</FldLabel>
               <div className="relative">
@@ -707,11 +707,11 @@ export function RegisterKeyEnvelopeModal({
         </div>
 
         {/* .modal-foot */}
-        <div className="flex justify-end gap-2.5 border-t border-border bg-surface-2 px-[22px] py-3.5">
+        <div className="flex shrink-0 flex-wrap justify-stretch gap-2.5 border-t border-border bg-surface-2 px-4 py-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:justify-end sm:px-[22px]">
           <button
             type="button"
             disabled={locked}
-            className="cursor-pointer rounded-[9px] border border-border-md bg-surface px-[18px] py-2.5 text-[13px] font-semibold text-text-2 transition-colors duration-150 hover:bg-row-hover disabled:cursor-not-allowed disabled:opacity-65"
+            className="min-h-11 flex-1 cursor-pointer rounded-[9px] border border-border-md bg-surface px-[18px] py-2.5 text-[13px] font-semibold text-text-2 transition-colors duration-150 hover:bg-row-hover disabled:cursor-not-allowed disabled:opacity-65 sm:flex-none"
             onClick={onClose}
           >
             إلغاء
@@ -720,7 +720,7 @@ export function RegisterKeyEnvelopeModal({
             variant="primary"
             loading={saving}
             disabled={locked}
-            className="gap-[7px] rounded-lg border-none bg-ink px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_6px_16px_-8px_rgba(18,40,76,0.6)] hover:border-none hover:bg-navy-3"
+            className="min-h-11 flex-1 gap-[7px] rounded-lg border-none bg-ink px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_6px_16px_-8px_rgba(18,40,76,0.6)] hover:border-none hover:bg-navy-3 sm:flex-none"
             showActionToast={false}
             onClick={() => void handleSave()}
           >

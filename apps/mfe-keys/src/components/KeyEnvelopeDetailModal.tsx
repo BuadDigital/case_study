@@ -375,16 +375,16 @@ export function KeyEnvelopeDetailPage({
       ) : (
         <>
           {/* pp-head — summary card */}
-          <div className="mb-[18px] rounded-[14px] border border-border bg-surface px-[22px] py-[18px] shadow-[var(--shadow)]">
+          <div className="mb-[18px] rounded-[14px] border border-border bg-surface px-4 py-4 shadow-[var(--shadow)] sm:px-[22px] sm:py-[18px]">
             <div className="flex flex-wrap items-start justify-between gap-[18px]">
               <div className="flex min-w-0 items-center gap-[15px]">
-                <span className="grid size-[50px] shrink-0 place-items-center rounded-[13px] bg-[var(--gold-soft)] text-[var(--gold-d)]">
+                <span className="grid size-11 shrink-0 place-items-center rounded-[13px] bg-[var(--gold-soft)] text-[var(--gold-d)] sm:size-[50px]">
                   <EnvIcon />
                 </span>
                 <div className="min-w-0">
-                  <h1 className="m-0 flex flex-wrap items-center gap-2.5 text-[18px] font-extrabold text-heading">
+                  <h1 className="m-0 flex flex-wrap items-center gap-2.5 text-[16px] font-extrabold text-heading sm:text-[18px]">
                     <span
-                      className="text-[19px] font-bold text-[var(--gold-d)]"
+                      className="text-[17px] font-bold text-[var(--gold-d)] sm:text-[19px]"
                       dir="ltr"
                     >
                       {envelopeDisplayRef(env.id, env.createdAtUtc)}
@@ -407,7 +407,7 @@ export function KeyEnvelopeDetailPage({
               {canEdit ? (
                 <button
                   type="button"
-                  className="inline-flex h-[38px] items-center gap-[7px] rounded-lg border border-border-md bg-surface px-[13px] text-[13px] font-medium text-text-2 transition-colors hover:border-[var(--gold)] hover:text-[var(--gold-d)]"
+                  className="inline-flex h-11 w-full items-center justify-center gap-[7px] rounded-lg border border-border-md bg-surface px-[13px] text-[13px] font-medium text-text-2 transition-colors hover:border-[var(--gold)] hover:text-[var(--gold-d)] sm:h-[38px] sm:w-auto"
                   onClick={() => setHandoffOpen(true)}
                 >
                   <HandoffIcon />
@@ -434,7 +434,7 @@ export function KeyEnvelopeDetailPage({
             ) : null}
 
             {/* pp-summary — divider cells */}
-            <div className="mt-4 flex flex-wrap border-t border-border pt-3.5">
+            <div className="mt-4 flex flex-wrap border-t border-border pt-3.5 max-lg:grid max-lg:grid-cols-2 max-lg:gap-y-1">
               <SummaryCell label="سيناريو الاستلام">
                 <StatusPill
                   label={scenarioLabel(env.receiveScenario)}
@@ -591,7 +591,7 @@ function SummaryCell({
   return (
     <div
       className={cn(
-        "mb-2.5 min-w-[140px] flex-1 border-s border-border px-[18px] first:border-s-0 first:ps-0",
+        "mb-2.5 min-w-0 flex-1 border-s border-border px-3 first:border-s-0 first:ps-0 max-lg:border-s-0 max-lg:px-2 sm:min-w-[140px] sm:px-[18px]",
         last && "pe-0",
       )}
     >
@@ -625,73 +625,137 @@ function AssignmentsPanel({
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-border bg-surface shadow-[var(--shadow)]">
-      <div className="min-w-[780px]">
-        <div
-          className="grid border-b-2 border-[var(--gold)] bg-surface-2 text-[12px] font-bold text-heading"
-          style={{ gridTemplateColumns: ASSIGN_COLS }}
-        >
-          <div className="flex items-center justify-start px-4 py-3.5 text-start">
-            رقم الصك
+    <>
+      <div className="hidden overflow-x-auto rounded-xl border border-border bg-surface shadow-[var(--shadow)] lg:block">
+        <div className="min-w-[780px]">
+          <div
+            className="grid border-b-2 border-[var(--gold)] bg-surface-2 text-[12px] font-bold text-heading"
+            style={{ gridTemplateColumns: ASSIGN_COLS }}
+          >
+            <div className="flex items-center justify-start px-4 py-3.5 text-start">
+              رقم الصك
+            </div>
+            <div className="flex items-center justify-start px-4 py-3.5 text-start">
+              العقار
+            </div>
+            <div className="flex items-center justify-start px-4 py-3.5 text-start">
+              أمر العمل
+            </div>
+            <div className="flex items-center justify-start px-4 py-3.5 text-start">
+              حالة التجربة
+            </div>
+            <div className="flex items-center justify-start px-4 py-3.5 text-start">
+              ملاحظة
+            </div>
+            <div className="flex items-center justify-center px-4 py-3.5">
+              تأكيد ميداني
+            </div>
           </div>
-          <div className="flex items-center justify-start px-4 py-3.5 text-start">
-            العقار
-          </div>
-          <div className="flex items-center justify-start px-4 py-3.5 text-start">
-            أمر العمل
-          </div>
-          <div className="flex items-center justify-start px-4 py-3.5 text-start">
-            حالة التجربة
-          </div>
-          <div className="flex items-center justify-start px-4 py-3.5 text-start">
-            ملاحظة
-          </div>
-          <div className="flex items-center justify-center px-4 py-3.5">
-            تأكيد ميداني
-          </div>
+          {rows.map((a) => {
+            const color = assignmentStatusColor(a.status);
+            return (
+              <div
+                key={a.id}
+                className="grid min-h-[52px] items-center border-b border-border transition-colors hover:bg-[var(--row-hover)] last:border-b-0"
+                style={{ gridTemplateColumns: ASSIGN_COLS }}
+              >
+                <div className="px-4 py-3.5">
+                  <span className="text-[13.5px] font-bold text-[var(--gold-d)]">
+                    {a.deedNumber}
+                  </span>
+                </div>
+                <div className="truncate px-4 py-3.5 text-[13px] text-text-2">
+                  {propertyLabel(env, a)}
+                </div>
+                <div className="flex flex-col items-start justify-center gap-[3px] px-4 py-3.5">
+                  <span className="text-[12px] font-semibold text-text-2">
+                    {poForAssignment(env, a)}
+                  </span>
+                </div>
+                <div className="px-4 py-3.5">
+                  <StatusPill
+                    label={assignmentStatusLabel(a.status)}
+                    style={{ base: color, fg: color }}
+                  />
+                </div>
+                <div className="truncate px-4 py-3.5 text-[13px] text-text-2">
+                  {a.notes || "—"}
+                </div>
+                <div className="flex items-center justify-center px-4 py-3.5">
+                  {a.status === "pending" && canEdit ? (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      className="inline-flex h-[30px] items-center whitespace-nowrap rounded-lg border border-border-md bg-surface px-3.5 text-[12px] font-medium text-[var(--gold-d)] transition-colors hover:border-[var(--gold)] disabled:opacity-60"
+                      onClick={() => onMatch(a)}
+                    >
+                      تسجيل نتيجة المطابقة…
+                    </button>
+                  ) : (
+                    <span className="text-[11.5px] text-text-3">
+                      {displayPersonName(a.confirmedByName) !== "—"
+                        ? `أكّده ${displayPersonName(a.confirmedByName)}`
+                        : a.status !== "pending"
+                          ? "مؤكّد"
+                          : "—"}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
+      </div>
+
+      <ul className="m-0 flex list-none flex-col gap-2.5 p-0 lg:hidden">
         {rows.map((a) => {
           const color = assignmentStatusColor(a.status);
           return (
-            <div
-              key={a.id}
-              className="grid min-h-[52px] items-center border-b border-border transition-colors hover:bg-[var(--row-hover)] last:border-b-0"
-              style={{ gridTemplateColumns: ASSIGN_COLS }}
+            <li
+              key={`m-${a.id}`}
+              className="rounded-xl border border-border bg-surface px-3.5 py-3 shadow-[var(--shadow)]"
             >
-              <div className="px-4 py-3.5">
-                <span className="text-[13.5px] font-bold text-[var(--gold-d)]">
-                  {a.deedNumber}
+              <div className="flex items-start justify-between gap-2">
+                <span
+                  className="text-[14px] font-bold text-[var(--gold-d)]"
+                  dir="ltr"
+                >
+                  صك {a.deedNumber}
                 </span>
-              </div>
-              <div className="truncate px-4 py-3.5 text-[13px] text-text-2">
-                {propertyLabel(env, a)}
-              </div>
-              <div className="flex flex-col items-start justify-center gap-[3px] px-4 py-3.5">
-                <span className="text-[12px] font-semibold text-text-2">
-                  {poForAssignment(env, a)}
-                </span>
-              </div>
-              <div className="px-4 py-3.5">
                 <StatusPill
                   label={assignmentStatusLabel(a.status)}
                   style={{ base: color, fg: color }}
                 />
               </div>
-              <div className="truncate px-4 py-3.5 text-[13px] text-text-2">
-                {a.notes || "—"}
+              <div className="mt-2 space-y-1.5 text-[12.5px]">
+                <div className="flex justify-between gap-3">
+                  <span className="text-text-3">العقار</span>
+                  <span className="text-end text-text-2">
+                    {propertyLabel(env, a)}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-text-3">أمر العمل</span>
+                  <span className="font-semibold text-text-2">
+                    {poForAssignment(env, a)}
+                  </span>
+                </div>
+                {a.notes ? (
+                  <div className="pt-1 text-text-2">{a.notes}</div>
+                ) : null}
               </div>
-              <div className="flex items-center justify-center px-4 py-3.5">
+              <div className="mt-3">
                 {a.status === "pending" && canEdit ? (
                   <button
                     type="button"
                     disabled={busy}
-                    className="inline-flex h-[30px] items-center whitespace-nowrap rounded-lg border border-border-md bg-surface px-3.5 text-[12px] font-medium text-[var(--gold-d)] transition-colors hover:border-[var(--gold)] disabled:opacity-60"
+                    className="inline-flex h-11 w-full items-center justify-center rounded-lg border border-border-md bg-surface px-3.5 text-[13px] font-semibold text-[var(--gold-d)] transition-colors hover:border-[var(--gold)] disabled:opacity-60"
                     onClick={() => onMatch(a)}
                   >
                     تسجيل نتيجة المطابقة…
                   </button>
                 ) : (
-                  <span className="text-[11.5px] text-text-3">
+                  <span className="text-[12px] text-text-3">
                     {displayPersonName(a.confirmedByName) !== "—"
                       ? `أكّده ${displayPersonName(a.confirmedByName)}`
                       : a.status !== "pending"
@@ -700,11 +764,11 @@ function AssignmentsPanel({
                   </span>
                 )}
               </div>
-            </div>
+            </li>
           );
         })}
-      </div>
-    </div>
+      </ul>
+    </>
   );
 }
 
@@ -821,7 +885,7 @@ function CustodyPanel({
                   <button
                     type="button"
                     disabled={busy}
-                    className="inline-flex h-8 items-center gap-2 rounded-[9px] border-none bg-[var(--gold-d)] px-3.5 text-[12px] font-bold text-white shadow-[0_6px_16px_-6px_color-mix(in_srgb,var(--gold-d)_60%,transparent)] transition-[background,transform] hover:enabled:-translate-y-px hover:enabled:bg-[var(--gold)] disabled:opacity-60"
+                    className="inline-flex h-11 min-w-[10rem] items-center justify-center gap-2 rounded-[9px] border-none bg-[var(--gold-d)] px-3.5 text-[13px] font-bold text-white shadow-[0_6px_16px_-6px_color-mix(in_srgb,var(--gold-d)_60%,transparent)] transition-[background,transform] hover:enabled:-translate-y-px hover:enabled:bg-[var(--gold)] disabled:opacity-60"
                     onClick={() => onConfirm(item.handoff!.id)}
                   >
                     تأكيد استلام المعاين
@@ -914,7 +978,7 @@ function MatchResultModal({
 
   return (
     <div
-      className="fixed inset-0 z-[1100] flex items-start justify-center overflow-y-auto bg-[rgba(16,43,78,0.42)] px-4 py-[6vh] backdrop-blur-[2px]"
+      className="fixed inset-0 z-[1100] flex items-start justify-center overflow-y-auto bg-[rgba(16,43,78,0.42)] px-4 py-[6vh] backdrop-blur-[2px] max-lg:items-stretch max-lg:px-0 max-lg:py-0"
       role="presentation"
       onClick={onClose}
     >
@@ -923,7 +987,7 @@ function MatchResultModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="kr-match-title"
-        className="w-full max-w-[520px] overflow-hidden rounded-[16px] border border-border bg-surface shadow-[0_24px_60px_-18px_rgba(16,43,78,0.5)] [animation:keyModalIn_0.22s_ease_both]"
+        className="w-full max-w-[520px] overflow-hidden rounded-[16px] border border-border bg-surface shadow-[0_24px_60px_-18px_rgba(16,43,78,0.5)] [animation:keyModalIn_0.22s_ease_both] max-lg:min-h-dvh max-lg:max-w-none max-lg:rounded-none max-lg:border-0"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative flex items-center justify-center border-b border-border px-[22px] py-4">
@@ -1009,7 +1073,7 @@ function MatchResultModal({
           ) : null}
         </div>
 
-        <div className="flex flex-wrap justify-start gap-2 border-t border-border px-[22px] py-3.5">
+        <div className="flex flex-wrap justify-start gap-2 border-t border-border px-[22px] py-3.5 max-lg:sticky max-lg:bottom-0 max-lg:bg-surface max-lg:pb-[max(0.875rem,env(safe-area-inset-bottom))] max-lg:[&>button]:min-h-11 max-lg:[&>button]:flex-1">
           <Button
             variant="outline"
             disabled={busy}
@@ -1115,7 +1179,7 @@ function HandoffModal({
       <ModalOverlay onClick={onClose}>
         <ModalCard
           onClick={(e) => e.stopPropagation()}
-          className="max-w-[520px] p-0"
+          className="max-w-[520px] p-0 max-lg:max-h-[min(92dvh,100%)]"
         >
           <ModalHeader className="relative border-b border-border px-5 py-4">
             <ModalTitle className="text-center text-[16px] font-extrabold text-heading">
@@ -1202,7 +1266,7 @@ function HandoffModal({
     <ModalOverlay onClick={onClose}>
       <ModalCard
         onClick={(e) => e.stopPropagation()}
-        className="max-w-[560px] p-0"
+        className="max-w-[560px] p-0 max-lg:max-h-[min(92dvh,100%)]"
       >
         <ModalHeader className="relative border-b border-border px-5 py-4">
           <ModalTitle className="text-center text-[16px] font-extrabold text-heading">
@@ -1215,7 +1279,7 @@ function HandoffModal({
             ✕
           </ModalClose>
         </ModalHeader>
-        <ModalBody className="max-h-[min(70vh,560px)] space-y-3.5 overflow-y-auto px-5 py-5">
+        <ModalBody className="max-h-[min(70vh,560px)] space-y-3.5 overflow-y-auto px-5 py-5 max-lg:max-h-none">
           {err ? (
             <div className="rounded-[10px] border border-[color-mix(in_srgb,#d9694f_30%,transparent)] bg-[color-mix(in_srgb,#d9694f_12%,transparent)] px-3 py-2.5 text-[12.5px] font-semibold text-[#a32d2d]">
               {err}

@@ -8,7 +8,8 @@ export type EngineeringSurveyFieldErrors = Partial<
     | "survey_report"
     | "site_letter"
     | "site_confirmed"
-    | "checklist",
+    | "checklist"
+    | "on_site_area",
     string
   >
 >;
@@ -25,6 +26,13 @@ export function validateEngineeringSurveySubmission(
   }
   if (!lng || Number.isNaN(Number(lng))) {
     errors.longitude = "أدخل خط الطول بصيغة رقمية صحيحة";
+  }
+
+  const onSite = submission.onSiteAreaSqm.replace(/,/g, "").trim();
+  if (!onSite) {
+    errors.on_site_area = "مطلوب إدخال المساحة على الطبيعة.";
+  } else if (Number.isNaN(Number(onSite)) || Number(onSite) < 0) {
+    errors.on_site_area = "المساحة على الطبيعة يجب أن تكون رقماً صحيحاً (≥ 0).";
   }
 
   if (!submission.surveyReportFileName.trim()) {
@@ -52,6 +60,7 @@ export function firstEngineeringSurveyError(
   return (
     errors.latitude ??
     errors.longitude ??
+    errors.on_site_area ??
     errors.survey_report ??
     errors.site_letter ??
     errors.site_confirmed ??

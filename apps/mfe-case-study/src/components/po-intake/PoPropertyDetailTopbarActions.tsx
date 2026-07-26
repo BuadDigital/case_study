@@ -17,6 +17,7 @@ import { usePoRecordQuery, useWorkflowTasksQuery } from "../../query/case-study-
 const linkButtonClass = (variant: "default" | "primary" = "default") =>
   cn(
     "inline-flex items-center justify-center gap-[5px] rounded-[var(--radius-DEFAULT)] border-[0.5px] border-solid px-2.5 py-1.5 text-xs font-normal no-underline transition-[background,border-color] duration-150 sm:whitespace-nowrap",
+    "max-lg:min-h-11 max-lg:flex-1 max-lg:px-3 max-lg:text-[13px] max-lg:font-semibold",
     variant === "primary"
       ? "border-primary bg-primary text-white hover:border-primary-mid hover:bg-primary-mid"
       : "border-border-md bg-surface text-text hover:bg-surface-2",
@@ -56,13 +57,14 @@ export function PoPropertyDetailTopbarActions({
 
   return (
     <div
-      className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-1.5 sm:gap-2"
+      className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-1.5 max-lg:w-full max-lg:[&>button]:min-h-11 max-lg:[&>button]:flex-1 sm:gap-2"
       aria-label="إجراءات العقار"
     >
       {showEdit ? (
         <Button
           type="button"
           size="sm"
+          className="max-lg:min-h-11 max-lg:flex-1"
           onClick={() => router.push(poPropertyEditPath(poNumber, property.id))}
         >
           <span className="sm:hidden">تعديل</span>

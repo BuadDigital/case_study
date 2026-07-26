@@ -5,12 +5,13 @@
  */
 
 export const opsBtnGhost =
-  "inline-flex items-center gap-1.5 rounded-[9px] border border-border-md bg-surface px-[18px] py-2.5 font-[inherit] text-[13px] font-semibold text-text-2 transition-colors enabled:hover:bg-row-hover disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex min-h-11 items-center gap-1.5 rounded-[9px] border border-border-md bg-surface px-[18px] py-2.5 font-[inherit] text-[13px] font-semibold text-text-2 transition-colors enabled:hover:bg-row-hover disabled:cursor-not-allowed disabled:opacity-50";
 
 export const opsBtnPrimary =
-  "inline-flex items-center gap-2 rounded-[9px] border-none bg-ink px-[18px] py-2.5 font-[inherit] text-[13px] font-bold text-white transition-colors enabled:hover:bg-navy-3 disabled:cursor-not-allowed disabled:opacity-55";
+  "inline-flex min-h-11 items-center gap-2 rounded-[9px] border-none bg-ink px-[18px] py-2.5 font-[inherit] text-[13px] font-bold text-white transition-colors enabled:hover:bg-navy-3 disabled:cursor-not-allowed disabled:opacity-55";
 
-export const opsTfActions = "mt-5 flex flex-wrap gap-2.5";
+export const opsTfActions =
+  "mt-5 flex flex-wrap gap-2.5 max-lg:sticky max-lg:bottom-0 max-lg:z-20 max-lg:-mx-4 max-lg:mt-6 max-lg:border-t max-lg:border-border max-lg:bg-surface/95 max-lg:px-4 max-lg:py-3 max-lg:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-lg:backdrop-blur-sm max-lg:[&>button]:min-w-[calc(50%-0.35rem)] max-lg:[&>button]:flex-1 max-lg:[&>button]:justify-center sm:mx-0";
 
 export const opsTfLbl =
   "mb-[7px] block text-xs font-semibold text-text-2";
@@ -63,7 +64,7 @@ export const opsModalClose =
   "grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded-[9px] border-none bg-surface-2 p-0 font-[inherit] text-[15px] leading-none text-text-2 transition-[background,color] hover:bg-row-hover hover:text-heading";
 
 export const opsModalFooter =
-  "flex shrink-0 flex-wrap justify-end gap-2.5 border-t border-border bg-surface-2 px-[22px] py-3.5";
+  "flex shrink-0 flex-wrap justify-end gap-2.5 border-t border-border bg-surface-2 px-4 py-3.5 max-lg:sticky max-lg:bottom-0 max-lg:pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:px-[22px]";
 
 /* —— list / detail —— */
 
@@ -76,10 +77,10 @@ export const opsBackLink =
   "mb-2 inline-flex cursor-pointer items-center gap-[7px] border-none bg-transparent py-1.5 font-[inherit] text-[12.5px] font-semibold text-text-2 transition-colors hover:text-gold-d [&_svg]:-scale-x-100";
 
 export const opsPpHead =
-  "mb-[18px] rounded-[14px] border border-border bg-surface px-[22px] py-[18px] shadow-card";
+  "mb-[18px] rounded-[14px] border border-border bg-surface px-4 py-4 shadow-card sm:px-[22px] sm:py-[18px]";
 
 export const opsPpTitle =
-  "m-0 flex flex-wrap items-center gap-2.5 text-[18px] font-extrabold text-heading";
+  "m-0 flex flex-wrap items-center gap-2.5 text-[16px] font-extrabold text-heading sm:text-[18px]";
 
 export const opsPpMeta =
   "mt-2 flex flex-wrap items-center gap-2.5 text-[12.5px] text-text-2";
@@ -88,10 +89,10 @@ export const opsPpBadge =
   "inline-flex items-center rounded-md bg-gold-soft px-[11px] py-[3px] text-xs font-bold text-gold-d";
 
 export const opsPpSummary =
-  "mt-4 flex flex-wrap gap-0 border-t border-border pt-3.5";
+  "mt-4 flex flex-wrap gap-0 border-t border-border pt-3.5 max-lg:grid max-lg:grid-cols-2 max-lg:gap-x-0 max-lg:gap-y-1";
 
 export const opsPpCell =
-  "mb-2.5 min-w-[140px] border-s border-border px-[18px] first:border-s-0 first:ps-0";
+  "mb-2.5 min-w-0 border-s border-border px-3 first:border-s-0 first:ps-0 max-lg:border-s-0 max-lg:px-2 sm:min-w-[140px] sm:px-[18px]";
 
 export const opsPpCellK = "mb-[3px] text-[11px] text-text-3";
 
@@ -155,7 +156,7 @@ export const opsTaskDesc =
   "mt-4 rounded-xl border border-border bg-surface-2 px-4 py-3.5 text-[13px] leading-[1.7] text-text";
 
 export const opsRemindCard =
-  "mt-4 flex flex-wrap items-center justify-between gap-3.5 rounded-xl border border-border bg-surface px-[18px] py-3.5 shadow-card";
+  "mt-4 flex flex-wrap items-center justify-between gap-3.5 rounded-xl border border-border bg-surface px-3.5 py-3.5 shadow-card sm:px-[18px]";
 
 export const opsRemindBtn =
   "inline-flex items-center gap-2 rounded-[9px] border-none bg-gold-d px-[18px] py-2.5 font-[inherit] text-[13px] font-bold text-white shadow-[0_6px_16px_-6px_color-mix(in_srgb,var(--gold-d)_60%,transparent)] transition-[background,transform] duration-150 enabled:hover:-translate-y-px enabled:hover:bg-gold disabled:cursor-not-allowed disabled:opacity-55";
@@ -164,7 +165,7 @@ export const opsLetterCard =
   "overflow-hidden rounded-[14px] border border-border bg-surface";
 
 export const opsLetterHead =
-  "flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface-2 px-[18px] py-[15px]";
+  "flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface-2 px-3.5 py-3.5 sm:px-[18px] sm:py-[15px]";
 
 export const opsCmtThread = "flex flex-col";
 

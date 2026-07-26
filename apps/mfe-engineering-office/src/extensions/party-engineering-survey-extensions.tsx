@@ -17,6 +17,10 @@ import {
 } from "../lib/engineering-survey-submission-storage";
 import type { EngineeringSurveyWindowHostRefObject } from "../lib/engineering-survey-window-host";
 
+/** Footer from Case Study.html `renderEngOrders` — اشتراطات البدء بالرفع. */
+const ENG_SURVEY_TABLE_HINT =
+  "اشتراطات البدء بالرفع: رقم ضابط اتصال إلزامي · الأرض المنظمة تُرفع مباشرة · الأرض الشعبية تتطلب تحديد موقع العقار (وإلا يُشعَر الأخصائي وتوقف مؤقتاً) · المباني تتطلب إخطار المعاين أو إتمام المعاينة.";
+
 export const partyEngineeringSurveyExtensions: PartyEngineeringSurveyExtensions =
   {
     patchQueueConfig(base, _def) {
@@ -25,18 +29,20 @@ export const partyEngineeringSurveyExtensions: PartyEngineeringSurveyExtensions 
       return {
         ...base,
         hidePageTitle: true,
+        tableLayout: "engineering-survey",
         emptyHint:
           "تظهر هنا بعد تأكيد التوزيع عند تفعيل المكتب الهندسي — اضغط الصف لفتح مهمة الرفع.",
-        tableHint:
-          "اضغط الصف لفتح مهمة الرفع المساحي. الأتعاب تُستحق عند قبول الأخصائي للمخرجات — راجع «الاتعاب والفوترة».",
+        tableHint: ENG_SURVEY_TABLE_HINT,
         fullPageTaskPath: activeSurveyWorkspacePath,
         statusColumnLabel: "الحالة",
         filterListed: (
           mine: WorkflowTask[],
           poByNumber: Map<string, PoIntakeRecord>,
+          options?: { showCompleted?: boolean },
         ) => {
           const listed = filterEngineeringSurveyListedTasks(
             baseFilter(mine, poByNumber),
+            { showCompleted: options?.showCompleted },
           );
           void prefetchEngineeringSurveySubmissions(listed.map((t) => t.id));
           return listed;

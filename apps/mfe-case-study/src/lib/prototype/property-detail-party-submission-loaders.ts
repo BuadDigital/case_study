@@ -29,6 +29,23 @@ function parseEvaluatorPayload(
         ? raw.submittedAtUtc
         : dto.submittedAtUtc ?? null,
     checklist: (raw.checklist ?? {}) as EvaluatorChecklist,
+    appraisalDate: String(raw.appraisalDate ?? ""),
+    valuationMethod: String(raw.valuationMethod ?? ""),
+    valueBasis: String(raw.valueBasis ?? ""),
+    demandLevel: String(raw.demandLevel ?? ""),
+    landValue: String(raw.landValue ?? ""),
+    buildingValue: String(raw.buildingValue ?? ""),
+    forcedSaleDiscountPct: String(raw.forcedSaleDiscountPct ?? ""),
+    searchScopeNotes: String(raw.searchScopeNotes ?? ""),
+    planImageFileName:
+      typeof raw.planImageFileName === "string" ? raw.planImageFileName : null,
+    appraiserAddress: String(raw.appraiserAddress ?? ""),
+    appraiserPhone: String(raw.appraiserPhone ?? ""),
+    reportIssueDate: String(raw.reportIssueDate ?? ""),
+    independenceDeclared: Boolean(raw.independenceDeclared),
+    reportWorkers: Array.isArray(raw.reportWorkers)
+      ? (raw.reportWorkers as EvaluatorSubmissionSnapshot["reportWorkers"])
+      : [],
   };
 }
 

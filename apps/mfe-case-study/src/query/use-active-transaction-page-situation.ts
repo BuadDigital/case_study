@@ -8,9 +8,11 @@ import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import type { PageId, RoleId } from "@platform/types";
 import {
   computeFeesPageSituation,
+  computeEngineeringFeesSituation,
   computePageSituationValues,
   computeUnbilledFeeCount,
   pageSituationCards,
+  ENGINEERING_FEES_SITUATION_CARDS,
   type PageSituationCardDef,
   type PageSituationValues,
 } from "../lib/prototype/active-transaction-page-situation";
@@ -52,7 +54,11 @@ export function useActiveTransactionPageSituation(
   const { role, viewerEmail, distributionAssigneeId } = usePrototype();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
-  const cards = pageId ? pageSituationCards(pageId) : null;
+  const cardsBase = pageId ? pageSituationCards(pageId) : null;
+  const cards =
+    pageId === "party-fees" && role === "engineering-office"
+      ? ENGINEERING_FEES_SITUATION_CARDS
+      : cardsBase;
 
   const isFeesPage = pageId === "party-fees";
   const isSurveyPage = pageId === "active-survey";
@@ -76,6 +82,12 @@ export function useActiveTransactionPageSituation(
       ? distributionAssigneeId ?? undefined
       : undefined;
 
+  const feesQueryEnabled =
+    Boolean(cards) &&
+    (isFeesPage
+      ? isSupervisorFees || Boolean(feesTaskKind && feesAssigneeId)
+      : isSurveyPage && Boolean(feesAssigneeId));
+
   const { data: feesSummary, isFetched: feesFetched } = useInspectorFeesQuery(
     {
       assigneeId: feesAssigneeId,
@@ -83,11 +95,7 @@ export function useActiveTransactionPageSituation(
       taskKind: feesTaskKind,
     },
     {
-      enabled:
-        Boolean(cards) &&
-        (isFeesPage
-          ? isSupervisorFees || Boolean(feesTaskKind && feesAssigneeId)
-          : isSurveyPage && Boolean(feesAssigneeId)),
+      enabled: feesQueryEnabled,
     },
   );
 
@@ -139,6 +147,7 @@ export function useActiveTransactionPageSituation(
       "field-inspection-submission-changed",
       "government-review-submission-changed",
       "valuation-coordination-submission-changed",
+      "engineering-survey-submission-changed",
     ];
     const handler = () => setPartySubmissionGen((n) => n + 1);
     for (const ev of events) window.addEventListener(ev, handler);
@@ -157,8 +166,17 @@ export function useActiveTransactionPageSituation(
     });
   }, [viewerTaskIdsKey]);
 
+  // Survey KPIs must not wait on fees when the fees query is disabled
+  // (no assigneeId) — otherwise every card stays "—" forever.
+  const feesReadyForSituation =
+    isFeesPage
+      ? feesFetched
+      : isSurveyPage
+        ? !feesQueryEnabled || feesFetched
+        : true;
+
   const ready =
-    (isFeesPage || isSurveyPage ? feesFetched : true) &&
+    feesReadyForSituation &&
     (!needsTasks || tasksFetched) &&
     (!needsPo || poRecordsFetched) &&
     (!needsBourse || bourseFetched) &&
@@ -170,7 +188,9 @@ export function useActiveTransactionPageSituation(
 
     if (isFeesPage) {
       const values = ready
-        ? computeFeesPageSituation(feesSummary?.rows ?? [])
+        ? role === "engineering-office"
+          ? computeEngineeringFeesSituation(feesSummary?.rows ?? [])
+          : computeFeesPageSituation(feesSummary?.rows ?? [])
         : Object.fromEntries(cards.map((card) => [card.key, undefined]));
       return { cards, values, ready };
     }

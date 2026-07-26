@@ -27,6 +27,17 @@ export type EvaluatorChecklistAnswers = {
   technical_notes_text: string;
 };
 
+export type EvaluatorReportWorkerRole = "معد" | "مراجع" | "معتمد";
+
+export type EvaluatorReportWorker = {
+  id: string;
+  role: EvaluatorReportWorkerRole | "";
+  name: string;
+  licenseNumber: string;
+  licenseDate: string;
+  licenseFileName: string | null;
+};
+
 export type EvaluatorSubmission = {
   taskId: string;
   propertyId: string;
@@ -49,6 +60,10 @@ export type EvaluatorSubmission = {
   appraiserAddress: string;
   appraiserPhone: string;
   reportIssueDate: string;
+  /** إقرار الاستقلالية وعدم تضارب المصالح */
+  independenceDeclared: boolean;
+  /** بيانات العاملين على التقرير (معد / مراجع / معتمد) */
+  reportWorkers: EvaluatorReportWorker[];
   submittedAtUtc: string | null;
   updatedAtUtc: string;
 };
@@ -112,6 +127,25 @@ export const EVALUATOR_CONDITIONAL_QUESTIONS: EvaluatorBooleanQuestion[] = [
 
 export const MAX_EVALUATOR_PDF_BYTES = 20 * 1024 * 1024;
 
+export const EVALUATOR_WORKER_ROLES: EvaluatorReportWorkerRole[] = [
+  "معد",
+  "مراجع",
+  "معتمد",
+];
+
+export function createEmptyReportWorker(
+  role: EvaluatorReportWorkerRole | "" = "معد",
+): EvaluatorReportWorker {
+  return {
+    id: `w-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+    role,
+    name: "",
+    licenseNumber: "",
+    licenseDate: "",
+    licenseFileName: null,
+  };
+}
+
 export function emptyChecklist(): EvaluatorChecklistAnswers {
   return {
     q_plan_match: null,
@@ -152,14 +186,16 @@ export function createEvaluatorDraft(input: {
     valuationMethod: "طريقة البيوع المقارنة",
     valueBasis: "القيمة السوقية",
     demandLevel: "",
-    landValue: "",
-    buildingValue: "",
+    landValue: "0",
+    buildingValue: "0",
     forcedSaleDiscountPct: "20",
     searchScopeNotes: "",
     planImageFileName: null,
     appraiserAddress: "",
     appraiserPhone: "",
     reportIssueDate: "",
+    independenceDeclared: false,
+    reportWorkers: [createEmptyReportWorker("معد")],
     submittedAtUtc: null,
     updatedAtUtc: now,
   };

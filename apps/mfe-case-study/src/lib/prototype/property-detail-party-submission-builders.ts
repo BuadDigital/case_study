@@ -587,6 +587,30 @@ export function buildFromEvaluator(
     );
   }
   pushEval(INFATH_FIELD_LABELS.planPhoto, submission.planImageFileName ?? undefined);
+  if (submission.independenceDeclared) {
+    fields.push({
+      label: "إقرار الاستقلالية وعدم تضارب المصالح",
+      value: "مُؤكَّد",
+    });
+  }
+  for (const worker of submission.reportWorkers ?? []) {
+    const name = worker.name?.trim() ?? "";
+    if (!name) continue;
+    const bits = [
+      worker.role?.trim() || null,
+      name,
+      worker.licenseNumber?.trim()
+        ? `ترخيص ${worker.licenseNumber.trim()}`
+        : null,
+      worker.licenseDate?.trim()
+        ? `بتاريخ ${formatDateAr(worker.licenseDate)}`
+        : null,
+    ].filter(Boolean);
+    fields.push({
+      label: "عامل على التقرير",
+      value: bits.join(" · "),
+    });
+  }
   if (submission.reportFileName?.trim()) {
     fields.push({
       label: INFATH_FIELD_LABELS.signedAppraisal,

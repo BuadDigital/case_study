@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, InlineLoadingSkeleton, Input, Label, cn, formControlClassName, useToast } from "@platform/design-system";
+import { Button, InlineLoadingSkeleton, cn, useToast } from "@platform/design-system";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowTask } from "@case-study/mfe";
 import { inspectionGateForAppraisal } from "../../lib/evaluator/evaluator-inspection-gate";
@@ -17,7 +17,6 @@ import {
 import {
   createEvaluatorDraft,
   evaluatorStatusLabel,
-  formatEvaluatorPriceDisplay,
 } from "../../lib/evaluator/evaluator-window-data";
 import {
   hydrateEvaluatorSubmission,
@@ -34,6 +33,21 @@ import {
 } from "../../lib/evaluator/evaluator-validation";
 import { finalizeAppraiserSubmission } from "../../lib/evaluator/finalize-appraiser-submission";
 import type { EvaluatorWindowHostRefObject } from "../../lib/evaluator/evaluator-window-host";
+import { ValueEstimationSection } from "./ValueEstimationSection";
+import { computePropertyTotal } from "../../lib/evaluator/value-estimation";
+import {
+  InfathSection,
+  InfathSelectField,
+  InfathTextAreaField,
+  InfathTextField,
+} from "./InfathFormFields";
+import { ReportWorkersSection } from "./ReportWorkersSection";
+import {
+  INFATH_DEMAND_LEVELS,
+  INFATH_VALUATION_METHODS,
+  INFATH_VALUE_BASES,
+} from "../../lib/evaluator/infath-select-options";
+import type { EvaluatorReportWorker } from "../../lib/evaluator/evaluator-window-data";
 
 export function EvaluatorWindow({
   task,
@@ -108,6 +122,8 @@ export function EvaluatorWindow({
         appraiserAddress: string;
         appraiserPhone: string;
         reportIssueDate: string;
+        independenceDeclared: boolean;
+        reportWorkers: EvaluatorReportWorker[];
       }>,
       reportMetadata?: EvaluatorReportMetadata,
       planImageMetadata?: EvaluatorPlanImageMetadata,
@@ -172,14 +188,47 @@ export function EvaluatorWindow({
       return false;
     }
 
+    const total = computePropertyTotal(draft.landValue, draft.buildingValue);
+    const evaluatorPrice = String(total);
+
     const errors = validateEvaluatorSubmission({
       taskId: task.id,
-      evaluatorPrice: draft.evaluatorPrice,
+      evaluatorPrice,
+      landValue: draft.landValue,
+      buildingValue: draft.buildingValue,
+      forcedSaleDiscountPct: draft.forcedSaleDiscountPct,
+      independenceDeclared: draft.independenceDeclared,
+      reportWorkers: draft.reportWorkers,
     });
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
       const message =
         firstEvaluatorError(errors) ?? "تحقق من الحقول المطلوبة";
+      setFormError(message);
+      showToast(message, "error");
+      return false;
+    }
+
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
+
+    try {
+      const updated = await updateEvaluatorDraft(task.id, {
+        landValue: draft.landValue,
+        buildingValue: draft.buildingValue,
+        forcedSaleDiscountPct: draft.forcedSaleDiscountPct,
+        evaluatorPrice,
+        independenceDeclared: draft.independenceDeclared,
+        reportWorkers: draft.reportWorkers,
+      });
+      if (updated) setDraft(updated);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "تعذّر حفظ مسودة التقييم — حاول مرة أخرى";
       setFormError(message);
       showToast(message, "error");
       return false;
@@ -198,7 +247,18 @@ export function EvaluatorWindow({
     setFormError(result.message);
     showToast(result.message, "error");
     return false;
-  }, [locked, gate, task.id, draft.evaluatorPrice, hostRef, showToast]);
+  }, [
+    locked,
+    gate,
+    task.id,
+    draft.landValue,
+    draft.buildingValue,
+    draft.forcedSaleDiscountPct,
+    draft.independenceDeclared,
+    draft.reportWorkers,
+    hostRef,
+    showToast,
+  ]);
 
   useEffect(() => {
     if (!hostRef.current) return;
@@ -306,7 +366,7 @@ export function EvaluatorWindow({
 
       <section className="flex flex-col gap-4">
           <p className="m-0 text-xs text-text-3">
-            تقرير المقياس وسعر العقار — يُعرض للأخصائي للاسترشاد فقط
+            تقرير المقياس وتقدير قيمة العقار — يُعرض للأخصائي للاسترشاد فقط
           </p>
           <div
             className={cn(
@@ -396,86 +456,84 @@ export function EvaluatorWindow({
             ) : null}
           </div>
 
-          <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="evaluator_price" className="text-xs font-semibold text-text-2">
-                سعر التقييم
-              </Label>
-              <div className="flex items-stretch overflow-hidden rounded-[10px] border border-border bg-surface">
-                <Input
-                  id="evaluator_price"
-                  className="min-w-0 flex-1 rounded-none border-0 text-sm font-semibold shadow-none focus:ring-0"
-                  inputMode="decimal"
-                  autoComplete="off"
-                  disabled={formDisabled}
-                  hasError={Boolean(fieldErrors.evaluator_price)}
-                  value={draft.evaluatorPrice}
-                  placeholder="1,250,000"
-                  onChange={(e) => {
-                    const evaluatorPrice = e.target.value;
-                    setDraft((prev) => ({ ...prev, evaluatorPrice }));
-                    scheduleAutosave({ evaluatorPrice });
-                    setFieldErrors((prev) => {
-                      const next = { ...prev };
-                      delete next.evaluator_price;
-                      return next;
-                    });
-                  }}
-                />
-                <span className="flex items-center whitespace-nowrap border-s border-border bg-surface-3 px-3.5 text-xs font-bold text-text-2">
-                  ر.س
-                </span>
-              </div>
-              {draft.evaluatorPrice.trim() ? (
-                <span className="text-[11px] text-text-3 [direction:ltr] [unicode-bidi:isolate]">
-                  {formatEvaluatorPriceDisplay(draft.evaluatorPrice)}
-                </span>
-              ) : null}
-              {fieldErrors.evaluator_price ? (
-                <span className="text-[11px] text-danger-text">
-                  {fieldErrors.evaluator_price}
-                </span>
-              ) : null}
-            </div>
+          <div className="grid grid-cols-1 items-start gap-4">
+            <ValueEstimationSection
+              landValue={draft.landValue}
+              buildingValue={draft.buildingValue}
+              forcedSaleDiscountPct={draft.forcedSaleDiscountPct}
+              disabled={formDisabled}
+              landError={fieldErrors.land_value}
+              buildingError={fieldErrors.building_value}
+              discountError={fieldErrors.forced_sale_discount}
+              onLandChange={(landValue) => {
+                const evaluatorPrice = String(
+                  computePropertyTotal(landValue, draft.buildingValue),
+                );
+                setDraft((prev) => ({ ...prev, landValue, evaluatorPrice }));
+                scheduleAutosave({ landValue, evaluatorPrice });
+                setFieldErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.land_value;
+                  delete next.evaluator_price;
+                  return next;
+                });
+              }}
+              onBuildingChange={(buildingValue) => {
+                const evaluatorPrice = String(
+                  computePropertyTotal(draft.landValue, buildingValue),
+                );
+                setDraft((prev) => ({
+                  ...prev,
+                  buildingValue,
+                  evaluatorPrice,
+                }));
+                scheduleAutosave({ buildingValue, evaluatorPrice });
+                setFieldErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.building_value;
+                  delete next.evaluator_price;
+                  return next;
+                });
+              }}
+              onDiscountChange={(forcedSaleDiscountPct) => {
+                setDraft((prev) => ({ ...prev, forcedSaleDiscountPct }));
+                scheduleAutosave({ forcedSaleDiscountPct });
+                setFieldErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.forced_sale_discount;
+                  return next;
+                });
+              }}
+            />
+            {fieldErrors.evaluator_price ? (
+              <span className="text-[11px] text-danger-text">
+                {fieldErrors.evaluator_price}
+              </span>
+            ) : null}
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="evaluator_notes" className="text-xs font-semibold text-text-2">
-                ملاحظات (اختياري)
-              </Label>
-              <textarea
-                id="evaluator_notes"
-                className={cn(
-                  formControlClassName,
-                  "min-h-[88px] resize-y rounded-[10px] py-2 leading-relaxed",
-                )}
-                rows={3}
-                autoComplete="off"
-                disabled={formDisabled}
-                placeholder="أي ملاحظات على العقار…"
-                value={draft.evaluatorNotes}
-                onChange={(e) => {
-                  const evaluatorNotes = e.target.value;
-                  setDraft((prev) => ({ ...prev, evaluatorNotes }));
-                  scheduleAutosave({ evaluatorNotes });
-                }}
-              />
-            </div>
+            <InfathTextAreaField
+              id="evaluator_notes"
+              label="ملاحظات على العقار"
+              autoComplete="off"
+              disabled={formDisabled}
+              placeholder="أي ملاحظات على العقار…"
+              rows={3}
+              value={draft.evaluatorNotes}
+              onChange={(e) => {
+                const evaluatorNotes = e.target.value;
+                setDraft((prev) => ({ ...prev, evaluatorNotes }));
+                scheduleAutosave({ evaluatorNotes });
+              }}
+            />
           </div>
 
-          <div className="border-t border-border pt-4">
-            <h4 className="mb-3 text-xs font-semibold text-primary">
-              بيانات الرفع لإنفاذ (المقيّم)
-            </h4>
-            <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="inf-appraisal-date" className="text-xs font-semibold text-text-2">
-                  تاريخ التقييم
-                </Label>
-                <Input
+          <div className="flex flex-col gap-6 border-t border-border pt-5">
+            <InfathSection title="بيانات التقرير">
+              <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
+                <InfathTextField
                   id="inf-appraisal-date"
+                  label="تاريخ التقييم"
                   type="date"
-                  className="text-xs"
                   autoComplete="off"
                   disabled={formDisabled}
                   value={draft.appraisalDate}
@@ -485,15 +543,10 @@ export function EvaluatorWindow({
                     scheduleAutosave({ appraisalDate });
                   }}
                 />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="inf-issue-date" className="text-xs font-semibold text-text-2">
-                  تاريخ إصدار التقرير
-                </Label>
-                <Input
+                <InfathTextField
                   id="inf-issue-date"
+                  label="تاريخ إصدار التقرير"
                   type="date"
-                  className="text-xs"
                   autoComplete="off"
                   disabled={formDisabled}
                   value={draft.reportIssueDate}
@@ -503,17 +556,9 @@ export function EvaluatorWindow({
                     scheduleAutosave({ reportIssueDate });
                   }}
                 />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="inf-method" className="text-xs font-semibold text-text-2">
-                  الأسلوب المستخدم
-                </Label>
-                <Input
+                <InfathSelectField
                   id="inf-method"
-                  className="text-xs"
-                  autoComplete="off"
+                  label="الأسلوب المستخدم"
                   disabled={formDisabled}
                   value={draft.valuationMethod}
                   onChange={(e) => {
@@ -521,125 +566,24 @@ export function EvaluatorWindow({
                     setDraft((prev) => ({ ...prev, valuationMethod }));
                     scheduleAutosave({ valuationMethod });
                   }}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="inf-basis" className="text-xs font-semibold text-text-2">
-                  أساس القيمة
-                </Label>
-                <Input
-                  id="inf-basis"
-                  className="text-xs"
-                  autoComplete="off"
-                  disabled={formDisabled}
-                  value={draft.valueBasis}
-                  onChange={(e) => {
-                    const valueBasis = e.target.value;
-                    setDraft((prev) => ({ ...prev, valueBasis }));
-                    scheduleAutosave({ valueBasis });
-                  }}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="inf-land" className="text-xs font-semibold text-text-2">
-                  قيمة الأرض (ر.س)
-                </Label>
-                <Input
-                  id="inf-land"
-                  className="text-xs"
-                  autoComplete="off"
-                  disabled={formDisabled}
-                  value={draft.landValue}
-                  onChange={(e) => {
-                    const landValue = e.target.value;
-                    setDraft((prev) => ({ ...prev, landValue }));
-                    scheduleAutosave({ landValue });
-                  }}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="inf-building" className="text-xs font-semibold text-text-2">
-                  قيمة المباني (ر.س)
-                </Label>
-                <Input
-                  id="inf-building"
-                  className="text-xs"
-                  autoComplete="off"
-                  disabled={formDisabled}
-                  value={draft.buildingValue}
-                  onChange={(e) => {
-                    const buildingValue = e.target.value;
-                    setDraft((prev) => ({ ...prev, buildingValue }));
-                    scheduleAutosave({ buildingValue });
-                  }}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="inf-discount" className="text-xs font-semibold text-text-2">
-                  نسبة خصم البيع القسري (%)
-                </Label>
-                <Input
-                  id="inf-discount"
-                  className="text-xs"
-                  autoComplete="off"
-                  disabled={formDisabled}
-                  value={draft.forcedSaleDiscountPct}
-                  onChange={(e) => {
-                    const forcedSaleDiscountPct = e.target.value;
-                    setDraft((prev) => ({ ...prev, forcedSaleDiscountPct }));
-                    scheduleAutosave({ forcedSaleDiscountPct });
-                  }}
-                />
-              </div>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="inf-demand" className="text-xs font-semibold text-text-2">
-                حجم الطلب على العقار
-              </Label>
-              <Input
-                id="inf-demand"
-                className="text-xs"
-                autoComplete="off"
-                disabled={formDisabled}
-                value={draft.demandLevel}
-                onChange={(e) => {
-                  const demandLevel = e.target.value;
-                  setDraft((prev) => ({ ...prev, demandLevel }));
-                  scheduleAutosave({ demandLevel });
-                }}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="inf-search" className="text-xs font-semibold text-text-2">
-                نطاق البحث ومصادر معلومات القيم
-              </Label>
-              <textarea
-                id="inf-search"
-                className={cn(
-                formControlClassName,
-                "min-h-[88px] resize-y rounded-[10px] py-2 leading-relaxed",
-              )}
-                rows={3}
-                autoComplete="off"
-                disabled={formDisabled}
-                value={draft.searchScopeNotes}
-                onChange={(e) => {
-                  const searchScopeNotes = e.target.value;
-                  setDraft((prev) => ({ ...prev, searchScopeNotes }));
-                  scheduleAutosave({ searchScopeNotes });
-                }}
-              />
-            </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="inf-address" className="text-xs font-semibold text-text-2">
-                  عنوان المقيم
-                </Label>
-                <Input
+                >
+                  {INFATH_VALUATION_METHODS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                  {draft.valuationMethod &&
+                  !(INFATH_VALUATION_METHODS as readonly string[]).includes(
+                    draft.valuationMethod,
+                  ) ? (
+                    <option value={draft.valuationMethod}>
+                      {draft.valuationMethod}
+                    </option>
+                  ) : null}
+                </InfathSelectField>
+                <InfathTextField
                   id="inf-address"
-                  className="text-xs"
+                  label="عنوان المقيم"
                   autoComplete="off"
                   disabled={formDisabled}
                   value={draft.appraiserAddress}
@@ -649,14 +593,10 @@ export function EvaluatorWindow({
                     scheduleAutosave({ appraiserAddress });
                   }}
                 />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="inf-phone" className="text-xs font-semibold text-text-2">
-                  رقم تواصل المقيّم
-                </Label>
-                <Input
+                <InfathTextField
                   id="inf-phone"
-                  className="text-xs"
+                  label="رقم تواصل المقيّم"
+                  inputMode="tel"
                   autoComplete="off"
                   disabled={formDisabled}
                   value={draft.appraiserPhone}
@@ -667,88 +607,228 @@ export function EvaluatorWindow({
                   }}
                 />
               </div>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-text-2">
-                صورة الأصل من المخطط
-              </span>
+            </InfathSection>
+
+            <InfathSection title="نطاق العمل">
+              <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+                <InfathSelectField
+                  id="inf-basis"
+                  label="أساس القيمة"
+                  disabled={formDisabled}
+                  value={draft.valueBasis}
+                  onChange={(e) => {
+                    const valueBasis = e.target.value;
+                    setDraft((prev) => ({ ...prev, valueBasis }));
+                    scheduleAutosave({ valueBasis });
+                  }}
+                >
+                  {INFATH_VALUE_BASES.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                  {draft.valueBasis &&
+                  !(INFATH_VALUE_BASES as readonly string[]).includes(
+                    draft.valueBasis,
+                  ) ? (
+                    <option value={draft.valueBasis}>{draft.valueBasis}</option>
+                  ) : null}
+                </InfathSelectField>
+                <InfathSelectField
+                  id="inf-demand"
+                  label="حجم الطلب على العقار"
+                  disabled={formDisabled}
+                  value={draft.demandLevel}
+                  onChange={(e) => {
+                    const demandLevel = e.target.value;
+                    setDraft((prev) => ({ ...prev, demandLevel }));
+                    scheduleAutosave({ demandLevel });
+                  }}
+                >
+                  <option value="">— اختر —</option>
+                  {INFATH_DEMAND_LEVELS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                  {draft.demandLevel &&
+                  !(INFATH_DEMAND_LEVELS as readonly string[]).includes(
+                    draft.demandLevel,
+                  ) ? (
+                    <option value={draft.demandLevel}>
+                      {draft.demandLevel}
+                    </option>
+                  ) : null}
+                </InfathSelectField>
+              </div>
+
               <div
                 className={cn(
-                  "file-zone flex flex-wrap items-center gap-3 rounded-xl border-[1.5px] border-dashed border-border-md bg-surface-2 p-3.5 transition-colors",
-                  hasPlan && "border-solid border-[#86EFAC] bg-[#F0FDF4]",
-                  formDisabled && "cursor-not-allowed opacity-65",
-                  !formDisabled && !hasPlan && "hover:border-primary hover:bg-[#F8FAFF]",
+                  "mt-4 rounded-lg border border-[#d1d5db] bg-surface px-3.5 py-3",
+                  fieldErrors.independence_declared && "border-[#f87171]",
+                  formDisabled && "opacity-65",
                 )}
               >
-                <input
-                  ref={planFileInputRef}
-                  type="file"
-                  accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
-                  disabled={formDisabled || planUploading}
-                  className="pointer-events-none absolute size-0 opacity-0"
-                  onChange={(e) => void onPlanSelected(e.target.files?.[0] ?? null)}
-                />
+                <label className="flex cursor-pointer items-start gap-2.5">
+                  <input
+                    id="inf-independence"
+                    type="checkbox"
+                    className="mt-0.5 size-4 shrink-0 accent-[#12284C]"
+                    disabled={formDisabled}
+                    checked={draft.independenceDeclared}
+                    onChange={(e) => {
+                      const independenceDeclared = e.target.checked;
+                      setDraft((prev) => ({ ...prev, independenceDeclared }));
+                      scheduleAutosave({ independenceDeclared });
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.independence_declared;
+                        return next;
+                      });
+                    }}
+                  />
+                  <span className="text-[13px] leading-relaxed text-[#1f2937]">
+                    إقرار الاستقلالية وعدم تضارب المصالح
+                    <span className="text-[#e11d48]">*</span>
+                    <span className="mt-0.5 block text-[11px] text-[#6b7280]">
+                      أقرّ بأن التقييم أُعد باستقلالية تامة ودون أي تضارب مصالح.
+                    </span>
+                  </span>
+                </label>
+                {fieldErrors.independence_declared ? (
+                  <span className="mt-2 block text-[11px] text-danger-text">
+                    {fieldErrors.independence_declared}
+                  </span>
+                ) : null}
+              </div>
+            </InfathSection>
+
+            <ReportWorkersSection
+              workers={draft.reportWorkers}
+              disabled={formDisabled}
+              error={fieldErrors.report_workers}
+              onChange={(reportWorkers) => {
+                setDraft((prev) => ({ ...prev, reportWorkers }));
+                scheduleAutosave({ reportWorkers });
+                setFieldErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.report_workers;
+                  for (const key of Object.keys(next)) {
+                    if (key.startsWith("report_worker_")) delete next[key];
+                  }
+                  return next;
+                });
+              }}
+            />
+
+            <InfathSection title="نطاق البحث">
+              <InfathTextAreaField
+                id="inf-search"
+                label="نطاق البحث ومصادر معلومات القيم"
+                autoComplete="off"
+                disabled={formDisabled}
+                rows={3}
+                value={draft.searchScopeNotes}
+                onChange={(e) => {
+                  const searchScopeNotes = e.target.value;
+                  setDraft((prev) => ({ ...prev, searchScopeNotes }));
+                  scheduleAutosave({ searchScopeNotes });
+                }}
+              />
+            </InfathSection>
+
+            <InfathSection title="صور الأصل">
+              <div className="mt-1 flex flex-col gap-1.5">
+                <span className="text-[11px] font-medium text-[#4b5563]">
+                  صورة الأصل من المخطط
+                </span>
                 <div
                   className={cn(
-                    "flex size-11 shrink-0 items-center justify-center rounded-[10px] border border-border bg-surface text-[10px] font-extrabold text-primary",
-                    hasPlan && "border-success bg-success text-white",
+                    "file-zone flex flex-wrap items-center gap-3 rounded-lg border border-dashed border-[#d1d5db] bg-surface p-3.5 transition-colors",
+                    hasPlan && "border-solid border-[#86EFAC] bg-[#F0FDF4]",
+                    formDisabled && "cursor-not-allowed opacity-65",
+                    !formDisabled &&
+                      !hasPlan &&
+                      "hover:border-[#94a3b8] hover:bg-[#f8fafc]",
                   )}
-                  aria-hidden
                 >
-                  {hasPlan ? "✓" : "PDF"}
+                  <input
+                    ref={planFileInputRef}
+                    type="file"
+                    accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
+                    disabled={formDisabled || planUploading}
+                    className="pointer-events-none absolute size-0 opacity-0"
+                    onChange={(e) =>
+                      void onPlanSelected(e.target.files?.[0] ?? null)
+                    }
+                  />
+                  <div
+                    className={cn(
+                      "flex size-11 shrink-0 items-center justify-center rounded-lg border border-[#d1d5db] bg-surface text-[10px] font-extrabold text-[#185fa5]",
+                      hasPlan && "border-success bg-success text-white",
+                    )}
+                    aria-hidden
+                  >
+                    {hasPlan ? "✓" : "PDF"}
+                  </div>
+                  <div className="flex min-w-[140px] flex-1 flex-col gap-0.5 text-[11px] leading-snug text-[#6b7280]">
+                    {hasPlan ? (
+                      <strong className="break-all text-[13px] text-[#111827]">
+                        {planName ?? draft.planImageFileName ?? "تم رفع الملف"}
+                      </strong>
+                    ) : (
+                      <>
+                        <strong className="text-[13px] text-[#111827]">
+                          اختر ملف المخطط
+                        </strong>
+                        <span>PDF أو صورة · حتى 20 MB</span>
+                      </>
+                    )}
+                  </div>
+                  <div className="ms-auto flex flex-wrap gap-2">
+                    {!formDisabled ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="primary"
+                        loading={planUploading}
+                        disabled={planUploading}
+                        showActionToast={false}
+                        onClick={() => planFileInputRef.current?.click()}
+                      >
+                        {hasPlan ? "تغيير الملف" : "رفع الملف"}
+                      </Button>
+                    ) : null}
+                    {hasPlan ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          void openEvaluatorPlanImagePreview(task.id).then(
+                            (ok) => {
+                              if (!ok) {
+                                showToast(
+                                  "تعذّر فتح معاينة الملف — حاول مرة أخرى",
+                                  "error",
+                                );
+                              }
+                            },
+                          );
+                        }}
+                      >
+                        معاينة
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
-                <div className="flex min-w-[140px] flex-1 flex-col gap-0.5 text-[11px] leading-snug text-text-3">
-                  {hasPlan ? (
-                    <strong className="break-all text-[13px] text-text">
-                      {planName ?? draft.planImageFileName ?? "تم رفع الملف"}
-                    </strong>
-                  ) : (
-                    <>
-                      <strong className="text-[13px] text-text">اختر ملف المخطط</strong>
-                      <span>PDF أو صورة · حتى 20 MB</span>
-                    </>
-                  )}
-                </div>
-                <div className="ms-auto flex flex-wrap gap-2">
-                  {!formDisabled ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="primary"
-                      loading={planUploading}
-                      disabled={planUploading}
-                      showActionToast={false}
-                      onClick={() => planFileInputRef.current?.click()}
-                    >
-                      {hasPlan ? "تغيير الملف" : "رفع الملف"}
-                    </Button>
-                  ) : null}
-                  {hasPlan ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        void openEvaluatorPlanImagePreview(task.id).then((ok) => {
-                          if (!ok) {
-                            showToast(
-                              "تعذّر فتح معاينة الملف — حاول مرة أخرى",
-                              "error",
-                            );
-                          }
-                        });
-                      }}
-                    >
-                      معاينة
-                    </Button>
-                  ) : null}
-                </div>
+                {planUploadError ? (
+                  <span className="text-[11px] text-danger-text">
+                    {planUploadError}
+                  </span>
+                ) : null}
               </div>
-              {planUploadError ? (
-                <span className="text-[11px] text-danger-text">{planUploadError}</span>
-              ) : null}
-            </div>
-            </div>
+            </InfathSection>
           </div>
       </section>
 

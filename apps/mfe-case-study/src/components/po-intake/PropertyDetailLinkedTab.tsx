@@ -217,7 +217,7 @@ export function PropertyDetailLinkedTab({
           {canCreateOps ? (
             <Link
               href={createHref}
-              className="text-[11px] font-semibold text-primary-light no-underline hover:underline"
+              className="inline-flex min-h-9 items-center text-[11px] font-semibold text-primary-light no-underline hover:underline max-lg:min-h-11 max-lg:px-2"
             >
               إنشاء مهمة
             </Link>
@@ -231,7 +231,7 @@ export function PropertyDetailLinkedTab({
               <li key={task.id} className="m-0">
                 <Link
                   href={`/operations-tasks?task=${encodeURIComponent(task.id)}`}
-                  className="flex flex-col gap-1 rounded-[var(--radius-DEFAULT)] border border-border bg-surface-2 px-3.5 py-3 no-underline transition-colors hover:border-primary-light hover:bg-info-bg"
+                  className="flex min-h-14 flex-col gap-1 rounded-[var(--radius-DEFAULT)] border border-border bg-surface-2 px-3.5 py-3 no-underline transition-colors hover:border-primary-light hover:bg-info-bg"
                 >
                   <span className="flex flex-wrap items-center gap-2">
                     <span className="text-[13px] font-semibold text-primary-light">

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, InlineLoadingSkeleton, Input, Label, Note, cn, formControlClassName, useToast } from "@platform/design-system";
+import { Button, InlineLoadingSkeleton, Note, cn, formControlClassName, useToast, InfathTextField, InfathTextAreaField, InfathReadOnlyBox, InfathSection, InfathWordsValue } from "@platform/design-system";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import type { WorkflowTask } from "@case-study/mfe";
 import { activeSurveyEntryPath } from "@case-study/mfe/lib/my-task-routes";
@@ -453,53 +453,42 @@ export function EngineeringSurveyWorkPanel({
           مع موقع العقار الفعلي.
         </InfoBox>
       ) : null}
-      <div className="mb-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-        <div>
-          <Label htmlFor="eng-lat" className="text-xs">
-            خط العرض (Latitude) <span className="text-danger-text">*</span>
-          </Label>
-          <Input
-            id="eng-lat"
-            className="font-sans text-[13px]"
-            disabled={formDisabled}
-            value={draft.latitude}
-            placeholder={JEDDAH_DEFAULT_LAT}
-            onChange={(e) => {
-              persist({ latitude: e.target.value });
-              setFieldErrors((prev) => {
-                const next = { ...prev };
-                delete next.latitude;
-                return next;
-              });
-            }}
-          />
-        </div>
-        <div>
-          <Label htmlFor="eng-lng" className="text-xs">
-            خط الطول (Longitude) <span className="text-danger-text">*</span>
-          </Label>
-          <Input
-            id="eng-lng"
-            className="font-sans text-[13px]"
-            disabled={formDisabled}
-            value={draft.longitude}
-            placeholder={JEDDAH_DEFAULT_LNG}
-            onChange={(e) => {
-              persist({ longitude: e.target.value });
-              setFieldErrors((prev) => {
-                const next = { ...prev };
-                delete next.longitude;
-                return next;
-              });
-            }}
-          />
-        </div>
+      <div className="mb-4 grid grid-cols-1 gap-x-5 gap-y-3 sm:grid-cols-2">
+        <InfathTextField
+          id="eng-lat"
+          label="خط العرض (Latitude)"
+          required
+          disabled={formDisabled}
+          value={draft.latitude}
+          placeholder={JEDDAH_DEFAULT_LAT}
+          error={fieldErrors.latitude}
+          onChange={(e) => {
+            persist({ latitude: e.target.value });
+            setFieldErrors((prev) => {
+              const next = { ...prev };
+              delete next.latitude;
+              return next;
+            });
+          }}
+        />
+        <InfathTextField
+          id="eng-lng"
+          label="خط الطول (Longitude)"
+          required
+          disabled={formDisabled}
+          value={draft.longitude}
+          placeholder={JEDDAH_DEFAULT_LNG}
+          error={fieldErrors.longitude}
+          onChange={(e) => {
+            persist({ longitude: e.target.value });
+            setFieldErrors((prev) => {
+              const next = { ...prev };
+              delete next.longitude;
+              return next;
+            });
+          }}
+        />
       </div>
-      {fieldErrors.latitude || fieldErrors.longitude ? (
-        <p className="mb-3 text-[11px] text-danger-text" role="alert">
-          {fieldErrors.latitude ?? fieldErrors.longitude}
-        </p>
-      ) : null}
       <EngineeringSurveyMap
         latitude={draft.latitude}
         longitude={draft.longitude}
@@ -508,174 +497,256 @@ export function EngineeringSurveyWorkPanel({
       />
 
       <SectionDivider />
-      <SectionHeader>الحدود والأطوال (إنفاذ)</SectionHeader>
-      <div className="mb-3.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-        <div className="mb-3.5">
-          <Label htmlFor="eng-on-site-area" className="text-xs">
-            المساحة على الطبيعة (م²)
-          </Label>
-          <Input
-            id="eng-on-site-area"
-            className="text-xs"
+      <InfathSection title="الرفع المساحي (إنفاذ)" className="mb-1">
+        {(() => {
+          const deedArea = property?.area?.trim() ?? "";
+          const siteNum = Number.parseFloat(
+            draft.onSiteAreaSqm.replace(/,/g, "").trim(),
+          );
+          const deedNum = Number.parseFloat(deedArea.replace(/,/g, "").trim());
+          const bothOk =
+            Number.isFinite(siteNum) &&
+            Number.isFinite(deedNum) &&
+            draft.onSiteAreaSqm.trim() !== "" &&
+            deedArea !== "";
+          const areaDiffLabel = !bothOk
+            ? "—"
+            : siteNum === deedNum
+              ? "لا"
+              : "نعم";
+          return (
+            <div className="mb-4 grid grid-cols-1 gap-x-5 gap-y-3 sm:grid-cols-3">
+              <InfathTextField
+                id="eng-on-site-area"
+                label="المساحة على الطبيعة (م²)"
+                required
+                inputMode="decimal"
+                disabled={formDisabled}
+                error={fieldErrors.on_site_area}
+                value={draft.onSiteAreaSqm}
+                onChange={(e) => {
+                  persist({ onSiteAreaSqm: e.target.value });
+                  setFieldErrors((prev) => {
+                    const next = { ...prev };
+                    delete next.on_site_area;
+                    return next;
+                  });
+                }}
+              />
+              <InfathReadOnlyBox
+                id="eng-deed-area"
+                label="المساحة حسب الصك (م²)"
+                value={deedArea || "—"}
+              />
+              <InfathWordsValue
+                label="يوجد اختلاف في المساحة"
+                value={areaDiffLabel}
+              />
+            </div>
+          );
+        })()}
+      </InfathSection>
+
+      <InfathSection title="الحدود والأطوال للأصل">
+        <div className="flex flex-col gap-3.5">
+          {(
+            [
+              [
+                "northBoundary",
+                "northBoundaryLengthM",
+                "الحد الشمالي",
+                "طول الحد الشمالي التقريبي (م)",
+              ],
+              [
+                "southBoundary",
+                "southBoundaryLengthM",
+                "الحد الجنوبي",
+                "طول الحد الجنوبي التقريبي (م)",
+              ],
+              [
+                "eastBoundary",
+                "eastBoundaryLengthM",
+                "الحد الشرقي",
+                "طول الحد الشرقي التقريبي (م)",
+              ],
+              [
+                "westBoundary",
+                "westBoundaryLengthM",
+                "الحد الغربي",
+                "طول الحد الغربي التقريبي (م)",
+              ],
+            ] as const
+          ).map(([boundKey, lenKey, boundLabel, lenLabel]) => (
+            <div
+              key={boundKey}
+              className="grid grid-cols-1 gap-x-5 gap-y-3 sm:grid-cols-2"
+            >
+              <InfathTextField
+                id={`eng-${boundKey}`}
+                label={boundLabel}
+                disabled={formDisabled}
+                value={draft[boundKey]}
+                onChange={(e) => persist({ [boundKey]: e.target.value })}
+              />
+              <InfathTextField
+                id={`eng-${lenKey}`}
+                label={lenLabel}
+                inputMode="decimal"
+                disabled={formDisabled}
+                value={draft[lenKey]}
+                onChange={(e) => persist({ [lenKey]: e.target.value })}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="mt-4">
+          <InfathTextAreaField
+            id="eng-survey-notes"
+            label="ملاحظات الرفع المساحي"
+            rows={3}
             disabled={formDisabled}
-            value={draft.onSiteAreaSqm}
-            onChange={(e) => persist({ onSiteAreaSqm: e.target.value })}
+            value={draft.surveyNotes}
+            onChange={(e) => persist({ surveyNotes: e.target.value })}
           />
         </div>
-      </div>
-      {(
-        [
-          ["northBoundary", "northBoundaryLengthM", "الحد الشمالي", "طول الحد الشمالي التقريبي (م)"],
-          ["southBoundary", "southBoundaryLengthM", "الحد الجنوبي", "طول الحد الجنوبي التقريبي (م)"],
-          ["eastBoundary", "eastBoundaryLengthM", "الحد الشرقي", "طول الحد الشرقي التقريبي (م)"],
-          ["westBoundary", "westBoundaryLengthM", "الحد الغربي", "طول الحد الغربي التقريبي (م)"],
-        ] as const
-      ).map(([boundKey, lenKey, boundLabel, lenLabel]) => (
-        <div key={boundKey} className="mb-3.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-          <div className="mb-3.5">
-            <Label className="text-xs">{boundLabel}</Label>
-            <Input
-              className="text-xs"
-              disabled={formDisabled}
-              value={draft[boundKey]}
-              onChange={(e) => persist({ [boundKey]: e.target.value })}
-            />
-          </div>
-          <div className="mb-3.5">
-            <Label className="text-xs">{lenLabel}</Label>
-            <Input
-              className="text-xs"
-              disabled={formDisabled}
-              value={draft[lenKey]}
-              onChange={(e) => persist({ [lenKey]: e.target.value })}
-            />
-          </div>
-        </div>
-      ))}
-      <div className="mb-3.5">
-        <Label htmlFor="eng-survey-notes" className="text-xs">
-          ملاحظات الرفع المساحي
-        </Label>
-        <textarea
-          id="eng-survey-notes"
-          className={cn(
-            formControlClassName,
-            "min-h-[72px] resize-y py-2 leading-relaxed",
-          )}
-          rows={3}
-          disabled={formDisabled}
-          value={draft.surveyNotes}
-          onChange={(e) => persist({ surveyNotes: e.target.value })}
-        />
-      </div>
+      </InfathSection>
 
       <SectionDivider />
-      <SectionHeader>التقرير المساحي</SectionHeader>
-      {!readOnly ? (
-        <div className="rounded-[var(--radius-DEFAULT)] border-2 border-dashed border-border-md bg-surface-2 p-[18px] text-center">
-          <div className="mb-1 text-xs font-semibold text-text-2">رفع التقرير المساحي</div>
-          <div className="mb-2.5 text-[11px] text-text-3">PDF — الحجم الأقصى 20 ميجابايت</div>
-          <label className="mt-1 inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-[var(--radius-DEFAULT)] border border-primary bg-primary px-2 py-1 text-[11px] text-white transition-colors hover:border-primary-mid hover:bg-primary-mid">
-            اختيار ملف
-            <input
-              type="file"
-              accept=".pdf,application/pdf"
-              className="hidden"
-              disabled={formDisabled}
-              onChange={(e) =>
-                onFilePick("surveyReportFileName", e.target.files?.[0] ?? null)
-              }
-            />
-          </label>
-        </div>
-      ) : null}
-      {draft.surveyReportFileName ? (
-        <div className="mt-2 flex items-center justify-between gap-2 rounded-[var(--radius-DEFAULT)] border border-[#a9dfbf] bg-[#d5f5ef] px-3 py-2 text-xs">
-          <span>{draft.surveyReportFileName}</span>
-          {!formDisabled && !readOnly ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => onFileClear("surveyReportFileName")}
-            >
-              حذف
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
-      {fieldErrors.survey_report ? (
-        <p className="mt-1 text-[11px] text-danger-text">{fieldErrors.survey_report}</p>
-      ) : null}
+      <InfathSection title="مرفق الرفع المساحي">
+        {!readOnly ? (
+          <div className="rounded-lg border border-dashed border-[#d1d5db] bg-surface p-[18px] text-center">
+            <div className="mb-1 text-xs font-semibold text-[#4b5563]">
+              رفع التقرير المساحي
+            </div>
+            <div className="mb-2.5 text-[11px] text-[#9ca3af]">
+              PDF — الحجم الأقصى 20 ميجابايت
+            </div>
+            <label className="mt-1 inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-[#12284C] bg-[#12284C] px-3 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-[#1a3a66]">
+              اختيار ملف
+              <input
+                type="file"
+                accept=".pdf,application/pdf"
+                className="hidden"
+                disabled={formDisabled}
+                onChange={(e) =>
+                  onFilePick("surveyReportFileName", e.target.files?.[0] ?? null)
+                }
+              />
+            </label>
+          </div>
+        ) : null}
+        {draft.surveyReportFileName ? (
+          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-[#a9dfbf] bg-[#d5f5ef] px-3 py-2 text-xs">
+            <span>{draft.surveyReportFileName}</span>
+            {!formDisabled && !readOnly ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => onFileClear("surveyReportFileName")}
+              >
+                حذف
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+        {fieldErrors.survey_report ? (
+          <p className="mt-1 text-[11px] text-danger-text">
+            {fieldErrors.survey_report}
+          </p>
+        ) : null}
+      </InfathSection>
 
       <SectionDivider />
-      <SectionHeader>خطاب إقرار صحة الموقع</SectionHeader>
-      {!readOnly ? (
-        <div className="rounded-[var(--radius-DEFAULT)] border-2 border-dashed border-border-md bg-surface-2 p-[18px] text-center">
-          <div className="mb-1 text-xs font-semibold text-text-2">رفع خطاب الإقرار</div>
-          <div className="mb-2.5 text-[11px] text-text-3">PDF — الحجم الأقصى 10 ميجابايت</div>
-          <label className="mt-1 inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-[var(--radius-DEFAULT)] border border-primary bg-primary px-2 py-1 text-[11px] text-white transition-colors hover:border-primary-mid hover:bg-primary-mid">
-            اختيار ملف
-            <input
-              type="file"
-              accept=".pdf,application/pdf"
-              className="hidden"
-              disabled={formDisabled}
-              onChange={(e) =>
-                onFilePick("siteLetterFileName", e.target.files?.[0] ?? null)
-              }
-            />
-          </label>
-        </div>
-      ) : null}
-      {draft.siteLetterFileName ? (
-        <div className="mt-2 flex items-center justify-between gap-2 rounded-[var(--radius-DEFAULT)] border border-[#a9dfbf] bg-[#d5f5ef] px-3 py-2 text-xs">
-          <span>{draft.siteLetterFileName}</span>
-          {!formDisabled && !readOnly ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => onFileClear("siteLetterFileName")}
-            >
-              حذف
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
-      {readOnly ? (
-        <div className="mt-3 rounded-[var(--radius-DEFAULT)] border border-[#fad7a0] bg-[#fef3d7] px-3 py-2.5 text-[11px] leading-relaxed">
-          {draft.siteConfirmed
-            ? "تم الإقرار بأن المكتب الهندسي تحقق ميدانياً وأن بيانات التقرير المساحي صحيحة ودقيقة."
-            : "لم يتم الإقرار بعد بصحة الموقع."}
-        </div>
-      ) : (
-        <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-[var(--radius-DEFAULT)] border border-[#fad7a0] bg-[#fef3d7] px-3 py-2.5 text-[11px] leading-relaxed">
-          <input
-            type="checkbox"
-            checked={draft.siteConfirmed}
-            disabled={formDisabled}
-            onChange={(e) => {
-              persist({ siteConfirmed: e.target.checked });
-              setFieldErrors((prev) => {
-                const next = { ...prev };
-                delete next.site_confirmed;
-                return next;
-              });
-            }}
-          />
-          <span>
-            أُقرّ بأن المكتب الهندسي تحقق ميدانياً وأن بيانات التقرير المساحي
-            المرفوع <strong>صحيحة ودقيقة</strong>.
-          </span>
-        </label>
-      )}
-      {fieldErrors.site_confirmed ? (
-        <p className="mt-1 text-[11px] text-danger-text">{fieldErrors.site_confirmed}</p>
-      ) : null}
-      {fieldErrors.site_letter ? (
-        <p className="mt-1 text-[11px] text-danger-text">{fieldErrors.site_letter}</p>
-      ) : null}
+      <InfathSection title="خطاب إقرار صحة الموقع">
+        {!readOnly ? (
+          <div className="rounded-lg border border-dashed border-[#d1d5db] bg-surface p-[18px] text-center">
+            <div className="mb-1 text-xs font-semibold text-[#4b5563]">
+              رفع خطاب الإقرار
+            </div>
+            <div className="mb-2.5 text-[11px] text-[#9ca3af]">
+              PDF — الحجم الأقصى 10 ميجابايت
+            </div>
+            <label className="mt-1 inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-[#12284C] bg-[#12284C] px-3 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-[#1a3a66]">
+              اختيار ملف
+              <input
+                type="file"
+                accept=".pdf,application/pdf"
+                className="hidden"
+                disabled={formDisabled}
+                onChange={(e) =>
+                  onFilePick("siteLetterFileName", e.target.files?.[0] ?? null)
+                }
+              />
+            </label>
+          </div>
+        ) : null}
+        {draft.siteLetterFileName ? (
+          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-[#a9dfbf] bg-[#d5f5ef] px-3 py-2 text-xs">
+            <span>{draft.siteLetterFileName}</span>
+            {!formDisabled && !readOnly ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => onFileClear("siteLetterFileName")}
+              >
+                حذف
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+        {readOnly ? (
+          <div className="mt-3 rounded-lg border border-[#fad7a0] bg-[#fef3d7] px-3 py-2.5 text-[11px] leading-relaxed">
+            {draft.siteConfirmed
+              ? "تم الإقرار بأن المكتب الهندسي تحقق ميدانياً وأن بيانات التقرير المساحي صحيحة ودقيقة."
+              : "لم يتم الإقرار بعد بصحة الموقع."}
+          </div>
+        ) : (
+          <div
+            className={cn(
+              "mt-3 rounded-lg border border-[#d1d5db] bg-surface px-3.5 py-3",
+              fieldErrors.site_confirmed && "border-[#f87171]",
+              formDisabled && "opacity-65",
+            )}
+          >
+            <label className="flex cursor-pointer items-start gap-2.5">
+              <input
+                type="checkbox"
+                className="mt-0.5 size-4 shrink-0 accent-[#12284C]"
+                checked={draft.siteConfirmed}
+                disabled={formDisabled}
+                onChange={(e) => {
+                  persist({ siteConfirmed: e.target.checked });
+                  setFieldErrors((prev) => {
+                    const next = { ...prev };
+                    delete next.site_confirmed;
+                    return next;
+                  });
+                }}
+              />
+              <span className="text-[13px] leading-relaxed text-[#1f2937]">
+                إقرار بصحة البيانات المساحية
+                <span className="text-[#e11d48]">*</span>
+                <span className="mt-0.5 block text-[11px] text-[#6b7280]">
+                  أقرّ بأن المكتب الهندسي تحقق ميدانياً وأن بيانات التقرير المساحي
+                  صحيحة ودقيقة.
+                </span>
+              </span>
+            </label>
+            {fieldErrors.site_confirmed ? (
+              <span className="mt-2 block text-[11px] text-danger-text">
+                {fieldErrors.site_confirmed}
+              </span>
+            ) : null}
+          </div>
+        )}
+        {fieldErrors.site_letter ? (
+          <p className="mt-1 text-[11px] text-danger-text">
+            {fieldErrors.site_letter}
+          </p>
+        ) : null}
+      </InfathSection>
 
       <SectionDivider />
       <SectionHeader>نموذج التحقق الميداني — 13 بنداً</SectionHeader>
