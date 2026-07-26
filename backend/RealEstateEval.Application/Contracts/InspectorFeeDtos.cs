@@ -123,7 +123,7 @@ public class PoEnfazRevenueLineDto
     public decimal CaseStudyFeeSar { get; set; }
     /// <summary>دخل تكاليف الرفع.</summary>
     public decimal SurveyFeeSar { get; set; }
-    /// <summary>مجموع البندين (للتوافق مع الشاشات).</summary>
+    /// <summary>Computed total (CaseStudy + Survey) for display compatibility.</summary>
     public decimal EnfazFeeSar { get; set; }
     public bool IncludedInBilling { get; set; }
 }
@@ -170,8 +170,6 @@ public class PoEnfazRevenueLineInput
     public string PropertyId { get; init; } = "";
     public decimal CaseStudyFeeSar { get; init; }
     public decimal SurveyFeeSar { get; init; }
-    /// <summary>Legacy single amount — split into case study if new fields are zero.</summary>
-    public decimal? EnfazFeeSar { get; init; }
     public bool IncludedInBilling { get; init; } = true;
 }
 

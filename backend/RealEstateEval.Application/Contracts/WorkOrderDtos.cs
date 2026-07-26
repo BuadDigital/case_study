@@ -202,6 +202,8 @@ public class PriorDeedRegistrationDto
     public string? AssignmentMandateDate { get; set; }
     public string? Court { get; set; }
     public string? Circuit { get; set; }
+    public Guid? CourtId { get; set; }
+    public Guid? CircuitId { get; set; }
     public List<PropertyContactDto> Contacts { get; set; } = [];
     public string? City { get; set; }
     public string? District { get; set; }

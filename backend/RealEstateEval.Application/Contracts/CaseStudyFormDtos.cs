@@ -2,7 +2,6 @@ namespace RealEstateEval.Application.Contracts;
 
 public class CaseStudyFormDto
 {
-    public int Version { get; set; } = 1;
     public string TaskId { get; set; } = "";
     public string? PropertyId { get; set; }
     public string? PoNumber { get; set; }

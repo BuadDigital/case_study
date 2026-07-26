@@ -235,23 +235,6 @@ export async function listEngBillingStatements(
   }
 }
 
-export async function getEngBillingStatement(
-  config: EngBillingStatementsApiConfig,
-  statementId: string,
-): Promise<ApiOk<EngBillingStatementDto> | ApiErr> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(
-      `${base}/api/eng-billing-statements/${encodeURIComponent(statementId)}`,
-      { headers: headers(config.token) },
-    );
-    if (!res.ok) return httpErr(res);
-    return { ok: true, data: normalizeStatement(asRecord(await res.json())) };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
 export async function createEngBillingStatement(
   config: EngBillingStatementsApiConfig,
   body: CreateEngBillingStatementRequest,

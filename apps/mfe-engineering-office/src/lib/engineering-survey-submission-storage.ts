@@ -57,6 +57,7 @@ function dtoToSubmission(
     status: (dto.status as EngineeringSurveySubmissionStatus) ?? payload.status,
     returnNote: dto.returnNote ?? payload.returnNote,
     submittedAtUtc: dto.submittedAtUtc ?? payload.submittedAtUtc,
+    acceptedAtUtc: dto.acceptedAtUtc ?? payload.acceptedAtUtc,
     updatedAtUtc: dto.updatedAtUtc ?? payload.updatedAtUtc,
     outputsAcceptedAtUtc: hasAcceptedKey
       ? (raw.outputsAcceptedAtUtc as string | null)

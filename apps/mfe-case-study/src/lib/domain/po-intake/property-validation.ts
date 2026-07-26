@@ -52,9 +52,7 @@ export function isIncompleteMarkerPhone(phone: string): boolean {
 }
 
 export function propertyHasIncompleteContact(prop: PoPropertyIntake): boolean {
-  return prop.contacts.some((c) =>
-    splitContactPhones(c.phone).some(isIncompleteMarkerPhone),
-  );
+  return prop.contacts.some((c) => isIncompleteMarkerPhone(c.phone));
 }
 
 export function isValidContactEntry(c: PoContact): boolean {

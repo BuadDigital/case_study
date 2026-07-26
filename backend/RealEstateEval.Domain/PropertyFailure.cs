@@ -20,6 +20,10 @@ public class PropertyFailure
     /// <summary>internal | review | approved | returned | resolved | suspended</summary>
     public string Status { get; set; } = "internal";
     public string Specialist { get; set; } = "";
+    /// <summary>When the failure was suspended. Null until suspend (or for rows predating this column).</summary>
+    public DateTime? SuspendedAtUtc { get; set; }
+    /// <summary>User id of who suspended. Null for historical rows that predate capture.</summary>
+    public string? SuspendedByUserId { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 }

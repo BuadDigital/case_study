@@ -722,7 +722,9 @@ function parseReceivedDateTime(receivedIso: string, time?: string): Date | null 
   const [y, m, day] = parts;
   const t = time?.trim() || "10:00";
   const [hh, mm] = t.split(":").map(Number);
-  const d = new Date(y, m - 1, day, hh || 10, mm || 0, 0);
+  const hour = Number.isFinite(hh) ? hh : 10;
+  const minute = Number.isFinite(mm) ? mm : 0;
+  const d = new Date(y, m - 1, day, hour, minute, 0);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 

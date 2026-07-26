@@ -62,18 +62,12 @@ function normalizeListItem(
 
 export async function listFieldInspectionWorkspaces(
   config: FieldInspectionWorkspacesApiConfig,
-  query?: { poNumber?: string; status?: string },
 ): Promise<ApiOk<FieldInspectionWorkspaceListItemDto[]> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
-  const params = new URLSearchParams();
-  if (query?.poNumber?.trim()) params.set("poNumber", query.poNumber.trim());
-  if (query?.status?.trim()) params.set("status", query.status.trim());
-  const qs = params.toString();
   try {
-    const res = await fetch(
-      `${base}/api/field-inspection-workspaces${qs ? `?${qs}` : ""}`,
-      { headers: headers(config.token) },
-    );
+    const res = await fetch(`${base}/api/field-inspection-workspaces`, {
+      headers: headers(config.token),
+    });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
     const raw = (await res.json()) as Record<string, unknown>[];
