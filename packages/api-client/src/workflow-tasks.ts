@@ -134,6 +134,38 @@ export async function confirmWorkflowTaskDistribution(
   }
 }
 
+export async function redistributeWorkflowTaskParties(
+  config: WorkOrdersApiConfig,
+  taskId: string,
+  body: {
+    distribution: TaskDistributionDraftDto;
+    assigneeNames?: Record<string, string>;
+    reason: string;
+  },
+): Promise<ApiOk<WorkflowTaskDto> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/workflow-tasks/${taskId}/redistribute`,
+      {
+        method: "POST",
+        headers: headers(config.token),
+        body: JSON.stringify(body),
+      },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (res.status === 400) {
+      const errors = await parseFieldErrorsFromResponse(res);
+      return { ok: false, kind: "validation", errors };
+    }
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: await readJson<WorkflowTaskDto>(res) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
 export async function advanceWorkflowTaskAfterEnfath(
   config: WorkOrdersApiConfig,
   taskId: string,
@@ -232,6 +264,37 @@ export async function patchWorkflowTask(
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: await readJson<WorkflowTaskDto>(res) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export async function reopenCompletedWorkflowTask(
+  config: WorkOrdersApiConfig,
+  taskId: string,
+  reason: string,
+): Promise<ApiOk<WorkflowTaskDto> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/workflow-tasks/${taskId}/reopen-completed`,
+      {
+        method: "POST",
+        headers: headers(config.token),
+        body: JSON.stringify({ reason }),
+      },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (res.status === 400) {
+      return {
+        ok: false,
+        kind: "validation",
+        errors: await parseFieldErrorsFromResponse(res),
+      };
+    }
     if (!res.ok) return { ok: false, kind: "server" };
     return { ok: true, data: await readJson<WorkflowTaskDto>(res) };
   } catch {

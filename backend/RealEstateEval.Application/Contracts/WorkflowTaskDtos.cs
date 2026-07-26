@@ -55,6 +55,20 @@ public class ConfirmTaskDistributionResponseDto
     public IReadOnlyList<WorkflowTaskDto> Children { get; set; } = [];
 }
 
+/// <summary>
+/// Edits assignees on already-spawned party child tasks for a case-study parent
+/// (post confirm-distribution). Does not add/remove party slots.
+/// </summary>
+public class RedistributePartiesRequest
+{
+    public TaskDistributionDraftDto Distribution { get; set; } = new();
+    /// <summary>Optional display names keyed by child kind (government-review, field-inspection, …).</summary>
+    public Dictionary<string, string>? AssigneeNames { get; set; }
+    /// <summary>سبب إعادة إسناد الأطراف — إلزامي، يُسجَّل في سجل الأحداث.</summary>
+    [MaxLength(500)]
+    public string? Reason { get; set; }
+}
+
 public class AdvanceTaskAfterEnfathRequest
 {
     public string PropertyId { get; set; } = "";
@@ -77,6 +91,13 @@ public class RevertWorkflowTaskPhaseRequest
 public class DeleteCaseStudySlotRequest
 {
     /// <summary>سبب الحذف — إلزامي ويُحفظ مع العقار إن وُجد.</summary>
+    [MaxLength(500)]
+    public string Reason { get; set; } = "";
+}
+
+public class ReopenCompletedWorkflowTaskRequest
+{
+    /// <summary>سبب إعادة الفتح — إلزامي، يُسجَّل في سجل الأحداث.</summary>
     [MaxLength(500)]
     public string Reason { get; set; } = "";
 }

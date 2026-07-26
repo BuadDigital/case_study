@@ -124,6 +124,8 @@ export function EvaluatorWindow({
         reportIssueDate: string;
         independenceDeclared: boolean;
         reportWorkers: EvaluatorReportWorker[];
+        assetDataConfirmed: boolean;
+        assetDataVarianceNotes: string;
       }>,
       reportMetadata?: EvaluatorReportMetadata,
       planImageMetadata?: EvaluatorPlanImageMetadata,
@@ -199,6 +201,8 @@ export function EvaluatorWindow({
       forcedSaleDiscountPct: draft.forcedSaleDiscountPct,
       independenceDeclared: draft.independenceDeclared,
       reportWorkers: draft.reportWorkers,
+      assetDataConfirmed: draft.assetDataConfirmed,
+      assetDataVarianceNotes: draft.assetDataVarianceNotes,
     });
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
@@ -222,6 +226,8 @@ export function EvaluatorWindow({
         evaluatorPrice,
         independenceDeclared: draft.independenceDeclared,
         reportWorkers: draft.reportWorkers,
+        assetDataConfirmed: draft.assetDataConfirmed,
+        assetDataVarianceNotes: draft.assetDataVarianceNotes,
       });
       if (updated) setDraft(updated);
     } catch (err: unknown) {
@@ -256,6 +262,8 @@ export function EvaluatorWindow({
     draft.forcedSaleDiscountPct,
     draft.independenceDeclared,
     draft.reportWorkers,
+    draft.assetDataConfirmed,
+    draft.assetDataVarianceNotes,
     hostRef,
     showToast,
   ]);
@@ -825,6 +833,75 @@ export function EvaluatorWindow({
                 {planUploadError ? (
                   <span className="text-[11px] text-danger-text">
                     {planUploadError}
+                  </span>
+                ) : null}
+              </div>
+            </InfathSection>
+
+            <InfathSection title="بيانات الأصل">
+              <p className="m-0 mb-3 text-[11px] leading-relaxed text-text-3">
+                تُعرض بيانات الأصل والحدود والأصول المرتبطة واستلام المفتاح من
+                مصادرها (المعاين / المكتب الهندسي / الأخصائي / المراجع) في
+                تفاصيل العقار — تأكيدك هنا يثبت مراجعتها قبل اعتماد التقييم.
+              </p>
+              <div
+                className={cn(
+                  "rounded-lg border border-[#d1d5db] bg-surface px-3.5 py-3",
+                  fieldErrors.asset_data_confirmed && "border-[#f87171]",
+                  formDisabled && "opacity-65",
+                )}
+              >
+                <label className="flex cursor-pointer items-start gap-2.5">
+                  <input
+                    id="inf-asset-data-confirmed"
+                    type="checkbox"
+                    className="mt-0.5 size-4 shrink-0 accent-[#12284C]"
+                    disabled={formDisabled}
+                    checked={draft.assetDataConfirmed}
+                    onChange={(e) => {
+                      const assetDataConfirmed = e.target.checked;
+                      setDraft((prev) => ({ ...prev, assetDataConfirmed }));
+                      scheduleAutosave({ assetDataConfirmed });
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.asset_data_confirmed;
+                        return next;
+                      });
+                    }}
+                  />
+                  <span className="text-[13px] leading-relaxed text-[#1f2937]">
+                    تأكيد مراجعة بيانات الأصل
+                    <span className="mt-0.5 block text-[11px] text-[#6b7280]">
+                      أقرّ بأنني راجعت بيانات الأصل وحدوده وأصوله المرتبطة
+                      واستلام المفتاح كما هي معروضة في تفاصيل العقار.
+                    </span>
+                  </span>
+                </label>
+              </div>
+
+              <div className="mt-3">
+                <InfathTextAreaField
+                  id="inf-asset-data-variance-notes"
+                  label="ملاحظات التباين"
+                  autoComplete="off"
+                  disabled={formDisabled}
+                  placeholder="دوّن أي تباين بين بيانات الأصل المعروضة وواقع المعاينة (مطلوبة إن لم يتم التأكيد)…"
+                  rows={2}
+                  value={draft.assetDataVarianceNotes}
+                  onChange={(e) => {
+                    const assetDataVarianceNotes = e.target.value;
+                    setDraft((prev) => ({ ...prev, assetDataVarianceNotes }));
+                    scheduleAutosave({ assetDataVarianceNotes });
+                    setFieldErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.asset_data_confirmed;
+                      return next;
+                    });
+                  }}
+                />
+                {fieldErrors.asset_data_confirmed ? (
+                  <span className="mt-1.5 block text-[11px] text-danger-text">
+                    {fieldErrors.asset_data_confirmed}
                   </span>
                 ) : null}
               </div>

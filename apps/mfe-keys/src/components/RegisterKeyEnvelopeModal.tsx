@@ -16,7 +16,8 @@ import {
 } from "../lib/keys-envelope-api";
 import type { KeyEnvelopeLinkedProperty } from "../lib/keys-envelope-types";
 
-type SourceKind = "court" | "party";
+/** Narrow UI scenarios — do not Extract from KeyReceiveScenario (`| string` widens to string → never). */
+type SourceKind = "court" | "missing" | "third_party";
 
 type RequestSuggestion = {
   requestNumber: string;
@@ -151,13 +152,19 @@ export function RegisterKeyEnvelopeModal({
   const [requestNumber, setRequestNumber] = useState("");
   const [court, setCourt] = useState("");
   const [circuit, setCircuit] = useState("");
-  const [keysCount, setKeysCount] = useState("1");
+  const [keysCountLabeled, setKeysCountLabeled] = useState("1");
+  const [keysCountActual, setKeysCountActual] = useState("1");
   const [notes, setNotes] = useState("");
   const [partyName, setPartyName] = useState("");
   const [partyOrg, setPartyOrg] = useState("");
   const [partyRole, setPartyRole] = useState("");
   const [partyPhone, setPartyPhone] = useState("");
+  const [missingPhones, setMissingPhones] = useState("");
   const [photo, setPhoto] = useState<FilePick | null>(null);
+  const [receipt, setReceipt] = useState<FilePick | null>(null);
+  const [thirdPartyLetter, setThirdPartyLetter] = useState<FilePick | null>(
+    null,
+  );
   const [linked, setLinked] = useState<KeyEnvelopeLinkedProperty[]>([]);
   const [suggestions, setSuggestions] = useState<RequestSuggestion[]>([]);
   const [listOpen, setListOpen] = useState(false);
@@ -166,6 +173,8 @@ export function RegisterKeyEnvelopeModal({
   const [uploading, setUploading] = useState(false);
   const [formError, setFormError] = useState("");
   const photoRef = useRef<HTMLInputElement>(null);
+  const receiptRef = useRef<HTMLInputElement>(null);
+  const letterRef = useRef<HTMLInputElement>(null);
   const blurTimer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -174,13 +183,17 @@ export function RegisterKeyEnvelopeModal({
     setRequestNumber(initialRequestNumber.trim());
     setCourt("");
     setCircuit("");
-    setKeysCount("1");
+    setKeysCountLabeled("1");
+    setKeysCountActual("1");
     setNotes("");
     setPartyName("");
     setPartyOrg("");
     setPartyRole("");
     setPartyPhone("");
+    setMissingPhones("");
     setPhoto(null);
+    setReceipt(null);
+    setThirdPartyLetter(null);
     setLinked([]);
     setListOpen(false);
     setDragOver(false);
@@ -270,10 +283,15 @@ export function RegisterKeyEnvelopeModal({
 
   if (!open) return null;
 
-  const count = Number.parseInt(keysCount, 10);
+  const labeled = Number.parseInt(keysCountLabeled, 10);
+  const actual = Number.parseInt(keysCountActual, 10);
   const photoReady = Boolean(photo?.attachmentId);
   const photoPicked = Boolean(photo);
   const locked = saving || busy || uploading;
+  const countMismatch =
+    Number.isFinite(labeled) &&
+    Number.isFinite(actual) &&
+    labeled !== actual;
 
   function pickSuggestion(s: RequestSuggestion) {
     setRequestNumber(s.requestNumber);
@@ -283,58 +301,80 @@ export function RegisterKeyEnvelopeModal({
     setFormError("");
   }
 
-  async function handlePhotoFile(file: File | undefined) {
+  async function handleUpload(
+    kind: "photo" | "receipt" | "third-party",
+    file: File | undefined,
+    setPick: (value: FilePick | null) => void,
+  ) {
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      showToast("يُقبل ملف صورة فقط.", "error");
+    if (kind === "photo" && !file.type.startsWith("image/")) {
+      showToast("يُقبل ملف صورة فقط لصورة الظرف.", "error");
       return;
     }
     setUploading(true);
-    setPhoto({ file });
+    setPick({ file });
     setFormError("");
     const upload = await uploadEnvelopeAttachment(
-      "photo",
+      kind,
       requestNumber.trim() || "draft",
       file,
     );
     setUploading(false);
     if (!upload.ok) {
       showToast(upload.error, "error");
-      setPhoto(null);
+      setPick(null);
       return;
     }
-    setPhoto({ file, attachmentId: upload.data.id });
+    setPick({ file, attachmentId: upload.data.id });
   }
 
   async function handleSave() {
     if (locked) return;
     const request = requestNumber.trim();
-    const actual = Number.isFinite(count) ? count : 0;
+    const labeledN = Number.isFinite(labeled) ? labeled : 0;
+    const actualN = Number.isFinite(actual) ? actual : 0;
     if (!request) {
       setFormError("رقم طلب إنفاذ مطلوب.");
       return;
     }
-    if (source === "party" && !partyName.trim()) {
+    if (source === "third_party" && !partyName.trim()) {
       setFormError("يلزم إدخال اسم الطرف المسلِّم.");
       return;
     }
-    if (source === "party" && !partyPhone.trim()) {
+    if (source === "third_party" && !partyPhone.trim()) {
       setFormError("يلزم إدخال رقم جوال الطرف المسلِّم.");
       return;
     }
-    if (actual < 1) {
-      setFormError("عدد المفاتيح يجب أن يكون ١ على الأقل.");
+    if (source === "missing" && !missingPhones.trim()) {
+      setFormError("يلزم إدخال أرقام التواصل لسيناريو المفاتيح المفقودة.");
+      return;
+    }
+    if (source === "missing") {
+      if (actualN < 0) {
+        setFormError("عدد المفاتيح غير صالح.");
+        return;
+      }
+    } else if (actualN < 1) {
+      setFormError("عدد المفاتيح الفعلي يجب أن يكون ١ على الأقل.");
       return;
     }
     if (source === "court" && !photo?.attachmentId) {
       setFormError("صورة الظرف مطلوبة لإثبات أتعاب الاستلام.");
       return;
     }
+    if (source === "court" && !receipt?.attachmentId) {
+      setFormError("خطاب الاستلام مطلوب لسيناريو المحكمة.");
+      return;
+    }
+    if (source === "third_party" && !thirdPartyLetter?.attachmentId) {
+      setFormError("خطاب الطرف الثالث مطلوب.");
+      return;
+    }
 
     setSaving(true);
     setFormError("");
     const contact =
-      source === "party"
+      source === "third_party"
         ? [
             partyName.trim(),
             partyOrg.trim() ? `ممثل ${partyOrg.trim()}` : "",
@@ -343,15 +383,19 @@ export function RegisterKeyEnvelopeModal({
           ]
             .filter(Boolean)
             .join(" — ")
-        : "";
+        : source === "missing"
+          ? missingPhones.trim()
+          : "";
     const result = await registerKeyEnvelope({
       requestNumber: request,
       court: court.trim() || "—",
       circuit: circuit.trim() || "—",
-      keysCountLabeled: actual,
-      keysCountActual: actual,
-      receiveScenario: source === "court" ? "court" : "third_party",
+      keysCountLabeled: labeledN,
+      keysCountActual: actualN,
+      receiveScenario: source,
       photoAttachmentId: photo?.attachmentId,
+      receiptAttachmentId: receipt?.attachmentId,
+      thirdPartyLetterAttachmentId: thirdPartyLetter?.attachmentId,
       contactPhones: contact,
       notes,
       operationsTaskId: operationsTaskId?.trim() || undefined,
@@ -471,11 +515,12 @@ export function RegisterKeyEnvelopeModal({
               <FldLabel>
                 مصدر استلام الظرف *
               </FldLabel>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {(
                   [
                     { id: "court" as const, label: "المحكمة" },
-                    { id: "party" as const, label: "طرف آخر" },
+                    { id: "third_party" as const, label: "طرف آخر" },
+                    { id: "missing" as const, label: "مفقودة" },
                   ] as const
                 ).map((opt) => {
                   const on = source === opt.id;
@@ -484,7 +529,7 @@ export function RegisterKeyEnvelopeModal({
                       key={opt.id}
                       type="button"
                       className={cn(
-                        "h-[38px] flex-1 cursor-pointer rounded-[10px] border-[1.5px] font-[inherit] text-[12.5px] font-bold transition-all duration-150",
+                        "h-[38px] min-w-[30%] flex-1 cursor-pointer rounded-[10px] border-[1.5px] font-[inherit] text-[12.5px] font-bold transition-all duration-150",
                         on
                           ? "border-[var(--gold)] bg-[var(--gold-soft)] text-[var(--gold-d)]"
                           : "border-border-md bg-surface-2 text-text-2",
@@ -498,7 +543,7 @@ export function RegisterKeyEnvelopeModal({
               </div>
             </Fld>
 
-            {source === "party" ? (
+            {source === "third_party" ? (
               <Fld full>
                 <FldLabel>بيانات الطرف المسلِّم *</FldLabel>
                 <div className="grid grid-cols-2 gap-2.5">
@@ -531,6 +576,22 @@ export function RegisterKeyEnvelopeModal({
               </Fld>
             ) : null}
 
+            {source === "missing" ? (
+              <Fld full>
+                <FldLabel htmlFor="kf-missing-phones">
+                  أرقام التواصل *
+                </FldLabel>
+                <textarea
+                  id="kf-missing-phones"
+                  rows={2}
+                  placeholder="أرقام التواصل المتعلقة بالمفاتيح المفقودة"
+                  value={missingPhones}
+                  className={cn(fldControlClassName, "resize-y")}
+                  onChange={(e) => setMissingPhones(e.target.value)}
+                />
+              </Fld>
+            ) : null}
+
             <Fld>
               <FldLabel htmlFor="kf-court">المحكمة</FldLabel>
               <input
@@ -554,17 +615,39 @@ export function RegisterKeyEnvelopeModal({
             </Fld>
 
             <Fld>
-              <FldLabel htmlFor="kf-count">عدد المفاتيح *</FldLabel>
+              <FldLabel htmlFor="kf-count-labeled">المكتوب على الظرف *</FldLabel>
               <input
-                id="kf-count"
+                id="kf-count-labeled"
                 type="number"
-                min={1}
-                value={keysCount}
+                min={0}
+                value={keysCountLabeled}
                 className={fldControlClassName}
-                onChange={(e) => setKeysCount(e.target.value)}
+                onChange={(e) => setKeysCountLabeled(e.target.value)}
               />
             </Fld>
 
+            <Fld>
+              <FldLabel htmlFor="kf-count-actual">العدد الفعلي بعد العد *</FldLabel>
+              <input
+                id="kf-count-actual"
+                type="number"
+                min={0}
+                value={keysCountActual}
+                className={fldControlClassName}
+                onChange={(e) => setKeysCountActual(e.target.value)}
+              />
+            </Fld>
+
+            {countMismatch ? (
+              <Fld full>
+                <div className="rounded-[10px] border border-[color-mix(in_srgb,#d9a441_35%,transparent)] bg-[color-mix(in_srgb,#d9a441_12%,transparent)] px-[13px] py-2 text-[12px] font-semibold text-[#8a5e14]">
+                  تعارض في العدد: المكتوب {keysCountLabeled} والفعلي{" "}
+                  {keysCountActual}. يلزم توثيق ذلك في خطاب الاستلام.
+                </div>
+              </Fld>
+            ) : null}
+
+            {source !== "missing" ? (
             <Fld full>
               <FldLabel>
                 صورة الظرف — اضغط الخانة للالتقاط بالكاميرا أو اسحب الملف إليها
@@ -576,7 +659,7 @@ export function RegisterKeyEnvelopeModal({
                 capture="environment"
                 className="hidden"
                 onChange={(e) => {
-                  void handlePhotoFile(e.target.files?.[0]);
+                  void handleUpload("photo", e.target.files?.[0], setPhoto);
                   e.target.value = "";
                 }}
               />
@@ -609,7 +692,11 @@ export function RegisterKeyEnvelopeModal({
                 onDrop={(e) => {
                   e.preventDefault();
                   setDragOver(false);
-                  void handlePhotoFile(e.dataTransfer.files?.[0]);
+                  void handleUpload(
+                    "photo",
+                    e.dataTransfer.files?.[0],
+                    setPhoto,
+                  );
                 }}
               >
                 {photoPicked && photo ? (
@@ -665,7 +752,7 @@ export function RegisterKeyEnvelopeModal({
                   <div className="grid place-items-center gap-1.5 text-text-3">
                     <CameraIcon />
                     <span className="text-[12.5px] font-bold text-heading">
-                      صورة الظرف *
+                      صورة الظرف {source === "court" ? "*" : ""}
                     </span>
                     <span className="text-[11px]">
                       التقط الظرف وعليه رقم الطلب
@@ -674,6 +761,82 @@ export function RegisterKeyEnvelopeModal({
                 )}
               </div>
             </Fld>
+            ) : null}
+
+            {source === "court" ? (
+              <Fld full>
+                <FldLabel htmlFor="kf-receipt">خطاب الاستلام *</FldLabel>
+                <input
+                  ref={receiptRef}
+                  id="kf-receipt"
+                  type="file"
+                  accept="image/*,.pdf,application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    void handleUpload(
+                      "receipt",
+                      e.target.files?.[0],
+                      setReceipt,
+                    );
+                    e.target.value = "";
+                  }}
+                />
+                <button
+                  type="button"
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-[10px] border border-border-md bg-surface-2 px-3 py-2.5 text-start text-[12.5px]",
+                    receipt?.attachmentId && "border-[#3f8f5f]",
+                  )}
+                  onClick={() => receiptRef.current?.click()}
+                  disabled={uploading}
+                >
+                  <span className="font-semibold text-heading">
+                    {receipt?.file.name ?? "اختر ملف خطاب الاستلام"}
+                  </span>
+                  <span className="text-[11px] text-text-3">
+                    {receipt?.attachmentId ? "مرفوع" : "PDF / صورة"}
+                  </span>
+                </button>
+              </Fld>
+            ) : null}
+
+            {source === "third_party" ? (
+              <Fld full>
+                <FldLabel htmlFor="kf-letter">خطاب الطرف الثالث *</FldLabel>
+                <input
+                  ref={letterRef}
+                  id="kf-letter"
+                  type="file"
+                  accept="image/*,.pdf,application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    void handleUpload(
+                      "third-party",
+                      e.target.files?.[0],
+                      setThirdPartyLetter,
+                    );
+                    e.target.value = "";
+                  }}
+                />
+                <button
+                  type="button"
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-[10px] border border-border-md bg-surface-2 px-3 py-2.5 text-start text-[12.5px]",
+                    thirdPartyLetter?.attachmentId && "border-[#3f8f5f]",
+                  )}
+                  onClick={() => letterRef.current?.click()}
+                  disabled={uploading}
+                >
+                  <span className="font-semibold text-heading">
+                    {thirdPartyLetter?.file.name ??
+                      "اختر ملف خطاب الطرف الثالث"}
+                  </span>
+                  <span className="text-[11px] text-text-3">
+                    {thirdPartyLetter?.attachmentId ? "مرفوع" : "PDF / صورة"}
+                  </span>
+                </button>
+              </Fld>
+            ) : null}
 
             <Fld full>
               <FldLabel htmlFor="kf-notes">ملاحظات</FldLabel>
@@ -691,17 +854,27 @@ export function RegisterKeyEnvelopeModal({
           <div
             className="mt-3 flex items-start gap-[9px] rounded-[10px] px-3.5 py-2.5 text-[12.5px] font-semibold leading-[1.7]"
             style={{
-              background: photoReady
-                ? "color-mix(in srgb, #3f8f5f 12%, transparent)"
-                : "color-mix(in srgb, #d9a441 14%, transparent)",
-              color: photoReady ? "#2f7a4d" : "#8a5e14",
+              background:
+                source === "missing"
+                  ? "color-mix(in srgb, var(--info, #4a7bb5) 12%, transparent)"
+                  : photoReady
+                    ? "color-mix(in srgb, #3f8f5f 12%, transparent)"
+                    : "color-mix(in srgb, #d9a441 14%, transparent)",
+              color:
+                source === "missing"
+                  ? "var(--info-text, #2f5a8a)"
+                  : photoReady
+                    ? "#2f7a4d"
+                    : "#8a5e14",
             }}
           >
-            <FeeIcon ok={photoReady} />
+            <FeeIcon ok={source === "missing" || photoReady} />
             <span>
-              {photoReady
-                ? "تم إثبات أتعاب استلام المفاتيح — صورة الظرف توثّق استحقاق الشركة لدى مركز الإسناد والتصفية."
-                : "صورة الظرف هي إثبات أتعاب استلام المفاتيح التي تستحقها الشركة من مركز الإسناد والتصفية. أتعاب الزيارة نفسها تُستحق عبر إسناد مهمة زيارة المحكمة."}
+              {source === "missing"
+                ? "سيناريو المفاتيح المفقودة لا يُولِّد أتعاب استلام تلقائية — يُوثَّق التواصل فقط."
+                : photoReady
+                  ? "تم إثبات أتعاب استلام المفاتيح — صورة الظرف توثّق استحقاق الشركة لدى مركز الإسناد والتصفية."
+                  : "صورة الظرف هي إثبات أتعاب استلام المفاتيح التي تستحقها الشركة من مركز الإسناد والتصفية. أتعاب الزيارة نفسها تُستحق عبر إسناد مهمة زيارة المحكمة."}
             </span>
           </div>
         </div>

@@ -10,6 +10,8 @@ import {
   listWorkflowTasks,
   patchWorkflowTask,
   patchWorkflowTaskDistribution,
+  redistributeWorkflowTaskParties,
+  reopenCompletedWorkflowTask,
   revertWorkflowTaskPhase,
   syncWorkflowTasks,
 } from "@platform/api-client";
@@ -532,6 +534,36 @@ export async function revertTaskToPhase(
   return { ok: true, task: dtoToTask(result.data) };
 }
 
+export type ReopenCompletedTaskResult =
+  | { ok: true; task: WorkflowTask }
+  | { ok: false; error: string };
+
+/** إعادة فتح معاملة مكتملة — صلاحية مشرف القسم فأعلى، بسبب إلزامي. */
+export async function reopenCompletedTransaction(
+  taskId: string,
+  reason: string,
+): Promise<ReopenCompletedTaskResult> {
+  const trimmed = reason.trim();
+  if (!trimmed) {
+    return { ok: false, error: "سبب إعادة الفتح مطلوب" };
+  }
+  const config = workOrdersApiConfig();
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
+  const result = await reopenCompletedWorkflowTask(config, taskId, trimmed);
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: resolveApiError(
+        result.kind,
+        "errors" in result ? result.errors : undefined,
+        "تعذّر إعادة فتح المعاملة",
+      ),
+    };
+  }
+  notifyTasksChanged();
+  return { ok: true, task: dtoToTask(result.data) };
+}
+
 /** After استعلام البورصة — move linked case-study task to توزيع المعاملات. */
 export async function advanceTaskAfterBourseForProperty(
   poNumber: string,
@@ -627,6 +659,47 @@ export async function confirmTaskDistribution(
     parent: dtoToTask(result.data.parent),
     children: result.data.children.map(dtoToTask),
   };
+}
+
+export type RedistributePartiesResult =
+  | { ok: true; task: WorkflowTask }
+  | { ok: false; error: string };
+
+/**
+ * تعديل إسناد الأطراف على معاملة دراسة حالة قائمة (بعد تأكيد التوزيع) —
+ * يحدّث المكلّف على المهام الفرعية القائمة فقط دون إعادة فتح التوزيع.
+ */
+export async function redistributeTaskParties(
+  taskId: string,
+  distribution: TaskDistributionDraft,
+  reason: string,
+  staffUsers: StaffUser[] = [],
+): Promise<RedistributePartiesResult> {
+  const trimmedReason = reason.trim();
+  if (!trimmedReason) {
+    return { ok: false, error: "سبب إعادة الإسناد مطلوب" };
+  }
+  const config = workOrdersApiConfig();
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
+
+  const normalized = migrateDistribution(distribution, staffUsers);
+  const result = await redistributeWorkflowTaskParties(config, taskId, {
+    distribution: distributionToDto(normalized)!,
+    assigneeNames: buildAssigneeNames(normalized, staffUsers),
+    reason: trimmedReason,
+  });
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: resolveApiError(
+        result.kind,
+        "errors" in result ? result.errors : undefined,
+        "تعذّر إعادة إسناد الأطراف",
+      ),
+    };
+  }
+  notifyTasksChanged();
+  return { ok: true, task: dtoToTask(result.data) };
 }
 
 export async function escalateTaskForObstruction(

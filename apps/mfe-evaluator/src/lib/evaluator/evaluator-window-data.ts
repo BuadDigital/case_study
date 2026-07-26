@@ -64,6 +64,12 @@ export type EvaluatorSubmission = {
   independenceDeclared: boolean;
   /** بيانات العاملين على التقرير (معد / مراجع / معتمد) */
   reportWorkers: EvaluatorReportWorker[];
+  /** تأكيد مراجعة بيانات الأصل المعروضة من مصادرها (معاين / مكتب هندسي / أخصائي / مراجع) */
+  assetDataConfirmed: boolean;
+  /** ملاحظات التباين عند عدم تأكيد بيانات الأصل كما هي */
+  assetDataVarianceNotes: string;
+  /** مرفق التقييم المعتمد الموقّع (البيانات الختامية) — اختياري */
+  signedAppraisalFileName: string | null;
   submittedAtUtc: string | null;
   updatedAtUtc: string;
 };
@@ -196,6 +202,9 @@ export function createEvaluatorDraft(input: {
     reportIssueDate: "",
     independenceDeclared: false,
     reportWorkers: [createEmptyReportWorker("معد")],
+    assetDataConfirmed: false,
+    assetDataVarianceNotes: "",
+    signedAppraisalFileName: null,
     submittedAtUtc: null,
     updatedAtUtc: now,
   };
