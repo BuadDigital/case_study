@@ -524,7 +524,7 @@ export function GovernmentReviewWorkBody({
               </p>
             ) : null}
             {envelopeMissingWarning ? (
-              <Note tone="warning" className="mt-2">
+              <Note tone="warn" className="mt-2">
                 ظرف غير مسجّل لرقم الطلب — يمكن إتمام المراجعة، ويُفضّل{" "}
                 <Link
                   href="/keys?register=1"

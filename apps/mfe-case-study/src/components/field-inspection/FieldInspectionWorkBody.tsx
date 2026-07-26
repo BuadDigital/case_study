@@ -217,7 +217,7 @@ export function FieldInspectionWorkBody({
   const submit = useCallback(async (): Promise<boolean> => {
     if (!draft || locked) return false;
 
-    if (informalBlocksAccess) {
+    if (informalBlocksAccess && !informalGate.ready) {
       setFormError(informalGate.reason);
       showToast(informalGate.reason, "error");
       return false;
@@ -296,7 +296,7 @@ export function FieldInspectionWorkBody({
     boundariesUnavailable,
     onRegisterFailure,
     informalBlocksAccess,
-    informalGate.reason,
+    informalGate.ready ? undefined : informalGate.reason,
   ]);
 
   async function saveLocationMapUrl() {
@@ -448,7 +448,7 @@ export function FieldInspectionWorkBody({
         </Note>
       ) : null}
 
-      {informalBlocksAccess ? (
+      {informalBlocksAccess && !informalGate.ready ? (
         <Note tone="warn" className="mb-4">
           <strong>الوصول مقفول — منطقة عشوائية.</strong>{" "}
           {informalGate.reason} احفظ رابط الخريطة أدناه لفتح نموذج المعاينة.
@@ -475,7 +475,7 @@ export function FieldInspectionWorkBody({
           />
           <Button
             type="button"
-            variant="secondary"
+            variant="outline"
             size="sm"
             className="mt-2"
             loading={savingMapUrl}
@@ -1372,7 +1372,7 @@ export function FieldInspectionWorkBody({
                 <div className="mt-2">
                   <Button
                     type="button"
-                    variant="secondary"
+                    variant="outline"
                     size="sm"
                     onClick={onRegisterFailure}
                   >
