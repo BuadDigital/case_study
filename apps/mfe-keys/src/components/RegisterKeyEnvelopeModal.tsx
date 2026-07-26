@@ -390,8 +390,8 @@ export function RegisterKeyEnvelopeModal({
       requestNumber: request,
       court: court.trim() || "—",
       circuit: circuit.trim() || "—",
-      keysCountLabeled: labeledN,
-      keysCountActual: actualN,
+      keysCountLabeled: source === "missing" ? 0 : labeledN,
+      keysCountActual: source === "missing" ? 0 : actualN,
       receiveScenario: source,
       photoAttachmentId: photo?.attachmentId,
       receiptAttachmentId: receipt?.attachmentId,
@@ -614,6 +614,8 @@ export function RegisterKeyEnvelopeModal({
               />
             </Fld>
 
+            {source !== "missing" ? (
+              <>
             <Fld>
               <FldLabel htmlFor="kf-count-labeled">المكتوب على الظرف *</FldLabel>
               <input
@@ -637,8 +639,10 @@ export function RegisterKeyEnvelopeModal({
                 onChange={(e) => setKeysCountActual(e.target.value)}
               />
             </Fld>
+              </>
+            ) : null}
 
-            {countMismatch ? (
+            {source !== "missing" && countMismatch ? (
               <Fld full>
                 <div className="rounded-[10px] border border-[color-mix(in_srgb,#d9a441_35%,transparent)] bg-[color-mix(in_srgb,#d9a441_12%,transparent)] px-[13px] py-2 text-[12px] font-semibold text-[#8a5e14]">
                   تعارض في العدد: المكتوب {keysCountLabeled} والفعلي{" "}

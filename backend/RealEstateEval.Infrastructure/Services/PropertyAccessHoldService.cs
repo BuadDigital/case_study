@@ -83,6 +83,54 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
         await BlockCaseStudyTaskAsync(po, propertyKey, "محظر إخلاء — تعليق الدراسة", cancellationToken);
     }
 
+    public async Task ResolveEvictionHoldAsync(
+        Guid propertyId,
+        string actorName,
+        CancellationToken cancellationToken = default)
+    {
+        var property = await _db.WorkOrderProperties
+            .Include(p => p.WorkOrder)
+            .FirstOrDefaultAsync(p => p.Id == propertyId && !p.IsRemoved, cancellationToken);
+        if (property is null) return;
+
+        var po = property.WorkOrder?.PoNumber?.Trim() ?? "";
+        var propertyKey = property.Id.ToString();
+        var now = DateTime.UtcNow;
+
+        var active = await _db.PropertyFailures
+            .Where(f =>
+                f.PoNumber == po
+                && f.PropertyId == propertyKey
+                && f.ProblemTypeId == EvictionProblemTypeId
+                && f.Status != PropertyFailureStatus.Resolved
+                && f.Status != PropertyFailureStatus.Approved)
+            .ToListAsync(cancellationToken);
+
+        if (active.Count == 0)
+        {
+            await UnblockCaseStudyTaskAsync(po, propertyKey, cancellationToken);
+            return;
+        }
+
+        var actor = string.IsNullOrWhiteSpace(actorName)
+            ? DocumentaryWorkflowRules.SystemRaiserRole
+            : actorName.Trim();
+
+        foreach (var failure in active)
+        {
+            failure.Status = PropertyFailureStatus.Resolved;
+            failure.ResolutionReason = "رفع محظر الإخلاء من وحدة الظروف";
+            failure.ContinueInstructions = "أُزيل محظر الإخلاء — استئناف مسار الدراسة.";
+            failure.FinalNote = string.IsNullOrWhiteSpace(failure.FinalNote)
+                ? $"رُفع التعليق بواسطة {actor}."
+                : failure.FinalNote;
+            failure.UpdatedAtUtc = now;
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+        await UnblockCaseStudyTaskAsync(po, propertyKey, cancellationToken);
+    }
+
     public async Task EnsureKeyUnmatchedFailureAsync(
         Guid propertyId,
         string deedNumber,
@@ -155,6 +203,35 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
         task.Phase = "obstruction";
         task.Status = WorkflowTaskStatus.Blocked;
         task.ObstructionReason = reason;
+        task.UpdatedAtUtc = DateTime.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task UnblockCaseStudyTaskAsync(
+        string poNumber,
+        string propertyIdText,
+        CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(propertyIdText, out var propertyId)) return;
+
+        var task = await _db.WorkflowTasks
+            .FirstOrDefaultAsync(
+                t =>
+                    t.Kind == "case-study-property"
+                    && t.PoNumber == poNumber
+                    && t.PropertyId == propertyId
+                    && t.Status == WorkflowTaskStatus.Blocked
+                    && t.Phase == "obstruction",
+                cancellationToken);
+        if (task is null) return;
+
+        var resumePhase = string.IsNullOrWhiteSpace(task.ObstructionPriorPhase)
+            ? "bourse"
+            : task.ObstructionPriorPhase;
+        task.Phase = resumePhase;
+        task.Status = WorkflowTaskStatus.Open;
+        task.ObstructionReason = "";
+        task.ObstructionPriorPhase = "";
         task.UpdatedAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
     }
