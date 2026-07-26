@@ -65,7 +65,7 @@ import {
 } from "../lib/prototype/my-task-row";
 import type { PoIntakeRecord } from "../lib/prototype/po-intake-data";
 import { skipsBourseForIdentifier } from "../lib/prototype/po-intake-data";
-import { isTaskOnSuspendedProperty } from "../lib/prototype/suspended-transactions-storage";
+import { isListedQueueTask } from "../lib/prototype/suspended-transactions-storage";
 import {
   TASKS_CHANGED_EVENT,
   type WorkflowTask,
@@ -390,11 +390,11 @@ export function ActiveTransactionQueueView({
           : compareQueueTasksNewestFirst;
       return config
         .filterListed(mine, poByNumber)
-        .filter((t) => {
-          if (isTaskOnSuspendedProperty(t)) return false;
-          if (config.includeAllStatuses) return true;
-          return t.status === "open" || t.status === "blocked";
-        })
+        .filter((t) =>
+          isListedQueueTask(t, {
+            includeAllStatuses: config.includeAllStatuses,
+          }),
+        )
         .sort((a, b) => compare(a, b, poByNumber));
     },
     [config, mine, poByNumber],

@@ -15,6 +15,7 @@ export type PartyTaskSubmissionDto = {
   payload: Record<string, unknown>;
   returnNote?: string;
   submittedAtUtc?: string;
+  acceptedAtUtc?: string;
   updatedAtUtc: string;
 };
 
@@ -44,6 +45,9 @@ function normalizeSubmissionDto(raw: unknown): PartyTaskSubmissionDto {
     payload: (row.payload ?? row.Payload ?? {}) as Record<string, unknown>,
     returnNote: (row.returnNote ?? row.ReturnNote ?? undefined) as string | undefined,
     submittedAtUtc: (row.submittedAtUtc ?? row.SubmittedAtUtc ?? undefined) as
+      | string
+      | undefined,
+    acceptedAtUtc: (row.acceptedAtUtc ?? row.AcceptedAtUtc ?? undefined) as
       | string
       | undefined,
     updatedAtUtc: String(row.updatedAtUtc ?? row.UpdatedAtUtc ?? ""),

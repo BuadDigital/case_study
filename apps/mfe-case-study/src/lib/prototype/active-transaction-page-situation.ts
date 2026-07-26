@@ -21,7 +21,7 @@ import {
   filterTasksForPrimaryData,
 } from "./transaction-filters";
 import type { WorkflowTask } from "./tasks-storage";
-import { isTaskOnSuspendedProperty } from "./suspended-transactions-storage";
+import { isListedQueueTask, isTaskOnSuspendedProperty } from "./suspended-transactions-storage";
 
 export type SituationTone = "blue" | "warn" | "green" | "red";
 
@@ -151,10 +151,9 @@ export function listedTasksForPage(
   tasks: WorkflowTask[],
   poByNumber: Map<string, PoIntakeRecord>,
 ): WorkflowTask[] {
-  return filterTasksForPage(pageId, tasks, poByNumber).filter((t) => {
-    if (isTaskOnSuspendedProperty(t)) return false;
-    return t.status === "open" || t.status === "blocked";
-  });
+  return filterTasksForPage(pageId, tasks, poByNumber).filter((t) =>
+    isListedQueueTask(t),
+  );
 }
 
 function openWorkflowTasks(tasks: WorkflowTask[]): WorkflowTask[] {

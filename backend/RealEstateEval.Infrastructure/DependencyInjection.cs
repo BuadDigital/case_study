@@ -131,7 +131,6 @@ public static class DependencyInjection
     public static IServiceCollection AddCaseStudyAuxiliaryInfrastructure(this IServiceCollection services)
     {
         services.AddScoped<IPoIntakeDraftService, PoIntakeDraftService>();
-        services.AddScoped<IInternalDelegationLettersService, InternalDelegationLettersService>();
         services.AddScoped<IOperationsTaskService, OperationsTaskService>();
         services.AddHostedService<OperationsTaskReminderHostedService>();
         services.AddScoped<ISuspendedTransactionsService, SuspendedTransactionsService>();

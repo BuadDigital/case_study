@@ -372,7 +372,6 @@ export {
 export {
   listEngBillingReadyLines,
   listEngBillingStatements,
-  getEngBillingStatement,
   createEngBillingStatement,
   issueEngBillingStatement,
   closeEngBillingStatement,

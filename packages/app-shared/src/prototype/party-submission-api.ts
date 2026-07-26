@@ -120,6 +120,17 @@ export function partySubmissionTaskIdsKey(taskIds: string[]): string {
 let prefetchInflight: Promise<void> | null = null;
 let prefetchInflightKey = "";
 
+/** The list endpoint caps one request at 500 task ids and drops the rest. */
+const PARTY_SUBMISSION_LIST_CHUNK = 500;
+
+function chunkTaskIds(ids: string[], size: number): string[][] {
+  const batches: string[][] = [];
+  for (let i = 0; i < ids.length; i += size) {
+    batches.push(ids.slice(i, i + size));
+  }
+  return batches;
+}
+
 export async function prefetchPartySubmissionsForTasks(
   taskIds: string[],
 ): Promise<void> {
@@ -141,19 +152,25 @@ export async function prefetchPartySubmissionsForTasks(
       return;
     }
 
-    const result = await listPartyTaskSubmissions(config, ids);
-    if (result.ok) {
-      const returned = new Set(result.data.map((dto) => dto.taskId));
-      for (const dto of result.data) setCachedPartySubmission(dto, dto.taskId);
-      for (const id of ids) {
-        if (!returned.has(id)) setCachedPartySubmission(null, id);
+    // Batch, then clear only once every batch is in — a partial pass would
+    // evict live submissions for the ids the server never looked at.
+    const returned = new Set<string>();
+    for (const batch of chunkTaskIds(ids, PARTY_SUBMISSION_LIST_CHUNK)) {
+      const result = await listPartyTaskSubmissions(config, batch);
+      if (!result.ok) {
+        throw new Error(
+          resolveApiError(result.kind, result.errors, "تعذّر تحميل مسودات المهام"),
+        );
       }
-      return;
+      for (const dto of result.data) {
+        setCachedPartySubmission(dto, dto.taskId);
+        returned.add(dto.taskId);
+      }
     }
 
-    throw new Error(
-      resolveApiError(result.kind, result.errors, "تعذّر تحميل مسودات المهام"),
-    );
+    for (const id of ids) {
+      if (!returned.has(id)) setCachedPartySubmission(null, id);
+    }
   })().finally(() => {
     prefetchInflight = null;
     prefetchInflightKey = "";

@@ -100,6 +100,20 @@ export function isTaskOnSuspendedProperty(task: {
   return isPropertySuspended(task.poNumber, task.propertyId);
 }
 
+/** Shared by ActiveTransactionQueueView.listed and situation-card KPIs. */
+export function isListedQueueTask(
+  task: {
+    poNumber: string;
+    propertyId?: string;
+    status: string;
+  },
+  options?: { includeAllStatuses?: boolean },
+): boolean {
+  if (isTaskOnSuspendedProperty(task)) return false;
+  if (options?.includeAllStatuses) return true;
+  return task.status === "open" || task.status === "blocked";
+}
+
 export function getSuspendedTransaction(
   poNumber: string,
   propertyId: string,

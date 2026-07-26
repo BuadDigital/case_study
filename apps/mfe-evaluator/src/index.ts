@@ -17,7 +17,6 @@ export {
   getPartyTaskRecall as getEvaluatorRecall,
   hydratePartyTaskRecalls as hydrateEvaluatorRecalls,
   hydratePartyTaskRecallForTask as hydrateEvaluatorRecallForTask,
-  listPartyTaskRecalls as listEvaluatorRecalls,
   notifyPartyTaskRecallChanged as notifyEvaluatorRecallChanged,
   PARTY_TASK_RECALL_CHANGED_EVENT,
   PARTY_TASK_RECALL_HYDRATED_EVENT,

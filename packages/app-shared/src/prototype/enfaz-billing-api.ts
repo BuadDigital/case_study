@@ -19,15 +19,6 @@ export async function loadReadyEnfazPoSummaries() {
   return result.ok ? result.data : [];
 }
 
-export async function loadPoEnfazBilling(
-  poNumber: string,
-): Promise<PoEnfazBillingDto | null> {
-  const config = workOrdersApiConfig();
-  if (!config) return null;
-  const result = await getPoEnfazBilling(config, poNumber);
-  return result.ok ? result.data : null;
-}
-
 export async function loadPoEnfazBillingForQuery(
   poNumber: string,
 ): Promise<PoEnfazBillingDto> {

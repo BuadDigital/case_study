@@ -468,17 +468,13 @@ export function listInspectorPhotoValidationIssues(
     parseInspectorCount(draft.showroomCount) > 0 &&
     !draft.componentPhotoAttachments.showroom?.fileName
   ) {
-    issues.push(
-      "يجب إرفاق صورة توثيقية في «مكوّنات العقار — عدد المعارض» (معرض تجاري وليس معرض الصور)",
-    );
+    issues.push("يجب إرفاق صورة المعرض");
   }
   if (
     parseInspectorCount(draft.wellCount) > 0 &&
     !draft.componentPhotoAttachments.well?.fileName
   ) {
-    issues.push(
-      "يجب إرفاق صورة توثيقية في «مكوّنات العقار — عدد الآبار»",
-    );
+    issues.push("يجب إرفاق صورة البئر");
   }
 
   const { requiredTotal, requiredDone, pendingApproval } =
