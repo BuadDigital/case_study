@@ -68,6 +68,10 @@ import {
   partyAccountForRole,
   type DistributionAssignee,
 } from "../lib/prototype/distribution-parties";
+import {
+  downloadTaskAttachmentAsync,
+  uploadTaskScopedAttachment,
+} from "@platform/app-shared/prototype/task-attachments-api";
 import { AppModal } from "../components/ui/AppModal";
 import {
   RowMoreMenu,
@@ -192,11 +196,48 @@ function fmtFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-type DraftFile = { name: string; size: string };
+type DraftFile = {
+  name: string;
+  size: string;
+  file?: File;
+  attachmentId?: string;
+  contentType?: string;
+};
 
 function filesFromList(list: FileList | null): DraftFile[] {
   if (!list) return [];
-  return Array.from(list).map((f) => ({ name: f.name, size: fmtFileSize(f.size) }));
+  return Array.from(list).map((f) => ({ name: f.name, size: fmtFileSize(f.size), file: f }));
+}
+
+const OPS_COMMENT_ATTACHMENT_SCOPE = "operations-task-comment";
+
+/** Uploads any draft files that still hold a raw File (not yet persisted) and
+ * returns the plain attachment payload to send with the comment. */
+async function uploadDraftFiles(
+  taskId: string,
+  files: DraftFile[],
+): Promise<{ name: string; size: string; attachmentId?: string | null; contentType?: string | null }[]> {
+  const results: { name: string; size: string; attachmentId?: string | null; contentType?: string | null }[] = [];
+  for (const f of files) {
+    if (f.attachmentId || !f.file) {
+      results.push({
+        name: f.name,
+        size: f.size,
+        attachmentId: f.attachmentId ?? null,
+        contentType: f.contentType ?? null,
+      });
+      continue;
+    }
+    const scopeKey = `${taskId}:${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    const uploaded = await uploadTaskScopedAttachment(OPS_COMMENT_ATTACHMENT_SCOPE, scopeKey, f.file);
+    results.push({
+      name: f.name,
+      size: f.size,
+      attachmentId: uploaded?.attachmentId ?? null,
+      contentType: uploaded?.mimeType ?? f.file.type ?? null,
+    });
+  }
+  return results;
 }
 
 function TypeIcon({ type, size = 15 }: { type: string; size?: number }) {
@@ -1212,12 +1253,32 @@ function CommentThread({
                     {c.text ? <div className={opsCmtText}>{c.text}</div> : null}
                     {c.files && c.files.length > 0 ? (
                       <div className={opsCmtFiles}>
-                        {c.files.map((f, fi) => (
-                          <span key={`${f.name}-${fi}`} className={opsFileChip}>
-                            <span>{f.name}</span>
-                            <span className={opsFileSize}>{f.size}</span>
-                          </span>
-                        ))}
+                        {c.files.map((f, fi) =>
+                          f.attachmentId ? (
+                            <button
+                              key={`${f.name}-${fi}`}
+                              type="button"
+                              className={cn(opsFileChip, "cursor-pointer")}
+                              title="تنزيل المرفق"
+                              onClick={() =>
+                                void downloadTaskAttachmentAsync({
+                                  fileName: f.name,
+                                  mimeType: f.contentType || "application/octet-stream",
+                                  attachmentId: f.attachmentId!,
+                                })
+                              }
+                            >
+                              <PaperclipIcon />
+                              <span className="underline">{f.name}</span>
+                              <span className={opsFileSize}>{f.size}</span>
+                            </button>
+                          ) : (
+                            <span key={`${f.name}-${fi}`} className={opsFileChip}>
+                              <span>{f.name}</span>
+                              <span className={opsFileSize}>{f.size}</span>
+                            </span>
+                          ),
+                        )}
                       </div>
                     ) : null}
                   </div>
@@ -1510,7 +1571,8 @@ export function OperationsTasksView() {
     const paused = tasks.filter((t) => t.status === "paused").length;
     const completed = tasks.filter((t) => t.status === "completed").length;
     return {
-      active: created + inProgress + paused,
+      active: created + inProgress,
+      created,
       paused,
       inProgress,
       completed,
@@ -1681,11 +1743,12 @@ export function OperationsTasksView() {
         (closeComment?.trim() || (files && files.length > 0))
       ) {
         setBusy(true);
+        const uploadedFiles = files && files.length > 0 ? await uploadDraftFiles(id, files) : undefined;
         const commentRes = await addOperationsTaskCommentRecord(
           id,
           closeComment?.trim() ?? "",
           "close",
-          files,
+          uploadedFiles,
         );
         if (!commentRes.ok) {
           setError(commentRes.error);
@@ -2027,7 +2090,8 @@ export function OperationsTasksView() {
           onClick: () => setDetailId(task.id),
         },
       ];
-      if (task.status === "created") {
+      const rowIsAssignee = task.assigneeId === reviewerAccount?.assigneeId;
+      if (task.status === "created" && rowIsAssignee) {
         items.push({
           id: "start",
           label: "✓ تأكيد الاستلام",
@@ -2036,9 +2100,11 @@ export function OperationsTasksView() {
         });
       }
       if (
-        task.status === "in_progress" ||
-        task.status === "paused" ||
-        (canCreate && task.status === "created")
+        (task.status === "in_progress" && rowIsAssignee) ||
+        (canCreate &&
+          (task.status === "in_progress" ||
+            task.status === "paused" ||
+            task.status === "created"))
       ) {
         items.push({
           id: "complete",
@@ -2108,12 +2174,11 @@ export function OperationsTasksView() {
       }
       return items;
     },
-    [canCreate, canRemind, runStatus, remindTask, openReassign, openCloseModal, openPriorityModal, openKeysRegisterFromTask, openPauseModal],
+    [canCreate, canRemind, reviewerAccount, runStatus, remindTask, openReassign, openCloseModal, openPriorityModal, openKeysRegisterFromTask, openPauseModal],
   );
 
   const isAssignee =
-    Boolean(detail) &&
-    (canCreate || detail?.assigneeId === reviewerAccount?.assigneeId);
+    Boolean(detail) && detail?.assigneeId === reviewerAccount?.assigneeId;
 
   if (!isFetched && isFetching) {
     return <PanelSkeleton className="p-4" />;
@@ -2445,11 +2510,13 @@ export function OperationsTasksView() {
             void (async () => {
               if (!commentText.trim() && commentFiles.length === 0) return;
               setBusy(true);
+              const uploadedFiles =
+                commentFiles.length > 0 ? await uploadDraftFiles(detail.id, commentFiles) : undefined;
               const res = await addOperationsTaskCommentRecord(
                 detail.id,
                 commentText.trim(),
                 undefined,
-                commentFiles.length ? commentFiles : undefined,
+                uploadedFiles,
               );
               setBusy(false);
               if (!res.ok) {
@@ -2651,13 +2718,14 @@ export function OperationsTasksView() {
         <KpiCell
           icon={
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4" />
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <path d="M14 2v6h6" />
             </svg>
           }
           iconClass="bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-ink"
-          label="متوقفة مؤقتاً"
-          value={kpis.paused}
-          sub="بانتظار الاستئناف"
+          label="منشأة"
+          value={kpis.created}
+          sub="بانتظار تأكيد الاستلام"
         />
         <KpiCell
           icon={

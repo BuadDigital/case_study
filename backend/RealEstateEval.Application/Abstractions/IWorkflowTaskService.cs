@@ -47,4 +47,19 @@ public interface IWorkflowTaskService
         Guid id,
         DeleteCaseStudySlotRequest request,
         CancellationToken cancellationToken = default);
+
+    Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> ReopenCompletedAsync(
+        Guid id,
+        ReopenCompletedWorkflowTaskRequest request,
+        string actorRole,
+        string? actorName,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>يعدّل إسناد أطراف دراسة الحالة (المهام الفرعية القائمة) دون إعادة فتح التوزيع كاملاً.</summary>
+    Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> RedistributePartiesAsync(
+        Guid id,
+        RedistributePartiesRequest request,
+        string actorRole,
+        string? actorName,
+        CancellationToken cancellationToken = default);
 }

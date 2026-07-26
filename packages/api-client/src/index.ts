@@ -120,6 +120,8 @@ export {
   listWorkflowTasks,
   patchWorkflowTask,
   patchWorkflowTaskDistribution,
+  redistributeWorkflowTaskParties,
+  reopenCompletedWorkflowTask,
   revertWorkflowTaskPhase,
   syncWorkflowTasks,
   type ConfirmTaskDistributionResponseDto,

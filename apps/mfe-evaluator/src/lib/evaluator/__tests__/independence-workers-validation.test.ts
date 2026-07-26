@@ -49,8 +49,52 @@ describe("validateEvaluatorSubmission — independence & workers", () => {
           licenseNumber: "12345",
         },
       ],
+      assetDataConfirmed: true,
+      assetDataVarianceNotes: "",
     });
     expect(errors.independence_declared).toBeUndefined();
     expect(errors.report_workers).toBeUndefined();
+    expect(errors.asset_data_confirmed).toBeUndefined();
+  });
+
+  const completeWorkers = [
+    {
+      ...createEmptyReportWorker("معد"),
+      name: "أحمد العتيبي",
+      licenseNumber: "12345",
+    },
+  ];
+
+  it("requires asset data confirmation or variance notes", () => {
+    const errors = validateEvaluatorSubmission({
+      ...base,
+      independenceDeclared: true,
+      reportWorkers: completeWorkers,
+      assetDataConfirmed: false,
+      assetDataVarianceNotes: "",
+    });
+    expect(errors.asset_data_confirmed).toBeTruthy();
+  });
+
+  it("passes asset data check when confirmed without notes", () => {
+    const errors = validateEvaluatorSubmission({
+      ...base,
+      independenceDeclared: true,
+      reportWorkers: completeWorkers,
+      assetDataConfirmed: true,
+      assetDataVarianceNotes: "",
+    });
+    expect(errors.asset_data_confirmed).toBeUndefined();
+  });
+
+  it("passes asset data check when not confirmed but variance notes filled", () => {
+    const errors = validateEvaluatorSubmission({
+      ...base,
+      independenceDeclared: true,
+      reportWorkers: completeWorkers,
+      assetDataConfirmed: false,
+      assetDataVarianceNotes: "فرق في مساحة البناء عن المعاينة الميدانية.",
+    });
+    expect(errors.asset_data_confirmed).toBeUndefined();
   });
 });

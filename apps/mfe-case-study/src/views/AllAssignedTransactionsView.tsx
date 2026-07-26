@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { isPartyWorkflowRole } from "@platform/app-shared/prototype/party-task-pages";
-import { PanelSkeleton } from "@platform/design-system";
+import { PanelSkeleton, useToast } from "@platform/design-system";
 import { CaseStudyTaskWork } from "./MyTaskWorkView";
 import {
   ActiveTransactionQueueView,
@@ -12,7 +12,10 @@ import {
 } from "./ActiveTransactionQueueView";
 import { filterOpenAssignedTransactions } from "../lib/prototype/assigned-transactions-filter";
 import { isTaskOnSuspendedProperty } from "../lib/prototype/suspended-transactions-storage";
-import type { WorkflowTask } from "../lib/prototype/tasks-storage";
+import {
+  reopenCompletedTransaction,
+  type WorkflowTask,
+} from "../lib/prototype/tasks-storage";
 import { ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-engineering-survey-events";
 import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-evaluator-events";
 import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-field-inspection-events";
@@ -29,6 +32,7 @@ import {
   allTransactionsPhaseLabel,
   buildAllTransactionsRowMoreItems,
 } from "../lib/prototype/all-transactions-queue";
+import { ReopenCompletedTransactionModal } from "../components/transactions/ReopenCompletedTransactionModal";
 
 const PARTY_QUEUE_REFRESH_EVENTS = [
   FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
@@ -48,6 +52,8 @@ export function AllAssignedTransactionsView() {
   const searchParams = useSearchParams();
   const legacyTask = searchParams.get("task");
   const { data: tasks } = useWorkflowTasksQuery();
+  const { showToast } = useToast();
+  const [reopenTask, setReopenTask] = useState<WorkflowTask | null>(null);
 
   const isPartyRole = isPartyWorkflowRole(role);
 
@@ -93,6 +99,8 @@ export function AllAssignedTransactionsView() {
           propertyId: ctx.propertyId,
           openTask: ctx.openTask,
           router: ctx.router,
+          viewerRole: ctx.viewerRole,
+          onReopenCompleted: () => setReopenTask(ctx.task),
         }),
       getTaskStatusBadge: (task) => {
         const label = allTransactionsPhaseLabel(task);
@@ -123,21 +131,37 @@ export function AllAssignedTransactionsView() {
   }
 
   return (
-    <ActiveTransactionQueueView
-      config={config}
-      renderPanel={
-        isPartyRole
-          ? undefined
-          : ({ task, onRefresh, onClose }) => (
-              <CaseStudyTaskWork
-                key={task.id}
-                task={task}
-                onRefresh={onRefresh}
-                layout="panel"
-                onClose={onClose}
-              />
-            )
-      }
-    />
+    <>
+      <ActiveTransactionQueueView
+        config={config}
+        renderPanel={
+          isPartyRole
+            ? undefined
+            : ({ task, onRefresh, onClose }) => (
+                <CaseStudyTaskWork
+                  key={task.id}
+                  task={task}
+                  onRefresh={onRefresh}
+                  layout="panel"
+                  onClose={onClose}
+                />
+              )
+        }
+      />
+      <ReopenCompletedTransactionModal
+        open={reopenTask !== null}
+        task={reopenTask}
+        onClose={() => setReopenTask(null)}
+        onConfirm={async (reason) => {
+          if (!reopenTask) return;
+          const result = await reopenCompletedTransaction(reopenTask.id, reason);
+          if (!result.ok) {
+            showToast(result.error, "error");
+            return;
+          }
+          showToast("تمت إعادة فتح المعاملة", "success");
+        }}
+      />
+    </>
   );
 }

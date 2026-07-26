@@ -232,7 +232,7 @@ export async function addOperationsTaskCommentRecord(
 
   kind?: string,
 
-  files?: { name: string; size: string }[],
+  files?: { name: string; size: string; attachmentId?: string | null; contentType?: string | null }[],
 
 ): Promise<{ ok: true; task: OperationsTask } | { ok: false; error: string }> {
 

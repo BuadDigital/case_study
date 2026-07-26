@@ -123,6 +123,27 @@ function engFeeStatusMeta(st: EngFeeUiStatus): {
   };
 }
 
+/** Tooltip explaining why a status is what it is — only where it adds context. */
+function engFeeStatusTitle(
+  st: EngFeeUiStatus,
+  row: InspectorFeeRowDto,
+): string | undefined {
+  if (st === "carried") {
+    return "لم يُدرج في كشف سابق بقرار المحاسب — يدخل تلقائياً في كشف الشهر الجاري";
+  }
+  if (st === "dispute") {
+    const reason = row.lastTransitionReason?.trim();
+    return reason ? `تحفّظكم: ${reason}` : undefined;
+  }
+  if (st === "ready" && !(row.supervisorDiscountSar > 0)) {
+    return "تلقائياً — لا تلزم موافقة";
+  }
+  if (st === "paid") {
+    return "موثَّق برقم الفاتورة وإيصال التحويل";
+  }
+  return undefined;
+}
+
 export type EngOfficeFeesTab = "action" | "ready";
 
 export function EngOfficeFeesBillingTable({
@@ -315,7 +336,9 @@ export function EngOfficeFeesBillingTable({
                       {fmtSar(row.netFeeSar)}
                     </Td>
                     <Td>
-                      <StatusPill label={meta.label} style={meta.style} />
+                      <span title={engFeeStatusTitle(st, row)}>
+                        <StatusPill label={meta.label} style={meta.style} />
+                      </span>
                     </Td>
                     <Td>
                       {st === "pending_office" ? (
@@ -360,7 +383,7 @@ export function EngOfficeFeesBillingTable({
 
       <FeeActionReasonModal
         open={disputeRow !== null}
-        title="اعتراض على الحسم"
+        title="تحفّظ على التسعير"
         label="مبررات التحفّظ (إلزامي)"
         confirmLabel="إرسال التحفّظ"
         onClose={() => setDisputeRow(null)}

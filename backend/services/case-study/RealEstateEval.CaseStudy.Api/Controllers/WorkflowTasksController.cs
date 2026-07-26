@@ -1,7 +1,11 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Permissions;
 using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
@@ -12,10 +16,12 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 public class WorkflowTasksController : ControllerBase
 {
     private readonly IWorkflowTaskService _tasks;
+    private readonly ApplicationDbContext _db;
 
-    public WorkflowTasksController(IWorkflowTaskService tasks)
+    public WorkflowTasksController(IWorkflowTaskService tasks, ApplicationDbContext db)
     {
         _tasks = tasks;
+        _db = db;
     }
 
     [HttpGet]
@@ -160,4 +166,75 @@ public class WorkflowTasksController : ControllerBase
             cancellationToken);
         return NoContent();
     }
+
+    [HttpPost("{id:guid}/reopen-completed")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public async Task<ActionResult<WorkflowTaskDto>> ReopenCompleted(
+        Guid id,
+        [FromBody] ReopenCompletedWorkflowTaskRequest request,
+        CancellationToken cancellationToken)
+    {
+        var (result, errors) = await _tasks.ReopenCompletedAsync(
+            id,
+            request,
+            await ActorPrototypeRoleAsync(cancellationToken),
+            ActorName(),
+            cancellationToken);
+        if (errors is not null) return BadRequest(new { errors });
+        if (result is null) return NotFound();
+        return Ok(result);
+    }
+
+    [HttpPost("{id:guid}/redistribute")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public async Task<ActionResult<WorkflowTaskDto>> Redistribute(
+        Guid id,
+        [FromBody] RedistributePartiesRequest request,
+        CancellationToken cancellationToken)
+    {
+        var (result, errors) = await _tasks.RedistributePartiesAsync(
+            id,
+            request,
+            await ActorPrototypeRoleAsync(cancellationToken),
+            ActorName(),
+            cancellationToken);
+        if (errors is not null) return BadRequest(new { errors });
+        if (result is null) return NotFound();
+        return Ok(result);
+    }
+
+    /// <summary>JWT carries identity roles (Editor/CDO), not prototype roles. Resolve like PermissionService.</summary>
+    private async Task<string> ActorPrototypeRoleAsync(CancellationToken cancellationToken)
+    {
+        var userId = ActorId();
+        if (userId.Length == 0) return "";
+
+        var profile = await _db.UserProfiles.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
+
+        var identityRoles = await (
+            from ur in _db.UserRoles.AsNoTracking()
+            join r in _db.Roles.AsNoTracking() on ur.RoleId equals r.Id
+            where ur.UserId == userId
+            select r.Name!
+        ).ToListAsync(cancellationToken);
+
+        var resolved = PrototypeRoleResolver.Resolve(profile, identityRoles);
+        if (!string.IsNullOrWhiteSpace(resolved))
+            return resolved;
+
+        return User.FindFirstValue("role")?.Trim()
+            ?? User.FindFirstValue(ClaimTypes.Role)?.Trim()
+            ?? "";
+    }
+
+    private string ActorId() =>
+        User.FindFirstValue(ClaimTypes.NameIdentifier)?.Trim()
+        ?? User.FindFirstValue("sub")?.Trim()
+        ?? "";
+
+    private string? ActorName() =>
+        User.FindFirstValue("displayName")?.Trim()
+        ?? User.FindFirstValue("name")?.Trim()
+        ?? User.Identity?.Name?.Trim();
 }

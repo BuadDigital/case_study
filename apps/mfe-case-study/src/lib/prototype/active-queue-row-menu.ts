@@ -12,7 +12,11 @@ import {
   revertTaskToPhase,
   type WorkflowTask,
 } from "./tasks-storage";
-import { canDeleteTransaction, canEditProperty } from "./po-roles";
+import {
+  canDeleteTransaction,
+  canEditProperty,
+  canRedistributeParties,
+} from "./po-roles";
 import type { RoleId } from "@platform/types";
 
 export type ActiveQueueRowMoreOptions = {
@@ -236,6 +240,8 @@ export function buildCaseStudyQueueRowMoreItems(options: {
   propertyId?: string;
   router: { push: (href: string) => void };
   viewerRole?: RoleId;
+  /** Opens the «تعديل إسناد الأطراف» modal for this row (case-study phase only). */
+  onRedistributeParties?: () => void;
 }): RowMoreMenuItem[] {
   const po = options.task.poNumber.trim();
   const propertyId = options.propertyId?.trim();
@@ -267,6 +273,20 @@ export function buildCaseStudyQueueRowMoreItems(options: {
         options.router.push(caseStudyWorkspacePath(options.task.id)),
     },
   ];
+
+  if (
+    options.task.kind === "case-study-property" &&
+    options.task.phase === "case-study" &&
+    options.onRedistributeParties &&
+    options.viewerRole &&
+    canRedistributeParties(options.viewerRole)
+  ) {
+    items.push({
+      id: "redistribute-parties",
+      label: "تعديل إسناد الأطراف",
+      onClick: options.onRedistributeParties,
+    });
+  }
 
   if (propertyId) {
     items.push({

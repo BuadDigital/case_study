@@ -13,6 +13,8 @@ export type OperationsTaskLetterRowDto = {
 export type OperationsTaskCommentFileDto = {
   name: string;
   size: string;
+  attachmentId?: string | null;
+  contentType?: string | null;
 };
 
 export type OperationsTaskCommentDto = {

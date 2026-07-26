@@ -112,3 +112,11 @@ export const DISCOUNT_REASONS = [
   "تأخّر التسليم",
   "جودة دون المتفق",
 ] as const;
+
+/** Reason presets for supervisor pricing edits on engineering-office fees. */
+export const ENG_DISCOUNT_REASONS = [
+  "تأخّر تسليم التقرير المساحي",
+  "نقص في مرفقات الرفع المساحي",
+  "مخالفة لمعايير الرفع الهندسي",
+  "إعادة رفع بسبب أخطاء فنية",
+] as const;

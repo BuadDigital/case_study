@@ -306,6 +306,20 @@ export function EvaluatorAdvisoryPanel({
           {submission.independenceDeclared ? "مُؤكَّد" : "غير مؤكد"}
         </span>
       </div>
+      <div className={infoRowClass}>
+        <span className="shrink-0 text-text-3">مراجعة بيانات الأصل</span>
+        <span className="text-left font-medium text-text">
+          {submission.assetDataConfirmed ? "مُؤكَّدة" : "غير مؤكَّدة"}
+        </span>
+      </div>
+      {submission.assetDataVarianceNotes.trim() ? (
+        <div className={infoRowClass}>
+          <span className="shrink-0 text-text-3">ملاحظات التباين</span>
+          <span className="text-left font-medium text-text">
+            {submission.assetDataVarianceNotes}
+          </span>
+        </div>
+      ) : null}
       {(submission.reportWorkers ?? [])
         .filter((w) => w.name.trim())
         .map((w, i) => (
