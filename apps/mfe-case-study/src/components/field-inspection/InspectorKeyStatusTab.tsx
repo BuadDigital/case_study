@@ -281,7 +281,7 @@ export function InspectorKeyStatusTab({
       </FieldsGrid>
 
       {showHandoffConfirm ? (
-        <Note tone="warning" className="mt-4">
+        <Note tone="warn" className="mt-4">
           توجد مناولة داخلية بانتظار تأكيد الاستلام.
           <div className="mt-3">
             <Button
@@ -308,7 +308,7 @@ export function InspectorKeyStatusTab({
           </Button>
           <Button
             type="button"
-            variant="secondary"
+            variant="outline"
             size="sm"
             disabled={busy}
             onClick={() => void confirmAssignment("unmatched")}
@@ -325,7 +325,7 @@ export function InspectorKeyStatusTab({
       ) : null}
 
       {blocksCompletion ? (
-        <Note tone="warning" className="mt-4">
+        <Note tone="warn" className="mt-4">
           بدون استلام المفتاح لا يمكن إتمام المعاينة (ما عدا الأرض الفضاء أو
           المفاتيح «غير مطلوبة» أو تمكين بلا مفتاح). إذا المفتاح غير متوفر أو لا
           يفتح: سجّل تعذراً مع ملاحظة.
@@ -333,7 +333,7 @@ export function InspectorKeyStatusTab({
             <div className="mt-3">
               <Button
                 type="button"
-                variant="secondary"
+                variant="outline"
                 size="sm"
                 onClick={onRegisterKeyFailure}
               >
