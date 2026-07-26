@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.Failures.Api.Controllers;
@@ -87,7 +88,7 @@ public class FailuresController : ControllerBase
         [FromBody] FailureNoteRequest request,
         CancellationToken cancellationToken)
     {
-        var dto = await _failures.SuspendAsync(id, request.Note, cancellationToken);
+        var dto = await _failures.SuspendAsync(id, request.Note, ActorClaims.Id(User), cancellationToken);
         if (dto is null) return BadRequest(new { errors = new { _ = "لا يمكن تعليق هذا التعذر" } });
         return Ok(dto);
     }

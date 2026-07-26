@@ -220,11 +220,15 @@ export function buildPropertyDetailTimeline(input: {
 
   const suspended = getSuspendedTransaction(po, property.id);
   if (suspended) {
+    const suspendDetail = [suspended.supervisorNote, suspended.suspendedBy]
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .join(" — ");
     pushEvent(events, {
       id: `suspended-${suspended.id}`,
       at: suspended.suspendedAt,
       title: "تعليق المعاملة",
-      detail: suspended.supervisorNote || suspended.suspendedBy,
+      detail: suspendDetail || undefined,
       tone: "warn",
     });
   }

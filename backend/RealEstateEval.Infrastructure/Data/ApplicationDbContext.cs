@@ -395,6 +395,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.ContinueInstructions).HasMaxLength(4000);
             e.Property(x => x.Status).HasMaxLength(32);
             e.Property(x => x.Specialist).HasMaxLength(256);
+            e.Property(x => x.SuspendedByUserId).HasMaxLength(450);
             e.HasIndex(x => x.PoNumber);
             e.HasIndex(x => new { x.PoNumber, x.PropertyId });
             e.HasIndex(x => x.Status);
