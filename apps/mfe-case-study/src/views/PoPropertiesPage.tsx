@@ -491,12 +491,7 @@ export function PoPropertiesPage({
 
             <ul className="m-0 flex list-none flex-col gap-2.5 p-3 lg:hidden">
               {record.properties.map((prop, index) => {
-                const row = poPropertyToPropertyRow(
-                  record,
-                  prop,
-                  priorByDeed,
-                  workflowTasks,
-                );
+                const serverStatus = statusByPropertyId.get(prop.id) ?? "new";
                 const boursePending = !prop.bourseDataCompleted;
                 const locRaw = formatPropertyLocation(prop);
                 const location =
@@ -565,7 +560,7 @@ export function PoPropertiesPage({
                         ) : boursePending ? (
                           <Badge tone="warning">بانتظار البورصة</Badge>
                         ) : (
-                          <StatusBadge status={row.status} />
+                          <StatusBadge status={serverStatus} />
                         )}
                       </div>
                       <div className="space-y-1 text-[12.5px]">
