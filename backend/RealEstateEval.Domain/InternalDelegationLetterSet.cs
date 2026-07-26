@@ -1,8 +1,9 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// مجموعة خطابات تفويض داخلي ضمن نطاق مراجع/مندوب (ScopeKey)،
-/// وليست مربوطة بأمر عمل واحد. المحتوى JSON لمصفوفة الخطابات.
+/// Legacy table for the retired internal-delegation-letters API.
+/// Live letters print from ops-task <c>LetterRowsJson</c> / <c>Reference</c>.
+/// Kept so system reset can still clear residual rows.
 /// </summary>
 public class InternalDelegationLetterSet
 {

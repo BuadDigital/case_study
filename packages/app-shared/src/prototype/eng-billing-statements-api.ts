@@ -3,7 +3,6 @@ import {
   createEngBillingStatement,
   deferEngBillingLines,
   downloadAttachmentBlob,
-  getEngBillingStatement,
   issueEngBillingStatement,
   listEngBillingReadyLines,
   listEngBillingStatements,
@@ -54,15 +53,6 @@ export async function loadEngBillingStatements(query?: {
   if (!config) return [];
   const result = await listEngBillingStatements(config, query ?? {});
   return result.ok ? result.data : [];
-}
-
-export async function loadEngBillingStatement(
-  statementId: string,
-): Promise<EngBillingStatementDto | null> {
-  const config = workOrdersApiConfig();
-  if (!config) return null;
-  const result = await getEngBillingStatement(config, statementId);
-  return result.ok ? result.data : null;
 }
 
 export async function runCreateEngBillingStatement(

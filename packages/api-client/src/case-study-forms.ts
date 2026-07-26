@@ -3,7 +3,6 @@ import { getApiBase } from "./index";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
 export type CaseStudyFormDto = {
-  version: number;
   taskId: string;
   propertyId?: string;
   poNumber?: string;

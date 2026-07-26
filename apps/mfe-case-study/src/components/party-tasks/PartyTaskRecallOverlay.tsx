@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 import { usePartyTaskRecallRequest } from "../../hooks/use-party-task-recall-request";
+import { supportsPartyTaskRecall } from "../../lib/prototype/party-task-recall";
 import { PartyTaskRecallFab } from "./PartyTaskRecallFab";
 
 export function PartyTaskRecallOverlay({
@@ -32,13 +33,16 @@ export function PartyTaskRecallOverlay({
     notSubmittedMessage,
   });
 
+  const canRecall = supportsPartyTaskRecall(task.kind);
+  const hasAnyAction = canRecall || !!onAddObstruction || !!onAddNote;
+
   return (
     <>
       {children}
-      {show ? (
+      {show && hasAnyAction ? (
         <PartyTaskRecallFab
           deedNumber={deedNumber}
-          onRequestRecall={requestRecall}
+          onRequestRecall={canRecall ? requestRecall : undefined}
           onAddObstruction={onAddObstruction}
           onAddNote={onAddNote}
         />

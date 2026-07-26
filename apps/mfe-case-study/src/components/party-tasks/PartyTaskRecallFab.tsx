@@ -97,7 +97,8 @@ export function PartyTaskRecallFab({
   onAddNote,
   deedNumber,
 }: {
-  onRequestRecall: () => void;
+  /** Omitted for task kinds the server cannot reopen, which cannot be recalled. */
+  onRequestRecall?: () => void;
   onAddObstruction?: () => void;
   onAddNote?: () => void;
   deedNumber?: string;
@@ -127,17 +128,21 @@ export function PartyTaskRecallFab({
             },
           ]
         : []),
-      {
-        id: "request-recall",
-        label: "طلب استرجاع المعاملة",
-        icon: Icon.recall,
-        onSelect: onRequestRecall,
-      },
+      ...(onRequestRecall
+        ? [
+            {
+              id: "request-recall",
+              label: "طلب استرجاع المعاملة",
+              icon: Icon.recall,
+              onSelect: onRequestRecall,
+            },
+          ]
+        : []),
     ],
     [onAddNote, onAddObstruction, onRequestRecall],
   );
 
-  const hasQuickActions = actions.length > 1;
+  const recallOnly = actions.length === 1 && actions[0]!.id === "request-recall";
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -210,15 +215,15 @@ export function PartyTaskRecallFab({
         aria-expanded={open}
         aria-label={
           open
-            ? hasQuickActions
-              ? "إغلاق الإجراءات السريعة"
-              : "إغلاق الإجراءات"
-            : hasQuickActions
-              ? `إجراءات سريعة${deedNumber ? ` — صك ${deedNumber}` : ""}`
-              : `طلب استرجاع المعاملة${deedNumber ? ` — صك ${deedNumber}` : ""}`
+            ? recallOnly
+              ? "إغلاق الإجراءات"
+              : "إغلاق الإجراءات السريعة"
+            : recallOnly
+              ? `طلب استرجاع المعاملة${deedNumber ? ` — صك ${deedNumber}` : ""}`
+              : `إجراءات سريعة${deedNumber ? ` — صك ${deedNumber}` : ""}`
         }
       >
-        {hasQuickActions ? (open ? <CloseIcon /> : <BoltIcon />) : <RecallIcon />}
+        {recallOnly ? <RecallIcon /> : open ? <CloseIcon /> : <BoltIcon />}
       </button>
     </div>
   );

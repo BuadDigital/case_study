@@ -44,24 +44,6 @@ public class InspectorFeesController : ControllerBase
             returnTo,
             ct));
 
-    [HttpGet("summary")]
-    public async Task<ActionResult<InspectorFeesSummaryDto>> Summary(
-        [FromQuery] string? assigneeId,
-        [FromQuery] string? workflowTaskId,
-        [FromQuery] bool submittedOnly = true,
-        [FromQuery] string? taskKind = null,
-        [FromQuery] string? billingStatus = null,
-        [FromQuery] string? returnTo = null,
-        CancellationToken ct = default) =>
-        Ok(await _fees.GetSummaryAsync(
-            assigneeId,
-            workflowTaskId,
-            submittedOnly,
-            taskKind,
-            billingStatus,
-            returnTo,
-            ct));
-
     [HttpGet("{workflowTaskId:guid}/transitions")]
     public async Task<ActionResult<IReadOnlyList<InspectorFeeAuditEntryDto>>> ListTransitions(
         Guid workflowTaskId,

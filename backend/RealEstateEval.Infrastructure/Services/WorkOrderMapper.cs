@@ -187,6 +187,8 @@ public static class WorkOrderMapper
             AssignmentMandateDate = p.AssignmentMandateDate,
             Court = p.Court,
             Circuit = p.Circuit,
+            CourtId = p.CourtId,
+            CircuitId = p.CircuitId,
             Contacts = p.Contacts
                 .OrderBy(c => c.SortOrder)
                 .Select(c => new PropertyContactDto

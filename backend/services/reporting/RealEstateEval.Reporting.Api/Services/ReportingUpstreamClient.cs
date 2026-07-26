@@ -76,7 +76,7 @@ public sealed class ReportingUpstreamClient : IReportingUpstreamClient
     public Task<InspectorFeesSummaryDto> GetInspectorFeesSummaryAsync(
         CancellationToken cancellationToken) =>
         GetJsonAsync<InspectorFeesSummaryDto>(
-            "/api/inspector-fees/summary?submittedOnly=false",
+            "/api/inspector-fees?submittedOnly=false",
             cancellationToken);
 
     public async Task<int> GetFailureCountAsync(CancellationToken cancellationToken)

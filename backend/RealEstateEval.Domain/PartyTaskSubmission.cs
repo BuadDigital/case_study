@@ -13,6 +13,8 @@ public class PartyTaskSubmission
     public string PayloadJson { get; set; } = "{}";
     public string? ReturnNote { get; set; }
     public DateTime? SubmittedAtUtc { get; set; }
+    /// <summary>Set when a specialist accepts the outputs (engineering-survey fee accrual).</summary>
+    public DateTime? AcceptedAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 }

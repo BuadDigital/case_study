@@ -67,30 +67,6 @@ public class EngBillingStatementsController : ControllerBase
             ct));
     }
 
-    [HttpGet("{statementId:guid}")]
-    public async Task<ActionResult<EngBillingStatementDto>> Get(
-        Guid statementId,
-        CancellationToken ct)
-    {
-        var ctx = await BuildActorContextAsync(ct);
-        if (ctx.UserId is null) return Unauthorized();
-
-        var dto = await _statements.GetStatementAsync(statementId, ct);
-        if (dto is null) return NotFound();
-
-        if (!ctx.IsFinancialOfficer && !ctx.IsOperationsManager)
-        {
-            if (string.IsNullOrWhiteSpace(ctx.AssigneeId)
-                || !string.Equals(dto.AssigneeId, ctx.AssigneeId, StringComparison.Ordinal)
-                || dto.Status == "draft")
-            {
-                return Forbid();
-            }
-        }
-
-        return Ok(dto);
-    }
-
     [HttpPost]
     [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
     public async Task<ActionResult<CreateEngBillingStatementResult>> Create(

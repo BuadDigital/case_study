@@ -39,6 +39,11 @@ export function validatePropertyBourseFields(
     } else if (type === "other" && !p.restrictionOtherReason.trim()) {
       errors.restrictionOtherReason = "سبب القيد مطلوب عند اختيار أخرى";
     }
+  } else {
+    const type = p.restrictionType.trim().toLowerCase();
+    if (type && !RESTRICTION_TYPE_VALUES.has(type)) {
+      errors.restrictionType = "قيمة نوع القيد غير صالحة";
+    }
   }
 
   const boundaries = p.boundariesAvailability.trim().toLowerCase();

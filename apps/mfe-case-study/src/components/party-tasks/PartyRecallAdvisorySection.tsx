@@ -7,6 +7,7 @@ import {
   partyTaskRecallStatusLabel,
   rejectPartyTaskRecall,
 } from "@platform/app-shared/prototype/party-task-recall-storage";
+import { getCachedPartySubmission } from "@platform/app-shared/prototype/party-submission-api";
 
 const noteWarnClass =
   "mb-3 rounded-[var(--radius-DEFAULT)] border border-amber border-e-[3px] border-e-amber bg-amber-light px-3.5 py-2.5 text-xs leading-relaxed text-amber-text";
@@ -32,12 +33,15 @@ export function PartyRecallAdvisorySection({
 
   function handleApprove() {
     void approvePartyTaskRecall(taskId).then((result) => {
-      if (result) {
+      if (result.ok) {
         showToast("تمت الموافقة على طلب الاسترجاع", "success");
         onResolved?.();
         return;
       }
-      showToast("تعذّر الموافقة على الاسترجاع — حاول لاحقاً", "error");
+      showToast(
+        result.error || "تعذّر الموافقة على الاسترجاع — حاول لاحقاً",
+        "error",
+      );
     });
   }
 
@@ -45,12 +49,15 @@ export function PartyRecallAdvisorySection({
     const note = window.prompt("سبب الرفض (اختياري):", "");
     if (note === null) return;
     void rejectPartyTaskRecall(taskId, note).then((result) => {
-      if (result) {
+      if (result.ok) {
         showToast("تم رفض طلب الاسترجاع", "success");
         onResolved?.();
         return;
       }
-      showToast("تعذّر رفض طلب الاسترجاع — حاول لاحقاً", "error");
+      showToast(
+        result.error || "تعذّر رفض طلب الاسترجاع — حاول لاحقاً",
+        "error",
+      );
     });
   }
 
@@ -69,6 +76,26 @@ export function PartyRecallAdvisorySection({
           </Button>
           <Button type="button" size="sm" variant="outline" onClick={handleReject}>
             رفض
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Approve and reopen are separate calls, so an approved recall can leave the
+  // work still submitted. Offer the retry instead of a dead status row.
+  if (
+    recall.status === "approved" &&
+    getCachedPartySubmission(taskId)?.status === "submitted"
+  ) {
+    return (
+      <div className={noteWarnClass}>
+        <p className="m-0">
+          <strong>وُوفّق على الاسترجاع لكن العمل ما زال مغلقاً على {partyLabel}</strong>
+        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Button type="button" size="sm" variant="primary" onClick={handleApprove}>
+            إعادة فتح العمل للطرف
           </Button>
         </div>
       </div>

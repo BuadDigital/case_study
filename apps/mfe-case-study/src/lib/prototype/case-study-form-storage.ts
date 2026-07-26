@@ -21,7 +21,6 @@ export type CaseStudyFormStatus = "new" | "draft" | "submitted";
 export type CaseStudyMeterType = "" | "electronic" | "analog" | "none";
 
 export type CaseStudyFormDraft = {
-  version: 1;
   taskId: string;
   propertyId?: string;
   poNumber?: string;
@@ -54,7 +53,6 @@ export type CaseStudyFormDraft = {
 
 function dtoToDraft(dto: CaseStudyFormDto): CaseStudyFormDraft {
   return {
-    version: 1,
     taskId: dto.taskId,
     propertyId: dto.propertyId,
     poNumber: dto.poNumber,
@@ -86,7 +84,6 @@ function dtoToDraft(dto: CaseStudyFormDto): CaseStudyFormDraft {
 
 function draftToDto(draft: CaseStudyFormDraft): CaseStudyFormDto {
   return {
-    version: 1,
     taskId: draft.taskId,
     propertyId: draft.propertyId,
     poNumber: draft.poNumber,
@@ -132,7 +129,6 @@ export function emptyCaseStudyFormDraft(
 ): CaseStudyFormDraft {
   const today = todayIsoDate();
   return {
-    version: 1,
     taskId,
     propertyId: seed?.propertyId,
     poNumber: seed?.poNumber,
