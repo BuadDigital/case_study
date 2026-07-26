@@ -53,6 +53,22 @@ function SituationIcon({ tone }: { tone: SituationTone }) {
   );
 }
 
+function formatSituationValue(
+  card: { valueFormat?: "count" | "sar" },
+  value: number | undefined,
+): ReactNode {
+  if (value === undefined) return "—";
+  if (card.valueFormat === "sar") {
+    return (
+      <span className="text-[20px] font-bold tabular-nums tracking-tight">
+        {value.toLocaleString("en-US", { maximumFractionDigits: 0 })}{" "}
+        <span className="text-[12px] font-bold text-text-3">ر.س</span>
+      </span>
+    );
+  }
+  return value;
+}
+
 export function ActiveTransactionsSituationBar({
   pageId,
 }: {
@@ -66,6 +82,7 @@ export function ActiveTransactionsSituationBar({
   const rendered: ReactNode[] = cards.map((card, index) => {
     const isFirst = index === 0;
     const isLast = index === cards.length - 1;
+    const displayValue = formatSituationValue(card, values[card.key]);
     const cell = (
       <KpiCell
         first={isFirst}
@@ -73,7 +90,7 @@ export function ActiveTransactionsSituationBar({
         icon={<SituationIcon tone={card.tone} />}
         iconClass={toneIconClass[card.tone]}
         label={card.label}
-        value={values[card.key] ?? "—"}
+        value={displayValue}
         valueClass={toneValueClass[card.tone]}
         sub={card.sub}
         dot={isFirst}
@@ -97,7 +114,7 @@ export function ActiveTransactionsSituationBar({
           icon={<SituationIcon tone={card.tone} />}
           iconClass={toneIconClass[card.tone]}
           label={card.label}
-          value={values[card.key] ?? "—"}
+          value={displayValue}
           valueClass={toneValueClass[card.tone]}
           sub={card.sub}
           dot={isFirst}

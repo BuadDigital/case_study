@@ -43,7 +43,7 @@ export function KpiCell({
   return (
     <div
       className={cn(
-        "relative flex-1 px-6 py-5",
+        "relative flex-1 px-4 py-4 min-w-[140px] sm:min-w-0 sm:px-6 sm:py-5",
         !last && "border-e border-border",
         first &&
           "before:absolute before:inset-y-0 before:start-0 before:w-[3px] before:bg-gold before:content-['']",
@@ -63,7 +63,7 @@ export function KpiCell({
       </div>
       <div
         className={cn(
-          "text-start text-[32px] font-extrabold leading-none text-heading tabular-nums",
+          "text-start text-[26px] font-extrabold leading-none text-heading tabular-nums sm:text-[32px]",
           valueClass,
         )}
       >

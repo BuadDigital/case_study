@@ -34,7 +34,7 @@ export function CourtVisitFeesPanel({
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
         <div className="rounded-xl border border-border bg-surface px-[18px] py-4 shadow-card">
           <div className="text-[30px] font-extrabold leading-none text-heading tabular-nums">
             {ready ? rows.length : "—"}
@@ -51,62 +51,126 @@ export function CourtVisitFeesPanel({
       </div>
 
       <OperationalPanel className="shrink-0 overflow-visible">
-        <Table pending={!ready}>
-          <THead>
-            <Tr hoverable={false}>
-              <Th className="text-start">المهمة</Th>
-              <Th className="text-start">أمر العمل</Th>
-              <Th className="text-start">المستحق له</Th>
-              <Th className="text-start">المبلغ</Th>
-              <Th className="text-start">الحالة</Th>
-            </Tr>
-          </THead>
-          <TBody>
-            {!ready ? (
-              <SkeletonTableRows rows={4} cols={5} />
-            ) : rows.length === 0 ? (
+        <div className="hidden lg:block">
+          <Table pending={!ready}>
+            <THead>
               <Tr hoverable={false}>
-                <Td
-                  colSpan={5}
-                  className="cursor-default py-10 text-center text-[13px] text-text-3"
-                >
-                  <EmptyState line="لا بنود أتعاب زيارة بعد. تُستحق عند إنجاز مهمة زيارة محكمة." />
-                </Td>
+                <Th className="text-start">المهمة</Th>
+                <Th className="text-start">أمر العمل</Th>
+                <Th className="text-start">المستحق له</Th>
+                <Th className="text-start">المبلغ</Th>
+                <Th className="text-start">الحالة</Th>
               </Tr>
-            ) : (
-              rows.map((row) => {
+            </THead>
+            <TBody>
+              {!ready ? (
+                <SkeletonTableRows rows={4} cols={5} />
+              ) : rows.length === 0 ? (
+                <Tr hoverable={false}>
+                  <Td
+                    colSpan={5}
+                    className="cursor-default py-10 text-center text-[13px] text-text-3"
+                  >
+                    <EmptyState line="لا بنود أتعاب زيارة بعد. تُستحق عند إنجاز مهمة زيارة محكمة." />
+                  </Td>
+                </Tr>
+              ) : (
+                rows.map((row) => {
+                  const settled = row.status === "settled";
+                  const c = settled ? "#2f7a4d" : "#d9a441";
+                  return (
+                    <Tr
+                      key={row.id}
+                      hoverable={false}
+                      className={cn("group", queueTableRowClassName)}
+                    >
+                      <Td>
+                        <span className="text-[13.5px] font-bold text-primary">
+                          {row.taskDisplayId || "—"}
+                        </span>
+                      </Td>
+                      <Td className="text-text-2">{row.poNumber || "—"}</Td>
+                      <Td className="text-text-2">
+                        {row.creditAssigneeName || row.creditAssigneeId || "—"}
+                      </Td>
+                      <Td className="tabular-nums font-extrabold text-heading">
+                        {row.amountSar.toLocaleString("ar-SA")} ر.س
+                      </Td>
+                      <Td>
+                        <StatusPill
+                          label={settled ? "مُسوّاة" : "مفتوحة"}
+                          style={{ base: c, fg: c }}
+                        />
+                      </Td>
+                    </Tr>
+                  );
+                })
+              )}
+            </TBody>
+          </Table>
+        </div>
+
+        <div className="lg:hidden">
+          {!ready ? (
+            <div className="space-y-2.5 p-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-[88px] animate-pulse rounded-[12px] bg-surface-2"
+                />
+              ))}
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="px-3 py-10">
+              <EmptyState line="لا بنود أتعاب زيارة بعد. تُستحق عند إنجاز مهمة زيارة محكمة." />
+            </div>
+          ) : (
+            <ul className="m-0 flex list-none flex-col gap-2.5 p-3">
+              {rows.map((row) => {
                 const settled = row.status === "settled";
                 const c = settled ? "#2f7a4d" : "#d9a441";
                 return (
-                  <Tr
-                    key={row.id}
-                    hoverable={false}
-                    className={cn("group", queueTableRowClassName)}
+                  <li
+                    key={`m-${row.id}`}
+                    className="rounded-[12px] border border-border bg-surface px-3.5 py-3 shadow-card"
                   >
-                    <Td>
-                      <span className="text-[13.5px] font-bold text-primary">
+                    <div className="mb-2 flex items-start justify-between gap-2">
+                      <span className="text-[14px] font-bold text-primary">
                         {row.taskDisplayId || "—"}
                       </span>
-                    </Td>
-                    <Td className="text-text-2">{row.poNumber || "—"}</Td>
-                    <Td className="text-text-2">
-                      {row.creditAssigneeName || row.creditAssigneeId || "—"}
-                    </Td>
-                    <Td className="tabular-nums font-extrabold text-heading">
-                      {row.amountSar.toLocaleString("ar-SA")} ر.س
-                    </Td>
-                    <Td>
                       <StatusPill
                         label={settled ? "مُسوّاة" : "مفتوحة"}
                         style={{ base: c, fg: c }}
                       />
-                    </Td>
-                  </Tr>
+                    </div>
+                    <div className="space-y-1.5 text-[12.5px]">
+                      <div className="flex justify-between gap-3">
+                        <span className="text-text-3">أمر العمل</span>
+                        <span className="font-semibold text-text-2" dir="ltr">
+                          {row.poNumber || "—"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-text-3">المستحق له</span>
+                        <span className="text-end font-semibold text-heading">
+                          {row.creditAssigneeName ||
+                            row.creditAssigneeId ||
+                            "—"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between gap-3 pt-0.5">
+                        <span className="text-text-3">المبلغ</span>
+                        <span className="tabular-nums font-extrabold text-heading">
+                          {row.amountSar.toLocaleString("ar-SA")} ر.س
+                        </span>
+                      </div>
+                    </div>
+                  </li>
                 );
-              })
-            )}
-          </TBody>
-        </Table>
+              })}
+            </ul>
+          )}
+        </div>
       </OperationalPanel>
 
       <QueueTableHint>

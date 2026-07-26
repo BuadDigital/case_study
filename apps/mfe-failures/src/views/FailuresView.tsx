@@ -114,6 +114,8 @@ function partyScopedFailuresEmptyLine(role: RoleId): string | null {
       return "لا توجد تعذرات — سجّل تعذراً من قائمة المعاينة الميدانية أو من تبويب التعذرات في المعاملة.";
     case "real-estate-appraiser":
       return "لا توجد تعذرات — سجّل تعذراً من قائمة تقييم العقار أو من تبويب التعذرات في المعاملة.";
+    case "government-reviewer":
+      return "لا توجد تعذرات مرتبطة بمهامك — تظهر هنا التعذرات التي رفعتها.";
     default:
       return null;
   }
@@ -603,33 +605,121 @@ export function FailuresView() {
       ) : null}
 
       <OperationalPanel className="shrink-0 overflow-visible">
-        <Table pending={!isFetched}>
-          <THead>
-            <Tr hoverable={false}>
-              <Th className="text-start">الصك</Th>
-              <Th className="text-start">أمر العمل</Th>
-              <Th className="text-start">الخطورة</Th>
-              <Th className="text-start">الحالة</Th>
-              <Th className="text-start">الرافع</Th>
-              <Th className="text-start">الأخصائي</Th>
-            </Tr>
-          </THead>
-          <TBody>
-            {!isFetched ? (
-              <SkeletonTableRows rows={6} cols={6} />
-            ) : filteredItems.length === 0 ? (
+        <div className="hidden lg:block">
+          <Table pending={!isFetched}>
+            <THead>
               <Tr hoverable={false}>
-                <Td colSpan={6} className="cursor-default py-10">
-                  <EmptyState
-                    line={
-                      partyScopedFailuresEmptyLine(role) ??
-                      "لا توجد تعذرات — سجّل تعذراً من شاشة العقارات."
-                    }
-                  />
-                </Td>
+                <Th className="text-start">الصك</Th>
+                <Th className="text-start">أمر العمل</Th>
+                <Th className="text-start">الخطورة</Th>
+                <Th className="text-start">الحالة</Th>
+                <Th className="text-start">الرافع</Th>
+                <Th className="text-start">الأخصائي</Th>
               </Tr>
-            ) : (
-              filteredItems.map((f) => {
+            </THead>
+            <TBody>
+              {!isFetched ? (
+                <SkeletonTableRows rows={6} cols={6} />
+              ) : filteredItems.length === 0 ? (
+                <Tr hoverable={false}>
+                  <Td colSpan={6} className="cursor-default py-10">
+                    <EmptyState
+                      line={
+                        partyScopedFailuresEmptyLine(role) ??
+                        "لا توجد تعذرات — سجّل تعذراً من شاشة العقارات."
+                      }
+                    />
+                  </Td>
+                </Tr>
+              ) : (
+                filteredItems.map((f) => {
+                  const active = isActiveFailureStatus(f.status);
+                  const statusColor = failureListStatusColor(
+                    f.status,
+                    f.severity,
+                  );
+                  const expanded = expandedId === f.id;
+                  return (
+                    <Fragment key={f.id}>
+                      <Tr
+                        id={`failure-${f.id}`}
+                        hoverable={false}
+                        className={cn(
+                          "group",
+                          queueTableRowClassName,
+                          !active && "opacity-70",
+                          highlightId === f.id && "bg-primary-light/30",
+                          expanded && "bg-row-hover",
+                        )}
+                        onClick={() =>
+                          setExpandedId((prev) => (prev === f.id ? null : f.id))
+                        }
+                      >
+                        <Td>
+                          <span className="text-[13.5px] font-bold text-primary">
+                            {f.deedNumber
+                              ? f.deedNumber.startsWith("صك")
+                                ? f.deedNumber
+                                : `صك ${f.deedNumber}`
+                              : failureRecordTitle(f)}
+                          </span>
+                        </Td>
+                        <Td className="font-semibold text-text-2">
+                          {formatPoDisplay(f.poNumber)}
+                        </Td>
+                        <Td className="text-[13px] font-semibold text-heading">
+                          {failureListSeverityLabel(f.severity)}
+                        </Td>
+                        <Td>
+                          <StatusPill
+                            label={failureListStatusLabel(f.status, f.severity)}
+                            style={{ base: statusColor, fg: statusColor }}
+                          />
+                        </Td>
+                        <Td className="text-text-2">
+                          {failureActorLabel(f.raisedByRole)}
+                        </Td>
+                        <Td className="text-text-2">
+                          {failureActorLabel(f.specialist)}
+                        </Td>
+                      </Tr>
+                      {expanded ? (
+                        <Tr hoverable={false}>
+                          <Td colSpan={6} className="cursor-default p-0">
+                            {renderExpandedActions(f)}
+                          </Td>
+                        </Tr>
+                      ) : null}
+                    </Fragment>
+                  );
+                })
+              )}
+            </TBody>
+          </Table>
+        </div>
+
+        <div className="lg:hidden">
+          {!isFetched ? (
+            <div className="space-y-2.5 p-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-[100px] animate-pulse rounded-[12px] bg-surface-2"
+                />
+              ))}
+            </div>
+          ) : filteredItems.length === 0 ? (
+            <div className="px-3 py-10">
+              <EmptyState
+                line={
+                  partyScopedFailuresEmptyLine(role) ??
+                  "لا توجد تعذرات — سجّل تعذراً من شاشة العقارات."
+                }
+              />
+            </div>
+          ) : (
+            <ul className="m-0 flex list-none flex-col gap-2.5 p-3">
+              {filteredItems.map((f) => {
                 const active = isActiveFailureStatus(f.status);
                 const statusColor = failureListStatusColor(
                   f.status,
@@ -637,62 +727,62 @@ export function FailuresView() {
                 );
                 const expanded = expandedId === f.id;
                 return (
-                  <Fragment key={f.id}>
-                    <Tr
-                      id={`failure-${f.id}`}
-                      hoverable={false}
-                      className={cn(
-                        "group",
-                        queueTableRowClassName,
-                        !active && "opacity-70",
-                        highlightId === f.id && "bg-primary-light/30",
-                        expanded && "bg-row-hover",
-                      )}
+                  <li
+                    key={`m-${f.id}`}
+                    id={expanded ? undefined : `failure-${f.id}`}
+                    className={cn(
+                      "overflow-hidden rounded-[12px] border border-border bg-surface shadow-card",
+                      !active && "opacity-70",
+                      highlightId === f.id && "ring-2 ring-primary/30",
+                    )}
+                  >
+                    <button
+                      type="button"
+                      className="flex w-full cursor-pointer flex-col gap-2 border-none bg-transparent px-3.5 py-3 text-start transition-colors active:bg-row-hover"
                       onClick={() =>
                         setExpandedId((prev) => (prev === f.id ? null : f.id))
                       }
                     >
-                      <Td>
-                        <span className="text-[13.5px] font-bold text-primary">
-                          {f.deedNumber
-                            ? f.deedNumber.startsWith("صك")
-                              ? f.deedNumber
-                              : `صك ${f.deedNumber}`
-                            : failureRecordTitle(f)}
-                        </span>
-                      </Td>
-                      <Td className="font-semibold text-text-2">
-                        {formatPoDisplay(f.poNumber)}
-                      </Td>
-                      <Td className="text-[13px] font-semibold text-heading">
-                        {failureListSeverityLabel(f.severity)}
-                      </Td>
-                      <Td>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="text-[14px] font-bold text-primary">
+                            {f.deedNumber
+                              ? f.deedNumber.startsWith("صك")
+                                ? f.deedNumber
+                                : `صك ${f.deedNumber}`
+                              : failureRecordTitle(f)}
+                          </div>
+                          <div className="mt-0.5 text-[12.5px] font-semibold text-text-2">
+                            {formatPoDisplay(f.poNumber)}
+                          </div>
+                        </div>
                         <StatusPill
                           label={failureListStatusLabel(f.status, f.severity)}
                           style={{ base: statusColor, fg: statusColor }}
                         />
-                      </Td>
-                      <Td className="text-text-2">
-                        {failureActorLabel(f.raisedByRole)}
-                      </Td>
-                      <Td className="text-text-2">
-                        {failureActorLabel(f.specialist)}
-                      </Td>
-                    </Tr>
+                      </div>
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-text-2">
+                        <span>
+                          <span className="text-text-3">الخطورة: </span>
+                          {failureListSeverityLabel(f.severity)}
+                        </span>
+                        <span>
+                          <span className="text-text-3">الرافع: </span>
+                          {failureActorLabel(f.raisedByRole)}
+                        </span>
+                      </div>
+                    </button>
                     {expanded ? (
-                      <Tr hoverable={false}>
-                        <Td colSpan={6} className="cursor-default p-0">
-                          {renderExpandedActions(f)}
-                        </Td>
-                      </Tr>
+                      <div className="border-t border-border px-3 pb-3 pt-2">
+                        {renderExpandedActions(f)}
+                      </div>
                     ) : null}
-                  </Fragment>
+                  </li>
                 );
-              })
-            )}
-          </TBody>
-        </Table>
+              })}
+            </ul>
+          )}
+        </div>
       </OperationalPanel>
 
       <QueueTableHint>

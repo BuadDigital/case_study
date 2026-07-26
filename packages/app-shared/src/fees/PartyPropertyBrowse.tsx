@@ -193,13 +193,14 @@ export function PartyPropertyBrowse({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 max-lg:-mx-1 max-lg:overflow-x-auto max-lg:px-1 max-lg:pb-1 max-lg:[-webkit-overflow-scrolling:touch]">
         {(Object.keys(FILTER_LABELS) as BrowseFilter[]).map((key) => (
           <Button
             key={key}
             type="button"
             size="sm"
             variant={filter === key ? "primary" : "outline"}
+            className="max-lg:min-h-11 max-lg:shrink-0"
             onClick={() => {
               setFilter(key);
               setPage(0);
@@ -212,7 +213,7 @@ export function PartyPropertyBrowse({
       </div>
 
       <Input
-        className="max-w-sm text-sm"
+        className="max-w-sm text-sm max-lg:max-w-none max-lg:min-h-11"
         placeholder="بحث بالعقار أو أمر العمل..."
         value={search}
         onChange={(e) => {
@@ -221,55 +222,110 @@ export function PartyPropertyBrowse({
         }}
       />
 
-      <Table pending={pending}>
-        <THead>
-          <Tr hoverable={false}>
-            <Th>العقار</Th>
-            <Th>أمر العمل</Th>
-            <Th className="text-end">الصافي</Th>
-            <Th>حالة العمل</Th>
-            <Th>حالة الدفع</Th>
-            <Th>المستند</Th>
-            <Th>التاريخ</Th>
-          </Tr>
-        </THead>
-        <TBody>
-          {pending && slice.length === 0 ? (
-            <SkeletonTableRows rows={5} cols={7} />
-          ) : slice.length === 0 ? (
+      <div className="hidden lg:block">
+        <Table pending={pending}>
+          <THead>
             <Tr hoverable={false}>
-              <Td colSpan={7}>
-                <EmptyState line="لا نتائج." />
-              </Td>
+              <Th>العقار</Th>
+              <Th>أمر العمل</Th>
+              <Th className="text-end">الصافي</Th>
+              <Th>حالة العمل</Th>
+              <Th>حالة الدفع</Th>
+              <Th>المستند</Th>
+              <Th>التاريخ</Th>
             </Tr>
-          ) : (
-            slice.map((row) => (
-              <Tr key={row.workflowTaskId} hoverable={false}>
-                <Td className="font-medium">{row.propertyLabel}</Td>
-                <Td className="text-primary-light">{row.poNumber}</Td>
-                <Td className="text-end tabular-nums">
-                  {row.netFeeSar.toLocaleString("ar-SA")} ر.س
+          </THead>
+          <TBody>
+            {pending && slice.length === 0 ? (
+              <SkeletonTableRows rows={5} cols={7} />
+            ) : slice.length === 0 ? (
+              <Tr hoverable={false}>
+                <Td colSpan={7}>
+                  <EmptyState line="لا نتائج." />
                 </Td>
-                <Td>
+              </Tr>
+            ) : (
+              slice.map((row) => (
+                <Tr key={row.workflowTaskId} hoverable={false}>
+                  <Td className="font-medium">{row.propertyLabel}</Td>
+                  <Td className="text-primary-light">{row.poNumber}</Td>
+                  <Td className="text-end tabular-nums">
+                    {row.netFeeSar.toLocaleString("ar-SA")} ر.س
+                  </Td>
+                  <Td>
+                    <Badge tone={inspectorFeeWorkStatusTone(row.workStatus)}>
+                      {row.workStatusLabel}
+                    </Badge>
+                  </Td>
+                  <Td>
+                    <Badge tone={inspectorFeeStatusTone(row.billingStatus)}>
+                      {row.billingStatusLabel ||
+                        inspectorFeeStatusLabel(row.billingStatus)}
+                    </Badge>
+                  </Td>
+                  <Td>{documentCell(row, setAuditRow)}</Td>
+                  <Td className="text-text-2">
+                    {formatFeeDate(row.workSubmittedAtUtc ?? row.updatedAtUtc)}
+                  </Td>
+                </Tr>
+              ))
+            )}
+          </TBody>
+        </Table>
+      </div>
+
+      <div className="lg:hidden">
+        {pending && slice.length === 0 ? (
+          <div className="space-y-2.5">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-[108px] animate-pulse rounded-[12px] bg-surface-2"
+              />
+            ))}
+          </div>
+        ) : slice.length === 0 ? (
+          <EmptyState line="لا نتائج." />
+        ) : (
+          <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
+            {slice.map((row) => (
+              <li
+                key={`m-${row.workflowTaskId}`}
+                className="rounded-[12px] border border-border bg-surface px-3.5 py-3 shadow-card"
+              >
+                <div className="mb-2 flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-[14px] font-bold text-heading">
+                      {row.propertyLabel}
+                    </div>
+                    <div className="mt-0.5 text-[12.5px] font-semibold text-primary-light" dir="ltr">
+                      {row.poNumber}
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-end text-[13px] font-extrabold tabular-nums text-heading">
+                    {row.netFeeSar.toLocaleString("ar-SA")} ر.س
+                  </div>
+                </div>
+                <div className="mb-2 flex flex-wrap gap-1.5">
                   <Badge tone={inspectorFeeWorkStatusTone(row.workStatus)}>
                     {row.workStatusLabel}
                   </Badge>
-                </Td>
-                <Td>
                   <Badge tone={inspectorFeeStatusTone(row.billingStatus)}>
                     {row.billingStatusLabel ||
                       inspectorFeeStatusLabel(row.billingStatus)}
                   </Badge>
-                </Td>
-                <Td>{documentCell(row, setAuditRow)}</Td>
-                <Td className="text-text-2">
-                  {formatFeeDate(row.workSubmittedAtUtc ?? row.updatedAtUtc)}
-                </Td>
-              </Tr>
-            ))
-          )}
-        </TBody>
-      </Table>
+                </div>
+                <div className="flex items-center justify-between gap-2 text-[12px]">
+                  <span className="text-text-3">
+                    {formatFeeDate(row.workSubmittedAtUtc ?? row.updatedAtUtc)}
+                  </span>
+                  <span>{documentCell(row, setAuditRow)}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       <div
         className={cn(

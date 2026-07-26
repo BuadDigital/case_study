@@ -33,6 +33,7 @@ import { PropertyDetailEnfathUpload } from "./PropertyDetailEnfathUpload";
 import { PropertyDetailFinanceTab } from "./PropertyDetailFinanceTab";
 import { PropertyDetailSurveyNotesTab } from "./PropertyDetailSurveyNotesTab";
 import { PropertyTransactionTimeline } from "./PropertyTransactionTimeline";
+import { PropertyDetailMobileGlance } from "./PropertyDetailMobileGlance";
 import {
   boundariesAvailabilityLabel,
   formatDateAr,
@@ -134,7 +135,7 @@ function DocumentRow({ doc }: { doc: PropertyDetailDocumentEntry }) {
           </div>
         </div>
       </div>
-      <div className="flex shrink-0 gap-1.5">
+      <div className="flex shrink-0 gap-1.5 max-lg:w-full max-lg:[&>button]:min-h-11 max-lg:[&>button]:flex-1">
         <DocIconButton
           label="تحميل"
           disabled={!canDownload}
@@ -496,14 +497,7 @@ export function PoPropertyDetailTabs({
     parentTask: task ?? null,
     allTasks: tasks,
     coordinatorName,
-    enabled:
-      tab === "parties" ||
-      tab === "keys" ||
-      tab === "enfath-upload" ||
-      tab === "appraisal" ||
-      tab === "finance" ||
-      tab === "survey-notes" ||
-      Boolean(surveyTask),
+    enabled: true,
   });
 
   const engineeringPartyNotes = partySubmissionsQuery.data?.survey?.remarks ?? [];
@@ -548,10 +542,29 @@ export function PoPropertyDetailTabs({
     [propertyFeesSummary?.rows, propertyFeeTaskIds],
   );
 
+  const govSubmission = partySubmissionsQuery.data?.government ?? null;
+  const keysStatusField = govSubmission?.fields.find(
+    (f: { label: string; value: string }) => f.label === "حالة المفاتيح",
+  );
+  const keysStatus = keysStatusField?.value?.trim() ?? "";
+  const keysHasData = Boolean(
+    keysStatus ||
+      govSubmission?.remarks.some((r) => r.label === "المفاتيح / موقع الحفظ"),
+  );
+
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <PropertyDetailMobileGlance
+        poNumber={poNumber}
+        property={property}
+        keysStatus={keysStatus}
+        keysHasData={keysHasData}
+        feeRows={propertyFeeRows}
+        failureCount={propertyFailures.length}
+        onOpenTab={(next) => setTab(next)}
+      />
       <TabBar
-        className="sticky top-0 z-10 bg-surface max-lg:border-b max-lg:border-border/60"
+        className="z-10 shrink-0 bg-surface max-lg:border-b max-lg:border-border/60"
         aria-label="أقسام تفاصيل العقار"
       >
         {TABS.map((t) => {
@@ -578,24 +591,17 @@ export function PoPropertyDetailTabs({
               (r) =>
                 r.billingStatus === "draft" ||
                 r.billingStatus === "returned" ||
-                r.billingStatus === "inquiry",
+                r.billingStatus === "inquiry" ||
+                r.billingStatus === "sup-review" ||
+                r.billingStatus === "office-review",
             ).length;
             count = pending > 0 ? pending : propertyFeeRows.length;
             countTone = pending > 0 ? "gray" : "teal";
           }
           if (t.id === "keys") {
-            const govSubmission = partySubmissionsQuery.data?.government;
-            if (govSubmission?.hasData) {
-              const keysField = govSubmission.fields.find(
-                (f: { label: string; value: string }) => f.label === "حالة المفاتيح",
-              );
-              if (keysField?.value?.includes("استلام")) {
-                count = 1;
-                countTone = "teal";
-              } else if (keysField?.value) {
-                count = 1;
-                countTone = "gray";
-              }
+            if (keysHasData) {
+              count = 1;
+              countTone = keysStatus.includes("استلام") ? "teal" : "gray";
             }
           }
 
@@ -661,7 +667,7 @@ export function PoPropertyDetailTabs({
                           : null}
                       </div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1.5">
+                    <div className="flex shrink-0 items-center gap-1.5 max-lg:w-full max-lg:[&>button]:min-h-11 max-lg:[&>button]:flex-1">
                       <DetailBadge tone="amber">
                         {failureStatusLabel(failure.status)}
                       </DetailBadge>
@@ -680,10 +686,11 @@ export function PoPropertyDetailTabs({
                     </div>
                   </div>
                 ))}
-                <p className="mt-3">
+                <p className="mt-3 max-lg:sticky max-lg:bottom-0 max-lg:z-10 max-lg:-mx-4 max-lg:border-t max-lg:border-border max-lg:bg-surface/95 max-lg:px-4 max-lg:py-3 max-lg:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-lg:backdrop-blur-sm">
                   <Button
                     type="button"
                     size="sm"
+                    className="max-lg:min-h-11 max-lg:w-full"
                     onClick={() =>
                       router.push(poPropertyFailurePath(poNumber, property.id))
                     }
@@ -700,10 +707,11 @@ export function PoPropertyDetailTabs({
                   title="لا توجد تعذرات"
                   sub="لم يُسجَّل أي تعذر لهذا العقار."
                 />
-                <p className="mt-3">
+                <p className="mt-3 max-lg:sticky max-lg:bottom-0 max-lg:z-10 max-lg:-mx-4 max-lg:border-t max-lg:border-border max-lg:bg-surface/95 max-lg:px-4 max-lg:py-3 max-lg:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-lg:backdrop-blur-sm">
                   <Button
                     type="button"
                     size="sm"
+                    className="max-lg:min-h-11 max-lg:w-full"
                     onClick={() =>
                       router.push(poPropertyFailurePath(poNumber, property.id))
                     }
@@ -730,7 +738,7 @@ export function PoPropertyDetailTabs({
                       type="button"
                       className={cn(
                         "w-full rounded-[var(--radius-DEFAULT)] border border-transparent bg-surface-2 px-3.5 py-3 text-start font-[inherit] text-inherit transition-colors hover:border-border",
-                        "cursor-pointer",
+                        "cursor-pointer max-lg:min-h-14",
                         selected && "border-success bg-success-bg",
                       )}
                       aria-pressed={selected}

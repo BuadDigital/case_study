@@ -293,6 +293,33 @@ export function EngineeringSurveyAdvisoryPanel({
           </span>
         </div>
       ) : null}
+      {submission.onSiteAreaSqm.trim() ? (
+        <div className={infoRowClass}>
+          <span className="shrink-0 text-text-3">المساحة على الطبيعة</span>
+          <span className="text-left font-medium text-text tabular-nums">
+            {submission.onSiteAreaSqm.trim()} م²
+          </span>
+        </div>
+      ) : null}
+      {(
+        [
+          ["شمال", submission.northBoundary, submission.northBoundaryLengthM],
+          ["جنوب", submission.southBoundary, submission.southBoundaryLengthM],
+          ["شرق", submission.eastBoundary, submission.eastBoundaryLengthM],
+          ["غرب", submission.westBoundary, submission.westBoundaryLengthM],
+        ] as const
+      ).map(([dir, bound, len]) =>
+        bound.trim() || len.trim() ? (
+          <div key={dir} className={infoRowClass}>
+            <span className="shrink-0 text-text-3">الحد {dir}</span>
+            <span className="text-left font-medium text-text">
+              {[bound.trim() || null, len.trim() ? `${len.trim()} م` : null]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
+          </div>
+        ) : null,
+      )}
       {submission.surveyReportFileName.trim() ? (
         <div className={infoRowClass}>
           <span className="shrink-0 text-text-3">تقرير الرفع المساحي</span>

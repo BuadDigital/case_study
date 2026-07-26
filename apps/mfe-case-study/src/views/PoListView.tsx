@@ -707,13 +707,14 @@ export function PoListView() {
         </KpiBand>
 
         <PageToolbar className="mb-0 flex shrink-0 flex-wrap items-center justify-between gap-2 border-b-0 bg-transparent px-0 py-0">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5 max-lg:w-full">
             <OperationalToolbarSearch
               type="search"
               placeholder="PO أو رقم الصك أو نوع الإسناد…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               aria-label="بحث أوامر العمل"
+              className="max-lg:min-w-0 max-lg:flex-1"
               endAdornment={
                 search.trim() && searchModeLabel ? (
                   <span className="pointer-events-none absolute inset-inline-end-2.5 top-1/2 -translate-y-1/2 rounded-full bg-info-bg px-2 py-0.5 text-[10px] font-medium text-info-text">
@@ -723,7 +724,7 @@ export function PoListView() {
               }
             />
             <OperationalToolbarSelect
-              className="shrink-0"
+              className="shrink-0 max-lg:min-h-11"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
               aria-label="تصفية الحالة"
@@ -738,7 +739,7 @@ export function PoListView() {
               )}
             </OperationalToolbarSelect>
             <OperationalToolbarSelect
-              className="shrink-0"
+              className="shrink-0 max-lg:min-h-11"
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
               aria-label="تصفية نوع الإسناد"
@@ -760,6 +761,7 @@ export function PoListView() {
         </PageToolbar>
 
         <OperationalPanel className="shrink-0 overflow-visible">
+          <div className="hidden lg:block">
           <Table pending={!statsReady}>
                 <THead>
                   <Tr hoverable={false}>
@@ -985,6 +987,141 @@ export function PoListView() {
                   )}
                 </TBody>
               </Table>
+          </div>
+
+          <div className="lg:hidden">
+            {!statsReady ? (
+              <div className="space-y-2.5 p-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-[108px] animate-pulse rounded-[12px] bg-surface-2"
+                  />
+                ))}
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-2 px-5 py-12 text-center text-[13px] text-text-3">
+                <InboxIcon />
+                <span>
+                  {list.length === 0
+                    ? "لا توجد أوامر عمل."
+                    : "لا توجد نتائج مطابقة"}
+                </span>
+              </div>
+            ) : (
+              <ul className="m-0 flex list-none flex-col gap-2.5 p-3">
+                {pageRows.map((entry) => {
+                  const p =
+                    entry.view === "po" ? entry.item.row : entry.item.row;
+                  const deedEntry =
+                    entry.view === "property" ? entry.item.deed : null;
+                  const match =
+                    entry.view === "po"
+                      ? entry.item.match
+                      : entry.item.match;
+                  const registered =
+                    p.registered ?? registeredByPo.get(p.id) ?? 0;
+                  const studied = p.done ?? 0;
+                  const expected = p.count ?? 0;
+                  const pct = poProgressPct(registered, studied, expected);
+                  const urgent = isDueUrgent(p.dueDate, p.status);
+                  const target =
+                    deedEntry || match?.propertyId
+                      ? poPropertyPath(
+                          p.id,
+                          deedEntry?.propertyId ?? match!.propertyId!,
+                        )
+                      : poPropertiesPath(p.id);
+                  const rowKey =
+                    entry.view === "property"
+                      ? `${p.id}-${deedEntry!.propertyId}`
+                      : p.id;
+
+                  return (
+                    <li key={`m-${rowKey}`}>
+                      <button
+                        type="button"
+                        className="flex w-full cursor-pointer flex-col gap-2.5 rounded-[12px] border border-border bg-surface px-3.5 py-3 text-start shadow-card transition-colors active:bg-row-hover"
+                        onClick={() => router.push(target)}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div
+                              className="text-[14px] font-bold text-primary"
+                              dir="ltr"
+                            >
+                              {p.id}
+                            </div>
+                            <div className="mt-1 inline-flex items-center rounded-md border border-border-md bg-surface-2 px-2.5 py-[3px] text-[12px] font-medium text-text-2">
+                              {p.type}
+                            </div>
+                          </div>
+                          <PoStatusPill status={p.status} />
+                        </div>
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full"
+                            style={{
+                              background:
+                                "color-mix(in srgb, var(--text-3) 26%, transparent)",
+                            }}
+                          >
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${pct}%`,
+                                background: progFill(pct),
+                              }}
+                            />
+                          </div>
+                          <span className="shrink-0 text-[12px] font-bold tabular-nums text-heading">
+                            {pct}%
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-[12px]">
+                          <div>
+                            <div className="text-[10.5px] text-text-3">
+                              الصكوك
+                            </div>
+                            <div className="font-extrabold tabular-nums text-heading">
+                              {p.count}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-[10.5px] text-text-3">
+                              المكتملة
+                            </div>
+                            <div className="font-bold tabular-nums text-text-2">
+                              {studied}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-[10.5px] text-text-3">
+                              الاستحقاق
+                            </div>
+                            <div
+                              className={cn(
+                                "font-semibold",
+                                urgent ? "text-red" : "text-heading",
+                              )}
+                            >
+                              {p.dueDate ? formatDateAr(p.dueDate) : "—"}
+                            </div>
+                          </div>
+                        </div>
+                        {p.specialist && p.specialist !== "—" ? (
+                          <div className="text-[12px] text-text-2">
+                            <span className="text-text-3">الأخصائي: </span>
+                            {p.specialist}
+                          </div>
+                        ) : null}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
         </OperationalPanel>
 
           <PageGutter className="flex shrink-0 items-center justify-between bg-transparent px-0 py-3">

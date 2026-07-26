@@ -43,12 +43,7 @@ function dtoToSubmission(
 ): EngineeringSurveySubmission | null {
   if (!dto) return null;
   const payload = payloadFromDto<EngineeringSurveySubmission>(dto);
-  const raw = dto.payload ?? {};
   const checklist = normalizeEngineeringSurveyChecklist(payload.checklist);
-  const hasAcceptedKey = Object.prototype.hasOwnProperty.call(
-    raw,
-    "outputsAcceptedAtUtc",
-  );
   return {
     ...payload,
     taskId: dto.taskId,
@@ -59,9 +54,6 @@ function dtoToSubmission(
     submittedAtUtc: dto.submittedAtUtc ?? payload.submittedAtUtc,
     acceptedAtUtc: dto.acceptedAtUtc ?? payload.acceptedAtUtc,
     updatedAtUtc: dto.updatedAtUtc ?? payload.updatedAtUtc,
-    outputsAcceptedAtUtc: hasAcceptedKey
-      ? (raw.outputsAcceptedAtUtc as string | null)
-      : undefined,
     checklist,
   };
 }
@@ -277,7 +269,9 @@ export async function prefetchEngineeringSurveySubmissions(
 export function isVisibleInEngineeringSurveyQueue(
   taskId: string,
   taskStatus: string,
+  options?: { showCompleted?: boolean },
 ): boolean {
+  if (options?.showCompleted) return true;
   if (taskStatus === "completed") return false;
   const sub = loadEngineeringSurveySubmission(taskId);
   return sub?.status !== "submitted";
@@ -299,22 +293,12 @@ export function engineeringSurveyStatusLabel(
   return "قيد العمل";
 }
 
-/** True when specialist acceptance is stamped on the submission payload. */
+/** True when specialist acceptance is stamped on the submission. */
 export function isEngineeringSurveyOutputsAccepted(
-  submission: Pick<EngineeringSurveySubmission, "outputsAcceptedAtUtc"> | null | undefined,
+  submission: Pick<EngineeringSurveySubmission, "acceptedAtUtc"> | null | undefined,
 ): boolean {
-  const stamp = submission?.outputsAcceptedAtUtc;
+  const stamp = submission?.acceptedAtUtc;
   return typeof stamp === "string" && stamp.trim().length > 0;
-}
-
-/**
- * Explicit null means acceptance was cleared on return-for-correction.
- * Undefined means legacy payload before the flag existed.
- */
-export function wasEngineeringSurveyAcceptanceCleared(
-  submission: Pick<EngineeringSurveySubmission, "outputsAcceptedAtUtc"> | null | undefined,
-): boolean {
-  return submission?.outputsAcceptedAtUtc === null;
 }
 
 /** Seed cache without API (tests / migration). */
@@ -331,6 +315,7 @@ export function seedEngineeringSurveySubmissionCache(
       payload: submissionToPayload(submission),
       returnNote: submission.returnNote,
       submittedAtUtc: submission.submittedAtUtc,
+      acceptedAtUtc: submission.acceptedAtUtc,
       updatedAtUtc: submission.updatedAtUtc,
     },
     submission.taskId,

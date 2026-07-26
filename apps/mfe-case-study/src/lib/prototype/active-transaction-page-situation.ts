@@ -31,6 +31,8 @@ export type PageSituationCardDef = {
   sub: string;
   tone: SituationTone;
   href?: string;
+  /** When `sar`, KPI value is formatted as currency (engineering fees). */
+  valueFormat?: "count" | "sar";
 };
 
 export type PageSituationValues = Record<string, number | undefined>;
@@ -100,14 +102,14 @@ export const PAGE_SITUATION_CARDS: Partial<Record<PageId, PageSituationCardDef[]
       },
       {
         key: "submitted",
-        label: "مكتملة",
-        sub: "أُرسلت للاعتماد",
+        label: "بانتظار الاعتماد",
+        sub: "مكتملة لم يعتمدها الأخصائي بعد",
         tone: "green",
       },
       {
         key: "unbilled",
         label: "غير مفوترة",
-        sub: "أتعاب مستحقة للمكتب",
+        sub: "بانتظار إصدار الفاتورة",
         tone: "warn",
         href: "/party-fees",
       },
@@ -335,6 +337,70 @@ export function computeFeesPageSituation(
   };
 }
 
+/** Case Study.html `renderEngFees` KPI sums (SAR) for المكتب الهندسي. */
+export function computeEngineeringFeesSituation(
+  rows: InspectorFeeRowDto[],
+): Pick<
+  PageSituationValues,
+  "outstanding" | "pending" | "ready" | "paid"
+> {
+  let outstanding = 0;
+  let pending = 0;
+  let ready = 0;
+  let paid = 0;
+
+  for (const row of rows) {
+    const net = Number(row.netFeeSar) || 0;
+    if (row.billingStatus !== "disbursed") outstanding += net;
+    if (row.billingStatus === "office-review") pending += net;
+    else if (row.billingStatus === "disputed") pending += net;
+    else if (
+      row.billingStatus === "at-finance" ||
+      row.billingStatus === "deferred" ||
+      row.billingStatus === "in-statement" ||
+      row.billingStatus === "disb-req"
+    ) {
+      ready += net;
+    } else if (row.billingStatus === "disbursed") {
+      paid += net;
+    }
+  }
+
+  return { outstanding, pending, ready, paid };
+}
+
+/** Case Study.html engineering fees KPI band. */
+export const ENGINEERING_FEES_SITUATION_CARDS: PageSituationCardDef[] = [
+  {
+    key: "outstanding",
+    label: "إجمالي المستحق غير المفوتر",
+    sub: "كل استحقاقاتكم التي لم تُصرف بعد",
+    tone: "blue",
+    valueFormat: "sar",
+  },
+  {
+    key: "pending",
+    label: "بانتظار إفادتكم",
+    sub: "تعديلات تسعير تنتظر إفادتكم",
+    tone: "warn",
+    valueFormat: "sar",
+  },
+  {
+    key: "ready",
+    label: "جاهزة للفوترة",
+    sub: "تشمل المرحَّل — بانتظار كشف المحاسب",
+    tone: "blue",
+    valueFormat: "sar",
+  },
+  {
+    key: "paid",
+    label: "مفوترة / مدفوعة",
+    sub: "إجمالي الكشوف المصروفة الموثَّقة",
+    tone: "green",
+    valueFormat: "sar",
+  },
+];
+
 export function computeUnbilledFeeCount(rows: InspectorFeeRowDto[]): number {
   return rows.filter(
     (r) =>
@@ -409,9 +475,10 @@ export function computePageSituationValues(
   }
 
   if (pageId === "active-survey") {
-    const allSurvey = filterTasksForPage(pageId, input.tasks, input.poByNumber).filter(
-      (t) => !isTaskOnSuspendedProperty(t),
-    );
+    const allSurvey = filterTasksForPartyKind(
+      input.tasks,
+      "engineering-survey",
+    ).filter((t) => !isTaskOnSuspendedProperty(t));
     const open = openWorkflowTasks(allSurvey);
     let waiting = 0;
     let inProgress = 0;

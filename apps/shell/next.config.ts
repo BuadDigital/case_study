@@ -42,6 +42,30 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   /** Required when colleagues open http://YOUR_LAN_IP:3000 — otherwise login JS is blocked. */
   allowedDevOrigins,
+  /** Keep the service worker fresh so clients pick up shell updates. */
+  async headers() {
+    return [
+      {
+        source: "/sw.js",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+      {
+        source: "/manifest.webmanifest",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=0, must-revalidate",
+          },
+        ],
+      },
+    ];
+  },
   /** LAN guests call /api on :3000; Next proxies to the .NET API on this machine. */
   async redirects() {
     return [

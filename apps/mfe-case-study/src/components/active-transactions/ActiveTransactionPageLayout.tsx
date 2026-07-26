@@ -10,6 +10,7 @@ export function ActiveTransactionPageLayout({
   hasRail = false,
   panelOpen = false,
   railGridClassName,
+  aboveSituation,
   queuePanel,
   sidePanel,
 }: {
@@ -17,6 +18,8 @@ export function ActiveTransactionPageLayout({
   hasRail?: boolean;
   panelOpen?: boolean;
   railGridClassName?: string;
+  /** Office banner etc. — rendered above KPI situation cards (eng2). */
+  aboveSituation?: ReactNode;
   queuePanel: ReactNode;
   sidePanel?: ReactNode;
 }) {
@@ -27,6 +30,7 @@ export function ActiveTransactionPageLayout({
 
   return (
     <PageShell variant="canvas" className="min-h-0 flex-1">
+      {aboveSituation}
       <ActiveTransactionsSituationBar pageId={pageId} />
 
       {split ? (

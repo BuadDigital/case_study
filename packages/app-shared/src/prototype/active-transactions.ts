@@ -1,4 +1,4 @@
-import type { PageId } from "@platform/types";
+import type { PageId, RoleId } from "@platform/types";
 import { CASE_STUDY_READY_NAV } from "@platform/types";
 import type { WorkflowTask } from "@case-study/mfe";
 import { PARTY_ACTIVE_TRANSACTIONS_NAV } from "./party-task-pages";
@@ -41,15 +41,38 @@ export function filterTasksForCaseStudy(
   return tasks.filter((t) => taskMatchesCaseStudy(t));
 }
 
+/** فوترة الأتعاب — تحت المعاملات النشطة (المكتب الهندسي + المسؤول). */
+export const ENGINEERING_FEES_ACTIVE_NAV_ITEM: ActiveTransactionNavItem = {
+  id: "party-fees",
+  label: "فوترة الأتعاب",
+  icon: "M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6",
+  available: true,
+};
+
+/** أدوار تظهر فيها فوترة الأتعاب تحت المعاملات النشطة وليس تحت إعدادات النظام. */
+export function isPartyFeesUnderActiveTransactions(role?: RoleId): boolean {
+  return role === "engineering-office" || role === "cdo";
+}
+
 export const ACTIVE_TRANSACTIONS_NAV: ActiveTransactionNavItem[] = [
   ...CASE_STUDY_ACTIVE_TRANSACTIONS_NAV,
   ...PARTY_ACTIVE_TRANSACTIONS_NAV,
+  ENGINEERING_FEES_ACTIVE_NAV_ITEM,
 ];
 
 export function activeTransactionNavForRole(
   rolePages: PageId[],
+  role?: RoleId,
 ): ActiveTransactionNavItem[] {
-  return ACTIVE_TRANSACTIONS_NAV.filter((item) => rolePages.includes(item.id));
+  return ACTIVE_TRANSACTIONS_NAV.filter((item) => {
+    if (item.id === "party-fees") {
+      return (
+        isPartyFeesUnderActiveTransactions(role) &&
+        rolePages.includes("party-fees")
+      );
+    }
+    return rolePages.includes(item.id);
+  });
 }
 
 export function isActiveTransactionPlaceholder(page: PageId): boolean {
@@ -64,10 +87,14 @@ export const ACTIVE_TRANSACTIONS_GROUP_ICON =
 export function isInActiveTransactionsSection(
   page: PageId,
   onTaskWork: boolean,
+  role?: RoleId,
 ): boolean {
   // Orphan legacy lists (e.g. government-review) keep task work routes but
   // highlight under الشاشات اليتيمة, not المعاملات النشطة.
   if (isInOrphanScreensSection(page)) return false;
+  if (page === "party-fees") {
+    return isPartyFeesUnderActiveTransactions(role);
+  }
   return onTaskWork || isActiveTransactionPage(page);
 }
 

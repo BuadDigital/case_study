@@ -369,7 +369,7 @@ export function PoPropertiesPage({
           <EmptyState line="لا توجد عقارات في هذا الأمر." />
         ) : (
           <>
-            <div className="w-full overflow-x-auto">
+            <div className="hidden w-full overflow-x-auto lg:block">
               <Table>
                 <THead>
                   <Tr hoverable={false}>
@@ -488,6 +488,113 @@ export function PoPropertiesPage({
                 </TBody>
               </Table>
             </div>
+
+            <ul className="m-0 flex list-none flex-col gap-2.5 p-3 lg:hidden">
+              {record.properties.map((prop, index) => {
+                const row = poPropertyToPropertyRow(
+                  record,
+                  prop,
+                  priorByDeed,
+                  workflowTasks,
+                );
+                const boursePending = !prop.bourseDataCompleted;
+                const locRaw = formatPropertyLocation(prop);
+                const location =
+                  locRaw === "بانتظار البورصة" &&
+                  !hasBourseDetailFields(prop)
+                    ? "—"
+                    : locRaw === "بانتظار البورصة"
+                      ? "—"
+                      : locRaw;
+                const typeLine = formatPropertyTypeLine(prop);
+                const typeDisplay =
+                  boursePending && !hasBourseDetailFields(prop)
+                    ? "بانتظار البورصة"
+                    : typeLine || "—";
+                const courtCircuit =
+                  [prop.court.trim(), prop.circuit.trim()]
+                    .filter(Boolean)
+                    .join(" / ") || "—";
+                const detailHref = poPropertyPath(poNumber, prop.id);
+                const label = deedLabel(prop);
+                const govReviewTask = isGovernmentReviewer
+                  ? governmentReviewTaskForProperty(
+                      workflowTasks,
+                      poNumber,
+                      prop.id,
+                    )
+                  : undefined;
+                const deedOpensReview = Boolean(govReviewTask);
+
+                return (
+                  <li key={`m-${prop.id}`}>
+                    <button
+                      type="button"
+                      className="flex w-full cursor-pointer flex-col gap-2 rounded-[12px] border border-border bg-surface px-3.5 py-3 text-start shadow-card transition-colors active:bg-row-hover"
+                      onClick={() => {
+                        if (deedOpensReview && govReviewTask) {
+                          router.push(operationsTasksPath());
+                          return;
+                        }
+                        router.push(detailHref);
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex h-[22px] min-w-[22px] shrink-0 items-center justify-center rounded-md bg-surface-3 text-[10px] font-semibold text-text-3">
+                              {index + 1}
+                            </span>
+                            <span
+                              dir="ltr"
+                              className={cn(
+                                "text-[14px] font-bold text-primary",
+                                deedOpensReview &&
+                                  "underline decoration-primary underline-offset-2",
+                              )}
+                            >
+                              {label}
+                            </span>
+                          </div>
+                          <div className="mt-1 text-[12.5px] text-text-2">
+                            {courtCircuit}
+                          </div>
+                        </div>
+                        {prop.isRemoved ? (
+                          <StatusBadge status="removed" />
+                        ) : boursePending ? (
+                          <Badge tone="warning">بانتظار البورصة</Badge>
+                        ) : (
+                          <StatusBadge status={row.status} />
+                        )}
+                      </div>
+                      <div className="space-y-1 text-[12.5px]">
+                        <div className="flex justify-between gap-3">
+                          <span className="text-text-3">الموقع</span>
+                          <span className="text-end text-heading">
+                            {location}
+                          </span>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <span className="text-text-3">النوع</span>
+                          <span className="text-end text-heading">
+                            {typeDisplay}
+                          </span>
+                        </div>
+                        {prop.deedStatus ? (
+                          <div className="flex justify-between gap-3">
+                            <span className="text-text-3">حالة الصك</span>
+                            <span className="text-end text-text-2">
+                              {prop.deedStatus}
+                            </span>
+                          </div>
+                        ) : null}
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
             {showDecree ? (
               <p className="px-4 py-2 pb-3 text-[11px] text-text-3 sm:px-6">
                 مسار التنفيذ — قرار إسناد مستقل لكل صك.

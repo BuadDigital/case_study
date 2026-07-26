@@ -70,38 +70,65 @@ export function FeeAuditModal({
           ) : data.length === 0 ? (
             <EmptyState line="لا حركات مسجّلة بعد." />
           ) : (
-            <Table>
-              <THead>
-                <Tr hoverable={false}>
-                  <Th>التاريخ</Th>
-                  <Th>من → إلى</Th>
-                  <Th>السبب</Th>
-                  <Th>المُنفّذ</Th>
-                </Tr>
-              </THead>
-              <TBody>
+            <>
+              <div className="hidden lg:block">
+                <Table>
+                  <THead>
+                    <Tr hoverable={false}>
+                      <Th>التاريخ</Th>
+                      <Th>من → إلى</Th>
+                      <Th>السبب</Th>
+                      <Th>المُنفّذ</Th>
+                    </Tr>
+                  </THead>
+                  <TBody>
+                    {data.map((entry) => (
+                      <Tr key={entry.id} hoverable={false}>
+                        <Td className="text-text-2">
+                          {formatFeeDate(entry.createdAtUtc)}
+                        </Td>
+                        <Td>
+                          <div className="flex flex-wrap items-center gap-1 text-[11px]">
+                            <Badge tone="default">{entry.fromStatusLabel}</Badge>
+                            <span>←</span>
+                            <Badge tone="info">{entry.toStatusLabel}</Badge>
+                          </div>
+                        </Td>
+                        <Td className="text-text-2">
+                          {entry.reason ?? "—"}
+                        </Td>
+                        <Td className="text-text-2">
+                          {entry.actorLabel ?? entry.actorUserId}
+                        </Td>
+                      </Tr>
+                    ))}
+                  </TBody>
+                </Table>
+              </div>
+              <ul className="m-0 flex list-none flex-col gap-2.5 p-0 lg:hidden">
                 {data.map((entry) => (
-                  <Tr key={entry.id} hoverable={false}>
-                    <Td className="text-text-2">
+                  <li
+                    key={`m-${entry.id}`}
+                    className="rounded-[12px] border border-border bg-surface-2 px-3 py-2.5"
+                  >
+                    <div className="mb-1.5 text-[11px] text-text-3">
                       {formatFeeDate(entry.createdAtUtc)}
-                    </Td>
-                    <Td>
-                      <div className="flex flex-wrap items-center gap-1 text-[11px]">
-                        <Badge tone="default">{entry.fromStatusLabel}</Badge>
-                        <span>←</span>
-                        <Badge tone="info">{entry.toStatusLabel}</Badge>
-                      </div>
-                    </Td>
-                    <Td className="text-text-2">
+                    </div>
+                    <div className="mb-1.5 flex flex-wrap items-center gap-1 text-[11px]">
+                      <Badge tone="default">{entry.fromStatusLabel}</Badge>
+                      <span>←</span>
+                      <Badge tone="info">{entry.toStatusLabel}</Badge>
+                    </div>
+                    <p className="m-0 text-[12.5px] text-text-2">
                       {entry.reason ?? "—"}
-                    </Td>
-                    <Td className="text-text-2">
+                    </p>
+                    <p className="m-0 mt-1 text-[11px] text-text-3">
                       {entry.actorLabel ?? entry.actorUserId}
-                    </Td>
-                  </Tr>
+                    </p>
+                  </li>
                 ))}
-              </TBody>
-            </Table>
+              </ul>
+            </>
           )}
         </ModalBody>
       </ModalCard>

@@ -151,10 +151,17 @@ export function PropertyDetailFinanceTab({
         </Tab>
       </TabBar>
 
-      <TabPanel>
+      <TabPanel className="max-lg:!px-0 max-lg:!py-0">
         {sub === "out" ? (
           isSupervisor ? (
-            <InspectorFeesBillingTable rows={rows} mode="supervisor" />
+            <>
+              <div className="hidden lg:block">
+                <InspectorFeesBillingTable rows={rows} mode="supervisor" />
+              </div>
+              <div className="lg:hidden">
+                <PartyFeeWorkflowTable rows={rows} role="supervisor" />
+              </div>
+            </>
           ) : (
             <PartyFeeWorkflowTable
               rows={rows}

@@ -54,10 +54,10 @@ export function ProfileView() {
 
   return (
     <div
-      className="w-full flex-none self-start px-4 pb-6 pt-5 sm:px-6"
+      className="w-full flex-none self-start px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-5 sm:px-6"
       dir="rtl"
     >
-      <section className="h-fit w-full overflow-hidden rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
+      <section className="h-fit w-full overflow-hidden rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5 max-lg:rounded-[14px] max-lg:p-3.5">
         {loading ? (
           <div className="flex items-center justify-center gap-2 py-10 text-text-3">
             <Spinner />
@@ -68,7 +68,7 @@ export function ProfileView() {
         ) : user ? (
           <UserProfileContent user={user} />
         ) : (
-          <Note tone="warning">لا توجد بيانات للعرض.</Note>
+          <Note tone="warn">لا توجد بيانات للعرض.</Note>
         )}
       </section>
     </div>
