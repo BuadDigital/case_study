@@ -49,6 +49,9 @@ export type EvaluatorSubmissionSnapshot = {
     licenseDate?: string;
     licenseFileName?: string | null;
   }[];
+  assetDataConfirmed?: boolean;
+  assetDataVarianceNotes?: string;
+  signedAppraisalFileName?: string | null;
 };
 
 export type EngineeringSurveyChecklistAnswer = "yes" | "no" | null;

@@ -323,3 +323,26 @@ export function studyHoldLabel(status: string): string {
       return "بدون قيد";
   }
 }
+
+export function timelineEventLabel(eventType: string): string {
+  switch (eventType.toLowerCase()) {
+    case "created":
+      return "تسجيل الظرف";
+    case "assignment_added":
+      return "إضافة إسناد صك";
+    case "assignment_confirmed":
+      return "تأكيد مطابقة المفتاح";
+    case "handoff_created":
+      return "إنشاء تسليم";
+    case "handoff_confirmed":
+      return "تأكيد الاستلام";
+    case "fee_generated":
+      return "توليد بند الأتعاب";
+    case "fee_collected":
+      return "تحصيل الأتعاب";
+    case "status_changed":
+      return "تغيير الحالة";
+    default:
+      return eventType;
+  }
+}

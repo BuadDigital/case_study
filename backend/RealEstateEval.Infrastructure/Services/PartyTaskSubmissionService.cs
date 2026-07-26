@@ -695,10 +695,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                     break;
 
                 case "property-appraisal":
-                    if (!HasNonEmpty(root, "evaluatorPrice"))
-                        errors["evaluatorPrice"] = "سعر التقييم مطلوب";
-                    if (!HasNonEmpty(root, "reportFileName"))
-                        errors["reportFileName"] = "تقرير PDF مطلوب";
+                    foreach (var (key, message) in PropertyAppraisalSubmissionValidator.Validate(root))
+                        errors[key] = message;
                     break;
 
                 case "government-review":

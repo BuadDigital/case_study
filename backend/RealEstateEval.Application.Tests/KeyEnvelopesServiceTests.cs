@@ -243,6 +243,65 @@ public class KeyEnvelopesServiceTests
     }
 
     [Fact]
+    public async Task UpsertCourtAccess_clear_eviction_releases_hold()
+    {
+        await using var db = CreateDb();
+        var workOrder = NewWorkOrder("PO-ACC-2");
+        var property = NewProperty(workOrder.Id, "DEED-ACC-2", "REQ-ACC-2");
+        db.WorkOrders.Add(workOrder);
+        db.WorkOrderProperties.Add(property);
+        db.WorkflowTasks.Add(new WorkflowTask
+        {
+            Id = Guid.NewGuid(),
+            Kind = "case-study-property",
+            PoNumber = workOrder.PoNumber,
+            PropertyId = property.Id,
+            Status = WorkflowTaskStatus.Open,
+            Phase = "study",
+            CreatedAtUtc = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow,
+        });
+        var attachmentId = await AddAttachmentAsync(db, "eviction2.pdf");
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var (suspended, suspendError) = await service.UpsertCourtAccessAsync(
+            new UpsertPropertyCourtAccessRequest
+            {
+                PropertyId = property.Id,
+                HasEvictionNotice = true,
+                EvictionNoticeAttachmentId = attachmentId,
+            },
+            "u1",
+            "مراجع");
+        Assert.Null(suspendError);
+        Assert.Equal(PropertyCourtAccessStatuses.SuspendedEviction, suspended!.StudyHoldStatus);
+
+        var (cleared, clearError) = await service.UpsertCourtAccessAsync(
+            new UpsertPropertyCourtAccessRequest
+            {
+                PropertyId = property.Id,
+                HasEnablingLetter = false,
+                HasEvictionNotice = false,
+            },
+            "u1",
+            "مراجع");
+
+        Assert.Null(clearError);
+        Assert.Equal(PropertyCourtAccessStatuses.None, cleared!.StudyHoldStatus);
+        Assert.False(cleared.HasEvictionNotice);
+        Assert.Null(cleared.EvictionNoticeAttachmentId);
+        Assert.Contains(
+            db.PropertyFailures.AsNoTracking(),
+            f => f.PropertyId == property.Id.ToString()
+                 && f.Status == PropertyFailureStatus.Resolved);
+        var resumed = await db.WorkflowTasks.AsNoTracking()
+            .FirstAsync(t => t.PropertyId == property.Id && t.Kind == "case-study-property");
+        Assert.Equal(WorkflowTaskStatus.Open, resumed.Status);
+        Assert.Equal("study", resumed.Phase);
+    }
+
+    [Fact]
     public async Task GateResolver_prefers_envelope_handoff_for_key_available()
     {
         await using var db = CreateDb();
