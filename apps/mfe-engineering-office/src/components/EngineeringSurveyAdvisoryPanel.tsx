@@ -12,12 +12,9 @@ import {
   loadEngineeringSurveySubmissionAsync,
   acceptEngineeringSurveySubmission,
   reopenEngineeringSurveySubmission,
-  isEngineeringSurveyOutputsAccepted,
-  wasEngineeringSurveyAcceptanceCleared,
 } from "../lib/engineering-survey-submission-storage";
 import { PartyRecallAdvisorySection } from "@case-study/mfe/components/party-tasks/PartyRecallAdvisorySection";
 import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/prototype/party-task-recall-storage";
-import { loadInspectorFeesSummary } from "@platform/app-shared/prototype/inspector-fees-api";
 
 function formatCoordsDisplay(lat: string, lng: string): string {
   const latTrim = lat.trim();
@@ -52,7 +49,6 @@ export function EngineeringSurveyAdvisoryPanel({
     null,
   );
   const [loadingSubmission, setLoadingSubmission] = useState(false);
-  const [legacyFeeAccrued, setLegacyFeeAccrued] = useState(false);
 
   useEffect(() => {
     const refresh = () => setRefreshKey((k) => k + 1);
@@ -93,36 +89,6 @@ export function EngineeringSurveyAdvisoryPanel({
       cancelled = true;
     };
   }, [surveyTask, refreshKey]);
-
-  useEffect(() => {
-    if (
-      !surveyTask ||
-      !submission ||
-      submission.status !== "submitted" ||
-      isEngineeringSurveyOutputsAccepted(submission) ||
-      wasEngineeringSurveyAcceptanceCleared(submission)
-    ) {
-      setLegacyFeeAccrued(false);
-      return;
-    }
-    let cancelled = false;
-    void loadInspectorFeesSummary({
-      workflowTaskId: surveyTask.id,
-      submittedOnly: false,
-      taskKind: "engineering-survey",
-    })
-      .then((summary) => {
-        if (cancelled) return;
-        const row = summary.rows.find((r) => r.workflowTaskId === surveyTask.id);
-        setLegacyFeeAccrued(Boolean(row?.accruedAtUtc));
-      })
-      .catch(() => {
-        if (!cancelled) setLegacyFeeAccrued(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [surveyTask, submission, refreshKey]);
 
   if (!surveyTask) {
     return (
@@ -193,9 +159,8 @@ export function EngineeringSurveyAdvisoryPanel({
     }
   }
 
-  const feeAccrued =
-    isEngineeringSurveyOutputsAccepted(submission) || legacyFeeAccrued;
-
+  // Persisted on the submission (backfilled from the fee ledger), so it survives reload.
+  const feeAccrued = !!submission.acceptedAtUtc;
   const coords = formatCoordsDisplay(submission.latitude, submission.longitude);
   const answeredCount = submission.checklist.filter(
     (row) => row.answer === "yes" || row.answer === "no",

@@ -195,43 +195,6 @@ public class DelegationLetterAgentDto
     public string Mobile { get; init; } = "";
 }
 
-public class InternalDelegationLetterDto
-{
-    public required string Id { get; init; }
-    public required string City { get; init; }
-    public required string Court { get; init; }
-    public required string Circuit { get; init; }
-    public IReadOnlyList<DelegationLetterPropertyDto> SelectedProperties { get; init; } = [];
-    public string? Reference { get; init; }
-    public string? DateHijri { get; init; }
-    public string? DateGreg { get; init; }
-    public string? IssuedAt { get; init; }
-    public DelegationLetterAgentDto? Agent { get; init; }
-    /// <summary>صفوف مثبتة عند الإصدار — إن وُجدت تُستخدم للطباعة بدل إعادة البناء.</summary>
-    public IReadOnlyList<DelegationLetterPropertyDto>? IssuedProperties { get; init; }
-    public required string CreatedAt { get; init; }
-}
-
-public class SaveInternalDelegationLettersRequest
-{
-    [Required, MaxLength(128)]
-    public string ScopeKey { get; init; } = "";
-    public IReadOnlyList<InternalDelegationLetterDto> Letters { get; init; } = [];
-}
-
-public class IssueInternalDelegationLetterRequest
-{
-    [Required, MaxLength(128)]
-    public string ScopeKey { get; init; } = "";
-    [Required, MaxLength(300)]
-    public string LetterId { get; init; } = "";
-    public IReadOnlyList<DelegationLetterPropertyDto> SelectedProperties { get; init; } = [];
-    public DelegationLetterAgentDto? Agent { get; init; }
-    public string? City { get; init; }
-    public string? Court { get; init; }
-    public string? Circuit { get; init; }
-}
-
 public class EvaluatorRecallDto
 {
     public Guid Id { get; init; }

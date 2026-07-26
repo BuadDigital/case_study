@@ -43,13 +43,17 @@ import {
   poListPath,
 } from "../lib/po-routes";
 import { operationsTasksPath } from "../lib/my-task-routes";
-import { poPropertyToPropertyRow, buildCopyPriorTargetOptions } from "../lib/prototype/po-intake-storage";
+import { buildCopyPriorTargetOptions } from "../lib/prototype/po-intake-storage";
 import {
   buildPoPropertiesRowMoreItems,
   type PoPropertyRowMoreContext,
 } from "../lib/prototype/po-properties-row-menu";
 import { formatDeliveryRemainingLabel } from "../lib/prototype/my-task-row";
-import { usePoRecordQuery, useWorkflowTasksQuery } from "@case-study/mfe/query/case-study-queries";
+import {
+  usePoRecordQuery,
+  usePropertyListItemsQuery,
+  useWorkflowTasksQuery,
+} from "@case-study/mfe/query/case-study-queries";
 import {
   canEditProperty,
   canRaisePropertyFailure,
@@ -57,6 +61,7 @@ import {
 } from "../lib/prototype/po-roles";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import type { PropertyWorkflowStage } from "@platform/app-shared/prototype/constants";
 import type { PoPropertyIntake } from "../lib/prototype/po-intake-data";
 import type { WorkflowTask } from "../lib/prototype/tasks-storage";
 
@@ -149,6 +154,18 @@ export function PoPropertiesPage({
 
   const { data: record, isPending } = usePoRecordQuery(poNumber);
   const { data: workflowTasks = [] } = useWorkflowTasksQuery();
+  const { data: propertyListItems = [] } = usePropertyListItemsQuery();
+
+  /** Server-authored badges — same source as dashboard / valuation lists. */
+  const statusByPropertyId = useMemo(() => {
+    const map = new Map<string, PropertyWorkflowStage>();
+    const po = poNumber.trim();
+    for (const item of propertyListItems) {
+      if (item.poNumber.trim() !== po) continue;
+      map.set(item.propertyId, item.row.status);
+    }
+    return map;
+  }, [propertyListItems, poNumber]);
 
   const copyTargets = useMemo(
     () =>
@@ -243,7 +260,6 @@ export function PoPropertiesPage({
   }
 
   const showDecree = requiresAssignmentDecree(record.assignmentType);
-  const priorByDeed = new Map<string, string>();
   const count = record.properties.filter((p) => !p.isRemoved).length;
   const expected = record.expectedPropertyCount ?? count;
   const dueUrgent = record.dueDateAt
@@ -370,12 +386,8 @@ export function PoPropertiesPage({
                 </THead>
                 <TBody>
                   {record.properties.map((prop, index) => {
-                    const row = poPropertyToPropertyRow(
-                      record,
-                      prop,
-                      priorByDeed,
-                      workflowTasks,
-                    );
+                    const serverStatus =
+                      statusByPropertyId.get(prop.id) ?? "new";
                     const boursePending = !prop.bourseDataCompleted;
                     const locRaw = formatPropertyLocation(prop);
                     const location =
@@ -462,7 +474,7 @@ export function PoPropertiesPage({
                           ) : boursePending ? (
                             <Badge tone="warning">بانتظار البورصة</Badge>
                           ) : (
-                            <StatusBadge status={row.status} />
+                            <StatusBadge status={serverStatus} />
                           )}
                         </Td>
                         {showRowMenu ? (

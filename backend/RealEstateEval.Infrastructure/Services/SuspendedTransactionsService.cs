@@ -17,12 +17,12 @@ public sealed class SuspendedTransactionsService : ISuspendedTransactionsService
     {
         var rows = await _db.PropertyFailures.AsNoTracking()
             .Where(x => x.Status == PropertyFailureStatus.Suspended)
-            .OrderByDescending(x => x.UpdatedAtUtc)
+            .OrderByDescending(x => x.SuspendedAtUtc ?? x.UpdatedAtUtc)
             .ToListAsync(cancellationToken);
 
         var names = await PersonLabelResolver.ResolveManyAsync(
             _db,
-            rows.Select(x => x.Specialist),
+            rows.Select(x => x.Specialist).Concat(rows.Select(x => x.SuspendedByUserId)),
             cancellationToken);
 
         return rows.Select(x => new SuspendedTransactionDto
@@ -37,8 +37,8 @@ public sealed class SuspendedTransactionsService : ISuspendedTransactionsService
             RaisedByRole = PersonLabelResolver.NormalizeSystemLabel(x.RaisedByRole),
             Specialist = PersonLabelResolver.ApplyResolved(x.Specialist, names),
             SupervisorNote = x.FinalNote,
-            SuspendedAt = x.UpdatedAtUtc,
-            SuspendedBy = PersonLabelResolver.NormalizeSystemLabel(x.RaisedByRole),
+            SuspendedAt = x.SuspendedAtUtc ?? x.UpdatedAtUtc,
+            SuspendedBy = PersonLabelResolver.ApplyResolved(x.SuspendedByUserId, names),
         }).ToList();
     }
 }

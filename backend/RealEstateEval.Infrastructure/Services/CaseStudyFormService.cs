@@ -63,6 +63,13 @@ public class CaseStudyFormService : ICaseStudyFormService
             if (partyErrors is not null)
                 return (null, partyErrors);
         }
+        else if (entity is not null && string.Equals(entity.Status, FormStatusSubmitted, StringComparison.OrdinalIgnoreCase))
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "تم رفع نموذج دراسة الحالة — لا يمكن تعديله",
+            });
+        }
 
         var previousStatus = entity?.Status;
         var now = DateTime.UtcNow;
@@ -246,7 +253,6 @@ public class CaseStudyFormService : ICaseStudyFormService
 
         return new CaseStudyFormDto
         {
-            Version = 1,
             TaskId = entity.TaskId.ToString(),
             PropertyId = entity.PropertyId?.ToString(),
             PoNumber = entity.PoNumber,

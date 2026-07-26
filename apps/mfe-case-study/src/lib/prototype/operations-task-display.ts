@@ -70,65 +70,89 @@ const WH_START = 8;
 const WH_END = 17;
 const WH_NOON = 12;
 const DAY_MS = 86_400_000;
+/** Asia/Riyadh has no DST — match OperationsTaskReminderCalculator. */
+const RIYADH_OFFSET_MS = 3 * 60 * 60 * 1000;
 
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
 
-function isWorkDay(d: Date): boolean {
-  const g = d.getDay();
-  return g >= 0 && g <= 4; // الأحد–الخميس
+type RiyadhWall = {
+  y: number;
+  m: number; // 0-based
+  d: number;
+  h: number;
+  min: number;
+  day: number; // 0=Sun … 6=Sat
+};
+
+/** Interpret an instant as Riyadh wall-clock parts (UTC+3). */
+function toRiyadhWall(ts: number): RiyadhWall {
+  const shifted = new Date(ts + RIYADH_OFFSET_MS);
+  return {
+    y: shifted.getUTCFullYear(),
+    m: shifted.getUTCMonth(),
+    d: shifted.getUTCDate(),
+    h: shifted.getUTCHours(),
+    min: shifted.getUTCMinutes(),
+    day: shifted.getUTCDay(),
+  };
 }
 
-function atHour(d: Date, h: number): number {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, 0, 0, 0).getTime();
+function isWorkDayWall(w: RiyadhWall): boolean {
+  return w.day >= 0 && w.day <= 4; // الأحد–الخميس
+}
+
+/** Epoch ms for a Riyadh wall-clock hour on the given calendar day. */
+function atHourRiyadh(w: RiyadhWall, hour: number): number {
+  return Date.UTC(w.y, w.m, w.d, hour, 0, 0, 0) - RIYADH_OFFSET_MS;
+}
+
+function addDaysWall(w: RiyadhWall, days: number): RiyadhWall {
+  const utcNoon = Date.UTC(w.y, w.m, w.d + days, 12, 0, 0, 0);
+  return toRiyadhWall(utcNoon - RIYADH_OFFSET_MS);
 }
 
 function nextWorkDayNoon(ts: number): number {
-  const d = new Date(ts);
+  let w = toRiyadhWall(ts);
   do {
-    d.setDate(d.getDate() + 1);
-  } while (!isWorkDay(d));
-  return atHour(d, WH_NOON);
+    w = addDaysWall(w, 1);
+  } while (!isWorkDayWall(w));
+  return atHourRiyadh(w, WH_NOON);
 }
 
 function nextCheckpoint(ts: number): number {
-  const d = new Date(ts);
-  const h = d.getHours() + d.getMinutes() / 60;
-  if (isWorkDay(d)) {
-    if (h < WH_NOON) return atHour(d, WH_NOON);
-    if (h < WH_END) return atHour(d, WH_END);
+  const w = toRiyadhWall(ts);
+  const h = w.h + w.min / 60;
+  if (isWorkDayWall(w)) {
+    if (h < WH_NOON) return atHourRiyadh(w, WH_NOON);
+    if (h < WH_END) return atHourRiyadh(w, WH_END);
   }
   return nextWorkDayNoon(ts);
 }
 
 function nextWorkHour(ts: number): number {
-  const d = new Date(ts);
-  if (isWorkDay(d) && d.getHours() < WH_START) return atHour(d, WH_START);
-  const cand = new Date(
-    d.getFullYear(),
-    d.getMonth(),
-    d.getDate(),
-    d.getHours() + 1,
-    0,
-    0,
-    0,
-  );
+  const w = toRiyadhWall(ts);
+  if (isWorkDayWall(w) && w.h < WH_START) return atHourRiyadh(w, WH_START);
+
+  const candMs = atHourRiyadh(w, w.h) + 3_600_000;
+  const cand = toRiyadhWall(candMs);
   if (
-    isWorkDay(cand) &&
-    cand.getHours() >= WH_START &&
-    cand.getHours() <= WH_END
+    isWorkDayWall(cand) &&
+    cand.h >= WH_START &&
+    cand.h <= WH_END
   ) {
-    return cand.getTime();
+    return candMs;
   }
-  const nd = new Date(ts);
+
+  let nd = w;
   do {
-    nd.setDate(nd.getDate() + 1);
-  } while (!isWorkDay(nd));
-  return atHour(nd, WH_START);
+    nd = addDaysWall(nd, 1);
+  } while (!isWorkDayWall(nd));
+  return atHourRiyadh(nd, WH_START);
 }
 
-/** Matches Case Study.html nextReminderTs — anchor = last reminder or now. */
+/** Matches OperationsTaskReminderCalculator — Asia/Riyadh wall clock. */
 export function nextReminderTs(priority: string, now = Date.now()): number {
   if (priority === "high") return nextWorkHour(now);
   if (priority === "low") return nextWorkDayNoon(now);

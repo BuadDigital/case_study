@@ -56,8 +56,8 @@ export type EngineeringSurveySubmission = {
   surveyNotes: string;
   updatedAtUtc: string;
   submittedAtUtc?: string;
-  /** Specialist acceptance timestamp — survives reload; cleared on return-for-correction. */
-  outputsAcceptedAtUtc?: string | null;
+  /** Set once a specialist accepts the outputs; drives the fee-accrued panel state. */
+  acceptedAtUtc?: string;
 };
 
 export function emptyChecklistRows(): EngineeringSurveyChecklistRow[] {

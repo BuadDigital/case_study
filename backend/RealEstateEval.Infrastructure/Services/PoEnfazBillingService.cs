@@ -168,12 +168,6 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
 
             row.CaseStudyFeeSar = Math.Max(0m, input.CaseStudyFeeSar);
             row.SurveyFeeSar = Math.Max(0m, input.SurveyFeeSar);
-            // Legacy clients may still send EnfazFeeSar only.
-            if (row.CaseStudyFeeSar <= 0m && row.SurveyFeeSar <= 0m && input.EnfazFeeSar is > 0m)
-            {
-                row.CaseStudyFeeSar = Math.Max(0m, input.EnfazFeeSar.Value);
-                row.SurveyFeeSar = 0m;
-            }
             row.IncludedInBilling = input.IncludedInBilling;
             row.UpdatedAtUtc = now;
         }
