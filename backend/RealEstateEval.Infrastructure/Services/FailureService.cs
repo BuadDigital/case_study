@@ -228,14 +228,20 @@ public class FailureService : IFailureService
     public async Task<FailureRecordDto?> SuspendAsync(
         Guid id,
         string note,
+        string actorUserId,
         CancellationToken cancellationToken = default)
     {
         var entity = await _db.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
         if (entity is null || entity.Status != PropertyFailureStatus.Review) return null;
 
+        var now = DateTime.UtcNow;
         entity.Status = PropertyFailureStatus.Suspended;
         entity.FinalNote = note.Trim();
-        entity.UpdatedAtUtc = DateTime.UtcNow;
+        entity.SuspendedAtUtc = now;
+        entity.SuspendedByUserId = string.IsNullOrWhiteSpace(actorUserId)
+            ? null
+            : actorUserId.Trim();
+        entity.UpdatedAtUtc = now;
         await _db.SaveChangesAsync(cancellationToken);
 
         if (Guid.TryParse(entity.PropertyId, out var propertyId))
@@ -247,7 +253,7 @@ public class FailureService : IFailureService
                 "تعليق المعاملة",
                 entity.FinalNote,
                 "warn",
-                entity.UpdatedAtUtc,
+                entity.SuspendedAtUtc.Value,
                 cancellationToken);
         }
 
