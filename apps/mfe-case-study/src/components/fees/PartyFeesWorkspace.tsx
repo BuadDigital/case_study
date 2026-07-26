@@ -2,11 +2,18 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { EmptyState, QueueTableHint, Tab, TabBar, TabPanel } from "@platform/design-system";
+import {
+  EmptyState,
+  QueueTableHint,
+  Tab,
+  TabBar,
+  TabPanel,
+} from "@platform/design-system";
 import { KeyEnvelopeFeesPanel } from "@keys/mfe/components/KeyEnvelopeFeesPanel";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import { InspectorFeesBillingTable } from "../field-inspection/InspectorFeesBillingTable";
 import { PartyFeeWorkflowTable } from "./PartyFeeWorkflowTable";
+import { EngOfficeFeesBillingTable, engFeeUiStatus } from "./EngOfficeFeesBillingTable";
 import { PartyDisbursementRequest } from "./PartyDisbursementRequest";
 import { PartyReturnedQueue } from "./PartyReturnedQueue";
 import { SupervisorEnfazTracking } from "./SupervisorEnfazTracking";
@@ -29,7 +36,9 @@ type PartyFeesTab =
   | "disburse"
   | "returned"
   | "financial"
-  | "browse";
+  | "browse"
+  | "action"
+  | "ready";
 
 export function PartyFeesWorkspace({
   variant,
@@ -42,7 +51,7 @@ export function PartyFeesWorkspace({
 }) {
   const isEngineering = variant === "engineering-survey";
   const [tab, setTab] = useState<PartyFeesTab>(
-    isSupervisor ? "financial" : isEngineering ? "preliminary" : "fees",
+    isSupervisor ? "financial" : isEngineering ? "action" : "fees",
   );
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
@@ -72,34 +81,146 @@ export function PartyFeesWorkspace({
     [rows],
   );
 
-  const officeReviewRows = useMemo(
-    () => rows.filter((r) => r.billingStatus === "office-review"),
-    [rows],
-  );
   const disputedRows = useMemo(
     () => rows.filter((r) => r.billingStatus === "disputed"),
     [rows],
   );
-  const readyBillingRows = useMemo(
+
+  const engActionCount = useMemo(
     () =>
-      rows.filter(
-        (r) =>
-          r.billingStatus === "at-finance" ||
-          r.billingStatus === "deferred" ||
-          r.billingStatus === "in-statement" ||
-          r.billingStatus === "disbursed" ||
-          r.billingStatus === "disb-req",
-      ),
+      rows.filter((r) => {
+        const st = engFeeUiStatus(r);
+        return st === "pending_office" || st === "dispute";
+      }).length,
+    [rows],
+  );
+  const engReadyCount = useMemo(
+    () =>
+      rows.filter((r) => {
+        const st = engFeeUiStatus(r);
+        return st === "ready" || st === "carried";
+      }).length,
     [rows],
   );
 
   const showVisitAndKeyFees =
     variant === "government-review" || isSupervisor;
 
+  if (isEngineering && !isSupervisor) {
+    return (
+      <div className="flex min-h-0 flex-col gap-0">
+        <TabBar className="mb-0">
+          <Tab active={tab === "action"} onClick={() => setTab("action")}>
+            تتطلب إجراءكم
+            {engActionCount > 0 ? (
+              <span className="ms-1 text-[10.5px] text-[#a5432e]">
+                ({engActionCount})
+              </span>
+            ) : (
+              <span className="ms-1 text-[10.5px] text-text-3">(0)</span>
+            )}
+          </Tab>
+          <Tab active={tab === "ready"} onClick={() => setTab("ready")}>
+            جاهزة للفوترة
+            <span className="ms-1 text-[10.5px] text-text-3">
+              ({engReadyCount})
+            </span>
+          </Tab>
+          <Tab
+            active={tab === "statements"}
+            onClick={() => setTab("statements")}
+          >
+            كشوف الفوترة الصادرة
+          </Tab>
+          <Tab active={tab === "browse"} onClick={() => setTab("browse")}>
+            عقاراتي وحالاتها
+          </Tab>
+        </TabBar>
+
+        <TabPanel className="px-3 py-3 sm:px-4 sm:py-4">
+          {tab === "action" ? (
+            <>
+              <div className="mb-3">
+                <div className="text-[14px] font-bold text-heading">
+                  الكشف المبدئي — بنود تتطلب إجراءكم
+                </div>
+                <div className="mt-0.5 text-[11.5px] text-text-3">
+                  تعديلات تسعير بانتظار إفادتكم، وتحفّظاتكم قيد المعالجة مع
+                  المشرف. الاستحقاق ينشأ بقبول الأخصائي بسعر جدول التسعير.
+                </div>
+              </div>
+              <EngOfficeFeesBillingTable
+                rows={rows}
+                tab="action"
+                pending={isLoading && !isFetched}
+              />
+            </>
+          ) : null}
+
+          {tab === "ready" ? (
+            <>
+              <div className="mb-3">
+                <div className="text-[14px] font-bold text-heading">
+                  المعاملات الجاهزة للفوترة
+                </div>
+                <div className="mt-0.5 text-[11.5px] text-text-3">
+                  بنود مستحقة بانتظار كشف المحاسب نهاية الشهر — تشمل المرحَّلة من
+                  أشهر سابقة.
+                </div>
+              </div>
+              <EngOfficeFeesBillingTable
+                rows={rows}
+                tab="ready"
+                pending={isLoading && !isFetched}
+              />
+            </>
+          ) : null}
+
+          {tab === "statements" ? (
+            <>
+              <div className="mb-3">
+                <div className="text-[14px] font-bold text-heading">
+                  كشوف الفوترة الصادرة
+                </div>
+                <div className="mt-0.5 text-[11.5px] text-text-3">
+                  يُصدرها المحاسب نهاية الشهر من البنود الجاهزة فقط — مستند
+                  داخلي لتحديد نطاق الصرف؛ الفاتورة من البرنامج المحاسبي.
+                  للاطلاع ومتابعة الصرف فقط.
+                </div>
+              </div>
+              <EngOfficeBillingStatementsPanel
+                assigneeId={assigneeId}
+                issuedOrLaterOnly
+              />
+              <QueueTableHint className="mt-3 border-t border-border bg-surface-2">
+                دورة الكشف: مسودة ← صادر ← محال للمالية ← مصروف. الفاتورة تصدر من
+                البرنامج المحاسبي خارج النظام، ويُوثَّق الصرف هنا برقم الفاتورة
+                وإيصال التحويل والتاريخ.
+              </QueueTableHint>
+            </>
+          ) : null}
+
+          {tab === "browse" ? (
+            <PartyPropertyBrowse
+              rows={rows}
+              partyName={resolvePartyName(assigneeId, staffUsers)}
+              partyCategory={resolvePartyCategory(
+                assigneeId ?? "",
+                rows,
+                staffUsers,
+              )}
+              pending={isLoading && !isFetched}
+            />
+          ) : null}
+        </TabPanel>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex min-h-0 flex-col gap-3 px-4 py-4">
+    <div className="flex min-h-0 flex-col gap-0">
       {isSupervisor ? (
-        <TabBar className="mb-3">
+        <TabBar className="mb-0">
           <Tab active={tab === "financial"} onClick={() => setTab("financial")}>
             الأمور المالية
             {supReviewRows.length + returnedToSup.length + disputedRows.length > 0
@@ -123,32 +244,13 @@ export function PartyFeesWorkspace({
           </Tab>
         </TabBar>
       ) : (
-        <TabBar className="mb-3">
-          {isEngineering ? (
-            <Tab
-              active={tab === "preliminary"}
-              onClick={() => setTab("preliminary")}
-            >
-              الكشف المبدئي
-              {officeReviewRows.length > 0
-                ? ` (${officeReviewRows.length})`
-                : ""}
-            </Tab>
-          ) : null}
+        <TabBar className="mb-0">
           <Tab active={tab === "browse"} onClick={() => setTab("browse")}>
             عقاراتي وحالاتها
           </Tab>
           <Tab active={tab === "fees"} onClick={() => setTab("fees")}>
-            {isEngineering ? "الجاهزة للفوترة" : "أتعاب المعاملة"}
+            أتعاب المعاملة
           </Tab>
-          {isEngineering ? (
-            <Tab
-              active={tab === "statements"}
-              onClick={() => setTab("statements")}
-            >
-              كشوف الفوترة
-            </Tab>
-          ) : null}
           {showVisitAndKeyFees ? (
             <Tab
               active={tab === "visit-fees"}
@@ -162,60 +264,38 @@ export function PartyFeesWorkspace({
               أتعاب استلام المفاتيح
             </Tab>
           ) : null}
-          {!isEngineering ? (
-            <Tab active={tab === "disburse"} onClick={() => setTab("disburse")}>
-              طلب صرف
-            </Tab>
-          ) : null}
-          {!isEngineering ? (
-            <Tab active={tab === "returned"} onClick={() => setTab("returned")}>
-              المُعاد لي
-            </Tab>
-          ) : null}
+          <Tab active={tab === "disburse"} onClick={() => setTab("disburse")}>
+            طلب صرف
+          </Tab>
+          <Tab active={tab === "returned"} onClick={() => setTab("returned")}>
+            المُعاد لي
+          </Tab>
         </TabBar>
       )}
 
-      <TabPanel>
-        {tab === "preliminary" && isEngineering && !isSupervisor ? (
-          <>
-            <PartyFeeWorkflowTable
-              rows={rows}
-              role="office"
-              pending={isLoading && !isFetched}
-            />
-            <QueueTableHint className="mt-3">
-              الكشف المبدئي: معاملاتك المستحقة بعد قبول الأخصائي للمخرجات. البنود
-              بسعر الجدول جاهزة تلقائياً. البنود المخصومة تحتاج موافقتك أو
-              اعتراضك قبل وصولها للمالية.
-            </QueueTableHint>
-          </>
-        ) : null}
-
+      <TabPanel className="px-3 py-3 sm:px-4 sm:py-4">
         {tab === "fees" ? (
           isSupervisor ? (
             <>
-              <InspectorFeesBillingTable
-                rows={rows}
-                mode="supervisor"
-                pending={isLoading && !isFetched}
-              />
+              <div className="hidden lg:block">
+                <InspectorFeesBillingTable
+                  rows={rows}
+                  mode="supervisor"
+                  pending={isLoading && !isFetched}
+                />
+              </div>
+              <div className="lg:hidden">
+                <PartyFeeWorkflowTable
+                  rows={rows}
+                  role="supervisor"
+                  pending={isLoading && !isFetched}
+                />
+              </div>
               <QueueTableHint className="mt-3">
                 الحسم هنا — للمكتب الهندسي: الخصم يُرسل لموافقة المكتب قبل المالية.
                 {variant === "government-review" || isSupervisor
                   ? " مسار المهام التشغيلية (زيارة محكمة) يظهر في «أتعاب الزيارة»."
                   : ""}
-              </QueueTableHint>
-            </>
-          ) : isEngineering ? (
-            <>
-              <PartyFeeWorkflowTable
-                rows={readyBillingRows}
-                role="office"
-                pending={isLoading && !isFetched}
-              />
-              <QueueTableHint className="mt-3">
-                حالات البنود: جاهز للفوترة، جاهز — مرحَّل، مدرج، مفوترة /
-                مدفوعة. بعد إرسال المالية للكشف يظهر في تبويب «كشوف الفوترة».
               </QueueTableHint>
             </>
           ) : (
@@ -321,13 +401,13 @@ export function PartyFeesWorkspace({
           />
         ) : null}
 
-        {tab === "disburse" && !isSupervisor && !isEngineering ? (
+        {tab === "disburse" && !isSupervisor ? (
           <PartyDisbursementRequest
             rows={rows.filter((r) => r.canCreateDisbursementRequest)}
           />
         ) : null}
 
-        {tab === "returned" && !isSupervisor && !isEngineering ? (
+        {tab === "returned" && !isSupervisor ? (
           <PartyReturnedQueue rows={rows} />
         ) : null}
 

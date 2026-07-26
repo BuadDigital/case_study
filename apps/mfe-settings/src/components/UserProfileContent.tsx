@@ -53,10 +53,12 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
   }, [user.details]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="space-y-4 max-lg:space-y-5">
+      <div className="flex flex-wrap items-start justify-between gap-3 max-lg:rounded-[12px] max-lg:bg-surface-2 max-lg:px-3.5 max-lg:py-3">
         <div className="min-w-0">
-          <h2 className="m-0 text-[18px] font-extrabold text-heading">{user.name}</h2>
+          <h2 className="m-0 text-[18px] font-extrabold text-heading max-lg:text-[17px]">
+            {user.name}
+          </h2>
           <p className="m-0 mt-1 text-[13px] text-text-3">{user.role || "—"}</p>
         </div>
         <Badge tone={statusTone(user.status)} dot>
@@ -68,7 +70,7 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
         <h3 className="m-0 mb-3 text-[13px] font-bold text-heading">
           البيانات الأساسية
         </h3>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 max-lg:gap-2.5">
           <ProfileField label="الاسم" value={user.name} />
           <ProfileField label="الدور / المسمى" value={user.role} />
           <ProfileField label="البريد الإلكتروني" value={user.email} dir="ltr" />
@@ -103,7 +105,7 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
       {detailSections.map(([section, fields]) => (
         <section key={section}>
           <h3 className="m-0 mb-3 text-[13px] font-bold text-heading">{section}</h3>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2 max-lg:gap-2.5">
             {fields.map((field) => (
               <ProfileField
                 key={`${section}-${field.label}`}

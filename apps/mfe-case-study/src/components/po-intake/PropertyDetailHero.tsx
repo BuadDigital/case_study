@@ -61,7 +61,7 @@ export function PropertyDetailHero({
   const dueUrgent = record.dueDateAt ? isDueSoon(record.dueDateAt) : false;
 
   return (
-    <header className="shrink-0 border-b border-border/50 bg-surface px-4 pt-4 pb-0 sm:px-6">
+    <header className="shrink-0 border-b border-border/50 bg-surface px-4 pt-3 pb-0 sm:px-6 max-lg:pt-[max(0.75rem,0.25rem)]">
       <div className="mb-2.5 flex items-start justify-between gap-4 max-lg:flex-col">
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex flex-wrap items-center gap-1.5 text-[11px] text-text-3">
@@ -88,10 +88,10 @@ export function PropertyDetailHero({
             />
           </div>
         </div>
-        <div className="shrink-0 text-end max-lg:w-full max-lg:text-start">
+        <div className="shrink-0 text-end max-lg:w-full max-lg:rounded-md max-lg:bg-surface-2 max-lg:px-3 max-lg:py-2.5 max-lg:text-start">
           <div className="max-lg:text-start">
             <div className="mb-0.5 text-[11px] text-text-3">رقم الطلب</div>
-            <div className="text-[22px] font-semibold text-primary">
+            <div className="text-[22px] font-semibold text-primary max-lg:text-lg">
               <bdi dir="ltr" className={ltrValueClass}>
                 {property.requestNumber.trim() || "—"}
               </bdi>

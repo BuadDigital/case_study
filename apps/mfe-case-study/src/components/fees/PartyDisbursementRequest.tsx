@@ -144,11 +144,11 @@ export function PartyDisbursementRequest({
         اختر من عقاراتك الجاهزة لدى المالية، اجمعها في أمر صرف واحد — ثم تصرفه
         الإدارة المالية.
       </p>
-      <div className={cn(pageToolbarClassName, "rounded-[var(--radius-lg)]")}>
-        <label className="flex items-center gap-2 text-xs text-text-2">
+      <div className={cn(pageToolbarClassName, "rounded-[var(--radius-lg)] max-lg:flex-col max-lg:items-stretch")}>
+        <label className="flex items-center gap-2 text-xs text-text-2 max-lg:w-full">
           الترتيب
           <select
-            className="rounded-md border border-border bg-surface px-2 py-1 text-xs"
+            className="min-h-11 flex-1 rounded-md border border-border bg-surface px-2 py-1 text-xs sm:min-h-0 sm:flex-none"
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
           >
@@ -157,22 +157,28 @@ export function PartyDisbursementRequest({
             <option value="fee">المبلغ (الأعلى)</option>
           </select>
         </label>
-        <label className="flex items-center gap-2 text-xs text-text-2">
+        <label className="flex items-center gap-2 text-xs text-text-2 max-lg:w-full">
           سقف الميزانية
           <Input
             type="number"
-            className="h-8 w-28 text-xs"
+            className="h-11 w-full text-xs sm:h-8 sm:w-28"
             placeholder="بدون سقف"
             value={budget}
             onChange={(e) => setBudget(e.target.value)}
           />
         </label>
-        <Button type="button" size="sm" variant="ghost" onClick={autoBudget}>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="max-lg:min-h-11"
+          onClick={autoBudget}
+        >
           تحديد تلقائي حتى السقف
         </Button>
       </div>
 
-      <div className={queueTableWrapClassName}>
+      <div className={cn(queueTableWrapClassName, "hidden lg:block")}>
         <Table>
           <THead>
             <Tr hoverable={false}>
@@ -215,7 +221,66 @@ export function PartyDisbursementRequest({
         </Table>
       </div>
 
-      <div className={cn(pageToolbarClassName, "rounded-[var(--radius-lg)]")}>
+      <ul className="m-0 flex list-none flex-col gap-2.5 p-0 lg:hidden">
+        {sorted.map((row) => {
+          const checked = selected.has(row.workflowTaskId);
+          return (
+            <li key={`m-${row.workflowTaskId}`}>
+              <label
+                className={cn(
+                  "flex cursor-pointer gap-3 rounded-[12px] border bg-surface px-3.5 py-3 shadow-card transition-colors",
+                  checked
+                    ? "border-gold bg-[color-mix(in_srgb,var(--gold)_8%,var(--surface))]"
+                    : "border-border",
+                )}
+              >
+                <input
+                  type="checkbox"
+                  className="mt-1 h-[18px] w-[18px] shrink-0 accent-[var(--gold-d)]"
+                  checked={checked}
+                  onChange={(e) =>
+                    toggle(row.workflowTaskId, e.target.checked)
+                  }
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[14px] font-bold text-heading">
+                    {row.propertyLabel}
+                  </div>
+                  <div className="mt-1">
+                    <PoNumber value={row.poNumber} link />
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-[12px]">
+                    <div>
+                      <div className="text-[10.5px] text-text-3">الإنجاز</div>
+                      <div className="font-semibold text-text-2">
+                        {formatFeeDate(
+                          row.workSubmittedAtUtc ?? row.updatedAtUtc,
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10.5px] text-text-3">الصدور</div>
+                      <div className="font-semibold text-text-2">
+                        {formatFeeDate(row.poReceivedAtUtc)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-end text-[14px] font-extrabold tabular-nums text-heading">
+                    {row.netFeeSar.toLocaleString("ar-SA")} ر.س
+                  </div>
+                </div>
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+
+      <div
+        className={cn(
+          pageToolbarClassName,
+          "rounded-[var(--radius-lg)] max-lg:sticky max-lg:bottom-0 max-lg:z-20 max-lg:border max-lg:border-border max-lg:bg-surface/95 max-lg:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-lg:backdrop-blur-sm",
+        )}
+      >
         <span className="text-xs text-text-2">
           المحدّد: {selectedRows.length} · الإجمالي:{" "}
           <strong className={overBudget ? "text-danger" : "text-text"}>
@@ -227,6 +292,7 @@ export function PartyDisbursementRequest({
           type="button"
           size="sm"
           variant="primary"
+          className="max-lg:min-h-11 max-lg:w-full"
           disabled={busy || selected.size === 0 || overBudget}
           onClick={() => void submit()}
         >

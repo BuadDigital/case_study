@@ -9,6 +9,7 @@ export function ModalOverlay({
     <div
       className={cn(
         "fixed inset-0 z-[1000] flex items-center justify-center bg-[rgba(10,33,56,0.45)] p-4 sm:p-5 ui-animate-modal-overlay",
+        "max-lg:items-end max-lg:justify-center max-lg:p-0",
         className,
       )}
       {...props}
@@ -26,6 +27,7 @@ export function ModalCard({
       className={cn(
         "flex max-h-[90vh] w-full flex-col overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-modal",
         wide ? "max-w-[720px]" : "max-w-[420px]",
+        "max-lg:max-h-[min(92dvh,100%)] max-lg:max-w-none max-lg:rounded-b-none max-lg:rounded-t-[16px] max-lg:border-x-0 max-lg:border-b-0",
         className,
       )}
       {...props}
@@ -100,6 +102,7 @@ export function ModalFooter({
     <footer
       className={cn(
         "flex shrink-0 flex-wrap justify-end gap-2 border-t border-border px-4 py-3",
+        "max-lg:gap-2.5 max-lg:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-lg:[&>button]:min-h-11 max-lg:[&>button]:flex-1 max-lg:[&>button]:justify-center",
         className,
       )}
       {...props}

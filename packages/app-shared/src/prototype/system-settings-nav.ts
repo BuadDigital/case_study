@@ -1,4 +1,4 @@
-import type { PageId } from "@platform/types";
+import type { PageId, RoleId } from "@platform/types";
 import {
   SYSTEM_FIELDS_GROUP,
   SYSTEM_FIELDS_GROUP_ICON,
@@ -9,6 +9,7 @@ import {
 import { SETTINGS_NAV, SETTINGS_PAGE_IDS } from "./settings-nav";
 import { SYSTEM_FIELDS_CATALOG_NAV_ITEM } from "./system-fields-catalog-nav";
 import { SYSTEM_SCREEN_CATALOG_NAV_ITEM } from "./system-screen-catalog-nav";
+import { isPartyFeesUnderActiveTransactions } from "./active-transactions";
 
 export type SystemSettingsNavItem = {
   id: PageId;
@@ -66,10 +67,15 @@ export const SYSTEM_SETTINGS_PRIMARY_PAGE_IDS: PageId[] =
 
 export function systemSettingsPrimaryNavForRole(
   rolePages: PageId[],
+  role?: RoleId,
 ): SystemSettingsNavItem[] {
-  return SYSTEM_SETTINGS_PRIMARY_NAV.filter((item) =>
-    rolePages.includes(item.id),
-  );
+  return SYSTEM_SETTINGS_PRIMARY_NAV.filter((item) => {
+    // المكتب الهندسي / المسؤول: فوترة الأتعاب تحت المعاملات النشطة، وليس هنا.
+    if (item.id === "party-fees" && isPartyFeesUnderActiveTransactions(role)) {
+      return false;
+    }
+    return rolePages.includes(item.id);
+  });
 }
 
 export function systemSettingsFieldsNavForRole(
@@ -78,7 +84,13 @@ export function systemSettingsFieldsNavForRole(
   return systemFieldsNavForRole(rolePages).filter((item) => item.available);
 }
 
-export function isInSystemSettingsSection(page: PageId): boolean {
+export function isInSystemSettingsSection(
+  page: PageId,
+  role?: RoleId,
+): boolean {
+  if (page === "party-fees" && isPartyFeesUnderActiveTransactions(role)) {
+    return false;
+  }
   return (
     SYSTEM_SETTINGS_PRIMARY_PAGE_IDS.includes(page) ||
     SYSTEM_FIELDS_NAV.some((n) => n.id === page) ||
@@ -87,9 +99,12 @@ export function isInSystemSettingsSection(page: PageId): boolean {
 }
 
 /** يظهر قسم عام إذا وُجدت أي إعدادات نظام متاحة. */
-export function showSystemSettingsGroup(rolePages: PageId[]): boolean {
+export function showSystemSettingsGroup(
+  rolePages: PageId[],
+  role?: RoleId,
+): boolean {
   return (
-    systemSettingsPrimaryNavForRole(rolePages).length > 0 ||
+    systemSettingsPrimaryNavForRole(rolePages, role).length > 0 ||
     systemSettingsFieldsNavForRole(rolePages).length > 0
   );
 }

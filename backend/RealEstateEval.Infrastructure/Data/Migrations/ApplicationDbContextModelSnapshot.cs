@@ -549,6 +549,61 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.ToTable("CourtCircuits", "platform");
                 });
 
+            modelBuilder.Entity("RealEstateEval.Domain.CourtVisitFeeCharge", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("AmountSar")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreditAssigneeId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("CreditAssigneeName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Guid>("OperationsTaskId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PoNumber")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("TaskDisplayId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreditAssigneeId");
+
+                    b.HasIndex("OperationsTaskId")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("CourtVisitFeeCharges", "financial");
+                });
+
             modelBuilder.Entity("RealEstateEval.Domain.DisbursementBatch", b =>
                 {
                     b.Property<Guid>("Id")
@@ -614,6 +669,111 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("DocumentReferenceCounters", "case_study");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Domain.EngineeringBillingStatement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AssigneeId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime?>("ClosedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ClosedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("ExternalInvoiceNumber")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime?>("IssuedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IssuedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime?>("PaidAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReferenceNumber")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<decimal>("TotalNetSar")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<Guid?>("TransferReceiptAttachmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TransferReceiptRef")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssigneeId");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("ReferenceNumber")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("EngineeringBillingStatements", "financial");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Domain.EngineeringBillingStatementLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("NetFeeSar")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<Guid>("StatementId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("WorkflowTaskId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StatementId");
+
+                    b.HasIndex("WorkflowTaskId")
+                        .IsUnique();
+
+                    b.ToTable("EngineeringBillingStatementLines", "financial");
                 });
 
             modelBuilder.Entity("RealEstateEval.Domain.EvaluatorRecallRecord", b =>
@@ -889,12 +1049,12 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("AccruedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<decimal>("AgreedFeeSar")
                         .HasPrecision(12, 2)
                         .HasColumnType("numeric(12,2)");
-
-                    b.Property<DateTime?>("AccruedAtUtc")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("AssigneeId")
                         .HasMaxLength(128)
@@ -918,6 +1078,9 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<string>("DiscountReason")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid?>("EngineeringBillingStatementId")
+                        .HasColumnType("uuid");
 
                     b.Property<bool>("ExcludedFromBatch")
                         .HasColumnType("boolean");
@@ -962,6 +1125,8 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.HasIndex("BillingStatus");
 
                     b.HasIndex("DisbursementBatchId");
+
+                    b.HasIndex("EngineeringBillingStatementId");
 
                     b.HasIndex("ExcludedFromBatch");
 
@@ -1296,61 +1461,6 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.ToTable("KeyEnvelopeTimelineEntries", "operations");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.CourtVisitFeeCharge", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("AmountSar")
-                        .HasPrecision(12, 2)
-                        .HasColumnType("numeric(12,2)");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("CreditAssigneeId")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<string>("CreditAssigneeName")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<Guid>("OperationsTaskId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("PoNumber")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
-                    b.Property<string>("TaskDisplayId")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreditAssigneeId");
-
-                    b.HasIndex("OperationsTaskId")
-                        .IsUnique();
-
-                    b.HasIndex("Status");
-
-                    b.ToTable("CourtVisitFeeCharges", "financial");
-                });
-
             modelBuilder.Entity("RealEstateEval.Domain.KeyReceiptFeeCharge", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1438,6 +1548,9 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<string>("CommentsJson")
                         .HasColumnType("jsonb");
 
+                    b.Property<string>("CourtVisitResultJson")
+                        .HasColumnType("jsonb");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -1450,9 +1563,6 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
-
-                    b.Property<string>("CourtVisitResultJson")
-                        .HasColumnType("jsonb");
 
                     b.Property<string>("CreditAssigneeId")
                         .HasMaxLength(128)
@@ -2815,6 +2925,17 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Navigation("Court");
                 });
 
+            modelBuilder.Entity("RealEstateEval.Domain.EngineeringBillingStatementLine", b =>
+                {
+                    b.HasOne("RealEstateEval.Domain.EngineeringBillingStatement", "Statement")
+                        .WithMany("Lines")
+                        .HasForeignKey("StatementId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Statement");
+                });
+
             modelBuilder.Entity("RealEstateEval.Domain.HrEmployeeProfile", b =>
                 {
                     b.HasOne("RealEstateEval.Domain.UserProfile", "Profile")
@@ -2928,6 +3049,11 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
             modelBuilder.Entity("RealEstateEval.Domain.Court", b =>
                 {
                     b.Navigation("Circuits");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Domain.EngineeringBillingStatement", b =>
+                {
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("RealEstateEval.Domain.KeyEnvelope", b =>

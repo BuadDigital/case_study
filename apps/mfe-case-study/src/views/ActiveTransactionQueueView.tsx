@@ -31,12 +31,14 @@ import {
   queueTableRowClassName,
   queueTableWrapClassName,
   useToast,
+  type StatusPillStyle,
 } from "@platform/design-system";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import { RemainingTimeCell } from "@case-study/mfe/components/ui/RemainingTimeCell";
 import { RowMoreMenu } from "@case-study/mfe/components/ui/RowMoreMenu";
 import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
 import { PartyAssigneeCell } from "../components/ui/PartyAssigneeCell";
+import { HoverPortalCard } from "../components/ui/HoverPortalCard";
 import { buildActiveQueueRowMoreItems } from "../lib/prototype/active-queue-row-menu";
 import { CopyFromPriorTransactionModal } from "../components/po-intake/CopyFromPriorTransactionModal";
 import { buildCopyPriorTargetOptions } from "../lib/prototype/po-intake-storage";
@@ -62,6 +64,7 @@ import {
   compareQueueTasksOldestFirst,
   compareQueueTasksNewestFirst,
   findPropertyForTask,
+  type RemainingTimeState,
 } from "../lib/prototype/my-task-row";
 import type { PoIntakeRecord } from "../lib/prototype/po-intake-data";
 import { skipsBourseForIdentifier } from "../lib/prototype/po-intake-data";
@@ -103,7 +106,8 @@ export type ActiveTransactionQueueTableLayout =
   | "primary-data"
   | "distribution"
   | "case-study"
-  | "all-transactions";
+  | "all-transactions"
+  | "engineering-survey";
 
 export type ActiveTransactionQueueConfig = {
   pageTitle: string;
@@ -131,6 +135,7 @@ export type ActiveTransactionQueueConfig = {
   filterListed: (
     mine: WorkflowTask[],
     poByNumber: Map<string, PoIntakeRecord>,
+    options?: { showCompleted?: boolean },
   ) => WorkflowTask[];
   /** Override row ⋮ menu (e.g. appraiser recall). */
   buildRowMoreItems?: (ctx: ActiveQueueRowMoreContext) => RowMoreMenuItem[];
@@ -186,6 +191,35 @@ type PanelRenderProps = {
 const ROW = queueTableRowClassName;
 const ROW_ACTIVE = queueTableRowActiveClassName;
 const DEFAULT_INFO_ROLES = emptyCaseStudyInfoRolesConfig();
+
+/** Case Study.html `ENG_ST` colors for الرفع المساحي status pills. */
+function engSurveyStatusPillStyle(className: string): StatusPillStyle {
+  if (className.includes("done")) {
+    return { base: "#3f8f5f", fg: "#2f7a4d" };
+  }
+  if (className.includes("fail") || className.includes("returned")) {
+    return { base: "#d9694f", fg: "#a5432e" };
+  }
+  if (className.includes("prog")) {
+    return { base: "#d9a441", fg: "#8a5e14" };
+  }
+  // جديد — GRAY in prototype (not blue)
+  return { base: "#6b7c8f", fg: "#4a5568" };
+}
+
+/** Case Study.html remaining column: يومان / N أيام / متأخر. */
+function formatEngSurveyRemaining(state: RemainingTimeState): {
+  text: string;
+  overdue: boolean;
+} {
+  if (state.status === "missing") return { text: "—", overdue: false };
+  if (state.status === "overdue") return { text: "متأخر", overdue: true };
+  const days = state.days;
+  if (days <= 0) return { text: "0 أيام", overdue: false };
+  if (days === 1) return { text: "يوم", overdue: false };
+  if (days === 2) return { text: "يومان", overdue: false };
+  return { text: `${days} أيام`, overdue: false };
+}
 
 type PartyProgressByTask = Map<
   string,
@@ -248,6 +282,7 @@ export function ActiveTransactionQueueView({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
+  const [showCompleted, setShowCompleted] = useState(false);
   const [groupByPo, setGroupByPo] = useState(false);
   const [groupGatherAnim, setGroupGatherAnim] = useState(false);
   const groupGatherTimerRef = useRef<number | null>(null);
@@ -388,16 +423,21 @@ export function ActiveTransactionQueueView({
         config.queueSort === "oldest-first"
           ? compareQueueTasksOldestFirst
           : compareQueueTasksNewestFirst;
+      const isSurveyLayout = config.tableLayout === "engineering-survey";
       return config
-        .filterListed(mine, poByNumber)
+        .filterListed(mine, poByNumber, {
+          showCompleted: isSurveyLayout ? showCompleted : undefined,
+        })
         .filter((t) =>
           isListedQueueTask(t, {
-            includeAllStatuses: config.includeAllStatuses,
+            includeAllStatuses:
+              config.includeAllStatuses ||
+              (isSurveyLayout && showCompleted),
           }),
         )
         .sort((a, b) => compare(a, b, poByNumber));
     },
-    [config, mine, poByNumber],
+    [config, mine, poByNumber, showCompleted],
   );
 
   const listedTaskIdsKey = useMemo(
@@ -599,6 +639,7 @@ export function ActiveTransactionQueueView({
     config.tableLayout === "distribution" ||
     config.tableLayout === "case-study";
   const isAllTransactionsTable = config.tableLayout === "all-transactions";
+  const isEngineeringSurveyTable = config.tableLayout === "engineering-survey";
   const showPartyColumns = config.tableLayout === "case-study";
   const distributionSkeletonCols = 8 + (showPartyColumns ? 4 : 0);
   const primarySkeletonCols = 6;
@@ -790,6 +831,7 @@ export function ActiveTransactionQueueView({
     setStatusFilter("");
     setTypeFilter("");
     setSearch("");
+    setShowCompleted(false);
   }, [config.pageId]);
 
   useEffect(() => {
@@ -822,9 +864,11 @@ export function ActiveTransactionQueueView({
         <OperationalToolbarSearch
           type="search"
           placeholder={
-            isDistributionTable
-              ? "رقم الصك أو PO أو المدينة…"
-              : "رقم الصك أو نوع الإسناد أو المدينة…"
+            isEngineeringSurveyTable
+              ? "رقم الصك أو المدينة أو الحي..."
+              : isDistributionTable
+                ? "رقم الصك أو PO أو المدينة…"
+                : "رقم الصك أو نوع الإسناد أو المدينة…"
           }
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -847,19 +891,49 @@ export function ActiveTransactionQueueView({
             ))}
           </OperationalToolbarSelect>
         ) : null}
-        <OperationalToolbarSelect
-          className="shrink-0"
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
-          aria-label="تصفية نوع الإسناد"
-        >
-          <option value="">جميع أنواع الإسناد</option>
-          {assignmentTypes.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </OperationalToolbarSelect>
+        {isEngineeringSurveyTable ? (
+          <button
+            type="button"
+            onClick={() => setShowCompleted((v) => !v)}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-lg border px-[13px] py-2 text-[12.5px] font-bold transition-colors",
+              showCompleted
+                ? "border-ink bg-ink text-white"
+                : "border-border-md bg-surface text-text-2 hover:bg-surface-2",
+            )}
+            aria-pressed={showCompleted}
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.9"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <span>{showCompleted ? "إخفاء المكتملة" : "إظهار المكتملة"}</span>
+          </button>
+        ) : (
+          <OperationalToolbarSelect
+            className="shrink-0"
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            aria-label="تصفية نوع الإسناد"
+          >
+            <option value="">جميع أنواع الإسناد</option>
+            {assignmentTypes.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </OperationalToolbarSelect>
+        )}
         {isAllTransactionsTable ? (
           <button
             type="button"
@@ -911,10 +985,17 @@ export function ActiveTransactionQueueView({
             <span>تجميع حسب أمر العمل</span>
           </button>
         ) : null}
+        {isEngineeringSurveyTable ? (
+          <span className="ms-auto shrink-0 rounded-full bg-gold-soft px-3 py-[5px] text-[12px] font-bold text-gold-d">
+            {queueReady ? `${filteredListed.length} صك` : "—"}
+          </span>
+        ) : null}
       </div>
-      <span className="shrink-0 text-[12.5px] font-semibold text-text-3">
-        {queueReady ? `${filteredListed.length} نتيجة` : "—"}
-      </span>
+      {!isEngineeringSurveyTable ? (
+        <span className="shrink-0 text-[12.5px] font-semibold text-text-3">
+          {queueReady ? `${filteredListed.length} نتيجة` : "—"}
+        </span>
+      ) : null}
     </PageToolbar>
   ) : null;
 
@@ -939,15 +1020,12 @@ export function ActiveTransactionQueueView({
           className={cn(
             "min-h-0 flex-1",
             hasRail && panelOpen ? undefined : "flex-none",
+            isEngineeringSurveyTable && "overflow-visible",
           )}
         >
           {!config.hidePageTitle && config.pageTitle ? (
             <PageShellHeader title={config.pageTitle} />
           ) : null}
-
-          {config.renderQueueHeader && queueReady && listed.length > 0
-            ? config.renderQueueHeader(listed)
-            : null}
 
           {queueLoadError ? (
             <div className="flex flex-col gap-3 p-4">
@@ -1302,6 +1380,231 @@ export function ActiveTransactionQueueView({
                       )}
                     </TBody>
                   </Table>
+                ) : isEngineeringSurveyTable ? (
+                  <Table
+                    className="w-full"
+                    pending={queuePending}
+                    wrapClassName="min-w-0 overflow-x-auto overflow-y-visible [-webkit-overflow-scrolling:touch]"
+                  >
+                    <THead>
+                      <Tr hoverable={false}>
+                        <Th>الصك</Th>
+                        <Th>المدينة / الحي</Th>
+                        <Th>ضابط الاتصال</Th>
+                        <Th>تاريخ الإسناد</Th>
+                        <Th>{config.statusColumnLabel ?? "الحالة"}</Th>
+                        <Th>المتبقي</Th>
+                        <Th className="w-16 text-center">إجراءات</Th>
+                      </Tr>
+                    </THead>
+                    <TBody>
+                      {queuePending && listed.length === 0 ? (
+                        <SkeletonTableRows rows={6} cols={7} />
+                      ) : filteredListed.length === 0 ? (
+                        <Tr hoverable={false}>
+                          <Td
+                            colSpan={7}
+                            className="!py-11 text-center text-[13.5px] text-text-3"
+                          >
+                            لا توجد أوامر رفع مطابقة.
+                          </Td>
+                        </Tr>
+                      ) : (
+                        filteredListed.map((task) => {
+                          const record = poByNumber.get(task.poNumber.trim());
+                          const property = findPropertyForTask(record, task);
+                          const row = buildPrimaryDataTableRow(
+                            task,
+                            property,
+                            record,
+                            now,
+                          );
+                          const active = selectedId === task.id;
+                          const moreItems = resolveRowMoreItems(
+                            task,
+                            property?.id,
+                          );
+                          const contact =
+                            property?.contacts?.find(
+                              (c) =>
+                                c.name.trim() ||
+                                c.phone.trim() ||
+                                c.role.trim(),
+                            ) ?? null;
+                          const contactName = contact?.name.trim() || "—";
+                          const contactPhone = contact?.phone.trim() || "";
+                          const contactRole = contact?.role.trim() || "";
+                          const missingPhone = !contactPhone;
+                          const cityDistrict = [row.city, row.district]
+                            .filter((v) => v && v !== "—")
+                            .join(" — ");
+                          const assignedRaw =
+                            task.createdAt ||
+                            record?.receivedFromEnfathAt ||
+                            "";
+                          let assignedLabel = "—";
+                          if (assignedRaw) {
+                            const d = new Date(assignedRaw);
+                            if (!Number.isNaN(d.getTime())) {
+                              const y = d.getFullYear();
+                              const m = String(d.getMonth() + 1).padStart(
+                                2,
+                                "0",
+                              );
+                              const day = String(d.getDate()).padStart(2, "0");
+                              assignedLabel = `${y}/${m}/${day}`;
+                            }
+                          }
+                          const badge = resolveTaskBadge(task);
+                          const statusLabel = badge?.label ?? "—";
+                          const statusClass = badge?.className ?? "b-new";
+                          const isNewFresh =
+                            statusClass === "b-new" && !missingPhone;
+                          const propertyType =
+                            property?.propertyType?.trim() ||
+                            property?.classification?.trim() ||
+                            "";
+                          const remaining = formatEngSurveyRemaining(
+                            row.remainingTime,
+                          );
+                          return (
+                            <Tr
+                              key={task.id}
+                              hoverable={false}
+                              className={cn(
+                                ROW,
+                                active && ROW_ACTIVE,
+                                missingPhone && "opacity-55",
+                              )}
+                              onClick={() => handleRowClick(task.id)}
+                            >
+                              <Td className="whitespace-nowrap">
+                                <span className="inline-flex flex-col gap-0.5">
+                                  <span
+                                    dir="ltr"
+                                    className="inline-flex items-center justify-end gap-1.5 text-end text-[13.5px] font-bold text-gold-d"
+                                  >
+                                    {row.propertySlot}
+                                    {isNewFresh ? (
+                                      <span
+                                        className="ui-status-dot-live size-2 shrink-0 rounded-full bg-[#2f7de1]"
+                                        aria-hidden
+                                      />
+                                    ) : null}
+                                  </span>
+                                  {propertyType ? (
+                                    <span className="text-[11.5px] text-text-3">
+                                      {propertyType}
+                                    </span>
+                                  ) : null}
+                                </span>
+                              </Td>
+                              <Td className="text-[13px] text-text-2">
+                                {cityDistrict || "—"}
+                              </Td>
+                              <Td className="overflow-visible">
+                                {contactName !== "—" ? (
+                                  <HoverPortalCard
+                                    align="start"
+                                    triggerClassName="inline-flex"
+                                    panelClassName="flex min-w-[220px] flex-col gap-1.5 rounded-[11px] border border-border-md bg-surface p-3 shadow-[0_12px_30px_-8px_rgba(18,40,70,.25)]"
+                                    content={
+                                      <>
+                                        <span className="text-[12.5px] font-bold text-heading">
+                                          {contactName}
+                                        </span>
+                                        {contactRole ? (
+                                          <span className="inline-flex items-center gap-1.5 text-[12px] text-text-2">
+                                            {contactRole}
+                                          </span>
+                                        ) : null}
+                                        <span
+                                          dir="ltr"
+                                          className="inline-flex items-center justify-end gap-1.5 text-[12px] text-text-2"
+                                        >
+                                          {contactPhone ? (
+                                            contactPhone
+                                          ) : (
+                                            <span className="font-bold text-[#a5432e]">
+                                              لا يوجد رقم اتصال
+                                            </span>
+                                          )}
+                                        </span>
+                                      </>
+                                    }
+                                  >
+                                    <span className="border-b border-dashed border-border-md pb-px text-[13px] font-semibold text-heading">
+                                      {contactName}
+                                    </span>
+                                  </HoverPortalCard>
+                                ) : (
+                                  <span className="text-[13px] font-semibold text-heading">
+                                    —
+                                  </span>
+                                )}
+                              </Td>
+                              <Td
+                                dir="ltr"
+                                className="text-[12.5px] text-text-2"
+                              >
+                                {assignedLabel}
+                              </Td>
+                              <Td>
+                                <div className="flex flex-col items-start gap-1">
+                                  <StatusPill
+                                    label={statusLabel}
+                                    style={engSurveyStatusPillStyle(
+                                      statusClass,
+                                    )}
+                                  />
+                                  {isNewFresh ? (
+                                    <span className="text-[10px] font-bold tracking-wide text-[#8a5e14]">
+                                      لم يُتخذ إجراء بعد
+                                    </span>
+                                  ) : null}
+                                  {missingPhone ? (
+                                    <span className="whitespace-nowrap rounded-md border border-[color-mix(in_srgb,#d9694f_28%,transparent)] bg-[color-mix(in_srgb,#d9694f_10%,transparent)] px-[7px] py-0.5 text-[10.5px] font-bold text-[#a5432e]">
+                                      بلا رقم اتصال
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </Td>
+                              <Td
+                                className={cn(
+                                  "text-[13px] font-semibold",
+                                  remaining.overdue
+                                    ? "text-[#d9694f]"
+                                    : "text-heading",
+                                )}
+                              >
+                                {missingPhone ? (
+                                  <span className="inline-flex flex-col gap-px">
+                                    <span className="text-text-3">معلّق</span>
+                                    <span className="text-[10.5px] font-medium text-text-3">
+                                      لا يُحتسب الوقت
+                                    </span>
+                                  </span>
+                                ) : statusClass === "b-fail" ||
+                                  statusClass === "b-returned" ? (
+                                  <span className="inline-flex flex-col gap-px">
+                                    <span className="text-text-3">متوقف</span>
+                                    <span className="text-[10.5px] font-medium text-text-3">
+                                      بانتظار معالجة التعذر
+                                    </span>
+                                  </span>
+                                ) : (
+                                  remaining.text
+                                )}
+                              </Td>
+                              <TdAction>
+                                <RowMoreMenu items={moreItems} />
+                              </TdAction>
+                            </Tr>
+                          );
+                        })
+                      )}
+                    </TBody>
+                  </Table>
                 ) : (
                   <Table className="w-full" pending={queuePending}>
                     <THead>
@@ -1364,7 +1667,8 @@ export function ActiveTransactionQueueView({
               <QueueTableHint
                 className={cn(
                   (config.pageId === "all-transactions" ||
-                    config.pageId === "active-primary-data") &&
+                    config.pageId === "active-primary-data" ||
+                    isEngineeringSurveyTable) &&
                     "border-t border-border bg-surface-2",
                 )}
               >

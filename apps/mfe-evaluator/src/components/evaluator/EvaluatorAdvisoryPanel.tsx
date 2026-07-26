@@ -29,6 +29,11 @@ import {
   type EvaluatorChecklistAnswers,
 } from "../../lib/evaluator/evaluator-window-data";
 import {
+  computeForcedSaleValue,
+  computePropertyTotal,
+} from "../../lib/evaluator/value-estimation";
+import { formatAmountNumberDisplay } from "../../lib/evaluator/arabic-amount-words";
+import {
   appraiserOnlyCaseStudyChecklistItems,
   caseStudyAnswerDisplayLabel,
   filterEvaluatorChecklistQuestions,
@@ -252,11 +257,70 @@ export function EvaluatorAdvisoryPanel({
         </span>
       </div>
       <div className={infoRowClass}>
-        <span className="shrink-0 text-text-3">سعر التقييم</span>
+        <span className="shrink-0 text-text-3">إجمالي قيمة العقار</span>
         <span className="text-left font-bold text-primary">
-          {formatEvaluatorPriceDisplay(submission.evaluatorPrice)}
+          {formatEvaluatorPriceDisplay(
+            submission.evaluatorPrice ||
+              String(
+                computePropertyTotal(
+                  submission.landValue,
+                  submission.buildingValue,
+                ),
+              ),
+          )}
         </span>
       </div>
+      <div className={infoRowClass}>
+        <span className="shrink-0 text-text-3">قيمة الأرض</span>
+        <span className="text-left font-medium text-text tabular-nums">
+          {formatAmountNumberDisplay(submission.landValue || "0")} ر.س
+        </span>
+      </div>
+      <div className={infoRowClass}>
+        <span className="shrink-0 text-text-3">قيمة المباني</span>
+        <span className="text-left font-medium text-text tabular-nums">
+          {formatAmountNumberDisplay(submission.buildingValue || "0")} ر.س
+        </span>
+      </div>
+      <div className={infoRowClass}>
+        <span className="shrink-0 text-text-3">البيع القسري</span>
+        <span className="text-left font-medium text-text tabular-nums">
+          {formatAmountNumberDisplay(
+            computeForcedSaleValue(
+              computePropertyTotal(
+                submission.landValue,
+                submission.buildingValue,
+              ),
+              submission.forcedSaleDiscountPct,
+            ),
+          )}{" "}
+          ر.س
+          <span className="ms-1 text-text-3">
+            (خصم {submission.forcedSaleDiscountPct || "0"}%)
+          </span>
+        </span>
+      </div>
+      <div className={infoRowClass}>
+        <span className="shrink-0 text-text-3">إقرار الاستقلالية</span>
+        <span className="text-left font-medium text-text">
+          {submission.independenceDeclared ? "مُؤكَّد" : "غير مؤكد"}
+        </span>
+      </div>
+      {(submission.reportWorkers ?? [])
+        .filter((w) => w.name.trim())
+        .map((w, i) => (
+          <div key={w.id || i} className={infoRowClass}>
+            <span className="shrink-0 text-text-3">
+              عامل {w.role ? `(${w.role})` : `#${i + 1}`}
+            </span>
+            <span className="text-left font-medium text-text">
+              {w.name}
+              {w.licenseNumber.trim()
+                ? ` · ترخيص ${w.licenseNumber}`
+                : ""}
+            </span>
+          </div>
+        ))}
       {submission.reportFileName ? (
         <div className={infoRowClass}>
           <span className="shrink-0 text-text-3">تقرير المقياس</span>

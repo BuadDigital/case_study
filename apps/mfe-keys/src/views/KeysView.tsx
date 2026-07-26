@@ -496,19 +496,20 @@ export function KeysView() {
             {ready ? `${filtered.length} نتيجة` : "…"}
           </span>
         </div>
-        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 max-lg:w-full max-lg:flex-[1_1_100%]">
           <OperationalToolbarSearch
             type="search"
             placeholder="رقم الطلب أو المحكمة أو الصك..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             aria-label="بحث الظروف"
+            className="max-lg:min-w-0 max-lg:flex-1"
           />
           <Button
             type="button"
             variant="default"
             size="sm"
-            className="show-all-btn-motion h-[38px] gap-[7px] border border-border-md bg-surface px-3.5 text-[12.5px] font-medium text-text-2 hover:border-gold hover:bg-surface hover:text-gold-d"
+            className="show-all-btn-motion h-11 gap-[7px] border border-border-md bg-surface px-3.5 text-[12.5px] font-medium text-text-2 hover:border-gold hover:bg-surface hover:text-gold-d max-lg:flex-1"
             showActionToast={false}
             onClick={() => {
               setShowOut((v) => {
@@ -522,14 +523,17 @@ export function KeysView() {
             }}
           >
             <EyeIcon open={showOut} blink={eyeBlink} />
-            <span>
+            <span className="max-sm:hidden">
               {showOut
                 ? "إخفاء المسلَّمة (خارج العهدة)"
                 : "إظهار المسلَّمة (خارج العهدة)"}
             </span>
+            <span className="sm:hidden">
+              {showOut ? "إخفاء المسلَّمة" : "إظهار المسلَّمة"}
+            </span>
           </Button>
           <OperationalToolbarSelect
-            className="shrink-0"
+            className="h-11 shrink-0 max-lg:min-w-0 max-lg:flex-1"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
             aria-label="تصفية العهدة"
@@ -542,6 +546,7 @@ export function KeysView() {
           </OperationalToolbarSelect>
           {canRegisterEnvelope ? (
             <OperationalToolbarPrimaryButton
+              className="h-11 max-lg:w-full"
               onClick={() => setRegisterOpen(true)}
             >
               <PlusIcon />
@@ -552,110 +557,214 @@ export function KeysView() {
       </PageToolbar>
 
       <OperationalPanel className="shrink-0 overflow-visible">
-        <Table pending={!ready}>
-          <THead>
-            <Tr hoverable={false}>
-              <Th className="text-start">الرقم المرجعي</Th>
-              <Th className="text-start">المحكمة / الدائرة</Th>
-              <Th className="text-center">عدد المفاتيح</Th>
-              <Th className="text-start">رقم الطلب</Th>
-              <Th className="text-center">الصكوك</Th>
-              <Th className="text-start">سيناريو الاستلام</Th>
-              <Th className="text-start">العهدة</Th>
-              <Th className="w-11" aria-label="فتح" />
-            </Tr>
-          </THead>
-          <TBody>
-            {!ready ? (
-              <SkeletonTableRows rows={8} cols={8} />
-            ) : filtered.length === 0 ? (
+        <div className="hidden lg:block">
+          <Table pending={!ready}>
+            <THead>
               <Tr hoverable={false}>
-                <Td
-                  colSpan={8}
-                  className="cursor-default px-5 py-[54px] text-center text-text-3"
-                >
-                  <div className="flex flex-col items-center justify-center">
-                    <span className="mb-3 opacity-60">
-                      <SearchEmptyIcon />
-                    </span>
-                    <span className="text-[14px] font-bold text-text-2">
-                      لا توجد ظروف مطابقة
-                    </span>
-                    <span className="mt-1 text-[13px]">
-                      جرّب تعديل البحث أو الفلاتر
-                    </span>
-                  </div>
-                </Td>
+                <Th className="text-start">الرقم المرجعي</Th>
+                <Th className="text-start">المحكمة / الدائرة</Th>
+                <Th className="text-center">عدد المفاتيح</Th>
+                <Th className="text-start">رقم الطلب</Th>
+                <Th className="text-center">الصكوك</Th>
+                <Th className="text-start">سيناريو الاستلام</Th>
+                <Th className="text-start">العهدة</Th>
+                <Th className="w-11" aria-label="فتح" />
               </Tr>
-            ) : (
-              filtered.map((env) => {
+            </THead>
+            <TBody>
+              {!ready ? (
+                <SkeletonTableRows rows={8} cols={8} />
+              ) : filtered.length === 0 ? (
+                <Tr hoverable={false}>
+                  <Td
+                    colSpan={8}
+                    className="cursor-default px-5 py-[54px] text-center text-text-3"
+                  >
+                    <div className="flex flex-col items-center justify-center">
+                      <span className="mb-3 opacity-60">
+                        <SearchEmptyIcon />
+                      </span>
+                      <span className="text-[14px] font-bold text-text-2">
+                        لا توجد ظروف مطابقة
+                      </span>
+                      <span className="mt-1 text-[13px]">
+                        جرّب تعديل البحث أو الفلاتر
+                      </span>
+                    </div>
+                  </Td>
+                </Tr>
+              ) : (
+                filtered.map((env) => {
+                  const out = isEnvelopeOutOfCustody(env.status);
+                  const scenColor = scenarioColor(env.receiveScenario);
+                  const stColor = envelopeStatusColor(env.status);
+                  return (
+                    <Tr
+                      key={env.id}
+                      hoverable={false}
+                      className={cn(
+                        "group",
+                        queueTableRowClassName,
+                        out && "opacity-55 saturate-[0.6]",
+                      )}
+                      onClick={() => openEnvelope(env.id)}
+                      onContextMenu={(e) => {
+                        if (!canRegisterEnvelope) return;
+                        e.preventDefault();
+                        setPendingDelete(env);
+                      }}
+                    >
+                      <Td>
+                        <span className="text-[13.5px] font-bold text-primary">
+                          {envelopeDisplayRef(env.id, env.createdAtUtc)}
+                        </span>
+                      </Td>
+                      <Td>
+                        <div className="flex flex-col items-start gap-0.5">
+                          <span className="text-[13px] font-semibold text-heading">
+                            {env.court || "—"}
+                          </span>
+                          <span className="text-[11px] text-text-3">
+                            {env.circuit || "—"}
+                          </span>
+                        </div>
+                      </Td>
+                      <Td className="text-center">
+                        <span className="inline-flex items-center justify-center tabular-nums font-extrabold text-heading">
+                          {env.keysCountActual}
+                          {env.countMismatch ? <MismatchIcon /> : null}
+                        </span>
+                      </Td>
+                      <Td className="font-semibold text-text-2">
+                        {env.requestNumber || "—"}
+                      </Td>
+                      <Td className="text-center tabular-nums font-bold text-heading">
+                        {env.assignments.length}
+                      </Td>
+                      <Td>
+                        <StatusPill
+                          label={scenarioLabel(env.receiveScenario)}
+                          style={{ base: scenColor, fg: scenColor }}
+                        />
+                      </Td>
+                      <Td>
+                        <StatusPill
+                          label={envelopeStatusLabel(env.status)}
+                          style={{ base: stColor, fg: stColor }}
+                        />
+                      </Td>
+                      <Td className="text-center text-text-3">
+                        <ChevronIcon />
+                      </Td>
+                    </Tr>
+                  );
+                })
+              )}
+            </TBody>
+          </Table>
+        </div>
+
+        <div className="lg:hidden">
+          {!ready ? (
+            <div className="space-y-2.5 p-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-[88px] animate-pulse rounded-[12px] bg-surface-2"
+                />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center px-5 py-12 text-center text-text-3">
+              <span className="mb-3 opacity-60">
+                <SearchEmptyIcon />
+              </span>
+              <span className="text-[14px] font-bold text-text-2">
+                لا توجد ظروف مطابقة
+              </span>
+              <span className="mt-1 text-[13px]">جرّب تعديل البحث أو الفلاتر</span>
+            </div>
+          ) : (
+            <ul className="m-0 flex list-none flex-col divide-y divide-border p-0">
+              {filtered.map((env) => {
                 const out = isEnvelopeOutOfCustody(env.status);
                 const scenColor = scenarioColor(env.receiveScenario);
                 const stColor = envelopeStatusColor(env.status);
                 return (
-                  <Tr
-                    key={env.id}
-                    hoverable={false}
-                    className={cn(
-                      "group",
-                      queueTableRowClassName,
-                      out && "opacity-55 saturate-[0.6]",
-                    )}
-                    onClick={() => openEnvelope(env.id)}
-                    onContextMenu={(e) => {
-                      if (!canRegisterEnvelope) return;
-                      e.preventDefault();
-                      setPendingDelete(env);
-                    }}
-                  >
-                    <Td>
-                      <span className="text-[13.5px] font-bold text-primary">
-                        {envelopeDisplayRef(env.id, env.createdAtUtc)}
-                      </span>
-                    </Td>
-                    <Td>
-                      <div className="flex flex-col items-start gap-0.5">
-                        <span className="text-[13px] font-semibold text-heading">
-                          {env.court || "—"}
-                        </span>
-                        <span className="text-[11px] text-text-3">
-                          {env.circuit || "—"}
+                  <li key={`m-${env.id}`}>
+                    <button
+                      type="button"
+                      className={cn(
+                        "flex w-full cursor-pointer flex-col gap-2.5 border-none bg-transparent px-3.5 py-3.5 text-start transition-colors active:bg-row-hover",
+                        out && "opacity-55 saturate-[0.6]",
+                      )}
+                      onClick={() => openEnvelope(env.id)}
+                      onContextMenu={(e) => {
+                        if (!canRegisterEnvelope) return;
+                        e.preventDefault();
+                        setPendingDelete(env);
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div
+                            className="text-[14px] font-bold text-primary"
+                            dir="ltr"
+                          >
+                            {envelopeDisplayRef(env.id, env.createdAtUtc)}
+                          </div>
+                          <div className="mt-0.5 text-[12.5px] font-semibold text-heading">
+                            {env.court || "—"}
+                            <span className="font-normal text-text-3">
+                              {" "}
+                              · {env.circuit || "—"}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="shrink-0 text-text-3">
+                          <ChevronIcon />
                         </span>
                       </div>
-                    </Td>
-                    <Td className="text-center">
-                      <span className="inline-flex items-center justify-center tabular-nums font-extrabold text-heading">
-                        {env.keysCountActual}
-                        {env.countMismatch ? <MismatchIcon /> : null}
-                      </span>
-                    </Td>
-                    <Td className="font-semibold text-text-2">
-                      {env.requestNumber || "—"}
-                    </Td>
-                    <Td className="text-center tabular-nums font-bold text-heading">
-                      {env.assignments.length}
-                    </Td>
-                    <Td>
-                      <StatusPill
-                        label={scenarioLabel(env.receiveScenario)}
-                        style={{ base: scenColor, fg: scenColor }}
-                      />
-                    </Td>
-                    <Td>
-                      <StatusPill
-                        label={envelopeStatusLabel(env.status)}
-                        style={{ base: stColor, fg: stColor }}
-                      />
-                    </Td>
-                    <Td className="text-center text-text-3">
-                      <ChevronIcon />
-                    </Td>
-                  </Tr>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <StatusPill
+                          label={envelopeStatusLabel(env.status)}
+                          style={{ base: stColor, fg: stColor }}
+                        />
+                        <StatusPill
+                          label={scenarioLabel(env.receiveScenario)}
+                          style={{ base: scenColor, fg: scenColor }}
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-[12px]">
+                        <div>
+                          <div className="text-[10.5px] text-text-3">
+                            المفاتيح
+                          </div>
+                          <div className="font-extrabold tabular-nums text-heading">
+                            {env.keysCountActual}
+                            {env.countMismatch ? <MismatchIcon /> : null}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[10.5px] text-text-3">الطلب</div>
+                          <div className="truncate font-semibold text-text-2">
+                            {env.requestNumber || "—"}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[10.5px] text-text-3">الصكوك</div>
+                          <div className="font-bold tabular-nums text-heading">
+                            {env.assignments.length}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  </li>
                 );
-              })
-            )}
-          </TBody>
-        </Table>
+              })}
+            </ul>
+          )}
+        </div>
       </OperationalPanel>
 
       {canRegisterEnvelope && filtered.length > 0 ? (

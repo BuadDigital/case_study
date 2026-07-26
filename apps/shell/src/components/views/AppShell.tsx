@@ -26,6 +26,7 @@ import {
   activeTransactionNavForRole,
   type ActiveTransactionNavItem,
   isInActiveTransactionsSection,
+  isPartyFeesUnderActiveTransactions,
 } from "@platform/app-shared/prototype/active-transactions";
 import {
   SYSTEM_SETTINGS_GROUP,
@@ -336,6 +337,7 @@ function ActiveTransactionsNavDropdown({
   onCaseStudyWorkspace,
   onPrefetch,
   badges,
+  role,
 }: {
   items: ActiveTransactionNavItem[];
   currentPage: PageId;
@@ -343,9 +345,10 @@ function ActiveTransactionsNavDropdown({
   onCaseStudyWorkspace: boolean;
   onPrefetch: (page: PageId) => void;
   badges: Partial<Record<PageId, number>>;
+  role: RoleId;
 }) {
   const inSection =
-    isInActiveTransactionsSection(currentPage, onTaskWork) ||
+    isInActiveTransactionsSection(currentPage, onTaskWork, role) ||
     onCaseStudyWorkspace;
   const [open, setOpen] = useState(inSection);
 
@@ -404,13 +407,15 @@ function SystemSettingsNavDropdown({
   fieldsItems,
   currentPage,
   onPrefetch,
+  role,
 }: {
   primaryItems: SystemSettingsNavItem[];
   fieldsItems: SystemFieldsNavItem[];
   currentPage: PageId;
   onPrefetch: (page: PageId) => void;
+  role: RoleId;
 }) {
-  const inSection = isInSystemSettingsSection(currentPage);
+  const inSection = isInSystemSettingsSection(currentPage, role);
   const [open, setOpen] = useState(inSection);
 
   useEffect(() => {
@@ -602,6 +607,7 @@ function ProfileMenu({
         href="/profile"
         className={cn(
           "flex items-center gap-2.5 rounded-lg py-1 pe-2 ps-2.5 no-underline transition-colors",
+          "max-lg:min-h-11 max-lg:ps-1.5",
           "hover:bg-surface-2",
           inMenuSection && "bg-surface-2",
         )}
@@ -615,6 +621,7 @@ function ProfileMenu({
         type="button"
         className={cn(
           "flex size-8 shrink-0 items-center justify-center rounded-lg text-text-3 transition-colors",
+          "max-lg:size-11",
           "hover:bg-surface-2 hover:text-text",
           open && "bg-surface-2 text-text",
         )}
@@ -639,37 +646,45 @@ function ProfileMenu({
           <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
-      {open ? (
-        <div
-          className="absolute end-0 top-[calc(100%+6px)] z-50 w-64 overflow-hidden rounded-md border border-border bg-surface shadow-modal"
-          role="menu"
-          aria-label="قائمة الحساب"
-        >
-          <div className="border-b border-border px-3 py-2.5">
-            <div className="truncate text-sm font-semibold text-text">
-              {chipName}
+        {open ? (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+            aria-label="إغلاق القائمة"
+            onClick={() => setOpen(false)}
+          />
+          <div
+            className="absolute end-0 top-[calc(100%+6px)] z-50 w-64 overflow-hidden rounded-md border border-border bg-surface shadow-modal max-lg:fixed max-lg:inset-x-3 max-lg:bottom-[max(0.75rem,env(safe-area-inset-bottom))] max-lg:top-auto max-lg:w-auto max-lg:rounded-[14px]"
+            role="menu"
+            aria-label="قائمة الحساب"
+          >
+            <div className="border-b border-border px-3 py-2.5">
+              <div className="truncate text-sm font-semibold text-text">
+                {chipName}
+              </div>
+              <div className="truncate text-[11px] text-text-3">{dept}</div>
             </div>
-            <div className="truncate text-[11px] text-text-3">{dept}</div>
+            <div>
+              <ThemeSwitch />
+            </div>
+            <div className="border-t border-border p-1.5">
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-semibold text-danger-text transition-colors hover:bg-[color-mix(in_srgb,var(--red)_10%,transparent)] max-lg:min-h-11 [&>svg]:size-4 [&>svg]:shrink-0"
+                onClick={() => {
+                  setOpen(false);
+                  onLogout();
+                }}
+                data-no-action-toast
+              >
+                <LogoutIcon />
+                <span>تسجيل الخروج</span>
+              </button>
+            </div>
           </div>
-          <div>
-            <ThemeSwitch />
-          </div>
-          <div className="border-t border-border p-1.5">
-            <button
-              type="button"
-              role="menuitem"
-              className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-semibold text-danger-text transition-colors hover:bg-[color-mix(in_srgb,var(--red)_10%,transparent)] [&>svg]:size-4 [&>svg]:shrink-0"
-              onClick={() => {
-                setOpen(false);
-                onLogout();
-              }}
-              data-no-action-toast
-            >
-              <LogoutIcon />
-              <span>تسجيل الخروج</span>
-            </button>
-          </div>
-        </div>
+        </>
       ) : null}
     </div>
   );
@@ -687,8 +702,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const navPages = useMemo(() => rolePages, [rolePages]);
 
   const systemSettingsPrimaryItems = useMemo(
-    () => systemSettingsPrimaryNavForRole(rolePages),
-    [rolePages],
+    () => systemSettingsPrimaryNavForRole(rolePages, role),
+    [rolePages, role],
   );
   const systemSettingsFieldsItems = useMemo(
     () => systemSettingsFieldsNavForRole(rolePages),
@@ -707,8 +722,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const navRuns = useMemo(() => navRunsForRole(navPages, role), [navPages, role]);
 
   const activeTransactionItems = useMemo(
-    () => activeTransactionNavForRole(rolePages),
-    [rolePages],
+    () => activeTransactionNavForRole(rolePages, role),
+    [rolePages, role],
   );
 
   const showActiveTransactionsGroup = activeTransactionItems.length > 0;
@@ -992,10 +1007,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return null;
   }, [currentPage, searchParams]);
 
+  const engineeringFeesCrumb =
+    currentPage === "party-fees" && isPartyFeesUnderActiveTransactions(role)
+      ? [
+          { label: "لوحة التحكم" },
+          { label: "المعاملات النشطة" },
+          { label: "فوترة الأتعاب" },
+        ]
+      : null;
+
   const breadcrumbSegments =
     poChrome?.segments ??
     activeSurveyBreadcrumb ??
     caseStudyBreadcrumb ??
+    engineeringFeesCrumb ??
     (myTasksChrome?.breadcrumb
       ? myTasksChrome.breadcrumb
           .split(" / ")
@@ -1017,7 +1042,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     poChrome?.title ??
     myTasksChrome?.title ??
     keysChrome?.title ??
-    PAGE_TITLES[currentPage] ??
+    (currentPage === "party-fees" && isPartyFeesUnderActiveTransactions(role)
+      ? "فوترة الأتعاب"
+      : PAGE_TITLES[currentPage]) ??
     "";
 
   // Full trail from PAGE_BREADCRUMB / chrome (including current page label),
@@ -1034,11 +1061,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onClick={() => setMobileNavOpen(false)}
         />
       ) : null}
-      <div
-        id="sidebar"
+        <div
+          id="sidebar"
         className={cn(
           "flex h-svh w-sidebar shrink-0 flex-col overflow-hidden border-s border-white/[0.06] bg-sidebar text-white [color-scheme:dark]",
           "max-lg:fixed max-lg:inset-y-0 max-lg:start-0 max-lg:z-50 max-lg:shadow-xl max-lg:transition-transform max-lg:duration-200 max-lg:ease-out",
+          "max-lg:pt-[env(safe-area-inset-top)] max-lg:pb-[env(safe-area-inset-bottom)]",
           mobileNavOpen ? "max-lg:translate-x-0" : "max-lg:translate-x-full",
           "lg:translate-x-0",
         )}
@@ -1071,6 +1099,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onCaseStudyWorkspace={onCaseStudyWorkspace}
               onPrefetch={prefetchPage}
               badges={activeTxBadges}
+              role={role}
             />
           ) : null}
           {navRuns.map((run, ri) => {
@@ -1120,6 +1149,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         fieldsItems={systemSettingsFieldsItems}
                         currentPage={currentPage}
                         onPrefetch={prefetchPage}
+                        role={role}
                       />,
                     );
                     if (showOrphanScreensGroup) {
@@ -1153,6 +1183,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         onCaseStudyWorkspace={onCaseStudyWorkspace}
                         onPrefetch={prefetchPage}
                         badges={activeTxBadges}
+                        role={role}
                       />,
                     );
                   }
@@ -1171,6 +1202,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onCaseStudyWorkspace={onCaseStudyWorkspace}
               onPrefetch={prefetchPage}
               badges={activeTxBadges}
+              role={role}
             />
           ) : null}
           {!generalNavInserted && showGeneralGroup ? (
@@ -1186,6 +1218,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 fieldsItems={systemSettingsFieldsItems}
                 currentPage={currentPage}
                 onPrefetch={prefetchPage}
+                role={role}
               />
             </>
           ) : null}
@@ -1203,7 +1236,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div id="main" className="flex min-w-0 flex-1 flex-col overflow-hidden bg-bg">
         <div
           id="topbar"
-          className="flex min-h-topbar shrink-0 items-center justify-between gap-2 border-b-[0.5px] border-border bg-surface px-4 py-3.5 sm:gap-3 sm:px-[30px]"
+          className="flex min-h-topbar shrink-0 items-center justify-between gap-2 border-b-[0.5px] border-border bg-surface px-4 py-3.5 pt-[max(0.875rem,env(safe-area-inset-top))] sm:gap-3 sm:px-[30px]"
         >
           <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             <button
@@ -1288,6 +1321,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           className={cn(
             "flex min-h-0 flex-1 flex-col items-stretch bg-bg p-0",
             onPropertyInspectionWorkspace ? "overflow-hidden" : "overflow-y-auto",
+            "max-lg:pb-[env(safe-area-inset-bottom)]",
           )}
         >
           {children}

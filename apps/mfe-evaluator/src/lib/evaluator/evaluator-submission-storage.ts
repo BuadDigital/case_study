@@ -44,12 +44,22 @@ function dtoToSubmission(
 ): EvaluatorSubmission | null {
   if (!dto) return null;
   const payload = payloadFromDto<EvaluatorSubmission>(dto);
+  const base = createEvaluatorDraft({
+    taskId: dto.taskId,
+    propertyId: payload.propertyId ?? dto.propertyId ?? "",
+    poNumber: payload.poNumber ?? dto.poNumber ?? "",
+  });
   return {
+    ...base,
     ...payload,
     taskId: dto.taskId,
     propertyId: payload.propertyId ?? dto.propertyId ?? "",
     poNumber: payload.poNumber ?? dto.poNumber ?? "",
     status: (dto.status as EvaluatorSubmissionStatus) ?? payload.status,
+    independenceDeclared: Boolean(payload.independenceDeclared),
+    reportWorkers: Array.isArray(payload.reportWorkers)
+      ? payload.reportWorkers
+      : base.reportWorkers,
     submittedAtUtc: dto.submittedAtUtc ?? payload.submittedAtUtc ?? null,
     updatedAtUtc: dto.updatedAtUtc ?? payload.updatedAtUtc,
   };
