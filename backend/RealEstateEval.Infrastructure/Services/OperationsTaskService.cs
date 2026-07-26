@@ -254,8 +254,9 @@ public sealed class OperationsTaskService : IOperationsTaskService
             if (!ValidStatuses.Contains(next))
                 return (null, "الحالة غير مدعومة");
 
-            if (next == "in_progress" && entity.Status == "paused")
-                next = entity.PrevStatus ?? "in_progress";
+            // Resume always means in_progress. Do not rewrite to PrevStatus —
+            // pausing from "created" would otherwise resume to "created" and
+            // fail ValidateStatusTransition.
 
             var error = ValidateStatusTransition(entity, next, actorAssigneeId, actorRole);
             if (error is not null) return (null, error);
@@ -294,8 +295,9 @@ public sealed class OperationsTaskService : IOperationsTaskService
             if (entity.Status != next)
             {
                 var fromStatus = entity.Status;
-                if (fromStatus == "created" && next == "in_progress")
-                    entity.ReceiptConfirmedAtUtc ??= now;
+                // Confirm receipt when entering in_progress (including resume after pause-from-created).
+                if (next == "in_progress" && entity.ReceiptConfirmedAtUtc is null)
+                    entity.ReceiptConfirmedAtUtc = now;
 
                 comments.Add(new OperationsTaskCommentDto
                 {

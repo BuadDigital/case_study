@@ -3,12 +3,11 @@ import type {
   PoIntakeRecord,
   PoPropertyIntake,
 } from "./po-intake-data";
-import { classificationRequiresSurvey, computeBusinessDueDate, emptyProperty, formatPropertyDeedDisplay, hasBourseDetailFields, normalizePropertyIdentifierNumber, parsePropertyIdentifierType, skipsBourseForIdentifier,} from "./po-intake-data";
+import { computeBusinessDueDate, emptyProperty, formatPropertyDeedDisplay, hasBourseDetailFields, normalizePropertyIdentifierNumber, parsePropertyIdentifierType, skipsBourseForIdentifier,} from "./po-intake-data";
 import {
   contactsForApi,
-  propertyHasIncompleteContact,
 } from "../domain/po-intake/property-validation";
-import { deleteFailuresForPo, getPropertyFailure } from "@failures/mfe";
+import { deleteFailuresForPo } from "@failures/mfe";
 import {
   advanceTaskAfterBourseForProperty,
   advanceTaskAfterEnfath,
@@ -18,10 +17,6 @@ import {
   syncTaskSlotsForPo,
   type WorkflowTask,
 } from "./tasks-storage";
-import {
-  resolvePropertyStatusFromTasks,
-  resolvePropertyTrackStagesFromTasks,
-} from "./property-list-status";
 import type { PropertyRow } from "@platform/app-shared/prototype/constants";
 import type { PendingBoursePropertyDto,UpdatePropertyBourseRequest,WorkOrderDto,WorkOrderPropertyDto} from "@platform/api-client";
 import {
@@ -36,7 +31,6 @@ import {
   getPoIntakeDraft,
   getWorkOrder,
   listPendingBourseProperties,
-  listWorkOrders,
   savePoIntakeDraft,
   stopWorkOrder,
   updateWorkOrderHeader,
@@ -267,16 +261,6 @@ export function propertyToBourseRequest(
   };
 }
 
-function priorSurveyWaived(
-  prop: PoPropertyIntake,
-  priorByDeed: Map<string, string>,
-): boolean {
-  if (!classificationRequiresSurvey(prop.classification)) return true;
-  const n = prop.deedNumber.trim();
-  if (!n) return false;
-  return priorByDeed.has(n);
-}
-
 export async function loadPoRecords(): Promise<PoIntakeRecord[]> {
   const dtos = await loadWorkOrderDtos();
   return mapWorkOrderDtosToPoRecords(dtos);
@@ -495,8 +479,8 @@ function mergePriorOntoExisting(
       ownerName: draft.ownerName,
       court: draft.court,
       circuit: draft.circuit,
-      courtId: draft.courtId,
-      circuitId: draft.circuitId,
+      courtId: draft.courtId || existing.courtId,
+      circuitId: draft.circuitId || existing.circuitId,
       planNumber: draft.planNumber,
       plotNumber: draft.plotNumber,
       locationMapUrl: draft.locationMapUrl,
@@ -506,6 +490,8 @@ function mergePriorOntoExisting(
   return {
     ...draft,
     id: existing.id,
+    courtId: draft.courtId || existing.courtId,
+    circuitId: draft.circuitId || existing.circuitId,
     bourseDataCompleted: false,
   };
 }
@@ -591,72 +577,6 @@ export async function copyPropertyFromPriorTransaction(
     scope,
     updated,
   );
-}
-
-function propertyRowId(poNumber: string, prop: PoPropertyIntake): string {
-  const deed = prop.deedNumber.trim();
-  if (deed) return deed;
-  return `${poNumber}-${prop.id.slice(0, 8)}`;
-}
-
-export function poPropertyToPropertyRow(
-  record: PoIntakeRecord,
-  prop: PoPropertyIntake,
-  priorByDeed: Map<string, string>,
-  tasks: WorkflowTask[] = [],
-): PropertyRow {
-  const failure = getPropertyFailure(record.poNumber, prop.id);
-  const boursePending = !prop.bourseDataCompleted;
-  const underVerification = prop.deedStatus === "قيد التحقق";
-  const isFailed =
-    failure?.status === "approved" || prop.deedStatus === "موقوف";
-  const incomplete = propertyHasIncompleteContact(prop);
-  const area = boursePending
-    ? "بانتظار البورصة"
-    : prop.district
-      ? `${prop.city} · ${prop.district}`
-      : prop.city || "—";
-
-  const fromTasks = resolvePropertyStatusFromTasks(
-    record.poNumber,
-    prop.id,
-    tasks,
-  );
-  const tracks = resolvePropertyTrackStagesFromTasks(
-    record.poNumber,
-    prop.id,
-    tasks,
-  );
-
-  const status: PropertyRow["status"] = boursePending
-    ? "progress"
-    : isFailed
-      ? "fail"
-      : incomplete
-        ? "incomplete"
-        : fromTasks ??
-          (underVerification ? "progress" : "new");
-
-  return {
-    id: propertyRowId(record.poNumber, prop),
-    po: record.poNumber,
-    area,
-    type: boursePending
-      ? "—"
-      : prop.propertyType || prop.classification || "—",
-    key: false,
-    survey: boursePending
-      ? "new"
-      : (tracks.survey ??
-        (priorSurveyWaived(prop, priorByDeed) ? "done" : "new")),
-    val: tracks.val ?? "new",
-    study: boursePending
-      ? "progress"
-      : (tracks.study ??
-        (underVerification ? "progress" : "new")),
-    status,
-    specialist: record.assignmentSpecialist,
-  };
 }
 
 export async function loadPendingBourseItems(): Promise<

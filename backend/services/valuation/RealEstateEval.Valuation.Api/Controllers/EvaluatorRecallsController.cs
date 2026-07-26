@@ -16,10 +16,8 @@ public class EvaluatorRecallsController : ControllerBase
     public EvaluatorRecallsController(IEvaluatorRecallsService recalls) => _recalls = recalls;
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<EvaluatorRecallDto>>> List(
-        [FromQuery] string? status,
-        CancellationToken ct)
-        => Ok(await _recalls.ListAsync(status, ct));
+    public async Task<ActionResult<IReadOnlyList<EvaluatorRecallDto>>> List(CancellationToken ct)
+        => Ok(await _recalls.ListAsync(ct));
 
     [HttpGet("{taskId}")]
     public async Task<ActionResult<EvaluatorRecallDto>> Get(string taskId, CancellationToken ct)

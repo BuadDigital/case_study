@@ -18,19 +18,9 @@ public class FieldInspectionWorkspacesController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<FieldInspectionWorkspaceListItemDto>>> List(
-        [FromQuery] string? poNumber,
-        [FromQuery] string? status,
         CancellationToken ct)
     {
-        var query = _db.FieldInspectionWorkspaces.AsNoTracking();
-
-        if (!string.IsNullOrWhiteSpace(poNumber))
-            query = query.Where(x => x.PoNumber == poNumber.Trim());
-
-        if (!string.IsNullOrWhiteSpace(status))
-            query = query.Where(x => x.Status == status.Trim());
-
-        var rows = await query
+        var rows = await _db.FieldInspectionWorkspaces.AsNoTracking()
             .OrderByDescending(x => x.UpdatedAtUtc)
             .Take(500)
             .Select(x => new FieldInspectionWorkspaceListItemDto

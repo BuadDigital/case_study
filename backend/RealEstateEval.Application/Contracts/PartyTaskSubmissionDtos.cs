@@ -12,6 +12,7 @@ public class PartyTaskSubmissionDto
     public JsonElement Payload { get; set; }
     public string? ReturnNote { get; set; }
     public string? SubmittedAtUtc { get; set; }
+    public string? AcceptedAtUtc { get; set; }
     public string UpdatedAtUtc { get; set; } = "";
 }
 

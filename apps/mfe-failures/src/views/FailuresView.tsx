@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, Fragment } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { ROLES } from "@platform/app-shared/prototype/constants";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
 import type { RoleId } from "@platform/types";
@@ -290,17 +289,16 @@ export function FailuresView() {
   async function handleSuspend(id: string) {
     const failure = items.find((f) => f.id === id);
     if (!failure) return;
-    const ok = await suspendPropertyTransaction({
+    const result = await suspendPropertyTransaction({
       failure,
       supervisorNote: supervisorNote[id] ?? "",
-      suspendedBy: ROLES[role]?.name ?? "مشرف",
     });
-    if (ok) {
+    if (result.ok) {
       showToast("تم تعليق المعاملة", "success");
       refresh();
       return;
     }
-    showToast("تعذّر إيقاف المعاملة — حاول مرة أخرى", "error");
+    showToast(result.error || "تعذّر إيقاف المعاملة — حاول مرة أخرى", "error");
   }
 
   function handleResolve(id: string) {

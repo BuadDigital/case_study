@@ -44,6 +44,7 @@ public interface IFailureService
     Task<FailureRecordDto?> SuspendAsync(
         Guid id,
         string note,
+        string actorUserId,
         CancellationToken cancellationToken = default);
 
     Task<FailureRecordDto?> ResolveAsync(

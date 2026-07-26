@@ -50,7 +50,7 @@ public class CaseStudyValuationDispatchTests
     }
 
     [Fact]
-    public async Task Second_submission_is_idempotent()
+    public async Task Submitted_form_is_locked_and_never_redispatches()
     {
         await using var db = CreateDb();
         SeedWorkflow(db);
@@ -67,12 +67,14 @@ public class CaseStudyValuationDispatchTests
 
         var (_, firstErrors) = await forms.SaveAsync(ParentTaskId, party: false, form);
         Assert.Null(firstErrors);
+
         form.Status = "draft";
         var (_, draftErrors) = await forms.SaveAsync(ParentTaskId, party: false, form);
-        Assert.Null(draftErrors);
+        Assert.NotNull(draftErrors);
+
         form.Status = "submitted";
         var (_, submitErrors) = await forms.SaveAsync(ParentTaskId, party: false, form);
-        Assert.Null(submitErrors);
+        Assert.NotNull(submitErrors);
 
         Assert.Equal(1, await db.ValuationRequests.CountAsync());
     }

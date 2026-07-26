@@ -237,6 +237,54 @@ public class OperationsTaskServiceTests
     }
 
     [Fact]
+    public async Task PatchAsync_resume_after_pause_from_created_goes_in_progress()
+    {
+        await using var db = CreateDb();
+        var service = CreateService(db);
+        var (created, _) = await service.CreateAsync(
+            new CreateOperationsTaskRequest
+            {
+                Type = "general",
+                Title = "استئناف من منشأة",
+                Scope = "general",
+                AssigneeId = "a1",
+                AssigneeName = "منفّذ",
+            },
+            "creator-1",
+            "منشئ");
+
+        var (paused, pauseError) = await service.PatchAsync(
+            Guid.Parse(created!.Id),
+            new PatchOperationsTaskRequest
+            {
+                Status = "paused",
+                PauseReason = "ظرف طارئ",
+            },
+            "creator-1",
+            "منشئ",
+            "case-specialist",
+            "creator-1");
+        Assert.Null(pauseError);
+        Assert.Equal("paused", paused!.Status);
+        Assert.Equal("created", paused.PrevStatus);
+
+        var (resumed, resumeError) = await service.PatchAsync(
+            Guid.Parse(created.Id),
+            new PatchOperationsTaskRequest { Status = "in_progress" },
+            "creator-1",
+            "منشئ",
+            "case-specialist",
+            "creator-1");
+
+        Assert.Null(resumeError);
+        Assert.NotNull(resumed);
+        Assert.Equal("in_progress", resumed!.Status);
+        Assert.False(string.IsNullOrWhiteSpace(resumed.ReceiptConfirmedAt));
+        Assert.Null(resumed.PausedAt);
+        Assert.Contains(resumed.Comments, c => c.Text.Contains("استأنف", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task PatchAsync_complete_after_reassign_records_execution_credit()
     {
         await using var db = CreateDb();
