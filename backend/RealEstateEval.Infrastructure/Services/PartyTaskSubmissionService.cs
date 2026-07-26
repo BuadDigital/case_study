@@ -7,6 +7,7 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Notifications;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -35,6 +36,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
     private readonly IPropertyKeyGateResolver _keyGates;
     private readonly IKeyEnvelopesService _keyEnvelopes;
     private readonly IInspectorFeeService _inspectorFees;
+    private readonly INotificationService _notifications;
+    private readonly NotificationRecipientResolver _recipients;
 
     public PartyTaskSubmissionService(
         ApplicationDbContext db,
@@ -45,7 +48,9 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         IPermissionService permissions,
         IPropertyKeyGateResolver keyGates,
         IKeyEnvelopesService keyEnvelopes,
-        IInspectorFeeService inspectorFees)
+        IInspectorFeeService inspectorFees,
+        INotificationService notifications,
+        NotificationRecipientResolver recipients)
     {
         _db = db;
         _tasks = tasks;
@@ -56,6 +61,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         _keyGates = keyGates;
         _keyEnvelopes = keyEnvelopes;
         _inspectorFees = inspectorFees;
+        _notifications = notifications;
+        _recipients = recipients;
     }
 
     public async Task<PartyTaskSubmissionDto?> GetAsync(
@@ -234,6 +241,9 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         entity.Status = PartyTaskSubmissionStatus.Reopened;
         entity.ReturnNote = returnNote;
         entity.SubmittedAtUtc = null;
+        // Returning for correction voids the acceptance so the specialist can
+        // accept the corrected outputs again.
+        entity.AcceptedAtUtc = null;
         entity.UpdatedAtUtc = now;
         entity.PayloadJson = SetPayloadReopened(entity.PayloadJson, returnNote, now);
 
@@ -246,6 +256,17 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             taskId,
             new PatchWorkflowTaskRequest { Status = WorkflowTaskStatus.Open, Phase = "done" },
             cancellationToken);
+
+        if (task.Kind == "engineering-survey")
+            await NotifyEngineeringSurveyAssigneeAsync(
+                task,
+                title: "إعادة الرفع المساحي للتصحيح",
+                body: string.IsNullOrWhiteSpace(returnNote)
+                    ? "أُعيدت مخرجات الرفع المساحي للتصحيح."
+                    : $"أُعيدت مخرجات الرفع المساحي للتصحيح: {returnNote.Trim()}",
+                tone: "warn",
+                sourceEvent: $"engineering-survey-returned:{taskId}",
+                cancellationToken);
 
         return (ToDto(entity), null);
     }
@@ -281,7 +302,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             return (null, new Dictionary<string, string> { ["_"] = feeError });
 
         // Fee accrual is idempotent; keep the first acceptance timestamp on re-accept.
-        if (entity.AcceptedAtUtc is null)
+        var alreadyAccepted = entity.AcceptedAtUtc is not null;
+        if (!alreadyAccepted)
         {
             entity.AcceptedAtUtc = DateTime.UtcNow;
             await _db.SaveChangesAsync(cancellationToken);
@@ -300,7 +322,49 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 cancellationToken);
         }
 
+        if (!alreadyAccepted)
+            await NotifyEngineeringSurveyAssigneeAsync(
+                task,
+                title: "قبول مخرجات الرفع المساحي",
+                body: "تم قبول مخرجات الرفع المساحي واستحقاق الأتعاب.",
+                tone: "success",
+                sourceEvent: $"engineering-survey-accepted:{taskId}",
+                cancellationToken);
+
         return (ToDto(entity), null);
+    }
+
+    private async Task NotifyEngineeringSurveyAssigneeAsync(
+        WorkflowTask task,
+        string title,
+        string body,
+        string tone,
+        string sourceEvent,
+        CancellationToken cancellationToken)
+    {
+        var assigneeId = task.AssigneeId?.Trim();
+        if (string.IsNullOrWhiteSpace(assigneeId)) return;
+
+        var userId = await _recipients.ResolveUserIdForDistributionAssigneeAsync(
+            assigneeId,
+            cancellationToken);
+        if (string.IsNullOrWhiteSpace(userId)) return;
+
+        var href = $"/active-survey/{Uri.EscapeDataString(task.Id.ToString())}";
+        await _notifications.CreateForUserAsync(
+            userId,
+            new CreateUserNotificationRequest
+            {
+                Title = title,
+                Body = body,
+                Tone = tone,
+                Href = href,
+                Category = "workflow",
+                EntityType = "task",
+                EntityId = task.Id.ToString(),
+                SourceEvent = sourceEvent,
+            },
+            cancellationToken);
     }
 
     private async Task<Dictionary<string, string>> ValidateForSubmitAsync(

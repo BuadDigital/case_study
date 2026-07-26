@@ -250,17 +250,12 @@ function classifyPartyTask(
   if (!dto || status === "draft") {
     // Engineering survey: treat empty/new drafts as waiting to start.
     if (task.kind === "engineering-survey") {
-      const hasProgress =
-        Boolean(dto) &&
-        ((typeof (dto.payload as { latitude?: string })?.latitude === "string" &&
-          Boolean((dto.payload as { latitude?: string }).latitude?.trim())) ||
-          (typeof (dto.payload as { surveyReportFileName?: string })
-            ?.surveyReportFileName === "string" &&
-            Boolean(
-              (
-                dto.payload as { surveyReportFileName?: string }
-              ).surveyReportFileName?.trim(),
-            )));
+      const payload = dto?.payload as
+        | { latitude?: string; surveyReportFileName?: string }
+        | undefined;
+      const hasProgress = Boolean(
+        payload?.latitude?.trim() || payload?.surveyReportFileName?.trim(),
+      );
       if (!hasProgress) return "waiting";
     } else if (!dto) {
       return "waiting";
