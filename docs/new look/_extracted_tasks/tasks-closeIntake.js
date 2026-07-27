@@ -1,0 +1,1 @@
+function closeIntake(){ ov.hidden = true; }
