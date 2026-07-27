@@ -526,6 +526,85 @@ export function approximatePropertyGeo(
   };
 }
 
+function formatDmsComponent(dec: number, pos: string, neg: string): string {
+  const a = Math.abs(dec);
+  const d = Math.floor(a);
+  const m = Math.floor((a - d) * 60);
+  const s = ((a - d) * 60 - m) * 60;
+  return `${d}°${m}'${s.toFixed(1)}"${dec >= 0 ? pos : neg}`;
+}
+
+/** Case Study.html coord DMS line under the map. */
+export function formatGeoDms(lat: number, lng: number): string {
+  return `${formatDmsComponent(lat, "N", "S")} ${formatDmsComponent(lng, "E", "W")}`;
+}
+
+/** Decimal coords for display / clipboard (HTML coord-copy). */
+export function formatGeoDec(lat: number, lng: number): string {
+  return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+}
+
+/** Short property description under the main photo (HTML «وصف العقار»). */
+export function buildPropertyDescriptionLine(
+  property: Pick<
+    PoPropertyIntake,
+    "propertyType" | "classification" | "area" | "district" | "bourseDataCompleted"
+  >,
+  inspectorDescription?: string,
+): string {
+  const fromInspector = inspectorDescription?.trim();
+  if (fromInspector) return fromInspector;
+  if (!property.bourseDataCompleted) {
+    return "يُحدَّث وصف العقار بعد اكتمال استعلام البورصة وتقرير المعاين.";
+  }
+  const parts = [
+    property.propertyType.trim(),
+    property.classification.trim(),
+  ].filter(Boolean);
+  const head = parts.join(" ");
+  const area = property.area.trim()
+    ? `مساحة ${property.area.trim()} م²`
+    : "";
+  const district = property.district.trim()
+    ? `بحي ${property.district.trim()}`
+    : "";
+  const body = [head, area, district].filter(Boolean).join("، ");
+  if (!body) return "يُحدَّث الوصف التفصيلي من تقرير المعاين.";
+  return `${body}. يُحدَّث الوصف التفصيلي من تقرير المعاين.`;
+}
+
+/** Case Study.html PSTATUS labels for the property hero. */
+export type PropertyUiStatus =
+  | "new"
+  | "progress"
+  | "done"
+  | "fail"
+  | "incomplete";
+
+export function propertyUiStatusLabel(status: PropertyUiStatus): string {
+  switch (status) {
+    case "progress":
+      return "قيد العمل";
+    case "done":
+      return "مكتمل";
+    case "fail":
+      return "متعذر";
+    case "incomplete":
+      return "ناقص";
+    default:
+      return "جديد";
+  }
+}
+
+export function propertyUiStatusTone(
+  status: PropertyUiStatus,
+): "teal" | "amber" | "red" | "gray" {
+  if (status === "done") return "teal";
+  if (status === "fail") return "red";
+  if (status === "progress" || status === "incomplete") return "amber";
+  return "gray";
+}
+
 /** @deprecated use approximatePropertyMapSearchUrl */
 export function propertyLocationMapUrl(
   property: Pick<PoPropertyIntake, "city" | "district">,

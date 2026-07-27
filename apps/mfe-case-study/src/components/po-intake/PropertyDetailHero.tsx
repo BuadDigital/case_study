@@ -6,12 +6,14 @@ import { useMemo } from "react";
 import { cn } from "@platform/design-system";
 import { PoNumber } from "../ui/PoNumber";
 import { PoPropertyDetailTopbarActions } from "./PoPropertyDetailTopbarActions";
-import { DeliveryCountdown } from "./DeliveryCountdown";
 import { DetailBadge, ltrValueClass } from "./PropertyDetailFields";
 import {
   formatDateAr,
+  formatPoDisplay,
   formatPropertyLocation,
   identifierTypeLabel,
+  propertyUiStatusLabel,
+  propertyUiStatusTone,
   showsCourtFields,
   type PoIntakeRecord,
   type PoPropertyIntake,
@@ -20,6 +22,8 @@ import { poPropertiesPath } from "../../lib/po-routes";
 import { childTasksForCaseStudyParent } from "../../lib/prototype/case-study-party-answers";
 import { caseStudyTaskForProperty } from "../../lib/prototype/tasks-storage";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
+import { useFailuresQuery } from "@failures/mfe";
+import { derivePropertyUiStatus } from "../../lib/prototype/property-detail-ui-status";
 
 function deedTitle(property: { deedNumber: string }): string {
   return property.deedNumber.trim() || "—";
@@ -126,10 +130,16 @@ function CompletionRing({
   );
 }
 
-/** Stage weights match Case Study.html completion ring. */
+/**
+ * Case Study.html completion ring stages:
+ * ST = البيانات الأساسية, مستندات, معاينة, مساحي, مراجعات, مفاتيح, تقييم, دراسة, إنفاذ
+ * weight: 1 done · 0.5 in progress · 0 not started
+ */
+
 function estimateCaseStudyCompletion(args: {
   property: PoPropertyIntake;
   hasCaseStudyTask: boolean;
+  caseStudyDone: boolean;
   hasInspection: boolean;
   inspectionDone: boolean;
   hasSurvey: boolean;
@@ -139,17 +149,24 @@ function estimateCaseStudyCompletion(args: {
   hasGov: boolean;
   govDone: boolean;
   hasKeysHint: boolean;
+  enfathDone: boolean;
 }): { pct: number; done: number; total: number } {
+  const stage = (has: boolean, done: boolean, partialWhenHas = true) => {
+    if (done) return 1;
+    if (has && partialWhenHas) return 0.5;
+    return 0;
+  };
+
   const stages: number[] = [
-    1, // البيانات الأساسية
-    args.property.deedNumber.trim() ? 1 : 0.5, // مستندات / هوية العقار
-    args.hasInspection ? (args.inspectionDone ? 1 : 0.5) : 0,
-    args.hasSurvey ? (args.surveyDone ? 1 : 0.5) : 0,
-    args.hasGov ? (args.govDone ? 1 : 0) : 0,
-    args.hasKeysHint ? 1 : 0,
-    args.hasAppraisal ? (args.appraisalDone ? 1 : 0) : 0,
-    args.hasCaseStudyTask ? 0.5 : 0,
-    0, // الرفع على إنفاذ — لا نفترض اكتماله
+    1, // البيانات الأساسية — دائماً مكتمل في العرض
+    args.property.deedNumber.trim() ? 1 : 0.5, // مستندات العقار
+    stage(args.hasInspection, args.inspectionDone), // معاينة العقار
+    stage(args.hasSurvey, args.surveyDone), // التقرير المساحي
+    stage(args.hasGov, args.govDone, false), // المراجعات: 1 أو 0 مثل HTML
+    args.hasKeysHint ? 1 : 0, // مفاتيح العقار
+    stage(args.hasAppraisal, args.appraisalDone, false), // تقييم العقار
+    stage(args.hasCaseStudyTask, args.caseStudyDone), // دراسة العقار
+    args.enfathDone ? 1 : 0, // الرفع على إنفاذ
   ];
   const total = stages.length;
   const sum = stages.reduce((a, b) => a + b, 0);
@@ -172,12 +189,24 @@ export function PropertyDetailHero({
   propertyIndex: number;
 }) {
   const { data: tasks = [] } = useWorkflowTasksQuery();
+  const { data: failures = [] } = useFailuresQuery();
   const titleDeed = deedTitle(property);
   const locationLine = formatPropertyLocation(property);
   const courtLine = [property.court, property.circuit]
     .filter(Boolean)
     .join(" / ");
   const dueUrgent = record.dueDateAt ? isDueSoon(record.dueDateAt) : false;
+
+  const uiStatus = useMemo(
+    () =>
+      derivePropertyUiStatus({
+        poNumber: record.poNumber.trim(),
+        property,
+        tasks,
+        failures,
+      }),
+    [record.poNumber, property, tasks, failures],
+  );
 
   const completion = useMemo(() => {
     const parent = caseStudyTaskForProperty(
@@ -197,6 +226,7 @@ export function PropertyDetailHero({
     return estimateCaseStudyCompletion({
       property,
       hasCaseStudyTask: Boolean(parent),
+      caseStudyDone: doneish(parent?.status),
       hasInspection: Boolean(inspection),
       inspectionDone: doneish(inspection?.status),
       hasSurvey: Boolean(survey),
@@ -206,6 +236,7 @@ export function PropertyDetailHero({
       hasGov: Boolean(gov),
       govDone: doneish(gov?.status),
       hasKeysHint: Boolean(property.requestNumber.trim()),
+      enfathDone: false,
     });
   }, [record.poNumber, property, tasks]);
 
@@ -213,7 +244,7 @@ export function PropertyDetailHero({
     <>
       <Link
         href={poPropertiesPath(record.poNumber)}
-        className="mb-2 inline-flex items-center gap-1.5 border-0 bg-transparent p-0 py-1.5 text-[12.5px] font-semibold text-text-2 no-underline transition-colors hover:text-[#8c7857]"
+        className="mb-2 inline-flex items-center gap-[7px] border-0 bg-transparent p-0 py-1.5 text-[12.5px] font-semibold text-text-2 no-underline transition-colors hover:text-gold-d"
       >
         <svg
           width="14"
@@ -222,12 +253,14 @@ export function PropertyDetailHero({
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
           className="-scale-x-100"
           aria-hidden
         >
           <path d="M19 12H5M12 19l-7-7 7-7" />
         </svg>
-        <span>عقارات {record.poNumber.trim()}</span>
+        <span>عقارات {formatPoDisplay(record.poNumber)}</span>
       </Link>
 
       <header className="mb-3.5 shrink-0 rounded-[12px] border border-border bg-surface px-5 pt-4 shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]">
@@ -251,9 +284,9 @@ export function PropertyDetailHero({
               <span className="rounded-md border border-[color-mix(in_srgb,#d9a441_32%,transparent)] bg-[color-mix(in_srgb,#d9a441_14%,transparent)] px-2.5 py-[3px] text-[10.5px] font-bold text-[#8a5e14]">
                 {record.assignmentType}
               </span>
-              {property.deedStatus.trim() ? (
-                <DetailBadge tone="gray">{property.deedStatus}</DetailBadge>
-              ) : null}
+              <DetailBadge tone={propertyUiStatusTone(uiStatus)}>
+                {propertyUiStatusLabel(uiStatus)}
+              </DetailBadge>
             </div>
           </div>
 
@@ -315,9 +348,6 @@ export function PropertyDetailHero({
             ) : (
               "—"
             )}
-          </StripCell>
-          <StripCell label="المتبقي للتسليم">
-            <DeliveryCountdown dueIso={record.dueDateAt} />
           </StripCell>
         </div>
 

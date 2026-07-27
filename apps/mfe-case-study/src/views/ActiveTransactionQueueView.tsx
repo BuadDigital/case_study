@@ -64,10 +64,21 @@ import {
   compareQueueTasksOldestFirst,
   compareQueueTasksNewestFirst,
   findPropertyForTask,
+  formatRemainingDuration,
+  resolveSlaTimerRatio,
   type RemainingTimeState,
 } from "../lib/prototype/my-task-row";
 import type { PoIntakeRecord } from "../lib/prototype/po-intake-data";
-import { skipsBourseForIdentifier } from "../lib/prototype/po-intake-data";
+import {
+  formatPoDisplay,
+  skipsBourseForIdentifier,
+} from "../lib/prototype/po-intake-data";
+import {
+  ActiveQueueMobileCards,
+  toneFromLegacyBadge,
+  type ActiveQueueMobileCardItem,
+} from "../components/queue/ActiveQueueMobileCards";
+import { InspectorMobileQueue } from "../components/field-inspection/InspectorMobileQueue";
 import { isListedQueueTask } from "../lib/prototype/suspended-transactions-storage";
 import {
   TASKS_CHANGED_EVENT,
@@ -662,6 +673,8 @@ export function ActiveTransactionQueueView({
     [config, inspectionWorkspaceByTaskId, submissionCacheGen],
   );
 
+  const isPropertyInspectionQueue = config.pageId === "property-inspection";
+
   const isDistributionTable =
     config.tableLayout === "distribution" ||
     config.tableLayout === "case-study";
@@ -922,8 +935,14 @@ export function ActiveTransactionQueueView({
   }, [selectedId, selectedTask, queuePending, listed, closePanel, tasks]);
 
   const queueToolbar = queueReady ? (
-    <PageToolbar className="shrink-0 flex-wrap items-center justify-between gap-2.5 border-b border-border bg-surface-2">
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
+    <PageToolbar
+      className={cn(
+        "shrink-0 flex-wrap items-center justify-between gap-2.5",
+        /* Desktop: table-header strip. Mobile: HTML-like filter row on canvas. */
+        "max-lg:mb-1 max-lg:border-0 max-lg:bg-transparent max-lg:px-0 max-lg:pb-2 max-lg:pt-0",
+        "lg:border-b lg:border-border lg:bg-surface-2",
+      )}
+    >      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
         <OperationalToolbarSearch
           type="search"
           placeholder={
@@ -1087,6 +1106,130 @@ export function ActiveTransactionQueueView({
     [showPartyColumns, router, handleRowClick],
   );
 
+  const mobileQueueCardItems = useMemo((): ActiveQueueMobileCardItem[] => {
+    if (isPropertyInspectionQueue) return [];
+
+    if (isAllTransactionsTable) {
+      return filteredAllTxMeta.map((meta) => {
+        const metaLines = [
+          { text: formatPoDisplay(meta.poNumber), kind: "po" as const },
+          meta.city !== "—"
+            ? { text: meta.city, kind: "place" as const }
+            : null,
+          meta.district !== "—"
+            ? { text: meta.district, kind: "place" as const }
+            : null,
+          meta.assignmentType !== "—"
+            ? { text: meta.assignmentType, kind: "type" as const }
+            : null,
+        ].filter((v): v is NonNullable<typeof v> => Boolean(v));
+        const done = meta.phaseLabel === "مكتمل";
+        return {
+          id: meta.task.id,
+          title: meta.deedCell,
+          meta: metaLines,
+          statusLabel: meta.phaseLabel,
+          statusStyle: allTransactionsPhaseStyle(meta.task),
+          tone: done ? "done" : "pending",
+          moreItems: resolveRowMoreItems(meta.task, meta.propertyId),
+          onOpen: () => handleRowClick(meta.task.id),
+        };
+      });
+    }
+
+    if (isDistributionTable) {
+      return filteredListed.map((task) => {
+        const record = poByNumber.get(task.poNumber.trim());
+        const property = findPropertyForTask(record, task);
+        const row = buildDistributionTableRow(task, property, record);
+        const deed =
+          row.deedLabel && row.deedLabel !== "—"
+            ? row.deedLabel.startsWith("صك")
+              ? row.deedLabel
+              : `صك ${row.deedLabel}`
+            : `مهمة ${task.id}`;
+        const meta = [
+          { text: formatPoDisplay(task.poNumber), kind: "po" as const },
+          row.city !== "—" ? { text: row.city, kind: "place" as const } : null,
+          row.district !== "—"
+            ? { text: row.district, kind: "place" as const }
+            : null,
+          row.propertyType !== "—"
+            ? { text: row.propertyType, kind: "type" as const }
+            : null,
+        ].filter((v): v is NonNullable<typeof v> => Boolean(v));
+        return {
+          id: task.id,
+          title: deed,
+          meta,
+          tone: "new",
+          moreItems: resolveRowMoreItems(task, property?.id),
+          onOpen: () => handleDistributionRowClick(task, property?.id),
+        };
+      });
+    }
+
+    return filteredListed.map((task) => {
+      const record = poByNumber.get(task.poNumber.trim());
+      const property = findPropertyForTask(record, task);
+      const row = buildPrimaryDataTableRow(task, property, record, now);
+      const badge = resolveTaskBadge(task);
+      const tone = toneFromLegacyBadge(badge?.className);
+      const timer = formatRemainingDuration(record?.dueDateAt ?? "", now);
+      const showTimer = timer.remainingDuration !== "—";
+      const titleParts = [
+        row.propertySlot !== "—" ? row.propertySlot : null,
+        property?.plotNumber?.trim()
+          ? `قطعة ${property.plotNumber.trim()}`
+          : null,
+        row.district !== "—" ? row.district : null,
+      ].filter(Boolean);
+      const meta = [
+        { text: formatPoDisplay(task.poNumber), kind: "po" as const },
+        row.city !== "—" ? { text: row.city, kind: "place" as const } : null,
+        row.assignmentType !== "—"
+          ? { text: row.assignmentType, kind: "type" as const }
+          : null,
+      ].filter((v): v is NonNullable<typeof v> => Boolean(v));
+      return {
+        id: task.id,
+        title:
+          titleParts.length > 0 ? titleParts.join(" — ") : `مهمة ${task.id}`,
+        meta,
+        statusLabel: badge?.label,
+        statusClassName: badge?.className,
+        tone,
+        timerLabel: showTimer
+          ? timer.remainingOverdue
+            ? "متأخرة"
+            : `متبقي ${timer.remainingDuration}`
+          : undefined,
+        timerOverdue: showTimer ? timer.remainingOverdue : undefined,
+        timerRatio: showTimer
+          ? resolveSlaTimerRatio(
+              record?.dueDateAt ?? "",
+              task.createdAt ?? "",
+              now,
+            )
+          : undefined,
+        moreItems: resolveRowMoreItems(task, property?.id),
+        onOpen: () => handleRowClick(task.id),
+      };
+    });
+  }, [
+    isPropertyInspectionQueue,
+    isAllTransactionsTable,
+    isDistributionTable,
+    filteredAllTxMeta,
+    filteredListed,
+    poByNumber,
+    now,
+    resolveRowMoreItems,
+    resolveTaskBadge,
+    handleRowClick,
+    handleDistributionRowClick,
+  ]);
+
   const hasRail =
     !useFullPage && queueReady && listed.length > 0 && Boolean(renderPanel);
 
@@ -1096,6 +1239,8 @@ export function ActiveTransactionQueueView({
             "min-h-0 flex-1",
             hasRail && panelOpen ? undefined : "flex-none",
             isPartyQueueToggleTable && "overflow-visible",
+            /* Mobile: drop heavy table panel chrome — cards float on canvas. */
+            "max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none",
           )}
         >
           {!config.hidePageTitle && config.pageTitle ? (
@@ -1114,11 +1259,40 @@ export function ActiveTransactionQueueView({
           ) : (
             <>
               {queueToolbar}
+              {isPropertyInspectionQueue ? (
+                <div className="pb-3 lg:hidden max-lg:px-0">
+                  <InspectorMobileQueue
+                    tasks={filteredListed}
+                    poByNumber={poByNumber}
+                    now={now}
+                    pending={queuePending}
+                    onOpen={handleRowClick}
+                    resolveBadge={resolveTaskBadge}
+                    resolveMoreItems={resolveRowMoreItems}
+                  />
+                </div>
+              ) : (
+                <div className="pb-3 lg:hidden max-lg:px-0">
+                  <ActiveQueueMobileCards
+                    items={mobileQueueCardItems}
+                    pending={queuePending}
+                    emptyMessage={
+                      isEngineeringSurveyTable
+                        ? "لا توجد أوامر رفع مطابقة."
+                        : isAllTransactionsTable
+                          ? "لا توجد معاملات مطابقة."
+                          : (config.emptyLine ?? "لا توجد معاملات مطابقة.")
+                    }
+                  />
+                </div>
+              )}
               <div
                 className={cn(
                   queueTableWrapClassName,
                   (isDistributionTable || isAllTransactionsTable) &&
                     "overflow-x-auto",
+                  "hidden lg:block",
+                  "lg:rounded-b-[var(--radius-lg)]",
                 )}
               >
                 {isAllTransactionsTable ? (
@@ -2016,6 +2190,7 @@ export function ActiveTransactionQueueView({
               </div>
               <QueueTableHint
                 className={cn(
+                  "hidden lg:block",
                   (config.pageId === "all-transactions" ||
                     config.pageId === "active-primary-data" ||
                     isPartyQueueToggleTable) &&

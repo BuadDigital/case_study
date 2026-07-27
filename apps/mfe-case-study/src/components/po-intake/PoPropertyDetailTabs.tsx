@@ -13,7 +13,7 @@ import {
 } from "@failures/mfe";
 import { failureStatusLabel } from "@failures/mfe/lib/failures-labels";
 import type { FailureRecord } from "@failures/mfe";
-import { Button, cn, Tab, TabBar, TabCount, TabPanel } from "@platform/design-system";
+import { Button, cn, Tab, TabBar, TabPanel } from "@platform/design-system";
 import {
   DetailBadge,
   EmptyState,
@@ -34,19 +34,17 @@ import { PropertyDetailSurveyNotesTab } from "./PropertyDetailSurveyNotesTab";
 import { PropertyTransactionTimeline } from "./PropertyTransactionTimeline";
 import { PropertyDetailMobileGlance } from "./PropertyDetailMobileGlance";
 import { PropertyDetailMediaGlance } from "./PropertyDetailMediaGlance";
+import { PropertyDetailInspectionTab } from "./PropertyDetailInspectionTab";
 import {
   boundariesAvailabilityLabel,
+  boundariesMarkedUnavailable,
   formatDateAr,
-  formatPropertyBoundaryDimensionsDisplay,
-  formatPropertyLandFrontagesDisplay,
-  formatPropertyTypeLine,
   hasBourseDetailFields,
   ownershipStatusLabel,
-  propertyLocationMapUrl,
-  propertySurveyEmptyLabel,
   formatPropertyRestrictionsLine,
   showsCourtFields,
   skipsBourseForIdentifier,
+  PROPERTY_BOUNDARY_ROWS,
   type PoIntakeRecord,
   type PoPropertyIntake,
 } from "../../lib/prototype/po-intake-data";
@@ -70,8 +68,6 @@ import {
 } from "../../lib/prototype/tasks-storage";
 import { childTasksForCaseStudyParent } from "../../lib/prototype/case-study-party-answers";
 import {
-  countPropertyDetailDocuments,
-  countPropertyDetailPhotos,
   downloadPropertyDetailDocument,
   listPropertyDetailPhotos,
   type PropertyDetailDocumentEntry,
@@ -93,6 +89,7 @@ import {
   propertyTabHasNewDot,
 } from "../../lib/prototype/property-detail-local-ui";
 
+/** Case Study.html `tabs` order in renderProperty. */
 const TABS = [
   { id: "basic", label: "البيانات الأساسية" },
   { id: "documents", label: "مستندات العقار" },
@@ -101,10 +98,10 @@ const TABS = [
   { id: "inspection", label: "معاينة العقار" },
   { id: "photos", label: "صور العقار" },
   { id: "government", label: "المراجعات الحكومية" },
-  { id: "appraisal", label: "تقييم العقار" },
   { id: "keys", label: "مفاتيح العقار" },
-  { id: "report", label: "دراسة العقار" },
+  { id: "appraisal", label: "تقييم العقار" },
   { id: "failures", label: "التعذرات" },
+  { id: "report", label: "دراسة العقار" },
   { id: "enfath-upload", label: "الرفع على انفاذ" },
   { id: "finance", label: "المالية" },
   { id: "log", label: "السجل والتدقيق" },
@@ -269,18 +266,13 @@ function DocumentsTab({
   );
 }
 
-function logIconGlyph(tone: string): string {
-  if (tone === "done") return "✓";
-  if (tone === "active") return "⚠";
-  if (tone === "warn") return "⚠";
-  return "+";
+/** Case Study.html logPanel — always green ✓ circle. */
+function logIconGlyph(_tone: string): string {
+  return "✓";
 }
 
-function logIconClass(tone: string): string {
-  if (tone === "done") return "bg-success-bg text-success-text";
-  if (tone === "active") return "bg-warning-bg text-warning";
-  if (tone === "warn") return "bg-danger-bg text-danger-text";
-  return "bg-surface-2 text-text-2";
+function logIconClass(_tone: string): string {
+  return "bg-[color-mix(in_srgb,#3f8f5f_10%,transparent)] text-[#2f7a4d]";
 }
 
 function partyDotClass(dotClass: string): string {
@@ -311,12 +303,20 @@ function BasicTab({
     .filter(Boolean)
     .join(" / ");
   const primaryContact = validContacts[0];
-  const mapUrl = propertyLocationMapUrl(property);
-  const boundaryDimensions = formatPropertyBoundaryDimensionsDisplay(property);
-  const landFrontages = formatPropertyLandFrontagesDisplay(property);
   const ownershipStatus = ownershipStatusLabel(property);
-  const dimensionsEmpty = propertySurveyEmptyLabel(property, "dimensions");
-  const frontagesEmpty = propertySurveyEmptyLabel(property, "frontages");
+  const boundaryRows = PROPERTY_BOUNDARY_ROWS.map((row) => ({
+    label: row.label,
+    desc: property[row.descKey].trim(),
+    len: property[row.lenKey].trim(),
+  }));
+  const hasBoundaryRows = boundaryRows.some((r) => r.desc || r.len);
+  const boundariesUnavailable = boundariesMarkedUnavailable(
+    property.boundariesAvailability,
+  );
+  const boundariesAwaiting =
+    !boundariesUnavailable &&
+    !hasBoundaryRows &&
+    !property.bourseDataCompleted;
 
   return (
     <>
@@ -327,6 +327,7 @@ function BasicTab({
 
       <SectionHeader>بيانات الصك</SectionHeader>
       <FieldsGrid>
+        <FieldBox label="رقم أمر العمل" value={record.poNumber} ltr />
         <FieldBox label="رقم الصك" value={property.deedNumber} ltr />
         <FieldBox
           label="رقم التكليف"
@@ -363,32 +364,6 @@ function BasicTab({
         ) : null}
         <FieldBox label="رقم المخطط" value={property.planNumber} ltr />
         <FieldBox label="رقم القطعة" value={property.plotNumber} ltr />
-        <FieldBox
-          label="توفر الحدود"
-          value={boundariesAvailabilityLabel(property.boundariesAvailability)}
-        />
-        <FieldBox
-          label="رابط موقع الخريطة"
-          span={2}
-          href={
-            property.locationMapUrl.trim() || mapUrl || undefined
-          }
-        >
-          {property.locationMapUrl.trim()
-            ? "فتح رابط الموقع"
-            : mapUrl
-              ? "عرض تقريبي على الخريطة"
-              : undefined}
-        </FieldBox>
-        <FieldBox
-          label="الإحداثيات (تقريبي)"
-          span={2}
-          href={mapUrl ?? undefined}
-        >
-          {mapUrl && !property.locationMapUrl.trim()
-            ? "عرض على الخريطة"
-            : undefined}
-        </FieldBox>
       </FieldsGrid>
 
       <SectionHeader>البيانات المساحية</SectionHeader>
@@ -399,28 +374,90 @@ function BasicTab({
           label="المساحة الإجمالية"
           value={property.area.trim() ? `${property.area.trim()} م²` : ""}
         />
-        <FieldBox
-          label="الأطوال والأبعاد"
-          value={boundaryDimensions}
-          emptyLabel={dimensionsEmpty}
-        />
-        <FieldBox
-          label="واجهات الأرض"
-          value={landFrontages}
-          emptyLabel={frontagesEmpty}
-        />
       </FieldsGrid>
 
+      <div className="mb-2 mt-3.5 text-[11.5px] font-bold text-heading">
+        حدود العقار وأطواله
+      </div>
+      {boundariesUnavailable ? (
+        <InfoBox icon="ℹ">الحدود غير متوفرة لهذا العقار.</InfoBox>
+      ) : boundariesAwaiting ? (
+        <div className="rounded border border-[#fad7a0] bg-[#fef3d7] px-3 py-2.5 text-[11.5px] leading-relaxed text-[#7a5b12]">
+          بانتظار بيانات البورصة — تُعرض حدود العقار وأطوال أضلاعه بعد اكتمال
+          الاستعلام.
+        </div>
+      ) : hasBoundaryRows ? (
+        <>
+          <div className="overflow-x-auto rounded border border-border">
+            <table className="w-full min-w-[420px] border-collapse text-[12px]">
+              <thead>
+                <tr className="bg-surface-2">
+                  <th className="border-b border-border px-3 py-2 text-start text-[11px] font-bold text-text-2">
+                    الحد
+                  </th>
+                  <th className="border-b border-border px-3 py-2 text-center text-[11px] font-bold text-text-2">
+                    وصف الحد
+                  </th>
+                  <th className="border-b border-border px-3 py-2 text-center text-[11px] font-bold text-text-2">
+                    طول الضلع
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {boundaryRows.map((row, i) => (
+                  <tr key={row.label}>
+                    <td
+                      className={cn(
+                        "px-3 py-2 font-semibold text-heading",
+                        i < boundaryRows.length - 1 && "border-b border-border",
+                      )}
+                    >
+                      {row.label}
+                    </td>
+                    <td
+                      className={cn(
+                        "px-3 py-2 text-center text-text",
+                        i < boundaryRows.length - 1 && "border-b border-border",
+                      )}
+                    >
+                      {row.desc || "—"}
+                    </td>
+                    <td
+                      className={cn(
+                        "px-3 py-2 text-center text-text [direction:ltr]",
+                        i < boundaryRows.length - 1 && "border-b border-border",
+                      )}
+                    >
+                      {row.len ? `${row.len} م` : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-1.5 mb-0 text-[10.5px] text-text-3">
+            «بطول» = طول ضلع العقار على ذلك الحد. المصدر: البورصة العقارية /
+            الصك.
+          </p>
+        </>
+      ) : (
+        <InfoBox icon="ℹ">لم تُسجَّل حدود وأطوال بعد.</InfoBox>
+      )}
+
       <SectionHeader>بيانات الاتصال</SectionHeader>
+      <p className="-mt-1 mb-2 text-[10.5px] text-text-3">
+        المصدر: البيانات الأولية للمعاملة
+      </p>
       {validContacts.length === 0 ? (
         <InfoBox icon="ℹ">لا يوجد ضابط اتصال مسجّل.</InfoBox>
       ) : (
-        <FieldsGrid cols={2}>
+        <FieldsGrid cols={3}>
+          <FieldBox label="الاسم" value={primaryContact.name.trim() || "—"} />
+          <FieldBox label="رقم الجوال" value={primaryContact.phone} ltr />
           <FieldBox
-            label="جهة الاتصال"
+            label="الصلة"
             value={primaryContact.role.trim() || "المالك"}
           />
-          <FieldBox label="رقم الجوال" value={primaryContact.phone} ltr />
         </FieldsGrid>
       )}
 
@@ -429,7 +466,7 @@ function BasicTab({
           <SectionHeader>بيانات الاستعلام — البورصة العقارية</SectionHeader>
           {boursePending && !hasBourseDetailFields(property) ? (
             <InfoBox variant="amber" icon="ℹ">
-              لم تُسجَّل بعد بيانات استعلام البورصة — أكملها من «استعلام
+              لم تُسجَّل بعد بيانات استعلام البورصة — أكملها من «استعلام
               البورصة» في شريط الإجراءات.
             </InfoBox>
           ) : (
@@ -454,14 +491,10 @@ function BasicTab({
                   value={property.deedStatus}
                 />
                 <FieldBox
-                  label="الأطوال والأبعاد"
-                  value={boundaryDimensions}
-                  emptyLabel={dimensionsEmpty}
-                />
-                <FieldBox
-                  label="واجهات الأرض"
-                  value={landFrontages}
-                  emptyLabel={frontagesEmpty}
+                  label="توفر الحدود"
+                  value={boundariesAvailabilityLabel(
+                    property.boundariesAvailability,
+                  )}
                 />
                 <FieldBox
                   label="الفروق / الملاحظات"
@@ -536,11 +569,6 @@ export function PoPropertyDetailTabs({
     [failures, poNumber, property.id, property.deedNumber],
   );
 
-  const samePoLinkedCount = useMemo(
-    () => record.properties.filter((p) => p.id !== property.id).length,
-    [record.properties, property.id],
-  );
-
   const surveyTask = useMemo(
     () =>
       task
@@ -594,8 +622,6 @@ export function PoPropertyDetailTabs({
     inspectionTaskId: inspectionTask?.id ?? null,
   });
 
-  const docCount = countPropertyDetailDocuments(propertyDocumentSections);
-  const photoCount = countPropertyDetailPhotos(propertyDocumentSections);
   const propertyPhotos = useMemo(
     () => listPropertyDetailPhotos(propertyDocumentSections),
     [propertyDocumentSections],
@@ -699,49 +725,13 @@ export function PoPropertyDetailTabs({
       />
 
       <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3.5 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_250px]">
-        <div className="min-w-0 overflow-hidden rounded-[12px] border border-border bg-surface shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]">
+        <div className="min-w-0 overflow-hidden rounded-[12px] border border-border bg-surface px-5 pb-5 shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]">
+          {/* Case Study.html `.tabs` inside card: margin 0 -20px, padding 0 14px, wrap, gap 2px */}
           <TabBar
-            className="z-10 mx-0 gap-0.5 overflow-x-auto border-b border-border bg-transparent px-3.5 [scrollbar-width:none] [&::-webkit-scrollbar]:h-0"
+            className="z-10 mx-[-20px] mb-0 flex flex-wrap gap-x-0.5 gap-y-0 overflow-visible whitespace-nowrap border-b border-border bg-transparent px-3.5 sm:px-3.5"
             aria-label="أقسام تفاصيل العقار"
           >
             {TABS.map((t) => {
-              let count: number | null = null;
-              let countTone: "teal" | "red" | "gray" = "gray";
-              if (t.id === "documents" && docCount > 0) {
-                count = docCount;
-                countTone = "teal";
-              }
-              if (t.id === "linked" && samePoLinkedCount > 0) {
-                count = samePoLinkedCount;
-                countTone = "teal";
-              }
-              if (t.id === "failures" && propertyFailures.length > 0) {
-                count = propertyFailures.length;
-                countTone = "red";
-              }
-              if (t.id === "photos" && photoCount > 0) {
-                count = photoCount;
-                countTone = "teal";
-              }
-              if (t.id === "finance" && propertyFeeRows.length > 0) {
-                const pending = propertyFeeRows.filter(
-                  (r) =>
-                    r.billingStatus === "draft" ||
-                    r.billingStatus === "returned" ||
-                    r.billingStatus === "inquiry" ||
-                    r.billingStatus === "sup-review" ||
-                    r.billingStatus === "office-review",
-                ).length;
-                count = pending > 0 ? pending : propertyFeeRows.length;
-                countTone = pending > 0 ? "gray" : "teal";
-              }
-              if (t.id === "keys") {
-                if (keysHasData) {
-                  count = 1;
-                  countTone = keysStatus.includes("استلام") ? "teal" : "gray";
-                }
-              }
-
               const active = tab === t.id;
               const hasNew = propertyTabHasNewDot(property.id, t.id, seenTabs);
               return (
@@ -750,29 +740,22 @@ export function PoPropertyDetailTabs({
                   active={active}
                   onClick={() => setTab(t.id)}
                   className={cn(
-                    "relative mb-0 border-b-0 px-2.5 py-[9px] text-[12.5px] font-normal",
+                    "relative mb-0 max-lg:min-h-0 border-0 border-b-0 px-2.5 py-[9px] text-[12.5px] font-normal text-text-2",
+                    "rounded-none transition-[background,color] duration-150",
                     "hover:bg-[color-mix(in_srgb,#102B4E_6%,transparent)] hover:text-heading",
                     active &&
-                      "!border-b-0 !bg-ink !font-normal !text-white hover:!text-white",
+                      "!border-0 !bg-ink !font-normal !text-white hover:!bg-ink hover:!text-white",
                     hasNew &&
                       "after:absolute after:top-1.5 after:end-[3px] after:h-[7px] after:w-[7px] after:rounded-full after:bg-[#c0392b] after:shadow-[0_0_0_2px_var(--surface,#fff)] after:content-['']",
                   )}
                 >
                   {t.label}
-                  {count !== null ? (
-                    <TabCount
-                      tone={countTone}
-                      className={cn(active && "bg-white/15 text-white")}
-                    >
-                      {count}
-                    </TabCount>
-                  ) : null}
                 </Tab>
               );
             })}
           </TabBar>
 
-          <TabPanel className="min-h-0 overflow-visible bg-transparent px-5 py-5 sm:px-5">
+          <TabPanel className="min-h-0 overflow-visible bg-transparent px-0 py-5 sm:px-0">
           {tab === "basic" ? (
             <BasicTab
               record={record}
@@ -895,20 +878,15 @@ export function PoPropertyDetailTabs({
           ) : null}
 
           {tab === "inspection" ? (
-            <PartyWorkTab
-              card={inspectionCard}
-              submission={partySubmissionsQuery.data?.inspection ?? null}
-              loading={
-                partySubmissionsQuery.isLoading ||
-                partySubmissionsQuery.isFetching
-              }
-              description="المعاينة الميدانية شرط بدء التقييم — صور مختومة وتقرير ميداني."
+            <PropertyDetailInspectionTab
+              property={property}
+              inspectionTask={inspectionTask}
+              inspectionCard={inspectionCard}
               actionHref={
                 inspectionTask
                   ? propertyInspectionWorkspacePath(inspectionTask.id)
                   : undefined
               }
-              actionLabel="معاينة العقار — مساحة عمل المعاين"
             />
           ) : null}
 

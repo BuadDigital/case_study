@@ -24,6 +24,7 @@ import {
 import {
   FieldInspectionWorkPanel,
 } from "../components/field-inspection/FieldInspectionWorkPanel";
+import { FieldInspectionMobileShell } from "../components/field-inspection/FieldInspectionMobileShell";
 import {
   FieldInspectionWorkBody,
   type FieldInspectionWorkHostRef,
@@ -404,7 +405,7 @@ export function PartyActiveTaskWork({
   }
 
   if (isFieldInspection && layout === "page") {
-    return renderPropertyTaskShell(
+    const panel =
       record && surveyProperty ? (
         <FieldInspectionWorkPanel
           def={def}
@@ -419,7 +420,30 @@ export function PartyActiveTaskWork({
         />
       ) : (
         <InlineLoadingSkeleton className={LOADING_TEXT} />
-      ),
+      );
+
+    return (
+      <>
+        <div className="hidden min-h-0 w-full flex-1 flex-col overflow-hidden lg:flex">
+          {renderPropertyTaskShell(panel)}
+        </div>
+        <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden lg:hidden">
+          {record && surveyProperty ? (
+            <FieldInspectionMobileShell
+              def={def}
+              task={task}
+              hostRef={fieldInspectionHostRef}
+              deedLabel={deedLabel}
+              locationLabel={location}
+              submitting={saving}
+              onClose={exit}
+              onFailureSubmitted={refresh}
+            />
+          ) : (
+            <InlineLoadingSkeleton className={LOADING_TEXT} />
+          )}
+        </div>
+      </>
     );
   }
 
@@ -575,63 +599,79 @@ export function PartyActiveTaskWork({
     const inspectionReadOnly = fieldInspectionLocked || submitSuccess;
 
     return (
-      <PartyTaskRecallOverlay
-        task={task}
-        deedNumber={deedLabel}
-        show
-        isSubmitted={recallEligible}
-        onAddObstruction={focusFieldInspectionFailure}
-        onAddNote={focusFieldInspectionNotes}
-        notSubmittedMessage="لا يمكن طلب الاسترجاع قبل إرسال المعاينة للأخصائي"
-      >
-        <TaskWorkChrome
-          layout={layout}
-          title={`${def.workTitle} — ${deedLabel}`}
-          subtitle={`${def.assigneeSubtitle} · ${formatPoDisplay(task.poNumber)} · ${location}`}
-          deedBadge={deedLabel}
-          saving={saving}
-          onClose={exit}
-          onSave={submitFieldInspection}
-          saveLabel={inspectionReadOnly ? "رجوع" : def.saveLabel}
-          showFooter
-        >
-          <div className="grid min-w-0 gap-4 xl:grid-cols-2">
-            <section className="min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
-              <h3 className="m-0 mb-2 text-sm font-semibold text-text">
-                {def.workTitle}
-              </h3>
-              <Note tone="info" className="mb-4">
-                {def.workIntro}
-              </Note>
-              <FieldInspectionWorkBody
-                def={def}
-                task={task}
-                hostRef={fieldInspectionHostRef}
-                submitting={saving}
-              />
-              <div ref={fieldInspectionFailureRef}>
-                <PartyTaskFailureRaise
-                  def={def}
-                  task={task}
-                  deedNumber={deedLabel}
-                  onSubmitted={refresh}
-                />
-              </div>
-            </section>
+      <>
+        <div className="hidden min-h-0 w-full flex-1 flex-col lg:flex">
+          <PartyTaskRecallOverlay
+            task={task}
+            deedNumber={deedLabel}
+            show
+            isSubmitted={recallEligible}
+            onAddObstruction={focusFieldInspectionFailure}
+            onAddNote={focusFieldInspectionNotes}
+            notSubmittedMessage="لا يمكن طلب الاسترجاع قبل إرسال المعاينة للأخصائي"
+          >
+            <TaskWorkChrome
+              layout={layout}
+              title={`${def.workTitle} — ${deedLabel}`}
+              subtitle={`${def.assigneeSubtitle} · ${formatPoDisplay(task.poNumber)} · ${location}`}
+              deedBadge={deedLabel}
+              saving={saving}
+              onClose={exit}
+              onSave={submitFieldInspection}
+              saveLabel={inspectionReadOnly ? "رجوع" : def.saveLabel}
+              showFooter
+            >
+              <div className="grid min-w-0 gap-4 xl:grid-cols-2">
+                <section className="min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
+                  <h3 className="m-0 mb-2 text-sm font-semibold text-text">
+                    {def.workTitle}
+                  </h3>
+                  <Note tone="info" className="mb-4">
+                    {def.workIntro}
+                  </Note>
+                  <FieldInspectionWorkBody
+                    def={def}
+                    task={task}
+                    hostRef={fieldInspectionHostRef}
+                    submitting={saving}
+                  />
+                  <div ref={fieldInspectionFailureRef}>
+                    <PartyTaskFailureRaise
+                      def={def}
+                      task={task}
+                      deedNumber={deedLabel}
+                      onSubmitted={refresh}
+                    />
+                  </div>
+                </section>
 
-            <section className="min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
-              <h3 className="m-0 mb-2 text-sm font-semibold text-text">
-                نموذج الدراسة
-              </h3>
-              <PartyCaseStudyFormTab
-                def={def}
-                childTask={task}
-                forceReadOnly={inspectionReadOnly}
-              />
-            </section>
-          </div>
-        </TaskWorkChrome>
-      </PartyTaskRecallOverlay>
+                <section className="min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
+                  <h3 className="m-0 mb-2 text-sm font-semibold text-text">
+                    نموذج الدراسة
+                  </h3>
+                  <PartyCaseStudyFormTab
+                    def={def}
+                    childTask={task}
+                    forceReadOnly={inspectionReadOnly}
+                  />
+                </section>
+              </div>
+            </TaskWorkChrome>
+          </PartyTaskRecallOverlay>
+        </div>
+        <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden lg:hidden">
+          <FieldInspectionMobileShell
+            def={def}
+            task={task}
+            hostRef={fieldInspectionHostRef}
+            deedLabel={deedLabel}
+            locationLabel={location}
+            submitting={saving}
+            onClose={exit}
+            onFailureSubmitted={refresh}
+          />
+        </div>
+      </>
     );
   }
 

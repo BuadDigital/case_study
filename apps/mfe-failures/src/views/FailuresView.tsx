@@ -37,6 +37,10 @@ import { poPropertyPath } from "@case-study/mfe/lib/po-routes";
 import { suspendPropertyTransaction } from "@case-study/mfe/lib/prototype/suspend-property-transaction";
 import { usePoRecordsQuery } from "@case-study/mfe/query/case-study-queries";
 import {
+  ActiveQueueMobileCards,
+  type ActiveQueueMobileCardItem,
+} from "@case-study/mfe/components/queue/ActiveQueueMobileCards";
+import {
   failuresForPartyRole,
   isPartyScopedFailuresRole,
 } from "../lib/failures-party-raiser-scope";
@@ -377,7 +381,7 @@ export function FailuresView() {
         {f.propertyId ? (
           <Link
             href={poPropertyPath(f.poNumber, f.propertyId)}
-            className="inline-flex items-center justify-center rounded-[var(--radius-DEFAULT)] border border-border-md bg-surface px-2 py-1 text-[11px] text-text no-underline hover:bg-surface-2"
+            className="inline-flex min-h-9 items-center justify-center rounded-[var(--radius-DEFAULT)] border border-border-md bg-surface px-2 py-1 text-[11px] text-text no-underline hover:bg-surface-2 max-lg:min-h-11 max-lg:px-3 max-lg:text-[13px]"
             onClick={(e) => e.stopPropagation()}
           >
             عرض العقار
@@ -385,7 +389,7 @@ export function FailuresView() {
         ) : null}
 
         {canSpecialistAct ? (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1.5 max-lg:[&>button]:min-h-11">
             {f.severity === "suspected" ? (
               <Button
                 type="button"
@@ -521,6 +525,56 @@ export function FailuresView() {
     );
   }
 
+  const mobileCardItems = useMemo((): ActiveQueueMobileCardItem[] => {
+    return filteredItems.map((f) => {
+      const active = isActiveFailureStatus(f.status);
+      const statusColor = failureListStatusColor(f.status, f.severity);
+      const expanded = expandedId === f.id;
+      const title = f.deedNumber
+        ? f.deedNumber.startsWith("صك")
+          ? f.deedNumber
+          : `صك ${f.deedNumber}`
+        : failureRecordTitle(f);
+      return {
+        id: f.id,
+        anchorId: `failure-${f.id}`,
+        title,
+        meta: [
+          { text: formatPoDisplay(f.poNumber), kind: "po" as const },
+          {
+            text: failureListSeverityLabel(f.severity),
+            kind: "type" as const,
+          },
+          {
+            text: failureActorLabel(f.raisedByRole),
+            kind: "plain" as const,
+          },
+        ],
+        statusLabel: failureListStatusLabel(f.status, f.severity),
+        statusStyle: { base: statusColor, fg: statusColor },
+        tone: f.severity === "suspected" ? "pending" : "returned",
+        moreItems: [],
+        muted: !active,
+        expanded,
+        expandedPanel: expanded ? renderExpandedActions(f) : null,
+        shellClassName:
+          highlightId === f.id ? "ring-2 ring-gold/40" : undefined,
+        onOpen: () =>
+          setExpandedId((prev) => (prev === f.id ? null : f.id)),
+      };
+    });
+  }, [
+    filteredItems,
+    expandedId,
+    highlightId,
+    ce,
+    ca,
+    resolveDraft,
+    resolveOpen,
+    supervisorNote,
+    assignmentSpecialistByPo,
+  ]);
+
   return (
     <PageShell variant="canvas" className="min-h-0 flex-1 space-y-4">
       {isError ? (
@@ -604,7 +658,7 @@ export function FailuresView() {
         </Note>
       ) : null}
 
-      <OperationalPanel className="shrink-0 overflow-visible">
+      <OperationalPanel className="shrink-0 overflow-visible max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none">
         <div className="hidden lg:block">
           <Table pending={!isFetched}>
             <THead>
@@ -698,94 +752,19 @@ export function FailuresView() {
           </Table>
         </div>
 
-        <div className="lg:hidden">
-          {!isFetched ? (
-            <div className="space-y-2.5 p-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-[100px] animate-pulse rounded-[12px] bg-surface-2"
-                />
-              ))}
-            </div>
-          ) : filteredItems.length === 0 ? (
-            <div className="px-3 py-10">
-              <EmptyState
-                line={
-                  partyScopedFailuresEmptyLine(role) ??
-                  "لا توجد تعذرات — سجّل تعذراً من شاشة العقارات."
-                }
-              />
-            </div>
-          ) : (
-            <ul className="m-0 flex list-none flex-col gap-2.5 p-3">
-              {filteredItems.map((f) => {
-                const active = isActiveFailureStatus(f.status);
-                const statusColor = failureListStatusColor(
-                  f.status,
-                  f.severity,
-                );
-                const expanded = expandedId === f.id;
-                return (
-                  <li
-                    key={`m-${f.id}`}
-                    id={expanded ? undefined : `failure-${f.id}`}
-                    className={cn(
-                      "overflow-hidden rounded-[12px] border border-border bg-surface shadow-card",
-                      !active && "opacity-70",
-                      highlightId === f.id && "ring-2 ring-primary/30",
-                    )}
-                  >
-                    <button
-                      type="button"
-                      className="flex w-full cursor-pointer flex-col gap-2 border-none bg-transparent px-3.5 py-3 text-start transition-colors active:bg-row-hover"
-                      onClick={() =>
-                        setExpandedId((prev) => (prev === f.id ? null : f.id))
-                      }
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="text-[14px] font-bold text-primary">
-                            {f.deedNumber
-                              ? f.deedNumber.startsWith("صك")
-                                ? f.deedNumber
-                                : `صك ${f.deedNumber}`
-                              : failureRecordTitle(f)}
-                          </div>
-                          <div className="mt-0.5 text-[12.5px] font-semibold text-text-2">
-                            {formatPoDisplay(f.poNumber)}
-                          </div>
-                        </div>
-                        <StatusPill
-                          label={failureListStatusLabel(f.status, f.severity)}
-                          style={{ base: statusColor, fg: statusColor }}
-                        />
-                      </div>
-                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-text-2">
-                        <span>
-                          <span className="text-text-3">الخطورة: </span>
-                          {failureListSeverityLabel(f.severity)}
-                        </span>
-                        <span>
-                          <span className="text-text-3">الرافع: </span>
-                          {failureActorLabel(f.raisedByRole)}
-                        </span>
-                      </div>
-                    </button>
-                    {expanded ? (
-                      <div className="border-t border-border px-3 pb-3 pt-2">
-                        {renderExpandedActions(f)}
-                      </div>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+        <div className="lg:hidden max-lg:px-0">
+          <ActiveQueueMobileCards
+            items={mobileCardItems}
+            pending={!isFetched}
+            emptyMessage={
+              partyScopedFailuresEmptyLine(role) ??
+              "لا توجد تعذرات — سجّل تعذراً من شاشة العقارات."
+            }
+          />
         </div>
       </OperationalPanel>
 
-      <QueueTableHint>
+      <QueueTableHint className="hidden lg:block">
         اضغط الصف لفتح التفاصيل والإجراءات. سجّل تعذراً جديداً من شاشة العقار
         (⋮ → إبلاغ عن تعذر).
       </QueueTableHint>
