@@ -30,6 +30,20 @@ export type SavePartyTaskSubmissionRequest = {
   payload: Record<string, unknown>;
 };
 
+async function parseSaveFailure(
+  res: Response,
+): Promise<ApiErr & { errors?: Record<string, string> }> {
+  if (res.status === 403) {
+    const errors = await parseFieldErrorsFromResponse(res);
+    return { ok: false, kind: "forbidden", errors, message: errors._ };
+  }
+  if (res.status === 400) {
+    const errors = await parseFieldErrorsFromResponse(res);
+    return { ok: false, kind: "validation", errors };
+  }
+  return { ok: false, kind: "server" };
+}
+
 export type ReopenPartyTaskSubmissionRequest = {
   returnNote: string;
 };
@@ -114,10 +128,7 @@ export async function savePartyTaskSubmission(
       body: JSON.stringify({ payload } satisfies SavePartyTaskSubmissionRequest),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 400) {
-      const errors = await parseFieldErrorsFromResponse(res);
-      return { ok: false, kind: "validation", errors };
-    }
+    if (res.status === 403 || res.status === 400) return parseSaveFailure(res);
     if (!res.ok) return { ok: false, kind: "server" };
     return { ok: true, data: normalizeSubmissionDto(await res.json()) };
   } catch {
@@ -139,10 +150,7 @@ export async function submitPartyTaskSubmission(
       headers: headers(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 400) {
-      const errors = await parseFieldErrorsFromResponse(res);
-      return { ok: false, kind: "validation", errors };
-    }
+    if (res.status === 403 || res.status === 400) return parseSaveFailure(res);
     if (!res.ok) return { ok: false, kind: "server" };
     return { ok: true, data: normalizeSubmissionDto(await res.json()) };
   } catch {
@@ -166,10 +174,7 @@ export async function reopenPartyTaskSubmission(
       body: JSON.stringify({ returnNote } satisfies ReopenPartyTaskSubmissionRequest),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 400) {
-      const errors = await parseFieldErrorsFromResponse(res);
-      return { ok: false, kind: "validation", errors };
-    }
+    if (res.status === 403 || res.status === 400) return parseSaveFailure(res);
     if (!res.ok) return { ok: false, kind: "server" };
     return { ok: true, data: normalizeSubmissionDto(await res.json()) };
   } catch {
@@ -192,10 +197,7 @@ export async function acceptPartyTaskSubmission(
       headers: headers(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 400) {
-      const errors = await parseFieldErrorsFromResponse(res);
-      return { ok: false, kind: "validation", errors };
-    }
+    if (res.status === 403 || res.status === 400) return parseSaveFailure(res);
     if (!res.ok) return { ok: false, kind: "server" };
     return { ok: true, data: normalizeSubmissionDto(await res.json()) };
   } catch {

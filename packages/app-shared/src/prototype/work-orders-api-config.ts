@@ -49,6 +49,7 @@ export function apiErrorMessage(
   fallback = "تعذّر الاتصال بالخادم",
 ): string {
   if (kind === "auth") return "يجب تسجيل الدخول أولاً";
+  if (kind === "forbidden") return "ليس لديك صلاحية لهذا الإجراء";
   if (kind === "network") return "تعذّر الاتصال بالخادم — تحقق من تشغيل API";
   if (kind === "validation") return "يرجى مراجعة الحقول المطلوبة";
   if (kind === "server") return "حدث خطأ في الخادم — حاول لاحقاً";
@@ -60,7 +61,10 @@ export function resolveApiError(
   kind: string,
   errors?: Record<string, unknown>,
   fallback?: string,
+  message?: string,
 ): string {
+  const trimmed = message?.trim();
+  if (trimmed) return trimmed;
   return firstApiFieldError(errors) ?? apiErrorMessage(kind, fallback);
 }
 

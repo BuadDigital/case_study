@@ -210,10 +210,22 @@ export type PendingBoursePropertyDto = {
 export type ApiOk<T> = { ok: true; data: T };
 export type ApiErr = {
   ok: false;
-  kind: "auth" | "network" | "validation" | "server" | "not_found";
+  kind: "auth" | "forbidden" | "network" | "validation" | "server" | "not_found";
   message?: string;
   errors?: Record<string, string>;
 };
+
+async function parseForbidden(res: Response): Promise<ApiErr> {
+  let message = "ليس لديك صلاحية لهذا الإجراء";
+  try {
+    const body = (await res.json()) as { message?: string };
+    const trimmed = body.message?.trim();
+    if (trimmed) message = trimmed;
+  } catch {
+    // Status alone is enough when the body is empty (policy Forbid).
+  }
+  return { ok: false, kind: "forbidden", message, errors: { _: message } };
+}
 
 async function parseFieldErrors(res: Response): Promise<Record<string, string>> {
   return parseFieldErrorsFromResponse(res);
@@ -401,6 +413,7 @@ export async function createWorkOrder(
       body: JSON.stringify(payload),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403) return parseForbidden(res);
     if (res.status === 400) {
       return {
         ok: false,
