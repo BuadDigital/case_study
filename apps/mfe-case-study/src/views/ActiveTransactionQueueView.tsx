@@ -934,15 +934,36 @@ export function ActiveTransactionQueueView({
     }
   }, [selectedId, selectedTask, queuePending, listed, closePanel, tasks]);
 
+  const resultCountChip = (
+    <span
+      className="inline-flex shrink-0 items-center gap-1 rounded-[6px] bg-gold-soft px-2.5 py-[3px] text-[12px] font-bold text-gold-d max-lg:self-start lg:ms-auto"
+      aria-live="polite"
+    >
+      {queueReady
+        ? isPartyQueueToggleTable
+          ? isPropertyAppraisalTable
+            ? `${filteredListed.length} عقار`
+            : `${filteredListed.length} صك`
+          : (
+              <>
+                {filteredListed.length}
+                <span>نتيجة</span>
+              </>
+            )
+        : "—"}
+    </span>
+  );
+
   const queueToolbar = queueReady ? (
     <PageToolbar
       className={cn(
-        "shrink-0 flex-wrap items-center justify-between gap-2.5",
+        "shrink-0 flex-wrap items-center gap-2.5",
         /* Desktop: table-header strip. Mobile: HTML-like filter row on canvas. */
-        "max-lg:mb-1 max-lg:border-0 max-lg:bg-transparent max-lg:px-0 max-lg:pb-2 max-lg:pt-0",
+        "max-lg:mb-1 max-lg:flex-col max-lg:items-stretch max-lg:border-0 max-lg:bg-transparent max-lg:px-0 max-lg:pb-2 max-lg:pt-0",
         "lg:border-b lg:border-border lg:bg-surface-2",
       )}
-    >      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
+    >
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5 max-lg:w-full max-lg:flex-col max-lg:items-stretch">
         <OperationalToolbarSearch
           type="search"
           placeholder={
@@ -956,80 +977,82 @@ export function ActiveTransactionQueueView({
           onChange={(e) => setSearch(e.target.value)}
           aria-label="بحث المعاملات"
         />
-        {!isDistributionTable ? (
-          <OperationalToolbarSelect
-            className="shrink-0"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            aria-label={
-              isAllTransactionsTable ? "تصفية المرحلة" : "تصفية الحالة"
-            }
-          >
-            <option value="">جميع الحالات</option>
-            {statusOptions.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </OperationalToolbarSelect>
-        ) : null}
-        {isPartyQueueToggleTable ? (
-          <button
-            type="button"
-            onClick={() => setShowCompleted((v) => !v)}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg border px-[13px] py-2 text-[12.5px] font-bold transition-colors",
-              showCompleted
-                ? "border-ink bg-ink text-white"
-                : "border-border-md bg-surface text-text-2 hover:bg-surface-2",
-            )}
-            aria-pressed={showCompleted}
-          >
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.9"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden
+        <div className="flex flex-wrap items-center gap-2.5 max-lg:grid max-lg:w-full max-lg:grid-cols-2 lg:contents">
+          {!isDistributionTable ? (
+            <OperationalToolbarSelect
+              className="shrink-0"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              aria-label={
+                isAllTransactionsTable ? "تصفية المرحلة" : "تصفية الحالة"
+              }
             >
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-            <span>
-              {isPropertyAppraisalTable
-                ? showCompleted
-                  ? "عرض قائمة العمل"
-                  : "إظهار الكل"
-                : showCompleted
-                  ? "إخفاء المكتملة"
-                  : "إظهار المكتملة"}
-            </span>
-          </button>
-        ) : (
-          <OperationalToolbarSelect
-            className="shrink-0"
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            aria-label="تصفية نوع الإسناد"
-          >
-            <option value="">جميع أنواع الإسناد</option>
-            {assignmentTypes.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </OperationalToolbarSelect>
-        )}
+              <option value="">جميع الحالات</option>
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </OperationalToolbarSelect>
+          ) : null}
+          {isPartyQueueToggleTable ? (
+            <button
+              type="button"
+              onClick={() => setShowCompleted((v) => !v)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg border px-[13px] py-2 text-[12.5px] font-bold transition-colors max-lg:justify-center",
+                showCompleted
+                  ? "border-ink bg-ink text-white"
+                  : "border-border-md bg-surface text-text-2 hover:bg-surface-2",
+              )}
+              aria-pressed={showCompleted}
+            >
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              <span>
+                {isPropertyAppraisalTable
+                  ? showCompleted
+                    ? "عرض قائمة العمل"
+                    : "إظهار الكل"
+                  : showCompleted
+                    ? "إخفاء المكتملة"
+                    : "إظهار المكتملة"}
+              </span>
+            </button>
+          ) : (
+            <OperationalToolbarSelect
+              className="shrink-0"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              aria-label="تصفية نوع الإسناد"
+            >
+              <option value="">جميع أنواع الإسناد</option>
+              {assignmentTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </OperationalToolbarSelect>
+          )}
+        </div>
         {isAllTransactionsTable ? (
           <button
             type="button"
             onClick={toggleGroupByPo}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg border px-[13px] py-2 text-[12.5px] font-bold transition-colors",
+              "inline-flex items-center gap-1.5 rounded-lg border px-[13px] py-2 text-[12.5px] font-bold transition-colors max-lg:w-full max-lg:justify-center",
               groupByPo
                 ? "border-ink bg-ink text-white"
                 : "border-border-md bg-surface text-text-2 hover:bg-surface-2",
@@ -1075,21 +1098,8 @@ export function ActiveTransactionQueueView({
             <span>تجميع حسب أمر العمل</span>
           </button>
         ) : null}
-        {isPartyQueueToggleTable ? (
-          <span className="ms-auto shrink-0 rounded-full bg-gold-soft px-3 py-[5px] text-[12px] font-bold text-gold-d">
-            {queueReady
-              ? isPropertyAppraisalTable
-                ? `${filteredListed.length} عقار`
-                : `${filteredListed.length} صك`
-              : "—"}
-          </span>
-        ) : null}
+        {resultCountChip}
       </div>
-      {!isPartyQueueToggleTable ? (
-        <span className="shrink-0 text-[12.5px] font-semibold text-text-3">
-          {queueReady ? `${filteredListed.length} نتيجة` : "—"}
-        </span>
-      ) : null}
     </PageToolbar>
   ) : null;
 
