@@ -1,0 +1,1 @@
+function taskActive(t){ return t.status==='created'||t.status==='in_progress'; }
