@@ -5,6 +5,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type ReactNode,
   type RefObject,
 } from "react";
 import { Button, cn } from "@platform/design-system";
@@ -21,11 +22,60 @@ import { InspectorFeesTab } from "./InspectorFeesTab";
 
 type MobileTab = "inspection" | "key" | "fees" | "failures";
 
-const TABS: { id: MobileTab; label: string; icon: string }[] = [
-  { id: "inspection", label: "المعاينة", icon: "ti-clipboard-check" },
-  { id: "key", label: "المفتاح", icon: "ti-key" },
-  { id: "fees", label: "المالية", icon: "ti-coin" },
-  { id: "failures", label: "تعذر", icon: "ti-alert-triangle" },
+function IconClose() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  );
+}
+
+function IconAlert() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+      <path d="M12 9v4M12 17h.01" />
+    </svg>
+  );
+}
+
+function IconClipboard() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="8" y="2" width="8" height="4" rx="1" />
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+      <path d="M9 12h6M9 16h6" />
+    </svg>
+  );
+}
+
+function IconKey() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M21 2l-2 2m-7.6 7.6a5 5 0 1 1-2.8-2.8L15 4h3v3l-4.6 4.6" />
+      <circle cx="7.5" cy="16.5" r="1" />
+    </svg>
+  );
+}
+
+function IconCoin() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M14.5 9.5c-.5-1-1.5-1.5-2.5-1.5s-2 .6-2.5 1.5S9 11.5 12 12s3 1 2.5 2-.9 1.5-2.5 1.5-2-.5-2.5-1.5" />
+    </svg>
+  );
+}
+
+const TABS: {
+  id: MobileTab;
+  label: string;
+  icon: () => ReactNode;
+}[] = [
+  { id: "inspection", label: "المعاينة", icon: IconClipboard },
+  { id: "key", label: "المفتاح", icon: IconKey },
+  { id: "fees", label: "المالية", icon: IconCoin },
+  { id: "failures", label: "تعذر", icon: IconAlert },
 ];
 
 /**
@@ -89,7 +139,7 @@ export function FieldInspectionMobileShell({
             className="grid size-[38px] shrink-0 place-items-center rounded-[11px] border-none bg-white/14 text-white"
             onClick={onClose}
           >
-            <i className="ti ti-x text-lg" aria-hidden />
+            <IconClose />
           </button>
           <div className="min-w-0 flex-1">
             <div className="text-[15px] font-extrabold leading-tight">
@@ -146,7 +196,7 @@ export function FieldInspectionMobileShell({
                 )}
                 onClick={() => setTab(t.id)}
               >
-                <i className={`ti ${t.icon} text-sm`} aria-hidden />
+                <span className="opacity-90">{t.icon()}</span>
                 {t.label}
               </button>
             );
@@ -208,9 +258,10 @@ export function FieldInspectionMobileShell({
             className="min-h-[52px] shrink-0 rounded-[14px] border-orange px-3 text-orange"
             disabled={submitting}
             showActionToast={false}
+            aria-label="تسجيل تعذر"
             onClick={openFailures}
           >
-            <i className="ti ti-alert-triangle" aria-hidden />
+            <IconAlert />
           </Button>
           <Button
             type="button"

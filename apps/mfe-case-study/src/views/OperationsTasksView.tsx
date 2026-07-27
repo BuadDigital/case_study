@@ -6,6 +6,7 @@ import {
   Input,
   KpiBand,
   KpiCell,
+  MobileKpiStatCards,
   Note,
   OperationalPanel,
   OperationalToolbarPrimaryButton,
@@ -56,6 +57,7 @@ import {
   taskStepperIndex,
   taskUrgency,
 } from "../lib/prototype/operations-task-display";
+import { resolveSlaTimerRatio } from "../lib/prototype/my-task-row";
 import {
   canManageOperationsTasks,
   canRemindOperationsTasks,
@@ -2182,6 +2184,7 @@ export function OperationsTasksView() {
   const mobileCardItems = useMemo((): ActiveQueueMobileCardItem[] => {
     return visibleTasks.map((task) => {
       const cd = taskCountdown(task.dueAt, task.status, now);
+      const active = isActiveOperationsTask(task);
       const tone: ActiveQueueMobileCardItem["tone"] =
         task.status === "completed" || task.status === "cancelled"
           ? "done"
@@ -2192,32 +2195,41 @@ export function OperationsTasksView() {
               : "new";
       const statusColor =
         OPERATIONS_TASK_STATUS_COLORS[task.status] ?? "var(--ink)";
+      const link = operationsTaskLinkLabel(task);
+      const scope = operationsTaskScopeLabel(task.scope);
+      const assignee = (task.assigneeName || task.assigneeId || "").trim();
       return {
         id: task.id,
         title: task.title,
         meta: [
           { text: task.displayId, kind: "po" as const },
           { text: operationsTaskTypeLabel(task.type), kind: "type" as const },
-          {
-            text: operationsTaskPriorityLabel(task.priority),
-            kind: "plain" as const,
-          },
+          assignee
+            ? { text: assignee, kind: "place" as const }
+            : link && link !== "—"
+              ? { text: link, kind: "plain" as const }
+              : { text: scope, kind: "plain" as const },
         ],
         statusLabel: operationsTaskStatusLabel(task.status),
         statusStyle: { base: statusColor, fg: statusColor },
         tone,
-        timerLabel: isActiveOperationsTask(task)
+        timerLabel: active
           ? cd.over
             ? "متأخرة"
-            : cd.txt
+            : cd.txt !== "—" && cd.txt !== "متوقفة"
+              ? cd.txt
+              : undefined
           : undefined,
-        timerOverdue: isActiveOperationsTask(task) ? cd.over : undefined,
+        timerOverdue: active ? cd.over : undefined,
+        timerRatio: active
+          ? resolveSlaTimerRatio(task.dueAt, task.createdAt ?? "", new Date(now))
+          : undefined,
         moreItems: rowMenu(task),
         onOpen: () => {
           setSelectedId(task.id);
           setDetailId(task.id);
         },
-        leading: isActiveOperationsTask(task) ? (
+        leading: active ? (
           <input
             type="checkbox"
             className={opsTkCheckInput}
@@ -2234,29 +2246,6 @@ export function OperationsTasksView() {
             aria-label="تحديد المهمة"
           />
         ) : undefined,
-        footer: (
-          <div className="grid grid-cols-2 gap-2 text-[12px]">
-            <div className="min-w-0">
-              <div className="text-[10.5px] text-text-3">المنفّذ</div>
-              <div className="truncate font-semibold text-heading">
-                {task.assigneeName || task.assigneeId}
-              </div>
-            </div>
-            <div className="min-w-0">
-              <div className="text-[10.5px] text-text-3">الاستحقاق</div>
-              <DueCell task={task} now={now} />
-            </div>
-            <div className="col-span-2 min-w-0">
-              <div className="text-[10.5px] text-text-3">النطاق / الربط</div>
-              <div className="font-semibold text-text">
-                {operationsTaskScopeLabel(task.scope)}
-              </div>
-              <div className="truncate text-[11px] text-text-3" dir="ltr">
-                {operationsTaskLinkLabel(task)}
-              </div>
-            </div>
-          </div>
-        ),
       };
     });
   }, [visibleTasks, now, rowMenu, selectedIds]);
@@ -2731,7 +2720,8 @@ export function OperationsTasksView() {
 
   return (
     <PageShell variant="canvas" className="gap-3.5 p-4 sm:gap-3.5 sm:p-6">
-      <KpiBand className="mb-0 shrink-0 !rounded-[12px]">
+      {/* Desktop: connected KPI band */}
+      <KpiBand className="mb-0 hidden shrink-0 !rounded-[12px] lg:flex">
         <KpiCell
           first
           icon={<TasksKpiActiveIcon />}
@@ -2764,6 +2754,55 @@ export function OperationsTasksView() {
           sub="أُنجزت مؤخراً"
         />
       </KpiBand>
+
+      {/* Mobile: معاينة العقار-style 2×2 stat cards */}
+      <MobileKpiStatCards
+        className="mb-0"
+        items={[
+          {
+            key: "active",
+            label: "مهام نشطة",
+            sub: "قيد الإسناد والتنفيذ",
+            value: kpis.active,
+            icon: <TasksKpiActiveIcon />,
+            iconClass: "bg-gold-soft text-gold-d",
+            tone: "gold",
+            valueClass: "!text-gold-d",
+          },
+          {
+            key: "created",
+            label: "منشأة",
+            sub: "بانتظار البدء",
+            value: kpis.created,
+            icon: <TasksKpiCreatedIcon />,
+            iconClass:
+              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-ink",
+            tone: "ink",
+          },
+          {
+            key: "inProgress",
+            label: "قيد التنفيذ",
+            sub: "جارية الآن",
+            value: kpis.inProgress,
+            icon: <TasksKpiInProgressIcon />,
+            iconClass:
+              "bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#8a5e14]",
+            tone: "gold",
+            valueClass: "!text-gold-d",
+          },
+          {
+            key: "completed",
+            label: "مكتملة",
+            sub: "أُنجزت مؤخراً",
+            value: kpis.completed,
+            icon: <TasksKpiCompletedIcon />,
+            iconClass:
+              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-ink",
+            tone: "ink",
+            valueClass: "!text-ink",
+          },
+        ]}
+      />
 
       <div className={opsToolbar}>
         <div className={cn(opsFilters, "flex-1")}>

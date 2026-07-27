@@ -8,6 +8,7 @@ import {
   Button,
   KpiBand,
   KpiCell,
+  MobileKpiStatCards,
   ModalBody,
   ModalCard,
   ModalClose,
@@ -22,6 +23,11 @@ import {
   cn,
   useToast,
 } from "@platform/design-system";
+import {
+  ActiveQueueMobileCards,
+  type ActiveQueueMobileCardItem,
+} from "@case-study/mfe/components/queue/ActiveQueueMobileCards";
+import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
 import { KeyEnvelopeDetailPage } from "../components/KeyEnvelopeDetailModal";
 import { KeyEnvelopeFeesPanel } from "../components/KeyEnvelopeFeesPanel";
 import {
@@ -350,6 +356,55 @@ export function KeysView() {
     });
   }, [envelopes, search, statusFilter, showOut]);
 
+  const mobileCardItems = useMemo((): ActiveQueueMobileCardItem[] => {
+    return filtered.map((env) => {
+      const out = isEnvelopeOutOfCustody(env.status);
+      const stColor = envelopeStatusColor(env.status);
+      const tone: ActiveQueueMobileCardItem["tone"] = out
+        ? "done"
+        : env.countMismatch
+          ? "returned"
+          : env.receiveScenario
+            ? "pending"
+            : "new";
+      const moreItems: RowMoreMenuItem[] = canRegisterEnvelope
+        ? [
+            {
+              id: "delete",
+              label: "حذف الظرف",
+              onClick: () => setPendingDelete(env),
+            },
+          ]
+        : [];
+      return {
+        id: env.id,
+        title: envelopeDisplayRef(env.id, env.createdAtUtc),
+        meta: [
+          {
+            text: env.court?.trim() || "بدون محكمة",
+            kind: "place" as const,
+          },
+          {
+            text: env.requestNumber?.trim()
+              ? `طلب ${env.requestNumber.trim()}`
+              : env.circuit?.trim() || "—",
+            kind: "po" as const,
+          },
+          {
+            text: `${env.keysCountActual} مفاتيح · ${env.assignments.length} صك`,
+            kind: "type" as const,
+          },
+        ],
+        statusLabel: envelopeStatusLabel(env.status),
+        statusStyle: { base: stColor, fg: stColor },
+        tone,
+        muted: out,
+        moreItems,
+        onOpen: () => openEnvelope(env.id),
+      };
+    });
+  }, [filtered, canRegisterEnvelope]);
+
   async function confirmDeleteEnvelope() {
     const env = pendingDelete;
     if (!env) return;
@@ -407,7 +462,7 @@ export function KeysView() {
 
   return (
     <PageShell variant="canvas" className="min-h-0 flex-1 space-y-0">
-      <KpiBand className="mb-6">
+      <KpiBand className="mb-6 hidden lg:flex">
         <KpiCell
           first
           icon={<KpiEnvIcon />}
@@ -449,6 +504,55 @@ export function KeysView() {
           sub="اكتملت معاملاتها — بانتظار الإرجاع أو التسليم"
         />
       </KpiBand>
+
+      <MobileKpiStatCards
+        className="mb-6"
+        items={[
+          {
+            key: "total",
+            label: "إجمالي الأظرف",
+            sub: ready
+              ? `${kpis.delivered} مسلَّمة · عهدة ${kpis.inCustody}`
+              : "—",
+            value: ready ? kpis.total : "—",
+            icon: <KpiEnvIcon />,
+            iconClass: "bg-gold-soft text-gold-d",
+            tone: "gold",
+            valueClass: "!text-gold-d",
+          },
+          {
+            key: "active",
+            label: "الأظرف النشطة",
+            sub: "لها معاملات لم تكتمل",
+            value: ready ? kpis.active : "—",
+            icon: <KpiClockIcon />,
+            iconClass:
+              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-ink",
+            tone: "ink",
+          },
+          {
+            key: "pending",
+            label: "بانتظار المطابقة الميدانية",
+            sub: "صكوك لم تُجرَّب مفاتيحها",
+            value: ready ? kpis.pendingMatch : "—",
+            icon: <KpiAlertIcon />,
+            iconClass:
+              "bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#8a5e14]",
+            tone: "gold",
+          },
+          {
+            key: "ready",
+            label: "أظرف جاهزة للتسليم",
+            sub: "بانتظار الإرجاع أو التسليم",
+            value: ready ? kpis.readyToDeliver : "—",
+            icon: <KpiReadyIcon />,
+            iconClass:
+              "bg-[color-mix(in_srgb,var(--red)_12%,transparent)] text-red",
+            tone: "red",
+            valueClass: "!text-red",
+          },
+        ]}
+      />
 
       {/* .toolbar — renderKeys */}
       <div className="mb-3.5 flex flex-wrap items-center justify-between gap-4">
@@ -521,7 +625,12 @@ export function KeysView() {
       </div>
 
       {/* .card > .scroll > .grid — keyDrawList */}
-      <div className={keysCardClassName}>
+      <div
+        className={cn(
+          keysCardClassName,
+          "max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none",
+        )}
+      >
         <div className="overflow-x-auto rounded-xl">
           <div className="hidden min-w-[960px] lg:block">
             <KeysGridHead cols={KEYS_LIST_COLS}>
@@ -614,110 +723,19 @@ export function KeysView() {
             )}
           </div>
 
-          {/* Mobile cards — responsive affordance beyond HTML desktop grid */}
+          {/* Mobile cards — لغة المعاين */}
           <div className="lg:hidden">
-            {!ready ? (
-              <div className="space-y-2.5 p-3">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-[88px] animate-pulse rounded-[12px] bg-surface-2"
-                  />
-                ))}
-              </div>
-            ) : filtered.length === 0 ? (
-              <KeysEmpty
-                title="لا توجد ظروف مطابقة"
-                sub="جرّب تعديل البحث أو الفلاتر"
-              />
-            ) : (
-              <ul className="m-0 flex list-none flex-col divide-y divide-border p-0">
-                {filtered.map((env) => {
-                  const out = isEnvelopeOutOfCustody(env.status);
-                  return (
-                    <li key={`m-${env.id}`}>
-                      <button
-                        type="button"
-                        className={cn(
-                          "flex w-full cursor-pointer flex-col gap-2.5 border-none bg-transparent px-3.5 py-3.5 text-start transition-colors active:bg-row-hover",
-                          out && "opacity-55 saturate-[0.6]",
-                        )}
-                        onClick={() => openEnvelope(env.id)}
-                        onContextMenu={(e) => {
-                          if (!canRegisterEnvelope) return;
-                          e.preventDefault();
-                          setPendingDelete(env);
-                        }}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <div
-                              className="text-[14px] font-bold text-gold-d"
-                              dir="ltr"
-                            >
-                              {envelopeDisplayRef(env.id, env.createdAtUtc)}
-                            </div>
-                            <div className="mt-0.5 text-[12.5px] font-semibold text-heading">
-                              {env.court || "—"}
-                              <span className="font-normal text-text-3">
-                                {" "}
-                                · {env.circuit || "—"}
-                              </span>
-                            </div>
-                          </div>
-                          <span className="shrink-0 text-text-3">
-                            <ChevronIcon />
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <KeysStatusPill
-                            label={envelopeStatusLabel(env.status)}
-                            color={envelopeStatusColor(env.status)}
-                          />
-                          <KeysStatusPill
-                            label={scenarioLabel(env.receiveScenario)}
-                            color={scenarioColor(env.receiveScenario)}
-                          />
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 text-[12px]">
-                          <div>
-                            <div className="text-[10.5px] text-text-3">
-                              المفاتيح
-                            </div>
-                            <div className="font-extrabold tabular-nums text-heading">
-                              {env.keysCountActual}
-                              {env.countMismatch ? <MismatchIcon /> : null}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-[10.5px] text-text-3">
-                              الطلب
-                            </div>
-                            <div className="truncate font-semibold text-text-2">
-                              {env.requestNumber || "—"}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-[10.5px] text-text-3">
-                              الصكوك
-                            </div>
-                            <div className="font-bold tabular-nums text-text-2">
-                              {env.assignments.length}
-                            </div>
-                          </div>
-                        </div>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+            <ActiveQueueMobileCards
+              items={mobileCardItems}
+              pending={!ready}
+              emptyMessage="لا توجد ظروف مطابقة"
+            />
           </div>
         </div>
       </div>
 
       {canRegisterEnvelope && filtered.length > 0 ? (
-        <p className="m-0 mt-3 text-[11px] text-text-3">
+        <p className="m-0 mt-3 hidden text-[11px] text-text-3 lg:block">
           زر يمين على الصف لفتح تأكيد حذف الظرف.
         </p>
       ) : null}

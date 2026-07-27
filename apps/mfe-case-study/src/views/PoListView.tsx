@@ -24,6 +24,7 @@ import {
   Button,
   KpiBand,
   KpiCell,
+  MobileKpiStatCards,
   OperationalPanel,
   OperationalToolbarPrimaryButton,
   OperationalToolbarSearch,
@@ -48,9 +49,17 @@ import {
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import { RowMoreMenu } from "@case-study/mfe/components/ui/RowMoreMenu";
 import { buildPoListRowMoreItems } from "../lib/prototype/po-list-row-menu";
+import {
+  ActiveQueueMobileCards,
+  type ActiveQueueMobileCardItem,
+} from "../components/queue/ActiveQueueMobileCards";
 import { ltrValueClass } from "../components/po-intake/PropertyDetailFields";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { formatDateAr, isPastDue } from "../lib/prototype/po-intake-data";
+import {
+  formatDateAr,
+  formatPoDisplay,
+  isPastDue,
+} from "../lib/prototype/po-intake-data";
 import {
   cancelPoRecord,
   deletePoRecord,
@@ -582,6 +591,100 @@ export function PoListView() {
   const rangeStart = filtered.length === 0 ? 0 : (safePage - 1) * pageSize + 1;
   const rangeEnd = Math.min(safePage * pageSize, filtered.length);
 
+  const mobileCardItems = useMemo((): ActiveQueueMobileCardItem[] => {
+    return pageRows.map((entry) => {
+      const p = entry.view === "po" ? entry.item.row : entry.item.row;
+      const deedEntry =
+        entry.view === "property" ? entry.item.deed : null;
+      const match =
+        entry.view === "po" ? entry.item.match : entry.item.match;
+      const registered = p.registered ?? registeredByPo.get(p.id) ?? 0;
+      const studied = p.done ?? 0;
+      const expected = p.count ?? 0;
+      const pct = poProgressPct(registered, studied, expected);
+      const urgent = isDueUrgent(p.dueDate, p.status);
+      const target =
+        deedEntry || match?.propertyId
+          ? poPropertyPath(
+              p.id,
+              deedEntry?.propertyId ?? match!.propertyId!,
+            )
+          : poPropertiesPath(p.id);
+      const rowKey =
+        entry.view === "property"
+          ? `${p.id}-${deedEntry!.propertyId}`
+          : p.id;
+      const deedLabel = deedEntry?.deedNumber?.trim();
+      const statusMeta = poListStatusMeta(p.status);
+      const statusStyle = poStatusStyle(p.status);
+      const tone: ActiveQueueMobileCardItem["tone"] = isPoListStatusTerminal(
+        p.status,
+      )
+        ? "done"
+        : urgent
+          ? "returned"
+          : p.status === "under_study" || pct > 0
+            ? "pending"
+            : "new";
+      const specialist =
+        p.specialist && p.specialist !== "—" ? p.specialist.trim() : "";
+
+      return {
+        id: rowKey,
+        title: deedLabel
+          ? deedLabel.startsWith("صك")
+            ? deedLabel
+            : `صك ${deedLabel}`
+          : formatPoDisplay(p.id),
+        meta: [
+          ...(deedLabel
+            ? [{ text: formatPoDisplay(p.id), kind: "po" as const }]
+            : []),
+          { text: p.type || "—", kind: "type" as const },
+          specialist
+            ? { text: specialist, kind: "place" as const }
+            : {
+                text: `${studied}/${expected || p.count || 0} مكتمل`,
+                kind: "plain" as const,
+              },
+        ],
+        statusLabel: statusMeta.label,
+        statusStyle: {
+          base: statusStyle.base,
+          fg: statusStyle.fg,
+        },
+        tone,
+        timerLabel: `${pct}%`,
+        timerRatio: Math.min(1, Math.max(0, pct / 100)),
+        timerOverdue: urgent,
+        moreItems: buildPoListRowMoreItems({
+          poNumber: p.id,
+          status: p.status,
+          showEdit,
+          showDelete,
+          showLifecycleActions: showEdit,
+          showCreateOperationsTask,
+          deleting: deletingPo === p.id,
+          lifecycleBusy: lifecyclePo === p.id,
+          router,
+          onDelete: () => void handleDeletePo(p.id),
+          onCancel: () => void handleCancelPo(p.id),
+          onStop: () => void handleStopPo(p.id),
+        }),
+        onOpen: () => router.push(target),
+      };
+    });
+  }, [
+    pageRows,
+    registeredByPo,
+    showEdit,
+    showDelete,
+    showCreateOperationsTask,
+    deletingPo,
+    lifecyclePo,
+    router,
+  ]);
+
   useEffect(() => {
     setPage(1);
   }, [search, statusFilter, typeFilter]);
@@ -666,7 +769,7 @@ export function PoListView() {
       ) : null}
 
       <PageShell variant="canvas" className="gap-3 py-4 sm:py-5">
-        <KpiBand className="mb-0 shrink-0">
+        <KpiBand className="mb-0 hidden shrink-0 lg:flex">
           <KpiCell
             first
             className="px-5 py-4"
@@ -705,6 +808,54 @@ export function PoListView() {
             sub="عبر جميع الأوامر"
           />
         </KpiBand>
+
+        <MobileKpiStatCards
+          className="mb-0"
+          items={[
+            {
+              key: "active",
+              label: "أوامر نشطة",
+              sub: "قيد التنفيذ حاليًا",
+              value: kpi ? kpi.active : "—",
+              icon: <KpiClipboardIcon />,
+              iconClass: "bg-gold-soft text-gold-d",
+              tone: "gold",
+              valueClass: "!text-gold-d",
+            },
+            {
+              key: "overdue",
+              label: "متأخرة عن الاستحقاق",
+              sub: "تحتاج معالجة فورية",
+              value: kpi ? kpi.overdue : "—",
+              icon: <KpiAlertIcon />,
+              iconClass:
+                "bg-[color-mix(in_srgb,var(--red)_15%,transparent)] text-red",
+              tone: "red",
+              valueClass: "!text-red",
+            },
+            {
+              key: "dueSoon",
+              label: "تستحق خلال 48 ساعة",
+              sub: "قدّمها في الأولوية",
+              value: kpi ? kpi.dueSoon : "—",
+              icon: <KpiClockIcon />,
+              iconClass:
+                "bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#b8791a]",
+              tone: "gold",
+            },
+            {
+              key: "done",
+              label: "عقارات أُنجزت اليوم",
+              sub: "عبر جميع الأوامر",
+              value: kpi ? kpi.doneProps : "—",
+              icon: <KpiCheckIcon />,
+              iconClass:
+                "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-ink",
+              tone: "ink",
+              valueClass: "!text-ink",
+            },
+          ]}
+        />
 
         <PageToolbar className="mb-0 flex shrink-0 flex-wrap items-center justify-between gap-2 border-b-0 bg-transparent px-0 py-0">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5 max-lg:w-full">
@@ -760,7 +911,7 @@ export function PoListView() {
           ) : null}
         </PageToolbar>
 
-        <OperationalPanel className="shrink-0 overflow-visible">
+        <OperationalPanel className="shrink-0 overflow-visible max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none">
           <div className="hidden lg:block">
           <Table pending={!statsReady}>
                 <THead>
@@ -989,138 +1140,16 @@ export function PoListView() {
               </Table>
           </div>
 
-          <div className="lg:hidden">
-            {!statsReady ? (
-              <div className="space-y-2.5 p-3">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-[108px] animate-pulse rounded-[12px] bg-surface-2"
-                  />
-                ))}
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-2 px-5 py-12 text-center text-[13px] text-text-3">
-                <InboxIcon />
-                <span>
-                  {list.length === 0
-                    ? "لا توجد أوامر عمل."
-                    : "لا توجد نتائج مطابقة"}
-                </span>
-              </div>
-            ) : (
-              <ul className="m-0 flex list-none flex-col gap-2.5 p-3">
-                {pageRows.map((entry) => {
-                  const p =
-                    entry.view === "po" ? entry.item.row : entry.item.row;
-                  const deedEntry =
-                    entry.view === "property" ? entry.item.deed : null;
-                  const match =
-                    entry.view === "po"
-                      ? entry.item.match
-                      : entry.item.match;
-                  const registered =
-                    p.registered ?? registeredByPo.get(p.id) ?? 0;
-                  const studied = p.done ?? 0;
-                  const expected = p.count ?? 0;
-                  const pct = poProgressPct(registered, studied, expected);
-                  const urgent = isDueUrgent(p.dueDate, p.status);
-                  const target =
-                    deedEntry || match?.propertyId
-                      ? poPropertyPath(
-                          p.id,
-                          deedEntry?.propertyId ?? match!.propertyId!,
-                        )
-                      : poPropertiesPath(p.id);
-                  const rowKey =
-                    entry.view === "property"
-                      ? `${p.id}-${deedEntry!.propertyId}`
-                      : p.id;
-
-                  return (
-                    <li key={`m-${rowKey}`}>
-                      <button
-                        type="button"
-                        className="flex w-full cursor-pointer flex-col gap-2.5 rounded-[12px] border border-border bg-surface px-3.5 py-3 text-start shadow-card transition-colors active:bg-row-hover"
-                        onClick={() => router.push(target)}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <div
-                              className="text-[14px] font-bold text-primary"
-                              dir="ltr"
-                            >
-                              {p.id}
-                            </div>
-                            <div className="mt-1 inline-flex items-center rounded-md border border-border-md bg-surface-2 px-2.5 py-[3px] text-[12px] font-medium text-text-2">
-                              {p.type}
-                            </div>
-                          </div>
-                          <PoStatusPill status={p.status} />
-                        </div>
-                        <div className="flex items-center gap-2.5">
-                          <div
-                            className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full"
-                            style={{
-                              background:
-                                "color-mix(in srgb, var(--text-3) 26%, transparent)",
-                            }}
-                          >
-                            <div
-                              className="h-full rounded-full"
-                              style={{
-                                width: `${pct}%`,
-                                background: progFill(pct),
-                              }}
-                            />
-                          </div>
-                          <span className="shrink-0 text-[12px] font-bold tabular-nums text-heading">
-                            {pct}%
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 text-[12px]">
-                          <div>
-                            <div className="text-[10.5px] text-text-3">
-                              الصكوك
-                            </div>
-                            <div className="font-extrabold tabular-nums text-heading">
-                              {p.count}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-[10.5px] text-text-3">
-                              المكتملة
-                            </div>
-                            <div className="font-bold tabular-nums text-text-2">
-                              {studied}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-[10.5px] text-text-3">
-                              الاستحقاق
-                            </div>
-                            <div
-                              className={cn(
-                                "font-semibold",
-                                urgent ? "text-red" : "text-heading",
-                              )}
-                            >
-                              {p.dueDate ? formatDateAr(p.dueDate) : "—"}
-                            </div>
-                          </div>
-                        </div>
-                        {p.specialist && p.specialist !== "—" ? (
-                          <div className="text-[12px] text-text-2">
-                            <span className="text-text-3">الأخصائي: </span>
-                            {p.specialist}
-                          </div>
-                        ) : null}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+          <div className="px-0 pb-1 lg:hidden">
+            <ActiveQueueMobileCards
+              items={mobileCardItems}
+              pending={!statsReady}
+              emptyMessage={
+                list.length === 0
+                  ? "لا توجد أوامر عمل."
+                  : "لا توجد نتائج مطابقة"
+              }
+            />
           </div>
         </OperationalPanel>
 

@@ -15,6 +15,7 @@ import {
   formControlClassName,
   KpiBand,
   KpiCell,
+  MobileKpiStatCards,
   Note,
   OperationalPanel,
   OperationalToolbarSearch,
@@ -535,6 +536,10 @@ export function FailuresView() {
           ? f.deedNumber
           : `صك ${f.deedNumber}`
         : failureRecordTitle(f);
+      const specialist =
+        assignmentSpecialistByPo.get(f.poNumber.trim())?.trim() ||
+        f.specialist?.trim() ||
+        "";
       return {
         id: f.id,
         anchorId: `failure-${f.id}`,
@@ -545,14 +550,20 @@ export function FailuresView() {
             text: failureListSeverityLabel(f.severity),
             kind: "type" as const,
           },
-          {
-            text: failureActorLabel(f.raisedByRole),
-            kind: "plain" as const,
-          },
+          specialist
+            ? { text: specialist, kind: "place" as const }
+            : {
+                text: failureActorLabel(f.raisedByRole),
+                kind: "plain" as const,
+              },
         ],
         statusLabel: failureListStatusLabel(f.status, f.severity),
         statusStyle: { base: statusColor, fg: statusColor },
-        tone: f.severity === "suspected" ? "pending" : "returned",
+        tone: !active
+          ? "done"
+          : f.severity === "suspected"
+            ? "pending"
+            : "returned",
         moreItems: [],
         muted: !active,
         expanded,
@@ -596,7 +607,7 @@ export function FailuresView() {
         </Note>
       ) : null}
 
-      <KpiBand>
+      <KpiBand className="mb-0 hidden lg:flex">
         <KpiCell
           first
           icon={<KpiAlertIcon />}
@@ -635,6 +646,58 @@ export function FailuresView() {
           sub="سجلات التعذر"
         />
       </KpiBand>
+
+      <MobileKpiStatCards
+        className="mb-0"
+        items={[
+          {
+            key: "open",
+            label: "تعذرات مفتوحة",
+            sub: !isFetched
+              ? "—"
+              : stats.open > 0
+                ? "تحتاج معالجة"
+                : "لا تعذرات مفتوحة",
+            value: !isFetched ? "—" : stats.open,
+            icon: <KpiAlertIcon />,
+            iconClass: "bg-[var(--gold-soft)] text-[var(--gold-d)]",
+            tone: "gold",
+            valueClass: "!text-gold-d",
+          },
+          {
+            key: "review",
+            label: "عند مشرف دراسة الحالة",
+            sub: "بانتظار الاعتماد",
+            value: !isFetched ? "—" : stats.review,
+            icon: <KpiClockIcon />,
+            iconClass:
+              "bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#8a5e14]",
+            tone: "gold",
+            valueClass: "!text-gold-d",
+          },
+          {
+            key: "closed",
+            label: "معتمدة / تم الحل",
+            sub: isFetched ? stats.closedPct : "—",
+            value: !isFetched ? "—" : stats.closed,
+            icon: <KpiCheckIcon />,
+            iconClass:
+              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-ink",
+            tone: "ink",
+            valueClass: "!text-ink",
+          },
+          {
+            key: "total",
+            label: "الإجمالي",
+            sub: "سجلات التعذر",
+            value: !isFetched ? "—" : stats.total,
+            icon: <KpiClipboardIcon />,
+            iconClass:
+              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-ink",
+            tone: "ink",
+          },
+        ]}
+      />
 
       <PageToolbar className="mb-0 flex shrink-0 flex-wrap items-center justify-between gap-2 border-b-0 bg-transparent px-0 py-0">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">

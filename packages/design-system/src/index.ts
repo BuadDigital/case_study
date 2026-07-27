@@ -49,6 +49,11 @@ export {
 } from "./components/StatCard";
 export { KpiBand, KpiCell } from "./components/KpiBand";
 export {
+  MobileKpiStatCards,
+  type MobileKpiStatItem,
+  type MobileKpiTone,
+} from "./components/MobileKpiStatCards";
+export {
   InfathFloatLabel,
   InfathWordsValue,
   InfathTextField,
