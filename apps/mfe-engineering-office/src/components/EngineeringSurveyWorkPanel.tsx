@@ -31,10 +31,12 @@ import { failureRaiserRoleForParty } from "@failures/mfe/lib/failure-party-roles
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 import { isActiveFailureStatus } from "@failures/mfe/lib/failures-types";
 import {
+  createEngineeringSurveyDraft,
   isEngineeringSurveyFormLocked,
   type EngineeringSurveySubmission,
 } from "../lib/engineering-survey-data";
 import {
+  fetchEngineeringSurveySubmission,
   getOrCreateEngineeringSurveyDraft,
   loadEngineeringSurveySubmission,
   updateEngineeringSurveyDraft,
@@ -213,20 +215,39 @@ export function EngineeringSurveyWorkPanel({
   useEffect(() => {
     if (!propertyId) return;
     let cancelled = false;
-    void getOrCreateEngineeringSurveyDraft({
-      taskId: task.id,
-      propertyId,
-      poNumber: task.poNumber,
-    }).then((loaded) => {
-      if (cancelled) return;
-      setDraft(loaded);
-      setLocalFields(localFieldsFromDraft(loaded));
-      setNoteDraft(loaded.transactionNote ?? "");
-    });
+    const readOnly = forceReadOnly || viewOnly;
+    const load = readOnly
+      ? fetchEngineeringSurveySubmission(task.id).then(
+          (existing) =>
+            existing ??
+            createEngineeringSurveyDraft({
+              taskId: task.id,
+              propertyId,
+              poNumber: task.poNumber,
+            }),
+        )
+      : getOrCreateEngineeringSurveyDraft({
+          taskId: task.id,
+          propertyId,
+          poNumber: task.poNumber,
+        });
+    void load
+      .then((loaded) => {
+        if (cancelled) return;
+        setDraft(loaded);
+        setLocalFields(localFieldsFromDraft(loaded));
+        setNoteDraft(loaded.transactionNote ?? "");
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setFormError(
+          err instanceof Error ? err.message : "تعذّر تحميل مسودة الرفع المساحي",
+        );
+      });
     return () => {
       cancelled = true;
     };
-  }, [task.id, task.poNumber, propertyId]);
+  }, [task.id, task.poNumber, propertyId, forceReadOnly, viewOnly]);
 
   const locked =
     (draft ? isEngineeringSurveyFormLocked(draft.status) : false) ||

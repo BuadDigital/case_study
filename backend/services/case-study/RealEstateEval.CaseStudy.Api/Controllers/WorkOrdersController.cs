@@ -1,9 +1,9 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
+using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
@@ -110,7 +110,10 @@ public class WorkOrdersController : ControllerBase
         [FromBody] CreateWorkOrderRequest request,
         CancellationToken cancellationToken)
     {
-        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanReceivePo, cancellationToken);
+        var forbidden = await ForbidUnlessAsync(
+            PoRoleMatrixRules.CanReceivePo,
+            cancellationToken,
+            "تسجيل أمر العمل متاح لأخصائي دراسة الحالة أو مشرف القسم فقط");
         if (forbidden is not null) return forbidden;
 
         var (result, errors) = await _workOrders.CreateAsync(
@@ -252,8 +255,8 @@ public class WorkOrdersController : ControllerBase
         [FromBody] UpdateLocationMapUrlRequest request,
         CancellationToken cancellationToken)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId)) return Forbid();
+        var userId = ActorClaims.Id(User);
+        if (string.IsNullOrWhiteSpace(userId) || userId == "unknown") return Forbid();
         var perms = await _permissions.GetForUserIdAsync(userId, cancellationToken);
         if (!DocumentaryWorkflowRules.RoleCanSetLocationMapUrl(perms?.PrototypeRole))
             return Forbid();
@@ -291,13 +294,18 @@ public class WorkOrdersController : ControllerBase
 
     private async Task<ActionResult?> ForbidUnlessAsync(
         Func<string?, bool> allow,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? forbiddenMessage = null)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId)) return Forbid();
+        var userId = ActorClaims.Id(User);
+        if (string.IsNullOrWhiteSpace(userId) || userId == "unknown") return Forbid();
         var perms = await _permissions.GetForUserIdAsync(userId, cancellationToken);
         if (!allow(perms?.PrototypeRole))
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "ليس لديك صلاحية لهذا الإجراء" });
+        {
+            return StatusCode(
+                StatusCodes.Status403Forbidden,
+                new { message = forbiddenMessage ?? "ليس لديك صلاحية لهذا الإجراء" });
+        }
         return null;
     }
 }

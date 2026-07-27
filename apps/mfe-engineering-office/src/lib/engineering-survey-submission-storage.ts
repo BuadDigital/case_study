@@ -79,11 +79,13 @@ export function loadEngineeringSurveySubmission(
 
 export async function fetchEngineeringSurveySubmission(
   taskId: string,
+  options?: { persistFixes?: boolean },
 ): Promise<EngineeringSurveySubmission | null> {
   const dto = await fetchPartySubmission(taskId);
   let sub = dtoToSubmission(dto);
   if (!sub) return null;
 
+  let dirty = false;
   const checklistValid =
     Array.isArray(sub.checklist) &&
     sub.checklist.length === ENGINEERING_SURVEY_CHECKLIST_ITEMS.length;
@@ -92,7 +94,7 @@ export async function fetchEngineeringSurveySubmission(
       ...sub,
       checklist: normalizeEngineeringSurveyChecklist(sub.checklist),
     };
-    await saveEngineeringSurveySubmission(sub);
+    dirty = true;
   }
   if (
     sub.status !== "submitted" &&
@@ -100,12 +102,17 @@ export async function fetchEngineeringSurveySubmission(
   ) {
     const defaults = jeddahDefaultCoords();
     sub = { ...sub, ...defaults };
+    dirty = true;
+  }
+  // Viewers (specialist advisory / read-only) must not PUT — only the
+  // assigned party may persist normalization fixes.
+  if (dirty && options?.persistFixes) {
     await saveEngineeringSurveySubmission(sub);
   }
   return sub;
 }
 
-/** Load from API; creates draft when missing (for advisory panels). */
+/** Load from API for advisory / read-only panels — never creates a draft. */
 export async function loadEngineeringSurveySubmissionAsync(input: {
   taskId: string;
   propertyId?: string;
@@ -113,14 +120,7 @@ export async function loadEngineeringSurveySubmissionAsync(input: {
 }): Promise<EngineeringSurveySubmission | null> {
   const cached = loadEngineeringSurveySubmission(input.taskId);
   if (cached) return cached;
-  const fetched = await fetchEngineeringSurveySubmission(input.taskId);
-  if (fetched) return fetched;
-  if (!input.propertyId || !input.poNumber) return null;
-  return getOrCreateEngineeringSurveyDraft({
-    taskId: input.taskId,
-    propertyId: input.propertyId,
-    poNumber: input.poNumber,
-  });
+  return fetchEngineeringSurveySubmission(input.taskId);
 }
 
 export async function saveEngineeringSurveySubmission(
@@ -148,14 +148,12 @@ export async function getOrCreateEngineeringSurveyDraft(input: {
   propertyId: string;
   poNumber: string;
 }): Promise<EngineeringSurveySubmission> {
-  const existing = await fetchEngineeringSurveySubmission(input.taskId);
+  const existing = await fetchEngineeringSurveySubmission(input.taskId, {
+    persistFixes: true,
+  });
   if (existing) return existing;
   const draft = createEngineeringSurveyDraft(input);
-  const saved = await saveEngineeringSurveySubmission(draft);
-  if (!saved) {
-    throw new Error("تعذّر حفظ مسودة الرفع — تحقق من الاتصال وحاول مجدداً.");
-  }
-  return saved;
+  return saveEngineeringSurveySubmission(draft);
 }
 
 export async function updateEngineeringSurveyDraft(

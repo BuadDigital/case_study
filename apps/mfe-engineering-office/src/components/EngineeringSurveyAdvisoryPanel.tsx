@@ -79,12 +79,19 @@ export function EngineeringSurveyAdvisoryPanel({
       taskId: surveyTask.id,
       propertyId: surveyTask.propertyId,
       poNumber: surveyTask.poNumber,
-    }).then((loaded) => {
-      if (!cancelled) {
-        setSubmission(loaded);
-        setLoadingSubmission(false);
-      }
-    });
+    })
+      .then((loaded) => {
+        if (!cancelled) {
+          setSubmission(loaded);
+          setLoadingSubmission(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSubmission(null);
+          setLoadingSubmission(false);
+        }
+      });
     return () => {
       cancelled = true;
     };
