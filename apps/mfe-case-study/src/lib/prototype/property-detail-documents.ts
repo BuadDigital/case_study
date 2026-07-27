@@ -57,12 +57,21 @@ export function collectIntakeDocuments(input: {
   const source = "البيانات الأولية";
 
   if (property.realEstateRegFileName?.trim()) {
+    const name = property.realEstateRegFileName.trim();
+    const cached = getCachedPropertyDocMatching(
+      "registry",
+      poNumber,
+      property.id,
+      name,
+    );
     pushEntry(docs, {
       id: "intake-reg",
       name: "السجل العقاري",
-      fileName: property.realEstateRegFileName.trim(),
+      fileName: name,
       source,
-      kind: fileKind(property.realEstateRegFileName),
+      kind: fileKind(name, cached?.mimeType),
+      dataUrl: cached?.dataUrl,
+      attachmentId: cached?.attachmentId,
     });
   }
 
@@ -85,6 +94,7 @@ export function collectIntakeDocuments(input: {
         source,
         kind: fileKind(name, cached?.mimeType),
         dataUrl: cached?.dataUrl,
+        attachmentId: cached?.attachmentId,
       });
     });
   }
@@ -107,6 +117,7 @@ export function collectIntakeDocuments(input: {
       source,
       kind: fileKind(name, cached?.mimeType),
       dataUrl: cached?.dataUrl,
+      attachmentId: cached?.attachmentId,
     });
   });
 
@@ -114,24 +125,41 @@ export function collectIntakeDocuments(input: {
     property.boundariesAvailability === "doc" &&
     property.boundariesExternalDocName?.trim()
   ) {
+    const name = property.boundariesExternalDocName.trim();
+    const cached = getCachedPropertyDocMatching(
+      "boundaries",
+      poNumber,
+      property.id,
+      name,
+    );
     pushEntry(docs, {
       id: "intake-boundaries",
       name: "مستند الحدود",
-      fileName: property.boundariesExternalDocName.trim(),
+      fileName: name,
       source,
-      kind: fileKind(property.boundariesExternalDocName),
+      kind: fileKind(name, cached?.mimeType),
+      dataUrl: cached?.dataUrl,
+      attachmentId: cached?.attachmentId,
     });
   }
 
   property.otherDocumentFileNames.forEach((name, i) => {
     const trimmed = name.trim();
     if (!trimmed) return;
+    const cached = getCachedPropertyDocMatching(
+      "other",
+      poNumber,
+      property.id,
+      trimmed,
+    );
     pushEntry(docs, {
       id: `intake-other-${i}`,
       name: "مستند إضافي",
       fileName: trimmed,
       source,
-      kind: fileKind(trimmed),
+      kind: fileKind(trimmed, cached?.mimeType),
+      dataUrl: cached?.dataUrl,
+      attachmentId: cached?.attachmentId,
     });
   });
 

@@ -23,6 +23,11 @@ export type PartyQuestionContribution = {
   answer: CaseStudyFormAnswer;
   taskId: string;
   taskKind: WorkflowTaskKind;
+  answeredByUserId?: string | null;
+  answeredByName?: string | null;
+  answeredAtUtc?: string | null;
+  sourceRole?: string | null;
+  formId?: string | null;
 };
 
 const KIND_PARTY_LABEL: Partial<
@@ -96,16 +101,25 @@ export async function collectPartyAnswersByQuestion(
         ? partyRoleOnQuestion(matrix, key, partyId)
         : null;
 
+      const provenance = draft.answerProvenance?.[key];
       const entry: PartyQuestionContribution = {
         partyId,
         partyName: partyDef?.name ?? meta.name,
         partyColor: partyDef?.color ?? meta.color,
-        assigneeName: child.assigneeName.trim() || meta.name,
+        assigneeName:
+          provenance?.answeredByName?.trim() ||
+          child.assigneeName.trim() ||
+          meta.name,
         roleType: roleType ?? null,
         roleLabel: roleLabel(roleType),
         answer,
         taskId: child.id,
         taskKind: child.kind,
+        answeredByUserId: provenance?.answeredByUserId,
+        answeredByName: provenance?.answeredByName,
+        answeredAtUtc: provenance?.answeredAtUtc,
+        sourceRole: provenance?.sourceRole,
+        formId: provenance?.formId,
       };
 
       if (!byKey[key]) byKey[key] = [];

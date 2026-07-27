@@ -54,6 +54,12 @@ function dtoToSubmission(
     submittedAtUtc: dto.submittedAtUtc ?? payload.submittedAtUtc,
     acceptedAtUtc: dto.acceptedAtUtc ?? payload.acceptedAtUtc,
     updatedAtUtc: dto.updatedAtUtc ?? payload.updatedAtUtc,
+    surveyNotes:
+      typeof payload.surveyNotes === "string" ? payload.surveyNotes : "",
+    transactionNote:
+      typeof payload.transactionNote === "string"
+        ? payload.transactionNote
+        : "",
     checklist,
   };
 }
@@ -175,6 +181,7 @@ export async function updateEngineeringSurveyDraft(
       | "westBoundary"
       | "westBoundaryLengthM"
       | "surveyNotes"
+      | "transactionNote"
     >
   >,
 ): Promise<EngineeringSurveySubmission | null> {

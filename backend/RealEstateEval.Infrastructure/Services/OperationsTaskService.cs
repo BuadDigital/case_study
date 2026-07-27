@@ -240,6 +240,24 @@ public sealed class OperationsTaskService : IOperationsTaskService
         var entity = await _db.OperationsTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
         if (entity is null) return (null, "المهمة غير موجودة");
 
+        var isManager = IsManager(actorRole);
+        var actor = actorAssigneeId.Trim();
+        var isAssignee = actor.Length > 0
+            && string.Equals(entity.AssigneeId, actor, StringComparison.Ordinal);
+
+        if (!isManager && !isAssignee)
+            return (null, "هذا الإجراء للمنفّذ المكلّف أو المشرف فقط");
+
+        // Non-managers may only transition status / execution fields — not re-author the task.
+        if (!isManager
+            && (request.Title is not null
+                || request.Description is not null
+                || request.Priority is not null
+                || request.DueAtUtc.HasValue))
+        {
+            return (null, "تعديل تفاصيل المهمة للمشرف فقط");
+        }
+
         var now = DateTime.UtcNow;
         var comments = DeserializeComments(entity.CommentsJson).ToList();
         var changed = false;
@@ -569,6 +587,12 @@ public sealed class OperationsTaskService : IOperationsTaskService
             })
             .Take(20)
             .ToList();
+
+        if (!IsManager(actorRole)
+            && entity.AssigneeId != actorAssigneeId.Trim())
+        {
+            return (null, "التعليق متاح للمنفّذ المكلّف أو المشرف فقط");
+        }
 
         var text = request.Text?.Trim() ?? "";
         if (text.Length == 0 && files.Count == 0)

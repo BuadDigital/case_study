@@ -287,10 +287,17 @@ export function EvaluatorAdvisoryPanel({
         <span className="text-left font-medium text-text tabular-nums">
           {formatAmountNumberDisplay(
             computeForcedSaleValue(
-              computePropertyTotal(
-                submission.landValue,
-                submission.buildingValue,
-              ),
+              Number.parseFloat(
+                (
+                  submission.evaluatorPrice ||
+                  String(
+                    computePropertyTotal(
+                      submission.landValue,
+                      submission.buildingValue,
+                    ),
+                  )
+                ).replace(/,/g, ""),
+              ) || 0,
               submission.forcedSaleDiscountPct,
             ),
           )}{" "}

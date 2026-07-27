@@ -8,102 +8,107 @@ import {
   showsCourtFields,
   type PoIntakeRecord,
 } from "@case-study/mfe";
-import { Badge, InlineLoadingSkeleton } from "@platform/design-system";
+import { InlineLoadingSkeleton } from "@platform/design-system";
 import {
-  FieldBox,
-  FieldsGrid,
-  InfoBox,
-  SectionDivider,
-  SectionHeader,
-} from "@case-study/mfe/components/po-intake/PropertyDetailFields";
+  EngField,
+  EngSection,
+  EngStatusPill,
+  ENG_STATUS_COLORS,
+} from "./EngineeringSurveyHtmlPrimitives";
 
 export function EngineeringSurveyPropertySummary({
   property,
   record,
+  deedNumber,
 }: {
   property: PoPropertyIntake | undefined;
   record?: PoIntakeRecord;
+  deedNumber?: string;
 }) {
   if (!property) {
     return <InlineLoadingSkeleton />;
   }
 
-  const deedLabel = formatPropertyDeedDisplay(property);
+  const deedLabel =
+    formatPropertyDeedDisplay(property) || deedNumber?.trim() || "—";
   const restrictions = restrictionsPresentLabel(property.restrictionsPresent);
-  const courtLine = [property.court, property.circuit]
-    .filter(Boolean)
-    .join(" / ");
+  const courtLine =
+    [property.court, property.circuit].filter(Boolean).join(" / ") || "—";
   const showCourt =
     record != null && showsCourtFields(record.assignmentType);
 
   return (
     <>
-      <SectionHeader>بيانات الصك</SectionHeader>
-      <FieldsGrid>
-        <FieldBox label="رقم الصك" value={deedLabel} ltr />
-        <FieldBox label="تاريخ الصك" value={property.deedDate} ltr />
-        <FieldBox label="حالة الصك">
+      <EngSection>بيانات الصك</EngSection>
+      <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+        <EngField label="رقم الصك" value={deedLabel} ltr />
+        <EngField label="تاريخ الصك" value={property.deedDate || "—"} ltr />
+        <EngField label="حالة الصك">
           {property.deedStatus.trim() ? (
-            <Badge tone="primary" className="border-0 text-[11px] font-normal">
-              {property.deedStatus}
-            </Badge>
-          ) : null}
-        </FieldBox>
-        <FieldBox label="اسم المالك" value={property.ownerName} />
-        <FieldBox label="حالة الملك" value={property.deedStatus} />
-        <FieldBox
+            <EngStatusPill
+              label={property.deedStatus}
+              color={ENG_STATUS_COLORS.submitted}
+            />
+          ) : (
+            "—"
+          )}
+        </EngField>
+        <EngField label="اسم المالك" value={property.ownerName || "—"} />
+        <EngField label="حالة الملك" value={property.deedStatus || "—"} />
+        <EngField
           label="القيود على العقار"
-          value={restrictions}
-          emptyLabel="لا توجد قيود"
+          value={restrictions || "لا توجد قيود"}
         />
-      </FieldsGrid>
+      </div>
 
-      <SectionDivider />
-      <SectionHeader>بيانات الموقع</SectionHeader>
-      <FieldsGrid>
-        <FieldBox label="المدينة" value={property.city} />
-        <FieldBox label="الحي" value={property.district} />
+      <EngSection>بيانات الموقع</EngSection>
+      <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+        <EngField label="المدينة" value={property.city || "—"} />
+        <EngField label="الحي" value={property.district || "—"} />
         {showCourt ? (
-          <FieldBox label="المحكمة / الدائرة" value={courtLine} />
-        ) : null}
-        <FieldBox label="رقم المخطط" value={property.planNumber} ltr />
-        <FieldBox label="رقم القطعة" value={property.plotNumber} ltr />
-        <FieldBox
+          <EngField label="المحكمة / الدائرة" value={courtLine} />
+        ) : (
+          <EngField label="المحكمة / الدائرة" value="—" />
+        )}
+        <EngField label="رقم المخطط" value={property.planNumber || "—"} ltr />
+        <EngField label="رقم القطعة" value={property.plotNumber || "—"} ltr />
+        <EngField
           label="توفر الحدود"
-          value={boundariesAvailabilityLabel(property.boundariesAvailability)}
+          value={
+            boundariesAvailabilityLabel(property.boundariesAvailability) || "—"
+          }
         />
-        <FieldBox
-          label="رابط موقع الخريطة"
-          span={2}
-          href={property.locationMapUrl.trim() || undefined}
-        >
-          {property.locationMapUrl.trim() ? "فتح رابط الموقع" : undefined}
-        </FieldBox>
-      </FieldsGrid>
+      </div>
 
-      <SectionDivider />
-      <SectionHeader>البيانات المساحية</SectionHeader>
-      <FieldsGrid>
-        <FieldBox label="التصنيف" value={property.classification} />
-        <FieldBox label="النوع / الاستخدام" value={property.propertyType} />
-        <FieldBox
+      <EngSection>البيانات المساحية</EngSection>
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+        <EngField label="التصنيف" value={property.classification || "—"} />
+        <EngField
+          label="النوع / الاستخدام"
+          value={property.propertyType || "—"}
+        />
+        <EngField
           label="المساحة الإجمالية"
-          value={property.area.trim() ? `${property.area.trim()} م²` : ""}
+          value={
+            property.area.trim() ? `${property.area.trim()} م²` : "—"
+          }
         />
-        <FieldBox label="رقم الطلب" value={property.requestNumber} ltr />
-        <FieldBox
+        <EngField
+          label="رقم الطلب"
+          value={property.requestNumber || "—"}
+          ltr
+        />
+        <EngField
           label="رقم التكليف"
-          value={property.assignmentMandateNumber}
+          value={property.assignmentMandateNumber || "—"}
           ltr
         />
-        <FieldBox
+        <EngField
           label="تاريخ التكليف"
-          value={property.assignmentMandateDate}
+          value={property.assignmentMandateDate || "—"}
           ltr
         />
-        <FieldBox label="رقم المخطط" value={property.planNumber} ltr />
-        <FieldBox label="رقم القطعة" value={property.plotNumber} ltr />
-      </FieldsGrid>
+      </div>
     </>
   );
 }

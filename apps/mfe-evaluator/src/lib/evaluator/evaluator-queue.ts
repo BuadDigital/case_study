@@ -3,7 +3,7 @@ import {
   isVisibleInAppraiserQueue,
   loadEvaluatorSubmission,
 } from "./evaluator-submission-storage";
-import { getPartyTaskRecall } from "@platform/app-shared/prototype/party-task-recall-storage";
+import { appraiserQueueStatusBadge } from "./evaluator-readiness";
 
 export function filterAppraiserQueueTasks(tasks: WorkflowTask[]): WorkflowTask[] {
   return tasks.filter(
@@ -25,37 +25,44 @@ export function filterAppraiserSubmittedTasks(
   });
 }
 
-/** قائمة المقيم: مهام قيد العمل فقط (المُرسَلة للأخصائي تُدار من عقارات أمر العمل). */
+/**
+ * قائمة المقيم — Case Study.html `renderValOrders`:
+ * افتراضياً تُخفى المُرسَلة؛ «إظهار الكل» يعيدها.
+ */
 export function filterAppraiserListedTasks(
   tasks: WorkflowTask[],
+  options?: { showCompleted?: boolean },
 ): WorkflowTask[] {
-  return filterAppraiserQueueTasks(tasks);
+  return tasks.filter((t) => {
+    if (t.kind !== "property-appraisal") return false;
+    return isVisibleInAppraiserQueue(t.id, t.status, {
+      showSubmitted: options?.showCompleted,
+    });
+  });
 }
 
 export function canAppraiserOpenTask(taskId: string, taskStatus: string): boolean {
-  return isVisibleInAppraiserQueue(taskId, taskStatus);
+  return isVisibleInAppraiserQueue(taskId, taskStatus, { showSubmitted: true });
 }
 
+/** @deprecated Prefer appraiserQueueStatusBadge with full task+tasks context. */
 export function appraiserTaskStatusBadge(
   taskId: string,
   taskStatus?: string,
 ): { label: string; className: string } | null {
-  if (taskStatus === "completed") {
-    return { label: "مكتملة", className: "b-done" };
-  }
-  const sub = loadEvaluatorSubmission(taskId);
-  if (sub?.status === "submitted") {
-    const recall = getPartyTaskRecall(taskId);
-    if (recall?.status === "pending") {
-      return { label: "بانتظار موافقة الاستدعاء", className: "b-prog" };
-    }
-    if (recall?.status === "rejected") {
-      return { label: "مُرسَل — رُفِض الاستدعاء", className: "b-fail" };
-    }
-    return { label: "مُرسَل للأخصائي", className: "b-new" };
-  }
-  if (sub?.status === "reopened") {
-    return { label: "مُعاد للتعديل", className: "b-done" };
-  }
-  return null;
+  const stub = {
+    id: taskId,
+    status: (taskStatus ?? "open") as WorkflowTask["status"],
+  } as WorkflowTask;
+  return appraiserQueueStatusBadge(stub, []);
 }
+
+export {
+  appraiserQueueStatusBadge,
+  appraiserReadiness,
+  appraiserQueueStatusGroup,
+  findSiblingSurveyTask,
+  appraiserInspectionDone,
+  appraiserSurveyDone,
+  appraiserNeedsSurvey,
+} from "./evaluator-readiness";

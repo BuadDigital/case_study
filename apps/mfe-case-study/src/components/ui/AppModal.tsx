@@ -20,6 +20,7 @@ export function AppModal({
   open,
   title,
   subtitle,
+  headerIcon,
   children,
   footer,
   onClose,
@@ -31,7 +32,9 @@ export function AppModal({
 }: {
   open: boolean;
   title: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
+  /** Optional leading icon in the header (e.g. reopen lock). */
+  headerIcon?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
   onClose: () => void;
@@ -97,21 +100,36 @@ export function AppModal({
       >
         <ModalHeader
           className={
-            subtitle || opsHtml ? "items-start px-[22px] py-4" : undefined
+            subtitle || opsHtml || headerIcon
+              ? "items-start px-[22px] py-4"
+              : undefined
           }
         >
-          <div className="min-w-0 flex-1">
-            <ModalTitle
-              id={titleId}
-              className="text-start text-[16px] font-extrabold"
-            >
-              {title}
-            </ModalTitle>
-            {subtitle ? (
-              <p className="m-0 mt-1 text-[11.5px] font-normal text-text-3">
-                {subtitle}
-              </p>
+          <div className="flex min-w-0 flex-1 items-start gap-[13px]">
+            {headerIcon ? (
+              <span className="shrink-0" aria-hidden>
+                {headerIcon}
+              </span>
             ) : null}
+            <div className="min-w-0 flex-1">
+              <ModalTitle
+                id={titleId}
+                className="text-start text-[16px] font-extrabold"
+              >
+                {title}
+              </ModalTitle>
+              {subtitle ? (
+                <div
+                  className={
+                    headerIcon
+                      ? "m-0 mt-[5px] text-[12.5px] font-normal leading-[1.7] text-text-2"
+                      : "m-0 mt-1 text-[11.5px] font-normal text-text-3"
+                  }
+                >
+                  {subtitle}
+                </div>
+              ) : null}
+            </div>
           </div>
           {opsHtml ? (
             <button

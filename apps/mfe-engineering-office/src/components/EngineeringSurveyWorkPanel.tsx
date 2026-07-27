@@ -1,27 +1,27 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, InlineLoadingSkeleton, Note, cn, formControlClassName, useToast, InfathTextField, InfathTextAreaField, InfathReadOnlyBox, InfathSection, InfathWordsValue } from "@platform/design-system";
+import { InlineLoadingSkeleton, cn, useToast } from "@platform/design-system";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import type { WorkflowTask } from "@case-study/mfe";
 import { activeSurveyEntryPath } from "@case-study/mfe/lib/my-task-routes";
 import {
   emptyCaseStudyFormDraft,
-  InspectorFeesTab,
   loadPartyCaseStudyFormDraft,
-  PartyCaseStudyFormTab,
   savePartyCaseStudyFormDraft,
 } from "@case-study/mfe";
-import { surveyWorkGate, declarationPhoneGate, hasAnyPartyPhone } from "@case-study/mfe/lib/prototype/documentary-workflow-gates";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { usePoRecordQuery, useWorkflowTasksQuery } from "@case-study/mfe/query/case-study-queries";
 import {
-  InfoBox,
-  SectionDivider,
-  SectionHeader,
-} from "@case-study/mfe/components/po-intake/PropertyDetailFields";
-import { PropertyTransactionTimeline } from "@case-study/mfe/components/po-intake/PropertyTransactionTimeline";
+  surveyWorkGate,
+  declarationPhoneGate,
+  hasAnyPartyPhone,
+} from "@case-study/mfe/lib/prototype/documentary-workflow-gates";
+import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import {
+  usePoRecordQuery,
+  useWorkflowTasksQuery,
+} from "@case-study/mfe/query/case-study-queries";
+import { useInspectorFeesQuery } from "@case-study/mfe/query/inspector-fees-queries";
 import {
   FailureRaisePanel,
   blockingFailureForProperty,
@@ -54,10 +54,6 @@ import { EngineeringSurveyChecklist } from "./EngineeringSurveyChecklist";
 import { EngineeringSurveyMap } from "./EngineeringSurveyMap";
 import { EngineeringSurveyPropertySummary } from "./EngineeringSurveyPropertySummary";
 import {
-  JEDDAH_DEFAULT_LAT,
-  JEDDAH_DEFAULT_LNG,
-} from "../lib/jeddah-default-coords";
-import {
   applyChecklistToCaseStudyAnswers,
   caseStudyAnswersChanged,
 } from "../lib/engineering-survey-checklist-sync";
@@ -66,14 +62,65 @@ import { QuickActionsFab } from "./QuickActionsFab";
 import { usePartyTaskRecallRequest } from "@case-study/mfe/hooks/use-party-task-recall-request";
 import { usePartyTaskRecallEligibility } from "@case-study/mfe/hooks/use-party-task-recall-eligibility";
 import { isEngineeringSurveyTransactionActive } from "../lib/engineering-survey-transaction-active";
+import {
+  EngBackLink,
+  EngField,
+  EngInfo,
+  EngSection,
+  EngStatusPill,
+  EngTabBar,
+  EngUploadBox,
+  ENG_STATUS_COLORS,
+  engCardClassName,
+  engChipClassName,
+  engInputClassName,
+  engLabelClassName,
+  engPpHeadClassName,
+  engPrimaryBtnClassName,
+} from "./EngineeringSurveyHtmlPrimitives";
 
 type WorkTab = "property" | "survey" | "fees" | "notes" | "failures";
+
+type LocalTextFields = {
+  latitude: string;
+  longitude: string;
+  onSiteAreaSqm: string;
+  northBoundary: string;
+  northBoundaryLengthM: string;
+  southBoundary: string;
+  southBoundaryLengthM: string;
+  eastBoundary: string;
+  eastBoundaryLengthM: string;
+  westBoundary: string;
+  westBoundaryLengthM: string;
+  surveyNotes: string;
+};
+
+function localFieldsFromDraft(
+  draft: EngineeringSurveySubmission,
+): LocalTextFields {
+  return {
+    latitude: draft.latitude,
+    longitude: draft.longitude,
+    onSiteAreaSqm: draft.onSiteAreaSqm,
+    northBoundary: draft.northBoundary,
+    northBoundaryLengthM: draft.northBoundaryLengthM,
+    southBoundary: draft.southBoundary,
+    southBoundaryLengthM: draft.southBoundaryLengthM,
+    eastBoundary: draft.eastBoundary,
+    eastBoundaryLengthM: draft.eastBoundaryLengthM,
+    westBoundary: draft.westBoundary,
+    westBoundaryLengthM: draft.westBoundaryLengthM,
+    surveyNotes: draft.surveyNotes,
+  };
+}
 
 export function EngineeringSurveyWorkPanel({
   def,
   childTask: task,
   hostRef,
   deedNumber,
+  onBack,
   onFailureSubmitted,
   variant = "workspace",
   forceReadOnly = false,
@@ -82,20 +129,29 @@ export function EngineeringSurveyWorkPanel({
   childTask: WorkflowTask;
   hostRef: EngineeringSurveyWindowHostRefObject;
   deedNumber: string;
+  onBack?: () => void;
   onFailureSubmitted?: () => void;
   variant?: "workspace" | "entry";
-  /** When true (e.g. completed task), forms stay visible but locked. */
   forceReadOnly?: boolean;
 }) {
   const router = useRouter();
   const { role } = usePrototype();
-  const readOnly = variant === "workspace" || forceReadOnly;
+  const viewOnly = variant === "workspace";
   const propertyId = task.propertyId ?? "";
   const { showToast, runWithUploadToast } = useToast();
   const { data: record } = usePoRecordQuery(task.poNumber);
   const property = record?.properties.find((p) => p.id === propertyId);
   const { data: failures = [] } = useFailuresQuery();
   const { data: workflowTasks = [] } = useWorkflowTasksQuery();
+  const { data: feesSummary } = useInspectorFeesQuery({
+    workflowTaskId: task.id,
+    submittedOnly: false,
+  });
+
+  const feeForTask = useMemo(() => {
+    const rows = feesSummary?.rows ?? [];
+    return rows.find((r) => r.workflowTaskId === task.id) ?? null;
+  }, [feesSummary?.rows, task.id]);
 
   const activeFailureCount = useMemo(() => {
     if (!propertyId) return 0;
@@ -140,6 +196,7 @@ export function EngineeringSurveyWorkPanel({
   );
 
   const [draft, setDraft] = useState<EngineeringSurveySubmission | null>(null);
+  const [localFields, setLocalFields] = useState<LocalTextFields | null>(null);
   const [workTab, setWorkTab] = useState<WorkTab>("survey");
   const [fieldErrors, setFieldErrors] = useState<EngineeringSurveyFieldErrors>(
     {},
@@ -148,6 +205,10 @@ export function EngineeringSurveyWorkPanel({
   const [failureRaiseOpen, setFailureRaiseOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
   const [savingLocal, setSavingLocal] = useState(false);
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingPatchRef = useRef<Parameters<
+    typeof updateEngineeringSurveyDraft
+  >[1]>({});
 
   useEffect(() => {
     if (!propertyId) return;
@@ -157,26 +218,28 @@ export function EngineeringSurveyWorkPanel({
       propertyId,
       poNumber: task.poNumber,
     }).then((loaded) => {
-      if (!cancelled) setDraft(loaded);
+      if (cancelled) return;
+      setDraft(loaded);
+      setLocalFields(localFieldsFromDraft(loaded));
+      setNoteDraft(loaded.transactionNote ?? "");
     });
     return () => {
       cancelled = true;
     };
   }, [task.id, task.poNumber, propertyId]);
 
-  const locked = draft ? isEngineeringSurveyFormLocked(draft.status) : false;
-  const formDisabled = locked || readOnly;
+  const locked =
+    (draft ? isEngineeringSurveyFormLocked(draft.status) : false) ||
+    forceReadOnly ||
+    task.status === "completed";
+  const formDisabled = locked || viewOnly || !documentaryGate.ready;
   const recallEligible = usePartyTaskRecallEligibility(task);
   const transactionActive = useMemo(
     () => isEngineeringSurveyTransactionActive(task.status, draft?.status),
     [draft?.status, task.status],
   );
-  const notesEditable = transactionActive && !locked && !readOnly;
-  const savedNote = draft?.surveyNotes?.trim() ?? "";
-
-  useEffect(() => {
-    setNoteDraft(draft?.surveyNotes ?? "");
-  }, [draft?.surveyNotes]);
+  const notesEditable = !locked && !viewOnly && documentaryGate.ready;
+  const savedNote = draft?.transactionNote?.trim() ?? "";
 
   useEffect(() => {
     if (workTab !== "failures") setFailureRaiseOpen(false);
@@ -213,6 +276,11 @@ export function EngineeringSurveyWorkPanel({
       setWorkTab("failures");
       return;
     }
+    // HTML: start switches to work mode + survey tab; entry already is work mode.
+    if (!viewOnly) {
+      setWorkTab("survey");
+      return;
+    }
     router.push(activeSurveyEntryPath(task.id));
   }, [
     blockingFailure,
@@ -221,6 +289,7 @@ export function EngineeringSurveyWorkPanel({
     showToast,
     task.id,
     transactionActive,
+    viewOnly,
   ]);
 
   const handleAddObstruction = useCallback(() => {
@@ -249,7 +318,7 @@ export function EngineeringSurveyWorkPanel({
 
   const syncCaseStudyFromChecklist = useCallback(
     async (checklist: EngineeringSurveySubmission["checklist"]) => {
-      if (locked || readOnly || !task.id) return;
+      if (locked || viewOnly || !task.id) return;
 
       const partyDraft =
         (await loadPartyCaseStudyFormDraft(task.id)) ??
@@ -275,7 +344,7 @@ export function EngineeringSurveyWorkPanel({
         );
       }
     },
-    [locked, propertyId, task.id, task.poNumber, showToast],
+    [locked, propertyId, task.id, task.poNumber, showToast, viewOnly],
   );
 
   const persist = useCallback(
@@ -283,11 +352,15 @@ export function EngineeringSurveyWorkPanel({
       if (!task.id) return;
       void updateEngineeringSurveyDraft(task.id, patch)
         .then((next) => {
-          if (next) setDraft(next);
+          if (!next) return;
+          setDraft(next);
+          // Keep local text fields unless this patch came from file/checklist locks.
         })
         .catch((err: unknown) => {
           showToast(
-            err instanceof Error ? err.message : "تعذّر حفظ الرفع المساحي — حاول مرة أخرى",
+            err instanceof Error
+              ? err.message
+              : "تعذّر حفظ الرفع المساحي — حاول مرة أخرى",
             "error",
           );
         });
@@ -295,19 +368,81 @@ export function EngineeringSurveyWorkPanel({
     [task.id, showToast],
   );
 
+  const flushPendingPersist = useCallback(async () => {
+    if (persistTimerRef.current) {
+      clearTimeout(persistTimerRef.current);
+      persistTimerRef.current = null;
+    }
+    const patch = pendingPatchRef.current;
+    pendingPatchRef.current = {};
+    if (!task.id || Object.keys(patch).length === 0) return;
+    try {
+      const next = await updateEngineeringSurveyDraft(task.id, patch);
+      if (next) setDraft(next);
+    } catch (err: unknown) {
+      showToast(
+        err instanceof Error
+          ? err.message
+          : "تعذّر حفظ الرفع المساحي — حاول مرة أخرى",
+        "error",
+      );
+    }
+  }, [showToast, task.id]);
+
+  const schedulePersist = useCallback(
+    (patch: Parameters<typeof updateEngineeringSurveyDraft>[1]) => {
+      pendingPatchRef.current = { ...pendingPatchRef.current, ...patch };
+      if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+      persistTimerRef.current = setTimeout(() => {
+        void flushPendingPersist();
+      }, 350);
+    },
+    [flushPendingPersist],
+  );
+
+  const patchLocalField = useCallback(
+    <K extends keyof LocalTextFields>(key: K, value: LocalTextFields[K]) => {
+      setLocalFields((prev) => (prev ? { ...prev, [key]: value } : prev));
+      schedulePersist({ [key]: value } as Parameters<
+        typeof updateEngineeringSurveyDraft
+      >[1]);
+      if (key === "latitude" || key === "longitude" || key === "onSiteAreaSqm") {
+        setFieldErrors((prev) => {
+          const next = { ...prev };
+          if (key === "latitude") delete next.latitude;
+          if (key === "longitude") delete next.longitude;
+          if (key === "onSiteAreaSqm") delete next.on_site_area;
+          return next;
+        });
+      }
+    },
+    [schedulePersist],
+  );
+
   const saveNote = useCallback(() => {
     if (!notesEditable) return;
-    persist({ surveyNotes: noteDraft });
+    persist({ transactionNote: noteDraft });
+    setDraft((prev) =>
+      prev ? { ...prev, transactionNote: noteDraft } : prev,
+    );
     showToast("تم حفظ الملاحظة", "success");
   }, [noteDraft, notesEditable, persist, showToast]);
 
   useEffect(() => {
-    if (!draft || locked) return;
+    return () => {
+      if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!draft || locked || viewOnly) return;
     void syncCaseStudyFromChecklist(draft.checklist);
-  }, [draft, locked, syncCaseStudyFromChecklist]);
+  }, [draft, locked, syncCaseStudyFromChecklist, viewOnly]);
 
   const submit = useCallback(async (): Promise<boolean> => {
-    if (!draft || locked) return false;
+    if (!draft || locked || viewOnly || !localFields) return false;
+
+    await flushPendingPersist();
 
     if (!documentaryGate.ready) {
       setFormError(documentaryGate.reason);
@@ -326,13 +461,20 @@ export function EngineeringSurveyWorkPanel({
       return false;
     }
 
-    if (hasAnyPartyPhone(property?.contacts) && !draft.declarationPhoneSatisfied) {
+    if (
+      hasAnyPartyPhone(property?.contacts) &&
+      !draft.declarationPhoneSatisfied
+    ) {
       await updateEngineeringSurveyDraft(task.id, {
         declarationPhoneSatisfied: true,
       });
     }
 
-    const errors = validateEngineeringSurveySubmission(draft);
+    const merged: EngineeringSurveySubmission = {
+      ...draft,
+      ...localFields,
+    };
+    const errors = validateEngineeringSurveySubmission(merged);
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
       const message = firstEngineeringSurveyError(errors);
@@ -341,6 +483,9 @@ export function EngineeringSurveyWorkPanel({
       return false;
     }
 
+    // Ensure latest local text is on the server before finalize.
+    await updateEngineeringSurveyDraft(task.id, localFields);
+
     hostRef.current?.onSavingChange?.(true);
     setFormError(null);
     const result = await finalizeEngineeringSurveySubmission(task.id);
@@ -348,6 +493,7 @@ export function EngineeringSurveyWorkPanel({
 
     if (result) {
       setDraft(result.submission);
+      setLocalFields(localFieldsFromDraft(result.submission));
       if (result.warning) {
         showToast(result.warning, "error");
       }
@@ -360,7 +506,10 @@ export function EngineeringSurveyWorkPanel({
     return false;
   }, [
     draft,
+    localFields,
     locked,
+    viewOnly,
+    flushPendingPersist,
     documentaryGate,
     role,
     property?.contacts,
@@ -376,7 +525,10 @@ export function EngineeringSurveyWorkPanel({
 
   const handleCoordsChange = useCallback(
     (lat: string, lng: string) => {
-      persist({ latitude: lat, longitude: lng });
+      setLocalFields((prev) =>
+        prev ? { ...prev, latitude: lat, longitude: lng } : prev,
+      );
+      schedulePersist({ latitude: lat, longitude: lng });
       setFieldErrors((prev) => {
         const next = { ...prev };
         delete next.latitude;
@@ -384,7 +536,7 @@ export function EngineeringSurveyWorkPanel({
         return next;
       });
     },
-    [persist],
+    [schedulePersist],
   );
 
   function onFilePick(
@@ -395,7 +547,11 @@ export function EngineeringSurveyWorkPanel({
     const docField =
       field === "surveyReportFileName" ? "surveyReport" : "siteLetter";
     void runWithUploadToast(async () => {
-      const result = await cacheEngineeringSurveyFile(draft.taskId, docField, file);
+      const result = await cacheEngineeringSurveyFile(
+        draft.taskId,
+        docField,
+        file,
+      );
       if (!result.ok) {
         setFormError(result.error);
         throw new Error(result.error);
@@ -426,330 +582,257 @@ export function EngineeringSurveyWorkPanel({
     });
   }
 
-  if (!draft) {
+  if (!draft || !localFields) {
     return <InlineLoadingSkeleton className="my-2" />;
   }
+
+  const statusPill =
+    task.status === "completed" ? (
+      <EngStatusPill label="مكتمل" color={ENG_STATUS_COLORS.completed} />
+    ) : locked ? (
+      <EngStatusPill label="مُرسل" color={ENG_STATUS_COLORS.submitted} />
+    ) : draft.status === "reopened" ? (
+      <EngStatusPill label="مُعاد للتصحيح" color={ENG_STATUS_COLORS.reopened} />
+    ) : (
+      <EngStatusPill label="مسودة" color={ENG_STATUS_COLORS.draft} />
+    );
 
   const surveyBody = (
     <>
       {draft.status === "reopened" && draft.returnNote ? (
-        <InfoBox variant="amber" icon="⚠">
-          <strong>تم إعادة الرفع المساحي — يرجى المراجعة والتصحيح.</strong>
+        <EngInfo variant="amber">
+          <strong>⚠ تم إعادة الرفع المساحي — يرجى المراجعة والتصحيح.</strong>
           <br />
           {draft.returnNote}
-        </InfoBox>
+        </EngInfo>
       ) : null}
 
       {formError ? (
-        <InfoBox variant="red" icon="!">
-          {formError}
-        </InfoBox>
+        <EngInfo variant="red">
+          <strong>!</strong> {formError}
+        </EngInfo>
       ) : null}
 
-      <SectionHeader>موقع العقار الميداني</SectionHeader>
-      {!readOnly ? (
-        <InfoBox icon="ℹ">
-          يُستخدم الموقع للتحقق من زيارة المكتب الهندسي. يجب أن تتطابق الإحداثيات
-          مع موقع العقار الفعلي.
-        </InfoBox>
+      {locked ? (
+        <EngInfo variant="amber">
+          تم إرسال الرفع المساحي لهذا العقار. استخدم «طلب استرجاع المعاملة»
+          لإعادة فتح العمل.
+        </EngInfo>
       ) : null}
-      <div className="mb-4 grid grid-cols-1 gap-x-5 gap-y-3 sm:grid-cols-2">
-        <InfathTextField
-          id="eng-lat"
-          label="خط العرض (Latitude)"
-          required
-          disabled={formDisabled}
-          value={draft.latitude}
-          placeholder={JEDDAH_DEFAULT_LAT}
-          error={fieldErrors.latitude}
-          onChange={(e) => {
-            persist({ latitude: e.target.value });
-            setFieldErrors((prev) => {
-              const next = { ...prev };
-              delete next.latitude;
-              return next;
-            });
-          }}
-        />
-        <InfathTextField
-          id="eng-lng"
-          label="خط الطول (Longitude)"
-          required
-          disabled={formDisabled}
-          value={draft.longitude}
-          placeholder={JEDDAH_DEFAULT_LNG}
-          error={fieldErrors.longitude}
-          onChange={(e) => {
-            persist({ longitude: e.target.value });
-            setFieldErrors((prev) => {
-              const next = { ...prev };
-              delete next.longitude;
-              return next;
-            });
-          }}
-        />
+
+      <EngSection>موقع العقار الميداني</EngSection>
+      {!formDisabled ? (
+        <EngInfo>
+          ℹ يُستخدم الموقع للتحقق من زيارة المكتب الهندسي. يجب أن تتطابق
+          الإحداثيات مع موقع العقار الفعلي.
+        </EngInfo>
+      ) : null}
+      <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+        <div>
+          <label className={engLabelClassName} htmlFor="eng-lat">
+            خط العرض (Latitude) *
+          </label>
+          <input
+            id="eng-lat"
+            dir="ltr"
+            className={cn(
+              engInputClassName,
+              fieldErrors.latitude && "!border-[#c0553d]",
+            )}
+            disabled={formDisabled}
+            value={localFields.latitude}
+            onChange={(e) => patchLocalField("latitude", e.target.value)}
+          />
+          {fieldErrors.latitude ? (
+            <p className="mt-1 text-[11px] text-[#a5432e]">
+              {fieldErrors.latitude}
+            </p>
+          ) : null}
+        </div>
+        <div>
+          <label className={engLabelClassName} htmlFor="eng-lng">
+            خط الطول (Longitude) *
+          </label>
+          <input
+            id="eng-lng"
+            dir="ltr"
+            className={cn(
+              engInputClassName,
+              fieldErrors.longitude && "!border-[#c0553d]",
+            )}
+            disabled={formDisabled}
+            value={localFields.longitude}
+            onChange={(e) => patchLocalField("longitude", e.target.value)}
+          />
+          {fieldErrors.longitude ? (
+            <p className="mt-1 text-[11px] text-[#a5432e]">
+              {fieldErrors.longitude}
+            </p>
+          ) : null}
+        </div>
       </div>
       <EngineeringSurveyMap
-        latitude={draft.latitude}
-        longitude={draft.longitude}
+        latitude={localFields.latitude}
+        longitude={localFields.longitude}
         disabled={formDisabled}
         onCoordsChange={handleCoordsChange}
       />
 
-      <SectionDivider />
-      <InfathSection title="الرفع المساحي (إنفاذ)" className="mb-1">
-        {(() => {
-          const deedArea = property?.area?.trim() ?? "";
-          const siteNum = Number.parseFloat(
-            draft.onSiteAreaSqm.replace(/,/g, "").trim(),
-          );
-          const deedNum = Number.parseFloat(deedArea.replace(/,/g, "").trim());
-          const bothOk =
-            Number.isFinite(siteNum) &&
-            Number.isFinite(deedNum) &&
-            draft.onSiteAreaSqm.trim() !== "" &&
-            deedArea !== "";
-          const areaDiffLabel = !bothOk
-            ? "—"
-            : siteNum === deedNum
-              ? "لا"
-              : "نعم";
-          return (
-            <div className="mb-4 grid grid-cols-1 gap-x-5 gap-y-3 sm:grid-cols-3">
-              <InfathTextField
-                id="eng-on-site-area"
-                label="المساحة على الطبيعة (م²)"
-                required
-                inputMode="decimal"
-                disabled={formDisabled}
-                error={fieldErrors.on_site_area}
-                value={draft.onSiteAreaSqm}
-                onChange={(e) => {
-                  persist({ onSiteAreaSqm: e.target.value });
-                  setFieldErrors((prev) => {
-                    const next = { ...prev };
-                    delete next.on_site_area;
-                    return next;
-                  });
-                }}
-              />
-              <InfathReadOnlyBox
-                id="eng-deed-area"
-                label="المساحة حسب الصك (م²)"
-                value={deedArea || "—"}
-              />
-              <InfathWordsValue
-                label="يوجد اختلاف في المساحة"
-                value={areaDiffLabel}
-              />
-            </div>
-          );
-        })()}
-      </InfathSection>
-
-      <InfathSection title="الحدود والأطوال للأصل">
-        <div className="flex flex-col gap-3.5">
-          {(
-            [
-              [
-                "northBoundary",
-                "northBoundaryLengthM",
-                "الحد الشمالي",
-                "طول الحد الشمالي التقريبي (م)",
-              ],
-              [
-                "southBoundary",
-                "southBoundaryLengthM",
-                "الحد الجنوبي",
-                "طول الحد الجنوبي التقريبي (م)",
-              ],
-              [
-                "eastBoundary",
-                "eastBoundaryLengthM",
-                "الحد الشرقي",
-                "طول الحد الشرقي التقريبي (م)",
-              ],
-              [
-                "westBoundary",
-                "westBoundaryLengthM",
-                "الحد الغربي",
-                "طول الحد الغربي التقريبي (م)",
-              ],
-            ] as const
-          ).map(([boundKey, lenKey, boundLabel, lenLabel]) => (
-            <div
-              key={boundKey}
-              className="grid grid-cols-1 gap-x-5 gap-y-3 sm:grid-cols-2"
-            >
-              <InfathTextField
-                id={`eng-${boundKey}`}
-                label={boundLabel}
-                disabled={formDisabled}
-                value={draft[boundKey]}
-                onChange={(e) => persist({ [boundKey]: e.target.value })}
-              />
-              <InfathTextField
-                id={`eng-${lenKey}`}
-                label={lenLabel}
-                inputMode="decimal"
-                disabled={formDisabled}
-                value={draft[lenKey]}
-                onChange={(e) => persist({ [lenKey]: e.target.value })}
-              />
-            </div>
-          ))}
-        </div>
-        <div className="mt-4">
-          <InfathTextAreaField
-            id="eng-survey-notes"
-            label="ملاحظات الرفع المساحي"
-            rows={3}
-            disabled={formDisabled}
-            value={draft.surveyNotes}
-            onChange={(e) => persist({ surveyNotes: e.target.value })}
-          />
-        </div>
-      </InfathSection>
-
-      <SectionDivider />
-      <InfathSection title="مرفق الرفع المساحي">
-        {!readOnly ? (
-          <div className="rounded-lg border border-dashed border-[#d1d5db] bg-surface p-[18px] text-center">
-            <div className="mb-1 text-xs font-semibold text-[#4b5563]">
-              رفع التقرير المساحي
-            </div>
-            <div className="mb-2.5 text-[11px] text-[#9ca3af]">
-              PDF — الحجم الأقصى 20 ميجابايت
-            </div>
-            <label className="mt-1 inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-[#12284C] bg-[#12284C] px-3 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-[#1a3a66]">
-              اختيار ملف
-              <input
-                type="file"
-                accept=".pdf,application/pdf"
-                className="hidden"
-                disabled={formDisabled}
-                onChange={(e) =>
-                  onFilePick("surveyReportFileName", e.target.files?.[0] ?? null)
-                }
-              />
-            </label>
-          </div>
-        ) : null}
-        {draft.surveyReportFileName ? (
-          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-[#a9dfbf] bg-[#d5f5ef] px-3 py-2 text-xs">
-            <span>{draft.surveyReportFileName}</span>
-            {!formDisabled && !readOnly ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => onFileClear("surveyReportFileName")}
-              >
-                حذف
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
-        {fieldErrors.survey_report ? (
-          <p className="mt-1 text-[11px] text-danger-text">
-            {fieldErrors.survey_report}
-          </p>
-        ) : null}
-      </InfathSection>
-
-      <SectionDivider />
-      <InfathSection title="خطاب إقرار صحة الموقع">
-        {!readOnly ? (
-          <div className="rounded-lg border border-dashed border-[#d1d5db] bg-surface p-[18px] text-center">
-            <div className="mb-1 text-xs font-semibold text-[#4b5563]">
-              رفع خطاب الإقرار
-            </div>
-            <div className="mb-2.5 text-[11px] text-[#9ca3af]">
-              PDF — الحجم الأقصى 10 ميجابايت
-            </div>
-            <label className="mt-1 inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-[#12284C] bg-[#12284C] px-3 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-[#1a3a66]">
-              اختيار ملف
-              <input
-                type="file"
-                accept=".pdf,application/pdf"
-                className="hidden"
-                disabled={formDisabled}
-                onChange={(e) =>
-                  onFilePick("siteLetterFileName", e.target.files?.[0] ?? null)
-                }
-              />
-            </label>
-          </div>
-        ) : null}
-        {draft.siteLetterFileName ? (
-          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-[#a9dfbf] bg-[#d5f5ef] px-3 py-2 text-xs">
-            <span>{draft.siteLetterFileName}</span>
-            {!formDisabled && !readOnly ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => onFileClear("siteLetterFileName")}
-              >
-                حذف
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
-        {readOnly ? (
-          <div className="mt-3 rounded-lg border border-[#fad7a0] bg-[#fef3d7] px-3 py-2.5 text-[11px] leading-relaxed">
-            {draft.siteConfirmed
-              ? "تم الإقرار بأن المكتب الهندسي تحقق ميدانياً وأن بيانات التقرير المساحي صحيحة ودقيقة."
-              : "لم يتم الإقرار بعد بصحة الموقع."}
-          </div>
-        ) : (
-          <div
+      <EngSection>الحدود والأطوال (إنفاذ)</EngSection>
+      <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+        <div>
+          <label className={engLabelClassName} htmlFor="eng-on-site-area">
+            المساحة على الطبيعة (م²)
+          </label>
+          <input
+            id="eng-on-site-area"
+            inputMode="decimal"
             className={cn(
-              "mt-3 rounded-lg border border-[#d1d5db] bg-surface px-3.5 py-3",
-              fieldErrors.site_confirmed && "border-[#f87171]",
-              formDisabled && "opacity-65",
+              engInputClassName,
+              fieldErrors.on_site_area && "!border-[#c0553d]",
             )}
-          >
-            <label className="flex cursor-pointer items-start gap-2.5">
-              <input
-                type="checkbox"
-                className="mt-0.5 size-4 shrink-0 accent-[#12284C]"
-                checked={draft.siteConfirmed}
-                disabled={formDisabled}
-                onChange={(e) => {
-                  persist({ siteConfirmed: e.target.checked });
-                  setFieldErrors((prev) => {
-                    const next = { ...prev };
-                    delete next.site_confirmed;
-                    return next;
-                  });
-                }}
-              />
-              <span className="text-[13px] leading-relaxed text-[#1f2937]">
-                إقرار بصحة البيانات المساحية
-                <span className="text-[#e11d48]">*</span>
-                <span className="mt-0.5 block text-[11px] text-[#6b7280]">
-                  أقرّ بأن المكتب الهندسي تحقق ميدانياً وأن بيانات التقرير المساحي
-                  صحيحة ودقيقة.
-                </span>
-              </span>
-            </label>
-            {fieldErrors.site_confirmed ? (
-              <span className="mt-2 block text-[11px] text-danger-text">
-                {fieldErrors.site_confirmed}
-              </span>
-            ) : null}
-          </div>
-        )}
-        {fieldErrors.site_letter ? (
-          <p className="mt-1 text-[11px] text-danger-text">
-            {fieldErrors.site_letter}
-          </p>
-        ) : null}
-      </InfathSection>
+            disabled={formDisabled}
+            value={localFields.onSiteAreaSqm}
+            onChange={(e) => patchLocalField("onSiteAreaSqm", e.target.value)}
+          />
+          {fieldErrors.on_site_area ? (
+            <p className="mt-1 text-[11px] text-[#a5432e]">
+              {fieldErrors.on_site_area}
+            </p>
+          ) : null}
+        </div>
+      </div>
 
-      <SectionDivider />
-      <SectionHeader>نموذج التحقق الميداني — 13 بنداً</SectionHeader>
+      {(
+        [
+          [
+            "northBoundary",
+            "northBoundaryLengthM",
+            "الحد الشمالي",
+            "طول الحد الشمالي التقريبي (م)",
+          ],
+          [
+            "southBoundary",
+            "southBoundaryLengthM",
+            "الحد الجنوبي",
+            "طول الحد الجنوبي التقريبي (م)",
+          ],
+          [
+            "eastBoundary",
+            "eastBoundaryLengthM",
+            "الحد الشرقي",
+            "طول الحد الشرقي التقريبي (م)",
+          ],
+          [
+            "westBoundary",
+            "westBoundaryLengthM",
+            "الحد الغربي",
+            "طول الحد الغربي التقريبي (م)",
+          ],
+        ] as const
+      ).map(([boundKey, lenKey, boundLabel, lenLabel]) => (
+        <div
+          key={boundKey}
+          className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2"
+        >
+          <div>
+            <label className={engLabelClassName} htmlFor={`eng-${boundKey}`}>
+              {boundLabel}
+            </label>
+            <input
+              id={`eng-${boundKey}`}
+              className={engInputClassName}
+              disabled={formDisabled}
+              value={localFields[boundKey]}
+              onChange={(e) => patchLocalField(boundKey, e.target.value)}
+            />
+          </div>
+          <div>
+            <label className={engLabelClassName} htmlFor={`eng-${lenKey}`}>
+              {lenLabel}
+            </label>
+            <input
+              id={`eng-${lenKey}`}
+              inputMode="decimal"
+              className={engInputClassName}
+              disabled={formDisabled}
+              value={localFields[lenKey]}
+              onChange={(e) => patchLocalField(lenKey, e.target.value)}
+            />
+          </div>
+        </div>
+      ))}
+
+      <div className="mb-1">
+        <label className={engLabelClassName} htmlFor="eng-survey-notes">
+          ملاحظات الرفع المساحي
+        </label>
+        <textarea
+          id="eng-survey-notes"
+          rows={3}
+          className={cn(engInputClassName, "resize-y")}
+          disabled={formDisabled}
+          value={localFields.surveyNotes}
+          onChange={(e) => patchLocalField("surveyNotes", e.target.value)}
+        />
+      </div>
+
+      <EngSection>التقرير المساحي</EngSection>
+      <EngUploadBox
+        title="رفع التقرير المساحي"
+        hint="PDF — الحجم الأقصى 20 ميجابايت"
+        fileName={draft.surveyReportFileName}
+        disabled={formDisabled}
+        error={fieldErrors.survey_report}
+        onPick={(file) => onFilePick("surveyReportFileName", file)}
+        onClear={() => onFileClear("surveyReportFileName")}
+      />
+
+      <EngSection>خطاب إقرار صحة الموقع</EngSection>
+      <EngUploadBox
+        title="رفع خطاب الإقرار"
+        hint="PDF — الحجم الأقصى 10 ميجابايت"
+        fileName={draft.siteLetterFileName}
+        disabled={formDisabled}
+        error={fieldErrors.site_letter}
+        onPick={(file) => onFilePick("siteLetterFileName", file)}
+        onClear={() => onFileClear("siteLetterFileName")}
+      />
+
+      {formDisabled ? (
+        <div className="mt-3 rounded-lg border border-[#fad7a0] bg-[#fef3d7] px-3 py-2.5 text-[11.5px] leading-[1.7] text-[#7a5b12]">
+          {draft.siteConfirmed
+            ? "✓ تم الإقرار بأن المكتب الهندسي تحقق ميدانياً وأن بيانات التقرير المساحي صحيحة ودقيقة."
+            : "لم يتم الإقرار بعد بصحة الموقع."}
+        </div>
+      ) : (
+        <label className="mt-3 flex cursor-pointer items-start gap-[9px] rounded-lg border border-[#fad7a0] bg-[#fef3d7] px-3 py-2.5 text-[11.5px] leading-[1.7] text-[#7a5b12]">
+          <input
+            type="checkbox"
+            className="mt-0.5 accent-[var(--gold-d)]"
+            checked={draft.siteConfirmed}
+            onChange={(e) => {
+              persist({ siteConfirmed: e.target.checked });
+              setFieldErrors((prev) => {
+                const next = { ...prev };
+                delete next.site_confirmed;
+                return next;
+              });
+            }}
+          />
+          <span>
+            أُقرّ بأن المكتب الهندسي تحقق ميدانياً وأن بيانات التقرير المساحي
+            المرفوع <strong>صحيحة ودقيقة</strong>.
+          </span>
+        </label>
+      )}
+      {fieldErrors.site_confirmed ? (
+        <p className="mt-1 text-[11px] text-[#a5432e]">
+          {fieldErrors.site_confirmed}
+        </p>
+      ) : null}
+
+      <EngSection>نموذج التحقق الميداني — 13 بنداً</EngSection>
       <EngineeringSurveyChecklist
         rows={draft.checklist}
         disabled={formDisabled}
@@ -764,278 +847,248 @@ export function EngineeringSurveyWorkPanel({
         }}
       />
       {fieldErrors.checklist ? (
-        <p className="mt-1 text-[11px] text-danger-text">{fieldErrors.checklist}</p>
+        <p className="mt-1 text-[11px] text-[#a5432e]">{fieldErrors.checklist}</p>
+      ) : null}
+
+      {!formDisabled ? (
+        <div className="mt-[18px] flex justify-start">
+          <button
+            type="button"
+            className={engPrimaryBtnClassName}
+            disabled={savingLocal}
+            onClick={() => {
+              void (async () => {
+                setSavingLocal(true);
+                try {
+                  await submit();
+                } finally {
+                  setSavingLocal(false);
+                }
+              })();
+            }}
+          >
+            {savingLocal ? "جاري الإرسال…" : "إرسال الرفع المساحي"}
+          </button>
+        </div>
       ) : null}
     </>
   );
 
-  const surveyWorkSection = (
-    <section className="min-h-0 min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
-      <h3 className="m-0 mb-2 text-sm font-semibold text-text">
-        {def.workTitle}
-      </h3>
-      {!documentaryGate.ready ? (
-        <Note tone="warn" className="mb-4">
-          <strong>الرفع مجمّد:</strong> {documentaryGate.reason}
-        </Note>
-      ) : null}
-      <Note tone="info" className="mb-4">
-        {def.workIntro}
-      </Note>
-      <fieldset
-        disabled={formDisabled || !documentaryGate.ready}
-        className={cn(
-          "m-0 min-w-0 border-0 p-0",
-          (formDisabled || !documentaryGate.ready) &&
-            "pointer-events-none select-none rounded-[10px] bg-[#F1F5F9] p-3 opacity-70 grayscale-[0.35]",
-        )}
-      >
-        {surveyBody}
-      </fieldset>
-      {variant === "entry" && !formDisabled ? (
-        <div className="mt-4 rounded-[var(--radius-lg)] border border-border bg-surface p-4 shadow-[0_-4px_16px_rgba(15,52,96,0.08)]">
-          <div
-            dir="ltr"
-            className="flex flex-wrap items-center justify-end gap-2"
-          >
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              disabled={savingLocal}
-              loading={savingLocal}
-              showActionToast={false}
-              actionLabel={def.saveLabel}
-              onClick={() => {
-                void (async () => {
-                  setSavingLocal(true);
-                  try {
-                    await submit();
-                  } finally {
-                    setSavingLocal(false);
-                  }
-                })();
-              }}
-            >
-              <i className="ti ti-send" aria-hidden /> {def.saveLabel}
-            </Button>
-          </div>
-        </div>
-      ) : null}
-    </section>
-  );
-
-  const caseStudySection = (
-    <section className="min-h-0 min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
-      <h3 className="m-0 mb-2 text-sm font-semibold text-text">
-        نموذج الدراسة
-      </h3>
-      <PartyCaseStudyFormTab
-        def={def}
-        childTask={task}
-        forceReadOnly={formDisabled}
-      />
-    </section>
-  );
-
-  const surveySplit = (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-4 sm:px-6 sm:py-5">
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-2">
-        {surveyWorkSection}
-        {caseStudySection}
-      </div>
-    </div>
-  );
+  const feeAmountLabel = feeForTask
+    ? `${Number(feeForTask.netFeeSar ?? 0).toLocaleString("ar-SA")} ر.س`
+    : "—";
 
   return (
     <>
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <nav
-          className="flex shrink-0 gap-0 overflow-x-auto border-b border-border bg-surface px-4 sm:px-6 [&::-webkit-scrollbar]:h-0"
-          aria-label="أقسام المهمة"
-          role="tablist"
-        >
-          <button
-            type="button"
-            className={cn(
-              "mb-[-1px] flex items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 font-inherit text-xs text-text-2 transition-colors hover:text-text",
-              workTab === "property" &&
-                "border-b-primary font-medium text-primary",
-            )}
-            onClick={() => setWorkTab("property")}
-          >
-            بيانات العقار
-          </button>
-          <button
-            type="button"
-            className={cn(
-              "mb-[-1px] flex items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 font-inherit text-xs text-text-2 transition-colors hover:text-text",
-              workTab === "survey" &&
-                "border-b-primary font-medium text-primary",
-            )}
-            onClick={() => setWorkTab("survey")}
-          >
-            {def.workTitle}
-          </button>
-          <button
-            type="button"
-            className={cn(
-              "mb-[-1px] flex items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 font-inherit text-xs text-text-2 transition-colors hover:text-text",
-              workTab === "fees" && "border-b-primary font-medium text-primary",
-            )}
-            onClick={() => setWorkTab("fees")}
-          >
-            مالية المعاملة
-          </button>
-          <button
-            type="button"
-            className={cn(
-              "mb-[-1px] flex max-w-[200px] items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 font-inherit text-xs text-text-2 transition-colors hover:text-text",
-              workTab === "notes" && "border-b-primary font-medium text-primary",
-            )}
-            onClick={() => setWorkTab("notes")}
-          >
-            <span>ملاحظة</span>
-            {savedNote ? (
-              <span
-                className="inline-block size-1.5 rounded-full bg-primary"
-                aria-hidden
-              />
-            ) : null}
-          </button>
-          <button
-            type="button"
-            className={cn(
-              "mb-[-1px] flex items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 font-inherit text-xs text-text-2 transition-colors hover:text-text",
-              workTab === "failures" &&
-                "border-b-primary font-medium text-primary",
-            )}
-            onClick={() => setWorkTab("failures")}
-          >
-            التعذرات
-            {activeFailureCount > 0 ? (
-              <span className="rounded-[10px] bg-danger-bg px-1.5 py-px text-[10px] font-medium text-danger-text">
-                {activeFailureCount}
-              </span>
-            ) : null}
-          </button>
-        </nav>
+      <div className="mx-auto w-full max-w-[1100px]">
+        {onBack ? <EngBackLink onClick={onBack} /> : null}
 
-        {workTab === "survey" ? (
-          surveySplit
-        ) : (
-          <div className="flex min-h-0 flex-1 flex-row items-stretch overflow-hidden max-lg:flex-col">
-            <div className="order-1 min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
-              {!documentaryGate.ready ? (
-                <InfoBox variant="amber" icon="⚠">
-                  <strong>الرفع المساحي مجمّد.</strong>
-                  <br />
-                  {documentaryGate.reason}
-                </InfoBox>
-              ) : null}
-              {blockingFailure && workTab === "property" ? (
-                <InfoBox variant="amber" icon="⚠">
-                  <strong>يوجد تعذر نشط على هذا العقار.</strong>
-                  <br />
-                  لا يمكن بدء الرفع المساحي حتى يُعالج التعذر:{" "}
-                  {failureRecordTitle(blockingFailure)}
-                </InfoBox>
-              ) : null}
-              {workTab === "property" ? (
-                <EngineeringSurveyPropertySummary
-                  property={property}
-                  record={record ?? undefined}
-                />
-              ) : null}
-              {workTab === "fees" ? (
-                <InspectorFeesTab
-                  tasks={[task]}
-                  variant="engineering-survey"
-                />
-              ) : null}
-              {workTab === "notes" ? (
-                <div>
-                  <SectionHeader>ملاحظة على المعاملة</SectionHeader>
-                  <textarea
-                    id="eng-workspace-note"
-                    className={cn(
-                      formControlClassName,
-                      "min-h-[120px] w-full resize-y py-2 leading-relaxed",
-                    )}
-                    rows={5}
-                    disabled={!notesEditable}
-                    value={noteDraft}
-                    placeholder="اكتب ملاحظتك هنا…"
-                    onChange={(e) => setNoteDraft(e.target.value)}
-                  />
-                  {notesEditable ? (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        showActionToast={false}
-                        onClick={saveNote}
-                      >
-                        حفظ الملاحظة
-                      </Button>
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-[11px] text-text-3">
-                      لا يمكن تعديل الملاحظة بعد إرسال المعاملة أو إغلاقها.
-                    </p>
-                  )}
-                </div>
-              ) : null}
-              {workTab === "failures" && propertyId ? (
-                <div>
-                  <SectionHeader>تسجيل تعذر</SectionHeader>
-                  <FailureRaisePanel
-                    poNumber={task.poNumber}
-                    propertyId={propertyId}
-                    deedNumber={deedNumber}
-                    specialist={task.assigneeName || def.assigneeSubtitle}
-                    raisedByRole={failureRaiserRoleForParty(def)}
-                    onSubmitted={onFailureSubmitted}
-                    autoOpenRaise={failureRaiseOpen}
-                  />
-                  <SectionDivider />
-                  <SectionHeader>سجل التعذرات</SectionHeader>
-                  <EngineeringSurveyFailuresHistory
-                    poNumber={task.poNumber}
-                    propertyId={propertyId}
-                    deedNumber={deedNumber}
-                  />
-                </div>
-              ) : null}
-            </div>
-
-            {record && property ? (
-              <PropertyTransactionTimeline
-                record={record}
-                property={property}
-              />
+        <div className={engPpHeadClassName}>
+          <h1 className="m-0 flex flex-wrap items-center gap-2.5 text-[18px] font-extrabold leading-tight text-heading">
+            <span>مساحة عمل الرفع المساحي</span>
+            <span className="text-[14px] font-bold text-gold-d [direction:ltr]">
+              صك {deedNumber}
+            </span>
+          </h1>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <span className={engChipClassName}>
+              {task.assigneeName?.trim() || def.assigneeSubtitle || "المكتب الهندسي"}
+            </span>
+            {statusPill}
+            {viewOnly ? (
+              <EngStatusPill label="استعراض" color={ENG_STATUS_COLORS.view} />
             ) : null}
           </div>
-        )}
+        </div>
+
+        <div className={engCardClassName}>
+          <EngTabBar
+            active={workTab}
+            onChange={(id) => setWorkTab(id as WorkTab)}
+            tabs={[
+              { id: "property", label: "بيانات العقار" },
+              { id: "survey", label: "الرفع المساحي" },
+              { id: "fees", label: "مالية المعاملة" },
+              { id: "notes", label: "ملاحظة", dot: Boolean(savedNote) },
+              {
+                id: "failures",
+                label: "التعذرات",
+                badge: activeFailureCount,
+              },
+            ]}
+          />
+
+          {!documentaryGate.ready ? (
+            <div className="mb-3.5 rounded-lg border border-[#fad7a0] bg-[#fef3d7] px-3 py-2.5 text-[11.5px] leading-[1.7] text-[#7a5b12]">
+              <strong>⚠ الرفع مجمّد ولا يُحتسب الوقت:</strong>{" "}
+              {documentaryGate.reason}
+            </div>
+          ) : null}
+
+          {viewOnly && documentaryGate.ready ? (
+            <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#fad7a0] bg-[#fef3d7] px-3 py-2.5 text-[11.5px] leading-[1.7] text-[#7a5b12]">
+              <span>
+                👁 وضع الاستعراض — جميع الحقول للقراءة فقط.
+                {locked ? "" : " للتعديل ابدأ عملية الرفع."}
+              </span>
+              {!locked ? (
+                <button
+                  type="button"
+                  className={cn(engPrimaryBtnClassName, "!px-3.5 !py-1.5 !text-[11.5px]")}
+                  onClick={handleStartSurvey}
+                >
+                  بدء الرفع المساحي
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+
+          <div
+            className={cn(
+              formDisabled &&
+                workTab !== "property" &&
+                workTab !== "fees" &&
+                "pointer-events-none select-none opacity-75",
+              locked &&
+                workTab === "survey" &&
+                "rounded-[10px] bg-[#F1F5F9] p-3 grayscale-[0.35]",
+            )}
+          >
+            {workTab === "property" ? (
+              <EngineeringSurveyPropertySummary
+                property={property}
+                record={record ?? undefined}
+                deedNumber={deedNumber}
+              />
+            ) : null}
+
+            {workTab === "survey" ? surveyBody : null}
+
+            {workTab === "fees" ? (
+              <>
+                <EngSection>أتعاب الرفع المساحي</EngSection>
+                <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+                  <EngField label="قيمة الأتعاب" value={feeAmountLabel} />
+                  <EngField label="حالة الاستحقاق">
+                    {draft.status === "submitted" || locked ? (
+                      <EngStatusPill
+                        label="مستحقة بعد الإرسال"
+                        color={ENG_STATUS_COLORS.submitted}
+                      />
+                    ) : (
+                      <EngStatusPill
+                        label="تُستحق عند إرسال الرفع"
+                        color={ENG_STATUS_COLORS.pending}
+                      />
+                    )}
+                  </EngField>
+                  <EngField label="حالة الدفع">
+                    <EngStatusPill
+                      label={
+                        feeForTask?.billingStatus === "disbursed"
+                          ? "صُرفت"
+                          : "لم تُصرف"
+                      }
+                      color={
+                        feeForTask?.billingStatus === "disbursed"
+                          ? ENG_STATUS_COLORS.submitted
+                          : ENG_STATUS_COLORS.unpaid
+                      }
+                    />
+                  </EngField>
+                </div>
+                <EngInfo>
+                  تُستحق أتعاب الرفع المساحي للمكتب الهندسي عند إرسال المعاملة
+                  واعتمادها من أخصائي دراسة الحالة.
+                </EngInfo>
+              </>
+            ) : null}
+
+            {workTab === "notes" ? (
+              <>
+                <EngSection>ملاحظة على المعاملة</EngSection>
+                <textarea
+                  id="eng-workspace-note"
+                  className={cn(engInputClassName, "min-h-[120px] resize-y")}
+                  rows={5}
+                  disabled={!notesEditable}
+                  value={noteDraft}
+                  placeholder="اكتب ملاحظتك هنا…"
+                  onChange={(e) => setNoteDraft(e.target.value)}
+                />
+                {notesEditable ? (
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      className={cn(
+                        engPrimaryBtnClassName,
+                        "!px-[18px] !py-[7px] !text-xs",
+                      )}
+                      onClick={saveNote}
+                    >
+                      حفظ الملاحظة
+                    </button>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-[11px] text-text-3">
+                    {viewOnly
+                      ? "وضع الاستعراض — لا يمكن التعديل."
+                      : "لا يمكن تعديل الملاحظة بعد إرسال المعاملة أو إغلاقها."}
+                  </p>
+                )}
+              </>
+            ) : null}
+
+            {workTab === "failures" && propertyId ? (
+              <>
+                <EngSection>تسجيل تعذر</EngSection>
+                {formDisabled ? (
+                  <EngInfo variant="amber">
+                    {viewOnly
+                      ? "وضع الاستعراض — لا يمكن تسجيل تعذر من هنا."
+                      : "لا يمكن تسجيل تعذر بعد إرسال المعاملة."}
+                  </EngInfo>
+                ) : (
+                  <div className="mb-3 max-w-[560px]">
+                    <FailureRaisePanel
+                      poNumber={task.poNumber}
+                      propertyId={propertyId}
+                      deedNumber={deedNumber}
+                      specialist={task.assigneeName || def.assigneeSubtitle}
+                      raisedByRole={failureRaiserRoleForParty(def)}
+                      onSubmitted={onFailureSubmitted}
+                      autoOpenRaise={failureRaiseOpen}
+                    />
+                  </div>
+                )}
+                <EngSection>سجل التعذرات</EngSection>
+                <EngineeringSurveyFailuresHistory
+                  poNumber={task.poNumber}
+                  propertyId={propertyId}
+                  deedNumber={deedNumber}
+                />
+              </>
+            ) : null}
+          </div>
+        </div>
       </div>
 
-      {variant === "workspace" ? (
-        <QuickActionsFab
-          placement="bottom-start"
-          deedNumber={deedNumber}
-          startSurveyDimmed={
-            !transactionActive ||
-            Boolean(blockingFailure) ||
-            !documentaryGate.ready
-          }
-          workActionsDimmed={!transactionActive}
-          recallDimmed={transactionActive || !recallEligible}
-          onStartSurvey={handleStartSurvey}
-          onAddObstruction={handleAddObstruction}
-          onAddNote={handleAddNote}
-          onRequestRecall={handleRequestRecall}
-        />
-      ) : null}
+      <QuickActionsFab
+        placement="bottom-start"
+        deedNumber={deedNumber}
+        startSurveyDimmed={
+          !transactionActive ||
+          Boolean(blockingFailure) ||
+          !documentaryGate.ready ||
+          locked
+        }
+        workActionsDimmed={!transactionActive || locked}
+        recallDimmed={transactionActive || !recallEligible}
+        onStartSurvey={handleStartSurvey}
+        onAddObstruction={handleAddObstruction}
+        onAddNote={handleAddNote}
+        onRequestRecall={handleRequestRecall}
+      />
     </>
   );
 }

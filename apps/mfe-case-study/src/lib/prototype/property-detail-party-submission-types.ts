@@ -4,6 +4,10 @@ import type { GovernmentReviewKeysProofFile } from "./government-review-work-dat
 export type PartyAnswerRow = {
   question: string;
   answer: string;
+  answeredByName?: string | null;
+  answeredAtUtc?: string | null;
+  sourceRole?: string | null;
+  taskId?: string | null;
 };
 
 export type PropertyDetailPartySubmission = {

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 
@@ -42,12 +43,31 @@ public sealed class AttachmentService : IAttachmentService
         return content is null ? (null, null) : (content, ToMeta(row));
     }
 
-    public async Task<FileAttachmentMetaDto> UploadAsync(
+    public async Task<(FileAttachmentMetaDto? Meta, string? Error)> UploadAsync(
         UploadAttachmentRequest request,
         string uploadedByUserId,
         CancellationToken cancellationToken = default)
     {
-        var content = Convert.FromBase64String(request.ContentBase64);
+        byte[] content;
+        try
+        {
+            content = Convert.FromBase64String(request.ContentBase64);
+        }
+        catch
+        {
+            return (null, "invalid base64 content");
+        }
+
+        var contentType = string.IsNullOrWhiteSpace(request.ContentType)
+            ? "application/octet-stream"
+            : request.ContentType.Trim();
+        var validationError = AttachmentUploadRules.Validate(
+            request.Scope,
+            contentType,
+            content.LongLength,
+            request.FileName);
+        if (validationError is not null)
+            return (null, validationError);
 
         var id = Guid.NewGuid();
         var safeName = Path.GetFileName(request.FileName.Trim());
@@ -66,9 +86,7 @@ public sealed class AttachmentService : IAttachmentService
             Scope = request.Scope.Trim(),
             ScopeKey = request.ScopeKey.Trim(),
             FileName = safeName,
-            ContentType = string.IsNullOrWhiteSpace(request.ContentType)
-                ? "application/octet-stream"
-                : request.ContentType.Trim(),
+            ContentType = contentType,
             StorageKey = storageKey,
             Content = null,
             SizeBytes = content.LongLength,
@@ -77,7 +95,7 @@ public sealed class AttachmentService : IAttachmentService
         };
         _db.FileAttachments.Add(row);
         await _db.SaveChangesAsync(cancellationToken);
-        return ToMeta(row);
+        return (ToMeta(row), null);
     }
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)

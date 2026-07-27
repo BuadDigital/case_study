@@ -17,6 +17,7 @@ export function TaskWorkChrome({
   footerExtra,
   scrollMode = "viewport",
   saveShowActionToast = false,
+  showHeader = true,
   children,
 }: {
   layout?: "page" | "panel";
@@ -31,6 +32,7 @@ export function TaskWorkChrome({
   variant?: "edit" | "detail";
   footerExtra?: ReactNode;
   scrollMode?: "viewport" | "document";
+  showHeader?: boolean;
   /** Parent handlers use runWithActionToast — skip duplicate global toast. */
   saveShowActionToast?: boolean;
   children: ReactNode;
@@ -75,6 +77,7 @@ export function TaskWorkChrome({
         saveShowActionToast={saveShowActionToast}
         footerExtra={footerExtra}
         variant={variant}
+        showHeader={showHeader}
         showFooter={showFooter}
         fillViewport={!useDocumentScroll}
         scrollMode={scrollMode}

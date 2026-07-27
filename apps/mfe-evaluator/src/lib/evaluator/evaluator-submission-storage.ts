@@ -56,6 +56,8 @@ function dtoToSubmission(
     propertyId: payload.propertyId ?? dto.propertyId ?? "",
     poNumber: payload.poNumber ?? dto.poNumber ?? "",
     status: (dto.status as EvaluatorSubmissionStatus) ?? payload.status,
+    reportNo:
+      typeof payload.reportNo === "string" ? payload.reportNo : base.reportNo,
     independenceDeclared: Boolean(payload.independenceDeclared),
     reportWorkers: Array.isArray(payload.reportWorkers)
       ? payload.reportWorkers
@@ -66,6 +68,15 @@ function dtoToSubmission(
         ? payload.assetDataVarianceNotes
         : base.assetDataVarianceNotes,
     signedAppraisalFileName: payload.signedAppraisalFileName ?? null,
+    appraiserAddress:
+      typeof payload.appraiserAddress === "string" &&
+      payload.appraiserAddress.trim()
+        ? payload.appraiserAddress
+        : base.appraiserAddress,
+    appraiserPhone:
+      typeof payload.appraiserPhone === "string" && payload.appraiserPhone.trim()
+        ? payload.appraiserPhone
+        : base.appraiserPhone,
     submittedAtUtc: dto.submittedAtUtc ?? payload.submittedAtUtc ?? null,
     updatedAtUtc: dto.updatedAtUtc ?? payload.updatedAtUtc,
   };
@@ -287,10 +298,11 @@ export async function prefetchEvaluatorSubmissions(
 export function isVisibleInAppraiserQueue(
   taskId: string,
   taskStatus: string,
+  options?: { showSubmitted?: boolean },
 ): boolean {
-  if (taskStatus === "completed") return false;
+  if (taskStatus === "completed") return Boolean(options?.showSubmitted);
   const sub = loadEvaluatorSubmission(taskId);
-  if (sub?.status === "submitted") return false;
+  if (sub?.status === "submitted") return Boolean(options?.showSubmitted);
   return true;
 }
 

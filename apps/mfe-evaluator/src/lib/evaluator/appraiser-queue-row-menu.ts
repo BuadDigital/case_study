@@ -18,8 +18,19 @@ export function buildAppraiserQueueRowMoreItems(options: {
 
   const items: RowMoreMenuItem[] = [
     {
-      id: "open",
-      label: "فتح المعاملة",
+      id: "property-data",
+      label: "بيانات العقار",
+      onClick: () => {
+        if (po && propertyId) {
+          options.router.push(poPropertyPath(po, propertyId));
+          return;
+        }
+        options.openTask();
+      },
+    },
+    {
+      id: "upload-report",
+      label: "رفع تقرير التقييم",
       onClick: options.openTask,
     },
   ];
@@ -29,14 +40,6 @@ export function buildAppraiserQueueRowMoreItems(options: {
       id: "po-properties",
       label: "عقارات أمر العمل",
       onClick: () => options.router.push(poPropertiesPath(po)),
-    });
-  }
-
-  if (po && propertyId) {
-    items.push({
-      id: "property-detail",
-      label: "تفاصيل العقار",
-      onClick: () => options.router.push(poPropertyPath(po, propertyId)),
     });
   }
 

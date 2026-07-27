@@ -20,6 +20,7 @@ export type PartyEngineeringSurveyExtensions = {
     childTask: WorkflowTask;
     hostRef: RefObject<PartyEngineeringSurveyWorkHostRef | null>;
     deedNumber: string;
+    onBack?: () => void;
     onFailureSubmitted?: () => void;
     variant?: "workspace" | "entry";
     forceReadOnly?: boolean;

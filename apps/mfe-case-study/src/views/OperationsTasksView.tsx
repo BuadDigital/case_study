@@ -83,6 +83,19 @@ import {
   type CreateOperationsTaskPrefill,
 } from "../components/CreateOperationsTaskModal";
 import {
+  TASKS_LIST_COLS,
+  TASKS_LIST_FOOTER,
+  TasksEmptyRows,
+  TasksKpiActiveIcon,
+  TasksKpiCompletedIcon,
+  TasksKpiCreatedIcon,
+  TasksKpiInProgressIcon,
+  TasksSectionNote,
+  TasksShowAllEye,
+  tasksDescClassName,
+} from "../components/tasks/TasksHtmlPrimitives";
+import { ReassignOperationsTaskModal } from "../components/tasks/ReassignOperationsTaskModal";
+import {
   opsAttachBtn,
   opsBackLink,
   opsBulk,
@@ -127,7 +140,6 @@ import {
   opsFileChipFx,
   opsFilters,
   opsGridRow,
-  opsGridRowOn,
   opsHeadRow,
   opsIconBoxGold,
   opsLetterBodyPad,
@@ -161,7 +173,6 @@ import {
   opsStepLblOn,
   opsStepLine,
   opsStepLineOn,
-  opsTaskDesc,
   opsTd,
   opsTdC,
   opsTh,
@@ -177,9 +188,6 @@ import {
   opsTfSegRow,
 } from "../lib/prototype/ops-tasks-tw";
 import "./operations-tasks-look.css";
-
-const COLS =
-  "40px minmax(170px,1.8fr) minmax(110px,1.1fr) minmax(120px,1.1fr) minmax(120px,1.2fr) minmax(84px,.85fr) 84px";
 
 const LETTER_COLS =
   "44px minmax(84px,.9fr) minmax(120px,1.2fr) minmax(100px,1fr) minmax(78px,.8fr) minmax(160px,1.5fr)";
@@ -967,29 +975,6 @@ function PlusIcon() {
   );
 }
 
-function EyeIcon({ open, blink }: { open: boolean; blink?: boolean }) {
-  return (
-    <svg
-      className={cn("show-all-eye", open && "is-open", blink && "is-blink")}
-      width="15"
-      height="15"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <g className="show-all-eye-ball">
-        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-        <circle className="show-all-eye-pupil" cx="12" cy="12" r="3" />
-      </g>
-      <path className="show-all-eye-lid" d="M3 12h18" />
-    </svg>
-  );
-}
-
 function BackChevron() {
   return (
     <svg
@@ -1507,7 +1492,6 @@ export function OperationsTasksView() {
   const [statusFilter, setStatusFilter] = useState("");
   const [scopeFilter, setScopeFilter] = useState("");
   const [showAll, setShowAll] = useState(false);
-  const [eyeBlink, setEyeBlink] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(deepLinkTaskId);
   const [detailId, setDetailId] = useState<string | null>(deepLinkTaskId);
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
@@ -2280,12 +2264,8 @@ export function OperationsTasksView() {
             <div className={opsPpCell}>
               <div className={opsPpCellK}>موعد الاستحقاق</div>
               <div className={opsPpCellV} style={overdue ? { color: "#d9694f" } : undefined}>
-                <span dir="ltr" className="font-bold">
-                  {taskCountdown(detail.dueAt, detail.status, now).txt}
-                </span>
-                <span className="mt-0.5 block text-[11px] font-medium text-text-3">
-                  {formatTaskDueLabel(detail.dueAt)}
-                </span>
+                {overdue ? "متأخرة · " : ""}
+                {formatTaskDueLabel(detail.dueAt)}
               </div>
             </div>
             {(() => {
@@ -2317,7 +2297,7 @@ export function OperationsTasksView() {
         </div>
 
         {detail.description ? (
-          <div className={opsTaskDesc}>{detail.description}</div>
+          <div className={tasksDescClassName("plain")}>{detail.description}</div>
         ) : null}
 
         {isActiveOperationsTask(detail) ? (
@@ -2636,86 +2616,29 @@ export function OperationsTasksView() {
           />
         </AppModal>
 
-        <AppModal
+        <ReassignOperationsTaskModal
           open={reassignOpen}
-          title="إعادة توجيه وإسناد"
-          wide
+          currentAssigneeName={detail.assigneeName}
+          currentAssigneeRole={
+            reassignAssignees.find((a) => a.id === detail.assigneeId)?.subtitle
+          }
+          assignees={reassignAssignees}
+          assigneeId={reassignAssigneeId}
+          dueDate={reassignDueDate}
+          dueTime={reassignDueTime}
+          reason={reassignReason}
+          error={reassignError}
+          busy={busy}
+          onAssigneeChange={(id, name) => {
+            setReassignAssigneeId(id);
+            setReassignAssigneeName(name);
+          }}
+          onDueDateChange={setReassignDueDate}
+          onDueTimeChange={setReassignDueTime}
+          onReasonChange={setReassignReason}
           onClose={() => setReassignOpen(false)}
-        >
-          <div className="flex flex-col gap-3.5">
-            {reassignError ? <Note tone="danger">{reassignError}</Note> : null}
-            <label className="flex flex-col gap-1.5">
-              <span className={opsTfLbl}>مُسندة إلى *</span>
-              <Select
-                value={reassignAssigneeId}
-                onChange={(e) => {
-                  const id = e.target.value;
-                  setReassignAssigneeId(id);
-                  setReassignAssigneeName(
-                    reassignAssignees.find((a) => a.id === id)?.name ?? "",
-                  );
-                }}
-              >
-                {reassignAssignees.length === 0 ? (
-                  <option value="">لا يوجد منفّذون</option>
-                ) : (
-                  reassignAssignees.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name}
-                      {a.subtitle ? ` — ${a.subtitle}` : ""}
-                    </option>
-                  ))
-                )}
-              </Select>
-            </label>
-            <div>
-              <span className={opsTfLbl}>
-                موعد الاستحقاق *{" "}
-                <span className="font-medium text-text-3">(يوم + ساعة)</span>
-              </span>
-              <div className="mt-1.5 flex flex-wrap gap-2.5">
-                <Input
-                  type="date"
-                  value={reassignDueDate}
-                  onChange={(e) => setReassignDueDate(e.target.value)}
-                  className="max-w-[190px]"
-                />
-                <Input
-                  type="time"
-                  value={reassignDueTime}
-                  onChange={(e) => setReassignDueTime(e.target.value)}
-                  className="max-w-[150px]"
-                />
-              </div>
-            </div>
-            <label className="flex flex-col gap-1.5">
-              <span className={opsTfLbl}>سبب إعادة التوجيه *</span>
-              <Textarea
-                value={reassignReason}
-                onChange={(e) => setReassignReason(e.target.value)}
-                rows={3}
-                placeholder="اذكر سبب إعادة التوجيه والإسناد…"
-              />
-            </label>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                className={opsBtnGhost}
-                onClick={() => setReassignOpen(false)}
-              >
-                إلغاء
-              </button>
-              <button
-                type="button"
-                className={opsBtnPrimary}
-                disabled={busy}
-                onClick={() => void submitReassign()}
-              >
-                حفظ
-              </button>
-            </div>
-          </div>
-        </AppModal>
+          onSubmit={() => void submitReassign()}
+        />
       </PageShell>
     );
   }
@@ -2725,7 +2648,7 @@ export function OperationsTasksView() {
       <KpiBand className="mb-0 shrink-0 !rounded-[12px]">
         <KpiCell
           first
-          icon={<TypeIcon type="general" size={17} />}
+          icon={<TasksKpiActiveIcon />}
           iconClass="bg-gold-soft text-gold-d"
           label="مهام نشطة"
           value={kpis.active}
@@ -2733,24 +2656,14 @@ export function OperationsTasksView() {
           dot
         />
         <KpiCell
-          icon={
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <path d="M14 2v6h6" />
-            </svg>
-          }
+          icon={<TasksKpiCreatedIcon />}
           iconClass="bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-ink"
           label="منشأة"
           value={kpis.created}
-          sub="بانتظار تأكيد الاستلام"
+          sub="بانتظار البدء"
         />
         <KpiCell
-          icon={
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 6v6l4 2" />
-            </svg>
-          }
+          icon={<TasksKpiInProgressIcon />}
           iconClass="bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#8a5e14]"
           label="قيد التنفيذ"
           value={kpis.inProgress}
@@ -2758,12 +2671,7 @@ export function OperationsTasksView() {
         />
         <KpiCell
           last
-          icon={
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-              <path d="m9 11 3 3L22 4" />
-            </svg>
-          }
+          icon={<TasksKpiCompletedIcon />}
           iconClass="bg-[color-mix(in_srgb,#3f8f5f_16%,transparent)] text-[#2f7a4d]"
           label="مكتملة"
           value={kpis.completed}
@@ -2806,22 +2714,10 @@ export function OperationsTasksView() {
           </OperationalToolbarSelect>
           <button
             type="button"
-            className={cn(
-              showAll ? opsShowAllBtnOn : opsShowAllBtn,
-              "show-all-btn-motion",
-            )}
-            onClick={() => {
-              setShowAll((v) => {
-                const next = !v;
-                if (next) {
-                  setEyeBlink(true);
-                  window.setTimeout(() => setEyeBlink(false), 420);
-                }
-                return next;
-              });
-            }}
+            className={showAll ? opsShowAllBtnOn : opsShowAllBtn}
+            onClick={() => setShowAll((v) => !v)}
           >
-            <EyeIcon open={showAll} blink={eyeBlink} />
+            <TasksShowAllEye />
             <span>{showAll ? "النشطة فقط" : "إظهار جميع المهام"}</span>
           </button>
           <span className={opsListCount}>
@@ -2882,7 +2778,7 @@ export function OperationsTasksView() {
         {/* Desktop table */}
         <div className="hidden overflow-x-auto lg:block">
           <div className="min-w-[900px]">
-            <div className={opsThead} style={{ gridTemplateColumns: COLS }}>
+            <div className={opsThead} style={{ gridTemplateColumns: TASKS_LIST_COLS }}>
               <div className={cn(opsTh, opsTdC)}>
                 <input
                   ref={selAllRef}
@@ -2917,9 +2813,7 @@ export function OperationsTasksView() {
             </div>
 
             {visibleTasks.length === 0 ? (
-              <div className="px-4 py-11 text-center text-[13.5px] text-text-3">
-                <div>لا توجد مهام مطابقة.</div>
-              </div>
+              <TasksEmptyRows />
             ) : (
               visibleTasks.map((task) => {
                 const prColor =
@@ -2929,11 +2823,8 @@ export function OperationsTasksView() {
                     key={task.id}
                     role="button"
                     tabIndex={0}
-                    className={cn(
-                      opsGridRow,
-                      selectedId === task.id && opsGridRowOn,
-                    )}
-                    style={{ gridTemplateColumns: COLS }}
+                    className={opsGridRow}
+                    style={{ gridTemplateColumns: TASKS_LIST_COLS }}
                     onClick={() => {
                       setSelectedId(task.id);
                       setDetailId(task.id);
@@ -3027,25 +2918,7 @@ export function OperationsTasksView() {
                       <DueCell task={task} now={now} />
                     </div>
                     <div className={opsTd}>
-                      <div className="flex flex-col items-start gap-1">
-                        <TaskStatusPill status={task.status} />
-                        {(() => {
-                          const receipt = operationsTaskReceiptLabel(task);
-                          if (!receipt) return null;
-                          return (
-                            <span
-                              className={cn(
-                                "rounded-md border px-1.5 py-0.5 text-[10.5px] font-bold",
-                                receipt === "مؤكَّد"
-                                  ? "border-[#b7d9c4] bg-[#eef7f1] text-[#2f7a4d]"
-                                  : "border-[#e6d3a8] bg-[#fff8e8] text-[#9a6b16]",
-                              )}
-                            >
-                              {receipt === "مؤكَّد" ? "✓ مؤكَّد" : receipt}
-                            </span>
-                          );
-                        })()}
-                      </div>
+                      <TaskStatusPill status={task.status} />
                     </div>
                     <div
                       className={opsTd}
@@ -3076,24 +2949,18 @@ export function OperationsTasksView() {
         {/* Mobile card list */}
         <div className="lg:hidden">
           {visibleTasks.length === 0 ? (
-            <div className="px-4 py-11 text-center text-[13.5px] text-text-3">
-              لا توجد مهام مطابقة.
-            </div>
+            <TasksEmptyRows />
           ) : (
             <ul className="m-0 flex list-none flex-col divide-y divide-border p-0">
               {visibleTasks.map((task) => {
                 const prColor =
                   OPERATIONS_TASK_PRIORITY_COLORS[task.priority] ?? "#8a8d96";
-                const receipt = operationsTaskReceiptLabel(task);
                 return (
                   <li key={`m-${task.id}`}>
                     <div
                       role="button"
                       tabIndex={0}
-                      className={cn(
-                        "flex cursor-pointer gap-3 px-3.5 py-3.5 transition-colors active:bg-row-hover",
-                        selectedId === task.id && opsGridRowOn,
-                      )}
+                      className="flex cursor-pointer gap-3 px-3.5 py-3.5 transition-colors active:bg-row-hover"
                       onClick={() => {
                         setSelectedId(task.id);
                         setDetailId(task.id);
@@ -3164,18 +3031,6 @@ export function OperationsTasksView() {
                         </div>
                         <div className="mt-2.5 flex flex-wrap items-center gap-2">
                           <TaskStatusPill status={task.status} />
-                          {receipt ? (
-                            <span
-                              className={cn(
-                                "rounded-md border px-1.5 py-0.5 text-[10.5px] font-bold",
-                                receipt === "مؤكَّد"
-                                  ? "border-[#b7d9c4] bg-[#eef7f1] text-[#2f7a4d]"
-                                  : "border-[#e6d3a8] bg-[#fff8e8] text-[#9a6b16]",
-                              )}
-                            >
-                              {receipt === "مؤكَّد" ? "✓ مؤكَّد" : receipt}
-                            </span>
-                          ) : null}
                         </div>
                         <div className="mt-2 grid grid-cols-2 gap-2 text-[12px]">
                           <div className="min-w-0">
@@ -3215,10 +3070,7 @@ export function OperationsTasksView() {
             </ul>
           )}
         </div>
-        <div className="border-t border-border px-4 py-[11px] text-xs text-text-3">
-          اضغط الصف لعرض تفاصيل المهمة. المراجعة الحكومية وخطاب التفويض حالتان من
-          هذه الطبقة.
-        </div>
+        <TasksSectionNote>{TASKS_LIST_FOOTER}</TasksSectionNote>
       </OperationalPanel>
 
       <CreateOperationsTaskModal
@@ -3336,86 +3188,32 @@ export function OperationsTasksView() {
         ) : null}
       </AppModal>
 
-      <AppModal
+      <ReassignOperationsTaskModal
         open={reassignOpen}
-        title="إعادة توجيه وإسناد"
-        wide
+        currentAssigneeName={reassignTask?.assigneeName ?? ""}
+        currentAssigneeRole={
+          reassignTask
+            ? reassignAssignees.find((a) => a.id === reassignTask.assigneeId)
+                ?.subtitle
+            : undefined
+        }
+        assignees={reassignAssignees}
+        assigneeId={reassignAssigneeId}
+        dueDate={reassignDueDate}
+        dueTime={reassignDueTime}
+        reason={reassignReason}
+        error={reassignError}
+        busy={busy}
+        onAssigneeChange={(id, name) => {
+          setReassignAssigneeId(id);
+          setReassignAssigneeName(name);
+        }}
+        onDueDateChange={setReassignDueDate}
+        onDueTimeChange={setReassignDueTime}
+        onReasonChange={setReassignReason}
         onClose={() => setReassignOpen(false)}
-      >
-        <div className="flex flex-col gap-3.5">
-          {reassignError ? <Note tone="danger">{reassignError}</Note> : null}
-          <label className="flex flex-col gap-1.5">
-            <span className={opsTfLbl}>مُسندة إلى *</span>
-            <Select
-              value={reassignAssigneeId}
-              onChange={(e) => {
-                const id = e.target.value;
-                setReassignAssigneeId(id);
-                setReassignAssigneeName(
-                  reassignAssignees.find((a) => a.id === id)?.name ?? "",
-                );
-              }}
-            >
-              {reassignAssignees.length === 0 ? (
-                <option value="">لا يوجد منفّذون</option>
-              ) : (
-                reassignAssignees.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                    {a.subtitle ? ` — ${a.subtitle}` : ""}
-                  </option>
-                ))
-              )}
-            </Select>
-          </label>
-          <div>
-            <span className={opsTfLbl}>
-              موعد الاستحقاق *{" "}
-              <span className="font-medium text-text-3">(يوم + ساعة)</span>
-            </span>
-            <div className="mt-1.5 flex flex-wrap gap-2.5">
-              <Input
-                type="date"
-                value={reassignDueDate}
-                onChange={(e) => setReassignDueDate(e.target.value)}
-                className="max-w-[190px]"
-              />
-              <Input
-                type="time"
-                value={reassignDueTime}
-                onChange={(e) => setReassignDueTime(e.target.value)}
-                className="max-w-[150px]"
-              />
-            </div>
-          </div>
-          <label className="flex flex-col gap-1.5">
-            <span className={opsTfLbl}>سبب إعادة التوجيه *</span>
-            <Textarea
-              value={reassignReason}
-              onChange={(e) => setReassignReason(e.target.value)}
-              rows={3}
-              placeholder="اذكر سبب إعادة التوجيه والإسناد…"
-            />
-          </label>
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              className={opsBtnGhost}
-              onClick={() => setReassignOpen(false)}
-            >
-              إلغاء
-            </button>
-            <button
-              type="button"
-              className={opsBtnPrimary}
-              disabled={busy}
-              onClick={() => void submitReassign()}
-            >
-              حفظ
-            </button>
-          </div>
-        </div>
-      </AppModal>
+        onSubmit={() => void submitReassign()}
+      />
     </PageShell>
   );
 }

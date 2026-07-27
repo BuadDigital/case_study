@@ -1,18 +1,17 @@
 import { getCachedEvaluatorReport } from "./evaluator-report-attachments";
-import {
-  computePropertyTotal,
-  parseEvaluatorAmount,
-} from "./value-estimation";
+import { parseEvaluatorAmount } from "./value-estimation";
 import type { EvaluatorReportWorker } from "./evaluator-window-data";
 
 export type EvaluatorValidationErrors = Record<string, string>;
 
 export function validateEvaluatorSubmission(input: {
   taskId: string;
+  reportNo?: string;
   evaluatorPrice: string;
   landValue?: string;
   buildingValue?: string;
   forcedSaleDiscountPct?: string;
+  /** Legacy fields retained in persisted payloads; not part of the HTML form. */
   independenceDeclared?: boolean;
   reportWorkers?: EvaluatorReportWorker[];
   assetDataConfirmed?: boolean;
@@ -21,15 +20,16 @@ export function validateEvaluatorSubmission(input: {
   const errors: EvaluatorValidationErrors = {};
   const {
     taskId,
+    reportNo = "",
     evaluatorPrice,
     landValue = "",
     buildingValue = "",
     forcedSaleDiscountPct = "",
-    independenceDeclared = false,
-    reportWorkers = [],
-    assetDataConfirmed = false,
-    assetDataVarianceNotes = "",
   } = input;
+
+  if (!reportNo.trim()) {
+    errors.report_no = "مطلوب إدخال رقم التقرير.";
+  }
 
   const report = getCachedEvaluatorReport(taskId);
   if (!report?.dataUrl) {
@@ -57,39 +57,13 @@ export function validateEvaluatorSubmission(input: {
     errors.forced_sale_discount = "النسبة يجب أن تكون بين 0 و 100.";
   }
 
-  const total = computePropertyTotal(landValue, buildingValue);
   const priceRaw = evaluatorPrice.trim()
     ? Number.parseFloat(evaluatorPrice.replace(/,/g, "").trim())
-    : total;
+    : NaN;
 
-  if (!Number.isFinite(priceRaw) || priceRaw <= 0) {
+  if (!evaluatorPrice.trim() || !Number.isFinite(priceRaw) || priceRaw <= 0) {
     errors.evaluator_price =
-      "إجمالي قيمة العقار يجب أن يكون أكبر من صفر (أرض + مباني).";
-  }
-
-  if (!independenceDeclared) {
-    errors.independence_declared =
-      "يجب تأكيد إقرار الاستقلالية وعدم تضارب المصالح.";
-  }
-
-  if (!assetDataConfirmed && !assetDataVarianceNotes.trim()) {
-    errors.asset_data_confirmed =
-      "أكّد مراجعة بيانات الأصل، أو دوّن ملاحظات التباين إن وُجدت.";
-  }
-
-  const filledWorkers = reportWorkers.filter((w) => w.name.trim());
-  if (filledWorkers.length === 0) {
-    errors.report_workers = "أضف عاملاً واحداً على الأقل باسم كامل.";
-  } else {
-    for (const [i, w] of filledWorkers.entries()) {
-      if (!w.role) {
-        errors[`report_worker_${i}_role`] = `اختر دور العامل #${i + 1}.`;
-      }
-      if (!w.licenseNumber.trim()) {
-        errors[`report_worker_${i}_license`] =
-          `رقم الترخيص مطلوب للعامل #${i + 1}.`;
-      }
-    }
+      "مطلوب إدخال إجمالي قيمة العقار — رقم موجب أكبر من صفر.";
   }
 
   return errors;

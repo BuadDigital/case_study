@@ -14,6 +14,9 @@ import {
 import {
   cacheAssignmentDoc,
   cacheDelegationDoc,
+  cacheOtherPropertyDoc,
+  cacheRegistryDoc,
+  clearCachedPropertyDoc,
   removeCachedPropertyDoc,
 } from "../../lib/prototype/assignment-doc-attachments";
 import { findPriorDeedFull } from "../../lib/prototype/po-intake-storage";
@@ -479,8 +482,28 @@ export function PoPropertyEnfathForm({
           error={fieldErrors.realEstateRegFileName}
           attachPo={attachPo}
           propertyId={property.id}
-          onUpload={(file) => onPatch("realEstateRegFileName", file.name)}
-          onClear={() => onPatch("realEstateRegFileName", "")}
+          docKind="registry"
+          onUpload={(file) => {
+            onPatch("realEstateRegFileName", file.name);
+            if (attachPo) {
+              void cacheRegistryDoc(attachPo, property.id, file)
+                .then((result) => {
+                  if (!result.ok) showToast(result.error, "error");
+                })
+                .catch(() => {
+                  showToast(
+                    "تعذّر حفظ مرفق السجل العقاري — حاول مرة أخرى",
+                    "error",
+                  );
+                });
+            }
+          }}
+          onClear={() => {
+            onPatch("realEstateRegFileName", "");
+            if (attachPo) {
+              clearCachedPropertyDoc("registry", attachPo, property.id);
+            }
+          }}
         />
       ) : null}
 
@@ -532,14 +555,32 @@ export function PoPropertyEnfathForm({
           fileName={property.otherDocumentFileNames.join("، ")}
           attachPo={attachPo}
           propertyId={property.id}
+          docKind="other"
           multiple
           onUpload={(file) => {
             onPatch("otherDocumentFileNames", [
               ...property.otherDocumentFileNames,
               file.name,
             ]);
+            if (attachPo) {
+              void cacheOtherPropertyDoc(attachPo, property.id, file)
+                .then((result) => {
+                  if (!result.ok) showToast(result.error, "error");
+                })
+                .catch(() => {
+                  showToast(
+                    "تعذّر حفظ المستند الإضافي — حاول مرة أخرى",
+                    "error",
+                  );
+                });
+            }
           }}
-          onClear={() => onPatch("otherDocumentFileNames", [])}
+          onClear={() => {
+            onPatch("otherDocumentFileNames", []);
+            if (attachPo) {
+              clearCachedPropertyDoc("other", attachPo, property.id);
+            }
+          }}
         />
       ) : null}
 

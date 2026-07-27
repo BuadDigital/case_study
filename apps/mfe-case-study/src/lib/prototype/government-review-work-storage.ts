@@ -20,6 +20,7 @@ import {
   normalizeGovernmentReviewSubmission,
   type GovernmentReviewSubmission,
 } from "./government-review-work-data";
+import { toDurableGovernmentReviewKeysProof } from "./government-review-keys-proof";
 
 export const GOVERNMENT_REVIEW_SUBMISSION_CHANGED_EVENT =
   "government-review-submission-changed";
@@ -67,6 +68,7 @@ export async function saveGovernmentReviewSubmission(
   }
   const payload = {
     ...submission,
+    keysProofFiles: submission.keysProofFiles.map(toDurableGovernmentReviewKeysProof),
     updatedAtUtc: new Date().toISOString(),
   };
   const saved = await persistPartySubmissionPayload(submission.taskId, payload);

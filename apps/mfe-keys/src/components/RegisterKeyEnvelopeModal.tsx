@@ -288,10 +288,6 @@ export function RegisterKeyEnvelopeModal({
   const photoReady = Boolean(photo?.attachmentId);
   const photoPicked = Boolean(photo);
   const locked = saving || busy || uploading;
-  const countMismatch =
-    Number.isFinite(labeled) &&
-    Number.isFinite(actual) &&
-    labeled !== actual;
 
   function pickSuggestion(s: RequestSuggestion) {
     setRequestNumber(s.requestNumber);
@@ -443,7 +439,7 @@ export function RegisterKeyEnvelopeModal({
           </h2>
           <button
             type="button"
-            className="grid size-10 place-items-center rounded-[9px] border-none bg-surface-2 text-[15px] leading-none text-text-2 transition-[background,color] duration-150 hover:bg-row-hover hover:text-heading"
+            className="grid size-8 place-items-center rounded-[9px] border-none bg-surface-2 text-[15px] leading-none text-text-2 transition-[background,color] duration-150 hover:bg-row-hover hover:text-heading"
             onClick={onClose}
             aria-label="إغلاق"
           >
@@ -615,39 +611,20 @@ export function RegisterKeyEnvelopeModal({
             </Fld>
 
             {source !== "missing" ? (
-              <>
-            <Fld>
-              <FldLabel htmlFor="kf-count-labeled">المكتوب على الظرف *</FldLabel>
-              <input
-                id="kf-count-labeled"
-                type="number"
-                min={0}
-                value={keysCountLabeled}
-                className={fldControlClassName}
-                onChange={(e) => setKeysCountLabeled(e.target.value)}
-              />
-            </Fld>
-
-            <Fld>
-              <FldLabel htmlFor="kf-count-actual">العدد الفعلي بعد العد *</FldLabel>
-              <input
-                id="kf-count-actual"
-                type="number"
-                min={0}
-                value={keysCountActual}
-                className={fldControlClassName}
-                onChange={(e) => setKeysCountActual(e.target.value)}
-              />
-            </Fld>
-              </>
-            ) : null}
-
-            {source !== "missing" && countMismatch ? (
-              <Fld full>
-                <div className="rounded-[10px] border border-[color-mix(in_srgb,#d9a441_35%,transparent)] bg-[color-mix(in_srgb,#d9a441_12%,transparent)] px-[13px] py-2 text-[12px] font-semibold text-[#8a5e14]">
-                  تعارض في العدد: المكتوب {keysCountLabeled} والفعلي{" "}
-                  {keysCountActual}. يلزم توثيق ذلك في خطاب الاستلام.
-                </div>
+              <Fld>
+                <FldLabel htmlFor="kf-count">عدد المفاتيح *</FldLabel>
+                <input
+                  id="kf-count"
+                  type="number"
+                  min={1}
+                  value={keysCountActual}
+                  className={fldControlClassName}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setKeysCountActual(v);
+                    setKeysCountLabeled(v);
+                  }}
+                />
               </Fld>
             ) : null}
 
@@ -884,11 +861,11 @@ export function RegisterKeyEnvelopeModal({
         </div>
 
         {/* .modal-foot */}
-        <div className="flex shrink-0 flex-wrap justify-stretch gap-2.5 border-t border-border bg-surface-2 px-4 py-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:justify-end sm:px-[22px]">
+        <div className="flex shrink-0 flex-wrap justify-end gap-2.5 border-t border-border bg-surface-2 px-[22px] py-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] max-sm:px-4">
           <button
             type="button"
             disabled={locked}
-            className="min-h-11 flex-1 cursor-pointer rounded-[9px] border border-border-md bg-surface px-[18px] py-2.5 text-[13px] font-semibold text-text-2 transition-colors duration-150 hover:bg-row-hover disabled:cursor-not-allowed disabled:opacity-65 sm:flex-none"
+            className="min-h-11 cursor-pointer rounded-[9px] border border-border-md bg-surface px-[18px] py-2.5 text-[13px] font-semibold text-text-2 transition-colors duration-150 hover:bg-row-hover disabled:cursor-not-allowed disabled:opacity-65 max-sm:flex-1"
             onClick={onClose}
           >
             إلغاء
@@ -897,7 +874,7 @@ export function RegisterKeyEnvelopeModal({
             variant="primary"
             loading={saving}
             disabled={locked}
-            className="min-h-11 flex-1 gap-[7px] rounded-lg border-none bg-ink px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_6px_16px_-8px_rgba(18,40,76,0.6)] hover:border-none hover:bg-navy-3 sm:flex-none"
+            className="min-h-11 gap-[7px] rounded-lg border-none bg-ink px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_6px_16px_-8px_rgba(18,40,76,0.6)] hover:border-none hover:bg-navy-3 max-sm:flex-1"
             showActionToast={false}
             onClick={() => void handleSave()}
           >
