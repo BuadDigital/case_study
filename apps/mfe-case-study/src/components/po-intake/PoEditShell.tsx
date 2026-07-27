@@ -52,14 +52,16 @@ export function PoEditShell({
   return (
     <div
       className={cn(
-        "flex w-full flex-col overflow-hidden",
-        viewportScroll ? "min-h-0 flex-1" : "min-h-0",
+        "flex w-full flex-col",
+        /* document: grow with content so #content can scroll; do not clip */
+        documentScroll ? "min-h-min" : "min-h-0 overflow-hidden",
+        viewportScroll && "flex-1",
       )}
     >
       <div
         className={cn(
           "flex items-stretch",
-          documentScroll ? "min-h-0 w-full flex-col" : "min-h-0 flex-1",
+          documentScroll ? "w-full flex-col" : "min-h-0 flex-1",
         )}
       >
         <div
@@ -67,9 +69,9 @@ export function PoEditShell({
             "flex min-w-0 flex-col",
             viewportScroll
               ? "min-h-0 flex-1 overflow-hidden bg-bg"
-              : cn(
-                  documentScroll ? "w-full bg-bg" : "min-h-0 flex-1 overflow-hidden bg-surface",
-                ),
+              : documentScroll
+                ? "w-full bg-bg"
+                : "min-h-0 flex-1 overflow-hidden bg-surface",
             variant === "detail" && !viewportScroll && !documentScroll && "bg-surface",
           )}
         >

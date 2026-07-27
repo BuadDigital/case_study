@@ -20,6 +20,7 @@ import {
   ThAction,
   THead,
   Tr,
+  cn,
   queueTableRowClassName,
   queueTableWrapClassName,
 } from "@platform/design-system";
@@ -34,10 +35,15 @@ import { RemainingTimeCell } from "../components/ui/RemainingTimeCell";
 import { RowMoreMenu } from "../components/ui/RowMoreMenu";
 import type { RowMoreMenuItem } from "../components/ui/RowMoreMenu";
 import {
+  ActiveQueueMobileCards,
+  type ActiveQueueMobileCardItem,
+} from "../components/queue/ActiveQueueMobileCards";
+import {
+  formatPoDisplay,
   formatPropertyDeedDisplay,
   type PoIntakeRecord,
 } from "../lib/prototype/po-intake-data";
-import { resolveRemainingTime } from "../lib/prototype/my-task-row";
+import { resolveRemainingTime, formatRemainingDuration } from "../lib/prototype/my-task-row";
 import { poPropertiesPath, poPropertyPath } from "../lib/po-routes";
 import {
   propertySuspensionKey,
@@ -203,6 +209,39 @@ export function SuspendedTransactionsView() {
   const staff = isCaseStudyStaff(role);
   const queuePending = !isFetched;
 
+  const mobileCardItems = useMemo((): ActiveQueueMobileCardItem[] => {
+    return sortedItems.map((item) => {
+      const record = poByNumber.get(item.poNumber.trim());
+      const remaining = resolveRemainingTime(record?.dueDateAt ?? "", now);
+      const timer = formatRemainingDuration(record?.dueDateAt ?? "", now);
+      const assignmentType = record?.assignmentType?.trim() || "—";
+      const overdue = remaining.status === "overdue";
+      const deed = deedLabel(item, record);
+      return {
+        id: item.id,
+        title: deed.startsWith("صك") || deed === "—" ? deed : `صك ${deed}`,
+        meta: [
+          { text: formatPoDisplay(item.poNumber), kind: "po" as const },
+          assignmentType !== "—"
+            ? { text: assignmentType, kind: "type" as const }
+            : null,
+        ].filter((v): v is NonNullable<typeof v> => Boolean(v)),
+        statusLabel: overdue ? "متأخرة" : "معلقة",
+        tone: overdue ? ("returned" as const) : ("pending" as const),
+        timerLabel:
+          timer.remainingDuration !== "—"
+            ? overdue
+              ? "متأخرة"
+              : `متبقي ${timer.remainingDuration}`
+            : undefined,
+        timerOverdue: overdue,
+        moreItems: buildSuspendedRowMoreItems(item, router),
+        onOpen: () =>
+          router.push(poPropertyPath(item.poNumber, item.propertyId)),
+      };
+    });
+  }, [sortedItems, poByNumber, now, router]);
+
   return (
     <PageShell variant="canvas" className="min-h-0 flex-1">
       <KpiBand>
@@ -253,9 +292,9 @@ export function SuspendedTransactionsView() {
         />
       </KpiBand>
 
-      <OperationalPanel className="min-h-0 flex-1">
+      <OperationalPanel className="min-h-0 flex-1 max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none">
           {!staff ? (
-            <PageToolbar className="border-b-0 bg-surface-2/50">
+            <PageToolbar className="border-b-0 bg-surface-2/50 max-lg:mb-2 max-lg:rounded-[14px] max-lg:border max-lg:border-border max-lg:bg-surface">
               <Note tone="info" className="m-0 flex-1">
                 المعاملة معلّقة — لا يمكن متابعة العمل حتى رفع التعليق من مشرف
                 دراسة الحالة.
@@ -270,7 +309,14 @@ export function SuspendedTransactionsView() {
             />
           ) : (
             <>
-              <div className={queueTableWrapClassName}>
+              <div className="pb-3 lg:hidden">
+                <ActiveQueueMobileCards
+                  items={mobileCardItems}
+                  pending={queuePending}
+                  emptyMessage="لا توجد معاملات معلقة."
+                />
+              </div>
+              <div className={cn(queueTableWrapClassName, "hidden lg:block")}>
                 <Table pending={queuePending}>
                   <THead>
                     <Tr hoverable={false}>
@@ -346,7 +392,7 @@ export function SuspendedTransactionsView() {
                   </TBody>
                 </Table>
               </div>
-              <QueueTableHint>
+              <QueueTableHint className="hidden lg:block">
                 اضغط الصف لعرض تفاصيل العقار — ⋮ عقارات أمر العمل · تفاصيل
                 العقار.
               </QueueTableHint>

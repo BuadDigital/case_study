@@ -1,11 +1,16 @@
 /* Ejada shell service worker — network-first app shell, static asset cache.
  * Auth/API traffic is never cached. Compatible with Next Turbopack (no build plugin).
  */
-const CACHE_VERSION = "ejada-shell-v1";
+const CACHE_VERSION = "ejada-shell-v2";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const OFFLINE_URL = "/offline.html";
 
-const PRECACHE = [OFFLINE_URL, "/icons/icon-192.png", "/icons/icon-512.png"];
+const PRECACHE = [
+  OFFLINE_URL,
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
+  "/icons/apple-touch-icon.png",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

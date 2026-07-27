@@ -11,7 +11,7 @@ export type OrphanScreenNavItem = {
 export const ORPHAN_SCREENS_NAV: OrphanScreenNavItem[] = [
   {
     id: "survey",
-    label: "مكاتب الرفع (يتيم)",
+    label: "مكاتب الرفع الهندسي",
     icon: "M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0zM12 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4z",
     available: true,
   },

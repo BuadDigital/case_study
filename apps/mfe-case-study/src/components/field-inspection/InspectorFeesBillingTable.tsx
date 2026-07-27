@@ -303,7 +303,7 @@ export function InspectorFeesBillingTable({
         />
       ) : null}
 
-      <div className={queueTableWrapClassName}>
+      <div className={cn(queueTableWrapClassName, "hidden lg:block")}>
         <Table className="min-w-[980px] w-full" pending={pending}>
           <THead>
             <Tr hoverable={false}>
@@ -577,6 +577,56 @@ export function InspectorFeesBillingTable({
           </TBody>
         </Table>
       </div>
+
+      <div className="lg:hidden">
+        {pending && rows.length === 0 ? (
+          <div className="space-y-2.5 p-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-[100px] animate-pulse rounded-[12px] bg-surface-2"
+              />
+            ))}
+          </div>
+        ) : rows.length === 0 ? (
+          <p className="m-0 px-3 py-8 text-center text-[13px] text-text-3">
+            لا بنود.
+          </p>
+        ) : (
+          <ul className="m-0 flex list-none flex-col gap-3 p-3 max-lg:px-0">
+            {rows.map((row) => (
+              <li
+                key={`m-bill-${row.workflowTaskId}`}
+                className="rounded-[14px] border border-border border-s-[3px] border-s-ink bg-surface px-3.5 py-3.5 shadow-[0_2px_8px_rgba(15,52,96,0.06)]"
+              >
+                <div className="mb-2 flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-[14px] font-bold text-heading">
+                      {row.propertyLabel}
+                    </div>
+                    <div className="mt-1">
+                      <PoNumber value={row.poNumber} link />
+                    </div>
+                    <div className="mt-1 text-[11px] text-text-3">
+                      {row.inspectorType || partyTypeColumn}
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-end">
+                    <Sar value={row.netFeeSar} />
+                    {row.supervisorDiscountSar > 0 ? (
+                      <div className="mt-0.5 text-[10px] text-danger-text">
+                        حسم {row.supervisorDiscountSar.toLocaleString("ar-SA")}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+                <FeeStatusBadge row={row} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       <FeeDiscountModal
         open={discountRow !== null}
         row={discountRow}

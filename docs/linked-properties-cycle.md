@@ -1,0 +1,380 @@
+# دورة العقارات المرتبطة — الوضع الحالي
+
+> **آخر مراجعة:** 27 يوليو 2026  
+> **النطاق:** كل ما يُعرَض ويُخزَّن ويُستهلك حول «ارتباط» عقار بعقار آخر داخل نظام إجادة — تبويب **العقارات المرتبطة**، نسخ المعاملة السابقة، الأصول المرتبطة في دراسة الحالة، وارتباط الظرف/المهام.
+
+---
+
+## 1. المفهوم
+
+«العقارات المرتبطة» ليست كياناً واحداً في قاعدة البيانات، بل **طبقة عرض ومنطق** تجمع أربعة مصادر ارتباط مختلفة حول عقار (`WorkOrderProperty`) واحد:
+
+| # | نوع الارتباط | المعيار | مصدر البيانات |
+|---|-------------|---------|---------------|
+| 1 | **نفس أمر العمل (PO)** | عقارات أخرى في `record.properties` | Work Order |
+| 2 | **نفس الصك — معاملة سابقة** | `deedNumber` مسجّل سابقاً في PO آخر (أحدث تسجيل) | `FindPriorDeed` API |
+| 3 | **أصول مصرّح بها** | الأخصائي أجاب «نعم» في دراسة الحالة + أرقام صكوك | `CaseStudyForm` |
+| 4 | **مهام تشغيلية** | مهمة ops مرتبطة بـ PO أو الصك | `OperationsTask` |
+
+بالإضافة إلى ذلك، يوجد **ارتباط جانبي** (لا يظهر في تبويب «العقارات المرتبطة» لكنه مرتبط بالموضوع):
+
+| # | نوع | المعيار |
+|---|-----|---------|
+| 5 | **ظرف مفاتيح** | كل عقارات إجادة بنفس `requestNumber` | `KeyEnvelopes` |
+| 6 | **إعفاء مسحي** | صك سبق تسجيله → يُعتبر المسح «منجزاً» في قائمة العقارات | `PropertyListRowBuilder.PriorSurveyWaived` |
+
+---
+
+## 2. واجهة المستخدم
+
+### 2.1 تبويب «العقارات المرتبطة»
+
+**المكوّن:** `apps/mfe-case-study/src/components/po-intake/PropertyDetailLinkedTab.tsx`  
+**يُستدعى من:** `PoPropertyDetailTabs.tsx` — تبويب `linked` ضمن تفاصيل العقار.
+
+**الأقسام المعروضة:**
+
+```
+┌─ العقارات المرتبطة ─────────────────────────────┐
+│ ℹ  شرح أنواع الارتباطات                        │
+├─ المهام التشغيلية ──────────────────────────────┤
+│   قائمة مهام + رابط إنشاء مهمة (للمصرّح لهم)   │
+├─ على نفس أمر العمل ────────────────────────────┤
+│   روابط لعقارات PO الأخرى                      │
+├─ نفس الصك في أمر عمل سابق ─────────────────────┤
+│   رابط لـ PO/عقار السابق                       │
+└─ أصول مرتبطة (من دراسة الحالة) ────────────────┘
+    أرقام صكوك + ملاحظات (بدون ربط تلقائي بسجل)
+```
+
+**حالة فارغة:** رسالة توضّح أن الارتباطات تشمل: PO، تسجيل سابق، تصريح الأخصائي.  
+إذا `expectedPropertyCount > properties.length` يُعرَض تنبيه بعدد العقارات المتوقع.
+
+**شارة العدّ على التبويب:** في `PoPropertyDetailTabs` يُحسب `samePoLinkedCount` = عدد عقارات PO الأخرى فقط (لا يشمل التسجيل السابق ولا المصرّح به).
+
+### 2.2 نظرة سريعة (موبايل)
+
+**المكوّن:** `PropertyDetailMobileGlance.tsx`  
+زر «مرتبطة» يفتح تبويب `linked` — يعرض ملخص المهام التشغيلية المرتبطة.
+
+### 2.3 نسخ من معاملة سابقة
+
+**المكوّن:** `CopyFromPriorTransactionModal.tsx`  
+**نقاط الدخول:**
+
+| الشاشة | الملف | الإعداد |
+|--------|-------|---------|
+| قائمة عقارات PO | `PoPropertiesPage.tsx` | قائمة ⋮ → نسخ من معاملة سابقة |
+| طوابير المعاملات النشطة | `ActiveTransactionQueueView.tsx` | `allowCopyFromPrior: true` |
+| مهامي | `MyTasksView.tsx` | `allowCopyFromPrior: true` |
+
+**التدفق:**
+
+1. اختيار الهدف: عقار موجود أو **خانة فارغة** (`empty-slot` / مهمة `case-study-property` بدون `propertyId`).
+2. إدخال رقم الصك والبحث → `findPriorDeedFull`.
+3. اختيار نطاق النسخ:
+   - `enfath` — البيانات الأولية (إنفاذ)
+   - `bourse` — الأولية + بيانات البورصة (إن وُجدت)
+4. تنفيذ `copyPropertyFromPriorTransaction`.
+
+**قيود مهمة:**
+
+- لا نسخ صك من **نفس PO** إلى خانة فارغة (الصك موجود مسبقاً).
+- لا استبدال عقار بصك شقيق على نفس PO (تعارض unique-deed).
+- تأكيد عند استبدال بيانات موجودة.
+
+### 2.4 تنبيه أثناء إدخال الصك
+
+**المكوّن:** `PoPropertyEnfathForm.tsx`  
+عند تغيير `deedNumber` يُستدعى `findPriorDeedFull` تلقائياً:
+
+- يُعرَض `priorPo` إن وُجد تسجيل سابق.
+- **تعبئة تلقائية** إن كانت الحقول فارغة: `deedDate`, `ownerName`, `contacts`.
+
+يُستخدم أيضاً في:
+
+- `DistributionTaskWork.tsx` — تحذير عند التوزيع
+- `MyTaskWorkView.tsx` — سياق عمل المهمة
+
+---
+
+## 3. حقول «الأصول المرتبطة» (دراسة الحالة / إنفاذ)
+
+### 3.1 المواصفة
+
+**المرجع:** `docs/infath_case_study_fields.md` — القسم ٥  
+**القسم في نموذج الرفع:** `infath-upload-model.ts` — `id: "linked"` / «الأصول المرتبطة»
+
+| الحقل (عرض) | مفتاح التخزين | النوع | شرط |
+|-------------|---------------|-------|-----|
+| هل الأصل مرتبط بأصول أخرى؟ | `infathLinkedAssets` | `""` \| `yes` \| `no` | — |
+| أرقام صكوك الأصول المرتبطة | `infathLinkedDeedNumbers` | نص (متعدد: `,` `،` `;` سطر) | عند `yes` |
+| ملاحظات ربط الأصل | `infathLinkedAssetsNotes` | نص | — |
+
+**تسميات الواجهة:** `infath-field-labels.ts`  
+**كتalog الحقول:** `property-fields-catalog.ts` → `linkedAssets`, `linkedDeedNumbers`, `linkedAssetsNotes`
+
+### 3.2 أين تُدخل؟
+
+| السطح | الملف |
+|-------|-------|
+| نموذج الدراسة — قسم الأخصائي | `CaseStudyInfathSpecialistSection.tsx` |
+| عرض في تبويب الأطراف / التقرير | `property-detail-party-submission-builders.ts` |
+| تبويب العقارات المرتبطة | `PropertyDetailLinkedTab` — يقرأ المسودة عبر `loadCaseStudyFormDraft(taskId)` |
+
+### 3.3 التخزين (Backend)
+
+**الكيان:** `CaseStudyForm` (`backend/RealEstateEval.Domain/CaseStudyForm.cs`)
+
+```csharp
+InfathLinkedAssets      // empty | yes | no
+InfathLinkedDeedNumbers
+InfathLinkedAssetsNotes
+```
+
+**API:** `CaseStudyFormsController` + `packages/api-client/src/case-study-forms.ts`
+
+> **ملاحظة:** أرقام الصكوك المصرّح بها **لا تُحلّ تلقائياً** إلى سجلات عقار — تُعرَض كنص فقط في التبويب.
+
+---
+
+## 4. API وخدمات Backend
+
+### 4.1 البحث عن صك سابق
+
+```
+GET /api/work-orders/deeds/prior?deedNumber=&excludePo=&excludePropertyId=
+```
+
+| الطبقة | الملف |
+|--------|-------|
+| Controller | `WorkOrdersController.cs` |
+| Service | `WorkOrderService.FindPriorDeedAsync` |
+| DTO | `PriorDeedRegistrationDto` (`WorkOrderDtos.cs`) |
+| Client | `packages/api-client/src/work-orders.ts` → `findPriorDeed` |
+| Wrapper FE | `po-intake-storage.ts` → `findPriorDeedFull` |
+
+**منطق البحث:**
+
+- `IdentifierType == Deed` و `DeedNumber` مطابق
+- `!IsRemoved`
+- استثناء PO و/أو `propertyId` عند الطلب
+- **الأحدث أولاً:** `OrderByDescending(WorkOrder.CreatedAtUtc)`
+
+**حقول `PriorDeedRegistrationDto`:** بيانات إنفاذ + بورصة (حدود، محكمة، جهات اتصال، `bourseDataCompleted`, …).
+
+### 4.2 نسخ البيانات من معاملة سابقة
+
+**Frontend فقط** — لا endpoint مخصص:
+
+| الدالة | الملف | الوصف |
+|--------|-------|-------|
+| `priorDeedToPropertyIntake` | `po-intake-storage.ts` | تحويل DTO → مسودة عقار |
+| `mergePriorOntoExisting` | نفس الملف | دمج على عقار موجود حسب `scope` |
+| `copyPropertyFromPriorTransaction` | نفس الملف | حفظ عبر `addPropertyToPo` / `updatePropertyInPo` |
+| `finishBourseIfNeeded` | نفس الملف | إكمال البورصة إن `scope === "bourse"` |
+
+### 4.3 عقارات مرتبطة بظرف المفاتيح
+
+```
+GET /api/key-envelopes/linked-properties?requestNumber=
+```
+
+| الطبقة | الملف |
+|--------|-------|
+| Controller | `KeyEnvelopesController.cs` (Operations API) |
+| Service | `KeyEnvelopesService.ListLinkedPropertiesAsync` → `LoadLinkedAsync` |
+
+**المعيار:** كل `WorkOrderProperty` حيث `RequestNumber` يطابق — غير محذوف.  
+**الاستخدام:** `RegisterKeyEnvelopeModal` — تحميل تلقائي عند إدخال رقم الطلب؛ `KeyEnvelopeDetailModal` — عرض الصكوك المرتبطة.
+
+### 4.4 فهرس الصكوك السابقة (قائمة العقارات)
+
+**`PropertyListRowBuilder.BuildPriorDeedIndex`:**  
+قاموس `deedNumber → poNumber` لكل العقارات في الطلب.
+
+**`PriorSurveyWaived`:** إذا الصك سبق ظهوره في فهرس سابق **و** التصنيف يتطلب مسحاً → عمود المسح في القائمة = `done` (إعفاء من إعادة المسح).
+
+---
+
+## 5. المهام التشغيلية المرتبطة
+
+**فلترة في `PropertyDetailLinkedTab`:**
+
+```typescript
+// مهمة تُعرَض إذا:
+// - poNumber يطابق AND (scope = work_order | multi)
+// - أو scope = transaction AND الصك في deeds[]
+// - أو deeds[] يطابق deedNumber / deedDisplay
+```
+
+**إنشاء مهمة:** رابط إلى  
+`/operations-tasks?create=1&type=general&scope=transaction&po=…&deed=…`  
+(للمستخدمين الذين `canManageOperationsTasks(role)`).
+
+**ربط الظرف:** مهمة `court_visit` قد تحمل `linkedEnvelopeId` بعد تسجيل الظرف (`OperationsTasksView`).
+
+---
+
+## 6. مخطط تدفق مبسّط
+
+```mermaid
+flowchart TB
+  subgraph inputs [مصادر الارتباط]
+    PO[عقارات نفس PO]
+    PRIOR[FindPriorDeed API]
+    CSF[CaseStudyForm.infathLinked*]
+    OPS[OperationsTask.deeds/poNumber]
+    REQ[requestNumber → KeyEnvelope]
+  end
+
+  subgraph ui [واجهة تفاصيل العقار]
+    TAB[PropertyDetailLinkedTab]
+    COPY[CopyFromPriorTransactionModal]
+    ENF[PoPropertyEnfathForm تنبيه/تعبئة]
+  end
+
+  subgraph actions [إجراءات]
+    ADD[addPropertyToPo / updatePropertyInPo]
+    REG[registerKeyEnvelope assignments]
+  end
+
+  PO --> TAB
+  PRIOR --> TAB
+  PRIOR --> COPY
+  PRIOR --> ENF
+  CSF --> TAB
+  OPS --> TAB
+
+  COPY --> ADD
+  ENF --> ADD
+  REQ --> REG
+```
+
+---
+
+## 7. دورة حياة عملية (سيناريوهات)
+
+### 7.1 PO متعدد العقارات
+
+1. إنشاء PO بـ `expectedPropertyCount > 1`.
+2. إضافة عقارات (إنفاذ / توزيع / نسخ).
+3. في تفاصيل أي عقار → تبويب «العقارات المرتبطة» → قسم **«على نفس أمر العمل»**.
+
+### 7.2 إعادة تسجيل نفس الصك (PO جديد)
+
+1. إدخال `deedNumber` في نموذج إنفاذ → تنبيه + تعبئة جزئية.
+2. أو: ⋮ → **نسخ من معاملة سابقة** → بحث → نسخ `enfath` أو `bourse`.
+3. في التبويب → قسم **«نفس الصك في أمر عمل سابق»** مع رابط للـ PO القديم.
+4. في قائمة العقارات → المسح قد يظهر **منجزاً** (`PriorSurveyWaived`).
+
+### 7.3 تصريح أصول مرتبطة (دراسة الحالة)
+
+1. الأخصائي يملأ `CaseStudyInfathSpecialistSection`.
+2. `infathLinkedAssets = yes` + أرقام صكوك.
+3. التبويب يعرض **«أصول مرتبطة (من دراسة الحالة)»** — بدون navigation لسجل العقار الآخر.
+4. عند الرفع على إنفاذ → القسم ٥ في `infath-upload-model.ts`.
+
+### 7.4 ظرف مفاتيح لطلب إنفاذ
+
+1. إدخال `requestNumber` في `RegisterKeyEnvelopeModal`.
+2. `GET linked-properties` → قائمة عقارات إجادة.
+3. تُسجَّل كـ `assignments` على الظرف.
+4. **لا تظهر** في تبويب «العقارات المرتبطة» — تظهر في تبويب **«مفاتيح العقار»**.
+
+---
+
+## 8. خريطة الملفات
+
+### Frontend — Case Study MFE
+
+| الملف | الدور |
+|-------|-------|
+| `PropertyDetailLinkedTab.tsx` | تبويب العرض الرئيسي |
+| `PoPropertyDetailTabs.tsx` | تبويب + عدّاد + timeline |
+| `CopyFromPriorTransactionModal.tsx` | نسخ من معاملة سابقة |
+| `PoPropertyEnfathForm.tsx` | بحث/تنبيه/تعبئة تلقائية |
+| `CaseStudyInfathSpecialistSection.tsx` | إدخال الأصول المرتبطة |
+| `po-intake-storage.ts` | `findPriorDeedFull`, `copyPropertyFromPrior*`, `buildCopyPriorTargetOptions` |
+| `infath-upload-model.ts` | قسم ٥ في نموذج الرفع |
+| `infath-field-labels.ts` | تسميات عربية |
+| `property-detail-party-submission-builders.ts` | عرض في تقارير الأطراف |
+| `case-study-form-storage.ts` | مسودة `infathLinked*` |
+| `ActiveTransactionQueueView.tsx` | قائمة ⋮ + modal |
+| `PoPropertiesPage.tsx` | قائمة ⋮ + modal |
+| `active-queue-row-menu.ts` / `po-properties-row-menu.ts` | عنصر القائمة |
+
+### Frontend — Keys MFE
+
+| الملف | الدور |
+|-------|-------|
+| `RegisterKeyEnvelopeModal.tsx` | تحميل linked + assignments |
+| `KeyEnvelopeDetailModal.tsx` | عرض الصكوك المرتبطة بالطلب |
+| `keys-envelope-api.ts` | عميل API |
+
+### Backend
+
+| الملف | الدور |
+|-------|-------|
+| `WorkOrderService.FindPriorDeedAsync` | بحث الصك السابق |
+| `WorkOrdersController` | `deeds/prior` |
+| `CaseStudyForm.cs` | حقول `InfathLinked*` |
+| `KeyEnvelopesService.LoadLinkedAsync` | عقارات بنفس `requestNumber` |
+| `PropertyListRowBuilder` | فهرس صك + إعفاء مسح |
+| `OperationsTaskService` | `LinkedEnvelopeId` |
+
+### Packages / Docs
+
+| الملف | الدور |
+|-------|-------|
+| `packages/api-client/work-orders.ts` | `PriorDeedRegistrationDto`, `findPriorDeed` |
+| `packages/api-client/case-study-forms.ts` | حقول النموذج |
+| `packages/app-shared/property-fields-catalog.ts` | كatalog |
+| `docs/infath_case_study_fields.md` | مواصفة إنفاذ §5 |
+| `docs/standalone-property-module-fields.md` | aliases الحقول |
+| `docs/ظروف_المفاتiح.md` | دورة الظرف + linked-properties API |
+
+---
+
+## 9. ما هو **غير** مربوط حالياً
+
+| المتوقع | الواقع |
+|---------|--------|
+| حل أرقام صكوك «الأصول المرتبطة» إلى روابط عقار | **غير منفّذ** — عرض نصي فقط |
+| ظهور عقارات `requestNumber` في تبويب «العقارات المرتبطة» | **غير منفّذ** — في تبويب المفاتيح فقط |
+| عدّاد التبويب يشمل كل أنواع الارتباط | **جزئي** — `samePoLinkedCount` فقط |
+| API backend لنسخ من معاملة سابقة | **غير موجود** — منطق Frontend + Work Order CRUD |
+| جدول `PropertyLink` أو علاقة many-to-many | **غير موجود** — اشتقاق وقت التشغيل |
+| bidirectional link (A→B يظهر B→A) | **جزئي** — فقط عبر PO مشترك أو نفس deed في prior lookup |
+
+---
+
+## 10. اختبارات موجودة
+
+| الاختبار | الملف |
+|----------|-------|
+| `FindPriorDeed` / mapper | `WorkOrderMapperTests.cs` |
+| `ListLinkedPropertiesAsync` | `KeyEnvelopesServiceTests.cs` |
+| نسخ/تعليق معاملة | `suspend-property-transaction.test.ts` |
+
+---
+
+## 11. مراجع تصميم (HTML prototype)
+
+| المستند | المحتوى ذو الصلة |
+|---------|------------------|
+| `docs/new look/.../docs/infath_case_study_fields.md` | §5 الأصول المرتبطة |
+| `docs/new look/.../uploads/_ظروف_المفاتiح.md` | linked-properties API |
+| `docs/new look/.../دورة اسناد المهام.md` | §8 ارتباط المفاتيح والمهام |
+
+---
+
+## 12. ملخص للمطوّر
+
+- **نقطة الدخول الرئيسية للمستخدم:** تبويب «العقارات المرتبطة» في `PoPropertyDetailTabs`.
+- **الربط Structural:** PO (1:N properties) + `requestNumber` (ظرف) + `deedNumber` (prior lookup).
+- **الربط Declarative:** حقول `infathLinked*` في `CaseStudyForm`.
+- **الربط Operational:** `OperationsTask` scoped بـ PO/deeds.
+- **الإجراء الأقوى:** `CopyFromPriorTransactionModal` + `copyPropertyFromPriorTransaction` لإعادة استخدام بيانات صك مسجّل سابقاً.
+
+لتوسيع «الدورة» لاحقاً، المرشح الأهم: **resolver** يحوّل `infathLinkedDeedNumbers` إلى `PropertyDetailLinkedTab` entries مع روابط، وتوحيد عرض ارتباط `requestNumber` (مفاتiح) مع باقي الأنواع.

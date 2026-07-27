@@ -76,8 +76,12 @@ import { AppModal } from "../components/ui/AppModal";
 import {
   RowMoreMenu,
   RowMoreMenuIcons,
+  type RowMoreMenuItem,
 } from "../components/ui/RowMoreMenu";
-import type { RowMoreMenuItem } from "../components/ui/RowMoreMenu";
+import {
+  ActiveQueueMobileCards,
+  type ActiveQueueMobileCardItem,
+} from "../components/queue/ActiveQueueMobileCards";
 import {
   CreateOperationsTaskModal,
   type CreateOperationsTaskPrefill,
@@ -1405,7 +1409,7 @@ function LetterTable({ rows }: { rows: OperationsTask["letterRows"] }) {
         {rows.map((row, i) => (
           <li
             key={`${row.po}-${row.deed}-m-${i}`}
-            className="rounded-[12px] border border-border bg-surface px-3.5 py-3 shadow-card"
+            className="rounded-[12px] border border-border border-s-4 border-s-info bg-surface px-3.5 py-3 shadow-[0_1px_2px_rgba(18,40,76,0.04)]"
           >
             <div className="mb-2 flex items-center justify-between gap-2">
               <span className="text-[11px] font-bold text-text-3">#{i + 1}</span>
@@ -2175,6 +2179,88 @@ export function OperationsTasksView() {
     [canCreate, canRemind, reviewerAccount, runStatus, remindTask, openReassign, openCloseModal, openPriorityModal, openKeysRegisterFromTask, openPauseModal],
   );
 
+  const mobileCardItems = useMemo((): ActiveQueueMobileCardItem[] => {
+    return visibleTasks.map((task) => {
+      const cd = taskCountdown(task.dueAt, task.status, now);
+      const tone: ActiveQueueMobileCardItem["tone"] =
+        task.status === "completed" || task.status === "cancelled"
+          ? "done"
+          : task.priority === "urgent" || task.priority === "high" || cd.over
+            ? "returned"
+            : task.status === "in_progress" || task.status === "paused"
+              ? "pending"
+              : "new";
+      const statusColor =
+        OPERATIONS_TASK_STATUS_COLORS[task.status] ?? "var(--ink)";
+      return {
+        id: task.id,
+        title: task.title,
+        meta: [
+          { text: task.displayId, kind: "po" as const },
+          { text: operationsTaskTypeLabel(task.type), kind: "type" as const },
+          {
+            text: operationsTaskPriorityLabel(task.priority),
+            kind: "plain" as const,
+          },
+        ],
+        statusLabel: operationsTaskStatusLabel(task.status),
+        statusStyle: { base: statusColor, fg: statusColor },
+        tone,
+        timerLabel: isActiveOperationsTask(task)
+          ? cd.over
+            ? "متأخرة"
+            : cd.txt
+          : undefined,
+        timerOverdue: isActiveOperationsTask(task) ? cd.over : undefined,
+        moreItems: rowMenu(task),
+        onOpen: () => {
+          setSelectedId(task.id);
+          setDetailId(task.id);
+        },
+        leading: isActiveOperationsTask(task) ? (
+          <input
+            type="checkbox"
+            className={opsTkCheckInput}
+            checked={Boolean(selectedIds[task.id])}
+            onChange={(e) => {
+              const on = e.target.checked;
+              setSelectedIds((prev) => {
+                const next = { ...prev };
+                if (on) next[task.id] = true;
+                else delete next[task.id];
+                return next;
+              });
+            }}
+            aria-label="تحديد المهمة"
+          />
+        ) : undefined,
+        footer: (
+          <div className="grid grid-cols-2 gap-2 text-[12px]">
+            <div className="min-w-0">
+              <div className="text-[10.5px] text-text-3">المنفّذ</div>
+              <div className="truncate font-semibold text-heading">
+                {task.assigneeName || task.assigneeId}
+              </div>
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10.5px] text-text-3">الاستحقاق</div>
+              <DueCell task={task} now={now} />
+            </div>
+            <div className="col-span-2 min-w-0">
+              <div className="text-[10.5px] text-text-3">النطاق / الربط</div>
+              <div className="font-semibold text-text">
+                {operationsTaskScopeLabel(task.scope)}
+              </div>
+              <div className="truncate text-[11px] text-text-3" dir="ltr">
+                {operationsTaskLinkLabel(task)}
+              </div>
+            </div>
+          </div>
+        ),
+      };
+    });
+  }, [visibleTasks, now, rowMenu, selectedIds]);
+
   const isAssignee =
     Boolean(detail) && detail?.assigneeId === reviewerAccount?.assigneeId;
 
@@ -2774,7 +2860,7 @@ export function OperationsTasksView() {
 
       {error ? <Note tone="danger">{error}</Note> : null}
 
-      <OperationalPanel className="min-h-0 flex-1 overflow-hidden !rounded-[12px] p-0">
+      <OperationalPanel className="min-h-0 flex-1 overflow-hidden !rounded-[12px] p-0 max-lg:border-0 max-lg:bg-transparent max-lg:!rounded-none max-lg:shadow-none">
         {/* Desktop table */}
         <div className="hidden overflow-x-auto lg:block">
           <div className="min-w-[900px]">
@@ -2947,128 +3033,11 @@ export function OperationsTasksView() {
         </div>
 
         {/* Mobile card list */}
-        <div className="lg:hidden">
-          {visibleTasks.length === 0 ? (
-            <TasksEmptyRows />
-          ) : (
-            <ul className="m-0 flex list-none flex-col divide-y divide-border p-0">
-              {visibleTasks.map((task) => {
-                const prColor =
-                  OPERATIONS_TASK_PRIORITY_COLORS[task.priority] ?? "#8a8d96";
-                return (
-                  <li key={`m-${task.id}`}>
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      className="flex cursor-pointer gap-3 px-3.5 py-3.5 transition-colors active:bg-row-hover"
-                      onClick={() => {
-                        setSelectedId(task.id);
-                        setDetailId(task.id);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          setDetailId(task.id);
-                        }
-                      }}
-                    >
-                      {isActiveOperationsTask(task) ? (
-                        <label
-                          className="flex shrink-0 items-start pt-1"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <input
-                            type="checkbox"
-                            className={opsTkCheckInput}
-                            checked={Boolean(selectedIds[task.id])}
-                            onChange={(e) => {
-                              const on = e.target.checked;
-                              setSelectedIds((prev) => {
-                                const next = { ...prev };
-                                if (on) next[task.id] = true;
-                                else delete next[task.id];
-                                return next;
-                              });
-                            }}
-                            aria-label="تحديد المهمة"
-                          />
-                        </label>
-                      ) : (
-                        <span className="w-[17px] shrink-0" aria-hidden />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start gap-2.5">
-                          <span className={opsTypeIconSm}>
-                            <TypeIcon type={task.type} size={15} />
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <div className="text-[14px] font-bold leading-snug text-heading">
-                              {task.title}
-                            </div>
-                            <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11.5px] text-text-3">
-                              <span dir="ltr">{task.displayId}</span>
-                              <span aria-hidden>·</span>
-                              <span>{operationsTaskTypeLabel(task.type)}</span>
-                              <span aria-hidden>·</span>
-                              <span
-                                className="inline-flex items-center gap-1 font-bold"
-                                style={{ color: prColor }}
-                              >
-                                <span
-                                  className="size-1.5 rounded-full"
-                                  style={{ background: prColor }}
-                                />
-                                {operationsTaskPriorityLabel(task.priority)}
-                              </span>
-                            </div>
-                          </div>
-                          <div
-                            className="shrink-0"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <RowMoreMenu items={rowMenu(task)} />
-                          </div>
-                        </div>
-                        <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                          <TaskStatusPill status={task.status} />
-                        </div>
-                        <div className="mt-2 grid grid-cols-2 gap-2 text-[12px]">
-                          <div className="min-w-0">
-                            <div className="text-[10.5px] text-text-3">
-                              المنفّذ
-                            </div>
-                            <div className="truncate font-semibold text-heading">
-                              {task.assigneeName || task.assigneeId}
-                            </div>
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-[10.5px] text-text-3">
-                              الاستحقاق
-                            </div>
-                            <DueCell task={task} now={now} />
-                          </div>
-                          <div className="col-span-2 min-w-0">
-                            <div className="text-[10.5px] text-text-3">
-                              النطاق / الربط
-                            </div>
-                            <div className="font-semibold text-text">
-                              {operationsTaskScopeLabel(task.scope)}
-                            </div>
-                            <div
-                              className="truncate text-[11px] text-text-3"
-                              dir="ltr"
-                            >
-                              {operationsTaskLinkLabel(task)}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+        <div className="px-3 pb-3 lg:hidden max-lg:px-0">
+          <ActiveQueueMobileCards
+            items={mobileCardItems}
+            emptyMessage="لا توجد مهام مطابقة."
+          />
         </div>
         <TasksSectionNote>{TASKS_LIST_FOOTER}</TasksSectionNote>
       </OperationalPanel>

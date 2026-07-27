@@ -156,7 +156,7 @@ export function ValTabBar({
   onChange: (id: string) => void;
 }) {
   return (
-    <div className="-mx-0.5 mb-[18px] flex gap-0 overflow-x-auto border-b border-border">
+    <div className="-mx-0.5 mb-[18px] flex gap-0 overflow-x-auto overflow-y-hidden border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:h-0">
       {tabs.map((tab) => {
         const on = active === tab.id;
         return (

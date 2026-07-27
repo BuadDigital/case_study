@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { NavIcon } from "@/components/views/NavIcon";
 import { EjadaLogo } from "@/components/views/EjadaLogo";
 import { ThemeSwitch } from "@/components/views/ThemeSwitch";
@@ -49,22 +49,26 @@ import {
 import { isPartyTaskPage } from "@platform/app-shared/prototype/party-task-pages";
 import { decodeTaskParam, isPartyTaskWorkPath } from "@case-study/mfe";
 import { findPropertyForTask } from "@case-study/mfe";
-import {
-  formatPropertyDeedDisplay,
-  PO_PROPERTY_SEGMENT,
-  decodePoParam,
-  poPropertiesPath,
-} from "@case-study/mfe";
+import { formatPropertyDeedDisplay } from "@case-study/mfe";
 import { AppBreadcrumb } from "@/components/views/AppBreadcrumb";
 import { NotificationCenter } from "@/components/NotificationCenter";
-import { resolvePoChrome, buildPoPropertyDetailSegments } from "@/lib/po-chrome";
+import { resolvePoChrome, buildPoPropertyWorkspaceSegments } from "@/lib/po-chrome";
+import { slashTrailToSegments } from "@/lib/breadcrumb";
 import { resolveMyTasksChrome } from "@/lib/my-tasks-chrome";
 import { EngineeringSurveyTopbarActions } from "@engineering-office/mfe";
+import { useQuery } from "@tanstack/react-query";
+import { loadOperationsTasks } from "@case-study/mfe/lib/prototype/operations-tasks-storage";
+import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { useActiveTransactionNavBadges } from "@/lib/query/use-active-transaction-nav-badges";
 import { useFailuresNavBadge } from "@/lib/query/use-failures-nav-badge";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import { cn } from "@platform/design-system";
 import { clearAuthSession, getAuthSession } from "@platform/auth-client";
+import {
+  PullToRefreshIndicator,
+  usePullToRefresh,
+} from "@/components/PullToRefresh";
+import { useAppDataRefresh } from "@/hooks/useAppDataRefresh";
 
 function TopbarSvgIcon({ children }: { children: React.ReactNode }) {
   return (
@@ -85,6 +89,23 @@ function MenuIcon() {
       aria-hidden
     >
       <path d="M4 7h16M4 12h16M4 17h16" />
+    </svg>
+  );
+}
+
+function RefreshIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+      <path d="M21 3v6h-6" />
     </svg>
   );
 }
@@ -121,25 +142,11 @@ function LogoutIcon() {
   );
 }
 
-function BackChevronIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="size-4 shrink-0 text-text-3"
-      aria-hidden
-    >
-      <path d="M9 18l6-6-6-6" />
-    </svg>
-  );
-}
-
 const mobileTopbarIconBtn =
   "flex size-10 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-surface text-text shadow-[0_1px_2px_rgba(15,52,96,0.06)] transition-colors hover:bg-surface-2 active:scale-[0.98] lg:hidden";
+
+const topbarActionIconBtn =
+  "flex size-10 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-surface text-text shadow-[0_1px_2px_rgba(15,52,96,0.06)] transition-colors hover:bg-surface-2 active:scale-[0.98]";
 
 function navItemClasses({
   active = false,
@@ -695,6 +702,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const { role, rolePages } = usePrototype();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const { refresh, busy: refreshBusy } = useAppDataRefresh();
   // Read sessionStorage once per render cycle, not multiple times.
   const sessionUser = useMemo(() => getAuthSession()?.user, []);
 
@@ -758,6 +767,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     [pathname],
   );
 
+  /** Workspace pages lock `#content` scroll — disable shell PTR there. */
+  const contentScrollLocked =
+    pathParts[0] === "property-inspection" && pathParts.length >= 2;
+
+  const silentRefresh = useCallback(
+    () => refresh({ silent: true }),
+    [refresh],
+  );
+  const {
+    pull: ptrPull,
+    refreshing: ptrRefreshing,
+    threshold: ptrThreshold,
+  } = usePullToRefresh(contentRef, silentRefresh, !contentScrollLocked);
+
   const currentPage = useMemo(
     () => ((pathParts[0] ?? "dashboard") as PageId),
     [pathParts],
@@ -820,87 +843,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return prop.deedNumber.trim();
   }, [caseStudyTask, caseStudyPo]);
 
-  const activeSurveyTask = useMemo(() => {
-    if (!activeSurveyTaskId) return null;
-    const id = decodeTaskParam(activeSurveyTaskId);
-    return workflowTasks?.find((t) => t.id === id) ?? null;
-  }, [activeSurveyTaskId, workflowTasks]);
-
-  const { data: activeSurveyPo } = usePoRecordQuery(
-    activeSurveyTask?.poNumber ?? null,
-  );
-
-  const activeSurveyDeedLabel = useMemo(() => {
-    if (!activeSurveyTask || !activeSurveyPo) return "";
-    const prop = findPropertyForTask(activeSurveyPo, activeSurveyTask);
-    if (!prop) return "";
-    const formatted = formatPropertyDeedDisplay(prop);
-    if (formatted && formatted !== "—") return formatted;
-    return prop.deedNumber.trim();
-  }, [activeSurveyTask, activeSurveyPo]);
-
-  const activeSurveyBreadcrumb = useMemo(() => {
-    if (!onActiveSurveyRoute || !activeSurveyTask?.poNumber?.trim()) {
-      return null;
-    }
-    return buildPoPropertyDetailSegments(
-      activeSurveyTask.poNumber.trim(),
-      activeSurveyDeedLabel || undefined,
-    );
-  }, [
-    onActiveSurveyRoute,
-    activeSurveyTask,
-    activeSurveyDeedLabel,
-  ]);
-
   const caseStudyBreadcrumb = useMemo(() => {
     if (!onCaseStudyWorkspace || !caseStudyTask?.poNumber?.trim()) {
       return null;
     }
-    return buildPoPropertyDetailSegments(
+    return buildPoPropertyWorkspaceSegments(
       caseStudyTask.poNumber.trim(),
       caseStudyDeedLabel || undefined,
     );
   }, [onCaseStudyWorkspace, caseStudyTask, caseStudyDeedLabel]);
 
-  const poPropertyDetailContext = useMemo(() => {
-    if (
-      pathParts[0] !== "po" ||
-      pathParts[2] !== PO_PROPERTY_SEGMENT ||
-      pathParts.length !== 4 ||
-      pathParts[3] === "new"
-    ) {
-      return null;
-    }
-    return {
-      poNumber: decodePoParam(pathParts[1]!),
-      propertyId: decodePoParam(pathParts[3]!),
-    };
-  }, [pathParts]);
-
-  const { data: poPropertyDetailRecord } = usePoRecordQuery(
-    poPropertyDetailContext?.poNumber ?? null,
-  );
-
-  const poPropertyDeedLabel = useMemo(() => {
-    if (!poPropertyDetailContext || !poPropertyDetailRecord) return undefined;
-    const property = poPropertyDetailRecord.properties.find(
-      (p) => p.id === poPropertyDetailContext.propertyId,
-    );
-    if (!property) return undefined;
-    const formatted = formatPropertyDeedDisplay(property);
-    if (formatted && formatted !== "—") return formatted;
-    return property.deedNumber.trim() || undefined;
-  }, [poPropertyDetailContext, poPropertyDetailRecord]);
-
   const poChrome = useMemo(
-    () =>
-      pathname
-        ? resolvePoChrome(pathname, { deedLabel: poPropertyDeedLabel })
-        : null,
-    [pathname, poPropertyDeedLabel],
+    () => (pathname ? resolvePoChrome(pathname) : null),
+    [pathname],
   );
   const taskQuery = searchParams.get("task");
+  const opsTaskDeepLink =
+    currentPage === "operations-tasks" ? taskQuery?.trim() || null : null;
+  const { data: operationsTasks } = useQuery({
+    queryKey: prototypeKeys.operationsTasks(),
+    queryFn: () => loadOperationsTasks(),
+    enabled: Boolean(opsTaskDeepLink),
+    staleTime: 30_000,
+  });
+  const opsTaskTitle = useMemo(() => {
+    if (!opsTaskDeepLink || !operationsTasks?.length) return undefined;
+    const id = decodeTaskParam(opsTaskDeepLink);
+    const task =
+      operationsTasks.find((t) => t.id === id) ??
+      operationsTasks.find((t) => t.displayId === id);
+    return task?.title?.trim() || undefined;
+  }, [opsTaskDeepLink, operationsTasks]);
+
   const myTasksChrome = useMemo(
     () =>
       pathname
@@ -910,6 +884,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               currentPage === "all-transactions" ||
               currentPage === "active-distribution" ||
               currentPage === "active-case-study" ||
+              currentPage === "operations-tasks" ||
               onCaseStudyWorkspace ||
               onActiveSurveyRoute ||
               onPropertyAppraisalWorkspace ||
@@ -931,9 +906,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           ? valuationCoordinationTaskId
                           : taskQuery
               : null,
-            onCaseStudyWorkspace
-              ? { deedLabel: caseStudyDeedLabel }
-              : undefined,
+            {
+              ...(onCaseStudyWorkspace
+                ? { deedLabel: caseStudyDeedLabel }
+                : {}),
+              ...(opsTaskDeepLink ? { opsTaskTitle } : {}),
+            },
           )
         : null,
     [
@@ -953,6 +931,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       governmentReviewTaskId,
       valuationCoordinationTaskId,
       caseStudyDeedLabel,
+      opsTaskDeepLink,
+      opsTaskTitle,
     ],
   );
   const inPoSection = pathname?.startsWith("/po") ?? false;
@@ -985,7 +965,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   let generalNavInserted = false;
   let orphanScreensInserted = false;
 
-  const onPoPropertyDetail = Boolean(poChrome?.propertyDetail);
   const onActiveSurveyPropertyDetail = onActiveSurveyEntry;
   // Keys HTML setHeader: list / fees report / envelope file.
   const keysChrome = useMemo(() => {
@@ -1006,35 +985,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return null;
   }, [currentPage, searchParams]);
 
+  // Case Study.html renderEngFees:
+  // setHeader('فوترة الأتعاب', crumb(['لوحة التحكم','فوترة الأتعاب']))
   const engineeringFeesCrumb =
     currentPage === "party-fees" && isPartyFeesUnderActiveTransactions(role)
-      ? [
-          { label: "لوحة التحكم" },
-          { label: "المعاملات النشطة" },
-          { label: "فوترة الأتعاب" },
-        ]
+      ? slashTrailToSegments("لوحة التحكم / فوترة الأتعاب")
       : null;
 
   const breadcrumbSegments =
     poChrome?.segments ??
-    activeSurveyBreadcrumb ??
     caseStudyBreadcrumb ??
     engineeringFeesCrumb ??
     (myTasksChrome?.breadcrumb
-      ? myTasksChrome.breadcrumb
-          .split(" / ")
-          .map((label) => ({ label: label.trim() }))
-          .filter((s) => s.label)
+      ? slashTrailToSegments(myTasksChrome.breadcrumb)
       : keysChrome?.breadcrumb
-        ? keysChrome.breadcrumb
-            .split(" / ")
-            .map((label) => ({ label: label.trim() }))
-            .filter((s) => s.label)
+        ? slashTrailToSegments(keysChrome.breadcrumb)
         : PAGE_BREADCRUMB[currentPage]
-          ? PAGE_BREADCRUMB[currentPage]
-              .split(" / ")
-              .map((label) => ({ label: label.trim() }))
-              .filter((s) => s.label)
+          ? slashTrailToSegments(PAGE_BREADCRUMB[currentPage])
           : undefined);
 
   const resolvedPageTitle =
@@ -1248,24 +1215,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <MenuIcon />
               </TopbarSvgIcon>
             </button>
-            {onPoPropertyDetail && poChrome?.propertyDetail ? (
-              <Link
-                href={poPropertiesPath(poChrome.propertyDetail.poNumber)}
-                className="flex min-w-0 flex-1 items-center gap-1 truncate text-[13px] font-medium text-text no-underline transition-colors hover:text-primary lg:hidden"
-              >
-                <BackChevronIcon />
-                <PoNumber value={poChrome.propertyDetail.poNumber} />
-              </Link>
-            ) : null}
             <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
               <AppBreadcrumb
                 segments={displayBreadcrumbSegments}
-                className={cn(
-                  "max-lg:min-w-0 max-lg:flex-1 max-lg:flex-nowrap max-lg:overflow-x-auto max-lg:[&::-webkit-scrollbar]:hidden",
-                  onPoPropertyDetail && "max-lg:hidden",
-                )}
+                className="max-lg:min-w-0 max-lg:flex-1 max-lg:flex-nowrap max-lg:overflow-x-auto max-lg:[&::-webkit-scrollbar]:hidden"
               />
-              {!onPoPropertyDetail && !onActiveSurveyPropertyDetail
+              {!onActiveSurveyPropertyDetail
                 ? (() => {
                     if (!resolvedPageTitle && !poChrome?.titlePo) return null;
                     return (
@@ -1289,9 +1244,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 : null}
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              className={cn(
+                topbarActionIconBtn,
+                "text-text-2",
+                (refreshBusy || ptrRefreshing) && "pointer-events-none opacity-60",
+              )}
+              aria-label="تحديث البيانات"
+              title="تحديث"
+              disabled={refreshBusy || ptrRefreshing}
+              onClick={() => void refresh()}
+            >
+              <TopbarSvgIcon>
+                <span
+                  className={cn(
+                    "inline-flex",
+                    (refreshBusy || ptrRefreshing) && "animate-spin",
+                  )}
+                >
+                  <RefreshIcon />
+                </span>
+              </TopbarSvgIcon>
+            </button>
             <NotificationCenter />
-            <div className="h-[26px] w-px shrink-0 bg-border-md" aria-hidden />
+            <div className="h-[26px] w-px shrink-0 bg-border-md max-lg:hidden" aria-hidden />
             {onActiveSurveyPropertyDetail ? (
               <EngineeringSurveyTopbarActions />
             ) : null}
@@ -1306,15 +1284,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         <div
           id="content"
+          ref={contentRef}
           data-workspace-scroll={
             onPropertyInspectionWorkspace ? "locked" : undefined
           }
           className={cn(
             "flex min-h-0 flex-1 flex-col items-stretch bg-bg p-0",
+            "relative",
             onPropertyInspectionWorkspace ? "overflow-hidden" : "overflow-y-auto",
             "max-lg:pb-[env(safe-area-inset-bottom)]",
+            !contentScrollLocked && "overscroll-y-contain",
           )}
         >
+          {!contentScrollLocked ? (
+            <PullToRefreshIndicator
+              pull={ptrPull}
+              refreshing={ptrRefreshing}
+              threshold={ptrThreshold}
+            />
+          ) : null}
           {children}
         </div>
       </div>

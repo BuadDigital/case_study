@@ -219,12 +219,16 @@ export const ALL_PROTOTYPE_PAGES: PageId[] = [
 
 ROLES.cdo.pages = ALL_PROTOTYPE_PAGES;
 
+/**
+ * Top-bar titles — Case Study.html `setHeader(title, …)`.
+ * Keep in sync with PAGE_BREADCRUMB trails below.
+ */
 export const PAGE_TITLES: Record<PageId, string> = {
   dashboard: "لوحة التحكم",
   "active-primary-data": "البيانات الأولية",
   "active-distribution": "توزيع المعاملات",
   "active-case-study": "دراسة حالة العقارات",
-  po: "أوامر العمل",
+  po: "أوامر العمل (PO)",
   "all-transactions": "جميع المعاملات",
   "bourse-inquiry": "استعلام بورصة",
   keys: "محفظة المفاتيح",
@@ -237,7 +241,7 @@ export const PAGE_TITLES: Record<PageId, string> = {
   "valuation-coordination": "استلام التقييم",
   "property-appraisal": "تقييم العقار",
   "active-survey": "الرفع المساحي",
-  survey: "مكاتب الرفع",
+  survey: "مكاتب الرفع الهندسي",
   "party-fees": "الأتعاب والصرف",
   "system-fields-catalog": "قاموس الحقول المركزي",
   "system-screen-catalog": "دليل الشاشات",
@@ -251,35 +255,42 @@ export const PAGE_TITLES: Record<PageId, string> = {
   profile: "البروفايل",
 };
 
+/**
+ * Full crumb trails including the current page (last segment), matching
+ * Case Study.html `crumb([...])` / `renderGeneric` / `renderList`
+ * (`setHeader(label, crumb(['لوحة التحكم', label]))`).
+ * Intermediate labels that are real routes get `href` via shell
+ * `slashTrailToSegments`.
+ */
 export const PAGE_BREADCRUMB: Record<PageId, string> = {
-  dashboard: "الرئيسية",
-  "active-primary-data": "دراسة الحالة / المعاملات النشطة / البيانات الأولية",
-  "active-distribution": "دراسة الحالة / المعاملات النشطة / توزيع المعاملات",
-  "active-case-study": "دراسة الحالة / المعاملات النشطة / دراسة حالة العقارات",
-  po: "دراسة الحالة / أوامر العمل",
-  "all-transactions": "دراسة الحالة / أوامر العمل / جميع المعاملات",
-  "bourse-inquiry": "دراسة الحالة / المعاملات النشطة / استعلام بورصة",
+  dashboard: "الرئيسية / لوحة التحكم",
+  "active-primary-data": "لوحة التحكم / البيانات الأولية",
+  "active-distribution": "لوحة التحكم / توزيع المعاملات",
+  "active-case-study": "لوحة التحكم / دراسة حالة العقارات",
+  po: "لوحة التحكم / دراسة الحالة / أوامر العمل",
+  "all-transactions": "لوحة التحكم / جميع المعاملات",
+  "bourse-inquiry": "لوحة التحكم / استعلام بورصة",
   keys: "لوحة التحكم / دراسة الحالة / محفظة المفاتيح",
-  failures: "دراسة الحالة / إدارة التعذرات",
-  "suspended-transactions": "دراسة الحالة",
-  "valuation-requests": "عام / إعدادات النظام / طلبات التقييم",
-  "property-inspection": "المعاملات النشطة / معاينة العقار",
-  "government-review": "الشاشات اليتيمة / المراجعة الحكومية",
-  "operations-tasks": "دراسة الحالة / المهام",
-  "valuation-coordination": "المعاملات النشطة / استلام التقييم",
-  "property-appraisal": "المعاملات النشطة / تقييم العقار",
-  "active-survey": "المعاملات النشطة / الرفع المساحي",
-  survey: "الشاشات اليتيمة / مكاتب الرفع",
-  "party-fees": "عام / إعدادات النظام / الأتعاب والصرف",
-  "system-fields-catalog": "عام / إعدادات النظام / قاموس الحقول المركزي",
-  "system-screen-catalog": "عام / إعدادات النظام / دليل الشاشات",
-  financial: "عام / إعدادات النظام / التقارير المالية",
-  users: "عام / إعدادات النظام / المستخدمون",
-  courts: "عام / إعدادات النظام / المحاكم و الدوائر",
-  "failure-types": "عام / إعدادات النظام / أنواع التعذرات",
-  "case-study-info-roles": "عام / إعدادات النظام / علاقة المستخدم بالمعلومة",
-  "audit-log": "عام / إعدادات النظام / سجل التدقيق",
-  "fee-pricing": "عام / إعدادات النظام / التسعيرة",
+  failures: "لوحة التحكم / إدارة التعذرات",
+  "suspended-transactions": "لوحة التحكم / المعاملات المعلقة",
+  "valuation-requests": "لوحة التحكم / طلبات التقييم",
+  "property-inspection": "لوحة التحكم / معاينة العقار",
+  "government-review": "دراسة الحالة / المعاملات النشطة / المراجعة الحكومية",
+  "operations-tasks": "لوحة التحكم / المهام",
+  "valuation-coordination": "لوحة التحكم / استلام التقييم",
+  "property-appraisal": "لوحة التحكم / تقييم العقار",
+  "active-survey": "لوحة التحكم / الرفع المساحي",
+  survey: "لوحة التحكم / مكاتب الرفع الهندسي",
+  "party-fees": "لوحة التحكم / الأتعاب والصرف",
+  "system-fields-catalog": "لوحة التحكم / قاموس الحقول المركزي",
+  "system-screen-catalog": "لوحة التحكم / دليل الشاشات",
+  financial: "لوحة التحكم / التقارير المالية",
+  users: "لوحة التحكم / المستخدمون",
+  courts: "لوحة التحكم / المحاكم و الدوائر",
+  "failure-types": "لوحة التحكم / أنواع التعذرات",
+  "case-study-info-roles": "لوحة التحكم / علاقة المستخدم بالمعلومة",
+  "audit-log": "لوحة التحكم / سجل التدقيق",
+  "fee-pricing": "لوحة التحكم / التسعيرة",
   profile: "البروفايل",
 };
 

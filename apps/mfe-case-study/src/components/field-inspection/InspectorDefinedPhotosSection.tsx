@@ -145,10 +145,13 @@ export function InspectorDefinedPhotosSection({
   draft,
   disabled,
   onPatch,
+  bare = false,
 }: {
   draft: InspectorWorkspaceDraft;
   disabled?: boolean;
   onPatch: (patch: Patch) => void;
+  /** Skip outer card chrome when nested in a parent section. */
+  bare?: boolean;
 }) {
   const { showToast } = useToast();
   const [previewRef, setPreviewRef] = useState<PreviewRef | null>(null);
@@ -389,12 +392,14 @@ export function InspectorDefinedPhotosSection({
   return (
     <>
       <RegistrationFormCard
-        title="صور العقار الموثّقة"
+        title={bare ? undefined : "صور العقار الموثّقة"}
         headerRight={
-          <div className="flex items-center gap-2">
-            <i className="ti ti-camera-plus text-base text-primary" aria-hidden />
-            <Badge tone="default">{coverageLabel}</Badge>
-          </div>
+          bare ? undefined : (
+            <div className="flex items-center gap-2">
+              <i className="ti ti-camera-plus text-base text-primary" aria-hidden />
+              <Badge tone="default">{coverageLabel}</Badge>
+            </div>
+          )
         }
       >
         <p className="mb-3.5 text-[11px] leading-relaxed text-text-3">
@@ -402,7 +407,14 @@ export function InspectorDefinedPhotosSection({
           «لا يوجد». الصور الإضافية تُعرّف بنوعها بنقرة.
         </p>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div
+          className={cn(
+            "grid gap-3",
+            bare
+              ? "grid-cols-2 gap-2.5"
+              : "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3",
+          )}
+        >
           {visibleSlots.map((def) => {
             const slot = draft.definedPhotos[def.id] ?? {
               none: false,

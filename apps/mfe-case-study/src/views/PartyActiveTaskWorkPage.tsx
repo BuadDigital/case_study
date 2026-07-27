@@ -70,8 +70,17 @@ export function PartyActiveTaskWorkPage({
     );
   }
 
+  const documentScrollWorkspace =
+    pageId === "property-appraisal" || pageId === "active-survey";
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div
+      className={
+        documentScrollWorkspace
+          ? "flex w-full flex-col"
+          : "flex min-h-0 flex-1 flex-col"
+      }
+    >
       <PartyActiveTaskWork
         def={def}
         task={task}

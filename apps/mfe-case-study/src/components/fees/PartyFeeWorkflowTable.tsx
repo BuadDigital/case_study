@@ -327,13 +327,13 @@ export function PartyFeeWorkflowTable({
             لا بنود.
           </p>
         ) : (
-          <ul className="m-0 flex list-none flex-col gap-2.5 p-3">
+          <ul className="m-0 flex list-none flex-col gap-3 p-3 max-lg:px-0">
             {rows.map((row) => {
               const busy = busyId === row.workflowTaskId;
               return (
                 <li
                   key={`m-${row.workflowTaskId}`}
-                  className="rounded-[12px] border border-border bg-surface px-3.5 py-3 shadow-card"
+                  className="rounded-[14px] border border-border border-s-[3px] border-s-gold bg-surface px-3.5 py-3.5 shadow-[0_2px_8px_rgba(15,52,96,0.06)]"
                 >
                   <div className="mb-2 flex items-start justify-between gap-2">
                     <div className="min-w-0">
