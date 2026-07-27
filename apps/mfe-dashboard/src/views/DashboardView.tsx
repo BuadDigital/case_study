@@ -14,6 +14,7 @@ import {
   Badge,
   KpiBand,
   KpiCell,
+  MobileKpiStatCards,
   ProgressBar,
   ReportPageBody,
   StatusBadge,
@@ -156,7 +157,7 @@ export function DashboardView() {
 
   return (
     <ReportPageBody>
-      <KpiBand>
+      <KpiBand className="mb-0 hidden lg:flex">
         <KpiCell
           first
           icon={<KpiClipboardIcon />}
@@ -195,6 +196,56 @@ export function DashboardView() {
           }
         />
       </KpiBand>
+
+      <MobileKpiStatCards
+        className="mb-6"
+        items={[
+          {
+            key: "total",
+            label: "عقارات مسجّلة",
+            sub: "من استلام أوامر العمل",
+            value: propertyPending ? "—" : propertyStats?.total,
+            icon: <KpiClipboardIcon />,
+            iconClass: "bg-info-bg text-info-text",
+            tone: "ink",
+          },
+          {
+            key: "progress",
+            label: "قيد التنفيذ",
+            sub: "بما فيها قيد التحقق",
+            value: propertyPending ? "—" : propertyStats?.progress,
+            icon: <KpiClockIcon />,
+            iconClass:
+              "bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#b8791a]",
+            tone: "gold",
+          },
+          {
+            key: "done",
+            label: "مكتملة",
+            sub: propertyStats?.donePct ?? "—",
+            value: propertyPending ? "—" : propertyStats?.done,
+            icon: <KpiCheckIcon />,
+            iconClass:
+              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-ink",
+            tone: "ink",
+            valueClass: "!text-ink",
+          },
+          {
+            key: "fail",
+            label: "تعذرات",
+            sub:
+              propertyStats && propertyStats.fail > 0
+                ? "تحتاج مراجعة"
+                : "لا تعذرات مسجّلة",
+            value: propertyPending ? "—" : propertyStats?.fail,
+            icon: <KpiAlertIcon />,
+            iconClass:
+              "bg-[color-mix(in_srgb,var(--red)_15%,transparent)] text-red",
+            tone: "red",
+            valueClass: "!text-red",
+          },
+        ]}
+      />
 
       {showTeamLoad ? <TeamCurrentLoadCard /> : null}
 

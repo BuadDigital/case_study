@@ -318,15 +318,21 @@ export function ActiveQueueMobileCards({
 
               {showTimer ? (
                 <div className="relative z-[1] flex w-[76px] shrink-0 flex-col items-end justify-center gap-1.5 self-center">
-                  <div className="h-[4px] w-full overflow-hidden rounded-full bg-surface-3">
-                    <div
-                      className={cn(
-                        "h-full rounded-full transition-[width] duration-300",
-                        BAR_TONE[barTone],
-                      )}
-                      style={{ width: `${Math.round(ratio * 100)}%` }}
-                    />
-                  </div>
+                  {!item.timerOverdue ? (
+                    <div className="h-[4px] w-full overflow-hidden rounded-full bg-surface-3">
+                      <div
+                        className={cn(
+                          "h-full rounded-full transition-[width] duration-300",
+                          BAR_TONE[barTone],
+                        )}
+                        style={{ width: `${Math.round(ratio * 100)}%` }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="h-[4px] w-full overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--red)_18%,transparent)]">
+                      <div className="h-full w-full rounded-full bg-red" />
+                    </div>
+                  )}
                   <span
                     className={cn(
                       "max-w-full truncate text-end text-[10px] font-semibold tabular-nums leading-tight",
