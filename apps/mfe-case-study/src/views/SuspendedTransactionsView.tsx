@@ -6,6 +6,7 @@ import {
   EmptyState,
   KpiBand,
   KpiCell,
+  MobileKpiStatCards,
   Note,
   OperationalPanel,
   PageShell,
@@ -244,7 +245,7 @@ export function SuspendedTransactionsView() {
 
   return (
     <PageShell variant="canvas" className="min-h-0 flex-1">
-      <KpiBand>
+      <KpiBand className="mb-0 hidden lg:flex">
         <KpiCell
           first
           icon={<KpiAlertIcon />}
@@ -291,6 +292,61 @@ export function SuspendedTransactionsView() {
           sub="عقارات موقوفة مؤقتاً"
         />
       </KpiBand>
+
+      <MobileKpiStatCards
+        className="mb-0"
+        items={[
+          {
+            key: "suspended",
+            label: "معاملات معلقة",
+            sub: !isFetched
+              ? "—"
+              : stats.suspended > 0
+                ? "بانتظار رفع التعليق"
+                : "لا معاملات معلّقة",
+            value: !isFetched ? "—" : stats.suspended,
+            icon: <KpiAlertIcon />,
+            iconClass:
+              "bg-[color-mix(in_srgb,var(--red)_15%,transparent)] text-red",
+            tone: "red",
+            valueClass: "!text-red",
+          },
+          {
+            key: "overdue",
+            label: "متأخرة عن الاستحقاق",
+            sub: !isFetched
+              ? "—"
+              : stats.overdue > 0
+                ? "تجاوزت الموعد"
+                : "لا تأخير مسجّل",
+            value: !isFetched ? "—" : stats.overdue,
+            icon: <KpiClockIcon />,
+            iconClass:
+              "bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#b8791a]",
+            tone: "gold",
+          },
+          {
+            key: "onTime",
+            label: "ضمن المهلة",
+            sub: !isFetched ? "—" : stats.onTimePct,
+            value: !isFetched ? "—" : stats.onTime,
+            icon: <KpiCheckIcon />,
+            iconClass:
+              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-ink",
+            tone: "ink",
+            valueClass: "!text-ink",
+          },
+          {
+            key: "total",
+            label: "الإجمالي",
+            sub: "عقارات موقوفة مؤقتاً",
+            value: !isFetched ? "—" : stats.total,
+            icon: <KpiClipboardIcon />,
+            iconClass: "bg-info-bg text-info-text",
+            tone: "ink",
+          },
+        ]}
+      />
 
       <OperationalPanel className="min-h-0 flex-1 max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none">
           {!staff ? (

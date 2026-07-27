@@ -72,7 +72,7 @@ import { useAppDataRefresh } from "@/hooks/useAppDataRefresh";
 
 function TopbarSvgIcon({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex size-5 shrink-0 items-center justify-center [&>svg]:size-5">
+    <span className="inline-flex size-5 shrink-0 items-center justify-center [&_svg]:size-5">
       {children}
     </span>
   );
@@ -93,10 +93,13 @@ function MenuIcon() {
   );
 }
 
-function RefreshIcon() {
+function RefreshIcon({ className }: { className?: string }) {
   return (
     <svg
+      className={className}
       viewBox="0 0 24 24"
+      width="20"
+      height="20"
       fill="none"
       stroke="currentColor"
       strokeWidth="2"
@@ -586,10 +589,10 @@ function ProfileMenu({
 
   const avatar = (
     <div
-      className="flex size-[34px] shrink-0 items-center justify-center rounded-lg text-[14px] font-bold text-gold-2"
+      className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-[color-mix(in_srgb,var(--gold)_16%,var(--surface))] text-[13px] font-bold text-gold-d"
       id="uav"
     >
-      {initials}
+      {initials || "—"}
     </div>
   );
 
@@ -1257,16 +1260,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               disabled={refreshBusy || ptrRefreshing}
               onClick={() => void refresh()}
             >
-              <TopbarSvgIcon>
-                <span
-                  className={cn(
-                    "inline-flex",
-                    (refreshBusy || ptrRefreshing) && "animate-spin",
-                  )}
-                >
-                  <RefreshIcon />
-                </span>
-              </TopbarSvgIcon>
+              <RefreshIcon
+                className={cn(
+                  "size-5",
+                  (refreshBusy || ptrRefreshing) && "animate-spin",
+                )}
+              />
             </button>
             <NotificationCenter />
             <div className="h-[26px] w-px shrink-0 bg-border-md max-lg:hidden" aria-hidden />

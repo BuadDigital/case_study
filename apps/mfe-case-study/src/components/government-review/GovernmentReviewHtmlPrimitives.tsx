@@ -221,7 +221,7 @@ export function GovSelect({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onClick={(e) => e.stopPropagation()}
-        className="w-full appearance-none rounded-lg border border-border-md bg-surface py-[7px] pe-[30px] ps-2.5 font-[inherit] text-[12.5px] text-text outline-none disabled:cursor-not-allowed disabled:opacity-60"
+        className="w-full appearance-none rounded-lg border border-border-md bg-surface py-[7px] pe-[30px] ps-2.5 font-[inherit] text-[12.5px] text-text outline-none disabled:cursor-not-allowed disabled:opacity-60 max-lg:min-h-11 max-lg:text-[13px]"
       >
         {children}
       </select>

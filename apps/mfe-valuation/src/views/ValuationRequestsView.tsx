@@ -15,6 +15,7 @@ import {
   Button,
   KpiBand,
   KpiCell,
+  MobileKpiStatCards,
   Note,
   ReportPageBody,
   SubpageHeader,
@@ -178,7 +179,7 @@ export function ValuationRequestsView() {
 
   return (
     <ReportPageBody>
-      <KpiBand>
+      <KpiBand className="mb-0 hidden lg:flex">
         <KpiCell
           first
           icon={<KpiClipboardIcon />}
@@ -213,6 +214,53 @@ export function ValuationRequestsView() {
           sub="تحتاج معالجة"
         />
       </KpiBand>
+
+      <MobileKpiStatCards
+        className="mb-6"
+        items={[
+          {
+            key: "active",
+            label: "طلبات نشطة",
+            sub: "واردة من دراسة الحالة",
+            value: ready ? vr.length : "—",
+            icon: <KpiClipboardIcon />,
+            iconClass: "bg-info-bg text-info-text",
+            tone: "ink",
+          },
+          {
+            key: "done",
+            label: "مكتملة",
+            sub: "تقارير تقييم منتهية",
+            value: ready ? done : "—",
+            icon: <KpiCheckIcon />,
+            iconClass:
+              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-ink",
+            tone: "ink",
+            valueClass: "!text-ink",
+          },
+          {
+            key: "prog",
+            label: "قيد التنفيذ",
+            sub: "بانتظار المقيم",
+            value: ready ? prog : "—",
+            icon: <KpiClockIcon />,
+            iconClass:
+              "bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#b8791a]",
+            tone: "gold",
+          },
+          {
+            key: "failed",
+            label: "متعذرة",
+            sub: "تحتاج معالجة",
+            value: ready ? failed : "—",
+            icon: <KpiAlertIcon />,
+            iconClass:
+              "bg-[color-mix(in_srgb,var(--red)_15%,transparent)] text-red",
+            tone: "red",
+            valueClass: "!text-red",
+          },
+        ]}
+      />
       <Note tone="info">
         هذه الطلبات واردة من قسم دراسة الحالة — يتولى منسق التقييم توزيعها على المقيمين المؤهلين
       </Note>
@@ -257,7 +305,7 @@ export function ValuationRequestsView() {
           </div>
         </div>
 
-        <Table pending={!ready}>
+        <Table pending={!ready} wrapClassName="hidden lg:block">
           <THead>
             <Tr hoverable={false}>
               <Th>رقم الطلب</Th>
@@ -349,6 +397,94 @@ export function ValuationRequestsView() {
             )}
           </TBody>
         </Table>
+
+        <div className="p-3 lg:hidden">
+          {!ready ? (
+            <div className="flex flex-col gap-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-[100px] animate-pulse rounded-[14px] border border-border bg-surface-2"
+                />
+              ))}
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="py-10 text-center text-[13px] text-text-3">
+              لا توجد نتائج مطابقة
+            </div>
+          ) : (
+            <ul className="m-0 flex list-none flex-col gap-3 p-0">
+              {rows.map((v) => {
+                const tone =
+                  v.status === "fail"
+                    ? "border-s-red"
+                    : v.status === "done"
+                      ? "border-s-ink"
+                      : "border-s-gold";
+                return (
+                  <li
+                    key={v.recordId}
+                    className={cn(
+                      "overflow-hidden rounded-[14px] border border-border border-s-[3px] bg-surface px-3.5 py-3.5 shadow-[0_2px_8px_rgba(15,52,96,0.06)]",
+                      tone,
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-[14px] font-bold text-heading">
+                          {v.id}
+                        </div>
+                        <div className="mt-0.5 text-[12px] text-text-2" dir="ltr">
+                          {v.propId}
+                        </div>
+                      </div>
+                      <StatusBadge status={v.status} />
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-text-2">
+                      <span>{v.area || "—"}</span>
+                      <span>{v.type || "—"}</span>
+                      <span>{v.appraiser || "بدون مقيم"}</span>
+                    </div>
+                    <div className="mt-2.5 flex flex-wrap gap-2">
+                      {isApp && v.status === "progress" ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="accent"
+                            className="min-h-11"
+                            disabled={submitReport.isPending}
+                            onClick={() => void handleSubmitReport(v.recordId)}
+                          >
+                            رفع التقرير
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            className="min-h-11"
+                            disabled={submitImpediment.isPending}
+                            onClick={() => void handleImpediment(v.recordId)}
+                          >
+                            تعذّر
+                          </Button>
+                        </>
+                      ) : null}
+                      {mgr && v.status === "progress" ? (
+                        <Button
+                          size="sm"
+                          className="min-h-11"
+                          disabled={openingPropId === v.propId}
+                          onClick={() => void handleViewRequest(v.propId)}
+                        >
+                          عرض
+                        </Button>
+                      ) : null}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       </SubpagePanel>
     </ReportPageBody>
   );

@@ -8,6 +8,7 @@ import { getPropertyKeyGate, type PropertyKeyGateDto } from "@platform/api-clien
 import {
   KpiBand,
   KpiCell,
+  MobileKpiStatCards,
   PageShell,
   PanelSkeleton,
   cn,
@@ -392,7 +393,7 @@ export function GovernmentReviewView() {
 
   return (
     <PageShell variant="canvas" className="min-h-0 flex-1 space-y-0">
-      <KpiBand className="mb-6">
+      <KpiBand className="mb-6 hidden lg:flex">
         <KpiCell
           first
           icon={<GovKpiBuildingIcon />}
@@ -435,6 +436,53 @@ export function GovernmentReviewView() {
         />
       </KpiBand>
 
+      <MobileKpiStatCards
+        className="mb-6"
+        items={[
+          {
+            key: "total",
+            label: "عقارات في طابور المراجعة",
+            sub: "صكوك مسجّلة",
+            value: queueReady ? kpis.total : "—",
+            icon: <GovKpiBuildingIcon />,
+            iconClass: "bg-gold-soft text-gold-d",
+            tone: "gold",
+            valueClass: "!text-gold-d",
+          },
+          {
+            key: "received",
+            label: "مفاتيح مستلمة",
+            sub: "من اختيار المراجع",
+            value: queueReady ? kpis.received : "—",
+            icon: <GovKpiKeyIcon />,
+            iconClass:
+              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-ink",
+            tone: "ink",
+          },
+          {
+            key: "waiting",
+            label: "بانتظار الظرف",
+            sub: "مستلمة دون ظرف مسجّل",
+            value: queueReady ? kpis.waiting : "—",
+            icon: <GovKpiAlertIcon />,
+            iconClass:
+              "bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#8a5e14]",
+            tone: "gold",
+          },
+          {
+            key: "done",
+            label: "مراجعات منتهية",
+            sub: queueReady ? `من ${kpis.total} إجمالي` : "—",
+            value: queueReady ? kpis.done : "—",
+            icon: <GovKpiCheckIcon />,
+            iconClass:
+              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-ink",
+            tone: "ink",
+            valueClass: "!text-ink",
+          },
+        ]}
+      />
+
       <div className="mb-3.5 flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-2.5">
           <h2 className="m-0 text-[17px] font-extrabold text-heading">
@@ -464,8 +512,14 @@ export function GovernmentReviewView() {
         </div>
       </div>
 
-      <div className={govCardClassName}>
-        <div className="overflow-x-auto">
+      <div
+        className={cn(
+          govCardClassName,
+          "max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none",
+        )}
+      >
+        {/* Desktop wide grid */}
+        <div className="hidden overflow-x-auto lg:block">
           <div className="min-w-[1020px]">
             <GovGridHead cols={GOV_REVIEW_LIST_COLS}>
               <GovTh align="start">رقم الصك</GovTh>
@@ -596,6 +650,152 @@ export function GovernmentReviewView() {
               })
             )}
           </div>
+        </div>
+
+        {/* Mobile cards — معاينة العقار language */}
+        <div className="lg:hidden">
+          {!queueReady ? (
+            <div className="flex flex-col gap-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-[120px] animate-pulse rounded-[14px] border border-border bg-surface-2"
+                />
+              ))}
+            </div>
+          ) : rowMeta.length === 0 ? (
+            <GovEmpty
+              message={def?.emptyLine ?? "لا توجد عقارات مسجّلة بعد"}
+            />
+          ) : (
+            <ul className="m-0 flex list-none flex-col gap-3 p-0">
+              {rowMeta.map(({ row, keysStatus, done, hasEnv }, index) => {
+                const propertyId = row.task.propertyId?.trim();
+                const deedHref = propertyId
+                  ? poPropertyDetailPath(row.task.poNumber, propertyId)
+                  : undefined;
+                const deedLabel = row.deed.startsWith("صك")
+                  ? row.deed
+                  : `صك ${row.deed}`;
+                const tone = done
+                  ? "border-s-ink"
+                  : !hasEnv && keysStatus === "received"
+                    ? "border-s-gold"
+                    : "border-s-ink";
+                return (
+                  <li
+                    key={row.task.id}
+                    className={cn(
+                      "ui-animate-fade-in relative overflow-hidden rounded-[14px] border border-border border-s-[3px] bg-surface px-3.5 py-3.5",
+                      "shadow-[0_2px_8px_rgba(15,52,96,0.06)]",
+                      tone,
+                      done && "opacity-75",
+                    )}
+                    style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        {deedHref ? (
+                          <Link
+                            href={deedHref}
+                            className="text-[14px] font-bold text-heading no-underline hover:text-primary"
+                          >
+                            {deedLabel}
+                          </Link>
+                        ) : (
+                          <div className="text-[14px] font-bold text-heading">
+                            {deedLabel}
+                          </div>
+                        )}
+                        <div className="mt-1 text-[12px] text-text-2">
+                          {row.location !== "—" ? row.location : "بدون موقع"}
+                        </div>
+                      </div>
+                      {done ? (
+                        <GovStatusPill
+                          label="منتهية"
+                          color={GOV_STATUS_COLORS.green}
+                        />
+                      ) : hasEnv ? (
+                        <GovStatusPill
+                          label="ظرف مسجّل"
+                          color={GOV_STATUS_COLORS.green}
+                        />
+                      ) : keysStatus === "received" ? (
+                        <GovStatusPill
+                          label="بانتظار الظرف"
+                          color={GOV_STATUS_COLORS.amber}
+                          fg={GOV_STATUS_COLORS.amberFg}
+                          live
+                        />
+                      ) : null}
+                    </div>
+
+                    <div className="mt-2 text-[12px] text-text-2">
+                      <span className="font-semibold text-heading">
+                        {row.court}
+                      </span>
+                      <span className="text-text-3">
+                        {" "}
+                        · طلب {row.request} · {row.circuit}
+                      </span>
+                    </div>
+
+                    {!done ? (
+                      <div className="mt-3">
+                        <label className="mb-1 block text-[10.5px] font-semibold text-text-3">
+                          حالة المفاتيح
+                        </label>
+                        <GovSelect
+                          aria-label="حالة المفاتيح"
+                          value={keysStatus}
+                          disabled={savingKeysTaskId === row.task.id}
+                          onChange={(v) => void onKeysStatusChange(row.task, v)}
+                        >
+                          <option value="">— اختر —</option>
+                          <option value="received">مستلمة</option>
+                          <option value="pending">قيد الاستلام</option>
+                          <option value="not_required">لا تتطلب مفاتيح</option>
+                        </GovSelect>
+                      </div>
+                    ) : null}
+
+                    {!done ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {!hasEnv ? (
+                          <button
+                            type="button"
+                            className={cn(
+                              govRowGhostBtnClassName,
+                              "min-h-11 px-3 text-gold-d hover:text-gold-d",
+                            )}
+                            onClick={() => {
+                              const req =
+                                row.property?.requestNumber?.trim() ||
+                                (row.request !== "—" ? row.request : "");
+                              openRegister(req || undefined);
+                            }}
+                          >
+                            تسجيل ظرف
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          className={cn(
+                            govPrimaryBtnClassName,
+                            "min-h-11 flex-1",
+                          )}
+                          onClick={() => openReviewTask(row.task.id)}
+                        >
+                          إنهاء المراجعة
+                        </button>
+                      </div>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
       </div>
 
