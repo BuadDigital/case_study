@@ -2813,45 +2813,50 @@ export function OperationsTasksView() {
             onChange={(e) => setSearch(e.target.value)}
             aria-label="بحث المهام"
           />
-          <OperationalToolbarSelect
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            aria-label="تصفية الحالة"
-          >
-            <option value="">جميع الحالات</option>
-            {Object.entries(OPERATIONS_TASK_STATUS_LABELS).map(([k, label]) => (
-              <option key={k} value={k}>
-                {label}
-              </option>
-            ))}
-          </OperationalToolbarSelect>
-          <OperationalToolbarSelect
-            value={scopeFilter}
-            onChange={(e) => setScopeFilter(e.target.value)}
-            aria-label="تصفية النطاق"
-          >
-            <option value="">كل النطاقات</option>
-            {Object.entries(OPERATIONS_TASK_SCOPE_LABELS).map(([k, label]) => (
-              <option key={k} value={k}>
-                {label}
-              </option>
-            ))}
-          </OperationalToolbarSelect>
-          <button
-            type="button"
-            className={showAll ? opsShowAllBtnOn : opsShowAllBtn}
-            onClick={() => setShowAll((v) => !v)}
-          >
-            <TasksShowAllEye />
-            <span>{showAll ? "النشطة فقط" : "إظهار جميع المهام"}</span>
-          </button>
-          <span className={opsListCount}>
-            {visibleTasks.length} مهمة
-          </span>
+          <div className="flex flex-wrap items-center gap-2.5 max-lg:grid max-lg:w-full max-lg:grid-cols-2 lg:contents">
+            <OperationalToolbarSelect
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              aria-label="تصفية الحالة"
+            >
+              <option value="">جميع الحالات</option>
+              {Object.entries(OPERATIONS_TASK_STATUS_LABELS).map(([k, label]) => (
+                <option key={k} value={k}>
+                  {label}
+                </option>
+              ))}
+            </OperationalToolbarSelect>
+            <OperationalToolbarSelect
+              value={scopeFilter}
+              onChange={(e) => setScopeFilter(e.target.value)}
+              aria-label="تصفية النطاق"
+            >
+              <option value="">كل النطاقات</option>
+              {Object.entries(OPERATIONS_TASK_SCOPE_LABELS).map(([k, label]) => (
+                <option key={k} value={k}>
+                  {label}
+                </option>
+              ))}
+            </OperationalToolbarSelect>
+          </div>
+          <div className="flex items-center gap-2 max-lg:w-full lg:contents">
+            <button
+              type="button"
+              className={showAll ? opsShowAllBtnOn : opsShowAllBtn}
+              onClick={() => setShowAll((v) => !v)}
+            >
+              <TasksShowAllEye />
+              <span>{showAll ? "النشطة فقط" : "إظهار جميع المهام"}</span>
+            </button>
+            <span className={opsListCount} aria-live="polite">
+              {visibleTasks.length}
+              <span>نتيجة</span>
+            </span>
+          </div>
         </div>
         {canCreate ? (
           <OperationalToolbarPrimaryButton
-            className="ms-3"
+            className="ms-3 max-lg:ms-0"
             onClick={() => {
               setCreatePrefill(null);
               setCreateOpen(true);
