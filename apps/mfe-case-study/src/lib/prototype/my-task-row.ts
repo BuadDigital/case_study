@@ -72,6 +72,25 @@ export function resolveRemainingTime(
   };
 }
 
+/** Fraction of SLA window remaining (0 overdue → 1 fresh). Used by mobile timer bars. */
+export function resolveSlaTimerRatio(
+  dueIso: string,
+  createdAt: string,
+  now: Date = new Date(),
+): number | undefined {
+  const due = dueDateToDeadline(dueIso);
+  if (!due) return undefined;
+  const startMs = createdAt.trim() ? Date.parse(createdAt) : Number.NaN;
+  const start = Number.isFinite(startMs)
+    ? new Date(startMs)
+    : new Date(due.getTime() - 7 * 86_400_000);
+  const total = due.getTime() - start.getTime();
+  if (total <= 0) return undefined;
+  const left = due.getTime() - now.getTime();
+  if (left <= 0) return 0;
+  return Math.min(1, left / total);
+}
+
 /** أيام + ساعات:دقائق:ثوانٍ — للعرض في الجدول */
 export function formatRemainingDuration(
   dueIso: string,

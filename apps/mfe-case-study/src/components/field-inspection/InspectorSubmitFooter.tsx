@@ -55,18 +55,20 @@ export function InspectorSubmitFooter({
   }
 
   return (
-    <div className="mt-4 rounded-[var(--radius-lg)] border border-border bg-surface p-4 shadow-[0_-4px_16px_rgba(15,52,96,0.08)] max-lg:sticky max-lg:bottom-0 max-lg:z-10">
-      <p className="mb-3 flex items-start gap-1.5 text-[11px] leading-relaxed text-text-3">
+    <div
+      className="mt-4 rounded-[var(--radius-lg)] border border-border bg-surface p-4 shadow-[0_-4px_16px_rgba(15,52,96,0.08)] max-lg:sticky max-lg:bottom-0 max-lg:z-20 max-lg:-mx-0 max-lg:mt-6 max-lg:rounded-none max-lg:border-x-0 max-lg:border-b-0 max-lg:bg-surface/95 max-lg:pb-[max(0.875rem,env(safe-area-inset-bottom))] max-lg:backdrop-blur-sm"
+    >
+      <p className="mb-3 flex items-start gap-1.5 text-[11px] leading-relaxed text-text-3 max-lg:text-[12px]">
         <i className="ti ti-info-circle mt-0.5 shrink-0 text-sm" aria-hidden />
         يجب التقاط الموقع (GPS)، وإكمال صور العقار الموثّقة، وإرفاق صورة لكل
         ملاحظة، والتأشير على إقرار المعاينة قبل الإرسال.
       </p>
-      <div className="flex flex-wrap items-center justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2 max-lg:grid max-lg:grid-cols-2 max-lg:gap-2">
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="border-orange text-orange hover:bg-orange-bg"
+          className="border-orange text-orange hover:bg-orange-bg max-lg:min-h-11 max-lg:justify-center"
           disabled={disabled}
           showActionToast={false}
           onClick={openFailureRaise}
@@ -78,6 +80,7 @@ export function InspectorSubmitFooter({
             type="button"
             variant="outline"
             size="sm"
+            className="max-lg:min-h-11 max-lg:justify-center"
             disabled={disabled || saving}
             showActionToast={false}
             actionLabel="حفظ مسودة المعاينة"
@@ -90,6 +93,7 @@ export function InspectorSubmitFooter({
           type="button"
           variant="primary"
           size="sm"
+          className="max-lg:col-span-2 max-lg:min-h-12 max-lg:justify-center max-lg:text-[14px] max-lg:font-semibold"
           disabled={disabled || saving}
           showActionToast={false}
           actionLabel="حفظ وإرسال المعاينة"

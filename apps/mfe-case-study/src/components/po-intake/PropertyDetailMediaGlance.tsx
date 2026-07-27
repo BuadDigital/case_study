@@ -1,9 +1,13 @@
 "use client";
 
-import { cn } from "@platform/design-system";
+import { useState } from "react";
+import { cn, useToast } from "@platform/design-system";
 import {
   approximatePropertyGeo,
   approximatePropertyMapSearchUrl,
+  buildPropertyDescriptionLine,
+  formatGeoDec,
+  formatGeoDms,
   type PoPropertyIntake,
 } from "../../lib/prototype/po-intake-data";
 import {
@@ -34,16 +38,23 @@ function PhotoPlaceholder() {
   );
 }
 
+const goldSoft =
+  "rounded border border-transparent bg-[color-mix(in_srgb,#f1ece2_45%,transparent)]";
+
 /**
- * Case Study.html basic-tab media strip: main photo (1fr) + map (3fr).
+ * Case Study.html basic-tab media strip: main photo + description | map + coords.
  */
 export function PropertyDetailMediaGlance({
   property,
   primaryPhoto,
+  inspectorDescription,
 }: {
   property: PoPropertyIntake;
   primaryPhoto?: PropertyDetailDocumentEntry | null;
+  inspectorDescription?: string;
 }) {
+  const { showToast } = useToast();
+  const [copied, setCopied] = useState(false);
   const geo = approximatePropertyGeo(property);
   const googleUrl =
     property.locationMapUrl.trim() ||
@@ -57,10 +68,28 @@ export function PropertyDetailMediaGlance({
     : null;
 
   const hasPhoto = Boolean(primaryPhoto?.dataUrl);
+  const description = buildPropertyDescriptionLine(
+    property,
+    inspectorDescription,
+  );
+  const dms = geo ? formatGeoDms(geo.lat, geo.lng) : "";
+  const dec = geo ? formatGeoDec(geo.lat, geo.lng) : "";
+
+  async function copyCoords() {
+    if (!dec) return;
+    try {
+      await navigator.clipboard.writeText(dec);
+      setCopied(true);
+      showToast("تم نسخ الإحداثيات", "success");
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      showToast("تعذّر نسخ الإحداثيات", "error");
+    }
+  }
 
   return (
     <div className="mb-1 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)]">
-      <div className="min-w-0">
+      <div className="flex min-w-0 flex-col">
         <div className="mb-1.5 flex min-w-0 items-center justify-between gap-1.5">
           <div className="truncate text-[11px] text-text-3">
             صورة العقار الرئيسية
@@ -94,9 +123,15 @@ export function PropertyDetailMediaGlance({
             <PhotoPlaceholder />
           )}
         </button>
+        <div className={cn("mt-2 flex-1 px-3 py-2", goldSoft)}>
+          <div className="mb-[3px] text-[10.5px] text-text-3">وصف العقار</div>
+          <p className="m-0 text-xs font-semibold leading-[1.7] text-pretty text-text">
+            {description}
+          </p>
+        </div>
       </div>
 
-      <div className="min-w-0">
+      <div className="flex min-w-0 flex-col">
         <div className="mb-1.5 flex min-w-0 items-center justify-between gap-1.5">
           <div className="truncate text-[11px] text-text-3">
             موقع العقار المعتمد
@@ -126,12 +161,55 @@ export function PropertyDetailMediaGlance({
               أضف المدينة أو رابط الموقع لعرض الخريطة
             </div>
           )}
-          {geo ? (
-            <div className="absolute top-2 start-2 rounded bg-white/92 px-2 py-1 text-[10.5px] font-semibold text-ink [direction:ltr]">
-              {geo.lat.toFixed(5)}, {geo.lng.toFixed(5)}
-            </div>
-          ) : null}
         </div>
+        {geo ? (
+          <div
+            className={cn(
+              "mt-2 flex flex-1 flex-col justify-center px-3 py-2",
+              goldSoft,
+            )}
+          >
+            <div className="flex items-center justify-between gap-2.5">
+              <div className="min-w-0">
+                <div className="mb-[3px] text-[10.5px] text-text-3">
+                  إحداثيات الموقع
+                </div>
+                <div
+                  className="text-start text-[12.5px] font-semibold text-text [direction:ltr] [unicode-bidi:isolate]"
+                  dir="ltr"
+                >
+                  {dms}
+                </div>
+                <div
+                  className="mt-px text-start text-[11px] text-text-3 [direction:ltr] [unicode-bidi:isolate]"
+                  dir="ltr"
+                >
+                  {dec}
+                </div>
+              </div>
+              <button
+                type="button"
+                title="نسخ الإحداثيات"
+                onClick={() => void copyCoords()}
+                className="inline-flex shrink-0 items-center gap-[5px] rounded-md border border-border-md bg-surface px-2.5 py-1.5 text-[11px] font-semibold text-[#8c7857]"
+              >
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden
+                >
+                  <rect x="9" y="9" width="13" height="13" rx="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+                {copied ? "تم النسخ" : "نسخ"}
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

@@ -8,8 +8,8 @@ export const ltrValueClass = "inline [direction:ltr] [unicode-bidi:isolate]";
 
 const fieldsGridCols: Record<2 | 3 | 4, string> = {
   2: "sm:grid-cols-2",
-  3: "sm:grid-cols-2 xl:grid-cols-3",
-  4: "sm:grid-cols-2 xl:grid-cols-4",
+  3: "sm:grid-cols-3",
+  4: "sm:grid-cols-2 lg:grid-cols-4",
 };
 
 /**
@@ -22,7 +22,7 @@ export function FieldBox({
   ltr,
   span,
   children,
-  emptyLabel = "غير محدد",
+  emptyLabel = "—",
   link,
   href,
 }: {
@@ -31,6 +31,7 @@ export function FieldBox({
   ltr?: boolean;
   span?: 2 | 3 | 4;
   children?: ReactNode;
+  /** Case Study.html `fieldBox` uses `v||'—'`. */
   emptyLabel?: string;
   link?: boolean;
   href?: string;
@@ -66,8 +67,8 @@ export function FieldBox({
       className={cn(
         "min-w-0 rounded-[4px] bg-[color-mix(in_srgb,#f1ece2_45%,transparent)] px-3.5 py-2.5",
         span === 2 && "col-span-1 sm:col-span-2",
-        span === 3 && "col-span-1 sm:col-span-2 xl:col-span-3",
-        span === 4 && "col-span-1 sm:col-span-2 xl:col-span-4",
+        span === 3 && "col-span-1 sm:col-span-3",
+        span === 4 && "col-span-1 sm:col-span-2 lg:col-span-4",
       )}
     >
       <div className="mb-[3px] text-[10.5px] leading-snug text-text-3">
@@ -97,7 +98,7 @@ export function FieldsGrid({
   children: ReactNode;
 }) {
   return (
-    <div className={cn("grid grid-cols-1 gap-2.5", fieldsGridCols[cols])}>
+    <div className={cn("grid grid-cols-1 gap-[10px]", fieldsGridCols[cols])}>
       {children}
     </div>
   );

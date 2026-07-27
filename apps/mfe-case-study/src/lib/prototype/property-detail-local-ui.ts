@@ -7,11 +7,19 @@ export function propertyNotesStorageKey(
   return `${STORAGE_PREFIX}${poNumber.trim()}:${propertyId}`;
 }
 
+export type PropertyNoteReply = {
+  id: string;
+  text: string;
+  at: string;
+  author: string;
+};
+
 export type PropertyNoteEntry = {
   id: string;
   text: string;
   at: string;
   author: string;
+  replies?: PropertyNoteReply[];
 };
 
 export function loadPropertyNotes(

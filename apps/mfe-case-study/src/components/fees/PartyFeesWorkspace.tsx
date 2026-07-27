@@ -225,7 +225,7 @@ export function PartyFeesWorkspace({
           </Tab>
         </TabBar>
       ) : (
-        <TabBar className="mb-0">
+        <TabBar className="mb-0 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:h-0 max-lg:gap-0">
           <Tab active={tab === "browse"} onClick={() => setTab("browse")}>
             عقاراتي وحالاتها
           </Tab>

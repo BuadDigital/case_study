@@ -8,25 +8,56 @@ type BeforeInstallPromptEvent = Event & {
 };
 
 const DISMISS_KEY = "ejada_pwa_install_dismissed";
+const IOS_DISMISS_KEY = "ejada_pwa_ios_tip_dismissed";
+
+function isStandaloneDisplay(): boolean {
+  if (typeof window === "undefined") return true;
+  if (window.matchMedia("(display-mode: standalone)").matches) return true;
+  const nav = window.navigator as Navigator & { standalone?: boolean };
+  return Boolean(nav.standalone);
+}
+
+function isIosSafari(): boolean {
+  if (typeof window === "undefined") return false;
+  const ua = window.navigator.userAgent;
+  const iOS = /iPad|iPhone|iPod/.test(ua) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const webkit = /WebKit/.test(ua);
+  const chromeIos = /CriOS|FxiOS|EdgiOS/.test(ua);
+  return iOS && webkit && !chromeIos;
+}
 
 /**
- * Lightweight Android/desktop Chrome install affordance.
- * iOS Safari has no beforeinstallprompt — users use Share → Add to Home Screen.
+ * Android/desktop Chrome: beforeinstallprompt.
+ * iOS Safari: tip for Share → Add to Home Screen (no install API).
  */
 export function PwaInstallPrompt() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(
     null,
   );
   const [visible, setVisible] = useState(false);
+  const [iosTip, setIosTip] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (isStandaloneDisplay()) return;
+
     try {
       if (localStorage.getItem(DISMISS_KEY) === "1") return;
     } catch {
       /* ignore */
     }
-    if (window.matchMedia("(display-mode: standalone)").matches) return;
+
+    if (isIosSafari()) {
+      try {
+        if (localStorage.getItem(IOS_DISMISS_KEY) === "1") return;
+      } catch {
+        /* ignore */
+      }
+      setIosTip(true);
+      setVisible(true);
+      return;
+    }
 
     const onBeforeInstall = (event: Event) => {
       event.preventDefault();
@@ -38,7 +69,8 @@ export function PwaInstallPrompt() {
       window.removeEventListener("beforeinstallprompt", onBeforeInstall);
   }, []);
 
-  if (!visible || !deferred) return null;
+  if (!visible) return null;
+  if (!iosTip && !deferred) return null;
 
   return (
     <div
@@ -51,39 +83,46 @@ export function PwaInstallPrompt() {
           ثبّت إجادة على الجهاز
         </div>
         <p className="m-0 mt-1 text-[12px] leading-relaxed text-text-2">
-          للوصول السريع من الشاشة الرئيسية — مناسب للمراجع الحكومي في الميدان.
+          {iosTip
+            ? "من Safari: مشاركة ← إضافة إلى الشاشة الرئيسية — للوصول السريع ميدانياً."
+            : "للوصول السريع من الشاشة الرئيسية — مناسب للمراجع الحكومي في الميدان."}
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
+        {!iosTip && deferred ? (
+          <button
+            type="button"
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-[9px] border-none bg-ink px-4 text-[13px] font-bold text-white"
+            onClick={async () => {
+              await deferred.prompt();
+              try {
+                await deferred.userChoice;
+              } catch {
+                /* ignore */
+              }
+              setVisible(false);
+              setDeferred(null);
+            }}
+          >
+            تثبيت
+          </button>
+        ) : null}
         <button
           type="button"
-          className="inline-flex min-h-11 flex-1 items-center justify-center rounded-[9px] border-none bg-ink px-4 text-[13px] font-bold text-white"
-          onClick={async () => {
-            await deferred.prompt();
-            try {
-              await deferred.userChoice;
-            } catch {
-              /* ignore */
-            }
-            setVisible(false);
-            setDeferred(null);
-          }}
-        >
-          تثبيت
-        </button>
-        <button
-          type="button"
-          className="inline-flex min-h-11 items-center justify-center rounded-[9px] border border-border-md bg-surface px-4 text-[13px] font-semibold text-text-2"
+          className="inline-flex min-h-11 flex-1 items-center justify-center rounded-[9px] border border-border-md bg-surface px-4 text-[13px] font-semibold text-text-2"
           onClick={() => {
             try {
-              localStorage.setItem(DISMISS_KEY, "1");
+              localStorage.setItem(
+                iosTip ? IOS_DISMISS_KEY : DISMISS_KEY,
+                "1",
+              );
             } catch {
               /* ignore */
             }
             setVisible(false);
           }}
         >
-          لاحقاً
+          {iosTip ? "حسناً" : "لاحقاً"}
         </button>
       </div>
     </div>

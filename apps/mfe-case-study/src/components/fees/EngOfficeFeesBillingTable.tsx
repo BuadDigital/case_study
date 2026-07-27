@@ -230,7 +230,7 @@ export function EngOfficeFeesBillingTable({
 
   return (
     <div className="flex flex-col gap-0">
-      <PageToolbar className="shrink-0 flex-wrap items-center justify-between gap-2.5 border-b border-border bg-surface-2">
+      <PageToolbar className="shrink-0 flex-wrap items-center justify-between gap-2.5 max-lg:mb-2 max-lg:border-0 max-lg:bg-transparent max-lg:px-0 lg:border-b lg:border-border lg:bg-surface-2">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
           <OperationalToolbarSearch
             type="search"
@@ -261,7 +261,7 @@ export function EngOfficeFeesBillingTable({
       <div
         className={cn(
           queueTableWrapClassName,
-          "rounded-b-[var(--radius-lg)] border border-t-0 border-border bg-surface",
+          "hidden rounded-b-[var(--radius-lg)] border border-t-0 border-border bg-surface lg:block",
         )}
       >
         <Table className="w-full min-w-[920px]" pending={pending}>
@@ -384,6 +384,96 @@ export function EngOfficeFeesBillingTable({
             )}
           </TBody>
         </Table>
+      </div>
+
+      <div className="lg:hidden">
+        {pending && filtered.length === 0 ? (
+          <div className="space-y-2.5 py-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-[100px] animate-pulse rounded-[14px] border border-border bg-surface-2"
+              />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <p className="m-0 py-8 text-center text-[13px] text-text-3">
+            لا توجد بنود مطابقة.
+          </p>
+        ) : (
+          <ul className="m-0 flex list-none flex-col gap-3 p-0">
+            {filtered.map((row) => {
+              const st = engFeeUiStatus(row);
+              const meta = engFeeStatusMeta(st);
+              const busy = busyId === row.workflowTaskId;
+              const ded = row.supervisorDiscountSar > 0;
+              return (
+                <li
+                  key={`m-eng-${row.workflowTaskId}`}
+                  className="rounded-[14px] border border-border border-s-[3px] border-s-gold bg-surface px-3.5 py-3.5 shadow-[0_2px_8px_rgba(15,52,96,0.06)]"
+                >
+                  <div className="mb-2 flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div
+                        dir="ltr"
+                        className="text-[14px] font-bold text-heading"
+                      >
+                        {row.propertyLabel}
+                      </div>
+                      <div className="mt-1 text-[11px] text-text-3" dir="ltr">
+                        {row.poNumber}
+                      </div>
+                      <div className="mt-1 text-[11px] text-text-3">
+                        قبول: {formatAcceptDate(row)}
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-end">
+                      <div className="text-[14px] font-bold text-gold-d">
+                        {fmtSar(row.netFeeSar)}
+                      </div>
+                      {ded ? (
+                        <div className="mt-0.5 text-[10px] text-text-3">
+                          حسم {fmtSar(row.supervisorDiscountSar)}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="mb-2.5">
+                    <StatusPill label={meta.label} style={meta.style} />
+                  </div>
+                  {st === "pending_office" ? (
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="primary"
+                        disabled={busy || !row.canOfficeApproveDiscount}
+                        onClick={() =>
+                          void act(row, "office-approve-discount")
+                        }
+                      >
+                        قبول
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={busy || !row.canOfficeDispute}
+                        onClick={() => setDisputeRow(row)}
+                      >
+                        تحفّظ
+                      </Button>
+                    </div>
+                  ) : (
+                    <span className="text-[11px] text-text-3">
+                      {st === "dispute" ? "قيد المعالجة" : "لا إجراء مطلوب"}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
 
       <FeeActionReasonModal

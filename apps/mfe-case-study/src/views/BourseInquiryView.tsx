@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Button,
   Card,
@@ -65,6 +65,8 @@ import {
 import type { PendingBoursePropertyDto } from "@platform/api-client";
 import { filterActionablePendingBourseItems } from "../lib/prototype/pending-bourse-queue";
 import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
+import { ActiveQueueMobileCards } from "../components/queue/ActiveQueueMobileCards";
+import type { ActiveQueueMobileCardItem } from "../components/queue/ActiveQueueMobileCards";
 import { buildBourseQueueRowMoreItems } from "../lib/prototype/active-queue-row-menu";
 import { caseStudyTaskForProperty } from "../lib/prototype/tasks-storage";
 import { useRouter } from "next/navigation";
@@ -243,11 +245,66 @@ export function BourseInquiryView() {
   const hasRail = isFetched && items.length > 0;
   const panelOpen = Boolean(selected);
 
+  const mobileCardItems = useMemo((): ActiveQueueMobileCardItem[] => {
+    return items.map((item) => {
+      const deedLabel = formatPendingBourseDeedDisplay(item);
+      const task = caseStudyTaskForProperty(
+        item.poNumber,
+        item.propertyId,
+        workflowTasks,
+      );
+      const moreItems = task
+        ? buildBourseQueueRowMoreItems({
+            task,
+            propertyId: item.propertyId,
+            openTask: () => void openItem(item),
+            router,
+            refreshQueue: () => {
+              void refresh();
+            },
+            showToast,
+            allowDeleteTransaction: true,
+            viewerRole: role,
+          })
+        : [
+            {
+              id: "open",
+              label: "فتح المعاملة",
+              onClick: () => void openItem(item),
+            },
+            {
+              id: "property-detail",
+              label: "تفاصيل العقار",
+              onClick: () =>
+                router.push(poPropertyPath(item.poNumber, item.propertyId)),
+            },
+          ];
+      return {
+        id: `${item.poNumber}-${item.propertyId}`,
+        title: deedLabel.startsWith("صك") ? deedLabel : `صك ${deedLabel}`,
+        meta: [
+          { text: formatPoDisplay(item.poNumber), kind: "po" as const },
+          item.ownerName?.trim()
+            ? { text: item.ownerName.trim(), kind: "type" as const }
+            : null,
+          item.requestNumber?.trim()
+            ? { text: item.requestNumber.trim(), kind: "plain" as const }
+            : null,
+        ].filter((v): v is NonNullable<typeof v> => Boolean(v)),
+        statusLabel: "بانتظار البورصة",
+        tone: "pending" as const,
+        moreItems,
+        onOpen: () => void openItem(item),
+      };
+    });
+  }, [items, workflowTasks, router, refresh, showToast, role]);
+
   const queuePanel = (
         <OperationalPanel
           className={cn(
             "min-h-0 flex-1",
             hasRail && panelOpen ? undefined : "flex-none",
+            "max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none",
           )}
         >
           {isFetched && items.length === 0 ? (
@@ -257,7 +314,14 @@ export function BourseInquiryView() {
             />
           ) : (
             <>
-              <div className={queueTableWrapClassName}>
+              <div className="pb-3 lg:hidden">
+                <ActiveQueueMobileCards
+                  items={mobileCardItems}
+                  pending={queuePending}
+                  emptyMessage="لا توجد صكوك بانتظار البورصة"
+                />
+              </div>
+              <div className={cn(queueTableWrapClassName, "hidden lg:block")}>
                 <Table pending={queuePending}>
                   <THead>
                     <Tr hoverable={false}>
@@ -364,7 +428,7 @@ export function BourseInquiryView() {
                   </TBody>
                 </Table>
               </div>
-              <QueueTableHint className="border-t border-border bg-surface-2">
+              <QueueTableHint className="hidden border-t border-border bg-surface-2 lg:block">
                 اضغط الصف لفتح نموذج إكمال البورصة.
               </QueueTableHint>
             </>
