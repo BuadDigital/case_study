@@ -69,9 +69,13 @@ export const opsModalFooter =
 /* —— list / detail —— */
 
 export const opsToolbar =
-  "mb-3.5 flex flex-wrap items-center justify-between gap-4";
+  "mb-3.5 flex flex-wrap items-center justify-between gap-4 max-lg:mb-3 max-lg:flex-col max-lg:items-stretch max-lg:gap-2.5";
 
-export const opsFilters = "flex flex-wrap items-center gap-2.5";
+export const opsFilters =
+  "flex flex-wrap items-center gap-2.5 max-lg:w-full max-lg:flex-col max-lg:items-stretch";
+
+export const opsListCount =
+  "inline-flex shrink-0 items-center gap-1 rounded-[6px] bg-gold-soft px-2.5 py-[3px] text-[12px] font-bold text-gold-d max-lg:ms-0 lg:ms-auto";
 
 export const opsBackLink =
   "mb-2 inline-flex cursor-pointer items-center gap-[7px] border-none bg-transparent py-1.5 font-[inherit] text-[12.5px] font-semibold text-text-2 transition-colors hover:text-gold-d [&_svg]:-scale-x-100";
@@ -263,5 +267,3 @@ export const opsThStart = "flex items-center justify-start whitespace-nowrap px-
 export const opsFileSize = "font-medium text-text-3";
 
 export const opsBulkCount = "text-[13px] font-bold";
-
-export const opsListCount = "ms-auto text-[12.5px] font-semibold text-text-3";
