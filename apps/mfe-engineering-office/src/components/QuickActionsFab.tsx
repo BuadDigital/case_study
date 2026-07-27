@@ -27,24 +27,6 @@ export type QuickActionsFabProps = {
 function BoltIcon() {
   return (
     <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-    </svg>
-  );
-}
-
-function CloseIcon() {
-  return (
-    <svg
       width="22"
       height="22"
       viewBox="0 0 24 24"
@@ -55,8 +37,7 @@ function CloseIcon() {
       strokeLinejoin="round"
       aria-hidden
     >
-      <line x1="18" y1="6" x2="6" y2="18" />
-      <line x1="6" y1="6" x2="18" y2="18" />
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
     </svg>
   );
 }
@@ -165,7 +146,7 @@ export function QuickActionsFab({
   const anchorClass =
     placement === "top-start"
       ? "fixed left-5 top-[4.75rem] z-[200]"
-      : "fixed bottom-7 left-7 z-[200]";
+      : "fixed bottom-[26px] left-[26px] z-[200]";
 
   const menuPositionClass =
     placement === "top-start"
@@ -222,8 +203,7 @@ export function QuickActionsFab({
       <button
         type="button"
         className={cn(
-          "relative z-[201] flex h-14 w-14 cursor-pointer items-center justify-center rounded-full border-none bg-primary text-white shadow-[0_4px_16px_rgba(15,42,78,0.35)] transition-[transform,box-shadow] hover:shadow-[0_6px_20px_rgba(15,42,78,0.45)] active:scale-95",
-          open && "[&_svg]:rotate-90",
+          "relative z-[201] flex h-[54px] w-[54px] cursor-pointer items-center justify-center rounded-full border-none bg-ink text-white shadow-[0_4px_16px_rgba(15,42,78,0.35)] transition-[transform,box-shadow] hover:shadow-[0_6px_20px_rgba(15,42,78,0.45)] active:scale-95",
         )}
         onClick={() => setOpen((value) => !value)}
         aria-haspopup="menu"
@@ -234,7 +214,7 @@ export function QuickActionsFab({
             : `إجراءات سريعة${deedNumber ? ` — صك ${deedNumber}` : ""}`
         }
       >
-        {open ? <CloseIcon /> : <BoltIcon />}
+        <BoltIcon />
       </button>
     </div>
   );

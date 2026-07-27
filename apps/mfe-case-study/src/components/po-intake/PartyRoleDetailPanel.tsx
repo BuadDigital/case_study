@@ -89,8 +89,23 @@ export function PartyRoleDetailPanel({
                       "grid grid-cols-[1fr_auto] items-start gap-3 border-b border-border bg-surface-2 px-3 py-2.5 last:border-b-0",
                     )}
                   >
-                    <div className="text-xs leading-snug text-text">
-                      {row.question}
+                    <div className="min-w-0">
+                      <div className="text-xs leading-snug text-text">
+                        {row.question}
+                      </div>
+                      {row.answeredByName || row.answeredAtUtc ? (
+                        <div className="mt-0.5 text-[10px] text-text-3">
+                          {[
+                            row.answeredByName,
+                            row.sourceRole,
+                            row.answeredAtUtc
+                              ? new Date(row.answeredAtUtc).toLocaleString("ar-SA")
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </div>
+                      ) : null}
                     </div>
                     <div className="whitespace-nowrap text-xs font-medium text-success-text">
                       {row.answer}

@@ -12,6 +12,7 @@ export type CaseStudyFormDto = {
   requestDate: string;
   deedNumber: string;
   answers: Record<string, unknown>;
+  answerProvenance?: Record<string, AnswerProvenanceEntryDto>;
   deedRemarks: string;
   surveyRemarks: string;
   componentsRemarks: string;
@@ -29,6 +30,18 @@ export type CaseStudyFormDto = {
   infathOtherNotes?: string;
   infathClosingNotes?: string;
   savedAtUtc?: string;
+};
+
+export type AnswerProvenanceEntryDto = {
+  value?: string | null;
+  sourcePartyId?: string | null;
+  sourceRole?: string | null;
+  matrixRole?: string | null;
+  workflowTaskId: string;
+  formId?: string | null;
+  answeredByUserId?: string | null;
+  answeredByName?: string | null;
+  answeredAtUtc: string;
 };
 
 function headers(token: string): HeadersInit {

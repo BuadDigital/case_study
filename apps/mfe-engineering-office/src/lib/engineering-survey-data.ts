@@ -53,7 +53,10 @@ export type EngineeringSurveySubmission = {
   eastBoundaryLengthM: string;
   westBoundary: string;
   westBoundaryLengthM: string;
+  /** ملاحظات الرفع المساحي داخل تبويب الرفع (HTML `d.notes`). */
   surveyNotes: string;
+  /** ملاحظة على المعاملة في تبويب الملاحظة (HTML `d.note`). */
+  transactionNote: string;
   updatedAtUtc: string;
   submittedAtUtc?: string;
   /** Set once a specialist accepts the outputs; drives the fee-accrued panel state. */
@@ -138,6 +141,7 @@ export function createEngineeringSurveyDraft(input: {
     westBoundary: "",
     westBoundaryLengthM: "",
     surveyNotes: "",
+    transactionNote: "",
     updatedAtUtc: now,
   };
 }

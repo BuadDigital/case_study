@@ -107,6 +107,8 @@ export function questionLabelFromKey(key: string): string | null {
 
 export function answeredRows(
   answers: Record<string, CaseStudyFormAnswer | null | undefined>,
+  provenance?: CaseStudyFormDraft["answerProvenance"],
+  taskId?: string | null,
 ): PartyAnswerRow[] {
   const rows: PartyAnswerRow[] = [];
   for (const [key, value] of Object.entries(answers)) {
@@ -116,9 +118,14 @@ export function answeredRows(
     const section = match[1] as CaseStudyQuestionSection;
     const label = questionLabelFromKey(key);
     if (!label) continue;
+    const attr = provenance?.[key];
     rows.push({
       question: label,
       answer: answerDisplay(section, value),
+      answeredByName: attr?.answeredByName,
+      answeredAtUtc: attr?.answeredAtUtc,
+      sourceRole: attr?.sourceRole,
+      taskId: attr?.workflowTaskId ?? taskId ?? null,
     });
   }
   return rows;
@@ -444,7 +451,11 @@ export function buildFromFormDraft(
   childTask?: WorkflowTask | null,
 ): PropertyDetailPartySubmission {
   const summary = caseStudyFormSummary(draft.answers);
-  const answers = answeredRows(draft.answers);
+  const answers = answeredRows(
+    draft.answers,
+    draft.answerProvenance,
+    draft.taskId,
+  );
   const remarks = nonEmptyRemarks(draft);
   const step =
     CASE_STUDY_FORM_STEPS[draft.currentStep]?.label ??

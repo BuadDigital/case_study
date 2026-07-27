@@ -58,6 +58,7 @@ export const partyEngineeringSurveyExtensions: PartyEngineeringSurveyExtensions 
       childTask,
       hostRef,
       deedNumber,
+      onBack,
       onFailureSubmitted,
       variant,
       forceReadOnly,
@@ -68,6 +69,7 @@ export const partyEngineeringSurveyExtensions: PartyEngineeringSurveyExtensions 
           childTask={childTask}
           hostRef={hostRef as EngineeringSurveyWindowHostRefObject}
           deedNumber={deedNumber}
+          onBack={onBack}
           onFailureSubmitted={onFailureSubmitted}
           variant={variant ?? "workspace"}
           forceReadOnly={forceReadOnly}

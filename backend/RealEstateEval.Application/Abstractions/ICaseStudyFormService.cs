@@ -10,5 +10,6 @@ public interface ICaseStudyFormService
         Guid taskId,
         bool party,
         CaseStudyFormDto form,
+        CaseStudyFormActor? actor = null,
         CancellationToken cancellationToken = default);
 }

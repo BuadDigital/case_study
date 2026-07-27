@@ -3,10 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { downloadAttachmentBlob } from "@platform/api-client";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
-import {
-  openTaskAttachmentPreview,
-  type TaskAttachmentPreview,
-} from "@platform/app-shared/prototype/task-attachments-api";
+import { openTaskAttachmentPreview, type TaskAttachmentPreview } from "@platform/app-shared/prototype/task-attachments-api";
 import { cn } from "@platform/design-system";
 
 type PreviewState =

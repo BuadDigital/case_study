@@ -43,22 +43,14 @@ public class AttachmentsController : ControllerBase
         [FromBody] UploadAttachmentRequest request,
         CancellationToken ct)
     {
-        byte[] _;
-        try
-        {
-            _ = Convert.FromBase64String(request.ContentBase64);
-        }
-        catch
-        {
-            return BadRequest(new { error = "invalid base64 content" });
-        }
-
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub)
             ?? "";
 
-        var meta = await _attachments.UploadAsync(request, userId, ct);
-        return CreatedAtAction(nameof(Download), new { id = meta.Id }, meta);
+        var (meta, error) = await _attachments.UploadAsync(request, userId, ct);
+        if (error is not null)
+            return BadRequest(new { error });
+        return CreatedAtAction(nameof(Download), new { id = meta!.Id }, meta);
     }
 
     [HttpDelete("{id:guid}")]

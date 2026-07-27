@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 using System.Text.Json;
@@ -48,6 +49,7 @@ public class CaseStudyFormService : ICaseStudyFormService
         Guid taskId,
         bool party,
         CaseStudyFormDto form,
+        CaseStudyFormActor? actor = null,
         CancellationToken cancellationToken = default)
     {
         var entity = await _db.CaseStudyForms.FirstOrDefaultAsync(
@@ -59,6 +61,7 @@ public class CaseStudyFormService : ICaseStudyFormService
             var partyErrors = await ValidatePartySaveAllowedAsync(
                 taskId,
                 entity,
+                actor,
                 cancellationToken);
             if (partyErrors is not null)
                 return (null, partyErrors);
@@ -70,8 +73,20 @@ public class CaseStudyFormService : ICaseStudyFormService
                 ["_"] = "تم رفع نموذج دراسة الحالة — لا يمكن تعديله",
             });
         }
+        else if (!party && actor is not null
+                 && !PoRoleMatrixRules.CanEditProperty(actor.PrototypeRole)
+                 && !PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "ليس لديك صلاحية تعديل نموذج دراسة الحالة",
+            });
+        }
 
         var previousStatus = entity?.Status;
+        var previousAnswers = ParseAnswers(entity?.AnswersJson);
+        var previousRemarks = ReadRemarkMap(entity);
+        var previousProvenance = CaseStudyAnswerProvenance.Parse(entity?.AnswerProvenanceJson);
         var now = DateTime.UtcNow;
         if (entity is null)
         {
@@ -86,6 +101,38 @@ public class CaseStudyFormService : ICaseStudyFormService
         }
 
         ApplyDto(entity, form, now);
+
+        if (actor is not null)
+        {
+            var nextAnswers = form.Answers ?? new Dictionary<string, object?>();
+            var previousValues = new Dictionary<string, string?>(StringComparer.Ordinal);
+            foreach (var (key, value) in previousAnswers)
+                previousValues[key] = CaseStudyAnswerProvenance.NormalizeAnswerValue(value);
+            foreach (var (key, value) in previousRemarks)
+                previousValues[key] = value;
+
+            var nextValues = new Dictionary<string, string?>(StringComparer.Ordinal);
+            foreach (var (key, value) in nextAnswers)
+                nextValues[key] = CaseStudyAnswerProvenance.NormalizeAnswerValue(value);
+            foreach (var (key, value) in ReadRemarkMapFromDto(form))
+                nextValues[key] = value;
+
+            var task = await _db.WorkflowTasks.AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
+            var sourcePartyId = PartyIdForAssigneeRole(task?.AssigneeRole);
+
+            var merged = CaseStudyAnswerProvenance.MergeChanged(
+                previousProvenance,
+                previousValues,
+                nextValues,
+                actor,
+                taskId,
+                entity.Id,
+                sourcePartyId,
+                now);
+            entity.AnswerProvenanceJson = CaseStudyAnswerProvenance.Serialize(merged);
+        }
+
         await _db.SaveChangesAsync(cancellationToken);
 
         if (!party
@@ -103,6 +150,7 @@ public class CaseStudyFormService : ICaseStudyFormService
     private async Task<Dictionary<string, string>?> ValidatePartySaveAllowedAsync(
         Guid partyTaskId,
         CaseStudyForm? existingEntity,
+        CaseStudyFormActor? actor,
         CancellationToken cancellationToken)
     {
         if (existingEntity is not null
@@ -117,6 +165,20 @@ public class CaseStudyFormService : ICaseStudyFormService
         var task = await _db.WorkflowTasks
             .AsNoTracking()
             .FirstOrDefaultAsync(t => t.Id == partyTaskId, cancellationToken);
+
+        if (actor is not null
+            && !PoRoleMatrixRules.CanWritePartyTask(
+                actor.PrototypeRole,
+                task?.AssigneeId,
+                actor.UserId,
+                actor.DistributionAssigneeId))
+        {
+            return new Dictionary<string, string>
+            {
+                ["_"] = "ليس لديك صلاحية تعديل إجابات هذه المهمة",
+            };
+        }
+
         if (task?.ParentTaskId is not Guid parentId)
             return null;
 
@@ -226,16 +288,7 @@ public class CaseStudyFormService : ICaseStudyFormService
 
     private static CaseStudyFormDto ToDto(CaseStudyForm entity)
     {
-        Dictionary<string, object?> answers;
-        try
-        {
-            answers = JsonSerializer.Deserialize<Dictionary<string, object?>>(
-                entity.AnswersJson, JsonOpts) ?? new();
-        }
-        catch
-        {
-            answers = new();
-        }
+        var answers = ParseAnswers(entity.AnswersJson);
 
         Dictionary<string, bool>? specialistReview = null;
         if (!string.IsNullOrWhiteSpace(entity.SpecialistReviewApprovedJson))
@@ -251,6 +304,8 @@ public class CaseStudyFormService : ICaseStudyFormService
             }
         }
 
+        var provenance = CaseStudyAnswerProvenance.Parse(entity.AnswerProvenanceJson);
+
         return new CaseStudyFormDto
         {
             TaskId = entity.TaskId.ToString(),
@@ -262,6 +317,7 @@ public class CaseStudyFormService : ICaseStudyFormService
             RequestDate = entity.RequestDate,
             DeedNumber = entity.DeedNumber,
             Answers = answers,
+            AnswerProvenance = provenance.Count == 0 ? null : provenance,
             DeedRemarks = entity.DeedRemarks,
             SurveyRemarks = entity.SurveyRemarks,
             ComponentsRemarks = entity.ComponentsRemarks,
@@ -281,4 +337,48 @@ public class CaseStudyFormService : ICaseStudyFormService
             SavedAtUtc = entity.SavedAtUtc?.ToString("O"),
         };
     }
+
+    private static Dictionary<string, object?> ParseAnswers(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return new();
+        try
+        {
+            return JsonSerializer.Deserialize<Dictionary<string, object?>>(json, JsonOpts) ?? new();
+        }
+        catch
+        {
+            return new();
+        }
+    }
+
+    private static Dictionary<string, string?> ReadRemarkMap(CaseStudyForm? entity)
+    {
+        if (entity is null) return new(StringComparer.Ordinal);
+        return new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [CaseStudyAnswerProvenance.DeedRemarksKey] = entity.DeedRemarks,
+            [CaseStudyAnswerProvenance.SurveyRemarksKey] = entity.SurveyRemarks,
+            [CaseStudyAnswerProvenance.ComponentsRemarksKey] = entity.ComponentsRemarks,
+            [CaseStudyAnswerProvenance.OccupancyRemarksKey] = entity.OccupancyRemarks,
+        };
+    }
+
+    private static Dictionary<string, string?> ReadRemarkMapFromDto(CaseStudyFormDto dto) =>
+        new(StringComparer.Ordinal)
+        {
+            [CaseStudyAnswerProvenance.DeedRemarksKey] = dto.DeedRemarks,
+            [CaseStudyAnswerProvenance.SurveyRemarksKey] = dto.SurveyRemarks,
+            [CaseStudyAnswerProvenance.ComponentsRemarksKey] = dto.ComponentsRemarks,
+            [CaseStudyAnswerProvenance.OccupancyRemarksKey] = dto.OccupancyRemarks,
+        };
+
+    private static string? PartyIdForAssigneeRole(string? assigneeRole) =>
+        (assigneeRole?.Trim().ToLowerInvariant()) switch
+        {
+            "field-inspector" => "insp",
+            "engineering-office" => "eng",
+            "real-estate-appraiser" => "val",
+            "government-reviewer" => "gov",
+            _ => null,
+        };
 }

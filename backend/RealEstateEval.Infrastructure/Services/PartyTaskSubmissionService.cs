@@ -93,6 +93,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
     public async Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> SaveDraftAsync(
         Guid taskId,
         SavePartyTaskSubmissionRequest request,
+        PartySubmissionActor? actor = null,
         CancellationToken cancellationToken = default)
     {
         var task = await _db.WorkflowTasks
@@ -103,6 +104,16 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
         if (!AllowedKinds.Contains(task.Kind))
             return (null, new Dictionary<string, string> { ["_"] = "نوع المهمة غير مدعوم" });
+
+        if (actor is not null
+            && !PoRoleMatrixRules.CanWritePartyTask(
+                actor.PrototypeRole,
+                task.AssigneeId,
+                actor.UserId,
+                actor.DistributionAssigneeId))
+        {
+            return (null, new Dictionary<string, string> { ["_"] = "ليس لديك صلاحية تعديل هذه المهمة" });
+        }
 
         var entity = await _db.PartyTaskSubmissions
             .FirstOrDefaultAsync(s => s.WorkflowTaskId == taskId, cancellationToken);
@@ -129,6 +140,9 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             ? entity.PayloadJson
             : request.Payload.GetRawText();
 
+        if (task.Kind == "government-review")
+            payloadJson = StripLegacyKeysProofDataUrls(payloadJson);
+
         var status = ExtractStatus(payloadJson) ?? entity.Status;
         if (status is PartyTaskSubmissionStatus.Submitted)
             return (null, new Dictionary<string, string> { ["_"] = "استخدم نقطة الإرسال لتقديم العمل" });
@@ -154,6 +168,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
     public async Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> SubmitAsync(
         Guid taskId,
+        PartySubmissionActor? actor = null,
         CancellationToken cancellationToken = default)
     {
         var task = await _db.WorkflowTasks
@@ -164,6 +179,16 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
         if (!AllowedKinds.Contains(task.Kind))
             return (null, new Dictionary<string, string> { ["_"] = "نوع المهمة غير مدعوم" });
+
+        if (actor is not null
+            && !PoRoleMatrixRules.CanWritePartyTask(
+                actor.PrototypeRole,
+                task.AssigneeId,
+                actor.UserId,
+                actor.DistributionAssigneeId))
+        {
+            return (null, new Dictionary<string, string> { ["_"] = "ليس لديك صلاحية إرسال هذه المهمة" });
+        }
 
         var entity = await _db.PartyTaskSubmissions
             .FirstOrDefaultAsync(s => s.WorkflowTaskId == taskId, cancellationToken);
@@ -182,6 +207,13 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         entity.Status = PartyTaskSubmissionStatus.Submitted;
         entity.SubmittedAtUtc = now;
         entity.UpdatedAtUtc = now;
+        if (actor is not null)
+        {
+            entity.SubmittedByUserId = actor.UserId;
+            entity.SubmittedByName = string.IsNullOrWhiteSpace(actor.DisplayName)
+                ? task.AssigneeName
+                : actor.DisplayName.Trim();
+        }
         entity.PayloadJson = SetPayloadStatus(entity.PayloadJson, PartyTaskSubmissionStatus.Submitted, now);
 
         if (entity.Kind == "field-inspection")
@@ -199,12 +231,14 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
         if (task.PropertyId is Guid propertyId)
         {
+            var actorLabel = entity.SubmittedByName
+                ?? (string.IsNullOrWhiteSpace(task.AssigneeName) ? null : task.AssigneeName);
             await _timeline.RecordAsync(
                 task.PoNumber,
                 propertyId,
                 $"party:{taskId}:submitted",
                 PartySubmittedTitle(entity.Kind),
-                task.AssigneeName,
+                actorLabel,
                 "done",
                 now,
                 cancellationToken);
@@ -216,6 +250,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
     public async Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> ReopenAsync(
         Guid taskId,
         ReopenPartyTaskSubmissionRequest request,
+        PartySubmissionActor? actor = null,
         CancellationToken cancellationToken = default)
     {
         var task = await _db.WorkflowTasks
@@ -226,6 +261,9 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
         if (task.Kind is not ("engineering-survey" or "property-appraisal" or "field-inspection" or "government-review"))
             return (null, new Dictionary<string, string> { ["_"] = "إعادة الفتح غير مدعومة لهذا النوع" });
+
+        if (actor is not null && !PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
+            return (null, new Dictionary<string, string> { ["_"] = "ليس لديك صلاحية إعادة فتح إرسال الطرف" });
 
         var returnNote = request.ReturnNote?.Trim() ?? "";
         if (task.Kind is "engineering-survey" or "field-inspection" or "government-review" && string.IsNullOrWhiteSpace(returnNote))
@@ -244,6 +282,15 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         // Returning for correction voids the acceptance so the specialist can
         // accept the corrected outputs again.
         entity.AcceptedAtUtc = null;
+        entity.AcceptedByUserId = null;
+        entity.AcceptedByName = null;
+        if (actor is not null)
+        {
+            entity.ReopenedByUserId = actor.UserId;
+            entity.ReopenedByName = string.IsNullOrWhiteSpace(actor.DisplayName)
+                ? null
+                : actor.DisplayName.Trim();
+        }
         entity.UpdatedAtUtc = now;
         entity.PayloadJson = SetPayloadReopened(entity.PayloadJson, returnNote, now);
 
@@ -273,7 +320,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
     public async Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> AcceptAsync(
         Guid taskId,
-        string actorUserId,
+        PartySubmissionActor actor,
         CancellationToken cancellationToken = default)
     {
         var task = await _db.WorkflowTasks
@@ -285,6 +332,9 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (task.Kind != "engineering-survey")
             return (null, new Dictionary<string, string> { ["_"] = "قبول المخرجات متاح لمهام الرفع المساحي فقط" });
 
+        if (!PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
+            return (null, new Dictionary<string, string> { ["_"] = "ليس لديك صلاحية قبول مخرجات الطرف" });
+
         var entity = await _db.PartyTaskSubmissions
             .FirstOrDefaultAsync(s => s.WorkflowTaskId == taskId, cancellationToken);
 
@@ -294,9 +344,10 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (task.Status != WorkflowTaskStatus.Completed)
             return (null, new Dictionary<string, string> { ["_"] = "مهمة الرفع المساحي غير مكتملة" });
 
+        var actorUserId = string.IsNullOrWhiteSpace(actor.UserId) ? "system" : actor.UserId;
         var (_, feeError) = await _inspectorFees.AccrueEngineeringSurveyFeeAsync(
             taskId,
-            string.IsNullOrWhiteSpace(actorUserId) ? "system" : actorUserId,
+            actorUserId,
             cancellationToken);
         if (feeError is not null)
             return (null, new Dictionary<string, string> { ["_"] = feeError });
@@ -306,6 +357,10 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (!alreadyAccepted)
         {
             entity.AcceptedAtUtc = DateTime.UtcNow;
+            entity.AcceptedByUserId = actorUserId;
+            entity.AcceptedByName = string.IsNullOrWhiteSpace(actor.DisplayName)
+                ? null
+                : actor.DisplayName.Trim();
             await _db.SaveChangesAsync(cancellationToken);
         }
 
@@ -316,7 +371,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 propertyId,
                 $"party:{taskId}:accepted",
                 "قبول مخرجات الرفع المساحي",
-                task.AssigneeName,
+                entity.AcceptedByName ?? task.AssigneeName,
                 "done",
                 DateTime.UtcNow,
                 cancellationToken);
@@ -376,18 +431,31 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         foreach (var (key, message) in documentary)
             errors[key] = message;
 
-        if (errors.Count > 0 || entity.Kind != "field-inspection")
+        if (errors.Count > 0)
             return errors;
 
         try
         {
             using var doc = JsonDocument.Parse(entity.PayloadJson);
-            var attachmentErrors = await _fieldInspectionAttachments.VerifyAsync(
-                entity.WorkflowTaskId,
-                doc.RootElement,
-                cancellationToken);
-            foreach (var (key, message) in attachmentErrors)
-                errors[key] = message;
+            if (entity.Kind == "field-inspection")
+            {
+                var attachmentErrors = await _fieldInspectionAttachments.VerifyAsync(
+                    entity.WorkflowTaskId,
+                    doc.RootElement,
+                    cancellationToken);
+                foreach (var (key, message) in attachmentErrors)
+                    errors[key] = message;
+            }
+            else if (entity.Kind == "government-review")
+            {
+                foreach (var (key, message) in await VerifyGovernmentReviewAttachmentsAsync(
+                             entity.WorkflowTaskId,
+                             doc.RootElement,
+                             cancellationToken))
+                {
+                    errors[key] = message;
+                }
+            }
         }
         catch
         {
@@ -395,6 +463,108 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         }
 
         return errors;
+    }
+
+    private async Task<Dictionary<string, string>> VerifyGovernmentReviewAttachmentsAsync(
+        Guid workflowTaskId,
+        JsonElement root,
+        CancellationToken cancellationToken)
+    {
+        var errors = new Dictionary<string, string>();
+        var refs = GovernmentReviewPayloadAttachments.Collect(root);
+        if (refs.Count == 0)
+        {
+            // Legacy dataUrl-only proofs remain acceptable until fully migrated,
+            // but prefer rejecting empty attachment ids when keysProofFiles exist
+            // without any durable reference and without legacy dataUrl.
+            if (root.TryGetProperty("keysProofFiles", out var files)
+                && files.ValueKind == JsonValueKind.Array
+                && files.GetArrayLength() > 0
+                && !GovernmentReviewPayloadAttachments.HasLegacyDataUrlWithoutAttachment(root))
+            {
+                errors["keysProofFiles"] = "مرفقات إثبات المفتاح غير مرتبطة بالخادم";
+            }
+            return errors;
+        }
+
+        var ids = refs.Select(r => r.AttachmentId).Distinct().ToArray();
+        var rows = await _db.FileAttachments.AsNoTracking()
+            .Where(x => ids.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+
+        foreach (var reference in refs)
+        {
+            if (!rows.TryGetValue(reference.AttachmentId, out var row))
+            {
+                errors["keysProofFiles"] = "مرفق إثبات المفتاح غير موجود في قاعدة البيانات";
+                return errors;
+            }
+
+            if (!string.Equals(row.Scope, GovernmentReviewPayloadAttachments.Scope, StringComparison.Ordinal))
+            {
+                errors["keysProofFiles"] = "مرفق إثبات المفتاح لا يخص المراجعة الحكومية";
+                return errors;
+            }
+
+            var expected = GovernmentReviewPayloadAttachments.ScopeKey(workflowTaskId, reference.ProofId);
+            if (!string.Equals(row.ScopeKey, expected, StringComparison.Ordinal))
+            {
+                errors["keysProofFiles"] = "مرفق إثبات المفتاح مرتبط بمهمة أخرى";
+                return errors;
+            }
+        }
+
+        return errors;
+    }
+
+    /// <summary>
+    /// Persist metadata + attachmentId only — drop embedded dataUrl bytes when a server id exists.
+    /// Legacy entries without attachmentId keep dataUrl for backward compatibility.
+    /// </summary>
+    private static string StripLegacyKeysProofDataUrls(string payloadJson)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(payloadJson);
+            if (!doc.RootElement.TryGetProperty("keysProofFiles", out var files)
+                || files.ValueKind != JsonValueKind.Array)
+            {
+                return payloadJson;
+            }
+
+            var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(payloadJson, JsonOpts)
+                       ?? new Dictionary<string, JsonElement>();
+            var mutable = dict.ToDictionary(
+                kv => kv.Key,
+                kv => (object?)DeserializeElement(kv.Value));
+
+            var cleaned = new List<Dictionary<string, object?>>();
+            foreach (var file in files.EnumerateArray())
+            {
+                if (file.ValueKind != JsonValueKind.Object) continue;
+                var entry = new Dictionary<string, object?>();
+                foreach (var prop in file.EnumerateObject())
+                {
+                    if (prop.NameEquals("dataUrl")
+                        && file.TryGetProperty("attachmentId", out var aid)
+                        && aid.ValueKind == JsonValueKind.String
+                        && Guid.TryParse(aid.GetString(), out var gid)
+                        && gid != Guid.Empty)
+                    {
+                        continue;
+                    }
+                    entry[prop.Name] = DeserializeElement(prop.Value);
+                }
+                cleaned.Add(entry);
+            }
+
+            mutable["keysProofFiles"] = cleaned;
+            return JsonSerializer.Serialize(mutable, JsonOpts);
+        }
+        catch
+        {
+            return payloadJson;
+        }
     }
 
     private async Task<Dictionary<string, string>> ValidateDocumentaryGatesAsync(
@@ -823,6 +993,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
         return new PartyTaskSubmissionDto
         {
+            Id = entity.Id.ToString(),
             TaskId = entity.WorkflowTaskId.ToString(),
             Kind = entity.Kind,
             Status = entity.Status,
@@ -832,6 +1003,12 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             ReturnNote = entity.ReturnNote,
             SubmittedAtUtc = entity.SubmittedAtUtc?.ToString("O"),
             AcceptedAtUtc = entity.AcceptedAtUtc?.ToString("O"),
+            SubmittedByUserId = entity.SubmittedByUserId,
+            SubmittedByName = entity.SubmittedByName,
+            AcceptedByUserId = entity.AcceptedByUserId,
+            AcceptedByName = entity.AcceptedByName,
+            ReopenedByUserId = entity.ReopenedByUserId,
+            ReopenedByName = entity.ReopenedByName,
             UpdatedAtUtc = entity.UpdatedAtUtc.ToString("O"),
         };
     }

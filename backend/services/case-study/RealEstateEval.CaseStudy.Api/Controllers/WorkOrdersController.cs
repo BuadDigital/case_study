@@ -110,6 +110,9 @@ public class WorkOrdersController : ControllerBase
         [FromBody] CreateWorkOrderRequest request,
         CancellationToken cancellationToken)
     {
+        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanReceivePo, cancellationToken);
+        if (forbidden is not null) return forbidden;
+
         var (result, errors) = await _workOrders.CreateAsync(
             request,
             cancellationToken);
@@ -125,6 +128,9 @@ public class WorkOrdersController : ControllerBase
         [FromBody] UpdateWorkOrderHeaderRequest request,
         CancellationToken cancellationToken)
     {
+        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanEditPoHeader, cancellationToken);
+        if (forbidden is not null) return forbidden;
+
         var (result, errors) = await _workOrders.UpdateHeaderAsync(
             poNumber,
             request,
@@ -139,6 +145,9 @@ public class WorkOrdersController : ControllerBase
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<IActionResult> Delete(string poNumber, CancellationToken cancellationToken)
     {
+        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanDeletePo, cancellationToken);
+        if (forbidden is not null) return forbidden;
+
         var (ok, error) = await _workOrders.DeleteAsync(poNumber, cancellationToken);
         if (!ok) return BadRequest(new { message = error });
         return NoContent();
@@ -148,6 +157,9 @@ public class WorkOrdersController : ControllerBase
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<IActionResult> Cancel(string poNumber, CancellationToken cancellationToken)
     {
+        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanEditPoHeader, cancellationToken);
+        if (forbidden is not null) return forbidden;
+
         var (ok, error) = await _workOrders.CancelAsync(poNumber, cancellationToken);
         if (!ok) return BadRequest(new { message = error });
         return NoContent();
@@ -157,6 +169,9 @@ public class WorkOrdersController : ControllerBase
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<IActionResult> Stop(string poNumber, CancellationToken cancellationToken)
     {
+        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanEditPoHeader, cancellationToken);
+        if (forbidden is not null) return forbidden;
+
         var (ok, error) = await _workOrders.StopAsync(poNumber, cancellationToken);
         if (!ok) return BadRequest(new { message = error });
         return NoContent();
@@ -169,6 +184,9 @@ public class WorkOrdersController : ControllerBase
         [FromBody] WorkOrderPropertyDto property,
         CancellationToken cancellationToken)
     {
+        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanReceivePo, cancellationToken);
+        if (forbidden is not null) return forbidden;
+
         var (result, errors) = await _workOrders.AddPropertyAsync(
             poNumber,
             property,
@@ -187,6 +205,9 @@ public class WorkOrdersController : ControllerBase
         [FromBody] UpdatePropertyBourseRequest request,
         CancellationToken cancellationToken)
     {
+        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanEditProperty, cancellationToken);
+        if (forbidden is not null) return forbidden;
+
         var (result, errors) = await _workOrders.CompleteBourseDataAsync(
             poNumber,
             propertyId,
@@ -206,6 +227,9 @@ public class WorkOrdersController : ControllerBase
         [FromBody] WorkOrderPropertyDto property,
         CancellationToken cancellationToken)
     {
+        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanEditProperty, cancellationToken);
+        if (forbidden is not null) return forbidden;
+
         var (result, errors) = await _workOrders.UpdatePropertyAsync(
             poNumber,
             propertyId,
@@ -253,6 +277,9 @@ public class WorkOrdersController : ControllerBase
         [FromBody] DeleteWorkOrderPropertyRequest? request,
         CancellationToken cancellationToken)
     {
+        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanDeleteProperty, cancellationToken);
+        if (forbidden is not null) return forbidden;
+
         var (ok, error) = await _workOrders.DeletePropertyAsync(
             poNumber,
             propertyId,
@@ -260,5 +287,17 @@ public class WorkOrdersController : ControllerBase
             cancellationToken);
         if (!ok) return BadRequest(new { message = error });
         return NoContent();
+    }
+
+    private async Task<ActionResult?> ForbidUnlessAsync(
+        Func<string?, bool> allow,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId)) return Forbid();
+        var perms = await _permissions.GetForUserIdAsync(userId, cancellationToken);
+        if (!allow(perms?.PrototypeRole))
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "ليس لديك صلاحية لهذا الإجراء" });
+        return null;
     }
 }

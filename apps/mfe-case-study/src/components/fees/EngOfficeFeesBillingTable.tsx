@@ -133,7 +133,9 @@ function engFeeStatusTitle(
   }
   if (st === "dispute") {
     const reason = row.lastTransitionReason?.trim();
-    return reason ? `تحفّظكم: ${reason}` : undefined;
+    return reason
+      ? `تحفّظكم: ${reason} — قيد المعالجة مع المشرف`
+      : "قيد المعالجة مع المشرف";
   }
   if (st === "ready" && !(row.supervisorDiscountSar > 0)) {
     return "تلقائياً — لا تلزم موافقة";
@@ -342,28 +344,31 @@ export function EngOfficeFeesBillingTable({
                     </Td>
                     <Td>
                       {st === "pending_office" ? (
-                        <div className="flex flex-wrap gap-1.5">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="primary"
-                            disabled={busy || !row.canOfficeApproveDiscount}
-                            onClick={() =>
-                              void act(row, "office-approve-discount")
-                            }
-                          >
-                            قبول
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            disabled={busy || !row.canOfficeDispute}
-                            className="border-[color-mix(in_srgb,#d9694f_40%,transparent)] text-[#a5432e]"
-                            onClick={() => setDisputeRow(row)}
-                          >
-                            تحفّظ
-                          </Button>
+                        <div className="flex w-full flex-col gap-1.5">
+                          <div className="flex gap-1.5">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="primary"
+                              disabled={busy || !row.canOfficeApproveDiscount}
+                              className="whitespace-nowrap px-[11px] py-1 text-[11px]"
+                              onClick={() =>
+                                void act(row, "office-approve-discount")
+                              }
+                            >
+                              قبول
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={busy || !row.canOfficeDispute}
+                              className="whitespace-nowrap border-[color-mix(in_srgb,#d9694f_40%,transparent)] bg-surface px-[11px] py-1 text-[11px] font-bold text-[#a5432e]"
+                              onClick={() => setDisputeRow(row)}
+                            >
+                              تحفّظ
+                            </Button>
+                          </div>
                         </div>
                       ) : (
                         <span className="text-[11px] text-text-3">

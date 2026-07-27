@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import {
   EmptyState,
   QueueTableHint,
@@ -10,6 +11,8 @@ import {
   TabPanel,
 } from "@platform/design-system";
 import { KeyEnvelopeFeesPanel } from "@keys/mfe/components/KeyEnvelopeFeesPanel";
+import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { loadEngBillingStatements } from "@platform/app-shared/prototype/eng-billing-statements-api";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import { InspectorFeesBillingTable } from "../field-inspection/InspectorFeesBillingTable";
 import { PartyFeeWorkflowTable } from "./PartyFeeWorkflowTable";
@@ -19,6 +22,10 @@ import { PartyReturnedQueue } from "./PartyReturnedQueue";
 import { SupervisorEnfazTracking } from "./SupervisorEnfazTracking";
 import { CourtVisitFeesPanel } from "./CourtVisitFeesPanel";
 import { EngOfficeBillingStatementsPanel } from "./EngOfficeBillingStatementsPanel";
+import {
+  EngFeesHtmlTabs,
+  EngFeesSectionTitle,
+} from "./EngFeesHtmlTabs";
 import { PartyPropertyBrowse } from "@platform/app-shared/fees/PartyPropertyBrowse";
 import {
   resolvePartyCategory,
@@ -39,6 +46,8 @@ type PartyFeesTab =
   | "browse"
   | "action"
   | "ready";
+
+type EngFeesTab = "action" | "ready" | "statements";
 
 export function PartyFeesWorkspace({
   variant,
@@ -103,117 +112,88 @@ export function PartyFeesWorkspace({
     [rows],
   );
 
+  const { data: engStatements = [] } = useQuery({
+    queryKey: [
+      ...prototypeKeys.all,
+      "eng-billing",
+      "statements",
+      assigneeId ?? "all",
+      "issued+",
+    ],
+    queryFn: () =>
+      loadEngBillingStatements({
+        assigneeId,
+        issuedOrLaterOnly: true,
+      }),
+    enabled: isEngineering && !isSupervisor && Boolean(assigneeId),
+  });
+
+  const engTab: EngFeesTab =
+    tab === "ready" || tab === "statements" ? tab : "action";
+
   const showVisitAndKeyFees =
     variant === "government-review" || isSupervisor;
 
   if (isEngineering && !isSupervisor) {
     return (
-      <div className="flex min-h-0 flex-col gap-0">
-        <TabBar className="mb-0">
-          <Tab active={tab === "action"} onClick={() => setTab("action")}>
-            تتطلب إجراءكم
-            {engActionCount > 0 ? (
-              <span className="ms-1 text-[10.5px] text-[#a5432e]">
-                ({engActionCount})
-              </span>
-            ) : (
-              <span className="ms-1 text-[10.5px] text-text-3">(0)</span>
-            )}
-          </Tab>
-          <Tab active={tab === "ready"} onClick={() => setTab("ready")}>
-            جاهزة للفوترة
-            <span className="ms-1 text-[10.5px] text-text-3">
-              ({engReadyCount})
-            </span>
-          </Tab>
-          <Tab
-            active={tab === "statements"}
-            onClick={() => setTab("statements")}
-          >
-            كشوف الفوترة الصادرة
-          </Tab>
-          <Tab active={tab === "browse"} onClick={() => setTab("browse")}>
-            عقاراتي وحالاتها
-          </Tab>
-        </TabBar>
+      <div className="flex min-h-0 flex-col gap-0 px-3 pb-4 sm:px-4">
+        <EngFeesHtmlTabs
+          active={engTab}
+          onChange={(id) => setTab(id as PartyFeesTab)}
+          tabs={[
+            {
+              id: "action",
+              label: "تتطلب إجراءكم",
+              count: engActionCount,
+              countWarnWhenActive: true,
+            },
+            {
+              id: "ready",
+              label: "جاهزة للفوترة",
+              count: engReadyCount,
+            },
+            {
+              id: "statements",
+              label: "كشوف الفوترة الصادرة",
+              count: engStatements.length,
+            },
+          ]}
+        />
 
-        <TabPanel className="px-3 py-3 sm:px-4 sm:py-4">
-          {tab === "action" ? (
-            <>
-              <div className="mb-3">
-                <div className="text-[14px] font-bold text-heading">
-                  الكشف المبدئي — بنود تتطلب إجراءكم
-                </div>
-                <div className="mt-0.5 text-[11.5px] text-text-3">
-                  تعديلات تسعير بانتظار إفادتكم، وتحفّظاتكم قيد المعالجة مع
-                  المشرف. الاستحقاق ينشأ بقبول الأخصائي بسعر جدول التسعير.
-                </div>
-              </div>
-              <EngOfficeFeesBillingTable
-                rows={rows}
-                tab="action"
-                pending={isLoading && !isFetched}
-              />
-            </>
-          ) : null}
-
-          {tab === "ready" ? (
-            <>
-              <div className="mb-3">
-                <div className="text-[14px] font-bold text-heading">
-                  المعاملات الجاهزة للفوترة
-                </div>
-                <div className="mt-0.5 text-[11.5px] text-text-3">
-                  بنود مستحقة بانتظار كشف المحاسب نهاية الشهر — تشمل المرحَّلة من
-                  أشهر سابقة.
-                </div>
-              </div>
-              <EngOfficeFeesBillingTable
-                rows={rows}
-                tab="ready"
-                pending={isLoading && !isFetched}
-              />
-            </>
-          ) : null}
-
-          {tab === "statements" ? (
-            <>
-              <div className="mb-3">
-                <div className="text-[14px] font-bold text-heading">
-                  كشوف الفوترة الصادرة
-                </div>
-                <div className="mt-0.5 text-[11.5px] text-text-3">
-                  يُصدرها المحاسب نهاية الشهر من البنود الجاهزة فقط — مستند
-                  داخلي لتحديد نطاق الصرف؛ الفاتورة من البرنامج المحاسبي.
-                  للاطلاع ومتابعة الصرف فقط.
-                </div>
-              </div>
-              <EngOfficeBillingStatementsPanel
-                assigneeId={assigneeId}
-                issuedOrLaterOnly
-              />
-              <QueueTableHint className="mt-3 border-t border-border bg-surface-2">
-                دورة الكشف: مسودة ← صادر ← محال للمالية ← مصروف. الفاتورة تصدر من
-                البرنامج المحاسبي خارج النظام، ويُوثَّق الصرف هنا برقم الفاتورة
-                وإيصال التحويل والتاريخ. البنود المتحفَّظ عليها تُعالَج بالتنسيق
-                مع المشرف قبل إحالتها للمالية.
-              </QueueTableHint>
-            </>
-          ) : null}
-
-          {tab === "browse" ? (
-            <PartyPropertyBrowse
+        {engTab === "action" ? (
+          <>
+            <EngFeesSectionTitle
+              title="الكشف المبدئي — بنود تتطلب إجراءكم"
+              sub="تعديلات تسعير بانتظار إفادتكم، وتحفّظاتكم قيد المعالجة مع المشرف. الاستحقاق ينشأ بقبول الأخصائي بسعر جدول التسعير."
+            />
+            <EngOfficeFeesBillingTable
               rows={rows}
-              partyName={resolvePartyName(assigneeId, staffUsers)}
-              partyCategory={resolvePartyCategory(
-                assigneeId ?? "",
-                rows,
-                staffUsers,
-              )}
+              tab="action"
               pending={isLoading && !isFetched}
             />
-          ) : null}
-        </TabPanel>
+          </>
+        ) : null}
+
+        {engTab === "ready" ? (
+          <>
+            <EngFeesSectionTitle
+              title="المعاملات الجاهزة للفوترة"
+              sub="بنود مستحقة بانتظار كشف المحاسب نهاية الشهر — تشمل المرحَّلة من أشهر سابقة."
+            />
+            <EngOfficeFeesBillingTable
+              rows={rows}
+              tab="ready"
+              pending={isLoading && !isFetched}
+            />
+          </>
+        ) : null}
+
+        {engTab === "statements" ? (
+          <EngOfficeBillingStatementsPanel
+            assigneeId={assigneeId}
+            issuedOrLaterOnly
+          />
+        ) : null}
       </div>
     );
   }

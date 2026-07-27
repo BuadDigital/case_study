@@ -38,11 +38,18 @@ export type EvaluatorReportWorker = {
   licenseFileName: string | null;
 };
 
+/** Case Study.html settings defaults for read-only Infath contact fields. */
+export const DEFAULT_APPRAISER_ADDRESS =
+  "جدة — حي الروضة، شارع الأمير سلطان، مبنى 42";
+export const DEFAULT_APPRAISER_PHONE = "0126612345";
+
 export type EvaluatorSubmission = {
   taskId: string;
   propertyId: string;
   poNumber: string;
   status: EvaluatorSubmissionStatus;
+  /** رقم التقرير (المقياس) — Case Study.html `reportNo`. */
+  reportNo: string;
   evaluatorPrice: string;
   evaluatorNotes: string;
   checklist: EvaluatorChecklistAnswers;
@@ -184,6 +191,7 @@ export function createEvaluatorDraft(input: {
   return {
     ...input,
     status: "draft",
+    reportNo: "",
     evaluatorPrice: "",
     evaluatorNotes: "",
     checklist: emptyChecklist(),
@@ -197,8 +205,8 @@ export function createEvaluatorDraft(input: {
     forcedSaleDiscountPct: "20",
     searchScopeNotes: "",
     planImageFileName: null,
-    appraiserAddress: "",
-    appraiserPhone: "",
+    appraiserAddress: DEFAULT_APPRAISER_ADDRESS,
+    appraiserPhone: DEFAULT_APPRAISER_PHONE,
     reportIssueDate: "",
     independenceDeclared: false,
     reportWorkers: [createEmptyReportWorker("معد")],

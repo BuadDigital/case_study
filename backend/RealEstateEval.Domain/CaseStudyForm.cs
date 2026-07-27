@@ -14,6 +14,10 @@ public class CaseStudyForm
     public string DeedNumber { get; set; } = "";
     /// <summary>JSON — answers map.</summary>
     public string AnswersJson { get; set; } = "{}";
+    /// <summary>
+    /// JSON — per-answer / per-remark provenance map keyed by question or remark id.
+    /// </summary>
+    public string? AnswerProvenanceJson { get; set; }
     public string DeedRemarks { get; set; } = "";
     public string SurveyRemarks { get; set; } = "";
     public string ComponentsRemarks { get; set; } = "";

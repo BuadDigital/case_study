@@ -20,7 +20,14 @@ public class PartyTaskSubmissionAcceptTests
         SeedAcceptedableSurvey(db);
         var service = CreateService(db);
 
-        var (result, errors) = await service.AcceptAsync(TaskId, "specialist-1");
+        var (result, errors) = await service.AcceptAsync(
+            TaskId,
+            new PartySubmissionActor
+            {
+                UserId = "specialist-1",
+                DisplayName = "أخصائي",
+                PrototypeRole = "case-specialist",
+            });
 
         Assert.Null(errors);
         Assert.NotNull(result);
@@ -38,8 +45,14 @@ public class PartyTaskSubmissionAcceptTests
         SeedAcceptedableSurvey(db);
         var service = CreateService(db);
 
-        var (first, _) = await service.AcceptAsync(TaskId, "specialist-1");
-        var (second, _) = await service.AcceptAsync(TaskId, "specialist-1");
+        var actor = new PartySubmissionActor
+        {
+            UserId = "specialist-1",
+            DisplayName = "أخصائي",
+            PrototypeRole = "case-specialist",
+        };
+        var (first, _) = await service.AcceptAsync(TaskId, actor);
+        var (second, _) = await service.AcceptAsync(TaskId, actor);
 
         Assert.NotNull(first);
         Assert.NotNull(second);

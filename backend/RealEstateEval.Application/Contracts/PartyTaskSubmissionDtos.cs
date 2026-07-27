@@ -4,6 +4,7 @@ namespace RealEstateEval.Application.Contracts;
 
 public class PartyTaskSubmissionDto
 {
+    public string Id { get; set; } = "";
     public string TaskId { get; set; } = "";
     public string Kind { get; set; } = "";
     public string Status { get; set; } = "draft";
@@ -13,6 +14,12 @@ public class PartyTaskSubmissionDto
     public string? ReturnNote { get; set; }
     public string? SubmittedAtUtc { get; set; }
     public string? AcceptedAtUtc { get; set; }
+    public string? SubmittedByUserId { get; set; }
+    public string? SubmittedByName { get; set; }
+    public string? AcceptedByUserId { get; set; }
+    public string? AcceptedByName { get; set; }
+    public string? ReopenedByUserId { get; set; }
+    public string? ReopenedByName { get; set; }
     public string UpdatedAtUtc { get; set; } = "";
 }
 

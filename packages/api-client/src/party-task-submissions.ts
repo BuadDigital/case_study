@@ -7,6 +7,7 @@ import { getApiBase } from "./index";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
 export type PartyTaskSubmissionDto = {
+  id?: string;
   taskId: string;
   kind: string;
   status: string;
@@ -16,6 +17,12 @@ export type PartyTaskSubmissionDto = {
   returnNote?: string;
   submittedAtUtc?: string;
   acceptedAtUtc?: string;
+  submittedByUserId?: string;
+  submittedByName?: string;
+  acceptedByUserId?: string;
+  acceptedByName?: string;
+  reopenedByUserId?: string;
+  reopenedByName?: string;
   updatedAtUtc: string;
 };
 
@@ -37,6 +44,7 @@ function headers(token: string): HeadersInit {
 function normalizeSubmissionDto(raw: unknown): PartyTaskSubmissionDto {
   const row = raw as Record<string, unknown>;
   return {
+    id: (row.id ?? row.Id ?? undefined) as string | undefined,
     taskId: String(row.taskId ?? row.TaskId ?? ""),
     kind: String(row.kind ?? row.Kind ?? ""),
     status: String(row.status ?? row.Status ?? "draft"),
@@ -48,6 +56,24 @@ function normalizeSubmissionDto(raw: unknown): PartyTaskSubmissionDto {
       | string
       | undefined,
     acceptedAtUtc: (row.acceptedAtUtc ?? row.AcceptedAtUtc ?? undefined) as
+      | string
+      | undefined,
+    submittedByUserId: (row.submittedByUserId ?? row.SubmittedByUserId ?? undefined) as
+      | string
+      | undefined,
+    submittedByName: (row.submittedByName ?? row.SubmittedByName ?? undefined) as
+      | string
+      | undefined,
+    acceptedByUserId: (row.acceptedByUserId ?? row.AcceptedByUserId ?? undefined) as
+      | string
+      | undefined,
+    acceptedByName: (row.acceptedByName ?? row.AcceptedByName ?? undefined) as
+      | string
+      | undefined,
+    reopenedByUserId: (row.reopenedByUserId ?? row.ReopenedByUserId ?? undefined) as
+      | string
+      | undefined,
+    reopenedByName: (row.reopenedByName ?? row.ReopenedByName ?? undefined) as
       | string
       | undefined,
     updatedAtUtc: String(row.updatedAtUtc ?? row.UpdatedAtUtc ?? ""),

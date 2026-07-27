@@ -15,13 +15,21 @@ import {
   pdfFileToFirstPageDataUrl,
 } from "./pdf-first-page-preview";
 
-export type PropertyDocKind = "decree" | "delegation" | "keys-proof" | "other";
+export type PropertyDocKind =
+  | "decree"
+  | "delegation"
+  | "keys-proof"
+  | "other"
+  | "registry"
+  | "boundaries";
 
 const API_SCOPE: Record<PropertyDocKind, string> = {
   decree: "property-decree",
   delegation: "property-delegation",
   "keys-proof": "government-keys-proof",
   other: "property-other",
+  registry: "property-registry",
+  boundaries: "property-boundaries",
 };
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
@@ -314,6 +322,36 @@ export async function cacheKeysProofDoc(
   });
 }
 
+export async function cacheRegistryDoc(
+  poNumber: string,
+  propertyId: string,
+  file: File,
+): Promise<DocCacheResult> {
+  return writeCachedDoc("registry", poNumber, propertyId, file, {
+    replaceAll: true,
+  });
+}
+
+export async function cacheBoundariesDoc(
+  poNumber: string,
+  propertyId: string,
+  file: File,
+): Promise<DocCacheResult> {
+  return writeCachedDoc("boundaries", poNumber, propertyId, file, {
+    replaceAll: true,
+  });
+}
+
+export async function cacheOtherPropertyDoc(
+  poNumber: string,
+  propertyId: string,
+  file: File,
+): Promise<DocCacheResult> {
+  return writeCachedDoc("other", poNumber, propertyId, file, {
+    replaceAll: false,
+  });
+}
+
 function readCachedDocs(
   kind: PropertyDocKind,
   poNumber: string,
@@ -481,6 +519,9 @@ export async function prefetchPropertyDocAttachments(
   await Promise.all([
     hydrateKindFromApi("decree", poNumber, propertyId),
     hydrateKindFromApi("delegation", poNumber, propertyId),
+    hydrateKindFromApi("registry", poNumber, propertyId),
+    hydrateKindFromApi("other", poNumber, propertyId),
+    hydrateKindFromApi("boundaries", poNumber, propertyId),
   ]);
 }
 
