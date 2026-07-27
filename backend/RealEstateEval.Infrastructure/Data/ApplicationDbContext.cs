@@ -262,6 +262,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.PoNumber).HasMaxLength(64);
             e.Property(x => x.PayloadJson).HasColumnType("jsonb");
             e.Property(x => x.ReturnNote).HasMaxLength(4000);
+            e.Property(x => x.SubmittedByUserId).HasMaxLength(450);
+            e.Property(x => x.SubmittedByName).HasMaxLength(256);
+            e.Property(x => x.AcceptedByUserId).HasMaxLength(450);
+            e.Property(x => x.AcceptedByName).HasMaxLength(256);
+            e.Property(x => x.ReopenedByUserId).HasMaxLength(450);
+            e.Property(x => x.ReopenedByName).HasMaxLength(256);
             e.HasIndex(x => x.WorkflowTaskId).IsUnique();
             e.HasIndex(x => x.PoNumber);
         });
@@ -409,6 +415,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.RequestDate).HasMaxLength(32);
             e.Property(x => x.DeedNumber).HasMaxLength(128);
             e.Property(x => x.AnswersJson).HasColumnType("jsonb");
+            e.Property(x => x.AnswerProvenanceJson).HasColumnType("jsonb");
             e.Property(x => x.DeedRemarks).HasMaxLength(4000);
             e.Property(x => x.SurveyRemarks).HasMaxLength(4000);
             e.Property(x => x.ComponentsRemarks).HasMaxLength(4000);

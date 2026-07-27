@@ -11,6 +11,8 @@ public class CaseStudyFormDto
     public string RequestDate { get; set; } = "";
     public string DeedNumber { get; set; } = "";
     public Dictionary<string, object?> Answers { get; set; } = new();
+    /// <summary>Per-answer / remark provenance (server-authored; client may ignore on write).</summary>
+    public Dictionary<string, AnswerProvenanceEntryDto>? AnswerProvenance { get; set; }
     public string DeedRemarks { get; set; } = "";
     public string SurveyRemarks { get; set; } = "";
     public string ComponentsRemarks { get; set; } = "";

@@ -3,37 +3,33 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { getPropertyKeyGate } from "@platform/api-client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getPropertyKeyGate, type PropertyKeyGateDto } from "@platform/api-client";
 import {
-  Badge,
-  EmptyState,
-  OperationalPanel,
+  KpiBand,
+  KpiCell,
+  PageShell,
   PanelSkeleton,
-  QueueTableHint,
-  SkeletonTableRows,
-  Table,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr,
   cn,
-  queueTableRowClassName,
-  queueTableWrapClassName,
+  useToast,
 } from "@platform/design-system";
-import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
-import { GovernmentReviewPoPanel } from "../components/government-review/GovernmentReviewPoPanel";
 import { getAuthSession } from "@platform/auth-client";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
-import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
+import {
+  getCachedPartySubmission,
+  partySubmissionTaskIdsKey,
+  prefetchPartySubmissionsForTasks,
+} from "@platform/app-shared/prototype/party-submission-api";
 import { partyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
+import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
+import { RegisterKeyEnvelopeModal } from "@keys/mfe/components/RegisterKeyEnvelopeModal";
+import { useInvalidateKeyEnvelopes } from "@keys/mfe/query/keys-queries";
 import {
   decodeTaskParam,
   governmentReviewWorkspacePath,
 } from "../lib/my-task-routes";
-import { poPropertiesPath } from "../lib/po-routes";
+import { poPropertyDetailPath } from "../lib/po-routes";
 import {
   tasksForPartyAssignee,
   type WorkflowTask,
@@ -44,66 +40,98 @@ import {
   poCitiesForReviewerScope,
 } from "../lib/prototype/reviewer-coverage";
 import {
-  formatDateAr,
-  isPastDue,
+  formatPropertyDeedDisplay,
+  formatPropertyLocation,
   type PoIntakeRecord,
+  type PoPropertyIntake,
 } from "../lib/prototype/po-intake-data";
-import { poPrimaryDataReadiness } from "../lib/prototype/po-primary-data-readiness";
-import type { GovernmentReviewPoRow } from "../lib/prototype/government-review-po";
-import { ltrValueClass } from "../components/po-intake/PropertyDetailFields";
 import {
   usePoRecordsQuery,
   useWorkflowTasksQuery,
 } from "../query/case-study-queries";
-import { useOperationsTasksQuery } from "../query/operations-tasks-queries";
 import { partyAccountForRole } from "../lib/prototype/distribution-parties";
 import {
-  isActiveOperationsTask,
-  type OperationsTask,
-} from "../lib/prototype/operations-tasks-storage";
-import { operationsTaskStatusLabel } from "../lib/prototype/operations-task-display";
+  getOrCreateGovernmentReviewDraft,
+  GOVERNMENT_REVIEW_SUBMISSION_CHANGED_EVENT,
+  updateGovernmentReviewDraft,
+} from "../lib/prototype/government-review-work-storage";
+import type {
+  GovernmentReviewKeysStatus,
+  GovernmentReviewSubmission,
+} from "../lib/prototype/government-review-work-data";
+import { normalizeGovernmentReviewSubmission } from "../lib/prototype/government-review-work-data";
+import {
+  GOV_REVIEW_LIST_COLS,
+  GOV_REVIEW_LIST_FOOTER,
+  GOV_STATUS_COLORS,
+  GovEmpty,
+  GovGridHead,
+  GovGridRow,
+  GovKpiAlertIcon,
+  GovKpiBuildingIcon,
+  GovKpiCheckIcon,
+  GovKpiKeyIcon,
+  GovPlusIcon,
+  GovSelect,
+  GovStatusPill,
+  GovTd,
+  GovTh,
+  GovUserIcon,
+  govCardClassName,
+  govChipClassName,
+  govGhostBtnClassName,
+  govPrimaryBtnClassName,
+  govReviewerBadgeClassName,
+  govRowGhostBtnClassName,
+} from "../components/government-review/GovernmentReviewHtmlPrimitives";
 
-const ROW = queueTableRowClassName;
-const TABLE_COLS = 7;
-
-type QueuePoRow = {
-  panelRow: GovernmentReviewPoRow;
-  expectedPropertyCount: number;
-  receivedFromEnfathAt: string;
-  dueDateAt: string;
-  status: WorkflowTask["status"];
+type QueuePropertyRow = {
+  task: WorkflowTask;
+  property: PoPropertyIntake | undefined;
+  record: PoIntakeRecord | undefined;
+  deed: string;
+  location: string;
+  court: string;
+  request: string;
+  circuit: string;
 };
 
-function uniqueCourtsForTasks(
-  record: PoIntakeRecord | undefined,
-  tasks: WorkflowTask[],
-): string[] {
-  const courts = new Set<string>();
-  for (const task of tasks) {
-    const property = record?.properties.find((p) => p.id === task.propertyId);
-    const court = property?.court.trim();
-    if (court) courts.add(court);
-  }
-  if (record) {
-    for (const property of record.properties) {
-      const court = property.court.trim();
-      if (court) courts.add(court);
-    }
-  }
-  return [...courts].sort((a, b) => a.localeCompare(b, "ar"));
+function submissionFromCache(
+  taskId: string,
+): GovernmentReviewSubmission | null {
+  const dto = getCachedPartySubmission(taskId);
+  if (!dto) return null;
+  const payload = dto.payload as Partial<GovernmentReviewSubmission>;
+  const normalized = normalizeGovernmentReviewSubmission(payload);
+  return {
+    ...normalized,
+    taskId: dto.taskId,
+    propertyId: normalized.propertyId || dto.propertyId || "",
+    poNumber: normalized.poNumber || dto.poNumber || "",
+    visitStatus: normalized.visitStatus ?? "",
+    visitDate: normalized.visitDate ?? "",
+    courtName: normalized.courtName ?? "",
+    keysStatus: normalized.keysStatus ?? "",
+    keysDescription: normalized.keysDescription ?? "",
+    keyHandedToInspector: normalized.keyHandedToInspector ?? "",
+    accessBlockReason: normalized.accessBlockReason ?? "",
+    reviewNotes: normalized.reviewNotes ?? "",
+    propertyZoneStatus: normalized.propertyZoneStatus ?? "",
+    keysProofFiles: normalized.keysProofFiles ?? [],
+    confirmed: normalized.confirmed ?? false,
+    status: (normalized.status ?? dto.status) as GovernmentReviewSubmission["status"],
+    submittedAtUtc: dto.submittedAtUtc ?? normalized.submittedAtUtc ?? null,
+    updatedAtUtc: dto.updatedAtUtc ?? normalized.updatedAtUtc ?? "",
+  };
 }
 
-function courtVisitForPo(
-  opsTasks: OperationsTask[],
-  poNumber: string,
-  options?: { activeOnly?: boolean },
-): OperationsTask | undefined {
-  const po = poNumber.trim();
-  return opsTasks.find((t) => {
-    if (t.type !== "court_visit" || t.poNumber?.trim() !== po) return false;
-    if (options?.activeOnly) return isActiveOperationsTask(t);
-    return t.status !== "cancelled";
-  });
+function gateHasEnvelope(gate: PropertyKeyGateDto | undefined | null): boolean {
+  if (!gate) return false;
+  if (gate.envelopeId?.trim()) return true;
+  return (
+    !gate.envelopeMissingWarning &&
+    (gate.source === "envelope" || gate.source === "court_access")
+  );
 }
 
 export function GovernmentReviewView() {
@@ -111,6 +139,9 @@ export function GovernmentReviewView() {
   const searchParams = useSearchParams();
   const selectedTaskId = searchParams.get("task");
   const { role, viewerEmail } = usePrototype();
+  const { showToast } = useToast();
+  const queryClient = useQueryClient();
+  const invalidateEnvelopes = useInvalidateKeyEnvelopes();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = useMemo(() => staffResult?.users ?? [], [staffResult?.users]);
   const def = partyTaskPageDef("government-review");
@@ -120,22 +151,22 @@ export function GovernmentReviewView() {
     [role, staffUsers],
   );
 
-  const [selectedPoNumber, setSelectedPoNumber] = useState<string | null>(null);
+  const [registerOpen, setRegisterOpen] = useState(false);
+  const [registerRequestPrefill, setRegisterRequestPrefill] = useState("");
+  const [keysOverrides, setKeysOverrides] = useState<
+    Record<string, GovernmentReviewKeysStatus | "">
+  >({});
+  const [submissionGen, setSubmissionGen] = useState(0);
+  const [savingKeysTaskId, setSavingKeysTaskId] = useState<string | null>(null);
 
   const {
     data: tasks,
     isFetched: tasksFetched,
-    refetch: refetchTasks,
   } = useWorkflowTasksQuery();
   const {
     data: poRecords = [],
     isFetched: poRecordsFetched,
   } = usePoRecordsQuery();
-
-  const assigneeFilter = reviewerAccount?.assigneeId?.trim();
-  const { data: opsTasks = [] } = useOperationsTasksQuery({
-    assigneeId: assigneeFilter,
-  });
 
   const queueReady = tasksFetched && poRecordsFetched;
 
@@ -143,6 +174,17 @@ export function GovernmentReviewView() {
     if (!selectedTaskId) return;
     router.replace(governmentReviewWorkspacePath(decodeTaskParam(selectedTaskId)));
   }, [selectedTaskId, router]);
+
+  useEffect(() => {
+    const handler = () => setSubmissionGen((n) => n + 1);
+    window.addEventListener(GOVERNMENT_REVIEW_SUBMISSION_CHANGED_EVENT, handler);
+    return () => {
+      window.removeEventListener(
+        GOVERNMENT_REVIEW_SUBMISSION_CHANGED_EVENT,
+        handler,
+      );
+    };
+  }, []);
 
   const poByNumber = useMemo(() => {
     const map = new Map<string, PoIntakeRecord>();
@@ -162,20 +204,9 @@ export function GovernmentReviewView() {
     [viewerEmail, role, tasks, staffUsers],
   );
 
-  const rows = useMemo(() => {
+  const rows = useMemo((): QueuePropertyRow[] => {
     const govTasks = mine.filter((task) => task.kind === "government-review");
-    const grouped = new Map<
-      string,
-      {
-        tasks: WorkflowTask[];
-        assignmentType: string;
-        propertyIds: Set<string>;
-        createdAt: string;
-        receivedFromEnfathAt: string;
-        dueDateAt: string;
-        expectedPropertyCount: number;
-      }
-    >();
+    const list: QueuePropertyRow[] = [];
 
     for (const task of govTasks) {
       const poNumber = task.poNumber.trim();
@@ -188,133 +219,123 @@ export function GovernmentReviewView() {
       const cities = poCitiesForReviewerScope(record, [task]);
       if (!poInReviewerScope(courts, reviewerScope, cities)) continue;
 
-      const activeCount =
-        record?.properties.filter((p) => !p.isRemoved).length ?? 0;
-      const expected =
-        record?.expectedPropertyCount && record.expectedPropertyCount > 0
-          ? record.expectedPropertyCount
-          : activeCount;
+      const deed =
+        (property ? formatPropertyDeedDisplay(property) : "") ||
+        task.title.split(" — ").slice(1).join(" — ").trim() ||
+        `عقار ${task.propertyOrdinal}`;
+      const location = property
+        ? formatPropertyLocation(property) || "—"
+        : "—";
+      const request = property?.requestNumber?.trim() || "—";
+      const circuit = property?.circuit?.trim() || "—";
 
-      const current = grouped.get(poNumber);
-      if (current) {
-        current.tasks.push(task);
-        if (task.propertyId) current.propertyIds.add(task.propertyId);
-        if (task.createdAt > current.createdAt) current.createdAt = task.createdAt;
-        continue;
-      }
-
-      grouped.set(poNumber, {
-        tasks: [task],
-        assignmentType: record?.assignmentType ?? task.assignmentType ?? "—",
-        propertyIds: new Set(task.propertyId ? [task.propertyId] : []),
-        createdAt: task.createdAt,
-        receivedFromEnfathAt: record?.receivedFromEnfathAt?.trim() ?? "",
-        dueDateAt: record?.dueDateAt?.trim() ?? "",
-        expectedPropertyCount: expected,
+      list.push({
+        task,
+        property,
+        record,
+        deed,
+        location,
+        court: court || "—",
+        request,
+        circuit,
       });
     }
 
-    const list: QueuePoRow[] = [...grouped.entries()].map(([poNumber, group]) => {
-      const record = poByNumber.get(poNumber);
-      const status: WorkflowTask["status"] = group.tasks.every(
-        (task) => task.status === "completed",
-      )
-        ? "completed"
-        : group.tasks.some((task) => task.status === "open")
-          ? "open"
-          : "blocked";
-      const propertyCount = group.propertyIds.size || group.tasks.length;
-      const readiness = record
-        ? poPrimaryDataReadiness(record)
-        : {
-            ready: false,
-            label: "لا توجد بيانات أمر العمل",
-          };
-
-      return {
-        panelRow: {
-          poNumber,
-          tasks: group.tasks,
-          openCount: group.tasks.filter((t) => t.status === "open").length,
-          propertyCount,
-          courts: uniqueCourtsForTasks(record, group.tasks),
-          assignmentType: group.assignmentType,
-          primaryDataReady: readiness.ready,
-          primaryDataLabel: readiness.label,
-          createdAt: group.createdAt,
-        },
-        expectedPropertyCount: Math.max(group.expectedPropertyCount, propertyCount),
-        receivedFromEnfathAt: group.receivedFromEnfathAt,
-        dueDateAt: group.dueDateAt,
-        status,
-      };
-    });
-
     return list.sort((a, b) => {
-      const createdCmp = b.panelRow.createdAt.localeCompare(a.panelRow.createdAt);
+      const createdCmp = b.task.createdAt.localeCompare(a.task.createdAt);
       if (createdCmp !== 0) return createdCmp;
-      return a.panelRow.poNumber.localeCompare(b.panelRow.poNumber, "ar", {
-        numeric: true,
-      });
+      return a.deed.localeCompare(b.deed, "ar", { numeric: true });
     });
   }, [mine, poByNumber, reviewerScope]);
 
-  const openGateTargets = useMemo(() => {
+  const taskIdsKey = useMemo(
+    () => partySubmissionTaskIdsKey(rows.map((r) => r.task.id)),
+    [rows],
+  );
+
+  useEffect(() => {
+    if (!taskIdsKey) return;
+    const ids = taskIdsKey.split("\0").filter(Boolean);
+    void prefetchPartySubmissionsForTasks(ids).then(() =>
+      setSubmissionGen((n) => n + 1),
+    );
+  }, [taskIdsKey]);
+
+  const gateTargets = useMemo(() => {
     const seen = new Set<string>();
-    const targets: { propertyId: string; poNumber: string }[] = [];
+    const targets: { propertyId: string; poNumber: string; deedNumber?: string; requestNumber?: string }[] = [];
     for (const row of rows) {
-      if (row.status !== "open") continue;
-      for (const task of row.panelRow.tasks) {
-        if (task.status !== "open" || !task.propertyId?.trim()) continue;
-        const key = `${task.propertyId}:${task.poNumber}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        targets.push({
-          propertyId: task.propertyId.trim(),
-          poNumber: task.poNumber.trim(),
-        });
-      }
+      const propertyId = row.task.propertyId?.trim();
+      if (!propertyId) continue;
+      const key = `${propertyId}:${row.task.poNumber}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      targets.push({
+        propertyId,
+        poNumber: row.task.poNumber.trim(),
+        deedNumber: row.property?.deedNumber,
+        requestNumber: row.property?.requestNumber,
+      });
     }
     return targets;
   }, [rows]);
 
-  const { data: awaitingEnvelopeByPo = new Set<string>() } = useQuery({
-    queryKey: [
-      "government-review-envelope-missing",
-      openGateTargets.map((t) => `${t.propertyId}:${t.poNumber}`).join("|"),
-    ],
-    enabled: openGateTargets.length > 0,
-    staleTime: 30_000,
-    queryFn: async () => {
-      const config = prototypeModulesApiConfig();
-      const missing = new Set<string>();
-      if (!config) return missing;
-      await Promise.all(
-        openGateTargets.map(async (target) => {
-          const result = await getPropertyKeyGate(config, {
-            propertyId: target.propertyId,
-            poNumber: target.poNumber,
-          });
-          if (result.ok && result.data.envelopeMissingWarning) {
-            missing.add(target.poNumber);
-          }
-        }),
-      );
-      return missing;
-    },
-  });
+  const { data: gateByProperty = new Map<string, PropertyKeyGateDto>() } =
+    useQuery({
+      queryKey: [
+        "government-review-key-gates",
+        gateTargets.map((t) => `${t.propertyId}:${t.poNumber}`).join("|"),
+      ],
+      enabled: gateTargets.length > 0,
+      staleTime: 30_000,
+      queryFn: async () => {
+        const config = prototypeModulesApiConfig();
+        const map = new Map<string, PropertyKeyGateDto>();
+        if (!config) return map;
+        await Promise.all(
+          gateTargets.map(async (target) => {
+            const result = await getPropertyKeyGate(config, {
+              propertyId: target.propertyId,
+              poNumber: target.poNumber,
+              deedNumber: target.deedNumber,
+              requestNumber: target.requestNumber,
+            });
+            if (result.ok) {
+              map.set(target.propertyId, result.data);
+            }
+          }),
+        );
+        return map;
+      },
+    });
 
-  const selectedRow = useMemo(
-    () =>
-      selectedPoNumber
-        ? (rows.find((r) => r.panelRow.poNumber === selectedPoNumber) ?? null)
-        : null,
-    [rows, selectedPoNumber],
-  );
+  void submissionGen;
 
-  const togglePo = useCallback((poNumber: string) => {
-    setSelectedPoNumber((prev) => (prev === poNumber ? null : poNumber));
-  }, []);
+  const rowMeta = useMemo(() => {
+    return rows.map((row) => {
+      const sub = submissionFromCache(row.task.id);
+      const keysStatus =
+        keysOverrides[row.task.id] ??
+        (sub?.keysStatus as GovernmentReviewKeysStatus | "" | undefined) ??
+        "";
+      const done =
+        row.task.status === "completed" || sub?.status === "submitted";
+      const propertyId = row.task.propertyId?.trim() ?? "";
+      const gate = propertyId ? gateByProperty.get(propertyId) : undefined;
+      const hasEnv = gateHasEnvelope(gate);
+      return { row, keysStatus, done, hasEnv, sub };
+    });
+  }, [rows, keysOverrides, gateByProperty, submissionGen]);
+
+  const kpis = useMemo(() => {
+    const total = rowMeta.length;
+    const received = rowMeta.filter((r) => r.keysStatus === "received").length;
+    const waiting = rowMeta.filter(
+      (r) => r.keysStatus === "received" && !r.hasEnv,
+    ).length;
+    const done = rowMeta.filter((r) => r.done).length;
+    return { total, received, waiting, done };
+  }, [rowMeta]);
 
   const openReviewTask = useCallback(
     (taskId: string) => {
@@ -323,204 +344,279 @@ export function GovernmentReviewView() {
     [router],
   );
 
-  /** صف واحد بمهمة مفتوحة → نموذج التعبئة مباشرة؛ أكثر من مهمة → لوحة الاختيار. */
-  const selectQueueRow = useCallback(
-    (row: QueuePoRow) => {
-      const po = row.panelRow.poNumber;
-      if (selectedPoNumber === po) {
-        setSelectedPoNumber(null);
-        return;
-      }
-      const openTasks = row.panelRow.tasks.filter((t) => t.status === "open");
-      if (openTasks.length === 1) {
-        openReviewTask(openTasks[0]!.id);
-        return;
-      }
-      setSelectedPoNumber(po);
-    },
-    [openReviewTask, selectedPoNumber],
-  );
+  const openRegister = useCallback((requestNumber?: string) => {
+    setRegisterRequestPrefill(requestNumber?.trim() || "");
+    setRegisterOpen(true);
+  }, []);
 
-  const panelOpen = Boolean(selectedRow);
-  const hasRail = true;
+  const onKeysStatusChange = useCallback(
+    async (task: WorkflowTask, next: string) => {
+      const value = next as GovernmentReviewKeysStatus | "";
+      setKeysOverrides((prev) => ({ ...prev, [task.id]: value }));
+      setSavingKeysTaskId(task.id);
+      try {
+        const propertyId = task.propertyId?.trim();
+        if (!propertyId) {
+          showToast("لا يوجد عقار مرتبط بالمهمة.", "error");
+          return;
+        }
+        await getOrCreateGovernmentReviewDraft({
+          taskId: task.id,
+          propertyId,
+          poNumber: task.poNumber,
+        });
+        await updateGovernmentReviewDraft(task.id, {
+          keysStatus: value,
+        });
+        setSubmissionGen((n) => n + 1);
+        void queryClient.invalidateQueries({
+          queryKey: ["government-review-key-gates"],
+        });
+      } catch {
+        showToast("تعذر حفظ حالة المفاتيح.", "error");
+      } finally {
+        setSavingKeysTaskId(null);
+      }
+    },
+    [queryClient, showToast],
+  );
 
   if (selectedTaskId) {
     return <PanelSkeleton className="p-4" />;
   }
 
-  const tableHead = (
-    <Tr hoverable={false}>
-      <Th>أمر العمل</Th>
-      <Th className="text-center">عدد الصكوك</Th>
-      <Th>نوع الإسناد</Th>
-      <Th>تاريخ الاستلام</Th>
-      <Th>تاريخ الاستحقاق</Th>
-      <Th>حالة المهمة</Th>
-      <Th>مهمة زيارة المحكمة</Th>
-    </Tr>
-  );
+  const reviewerLabel =
+    reviewerAccount?.name?.trim() ||
+    def?.assigneeSubtitle ||
+    "مراجع حكومي";
 
-  const queuePanel = (
-    <OperationalPanel className={cn("min-h-0 flex-1")}>
-      {!queueReady ? (
-        <div className={queueTableWrapClassName}>
-          <Table pending>
-            <THead>{tableHead}</THead>
-            <TBody>
-              <SkeletonTableRows rows={5} cols={TABLE_COLS} />
-            </TBody>
-          </Table>
-        </div>
-      ) : rows.length === 0 ? (
-        <EmptyState
-          line={def?.emptyLine ?? "لا توجد مهام مراجعة حكومية."}
-          hint={
-            def?.emptyHint ??
-            "تظهر هنا بعد تأكيد التوزيع عند تفعيل المراجع الحكومي."
+  return (
+    <PageShell variant="canvas" className="min-h-0 flex-1 space-y-0">
+      <KpiBand className="mb-6">
+        <KpiCell
+          first
+          icon={<GovKpiBuildingIcon />}
+          iconClass="bg-gold-soft text-gold-d"
+          label="عقارات في طابور المراجعة"
+          value={queueReady ? kpis.total : "—"}
+          sub={
+            queueReady ? (
+              <>
+                <span className="size-1.5 rounded-full bg-gold" />
+                صكوك مسجّلة
+              </>
+            ) : (
+              "—"
+            )
           }
+          dot
         />
-      ) : (
-        <>
-          <div className={queueTableWrapClassName}>
-            <Table>
-              <THead>{tableHead}</THead>
-              <TBody>
-                {rows.map((row) => {
-                  const po = row.panelRow.poNumber;
-                  const poHref = poPropertiesPath(po);
-                  const dueUrgent =
-                    Boolean(row.dueDateAt) && isPastDue(row.dueDateAt);
-                  const courtVisit = courtVisitForPo(opsTasks, po);
-                  const selected = selectedPoNumber === po;
-                  return (
-                    <Tr
-                      key={po}
-                      hoverable={false}
-                      className={cn(ROW, selected && "bg-primary-light/40")}
-                      onClick={() => selectQueueRow(row)}
-                    >
-                      <Td className="text-text-2">
+        <KpiCell
+          icon={<GovKpiKeyIcon />}
+          iconClass="bg-[color-mix(in_srgb,#2f7a4d_16%,transparent)] text-[#2f7a4d]"
+          label="مفاتيح مستلمة"
+          value={queueReady ? kpis.received : "—"}
+          sub="من اختيار المراجع"
+        />
+        <KpiCell
+          icon={<GovKpiAlertIcon />}
+          iconClass="bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#8a5e14]"
+          label="بانتظار الظرف"
+          value={queueReady ? kpis.waiting : "—"}
+          sub="مستلمة دون ظرف مسجّل"
+        />
+        <KpiCell
+          last
+          icon={<GovKpiCheckIcon />}
+          iconClass="bg-[color-mix(in_srgb,#3f8f5f_16%,transparent)] text-[#2f7a4d]"
+          label="مراجعات منتهية"
+          value={queueReady ? kpis.done : "—"}
+          sub={queueReady ? `من ${kpis.total} إجمالي` : "—"}
+        />
+      </KpiBand>
+
+      <div className="mb-3.5 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <h2 className="m-0 text-[17px] font-extrabold text-heading">
+            طابور المراجعة الحكومية
+          </h2>
+          <span className={govChipClassName}>
+            {queueReady ? `${kpis.total} عقار` : "—"}
+          </span>
+          <span className={govReviewerBadgeClassName}>
+            <GovUserIcon />
+            {reviewerLabel} — مراجع حكومي
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Link href="/keys" className={cn(govGhostBtnClassName, "no-underline")}>
+            <GovKpiKeyIcon />
+            <span>محفظة المفاتيح</span>
+          </Link>
+          <button
+            type="button"
+            className={govPrimaryBtnClassName}
+            onClick={() => openRegister()}
+          >
+            <GovPlusIcon />
+            <span>تسجيل ظرف مفاتيح</span>
+          </button>
+        </div>
+      </div>
+
+      <div className={govCardClassName}>
+        <div className="overflow-x-auto">
+          <div className="min-w-[1020px]">
+            <GovGridHead cols={GOV_REVIEW_LIST_COLS}>
+              <GovTh align="start">رقم الصك</GovTh>
+              <GovTh align="start">الموقع</GovTh>
+              <GovTh align="start">المحكمة / الطلب</GovTh>
+              <GovTh align="start">حالة المفاتيح</GovTh>
+              <GovTh align="start">بوابة الظرف</GovTh>
+              <GovTh>إجراء</GovTh>
+            </GovGridHead>
+
+            {!queueReady ? (
+              <div className="px-4 py-11 text-center text-[13.5px] text-text-3">
+                جاري التحميل…
+              </div>
+            ) : rowMeta.length === 0 ? (
+              <GovEmpty
+                message={
+                  def?.emptyLine ?? "لا توجد عقارات مسجّلة بعد"
+                }
+              />
+            ) : (
+              rowMeta.map(({ row, keysStatus, done, hasEnv }) => {
+                const propertyId = row.task.propertyId?.trim();
+                const deedHref =
+                  propertyId
+                    ? poPropertyDetailPath(row.task.poNumber, propertyId)
+                    : undefined;
+                return (
+                  <GovGridRow key={row.task.id} cols={GOV_REVIEW_LIST_COLS}>
+                    <GovTd>
+                      {deedHref ? (
                         <Link
-                          href={poHref}
-                          dir="ltr"
+                          href={deedHref}
                           className="relative z-[1] text-[13.5px] font-bold text-primary underline decoration-primary underline-offset-2 hover:text-primary-mid"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {po}
+                          {row.deed}
                         </Link>
-                      </Td>
-                      <Td className="whitespace-nowrap text-center text-[13px] text-text-2 tabular-nums">
-                        <span className="font-extrabold text-heading">
-                          {row.panelRow.propertyCount}
+                      ) : (
+                        <span className="text-[13.5px] font-bold text-heading">
+                          {row.deed}
                         </span>
-                        <span className="mx-1 text-text-3">من</span>
-                        <span className="font-bold text-text-2">
-                          {row.expectedPropertyCount}
-                        </span>
-                      </Td>
-                      <Td className="whitespace-nowrap">
-                        <span className="inline-flex items-center rounded-md border border-border-md bg-surface-2 px-2.5 py-[3px] text-[12px] font-medium text-text-2">
-                          {row.panelRow.assignmentType}
-                        </span>
-                      </Td>
-                      <Td className="whitespace-nowrap text-[13px] text-text-2">
-                        {row.receivedFromEnfathAt ? (
-                          <bdi dir="ltr" className={ltrValueClass}>
-                            {formatDateAr(row.receivedFromEnfathAt)}
-                          </bdi>
-                        ) : (
-                          "—"
-                        )}
-                      </Td>
-                      <Td
-                        className={cn(
-                          "whitespace-nowrap text-[13px] font-semibold",
-                          dueUrgent ? "text-red" : "text-heading",
-                        )}
+                      )}
+                    </GovTd>
+                    <GovTd className="text-text-3">{row.location}</GovTd>
+                    <GovTd col>
+                      <span className="text-[12.5px] font-semibold text-heading">
+                        {row.court}
+                      </span>
+                      <span className="text-[11px] text-text-3">
+                        طلب {row.request} · {row.circuit}
+                      </span>
+                    </GovTd>
+                    <GovTd>
+                      <GovSelect
+                        aria-label="حالة المفاتيح"
+                        value={keysStatus}
+                        disabled={done || savingKeysTaskId === row.task.id}
+                        onChange={(v) => void onKeysStatusChange(row.task, v)}
                       >
-                        {row.dueDateAt ? (
-                          <bdi dir="ltr" className={ltrValueClass}>
-                            {formatDateAr(row.dueDateAt)}
-                          </bdi>
-                        ) : (
-                          "—"
-                        )}
-                      </Td>
-                      <Td>
-                        {row.status === "open" ? (
-                          awaitingEnvelopeByPo.has(row.panelRow.poNumber) ? (
-                            <Badge tone="warning">بانتظار الظرف</Badge>
-                          ) : (
-                            <Badge tone="warning">قيد الإجراء</Badge>
-                          )
-                        ) : row.status === "blocked" ? (
-                          <Badge tone="default">موقوفة</Badge>
-                        ) : (
-                          <Badge tone="success">مكتملة</Badge>
-                        )}
-                      </Td>
-                      <Td onClick={(e) => e.stopPropagation()}>
-                        {courtVisit ? (
-                          <Link
-                            href={`/operations-tasks?task=${encodeURIComponent(courtVisit.id)}`}
-                            className="relative z-[1] inline-flex flex-col gap-0.5 text-start no-underline"
+                        <option value="">— اختر —</option>
+                        <option value="received">مستلمة</option>
+                        <option value="pending">قيد الاستلام</option>
+                        <option value="not_required">لا تتطلب مفاتيح</option>
+                      </GovSelect>
+                    </GovTd>
+                    <GovTd>
+                      {hasEnv ? (
+                        <GovStatusPill
+                          label="ظرف مسجّل"
+                          color={GOV_STATUS_COLORS.green}
+                        />
+                      ) : keysStatus === "received" ? (
+                        <GovStatusPill
+                          label="بانتظار الظرف"
+                          color={GOV_STATUS_COLORS.amber}
+                          fg={GOV_STATUS_COLORS.amberFg}
+                          live
+                        />
+                      ) : (
+                        <span className="text-text-3">—</span>
+                      )}
+                    </GovTd>
+                    <GovTd align="center" className="gap-1.5">
+                      {done ? (
+                        <GovStatusPill
+                          label="منتهية"
+                          color={GOV_STATUS_COLORS.green}
+                        />
+                      ) : (
+                        <>
+                          {!hasEnv ? (
+                            <button
+                              type="button"
+                              className={cn(
+                                govRowGhostBtnClassName,
+                                "text-gold-d hover:text-gold-d",
+                              )}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const req =
+                                  row.property?.requestNumber?.trim() ||
+                                  (row.request !== "—" ? row.request : "");
+                                openRegister(req || undefined);
+                              }}
+                            >
+                              تسجيل ظرف
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            className={cn(
+                              govRowGhostBtnClassName,
+                              "text-[#2f7a4d] hover:text-[#2f7a4d]",
+                            )}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openReviewTask(row.task.id);
+                            }}
                           >
-                            <span className="text-[12px] font-semibold text-primary underline decoration-primary underline-offset-2">
-                              {courtVisit.displayId}
-                            </span>
-                            <span className="text-[10px] text-text-3">
-                              {operationsTaskStatusLabel(courtVisit.status)}
-                              {isActiveOperationsTask(courtVisit)
-                                ? " · افتح الخطاب من المهام"
-                                : ""}
-                            </span>
-                          </Link>
-                        ) : (
-                          <span className="text-[12px] text-text-3">—</span>
-                        )}
-                      </Td>
-                    </Tr>
-                  );
-                })}
-              </TBody>
-            </Table>
+                            إنهاء المراجعة
+                          </button>
+                        </>
+                      )}
+                    </GovTd>
+                  </GovGridRow>
+                );
+              })
+            )}
           </div>
-          <QueueTableHint>
-            {def?.tableHint ??
-              "اضغط الصف لفتح نموذج المراجعة (أو لوحة اختيار العقار إن وُجد أكثر من مهمة). خطاب التفويض من عمود «مهمة زيارة المحكمة»."}
-          </QueueTableHint>
-        </>
-      )}
-    </OperationalPanel>
-  );
+        </div>
+      </div>
 
-  const sidePanel = (
-    <OperationalPanel
-      className={cn(
-        "min-h-0 min-w-0 self-stretch opacity-0 invisible",
-        panelOpen && "visible opacity-100",
-      )}
-    >
-      {panelOpen && selectedRow ? (
-        <GovernmentReviewPoPanel
-          row={selectedRow.panelRow}
-          onClose={() => setSelectedPoNumber(null)}
-          onRefresh={() => {
-            void refetchTasks();
-          }}
-          onOpenTask={openReviewTask}
-        />
-      ) : null}
-    </OperationalPanel>
-  );
+      <p className="m-0 px-1 pt-3 text-[11.5px] text-text-3">
+        {GOV_REVIEW_LIST_FOOTER}
+      </p>
 
-  return (
-    <ActiveTransactionPageLayout
-      pageId="government-review"
-      hasRail={hasRail}
-      panelOpen={panelOpen}
-      queuePanel={queuePanel}
-      sidePanel={sidePanel}
-    />
+      <RegisterKeyEnvelopeModal
+        open={registerOpen}
+        busy={false}
+        onClose={() => setRegisterOpen(false)}
+        initialRequestNumber={registerRequestPrefill}
+        onRegistered={() => {
+          invalidateEnvelopes();
+          void queryClient.invalidateQueries({
+            queryKey: ["government-review-key-gates"],
+          });
+          setRegisterOpen(false);
+          showToast("تم تسجيل ظرف المفاتيح.", "success");
+        }}
+      />
+    </PageShell>
   );
 }

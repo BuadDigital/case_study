@@ -5,6 +5,7 @@ import { FormGroup, Label, cn, useToast } from "@platform/design-system";
 import { isImageMime } from "../../lib/prototype/assignment-doc-attachments";
 import {
   GOVERNMENT_REVIEW_KEYS_PROOF_ACCEPT,
+  deleteGovernmentReviewKeysProofAttachment,
   fileToGovernmentReviewKeysProof,
 } from "../../lib/prototype/government-review-keys-proof";
 import type { GovernmentReviewKeysProofFile } from "../../lib/prototype/government-review-work-data";
@@ -78,12 +79,14 @@ function ProofThumb({
 export function GovernmentReviewKeysProofUpload({
   label,
   files,
+  taskId,
   disabled,
   error,
   onChange,
 }: {
   label: string;
   files: GovernmentReviewKeysProofFile[];
+  taskId: string;
   disabled?: boolean;
   error?: string;
   onChange: (files: GovernmentReviewKeysProofFile[]) => void;
@@ -102,7 +105,7 @@ export function GovernmentReviewKeysProofUpload({
       let added = 0;
       for (const file of selected) {
         try {
-          next.push(await fileToGovernmentReviewKeysProof(file));
+          next.push(await fileToGovernmentReviewKeysProof(file, taskId));
           added += 1;
         } catch (err) {
           setUploadError(
@@ -124,8 +127,10 @@ export function GovernmentReviewKeysProofUpload({
   };
 
   const removeFile = (id: string) => {
+    const removed = files.find((f) => f.id === id);
     onChange(files.filter((f) => f.id !== id));
     setUploadError(null);
+    if (removed) void deleteGovernmentReviewKeysProofAttachment(removed);
   };
 
   return (

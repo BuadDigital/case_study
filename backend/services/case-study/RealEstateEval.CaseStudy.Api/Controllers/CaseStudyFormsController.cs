@@ -1,8 +1,14 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Permissions;
+using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
+
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
 [ApiController]
@@ -11,10 +17,12 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 public class CaseStudyFormsController : ControllerBase
 {
     private readonly ICaseStudyFormService _forms;
+    private readonly ApplicationDbContext _db;
 
-    public CaseStudyFormsController(ICaseStudyFormService forms)
+    public CaseStudyFormsController(ICaseStudyFormService forms, ApplicationDbContext db)
     {
         _forms = forms;
+        _db = db;
     }
 
     [HttpGet("{taskId:guid}")]
@@ -38,6 +46,7 @@ public class CaseStudyFormsController : ControllerBase
             taskId,
             party: false,
             request.Form,
+            await ResolveActorAsync(cancellationToken),
             cancellationToken);
         if (errors is not null) return BadRequest(new { errors });
         return Ok(result);
@@ -64,8 +73,43 @@ public class CaseStudyFormsController : ControllerBase
             taskId,
             party: true,
             request.Form,
+            await ResolveActorAsync(cancellationToken),
             cancellationToken);
-        if (errors is not null) return BadRequest(new { errors });
+        if (errors is not null)
+        {
+            if (errors.TryGetValue("_", out var msg)
+                && msg.Contains("صلاحية", StringComparison.Ordinal))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { errors });
+            }
+            return BadRequest(new { errors });
+        }
         return Ok(result);
+    }
+
+    private async Task<CaseStudyFormActor> ResolveActorAsync(CancellationToken ct)
+    {
+        var userId = ActorClaims.Id(User);
+        var profile = string.IsNullOrWhiteSpace(userId) || userId == "unknown"
+            ? null
+            : await _db.UserProfiles.AsNoTracking()
+                .FirstOrDefaultAsync(p => p.UserId == userId, ct);
+
+        var identityRoles = string.IsNullOrWhiteSpace(userId) || userId == "unknown"
+            ? new List<string>()
+            : await (
+                from ur in _db.UserRoles.AsNoTracking()
+                join r in _db.Roles.AsNoTracking() on ur.RoleId equals r.Id
+                where ur.UserId == userId
+                select r.Name!
+            ).ToListAsync(ct);
+
+        return new CaseStudyFormActor
+        {
+            UserId = userId,
+            DisplayName = ActorClaims.DisplayName(User),
+            PrototypeRole = PrototypeRoleResolver.Resolve(profile, identityRoles),
+            DistributionAssigneeId = profile?.DistributionAssigneeId?.Trim(),
+        };
     }
 }

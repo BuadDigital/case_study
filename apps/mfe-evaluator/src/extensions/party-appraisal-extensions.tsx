@@ -24,6 +24,10 @@ import {
 } from "../lib/evaluator/evaluator-submission-storage";
 import type { EvaluatorWindowHostRefObject } from "../lib/evaluator/evaluator-window-host";
 
+/** Footer from Case Study.html `renderValOrders`. */
+const APPRAISER_TABLE_HINT =
+  "لا يُفعَّل إدخال التقييم إلا بعد اكتمال المعاينة الميدانية لنفس العقار. مصدر سعر التقييم هو المقيم وحده — ويُعرض للأخصائي للاسترشاد به في دراسة الحالة.";
+
 export const partyAppraisalExtensions: PartyAppraisalExtensions = {
   patchQueueConfig(base, _def) {
     const baseFilter = base.filterListed!;
@@ -31,14 +35,21 @@ export const partyAppraisalExtensions: PartyAppraisalExtensions = {
     return {
       ...base,
       hidePageTitle: true,
+      tableLayout: "property-appraisal",
       emptyHint:
-        "بعد الإرسال للأخصائي تختفي المعاملة من هنا — لاستدعائها افتح «عقارات أمر العمل» ثم ⋮ على الصك.",
-      tableHint: "اضغط الصف لفتح مهمة التقييم في صفحة مستقلة.",
+        "بعد الإرسال للأخصائي تختفي المعاملة من هنا — لاستدعائها افتح «عقارات أمر العمل» ثم ⋮ على الصك، أو فعّل «إظهار الكل».",
+      tableHint: APPRAISER_TABLE_HINT,
       fullPageTaskPath: propertyAppraisalWorkspacePath,
       statusColumnLabel: "الحالة",
-      filterListed: (mine: WorkflowTask[], poByNumber: Map<string, PoIntakeRecord>) => {
+      filterListed: (
+        mine: WorkflowTask[],
+        poByNumber: Map<string, PoIntakeRecord>,
+        options?: { showCompleted?: boolean },
+      ) => {
         void hydratePartyTaskRecalls();
-        const listed = filterAppraiserListedTasks(baseFilter(mine, poByNumber));
+        const listed = filterAppraiserListedTasks(baseFilter(mine, poByNumber), {
+          showCompleted: options?.showCompleted,
+        });
         void prefetchEvaluatorSubmissions(listed.map((t) => t.id));
         return listed;
       },
@@ -54,12 +65,22 @@ export const partyAppraisalExtensions: PartyAppraisalExtensions = {
     };
   },
 
-  renderAppraisalWork({ def, childTask, hostRef }) {
+  renderAppraisalWork({
+    def,
+    childTask,
+    hostRef,
+    propertySummary,
+    deedLabel,
+    onBack,
+  }) {
     return (
       <AppraiserUploadTab
         def={def}
         childTask={childTask}
         hostRef={hostRef as EvaluatorWindowHostRefObject}
+        propertySummary={propertySummary}
+        deedLabel={deedLabel}
+        onBack={onBack}
       />
     );
   },

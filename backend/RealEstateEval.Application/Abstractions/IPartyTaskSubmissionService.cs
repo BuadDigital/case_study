@@ -13,15 +13,18 @@ public interface IPartyTaskSubmissionService
     Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> SaveDraftAsync(
         Guid taskId,
         SavePartyTaskSubmissionRequest request,
+        PartySubmissionActor? actor = null,
         CancellationToken cancellationToken = default);
 
     Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> SubmitAsync(
         Guid taskId,
+        PartySubmissionActor? actor = null,
         CancellationToken cancellationToken = default);
 
     Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> ReopenAsync(
         Guid taskId,
         ReopenPartyTaskSubmissionRequest request,
+        PartySubmissionActor? actor = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -29,6 +32,6 @@ public interface IPartyTaskSubmissionService
     /// </summary>
     Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> AcceptAsync(
         Guid taskId,
-        string actorUserId,
+        PartySubmissionActor actor,
         CancellationToken cancellationToken = default);
 }

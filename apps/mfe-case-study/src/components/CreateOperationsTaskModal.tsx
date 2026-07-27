@@ -346,7 +346,13 @@ export function CreateOperationsTaskModal({
   };
 
   const handleSubmit = async () => {
-    const trimmedTitle = title.trim();
+    // HTML `tfSubmit`: title defaults to TASK_TYPES[type].label (no title field).
+    const trimmedTitle =
+      (prefill?.title?.trim() || title.trim() || OPERATIONS_TASK_TYPE_LABELS[type] || "").trim();
+    if (!type.trim()) {
+      setError("نوع المهمة مطلوب");
+      return;
+    }
     if (!trimmedTitle) {
       setError("العنوان مطلوب");
       return;
@@ -536,16 +542,6 @@ export function CreateOperationsTaskModal({
                     : "لا يوجد منفّذون بمُعرّف توزيع لهذا النوع. تأكد أن للموظفين DistributionAssigneeId ومسمى وظيفي صحيح."}
               </span>
             ) : null}
-          </div>
-
-          <div className={opsFldFull}>
-            <label className={opsTfLblInFld}>عنوان المهمة *</label>
-            <input
-              className={opsFldControl}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="مثال: زيارة محكمة التنفيذ بجدة"
-            />
           </div>
 
           <div className={opsFldFull}>

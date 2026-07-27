@@ -1,9 +1,11 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Permissions;
+using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
@@ -14,10 +16,14 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 public class PartyTaskSubmissionsController : ControllerBase
 {
     private readonly IPartyTaskSubmissionService _submissions;
+    private readonly ApplicationDbContext _db;
 
-    public PartyTaskSubmissionsController(IPartyTaskSubmissionService submissions)
+    public PartyTaskSubmissionsController(
+        IPartyTaskSubmissionService submissions,
+        ApplicationDbContext db)
     {
         _submissions = submissions;
+        _db = db;
     }
 
     [HttpGet]
@@ -54,9 +60,12 @@ public class PartyTaskSubmissionsController : ControllerBase
         [FromBody] SavePartyTaskSubmissionRequest request,
         CancellationToken cancellationToken)
     {
-        var (result, errors) = await _submissions.SaveDraftAsync(taskId, request, cancellationToken);
-        if (errors is not null) return BadRequest(new { errors });
-        return Ok(result);
+        var (result, errors) = await _submissions.SaveDraftAsync(
+            taskId,
+            request,
+            await ResolveActorAsync(cancellationToken),
+            cancellationToken);
+        return ToActionResult(result, errors);
     }
 
     [HttpPost("{taskId:guid}/submit")]
@@ -65,9 +74,11 @@ public class PartyTaskSubmissionsController : ControllerBase
         Guid taskId,
         CancellationToken cancellationToken)
     {
-        var (result, errors) = await _submissions.SubmitAsync(taskId, cancellationToken);
-        if (errors is not null) return BadRequest(new { errors });
-        return Ok(result);
+        var (result, errors) = await _submissions.SubmitAsync(
+            taskId,
+            await ResolveActorAsync(cancellationToken),
+            cancellationToken);
+        return ToActionResult(result, errors);
     }
 
     [HttpPost("{taskId:guid}/reopen")]
@@ -77,9 +88,12 @@ public class PartyTaskSubmissionsController : ControllerBase
         [FromBody] ReopenPartyTaskSubmissionRequest request,
         CancellationToken cancellationToken)
     {
-        var (result, errors) = await _submissions.ReopenAsync(taskId, request, cancellationToken);
-        if (errors is not null) return BadRequest(new { errors });
-        return Ok(result);
+        var (result, errors) = await _submissions.ReopenAsync(
+            taskId,
+            request,
+            await ResolveActorAsync(cancellationToken),
+            cancellationToken);
+        return ToActionResult(result, errors);
     }
 
     [HttpPost("{taskId:guid}/accept")]
@@ -88,11 +102,52 @@ public class PartyTaskSubmissionsController : ControllerBase
         Guid taskId,
         CancellationToken cancellationToken)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub)
-            ?? "";
-        var (result, errors) = await _submissions.AcceptAsync(taskId, userId, cancellationToken);
-        if (errors is not null) return BadRequest(new { errors });
+        var (result, errors) = await _submissions.AcceptAsync(
+            taskId,
+            await ResolveActorAsync(cancellationToken),
+            cancellationToken);
+        return ToActionResult(result, errors);
+    }
+
+    private ActionResult<PartyTaskSubmissionDto> ToActionResult(
+        PartyTaskSubmissionDto? result,
+        Dictionary<string, string>? errors)
+    {
+        if (errors is not null)
+        {
+            if (errors.TryGetValue("_", out var msg)
+                && msg.Contains("صلاحية", StringComparison.Ordinal))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { errors });
+            }
+            return BadRequest(new { errors });
+        }
         return Ok(result);
+    }
+
+    private async Task<PartySubmissionActor> ResolveActorAsync(CancellationToken ct)
+    {
+        var userId = ActorClaims.Id(User);
+        var profile = string.IsNullOrWhiteSpace(userId) || userId == "unknown"
+            ? null
+            : await _db.UserProfiles.AsNoTracking()
+                .FirstOrDefaultAsync(p => p.UserId == userId, ct);
+
+        var identityRoles = string.IsNullOrWhiteSpace(userId) || userId == "unknown"
+            ? new List<string>()
+            : await (
+                from ur in _db.UserRoles.AsNoTracking()
+                join r in _db.Roles.AsNoTracking() on ur.RoleId equals r.Id
+                where ur.UserId == userId
+                select r.Name!
+            ).ToListAsync(ct);
+
+        return new PartySubmissionActor
+        {
+            UserId = userId == "unknown" ? "" : userId,
+            DisplayName = ActorClaims.DisplayName(User),
+            PrototypeRole = PrototypeRoleResolver.Resolve(profile, identityRoles),
+            DistributionAssigneeId = profile?.DistributionAssigneeId?.Trim(),
+        };
     }
 }

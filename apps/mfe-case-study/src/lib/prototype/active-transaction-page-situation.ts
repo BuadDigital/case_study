@@ -8,7 +8,11 @@ import type {
 } from "@platform/api-client";
 import { getCachedPartySubmission } from "@platform/app-shared/prototype/party-submission-api";
 import { filterEngineeringSurveyListedTasks } from "@engineering-office/mfe/lib/engineering-survey-queue";
-import { filterAppraiserListedTasks } from "@evaluator/mfe/lib/evaluator/evaluator-queue";
+import {
+  appraiserQueueStatusGroup,
+  filterAppraiserListedTasks,
+} from "@evaluator/mfe/lib/evaluator/evaluator-queue";
+import { loadEvaluatorSubmission } from "@evaluator/mfe/lib/evaluator/evaluator-submission-storage";
 import {
   isDateOnlyTodayInRiyadh,
   isInstantTodayInRiyadh,
@@ -25,6 +29,18 @@ import { isListedQueueTask, isTaskOnSuspendedProperty } from "./suspended-transa
 
 export type SituationTone = "blue" | "warn" | "green" | "red";
 
+export type SituationIconKind =
+  | "play"
+  | "clock"
+  | "check"
+  | "refresh"
+  | "clipboard"
+  | "alert"
+  | "currency"
+  | "card"
+  | "building"
+  | "key";
+
 export type PageSituationCardDef = {
   key: string;
   label: string;
@@ -33,6 +49,8 @@ export type PageSituationCardDef = {
   href?: string;
   /** When `sar`, KPI value is formatted as currency (engineering fees). */
   valueFormat?: "count" | "sar";
+  /** Optional icon override — Case Study.html appraisal KPIs use play/clock/check/refresh. */
+  icon?: SituationIconKind;
 };
 
 export type PageSituationValues = Record<string, number | undefined>;
@@ -63,6 +81,40 @@ function partyCards(submittedLabel = "مُرسَلة"): PageSituationCardDef[] {
   ];
 }
 
+/** Case Study.html `renderValOrders` KPI labels. */
+function appraisalCards(): PageSituationCardDef[] {
+  return [
+    {
+      key: "ready",
+      label: "جاهزة للتقييم",
+      sub: "المعاينة مكتملة — باشر التقييم",
+      tone: "blue",
+      icon: "play",
+    },
+    {
+      key: "gated",
+      label: "بانتظار الأطراف",
+      sub: "معاينة أو رفع مساحي لم يكتمل",
+      tone: "warn",
+      icon: "clock",
+    },
+    {
+      key: "submitted",
+      label: "مُرسَلة للأخصائي",
+      sub: "بانتظار المراجعة والاعتماد",
+      tone: "green",
+      icon: "check",
+    },
+    {
+      key: "reopened",
+      label: "مُعادة للتعديل",
+      sub: "أرجعها الأخصائي بملاحظات",
+      tone: "red",
+      icon: "refresh",
+    },
+  ];
+}
+
 export const PAGE_SITUATION_CARDS: Partial<Record<PageId, PageSituationCardDef[]>> =
   {
     "active-primary-data": workflowCards("معاملات مفتوحة"),
@@ -86,32 +138,67 @@ export const PAGE_SITUATION_CARDS: Partial<Record<PageId, PageSituationCardDef[]
     "active-case-study": workflowCards("دراسات مفتوحة"),
     "valuation-coordination": partyCards(),
     "property-inspection": partyCards("مكتملة"),
-    "property-appraisal": partyCards(),
+    "property-appraisal": appraisalCards(),
     "active-survey": [
       {
         key: "waiting",
         label: "بانتظار البدء",
         sub: "تتطلب المباشرة",
         tone: "blue",
+        icon: "play",
       },
       {
         key: "inProgress",
         label: "قيد التنفيذ",
         sub: "جارية الآن",
         tone: "warn",
+        icon: "clock",
       },
       {
         key: "submitted",
         label: "بانتظار الاعتماد",
         sub: "مكتملة لم يعتمدها الأخصائي بعد",
         tone: "green",
+        icon: "check",
       },
       {
         key: "unbilled",
         label: "غير مفوترة",
         sub: "بانتظار إصدار الفاتورة",
-        tone: "warn",
+        tone: "blue",
+        icon: "card",
         href: "/party-fees",
+      },
+    ],
+    /** Case Study.html `renderGovReview` KPI vocabulary. */
+    "government-review": [
+      {
+        key: "total",
+        label: "عقارات في طابور المراجعة",
+        sub: "صكوك مسجّلة",
+        tone: "blue",
+        icon: "building",
+      },
+      {
+        key: "received",
+        label: "مفاتيح مستلمة",
+        sub: "من اختيار المراجع",
+        tone: "green",
+        icon: "key",
+      },
+      {
+        key: "waiting",
+        label: "بانتظار الظرف",
+        sub: "مستلمة دون ظرف مسجّل",
+        tone: "warn",
+        icon: "alert",
+      },
+      {
+        key: "done",
+        label: "مراجعات منتهية",
+        sub: "من إجمالي الطابور",
+        tone: "green",
+        icon: "check",
       },
     ],
     /** HTML Case Study «الأتعاب والصرف» KPI vocabulary. */
@@ -332,7 +419,11 @@ export function computeFeesPageSituation(
   };
 }
 
-/** Case Study.html `renderEngFees` KPI sums (SAR) for المكتب الهندسي. */
+/**
+ * Case Study.html `renderEngFees` KPI sums (SAR) for المكتب الهندسي.
+ * Matches FEE_ST buckets: pending_office → pending; ready|carried → ready;
+ * listed (in-statement) is outstanding but not “جاهزة للفوترة”.
+ */
 export function computeEngineeringFeesSituation(
   rows: InspectorFeeRowDto[],
 ): Pick<
@@ -347,12 +438,11 @@ export function computeEngineeringFeesSituation(
   for (const row of rows) {
     const net = Number(row.netFeeSar) || 0;
     if (row.billingStatus !== "disbursed") outstanding += net;
-    if (row.billingStatus === "office-review") pending += net;
-    else if (row.billingStatus === "disputed") pending += net;
-    else if (
+    if (row.billingStatus === "office-review") {
+      pending += net;
+    } else if (
       row.billingStatus === "at-finance" ||
       row.billingStatus === "deferred" ||
-      row.billingStatus === "in-statement" ||
       row.billingStatus === "disb-req"
     ) {
       ready += net;
@@ -372,6 +462,7 @@ export const ENGINEERING_FEES_SITUATION_CARDS: PageSituationCardDef[] = [
     sub: "كل استحقاقاتكم التي لم تُصرف بعد",
     tone: "blue",
     valueFormat: "sar",
+    icon: "currency",
   },
   {
     key: "pending",
@@ -379,6 +470,7 @@ export const ENGINEERING_FEES_SITUATION_CARDS: PageSituationCardDef[] = [
     sub: "تعديلات تسعير تنتظر إفادتكم",
     tone: "warn",
     valueFormat: "sar",
+    icon: "clock",
   },
   {
     key: "ready",
@@ -386,6 +478,7 @@ export const ENGINEERING_FEES_SITUATION_CARDS: PageSituationCardDef[] = [
     sub: "تشمل المرحَّل — بانتظار كشف المحاسب",
     tone: "blue",
     valueFormat: "sar",
+    icon: "card",
   },
   {
     key: "paid",
@@ -393,6 +486,7 @@ export const ENGINEERING_FEES_SITUATION_CARDS: PageSituationCardDef[] = [
     sub: "إجمالي الكشوف المصروفة الموثَّقة",
     tone: "green",
     valueFormat: "sar",
+    icon: "currency",
   },
 ];
 
@@ -441,6 +535,8 @@ export function computePageSituationValues(
   pageId: PageId,
   input: {
     tasks: WorkflowTask[];
+    /** Full workflow list for sibling readiness (appraisal KPIs). */
+    allTasks?: WorkflowTask[];
     poByNumber: Map<string, PoIntakeRecord>;
     pendingBourse?: PendingBoursePropertyDto[];
     obstructedCount?: number;
@@ -497,10 +593,24 @@ export function computePageSituationValues(
     };
   }
 
+  if (pageId === "property-appraisal") {
+    const allAppraisal = filterTasksForPartyKind(
+      input.tasks,
+      "property-appraisal",
+    ).filter((t) => !isTaskOnSuspendedProperty(t));
+    return computeAppraisalSituation(
+      allAppraisal,
+      input.allTasks ?? input.tasks,
+    );
+  }
+
+  if (pageId === "government-review") {
+    return computeGovernmentReviewSituation(workflowSituationTasks);
+  }
+
   if (
     pageId === "valuation-coordination" ||
-    pageId === "property-inspection" ||
-    pageId === "property-appraisal"
+    pageId === "property-inspection"
   ) {
     return computePartySubmissionSituation(scoped, {
       inspectionWorkspaces: input.inspectionWorkspaces,
@@ -512,4 +622,68 @@ export function computePageSituationValues(
     input.poByNumber,
     input.now,
   );
+}
+
+/** Case Study.html `renderValOrders` KPI counts. */
+function computeAppraisalSituation(
+  appraisalTasks: WorkflowTask[],
+  allTasks: WorkflowTask[],
+): Pick<PageSituationValues, "ready" | "gated" | "submitted" | "reopened"> {
+  let ready = 0;
+  let gated = 0;
+  let submitted = 0;
+  let reopened = 0;
+
+  for (const task of appraisalTasks) {
+    const sub = loadEvaluatorSubmission(task.id);
+    const st = sub?.status ?? "draft";
+    if (st === "submitted" || task.status === "completed") {
+      submitted += 1;
+      continue;
+    }
+    if (st === "reopened") {
+      reopened += 1;
+      continue;
+    }
+    const group = appraiserQueueStatusGroup(task, allTasks);
+    if (group === "ready") ready += 1;
+    else gated += 1;
+  }
+
+  return { ready, gated, submitted, reopened };
+}
+
+/**
+ * Case Study.html `renderGovReview` KPI counts.
+ * Envelope waiting uses submission keysStatus only (gate overlay is view-local).
+ */
+function computeGovernmentReviewSituation(
+  govTasks: WorkflowTask[],
+): Pick<PageSituationValues, "total" | "received" | "waiting" | "done"> {
+  let received = 0;
+  let waiting = 0;
+  let done = 0;
+
+  for (const task of govTasks) {
+    const dto = getCachedPartySubmission(task.id);
+    const payload = (dto?.payload ?? {}) as { keysStatus?: string; status?: string };
+    const keysStatus = payload.keysStatus ?? "";
+    const submitted =
+      task.status === "completed" ||
+      dto?.status === "submitted" ||
+      payload.status === "submitted";
+    if (submitted) done += 1;
+    if (keysStatus === "received") {
+      received += 1;
+      // Without gate overlay, treat received-open as awaiting envelope (HTML soft sync).
+      if (!submitted) waiting += 1;
+    }
+  }
+
+  return {
+    total: govTasks.length,
+    received,
+    waiting,
+    done,
+  };
 }

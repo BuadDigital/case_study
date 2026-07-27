@@ -8,10 +8,14 @@ export const ltrValueClass = "inline [direction:ltr] [unicode-bidi:isolate]";
 
 const fieldsGridCols: Record<2 | 3 | 4, string> = {
   2: "sm:grid-cols-2",
-  3: "sm:grid-cols-2 lg:grid-cols-3",
-  4: "sm:grid-cols-2 lg:grid-cols-4",
+  3: "sm:grid-cols-2 xl:grid-cols-3",
+  4: "sm:grid-cols-2 xl:grid-cols-4",
 };
 
+/**
+ * Soft gold field cell — matches Case Study.html `fieldBox`
+ * (label above, value below; not a side-by-side table row).
+ */
 export function FieldBox({
   label,
   value,
@@ -35,7 +39,7 @@ export function FieldBox({
   const isEmpty = !trimmed && !children;
   const linkClass =
     link || href
-      ? "cursor-pointer text-primary underline underline-offset-2"
+      ? "cursor-pointer text-[#8c7857] underline underline-offset-[3px]"
       : "";
 
   const content =
@@ -50,54 +54,50 @@ export function FieldBox({
       trimmed
     ));
 
+  const valueClass = cn(
+    "text-[12.5px] font-semibold leading-snug text-text break-words",
+    isEmpty && "font-normal text-text-3",
+    ltr && !children && "text-end [direction:ltr]",
+    linkClass,
+  );
+
   return (
     <div
       className={cn(
-        "min-w-0 rounded-[var(--radius-DEFAULT)] bg-surface-2 px-3 py-2.5",
+        "min-w-0 rounded-[4px] bg-[color-mix(in_srgb,#f1ece2_45%,transparent)] px-3.5 py-2.5",
         span === 2 && "col-span-1 sm:col-span-2",
-        span === 3 && "col-span-1 sm:col-span-3",
-        span === 4 && "col-span-1 sm:col-span-4",
+        span === 3 && "col-span-1 sm:col-span-2 xl:col-span-3",
+        span === 4 && "col-span-1 sm:col-span-2 xl:col-span-4",
       )}
     >
-      <div className="mb-0.5 text-[11px] text-text-2">{label}</div>
+      <div className="mb-[3px] text-[10.5px] leading-snug text-text-3">
+        {label}
+      </div>
       {href && !isEmpty ? (
         <a
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className={cn(
-            "break-words text-[13px] font-medium text-text no-underline",
-            linkClass,
-          )}
+          className={cn(valueClass, "no-underline")}
         >
           {content}
         </a>
       ) : (
-        <div
-          className={cn(
-            "break-words text-[13px] font-medium text-text",
-            isEmpty && "font-normal text-text-3",
-            linkClass,
-          )}
-        >
-          {content}
-        </div>
+        <div className={valueClass}>{content}</div>
       )}
     </div>
   );
 }
 
 export function FieldsGrid({
-  cols = 3,
+  cols = 4,
   children,
 }: {
   cols?: 2 | 3 | 4;
   children: ReactNode;
 }) {
   return (
-    <div
-      className={cn("grid grid-cols-1 gap-2", fieldsGridCols[cols])}
-    >
+    <div className={cn("grid grid-cols-1 gap-2.5", fieldsGridCols[cols])}>
       {children}
     </div>
   );
@@ -111,7 +111,7 @@ export function SectionHeader({
   icon?: ReactNode;
 }) {
   return (
-    <h3 className="my-5 mb-2.5 flex items-center gap-1.5 text-[11px] font-medium tracking-wide text-text-3 uppercase first:mt-0">
+    <h3 className="mb-2.5 mt-[18px] flex items-center gap-1.5 text-[13px] font-bold text-heading first:mt-0">
       {icon ? (
         <span className="inline-flex items-center opacity-75" aria-hidden>
           {icon}
@@ -123,16 +123,14 @@ export function SectionHeader({
 }
 
 export function SectionDivider() {
-  return <hr className="my-[18px] border-0 border-t border-border" />;
+  return <div className="h-0" aria-hidden />;
 }
 
-const infoBoxTone: Record<
-  "default" | "teal" | "amber" | "red",
-  string
-> = {
+const infoBoxTone: Record<"default" | "teal" | "amber" | "red", string> = {
   default: "bg-surface-2 text-text-2",
-  teal: "bg-teal-light text-teal-text",
-  amber: "bg-amber-light text-amber-text",
+  teal: "border border-[color-mix(in_srgb,#3f8f5f_26%,transparent)] bg-[color-mix(in_srgb,#3f8f5f_8%,transparent)] text-[#2f7a4d]",
+  amber:
+    "border border-[#fad7a0] bg-[#fef3d7] text-[#7a5b12]",
   red: "bg-danger-bg text-danger-text",
 };
 
@@ -148,7 +146,7 @@ export function InfoBox({
   return (
     <div
       className={cn(
-        "mb-3 flex items-start gap-2.5 rounded-[var(--radius-DEFAULT)] px-4 py-3.5 text-[13px] leading-relaxed",
+        "mb-2.5 flex items-start gap-2 rounded-lg px-3 py-2.5 text-[11.5px] leading-relaxed",
         infoBoxTone[variant],
       )}
     >
@@ -172,13 +170,18 @@ export function EmptyState({
   icon?: ReactNode;
 }) {
   return (
-    <div className={cn("flex flex-col items-center justify-center gap-2 text-text-3", emptyStateClassName)}>
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center gap-1 px-4 py-9 text-text-3",
+        emptyStateClassName,
+      )}
+    >
       {icon ? (
         <span className="mb-1 text-4xl leading-none" aria-hidden>
           {icon}
         </span>
       ) : null}
-      <div className="text-sm font-medium text-text-2">{title}</div>
+      <div className="text-[13.5px] font-bold text-text-2">{title}</div>
       {sub ? <div className="text-xs leading-snug">{sub}</div> : null}
     </div>
   );
@@ -272,7 +275,7 @@ export function DetailBadge({
             : "default";
 
   return (
-    <Badge tone={badgeTone} className={cn("text-[11px] font-normal", className)}>
+    <Badge tone={badgeTone} className={cn("text-[10.5px] font-bold", className)}>
       {children}
     </Badge>
   );

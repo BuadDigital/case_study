@@ -20,6 +20,18 @@ export type CaseStudyFormStatus = "new" | "draft" | "submitted";
 
 export type CaseStudyMeterType = "" | "electronic" | "analog" | "none";
 
+export type CaseStudyAnswerProvenanceEntry = {
+  value?: string | null;
+  sourcePartyId?: string | null;
+  sourceRole?: string | null;
+  matrixRole?: string | null;
+  workflowTaskId: string;
+  formId?: string | null;
+  answeredByUserId?: string | null;
+  answeredByName?: string | null;
+  answeredAtUtc: string;
+};
+
 export type CaseStudyFormDraft = {
   taskId: string;
   propertyId?: string;
@@ -49,6 +61,7 @@ export type CaseStudyFormDraft = {
   infathOtherNotes?: string;
   infathClosingNotes?: string;
   savedAtUtc?: string;
+  answerProvenance?: Record<string, CaseStudyAnswerProvenanceEntry>;
 };
 
 function dtoToDraft(dto: CaseStudyFormDto): CaseStudyFormDraft {
@@ -79,6 +92,9 @@ function dtoToDraft(dto: CaseStudyFormDto): CaseStudyFormDraft {
     infathOtherNotes: dto.infathOtherNotes ?? "",
     infathClosingNotes: dto.infathClosingNotes ?? "",
     savedAtUtc: dto.savedAtUtc,
+    answerProvenance: dto.answerProvenance as
+      | Record<string, CaseStudyAnswerProvenanceEntry>
+      | undefined,
   };
 }
 

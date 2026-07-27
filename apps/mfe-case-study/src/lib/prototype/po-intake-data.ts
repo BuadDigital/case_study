@@ -487,6 +487,45 @@ export function approximatePropertyMapSearchUrl(
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
+const CITY_GEO: Record<string, [number, number]> = {
+  الرياض: [24.7136, 46.6753],
+  جدة: [21.4858, 39.1925],
+  "مكة المكرمة": [21.3891, 39.8579],
+  مكة: [21.3891, 39.8579],
+  الطائف: [21.2703, 40.4158],
+  الدمام: [26.4207, 50.0888],
+  المدينة: [24.5247, 39.5692],
+  "المدينة المنورة": [24.5247, 39.5692],
+  الخبر: [26.2172, 50.1971],
+  أبها: [18.2164, 42.5053],
+  تبوك: [28.3838, 36.555],
+  حائل: [27.5114, 41.7208],
+  بريدة: [26.326, 43.975],
+  نجران: [17.5656, 44.2289],
+  جازان: [16.8894, 42.5706],
+};
+
+/**
+ * Approximate lat/lng for OSM embed (city centroid + deed-based jitter).
+ * Matches Case Study.html CITY_GEO heuristic until real coordinates exist.
+ */
+export function approximatePropertyGeo(
+  property: Pick<PoPropertyIntake, "city" | "deedNumber">,
+): { lat: number; lng: number } | null {
+  const city = property.city.trim();
+  if (!city) return null;
+  const base = CITY_GEO[city] ?? [24.7136, 46.6753];
+  let seed = 0;
+  const deed = property.deedNumber.trim() || city;
+  for (let i = 0; i < deed.length; i += 1) {
+    seed += deed.charCodeAt(i) * (i + 1);
+  }
+  return {
+    lat: base[0] + ((seed % 37) - 18) / 1000,
+    lng: base[1] + ((seed % 53) - 26) / 1000,
+  };
+}
+
 /** @deprecated use approximatePropertyMapSearchUrl */
 export function propertyLocationMapUrl(
   property: Pick<PoPropertyIntake, "city" | "district">,

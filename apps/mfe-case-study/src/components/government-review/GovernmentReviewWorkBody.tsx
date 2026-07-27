@@ -528,9 +528,9 @@ export function GovernmentReviewWorkBody({
                 ظرف غير مسجّل لرقم الطلب — يمكن إتمام المراجعة، ويُفضّل{" "}
                 <Link
                   href="/keys?register=1"
-                  className="font-semibold text-primary underline decoration-primary underline-offset-2"
+                  className="font-semibold text-gold-d underline decoration-gold underline-offset-2"
                 >
-                  تسجيل الظرف من إدارة المفاتيح
+                  تسجيل ظرف مفاتيح
                 </Link>{" "}
                 لمزامنة الطوابير.
               </Note>
@@ -630,6 +630,7 @@ export function GovernmentReviewWorkBody({
             <GovernmentReviewKeysProofUpload
               label="إثبات استلام المفتاح (خطاب أو صورة)"
               files={draft.keysProofFiles}
+              taskId={draft.taskId}
               disabled={formDisabled}
               error={fieldErrors.keysProofFiles}
               onChange={(keysProofFiles) => {

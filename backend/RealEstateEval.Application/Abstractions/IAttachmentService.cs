@@ -13,7 +13,7 @@ public interface IAttachmentService
         Guid id,
         CancellationToken cancellationToken = default);
 
-    Task<FileAttachmentMetaDto> UploadAsync(
+    Task<(FileAttachmentMetaDto? Meta, string? Error)> UploadAsync(
         UploadAttachmentRequest request,
         string uploadedByUserId,
         CancellationToken cancellationToken = default);

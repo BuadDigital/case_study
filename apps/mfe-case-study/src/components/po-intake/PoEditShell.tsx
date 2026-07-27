@@ -16,6 +16,7 @@ export function PoEditShell({
   saveShowActionToast = true,
   footerExtra,
   variant = "edit",
+  showHeader = true,
   showFooter = true,
   fillViewport = false,
   scrollMode = "viewport",
@@ -31,6 +32,7 @@ export function PoEditShell({
   saveShowActionToast?: boolean;
   footerExtra?: ReactNode;
   variant?: "edit" | "detail";
+  showHeader?: boolean;
   showFooter?: boolean;
   /** يملأ ارتفاع منطقة المحتوى — تمرير واحد داخل النموذج. */
   fillViewport?: boolean;
@@ -66,33 +68,32 @@ export function PoEditShell({
             viewportScroll
               ? "min-h-0 flex-1 overflow-hidden bg-bg"
               : cn(
-                  "bg-surface",
-                  documentScroll
-                    ? "w-full"
-                    : "min-h-0 flex-1 overflow-hidden",
+                  documentScroll ? "w-full bg-bg" : "min-h-0 flex-1 overflow-hidden bg-surface",
                 ),
-            variant === "detail" && !viewportScroll && "bg-surface",
+            variant === "detail" && !viewportScroll && !documentScroll && "bg-surface",
           )}
         >
-          <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-surface px-4 py-2.5">
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <Button type="button" size="sm" onClick={handleBack}>
-                {REG_BACK}
-              </Button>
-              <div className="min-w-0">
-                <h1 className="m-0 text-[1.05rem] font-bold leading-snug text-text">
-                  {title}
-                </h1>
-                {subtitle ? (
-                  <p className="m-0 mt-0.5 text-xs text-text-3">{subtitle}</p>
-                ) : null}
+          {showHeader ? (
+            <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-surface px-4 py-2.5">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <Button type="button" size="sm" onClick={handleBack}>
+                  {REG_BACK}
+                </Button>
+                <div className="min-w-0">
+                  <h1 className="m-0 text-[1.05rem] font-bold leading-snug text-text">
+                    {title}
+                  </h1>
+                  {subtitle ? (
+                    <p className="m-0 mt-0.5 text-xs text-text-3">{subtitle}</p>
+                  ) : null}
+                </div>
               </div>
-            </div>
-          </header>
+            </header>
+          ) : null}
           <div
             className={cn(
               documentScroll
-                ? "px-4 py-4 pb-6"
+                ? "bg-bg px-4 py-4 pb-6"
                 : "inspector-work-scroll min-h-0 flex-1 overflow-y-auto bg-bg px-4 pb-4",
             )}
             dir="rtl"

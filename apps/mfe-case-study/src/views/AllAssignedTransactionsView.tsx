@@ -54,6 +54,7 @@ export function AllAssignedTransactionsView() {
   const { data: tasks } = useWorkflowTasksQuery();
   const { showToast } = useToast();
   const [reopenTask, setReopenTask] = useState<WorkflowTask | null>(null);
+  const [reopenDeedLabel, setReopenDeedLabel] = useState("");
 
   const isPartyRole = isPartyWorkflowRole(role);
 
@@ -100,7 +101,15 @@ export function AllAssignedTransactionsView() {
           openTask: ctx.openTask,
           router: ctx.router,
           viewerRole: ctx.viewerRole,
-          onReopenCompleted: () => setReopenTask(ctx.task),
+          onReopenCompleted: () => {
+            const record = ctx.poByNumber.get(ctx.task.poNumber.trim());
+            const propId = ctx.propertyId ?? ctx.task.propertyId;
+            const prop = propId
+              ? record?.properties.find((p) => p.id === propId)
+              : undefined;
+            setReopenDeedLabel(prop?.deedNumber?.trim() ?? "");
+            setReopenTask(ctx.task);
+          },
         }),
       getTaskStatusBadge: (task) => {
         const label = allTransactionsPhaseLabel(task);
@@ -151,7 +160,11 @@ export function AllAssignedTransactionsView() {
       <ReopenCompletedTransactionModal
         open={reopenTask !== null}
         task={reopenTask}
-        onClose={() => setReopenTask(null)}
+        deedLabel={reopenDeedLabel}
+        onClose={() => {
+          setReopenTask(null);
+          setReopenDeedLabel("");
+        }}
         onConfirm={async (reason) => {
           if (!reopenTask) return;
           const result = await reopenCompletedTransaction(reopenTask.id, reason);

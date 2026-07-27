@@ -51,7 +51,6 @@ import { decodeTaskParam, isPartyTaskWorkPath } from "@case-study/mfe";
 import { findPropertyForTask } from "@case-study/mfe";
 import {
   formatPropertyDeedDisplay,
-  PoPropertyDetailTopbarActions,
   PO_PROPERTY_SEGMENT,
   decodePoParam,
   poPropertiesPath,
@@ -1293,14 +1292,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex shrink-0 items-center gap-3">
             <NotificationCenter />
             <div className="h-[26px] w-px shrink-0 bg-border-md" aria-hidden />
-            {poChrome?.propertyDetail ? (
-              <div className="max-lg:hidden">
-                <PoPropertyDetailTopbarActions
-                  poNumber={poChrome.propertyDetail.poNumber}
-                  propertyId={poChrome.propertyDetail.propertyId}
-                />
-              </div>
-            ) : null}
             {onActiveSurveyPropertyDetail ? (
               <EngineeringSurveyTopbarActions />
             ) : null}

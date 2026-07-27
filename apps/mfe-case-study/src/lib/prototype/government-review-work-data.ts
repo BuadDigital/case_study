@@ -20,7 +20,10 @@ export type GovernmentReviewKeysProofFile = {
   id: string;
   fileName: string;
   mimeType: string;
-  dataUrl: string;
+  /** Local preview only — never required once attachmentId is set. */
+  dataUrl?: string;
+  attachmentId?: string;
+  sizeBytes?: number;
 };
 
 export type GovernmentReviewSubmission = {

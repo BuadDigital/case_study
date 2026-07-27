@@ -99,15 +99,34 @@ import {
   useWorkflowTasksQuery,
 } from "@case-study/mfe/query/case-study-queries";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  appraiserInspectionDone,
+  appraiserNeedsSurvey,
+  appraiserQueueStatusBadge,
+  appraiserQueueStatusGroup,
+  appraiserSurveyDone,
+} from "@evaluator/mfe/lib/evaluator/evaluator-queue";
+import { loadEvaluatorSubmission } from "@evaluator/mfe/lib/evaluator/evaluator-submission-storage";
 import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+
+const APPRAISAL_STATUS_FILTERS: { value: string; label: string }[] = [
+  { value: "new", label: "جديدة" },
+  { value: "wait_inspection", label: "بانتظار المعاينة" },
+  { value: "wait_survey", label: "بانتظار الرفع المساحي" },
+  { value: "ready", label: "جاهزة للتقييم" },
+  { value: "submitted", label: "مُرسَلة للأخصائي" },
+  { value: "closed", label: "مكتملة على النظام" },
+  { value: "reopened", label: "مُعادة للتعديل" },
+];
 
 export type ActiveTransactionQueueTableLayout =
   | "primary-data"
   | "distribution"
   | "case-study"
   | "all-transactions"
-  | "engineering-survey";
+  | "engineering-survey"
+  | "property-appraisal";
 
 export type ActiveTransactionQueueConfig = {
   pageTitle: string;
@@ -192,7 +211,7 @@ const ROW = queueTableRowClassName;
 const ROW_ACTIVE = queueTableRowActiveClassName;
 const DEFAULT_INFO_ROLES = emptyCaseStudyInfoRolesConfig();
 
-/** Case Study.html `ENG_ST` colors for الرفع المساحي status pills. */
+/** Case Study.html `ENG_ST` / `VAL` status pill colors. */
 function engSurveyStatusPillStyle(className: string): StatusPillStyle {
   if (className.includes("done")) {
     return { base: "#3f8f5f", fg: "#2f7a4d" };
@@ -202,6 +221,12 @@ function engSurveyStatusPillStyle(className: string): StatusPillStyle {
   }
   if (className.includes("prog")) {
     return { base: "#d9a441", fg: "#8a5e14" };
+  }
+  if (className.includes("gold")) {
+    return { base: "#a4906f", fg: "#8c7857" };
+  }
+  if (className.includes("navy")) {
+    return { base: "#102B4E", fg: "#102B4E" };
   }
   // جديد — GRAY in prototype (not blue)
   return { base: "#6b7c8f", fg: "#4a5568" };
@@ -424,15 +449,17 @@ export function ActiveTransactionQueueView({
           ? compareQueueTasksOldestFirst
           : compareQueueTasksNewestFirst;
       const isSurveyLayout = config.tableLayout === "engineering-survey";
+      const isAppraisalLayout = config.tableLayout === "property-appraisal";
+      const showAllToggle = isSurveyLayout || isAppraisalLayout;
       return config
         .filterListed(mine, poByNumber, {
-          showCompleted: isSurveyLayout ? showCompleted : undefined,
+          showCompleted: showAllToggle ? showCompleted : undefined,
         })
         .filter((t) =>
           isListedQueueTask(t, {
             includeAllStatuses:
               config.includeAllStatuses ||
-              (isSurveyLayout && showCompleted),
+              (showAllToggle && showCompleted),
           }),
         )
         .sort((a, b) => compare(a, b, poByNumber));
@@ -640,6 +667,9 @@ export function ActiveTransactionQueueView({
     config.tableLayout === "case-study";
   const isAllTransactionsTable = config.tableLayout === "all-transactions";
   const isEngineeringSurveyTable = config.tableLayout === "engineering-survey";
+  const isPropertyAppraisalTable = config.tableLayout === "property-appraisal";
+  const isPartyQueueToggleTable =
+    isEngineeringSurveyTable || isPropertyAppraisalTable;
   const showPartyColumns = config.tableLayout === "case-study";
   const distributionSkeletonCols = 8 + (showPartyColumns ? 4 : 0);
   const primarySkeletonCols = 6;
@@ -687,12 +717,19 @@ export function ActiveTransactionQueueView({
 
   const statusOptions = useMemo(
     () =>
-      uniqueSortedLabels(
-        isAllTransactionsTable
-          ? allTransactionsRowMeta.map((row) => row.phaseLabel)
-          : primaryRowMeta.map((row) => row.statusLabel),
-      ),
-    [isAllTransactionsTable, allTransactionsRowMeta, primaryRowMeta],
+      isPropertyAppraisalTable
+        ? APPRAISAL_STATUS_FILTERS.map((o) => o.label)
+        : uniqueSortedLabels(
+            isAllTransactionsTable
+              ? allTransactionsRowMeta.map((row) => row.phaseLabel)
+              : primaryRowMeta.map((row) => row.statusLabel),
+          ),
+    [
+      isPropertyAppraisalTable,
+      isAllTransactionsTable,
+      allTransactionsRowMeta,
+      primaryRowMeta,
+    ],
   );
 
   const filteredListed = useMemo(() => {
@@ -709,6 +746,27 @@ export function ActiveTransactionQueueView({
         typeFilter,
       });
     }
+    if (isPropertyAppraisalTable) {
+      const q = search.trim();
+      const statusValue =
+        APPRAISAL_STATUS_FILTERS.find((o) => o.label === statusFilter)?.value ??
+        "";
+      return listed.filter((task) => {
+        const record = poByNumber.get(task.poNumber.trim());
+        const property = findPropertyForTask(record, task);
+        const row = buildPrimaryDataTableRow(task, property, record, now);
+        const cityDistrict = [row.city, row.district]
+          .filter((v) => v && v !== "—")
+          .join(" — ");
+        const hay = `${row.deedLabel} ${cityDistrict} ${row.propertySlot}`;
+        if (q && !hay.includes(q)) return false;
+        if (statusValue) {
+          const group = appraiserQueueStatusGroup(task, tasks ?? []);
+          if (group !== statusValue) return false;
+        }
+        return true;
+      });
+    }
     return filterPrimaryQueueRows(primaryRowMeta, {
       search,
       statusFilter,
@@ -717,9 +775,14 @@ export function ActiveTransactionQueueView({
   }, [
     isAllTransactionsTable,
     isDistributionTable,
+    isPropertyAppraisalTable,
     allTransactionsRowMeta,
     distributionRowMeta,
     primaryRowMeta,
+    listed,
+    poByNumber,
+    now,
+    tasks,
     search,
     statusFilter,
     typeFilter,
@@ -864,8 +927,8 @@ export function ActiveTransactionQueueView({
         <OperationalToolbarSearch
           type="search"
           placeholder={
-            isEngineeringSurveyTable
-              ? "رقم الصك أو المدينة أو الحي..."
+            isPartyQueueToggleTable
+              ? "رقم الصك أو المدينة أو الحي…"
               : isDistributionTable
                 ? "رقم الصك أو PO أو المدينة…"
                 : "رقم الصك أو نوع الإسناد أو المدينة…"
@@ -891,7 +954,7 @@ export function ActiveTransactionQueueView({
             ))}
           </OperationalToolbarSelect>
         ) : null}
-        {isEngineeringSurveyTable ? (
+        {isPartyQueueToggleTable ? (
           <button
             type="button"
             onClick={() => setShowCompleted((v) => !v)}
@@ -917,7 +980,15 @@ export function ActiveTransactionQueueView({
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
               <circle cx="12" cy="12" r="3" />
             </svg>
-            <span>{showCompleted ? "إخفاء المكتملة" : "إظهار المكتملة"}</span>
+            <span>
+              {isPropertyAppraisalTable
+                ? showCompleted
+                  ? "عرض قائمة العمل"
+                  : "إظهار الكل"
+                : showCompleted
+                  ? "إخفاء المكتملة"
+                  : "إظهار المكتملة"}
+            </span>
           </button>
         ) : (
           <OperationalToolbarSelect
@@ -985,13 +1056,17 @@ export function ActiveTransactionQueueView({
             <span>تجميع حسب أمر العمل</span>
           </button>
         ) : null}
-        {isEngineeringSurveyTable ? (
+        {isPartyQueueToggleTable ? (
           <span className="ms-auto shrink-0 rounded-full bg-gold-soft px-3 py-[5px] text-[12px] font-bold text-gold-d">
-            {queueReady ? `${filteredListed.length} صك` : "—"}
+            {queueReady
+              ? isPropertyAppraisalTable
+                ? `${filteredListed.length} عقار`
+                : `${filteredListed.length} صك`
+              : "—"}
           </span>
         ) : null}
       </div>
-      {!isEngineeringSurveyTable ? (
+      {!isPartyQueueToggleTable ? (
         <span className="shrink-0 text-[12.5px] font-semibold text-text-3">
           {queueReady ? `${filteredListed.length} نتيجة` : "—"}
         </span>
@@ -1020,7 +1095,7 @@ export function ActiveTransactionQueueView({
           className={cn(
             "min-h-0 flex-1",
             hasRail && panelOpen ? undefined : "flex-none",
-            isEngineeringSurveyTable && "overflow-visible",
+            isPartyQueueToggleTable && "overflow-visible",
           )}
         >
           {!config.hidePageTitle && config.pageTitle ? (
@@ -1605,6 +1680,281 @@ export function ActiveTransactionQueueView({
                       )}
                     </TBody>
                   </Table>
+                ) : isPropertyAppraisalTable ? (
+                  <Table
+                    className="w-full"
+                    pending={queuePending}
+                    wrapClassName="min-w-0 overflow-x-auto overflow-y-visible [-webkit-overflow-scrolling:touch]"
+                  >
+                    <THead>
+                      <Tr hoverable={false}>
+                        <Th>الصك</Th>
+                        <Th className="text-center">المدينة / الحي</Th>
+                        <Th className="text-center">أمر العمل</Th>
+                        <Th className="text-center">تاريخ الإسناد</Th>
+                        <Th className="text-center">الأطراف</Th>
+                        <Th className="text-center">
+                          {config.statusColumnLabel ?? "الحالة"}
+                        </Th>
+                        <Th className="w-16 text-center">إجراءات</Th>
+                      </Tr>
+                    </THead>
+                    <TBody>
+                      {queuePending && listed.length === 0 ? (
+                        <SkeletonTableRows rows={6} cols={7} />
+                      ) : filteredListed.length === 0 ? (
+                        <Tr hoverable={false}>
+                          <Td
+                            colSpan={7}
+                            className="!py-11 text-center text-[13.5px] text-text-3"
+                          >
+                            لا توجد مهام تقييم مطابقة.
+                          </Td>
+                        </Tr>
+                      ) : (
+                        filteredListed.map((task) => {
+                          const record = poByNumber.get(task.poNumber.trim());
+                          const property = findPropertyForTask(record, task);
+                          const row = buildPrimaryDataTableRow(
+                            task,
+                            property,
+                            record,
+                            now,
+                          );
+                          const active = selectedId === task.id;
+                          const moreItems = resolveRowMoreItems(
+                            task,
+                            property?.id,
+                          );
+                          const cityDistrict = [row.city, row.district]
+                            .filter((v) => v && v !== "—")
+                            .join(" — ");
+                          const assignedRaw =
+                            task.createdAt ||
+                            record?.receivedFromEnfathAt ||
+                            "";
+                          let assignedLabel = "—";
+                          if (assignedRaw) {
+                            const d = new Date(assignedRaw);
+                            if (!Number.isNaN(d.getTime())) {
+                              const y = d.getFullYear();
+                              const m = String(d.getMonth() + 1).padStart(
+                                2,
+                                "0",
+                              );
+                              const day = String(d.getDate()).padStart(2, "0");
+                              assignedLabel = `${y}/${m}/${day}`;
+                            }
+                          }
+                          const badge = appraiserQueueStatusBadge(
+                            task,
+                            tasks ?? [],
+                          );
+                          const inspected = appraiserInspectionDone(
+                            task,
+                            tasks ?? [],
+                          );
+                          const needsSurvey = appraiserNeedsSurvey(
+                            task,
+                            tasks ?? [],
+                          );
+                          const surveyed = appraiserSurveyDone(
+                            task,
+                            tasks ?? [],
+                          );
+                          const sub = loadEvaluatorSubmission(task.id);
+                          const isFreshDraft =
+                            (!sub || sub.status === "draft") &&
+                            !sub?.reportFileName &&
+                            !sub?.landValue?.trim();
+                          const propertyType =
+                            property?.propertyType?.trim() ||
+                            property?.classification?.trim() ||
+                            "";
+                          const deps: {
+                            name: string;
+                            role: string;
+                            ok: boolean;
+                            letter: string;
+                            ink: boolean;
+                          }[] = [
+                            {
+                              name: "المعاين",
+                              role: "المعاينة الميدانية",
+                              ok: inspected,
+                              letter: "م",
+                              ink: true,
+                            },
+                          ];
+                          if (needsSurvey) {
+                            deps.push({
+                              name: "المكتب الهندسي",
+                              role: "الرفع المساحي",
+                              ok: surveyed,
+                              letter: "هـ",
+                              ink: false,
+                            });
+                          }
+                          return (
+                            <Tr
+                              key={task.id}
+                              hoverable={false}
+                              className={cn(
+                                ROW,
+                                active && ROW_ACTIVE,
+                                !inspected && "opacity-55",
+                              )}
+                              onClick={() => handleRowClick(task.id)}
+                            >
+                              <Td className="whitespace-nowrap">
+                                <span className="inline-flex flex-col gap-0.5">
+                                  <span
+                                    dir="ltr"
+                                    className="inline-flex items-center justify-end gap-1.5 text-end text-[13.5px] font-bold text-gold-d"
+                                  >
+                                    {row.propertySlot}
+                                    {isFreshDraft ? (
+                                      <span
+                                        className="ui-status-dot-live size-2 shrink-0 rounded-full bg-[#2f7de1]"
+                                        title="معاملة جديدة — لم يُتخذ عليها إجراء"
+                                        aria-hidden
+                                      />
+                                    ) : null}
+                                  </span>
+                                  {propertyType ? (
+                                    <span className="text-[11.5px] text-text-3">
+                                      {propertyType}
+                                    </span>
+                                  ) : null}
+                                </span>
+                              </Td>
+                              <Td className="text-center text-[13px] text-text-2">
+                                {cityDistrict || "—"}
+                              </Td>
+                              <Td
+                                dir="ltr"
+                                className="text-center text-[12px] text-text-2"
+                              >
+                                <PoNumber value={task.poNumber} link />
+                              </Td>
+                              <Td
+                                dir="ltr"
+                                className="text-center text-[12.5px] text-text-2"
+                              >
+                                {assignedLabel}
+                              </Td>
+                              <Td className="overflow-visible text-center">
+                                <HoverPortalCard
+                                  align="start"
+                                  triggerClassName="inline-flex"
+                                  panelClassName="flex min-w-[240px] flex-col gap-1 rounded-[11px] border border-border-md bg-surface p-2.5 shadow-[0_12px_30px_-8px_rgba(18,40,70,.25)]"
+                                  content={
+                                    <>
+                                      <span className="mb-1 px-1 text-[11px] font-bold text-text-3">
+                                        أطراف المعاملة ({deps.length})
+                                      </span>
+                                      {deps.map((dep) => (
+                                        <div
+                                          key={dep.role}
+                                          className={cn(
+                                            "flex items-center gap-2 rounded-md px-1 py-1",
+                                            !dep.ok && "opacity-50",
+                                          )}
+                                        >
+                                          <span
+                                            className="grid size-7 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white"
+                                            style={{
+                                              background: dep.ink
+                                                ? "var(--ink, #102B4E)"
+                                                : "var(--gold-d, #8c7857)",
+                                            }}
+                                          >
+                                            {dep.letter}
+                                          </span>
+                                          <span className="inline-flex min-w-0 flex-col">
+                                            <span className="text-[12.5px] font-semibold text-heading">
+                                              {dep.name}
+                                            </span>
+                                            <span className="whitespace-nowrap text-[10.5px] text-text-3">
+                                              {dep.role}
+                                            </span>
+                                          </span>
+                                          <span className="ms-auto">
+                                            {dep.ok ? (
+                                              <svg
+                                                width="14"
+                                                height="14"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="#2f7a4d"
+                                                strokeWidth="2.4"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                aria-hidden
+                                              >
+                                                <path d="m5 13 4 4L19 7" />
+                                              </svg>
+                                            ) : (
+                                              <svg
+                                                width="14"
+                                                height="14"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="#9aa0ab"
+                                                strokeWidth="1.8"
+                                                strokeLinecap="round"
+                                                aria-hidden
+                                              >
+                                                <circle
+                                                  cx="12"
+                                                  cy="12"
+                                                  r="9"
+                                                />
+                                                <path d="M12 7v5l3 2" />
+                                              </svg>
+                                            )}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </>
+                                  }
+                                >
+                                  <span className="team inline-flex items-center">
+                                    {deps.map((dep, i) => (
+                                      <span
+                                        key={dep.role}
+                                        className="grid size-7 place-items-center rounded-full border-2 border-surface text-[11px] font-bold text-white"
+                                        style={{
+                                          background: dep.ink
+                                            ? "var(--ink, #102B4E)"
+                                            : "var(--gold-d, #8c7857)",
+                                          marginInlineStart: i === 0 ? 0 : -8,
+                                          opacity: dep.ok ? 1 : 0.35,
+                                        }}
+                                      >
+                                        {dep.letter}
+                                      </span>
+                                    ))}
+                                  </span>
+                                </HoverPortalCard>
+                              </Td>
+                              <Td className="text-center">
+                                <StatusPill
+                                  label={badge.label}
+                                  style={engSurveyStatusPillStyle(
+                                    badge.className,
+                                  )}
+                                />
+                              </Td>
+                              <TdAction>
+                                <RowMoreMenu items={moreItems} />
+                              </TdAction>
+                            </Tr>
+                          );
+                        })
+                      )}
+                    </TBody>
+                  </Table>
                 ) : (
                   <Table className="w-full" pending={queuePending}>
                     <THead>
@@ -1668,7 +2018,7 @@ export function ActiveTransactionQueueView({
                 className={cn(
                   (config.pageId === "all-transactions" ||
                     config.pageId === "active-primary-data" ||
-                    isEngineeringSurveyTable) &&
+                    isPartyQueueToggleTable) &&
                     "border-t border-border bg-surface-2",
                 )}
               >

@@ -38,12 +38,20 @@ import { partyTaskPath } from "../lib/my-task-routes";
 import {
   formatPoDisplay,
   formatPropertyDeedDisplay,
+  requiresAssignmentDecree,
 } from "../lib/prototype/po-intake-data";
 import {
   completeChildTask,
   taskDisplayPropertyLabel,
   type WorkflowTask,
 } from "../lib/prototype/tasks-storage";
+import { usePoRecordQuery, useWorkflowTasksQuery } from "../query/case-study-queries";
+import {
+  findSiblingInspectionTask,
+} from "@evaluator/mfe/lib/evaluator/evaluator-inspection-gate";
+import {
+  findSiblingSurveyTask,
+} from "@evaluator/mfe/lib/evaluator/evaluator-readiness";
 import type {
   PartyActiveTaskWorkHostRefObject,
 } from "../lib/party-active-task-work-host";
@@ -65,7 +73,6 @@ import {
 } from "@platform/design-system";
 import { FailureRaisePanel } from "@failures/mfe";
 import { failureRaiserRoleForParty } from "@failures/mfe/lib/failure-party-roles";
-import { usePoRecordQuery } from "../query/case-study-queries";
 import { usePartyTaskRecallEligibility } from "../hooks/use-party-task-recall-eligibility";
 import { PartyTaskRecallOverlay } from "../components/party-tasks/PartyTaskRecallOverlay";
 
@@ -198,12 +205,10 @@ export function PartyActiveTaskWork({
     [def.completeMessage, layout, showToast],
   );
 
-  const APPRAISAL_SUCCESS_MESSAGE =
-    "تم إرسال التقييم وإجابات الاستدلال لأخصائي دراسة الحالة.";
-
   const { data: record, isPending: recordLoading } = usePoRecordQuery(
     task.poNumber,
   );
+  const { data: allWorkflowTasks = [] } = useWorkflowTasksQuery();
   const [saving, setSaving] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [governmentFooterTick, setGovernmentFooterTick] = useState(0);
@@ -223,10 +228,9 @@ export function PartyActiveTaskWork({
   const governmentHostRef = useRef<GovernmentReviewWorkHostRef>({});
   const coordinationHostRef = useRef<ValuationCoordinationWorkHostRef>({});
   const fieldInspectionHostRef = useRef<FieldInspectionWorkHostRef>({});
-  const appraisalFailureRef = useRef<HTMLDivElement>(null);
   const governmentFailureRef = useRef<HTMLDivElement>(null);
   const fieldInspectionFailureRef = useRef<HTMLDivElement>(null);
-  evaluatorHostRef.current.onSubmitted = () => completePartyTaskSubmit(APPRAISAL_SUCCESS_MESSAGE, { showToast: false });
+  evaluatorHostRef.current.onSubmitted = refresh;
   evaluatorHostRef.current.onSavingChange = setSaving;
   surveyHostRef.current.onSubmitted = () => completePartyTaskSubmit(def.completeMessage, { showToast: false });
   surveyHostRef.current.onSavingChange = setSaving;
@@ -242,11 +246,6 @@ export function PartyActiveTaskWork({
   coordinationHostRef.current.onSavingChange = setSaving;
   fieldInspectionHostRef.current.onSubmitted = () => completePartyTaskSubmit(def.completeMessage, { showToast: false });
   fieldInspectionHostRef.current.onSavingChange = setSaving;
-
-  const evaluatorLocked = useMemo(() => {
-    if (!appraisalExtensions) return false;
-    return appraisalExtensions.isEvaluatorLocked(task.id, saving);
-  }, [appraisalExtensions, task.id, saving]);
 
   const governmentLocked = useMemo(
     () => isGovernmentReviewLocked(task.id, task.status),
@@ -282,17 +281,6 @@ export function PartyActiveTaskWork({
 
   const focusGovernmentNotes = useCallback(() => {
     governmentHostRef.current?.focusReviewNotes?.();
-  }, []);
-
-  const focusAppraisalFailure = useCallback(() => {
-    appraisalFailureRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
-  }, []);
-
-  const focusAppraisalNotes = useCallback(() => {
-    evaluatorHostRef.current?.focusEvaluatorNotes?.();
   }, []);
 
   const focusFieldInspectionFailure = useCallback(() => {
@@ -369,10 +357,6 @@ export function PartyActiveTaskWork({
     showToast("تعذّر إتمام المهمة — حاول مرة أخرى", "error");
   }
 
-  async function submitAppraisal() {
-    await runHostSubmit(evaluatorLocked, evaluatorHostRef);
-  }
-
   async function submitFieldInspection() {
     await runHostSubmit(fieldInspectionLocked, fieldInspectionHostRef);
   }
@@ -419,10 +403,6 @@ export function PartyActiveTaskWork({
     );
   }
 
-  function renderSurveyPropertyShell(body: ReactNode) {
-    return renderPropertyTaskShell(body);
-  }
-
   if (isFieldInspection && layout === "page") {
     return renderPropertyTaskShell(
       record && surveyProperty ? (
@@ -449,20 +429,33 @@ export function PartyActiveTaskWork({
       task.status === "completed" ||
       submitSuccess;
 
-    return renderSurveyPropertyShell(
-      engineeringSurveyExtensions ? (
-        engineeringSurveyExtensions.renderSurveyWork({
-          def,
-          childTask: task,
-          hostRef: surveyHostRef,
-          deedNumber: deedLabel,
-          onFailureSubmitted: refresh,
-          variant: engineeringSurveyEntry ? "entry" : "workspace",
-          forceReadOnly: surveyLocked,
-        })
-      ) : (
-        <InlineLoadingSkeleton className={LOADING_TEXT} />
-      ),
+    return (
+      <TaskWorkChrome
+        layout={layout}
+        title="المكتب الهندسي — الرفع المساحي"
+        saving={saving}
+        onClose={exit}
+        onSave={exit}
+        saveLabel="رجوع"
+        showHeader={false}
+        showFooter={false}
+        scrollMode="document"
+      >
+        {engineeringSurveyExtensions ? (
+          engineeringSurveyExtensions.renderSurveyWork({
+            def,
+            childTask: task,
+            hostRef: surveyHostRef,
+            deedNumber: deedLabel,
+            onBack: exit,
+            onFailureSubmitted: refresh,
+            variant: engineeringSurveyEntry ? "entry" : "workspace",
+            forceReadOnly: surveyLocked,
+          })
+        ) : (
+          <InlineLoadingSkeleton className={LOADING_TEXT} />
+        )}
+      </TaskWorkChrome>
     );
   }
 
@@ -509,82 +502,72 @@ export function PartyActiveTaskWork({
   }
 
   if (isAppraisal) {
-    if (submitSuccess) {
-      return (
-        <TaskWorkChrome
-          layout={layout}
-          title={`رفع التقييم — ${deedLabel}`}
-          subtitle={`${def.assigneeSubtitle} · ${formatPoDisplay(task.poNumber)} · ${location}`}
-          deedBadge={deedLabel}
-          onClose={exit}
-          onSave={exit}
-          saveLabel="رجوع للقائمة"
-          showFooter
-        >
-          <TaskCompletionSuccess
-            title="تم الإرسال"
-            message="تم إرسال التقييم وإجابات الاستدلال لأخصائي دراسة الحالة."
-          />
-        </TaskWorkChrome>
-      );
+    const property = record?.properties.find((p) => p.id === task.propertyId);
+    const assignedRaw = task.createdAt || record?.receivedFromEnfathAt || "";
+    let assignedLabel = "—";
+    if (assignedRaw) {
+      const d = new Date(assignedRaw);
+      if (!Number.isNaN(d.getTime())) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        assignedLabel = `${y}/${m}/${day}`;
+      }
     }
+    const cityDistrict = property
+      ? [property.city, property.district].filter(Boolean).join(" — ") || "—"
+      : location !== "—"
+        ? location.replace(" · ", " — ")
+        : "—";
+    const classification =
+      property?.propertyType?.trim() ||
+      property?.classification?.trim() ||
+      "—";
+    const surveyTaskId =
+      findSiblingSurveyTask(task, allWorkflowTasks)?.id ?? null;
+    const inspectionTaskId =
+      findSiblingInspectionTask(task, allWorkflowTasks)?.id ?? null;
+    const showDecree = record
+      ? requiresAssignmentDecree(record.assignmentType)
+      : false;
 
     return (
-      <PartyTaskRecallOverlay
-        task={task}
-        deedNumber={deedLabel}
-        show
-        isSubmitted={recallEligible}
-        onAddObstruction={focusAppraisalFailure}
-        onAddNote={focusAppraisalNotes}
-        notSubmittedMessage="لا يمكن طلب الاسترجاع قبل إرسال التقييم للأخصائي"
+      <TaskWorkChrome
+        layout={layout}
+        title="المقيم العقاري — نافذة التقييم"
+        saving={saving}
+        onClose={exit}
+        onSave={exit}
+        saveLabel="رجوع"
+        showHeader={false}
+        showFooter={false}
+        scrollMode="document"
       >
-        <TaskWorkChrome
-          layout={layout}
-          title={`رفع التقييم — ${deedLabel}`}
-          subtitle={`${def.assigneeSubtitle} · ${formatPoDisplay(task.poNumber)} · ${location}`}
-          deedBadge={deedLabel}
-          saving={saving}
-          onClose={exit}
-          onSave={submitAppraisal}
-          saveLabel={
-            evaluatorLocked ? "رجوع" : "إرسال للأخصائي"
-          }
-          showFooter
-        >
-          <div className="grid min-w-0 gap-4 xl:grid-cols-2">
-            <section className="min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
-              <h3 className="m-0 mb-2 text-sm font-semibold text-text">
-                {def.workTitle}
-              </h3>
-              {appraisalExtensions ? (
-                appraisalExtensions.renderAppraisalWork({
-                  def,
-                  childTask: task,
-                  hostRef: evaluatorHostRef,
-                })
-              ) : (
-                <InlineLoadingSkeleton className={LOADING_TEXT} />
-              )}
-              <div ref={appraisalFailureRef}>
-                <PartyTaskFailureRaise
-                  def={def}
-                  task={task}
-                  deedNumber={deedLabel}
-                  onSubmitted={refresh}
-                />
-              </div>
-            </section>
-
-            <section className="min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
-              <h3 className="m-0 mb-2 text-sm font-semibold text-text">
-                نموذج الدراسة
-              </h3>
-              <PartyCaseStudyFormTab def={def} childTask={task} />
-            </section>
-          </div>
-        </TaskWorkChrome>
-      </PartyTaskRecallOverlay>
+        {appraisalExtensions ? (
+          appraisalExtensions.renderAppraisalWork({
+            def,
+            childTask: task,
+            hostRef: evaluatorHostRef,
+            deedLabel,
+            onBack: exit,
+            propertySummary: {
+              deedNumber: deedLabel,
+              poNumber: formatPoDisplay(task.poNumber),
+              classification,
+              cityDistrict,
+              assignedAt: assignedLabel,
+              inspectionDone: false,
+              property: property ?? null,
+              showDecree,
+              surveyTaskId,
+              inspectionTaskId,
+              appraisalTaskId: task.id,
+            },
+          })
+        ) : (
+          <InlineLoadingSkeleton className={LOADING_TEXT} />
+        )}
+      </TaskWorkChrome>
     );
   }
 
@@ -697,11 +680,17 @@ export function PartyActiveTaskWork({
         {isGovernmentReview || isValuationCoordination ? (
           <>
             <div className="grid min-w-0 gap-4 xl:grid-cols-2">
-              <section className="min-w-0 rounded-xl border border-border bg-surface p-3">
-                <h3 className="m-0 mb-2 text-sm font-semibold text-text">
-                  {isGovernmentReview ? "المراجعة الحكومية" : def.workTitle}
-                </h3>
-                <Note tone="info">{def.workIntro}</Note>
+              <section className="min-w-0 rounded-xl border border-border bg-surface p-[18px_20px] shadow-card">
+                <div className="mb-3.5 border-b border-border pb-2.5">
+                  <h3 className="m-0 text-[13px] font-bold text-heading">
+                    {isGovernmentReview ? "المراجعة الحكومية" : def.workTitle}
+                  </h3>
+                  {def.workIntro ? (
+                    <p className="m-0 mt-1 text-[11.5px] leading-relaxed text-text-3">
+                      {def.workIntro}
+                    </p>
+                  ) : null}
+                </div>
                 {isGovernmentReview ? (
                   <GovernmentReviewWorkBody
                     def={def}
@@ -725,8 +714,8 @@ export function PartyActiveTaskWork({
                 </div>
               </section>
 
-              <section className="min-w-0 rounded-xl border border-border bg-surface p-3">
-                <h3 className="m-0 mb-2 text-sm font-semibold text-text">
+              <section className="min-w-0 rounded-xl border border-border bg-surface p-[18px_20px] shadow-card">
+                <h3 className="m-0 mb-2.5 border-b border-border pb-2.5 text-[13px] font-bold text-heading">
                   نموذج الدراسة
                 </h3>
                 <PartyCaseStudyFormTab

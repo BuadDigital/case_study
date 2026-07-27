@@ -3,18 +3,30 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
-import { Button, cn } from "@platform/design-system";
+import { Button, cn, useToast } from "@platform/design-system";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { canEditProperty } from "../../lib/prototype/po-roles";
 import {
+  poPropertyDetailPath,
   poPropertyEditPath,
 } from "../../lib/po-routes";
-import { caseStudyWorkspacePath } from "../../lib/my-task-routes";
-import { caseStudyTaskForProperty } from "../../lib/prototype/tasks-storage";
+import {
+  activeSurveyWorkspacePath,
+  caseStudyWorkspacePath,
+  propertyAppraisalWorkspacePath,
+  propertyInspectionWorkspacePath,
+} from "../../lib/my-task-routes";
+import {
+  caseStudyTaskForProperty,
+  tasksForRole,
+} from "../../lib/prototype/tasks-storage";
+import { childTasksForCaseStudyParent } from "../../lib/prototype/case-study-party-answers";
 import { canOpenCaseStudyWorkspace } from "../../lib/prototype/viewer-task-access";
+import { canManageOperationsTasks } from "../../lib/prototype/operations-task-roles";
+import { formatPropertyDeedDisplay } from "../../lib/prototype/po-intake-data";
 import { usePoRecordQuery, useWorkflowTasksQuery } from "../../query/case-study-queries";
 
-const linkButtonClass = (variant: "default" | "primary" = "default") =>
+const shellBtn = (variant: "default" | "primary" = "default") =>
   cn(
     "inline-flex items-center justify-center gap-[5px] rounded-[var(--radius-DEFAULT)] border-[0.5px] border-solid px-2.5 py-1.5 text-xs font-normal no-underline transition-[background,border-color] duration-150 sm:whitespace-nowrap",
     "max-lg:min-h-11 max-lg:flex-1 max-lg:px-3 max-lg:text-[13px] max-lg:font-semibold",
@@ -23,18 +35,40 @@ const linkButtonClass = (variant: "default" | "primary" = "default") =>
       : "border-border-md bg-surface text-text hover:bg-surface-2",
   );
 
+const heroBtn = (variant: "default" | "primary" = "default") =>
+  cn(
+    "inline-flex items-center justify-center gap-1.5 rounded-lg border px-3.5 py-1.5 text-[11.5px] font-bold no-underline transition-[background,transform] duration-150",
+    "max-lg:min-h-11 max-lg:flex-1",
+    variant === "primary"
+      ? "border-transparent bg-ink text-white shadow-[0_6px_16px_-8px_rgba(18,40,76,0.6)] hover:bg-[#22406e]"
+      : "border-border-md bg-surface text-text-2 hover:border-[#a4906f] hover:text-[#8c7857]",
+  );
+
+type PartyAction = {
+  id: string;
+  label: string;
+  href?: string;
+  toast?: string;
+};
+
 export function PoPropertyDetailTopbarActions({
   poNumber,
   propertyId,
+  variant = "shell",
 }: {
   poNumber: string;
   propertyId: string;
+  variant?: "shell" | "hero";
 }) {
   const router = useRouter();
+  const { showToast } = useToast();
   const { role } = usePrototype();
   const showEdit = canEditProperty(role);
+  const canCreateOps = canManageOperationsTasks(role);
   const { data: record } = usePoRecordQuery(poNumber);
   const { data: tasks = [] } = useWorkflowTasksQuery();
+  const isHero = variant === "hero";
+  const btn = isHero ? heroBtn : shellBtn;
 
   const property = useMemo(
     () => record?.properties.find((item) => item.id === propertyId) ?? null,
@@ -51,40 +85,203 @@ export function PoPropertyDetailTopbarActions({
     return canOpenCaseStudyWorkspace(role, task, tasks);
   }, [task, role, tasks]);
 
+  const partyActions = useMemo((): PartyAction[] => {
+    if (!property) return [];
+    const children = task
+      ? childTasksForCaseStudyParent(task.id, tasks)
+      : [];
+    const visibleTaskIds = new Set(tasksForRole(role, tasks).map((item) => item.id));
+    const oversees =
+      role === "section-supervisor" ||
+      role === "general-manager" ||
+      role === "cdo";
+
+    const findChild = (kind: string) =>
+      children.find(
+        (child) =>
+          child.kind === kind &&
+          (oversees || visibleTaskIds.has(child.id)),
+      );
+
+    const inspection = findChild("field-inspection");
+    const survey = findChild("engineering-survey");
+    const appraisal = findChild("property-appraisal");
+
+    if (!isHero) {
+      return [inspection, survey, appraisal]
+        .filter(Boolean)
+        .map((child) => {
+          if (child!.kind === "field-inspection") {
+            return {
+              id: child!.id,
+              label: "معاينة",
+              href: propertyInspectionWorkspacePath(child!.id),
+            };
+          }
+          if (child!.kind === "engineering-survey") {
+            return {
+              id: child!.id,
+              label: "رفع مساحي",
+              href: activeSurveyWorkspacePath(child!.id),
+            };
+          }
+          return {
+            id: child!.id,
+            label: "رفع تقييم",
+            href: propertyAppraisalWorkspacePath(child!.id),
+          };
+        });
+    }
+
+    // Hero: always show the three actions (Case Study.html)
+    return [
+      {
+        id: "inspect",
+        label: "معاينة العقار",
+        href: inspection
+          ? propertyInspectionWorkspacePath(inspection.id)
+          : poPropertyDetailPath(poNumber, propertyId, "inspection"),
+        toast: inspection
+          ? undefined
+          : "مساحة عمل المعاينة — افتح التبويب أو عيّن معايناً من التوزيع.",
+      },
+      {
+        id: "survey",
+        label: "رفع التقرير المساحي",
+        href: survey
+          ? activeSurveyWorkspacePath(survey.id)
+          : poPropertyDetailPath(poNumber, propertyId, "survey"),
+        toast: survey
+          ? undefined
+          : "الرفع المساحي — افتح التبويب أو عيّن مكتباً هندسياً من التوزيع.",
+      },
+      {
+        id: "appraise",
+        label: "رفع تقييم",
+        href: appraisal
+          ? propertyAppraisalWorkspacePath(appraisal.id)
+          : poPropertyDetailPath(poNumber, propertyId, "appraisal"),
+        toast: appraisal
+          ? undefined
+          : "رفع التقييم — افتح التبويب أو عيّن مقيّماً من التوزيع.",
+      },
+    ];
+  }, [task, tasks, role, isHero, property, poNumber, propertyId]);
+
   if (!record || !property) return null;
 
   const needsBourse = !property.bourseDataCompleted;
+  const deedDisplay =
+    formatPropertyDeedDisplay(property) || property.deedNumber.trim();
+  const createTaskHref = `/operations-tasks?create=1&type=general&scope=transaction&po=${encodeURIComponent(poNumber.trim())}&deed=${encodeURIComponent(deedDisplay)}`;
 
   return (
     <div
-      className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-1.5 max-lg:w-full max-lg:[&>button]:min-h-11 max-lg:[&>button]:flex-1 sm:gap-2"
+      className={cn(
+        "flex min-w-0 max-w-full flex-wrap items-center gap-2",
+        isHero
+          ? "w-full flex-1 justify-start"
+          : "justify-end max-lg:w-full max-lg:[&>button]:min-h-11 max-lg:[&>button]:flex-1",
+      )}
       aria-label="إجراءات العقار"
     >
-      {showEdit ? (
-        <Button
-          type="button"
-          size="sm"
-          className="max-lg:min-h-11 max-lg:flex-1"
-          onClick={() => router.push(poPropertyEditPath(poNumber, property.id))}
-        >
-          <span className="sm:hidden">تعديل</span>
-          <span className="max-sm:hidden">تعديل العقار</span>
-        </Button>
-      ) : null}
-      {needsBourse ? (
-        <Link href="/bourse-inquiry" className={linkButtonClass()}>
-          <span className="sm:hidden">البورصة</span>
-          <span className="max-sm:hidden">استعلام البورصة</span>
-        </Link>
-      ) : null}
       {showCaseStudyLink && task ? (
         <Link
           href={caseStudyWorkspacePath(task.id)}
-          className={linkButtonClass("primary")}
+          className={btn("primary")}
         >
-          <span className="sm:hidden">دراسة الحالة</span>
-          <span className="max-sm:hidden">فتح دراسة الحالة</span>
+          فتح دراسة الحالة
         </Link>
+      ) : isHero ? (
+        <button
+          type="button"
+          className={btn("primary")}
+          onClick={() =>
+            showToast(
+              "فتح دراسة الحالة — متاح بعد إنشاء مهمة دراسة الحالة من التوزيع.",
+              "info",
+            )
+          }
+        >
+          فتح دراسة الحالة
+        </button>
+      ) : null}
+      {showEdit ? (
+        isHero ? (
+          <button
+            type="button"
+            className={btn()}
+            onClick={() => router.push(poPropertyEditPath(poNumber, property.id))}
+          >
+            تعديل العقار
+          </button>
+        ) : (
+          <Button
+            type="button"
+            size="sm"
+            className="max-lg:min-h-11 max-lg:flex-1"
+            onClick={() => router.push(poPropertyEditPath(poNumber, property.id))}
+          >
+            <span className="sm:hidden">تعديل</span>
+            <span className="max-sm:hidden">تعديل العقار</span>
+          </Button>
+        )
+      ) : null}
+      {partyActions.map((action) =>
+        action.href ? (
+          <Link
+            key={action.id}
+            href={action.href}
+            className={btn()}
+            onClick={() => {
+              if (action.toast) showToast(action.toast, "info");
+            }}
+          >
+            {action.label}
+          </Link>
+        ) : null,
+      )}
+      {needsBourse ? (
+        <Link href="/bourse-inquiry" className={btn()}>
+          {isHero ? (
+            "استعلام البورصة"
+          ) : (
+            <>
+              <span className="sm:hidden">البورصة</span>
+              <span className="max-sm:hidden">استعلام البورصة</span>
+            </>
+          )}
+        </Link>
+      ) : null}
+      {!isHero ? (
+        <Link
+          href={poPropertyDetailPath(poNumber, property.id, "log")}
+          className={btn()}
+        >
+          سجل
+        </Link>
+      ) : null}
+      {canCreateOps ? (
+        <>
+          {isHero ? (
+            <span className="ms-auto hidden min-w-2 flex-1 sm:block" aria-hidden />
+          ) : null}
+          <Link href={createTaskHref} className={btn()}>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              aria-hidden
+            >
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            إنشاء مهمة
+          </Link>
+        </>
       ) : null}
     </div>
   );

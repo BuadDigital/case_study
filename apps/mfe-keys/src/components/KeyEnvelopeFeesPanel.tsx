@@ -1,23 +1,21 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useToast } from "@platform/design-system";
 import {
-  Button,
-  OperationalPanel,
-  SkeletonTableRows,
-  StatusPill,
-  Table,
-  TBody,
-  Td,
-  TdAction,
-  Th,
-  ThAction,
-  THead,
-  Tr,
-  cn,
-  queueTableRowClassName,
-  useToast,
-} from "@platform/design-system";
+  KEYS_FEES_COLS,
+  KeysBackLink,
+  KeysEmpty,
+  KeysGridHead,
+  KeysGridRow,
+  KeysStatusPill,
+  KeysTd,
+  KeysTh,
+  keysCardClassName,
+  keysChipClassName,
+  keysDashCardClassName,
+  keysGhostBtnClassName,
+} from "./KeysHtmlPrimitives";
 import { markEnvelopeFeeCollected } from "../lib/keys-envelope-api";
 import type { KeyEnvelopeFeeReportRow } from "../lib/keys-envelope-types";
 import {
@@ -28,9 +26,11 @@ import {
 export function KeyEnvelopeFeesPanel({
   canCollect,
   onOpenEnvelope,
+  onBack,
 }: {
   canCollect: boolean;
   onOpenEnvelope: (envelopeId: string) => void;
+  onBack?: () => void;
 }) {
   const { showToast } = useToast();
   const feesQuery = useKeyEnvelopeFeesQuery();
@@ -65,9 +65,14 @@ export function KeyEnvelopeFeesPanel({
   }
 
   return (
-    <div className="space-y-5">
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-border bg-surface px-[18px] py-4 shadow-card">
+    <div>
+      {onBack ? (
+        <KeysBackLink onClick={onBack}>محفظة المفاتيح</KeysBackLink>
+      ) : null}
+
+      {/* renderKeyFees KPI dash-cards */}
+      <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className={keysDashCardClassName}>
           <div className="text-[30px] font-extrabold leading-none text-heading tabular-nums">
             {ready ? rows.length : "—"}
           </div>
@@ -75,7 +80,7 @@ export function KeyEnvelopeFeesPanel({
             بنود أتعاب (سيناريو المحكمة)
           </div>
         </div>
-        <div className="rounded-xl border border-border bg-surface px-[18px] py-4 shadow-card">
+        <div className={keysDashCardClassName}>
           <div className="text-[30px] font-extrabold leading-none text-[#8a5e14] tabular-nums">
             {ready ? totalOpen.toLocaleString("ar-SA") : "—"}{" "}
             <span className="text-[15px]">ر.س</span>
@@ -84,7 +89,7 @@ export function KeyEnvelopeFeesPanel({
             مفتوح للتحصيل ({ready ? openRows.length : "—"})
           </div>
         </div>
-        <div className="rounded-xl border border-border bg-surface px-[18px] py-4 shadow-card">
+        <div className={keysDashCardClassName}>
           <div className="text-[30px] font-extrabold leading-none text-[#2f7a4d] tabular-nums">
             {ready ? totalAll.toLocaleString("ar-SA") : "—"}{" "}
             <span className="text-[15px]">ر.س</span>
@@ -95,183 +100,186 @@ export function KeyEnvelopeFeesPanel({
         </div>
       </div>
 
-      <div className="flex items-center gap-2.5">
-        <h2 className="m-0 text-[18px] font-extrabold text-heading">
+      <div className="mb-3.5 flex items-center gap-2.5">
+        <h2 className="m-0 text-[17px] font-extrabold text-heading">
           تقرير أتعاب استلام المفاتيح
         </h2>
-        <span className="inline-flex items-center rounded-md bg-[var(--gold-soft)] px-2.5 py-1 text-[12px] font-bold text-[var(--gold-d)]">
+        <span className={keysChipClassName}>
           {ready ? `${rows.length} بند` : "…"}
         </span>
       </div>
 
-      <OperationalPanel className="shrink-0 overflow-visible">
-        <div className="hidden lg:block">
-          <Table pending={!ready}>
-            <THead>
-              <Tr hoverable={false}>
-                <Th className="text-start">رقم الطلب</Th>
-                <Th className="text-start">المحكمة</Th>
-                <Th className="text-start">المبلغ</Th>
-                <Th className="text-start">الحالة</Th>
-                <ThAction aria-label="إجراء" />
-              </Tr>
-            </THead>
-            <TBody>
-              {!ready ? (
-                <SkeletonTableRows rows={5} cols={5} />
-              ) : rows.length === 0 ? (
-                <Tr hoverable={false}>
-                  <Td
-                    colSpan={5}
-                    className="cursor-default py-10 text-center text-[13px] text-text-3"
-                  >
-                    <div className="font-semibold text-text-2">
-                      لا توجد بنود أتعاب
-                    </div>
-                    <div className="mt-1 text-[12px]">
-                      تُولَّد الأتعاب تلقائياً لسيناريو استلام المحكمة فقط.
-                    </div>
-                  </Td>
-                </Tr>
-              ) : (
-                rows.map((row) => {
-                  const collected =
-                    (row.collectionStatus ?? "open") === "collected";
-                  const c = collected ? "#2f7a4d" : "#d9a441";
-                  return (
-                    <Tr
-                      key={row.envelopeId}
-                      hoverable={false}
-                      className={cn("group", queueTableRowClassName)}
-                      onClick={() => onOpenEnvelope(row.envelopeId)}
-                    >
-                      <Td>
-                        <span className="text-[13.5px] font-bold text-primary">
-                          {row.requestNumber || "—"}
-                        </span>
-                      </Td>
-                      <Td className="text-text-2">{row.court || "—"}</Td>
-                      <Td className="tabular-nums font-extrabold text-heading">
-                        {row.feeAmountSar.toLocaleString("ar-SA")} ر.س
-                      </Td>
-                      <Td>
-                        <StatusPill
-                          label={collected ? "محصّلة" : "بانتظار التحصيل"}
-                          style={{ base: c, fg: c }}
-                        />
-                      </Td>
-                      <TdAction onClick={(e) => e.stopPropagation()}>
-                        {collected ? (
-                          <span className="text-[11.5px] text-text-3">
-                            أكّدته المالية
-                          </span>
-                        ) : canCollect ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="h-[30px] text-[12px] text-[#2f7a4d]"
-                            disabled={busyId !== null}
-                            showActionToast={false}
-                            onClick={() => void collect(row)}
-                          >
-                            {busyId === row.envelopeId
-                              ? "جاري…"
-                              : "تأكيد التحصيل (المالية)"}
-                          </Button>
-                        ) : (
-                          "—"
-                        )}
-                      </TdAction>
-                    </Tr>
-                  );
-                })
-              )}
-            </TBody>
-          </Table>
-        </div>
+      <div className={keysCardClassName}>
+        <div className="overflow-x-auto rounded-xl">
+          <div className="hidden min-w-[720px] lg:block">
+            <KeysGridHead cols={KEYS_FEES_COLS}>
+              <KeysTh align="start">رقم الطلب</KeysTh>
+              <KeysTh align="start">المحكمة</KeysTh>
+              <KeysTh align="start">المبلغ</KeysTh>
+              <KeysTh align="start">الحالة</KeysTh>
+              <KeysTh>إجراء</KeysTh>
+            </KeysGridHead>
 
-        <div className="lg:hidden">
-          {!ready ? (
-            <div className="space-y-2.5 p-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-[96px] animate-pulse rounded-[12px] bg-surface-2"
-                />
-              ))}
-            </div>
-          ) : rows.length === 0 ? (
-            <div className="px-3 py-10 text-center text-[13px] text-text-3">
-              <div className="font-semibold text-text-2">لا توجد بنود أتعاب</div>
-              <div className="mt-1 text-[12px]">
-                تُولَّد الأتعاب تلقائياً لسيناريو استلام المحكمة فقط.
+            {!ready ? (
+              <div className="space-y-0">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-[54px] animate-pulse border-b border-border bg-surface-2/60"
+                  />
+                ))}
               </div>
-            </div>
-          ) : (
-            <ul className="m-0 flex list-none flex-col gap-2.5 p-3">
-              {rows.map((row) => {
+            ) : rows.length === 0 ? (
+              <KeysEmpty
+                title="لا توجد بنود أتعاب"
+                sub="تُولَّد الأتعاب تلقائياً لسيناريو استلام المحكمة فقط."
+              />
+            ) : (
+              rows.map((row) => {
                 const collected =
                   (row.collectionStatus ?? "open") === "collected";
                 const c = collected ? "#2f7a4d" : "#d9a441";
                 return (
-                  <li key={`m-${row.envelopeId}`}>
-                    <button
-                      type="button"
-                      className="flex w-full cursor-pointer flex-col gap-2.5 rounded-[12px] border border-border bg-surface px-3.5 py-3 text-start shadow-card transition-colors active:bg-row-hover"
-                      onClick={() => onOpenEnvelope(row.envelopeId)}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="text-[14px] font-bold text-primary">
-                            {row.requestNumber || "—"}
-                          </div>
-                          <div className="mt-0.5 text-[12.5px] text-text-2">
-                            {row.court || "—"}
-                          </div>
-                        </div>
-                        <StatusPill
-                          label={collected ? "محصّلة" : "بانتظار التحصيل"}
-                          style={{ base: c, fg: c }}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="tabular-nums text-[15px] font-extrabold text-heading">
-                          {row.feeAmountSar.toLocaleString("ar-SA")} ر.س
+                  <KeysGridRow
+                    key={row.envelopeId}
+                    cols={KEYS_FEES_COLS}
+                    minHeight={54}
+                    onClick={() => onOpenEnvelope(row.envelopeId)}
+                  >
+                    <KeysTd>
+                      <span className="text-[13.5px] font-bold text-gold-d">
+                        {row.requestNumber || "—"}
+                      </span>
+                    </KeysTd>
+                    <KeysTd>
+                      <span className="text-[13px] text-text-2">
+                        {row.court || "—"}
+                      </span>
+                    </KeysTd>
+                    <KeysTd>
+                      <span className="text-[14px] font-extrabold tabular-nums text-heading">
+                        {row.feeAmountSar.toLocaleString("ar-SA")} ر.س
+                      </span>
+                    </KeysTd>
+                    <KeysTd>
+                      <KeysStatusPill
+                        label={collected ? "محصّلة" : "بانتظار التحصيل"}
+                        color={c}
+                      />
+                    </KeysTd>
+                    <KeysTd align="center">
+                      {collected ? (
+                        <span className="text-[11.5px] text-text-3">
+                          أكّدته المالية
                         </span>
-                        {collected ? (
-                          <span className="text-[11.5px] text-text-3">
-                            أكّدته المالية
-                          </span>
-                        ) : canCollect ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="min-h-11 text-[12px] text-[#2f7a4d]"
-                            disabled={busyId !== null}
-                            showActionToast={false}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              void collect(row);
-                            }}
-                          >
-                            {busyId === row.envelopeId
-                              ? "جاري…"
-                              : "تأكيد التحصيل"}
-                          </Button>
-                        ) : null}
-                      </div>
-                    </button>
-                  </li>
+                      ) : canCollect ? (
+                        <button
+                          type="button"
+                          disabled={busyId !== null}
+                          className={keysGhostBtnClassName}
+                          style={{
+                            height: 30,
+                            padding: "0 12px",
+                            fontSize: 12,
+                            color: "#2f7a4d",
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void collect(row);
+                          }}
+                        >
+                          {busyId === row.envelopeId
+                            ? "جاري…"
+                            : "تأكيد التحصيل (المالية)"}
+                        </button>
+                      ) : (
+                        "—"
+                      )}
+                    </KeysTd>
+                  </KeysGridRow>
                 );
-              })}
-            </ul>
-          )}
-        </div>
-      </OperationalPanel>
+              })
+            )}
+          </div>
 
-      <p className="m-0 text-[11.5px] text-text-3">
+          <div className="lg:hidden">
+            {!ready ? (
+              <div className="space-y-2.5 p-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-[96px] animate-pulse rounded-[12px] bg-surface-2"
+                  />
+                ))}
+              </div>
+            ) : rows.length === 0 ? (
+              <KeysEmpty
+                title="لا توجد بنود أتعاب"
+                sub="تُولَّد الأتعاب تلقائياً لسيناريو استلام المحكمة فقط."
+              />
+            ) : (
+              <ul className="m-0 flex list-none flex-col gap-2.5 p-3">
+                {rows.map((row) => {
+                  const collected =
+                    (row.collectionStatus ?? "open") === "collected";
+                  const c = collected ? "#2f7a4d" : "#d9a441";
+                  return (
+                    <li key={`m-${row.envelopeId}`}>
+                      <button
+                        type="button"
+                        className="flex w-full cursor-pointer flex-col gap-2.5 rounded-[12px] border border-border bg-surface px-3.5 py-3 text-start shadow-card transition-colors active:bg-row-hover"
+                        onClick={() => onOpenEnvelope(row.envelopeId)}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="text-[14px] font-bold text-gold-d">
+                              {row.requestNumber || "—"}
+                            </div>
+                            <div className="mt-0.5 text-[12.5px] text-text-2">
+                              {row.court || "—"}
+                            </div>
+                          </div>
+                          <KeysStatusPill
+                            label={collected ? "محصّلة" : "بانتظار التحصيل"}
+                            color={c}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="tabular-nums text-[15px] font-extrabold text-heading">
+                            {row.feeAmountSar.toLocaleString("ar-SA")} ر.س
+                          </span>
+                          {collected ? (
+                            <span className="text-[11.5px] text-text-3">
+                              أكّدته المالية
+                            </span>
+                          ) : canCollect ? (
+                            <button
+                              type="button"
+                              disabled={busyId !== null}
+                              className={keysGhostBtnClassName}
+                              style={{ color: "#2f7a4d" }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void collect(row);
+                              }}
+                            >
+                              {busyId === row.envelopeId
+                                ? "جاري…"
+                                : "تأكيد التحصيل"}
+                            </button>
+                          ) : null}
+                        </div>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <p className="m-0 px-1 pt-3 text-[11.5px] text-text-3">
         تسجيل الظرف وتصويره يُنشئ حالة مالية بوجوب رفع أتعاب استلام المفتاح —
         التحصيل يتم بعد اكتمال دراسة الحالة ورفع صورة الظرف على إنفاذ، وتأكيد
         الاستلام من موظف المالية حصراً.

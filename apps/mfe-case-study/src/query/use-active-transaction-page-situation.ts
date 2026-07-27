@@ -229,6 +229,7 @@ export function useActiveTransactionPageSituation(
     const values = ready
       ? (computePageSituationValues(pageId, {
           tasks: mine,
+          allTasks: tasks ?? [],
           poByNumber,
           pendingBourse: visiblePendingBourse,
           obstructedCount,

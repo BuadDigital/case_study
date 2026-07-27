@@ -48,7 +48,7 @@ import {
   buildPoPropertiesRowMoreItems,
   type PoPropertyRowMoreContext,
 } from "../lib/prototype/po-properties-row-menu";
-import { formatDeliveryRemainingLabel } from "../lib/prototype/my-task-row";
+import { DeliveryCountdown } from "../components/po-intake/DeliveryCountdown";
 import {
   usePoRecordQuery,
   usePropertyListItemsQuery,
@@ -353,14 +353,7 @@ export function PoPropertiesPage({
             </div>
             <div className="shrink-0 border-s border-border px-4">
               <div className="mb-0.5 text-[11px] text-text-3">المتبقي للتسليم</div>
-              <div
-                className={cn(
-                  "text-[13px] font-medium",
-                  dueUrgent ? "text-red" : "text-text",
-                )}
-              >
-                {formatDeliveryRemainingLabel(record.dueDateAt)}
-              </div>
+              <DeliveryCountdown dueIso={record.dueDateAt} />
             </div>
             </div>
         </PageShellHeader>

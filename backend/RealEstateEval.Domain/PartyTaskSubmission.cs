@@ -15,6 +15,12 @@ public class PartyTaskSubmission
     public DateTime? SubmittedAtUtc { get; set; }
     /// <summary>Set when a specialist accepts the outputs (engineering-survey fee accrual).</summary>
     public DateTime? AcceptedAtUtc { get; set; }
+    public string? SubmittedByUserId { get; set; }
+    public string? SubmittedByName { get; set; }
+    public string? AcceptedByUserId { get; set; }
+    public string? AcceptedByName { get; set; }
+    public string? ReopenedByUserId { get; set; }
+    public string? ReopenedByName { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 }
