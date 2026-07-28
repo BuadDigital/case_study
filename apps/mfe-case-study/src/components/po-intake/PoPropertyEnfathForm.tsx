@@ -179,7 +179,7 @@ export function PoPropertyEnfathForm({
             ? "مسار استعلام البورصة — أدخل البيانات الأولية وبيانات البورصة معاً."
             : hasRealEstateReg
               ? "بيانات مرحلة إنفاذ — مع التسجيل العيني يمكن تجاوز استعلام البورصة."
-              : "بيانات مرحلة إنفاذ — رقم الصك وتاريخه اختياريان؛ بدون صك أو مع صك تُكمّل بيانات البورصة لاحقاً من «استعلام البورصة»."}
+              : "بيانات مرحلة إنفاذ — يلزم رقم الصك أو التسجيل العيني (أو كلاهما)؛ بدون تسجيل عيني تُكمّل بيانات البورصة لاحقاً من «استعلام البورصة»."}
         </Note>
       ) : null}
 
@@ -321,7 +321,7 @@ export function PoPropertyEnfathForm({
           dir="ltr"
           inputMode="numeric"
           maxLength={identifierDigitLength}
-          hint={`${identifierDigitLength} أرقام — اختياري؛ بدون صك يمكن المتابعة لاستعلام البورصة`}
+          hint={`${identifierDigitLength} أرقام — مطلوب أحدهما على الأقل (صك أو تسجيل عيني)`}
           value={property.deedNumber}
           error={fieldErrors.deedNumber}
           onChange={patchDeedNumber}
@@ -341,7 +341,7 @@ export function PoPropertyEnfathForm({
           dir="ltr"
           inputMode="numeric"
           maxLength={realEstateRegDigitLength}
-          hint={`${realEstateRegDigitLength} أرقام — اختياري؛ عند التعبئة يتجاوز استعلام البورصة`}
+          hint={`${realEstateRegDigitLength} أرقام — مطلوب أحدهما على الأقل؛ عند التعبئة يتجاوز استعلام البورصة`}
           value={property.realEstateRegNumber}
           error={fieldErrors.realEstateRegNumber}
           onChange={patchRealEstateRegNumber}
