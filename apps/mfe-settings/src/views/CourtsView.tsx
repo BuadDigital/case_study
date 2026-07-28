@@ -500,22 +500,16 @@ export function CourtsView() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-surface-2" dir="rtl">
-      <div className="flex items-start justify-between gap-4 px-4 py-4 sm:px-6">
-        <div>
-          <h1 className="text-base font-bold text-heading">المحاكم والدوائر</h1>
-          <p className="mt-1 text-[11px] text-text-3">
-            إدارة المحاكم ودوائرها المرتبطة — تُستخدم عند تسجيل العقارات
-          </p>
-        </div>
-        {canEdit ? (
+      {canEdit ? (
+        <div className="flex justify-end px-4 py-4 sm:px-6">
           <Button variant="primary" onClick={() => setCourtModal({ mode: "create" })}>
             + إضافة محكمة
           </Button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       {!canEdit && authReady ? (
-        <Note tone="info" className="mx-4 mb-3 sm:mx-6">
+        <Note tone="info" className="mx-4 mb-3 mt-4 sm:mx-6">
           عرض فقط — تحتاج صلاحية إدارة المحاكم للتعديل.
         </Note>
       ) : null}

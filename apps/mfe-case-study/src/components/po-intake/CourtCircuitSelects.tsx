@@ -2,7 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { RegSelect } from "@platform/app-shared/registration/FormFields";
+import { RegSearchSelect } from "@platform/app-shared/registration/RegSearchSelect";
 import type { FieldErrors } from "@platform/app-shared/registration/registration-utils";
+import {
+  circuitDisplayLabel,
+  filterAndRankCircuits,
+} from "@platform/app-shared/domain/courts/circuit-search";
 import {
   listSelectableCircuits,
   listSelectableCourts,
@@ -94,7 +99,8 @@ export function CourtCircuitSelects({
     const byNo = circuits.find(
       (row) =>
         row.circuitNo === circuit.trim() ||
-        row.circuitName === circuit.trim(),
+        row.circuitName === circuit.trim() ||
+        circuitDisplayLabel(row) === circuit.trim(),
     );
     return byNo?.id ?? "";
   }, [propertyCircuitId, circuits, circuit]);
@@ -120,7 +126,7 @@ export function CourtCircuitSelects({
   const circuitOptions = useMemo(() => {
     const options = circuits.map((row) => ({
       value: row.id,
-      label: row.circuitName?.trim() || row.circuitNo,
+      label: circuitDisplayLabel(row),
     }));
     if (
       selectedCircuitId &&
@@ -153,7 +159,7 @@ export function CourtCircuitSelects({
           onPatch("circuit", "");
         }}
       />
-      <RegSelect
+      <RegSearchSelect
         id={circuitId}
         label="الدائرة"
         required
@@ -161,13 +167,37 @@ export function CourtCircuitSelects({
         value={selectedCircuitId}
         error={fieldErrors.circuit}
         disabled={!selectedCourtId}
-        placeholder="اختر الدائرة..."
+        placeholder={
+          selectedCourtId ? "اكتب رقم أو اسم الدائرة…" : "اختر المحكمة أولاً"
+        }
+        hint="اكتب الرقم مباشرة (مثل 5) للوصول السريع"
+        inputMode="search"
+        filterOptions={(opts, query) => {
+          const byId = new Map(circuits.map((c) => [c.id, c]));
+          const items = opts
+            .map((o) => {
+              const row = byId.get(o.value);
+              return row
+                ? { ...row, id: o.value }
+                : {
+                    id: o.value,
+                    circuitNo: o.label,
+                    circuitName: o.label,
+                  };
+            });
+          const ranked = filterAndRankCircuits(items, query);
+          const labelById = new Map(opts.map((o) => [o.value, o.label]));
+          return ranked.map((row) => ({
+            value: row.id,
+            label: labelById.get(row.id) ?? circuitDisplayLabel(row),
+          }));
+        }}
         onChange={(value) => {
           const selected = circuits.find((row) => row.id === value);
           onPatch("circuitId", value || "");
           onPatch(
             "circuit",
-            selected?.circuitName?.trim() || selected?.circuitNo || "",
+            selected ? circuitDisplayLabel(selected) : "",
           );
         }}
       />

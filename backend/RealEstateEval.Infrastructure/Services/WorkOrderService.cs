@@ -876,9 +876,12 @@ public class WorkOrderService : IWorkOrderService
         }
 
         entity.RequestNumber = dto.RequestNumber?.Trim();
+        entity.HasRequestNumber = dto.HasRequestNumber;
         entity.AssignmentMandateNumber = dto.AssignmentMandateNumber?.Trim();
         entity.AssignmentMandateDate = dto.AssignmentMandateDate?.Trim();
         entity.DeedDate = dto.DeedDate?.Trim();
+        entity.RealEstateRegNumber = dto.RealEstateRegNumber?.Trim();
+        entity.RealEstateRegDate = dto.RealEstateRegDate?.Trim();
         entity.OwnerName = dto.OwnerName?.Trim();
         entity.AssignmentDocFileName = WorkOrderMapper.SerializeFileNameList(dto.AssignmentDocFileNames);
         entity.DelegationLetterFileName = WorkOrderMapper.SerializeFileNameList(dto.DelegationLetterFileNames);

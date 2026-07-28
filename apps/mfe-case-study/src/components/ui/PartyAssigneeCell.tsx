@@ -19,14 +19,14 @@ export function PartyAssigneeCell({ party }: { party: CaseStudyPartyAssignee }) 
 
   return (
     <div
-      className="mx-auto flex w-full max-w-[7.25rem] flex-col items-stretch gap-1"
+      className="mx-auto flex w-[6.75rem] flex-col items-stretch gap-1"
       title={name}
     >
       <div className="truncate text-center text-[11px] leading-snug text-text-2">
         {name}
       </div>
       <div className="flex w-full items-center gap-1">
-        <div className="h-[5px] min-w-0 flex-1 overflow-hidden rounded bg-surface-3">
+        <div className="h-[5px] w-[4.75rem] shrink-0 overflow-hidden rounded bg-surface-3">
           <div
             className={cn("h-full rounded transition-[width] duration-[400ms]", progressBarClass(pct))}
             style={{ width: `${pct}%` }}

@@ -15,9 +15,12 @@ public class WorkOrderPropertyDto
     public string IdentifierType { get; set; } = "deed";
     public string DeedNumber { get; set; } = "";
     public string? RequestNumber { get; set; }
+    public bool HasRequestNumber { get; set; } = true;
     public string? AssignmentMandateNumber { get; set; }
     public string? AssignmentMandateDate { get; set; }
     public string? DeedDate { get; set; }
+    public string? RealEstateRegNumber { get; set; }
+    public string? RealEstateRegDate { get; set; }
     public string? OwnerName { get; set; }
     public string? RestrictionsPresent { get; set; }
     public string? RestrictionType { get; set; }

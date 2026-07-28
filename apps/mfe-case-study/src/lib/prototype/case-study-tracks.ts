@@ -169,7 +169,6 @@ export type CaseStudyPartyAssignee = {
 
 const CASE_STUDY_PARTY_DEFS = [
   { trackId: "inspection", shortLabel: "المعاين", partyId: "insp" },
-  { trackId: "government", shortLabel: "المراجع الحكومي", partyId: "gov" },
   { trackId: "appraisal", shortLabel: "المقيم", partyId: "val" },
   { trackId: "survey", shortLabel: "المكتب الهندسي", partyId: "eng" },
 ] as const;
@@ -188,9 +187,7 @@ export function buildCaseStudyPartyAssignees(
     const enabled =
       def.trackId === "inspection" || def.trackId === "appraisal"
         ? distribution.valuationDepartment
-        : def.trackId === "government"
-          ? distribution.governmentAuditor
-          : distribution.engineeringOffice;
+        : distribution.engineeringOffice;
 
     return {
       trackId: def.trackId,

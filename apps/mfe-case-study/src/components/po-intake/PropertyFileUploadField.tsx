@@ -18,10 +18,12 @@ export function PropertyFileUploadField({
   propertyId,
   docKind,
   multiple,
+  maxFiles,
   onUpload,
   onUploadMany,
   onClear,
   onRemove,
+  onTooManyFiles,
 }: {
   id: string;
   label: ReactNode;
@@ -34,11 +36,15 @@ export function PropertyFileUploadField({
   propertyId?: string;
   docKind?: PropertyDocKind;
   multiple?: boolean;
+  /** Cap how many files can be attached (e.g. 1 for decree / delegation). */
+  maxFiles?: number;
   onUpload: (file: File) => void;
   onUploadMany?: (files: File[]) => void;
   onClear: () => void;
   /** Remove one file in multi mode. */
   onRemove?: (fileName: string) => void;
+  /** Called when the user picks more files than `maxFiles` allows. */
+  onTooManyFiles?: () => void;
 }) {
   const names = multiple
     ? (fileNames ?? []).map((n) => n.trim()).filter(Boolean)
@@ -103,6 +109,16 @@ export function PropertyFileUploadField({
           const picked = Array.from(e.target.files ?? []);
           e.target.value = "";
           if (picked.length === 0) return;
+
+          if (
+            typeof maxFiles === "number" &&
+            (names.length >= maxFiles ||
+              names.length + picked.length > maxFiles)
+          ) {
+            onTooManyFiles?.();
+            return;
+          }
+
           if (multiple) {
             if (onUploadMany) onUploadMany(picked);
             else picked.forEach((file) => onUpload(file));
