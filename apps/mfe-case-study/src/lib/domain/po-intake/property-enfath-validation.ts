@@ -19,8 +19,15 @@ function validateDeedOrRealEstateReg(p: PoPropertyIntake, errors: FieldErrors) {
   const hasDeed = p.deedNumber.trim().length > 0;
   const hasReg = p.realEstateRegNumber.trim().length > 0;
 
-  // رقم الصك وتاريخه اختياريان — بدون صك يمكن المتابعة لاستعلام البورصة.
-  // التسجيل العيني اختياري؛ إن وُجد يتجاوز البورصة.
+  // مطلوب أحدهما على الأقل: رقم الصك أو التسجيل العيني (أو كلاهما).
+  // التسجيل العيني عند التعبئة يتجاوز استعلام البورصة.
+  if (!hasDeed && !hasReg) {
+    const msg = "أدخل رقم الصك أو رقم التسجيل العيني";
+    errors.deedNumber = msg;
+    errors.realEstateRegNumber = msg;
+    return;
+  }
+
   if (hasDeed) {
     const deedError = validatePropertyIdentifierNumber("deed", p.deedNumber);
     if (deedError) errors.deedNumber = deedError;
