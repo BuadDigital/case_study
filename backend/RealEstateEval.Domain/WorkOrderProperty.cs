@@ -8,11 +8,17 @@ public class WorkOrderProperty
     public string DeedNumber { get; set; } = "";
     /// <summary>رقم الطلب (كان سابقاً رقم المهمة).</summary>
     public string? RequestNumber { get; set; }
+    /// <summary>false = لا يوجد رقم طلب ويمكن تجاوز الحقل.</summary>
+    public bool HasRequestNumber { get; set; } = true;
     /// <summary>رقم التكليف — بيانات أولية إلزامية.</summary>
     public string? AssignmentMandateNumber { get; set; }
     /// <summary>تاريخ التكليف — بيانات أولية إلزامية (yyyy-MM-dd).</summary>
     public string? AssignmentMandateDate { get; set; }
     public string? DeedDate { get; set; }
+    /// <summary>رقم التسجيل العيني — مسار السجل العقاري.</summary>
+    public string? RealEstateRegNumber { get; set; }
+    /// <summary>تاريخ التسجيل العيني — مسار السجل العقاري (yyyy-MM-dd).</summary>
+    public string? RealEstateRegDate { get; set; }
     public string? OwnerName { get; set; }
     /// <summary>yes / no — القيود على العقار (مرحلة البورصة).</summary>
     public string? RestrictionsPresent { get; set; }

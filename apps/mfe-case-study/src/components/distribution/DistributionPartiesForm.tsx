@@ -7,7 +7,6 @@ import { Card, Note, cn } from "@platform/design-system";
 import {
   getEngineeringOffices,
   getFieldInspectors,
-  getGovernmentAuditors,
   getValuationCoordinators,
   getValuators,
   type DistributionAssignee,
@@ -83,10 +82,6 @@ export function DistributionPartiesForm({
   const { data: staffResult } = useDistributionAssigneesQuery();
   const staffUsers = staffResult?.users ?? [];
   const loadError = staffResult?.loadError ?? null;
-  const governmentAuditors = useMemo(
-    () => getGovernmentAuditors(staffUsers),
-    [staffUsers],
-  );
   const valuationCoordinators = useMemo(
     () => getValuationCoordinators(staffUsers),
     [staffUsers],
@@ -108,31 +103,6 @@ export function DistributionPartiesForm({
           {loadError}
         </Note>
       ) : null}
-
-      <PartyBlock
-        readOnly={readOnly}
-        enabled={distribution.governmentAuditor}
-        title="المراجع الحكومي"
-        onEnabledChange={(checked) =>
-          onPatch({
-            governmentAuditor: checked,
-            governmentAuditorId: checked
-              ? distribution.governmentAuditorId
-              : "",
-          })
-        }
-      >
-        <RegSelect
-          id="dist_gov_auditor"
-          label="المسؤول"
-          required={distribution.governmentAuditor}
-          disabled={readOnly || !distribution.governmentAuditor}
-          options={toOptions(governmentAuditors)}
-          value={distribution.governmentAuditorId}
-          placeholder="اختر المراجع الحكومي…"
-          onChange={(v) => onPatch({ governmentAuditorId: v })}
-        />
-      </PartyBlock>
 
       <PartyBlock
         readOnly={readOnly}

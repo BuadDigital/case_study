@@ -104,6 +104,8 @@ export function PoPropertyEdit({
       if (key === "deedNumber") return isBourse ? "deed_number_bourse" : "deed_number";
       if (key === "requestNumber") return isBourse ? "task_number_bourse" : "task_number";
       if (key === "deedDate") return isBourse ? "deed_date_bourse" : "deed_date";
+      if (key === "realEstateRegNumber") return "real_estate_reg_number";
+      if (key === "realEstateRegDate") return "real_estate_reg_date";
       if (key === "ownerName") return isBourse ? "owner_name_bourse" : "owner_name";
       if (key === "court") return isBourse ? "court_bourse" : "court";
       if (key === "circuit") return isBourse ? "circuit_bourse" : "circuit";

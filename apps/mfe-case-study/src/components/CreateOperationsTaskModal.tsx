@@ -64,15 +64,10 @@ import {
 const LETTER_COLS =
   "44px minmax(84px,.9fr) minmax(120px,1.2fr) minmax(100px,1fr) minmax(78px,.8fr) minmax(160px,1.5fr)";
 
-const TASK_TYPES = [
-  "court_visit",
-  "reshoot",
-  "field_visit",
-  "inquiry",
-  "general",
-] as const;
+const TASK_TYPES = ["court_visit", "general"] as const;
 
-const SCOPES = ["work_order", "transaction", "multi", "general"] as const;
+/** نطاق الربط موحّد لزيارة محكمة والمهمة العامة (يشمل عامة). */
+const LINK_SCOPES = ["work_order", "transaction", "multi", "general"] as const;
 
 const PRIORITY_OFFSET_MS: Record<string, number> = {
   high: 4 * 3_600_000,
@@ -82,9 +77,6 @@ const PRIORITY_OFFSET_MS: Record<string, number> = {
 
 const DEFAULT_TITLES: Record<string, string> = {
   court_visit: "زيارة محكمة",
-  reshoot: "إعادة تصوير",
-  field_visit: "زيارة ميدانية",
-  inquiry: "استفسار",
   general: "مهمة عامة",
 };
 
@@ -288,10 +280,11 @@ export function CreateOperationsTaskModal({
 
   useEffect(() => {
     if (!open) return;
-    const nextType = prefill?.type?.trim() || "court_visit";
-    const nextScope =
-      prefill?.scope?.trim() ||
-      (nextType === "court_visit" ? "work_order" : "general");
+    const rawType = prefill?.type?.trim() || "court_visit";
+    const nextType = (TASK_TYPES as readonly string[]).includes(rawType)
+      ? rawType
+      : "court_visit";
+    const nextScope = prefill?.scope?.trim() || "work_order";
     const nextPo = prefill?.poNumber?.trim() || "";
     const nextDeed = prefill?.deed?.trim() || "";
     setType(nextType);
@@ -562,7 +555,7 @@ export function CreateOperationsTaskModal({
               onChange={(id) => {
                 setScope(id);
               }}
-              options={SCOPES.map((s) => ({
+              options={LINK_SCOPES.map((s) => ({
                 id: s,
                 label: OPERATIONS_TASK_SCOPE_LABELS[s] ?? s,
               }))}

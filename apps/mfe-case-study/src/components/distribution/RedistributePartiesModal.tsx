@@ -18,7 +18,6 @@ import {
 import {
   getEngineeringOffices,
   getFieldInspectors,
-  getGovernmentAuditors,
   getValuationCoordinators,
   getValuators,
 } from "../../lib/prototype/distribution-parties";
@@ -73,10 +72,6 @@ export function RedistributePartiesModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, task?.id]);
 
-  const governmentAuditors = useMemo(
-    () => getGovernmentAuditors(staffUsers),
-    [staffUsers],
-  );
   const valuationCoordinators = useMemo(
     () => getValuationCoordinators(staffUsers),
     [staffUsers],
@@ -97,9 +92,7 @@ export function RedistributePartiesModal({
     setDistribution((prev) => (prev ? { ...prev, ...patchValue } : prev));
 
   const hasAnyParty =
-    distribution.governmentAuditor ||
-    distribution.valuationDepartment ||
-    distribution.engineeringOffice;
+    distribution.valuationDepartment || distribution.engineeringOffice;
 
   const submit = async () => {
     const trimmed = reason.trim();
@@ -141,16 +134,6 @@ export function RedistributePartiesModal({
             </Note>
           ) : (
             <div className="flex flex-col gap-3">
-              {distribution.governmentAuditor ? (
-                <RegSelect
-                  id="redist_gov_auditor"
-                  label="المراجع الحكومي"
-                  options={toOptions(governmentAuditors)}
-                  value={distribution.governmentAuditorId}
-                  placeholder="اختر المراجع الحكومي…"
-                  onChange={(v) => patch({ governmentAuditorId: v })}
-                />
-              ) : null}
               {distribution.valuationDepartment ? (
                 <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
                   <RegSelect

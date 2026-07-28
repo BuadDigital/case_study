@@ -93,6 +93,35 @@ function MenuIcon() {
   );
 }
 
+/** Design ref: topbar toggle — collapsed icon-rail sidebar. */
+function SidebarPanelsIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="3" y="4" width="18" height="16" rx="2.5" />
+      <path d="M9 4v16" />
+    </svg>
+  );
+}
+
+const SIDEBAR_COLLAPSED_KEY = "ejada.sidebar.collapsed";
+
+function readSidebarCollapsed(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 function RefreshIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -156,11 +185,14 @@ function navItemClasses({
   sub = false,
   locked = false,
   toggle = false,
+  rail = false,
 }: {
   active?: boolean;
   sub?: boolean;
   locked?: boolean;
   toggle?: boolean;
+  /** Desktop icon-rail mode (labels hidden via group on #sidebar). */
+  rail?: boolean;
 } = {}) {
   return cn(
     "relative flex cursor-pointer items-center gap-[11px] rounded-lg px-3 py-[9px] text-[13.5px] font-medium text-[#aeb6c4] no-underline outline-none transition-[background,color] duration-150",
@@ -168,16 +200,29 @@ function navItemClasses({
     "[&>svg]:size-[18px] [&>svg]:shrink-0",
     sub && "gap-[9px] ps-8 text-[12.5px] [&>svg]:size-3.5",
     toggle && "w-full border-0 bg-transparent font-inherit",
+    rail &&
+      "lg:justify-center lg:gap-0 lg:px-0 lg:py-2.5 lg:before:hidden",
+    rail && sub && "lg:ps-0",
     active &&
       "bg-[color-mix(in_srgb,var(--gold)_18%,transparent)] font-bold text-gold-2 before:absolute before:inset-y-0 before:start-0 before:w-[3px] before:rounded-e-sm before:bg-gold before:content-['']",
     locked && "cursor-default opacity-35",
   );
 }
 
-function navBadgeClasses() {
+function navBadgeClasses(rail = false) {
   return cn(
     "ms-auto inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-danger px-[5px] text-[10px] font-semibold text-white",
+    rail &&
+      "lg:absolute lg:end-0.5 lg:top-0.5 lg:ms-0 lg:h-[16px] lg:min-w-[16px] lg:px-[4px] lg:text-[9px]",
   );
+}
+
+function navLabelClasses(rail = false) {
+  return cn(rail && "lg:sr-only");
+}
+
+function navChevronClasses(rail = false) {
+  return cn(rail && "lg:hidden");
 }
 
 type NavRun = { label: string | null; items: (typeof NAV)[number][] };
@@ -238,31 +283,35 @@ function NavRow({
   active,
   onPrefetch,
   badgeCount,
+  rail = false,
 }: {
   item: (typeof NAV)[number];
   active: boolean;
   onPrefetch: (page: PageId) => void;
   badgeCount?: number;
+  rail?: boolean;
 }) {
   const badgeValue =
     badgeCount != null && badgeCount > 0
       ? String(badgeCount)
       : item.badge;
   const badge = badgeValue ? (
-    <span className={navBadgeClasses()}>{badgeValue}</span>
+    <span className={navBadgeClasses(rail)}>{badgeValue}</span>
   ) : null;
   return (
     <Link
       href={`/${item.id}`}
       className={navItemClasses({
         active,
+        rail,
       })}
+      title={rail ? item.label : undefined}
       prefetch
       onMouseEnter={() => onPrefetch(item.id)}
       onFocus={() => onPrefetch(item.id)}
     >
       <NavIcon d={item.icon} size={16} />
-      <span>{item.label}</span>
+      <span className={navLabelClasses(rail)}>{item.label}</span>
       {badge}
     </Link>
   );
@@ -276,6 +325,7 @@ function ActiveTransactionNavRow({
   badgeCount,
   active,
   onPrefetch,
+  rail = false,
 }: {
   id: PageId;
   label: string;
@@ -284,30 +334,39 @@ function ActiveTransactionNavRow({
   badgeCount?: number;
   active: boolean;
   onPrefetch: (page: PageId) => void;
+  rail?: boolean;
 }) {
   const cls = navItemClasses({
     active,
-    sub: true,
+    sub: !rail,
     locked: !available,
+    rail,
   });
   const inner = (
     <>
-      <NavIcon d={icon} size={12} />
-      <span>{label}</span>
+      <NavIcon d={icon} size={rail ? 16 : 12} />
+      <span className={navLabelClasses(rail)}>{label}</span>
       {badgeCount != null && badgeCount > 0 ? (
-        <span className={navBadgeClasses()}>{badgeCount}</span>
+        <span className={navBadgeClasses(rail)}>{badgeCount}</span>
       ) : !available ? (
-        <span className={cn(navBadgeClasses(), "opacity-70")}>بدون صلاحية</span>
+        <span className={cn(navBadgeClasses(), navLabelClasses(rail), "opacity-70")}>
+          بدون صلاحية
+        </span>
       ) : null}
     </>
   );
   if (!available) {
-    return <div className={cls}>{inner}</div>;
+    return (
+      <div className={cls} title={rail ? label : undefined}>
+        {inner}
+      </div>
+    );
   }
   return (
     <Link
       href={`/${id}`}
       className={cls}
+      title={rail ? label : undefined}
       prefetch
       onMouseEnter={() => onPrefetch(id)}
       onFocus={() => onPrefetch(id)}
@@ -317,12 +376,13 @@ function ActiveTransactionNavRow({
   );
 }
 
-function NavDropdownChevron({ open }: { open: boolean }) {
+function NavDropdownChevron({ open, rail = false }: { open: boolean; rail?: boolean }) {
   return (
     <svg
       className={cn(
         "ms-auto shrink-0 opacity-45 transition-transform duration-200 ease-in-out",
         open && "-rotate-90 opacity-70",
+        navChevronClasses(rail),
       )}
       width="12"
       height="12"
@@ -339,6 +399,27 @@ function NavDropdownChevron({ open }: { open: boolean }) {
   );
 }
 
+function NavFlyoutPanel({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className="absolute end-full top-0 z-[60] me-2 hidden min-w-[210px] rounded-[10px] border border-white/[0.1] bg-sidebar p-2 shadow-lg lg:block"
+      role="group"
+      aria-label={label}
+    >
+      <div className="px-2.5 pb-1.5 pt-1 text-[11px] font-bold tracking-[0.03em] text-[#6f7b90]">
+        {label}
+      </div>
+      <div className="flex flex-col">{children}</div>
+    </div>
+  );
+}
+
 function ActiveTransactionsNavDropdown({
   items,
   currentPage,
@@ -347,6 +428,7 @@ function ActiveTransactionsNavDropdown({
   onPrefetch,
   badges,
   role,
+  rail = false,
 }: {
   items: ActiveTransactionNavItem[];
   currentPage: PageId;
@@ -355,57 +437,93 @@ function ActiveTransactionsNavDropdown({
   onPrefetch: (page: PageId) => void;
   badges: Partial<Record<PageId, number>>;
   role: RoleId;
+  rail?: boolean;
 }) {
   const inSection =
     isInActiveTransactionsSection(currentPage, onTaskWork, role) ||
     onCaseStudyWorkspace;
   const [open, setOpen] = useState(inSection);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- auto-expand the active section when navigation enters it.
-    if (inSection) setOpen(true);
-  }, [inSection]);
+    if (inSection && !rail) setOpen(true);
+  }, [inSection, rail]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- avoid leftover open flyouts when entering icon-rail.
+    if (rail) setOpen(false);
+  }, [rail]);
+
+  useEffect(() => {
+    if (!open || !rail) return;
+    function onPointerDown(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [open, rail]);
 
   const childActive = (tx: ActiveTransactionNavItem) =>
     currentPage === tx.id ||
     (tx.id === "active-case-study" && onCaseStudyWorkspace);
 
+  const renderRows = () =>
+    items.map((tx) => (
+      <ActiveTransactionNavRow
+        key={tx.id}
+        id={tx.id}
+        label={tx.label}
+        icon={tx.icon}
+        available={tx.available}
+        badgeCount={badges[tx.id]}
+        active={childActive(tx)}
+        onPrefetch={onPrefetch}
+      />
+    ));
+
   return (
-    <div className="my-0.5">
+    <div className="relative my-0.5" ref={rootRef}>
       <button
         type="button"
         className={navItemClasses({
           active: inSection,
           toggle: true,
+          rail,
         })}
+        title={rail ? ACTIVE_TRANSACTIONS_GROUP : undefined}
         aria-expanded={open}
         aria-controls="nav-active-transactions"
         onClick={() => setOpen((v) => !v)}
       >
         <NavIcon d={ACTIVE_TRANSACTIONS_GROUP_ICON} size={16} />
-        <span>{ACTIVE_TRANSACTIONS_GROUP}</span>
-        <NavDropdownChevron open={open} />
+        <span className={navLabelClasses(rail)}>{ACTIVE_TRANSACTIONS_GROUP}</span>
+        <NavDropdownChevron open={open} rail={rail} />
       </button>
-      {open ? (
+      {open && !rail ? (
         <div
           id="nav-active-transactions"
           className="ms-3 flex flex-col border-s border-white/[0.06] py-0.5 pb-1"
           role="group"
           aria-label={ACTIVE_TRANSACTIONS_GROUP}
         >
-          {items.map((tx) => (
-            <ActiveTransactionNavRow
-              key={tx.id}
-              id={tx.id}
-              label={tx.label}
-              icon={tx.icon}
-              available={tx.available}
-              badgeCount={badges[tx.id]}
-              active={childActive(tx)}
-              onPrefetch={onPrefetch}
-            />
-          ))}
+          {renderRows()}
         </div>
+      ) : null}
+      {open && rail ? (
+        <>
+          <div
+            id="nav-active-transactions"
+            className="ms-3 flex flex-col border-s border-white/[0.06] py-0.5 pb-1 lg:hidden"
+            role="group"
+            aria-label={ACTIVE_TRANSACTIONS_GROUP}
+          >
+            {renderRows()}
+          </div>
+          <NavFlyoutPanel label={ACTIVE_TRANSACTIONS_GROUP}>
+            {renderRows()}
+          </NavFlyoutPanel>
+        </>
       ) : null}
     </div>
   );
@@ -417,45 +535,58 @@ function SystemSettingsNavDropdown({
   currentPage,
   onPrefetch,
   role,
+  rail = false,
 }: {
   primaryItems: SystemSettingsNavItem[];
   fieldsItems: SystemFieldsNavItem[];
   currentPage: PageId;
   onPrefetch: (page: PageId) => void;
   role: RoleId;
+  rail?: boolean;
 }) {
   const inSection = isInSystemSettingsSection(currentPage, role);
   const [open, setOpen] = useState(inSection);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- auto-expand when route is under system settings.
-    if (inSection) setOpen(true);
-  }, [inSection]);
+    if (inSection && !rail) setOpen(true);
+  }, [inSection, rail]);
 
-  return (
-    <div className="my-0.5">
-      <button
-        type="button"
-        className={navItemClasses({
-          active: inSection,
-          toggle: true,
-        })}
-        aria-expanded={open}
-        aria-controls="nav-system-settings"
-        onClick={() => setOpen((v) => !v)}
-      >
-        <NavIcon d={SYSTEM_SETTINGS_GROUP_ICON} size={16} />
-        <span>{SYSTEM_SETTINGS_GROUP}</span>
-        <NavDropdownChevron open={open} />
-      </button>
-      {open ? (
-        <div
-          id="nav-system-settings"
-          className="ms-3 flex flex-col border-s border-white/[0.06] py-0.5 pb-1"
-          role="group"
-          aria-label={SYSTEM_SETTINGS_GROUP}
-        >
-          {primaryItems.map((item) => (
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- avoid leftover open flyouts when entering icon-rail.
+    if (rail) setOpen(false);
+  }, [rail]);
+
+  useEffect(() => {
+    if (!open || !rail) return;
+    function onPointerDown(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [open, rail]);
+
+  const renderBody = () => (
+    <>
+      {primaryItems.map((item) => (
+        <ActiveTransactionNavRow
+          key={item.id}
+          id={item.id}
+          label={item.label}
+          icon={item.icon}
+          available
+          active={currentPage === item.id}
+          onPrefetch={onPrefetch}
+        />
+      ))}
+      {fieldsItems.length > 0 ? (
+        <>
+          <div className="mx-2 mb-0.5 mt-1.5 flex items-center gap-1.5 px-2.5 pb-1 pt-1 text-[10px] font-medium tracking-wider text-[#6f7b90]">
+            <NavIcon d={SYSTEM_FIELDS_GROUP_ICON} size={11} />
+            <span>{SYSTEM_FIELDS_GROUP}</span>
+          </div>
+          {fieldsItems.map((item) => (
             <ActiveTransactionNavRow
               key={item.id}
               id={item.id}
@@ -466,26 +597,53 @@ function SystemSettingsNavDropdown({
               onPrefetch={onPrefetch}
             />
           ))}
-          {fieldsItems.length > 0 ? (
-            <>
-              <div className="mx-2 mb-0.5 mt-1.5 flex items-center gap-1.5 px-2.5 pb-1 pt-1 text-[10px] font-medium tracking-wider text-[#6f7b90]">
-                <NavIcon d={SYSTEM_FIELDS_GROUP_ICON} size={11} />
-                <span>{SYSTEM_FIELDS_GROUP}</span>
-              </div>
-              {fieldsItems.map((item) => (
-                <ActiveTransactionNavRow
-                  key={item.id}
-                  id={item.id}
-                  label={item.label}
-                  icon={item.icon}
-                  available
-                  active={currentPage === item.id}
-                  onPrefetch={onPrefetch}
-                />
-              ))}
-            </>
-          ) : null}
+        </>
+      ) : null}
+    </>
+  );
+
+  return (
+    <div className="relative my-0.5" ref={rootRef}>
+      <button
+        type="button"
+        className={navItemClasses({
+          active: inSection,
+          toggle: true,
+          rail,
+        })}
+        title={rail ? SYSTEM_SETTINGS_GROUP : undefined}
+        aria-expanded={open}
+        aria-controls="nav-system-settings"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <NavIcon d={SYSTEM_SETTINGS_GROUP_ICON} size={16} />
+        <span className={navLabelClasses(rail)}>{SYSTEM_SETTINGS_GROUP}</span>
+        <NavDropdownChevron open={open} rail={rail} />
+      </button>
+      {open && !rail ? (
+        <div
+          id="nav-system-settings"
+          className="ms-3 flex flex-col border-s border-white/[0.06] py-0.5 pb-1"
+          role="group"
+          aria-label={SYSTEM_SETTINGS_GROUP}
+        >
+          {renderBody()}
         </div>
+      ) : null}
+      {open && rail ? (
+        <>
+          <div
+            id="nav-system-settings"
+            className="ms-3 flex flex-col border-s border-white/[0.06] py-0.5 pb-1 lg:hidden"
+            role="group"
+            aria-label={SYSTEM_SETTINGS_GROUP}
+          >
+            {renderBody()}
+          </div>
+          <NavFlyoutPanel label={SYSTEM_SETTINGS_GROUP}>
+            {renderBody()}
+          </NavFlyoutPanel>
+        </>
       ) : null}
     </div>
   );
@@ -495,54 +653,91 @@ function OrphanScreensNavDropdown({
   items,
   currentPage,
   onPrefetch,
+  rail = false,
 }: {
   items: OrphanScreenNavItem[];
   currentPage: PageId;
   onPrefetch: (page: PageId) => void;
+  rail?: boolean;
 }) {
   const inSection = isInOrphanScreensSection(currentPage);
   const [open, setOpen] = useState(inSection);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- auto-expand when route is under orphan screens.
-    if (inSection) setOpen(true);
-  }, [inSection]);
+    if (inSection && !rail) setOpen(true);
+  }, [inSection, rail]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- avoid leftover open flyouts when entering icon-rail.
+    if (rail) setOpen(false);
+  }, [rail]);
+
+  useEffect(() => {
+    if (!open || !rail) return;
+    function onPointerDown(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [open, rail]);
+
+  const renderRows = () =>
+    items.map((item) => (
+      <ActiveTransactionNavRow
+        key={item.id}
+        id={item.id}
+        label={item.label}
+        icon={item.icon}
+        available={item.available}
+        active={currentPage === item.id}
+        onPrefetch={onPrefetch}
+      />
+    ));
 
   return (
-    <div className="my-0.5">
+    <div className="relative my-0.5" ref={rootRef}>
       <button
         type="button"
         className={navItemClasses({
           active: inSection,
           toggle: true,
+          rail,
         })}
+        title={rail ? ORPHAN_SCREENS_GROUP : undefined}
         aria-expanded={open}
         aria-controls="nav-orphan-screens"
         onClick={() => setOpen((v) => !v)}
       >
         <NavIcon d={ORPHAN_SCREENS_GROUP_ICON} size={16} />
-        <span>{ORPHAN_SCREENS_GROUP}</span>
-        <NavDropdownChevron open={open} />
+        <span className={navLabelClasses(rail)}>{ORPHAN_SCREENS_GROUP}</span>
+        <NavDropdownChevron open={open} rail={rail} />
       </button>
-      {open ? (
+      {open && !rail ? (
         <div
           id="nav-orphan-screens"
           className="ms-3 flex flex-col border-s border-white/[0.06] py-0.5 pb-1"
           role="group"
           aria-label={ORPHAN_SCREENS_GROUP}
         >
-          {items.map((item) => (
-            <ActiveTransactionNavRow
-              key={item.id}
-              id={item.id}
-              label={item.label}
-              icon={item.icon}
-              available={item.available}
-              active={currentPage === item.id}
-              onPrefetch={onPrefetch}
-            />
-          ))}
+          {renderRows()}
         </div>
+      ) : null}
+      {open && rail ? (
+        <>
+          <div
+            id="nav-orphan-screens"
+            className="ms-3 flex flex-col border-s border-white/[0.06] py-0.5 pb-1 lg:hidden"
+            role="group"
+            aria-label={ORPHAN_SCREENS_GROUP}
+          >
+            {renderRows()}
+          </div>
+          <NavFlyoutPanel label={ORPHAN_SCREENS_GROUP}>
+            {renderRows()}
+          </NavFlyoutPanel>
+        </>
       ) : null}
     </div>
   );
@@ -705,6 +900,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const { role, rolePages } = usePrototype();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const { refresh, busy: refreshBusy } = useAppDataRefresh();
   // Read sessionStorage once per render cycle, not multiple times.
@@ -803,6 +999,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- close the mobile drawer after route navigation completes.
     setMobileNavOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate desktop rail preference after mount.
+    setSidebarCollapsed(readSidebarCollapsed());
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        SIDEBAR_COLLAPSED_KEY,
+        sidebarCollapsed ? "1" : "0",
+      );
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }, [sidebarCollapsed]);
+
+  const desktopRail = sidebarCollapsed;
 
   const onCaseStudyWorkspace = pathname?.startsWith("/case-study/") ?? false;
   const onActiveSurveyRoute = pathParts[0] === "active-survey" && pathParts.length >= 2;
@@ -1032,16 +1246,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       ) : null}
         <div
           id="sidebar"
-        className={cn(
-          "flex h-svh w-sidebar shrink-0 flex-col overflow-hidden border-s border-white/[0.06] bg-sidebar text-white [color-scheme:dark]",
-          "max-lg:fixed max-lg:inset-y-0 max-lg:start-0 max-lg:z-50 max-lg:shadow-xl max-lg:transition-transform max-lg:duration-200 max-lg:ease-out",
-          "max-lg:pt-[env(safe-area-inset-top)] max-lg:pb-[env(safe-area-inset-bottom)]",
-          mobileNavOpen ? "max-lg:translate-x-0" : "max-lg:translate-x-full",
-          "lg:translate-x-0",
-        )}
-      >
-        <div className="relative flex items-center justify-center border-b border-white/[0.08] px-[18px] pb-[18px] pt-5">
-          <EjadaLogo className="h-auto w-[155px] max-w-full" />
+          data-collapsed={desktopRail ? "true" : undefined}
+          className={cn(
+            "group/sidebar flex h-svh w-sidebar shrink-0 flex-col overflow-hidden border-s border-white/[0.06] bg-sidebar text-white [color-scheme:dark]",
+            "transition-[width] duration-200 ease-out",
+            "max-lg:fixed max-lg:inset-y-0 max-lg:start-0 max-lg:z-50 max-lg:w-sidebar max-lg:shadow-xl max-lg:transition-transform max-lg:duration-200 max-lg:ease-out",
+            "max-lg:pt-[env(safe-area-inset-top)] max-lg:pb-[env(safe-area-inset-bottom)]",
+            mobileNavOpen ? "max-lg:translate-x-0" : "max-lg:translate-x-full",
+            "lg:translate-x-0",
+            desktopRail && "lg:w-sidebar-collapsed",
+          )}
+        >
+        <div
+          className={cn(
+            "relative flex items-center justify-center border-b border-white/[0.08] px-[18px] pb-[18px] pt-5",
+            desktopRail && "lg:px-2 lg:pb-3 lg:pt-4",
+          )}
+        >
+          <EjadaLogo
+            className={cn(
+              "h-auto w-[155px] max-w-full transition-[width] duration-200",
+              desktopRail && "lg:w-11",
+            )}
+          />
           <button
             type="button"
             className="absolute end-2 top-2 flex size-9 shrink-0 items-center justify-center rounded-lg text-white/70 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
@@ -1056,7 +1283,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <nav
             id="nav"
-            className="min-h-0 flex-1 overflow-y-auto px-3 pb-[22px] pt-3"
+            className={cn(
+              "min-h-0 flex-1 overflow-y-auto px-3 pb-[22px] pt-3",
+              desktopRail && "lg:px-1.5",
+            )}
             aria-label="التنقل الرئيسي"
           >
           {insertActiveTxAtNavStart && showActiveTransactionsGroup ? (
@@ -1069,6 +1299,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onPrefetch={prefetchPage}
               badges={activeTxBadges}
               role={role}
+              rail={desktopRail}
             />
           ) : null}
           {navRuns.map((run, ri) => {
@@ -1076,11 +1307,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             blocks.push(
               <div key={`run-${ri}`}>
                 {run.label ? (
-                  <div>
-                    <div className="px-3 pb-[7px] pt-[18px] text-[11px] font-bold tracking-[0.03em] text-[#6f7b90]">
-                      {run.label}
-                    </div>
+                  <div
+                    className={cn(
+                      "px-3 pb-[7px] pt-[18px] text-[11px] font-bold tracking-[0.03em] text-[#6f7b90]",
+                      desktopRail && "lg:hidden",
+                    )}
+                  >
+                    {run.label}
                   </div>
+                ) : null}
+                {run.label && desktopRail ? (
+                  <div
+                    className="mx-auto my-2 hidden h-px w-6 bg-white/10 lg:block"
+                    aria-hidden
+                  />
                 ) : null}
                 {run.items.map((item) => {
                   const nodes: React.ReactNode[] = [];
@@ -1096,6 +1336,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       badgeCount={
                         item.id === "failures" ? failuresNavBadge : undefined
                       }
+                      rail={desktopRail}
                     />,
                   );
                   const shouldInsertGeneral =
@@ -1107,11 +1348,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     // eslint-disable-next-line react-hooks/immutability -- render-local marker used only within this render pass.
                     generalNavInserted = true;
                     nodes.push(
-                      <div key="general-grp">
-                        <div className="px-3 pb-[7px] pt-[18px] text-[11px] font-bold tracking-[0.03em] text-[#6f7b90]">
-                          عام
-                        </div>
+                      <div
+                        key="general-grp"
+                        className={cn(
+                          "px-3 pb-[7px] pt-[18px] text-[11px] font-bold tracking-[0.03em] text-[#6f7b90]",
+                          desktopRail && "lg:hidden",
+                        )}
+                      >
+                        عام
                       </div>,
+                      desktopRail ? (
+                        <div
+                          key="general-grp-rail-sep"
+                          className="mx-auto my-2 hidden h-px w-6 bg-white/10 lg:block"
+                          aria-hidden
+                        />
+                      ) : null,
                       <SystemSettingsNavDropdown
                         key="system-settings-dropdown"
                         primaryItems={systemSettingsPrimaryItems}
@@ -1119,6 +1371,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         currentPage={currentPage}
                         onPrefetch={prefetchPage}
                         role={role}
+                        rail={desktopRail}
                       />,
                     );
                     if (showOrphanScreensGroup) {
@@ -1130,6 +1383,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           items={orphanScreenItems}
                           currentPage={currentPage}
                           onPrefetch={prefetchPage}
+                          rail={desktopRail}
                         />,
                       );
                     }
@@ -1153,6 +1407,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         onPrefetch={prefetchPage}
                         badges={activeTxBadges}
                         role={role}
+                        rail={desktopRail}
                       />,
                     );
                   }
@@ -1172,15 +1427,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onPrefetch={prefetchPage}
               badges={activeTxBadges}
               role={role}
+              rail={desktopRail}
             />
           ) : null}
           {!generalNavInserted && showGeneralGroup ? (
             <>
-              <div key="general-grp-fallback">
-                <div className="px-3 pb-[7px] pt-[18px] text-[11px] font-bold tracking-[0.03em] text-[#6f7b90]">
-                  عام
-                </div>
+              <div
+                key="general-grp-fallback"
+                className={cn(
+                  "px-3 pb-[7px] pt-[18px] text-[11px] font-bold tracking-[0.03em] text-[#6f7b90]",
+                  desktopRail && "lg:hidden",
+                )}
+              >
+                عام
               </div>
+              {desktopRail ? (
+                <div
+                  className="mx-auto my-2 hidden h-px w-6 bg-white/10 lg:block"
+                  aria-hidden
+                />
+              ) : null}
               <SystemSettingsNavDropdown
                 key="system-settings-dropdown-fallback"
                 primaryItems={systemSettingsPrimaryItems}
@@ -1188,6 +1454,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 currentPage={currentPage}
                 onPrefetch={prefetchPage}
                 role={role}
+                rail={desktopRail}
               />
             </>
           ) : null}
@@ -1197,6 +1464,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               items={orphanScreenItems}
               currentPage={currentPage}
               onPrefetch={prefetchPage}
+              rail={desktopRail}
             />
           ) : null}
           </nav>
@@ -1216,6 +1484,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <TopbarSvgIcon>
                 <MenuIcon />
+              </TopbarSvgIcon>
+            </button>
+            <button
+              type="button"
+              className={cn(topbarActionIconBtn, "hidden text-text-2 lg:inline-flex")}
+              aria-label={desktopRail ? "توسيع القائمة الجانبية" : "طي القائمة الجانبية"}
+              aria-pressed={desktopRail}
+              title={desktopRail ? "توسيع القائمة" : "طي القائمة"}
+              onClick={() => setSidebarCollapsed((v) => !v)}
+            >
+              <TopbarSvgIcon>
+                <SidebarPanelsIcon />
               </TopbarSvgIcon>
             </button>
             <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
