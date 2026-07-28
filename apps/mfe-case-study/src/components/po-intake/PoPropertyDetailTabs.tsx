@@ -955,14 +955,11 @@ export function PoPropertyDetailTabs({
           ) : null}
 
           {tab === "report" ? (
-            <>
-              <SectionHeader>نموذج دراسة الحالة</SectionHeader>
-              <PropertyDetailCaseStudyReport
-                record={record}
-                property={property}
-                task={task ?? null}
-              />
-            </>
+            <PropertyDetailCaseStudyReport
+              record={record}
+              property={property}
+              task={task ?? null}
+            />
           ) : null}
 
           {tab === "appraisal" ? (

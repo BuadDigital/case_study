@@ -229,7 +229,7 @@ public class WorkOrderValidatorTests
     }
 
     [Fact]
-    public void ValidatePropertyEnfath_allows_missing_deed_and_reg_for_bourse_path()
+    public void ValidatePropertyEnfath_requires_deed_or_real_estate_reg()
     {
         var dto = ValidDeedProperty();
         dto.DeedNumber = "";
@@ -246,8 +246,30 @@ public class WorkOrderValidatorTests
             null,
             (_, _) => false);
 
-        Assert.DoesNotContain(errors, e => e.Key == "deedNumber");
+        Assert.Equal("أدخل رقم الصك أو رقم التسجيل العيني", errors["deedNumber"]);
+        Assert.Equal("أدخل رقم الصك أو رقم التسجيل العيني", errors["realEstateRegNumber"]);
         Assert.DoesNotContain(errors, e => e.Key == "deedDate");
+    }
+
+    [Fact]
+    public void ValidatePropertyEnfath_allows_real_estate_reg_without_deed()
+    {
+        var dto = ValidDeedProperty();
+        dto.DeedNumber = "";
+        dto.DeedDate = null;
+        dto.RealEstateRegNumber = "1234567890123456";
+        dto.RealEstateRegDate = "2026-01-01";
+        dto.RealEstateRegFileName = "registry.pdf";
+        dto.AssignmentDocFileNames = ["decree.pdf"];
+
+        var errors = WorkOrderValidator.ValidatePropertyEnfath(
+            dto,
+            AssignmentType.Estates,
+            "PO-1",
+            null,
+            (_, _) => false);
+
+        Assert.DoesNotContain(errors, e => e.Key == "deedNumber");
         Assert.DoesNotContain(errors, e => e.Key == "realEstateRegNumber");
     }
 

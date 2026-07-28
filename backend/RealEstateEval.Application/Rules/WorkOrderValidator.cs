@@ -176,7 +176,16 @@ public static class WorkOrderValidator
         var hasDeed = !string.IsNullOrWhiteSpace(dto.DeedNumber);
         var hasReg = !string.IsNullOrWhiteSpace(dto.RealEstateRegNumber);
 
-        // رقم الصك وتاريخه اختياريان — بدون صك يمكن المتابعة لاستعلام البورصة.
+        // مطلوب أحدهما على الأقل: رقم الصك أو التسجيل العيني (أو كلاهما).
+        // التسجيل العيني عند التعبئة يتجاوز استعلام البورصة.
+        if (!hasDeed && !hasReg)
+        {
+            const string msg = "أدخل رقم الصك أو رقم التسجيل العيني";
+            errors["deedNumber"] = msg;
+            errors["realEstateRegNumber"] = msg;
+            return;
+        }
+
         if (hasDeed)
         {
             var digits = NormalizeIdentifierDigits(dto.DeedNumber);
