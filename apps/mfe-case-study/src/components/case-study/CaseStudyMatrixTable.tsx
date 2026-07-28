@@ -1,23 +1,9 @@
 "use client";
 import type { ReactNode } from "react";
 import { Button, Card, Note, cn } from "@platform/design-system";
-import {
-  CASE_STUDY_SECTION_QUESTIONS,
-  caseStudyAnswerKey,
-  type CaseStudyFormAnswer,
-  type CaseStudyQuestionSection,
-} from "../../lib/prototype/case-study-form-data";
+import { CASE_STUDY_SECTION_QUESTIONS, caseStudyAnswerKey, type CaseStudyFormAnswer, type CaseStudyQuestionSection, } from "../../lib/prototype/case-study-form-data";
 import type { PartyQuestionContribution } from "../../lib/prototype/case-study-party-answers";
-import {
-  answerToYn,
-  contributionsToPartyAnswers,
-  getMatrixConsensus,
-  getMatrixRowStatus,
-  PARTY_MATRIX_ORDER,
-  PARTY_MATRIX_SHORT,
-  type MatrixYn,
-  ynToAnswer,
-} from "./case-study-matrix-utils";
+import { answerToYn, contributionsToPartyAnswers, getMatrixConsensus, getMatrixRowStatus, PARTY_MATRIX_ORDER, PARTY_MATRIX_SHORT, type MatrixYn, ynToAnswer } from "./case-study-matrix-utils";
 
 function IconCheck({ size = 13 }: { size?: number }) {
   return (

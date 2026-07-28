@@ -24,13 +24,67 @@ export const ASSIGNMENT_TYPE_OPTIONS = [
 
 export type AssignmentType = (typeof ASSIGNMENT_TYPE_OPTIONS)[number];
 
-export function requiresAssignmentDecree(type: AssignmentType): boolean {
+/** التصنيف الأساسي على أمر العمل (مواصفة v2). */
+export const ASSIGNMENT_PRIMARY_OPTIONS = ["تنفيذ", "خاص"] as const;
+export type AssignmentPrimary = (typeof ASSIGNMENT_PRIMARY_OPTIONS)[number];
+
+/** الفرعي المعروض في الواجهة — يُخزَّن كـ AssignmentType. */
+export type AssignmentSecondary = "تنفيذ" | "تركات" | "خاص";
+
+export function assignmentPrimary(type: AssignmentType): AssignmentPrimary {
+  return type === "قطاع خاص" ? "خاص" : "تنفيذ";
+}
+
+export function assignmentSecondary(type: AssignmentType): AssignmentSecondary {
+  if (type === "تركات") return "تركات";
+  if (type === "قطاع خاص") return "خاص";
+  return "تنفيذ";
+}
+
+export function assignmentCompositeTag(type: AssignmentType): string {
+  return `${assignmentPrimary(type)} / ${assignmentSecondary(type)}`;
+}
+
+export function secondaryOptionsForPrimary(
+  primary: AssignmentPrimary,
+): AssignmentSecondary[] {
+  return primary === "خاص" ? ["خاص"] : ["تنفيذ", "تركات"];
+}
+
+export function assignmentTypeFromParts(
+  primary: AssignmentPrimary,
+  secondary: AssignmentSecondary,
+): AssignmentType {
+  if (primary === "خاص" || secondary === "خاص") return "قطاع خاص";
+  if (secondary === "تركات") return "تركات";
+  return "تنفيذ";
+}
+
+/** مسار المحكمة: رقم الطلب + محكمة/دائرة + قرار إسناد + زيارات/مفاتيح. */
+export function isCourtAssignmentPath(type: AssignmentType): boolean {
   return type === "تنفيذ";
 }
 
-/** محكمة ودائرة — لكل أنواع الإسناد (مطلوبة قبل توزيع المراجعة الحكومية). */
-export function showsCourtFields(_type: AssignmentType): boolean {
-  return true;
+export function requiresAssignmentDecree(type: AssignmentType): boolean {
+  return isCourtAssignmentPath(type);
+}
+
+/** محكمة ودائرة — تنفيذ/تنفيذ فقط. */
+export function showsCourtFields(type: AssignmentType): boolean {
+  return isCourtAssignmentPath(type);
+}
+
+export function requiresRequestNumberField(type: AssignmentType): boolean {
+  return isCourtAssignmentPath(type);
+}
+
+/** ضابط اتصال إجباري في التنفيذ والتركات، اختياري في الخاص. */
+export function requiresContacts(type: AssignmentType): boolean {
+  return type !== "قطاع خاص";
+}
+
+export function businessDaysForAssignmentType(type: AssignmentType): number {
+  return type === "قطاع خاص" ? 10 : 4;
 }
 
 export const DEED_STATUS_OPTIONS = ["فعال", "موقوف", "قيد التحقق"] as const;
@@ -53,6 +107,58 @@ export const RESTRICTION_TYPE_OPTIONS = [
   { value: "suspended", label: "موقوف" },
   { value: "other", label: "أخرى" },
 ] as const;
+
+export type RestrictionTypeValue =
+  (typeof RESTRICTION_TYPE_OPTIONS)[number]["value"];
+
+const RESTRICTION_TYPE_VALUE_SET = new Set<string>(
+  RESTRICTION_TYPE_OPTIONS.map((o) => o.value),
+);
+
+/** أنواع القيد المخزّنة مفصولة بفاصلة — دعم اختيار متعدد. */
+export function parseRestrictionTypes(value: string): RestrictionTypeValue[] {
+  const seen = new Set<string>();
+  const out: RestrictionTypeValue[] = [];
+  for (const part of value.split(/[,،]/)) {
+    const v = part.trim().toLowerCase();
+    if (!v || !RESTRICTION_TYPE_VALUE_SET.has(v) || seen.has(v)) continue;
+    seen.add(v);
+    out.push(v as RestrictionTypeValue);
+  }
+  return out;
+}
+
+export function joinRestrictionTypes(
+  values: readonly string[],
+): string {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of values) {
+    const v = raw.trim().toLowerCase();
+    if (!v || !RESTRICTION_TYPE_VALUE_SET.has(v) || seen.has(v)) continue;
+    seen.add(v);
+    out.push(v);
+  }
+  return out.join(",");
+}
+
+export function hasRestrictionType(
+  stored: string,
+  type: RestrictionTypeValue,
+): boolean {
+  return parseRestrictionTypes(stored).includes(type);
+}
+
+export function toggleRestrictionType(
+  stored: string,
+  type: RestrictionTypeValue,
+): string {
+  const current = parseRestrictionTypes(stored);
+  const next = current.includes(type)
+    ? current.filter((t) => t !== type)
+    : [...current, type];
+  return joinRestrictionTypes(next);
+}
 
 export const BOUNDARIES_AVAILABILITY_OPTIONS = [
   { value: "deed", label: "موضحة في الصك" },
@@ -278,6 +384,9 @@ export function propertyIdentifierFieldLabel(
     : "رقم الصك";
 }
 
+/** عناوين أعمدة الجداول — يشمل الصك والتسجيل العيني. */
+export const PROPERTY_IDENTIFIER_COLUMN_LABEL = "رقم الصك/التسجيل العيني";
+
 /** Digits only — used while typing (max length enforced). */
 export function sanitizePropertyIdentifierInput(
   value: string,
@@ -317,9 +426,18 @@ export function restrictionsPresentLabel(value: string): string {
 }
 
 export function restrictionTypeLabel(value: string): string {
-  const v = value.trim().toLowerCase();
-  if (!v) return "";
-  return RESTRICTION_TYPE_OPTIONS.find((o) => o.value === v)?.label ?? v;
+  const types = parseRestrictionTypes(value);
+  if (types.length === 0) {
+    const v = value.trim().toLowerCase();
+    if (!v) return "";
+    return RESTRICTION_TYPE_OPTIONS.find((o) => o.value === v)?.label ?? v;
+  }
+  return types
+    .map(
+      (t) =>
+        RESTRICTION_TYPE_OPTIONS.find((o) => o.value === t)?.label ?? t,
+    )
+    .join(" · ");
 }
 
 /** عرض موحّد للقيود + نوع القيد + سبب أخرى. */
@@ -333,13 +451,17 @@ export function formatPropertyRestrictionsLine(
   if (present === "no") return "لا توجد قيود";
   if (present !== "yes") return restrictionsPresentLabel(property.restrictionsPresent);
 
-  const typeLabel = restrictionTypeLabel(property.restrictionType);
-  if (!typeLabel) return "توجد قيود";
-  if (property.restrictionType.trim().toLowerCase() === "other") {
-    const reason = property.restrictionOtherReason.trim();
-    return reason ? `أخرى — ${reason}` : "أخرى";
-  }
-  return typeLabel;
+  const types = parseRestrictionTypes(property.restrictionType);
+  if (types.length === 0) return "توجد قيود";
+
+  const labels = types.map((t) => {
+    if (t === "other") {
+      const reason = property.restrictionOtherReason.trim();
+      return reason ? `أخرى — ${reason}` : "أخرى";
+    }
+    return RESTRICTION_TYPE_OPTIONS.find((o) => o.value === t)?.label ?? t;
+  });
+  return labels.join(" · ");
 }
 
 export function boundariesAvailabilityLabel(value: string): string {
@@ -749,6 +871,8 @@ export type PoPropertyIntake = {
   westBoundary: string;
   westBoundaryLengthM: string;
   city: string;
+  /** لقطة اسم المنطقة من الدليل. */
+  region: string;
   district: string;
   deedStatus: string;
   area: string;
@@ -758,6 +882,10 @@ export type PoPropertyIntake = {
   courtId: string;
   /** دليل المحاكم — مرجع الدائرة (اختياري). */
   circuitId: string;
+  /** دليل المناطق — مرجع المنطقة. */
+  regionId: string;
+  /** دليل المدن — مرجع المدينة. */
+  cityId: string;
   classification: string;
   propertyType: string;
   assignmentDocFileNames: string[];
@@ -822,6 +950,7 @@ export function emptyProperty(): PoPropertyIntake {
     boundariesExternalDocName: "",
     ...clearPropertyBoundaryFields(),
     city: "",
+    region: "",
     district: "",
     deedStatus: "",
     area: "",
@@ -829,6 +958,8 @@ export function emptyProperty(): PoPropertyIntake {
     circuit: "",
     courtId: "",
     circuitId: "",
+    regionId: "",
+    cityId: "",
     classification: "",
     propertyType: "",
     assignmentDocFileNames: [],
@@ -909,18 +1040,20 @@ function addBusinessDaysFromEffectiveStart(start: Date, count: number): Date {
   return d;
 }
 
-/** 4 أيام عمل (أحد–خميس) من تاريخ/وقت الاستلام من إنفاذ. */
+/** أيام عمل من تاريخ/وقت الاستلام من إنفاذ (4 تنفيذ/تركات، 10 خاص). */
 export function computeBusinessDueDate(
   receivedIso: string,
   receivedTime?: string,
+  businessDays: number = BUSINESS_DAYS_REQUIRED,
 ): string {
   const received = parseReceivedDateTime(receivedIso, receivedTime);
   if (!received) return "";
   const effective = getEffectiveStartDate(received);
-  const due = addBusinessDaysFromEffectiveStart(
-    effective,
-    BUSINESS_DAYS_REQUIRED,
-  );
+  const days =
+    Number.isFinite(businessDays) && businessDays >= 1
+      ? Math.floor(businessDays)
+      : BUSINESS_DAYS_REQUIRED;
+  const due = addBusinessDaysFromEffectiveStart(effective, days);
   return formatLocalIsoDate(due);
 }
 

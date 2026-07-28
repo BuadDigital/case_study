@@ -1,5 +1,6 @@
 import { CASE_STUDY_SIGNATURE_IMAGE, CASE_STUDY_STAMP_IMAGE } from "../../lib/prototype/case-study-form-data";
 import type { CaseStudyReportApproval } from "../../lib/prototype/case-study-report-model";
+import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../../lib/prototype/po-intake-data";
 import "./case-study-report.css";
 
 type Props = {
@@ -23,7 +24,7 @@ export function CaseStudyApprovalSection({
         <table className="cs-form-sig-table">
           <thead>
             <tr>
-              <th>رقم الصك</th>
+              <th>{PROPERTY_IDENTIFIER_COLUMN_LABEL}</th>
               <th>معتمد التقرير</th>
               <th>التاريخ</th>
               <th>التوقيع</th>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Note } from "@platform/design-system";
+import { Note, Spinner } from "@platform/design-system";
 import { AppModal } from "../ui/AppModal";
 import {
   opsBtnGhost,
@@ -87,10 +87,11 @@ export function ReassignOperationsTaskModal({
             type="button"
             className={opsBtnPrimary}
             disabled={busy}
+            aria-busy={busy || undefined}
             onClick={onSubmit}
           >
-            <ArrowRightIcon />
-            <span>إعادة التوجيه</span>
+            {busy ? <Spinner /> : <ArrowRightIcon />}
+            <span>{busy ? "جاري إعادة التوجيه…" : "إعادة التوجيه"}</span>
           </button>
         </div>
       }

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { InlineLoadingSkeleton, cn, useToast } from "@platform/design-system";
+import { InlineLoadingSkeleton, Spinner, cn, useToast } from "@platform/design-system";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import type { WorkflowTask } from "@case-study/mfe";
 import { activeSurveyEntryPath } from "@case-study/mfe/lib/my-task-routes";
@@ -877,6 +877,7 @@ export function EngineeringSurveyWorkPanel({
             type="button"
             className={engPrimaryBtnClassName}
             disabled={savingLocal}
+            aria-busy={savingLocal || undefined}
             onClick={() => {
               void (async () => {
                 setSavingLocal(true);
@@ -888,7 +889,10 @@ export function EngineeringSurveyWorkPanel({
               })();
             }}
           >
-            {savingLocal ? "جاري الإرسال…" : "إرسال الرفع المساحي"}
+            {savingLocal ? <Spinner /> : null}
+            <span>
+              {savingLocal ? "جاري الإرسال…" : "إرسال الرفع المساحي"}
+            </span>
           </button>
         </div>
       ) : null}

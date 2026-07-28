@@ -366,7 +366,8 @@ export function ValuationRequestsView() {
                           <Button
                             size="sm"
                             variant="accent"
-                            disabled={submitReport.isPending}
+                            loading={submitReport.isPending}
+                            showActionToast={false}
                             onClick={() => void handleSubmitReport(v.recordId)}
                           >
                             رفع التقرير
@@ -374,7 +375,8 @@ export function ValuationRequestsView() {
                           <Button
                             size="sm"
                             variant="danger"
-                            disabled={submitImpediment.isPending}
+                            loading={submitImpediment.isPending}
+                            showActionToast={false}
                             onClick={() => void handleImpediment(v.recordId)}
                           >
                             تعذّر
@@ -452,7 +454,8 @@ export function ValuationRequestsView() {
                             size="sm"
                             variant="accent"
                             className="min-h-11"
-                            disabled={submitReport.isPending}
+                            loading={submitReport.isPending}
+                            showActionToast={false}
                             onClick={() => void handleSubmitReport(v.recordId)}
                           >
                             رفع التقرير
@@ -461,7 +464,8 @@ export function ValuationRequestsView() {
                             size="sm"
                             variant="danger"
                             className="min-h-11"
-                            disabled={submitImpediment.isPending}
+                            loading={submitImpediment.isPending}
+                            showActionToast={false}
                             onClick={() => void handleImpediment(v.recordId)}
                           >
                             تعذّر

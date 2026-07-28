@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -28,6 +28,13 @@
     <ProjectReference Include="..\RealEstateEval.Application\RealEstateEval.Application.csproj" />
     <ProjectReference Include="..\RealEstateEval.Domain\RealEstateEval.Domain.csproj" />
     <ProjectReference Include="..\shared\RealEstateEval.Shared.Contracts\RealEstateEval.Shared.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Data\Seed\regions_cities.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <EmbeddedResource Include="Data\Seed\regions_cities.json" />
   </ItemGroup>
 
 </Project>

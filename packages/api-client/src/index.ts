@@ -111,6 +111,17 @@ export {
 } from "./courts";
 
 export {
+  listAllSelectableCities,
+  listSelectableCities,
+  listSelectableRegions,
+  type RegionsApiConfig,
+  type SelectableCitiesResult,
+  type SelectableCityDto,
+  type SelectableRegionDto,
+  type SelectableRegionsResult,
+} from "./regions";
+
+export {
   advanceWorkflowTaskAfterBourse,
   advanceWorkflowTaskAfterEnfath,
   confirmWorkflowTaskDistribution,

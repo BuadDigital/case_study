@@ -4,6 +4,8 @@ import {
   BOURSE_INQUIRY_IDENTIFIER_STATUS,
   isBourseInquiryIdentifier,
   requiresAssignmentDecree,
+  requiresContacts,
+  requiresRequestNumberField,
   requiredPropertyIdentifierDigitLength,
   sanitizePropertyIdentifierInput,
   showsCourtFields,
@@ -72,6 +74,8 @@ export function PoPropertyEnfathForm({
   const [priorPo, setPriorPo] = useState<string | null>(null);
   const showAssignmentDecree = requiresAssignmentDecree(assignmentType);
   const showCourt = showsCourtFields(assignmentType);
+  const showRequestNumber = requiresRequestNumberField(assignmentType);
+  const contactsRequired = requiresContacts(assignmentType);
   const isBourseId = isBourseInquiryIdentifier(property.identifierType);
   const identifierDigitLength = requiredPropertyIdentifierDigitLength("deed");
   const realEstateRegDigitLength = requiredPropertyIdentifierDigitLength(
@@ -250,15 +254,17 @@ export function PoPropertyEnfathForm({
             error={fieldErrors.assignmentMandateDate}
             onChange={(v) => onPatch("assignmentMandateDate", v)}
           />
-          <RegField
-            id="request_number_bourse"
-            label="رقم الطلب"
-            required
-            dir="ltr"
-            value={property.requestNumber}
-            error={fieldErrors.requestNumber}
-            onChange={(v) => onPatch("requestNumber", v)}
-          />
+          {showRequestNumber ? (
+            <RegField
+              id="request_number_bourse"
+              label="رقم الطلب"
+              required
+              dir="ltr"
+              value={property.requestNumber}
+              error={fieldErrors.requestNumber}
+              onChange={(v) => onPatch("requestNumber", v)}
+            />
+          ) : null}
           <div className="grid grid-cols-1 gap-3 sm:col-span-2 sm:grid-cols-2">
             <RegField
               id="plan_number_bourse"
@@ -294,16 +300,18 @@ export function PoPropertyEnfathForm({
             error={fieldErrors.ownerName}
             onChange={(v) => onPatch("ownerName", v)}
           />
-          <CourtCircuitSelects
-            courtId="court_bourse"
-            circuitId="circuit_bourse"
-            court={property.court}
-            circuit={property.circuit}
-            propertyCourtId={property.courtId}
-            propertyCircuitId={property.circuitId}
-            fieldErrors={fieldErrors}
-            onPatch={onPatch}
-          />
+          {showCourt ? (
+            <CourtCircuitSelects
+              courtId="court_bourse"
+              circuitId="circuit_bourse"
+              court={property.court}
+              circuit={property.circuit}
+              propertyCourtId={property.courtId}
+              propertyCircuitId={property.circuitId}
+              fieldErrors={fieldErrors}
+              onPatch={onPatch}
+            />
+          ) : null}
         </FormRow>
       ) : showDeedFields ? (
       <FormRow>
@@ -366,54 +374,64 @@ export function PoPropertyEnfathForm({
           onChange={(v) => onPatch("assignmentMandateDate", v)}
         />
         <div className="w-full">
-          <label
-            htmlFor="has_request_number"
-            className="mb-1 flex cursor-pointer items-center gap-1.5 text-[11px] font-semibold text-text-2"
-          >
-            <input
-              id="has_request_number"
-              type="checkbox"
-              className="size-3.5 accent-[var(--color-primary)]"
-              checked={hasRequestNumber}
-              onChange={(e) => {
-                const checked = e.target.checked;
-                onPatch("hasRequestNumber", checked);
-                if (!checked) onPatch("requestNumber", "");
-              }}
-            />
-            <span>
-              رقم الطلب
-              {hasRequestNumber ? (
-                <span className="text-danger-text"> *</span>
-              ) : null}
-            </span>
-          </label>
-          {hasRequestNumber ? (
+          {showRequestNumber ? (
             <>
-              <Input
-                id="request_number"
-                dir="ltr"
-                hasError={Boolean(fieldErrors.requestNumber)}
-                value={property.requestNumber}
-                onChange={(e) => onPatch("requestNumber", e.target.value)}
-                aria-invalid={Boolean(fieldErrors.requestNumber)}
-                aria-describedby={
-                  fieldErrors.requestNumber ? "request_number-error" : undefined
-                }
-              />
-              {fieldErrors.requestNumber ? (
-                <p
-                  id="request_number-error"
-                  className="mt-1 text-[10px] text-danger-text"
-                  role="alert"
-                >
-                  {fieldErrors.requestNumber}
+              <label
+                htmlFor="has_request_number"
+                className="mb-1 flex cursor-pointer items-center gap-1.5 text-[11px] font-semibold text-text-2"
+              >
+                <input
+                  id="has_request_number"
+                  type="checkbox"
+                  className="size-3.5 accent-[var(--color-primary)]"
+                  checked={hasRequestNumber}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    onPatch("hasRequestNumber", checked);
+                    if (!checked) onPatch("requestNumber", "");
+                  }}
+                />
+                <span>
+                  رقم الطلب
+                  {hasRequestNumber ? (
+                    <span className="text-danger-text"> *</span>
+                  ) : null}
+                </span>
+              </label>
+              {hasRequestNumber ? (
+                <>
+                  <Input
+                    id="request_number"
+                    dir="ltr"
+                    hasError={Boolean(fieldErrors.requestNumber)}
+                    value={property.requestNumber}
+                    onChange={(e) => onPatch("requestNumber", e.target.value)}
+                    aria-invalid={Boolean(fieldErrors.requestNumber)}
+                    aria-describedby={
+                      fieldErrors.requestNumber
+                        ? "request_number-error"
+                        : undefined
+                    }
+                  />
+                  {fieldErrors.requestNumber ? (
+                    <p
+                      id="request_number-error"
+                      className="mt-1 text-[10px] text-danger-text"
+                      role="alert"
+                    >
+                      {fieldErrors.requestNumber}
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <p className="m-0 text-[10px] text-text-3">
+                  لا يوجد رقم طلب — يمكن تجاوز الحقل
                 </p>
-              ) : null}
+              )}
             </>
           ) : (
             <p className="m-0 text-[10px] text-text-3">
-              لا يوجد رقم طلب — يمكن تجاوز الحقل
+              رقم الطلب لا ينطبق على هذا النوع من الإسناد (مرجع محكمة).
             </p>
           )}
         </div>
@@ -628,7 +646,16 @@ export function PoPropertyEnfathForm({
 
       {showExtended ? (
       <div className="mt-5">
-        <h3 className="mb-2.5 text-[13px] font-bold">ضباط الاتصال</h3>
+        <h3 className="mb-2.5 text-[13px] font-bold">
+          ضباط الاتصال
+          {contactsRequired ? (
+            <span className="text-danger-text"> *</span>
+          ) : (
+            <span className="ms-1 text-[11px] font-normal text-text-3">
+              (اختياري)
+            </span>
+          )}
+        </h3>
         {fieldErrors._contacts ? (
           <Note tone="warn" className="mb-3">
             {fieldErrors._contacts}

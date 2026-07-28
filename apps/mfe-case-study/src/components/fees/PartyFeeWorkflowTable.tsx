@@ -62,7 +62,8 @@ function FeeRowActions({
           type="button"
           size="sm"
           variant="primary"
-          disabled={busy}
+          loading={busy}
+          showActionToast={false}
           onClick={() => onAct(row, "submit-to-supervisor")}
         >
           رفع للمشرف
@@ -73,7 +74,8 @@ function FeeRowActions({
           type="button"
           size="sm"
           variant="primary"
-          disabled={busy}
+          loading={busy}
+          showActionToast={false}
           onClick={() => onAct(row, "office-approve-discount")}
         >
           موافقة على الحسم
@@ -84,7 +86,8 @@ function FeeRowActions({
           type="button"
           size="sm"
           variant="outline"
-          disabled={busy}
+          loading={busy}
+          showActionToast={false}
           onClick={() => onReason(row, "office-dispute")}
         >
           اعتراض
@@ -95,7 +98,8 @@ function FeeRowActions({
           type="button"
           size="sm"
           variant="primary"
-          disabled={busy}
+          loading={busy}
+          showActionToast={false}
           onClick={() => onAct(row, "approve-to-finance")}
         >
           اعتماد ← المالية
@@ -106,7 +110,8 @@ function FeeRowActions({
           type="button"
           size="sm"
           variant="primary"
-          disabled={busy}
+          loading={busy}
+          showActionToast={false}
           onClick={() => onAct(row, "resolve-dispute")}
         >
           حسم الخلاف ← جاهز
@@ -120,7 +125,8 @@ function FeeRowActions({
             type="button"
             size="sm"
             variant="primary"
-            disabled={busy}
+            loading={busy}
+            showActionToast={false}
             onClick={() => onAct(row, "resend-to-finance")}
           >
             إعادة الإرسال
@@ -129,7 +135,8 @@ function FeeRowActions({
             type="button"
             size="sm"
             variant="outline"
-            disabled={busy}
+            loading={busy}
+            showActionToast={false}
             onClick={() => onAct(row, "return-to-office")}
           >
             إرجاع للمكتب
@@ -141,7 +148,8 @@ function FeeRowActions({
           type="button"
           size="sm"
           variant="primary"
-          disabled={busy}
+          loading={busy}
+          showActionToast={false}
           onClick={() => onAct(row, "disburse")}
         >
           صرف
@@ -155,7 +163,8 @@ function FeeRowActions({
             type="button"
             size="sm"
             variant="outline"
-            disabled={busy}
+            loading={busy}
+            showActionToast={false}
             onClick={() => onReason(row, "return-to-supervisor")}
           >
             إرجاع للمشرف
@@ -164,7 +173,8 @@ function FeeRowActions({
             type="button"
             size="sm"
             variant="ghost"
-            disabled={busy}
+            loading={busy}
+            showActionToast={false}
             onClick={() => onReason(row, "inquiry-to-office")}
           >
             استفسار للمكتب

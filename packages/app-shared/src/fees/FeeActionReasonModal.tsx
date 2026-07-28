@@ -90,7 +90,8 @@ export function FeeActionReasonModal({
             type="button"
             size="sm"
             variant="primary"
-            disabled={busy}
+            loading={busy}
+            showActionToast={false}
             onClick={() => void submit()}
           >
             {confirmLabel}

@@ -13,6 +13,89 @@ public class WorkOrderValidatorTests
     public void RequiresAssignmentDecree_only_for_execution(AssignmentType type, bool expected) =>
         Assert.Equal(expected, WorkOrderValidator.RequiresAssignmentDecree(type));
 
+    [Theory]
+    [InlineData(AssignmentType.Execution, true)]
+    [InlineData(AssignmentType.Estates, false)]
+    [InlineData(AssignmentType.PrivateSector, false)]
+    public void Court_path_only_for_execution(AssignmentType type, bool expected)
+    {
+        Assert.Equal(expected, AssignmentTypeRules.RequiresCourtAndCircuit(type));
+        Assert.Equal(expected, AssignmentTypeRules.RequiresRequestNumber(type));
+        Assert.Equal(expected, AssignmentTypeRules.IsCourtPath(type));
+    }
+
+    [Theory]
+    [InlineData(AssignmentType.Execution, true)]
+    [InlineData(AssignmentType.Estates, true)]
+    [InlineData(AssignmentType.PrivateSector, false)]
+    public void Contacts_required_except_private(AssignmentType type, bool expected) =>
+        Assert.Equal(expected, AssignmentTypeRules.RequiresContacts(type));
+
+    [Theory]
+    [InlineData(AssignmentType.Execution, 4)]
+    [InlineData(AssignmentType.Estates, 4)]
+    [InlineData(AssignmentType.PrivateSector, 10)]
+    public void Business_days_by_assignment_type(AssignmentType type, int expected) =>
+        Assert.Equal(expected, AssignmentTypeRules.BusinessDaysRequired(type));
+
+    [Fact]
+    public void ValidatePropertyEnfath_skips_court_for_estates()
+    {
+        var dto = ValidDeedProperty();
+        dto.Court = null;
+        dto.Circuit = null;
+        dto.RequestNumber = null;
+        dto.HasRequestNumber = true;
+
+        var errors = WorkOrderValidator.ValidatePropertyEnfath(
+            dto,
+            AssignmentType.Estates,
+            "PO-1",
+            null,
+            (_, _) => false);
+
+        Assert.DoesNotContain(errors, e => e.Key == "court");
+        Assert.DoesNotContain(errors, e => e.Key == "circuit");
+        Assert.DoesNotContain(errors, e => e.Key == "requestNumber");
+    }
+
+    [Fact]
+    public void ValidatePropertyEnfath_allows_empty_contacts_for_private()
+    {
+        var dto = ValidDeedProperty();
+        dto.Court = null;
+        dto.Circuit = null;
+        dto.Contacts = [];
+
+        var errors = WorkOrderValidator.ValidatePropertyEnfath(
+            dto,
+            AssignmentType.PrivateSector,
+            "PO-1",
+            null,
+            (_, _) => false);
+
+        Assert.DoesNotContain(errors, e => e.Key == "_contacts");
+        Assert.DoesNotContain(errors, e => e.Key == "court");
+    }
+
+    [Fact]
+    public void ValidatePropertyEnfath_requires_court_for_execution()
+    {
+        var dto = ValidDeedProperty();
+        dto.Court = null;
+        dto.Circuit = null;
+        dto.AssignmentDocFileNames = ["decree.pdf"];
+
+        var errors = WorkOrderValidator.ValidatePropertyEnfath(
+            dto,
+            AssignmentType.Execution,
+            "PO-1",
+            null,
+            (_, _) => false);
+
+        Assert.Equal("المحكمة مطلوبة", errors["court"]);
+        Assert.Equal("الدائرة مطلوبة", errors["circuit"]);
+    }
     [Fact]
     public void ValidateHeader_returns_no_errors_for_valid_request()
     {
@@ -311,7 +394,7 @@ public class WorkOrderValidatorTests
             RestrictionsPresent = "yes",
         });
 
-        Assert.Equal("نوع القيد مطلوب", errors["restrictionType"]);
+        Assert.Equal("اختر نوع قيد واحداً على الأقل", errors["restrictionType"]);
     }
 
     [Fact]
@@ -323,6 +406,38 @@ public class WorkOrderValidatorTests
             District = "Al Olaya",
             RestrictionsPresent = "yes",
             RestrictionType = "other",
+        });
+
+        Assert.Equal("سبب القيد مطلوب عند اختيار أخرى", errors["restrictionOtherReason"]);
+    }
+
+    [Fact]
+    public void ValidatePropertyBourse_allows_multiple_restriction_types()
+    {
+        var errors = WorkOrderValidator.ValidatePropertyBourse(new UpdatePropertyBourseRequest
+        {
+            City = "Riyadh",
+            District = "Al Olaya",
+            Classification = "residential",
+            PropertyType = "land",
+            RestrictionsPresent = "yes",
+            RestrictionType = "mortgaged,seized",
+            BoundariesAvailability = "available",
+        });
+
+        Assert.DoesNotContain(errors, e => e.Key == "restrictionType");
+        Assert.DoesNotContain(errors, e => e.Key == "restrictionOtherReason");
+    }
+
+    [Fact]
+    public void ValidatePropertyBourse_requires_other_reason_when_other_among_multiple()
+    {
+        var errors = WorkOrderValidator.ValidatePropertyBourse(new UpdatePropertyBourseRequest
+        {
+            City = "Riyadh",
+            District = "Al Olaya",
+            RestrictionsPresent = "yes",
+            RestrictionType = "mortgaged,other",
         });
 
         Assert.Equal("سبب القيد مطلوب عند اختيار أخرى", errors["restrictionOtherReason"]);
@@ -362,6 +477,8 @@ public class WorkOrderValidatorTests
         AssignmentMandateDate = "2026-01-01",
         DeedDate = "2026-01-01",
         OwnerName = "Owner",
+        Court = "محكمة التنفيذ",
+        Circuit = "1",
         DelegationLetterFileNames = ["letter.pdf"],
         Contacts =
         [

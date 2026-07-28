@@ -46,6 +46,7 @@ export type WorkOrderPropertyDto = {
   westBoundary?: string;
   westBoundaryLengthM?: string;
   city?: string;
+  region?: string;
   district?: string;
   deedStatus?: string;
   area?: string;
@@ -53,6 +54,8 @@ export type WorkOrderPropertyDto = {
   circuit?: string;
   courtId?: string;
   circuitId?: string;
+  regionId?: string;
+  cityId?: string;
   classification?: string;
   propertyType?: string;
   assignmentDocFileNames?: string[];
@@ -128,6 +131,9 @@ export type UpdateWorkOrderHeaderRequest = {
 
 export type UpdatePropertyBourseRequest = {
   city: string;
+  region?: string;
+  regionId?: string;
+  cityId?: string;
   district: string;
   classification: string;
   propertyType: string;

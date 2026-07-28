@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Note, cn } from "@platform/design-system";
+import { Note, Spinner, cn } from "@platform/design-system";
 import { AppModal } from "../ui/AppModal";
 import {
   opsBtnGhost,
@@ -135,14 +135,15 @@ export function ReopenCompletedTransactionModal({
           <button
             type="button"
             disabled={busy}
+            aria-busy={busy || undefined}
             onClick={() => void submit()}
             className={cn(
               "inline-flex min-h-11 items-center gap-[7px] rounded-lg border-none bg-[#c0553d] px-4 py-2.5 font-[inherit] text-[13px] font-bold text-white transition-colors",
               "enabled:hover:bg-[#a5432e] disabled:cursor-not-allowed disabled:opacity-55",
             )}
           >
-            <LockOpenIcon size={16} />
-            <span>فتح المعاملة</span>
+            {busy ? <Spinner /> : <LockOpenIcon size={16} />}
+            <span>{busy ? "جاري الفتح…" : "فتح المعاملة"}</span>
           </button>
         </div>
       }

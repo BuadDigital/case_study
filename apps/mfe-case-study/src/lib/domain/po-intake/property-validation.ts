@@ -67,7 +67,11 @@ export function contactsForApi(contacts: PoContact[]): PoContact[] {
   }));
 }
 
-export function validatePropertyContacts(p: PoPropertyIntake): FieldErrors {
+export function validatePropertyContacts(
+  p: PoPropertyIntake,
+  options?: { requireAtLeastOne?: boolean },
+): FieldErrors {
+  const requireAtLeastOne = options?.requireAtLeastOne !== false;
   const errors: FieldErrors = {};
   let hasValid = false;
   p.contacts.forEach((c, i) => {
@@ -83,7 +87,7 @@ export function validatePropertyContacts(p: PoPropertyIntake): FieldErrors {
     if (!role) errors[`contact_role_${i}`] = "صفة الضابط مطلوبة";
     if (isValidContactEntry(c)) hasValid = true;
   });
-  if (!hasValid) {
+  if (requireAtLeastOne && !hasValid) {
     errors._contacts = "أضف ضابط اتصال واحداً على الأقل (جوال + صفة)";
   }
   return errors;

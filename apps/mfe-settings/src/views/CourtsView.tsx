@@ -102,12 +102,14 @@ function ActionButton({
   tone = "default",
   children,
   disabled,
+  loading = false,
   onClick,
 }: {
   label: string;
   tone?: "default" | "danger" | "success";
   children: React.ReactNode;
   disabled?: boolean;
+  loading?: boolean;
   onClick: () => void;
 }) {
   const toneClass =
@@ -121,11 +123,12 @@ function ActionButton({
       type="button"
       title={label}
       aria-label={label}
-      disabled={disabled}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       onClick={onClick}
       className={`inline-flex size-7 items-center justify-center rounded-md border-0 bg-transparent text-sm transition-colors disabled:opacity-40 ${toneClass}`}
     >
-      {children}
+      {loading ? <Spinner className="size-3.5" /> : children}
     </button>
   );
 }
@@ -680,6 +683,7 @@ function CourtRows({
                 label={court.isActive ? "تعطيل المحكمة" : "تفعيل المحكمة"}
                 tone={court.isActive ? "danger" : "success"}
                 disabled={Boolean(busyKey)}
+                loading={busyKey === `court-status:${court.id}`}
                 onClick={onToggleCourtStatus}
               >
                 {court.isActive ? "⊘" : "✓"}
@@ -731,6 +735,7 @@ function CourtRows({
                               label={circuit.isActive ? "تعطيل الدائرة" : "تفعيل الدائرة"}
                               tone={circuit.isActive ? "danger" : "success"}
                               disabled={Boolean(busyKey)}
+                              loading={busyKey === `circuit-status:${circuit.id}`}
                               onClick={() => onToggleCircuitStatus(circuit)}
                             >
                               {circuit.isActive ? "⊘" : "✓"}

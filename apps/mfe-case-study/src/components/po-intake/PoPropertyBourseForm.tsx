@@ -5,17 +5,19 @@ import {
   BOURSE_DEED_VITALITY_ACTIVE,
   BOURSE_DEED_VITALITY_INACTIVE,
   BOURSE_OBSTRUCTION_LABEL,
-  CITY_OPTIONS,
   DEED_STATUS_OPTIONS,
   RESTRICTIONS_PRESENT_OPTIONS,
   RESTRICTION_TYPE_OPTIONS,
   boundariesDetailFieldsOptional,
   boundariesMarkedUnavailable,
   clearPropertyBoundaryFields,
+  hasRestrictionType,
+  toggleRestrictionType,
   type BourseDeedVitality,
   type PoPropertyIntake,
 } from "../../lib/prototype/po-intake-data";
 import { PoPropertyBoundariesEntrySection } from "./PoPropertyBoundariesEntrySection";
+import { RegionCitySelects } from "./RegionCitySelects";
 import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
 import type { FieldErrors } from "@platform/app-shared/registration/registration-utils";
 import { cn, FormRow, Label, Note } from "@platform/design-system";
@@ -122,14 +124,10 @@ export function PoPropertyBourseForm({
 
       {!obstructionPath ? (
         <FormRow>
-          <RegSelect
-            id="city"
-            label="المدينة"
-            required
-            options={[...CITY_OPTIONS]}
-            value={property.city}
-            error={fieldErrors.city}
-            onChange={(v) => onPatch("city", v)}
+          <RegionCitySelects
+            property={property}
+            fieldErrors={fieldErrors}
+            onPatch={onPatch}
           />
           <RegField
             id="district"
@@ -180,20 +178,49 @@ export function PoPropertyBourseForm({
               ))}
             </div>
             {property.restrictionsPresent === "yes" ? (
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <RegSelect
-                  id="restriction_type"
-                  label="نوع القيد"
-                  required
-                  options={[...RESTRICTION_TYPE_OPTIONS]}
-                  value={property.restrictionType}
-                  error={fieldErrors.restrictionType}
-                  onChange={(v) => {
-                    onPatch("restrictionType", v);
-                    if (v !== "other") onPatch("restrictionOtherReason", "");
-                  }}
-                />
-                {property.restrictionType === "other" ? (
+              <div className="mt-3 space-y-3">
+                <div>
+                  <Label className="mb-1 text-[11px]">
+                    نوع القيد <span className="text-danger-text">*</span>
+                  </Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {RESTRICTION_TYPE_OPTIONS.map((opt) => {
+                      const selected = hasRestrictionType(
+                        property.restrictionType,
+                        opt.value,
+                      );
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          className={pillClass(selected)}
+                          onClick={() => {
+                            const next = toggleRestrictionType(
+                              property.restrictionType,
+                              opt.value,
+                            );
+                            onPatch("restrictionType", next);
+                            if (!hasRestrictionType(next, "other")) {
+                              onPatch("restrictionOtherReason", "");
+                            }
+                          }}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {fieldErrors.restrictionType ? (
+                    <p className="mt-1 text-[10px] text-danger-text" role="alert">
+                      {fieldErrors.restrictionType}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-[10px] text-text-3">
+                      يمكن اختيار أكثر من نوع
+                    </p>
+                  )}
+                </div>
+                {hasRestrictionType(property.restrictionType, "other") ? (
                   <RegField
                     id="restriction_other_reason"
                     label="سبب القيد"

@@ -17,7 +17,7 @@ export const SCREEN_CATALOG_PAGE_NAMES: Partial<Record<PageId, string>> = {
   "suspended-transactions": "المعاملات المعلقة",
   "valuation-requests": "طلبات التقييم — لوحة عامة",
   financial: "التقارير المالية",
-  "property-inspection": "معاينة العقار — قائمة المهام",
+  "property-inspection": "معاينة العقار — شاشة يتيمة",
   "government-review": "المراجعة الحكومية — شاشة يتيمة",
   "valuation-coordination": "استلام التقييم — قائمة المهام",
   "property-appraisal": "تقييم العقار — قائمة المهام",

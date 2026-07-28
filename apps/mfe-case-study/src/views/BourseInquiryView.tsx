@@ -6,7 +6,6 @@ import {
   Button,
   Card,
   CardBody,
-  CardHeader,
   EmptyState,
   Note,
   OperationalPanel,
@@ -40,6 +39,7 @@ import {
   formatDateAr,
   formatPendingBourseDeedDisplay,
   formatPoDisplay,
+  PROPERTY_IDENTIFIER_COLUMN_LABEL,
   type PoPropertyIntake,
 } from "../lib/prototype/po-intake-data";
 import {
@@ -303,7 +303,7 @@ export function BourseInquiryView() {
         <OperationalPanel
           className={cn(
             "min-h-0 flex-1",
-            hasRail && panelOpen ? undefined : "flex-none",
+            hasRail ? undefined : "flex-none",
             "max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none",
           )}
         >
@@ -325,7 +325,7 @@ export function BourseInquiryView() {
                 <Table pending={queuePending}>
                   <THead>
                     <Tr hoverable={false}>
-                      <Th>رقم الصك</Th>
+                      <Th>{PROPERTY_IDENTIFIER_COLUMN_LABEL}</Th>
                       <Th>تاريخ الصك</Th>
                       <Th>أمر العمل</Th>
                       <Th>رقم الطلب</Th>
@@ -438,50 +438,22 @@ export function BourseInquiryView() {
 
   const sidePanel = hasRail ? (
         selected ? (
-          <OperationalPanel className="min-h-0 h-fit self-start">
-            <Card className="flex max-h-none flex-col overflow-hidden rounded-none border-none bg-transparent shadow-none">
-            <CardHeader className="shrink-0 px-4 py-3">
-              <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-text">
-                بيانات البورصة
-                <span
-                  className="rounded-full bg-info-bg px-2 py-0.5 text-[11px] font-semibold text-primary"
-                  dir="ltr"
-                >
-                  {formatPendingBourseDeedDisplay(selected)}
-                </span>
-              </span>
-              <Button type="button" size="sm" variant="default" onClick={closeForm}>
-                إغلاق
-              </Button>
-            </CardHeader>
-            <CardBody className="flex min-h-0 flex-1 flex-col overflow-hidden px-0 pb-0">
-              <div className="min-h-0 overflow-y-auto px-4 pb-3">
-                <div className="mb-3.5 flex flex-wrap gap-x-5 gap-y-2 rounded-lg border border-border bg-surface-2 px-3 py-2.5 text-xs text-text-2">
-                  <span>
-                    أمر العمل:{" "}
-                    <strong dir="ltr">{formatPoDisplay(selected.poNumber)}</strong>
-                  </span>
-                  {selected.ownerName ? (
-                    <span>
-                      المالك: <strong>{selected.ownerName}</strong>
-                    </span>
-                  ) : null}
-                </div>
-
+          <OperationalPanel className="flex h-full min-h-0 min-w-0 flex-1 flex-col !overflow-hidden">
+            <Card className="flex h-full min-h-0 flex-col overflow-hidden rounded-none border-none bg-transparent shadow-none">
+            <CardBody className="flex min-h-0 flex-1 flex-col overflow-hidden px-0 pb-0 pt-3">
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3">
                 {formError ? (
                   <Note tone="warn" className="mb-3">
                     {formError}
                   </Note>
                 ) : null}
 
-                <RegistrationFormCard
-                  title="بيانات البورصة"
-                  subtitle="المدينة · الحي · الحدود"
-                >
+                <RegistrationFormCard>
                   <PoPropertyBourseForm
                     property={property}
                     fieldErrors={fieldErrors}
                     onPatch={patchProperty}
+                    showIntroNote={false}
                     showDeedVitalityFlow
                     deedVitality={deedVitality}
                     onDeedVitalityChange={setDeedVitality}
@@ -520,7 +492,7 @@ export function BourseInquiryView() {
           </Card>
           </OperationalPanel>
         ) : (
-          <OperationalPanel className="hidden min-h-0 h-fit self-start items-center justify-center lg:flex">
+          <OperationalPanel className="flex h-full min-h-0 min-w-0 flex-1 flex-col items-center justify-center !overflow-hidden">
             <div className="max-w-[280px] px-4 py-7 text-center sm:px-6">
               <div
                 className="mx-auto mb-3.5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-surface-2 text-primary"
@@ -565,6 +537,7 @@ export function BourseInquiryView() {
       pageId="bourse-inquiry"
       hasRail={hasRail}
       panelOpen={panelOpen}
+      reserveRail={hasRail}
       queuePanel={queuePanel}
       sidePanel={sidePanel}
     />

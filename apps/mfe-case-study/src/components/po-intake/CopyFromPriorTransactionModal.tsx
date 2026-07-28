@@ -215,10 +215,12 @@ export function CopyFromPriorTransactionModal({
           <Button
             type="button"
             variant="primary"
-            disabled={!hit || !selectedTarget || copying || searching}
+            loading={copying}
+            disabled={!hit || !selectedTarget || searching}
+            showActionToast={false}
             onClick={() => void handleCopy()}
           >
-            {copying ? "جارٍ النسخ…" : "نسخ"}
+            نسخ
           </Button>
         </>
       }

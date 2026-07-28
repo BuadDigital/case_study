@@ -8,6 +8,7 @@ import { PoNumber } from "../ui/PoNumber";
 import { PoPropertyDetailTopbarActions } from "./PoPropertyDetailTopbarActions";
 import { DetailBadge, ltrValueClass } from "./PropertyDetailFields";
 import {
+  assignmentCompositeTag,
   formatDateAr,
   formatPoDisplay,
   formatPropertyLocation,
@@ -282,7 +283,7 @@ export function PropertyDetailHero({
                 {identifierTypeLabel(property.identifierType)}
               </span>
               <span className="rounded-md border border-[color-mix(in_srgb,#d9a441_32%,transparent)] bg-[color-mix(in_srgb,#d9a441_14%,transparent)] px-2.5 py-[3px] text-[10.5px] font-bold text-[#8a5e14]">
-                {record.assignmentType}
+                {assignmentCompositeTag(record.assignmentType)}
               </span>
               <DetailBadge tone={propertyUiStatusTone(uiStatus)}>
                 {propertyUiStatusLabel(uiStatus)}

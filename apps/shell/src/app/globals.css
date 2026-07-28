@@ -292,4 +292,9 @@ html:has(#app) body {
   overflow: hidden;
 }
 
+#content {
+  min-width: 0;
+  max-width: 100%;
+}
+
 

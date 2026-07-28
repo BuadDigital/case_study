@@ -774,7 +774,7 @@ export function CaseStudyForm({
       <Button
         variant="outline"
         showActionToast={false}
-        disabled={saving}
+        loading={saving}
         onClick={saveDraft}
       >
         حفظ مسودة
@@ -783,7 +783,7 @@ export function CaseStudyForm({
         <Button
           variant="primary"
           showActionToast={false}
-          disabled={saving}
+          loading={saving}
           onClick={submitForm}
         >
           حفظ إجاباتي
@@ -792,7 +792,7 @@ export function CaseStudyForm({
         <Button
           variant="primary"
           showActionToast={false}
-          disabled={saving}
+          loading={saving}
           onClick={submitForm}
         >
           رفع النموذج للنظام

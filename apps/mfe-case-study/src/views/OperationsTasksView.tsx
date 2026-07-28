@@ -19,11 +19,13 @@ import {
   Textarea,
   cn,
   useToast,
+  Spinner,
 } from "@platform/design-system";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { useStaffUsersQuery, useDistributionAssigneesQuery } from "@settings/mfe/query/settings-queries";
 import { usePoRecordsQuery } from "../query/case-study-queries";
+import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../lib/prototype/po-intake-data";
 import { useOperationsTasksQuery } from "../query/operations-tasks-queries";
 import {
   addOperationsTaskCommentRecord,
@@ -799,9 +801,17 @@ function CloseTaskModalBody({
           type="button"
           className={opsBtnPrimary}
           disabled={busy}
+          aria-busy={busy || undefined}
           onClick={onConfirm}
         >
-          {isCancel ? "تأكيد الإلغاء" : "إغلاق المهمة"}
+          {busy ? <Spinner /> : null}
+          <span>
+            {busy
+              ? "جاري التنفيذ…"
+              : isCancel
+                ? "تأكيد الإلغاء"
+                : "إغلاق المهمة"}
+          </span>
         </button>
       </div>
     </div>
@@ -847,9 +857,11 @@ function PauseModalBody({
           type="button"
           className={opsBtnPrimary}
           disabled={busy}
+          aria-busy={busy || undefined}
           onClick={onConfirm}
         >
-          إيقاف المهمة
+          {busy ? <Spinner /> : null}
+          <span>{busy ? "جاري الإيقاف…" : "إيقاف المهمة"}</span>
         </button>
       </div>
     </div>
@@ -954,9 +966,11 @@ function PriorityModalBody({
           type="button"
           className={opsBtnPrimary}
           disabled={busy}
+          aria-busy={busy || undefined}
           onClick={onApply}
         >
-          تطبيق
+          {busy ? <Spinner /> : null}
+          <span>{busy ? "جاري التطبيق…" : "تطبيق"}</span>
         </button>
       </div>
     </div>
@@ -1332,8 +1346,12 @@ function CommentThread({
                 type="button"
                 className={cn(opsBtnPrimary, "ms-auto")}
                 disabled={busy || !canSend}
+                aria-busy={busy || undefined}
                 onClick={onSend}
               >
+                {busy ? (
+                  <Spinner />
+                ) : (
                 <svg
                   width="15"
                   height="15"
@@ -1348,7 +1366,8 @@ function CommentThread({
                   <path d="m22 2-7 20-4-9-9-4Z" />
                   <path d="M22 2 11 13" />
                 </svg>
-                <span>إرسال</span>
+                )}
+                <span>{busy ? "جاري الإرسال…" : "إرسال"}</span>
               </button>
             </div>
           </div>
@@ -1371,7 +1390,7 @@ function LetterTable({ rows }: { rows: OperationsTask["letterRows"] }) {
       <div className="hidden overflow-x-auto rounded-[12px] border border-border bg-surface shadow-card lg:block">
         <div className="min-w-[720px]">
           <div className={opsThead} style={{ gridTemplateColumns: LETTER_COLS }}>
-            {["م", "أمر العمل", "رقم الصك", "المالك", "رقم الطلب", "المحكمة / الدائرة"].map(
+            {["م", "أمر العمل", PROPERTY_IDENTIFIER_COLUMN_LABEL, "المالك", "رقم الطلب", "المحكمة / الدائرة"].map(
               (h, i) => (
                 <div
                   key={h}
@@ -2404,10 +2423,11 @@ export function OperationsTasksView() {
               type="button"
               className={opsRemindBtn}
               disabled={busy}
+              aria-busy={busy || undefined}
               onClick={() => void remindTask(detail)}
             >
-              <BellIcon size={15} />
-              <span>تذكير الآن</span>
+              {busy ? <Spinner /> : <BellIcon size={15} />}
+              <span>{busy ? "جاري التذكير…" : "تذكير الآن"}</span>
             </button>
             ) : null}
           </div>
@@ -2453,9 +2473,11 @@ export function OperationsTasksView() {
                 "border-gold font-bold text-gold-d hover:bg-gold-soft",
               )}
               disabled={busy}
+              aria-busy={busy || undefined}
               onClick={() => void runStatus(detail.id, "in_progress")}
             >
-              <span>✓ تأكيد الاستلام</span>
+              {busy ? <Spinner /> : null}
+              <span>{busy ? "جاري التأكيد…" : "✓ تأكيد الاستلام"}</span>
             </button>
           ) : null}
           {(detail.status === "in_progress" && isAssignee) ||
@@ -2503,9 +2525,11 @@ export function OperationsTasksView() {
               type="button"
               className={opsBtnPrimary}
               disabled={busy}
+              aria-busy={busy || undefined}
               onClick={() => void runStatus(detail.id, "in_progress")}
             >
-              استئناف المهمة
+              {busy ? <Spinner /> : null}
+              <span>{busy ? "جاري الاستئناف…" : "استئناف المهمة"}</span>
             </button>
           ) : null}
           {detail.type === "court_visit" && detail.letterRows.length > 0 ? (
@@ -2876,10 +2900,11 @@ export function OperationsTasksView() {
             type="button"
             className={cn(opsRemindBtn, "ms-auto")}
             disabled={busy}
+            aria-busy={busy || undefined}
             onClick={() => void bulkRemind()}
           >
-            <BellIcon size={15} />
-            <span>تذكير المحدد دفعة واحدة</span>
+            {busy ? <Spinner /> : <BellIcon size={15} />}
+            <span>{busy ? "جاري التذكير…" : "تذكير المحدد دفعة واحدة"}</span>
           </button>
           <button
             type="button"

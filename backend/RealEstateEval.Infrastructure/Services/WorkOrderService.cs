@@ -348,7 +348,10 @@ public class WorkOrderService : IWorkOrderService
             ExpectedPropertyCount = request.ExpectedPropertyCount,
             PropertiesRegion = NormalizeOptionalText(request.PropertiesRegion),
             WorkOrderDescription = NormalizeOptionalText(request.WorkOrderDescription),
-            DueDateAt = BusinessDueDateCalculator.Compute(promulgation, request.ReceivedFromEnfathTime),
+            DueDateAt = BusinessDueDateCalculator.Compute(
+                promulgation,
+                request.ReceivedFromEnfathTime,
+                AssignmentTypeRules.BusinessDaysRequired(assignmentType)),
             CreatedAtUtc = DateTime.UtcNow,
         };
 
@@ -429,7 +432,10 @@ public class WorkOrderService : IWorkOrderService
         entity.ExpectedPropertyCount = request.ExpectedPropertyCount;
         entity.PropertiesRegion = NormalizeOptionalText(request.PropertiesRegion);
         entity.WorkOrderDescription = NormalizeOptionalText(request.WorkOrderDescription);
-        entity.DueDateAt = BusinessDueDateCalculator.Compute(promulgation, request.ReceivedFromEnfathTime);
+        entity.DueDateAt = BusinessDueDateCalculator.Compute(
+            promulgation,
+            request.ReceivedFromEnfathTime,
+            AssignmentTypeRules.BusinessDaysRequired(assignmentType));
 
         await _db.SaveChangesAsync(cancellationToken);
         return (await WithResolvedSpecialistAsync(WorkOrderMapper.ToDto(entity), cancellationToken), null);
@@ -590,6 +596,9 @@ public class WorkOrderService : IWorkOrderService
             var bourseErrors = WorkOrderValidator.ValidatePropertyBourse(new UpdatePropertyBourseRequest
             {
                 City = property.City,
+                Region = property.Region,
+                RegionId = property.RegionId,
+                CityId = property.CityId,
                 District = property.District,
                 Classification = property.Classification,
                 PropertyType = property.PropertyType,
@@ -713,6 +722,9 @@ public class WorkOrderService : IWorkOrderService
         if (errors.Count > 0) return (null, errors);
 
         existing.City = request.City.Trim();
+        existing.Region = request.Region?.Trim();
+        existing.RegionId = request.RegionId;
+        existing.CityId = request.CityId;
         existing.District = request.District.Trim();
         existing.Classification = request.Classification.Trim();
         existing.PropertyType = request.PropertyType.Trim();
@@ -827,7 +839,17 @@ public class WorkOrderService : IWorkOrderService
     {
         if (!string.Equals(present?.Trim(), "yes", StringComparison.OrdinalIgnoreCase))
             return null;
-        return NormalizeOptionalText(type)?.ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(type)) return null;
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var parts = new List<string>();
+        foreach (var raw in type.Split([',', '،'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var v = raw.ToLowerInvariant();
+            if (v is not ("mortgaged" or "seized" or "suspended" or "other")) continue;
+            if (!seen.Add(v)) continue;
+            parts.Add(v);
+        }
+        return parts.Count == 0 ? null : string.Join(",", parts);
     }
 
     private static string? NormalizeRestrictionOtherReason(
@@ -837,7 +859,10 @@ public class WorkOrderService : IWorkOrderService
     {
         if (!string.Equals(present?.Trim(), "yes", StringComparison.OrdinalIgnoreCase))
             return null;
-        if (!string.Equals(type?.Trim(), "other", StringComparison.OrdinalIgnoreCase))
+        var types = (type ?? "")
+            .Split([',', '،'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(t => t.ToLowerInvariant());
+        if (!types.Contains("other"))
             return null;
         return NormalizeOptionalText(reason);
     }
@@ -889,8 +914,11 @@ public class WorkOrderService : IWorkOrderService
         entity.RealEstateRegFileName = dto.RealEstateRegFileName?.Trim();
         entity.CourtId = dto.CourtId;
         entity.CircuitId = dto.CircuitId;
+        entity.RegionId = dto.RegionId;
+        entity.CityId = dto.CityId;
         entity.Court = dto.Court?.Trim();
         entity.Circuit = dto.Circuit?.Trim();
+        entity.Region = dto.Region?.Trim();
         entity.District = dto.District?.Trim() ?? "";
         entity.Classification = dto.Classification?.Trim() ?? "";
         entity.PropertyType = dto.PropertyType?.Trim() ?? "";
@@ -971,6 +999,9 @@ public class WorkOrderService : IWorkOrderService
     private static void ApplyPropertyBourse(WorkOrderProperty entity, WorkOrderPropertyDto dto)
     {
         entity.City = dto.City.Trim();
+        entity.Region = dto.Region?.Trim();
+        entity.RegionId = dto.RegionId;
+        entity.CityId = dto.CityId;
         entity.District = dto.District.Trim();
         entity.Classification = dto.Classification.Trim();
         entity.PropertyType = dto.PropertyType.Trim();
