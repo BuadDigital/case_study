@@ -386,7 +386,9 @@ export function FinanceEnfazPoBilling() {
                     type="button"
                     size="sm"
                     variant="outline"
-                    disabled={busy || Boolean(billing.invoiceNumber)}
+                    loading={busy}
+                    disabled={Boolean(billing.invoiceNumber)}
+                    showActionToast={false}
                     onClick={() => void save()}
                   >
                     حفظ الأتعاب
@@ -395,12 +397,13 @@ export function FinanceEnfazPoBilling() {
                     type="button"
                     size="sm"
                     variant="primary"
+                    loading={busy}
                     disabled={
-                      busy ||
                       !billing.poReadyForBilling ||
                       totals.sub <= 0 ||
                       Boolean(billing.invoiceNumber)
                     }
+                    showActionToast={false}
                     onClick={() => void issueInvoice()}
                   >
                     إصدار الفاتورة
@@ -410,7 +413,8 @@ export function FinanceEnfazPoBilling() {
                       type="button"
                       size="sm"
                       variant="outline"
-                      disabled={busy}
+                      loading={busy}
+                      showActionToast={false}
                       onClick={() => void downloadPdf()}
                     >
                       تحميل PDF

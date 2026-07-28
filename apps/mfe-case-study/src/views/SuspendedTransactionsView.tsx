@@ -42,6 +42,7 @@ import {
 import {
   formatPoDisplay,
   formatPropertyDeedDisplay,
+  PROPERTY_IDENTIFIER_COLUMN_LABEL,
   type PoIntakeRecord,
 } from "../lib/prototype/po-intake-data";
 import { resolveRemainingTime, formatRemainingDuration } from "../lib/prototype/my-task-row";
@@ -376,7 +377,7 @@ export function SuspendedTransactionsView() {
                 <Table pending={queuePending}>
                   <THead>
                     <Tr hoverable={false}>
-                      <Th>رقم الصك</Th>
+                      <Th>{PROPERTY_IDENTIFIER_COLUMN_LABEL}</Th>
                       <Th>أمر العمل</Th>
                       <Th>نوع الإسناد</Th>
                       <Th>أخصائي الإسناد</Th>

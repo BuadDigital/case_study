@@ -9,12 +9,12 @@ import { canEditProperty } from "../../lib/prototype/po-roles";
 import {
   poPropertyDetailPath,
   poPropertyEditPath,
+  poPropertyPath,
 } from "../../lib/po-routes";
 import {
   activeSurveyWorkspacePath,
   caseStudyWorkspacePath,
   propertyAppraisalWorkspacePath,
-  propertyInspectionWorkspacePath,
 } from "../../lib/my-task-routes";
 import {
   caseStudyTaskForProperty,
@@ -115,7 +115,7 @@ export function PoPropertyDetailTopbarActions({
             return {
               id: child!.id,
               label: "معاينة",
-              href: propertyInspectionWorkspacePath(child!.id),
+              href: `${poPropertyPath(poNumber, propertyId)}?tab=inspection&inspect=edit`,
             };
           }
           if (child!.kind === "engineering-survey") {
@@ -139,7 +139,7 @@ export function PoPropertyDetailTopbarActions({
         id: "inspect",
         label: "معاينة العقار",
         href: inspection
-          ? propertyInspectionWorkspacePath(inspection.id)
+          ? `${poPropertyPath(poNumber, propertyId)}?tab=inspection&inspect=edit`
           : poPropertyDetailPath(poNumber, propertyId, "inspection"),
         toast: inspection
           ? undefined

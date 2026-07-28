@@ -206,17 +206,22 @@ export function GovSelect({
   onChange,
   children,
   "aria-label": ariaLabel,
+  "aria-busy": ariaBusy,
+  className,
 }: {
   value: string;
   disabled?: boolean;
   onChange: (value: string) => void;
   children: ReactNode;
   "aria-label"?: string;
+  "aria-busy"?: boolean | "true" | "false";
+  className?: string;
 }) {
   return (
-    <div className="relative flex w-full items-center">
+    <div className={cn("relative flex w-full items-center", className)}>
       <select
         aria-label={ariaLabel}
+        aria-busy={ariaBusy || undefined}
         disabled={disabled}
         value={value}
         onChange={(e) => onChange(e.target.value)}

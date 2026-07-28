@@ -1,17 +1,25 @@
 namespace RealEstateEval.Application.Rules;
 
-/// <summary>4 business days (Sun–Thu). Receipt day counts as day 1 if before 17:00; after 17:00 or on Fri/Sat → start next business day.</summary>
+/// <summary>
+/// أيام عمل (أحد–خميس). يوم الاستلام يوم 1 إن كان ضمن الدوام؛ بعد 17:00 أو عطلة → يبدأ من يوم العمل التالي.
+/// عدد الأيام يُمرَّر حسب نوع الإسناد (4 تنفيذ/تركات، 10 خاص).
+/// </summary>
 public static class BusinessDueDateCalculator
 {
     private const int WorkdayStartHour = 8;
     private const int WorkdayEndHour = 17;
-    private const int BusinessDaysRequired = 4;
+    public const int DefaultBusinessDays = 4;
+    public const int PrivateSectorBusinessDays = 10;
 
-    public static DateOnly Compute(DateOnly receivedDate, string? receivedTime)
+    public static DateOnly Compute(
+        DateOnly receivedDate,
+        string? receivedTime,
+        int businessDays = DefaultBusinessDays)
     {
+        var days = businessDays < 1 ? DefaultBusinessDays : businessDays;
         var received = ParseReceived(receivedDate, receivedTime);
         var effective = GetEffectiveStartDate(received);
-        return AddBusinessDaysFromEffectiveStart(effective, BusinessDaysRequired);
+        return AddBusinessDaysFromEffectiveStart(effective, days);
     }
 
     private static DateTime ParseReceived(DateOnly receivedDate, string? receivedTime)
@@ -22,7 +30,8 @@ public static class BusinessDueDateCalculator
         return receivedDate.ToDateTime(new TimeOnly(10, 0));
     }
 
-    private static bool IsBusinessDay(DateTime d) => d.DayOfWeek is >= DayOfWeek.Sunday and <= DayOfWeek.Thursday;
+    private static bool IsBusinessDay(DateTime d) =>
+        d.DayOfWeek is >= DayOfWeek.Sunday and <= DayOfWeek.Thursday;
 
     private static bool IsWithinBusinessHours(DateTime d) =>
         d.Hour >= WorkdayStartHour && d.Hour < WorkdayEndHour;
@@ -42,7 +51,6 @@ public static class BusinessDueDateCalculator
         return cursor.Date;
     }
 
-    /// <summary>Due date = nth business day on/after effective start (day 1 = effective start when it is a business day).</summary>
     private static DateOnly AddBusinessDaysFromEffectiveStart(DateTime start, int count)
     {
         var d = start.Date;

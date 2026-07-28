@@ -27,6 +27,7 @@ import {
 } from "@platform/api-client";
 import { runInspectorFeeTransition } from "@platform/app-shared/prototype/inspector-fees-api";
 import { FeeActionReasonModal } from "@platform/app-shared/fees/FeeActionReasonModal";
+import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../../lib/prototype/po-intake-data";
 
 /** Case Study.html `FEE_ST` mapping for engineering office billing. */
 type EngFeeUiStatus =
@@ -267,7 +268,7 @@ export function EngOfficeFeesBillingTable({
         <Table className="w-full min-w-[920px]" pending={pending}>
           <THead>
             <Tr hoverable={false}>
-              <Th>الصك</Th>
+              <Th>{PROPERTY_IDENTIFIER_COLUMN_LABEL}</Th>
               <Th>تاريخ القبول</Th>
               <Th>سعر الجدول</Th>
               <Th>تعديل التسعير ومبرره</Th>
@@ -350,7 +351,9 @@ export function EngOfficeFeesBillingTable({
                               type="button"
                               size="sm"
                               variant="primary"
-                              disabled={busy || !row.canOfficeApproveDiscount}
+                              loading={busy}
+                              disabled={!row.canOfficeApproveDiscount}
+                              showActionToast={false}
                               className="whitespace-nowrap px-[11px] py-1 text-[11px]"
                               onClick={() =>
                                 void act(row, "office-approve-discount")
@@ -363,6 +366,7 @@ export function EngOfficeFeesBillingTable({
                               size="sm"
                               variant="outline"
                               disabled={busy || !row.canOfficeDispute}
+                              showActionToast={false}
                               className="whitespace-nowrap border-[color-mix(in_srgb,#d9694f_40%,transparent)] bg-surface px-[11px] py-1 text-[11px] font-bold text-[#a5432e]"
                               onClick={() => setDisputeRow(row)}
                             >
@@ -447,7 +451,9 @@ export function EngOfficeFeesBillingTable({
                         type="button"
                         size="sm"
                         variant="primary"
-                        disabled={busy || !row.canOfficeApproveDiscount}
+                        loading={busy}
+                        disabled={!row.canOfficeApproveDiscount}
+                        showActionToast={false}
                         onClick={() =>
                           void act(row, "office-approve-discount")
                         }
@@ -459,6 +465,7 @@ export function EngOfficeFeesBillingTable({
                         size="sm"
                         variant="outline"
                         disabled={busy || !row.canOfficeDispute}
+                        showActionToast={false}
                         onClick={() => setDisputeRow(row)}
                       >
                         تحفّظ

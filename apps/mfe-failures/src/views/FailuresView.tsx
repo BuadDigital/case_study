@@ -33,7 +33,7 @@ import {
   queueTableRowClassName,
   useToast,
 } from "@platform/design-system";
-import { formatPoDisplay } from "@case-study/mfe";
+import { formatPoDisplay, PROPERTY_IDENTIFIER_COLUMN_LABEL } from "@case-study/mfe";
 import { poPropertyPath } from "@case-study/mfe/lib/po-routes";
 import { suspendPropertyTransaction } from "@case-study/mfe/lib/prototype/suspend-property-transaction";
 import { usePoRecordsQuery } from "@case-study/mfe/query/case-study-queries";
@@ -166,6 +166,8 @@ export function FailuresView() {
     {},
   );
   const [resolveOpen, setResolveOpen] = useState<Record<string, boolean>>({});
+  /** `failureId:action` — يظهر Spinner على الزر أثناء الشبكة. */
+  const [busyKey, setBusyKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (!highlightId || !isFetched) return;
@@ -233,89 +235,108 @@ export function FailuresView() {
     });
   }, [sortedItems, search]);
 
+  async function runBusy(
+    key: string,
+    work: () => Promise<void>,
+  ): Promise<void> {
+    setBusyKey(key);
+    try {
+      await work();
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
   function handleSubmit(id: string) {
-    void submitFailureForReview(id)
-      .then((result) => {
+    void runBusy(`${id}:submit`, async () => {
+      try {
+        const result = await submitFailureForReview(id);
         if (!result.ok) {
           showToast(result.error, "error");
           return;
         }
         showToast("تم تصعيد التعذر", "success");
         refresh();
-      })
-      .catch(() => {
+      } catch {
         showToast("تعذّر إرسال التعذر للمراجعة — حاول مرة أخرى", "error");
-      });
+      }
+    });
   }
 
   function handleUpgrade(id: string) {
-    void upgradeFailureToInternal(id)
-      .then((result) => {
+    void runBusy(`${id}:upgrade`, async () => {
+      try {
+        const result = await upgradeFailureToInternal(id);
         if (!result.ok) {
           showToast(result.error, "error");
           return;
         }
         showToast("تم تأكيد التعذر الداخلي", "success");
         refresh();
-      })
-      .catch(() => {
+      } catch {
         showToast("تعذّر ترقية التعذر — حاول مرة أخرى", "error");
-      });
+      }
+    });
   }
 
   function handleApprove(id: string) {
-    void approveFailure(id, supervisorNote[id] ?? "")
-      .then((result) => {
+    void runBusy(`${id}:approve`, async () => {
+      try {
+        const result = await approveFailure(id, supervisorNote[id] ?? "");
         if (!result.ok) {
           showToast(result.error, "error");
           return;
         }
         showToast("تم اعتماد التعذر", "success");
         refresh();
-      })
-      .catch(() => {
+      } catch {
         showToast("تعذّر اعتماد التعذر — حاول مرة أخرى", "error");
-      });
+      }
+    });
   }
 
   function handleReturn(id: string) {
-    void returnFailure(id, supervisorNote[id] ?? "")
-      .then((result) => {
+    void runBusy(`${id}:return`, async () => {
+      try {
+        const result = await returnFailure(id, supervisorNote[id] ?? "");
         if (!result.ok) {
           showToast(result.error, "error");
           return;
         }
         showToast("أُعيد التعذر للأخصائي", "success");
         refresh();
-      })
-      .catch(() => {
+      } catch {
         showToast("تعذّر إرجاع التعذر — حاول مرة أخرى", "error");
-      });
+      }
+    });
   }
 
   async function handleSuspend(id: string) {
     const failure = items.find((f) => f.id === id);
     if (!failure) return;
-    const result = await suspendPropertyTransaction({
-      failure,
-      supervisorNote: supervisorNote[id] ?? "",
+    await runBusy(`${id}:suspend`, async () => {
+      const result = await suspendPropertyTransaction({
+        failure,
+        supervisorNote: supervisorNote[id] ?? "",
+      });
+      if (result.ok) {
+        showToast("تم تعليق المعاملة", "success");
+        refresh();
+        return;
+      }
+      showToast(result.error || "تعذّر إيقاف المعاملة — حاول مرة أخرى", "error");
     });
-    if (result.ok) {
-      showToast("تم تعليق المعاملة", "success");
-      refresh();
-      return;
-    }
-    showToast(result.error || "تعذّر إيقاف المعاملة — حاول مرة أخرى", "error");
   }
 
   function handleResolve(id: string) {
     const draft = resolveDraft[id] ?? { reason: "", instructions: "" };
     if (!draft.reason.trim() || !draft.instructions.trim()) return;
-    void resolveFailure(id, {
-      resolutionReason: draft.reason,
-      continueInstructions: draft.instructions,
-    })
-      .then((result) => {
+    void runBusy(`${id}:resolve`, async () => {
+      try {
+        const result = await resolveFailure(id, {
+          resolutionReason: draft.reason,
+          continueInstructions: draft.instructions,
+        });
         if (!result.ok) {
           showToast(result.error, "error");
           return;
@@ -323,10 +344,10 @@ export function FailuresView() {
         setResolveOpen((o) => ({ ...o, [id]: false }));
         showToast("تم حل التعذر", "success");
         refresh();
-      })
-      .catch(() => {
+      } catch {
         showToast("تعذّر حل التعذر — حاول مرة أخرى", "error");
-      });
+      }
+    });
   }
 
   function toggleResolve(id: string) {
@@ -396,6 +417,7 @@ export function FailuresView() {
                 type="button"
                 size="sm"
                 variant="primary"
+                loading={busyKey === `${f.id}:upgrade`}
                 showActionToast={false}
                 onClick={() => handleUpgrade(f.id)}
               >
@@ -406,6 +428,7 @@ export function FailuresView() {
                 type="button"
                 size="sm"
                 variant="primary"
+                loading={busyKey === `${f.id}:submit`}
                 showActionToast={false}
                 onClick={() => handleSubmit(f.id)}
               >
@@ -417,6 +440,7 @@ export function FailuresView() {
                 type="button"
                 size="sm"
                 variant="success"
+                disabled={Boolean(busyKey?.startsWith(`${f.id}:`))}
                 showActionToast={false}
                 onClick={() => toggleResolve(f.id)}
               >
@@ -446,6 +470,8 @@ export function FailuresView() {
                 type="button"
                 size="sm"
                 variant="success"
+                loading={busyKey === `${f.id}:approve`}
+                disabled={Boolean(busyKey?.startsWith(`${f.id}:`))}
                 showActionToast={false}
                 onClick={() => handleApprove(f.id)}
               >
@@ -455,6 +481,8 @@ export function FailuresView() {
                 type="button"
                 size="sm"
                 variant="danger"
+                loading={busyKey === `${f.id}:return`}
+                disabled={Boolean(busyKey?.startsWith(`${f.id}:`))}
                 showActionToast={false}
                 onClick={() => handleReturn(f.id)}
               >
@@ -464,6 +492,8 @@ export function FailuresView() {
                 type="button"
                 size="sm"
                 variant="primary"
+                loading={busyKey === `${f.id}:suspend`}
+                disabled={Boolean(busyKey?.startsWith(`${f.id}:`))}
                 showActionToast={false}
                 onClick={() => void handleSuspend(f.id)}
               >
@@ -514,8 +544,13 @@ export function FailuresView() {
               size="sm"
               variant="success"
               className="mt-2"
+              loading={busyKey === `${f.id}:resolve`}
               showActionToast={false}
-              disabled={!draft.reason.trim() || !draft.instructions.trim()}
+              disabled={
+                !draft.reason.trim() ||
+                !draft.instructions.trim() ||
+                Boolean(busyKey?.startsWith(`${f.id}:`))
+              }
               onClick={() => handleResolve(f.id)}
             >
               تأكيد الحل وإغلاق التعذر
@@ -726,7 +761,7 @@ export function FailuresView() {
           <Table pending={!isFetched}>
             <THead>
               <Tr hoverable={false}>
-                <Th className="text-start">الصك</Th>
+                <Th className="text-start">{PROPERTY_IDENTIFIER_COLUMN_LABEL}</Th>
                 <Th className="text-start">أمر العمل</Th>
                 <Th className="text-start">الخطورة</Th>
                 <Th className="text-start">الحالة</Th>

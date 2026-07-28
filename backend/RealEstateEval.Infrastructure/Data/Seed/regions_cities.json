@@ -1,0 +1,1268 @@
+{
+  "regions": [
+    {
+      "id": 1,
+      "code": "RD",
+      "name_ar": "منطقة الرياض",
+      "capital_ar": "الرياض"
+    },
+    {
+      "id": 2,
+      "code": "MK",
+      "name_ar": "منطقة مكة المكرمة",
+      "capital_ar": "مكة المكرمة"
+    },
+    {
+      "id": 3,
+      "code": "MD",
+      "name_ar": "منطقة المدينة المنورة",
+      "capital_ar": "المدينة المنورة"
+    },
+    {
+      "id": 4,
+      "code": "QS",
+      "name_ar": "منطقة القصيم",
+      "capital_ar": "بريدة"
+    },
+    {
+      "id": 5,
+      "code": "EP",
+      "name_ar": "المنطقة الشرقية",
+      "capital_ar": "الدمام"
+    },
+    {
+      "id": 6,
+      "code": "AS",
+      "name_ar": "منطقة عسير",
+      "capital_ar": "أبها"
+    },
+    {
+      "id": 7,
+      "code": "TB",
+      "name_ar": "منطقة تبوك",
+      "capital_ar": "تبوك"
+    },
+    {
+      "id": 8,
+      "code": "HL",
+      "name_ar": "منطقة حائل",
+      "capital_ar": "حائل"
+    },
+    {
+      "id": 9,
+      "code": "NB",
+      "name_ar": "منطقة الحدود الشمالية",
+      "capital_ar": "عرعر"
+    },
+    {
+      "id": 10,
+      "code": "JZ",
+      "name_ar": "منطقة جازان",
+      "capital_ar": "جازان"
+    },
+    {
+      "id": 11,
+      "code": "NJ",
+      "name_ar": "منطقة نجران",
+      "capital_ar": "نجران"
+    },
+    {
+      "id": 12,
+      "code": "BH",
+      "name_ar": "منطقة الباحة",
+      "capital_ar": "الباحة"
+    },
+    {
+      "id": 13,
+      "code": "JF",
+      "name_ar": "منطقة الجوف",
+      "capital_ar": "سكاكا"
+    }
+  ],
+  "cities": [
+    {
+      "id": 1,
+      "region_id": 1,
+      "region_code": "RD",
+      "name_ar": "الرياض",
+      "is_capital": true,
+      "is_active": true
+    },
+    {
+      "id": 2,
+      "region_id": 1,
+      "region_code": "RD",
+      "name_ar": "الدرعية",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 3,
+      "region_id": 1,
+      "region_code": "RD",
+      "name_ar": "الخرج",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 4,
+      "region_id": 1,
+      "region_code": "RD",
+      "name_ar": "الدوادمي",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 5,
+      "region_id": 1,
+      "region_code": "RD",
+      "name_ar": "المجمعة",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 6,
+      "region_id": 1,
+      "region_code": "RD",
+      "name_ar": "القويعية",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 7,
+      "region_id": 1,
+      "region_code": "RD",
+      "name_ar": "وادي الدواسر",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 8,
+      "region_id": 1,
+      "region_code": "RD",
+      "name_ar": "الأفلاج",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 9,
+      "region_id": 1,
+      "region_code": "RD",
+      "name_ar": "الزلفي",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 10,
+      "region_id": 1,
+      "region_code": "RD",
+      "name_ar": "شقراء",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 11,
+      "region_id": 1,
+      "region_code": "RD",
+      "name_ar": "حوطة بني تميم",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 12,
+      "region_id": 1,
+      "region_code": "RD",
+      "name_ar": "عفيف",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 13,
+      "region_id": 1,
+      "region_code": "RD",
+      "name_ar": "السليل",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 14,
+      "region_id": 1,
+      "region_code": "RD",
+      "name_ar": "ضرما",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 15,
+      "region_id": 1,
+      "region_code": "RD",
+      "name_ar": "المزاحمية",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 16,
+      "region_id": 1,
+      "region_code": "RD",
+      "name_ar": "رماح",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 17,
+      "region_id": 1,
+      "region_code": "RD",
+      "name_ar": "ثادق",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 18,
+      "region_id": 1,
+      "region_code": "RD",
+      "name_ar": "حريملاء",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 19,
+      "region_id": 1,
+      "region_code": "RD",
+      "name_ar": "الحريق",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 20,
+      "region_id": 1,
+      "region_code": "RD",
+      "name_ar": "الغاط",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 21,
+      "region_id": 1,
+      "region_code": "RD",
+      "name_ar": "مرات",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 22,
+      "region_id": 2,
+      "region_code": "MK",
+      "name_ar": "مكة المكرمة",
+      "is_capital": true,
+      "is_active": true
+    },
+    {
+      "id": 23,
+      "region_id": 2,
+      "region_code": "MK",
+      "name_ar": "جدة",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 24,
+      "region_id": 2,
+      "region_code": "MK",
+      "name_ar": "الطائف",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 25,
+      "region_id": 2,
+      "region_code": "MK",
+      "name_ar": "القنفذة",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 26,
+      "region_id": 2,
+      "region_code": "MK",
+      "name_ar": "الليث",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 27,
+      "region_id": 2,
+      "region_code": "MK",
+      "name_ar": "رابغ",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 28,
+      "region_id": 2,
+      "region_code": "MK",
+      "name_ar": "الجموم",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 29,
+      "region_id": 2,
+      "region_code": "MK",
+      "name_ar": "خليص",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 30,
+      "region_id": 2,
+      "region_code": "MK",
+      "name_ar": "الخرمة",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 31,
+      "region_id": 2,
+      "region_code": "MK",
+      "name_ar": "رنية",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 32,
+      "region_id": 2,
+      "region_code": "MK",
+      "name_ar": "تربة",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 33,
+      "region_id": 2,
+      "region_code": "MK",
+      "name_ar": "الكامل",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 34,
+      "region_id": 2,
+      "region_code": "MK",
+      "name_ar": "المويه",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 35,
+      "region_id": 2,
+      "region_code": "MK",
+      "name_ar": "أضم",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 36,
+      "region_id": 2,
+      "region_code": "MK",
+      "name_ar": "العرضيات",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 37,
+      "region_id": 2,
+      "region_code": "MK",
+      "name_ar": "بحرة",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 38,
+      "region_id": 2,
+      "region_code": "MK",
+      "name_ar": "ميسان",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 39,
+      "region_id": 3,
+      "region_code": "MD",
+      "name_ar": "المدينة المنورة",
+      "is_capital": true,
+      "is_active": true
+    },
+    {
+      "id": 40,
+      "region_id": 3,
+      "region_code": "MD",
+      "name_ar": "ينبع",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 41,
+      "region_id": 3,
+      "region_code": "MD",
+      "name_ar": "العلا",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 42,
+      "region_id": 3,
+      "region_code": "MD",
+      "name_ar": "مهد الذهب",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 43,
+      "region_id": 3,
+      "region_code": "MD",
+      "name_ar": "الحناكية",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 44,
+      "region_id": 3,
+      "region_code": "MD",
+      "name_ar": "بدر",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 45,
+      "region_id": 3,
+      "region_code": "MD",
+      "name_ar": "خيبر",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 46,
+      "region_id": 3,
+      "region_code": "MD",
+      "name_ar": "العيص",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 47,
+      "region_id": 3,
+      "region_code": "MD",
+      "name_ar": "وادي الفرع",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 48,
+      "region_id": 4,
+      "region_code": "QS",
+      "name_ar": "بريدة",
+      "is_capital": true,
+      "is_active": true
+    },
+    {
+      "id": 49,
+      "region_id": 4,
+      "region_code": "QS",
+      "name_ar": "عنيزة",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 50,
+      "region_id": 4,
+      "region_code": "QS",
+      "name_ar": "الرس",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 51,
+      "region_id": 4,
+      "region_code": "QS",
+      "name_ar": "المذنب",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 52,
+      "region_id": 4,
+      "region_code": "QS",
+      "name_ar": "البكيرية",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 53,
+      "region_id": 4,
+      "region_code": "QS",
+      "name_ar": "البدائع",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 54,
+      "region_id": 4,
+      "region_code": "QS",
+      "name_ar": "الأسياح",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 55,
+      "region_id": 4,
+      "region_code": "QS",
+      "name_ar": "النبهانية",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 56,
+      "region_id": 4,
+      "region_code": "QS",
+      "name_ar": "عيون الجواء",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 57,
+      "region_id": 4,
+      "region_code": "QS",
+      "name_ar": "الشماسية",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 58,
+      "region_id": 4,
+      "region_code": "QS",
+      "name_ar": "رياض الخبراء",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 59,
+      "region_id": 4,
+      "region_code": "QS",
+      "name_ar": "عقلة الصقور",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 60,
+      "region_id": 4,
+      "region_code": "QS",
+      "name_ar": "ضرية",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 61,
+      "region_id": 5,
+      "region_code": "EP",
+      "name_ar": "الدمام",
+      "is_capital": true,
+      "is_active": true
+    },
+    {
+      "id": 62,
+      "region_id": 5,
+      "region_code": "EP",
+      "name_ar": "الأحساء",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 63,
+      "region_id": 5,
+      "region_code": "EP",
+      "name_ar": "حفر الباطن",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 64,
+      "region_id": 5,
+      "region_code": "EP",
+      "name_ar": "الجبيل",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 65,
+      "region_id": 5,
+      "region_code": "EP",
+      "name_ar": "القطيف",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 66,
+      "region_id": 5,
+      "region_code": "EP",
+      "name_ar": "الخبر",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 67,
+      "region_id": 5,
+      "region_code": "EP",
+      "name_ar": "الخفجي",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 68,
+      "region_id": 5,
+      "region_code": "EP",
+      "name_ar": "رأس تنورة",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 69,
+      "region_id": 5,
+      "region_code": "EP",
+      "name_ar": "بقيق",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 70,
+      "region_id": 5,
+      "region_code": "EP",
+      "name_ar": "النعيرية",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 71,
+      "region_id": 5,
+      "region_code": "EP",
+      "name_ar": "قرية العليا",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 72,
+      "region_id": 5,
+      "region_code": "EP",
+      "name_ar": "العديد",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 73,
+      "region_id": 6,
+      "region_code": "AS",
+      "name_ar": "أبها",
+      "is_capital": true,
+      "is_active": true
+    },
+    {
+      "id": 74,
+      "region_id": 6,
+      "region_code": "AS",
+      "name_ar": "خميس مشيط",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 75,
+      "region_id": 6,
+      "region_code": "AS",
+      "name_ar": "بيشة",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 76,
+      "region_id": 6,
+      "region_code": "AS",
+      "name_ar": "النماص",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 77,
+      "region_id": 6,
+      "region_code": "AS",
+      "name_ar": "محايل عسير",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 78,
+      "region_id": 6,
+      "region_code": "AS",
+      "name_ar": "ظهران الجنوب",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 79,
+      "region_id": 6,
+      "region_code": "AS",
+      "name_ar": "تثليث",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 80,
+      "region_id": 6,
+      "region_code": "AS",
+      "name_ar": "سراة عبيدة",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 81,
+      "region_id": 6,
+      "region_code": "AS",
+      "name_ar": "رجال ألمع",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 82,
+      "region_id": 6,
+      "region_code": "AS",
+      "name_ar": "أحد رفيدة",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 83,
+      "region_id": 6,
+      "region_code": "AS",
+      "name_ar": "المجاردة",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 84,
+      "region_id": 6,
+      "region_code": "AS",
+      "name_ar": "البرك",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 85,
+      "region_id": 6,
+      "region_code": "AS",
+      "name_ar": "بلقرن",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 86,
+      "region_id": 6,
+      "region_code": "AS",
+      "name_ar": "طريب",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 87,
+      "region_id": 6,
+      "region_code": "AS",
+      "name_ar": "بللسمر وبللحمر",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 88,
+      "region_id": 6,
+      "region_code": "AS",
+      "name_ar": "تنومة",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 89,
+      "region_id": 6,
+      "region_code": "AS",
+      "name_ar": "وادي بن هشبل",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 90,
+      "region_id": 7,
+      "region_code": "TB",
+      "name_ar": "تبوك",
+      "is_capital": true,
+      "is_active": true
+    },
+    {
+      "id": 91,
+      "region_id": 7,
+      "region_code": "TB",
+      "name_ar": "الوجه",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 92,
+      "region_id": 7,
+      "region_code": "TB",
+      "name_ar": "ضباء",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 93,
+      "region_id": 7,
+      "region_code": "TB",
+      "name_ar": "تيماء",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 94,
+      "region_id": 7,
+      "region_code": "TB",
+      "name_ar": "أملج",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 95,
+      "region_id": 7,
+      "region_code": "TB",
+      "name_ar": "حقل",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 96,
+      "region_id": 7,
+      "region_code": "TB",
+      "name_ar": "البدع",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 97,
+      "region_id": 8,
+      "region_code": "HL",
+      "name_ar": "حائل",
+      "is_capital": true,
+      "is_active": true
+    },
+    {
+      "id": 98,
+      "region_id": 8,
+      "region_code": "HL",
+      "name_ar": "بقعاء",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 99,
+      "region_id": 8,
+      "region_code": "HL",
+      "name_ar": "الغزالة",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 100,
+      "region_id": 8,
+      "region_code": "HL",
+      "name_ar": "الشنان",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 101,
+      "region_id": 8,
+      "region_code": "HL",
+      "name_ar": "الشملي",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 102,
+      "region_id": 8,
+      "region_code": "HL",
+      "name_ar": "السليمي",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 103,
+      "region_id": 8,
+      "region_code": "HL",
+      "name_ar": "موقق",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 104,
+      "region_id": 8,
+      "region_code": "HL",
+      "name_ar": "الحائط",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 105,
+      "region_id": 8,
+      "region_code": "HL",
+      "name_ar": "سميراء",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 106,
+      "region_id": 9,
+      "region_code": "NB",
+      "name_ar": "عرعر",
+      "is_capital": true,
+      "is_active": true
+    },
+    {
+      "id": 107,
+      "region_id": 9,
+      "region_code": "NB",
+      "name_ar": "رفحاء",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 108,
+      "region_id": 9,
+      "region_code": "NB",
+      "name_ar": "طريف",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 109,
+      "region_id": 9,
+      "region_code": "NB",
+      "name_ar": "العويقيلة",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 110,
+      "region_id": 10,
+      "region_code": "JZ",
+      "name_ar": "جازان",
+      "is_capital": true,
+      "is_active": true
+    },
+    {
+      "id": 111,
+      "region_id": 10,
+      "region_code": "JZ",
+      "name_ar": "صبيا",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 112,
+      "region_id": 10,
+      "region_code": "JZ",
+      "name_ar": "أبو عريش",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 113,
+      "region_id": 10,
+      "region_code": "JZ",
+      "name_ar": "صامطة",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 114,
+      "region_id": 10,
+      "region_code": "JZ",
+      "name_ar": "بيش",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 115,
+      "region_id": 10,
+      "region_code": "JZ",
+      "name_ar": "فرسان",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 116,
+      "region_id": 10,
+      "region_code": "JZ",
+      "name_ar": "ضمد",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 117,
+      "region_id": 10,
+      "region_code": "JZ",
+      "name_ar": "الريث",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 118,
+      "region_id": 10,
+      "region_code": "JZ",
+      "name_ar": "الدرب",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 119,
+      "region_id": 10,
+      "region_code": "JZ",
+      "name_ar": "العارضة",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 120,
+      "region_id": 10,
+      "region_code": "JZ",
+      "name_ar": "أحد المسارحة",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 121,
+      "region_id": 10,
+      "region_code": "JZ",
+      "name_ar": "الحرث",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 122,
+      "region_id": 10,
+      "region_code": "JZ",
+      "name_ar": "الدائر",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 123,
+      "region_id": 10,
+      "region_code": "JZ",
+      "name_ar": "فيفاء",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 124,
+      "region_id": 10,
+      "region_code": "JZ",
+      "name_ar": "العيدابي",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 125,
+      "region_id": 10,
+      "region_code": "JZ",
+      "name_ar": "هروب",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 126,
+      "region_id": 10,
+      "region_code": "JZ",
+      "name_ar": "الطوال",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 127,
+      "region_id": 10,
+      "region_code": "JZ",
+      "name_ar": "الشقيق",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 128,
+      "region_id": 11,
+      "region_code": "NJ",
+      "name_ar": "نجران",
+      "is_capital": true,
+      "is_active": true
+    },
+    {
+      "id": 129,
+      "region_id": 11,
+      "region_code": "NJ",
+      "name_ar": "شرورة",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 130,
+      "region_id": 11,
+      "region_code": "NJ",
+      "name_ar": "حبونا",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 131,
+      "region_id": 11,
+      "region_code": "NJ",
+      "name_ar": "بدر الجنوب",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 132,
+      "region_id": 11,
+      "region_code": "NJ",
+      "name_ar": "يدمة",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 133,
+      "region_id": 11,
+      "region_code": "NJ",
+      "name_ar": "ثار",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 134,
+      "region_id": 11,
+      "region_code": "NJ",
+      "name_ar": "خباش",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 135,
+      "region_id": 11,
+      "region_code": "NJ",
+      "name_ar": "الخرخير",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 136,
+      "region_id": 12,
+      "region_code": "BH",
+      "name_ar": "الباحة",
+      "is_capital": true,
+      "is_active": true
+    },
+    {
+      "id": 137,
+      "region_id": 12,
+      "region_code": "BH",
+      "name_ar": "بلجرشي",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 138,
+      "region_id": 12,
+      "region_code": "BH",
+      "name_ar": "المندق",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 139,
+      "region_id": 12,
+      "region_code": "BH",
+      "name_ar": "المخواة",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 140,
+      "region_id": 12,
+      "region_code": "BH",
+      "name_ar": "العقيق",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 141,
+      "region_id": 12,
+      "region_code": "BH",
+      "name_ar": "قلوة",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 142,
+      "region_id": 12,
+      "region_code": "BH",
+      "name_ar": "القرى",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 143,
+      "region_id": 12,
+      "region_code": "BH",
+      "name_ar": "غامد الزناد",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 144,
+      "region_id": 12,
+      "region_code": "BH",
+      "name_ar": "بني حسن",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 145,
+      "region_id": 13,
+      "region_code": "JF",
+      "name_ar": "سكاكا",
+      "is_capital": true,
+      "is_active": true
+    },
+    {
+      "id": 146,
+      "region_id": 13,
+      "region_code": "JF",
+      "name_ar": "القريات",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 147,
+      "region_id": 13,
+      "region_code": "JF",
+      "name_ar": "دومة الجندل",
+      "is_capital": false,
+      "is_active": true
+    },
+    {
+      "id": 148,
+      "region_id": 13,
+      "region_code": "JF",
+      "name_ar": "طبرجل",
+      "is_capital": false,
+      "is_active": true
+    }
+  ]
+}

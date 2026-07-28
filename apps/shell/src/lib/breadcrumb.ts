@@ -20,7 +20,7 @@ const BREADCRUMB_LABEL_HREF: Record<string, string> = {
   "توزيع المعاملات": "/active-distribution",
   "دراسة حالة العقارات": "/active-case-study",
   "استلام التقييم": "/valuation-coordination",
-  "معاينة العقار": "/property-inspection",
+  "معاينة العقار": "/all-transactions",
   "تقييم العقار": "/property-appraisal",
   "الرفع المساحي": "/active-survey",
   "مكاتب الرفع الهندسي": "/survey",

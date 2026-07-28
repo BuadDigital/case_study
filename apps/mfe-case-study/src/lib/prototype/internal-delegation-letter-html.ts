@@ -7,6 +7,7 @@ import {
   CASE_STUDY_SIGNATURE_IMAGE,
   CASE_STUDY_STAMP_IMAGE,
 } from "./case-study-form-data";
+import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "./po-intake-data";
 
 const COMPANY_NAME = "شركة إجادة المهنية للتقييم";
 const COMPANY_CR = "4030297680";
@@ -340,7 +341,7 @@ export function printInternalDelegationLetter(
           <tr>
             <th class="col-seq">م</th>
             <th class="col-num">أمر العمل</th>
-            <th class="col-deed">رقم الصك</th>
+            <th class="col-deed">${PROPERTY_IDENTIFIER_COLUMN_LABEL}</th>
             <th class="col-owner">المالك</th>
             <th class="col-req">رقم الطلب</th>
           </tr>

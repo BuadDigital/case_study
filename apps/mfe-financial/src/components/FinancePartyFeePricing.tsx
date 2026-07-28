@@ -839,10 +839,12 @@ export function FinancePartyFeePricing() {
                       type="button"
                       variant="primary"
                       size="lg"
+                      loading={saving}
                       disabled={locked || !draft.id}
+                      showActionToast={false}
                       onClick={() => void save()}
                     >
-                      {saving ? "جاري الحفظ…" : "حفظ التسعيرة"}
+                      حفظ التسعيرة
                     </Button>
                   </div>
                 </Can>
@@ -922,10 +924,11 @@ export function FinancePartyFeePricing() {
               <Button
                 type="button"
                 variant="primary"
-                disabled={busy}
+                loading={busy}
+                showActionToast={false}
                 onClick={() => void saveAssignments()}
               >
-                {busy ? "جاري الحفظ…" : "حفظ الإسناد"}
+                حفظ الإسناد
               </Button>
             </ModalFooter>
           </ModalCard>

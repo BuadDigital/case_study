@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useToast } from "@platform/design-system";
+import { Spinner, cn, useToast } from "@platform/design-system";
 import {
   KEYS_FEES_COLS,
   KeysBackLink,
@@ -176,6 +176,7 @@ export function KeyEnvelopeFeesPanel({
                         <button
                           type="button"
                           disabled={busyId !== null}
+                          aria-busy={busyId === row.envelopeId || undefined}
                           className={keysGhostBtnClassName}
                           style={{
                             height: 30,
@@ -188,6 +189,7 @@ export function KeyEnvelopeFeesPanel({
                             void collect(row);
                           }}
                         >
+                          {busyId === row.envelopeId ? <Spinner /> : null}
                           {busyId === row.envelopeId
                             ? "جاري…"
                             : "تأكيد التحصيل (المالية)"}
@@ -256,13 +258,18 @@ export function KeyEnvelopeFeesPanel({
                             <button
                               type="button"
                               disabled={busyId !== null}
-                              className={keysGhostBtnClassName}
+                              aria-busy={busyId === row.envelopeId || undefined}
+                              className={cn(
+                                keysGhostBtnClassName,
+                                "inline-flex items-center gap-1.5",
+                              )}
                               style={{ color: "#2f7a4d" }}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 void collect(row);
                               }}
                             >
+                              {busyId === row.envelopeId ? <Spinner /> : null}
                               {busyId === row.envelopeId
                                 ? "جاري…"
                                 : "تأكيد التحصيل"}

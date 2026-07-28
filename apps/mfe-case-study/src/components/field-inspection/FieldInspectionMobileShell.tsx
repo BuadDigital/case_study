@@ -267,7 +267,7 @@ export function FieldInspectionMobileShell({
             type="button"
             variant="outline"
             className="min-h-[52px] shrink-0 rounded-[14px] px-3"
-            disabled={submitting}
+            loading={submitting}
             showActionToast={false}
             actionLabel="حفظ مسودة المعاينة"
             onClick={() => void hostRef.current?.saveDraft?.()}
@@ -281,12 +281,12 @@ export function FieldInspectionMobileShell({
               "min-h-[52px] flex-1 rounded-[14px] text-[15px] font-extrabold",
               "shadow-[0_8px_20px_-6px_rgba(16,43,78,0.5)]",
             )}
-            disabled={submitting}
+            loading={submitting}
             showActionToast={false}
             actionLabel="حفظ وإرسال المعاينة"
             onClick={() => void hostRef.current?.submit?.()}
           >
-            {submitting ? "جاري الإرسال…" : "حفظ وإرسال"}
+            حفظ وإرسال
           </Button>
         </div>
       ) : null}

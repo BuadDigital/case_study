@@ -22,7 +22,7 @@ public class WorkOrderProperty
     public string? OwnerName { get; set; }
     /// <summary>yes / no — القيود على العقار (مرحلة البورصة).</summary>
     public string? RestrictionsPresent { get; set; }
-    /// <summary>mortgaged / seized / suspended / other — نوع القيد عند وجود قيود.</summary>
+    /// <summary>mortgaged / seized / suspended / other — يمكن عدة أنواع مفصولة بفاصلة.</summary>
     public string? RestrictionType { get; set; }
     /// <summary>سبب القيد عند اختيار «أخرى».</summary>
     public string? RestrictionOtherReason { get; set; }
@@ -38,6 +38,8 @@ public class WorkOrderProperty
     public string? WestBoundary { get; set; }
     public string? WestBoundaryLengthM { get; set; }
     public string City { get; set; } = "";
+    /// <summary>اسم المنطقة (لقطة من دليل المناطق).</summary>
+    public string? Region { get; set; }
     public string District { get; set; } = "";
     public string? DeedStatus { get; set; }
     public string? Area { get; set; }
@@ -47,6 +49,10 @@ public class WorkOrderProperty
     public Guid? CourtId { get; set; }
     /// <summary>مرجع دائرة الدليل (اختياري؛ الرقم يُنسخ في Circuit).</summary>
     public Guid? CircuitId { get; set; }
+    /// <summary>مرجع منطقة الدليل.</summary>
+    public Guid? RegionId { get; set; }
+    /// <summary>مرجع مدينة الدليل.</summary>
+    public Guid? CityId { get; set; }
     public string Classification { get; set; } = "";
     public string PropertyType { get; set; } = "";
     public string? AssignmentDocFileName { get; set; }

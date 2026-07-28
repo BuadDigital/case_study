@@ -12,6 +12,7 @@ import {
   PageShell,
   PanelSkeleton,
   cn,
+  Spinner,
   useToast,
 } from "@platform/design-system";
 import { getAuthSession } from "@platform/auth-client";
@@ -43,6 +44,7 @@ import {
 import {
   formatPropertyDeedDisplay,
   formatPropertyLocation,
+  PROPERTY_IDENTIFIER_COLUMN_LABEL,
   type PoIntakeRecord,
   type PoPropertyIntake,
 } from "../lib/prototype/po-intake-data";
@@ -522,7 +524,7 @@ export function GovernmentReviewView() {
         <div className="hidden overflow-x-auto lg:block">
           <div className="min-w-[1020px]">
             <GovGridHead cols={GOV_REVIEW_LIST_COLS}>
-              <GovTh align="start">رقم الصك</GovTh>
+              <GovTh align="start">{PROPERTY_IDENTIFIER_COLUMN_LABEL}</GovTh>
               <GovTh align="start">الموقع</GovTh>
               <GovTh align="start">المحكمة / الطلب</GovTh>
               <GovTh align="start">حالة المفاتيح</GovTh>
@@ -574,17 +576,25 @@ export function GovernmentReviewView() {
                       </span>
                     </GovTd>
                     <GovTd>
-                      <GovSelect
-                        aria-label="حالة المفاتيح"
-                        value={keysStatus}
-                        disabled={done || savingKeysTaskId === row.task.id}
-                        onChange={(v) => void onKeysStatusChange(row.task, v)}
-                      >
-                        <option value="">— اختر —</option>
-                        <option value="received">مستلمة</option>
-                        <option value="pending">قيد الاستلام</option>
-                        <option value="not_required">لا تتطلب مفاتيح</option>
-                      </GovSelect>
+                      <div className="flex items-center gap-2">
+                        <GovSelect
+                          aria-label="حالة المفاتيح"
+                          aria-busy={savingKeysTaskId === row.task.id || undefined}
+                          value={keysStatus}
+                          disabled={done || savingKeysTaskId === row.task.id}
+                          onChange={(v) => void onKeysStatusChange(row.task, v)}
+                        >
+                          <option value="">— اختر —</option>
+                          <option value="received">مستلمة</option>
+                          <option value="pending">قيد الاستلام</option>
+                          <option value="not_required">لا تتطلب مفاتيح</option>
+                        </GovSelect>
+                        {savingKeysTaskId === row.task.id ? (
+                          <span role="status" aria-label="جاري الحفظ">
+                            <Spinner className="shrink-0" />
+                          </span>
+                        ) : null}
+                      </div>
                     </GovTd>
                     <GovTd>
                       {hasEnv ? (
@@ -746,17 +756,30 @@ export function GovernmentReviewView() {
                         <label className="mb-1 block text-[10.5px] font-semibold text-text-3">
                           حالة المفاتيح
                         </label>
-                        <GovSelect
-                          aria-label="حالة المفاتيح"
-                          value={keysStatus}
-                          disabled={savingKeysTaskId === row.task.id}
-                          onChange={(v) => void onKeysStatusChange(row.task, v)}
-                        >
-                          <option value="">— اختر —</option>
-                          <option value="received">مستلمة</option>
-                          <option value="pending">قيد الاستلام</option>
-                          <option value="not_required">لا تتطلب مفاتيح</option>
-                        </GovSelect>
+                        <div className="flex items-center gap-2">
+                          <GovSelect
+                            aria-label="حالة المفاتيح"
+                            aria-busy={
+                              savingKeysTaskId === row.task.id || undefined
+                            }
+                            value={keysStatus}
+                            disabled={savingKeysTaskId === row.task.id}
+                            onChange={(v) =>
+                              void onKeysStatusChange(row.task, v)
+                            }
+                            className="min-w-0 flex-1"
+                          >
+                            <option value="">— اختر —</option>
+                            <option value="received">مستلمة</option>
+                            <option value="pending">قيد الاستلام</option>
+                            <option value="not_required">لا تتطلب مفاتيح</option>
+                          </GovSelect>
+                          {savingKeysTaskId === row.task.id ? (
+                            <span role="status" aria-label="جاري الحفظ">
+                              <Spinner className="shrink-0" />
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                     ) : null}
 

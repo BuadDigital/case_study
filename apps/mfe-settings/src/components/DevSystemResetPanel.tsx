@@ -102,10 +102,11 @@ export function DevSystemResetPanel() {
               <Button
                 type="button"
                 variant="danger"
+                loading={loading}
+                showActionToast={false}
                 onClick={() => void onConfirm()}
-                disabled={loading}
               >
-                {loading ? "جاري المسح…" : "نعم، متأكد — احذف الكل"}
+                نعم، متأكد — احذف الكل
               </Button>
             </ModalFooter>
           </ModalCard>

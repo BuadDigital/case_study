@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Button, cn, useToast } from "@platform/design-system";
+import { Button, Spinner, cn, useToast } from "@platform/design-system";
 import { loadWorkOrderDtos } from "@platform/app-shared/prototype/work-orders-read";
 import {
   fetchLinkedPropertiesByRequestNumber,
@@ -770,9 +770,13 @@ export function RegisterKeyEnvelopeModal({
                   )}
                   onClick={() => receiptRef.current?.click()}
                   disabled={uploading}
+                  aria-busy={uploading || undefined}
                 >
-                  <span className="font-semibold text-heading">
-                    {receipt?.file.name ?? "اختر ملف خطاب الاستلام"}
+                  <span className="inline-flex items-center gap-1.5 font-semibold text-heading">
+                    {uploading ? <Spinner /> : null}
+                    {uploading
+                      ? "جاري الرفع…"
+                      : (receipt?.file.name ?? "اختر ملف خطاب الاستلام")}
                   </span>
                   <span className="text-[11px] text-text-3">
                     {receipt?.attachmentId ? "مرفوع" : "PDF / صورة"}
@@ -807,10 +811,14 @@ export function RegisterKeyEnvelopeModal({
                   )}
                   onClick={() => letterRef.current?.click()}
                   disabled={uploading}
+                  aria-busy={uploading || undefined}
                 >
-                  <span className="font-semibold text-heading">
-                    {thirdPartyLetter?.file.name ??
-                      "اختر ملف خطاب الطرف الثالث"}
+                  <span className="inline-flex items-center gap-1.5 font-semibold text-heading">
+                    {uploading ? <Spinner /> : null}
+                    {uploading
+                      ? "جاري الرفع…"
+                      : (thirdPartyLetter?.file.name ??
+                        "اختر ملف خطاب الطرف الثالث")}
                   </span>
                   <span className="text-[11px] text-text-3">
                     {thirdPartyLetter?.attachmentId ? "مرفوع" : "PDF / صورة"}

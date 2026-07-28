@@ -30,6 +30,14 @@ export function poPropertyDetailPath(
   return `${base}?tab=${encodeURIComponent(t)}`;
 }
 
+/** تفاصيل العقار → تبويب المعاينة بوضع إدخال (Case Study.html سطح المكتب). */
+export function poPropertyInspectionInputPath(
+  poNumber: string,
+  propertyId: string,
+): string {
+  return `${poPropertyPath(poNumber, propertyId)}?tab=inspection&inspect=edit`;
+}
+
 export function poPropertyEditPath(poNumber: string, propertyId: string): string {
   return `${poPropertyPath(poNumber, propertyId)}/edit`;
 }

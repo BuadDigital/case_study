@@ -14,10 +14,12 @@ import {
   ModalTitle,
   Select,
   StatusPill,
+  Spinner,
   cn,
   useToast,
 } from "@platform/design-system";
 import { useDistributionAssigneesQuery } from "@settings/mfe/query/settings-queries";
+import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "@case-study/mfe";
 import {
   confirmEnvelopeAssignment,
   confirmEnvelopeHandoff,
@@ -644,7 +646,7 @@ function AssignmentsPanel({
       <div className={cn(keysCardClassName, "hidden overflow-x-auto lg:block")}>
         <div className="min-w-[780px]">
           <KeysGridHead cols={KEYS_ASSIGN_COLS}>
-            <KeysTh align="start">رقم الصك</KeysTh>
+            <KeysTh align="start">{PROPERTY_IDENTIFIER_COLUMN_LABEL}</KeysTh>
             <KeysTh align="start">العقار</KeysTh>
             <KeysTh align="start">أمر العمل</KeysTh>
             <KeysTh align="start">حالة التجربة</KeysTh>
@@ -690,12 +692,14 @@ function AssignmentsPanel({
                     <button
                       type="button"
                       disabled={busy}
+                      aria-busy={busy || undefined}
                       className={cn(
                         keysGhostBtnClassName,
-                        "h-[30px] whitespace-nowrap px-3.5 text-[12px] text-gold-d",
+                        "inline-flex h-[30px] items-center gap-1.5 whitespace-nowrap px-3.5 text-[12px] text-gold-d",
                       )}
                       onClick={() => onMatch(a)}
                     >
+                      {busy ? <Spinner /> : null}
                       تسجيل نتيجة المطابقة…
                     </button>
                   ) : (
@@ -756,9 +760,11 @@ function AssignmentsPanel({
                   <button
                     type="button"
                     disabled={busy}
-                    className="inline-flex h-11 w-full items-center justify-center rounded-lg border border-border-md bg-surface px-3.5 text-[13px] font-semibold text-[var(--gold-d)] transition-colors hover:border-[var(--gold)] disabled:opacity-60"
+                    aria-busy={busy || undefined}
+                    className="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-lg border border-border-md bg-surface px-3.5 text-[13px] font-semibold text-[var(--gold-d)] transition-colors hover:border-[var(--gold)] disabled:opacity-60"
                     onClick={() => onMatch(a)}
                   >
+                    {busy ? <Spinner /> : null}
                     تسجيل نتيجة المطابقة…
                   </button>
                 ) : (
@@ -892,9 +898,11 @@ function CustodyPanel({
                   <button
                     type="button"
                     disabled={busy}
-                    className={keysRemindBtnClassName}
+                    aria-busy={busy || undefined}
+                    className={cn(keysRemindBtnClassName, "inline-flex items-center gap-1.5")}
                     onClick={() => onConfirm(item.handoff!.id)}
                   >
+                    {busy ? <Spinner /> : null}
                     تأكيد استلام المعاين
                   </button>
                 </div>

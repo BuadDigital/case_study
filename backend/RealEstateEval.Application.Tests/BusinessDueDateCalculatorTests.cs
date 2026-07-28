@@ -56,4 +56,16 @@ public class BusinessDueDateCalculatorTests
 
         Assert.Equal(new DateOnly(2026, 6, 14), due);
     }
+
+    [Fact]
+    public void Compute_uses_ten_business_days_for_private_sector()
+    {
+        // Sun 2026-06-07 → 10 business days = Thu 2026-06-18
+        var due = BusinessDueDateCalculator.Compute(
+            new DateOnly(2026, 6, 7),
+            "10:00",
+            BusinessDueDateCalculator.PrivateSectorBusinessDays);
+
+        Assert.Equal(new DateOnly(2026, 6, 18), due);
+    }
 }

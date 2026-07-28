@@ -264,10 +264,13 @@ function buildTaskWorkRoutes(): SystemScreenEntry[] {
   return [
     taskWorkEntry({
       id: "property-inspection-work",
-      name: "إنجاز معاينة العقار",
+      name: "إنجاز معاينة العقار (يتيم)",
       path: "/property-inspection/{taskId}",
-      whereToFind: "المعاملات النشطة ← معاينة العقار ← اختيار مهمة",
+      whereToFind:
+        "الشاشات اليتيمة ← معاينة العقار (يتيم) ← اختيار مهمة — أو تفاصيل العقار ← تبويب معاينة العقار (المسار الأساسي)",
       pageId: "property-inspection",
+      notes:
+        "مسار عمل قديم للقائمة الكاملة — الإدخال الأساسي داخل تفاصيل العقار (وضع سطح المكتب من الـ HTML).",
     }),
     taskWorkEntry({
       id: "government-review-work",

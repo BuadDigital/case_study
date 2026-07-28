@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Note, cn } from "@platform/design-system";
+import { Note, Spinner, cn } from "@platform/design-system";
 import type {
   CreateOperationsTaskRequest,
   OperationsTaskLetterRowDto,
@@ -461,8 +461,10 @@ export function CreateOperationsTaskModal({
             type="button"
             className={opsBtnPrimary}
             disabled={busy}
+            aria-busy={busy || undefined}
             onClick={() => void handleSubmit()}
           >
+            {busy ? <Spinner /> : (
             <svg
               width="15"
               height="15"
@@ -476,7 +478,8 @@ export function CreateOperationsTaskModal({
             >
               <path d="M20 6 9 17l-5-5" />
             </svg>
-            <span>إنشاء المهمة</span>
+            )}
+            <span>{busy ? "جاري الإنشاء…" : "إنشاء المهمة"}</span>
           </button>
         </div>
       }

@@ -38,18 +38,18 @@ export function MobileKpiStatCards({
   className?: string;
 }) {
   return (
-    <div className={cn("mb-3 grid grid-cols-2 gap-2.5 lg:hidden", className)}>
+    <div className={cn("mb-3 grid min-w-0 max-w-full grid-cols-2 gap-2.5 lg:hidden", className)}>
       {items.map((card, index) => {
         const tone = card.tone ?? "ink";
         return (
           <div
             key={card.key}
-            className="ui-animate-fade-in min-w-0"
+            className="ui-animate-fade-in min-w-0 max-w-full"
             style={{ animationDelay: `${Math.min(index, 6) * 45}ms` }}
           >
             <div
               className={cn(
-                "relative flex min-h-[88px] items-center gap-3 overflow-hidden rounded-[14px] border border-border border-s-[3px] bg-surface px-3.5 py-3.5",
+                "relative flex min-h-[88px] min-w-0 max-w-full items-center gap-3 overflow-hidden rounded-[14px] border border-border border-s-[3px] bg-surface px-3.5 py-3.5",
                 "shadow-[0_2px_8px_rgba(15,52,96,0.06)]",
                 toneRail[tone],
               )}

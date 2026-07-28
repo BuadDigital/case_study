@@ -293,7 +293,9 @@ export function PartyDisbursementRequest({
           size="sm"
           variant="primary"
           className="max-lg:min-h-11 max-lg:w-full"
-          disabled={busy || selected.size === 0 || overBudget}
+          loading={busy}
+          disabled={selected.size === 0 || overBudget}
+          showActionToast={false}
           onClick={() => void submit()}
         >
           إنشاء أمر صرف واعتماده
