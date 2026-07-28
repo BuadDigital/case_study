@@ -1252,8 +1252,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             "transition-[width] duration-200 ease-out",
             "max-lg:fixed max-lg:inset-y-0 max-lg:start-0 max-lg:z-50 max-lg:w-sidebar max-lg:shadow-xl max-lg:transition-transform max-lg:duration-200 max-lg:ease-out",
             "max-lg:pt-[env(safe-area-inset-top)] max-lg:pb-[env(safe-area-inset-bottom)]",
-            mobileNavOpen ? "max-lg:translate-x-0" : "max-lg:translate-x-full",
-            "lg:translate-x-0",
+            /* Off-canvas: start edge — LTR slides left, RTL slides right. */
+            mobileNavOpen
+              ? "max-lg:translate-x-0"
+              : "max-lg:pointer-events-none max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full",
+            "lg:translate-x-0 lg:pointer-events-auto",
             desktopRail && "lg:w-sidebar-collapsed",
           )}
         >
@@ -1568,9 +1571,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onPropertyInspectionWorkspace ? "locked" : undefined
           }
           className={cn(
-            "flex min-h-0 flex-1 flex-col items-stretch bg-bg p-0",
+            "flex min-h-0 min-w-0 flex-1 flex-col items-stretch bg-bg p-0",
             "relative",
-            onPropertyInspectionWorkspace ? "overflow-hidden" : "overflow-y-auto",
+            /* Clip X so wide tables/shadows never create left/right page scroll (RTL). */
+            onPropertyInspectionWorkspace
+              ? "overflow-hidden"
+              : "overflow-x-hidden overflow-y-auto",
             "max-lg:pb-[env(safe-area-inset-bottom)]",
             !contentScrollLocked && "overscroll-y-contain",
           )}

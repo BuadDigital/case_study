@@ -777,11 +777,12 @@ export function KeysView() {
             <ModalFooter className="justify-start gap-2">
               <Button
                 variant="danger"
+                loading={deletingId === pendingDelete.id}
                 disabled={deletingId !== null}
                 showActionToast={false}
                 onClick={() => void confirmDeleteEnvelope()}
               >
-                {deletingId === pendingDelete.id ? "جاري الحذف…" : "حذف"}
+                حذف
               </Button>
               <Button
                 variant="outline"

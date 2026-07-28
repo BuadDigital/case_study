@@ -2,13 +2,12 @@
 
 import { useMemo, useState } from "react";
 import {
-  ASSIGNMENT_TYPE_OPTIONS,
   formatDateAr,
   type AssignmentType,
   type PoIntakeRecord,
 } from "../../lib/prototype/po-intake-data";
 import { updatePoRecord } from "../../lib/prototype/po-intake-storage";
-import { RegField, RegSelect, RegTextarea } from "@platform/app-shared/registration/FormFields";
+import { RegField, RegTextarea } from "@platform/app-shared/registration/FormFields";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import {
   collectRequiredErrors,
@@ -17,6 +16,7 @@ import {
   type FieldErrors,
 } from "@platform/app-shared/registration/registration-utils";
 import { Label, Note } from "@platform/design-system";
+import { AssignmentTypeFields } from "./AssignmentTypeFields";
 import { PoEditShell } from "./PoEditShell";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -178,14 +178,10 @@ export function PoHeaderEdit({
             error={fieldErrors.promulgationDate}
             onChange={setPromulgationDate}
           />
-          <RegSelect
-            id="assignment_type_edit"
-            label="نوع الإسناد"
-            required
-            options={[...ASSIGNMENT_TYPE_OPTIONS]}
+          <AssignmentTypeFields
             value={assignmentType}
             error={fieldErrors.assignmentType}
-            onChange={(v) => setAssignmentType(v as AssignmentType)}
+            onChange={(v) => setAssignmentType(v)}
           />
           <RegField
             id="po_specialist_edit"

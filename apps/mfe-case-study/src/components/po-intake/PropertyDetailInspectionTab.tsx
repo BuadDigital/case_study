@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Button,
@@ -15,26 +14,40 @@ import {
   PROPERTY_BOUNDARY_ROWS,
   approximatePropertyGeo,
   boundariesMarkedUnavailable,
+  formatPropertyDeedDisplay,
   type PoPropertyIntake,
 } from "../../lib/prototype/po-intake-data";
 import {
   FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
+  getOrCreateInspectorWorkspace,
   loadInspectorWorkspaceSnapshot,
   reopenInspectorWorkspace,
+  saveInspectorWorkspaceDraft,
+  updateInspectorWorkspace,
 } from "../../lib/prototype/inspector-workspace-storage";
 import {
   INSPECTOR_FEATURE_FIELDS,
   INSPECTOR_SERVICE_OPTIONS,
   INSPECTOR_AMENITY_OPTIONS,
   INSPECTOR_DEFINED_PHOTOS,
+  INSPECTOR_OBSERVATION_CATEGORIES,
   inspectorPhotoCoverageLabel,
-  inspectorWorkspaceStatusLabel,
+  isInspectorWorkspaceLocked,
+  newObservationId,
+  type InspectorBoundaryKey,
   type InspectorWorkspaceDraft,
 } from "../../lib/prototype/inspector-workspace-data";
+import {
+  firstInspectorWorkspaceError,
+  validateInspectorWorkspace,
+} from "../../lib/prototype/inspector-workspace-validation";
+import { finalizeInspectorWorkspace } from "../../lib/prototype/finalize-field-inspection-submission";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 import type { PropertyDetailPartyCard } from "../../lib/prototype/property-detail-parties";
-import { partyCardStatusLabel } from "../../lib/prototype/property-detail-parties";
-import { propertyInspectionWorkspacePath } from "../../lib/my-task-routes";
+
+/** Shared control style for in-tab edit inputs — matches InsField typography. */
+const EDIT_CONTROL_CLASS =
+  "w-full appearance-none rounded-lg border border-border-md bg-surface px-[11px] py-[7px] text-[12.5px] text-text font-inherit";
 
 function SharedBadge() {
   return (
@@ -74,6 +87,119 @@ function InsField({
       >
         {trimmed || "—"}
       </div>
+    </div>
+  );
+}
+
+/** Editable counterpart of `InsField` — used when the tab is in edit mode. */
+function InsEditField({
+  id,
+  label,
+  value,
+  onChange,
+  ltr,
+  badge,
+  type = "text",
+  placeholder,
+  className,
+}: {
+  id?: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  ltr?: boolean;
+  badge?: ReactNode;
+  type?: string;
+  placeholder?: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn("min-w-0", className)}>
+      <div className="mb-1 flex flex-wrap items-center gap-1.5">
+        <span className="text-[11px] font-semibold text-text-2">{label}</span>
+        {badge}
+      </div>
+      <input
+        id={id}
+        type={type}
+        className={cn(EDIT_CONTROL_CLASS, ltr && "[direction:ltr]")}
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  );
+}
+
+function InsEditSelect({
+  id,
+  label,
+  value,
+  options,
+  onChange,
+  badge,
+  placeholder = "— اختر —",
+  className,
+}: {
+  id?: string;
+  label: string;
+  value: string;
+  options: readonly string[];
+  onChange: (value: string) => void;
+  badge?: ReactNode;
+  placeholder?: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn("min-w-0", className)}>
+      <div className="mb-1 flex flex-wrap items-center gap-1.5">
+        <span className="text-[11px] font-semibold text-text-2">{label}</span>
+        {badge}
+      </div>
+      <select
+        id={id}
+        className={EDIT_CONTROL_CLASS}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        <option value="">{placeholder}</option>
+        {options.map((opt) => (
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function InsEditTextarea({
+  id,
+  label,
+  value,
+  onChange,
+  rows = 3,
+  className,
+}: {
+  id?: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  rows?: number;
+  className?: string;
+}) {
+  return (
+    <div className={cn("min-w-0", className)}>
+      <div className="mb-1 flex flex-wrap items-center gap-1.5">
+        <span className="text-[11px] font-semibold text-text-2">{label}</span>
+      </div>
+      <textarea
+        id={id}
+        rows={rows}
+        className={cn(EDIT_CONTROL_CLASS, "resize-y")}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
     </div>
   );
 }
@@ -119,21 +245,27 @@ function InsCard({
   );
 }
 
-function ChipRow({ items, selected }: { items: string[]; selected: string[] }) {
+function ChipRow({
+  items,
+  selected,
+  onToggle,
+}: {
+  items: string[];
+  selected: string[];
+  onToggle?: (item: string) => void;
+}) {
   return (
     <div className="flex flex-wrap gap-[7px]">
       {items.map((item) => {
         const on = selected.includes(item);
-        return (
-          <span
-            key={item}
-            className={cn(
-              "inline-flex items-center gap-[5px] rounded-lg border px-[11px] py-[5px] text-[11.5px]",
-              on
-                ? "border-[color-mix(in_srgb,#1f6f6f_30%,transparent)] bg-[color-mix(in_srgb,#2a8f8f_12%,transparent)] text-[#1f6f6f]"
-                : "border-border bg-surface-2 text-text-3",
-            )}
-          >
+        const chipClass = cn(
+          "inline-flex items-center gap-[5px] rounded-lg border px-[11px] py-[5px] text-[11.5px]",
+          on
+            ? "border-[color-mix(in_srgb,#1f6f6f_30%,transparent)] bg-[color-mix(in_srgb,#2a8f8f_12%,transparent)] text-[#1f6f6f]"
+            : "border-border bg-surface-2 text-text-3",
+        );
+        const content = (
+          <>
             {on ? (
               <svg
                 width="11"
@@ -148,6 +280,23 @@ function ChipRow({ items, selected }: { items: string[]; selected: string[] }) {
               </svg>
             ) : null}
             {item}
+          </>
+        );
+        if (onToggle) {
+          return (
+            <button
+              key={item}
+              type="button"
+              className={chipClass}
+              onClick={() => onToggle(item)}
+            >
+              {content}
+            </button>
+          );
+        }
+        return (
+          <span key={item} className={chipClass}>
+            {content}
           </span>
         );
       })}
@@ -189,22 +338,29 @@ function PhotoTile({
 }
 
 /**
- * Case Study.html `pdInspectionHtml` — read-only 10 cards from inspector workspace.
+ * Case Study.html `pdInspectionHtml` — inspector report with view + in-tab
+ * edit (`ed`) modes. View mode is the read-only 10-card summary; edit mode
+ * lets the case-study specialist correct the inspector's draft in place.
  */
 export function PropertyDetailInspectionTab({
   property,
   inspectionTask,
   inspectionCard,
-  actionHref,
+  editMode = false,
+  onEditModeChange,
 }: {
   property: PoPropertyIntake;
   inspectionTask: WorkflowTask | null;
   inspectionCard: PropertyDetailPartyCard | null;
-  actionHref?: string;
+  /** Case Study.html `ed` — in-tab input mode. */
+  editMode?: boolean;
+  onEditModeChange?: (edit: boolean) => void;
 }) {
   const { showToast } = useToast();
   const [draft, setDraft] = useState<InspectorWorkspaceDraft | null>(null);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [returnOpen, setReturnOpen] = useState(false);
   const [returnNote, setReturnNote] = useState("");
   const [returnError, setReturnError] = useState<string | null>(null);
@@ -217,6 +373,28 @@ export function PropertyDetailInspectionTab({
     }
     let cancelled = false;
     setLoading(true);
+
+    if (editMode) {
+      const propertyDisplayId =
+        formatPropertyDeedDisplay(property) ||
+        `خانة ${inspectionTask.propertyOrdinal}`;
+      void getOrCreateInspectorWorkspace({
+        taskId: inspectionTask.id,
+        propertyId: property.id,
+        poNumber: inspectionTask.poNumber,
+        propertyDisplayId,
+        property,
+      }).then((next) => {
+        if (!cancelled) {
+          setDraft(next);
+          setLoading(false);
+        }
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
+
     const load = () => {
       void loadInspectorWorkspaceSnapshot(inspectionTask.id).then((loaded) => {
         if (!cancelled) {
@@ -235,7 +413,13 @@ export function PropertyDetailInspectionTab({
         onChange,
       );
     };
-  }, [inspectionTask]);
+  }, [inspectionTask, editMode, property]);
+
+  useEffect(() => {
+    if (editMode) {
+      setFormError(null);
+    }
+  }, [editMode]);
 
   const mapGeo = useMemo(() => {
     const lat = Number(draft?.mapLatitude);
@@ -249,6 +433,79 @@ export function PropertyDetailInspectionTab({
   const osmEmbed = mapGeo
     ? `https://www.openstreetmap.org/export/embed.html?bbox=${(mapGeo.lng - 0.006).toFixed(5)}%2C${(mapGeo.lat - 0.004).toFixed(5)}%2C${(mapGeo.lng + 0.006).toFixed(5)}%2C${(mapGeo.lat + 0.004).toFixed(5)}&layer=mapnik&marker=${mapGeo.lat}%2C${mapGeo.lng}`
     : null;
+
+  const locked = draft ? isInspectorWorkspaceLocked(draft.status) : false;
+  const showEditFields = editMode && Boolean(draft) && !locked;
+
+  function patchDraft(patch: Parameters<typeof updateInspectorWorkspace>[1]) {
+    if (!inspectionTask || locked) return;
+    void updateInspectorWorkspace(inspectionTask.id, patch)
+      .then((next) => {
+        if (next) setDraft(next);
+      })
+      .catch((err: unknown) => {
+        showToast(
+          err instanceof Error ? err.message : "تعذّر حفظ التعديل — حاول مرة أخرى",
+          "error",
+        );
+      });
+  }
+
+  async function handleCancelEdit() {
+    if (inspectionTask) {
+      setLoading(true);
+      const snapshot = await loadInspectorWorkspaceSnapshot(inspectionTask.id);
+      setDraft(snapshot);
+      setLoading(false);
+    }
+    setFormError(null);
+    onEditModeChange?.(false);
+  }
+
+  async function handleSaveAndSubmit() {
+    if (!inspectionTask || !draft) return;
+    setSaving(true);
+    setFormError(null);
+    try {
+      const confirmed: InspectorWorkspaceDraft = {
+        ...draft,
+        inspectionConfirmed: true,
+      };
+      const saved = await saveInspectorWorkspaceDraft(confirmed);
+      setDraft(saved);
+
+      const errors = validateInspectorWorkspace(saved, {
+        boundariesUnavailable: boundariesMarkedUnavailable(
+          property.boundariesAvailability,
+        ),
+      });
+      if (Object.keys(errors).length > 0) {
+        const message =
+          firstInspectorWorkspaceError(errors) ?? "يرجى مراجعة بيانات المعاينة";
+        setFormError(message);
+        showToast(message, "error");
+        return;
+      }
+
+      const result = await finalizeInspectorWorkspace(inspectionTask.id);
+      if (!result.ok) {
+        setFormError(result.message);
+        showToast(result.message, "error");
+        return;
+      }
+
+      setDraft(result.draft);
+      showToast("تم حفظ بيانات المعاينة وإرسالها.", "success");
+      onEditModeChange?.(false);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "تعذّر حفظ بيانات المعاينة";
+      setFormError(message);
+      showToast(message, "error");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function handleReturnForCorrection() {
     if (!inspectionTask) return;
@@ -285,61 +542,65 @@ export function PropertyDetailInspectionTab({
 
   if (loading) return <InlineLoadingSkeleton />;
 
-  const workspaceHref =
-    actionHref ??
-    (inspectionTask
-      ? propertyInspectionWorkspacePath(inspectionTask.id)
-      : undefined);
-
   const showAnnexPhotos = draft?.hasAnnex === "نعم";
   const photoDefs = INSPECTOR_DEFINED_PHOTOS.filter(
     (def) => !def.annexOnly || showAnnexPhotos,
   );
-  const canReturn = Boolean(inspectionTask) && draft?.status === "submitted";
+  const canReturn =
+    !editMode && Boolean(inspectionTask) && draft?.status === "submitted";
 
   return (
     <div id="pdInspection">
-      <div className="mb-3.5 flex flex-col gap-3 rounded-lg border border-border bg-surface-2 px-3.5 py-[11px] max-lg:gap-3.5 max-lg:rounded-[14px] max-lg:px-4 max-lg:py-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2.5">
-        <div className="text-xs leading-relaxed text-text-2 max-lg:text-[13px]">
-          <strong>للاطلاع فقط</strong> — ملخص تقرير المعاين. للتعديل اضغط
-          «معاينة العقار» لفتح وضع الإدخال.
-          {inspectionCard.name.trim() ? (
-            <span className="mt-1 block text-[11px] text-text-3 max-lg:text-[12px]">
-              {inspectionCard.role}: {inspectionCard.name} ·{" "}
-              {partyCardStatusLabel(inspectionCard)}
-              {draft
-                ? ` · ${inspectorWorkspaceStatusLabel(draft.status)}`
-                : ""}
-            </span>
-          ) : null}
-        </div>
-        <div className="flex shrink-0 flex-wrap gap-2 max-lg:w-full max-lg:flex-col">
-          {workspaceHref ? (
-            <Link href={workspaceHref} className="max-lg:block max-lg:w-full">
-              <Button
-                type="button"
-                size="sm"
-                variant="default"
-                className="max-lg:min-h-12 max-lg:w-full max-lg:rounded-[12px] max-lg:text-[14px] max-lg:font-bold"
-              >
-                معاينة العقار
-              </Button>
-            </Link>
-          ) : null}
-          {canReturn && !returnOpen ? (
-            <button
+      {showEditFields ? (
+        <div className="mb-3.5 flex flex-col gap-3 rounded-lg border border-[color-mix(in_srgb,var(--gold)_35%,transparent)] bg-[color-mix(in_srgb,var(--gold)_10%,transparent)] px-3.5 py-[11px] max-lg:gap-3.5 max-lg:rounded-[14px] max-lg:px-4 max-lg:py-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2.5">
+          <div className="text-xs leading-relaxed text-text-2 max-lg:text-[13px]">
+            <strong className="text-gold-d">وضع الإدخال</strong> — تُدخل
+            بيانات المعاينة الميدانية وتُرسل بعد اكتمالها.
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2 max-lg:w-full max-lg:flex-col">
+            <Button
               type="button"
-              className="rounded-lg border border-border-md bg-surface px-3.5 py-1.5 text-[11.5px] font-bold text-text-2 max-lg:min-h-11 max-lg:w-full max-lg:rounded-[12px] max-lg:text-[13px]"
-              onClick={() => {
-                setReturnOpen(true);
-                setReturnError(null);
-              }}
+              size="sm"
+              variant="primary"
+              loading={saving}
+              disabled={saving}
+              className="max-lg:min-h-12 max-lg:w-full max-lg:rounded-[12px] max-lg:text-[14px] max-lg:font-bold"
+              onClick={() => void handleSaveAndSubmit()}
             >
-              إعادة للتصحيح
-            </button>
-          ) : null}
+              حفظ وإرسال
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={saving}
+              className="max-lg:min-h-11 max-lg:w-full max-lg:rounded-[12px] max-lg:text-[13px]"
+              onClick={() => void handleCancelEdit()}
+            >
+              إلغاء
+            </Button>
+          </div>
         </div>
-      </div>
+      ) : canReturn && !returnOpen ? (
+        <div className="mb-3.5 flex justify-end">
+          <button
+            type="button"
+            className="rounded-lg border border-border-md bg-surface px-3.5 py-1.5 text-[11.5px] font-bold text-text-2 max-lg:min-h-11 max-lg:w-full max-lg:rounded-[12px] max-lg:text-[13px]"
+            onClick={() => {
+              setReturnOpen(true);
+              setReturnError(null);
+            }}
+          >
+            إعادة للتصحيح
+          </button>
+        </div>
+      ) : null}
+
+      {formError ? (
+        <div className="mb-3 rounded-lg border border-danger border-e-[3px] border-e-danger bg-danger-bg px-3.5 py-2.5 text-xs leading-relaxed text-danger-text">
+          {formError}
+        </div>
+      ) : null}
 
       {draft?.status === "reopened" && draft.returnNote?.trim() ? (
         <div className="mb-3 rounded-lg border border-amber border-e-[3px] border-e-amber bg-amber-light px-3.5 py-2.5 text-xs leading-relaxed text-amber-text">
@@ -347,7 +608,7 @@ export function PropertyDetailInspectionTab({
         </div>
       ) : null}
 
-      {returnOpen ? (
+      {!showEditFields && returnOpen ? (
         <div className="mb-3.5 rounded-lg border border-border bg-surface px-3.5 py-3">
           <Label htmlFor="pd-inspection-return-note" className="text-xs">
             سبب الإرجاع للتصحيح <span className="text-danger-text">*</span>
@@ -367,7 +628,8 @@ export function PropertyDetailInspectionTab({
               type="button"
               size="sm"
               variant="primary"
-              disabled={returning}
+              loading={returning}
+              showActionToast={false}
               onClick={() => void handleReturnForCorrection()}
             >
               تأكيد الإرجاع
@@ -410,16 +672,35 @@ export function PropertyDetailInspectionTab({
               </span>
             </div>
             <InsFieldsGrid>
-              <InsField
-                label="خط العرض"
-                value={draft.mapLatitude || (mapGeo ? String(mapGeo.lat) : "")}
-                ltr
-              />
-              <InsField
-                label="خط الطول"
-                value={draft.mapLongitude || (mapGeo ? String(mapGeo.lng) : "")}
-                ltr
-              />
+              {showEditFields ? (
+                <>
+                  <InsEditField
+                    label="خط العرض"
+                    value={draft.mapLatitude}
+                    ltr
+                    onChange={(v) => patchDraft({ mapLatitude: v })}
+                  />
+                  <InsEditField
+                    label="خط الطول"
+                    value={draft.mapLongitude}
+                    ltr
+                    onChange={(v) => patchDraft({ mapLongitude: v })}
+                  />
+                </>
+              ) : (
+                <>
+                  <InsField
+                    label="خط العرض"
+                    value={draft.mapLatitude || (mapGeo ? String(mapGeo.lat) : "")}
+                    ltr
+                  />
+                  <InsField
+                    label="خط الطول"
+                    value={draft.mapLongitude || (mapGeo ? String(mapGeo.lng) : "")}
+                    ltr
+                  />
+                </>
+              )}
             </InsFieldsGrid>
             <div className="relative mt-2.5 h-[200px] overflow-hidden rounded-lg border border-border">
               {osmEmbed ? (
@@ -437,16 +718,37 @@ export function PropertyDetailInspectionTab({
             </div>
             <div className="mt-3">
               <InsFieldsGrid>
-                <InsField
-                  label="تاريخ المعاينة"
-                  value={draft.inspectionDate}
-                  ltr
-                />
-                <InsField
-                  label="وقت المعاينة"
-                  value={draft.inspectionTime}
-                  ltr
-                />
+                {showEditFields ? (
+                  <>
+                    <InsEditField
+                      label="تاريخ المعاينة"
+                      type="date"
+                      ltr
+                      value={draft.inspectionDate}
+                      onChange={(v) => patchDraft({ inspectionDate: v })}
+                    />
+                    <InsEditField
+                      label="وقت المعاينة"
+                      type="time"
+                      ltr
+                      value={draft.inspectionTime}
+                      onChange={(v) => patchDraft({ inspectionTime: v })}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <InsField
+                      label="تاريخ المعاينة"
+                      value={draft.inspectionDate}
+                      ltr
+                    />
+                    <InsField
+                      label="وقت المعاينة"
+                      value={draft.inspectionTime}
+                      ltr
+                    />
+                  </>
+                )}
               </InsFieldsGrid>
             </div>
           </InsCard>
@@ -471,7 +773,7 @@ export function PropertyDetailInspectionTab({
                 </thead>
                 <tbody>
                   {INSPECTOR_FEATURE_FIELDS.map((field, index) => {
-                    const val = draft.featureValues[field.key]?.trim() || "—";
+                    const rawVal = draft.featureValues[field.key]?.trim() ?? "";
                     const hasPhoto = Boolean(
                       draft.featurePhotoAttachments[field.key]?.fileName,
                     );
@@ -489,7 +791,29 @@ export function PropertyDetailInspectionTab({
                           ) : null}
                         </td>
                         <td className="border border-border px-2 py-1.5 text-center font-semibold text-heading">
-                          {val}
+                          {showEditFields ? (
+                            <select
+                              className={cn(EDIT_CONTROL_CLASS, "text-center")}
+                              value={rawVal}
+                              onChange={(e) =>
+                                patchDraft({
+                                  featureValues: {
+                                    ...draft.featureValues,
+                                    [field.key]: e.target.value,
+                                  },
+                                })
+                              }
+                            >
+                              <option value="">— اختر —</option>
+                              {field.options.map((opt) => (
+                                <option key={opt} value={opt}>
+                                  {opt}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            rawVal || "—"
+                          )}
                         </td>
                         <td className="border border-border px-2 py-1.5 text-center text-text-3">
                           {hasPhoto ? (
@@ -518,12 +842,23 @@ export function PropertyDetailInspectionTab({
               </table>
             </div>
             <div className="mt-3">
-              <InsField
-                label="عمر العقار (سنوات)"
-                value={draft.propertyAgeYears}
-                ltr
-                badge={<SharedBadge />}
-              />
+              {showEditFields ? (
+                <InsEditField
+                  label="عمر العقار (سنوات)"
+                  value={draft.propertyAgeYears}
+                  ltr
+                  badge={<SharedBadge />}
+                  className="max-w-[220px]"
+                  onChange={(v) => patchDraft({ propertyAgeYears: v })}
+                />
+              ) : (
+                <InsField
+                  label="عمر العقار (سنوات)"
+                  value={draft.propertyAgeYears}
+                  ltr
+                  badge={<SharedBadge />}
+                />
+              )}
               <p className="mb-0 mt-1.5 text-[10.5px] text-text-3">
                 عمر العقار يظهر بعد تحديد «الأصل محل التقييم» ولا ينطبق على
                 الأرض.
@@ -536,19 +871,53 @@ export function PropertyDetailInspectionTab({
             badge={<DetailBadge tone="red">إدخال ميداني</DetailBadge>}
           >
             <InsFieldsGrid>
-              <InsField label="اسم الشارع" value={draft.streetName} />
-              <InsField label="أقرب شارع رئيسي" value={draft.mainStreetName} />
-              <InsField
-                label="عرض الشارع الرئيسي (م)"
-                value={draft.streetWidthM}
-                ltr
-              />
+              {showEditFields ? (
+                <>
+                  <InsEditField
+                    label="اسم الشارع"
+                    value={draft.streetName}
+                    onChange={(v) => patchDraft({ streetName: v })}
+                  />
+                  <InsEditField
+                    label="أقرب شارع رئيسي"
+                    value={draft.mainStreetName}
+                    onChange={(v) => patchDraft({ mainStreetName: v })}
+                  />
+                  <InsEditField
+                    label="عرض الشارع الرئيسي (م)"
+                    value={draft.streetWidthM}
+                    ltr
+                    onChange={(v) => patchDraft({ streetWidthM: v })}
+                  />
+                </>
+              ) : (
+                <>
+                  <InsField label="اسم الشارع" value={draft.streetName} />
+                  <InsField
+                    label="أقرب شارع رئيسي"
+                    value={draft.mainStreetName}
+                  />
+                  <InsField
+                    label="عرض الشارع الرئيسي (م)"
+                    value={draft.streetWidthM}
+                    ltr
+                  />
+                </>
+              )}
             </InsFieldsGrid>
             <div className="mt-3">
-              <InsField
-                label="طريقة الوصول للعقار"
-                value={draft.accessRouteDescription}
-              />
+              {showEditFields ? (
+                <InsEditTextarea
+                  label="طريقة الوصول للعقار"
+                  value={draft.accessRouteDescription}
+                  onChange={(v) => patchDraft({ accessRouteDescription: v })}
+                />
+              ) : (
+                <InsField
+                  label="طريقة الوصول للعقار"
+                  value={draft.accessRouteDescription}
+                />
+              )}
             </div>
           </InsCard>
 
@@ -557,14 +926,77 @@ export function PropertyDetailInspectionTab({
             badge={<DetailBadge tone="red">إدخال ميداني</DetailBadge>}
           >
             <InsFieldsGrid min={130}>
-              <InsField label="عدد الغرف" value={draft.roomCount} ltr />
-              <InsField label="عدد الصالات" value={draft.hallCount} ltr />
-              <InsField label="عدد الشقق" value={draft.unitCount} ltr />
-              <InsField label="دورات المياه" value={draft.bathroomCount} ltr />
-              <InsField label="المعارض" value={draft.showroomCount} ltr />
-              <InsField label="الآبار" value={draft.wellCount} ltr />
-              <InsField label="الأبراج" value={draft.towerCount} ltr />
-              <InsField label="هل يوجد ملحق؟" value={draft.hasAnnex} />
+              {showEditFields ? (
+                <>
+                  <InsEditField
+                    label="عدد الغرف"
+                    value={draft.roomCount}
+                    ltr
+                    onChange={(v) => patchDraft({ roomCount: v })}
+                  />
+                  <InsEditField
+                    label="عدد الصالات"
+                    value={draft.hallCount}
+                    ltr
+                    onChange={(v) => patchDraft({ hallCount: v })}
+                  />
+                  <InsEditField
+                    label="عدد الشقق"
+                    value={draft.unitCount}
+                    ltr
+                    onChange={(v) => patchDraft({ unitCount: v })}
+                  />
+                  <InsEditField
+                    label="دورات المياه"
+                    value={draft.bathroomCount}
+                    ltr
+                    onChange={(v) => patchDraft({ bathroomCount: v })}
+                  />
+                  <InsEditField
+                    label="المعارض"
+                    value={draft.showroomCount}
+                    ltr
+                    onChange={(v) => patchDraft({ showroomCount: v })}
+                  />
+                  <InsEditField
+                    label="الآبار"
+                    value={draft.wellCount}
+                    ltr
+                    onChange={(v) => patchDraft({ wellCount: v })}
+                  />
+                  <InsEditField
+                    label="الأبراج"
+                    value={draft.towerCount}
+                    ltr
+                    onChange={(v) => patchDraft({ towerCount: v })}
+                  />
+                  <InsEditSelect
+                    label="هل يوجد ملحق؟"
+                    value={draft.hasAnnex}
+                    options={["نعم", "لا"]}
+                    onChange={(v) =>
+                      patchDraft({
+                        hasAnnex: v as InspectorWorkspaceDraft["hasAnnex"],
+                      })
+                    }
+                  />
+                </>
+              ) : (
+                <>
+                  <InsField label="عدد الغرف" value={draft.roomCount} ltr />
+                  <InsField label="عدد الصالات" value={draft.hallCount} ltr />
+                  <InsField label="عدد الشقق" value={draft.unitCount} ltr />
+                  <InsField
+                    label="دورات المياه"
+                    value={draft.bathroomCount}
+                    ltr
+                  />
+                  <InsField label="المعارض" value={draft.showroomCount} ltr />
+                  <InsField label="الآبار" value={draft.wellCount} ltr />
+                  <InsField label="الأبراج" value={draft.towerCount} ltr />
+                  <InsField label="هل يوجد ملحق؟" value={draft.hasAnnex} />
+                </>
+              )}
               <InsField
                 label="ملحق علوي (عدد)"
                 value={
@@ -595,27 +1027,68 @@ export function PropertyDetailInspectionTab({
             badge={<DetailBadge tone="red">إدخال ميداني</DetailBadge>}
           >
             <InsFieldsGrid min={140}>
-              <InsField label="مساحة البناء (م²)" value={draft.builtArea} ltr />
-              <InsField
-                label="عدد أدوار المباني"
-                value={draft.buildingFloors}
-                ltr
-              />
-              <InsField
-                label="إجمالي مساحة القبو (م²)"
-                value={draft.basementTotal}
-                ltr
-              />
-              <InsField
-                label="إجمالي مساحة اللاحق (م²)"
-                value={draft.annexTotal}
-                ltr
-              />
-              <InsField
-                label="إجمالي مساحة المباني (م²)"
-                value={draft.buildingsTotal}
-                ltr
-              />
+              {showEditFields ? (
+                <>
+                  <InsEditField
+                    label="مساحة البناء (م²)"
+                    value={draft.builtArea}
+                    ltr
+                    onChange={(v) => patchDraft({ builtArea: v })}
+                  />
+                  <InsEditField
+                    label="عدد أدوار المباني"
+                    value={draft.buildingFloors}
+                    ltr
+                    onChange={(v) => patchDraft({ buildingFloors: v })}
+                  />
+                  <InsEditField
+                    label="إجمالي مساحة القبو (م²)"
+                    value={draft.basementTotal}
+                    ltr
+                    onChange={(v) => patchDraft({ basementTotal: v })}
+                  />
+                  <InsEditField
+                    label="إجمالي مساحة اللاحق (م²)"
+                    value={draft.annexTotal}
+                    ltr
+                    onChange={(v) => patchDraft({ annexTotal: v })}
+                  />
+                  <InsEditField
+                    label="إجمالي مساحة المباني (م²)"
+                    value={draft.buildingsTotal}
+                    ltr
+                    onChange={(v) => patchDraft({ buildingsTotal: v })}
+                  />
+                </>
+              ) : (
+                <>
+                  <InsField
+                    label="مساحة البناء (م²)"
+                    value={draft.builtArea}
+                    ltr
+                  />
+                  <InsField
+                    label="عدد أدوار المباني"
+                    value={draft.buildingFloors}
+                    ltr
+                  />
+                  <InsField
+                    label="إجمالي مساحة القبو (م²)"
+                    value={draft.basementTotal}
+                    ltr
+                  />
+                  <InsField
+                    label="إجمالي مساحة اللاحق (م²)"
+                    value={draft.annexTotal}
+                    ltr
+                  />
+                  <InsField
+                    label="إجمالي مساحة المباني (م²)"
+                    value={draft.buildingsTotal}
+                    ltr
+                  />
+                </>
+              )}
             </InsFieldsGrid>
           </InsCard>
 
@@ -634,11 +1107,10 @@ export function PropertyDetailInspectionTab({
               </p>
               <div className="flex flex-col">
                 {PROPERTY_BOUNDARY_ROWS.map((row) => {
-                  const matchKey = row.descKey.replace("Boundary", "") as
-                    | "north"
-                    | "south"
-                    | "east"
-                    | "west";
+                  const matchKey = row.descKey.replace(
+                    "Boundary",
+                    "",
+                  ) as InspectorBoundaryKey;
                   const match = draft.boundaryMatches[matchKey];
                   const ok = match?.matches !== false;
                   return (
@@ -657,20 +1129,92 @@ export function PropertyDetailInspectionTab({
                           ? `${property[row.lenKey].trim()} م`
                           : "—"}
                       </span>
-                      <div>
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-[5px] text-[11.5px] font-bold",
-                            ok ? "text-[#1f6f6f]" : "text-[#d9694f]",
-                          )}
-                        >
-                          {ok ? "مطابق" : "عدم تطابق"}
-                        </span>
-                        {!ok && match?.mismatchNote.trim() ? (
-                          <div className="mt-[3px] max-w-[220px] text-[10.5px] leading-snug text-[#d9694f]">
-                            {match.mismatchNote}
-                          </div>
-                        ) : null}
+                      <div className="min-w-[160px]">
+                        {showEditFields ? (
+                          <>
+                            <div className="flex flex-wrap gap-1.5">
+                              <button
+                                type="button"
+                                className={cn(
+                                  "rounded-full border px-2.5 py-1 text-[11px] font-bold transition-colors",
+                                  ok
+                                    ? "border-[color-mix(in_srgb,#1f6f6f_35%,transparent)] bg-[color-mix(in_srgb,#2a8f8f_14%,transparent)] text-[#1f6f6f]"
+                                    : "border-border bg-surface text-text-3",
+                                )}
+                                onClick={() =>
+                                  patchDraft({
+                                    boundaryMatches: {
+                                      ...draft.boundaryMatches,
+                                      [matchKey]: {
+                                        ...match,
+                                        matches: true,
+                                      },
+                                    },
+                                  })
+                                }
+                              >
+                                مطابق
+                              </button>
+                              <button
+                                type="button"
+                                className={cn(
+                                  "rounded-full border px-2.5 py-1 text-[11px] font-bold transition-colors",
+                                  !ok
+                                    ? "border-[color-mix(in_srgb,#d9694f_35%,transparent)] bg-[color-mix(in_srgb,#d9694f_14%,transparent)] text-[#d9694f]"
+                                    : "border-border bg-surface text-text-3",
+                                )}
+                                onClick={() =>
+                                  patchDraft({
+                                    boundaryMatches: {
+                                      ...draft.boundaryMatches,
+                                      [matchKey]: {
+                                        ...match,
+                                        matches: false,
+                                      },
+                                    },
+                                  })
+                                }
+                              >
+                                عدم تطابق
+                              </button>
+                            </div>
+                            {!ok ? (
+                              <input
+                                type="text"
+                                className={cn(EDIT_CONTROL_CLASS, "mt-1.5 text-[11px]")}
+                                placeholder="ملاحظة عدم التطابق…"
+                                value={match?.mismatchNote ?? ""}
+                                onChange={(e) =>
+                                  patchDraft({
+                                    boundaryMatches: {
+                                      ...draft.boundaryMatches,
+                                      [matchKey]: {
+                                        ...match,
+                                        mismatchNote: e.target.value,
+                                      },
+                                    },
+                                  })
+                                }
+                              />
+                            ) : null}
+                          </>
+                        ) : (
+                          <>
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-[5px] text-[11.5px] font-bold",
+                                ok ? "text-[#1f6f6f]" : "text-[#d9694f]",
+                              )}
+                            >
+                              {ok ? "مطابق" : "عدم تطابق"}
+                            </span>
+                            {!ok && match?.mismatchNote.trim() ? (
+                              <div className="mt-[3px] max-w-[220px] text-[10.5px] leading-snug text-[#d9694f]">
+                                {match.mismatchNote}
+                              </div>
+                            ) : null}
+                          </>
+                        )}
                       </div>
                     </div>
                   );
@@ -690,6 +1234,16 @@ export function PropertyDetailInspectionTab({
               <ChipRow
                 items={[...INSPECTOR_SERVICE_OPTIONS]}
                 selected={draft.services}
+                onToggle={
+                  showEditFields
+                    ? (item) =>
+                        patchDraft({
+                          services: draft.services.includes(item)
+                            ? draft.services.filter((s) => s !== item)
+                            : [...draft.services, item],
+                        })
+                    : undefined
+                }
               />
             </div>
             <div className="mb-1.5 text-[11px] font-semibold text-text-2">
@@ -698,6 +1252,16 @@ export function PropertyDetailInspectionTab({
             <ChipRow
               items={[...INSPECTOR_AMENITY_OPTIONS]}
               selected={draft.amenities}
+              onToggle={
+                showEditFields
+                  ? (item) =>
+                      patchDraft({
+                        amenities: draft.amenities.includes(item)
+                          ? draft.amenities.filter((a) => a !== item)
+                          : [...draft.amenities, item],
+                      })
+                  : undefined
+              }
             />
           </InsCard>
 
@@ -705,14 +1269,38 @@ export function PropertyDetailInspectionTab({
             title="الوصف والملاحظات"
             badge={<DetailBadge tone="gray">نص حر</DetailBadge>}
           >
-            <InsField label="وصف العقار" value={draft.propertyDescription} />
-            <div className="h-3" />
-            <InsField
-              label="الإيجابيات والعيوب الظاهرة على الحي"
-              value={draft.districtProsCons}
-            />
-            <div className="h-3" />
-            <InsField label="ملاحظات على الأصل" value={draft.assetNotes} />
+            {showEditFields ? (
+              <>
+                <InsEditTextarea
+                  label="وصف العقار"
+                  value={draft.propertyDescription}
+                  onChange={(v) => patchDraft({ propertyDescription: v })}
+                />
+                <div className="h-3" />
+                <InsEditTextarea
+                  label="الإيجابيات والعيوب الظاهرة على الحي"
+                  value={draft.districtProsCons}
+                  onChange={(v) => patchDraft({ districtProsCons: v })}
+                />
+                <div className="h-3" />
+                <InsEditTextarea
+                  label="ملاحظات على الأصل"
+                  value={draft.assetNotes}
+                  onChange={(v) => patchDraft({ assetNotes: v })}
+                />
+              </>
+            ) : (
+              <>
+                <InsField label="وصف العقار" value={draft.propertyDescription} />
+                <div className="h-3" />
+                <InsField
+                  label="الإيجابيات والعيوب الظاهرة على الحي"
+                  value={draft.districtProsCons}
+                />
+                <div className="h-3" />
+                <InsField label="ملاحظات على الأصل" value={draft.assetNotes} />
+              </>
+            )}
           </InsCard>
 
           <InsCard
@@ -769,22 +1357,106 @@ export function PropertyDetailInspectionTab({
                       </svg>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <span className="rounded-full bg-[#f1ece2] px-2.5 py-0.5 text-[10.5px] font-bold text-[#8c7857]">
-                        {obs.category || "ملاحظة"}
-                      </span>
-                      <p className="mt-1.5 mb-0 text-xs leading-relaxed text-pretty text-text-2">
-                        {obs.text}
-                      </p>
-                      {obs.photo?.fileName ? (
-                        <p className="mb-0 mt-1 text-[10.5px] text-text-3">
-                          مرفق: {obs.photo.fileName}
-                        </p>
-                      ) : null}
+                      {showEditFields ? (
+                        <div className="flex flex-col gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <select
+                              className={cn(EDIT_CONTROL_CLASS, "max-w-[180px]")}
+                              value={obs.category}
+                              onChange={(e) =>
+                                patchDraft({
+                                  observations: draft.observations.map((o) =>
+                                    o.id === obs.id
+                                      ? { ...o, category: e.target.value }
+                                      : o,
+                                  ),
+                                })
+                              }
+                            >
+                              {INSPECTOR_OBSERVATION_CATEGORIES.map((c) => (
+                                <option key={c} value={c}>
+                                  {c}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              className="ms-auto text-[11px] font-bold text-danger-text"
+                              onClick={() =>
+                                patchDraft({
+                                  observations: draft.observations.filter(
+                                    (o) => o.id !== obs.id,
+                                  ),
+                                })
+                              }
+                            >
+                              حذف
+                            </button>
+                          </div>
+                          <input
+                            type="text"
+                            className={EDIT_CONTROL_CLASS}
+                            placeholder="اشرح الملاحظة…"
+                            value={obs.text}
+                            onChange={(e) =>
+                              patchDraft({
+                                observations: draft.observations.map((o) =>
+                                  o.id === obs.id
+                                    ? { ...o, text: e.target.value }
+                                    : o,
+                                ),
+                              })
+                            }
+                          />
+                          {obs.photo?.fileName ? (
+                            <p className="mb-0 text-[10.5px] text-text-3">
+                              مرفق: {obs.photo.fileName}
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <>
+                          <span className="rounded-full bg-[#f1ece2] px-2.5 py-0.5 text-[10.5px] font-bold text-[#8c7857]">
+                            {obs.category || "ملاحظة"}
+                          </span>
+                          <p className="mt-1.5 mb-0 text-xs leading-relaxed text-pretty text-text-2">
+                            {obs.text}
+                          </p>
+                          {obs.photo?.fileName ? (
+                            <p className="mb-0 mt-1 text-[10.5px] text-text-3">
+                              مرفق: {obs.photo.fileName}
+                            </p>
+                          ) : null}
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             )}
+            {showEditFields ? (
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                className="mt-2.5"
+                onClick={() =>
+                  patchDraft({
+                    observations: [
+                      ...draft.observations,
+                      {
+                        id: newObservationId(),
+                        category: INSPECTOR_OBSERVATION_CATEGORIES[0],
+                        text: "",
+                        photo: null,
+                      },
+                    ],
+                  })
+                }
+              >
+                إضافة ملاحظة موثّقة
+              </Button>
+            ) : null}
           </InsCard>
         </>
       )}

@@ -1,4 +1,5 @@
 import type { PoPropertyIntake } from "../../prototype/po-intake-data";
+import { parseRestrictionTypes } from "../../prototype/po-intake-data";
 import {
   collectRequiredErrors,
   mergeFieldErrors,
@@ -6,12 +7,6 @@ import {
 } from "@platform/app-shared/domain/form/field-errors";
 
 const RESTRICTIONS_VALUES = new Set(["yes", "no"]);
-const RESTRICTION_TYPE_VALUES = new Set([
-  "mortgaged",
-  "seized",
-  "suspended",
-  "other",
-]);
 const BOUNDARIES_VALUES = new Set(["deed", "bourse", "doc", "no"]);
 
 export function validatePropertyBourseFields(
@@ -33,16 +28,19 @@ export function validatePropertyBourseFields(
   }
 
   if (restrictions === "yes") {
-    const type = p.restrictionType.trim().toLowerCase();
-    if (!RESTRICTION_TYPE_VALUES.has(type)) {
-      errors.restrictionType = "نوع القيد مطلوب";
-    } else if (type === "other" && !p.restrictionOtherReason.trim()) {
+    const types = parseRestrictionTypes(p.restrictionType);
+    if (types.length === 0) {
+      errors.restrictionType = "اختر نوع قيد واحداً على الأقل";
+    } else if (types.includes("other") && !p.restrictionOtherReason.trim()) {
       errors.restrictionOtherReason = "سبب القيد مطلوب عند اختيار أخرى";
     }
   } else {
-    const type = p.restrictionType.trim().toLowerCase();
-    if (type && !RESTRICTION_TYPE_VALUES.has(type)) {
-      errors.restrictionType = "قيمة نوع القيد غير صالحة";
+    const raw = p.restrictionType.trim();
+    if (raw) {
+      const types = parseRestrictionTypes(raw);
+      if (types.length === 0) {
+        errors.restrictionType = "قيمة نوع القيد غير صالحة";
+      }
     }
   }
 

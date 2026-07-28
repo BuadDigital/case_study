@@ -51,7 +51,7 @@ export type ActiveQueueMobileCardItem = {
 
 /** Shared visual tokens — brand ink / gold / red (reuse in Failures, Fees, Ops). */
 export const queueMobileCardShellClassName = cn(
-  "group relative flex min-h-[84px] cursor-pointer items-stretch gap-3 overflow-hidden rounded-[14px] border border-border bg-surface px-3.5 py-3.5",
+  "group relative flex w-full min-w-0 max-w-full min-h-[84px] cursor-pointer items-stretch gap-3 overflow-hidden rounded-[14px] border border-border bg-surface px-3.5 py-3.5",
   "shadow-[0_2px_8px_rgba(15,52,96,0.06)]",
   "transition-[box-shadow,border-color,transform,background-color] duration-150",
   "active:scale-[0.992] active:bg-row-hover",
@@ -204,7 +204,7 @@ export function ActiveQueueMobileCards({
   }
 
   return (
-    <ul className="m-0 flex list-none flex-col gap-3 p-0">
+    <ul className="m-0 flex w-full min-w-0 max-w-full list-none flex-col gap-3 p-0">
       {items.map((item, index) => {
         const tone = item.tone ?? "new";
         const meta: ActiveQueueMobileCardMeta[] =
@@ -225,7 +225,7 @@ export function ActiveQueueMobileCards({
             key={item.id}
             id={item.anchorId}
             className={cn(
-              "ui-animate-fade-in",
+              "ui-animate-fade-in w-full min-w-0 max-w-full",
               Boolean(item.expandedPanel) && "overflow-hidden rounded-[14px]",
               item.muted && "opacity-70",
               item.shellClassName,
@@ -276,8 +276,8 @@ export function ActiveQueueMobileCards({
                 />
               ) : null}
 
-              <div className="relative z-[1] min-w-0 flex-1">
-                <div className="text-[13.5px] font-semibold leading-snug tracking-tight text-heading">
+              <div className="relative z-[1] min-w-0 flex-1 overflow-hidden">
+                <div className="truncate text-[13.5px] font-semibold leading-snug tracking-tight text-heading">
                   {item.title}
                 </div>
                 {meta.length > 0 ? (

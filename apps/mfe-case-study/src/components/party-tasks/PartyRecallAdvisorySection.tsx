@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Button, useToast } from "@platform/design-system";
 import {
   approvePartyTaskRecall,
@@ -28,11 +29,16 @@ export function PartyRecallAdvisorySection({
 }) {
   const { showToast } = useToast();
   const recall = getPartyTaskRecall(taskId);
+  const [busyAction, setBusyAction] = useState<"approve" | "reject" | null>(
+    null,
+  );
 
   if (!recall) return null;
 
-  function handleApprove() {
-    void approvePartyTaskRecall(taskId).then((result) => {
+  async function handleApprove() {
+    setBusyAction("approve");
+    try {
+      const result = await approvePartyTaskRecall(taskId);
       if (result.ok) {
         showToast("تمت الموافقة على طلب الاسترجاع", "success");
         onResolved?.();
@@ -42,13 +48,17 @@ export function PartyRecallAdvisorySection({
         result.error || "تعذّر الموافقة على الاسترجاع — حاول لاحقاً",
         "error",
       );
-    });
+    } finally {
+      setBusyAction(null);
+    }
   }
 
-  function handleReject() {
+  async function handleReject() {
     const note = window.prompt("سبب الرفض (اختياري):", "");
     if (note === null) return;
-    void rejectPartyTaskRecall(taskId, note).then((result) => {
+    setBusyAction("reject");
+    try {
+      const result = await rejectPartyTaskRecall(taskId, note);
       if (result.ok) {
         showToast("تم رفض طلب الاسترجاع", "success");
         onResolved?.();
@@ -58,7 +68,9 @@ export function PartyRecallAdvisorySection({
         result.error || "تعذّر رفض طلب الاسترجاع — حاول لاحقاً",
         "error",
       );
-    });
+    } finally {
+      setBusyAction(null);
+    }
   }
 
   void refreshKey;
@@ -71,10 +83,26 @@ export function PartyRecallAdvisorySection({
           {recall.reason ? ` — ${recall.reason}` : ""}
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <Button type="button" size="sm" variant="primary" onClick={handleApprove}>
+          <Button
+            type="button"
+            size="sm"
+            variant="primary"
+            loading={busyAction === "approve"}
+            disabled={busyAction !== null}
+            showActionToast={false}
+            onClick={() => void handleApprove()}
+          >
             الموافقة على الاسترجاع
           </Button>
-          <Button type="button" size="sm" variant="outline" onClick={handleReject}>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            loading={busyAction === "reject"}
+            disabled={busyAction !== null}
+            showActionToast={false}
+            onClick={() => void handleReject()}
+          >
             رفض
           </Button>
         </div>
@@ -94,7 +122,14 @@ export function PartyRecallAdvisorySection({
           <strong>وُوفّق على الاسترجاع لكن العمل ما زال مغلقاً على {partyLabel}</strong>
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <Button type="button" size="sm" variant="primary" onClick={handleApprove}>
+          <Button
+            type="button"
+            size="sm"
+            variant="primary"
+            loading={busyAction === "approve"}
+            showActionToast={false}
+            onClick={() => void handleApprove()}
+          >
             إعادة فتح العمل للطرف
           </Button>
         </div>

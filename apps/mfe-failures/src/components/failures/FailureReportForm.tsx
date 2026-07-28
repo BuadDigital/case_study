@@ -28,24 +28,29 @@ export function FailureReportForm({
   const [severity, setSeverity] = useState<FailureSeverity>("internal");
   const [problemTypeId, setProblemTypeId] = useState("");
   const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  function handleSubmit() {
-    if (!problemTypeId.trim()) return;
-    void createFailure({
-      poNumber,
-      propertyId,
-      deedNumber,
-      problemTypeId,
-      title: failureProblemTypeLabel(problemTypeId),
-      severity,
-      raisedByRole,
-      internalNote: note,
-      specialist,
-    })
-      .then(() => onDone())
-      .catch(() => {
-        showToast("تعذّر تسجيل التعذر — حاول مرة أخرى", "error");
+  async function handleSubmit() {
+    if (!problemTypeId.trim() || saving) return;
+    setSaving(true);
+    try {
+      await createFailure({
+        poNumber,
+        propertyId,
+        deedNumber,
+        problemTypeId,
+        title: failureProblemTypeLabel(problemTypeId),
+        severity,
+        raisedByRole,
+        internalNote: note,
+        specialist,
       });
+      onDone();
+    } catch {
+      showToast("تعذّر تسجيل التعذر — حاول مرة أخرى", "error");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -69,13 +74,14 @@ export function FailureReportForm({
             type="button"
             variant="primary"
             size="sm"
-            disabled={!problemTypeId.trim()}
+            loading={saving}
+            disabled={!problemTypeId.trim() || saving}
             showActionToast={false}
-            onClick={handleSubmit}
+            onClick={() => void handleSubmit()}
           >
             {severity === "internal" ? "حفظ تعذر داخلي" : "تسجيل احتمال تعذر"}
           </Button>
-          <Button type="button" size="sm" onClick={onCancel}>
+          <Button type="button" size="sm" disabled={saving} onClick={onCancel}>
             إلغاء
           </Button>
         </div>

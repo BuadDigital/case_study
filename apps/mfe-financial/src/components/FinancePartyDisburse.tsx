@@ -410,7 +410,9 @@ function FinancePartyDetailSections({
               type="button"
               size="sm"
               variant="primary"
-              disabled={busyId === "bulk" || selectedRows.length === 0}
+              loading={busyId === "bulk"}
+              disabled={selectedRows.length === 0}
+              showActionToast={false}
               onClick={() => void bulkDisburse()}
             >
               صرف الدفعة
@@ -599,7 +601,8 @@ function FinanceDisburseTable({
                         type="button"
                         size="sm"
                         variant="primary"
-                        disabled={busyId === row.workflowTaskId}
+                        loading={busyId === row.workflowTaskId}
+                        showActionToast={false}
                         onClick={() => onDisburse(row)}
                       >
                         صرف
@@ -612,6 +615,7 @@ function FinanceDisburseTable({
                           size="sm"
                           variant="outline"
                           disabled={busyId === row.workflowTaskId}
+                          showActionToast={false}
                           onClick={() => onReturn(row)}
                         >
                           إرجاع
@@ -621,6 +625,7 @@ function FinanceDisburseTable({
                           size="sm"
                           variant="ghost"
                           disabled={busyId === row.workflowTaskId}
+                          showActionToast={false}
                           onClick={() => onInquiry(row)}
                         >
                           استفسار

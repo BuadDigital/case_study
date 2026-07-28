@@ -31,11 +31,13 @@ import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import { ltrValueClass } from "../components/po-intake/PropertyDetailFields";
 import { CopyFromPriorTransactionModal } from "../components/po-intake/CopyFromPriorTransactionModal";
 import {
+  assignmentCompositeTag,
   formatDateAr,
   formatPropertyLocation,
   formatPropertyTypeLine,
   hasBourseDetailFields,
   isPastDue,
+  PROPERTY_IDENTIFIER_COLUMN_LABEL,
   requiresAssignmentDecree,
 } from "../lib/prototype/po-intake-data";
 import {
@@ -303,7 +305,7 @@ export function PoPropertiesPage({
           </h1>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-text-2">
             <Badge tone={assignmentTypeBadgeTone(record.assignmentType)}>
-              {record.assignmentType}
+              {assignmentCompositeTag(record.assignmentType)}
             </Badge>
             <span className="select-none text-text-3" aria-hidden>
               ·
@@ -370,7 +372,7 @@ export function PoPropertiesPage({
               <Table>
                 <THead>
                   <Tr hoverable={false}>
-                    <Th>رقم الصك/التسجيل العيني</Th>
+                    <Th>{PROPERTY_IDENTIFIER_COLUMN_LABEL}</Th>
                     <Th>الموقع</Th>
                     <Th>المحكمة / الدائرة</Th>
                     <Th>التصنيف / النوع</Th>

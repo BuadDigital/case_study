@@ -3,7 +3,7 @@ import type {
   PoIntakeRecord,
   PoPropertyIntake,
 } from "./po-intake-data";
-import { computeBusinessDueDate, emptyProperty, formatPropertyDeedDisplay, hasBourseDetailFields, normalizePropertyIdentifierNumber, parsePropertyIdentifierType, skipsBourseForIdentifier,} from "./po-intake-data";
+import { computeBusinessDueDate, emptyProperty, formatPropertyDeedDisplay, hasBourseDetailFields, normalizePropertyIdentifierNumber, parsePropertyIdentifierType, skipsBourseForIdentifier, businessDaysForAssignmentType,} from "./po-intake-data";
 import {
   contactsForApi,
 } from "../domain/po-intake/property-validation";
@@ -92,7 +92,11 @@ function normalizePoRecord(record: PoIntakeRecord): PoIntakeRecord {
     receivedFromEnfathTime,
     dueDateAt:
       record.dueDateAt ||
-      computeBusinessDueDate(record.receivedFromEnfathAt, receivedFromEnfathTime),
+      computeBusinessDueDate(
+        record.receivedFromEnfathAt,
+        receivedFromEnfathTime,
+        businessDaysForAssignmentType(record.assignmentType),
+      ),
     properties: (record.properties ?? []).map(normalizeProperty),
   };
 }
@@ -124,6 +128,7 @@ function dtoToProperty(dto: WorkOrderPropertyDto): PoPropertyIntake {
     westBoundary: dto.westBoundary ?? "",
     westBoundaryLengthM: dto.westBoundaryLengthM ?? "",
     city: dto.city ?? "",
+    region: dto.region ?? "",
     district: dto.district ?? "",
     deedStatus: dto.deedStatus ?? "",
     area: dto.area ?? "",
@@ -131,6 +136,8 @@ function dtoToProperty(dto: WorkOrderPropertyDto): PoPropertyIntake {
     circuit: dto.circuit ?? "",
     courtId: dto.courtId ?? "",
     circuitId: dto.circuitId ?? "",
+    regionId: dto.regionId ?? "",
+    cityId: dto.cityId ?? "",
     classification: dto.classification ?? "",
     propertyType: dto.propertyType ?? "",
     assignmentDocFileNames: dto.assignmentDocFileNames ?? [],
@@ -195,6 +202,7 @@ export function propertyToEnfathDto(
     realEstateRegDate: prop.realEstateRegDate.trim() || undefined,
     ownerName: prop.ownerName || undefined,
     city: prop.city.trim() || undefined,
+    region: prop.region.trim() || undefined,
     district: prop.district.trim() || undefined,
     classification: prop.classification.trim() || undefined,
     propertyType: prop.propertyType.trim() || undefined,
@@ -202,6 +210,8 @@ export function propertyToEnfathDto(
     circuit: prop.circuit || undefined,
     courtId: prop.courtId?.trim() || undefined,
     circuitId: prop.circuitId?.trim() || undefined,
+    regionId: prop.regionId?.trim() || undefined,
+    cityId: prop.cityId?.trim() || undefined,
     assignmentDocFileNames: prop.assignmentDocFileNames,
     delegationLetterFileNames: prop.delegationLetterFileNames,
     otherDocumentFileNames:
@@ -250,6 +260,9 @@ export function propertyToBourseRequest(
 ): UpdatePropertyBourseRequest {
   return {
     city: prop.city.trim(),
+    region: prop.region.trim() || undefined,
+    regionId: prop.regionId.trim() || undefined,
+    cityId: prop.cityId.trim() || undefined,
     district: prop.district.trim(),
     classification: prop.classification.trim(),
     propertyType: prop.propertyType.trim(),
@@ -450,6 +463,9 @@ export function priorDeedToPropertyIntake(
   return {
     ...enfath,
     city: prior.city?.trim() ?? "",
+    region: prior.region?.trim() ?? "",
+    regionId: prior.regionId?.trim() ?? "",
+    cityId: prior.cityId?.trim() ?? "",
     district: prior.district?.trim() ?? "",
     classification: prior.classification?.trim() ?? "",
     propertyType: prior.propertyType?.trim() ?? "",
@@ -491,6 +507,8 @@ function mergePriorOntoExisting(
       circuit: draft.circuit,
       courtId: draft.courtId || existing.courtId,
       circuitId: draft.circuitId || existing.circuitId,
+      regionId: draft.regionId || existing.regionId,
+      cityId: draft.cityId || existing.cityId,
       planNumber: draft.planNumber,
       plotNumber: draft.plotNumber,
       locationMapUrl: draft.locationMapUrl,
@@ -502,6 +520,8 @@ function mergePriorOntoExisting(
     id: existing.id,
     courtId: draft.courtId || existing.courtId,
     circuitId: draft.circuitId || existing.circuitId,
+    regionId: draft.regionId || existing.regionId,
+    cityId: draft.cityId || existing.cityId,
     bourseDataCompleted: false,
   };
 }
@@ -1084,6 +1104,7 @@ export function buildPoRecord(
     dueDateAt: computeBusinessDueDate(
       received,
       fields.receivedFromEnfathTime ?? "",
+      businessDaysForAssignmentType(fields.assignmentType),
     ),
     receivedFromEnfathTime: fields.receivedFromEnfathTime ?? "",
     createdAtUtc: new Date().toISOString(),

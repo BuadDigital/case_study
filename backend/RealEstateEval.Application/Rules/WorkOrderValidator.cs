@@ -10,7 +10,7 @@ public static class WorkOrderValidator
     private const int RealEstateRegistrationDigitLength = 16;
 
     public static bool RequiresAssignmentDecree(AssignmentType type) =>
-        type == AssignmentType.Execution;
+        AssignmentTypeRules.RequiresAssignmentDecree(type);
 
     public static Dictionary<string, string> ValidateHeader(CreateWorkOrderRequest request)
     {
@@ -55,7 +55,9 @@ public static class WorkOrderValidator
         {
             ValidateIdentifierNumber(dto, idType, errors);
 
-            if (dto.HasRequestNumber && string.IsNullOrWhiteSpace(dto.RequestNumber))
+            if (AssignmentTypeRules.RequiresRequestNumber(assignmentType) &&
+                dto.HasRequestNumber &&
+                string.IsNullOrWhiteSpace(dto.RequestNumber))
                 errors["requestNumber"] = "رقم الطلب مطلوب";
             if (string.IsNullOrWhiteSpace(dto.AssignmentMandateNumber))
                 errors["assignmentMandateNumber"] = "رقم التكليف مطلوب";
@@ -65,10 +67,13 @@ public static class WorkOrderValidator
                 errors["deedDate"] = "تاريخ الصك مطلوب";
             if (string.IsNullOrWhiteSpace(dto.OwnerName))
                 errors["ownerName"] = "اسم المالك مطلوب";
-            if (string.IsNullOrWhiteSpace(dto.Court))
-                errors["court"] = "المحكمة مطلوبة";
-            if (string.IsNullOrWhiteSpace(dto.Circuit))
-                errors["circuit"] = "الدائرة مطلوبة";
+            if (AssignmentTypeRules.RequiresCourtAndCircuit(assignmentType))
+            {
+                if (string.IsNullOrWhiteSpace(dto.Court))
+                    errors["court"] = "المحكمة مطلوبة";
+                if (string.IsNullOrWhiteSpace(dto.Circuit))
+                    errors["circuit"] = "الدائرة مطلوبة";
+            }
 
             if (!string.IsNullOrWhiteSpace(dto.DeedNumber) &&
                 deedExistsInPo(dto.DeedNumber.Trim(), excludePropertyId))
@@ -80,7 +85,9 @@ public static class WorkOrderValidator
         {
             ValidateDeedOrRealEstateReg(dto, errors);
 
-            if (dto.HasRequestNumber && string.IsNullOrWhiteSpace(dto.RequestNumber))
+            if (AssignmentTypeRules.RequiresRequestNumber(assignmentType) &&
+                dto.HasRequestNumber &&
+                string.IsNullOrWhiteSpace(dto.RequestNumber))
                 errors["requestNumber"] = "رقم الطلب مطلوب";
             if (string.IsNullOrWhiteSpace(dto.AssignmentMandateNumber))
                 errors["assignmentMandateNumber"] = "رقم التكليف مطلوب";
@@ -88,10 +95,13 @@ public static class WorkOrderValidator
                 errors["assignmentMandateDate"] = "تاريخ التكليف مطلوب";
             if (string.IsNullOrWhiteSpace(dto.OwnerName))
                 errors["ownerName"] = "اسم المالك مطلوب";
-            if (string.IsNullOrWhiteSpace(dto.Court))
-                errors["court"] = "المحكمة مطلوبة";
-            if (string.IsNullOrWhiteSpace(dto.Circuit))
-                errors["circuit"] = "الدائرة مطلوبة";
+            if (AssignmentTypeRules.RequiresCourtAndCircuit(assignmentType))
+            {
+                if (string.IsNullOrWhiteSpace(dto.Court))
+                    errors["court"] = "المحكمة مطلوبة";
+                if (string.IsNullOrWhiteSpace(dto.Circuit))
+                    errors["circuit"] = "الدائرة مطلوبة";
+            }
             if (dto.DelegationLetterFileNames.All(string.IsNullOrWhiteSpace))
                 errors["delegationLetterFileNames"] = "خطاب التفويض مطلوب";
 
@@ -109,7 +119,7 @@ public static class WorkOrderValidator
                 "ارفع قرار الإسناد الخاص بهذا العقار (مطلوب لمسار التنفيذ)";
         }
 
-        ValidateContacts(dto, errors);
+        ValidateContacts(dto, AssignmentTypeRules.RequiresContacts(assignmentType), errors);
 
         return errors;
     }
@@ -135,16 +145,16 @@ public static class WorkOrderValidator
             dto.RestrictionsPresent?.Trim(),
             "yes",
             StringComparison.OrdinalIgnoreCase);
-        var restrictionType = dto.RestrictionType?.Trim().ToLowerInvariant() ?? "";
+        var restrictionTypes = ParseRestrictionTypes(dto.RestrictionType);
         if (hasRestrictions)
         {
-            if (restrictionType is not "mortgaged" and not "seized" and not "suspended" and not "other")
-                errors["restrictionType"] = "نوع القيد مطلوب";
-            else if (restrictionType == "other" && string.IsNullOrWhiteSpace(dto.RestrictionOtherReason))
+            if (restrictionTypes.Count == 0)
+                errors["restrictionType"] = "اختر نوع قيد واحداً على الأقل";
+            else if (restrictionTypes.Contains("other") &&
+                     string.IsNullOrWhiteSpace(dto.RestrictionOtherReason))
                 errors["restrictionOtherReason"] = "سبب القيد مطلوب عند اختيار أخرى";
         }
-        else if (!string.IsNullOrWhiteSpace(restrictionType) &&
-                 restrictionType is not "mortgaged" and not "seized" and not "suspended" and not "other")
+        else if (!string.IsNullOrWhiteSpace(dto.RestrictionType) && restrictionTypes.Count == 0)
         {
             errors["restrictionType"] = "قيمة نوع القيد غير صالحة";
         }
@@ -218,7 +228,29 @@ public static class WorkOrderValidator
     private static string NormalizeIdentifierDigits(string value) =>
         new string(value.Where(char.IsDigit).ToArray());
 
-    private static void ValidateContacts(WorkOrderPropertyDto dto, Dictionary<string, string> errors)
+    private static readonly HashSet<string> AllowedRestrictionTypes = new(StringComparer.Ordinal)
+    {
+        "mortgaged", "seized", "suspended", "other",
+    };
+
+    private static List<string> ParseRestrictionTypes(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return [];
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var list = new List<string>();
+        foreach (var part in value.Split([',', '،'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var v = part.ToLowerInvariant();
+            if (!AllowedRestrictionTypes.Contains(v) || !seen.Add(v)) continue;
+            list.Add(v);
+        }
+        return list;
+    }
+
+    private static void ValidateContacts(
+        WorkOrderPropertyDto dto,
+        bool requireAtLeastOne,
+        Dictionary<string, string> errors)
     {
         var hasContact = false;
         for (var i = 0; i < dto.Contacts.Count; i++)
@@ -240,7 +272,7 @@ public static class WorkOrderValidator
                 !string.IsNullOrEmpty(role))
                 hasContact = true;
         }
-        if (!hasContact)
+        if (requireAtLeastOne && !hasContact)
             errors["_contacts"] = "أضف ضابط اتصال واحداً على الأقل (جوال + صفة)";
     }
 

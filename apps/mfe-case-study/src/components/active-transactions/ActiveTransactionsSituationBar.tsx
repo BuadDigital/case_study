@@ -209,7 +209,7 @@ function MobileSituationStatCard({
   const inner = (
     <div
       className={cn(
-        "relative flex min-h-[88px] items-center gap-3 overflow-hidden rounded-[14px] border border-border border-s-[3px] bg-surface px-3.5 py-3.5",
+        "relative flex min-h-[88px] min-w-0 max-w-full items-center gap-3 overflow-hidden rounded-[14px] border border-border border-s-[3px] bg-surface px-3.5 py-3.5",
         "shadow-[0_2px_8px_rgba(15,52,96,0.06)]",
         "transition-[box-shadow,border-color,transform] duration-150",
         "active:scale-[0.985]",
@@ -332,7 +332,7 @@ export function ActiveTransactionsSituationBar({
       <KpiBand className="mb-3 hidden lg:flex">{desktopCells}</KpiBand>
 
       {/* Mobile: HTML inspector separate stat cards (2×2). */}
-      <div className="mb-3 grid grid-cols-2 gap-2.5 lg:hidden">
+      <div className="mb-3 grid min-w-0 max-w-full grid-cols-2 gap-2.5 lg:hidden">
         {cards.map((card, index) => (
           <MobileSituationStatCard
             key={card.key}

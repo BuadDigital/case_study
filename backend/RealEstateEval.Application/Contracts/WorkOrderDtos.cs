@@ -36,6 +36,7 @@ public class WorkOrderPropertyDto
     public string? WestBoundary { get; set; }
     public string? WestBoundaryLengthM { get; set; }
     public string City { get; set; } = "";
+    public string? Region { get; set; }
     public string District { get; set; } = "";
     public string? DeedStatus { get; set; }
     public string? Area { get; set; }
@@ -43,6 +44,8 @@ public class WorkOrderPropertyDto
     public string? Circuit { get; set; }
     public Guid? CourtId { get; set; }
     public Guid? CircuitId { get; set; }
+    public Guid? RegionId { get; set; }
+    public Guid? CityId { get; set; }
     public string Classification { get; set; } = "";
     public string PropertyType { get; set; } = "";
     public List<string> AssignmentDocFileNames { get; set; } = [];
@@ -133,6 +136,9 @@ public class UpdateWorkOrderHeaderRequest
 public class UpdatePropertyBourseRequest
 {
     public string City { get; set; } = "";
+    public string? Region { get; set; }
+    public Guid? RegionId { get; set; }
+    public Guid? CityId { get; set; }
     public string District { get; set; } = "";
     public string Classification { get; set; } = "";
     public string PropertyType { get; set; } = "";

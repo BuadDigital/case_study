@@ -10,6 +10,7 @@ import type {
   CaseStudyReportModel,
   CaseStudyReportSection,
 } from "./case-study-report-model";
+import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "./po-intake-data";
 
 export type CaseStudyReportRenderOptions = {
   origin?: string;
@@ -94,7 +95,7 @@ function renderCommissionTable(model: CaseStudyReportModel): string {
     `<tr><td class="csrd-data-lbl">اسم مزود الخدمة</td><td>${esc(model.providerName)}</td></tr>`,
     `<tr><td class="csrd-data-lbl">رقم الطلب</td><td class="csrd-ltr">${esc(model.requestNumber)}</td></tr>`,
     `<tr><td class="csrd-data-lbl">تاريخ الطلب</td><td class="csrd-ltr">${esc(model.requestDate)}</td></tr>`,
-    `<tr><td class="csrd-data-lbl">رقم الصك</td><td class="csrd-ltr">${esc(model.deedNumber)}</td></tr>`,
+    `<tr><td class="csrd-data-lbl">${PROPERTY_IDENTIFIER_COLUMN_LABEL}</td><td class="csrd-ltr">${esc(model.deedNumber)}</td></tr>`,
   ];
   if (model.propertyLocation) {
     rows.push(
@@ -188,7 +189,7 @@ function renderApproval(
     <div class="csrd-approval-decl">${esc(approval.declarationText)}</div>
     <table class="csrd-table csrd-approval-table">
       <thead><tr>
-        <th style="width:22%">رقم الصك:</th>
+        <th style="width:22%">${PROPERTY_IDENTIFIER_COLUMN_LABEL}:</th>
         <th style="width:22%">معتمد التقرير</th>
         <th style="width:16%">التاريخ</th>
         <th style="width:20%">التوقيع</th>

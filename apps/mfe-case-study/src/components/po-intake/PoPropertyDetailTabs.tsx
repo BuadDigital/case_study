@@ -81,8 +81,8 @@ import {
   activeSurveyWorkspacePath,
   operationsTasksPath,
   propertyAppraisalWorkspacePath,
-  propertyInspectionWorkspacePath,
 } from "../../lib/my-task-routes";
+import { poPropertyPath } from "../../lib/po-routes";
 import {
   loadSeenPropertyTabs,
   markPropertyTabSeen,
@@ -540,14 +540,37 @@ export function PoPropertyDetailTabs({
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialTab = searchParams.get("tab");
+  const inspectParam = searchParams.get("inspect");
   const [tab, setTab] = useState<TabId>(() =>
     TABS.some((t) => t.id === initialTab) ? (initialTab as TabId) : "basic",
+  );
+  const [inspectEdit, setInspectEdit] = useState(
+    () => inspectParam === "edit",
   );
   const [seenTabs, setSeenTabs] = useState<Set<string>>(() => new Set());
   const { data: tasks = [] } = useWorkflowTasksQuery();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
   const poNumber = record.poNumber.trim();
+
+  const replaceInspectQuery = (inspect: "edit" | null) => {
+    const base = poPropertyPath(poNumber, property.id);
+    if (inspect === "edit") {
+      router.replace(`${base}?tab=inspection&inspect=edit`, { scroll: false });
+      return;
+    }
+    router.replace(`${base}?tab=inspection`, { scroll: false });
+  };
+
+  useEffect(() => {
+    const nextTab = searchParams.get("tab");
+    if (TABS.some((t) => t.id === nextTab)) {
+      setTab(nextTab as TabId);
+    }
+    const nextInspect = searchParams.get("inspect");
+    /* وضع الإدخال فقط عند ?inspect=edit (من الزر) — لا من مجرد فتح التبويب. */
+    setInspectEdit(nextInspect === "edit");
+  }, [searchParams]);
 
   useEffect(() => {
     setSeenTabs(loadSeenPropertyTabs(property.id));
@@ -731,7 +754,13 @@ export function PoPropertyDetailTabs({
         keysHasData={keysHasData}
         feeRows={propertyFeeRows}
         failureCount={propertyFailures.length}
-        onOpenTab={(next) => setTab(next)}
+        onOpenTab={(next) => {
+          setTab(next as typeof tab);
+          if (next === "inspection" && inspectEdit) {
+            setInspectEdit(false);
+            replaceInspectQuery(null);
+          }
+        }}
       />
 
       <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3.5 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_250px]">
@@ -748,7 +777,16 @@ export function PoPropertyDetailTabs({
                 <Tab
                   key={t.id}
                   active={active}
-                  onClick={() => setTab(t.id)}
+                  onClick={() => {
+                    setTab(t.id);
+                    /* التبويب للعرض فقط — وضع الإدخال يُفتح من زر «معاينة العقار». */
+                    if (t.id === "inspection" && inspectEdit) {
+                      setInspectEdit(false);
+                      replaceInspectQuery(null);
+                    } else if (t.id !== "inspection" && inspectEdit) {
+                      setInspectEdit(false);
+                    }
+                  }}
                   className={cn(
                     "relative mb-0 max-lg:min-h-0 border-0 border-b-0 px-2.5 py-[9px] text-[12.5px] font-normal text-text-2",
                     "rounded-none transition-[background,color] duration-150",
@@ -892,11 +930,11 @@ export function PoPropertyDetailTabs({
               property={property}
               inspectionTask={inspectionTask}
               inspectionCard={inspectionCard}
-              actionHref={
-                inspectionTask
-                  ? propertyInspectionWorkspacePath(inspectionTask.id)
-                  : undefined
-              }
+              editMode={inspectEdit}
+              onEditModeChange={(edit) => {
+                setInspectEdit(edit);
+                replaceInspectQuery(edit ? "edit" : null);
+              }}
             />
           ) : null}
 

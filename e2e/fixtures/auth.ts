@@ -75,8 +75,8 @@ const POST_LOGIN_LANDING: Record<string, { path: string; title: string }> = {
   [RELEASE_USERS.cdo]: { path: "/dashboard", title: "لوحة التحكم" },
   [RELEASE_USERS.caseSpecialist]: { path: "/po", title: "أوامر العمل" },
   [RELEASE_USERS.fieldInspector]: {
-    path: "/property-inspection",
-    title: "معاينة العقار",
+    path: "/all-transactions",
+    title: "جميع المعاملات",
   },
   [RELEASE_USERS.valuationCoordinator]: {
     path: "/valuation-coordination",
@@ -214,7 +214,10 @@ export const ROLE_MODULE_PAGES: Record<string, string[]> = {
     "system-screen-catalog",
   ],
   [RELEASE_USERS.fieldInspector]: [
-    "property-inspection",
+    "all-transactions",
+    "operations-tasks",
+    "party-fees",
+    "failures",
     "system-screen-catalog",
   ],
   [RELEASE_USERS.valuationCoordinator]: [

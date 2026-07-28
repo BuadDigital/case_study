@@ -478,7 +478,8 @@ export function InspectorDefinedPhotosSection({
                         ? "صورة أخرى"
                         : "رفع صورة (متعدد)"
                     }
-                    disabled={disabled || uploading}
+                    disabled={disabled}
+                    loading={uploading}
                     multiple
                     className={slot.photos.length === 0 ? "w-full justify-center" : undefined}
                     onFilesSelected={(files) =>
@@ -510,7 +511,8 @@ export function InspectorDefinedPhotosSection({
           </div>
           <InspectorPhotoFilePicker
             label="رفع صور إضافية"
-            disabled={disabled || uploading}
+            disabled={disabled}
+            loading={uploading}
             multiple
             className="w-auto"
             onFilesSelected={uploadFreePhotos}

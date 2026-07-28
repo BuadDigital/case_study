@@ -1,6 +1,9 @@
 import {
   isBourseInquiryIdentifier,
   requiresAssignmentDecree,
+  requiresContacts,
+  requiresRequestNumberField,
+  showsCourtFields,
   validatePropertyIdentifierNumber,
   type AssignmentType,
   type PoPropertyIntake,
@@ -43,6 +46,10 @@ export function validatePropertyEnfathFields(
   p: PoPropertyIntake,
   assignmentType: AssignmentType,
 ): FieldErrors {
+  const needCourt = showsCourtFields(assignmentType);
+  const needRequest =
+    requiresRequestNumberField(assignmentType) && p.hasRequestNumber !== false;
+
   if (isBourseInquiryIdentifier(p.identifierType)) {
     const requiredKeys = [
       "deedNumber",
@@ -50,9 +57,8 @@ export function validatePropertyEnfathFields(
       "assignmentMandateDate",
       "deedDate",
       "ownerName",
-      "court",
-      "circuit",
-      ...(p.hasRequestNumber !== false ? (["requestNumber"] as const) : []),
+      ...(needCourt ? (["court", "circuit"] as const) : []),
+      ...(needRequest ? (["requestNumber"] as const) : []),
     ];
     const errors = mergeFieldErrors(
       collectRequiredErrors(
@@ -88,9 +94,8 @@ export function validatePropertyEnfathFields(
     "assignmentMandateNumber",
     "assignmentMandateDate",
     "ownerName",
-    "court",
-    "circuit",
-    ...(p.hasRequestNumber !== false ? (["requestNumber"] as const) : []),
+    ...(needCourt ? (["court", "circuit"] as const) : []),
+    ...(needRequest ? (["requestNumber"] as const) : []),
   ];
 
   const errors = mergeFieldErrors(
@@ -130,7 +135,9 @@ export function mergePropertyEnfathValidation(
 ): FieldErrors {
   return mergeFieldErrors(
     validatePropertyEnfathFields(p, assignmentType),
-    validatePropertyContacts(p),
+    validatePropertyContacts(p, {
+      requireAtLeastOne: requiresContacts(assignmentType),
+    }),
   );
 }
 

@@ -287,7 +287,8 @@ export function InspectorKeyStatusTab({
             <Button
               type="button"
               size="sm"
-              disabled={busy}
+              loading={busy}
+              showActionToast={false}
               onClick={() => void confirmHandoff()}
             >
               تأكيد استلام المناولة
@@ -301,7 +302,8 @@ export function InspectorKeyStatusTab({
           <Button
             type="button"
             size="sm"
-            disabled={busy}
+            loading={busy}
+            showActionToast={false}
             onClick={() => void confirmAssignment("matched")}
           >
             مطابق
@@ -310,7 +312,8 @@ export function InspectorKeyStatusTab({
             type="button"
             variant="outline"
             size="sm"
-            disabled={busy}
+            loading={busy}
+            showActionToast={false}
             onClick={() => void confirmAssignment("unmatched")}
           >
             غير مطابق

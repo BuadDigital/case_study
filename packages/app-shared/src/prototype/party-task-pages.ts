@@ -166,10 +166,11 @@ export function partyTaskPageDefForKind(
 
 /**
  * Sidebar — المعاملات النشطة for distributed party roles.
- * Legacy government-review list lives under الشاشات اليتيمة (CDO only).
+ * Legacy government-review + property-inspection lists live under الشاشات اليتيمة (CDO only).
  */
 export const PARTY_ACTIVE_TRANSACTIONS_NAV = PARTY_TASK_PAGE_IDS.filter(
-  (pageId) => pageId !== "government-review",
+  (pageId) =>
+    pageId !== "government-review" && pageId !== "property-inspection",
 ).map((pageId) => {
   const def = PARTY_TASK_PAGES[pageId];
   return {

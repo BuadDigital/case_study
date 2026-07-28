@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, type ChangeEvent } from "react";
-import { cn, useToast } from "@platform/design-system";
+import { Spinner, cn, useToast } from "@platform/design-system";
 
 const UPLOAD_BTN =
   "inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border-md bg-surface px-2.5 py-2 text-[11px] text-text-2 hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60 max-lg:min-h-12 max-lg:rounded-xl max-lg:text-[13px] max-lg:font-semibold";
@@ -14,12 +14,14 @@ function useCoarsePointer(): boolean {
 export function InspectorPhotoFilePicker({
   label,
   disabled,
+  loading = false,
   multiple = false,
   className,
   onFilesSelected,
 }: {
   label: string;
   disabled?: boolean;
+  loading?: boolean;
   multiple?: boolean;
   className?: string;
   onFilesSelected: (files: File[]) => boolean | void | Promise<boolean | void>;
@@ -28,6 +30,7 @@ export function InspectorPhotoFilePicker({
   const galleryRef = useRef<HTMLInputElement>(null);
   const isMobile = useCoarsePointer();
   const { runWithUploadToast } = useToast();
+  const blocked = Boolean(disabled || loading);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -43,20 +46,24 @@ export function InspectorPhotoFilePicker({
         <button
           type="button"
           className={UPLOAD_BTN}
-          disabled={disabled}
+          disabled={blocked}
+          aria-busy={loading || undefined}
           data-no-action-toast=""
           onClick={() => cameraRef.current?.click()}
         >
-          <i className="ti ti-camera" aria-hidden /> تصوير بالكاميرا
+          {loading ? <Spinner /> : <i className="ti ti-camera" aria-hidden />}
+          {loading ? "جاري الرفع…" : "تصوير بالكاميرا"}
         </button>
         <button
           type="button"
           className={UPLOAD_BTN}
-          disabled={disabled}
+          disabled={blocked}
+          aria-busy={loading || undefined}
           data-no-action-toast=""
           onClick={() => galleryRef.current?.click()}
         >
-          <i className="ti ti-photo" aria-hidden /> اختيار من المعرض
+          {loading ? <Spinner /> : <i className="ti ti-photo" aria-hidden />}
+          {loading ? "جاري الرفع…" : "اختيار من المعرض"}
         </button>
         <input
           ref={cameraRef}
@@ -64,7 +71,7 @@ export function InspectorPhotoFilePicker({
           accept="image/*"
           capture="environment"
           multiple={multiple}
-          disabled={disabled}
+          disabled={blocked}
           className="sr-only"
           onChange={handleChange}
         />
@@ -73,7 +80,7 @@ export function InspectorPhotoFilePicker({
           type="file"
           accept="image/*"
           multiple={multiple}
-          disabled={disabled}
+          disabled={blocked}
           className="sr-only"
           onChange={handleChange}
         />
@@ -87,18 +94,20 @@ export function InspectorPhotoFilePicker({
       <button
         type="button"
         className={cn(UPLOAD_BTN, className)}
-        disabled={disabled}
+        disabled={blocked}
+        aria-busy={loading || undefined}
         data-no-action-toast=""
         onClick={() => inputRef.current?.click()}
       >
-        <i className="ti ti-upload" aria-hidden /> {label}
+        {loading ? <Spinner /> : <i className="ti ti-upload" aria-hidden />}
+        {loading ? "جاري الرفع…" : label}
       </button>
       <input
         ref={inputRef}
         type="file"
         accept="image/*"
         multiple={multiple}
-        disabled={disabled}
+        disabled={blocked}
         className="sr-only"
         onChange={handleChange}
       />

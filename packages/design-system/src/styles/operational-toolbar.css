@@ -65,7 +65,8 @@
   appearance: none;
   -webkit-appearance: none;
   height: 38px;
-  padding: 0 34px 0 14px;
+  padding-block: 0;
+  padding-inline: 14px 34px;
   border: 1px solid var(--border-md);
   border-radius: 8px;
   background: var(--surface);
@@ -77,6 +78,7 @@
   outline: none;
   box-shadow: none;
   transition: border-color 0.15s, box-shadow 0.15s;
+  max-width: 100%;
 }
 
 .ot-sel__control:focus {
@@ -86,7 +88,7 @@
 
 .ot-sel__caret {
   position: absolute;
-  right: 11px;
+  inset-inline-end: 11px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--text-3);

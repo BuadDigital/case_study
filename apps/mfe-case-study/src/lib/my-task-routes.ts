@@ -1,5 +1,6 @@
 import type { PageId } from "@platform/types";
 import { isPartyTaskPage } from "@platform/app-shared/prototype/party-task-pages";
+import { poPropertyInspectionInputPath } from "./po-routes";
 import type { WorkflowTask } from "./prototype/tasks-storage";
 
 export function myTasksPath(): string {
@@ -124,8 +125,13 @@ export function allTransactionsTaskPath(taskId: string): string {
 /** Full-page workspace for distributed party tasks opened from جميع المعاملات. */
 export function partyTaskWorkspacePath(task: WorkflowTask): string | undefined {
   switch (task.kind) {
-    case "field-inspection":
+    case "field-inspection": {
+      const propertyId = task.propertyId?.trim();
+      if (propertyId) {
+        return poPropertyInspectionInputPath(task.poNumber, propertyId);
+      }
       return propertyInspectionWorkspacePath(task.id);
+    }
     case "engineering-survey":
       return activeSurveyWorkspacePath(task.id);
     case "property-appraisal":

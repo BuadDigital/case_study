@@ -17,6 +17,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Court> Courts => Set<Court>();
     public DbSet<CourtCircuit> CourtCircuits => Set<CourtCircuit>();
     public DbSet<CourtAuditLog> CourtAuditLogs => Set<CourtAuditLog>();
+    public DbSet<Region> Regions => Set<Region>();
+    public DbSet<City> Cities => Set<City>();
     public DbSet<WorkflowTask> WorkflowTasks => Set<WorkflowTask>();
     public DbSet<CaseStudyForm> CaseStudyForms => Set<CaseStudyForm>();
     public DbSet<CaseStudyInfoRolesConfig> CaseStudyInfoRolesConfigs => Set<CaseStudyInfoRolesConfig>();
@@ -148,18 +150,21 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.WestBoundary).HasMaxLength(512);
             e.Property(x => x.WestBoundaryLengthM).HasMaxLength(32);
             e.Property(x => x.RestrictionsPresent).HasMaxLength(8);
-            e.Property(x => x.RestrictionType).HasMaxLength(32);
+            e.Property(x => x.RestrictionType).HasMaxLength(128);
             e.Property(x => x.RestrictionOtherReason).HasMaxLength(500);
             e.Property(x => x.PlanNumber).HasMaxLength(128);
             e.Property(x => x.PlotNumber).HasMaxLength(128);
             e.Property(x => x.LocationMapUrl).HasMaxLength(1024);
             e.Property(x => x.RemovalReason).HasMaxLength(500);
             e.Property(x => x.City).HasMaxLength(128);
+            e.Property(x => x.Region).HasMaxLength(100);
             e.Property(x => x.District).HasMaxLength(128);
             e.Property(x => x.Classification).HasMaxLength(128);
             e.Property(x => x.PropertyType).HasMaxLength(128);
             e.HasIndex(x => x.CourtId);
             e.HasIndex(x => x.CircuitId);
+            e.HasIndex(x => x.RegionId);
+            e.HasIndex(x => x.CityId);
             e.HasIndex(x => x.RequestNumber);
             e.HasIndex(x => new { x.WorkOrderId, x.DeedNumber });
             e.HasIndex(x => x.DeedNumber);
@@ -223,6 +228,28 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(x => new { x.EntityType, x.EntityId });
             e.HasIndex(x => x.TimestampUtc);
             e.HasIndex(x => x.Action);
+        });
+
+        builder.Entity<Region>(e =>
+        {
+            e.ToTable("Regions", DatabaseSchemas.Platform);
+            e.Property(x => x.Code).HasMaxLength(4).IsRequired();
+            e.Property(x => x.NameAr).HasMaxLength(100).IsRequired();
+            e.Property(x => x.CapitalAr).HasMaxLength(100).IsRequired();
+            e.HasIndex(x => x.Code).IsUnique();
+            e.HasIndex(x => x.IsActive);
+            e.HasMany(x => x.Cities)
+                .WithOne(x => x.Region)
+                .HasForeignKey(x => x.RegionId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<City>(e =>
+        {
+            e.ToTable("Cities", DatabaseSchemas.Platform);
+            e.Property(x => x.NameAr).HasMaxLength(100).IsRequired();
+            e.HasIndex(x => new { x.RegionId, x.NameAr }).IsUnique();
+            e.HasIndex(x => x.IsActive);
         });
 
         builder.Entity<WorkflowTask>(e =>

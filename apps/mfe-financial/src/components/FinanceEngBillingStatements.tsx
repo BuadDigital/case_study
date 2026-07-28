@@ -301,7 +301,9 @@ export function FinanceEngBillingStatements() {
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <Button
             type="button"
-            disabled={busy || selected.size === 0}
+            loading={busy}
+            disabled={selected.size === 0}
+            showActionToast={false}
             onClick={() => void createStatement()}
           >
             إنشاء كشف فوترة
@@ -312,7 +314,9 @@ export function FinanceEngBillingStatements() {
           <Button
             type="button"
             variant="outline"
-            disabled={busy || selected.size === 0}
+            loading={busy}
+            disabled={selected.size === 0}
+            showActionToast={false}
             onClick={() => void deferSelected()}
           >
             ترحيل المحدد
@@ -537,7 +541,8 @@ export function FinanceEngBillingStatements() {
                   {selectedStatement.status === "draft" ? (
                     <Button
                       type="button"
-                      disabled={busy}
+                      loading={busy}
+                      showActionToast={false}
                       onClick={() => void issueStatement(selectedStatement)}
                     >
                       إرسال للمكتب
@@ -625,7 +630,8 @@ export function FinanceEngBillingStatements() {
                       </label>
                       <Button
                         type="button"
-                        disabled={busy || uploadingReceipt}
+                        loading={busy || uploadingReceipt}
+                        showActionToast={false}
                         onClick={() => void closeStatement(selectedStatement)}
                       >
                         إقفال الكشف كمفُوتر / مدفوع

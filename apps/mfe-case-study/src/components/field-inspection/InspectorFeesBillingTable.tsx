@@ -34,6 +34,7 @@ import {
 import { FeeDiscountModal } from "@platform/app-shared/fees/FeeDiscountModal";
 import { FeeActionReasonModal } from "@platform/app-shared/fees/FeeActionReasonModal";
 import { ENG_DISCOUNT_REASONS } from "@platform/app-shared/fees/party-fee-meta";
+import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../../lib/prototype/po-intake-data";
 
 export type FeesBillingMode = "readonly" | "supervisor" | "finance";
 
@@ -145,7 +146,9 @@ function SupervisorToolbar({
           type="button"
           size="sm"
           variant="primary"
-          disabled={busy || selectedCount === 0}
+          loading={busy}
+          disabled={selectedCount === 0}
+          showActionToast={false}
           onClick={onBatchSubmit}
         >
           حفظ المحدد
@@ -310,7 +313,7 @@ export function InspectorFeesBillingTable({
               {isSupervisor ? (
                 <ThAction aria-label="تحديد" className="w-10" />
               ) : null}
-              <Th>رقم الصك</Th>
+              <Th>{PROPERTY_IDENTIFIER_COLUMN_LABEL}</Th>
               <Th>أمر العمل</Th>
               <Th>{partyTypeColumn}</Th>
               <Th className="text-end">الأتعاب</Th>
@@ -472,7 +475,9 @@ export function InspectorFeesBillingTable({
                                 type="button"
                                 size="sm"
                                 variant="ghost"
-                                disabled={isBusy || !dirty}
+                                loading={isBusy}
+                                disabled={!dirty}
+                                showActionToast={false}
                                 onClick={() => void saveRow(row)}
                               >
                                 حفظ
@@ -482,6 +487,7 @@ export function InspectorFeesBillingTable({
                                 size="sm"
                                 variant="outline"
                                 disabled={isBusy}
+                                showActionToast={false}
                                 onClick={() => setDiscountRow(row)}
                               >
                                 حسم
@@ -525,7 +531,8 @@ export function InspectorFeesBillingTable({
                                 type="button"
                                 size="sm"
                                 variant="primary"
-                                disabled={isBusy}
+                                loading={isBusy}
+                                showActionToast={false}
                                 onClick={() => void transitionRow(row, "disburse")}
                               >
                                 صرف
@@ -539,6 +546,7 @@ export function InspectorFeesBillingTable({
                                   size="sm"
                                   variant="outline"
                                   disabled={isBusy}
+                                  showActionToast={false}
                                   onClick={() =>
                                     setReasonModal({
                                       row,
@@ -553,6 +561,7 @@ export function InspectorFeesBillingTable({
                                   size="sm"
                                   variant="ghost"
                                   disabled={isBusy}
+                                  showActionToast={false}
                                   onClick={() =>
                                     setReasonModal({
                                       row,

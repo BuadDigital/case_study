@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, InlineLoadingSkeleton, cn, useToast } from "@platform/design-system";
+import { Button, InlineLoadingSkeleton, Spinner, cn, useToast } from "@platform/design-system";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowTask } from "@case-study/mfe";
 import { inspectionGateForAppraisal } from "../../lib/evaluator/evaluator-inspection-gate";
@@ -129,6 +129,7 @@ export function EvaluatorWindow({
   );
   const [uploading, setUploading] = useState(false);
   const [planUploading, setPlanUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [planName, setPlanName] = useState<string | null>(() => {
     const cached = getCachedEvaluatorPlanImage(task.id);
     return cached?.fileName ?? null;
@@ -253,41 +254,46 @@ export function EvaluatorWindow({
       saveTimer.current = null;
     }
 
-    try {
-      const updated = await updateEvaluatorDraft(task.id, {
-        reportNo: draft.reportNo,
-        landValue: draft.landValue,
-        buildingValue: draft.buildingValue,
-        forcedSaleDiscountPct: draft.forcedSaleDiscountPct,
-        evaluatorPrice: draft.evaluatorPrice,
-      });
-      if (updated) setDraft(updated);
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : "تعذّر حفظ مسودة التقييم — حاول مرة أخرى";
-      setFormError(message);
-      showToast(message, "error");
-      return false;
-    }
-
+    setSubmitting(true);
     hostRef.current?.onSavingChange?.(true);
     setFormError(null);
-    const result = await finalizeAppraiserSubmission(task.id);
-    hostRef.current?.onSavingChange?.(false);
-    if (result.ok) {
-      setDraft(result.submission);
-      showToast(
-        "تم الإرسال لأخصائي دراسة الحالة — يمكنك إغلاق الشاشة أو العودة للقائمة.",
-        "success",
-      );
-      hostRef.current?.onSubmitted?.();
-      return true;
+    try {
+      try {
+        const updated = await updateEvaluatorDraft(task.id, {
+          reportNo: draft.reportNo,
+          landValue: draft.landValue,
+          buildingValue: draft.buildingValue,
+          forcedSaleDiscountPct: draft.forcedSaleDiscountPct,
+          evaluatorPrice: draft.evaluatorPrice,
+        });
+        if (updated) setDraft(updated);
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error
+            ? err.message
+            : "تعذّر حفظ مسودة التقييم — حاول مرة أخرى";
+        setFormError(message);
+        showToast(message, "error");
+        return false;
+      }
+
+      const result = await finalizeAppraiserSubmission(task.id);
+      if (result.ok) {
+        setDraft(result.submission);
+        showToast(
+          "تم الإرسال لأخصائي دراسة الحالة — يمكنك إغلاق الشاشة أو العودة للقائمة.",
+          "success",
+        );
+        hostRef.current?.onSubmitted?.();
+        return true;
+      }
+      setFormError(result.message);
+      showToast(result.message, "error");
+      return false;
+    } finally {
+      setSubmitting(false);
+      hostRef.current?.onSavingChange?.(false);
     }
-    setFormError(result.message);
-    showToast(result.message, "error");
-    return false;
   }, [
     locked,
     gate,
@@ -742,10 +748,14 @@ export function EvaluatorWindow({
                   <button
                     type="button"
                     className={valPrimaryBtnClassName}
-                    disabled={uploading}
+                    disabled={uploading || submitting}
+                    aria-busy={submitting || undefined}
                     onClick={() => void submit()}
                   >
-                    إرسال للأخصائي
+                    {submitting ? <Spinner /> : null}
+                    <span>
+                      {submitting ? "جاري الإرسال…" : "إرسال للأخصائي"}
+                    </span>
                   </button>
                 </div>
               ) : null}

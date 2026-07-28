@@ -71,6 +71,7 @@ import {
 import type { PoIntakeRecord } from "../lib/prototype/po-intake-data";
 import {
   formatPoDisplay,
+  PROPERTY_IDENTIFIER_COLUMN_LABEL,
   skipsBourseForIdentifier,
 } from "../lib/prototype/po-intake-data";
 import {
@@ -1248,7 +1249,8 @@ export function ActiveTransactionQueueView({
           className={cn(
             "min-h-0 flex-1",
             hasRail && panelOpen ? undefined : "flex-none",
-            isPartyQueueToggleTable && "overflow-visible",
+            /* Desktop menus may escape; never let X overflow widen the mobile page. */
+            isPartyQueueToggleTable && "max-lg:overflow-x-hidden lg:overflow-visible",
             /* Mobile: drop heavy table panel chrome — cards float on canvas. */
             "max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none",
           )}
@@ -1301,15 +1303,16 @@ export function ActiveTransactionQueueView({
                   queueTableWrapClassName,
                   (isDistributionTable || isAllTransactionsTable) &&
                     "overflow-x-auto",
-                  "hidden lg:block",
+                  /* Never contribute 720px min-width to mobile layout. */
+                  "max-lg:hidden lg:block",
                   "lg:rounded-b-[var(--radius-lg)]",
                 )}
               >
                 {isAllTransactionsTable ? (
-                  <Table className="w-full min-w-[720px]" pending={queuePending}>
+                  <Table className="w-full lg:min-w-[720px]" pending={queuePending}>
                     <THead>
                       <Tr hoverable={false}>
-                        <Th>رقم الصك</Th>
+                        <Th>{PROPERTY_IDENTIFIER_COLUMN_LABEL}</Th>
                         <Th>أمر العمل</Th>
                         <Th>نوع الإسناد</Th>
                         <Th>المدينة</Th>
@@ -1524,13 +1527,13 @@ export function ActiveTransactionQueueView({
                   <Table
                     className={cn(
                       "w-full",
-                      showPartyColumns ? "min-w-0" : "min-w-[720px]",
+                      showPartyColumns ? "min-w-0" : "lg:min-w-[720px]",
                     )}
                     pending={queuePending}
                   >
                     <THead>
                       <Tr hoverable={false}>
-                        <Th>رقم الصك</Th>
+                        <Th>{PROPERTY_IDENTIFIER_COLUMN_LABEL}</Th>
                         <Th>أمر العمل</Th>
                         <Th>المدينة</Th>
                         <Th>الحي</Th>
@@ -1646,7 +1649,7 @@ export function ActiveTransactionQueueView({
                   >
                     <THead>
                       <Tr hoverable={false}>
-                        <Th>الصك</Th>
+                        <Th>{PROPERTY_IDENTIFIER_COLUMN_LABEL}</Th>
                         <Th>المدينة / الحي</Th>
                         <Th>ضابط الاتصال</Th>
                         <Th>تاريخ الإسناد</Th>
@@ -1871,7 +1874,7 @@ export function ActiveTransactionQueueView({
                   >
                     <THead>
                       <Tr hoverable={false}>
-                        <Th>الصك</Th>
+                        <Th>{PROPERTY_IDENTIFIER_COLUMN_LABEL}</Th>
                         <Th className="text-center">المدينة / الحي</Th>
                         <Th className="text-center">أمر العمل</Th>
                         <Th className="text-center">تاريخ الإسناد</Th>
@@ -2142,7 +2145,7 @@ export function ActiveTransactionQueueView({
                   <Table className="w-full" pending={queuePending}>
                     <THead>
                       <Tr hoverable={false}>
-                        <Th>رقم الصك</Th>
+                        <Th>{PROPERTY_IDENTIFIER_COLUMN_LABEL}</Th>
                         <Th>نوع الإسناد</Th>
                         <Th>المدينة</Th>
                         <Th>الحي</Th>
@@ -2221,8 +2224,11 @@ export function ActiveTransactionQueueView({
       <OperationalPanel
         id={config.panelId}
         className={cn(
-          "flex h-full min-h-0 min-w-0 flex-1 flex-col !overflow-hidden opacity-0 invisible",
-          panelOpen && "visible opacity-100",
+          "flex h-full min-h-0 min-w-0 flex-1 flex-col !overflow-hidden",
+          /* Mobile: fully remove closed rail (invisible still widens the page). */
+          panelOpen
+            ? "visible opacity-100"
+            : "pointer-events-none max-lg:hidden lg:invisible lg:opacity-0",
         )}
       >
         {panelOpen && selectedTask

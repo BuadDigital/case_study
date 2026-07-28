@@ -67,7 +67,16 @@ export const INSPECTOR_FEATURE_FIELDS: InspectorFeatureField[] = [
   {
     key: "facade",
     label: "الواجهة",
-    options: ["شمال", "جنوب", "شرق", "غرب"],
+    options: [
+      "شمالية",
+      "جنوبية",
+      "شرقية",
+      "غربية",
+      "شمالية غربية",
+      "شمالية شرقية",
+      "جنوبية غربية",
+      "جنوبية شرقية",
+    ],
     photoOnYes: true,
   },
   {

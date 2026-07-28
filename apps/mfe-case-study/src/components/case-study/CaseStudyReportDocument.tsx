@@ -11,6 +11,7 @@ import type {
   CaseStudyReportModel,
   CaseStudyReportSection,
 } from "../../lib/prototype/case-study-report-model";
+import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../../lib/prototype/po-intake-data";
 import "./case-study-report.css";
 
 type Props = {
@@ -121,7 +122,7 @@ function CommissionTable({ model }: { model: CaseStudyReportModel }) {
             <td className="csrd-ltr">{model.requestDate}</td>
           </tr>
           <tr>
-            <td className="csrd-data-lbl">رقم الصك</td>
+            <td className="csrd-data-lbl">{PROPERTY_IDENTIFIER_COLUMN_LABEL}</td>
             <td className="csrd-ltr">{model.deedNumber}</td>
           </tr>
           {model.propertyLocation ? (
@@ -237,7 +238,7 @@ function ApprovalBlock({ model }: { model: CaseStudyReportModel }) {
       <table className="csrd-table csrd-approval-table">
         <thead>
           <tr>
-            <th style={{ width: "22%" }}>رقم الصك:</th>
+            <th style={{ width: "22%" }}>{PROPERTY_IDENTIFIER_COLUMN_LABEL}:</th>
             <th style={{ width: "22%" }}>معتمد التقرير</th>
             <th style={{ width: "16%" }}>التاريخ</th>
             <th style={{ width: "20%" }}>التوقيع</th>

@@ -1,15 +1,12 @@
 "use client";
 
 import { AppModal } from "@case-study/mfe/components/ui/AppModal";
-import { RegField, RegSelect, RegTextarea } from "@platform/app-shared/registration/FormFields";
+import { RegField, RegTextarea } from "@platform/app-shared/registration/FormFields";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import { UNSAVED_CONFIRM_MSG } from "@platform/app-shared/registration/registration-utils";
 import { Button, Note } from "@platform/design-system";
-import {
-  ASSIGNMENT_TYPE_OPTIONS,
-  type AssignmentType,
-  type PoIntakeRecord,
-} from "../../lib/prototype/po-intake-data";
+import type { PoIntakeRecord } from "../../lib/prototype/po-intake-data";
+import { AssignmentTypeFields } from "@case-study/mfe/components/po-intake/AssignmentTypeFields";
 import { usePoIntakeForm } from "@case-study/mfe/components/po-intake/usePoIntakeForm";
 
 export function PoIntakeModal({
@@ -90,14 +87,11 @@ export function PoIntakeModal({
             error={form.fieldErrors.assignmentSpecialistEmail}
             onChange={form.setAssignmentSpecialistEmail}
           />
-          <RegSelect
-            id="assignment_type_modal"
-            label="نوع الإسناد"
-            required
-            options={[...ASSIGNMENT_TYPE_OPTIONS]}
+          <AssignmentTypeFields
             value={form.assignmentType}
+            allowEmpty
             error={form.fieldErrors.assignmentType}
-            onChange={(v) => form.setAssignmentType(v as AssignmentType)}
+            onChange={(v) => form.setAssignmentType(v)}
           />
           <RegField
             id="expected_property_count_modal"

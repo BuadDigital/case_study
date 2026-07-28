@@ -1,11 +1,7 @@
 "use client";
-
 import { Card, CardBody, FormGroup, Input, Label, Textarea } from "@platform/design-system";
 import type { CaseStudyFormDraft } from "../../lib/prototype/case-study-form-storage";
-import {
-  INFATH_FIELD_LABELS,
-  INFATH_YES_NO_OPTIONS,
-} from "../../lib/prototype/infath-field-labels";
+import { INFATH_FIELD_LABELS, INFATH_YES_NO_OPTIONS } from "../../lib/prototype/infath-field-labels";
 
 export function CaseStudyInfathSpecialistSection({
   draft,

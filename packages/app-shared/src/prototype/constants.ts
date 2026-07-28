@@ -118,7 +118,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
     pages: [
       "all-transactions",
       "operations-tasks",
-      "property-inspection",
       "party-fees",
       "failures",
       "system-screen-catalog",
@@ -274,7 +273,7 @@ export const PAGE_BREADCRUMB: Record<PageId, string> = {
   failures: "لوحة التحكم / إدارة التعذرات",
   "suspended-transactions": "لوحة التحكم / المعاملات المعلقة",
   "valuation-requests": "لوحة التحكم / طلبات التقييم",
-  "property-inspection": "لوحة التحكم / معاينة العقار",
+  "property-inspection": "الشاشات اليتيمة / معاينة العقار",
   "government-review": "دراسة الحالة / المعاملات النشطة / المراجعة الحكومية",
   "operations-tasks": "لوحة التحكم / المهام",
   "valuation-coordination": "لوحة التحكم / استلام التقييم",

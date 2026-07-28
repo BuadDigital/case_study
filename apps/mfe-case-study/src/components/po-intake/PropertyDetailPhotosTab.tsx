@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { cn, useToast } from "@platform/design-system";
+import { Spinner, cn, useToast } from "@platform/design-system";
 import { InfoBox } from "./PropertyDetailFields";
 import {
   openPropertyDetailDocumentPreview,
@@ -179,6 +179,7 @@ export function PropertyDetailPhotosTab({
         <button
           type="button"
           disabled={busy || downloadable.length === 0}
+          aria-busy={busy || undefined}
           className="inline-flex items-center gap-1.5 rounded-lg border border-border-md bg-surface px-3.5 py-1.5 text-[11.5px] font-bold text-text-2 disabled:opacity-50"
           onClick={() => {
             setBusy(true);
@@ -193,6 +194,9 @@ export function PropertyDetailPhotosTab({
             window.setTimeout(() => setBusy(false), 800);
           }}
         >
+          {busy ? (
+            <Spinner />
+          ) : (
           <svg
             width="14"
             height="14"
@@ -204,7 +208,8 @@ export function PropertyDetailPhotosTab({
           >
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
           </svg>
-          تنزيل الصور PDF
+          )}
+          {busy ? "جاري التجهيز…" : "تنزيل الصور PDF"}
         </button>
       </div>
 

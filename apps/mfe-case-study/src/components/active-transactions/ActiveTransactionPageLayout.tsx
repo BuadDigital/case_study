@@ -11,6 +11,8 @@ export function ActiveTransactionPageLayout({
   pageId,
   hasRail = false,
   panelOpen = false,
+  /** Keep the margin rail visible even when no row is selected (bourse empty state). */
+  reserveRail = false,
   railGridClassName,
   aboveSituation,
   queuePanel,
@@ -19,6 +21,7 @@ export function ActiveTransactionPageLayout({
   pageId: PageId;
   hasRail?: boolean;
   panelOpen?: boolean;
+  reserveRail?: boolean;
   railGridClassName?: string;
   /** Office banner etc. — rendered above KPI situation cards (eng2). */
   aboveSituation?: ReactNode;
@@ -26,34 +29,34 @@ export function ActiveTransactionPageLayout({
   sidePanel?: ReactNode;
 }) {
   const split = hasRail && Boolean(sidePanel);
+  const railActive = panelOpen || reserveRail;
+  /** Queue + form split evenly when the side panel is open. */
   const openGrid =
-    railGridClassName ??
-    "lg:grid-cols-[minmax(0,1.05fr)_minmax(300px,1fr)]";
+    railGridClassName ?? "lg:grid-cols-2";
 
   return (
-    <PageShell variant="canvas">
+    <PageShell variant="canvas" className="min-w-0 max-w-full">
       {aboveSituation}
       <ActiveTransactionsSituationBar pageId={pageId} />
 
       {split ? (
         <div
           className={cn(
-            "grid gap-3",
-            panelOpen
-              ? cn("grid-cols-1 lg:items-start", openGrid)
-              : "grid-cols-1 items-start content-start",
+            "grid min-w-0 max-w-full gap-3 grid-cols-1 items-start",
+            railActive && cn("lg:items-start", openGrid),
           )}
         >
           {queuePanel}
-          {panelOpen ? (
+          {railActive ? (
             <div
               className={cn(
-                /* Explicit height (not only max-h) so flex children shrink and the save footer stays visible. */
                 "flex min-h-0 min-w-0 flex-col overflow-hidden",
                 "lg:sticky lg:top-3",
                 /* Leave room for situation KPI band + page padding above the rail. */
                 "max-h-[calc(100dvh-var(--topbar-h)-11rem)]",
                 "lg:h-[calc(100dvh-var(--topbar-h)-11rem)]",
+                /* Empty-state rail is desktop-only; mobile still opens below via panelOpen. */
+                !panelOpen && reserveRail && "max-lg:hidden",
               )}
             >
               {sidePanel}

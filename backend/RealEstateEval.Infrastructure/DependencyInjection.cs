@@ -192,6 +192,7 @@ public static class DependencyInjection
         services.AddScoped<IFieldDictionaryService, FieldDictionaryService>();
         services.AddScoped<ICourtsService, CourtsService>();
         services.AddScoped<ICourtsCatalogService, CourtsCatalogService>();
+        services.AddScoped<IRegionsService, RegionsService>();
         services.AddScoped<ICaseStudyInfoRolesConfigService, CaseStudyInfoRolesConfigService>();
         return services;
     }

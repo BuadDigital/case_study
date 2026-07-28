@@ -81,7 +81,8 @@ export function InspectorSubmitFooter({
             variant="outline"
             size="sm"
             className="max-lg:min-h-11 max-lg:justify-center"
-            disabled={disabled || saving}
+            loading={saving}
+            disabled={disabled}
             showActionToast={false}
             actionLabel="حفظ مسودة المعاينة"
             onClick={() => void onSaveDraft()}
@@ -94,13 +95,13 @@ export function InspectorSubmitFooter({
           variant="primary"
           size="sm"
           className="max-lg:col-span-2 max-lg:min-h-12 max-lg:justify-center max-lg:text-[14px] max-lg:font-semibold"
-          disabled={disabled || saving}
+          loading={saving}
+          disabled={disabled}
           showActionToast={false}
           actionLabel="حفظ وإرسال المعاينة"
           onClick={() => void onSubmit?.()}
         >
-          <i className="ti ti-send" aria-hidden />{" "}
-          {saving ? "جاري الإرسال…" : "حفظ وإرسال المعاينة"}
+          <i className="ti ti-send" aria-hidden /> حفظ وإرسال المعاينة
         </Button>
       </div>
     </div>
