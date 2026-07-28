@@ -196,6 +196,17 @@ export function skipsBourseForIdentifier(
   return type === "real_estate_reg";
 }
 
+/** تجاوز البورصة عند تعبئة رقم التسجيل العيني. */
+export function propertySkipsBourse(property: {
+  realEstateRegNumber: string;
+  identifierType: PropertyIdentifierType;
+}): boolean {
+  return (
+    property.realEstateRegNumber.trim().length > 0 ||
+    skipsBourseForIdentifier(property.identifierType)
+  );
+}
+
 export function parsePropertyIdentifierType(
   value: string | undefined,
 ): PropertyIdentifierType {
@@ -210,12 +221,17 @@ export function identifierTypeLabel(type: PropertyIdentifierType): string {
   return "صك ملكية";
 }
 
-/** Display label for deed column — real deed when entered; «قيد الدراسة» only for empty/INQ- bourse path. */
+/** Display label — رقم الصك، وإلا التسجيل العيني؛ «قيد الدراسة» لمسار البورصة الفارغ. */
 export function formatPropertyDeedDisplay(
-  property: Pick<PoPropertyIntake, "identifierType" | "deedNumber">,
+  property: Pick<
+    PoPropertyIntake,
+    "identifierType" | "deedNumber" | "realEstateRegNumber"
+  >,
 ): string {
   const deed = property.deedNumber.trim();
   if (deed && !deed.startsWith("INQ-")) return deed;
+  const reg = property.realEstateRegNumber?.trim() ?? "";
+  if (reg) return reg;
   if (
     isBourseInquiryIdentifier(property.identifierType) ||
     deed.startsWith("INQ-")
@@ -228,10 +244,12 @@ export function formatPropertyDeedDisplay(
 export function formatPendingBourseDeedDisplay(item: {
   identifierType?: string;
   deedNumber: string;
+  realEstateRegNumber?: string;
 }): string {
   return formatPropertyDeedDisplay({
     identifierType: parsePropertyIdentifierType(item.identifierType),
     deedNumber: item.deedNumber,
+    realEstateRegNumber: item.realEstateRegNumber ?? "",
   });
 }
 
@@ -256,7 +274,7 @@ export function propertyIdentifierFieldLabel(
   identifierType: PropertyIdentifierType,
 ): string {
   return identifierType === "real_estate_reg"
-    ? "رقم التسجيل العيني"
+    ? "تسجيل عيني"
     : "رقم الصك";
 }
 
@@ -707,9 +725,15 @@ export type PoPropertyIntake = {
   identifierType: PropertyIdentifierType;
   deedNumber: string;
   requestNumber: string;
+  /** عند false يمكن تجاوز رقم الطلب (غير إلزامي). */
+  hasRequestNumber: boolean;
   assignmentMandateNumber: string;
   assignmentMandateDate: string;
   deedDate: string;
+  /** رقم التسجيل العيني — مسار السجل العقاري. */
+  realEstateRegNumber: string;
+  /** تاريخ التسجيل العيني — مسار السجل العقاري. */
+  realEstateRegDate: string;
   ownerName: string;
   restrictionsPresent: string;
   restrictionType: string;
@@ -784,9 +808,12 @@ export function emptyProperty(): PoPropertyIntake {
     identifierType: "deed",
     deedNumber: "",
     requestNumber: "",
+    hasRequestNumber: true,
     assignmentMandateNumber: "",
     assignmentMandateDate: "",
     deedDate: "",
+    realEstateRegNumber: "",
+    realEstateRegDate: "",
     ownerName: "",
     restrictionsPresent: "",
     restrictionType: "",

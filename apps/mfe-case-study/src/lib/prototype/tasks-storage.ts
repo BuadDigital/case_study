@@ -34,7 +34,6 @@ import {
   classificationRequiresSurvey,
   formatPropertyDeedDisplay,
 } from "./po-intake-data";
-import { governmentReviewAssignmentBlockReason } from "./documentary-workflow-gates";
 import {
   assigneeLabel,
   getEngineeringOffices,
@@ -91,36 +90,46 @@ export function migrateDistribution(
   staffUsers: StaffUser[] = [],
 ): TaskDistributionDraft {
   const base = defaultDistribution();
-  if (!raw) return base;
-  if ("governmentAuditor" in raw) {
-    return { ...base, ...(raw as TaskDistributionDraft) };
+  let migrated: TaskDistributionDraft;
+  if (!raw) {
+    migrated = base;
+  } else if ("governmentAuditor" in raw) {
+    migrated = { ...base, ...(raw as TaskDistributionDraft) };
+  } else {
+    const legacy = raw as LegacyDistribution;
+    migrated = {
+      ...base,
+      governmentAuditor: legacy.governmentReviewer ?? false,
+      governmentAuditorId:
+        legacy.governmentReviewer && getGovernmentAuditors(staffUsers)[0]
+          ? getGovernmentAuditors(staffUsers)[0].id
+          : "",
+      valuationDepartment: legacy.fieldInspector ?? false,
+      operationsCoordinatorId:
+        legacy.fieldInspector && getValuationCoordinators(staffUsers)[0]
+          ? getValuationCoordinators(staffUsers)[0].id
+          : "",
+      inspectorId:
+        legacy.fieldInspector && getFieldInspectors(staffUsers)[0]
+          ? getFieldInspectors(staffUsers)[0].id
+          : "",
+      valuatorId:
+        legacy.fieldInspector && getValuators(staffUsers)[0]
+          ? getValuators(staffUsers)[0].id
+          : "",
+      engineeringOffice: legacy.engineeringOffice ?? false,
+      engineeringOfficeId:
+        legacy.engineeringOffice && getEngineeringOffices(staffUsers)[0]
+          ? getEngineeringOffices(staffUsers)[0].id
+          : "",
+    };
   }
-  const legacy = raw as LegacyDistribution;
+
+  // المراجع الحكومي لم يعد جزءاً من توزيع المعاملات.
   return {
-    ...base,
-    governmentAuditor: legacy.governmentReviewer ?? false,
-    governmentAuditorId:
-      legacy.governmentReviewer && getGovernmentAuditors(staffUsers)[0]
-        ? getGovernmentAuditors(staffUsers)[0].id
-        : "",
-    valuationDepartment: legacy.fieldInspector ?? false,
-    operationsCoordinatorId:
-      legacy.fieldInspector && getValuationCoordinators(staffUsers)[0]
-        ? getValuationCoordinators(staffUsers)[0].id
-        : "",
-    inspectorId:
-      legacy.fieldInspector && getFieldInspectors(staffUsers)[0]
-        ? getFieldInspectors(staffUsers)[0].id
-        : "",
-    valuatorId:
-      legacy.fieldInspector && getValuators(staffUsers)[0]
-        ? getValuators(staffUsers)[0].id
-        : "",
-    engineeringOffice: legacy.engineeringOffice ?? false,
-    engineeringOfficeId:
-      legacy.engineeringOffice && getEngineeringOffices(staffUsers)[0]
-        ? getEngineeringOffices(staffUsers)[0].id
-        : "",
+    ...migrated,
+    governmentAuditor: false,
+    governmentAuditorId: "",
   };
 }
 
@@ -304,18 +313,9 @@ export function distributionValidationError(
   },
 ): string | null {
   const anyParty =
-    distribution.governmentAuditor ||
-    distribution.valuationDepartment ||
-    distribution.engineeringOffice;
+    distribution.valuationDepartment || distribution.engineeringOffice;
   if (!anyParty) {
     return "فعّل طرفاً واحداً على الأقل ثم اختر المسؤول من القائمة.";
-  }
-  if (distribution.governmentAuditor && !distribution.governmentAuditorId.trim()) {
-    return "اختر المراجع الحكومي من القائمة.";
-  }
-  if (distribution.governmentAuditor && propertyBasics) {
-    const govBlock = governmentReviewAssignmentBlockReason(propertyBasics);
-    if (govBlock) return govBlock;
   }
   if (distribution.valuationDepartment) {
     if (!distribution.operationsCoordinatorId.trim()) {

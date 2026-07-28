@@ -12,11 +12,48 @@ import {
 } from "@platform/app-shared/domain/form/field-errors";
 import { validatePropertyContacts } from "./property-validation";
 
+function validateDeedOrRealEstateReg(p: PoPropertyIntake, errors: FieldErrors) {
+  const hasDeed = p.deedNumber.trim().length > 0;
+  const hasReg = p.realEstateRegNumber.trim().length > 0;
+
+  // رقم الصك وتاريخه اختياريان — بدون صك يمكن المتابعة لاستعلام البورصة.
+  // التسجيل العيني اختياري؛ إن وُجد يتجاوز البورصة.
+  if (hasDeed) {
+    const deedError = validatePropertyIdentifierNumber("deed", p.deedNumber);
+    if (deedError) errors.deedNumber = deedError;
+  }
+
+  if (hasReg) {
+    const regError = validatePropertyIdentifierNumber(
+      "real_estate_reg",
+      p.realEstateRegNumber,
+    );
+    if (regError) errors.realEstateRegNumber = regError;
+    if (!p.realEstateRegDate.trim()) {
+      errors.realEstateRegDate = "تاريخ التسجيل العيني مطلوب";
+    }
+    if (!p.realEstateRegFileName.trim()) {
+      errors.realEstateRegFileName =
+        "ارفع السجل العقاري كمرفق (يُطلب من أطراف التنفيذ)";
+    }
+  }
+}
+
 export function validatePropertyEnfathFields(
   p: PoPropertyIntake,
   assignmentType: AssignmentType,
 ): FieldErrors {
   if (isBourseInquiryIdentifier(p.identifierType)) {
+    const requiredKeys = [
+      "deedNumber",
+      "assignmentMandateNumber",
+      "assignmentMandateDate",
+      "deedDate",
+      "ownerName",
+      "court",
+      "circuit",
+      ...(p.hasRequestNumber !== false ? (["requestNumber"] as const) : []),
+    ];
     const errors = mergeFieldErrors(
       collectRequiredErrors(
         {
@@ -29,16 +66,7 @@ export function validatePropertyEnfathFields(
           court: p.court,
           circuit: p.circuit,
         },
-        [
-          "deedNumber",
-          "requestNumber",
-          "assignmentMandateNumber",
-          "assignmentMandateDate",
-          "deedDate",
-          "ownerName",
-          "court",
-          "circuit",
-        ],
+        [...requiredKeys],
       ),
     );
     if (
@@ -56,28 +84,26 @@ export function validatePropertyEnfathFields(
     return errors;
   }
 
+  const requiredKeys = [
+    "assignmentMandateNumber",
+    "assignmentMandateDate",
+    "ownerName",
+    "court",
+    "circuit",
+    ...(p.hasRequestNumber !== false ? (["requestNumber"] as const) : []),
+  ];
+
   const errors = mergeFieldErrors(
     collectRequiredErrors(
       {
-        deedNumber: p.deedNumber,
         requestNumber: p.requestNumber,
         assignmentMandateNumber: p.assignmentMandateNumber,
         assignmentMandateDate: p.assignmentMandateDate,
-        deedDate: p.deedDate,
         ownerName: p.ownerName,
         court: p.court,
         circuit: p.circuit,
       },
-      [
-        "deedNumber",
-        "requestNumber",
-        "assignmentMandateNumber",
-        "assignmentMandateDate",
-        "deedDate",
-        "ownerName",
-        "court",
-        "circuit",
-      ],
+      [...requiredKeys],
     ),
   );
 
@@ -85,13 +111,7 @@ export function validatePropertyEnfathFields(
     errors.delegationLetterFileNames = "خطاب التفويض مطلوب";
   }
 
-  if (
-    p.identifierType === "real_estate_reg" &&
-    !p.realEstateRegFileName.trim()
-  ) {
-    errors.realEstateRegFileName =
-      "ارفع السجل العقاري كمرفق (يُطلب من أطراف التنفيذ)";
-  }
+  validateDeedOrRealEstateReg(p, errors);
 
   if (
     requiresAssignmentDecree(assignmentType) &&
@@ -100,12 +120,6 @@ export function validatePropertyEnfathFields(
     errors.assignmentDocFileNames =
       "ارفع قرار الإسناد الخاص بهذا العقار (مطلوب لمسار التنفيذ)";
   }
-
-  const identifierError = validatePropertyIdentifierNumber(
-    p.identifierType,
-    p.deedNumber,
-  );
-  if (identifierError) errors.deedNumber = identifierError;
 
   return errors;
 }
@@ -135,10 +149,12 @@ export function firstEnfathValidationMessage(errors: FieldErrors): string {
     errors._contacts ??
     errors._ ??
     errors.deedNumber ??
+    errors.realEstateRegNumber ??
     errors.requestNumber ??
     errors.assignmentMandateNumber ??
     errors.assignmentMandateDate ??
     errors.deedDate ??
+    errors.realEstateRegDate ??
     errors.ownerName ??
     errors.court ??
     errors.circuit ??

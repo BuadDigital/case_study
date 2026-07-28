@@ -26,8 +26,8 @@ import {
   Badge,
   Card,
   CardBody,
-  cn,
   FormRow,
+  Input,
   Label,
   Note,
   useToast,
@@ -53,26 +53,6 @@ type Props = {
   fieldsMode?: "all" | "identifier-only" | "bourse-inquiry-primary";
 };
 
-const pillClass = (selected: boolean) =>
-  cn(
-    "inline-flex cursor-pointer items-center gap-1.5 rounded-[var(--radius-DEFAULT)] border-2 px-4 py-2 font-[inherit] text-xs font-semibold transition-all",
-    selected
-      ? "border-primary bg-primary text-white shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary)_20%,transparent)]"
-      : "border-border bg-surface text-text-2 hover:border-primary-light hover:text-primary",
-  );
-
-function selectIdentifierType(
-  onPatch: Props["onPatch"],
-  type: PropertyIdentifierType,
-) {
-  onPatch("identifierType", type);
-  if (type === "bourse_inquiry") {
-    onPatch("delegationLetterFileNames", []);
-  } else if (type === "deed" || type === "real_estate_reg") {
-    onPatch("city", "");
-  }
-}
-
 export function PoPropertyEnfathForm({
   property,
   assignmentType,
@@ -93,15 +73,37 @@ export function PoPropertyEnfathForm({
   const showAssignmentDecree = requiresAssignmentDecree(assignmentType);
   const showCourt = showsCourtFields(assignmentType);
   const isBourseId = isBourseInquiryIdentifier(property.identifierType);
-  const identifierDigitLength = requiredPropertyIdentifierDigitLength(
-    property.identifierType,
+  const identifierDigitLength = requiredPropertyIdentifierDigitLength("deed");
+  const realEstateRegDigitLength = requiredPropertyIdentifierDigitLength(
+    "real_estate_reg",
   );
   const patchDeedNumber = (value: string) => {
     onPatch(
       "deedNumber",
-      sanitizePropertyIdentifierInput(value, property.identifierType),
+      sanitizePropertyIdentifierInput(value, "deed"),
     );
   };
+  const patchRealEstateRegNumber = (value: string) => {
+    onPatch(
+      "realEstateRegNumber",
+      sanitizePropertyIdentifierInput(value, "real_estate_reg"),
+    );
+  };
+
+  useEffect(() => {
+    if (fieldsMode !== "all") return;
+    const hasReg = property.realEstateRegNumber.trim().length > 0;
+    const nextType: PropertyIdentifierType = hasReg
+      ? "real_estate_reg"
+      : "deed";
+    if (property.identifierType === nextType) return;
+    onPatch("identifierType", nextType);
+  }, [
+    fieldsMode,
+    property.realEstateRegNumber,
+    property.identifierType,
+    onPatch,
+  ]);
 
   useEffect(() => {
     const deed = property.deedNumber.trim();
@@ -162,6 +164,8 @@ export function PoPropertyEnfathForm({
   const showExtended = fieldsMode === "all" || isPrimaryOnly;
   const showBoursePrimary = isBourseId && showExtended;
   const showDeedFields = !isBourseId && fieldsMode === "all";
+  const hasRealEstateReg = property.realEstateRegNumber.trim().length > 0;
+  const hasRequestNumber = property.hasRequestNumber !== false;
 
   return (
     <>
@@ -169,36 +173,11 @@ export function PoPropertyEnfathForm({
         <Note tone="info" className="mb-3">
           {isBourseId
             ? "مسار استعلام البورصة — أدخل البيانات الأولية وبيانات البورصة معاً."
-            : "بيانات مرحلة إنفاذ — تُكمّل بيانات البورصة (المدينة، الحي، الحدود) لاحقاً من «استعلام البورصة»."}
+            : hasRealEstateReg
+              ? "بيانات مرحلة إنفاذ — مع التسجيل العيني يمكن تجاوز استعلام البورصة."
+              : "بيانات مرحلة إنفاذ — رقم الصك وتاريخه اختياريان؛ بدون صك أو مع صك تُكمّل بيانات البورصة لاحقاً من «استعلام البورصة»."}
         </Note>
       ) : null}
-
-      <div className="mb-3 w-full">
-        <Label className="mb-1 text-[11px]">مصدر البيانات</Label>
-        <div className="flex flex-wrap gap-1.5">
-          <button
-            type="button"
-            className={pillClass(property.identifierType === "deed")}
-            onClick={() => selectIdentifierType(onPatch, "deed")}
-          >
-            صك ملكية
-          </button>
-          <button
-            type="button"
-            className={pillClass(property.identifierType === "real_estate_reg")}
-            onClick={() => selectIdentifierType(onPatch, "real_estate_reg")}
-          >
-            تسجيل عيني
-          </button>
-          <button
-            type="button"
-            className={pillClass(property.identifierType === "bourse_inquiry")}
-            onClick={() => selectIdentifierType(onPatch, "bourse_inquiry")}
-          >
-            البورصة العقاريه
-          </button>
-        </div>
-      </div>
 
       {isBourseId && !hideBoursePathStatus && !showBoursePrimary ? (
         <Card className="mb-3.5">
@@ -209,10 +188,9 @@ export function PoPropertyEnfathForm({
             </Badge>
           </CardBody>
         </Card>
-      ) : property.identifierType === "real_estate_reg" ? (
-        <Note tone="warn" className="mb-3">
-          لا يمكن الاستعلام من بورصة العقارات — يطلب الأخصائي السجل العقاري من
-          أطراف التنفيذ ويرفعه كمرفق.
+      ) : hasRealEstateReg ? (
+        <Note tone="success" className="mb-3">
+          يمكن تجاوز استعلام البورصة والمتابعة مباشرة لتوزيع المعاملات.
         </Note>
       ) : null}
 
@@ -331,28 +309,43 @@ export function PoPropertyEnfathForm({
       <FormRow>
         <RegField
           id="deed_number"
-          label={
-            property.identifierType === "real_estate_reg"
-              ? "رقم التسجيل العيني"
-              : "رقم الصك"
-          }
-          required
+          label="رقم الصك"
           dir="ltr"
           inputMode="numeric"
           maxLength={identifierDigitLength}
-          hint={`${identifierDigitLength} أرقام`}
+          hint={`${identifierDigitLength} أرقام — اختياري؛ بدون صك يمكن المتابعة لاستعلام البورصة`}
           value={property.deedNumber}
           error={fieldErrors.deedNumber}
           onChange={patchDeedNumber}
         />
         <RegField
           id="deed_date"
-          label="تاريخ الصك"
-          required
+          label="تاريخه"
           type="date"
+          hint="اختياري"
           value={property.deedDate}
           error={fieldErrors.deedDate}
           onChange={(v) => onPatch("deedDate", v)}
+        />
+        <RegField
+          id="real_estate_reg_number"
+          label="تسجيل عيني"
+          dir="ltr"
+          inputMode="numeric"
+          maxLength={realEstateRegDigitLength}
+          hint={`${realEstateRegDigitLength} أرقام — اختياري؛ عند التعبئة يتجاوز استعلام البورصة`}
+          value={property.realEstateRegNumber}
+          error={fieldErrors.realEstateRegNumber}
+          onChange={patchRealEstateRegNumber}
+        />
+        <RegField
+          id="real_estate_reg_date"
+          label="تاريخه"
+          required={hasRealEstateReg}
+          type="date"
+          value={property.realEstateRegDate}
+          error={fieldErrors.realEstateRegDate}
+          onChange={(v) => onPatch("realEstateRegDate", v)}
         />
         <RegField
           id="assignment_mandate_number"
@@ -372,15 +365,58 @@ export function PoPropertyEnfathForm({
           error={fieldErrors.assignmentMandateDate}
           onChange={(v) => onPatch("assignmentMandateDate", v)}
         />
-        <RegField
-          id="request_number"
-          label="رقم الطلب"
-          required
-          dir="ltr"
-          value={property.requestNumber}
-          error={fieldErrors.requestNumber}
-          onChange={(v) => onPatch("requestNumber", v)}
-        />
+        <div className="w-full">
+          <label
+            htmlFor="has_request_number"
+            className="mb-1 flex cursor-pointer items-center gap-1.5 text-[11px] font-semibold text-text-2"
+          >
+            <input
+              id="has_request_number"
+              type="checkbox"
+              className="size-3.5 accent-[var(--color-primary)]"
+              checked={hasRequestNumber}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                onPatch("hasRequestNumber", checked);
+                if (!checked) onPatch("requestNumber", "");
+              }}
+            />
+            <span>
+              رقم الطلب
+              {hasRequestNumber ? (
+                <span className="text-danger-text"> *</span>
+              ) : null}
+            </span>
+          </label>
+          {hasRequestNumber ? (
+            <>
+              <Input
+                id="request_number"
+                dir="ltr"
+                hasError={Boolean(fieldErrors.requestNumber)}
+                value={property.requestNumber}
+                onChange={(e) => onPatch("requestNumber", e.target.value)}
+                aria-invalid={Boolean(fieldErrors.requestNumber)}
+                aria-describedby={
+                  fieldErrors.requestNumber ? "request_number-error" : undefined
+                }
+              />
+              {fieldErrors.requestNumber ? (
+                <p
+                  id="request_number-error"
+                  className="mt-1 text-[10px] text-danger-text"
+                  role="alert"
+                >
+                  {fieldErrors.requestNumber}
+                </p>
+              ) : null}
+            </>
+          ) : (
+            <p className="m-0 text-[10px] text-text-3">
+              لا يوجد رقم طلب — يمكن تجاوز الحقل
+            </p>
+          )}
+        </div>
         <div className="grid grid-cols-1 gap-3 sm:col-span-2 sm:grid-cols-2">
           <RegField
             id="plan_number"
@@ -441,11 +477,12 @@ export function PoPropertyEnfathForm({
           propertyId={property.id}
           docKind="delegation"
           multiple
+          maxFiles={1}
+          onTooManyFiles={() =>
+            showToast("ممنوع إدخال أكثر من مستند واحد", "error")
+          }
           onUpload={(file) => {
-            onPatch("delegationLetterFileNames", [
-              ...property.delegationLetterFileNames,
-              file.name,
-            ]);
+            onPatch("delegationLetterFileNames", [file.name]);
             if (attachPo) {
               void cacheDelegationDoc(attachPo, property.id, file)
                 .then((result) => {
@@ -474,7 +511,7 @@ export function PoPropertyEnfathForm({
         />
       ) : null}
 
-      {property.identifierType === "real_estate_reg" && fieldsMode === "all" ? (
+      {hasRealEstateReg && fieldsMode === "all" ? (
         <PropertyFileUploadField
           id={`real_estate_reg_${property.id}`}
           label="السجل العقاري (مرفق) *"
@@ -517,11 +554,12 @@ export function PoPropertyEnfathForm({
           propertyId={property.id}
           docKind="decree"
           multiple
+          maxFiles={1}
+          onTooManyFiles={() =>
+            showToast("ممنوع إدخال أكثر من مستند واحد", "error")
+          }
           onUpload={(file) => {
-            onPatch("assignmentDocFileNames", [
-              ...property.assignmentDocFileNames,
-              file.name,
-            ]);
+            onPatch("assignmentDocFileNames", [file.name]);
             if (attachPo) {
               void cacheAssignmentDoc(attachPo, property.id, file)
                 .then((result) => {
@@ -552,7 +590,7 @@ export function PoPropertyEnfathForm({
         <PropertyFileUploadField
           id={`other_docs_${property.id}`}
           label="مستندات أخرى (اختياري)"
-          fileName={property.otherDocumentFileNames.join("، ")}
+          fileNames={property.otherDocumentFileNames}
           attachPo={attachPo}
           propertyId={property.id}
           docKind="other"
@@ -575,12 +613,16 @@ export function PoPropertyEnfathForm({
                 });
             }
           }}
-          onClear={() => {
-            onPatch("otherDocumentFileNames", []);
+          onRemove={(name) => {
+            onPatch(
+              "otherDocumentFileNames",
+              property.otherDocumentFileNames.filter((n) => n !== name),
+            );
             if (attachPo) {
-              clearCachedPropertyDoc("other", attachPo, property.id);
+              void removeCachedPropertyDoc("other", attachPo, property.id, name);
             }
           }}
+          onClear={() => onPatch("otherDocumentFileNames", [])}
         />
       ) : null}
 

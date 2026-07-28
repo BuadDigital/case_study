@@ -28,6 +28,9 @@ export type WorkOrderPropertyDto = {
   assignmentMandateNumber?: string;
   assignmentMandateDate?: string;
   deedDate?: string;
+  realEstateRegNumber?: string;
+  realEstateRegDate?: string;
+  hasRequestNumber?: boolean;
   ownerName?: string;
   restrictionsPresent?: string;
   restrictionType?: string;

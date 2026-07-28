@@ -55,7 +55,7 @@ public static class WorkOrderValidator
         {
             ValidateIdentifierNumber(dto, idType, errors);
 
-            if (string.IsNullOrWhiteSpace(dto.RequestNumber))
+            if (dto.HasRequestNumber && string.IsNullOrWhiteSpace(dto.RequestNumber))
                 errors["requestNumber"] = "رقم الطلب مطلوب";
             if (string.IsNullOrWhiteSpace(dto.AssignmentMandateNumber))
                 errors["assignmentMandateNumber"] = "رقم التكليف مطلوب";
@@ -78,16 +78,14 @@ public static class WorkOrderValidator
         }
         else
         {
-            ValidateIdentifierNumber(dto, idType, errors);
+            ValidateDeedOrRealEstateReg(dto, errors);
 
-            if (string.IsNullOrWhiteSpace(dto.RequestNumber))
+            if (dto.HasRequestNumber && string.IsNullOrWhiteSpace(dto.RequestNumber))
                 errors["requestNumber"] = "رقم الطلب مطلوب";
             if (string.IsNullOrWhiteSpace(dto.AssignmentMandateNumber))
                 errors["assignmentMandateNumber"] = "رقم التكليف مطلوب";
             if (string.IsNullOrWhiteSpace(dto.AssignmentMandateDate))
                 errors["assignmentMandateDate"] = "تاريخ التكليف مطلوب";
-            if (string.IsNullOrWhiteSpace(dto.DeedDate))
-                errors["deedDate"] = "تاريخ الصك مطلوب";
             if (string.IsNullOrWhiteSpace(dto.OwnerName))
                 errors["ownerName"] = "اسم المالك مطلوب";
             if (string.IsNullOrWhiteSpace(dto.Court))
@@ -96,13 +94,6 @@ public static class WorkOrderValidator
                 errors["circuit"] = "الدائرة مطلوبة";
             if (dto.DelegationLetterFileNames.All(string.IsNullOrWhiteSpace))
                 errors["delegationLetterFileNames"] = "خطاب التفويض مطلوب";
-
-            if (idType == PropertyIdentifierType.RealEstateRegistration &&
-                string.IsNullOrWhiteSpace(dto.RealEstateRegFileName))
-            {
-                errors["realEstateRegFileName"] =
-                    "ارفع السجل العقاري كمرفق (يُطلب من أطراف التنفيذ)";
-            }
 
             if (!string.IsNullOrWhiteSpace(dto.DeedNumber) &&
                 deedExistsInPo(dto.DeedNumber.Trim(), excludePropertyId))
@@ -168,17 +159,48 @@ public static class WorkOrderValidator
         return errors;
     }
 
+    private static void ValidateDeedOrRealEstateReg(
+        WorkOrderPropertyDto dto,
+        Dictionary<string, string> errors)
+    {
+        var hasDeed = !string.IsNullOrWhiteSpace(dto.DeedNumber);
+        var hasReg = !string.IsNullOrWhiteSpace(dto.RealEstateRegNumber);
+
+        // رقم الصك وتاريخه اختياريان — بدون صك يمكن المتابعة لاستعلام البورصة.
+        if (hasDeed)
+        {
+            var digits = NormalizeIdentifierDigits(dto.DeedNumber);
+            if (digits.Length != DeedNumberDigitLength)
+                errors["deedNumber"] = $"رقم الصك يجب أن يكون {DeedNumberDigitLength} رقماً";
+        }
+
+        if (hasReg)
+        {
+            var regDigits = NormalizeIdentifierDigits(dto.RealEstateRegNumber!);
+            if (regDigits.Length != RealEstateRegistrationDigitLength)
+            {
+                errors["realEstateRegNumber"] =
+                    $"تسجيل عيني يجب أن يكون {RealEstateRegistrationDigitLength} رقماً";
+            }
+            if (string.IsNullOrWhiteSpace(dto.RealEstateRegDate))
+                errors["realEstateRegDate"] = "تاريخ التسجيل العيني مطلوب";
+            if (string.IsNullOrWhiteSpace(dto.RealEstateRegFileName))
+            {
+                errors["realEstateRegFileName"] =
+                    "ارفع السجل العقاري كمرفق (يُطلب من أطراف التنفيذ)";
+            }
+        }
+    }
+
     private static void ValidateIdentifierNumber(
         WorkOrderPropertyDto dto,
         PropertyIdentifierType idType,
         Dictionary<string, string> errors)
     {
-        var label = idType == PropertyIdentifierType.RealEstateRegistration
-            ? "رقم التسجيل العيني"
-            : "رقم الصك";
-        var requiredLength = idType == PropertyIdentifierType.RealEstateRegistration
-            ? RealEstateRegistrationDigitLength
-            : DeedNumberDigitLength;
+        // رقم الصك دائماً 12 رقماً — التسجيل العيني حقل منفصل.
+        _ = idType;
+        const string label = "رقم الصك";
+        const int requiredLength = DeedNumberDigitLength;
 
         if (string.IsNullOrWhiteSpace(dto.DeedNumber))
         {

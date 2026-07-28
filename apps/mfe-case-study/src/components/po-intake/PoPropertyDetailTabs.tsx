@@ -329,6 +329,17 @@ function BasicTab({
       <FieldsGrid>
         <FieldBox label="رقم أمر العمل" value={record.poNumber} ltr />
         <FieldBox label="رقم الصك" value={property.deedNumber} ltr />
+        <FieldBox label="تاريخ الصك" value={property.deedDate} ltr />
+        <FieldBox
+          label="تسجيل عيني"
+          value={property.realEstateRegNumber}
+          ltr
+        />
+        <FieldBox
+          label="تاريخ التسجيل العيني"
+          value={property.realEstateRegDate}
+          ltr
+        />
         <FieldBox
           label="رقم التكليف"
           value={property.assignmentMandateNumber}
@@ -340,7 +351,6 @@ function BasicTab({
           ltr
         />
         <FieldBox label="رقم الطلب" value={property.requestNumber} ltr />
-        <FieldBox label="تاريخ الصك" value={property.deedDate} ltr />
         <FieldBox label="حالة الصك">
           {property.deedStatus.trim() ? (
             <DetailBadge tone="teal">{property.deedStatus}</DetailBadge>

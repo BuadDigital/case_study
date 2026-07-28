@@ -87,7 +87,11 @@ function assignmentTypeBadgeTone(type: string): BadgeTone {
 }
 
 function deedLabel(property: PoPropertyIntake): string {
-  return property.deedNumber.trim() || "—";
+  return (
+    property.deedNumber.trim() ||
+    property.realEstateRegNumber.trim() ||
+    "—"
+  );
 }
 
 function isDueSoon(iso: string): boolean {
@@ -366,7 +370,7 @@ export function PoPropertiesPage({
               <Table>
                 <THead>
                   <Tr hoverable={false}>
-                    <Th>رقم الصك</Th>
+                    <Th>رقم الصك/التسجيل العيني</Th>
                     <Th>الموقع</Th>
                     <Th>المحكمة / الدائرة</Th>
                     <Th>التصنيف / النوع</Th>

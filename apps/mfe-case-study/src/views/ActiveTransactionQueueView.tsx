@@ -684,7 +684,7 @@ export function ActiveTransactionQueueView({
   const isPartyQueueToggleTable =
     isEngineeringSurveyTable || isPropertyAppraisalTable;
   const showPartyColumns = config.tableLayout === "case-study";
-  const distributionSkeletonCols = 8 + (showPartyColumns ? 4 : 0);
+  const distributionSkeletonCols = 8 + (showPartyColumns ? 3 : 0);
   const primarySkeletonCols = 6;
   const allTransactionsSkeletonCols = 7;
 
@@ -1539,10 +1539,9 @@ export function ActiveTransactionQueueView({
                         <Th>المساحة</Th>
                         {showPartyColumns ? (
                           <>
-                            <Th>المعاين</Th>
-                            <Th>المراجع الحكومي</Th>
-                            <Th>المقيم</Th>
-                            <Th>المكتب الهندسي</Th>
+                            <Th className="w-[7.5rem] min-w-[7.5rem]">المعاين</Th>
+                            <Th className="w-[7.5rem] min-w-[7.5rem]">المقيم</Th>
+                            <Th className="w-[7.5rem] min-w-[7.5rem]">المكتب الهندسي</Th>
                           </>
                         ) : null}
                         <ThAction aria-label="المزيد" />
@@ -1624,7 +1623,7 @@ export function ActiveTransactionQueueView({
                               ? parties.map((party) => (
                                   <Td
                                     key={party.trackId}
-                                    className="max-w-0 overflow-hidden text-ellipsis text-text-2"
+                                    className="w-[7.5rem] min-w-[7.5rem] overflow-hidden text-text-2"
                                   >
                                     <PartyAssigneeCell party={party} />
                                   </Td>
@@ -2222,7 +2221,7 @@ export function ActiveTransactionQueueView({
       <OperationalPanel
         id={config.panelId}
         className={cn(
-          "min-h-0 min-w-0 self-stretch opacity-0 invisible",
+          "flex h-full min-h-0 min-w-0 flex-1 flex-col !overflow-hidden opacity-0 invisible",
           panelOpen && "visible opacity-100",
         )}
       >

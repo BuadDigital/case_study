@@ -164,6 +164,8 @@
 
   --spacing-sidebar: var(--sidebar-w);
 
+  --spacing-sidebar-collapsed: var(--sidebar-w-collapsed);
+
   --spacing-tabs: var(--tabs-h);
 
 

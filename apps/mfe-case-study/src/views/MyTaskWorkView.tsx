@@ -27,7 +27,7 @@ import {
   formatPoDisplay,
   formatPropertyDeedDisplay,
   isBourseInquiryIdentifier,
-  skipsBourseForIdentifier,
+  propertySkipsBourse,
   type AssignmentType,
   type BourseDeedVitality,
   type PoPropertyIntake,
@@ -242,7 +242,7 @@ export function CaseStudyTaskWork({
       return;
     }
 
-    const persisted = skipsBourseForIdentifier(property.identifierType)
+    const persisted = propertySkipsBourse(property)
       ? { ...property, bourseDataCompleted: true }
       : { ...property, bourseDataCompleted: false };
 
@@ -261,7 +261,7 @@ export function CaseStudyTaskWork({
           throw new Error(result.error);
         }
 
-        const savedProperty = skipsBourseForIdentifier(property.identifierType)
+        const savedProperty = propertySkipsBourse(property)
           ? { ...result.data, bourseDataCompleted: true }
           : result.data;
         const updatedTask = await advanceTaskAfterEnfath(task.id, savedProperty);

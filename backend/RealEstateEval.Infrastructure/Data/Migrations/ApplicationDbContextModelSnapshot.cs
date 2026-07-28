@@ -2698,6 +2698,9 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
+                    b.Property<bool>("HasRequestNumber")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("IdentifierType")
                         .HasColumnType("integer");
 
@@ -2736,8 +2739,16 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<string>("RealEstateRegDate")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.Property<string>("RealEstateRegFileName")
                         .HasColumnType("text");
+
+                    b.Property<string>("RealEstateRegNumber")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<string>("RemovalReason")
                         .HasMaxLength(500)
