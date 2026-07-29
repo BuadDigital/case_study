@@ -2,7 +2,7 @@
 # All workspace packages export directly from TypeScript source — no pre-build needed.
 
 # ── Stage 1: Install dependencies ──────────────────────────────────────────────
-FROM node:22-alpine AS deps
+FROM node:22.17.1-alpine@sha256:99351363debf40f3495cb7fc657a777334c3b21143e594dbfcc7de187439633c AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
@@ -33,7 +33,7 @@ COPY packages/types/package.json           ./packages/types/
 RUN npm ci
 
 # ── Stage 2: Build ─────────────────────────────────────────────────────────────
-FROM node:22-alpine AS builder
+FROM node:22.17.1-alpine@sha256:99351363debf40f3495cb7fc657a777334c3b21143e594dbfcc7de187439633c AS builder
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
@@ -76,8 +76,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build -w @platform/shell
 
 # ── Stage 3: Production runner ──────────────────────────────────────────────────
-FROM node:22-alpine AS runner
-RUN apk add --no-cache libc6-compat
+FROM node:22.17.1-alpine@sha256:99351363debf40f3495cb7fc657a777334c3b21143e594dbfcc7de187439633c AS runner
+RUN apk add --no-cache libc6-compat wget
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -87,10 +87,18 @@ ENV HOSTNAME=0.0.0.0
 
 EXPOSE 3000
 
+RUN addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 nextjs
+
 # Copy only the minimal files needed to run Next.js in production
-COPY --from=builder /app/apps/shell/public             ./apps/shell/public
-COPY --from=builder /app/apps/shell/.next/standalone   ./
-COPY --from=builder /app/apps/shell/.next/static       ./apps/shell/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/apps/shell/public             ./apps/shell/public
+COPY --from=builder --chown=nextjs:nodejs /app/apps/shell/.next/standalone   ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/shell/.next/static       ./apps/shell/.next/static
+
+USER nextjs
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:3000/ || exit 1
 
 # The standalone output includes a minimal server.js at the repo root
 CMD ["node", "apps/shell/server.js"]

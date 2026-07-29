@@ -2,13 +2,13 @@
 
 import { createContext, useContext, useEffect, useMemo } from "react";
 import type { PageId, RoleId } from "@platform/types";
-import { getValidAuthSession } from "@platform/auth-client";
 import { ROLES } from "@platform/app-shared/prototype/constants";
 import { pagesFromPermissions } from "@platform/app-shared/prototype/permissions-pages";
 import { setRuntimeCapabilities } from "@platform/app-shared/prototype/runtime-access";
 import { usePermissionsQuery } from "@platform/app-shared/query/permissions-queries";
+import { useValidAuthSession } from "../auth/use-auth-session";
 
-type Ctx = {  
+type Ctx = {
   role: RoleId;
   authReady: boolean;
   viewerEmail: string | null;
@@ -40,7 +40,9 @@ function roleFromPermissions(
 }
 
 export function PrototypeProvider({ children }: { children: React.ReactNode }) {
-  const session = getValidAuthSession();
+  // useSyncExternalStore keeps hasSession in sync after silent refresh / logout,
+  // including the first client paint after a hard navigation into a deep link.
+  const session = useValidAuthSession();
   const hasSession = Boolean(session?.token);
 
   const {

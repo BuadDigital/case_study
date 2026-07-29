@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import {
+  PASSWORD,
   loginAs,
   MODULE_PAGES,
   RELEASE_USERS,
@@ -81,10 +82,12 @@ test.describe("Settings catalog", () => {
 
 test.describe("API field inspection reporting", () => {
   test("summary endpoint returns counts", async ({ request }) => {
-    const login = await request.post(
-      "http://127.0.0.1:5160/api/auth/login-username",
-      { data: { username: RELEASE_USERS.cdo } },
-    );
+    const login = await request.post("http://127.0.0.1:5160/api/auth/login", {
+      data: {
+        username: "s.salhy@gmail.com",
+          password: PASSWORD,
+      },
+    });
     expect(login.ok()).toBeTruthy();
     const { token } = await login.json();
     const res = await request.get(
@@ -100,10 +103,12 @@ test.describe("API field inspection reporting", () => {
   test("reporting dashboard includes field inspection progress", async ({
     request,
   }) => {
-    const login = await request.post(
-      "http://127.0.0.1:5160/api/auth/login-username",
-      { data: { username: RELEASE_USERS.cdo } },
-    );
+    const login = await request.post("http://127.0.0.1:5160/api/auth/login", {
+      data: {
+        username: "s.salhy@gmail.com",
+          password: PASSWORD,
+      },
+    });
     const { token } = await login.json();
     const res = await request.get(
       "http://127.0.0.1:5160/api/reporting/v1/dashboard",

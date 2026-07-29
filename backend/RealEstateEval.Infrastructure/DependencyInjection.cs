@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Caching;
@@ -18,11 +19,12 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration,
-        string connectionString)
+        string connectionString,
+        IHostEnvironment environment)
     {
         services.AddPersistence(configuration, connectionString);
         services.AddIdentityInfrastructure();
-        services.AddCaseStudyInfrastructure(configuration);
+        services.AddCaseStudyInfrastructure(configuration, environment);
         return services;
     }
 
@@ -82,16 +84,21 @@ public static class DependencyInjection
             .AddIdentity<ApplicationUser, IdentityRole>(options =>
             {
                 options.User.RequireUniqueEmail = true;
-                options.Password.RequiredLength = 6;
-                options.Password.RequireDigit = false;
-                options.Password.RequireLowercase = false;
-                options.Password.RequireUppercase = false;
-                options.Password.RequireNonAlphanumeric = false;
+                options.Password.RequiredLength = 12;
+                options.Password.RequireDigit = true;
+                options.Password.RequireLowercase = true;
+                options.Password.RequireUppercase = true;
+                options.Password.RequireNonAlphanumeric = true;
+                options.Lockout.AllowedForNewUsers = true;
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
             })
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders();
 
         services.AddScoped<IJwtTokenService, JwtTokenService>();
+        services.AddScoped<IAuthSessionService, AuthSessionService>();
+        services.AddScoped<IPasswordAuthenticationService, PasswordAuthenticationService>();
         services.AddScoped<IUserRegistrationService, UserRegistrationService>();
         services.AddScoped<IPermissionService, PermissionService>();
         return services;
@@ -114,6 +121,7 @@ public static class DependencyInjection
         services.AddScoped<ICaseStudyFormService, CaseStudyFormService>();
         services.AddScoped<ICaseStudyValuationDispatchService, CaseStudyValuationDispatchService>();
         services.AddScoped<IPartyTaskSubmissionService, PartyTaskSubmissionService>();
+        services.AddScoped<IFieldInspectionWorkspaceService, FieldInspectionWorkspaceService>();
         services.AddScoped<IInspectorFeeService, InspectorFeeService>();
         services.AddScoped<IPartyFeePricingService, PartyFeePricingService>();
         services.AddScoped<IPoEnfazBillingService, PoEnfazBillingService>();
@@ -139,20 +147,22 @@ public static class DependencyInjection
 
     public static IServiceCollection AddCaseStudyInfrastructure(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
         services.AddCaseStudyCoreInfrastructure();
         services.AddCaseStudyAuxiliaryInfrastructure();
-        services.AddNotificationInfrastructure(configuration);
+        services.AddNotificationInfrastructure(configuration, environment);
         services.AddScoped<ISystemMaintenanceService, SystemMaintenanceService>();
         return services;
     }
 
     public static IServiceCollection AddFailuresInfrastructure(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
-        services.AddNotificationInfrastructure(configuration);
+        services.AddNotificationInfrastructure(configuration, environment);
         services.AddScoped<IInspectorFeeService, InspectorFeeService>();
         services.AddScoped<IPartyFeePricingService, PartyFeePricingService>();
         services.AddScoped<IPoEnfazBillingService, PoEnfazBillingService>();
@@ -200,9 +210,10 @@ public static class DependencyInjection
     /// <summary>Per-user inbox, SSE hub, recipient resolution, and outbox event publishing.</summary>
     public static IServiceCollection AddNotificationInfrastructure(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
-        services.AddIntegrationEventPublishing(configuration);
+        services.AddIntegrationEventPublishing(configuration, environment);
         services.AddSingleton<NotificationRealtimeHub>();
         services.AddSingleton<INotificationRealtimePublisher>(sp =>
             sp.GetRequiredService<NotificationRealtimeHub>());
@@ -224,10 +235,20 @@ public static class DependencyInjection
     /// </summary>
     public static IServiceCollection AddIntegrationEventPublishing(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
-        services.Configure<RabbitMqOptions>(configuration.GetSection("RabbitMQ"));
+        services.AddValidatedRabbitMqOptions(configuration, environment);
         services.AddScoped<IIntegrationEventPublisher, OutboxIntegrationEventPublisher>();
+        return services;
+    }
+
+    /// <summary>
+    /// Deduplication store for services that consume integration events.
+    /// </summary>
+    public static IServiceCollection AddIntegrationEventInbox(this IServiceCollection services)
+    {
+        services.AddScoped<IIntegrationEventInbox, IntegrationEventInbox>();
         return services;
     }
 
@@ -236,11 +257,41 @@ public static class DependencyInjection
     /// </summary>
     public static IServiceCollection AddOutboxDispatcher(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
-        services.Configure<RabbitMqOptions>(configuration.GetSection("RabbitMQ"));
+        services.AddValidatedRabbitMqOptions(configuration, environment);
         services.AddSingleton<RabbitMqMessagePublisher>();
         services.AddHostedService<OutboxDispatcherHostedService>();
+        return services;
+    }
+
+    public static IServiceCollection AddValidatedRabbitMqOptions(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        IHostEnvironment environment)
+    {
+        services.AddOptions<RabbitMqOptions>()
+            .Bind(configuration.GetSection("RabbitMQ"))
+            .Validate(
+                options => !options.Enabled
+                    || !string.IsNullOrWhiteSpace(options.Host),
+                "RabbitMQ:Host is required when RabbitMQ is enabled.")
+            .Validate(
+                options => !options.Enabled
+                    || environment.IsDevelopment()
+                    || (!string.IsNullOrWhiteSpace(options.UserName)
+                        && !options.UserName.Equals("dev", StringComparison.OrdinalIgnoreCase)),
+                "RabbitMQ:UserName must be configured and cannot use the development default outside Development.")
+            .Validate(
+                options => !options.Enabled
+                    || environment.IsDevelopment()
+                    || (!string.IsNullOrWhiteSpace(options.Password)
+                        && options.Password.Length >= 16
+                        && !options.Password.Equals("dev", StringComparison.OrdinalIgnoreCase)),
+                "RabbitMQ:Password must be at least 16 characters and cannot use the development default outside Development.")
+            .ValidateOnStart();
+
         return services;
     }
 

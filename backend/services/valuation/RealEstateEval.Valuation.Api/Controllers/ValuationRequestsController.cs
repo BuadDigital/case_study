@@ -19,10 +19,12 @@ public class ValuationRequestsController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
     public async Task<ActionResult<IReadOnlyList<ValuationRequestDto>>> List(CancellationToken ct)
         => Ok(await _service.ListAsync(ct));
 
     [HttpGet("{id:guid}")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
     public async Task<ActionResult<ValuationRequestDto>> Get(Guid id, CancellationToken ct)
     {
         var dto = await _service.GetAsync(id, ct);

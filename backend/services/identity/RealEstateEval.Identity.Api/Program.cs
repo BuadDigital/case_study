@@ -23,8 +23,9 @@ var connectionString = ServiceCollectionExtensions.RequireConnectionString(
     ServiceDatabaseNames.Identity);
 builder.Services.AddPersistence(builder.Configuration, connectionString);
 builder.Services.AddIdentityInfrastructure();
-builder.Services.AddRealEstateEvalJwt(builder.Configuration);
-builder.Services.AddRealEstateEvalCors(builder.Environment);
+builder.Services.AddRealEstateEvalJwt(builder.Configuration, builder.Environment);
+builder.Services.AddRealEstateEvalCors(builder.Configuration, builder.Environment);
+builder.Services.AddRealEstateEvalRateLimiting(builder.Configuration, builder.Environment);
 builder.Services.AddRealEstateEvalOpenApi("Identity API");
 
 var app = builder.Build();

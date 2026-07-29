@@ -75,6 +75,50 @@ public class PoRoleMatrixRulesTests
             actorUserId: "sup-1",
             actorDistributionAssigneeId: null));
     }
+
+    [Theory]
+    [InlineData("case-specialist")]
+    [InlineData("section-supervisor")]
+    [InlineData("general-manager")]
+    [InlineData("cdo")]
+    public void CanReadPartyTask_allows_case_staff_on_any_task(string role)
+    {
+        Assert.True(PoRoleMatrixRules.CanReadPartyTask(
+            role,
+            taskAssigneeId: "dist-1",
+            actorUserId: "staff-1",
+            actorDistributionAssigneeId: null));
+    }
+
+    [Fact]
+    public void CanReadPartyTask_allows_assigned_party()
+    {
+        Assert.True(PoRoleMatrixRules.CanReadPartyTask(
+            "engineering-office",
+            taskAssigneeId: "dist-1",
+            actorUserId: "user-x",
+            actorDistributionAssigneeId: "dist-1"));
+    }
+
+    [Fact]
+    public void CanReadPartyTask_forbids_other_party()
+    {
+        Assert.False(PoRoleMatrixRules.CanReadPartyTask(
+            "engineering-office",
+            taskAssigneeId: "dist-1",
+            actorUserId: "user-x",
+            actorDistributionAssigneeId: "dist-other"));
+    }
+
+    [Fact]
+    public void CanReadPartyTask_forbids_party_on_unassigned_task()
+    {
+        Assert.False(PoRoleMatrixRules.CanReadPartyTask(
+            "field-inspector",
+            taskAssigneeId: null,
+            actorUserId: "user-x",
+            actorDistributionAssigneeId: "dist-1"));
+    }
 }
 
 public class AttachmentUploadRulesTests

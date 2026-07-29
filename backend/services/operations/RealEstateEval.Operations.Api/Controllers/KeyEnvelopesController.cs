@@ -11,7 +11,7 @@ namespace RealEstateEval.Operations.Api.Controllers;
 
 [ApiController]
 [Route("api/key-envelopes")]
-[Authorize]
+[Authorize(Policy = CapabilityPolicyNames.ReadKeyData)]
 public class KeyEnvelopesController : ControllerBase
 {
     private readonly IKeyEnvelopesService _envelopes;

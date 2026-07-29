@@ -5,11 +5,18 @@ namespace RealEstateEval.Application.Abstractions;
 
 public interface IUserRegistrationService
 {
+    Task<IReadOnlyList<DevLoginUserDto>> ListDevLoginUsersAsync(
+        CancellationToken cancellationToken = default);
+
+    Task<UserInfoDto?> GetIdentityUserAsync(
+        string userId,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<UserListItemDto>> ListAsync(
         RegistrationSource? sourceScope = null,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Single user profile for the given identity user id, or null if none.</summary>
+    /// <summary>Full staff profile, with an identity-only fallback for unprofiled users.</summary>
     Task<UserListItemDto?> GetByUserIdAsync(
         string userId,
         CancellationToken cancellationToken = default);

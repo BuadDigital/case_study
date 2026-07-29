@@ -10,6 +10,7 @@ namespace RealEstateEval.Infrastructure.Services;
 public sealed class AttachmentService : IAttachmentService
 {
     private const string BlobContainer = "attachments";
+    private const int MaxAttachmentsPerScope = 200;
     private readonly ApplicationDbContext _db;
     private readonly IBlobStorage _blobs;
 
@@ -27,6 +28,7 @@ public sealed class AttachmentService : IAttachmentService
         var rows = await _db.FileAttachments.AsNoTracking()
             .Where(x => x.Scope == scope.Trim() && x.ScopeKey == scopeKey.Trim())
             .OrderByDescending(x => x.CreatedAtUtc)
+            .Take(MaxAttachmentsPerScope)
             .ToListAsync(cancellationToken);
         return rows.Select(ToMeta).ToList();
     }

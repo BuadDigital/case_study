@@ -5,15 +5,24 @@ namespace RealEstateEval.Application.Abstractions;
 
 public interface IWorkOrderService
 {
-    Task<IReadOnlyList<WorkOrderListItemDto>> ListAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyList<WorkOrderListItemDto>> ListAsync(
+        PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default);
     Task<PagedResultDto<WorkOrderListItemDto>> ListPagedAsync(
         int? page,
         int? pageSize,
-        CancellationToken cancellationToken);
-    Task<IReadOnlyList<WorkOrderDto>> ListDetailsAsync(CancellationToken cancellationToken);
+        PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<WorkOrderDto>> ListDetailsAsync(
+        PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default);
     Task<IReadOnlyList<PropertyListItemDto>> ListPropertyListItemsAsync(
-        CancellationToken cancellationToken);
-    Task<WorkOrderDto?> GetByPoNumberAsync(string poNumber, CancellationToken cancellationToken);
+        PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default);
+    Task<WorkOrderDto?> GetByPoNumberAsync(
+        string poNumber,
+        PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default);
     Task<bool> ExistsAsync(string poNumber, CancellationToken cancellationToken);
     Task<PriorDeedRegistrationDto?> FindPriorDeedAsync(
         string deedNumber,

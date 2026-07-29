@@ -18,6 +18,7 @@ public class AttachmentsController : ControllerBase
     public AttachmentsController(IAttachmentService attachments) => _attachments = attachments;
 
     [HttpGet]
+    [Authorize(Policy = CapabilityPolicyNames.ManageAttachments)]
     public async Task<ActionResult<IReadOnlyList<FileAttachmentMetaDto>>> List(
         [FromQuery] string scope,
         [FromQuery] string scopeKey,
@@ -30,6 +31,7 @@ public class AttachmentsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageAttachments)]
     public async Task<IActionResult> Download(Guid id, CancellationToken ct)
     {
         var (content, meta) = await _attachments.GetContentAsync(id, ct);

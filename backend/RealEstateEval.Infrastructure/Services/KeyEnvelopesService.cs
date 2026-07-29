@@ -10,6 +10,7 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class KeyEnvelopesService : IKeyEnvelopesService
 {
+    private const int MaxListRows = 500;
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -30,6 +31,7 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
     {
         var rows = await QueryEnvelopes()
             .OrderByDescending(x => x.CreatedAtUtc)
+            .Take(MaxListRows)
             .ToListAsync(cancellationToken);
         return await MapManyAsync(rows, cancellationToken);
     }
@@ -56,6 +58,7 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
     {
         var charges = await _db.KeyReceiptFeeCharges.AsNoTracking()
             .OrderByDescending(c => c.CreatedAtUtc)
+            .Take(MaxListRows)
             .ToListAsync(cancellationToken);
         if (charges.Count == 0)
         {
@@ -75,6 +78,7 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
                     CreatedByName = x.CreatedByName,
                     CreatedAtUtc = x.CreatedAtUtc,
                 })
+                .Take(MaxListRows)
                 .ToListAsync(cancellationToken);
         }
 

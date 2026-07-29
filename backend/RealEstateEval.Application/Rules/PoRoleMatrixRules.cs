@@ -89,6 +89,24 @@ public static class PoRoleMatrixRules
             && string.Equals(userId, assignee, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Party read access: case staff read every task, parties read only their own.
+    /// Strictly wider than <see cref="CanWritePartyTask"/>.
+    /// </summary>
+    public static bool CanReadPartyTask(
+        string? prototypeRole,
+        string? taskAssigneeId,
+        string? actorUserId,
+        string? actorDistributionAssigneeId)
+    {
+        return CanManagePartySubmissions(prototypeRole)
+            || CanWritePartyTask(
+                prototypeRole,
+                taskAssigneeId,
+                actorUserId,
+                actorDistributionAssigneeId);
+    }
+
     static string Normalize(string? prototypeRole) =>
         prototypeRole?.Trim().ToLowerInvariant() ?? "";
 }

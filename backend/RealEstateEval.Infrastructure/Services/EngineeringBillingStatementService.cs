@@ -10,6 +10,7 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public class EngineeringBillingStatementService : IEngineeringBillingStatementService
 {
+    private const int MaxListRows = 500;
     private const string RefDept = "FN";
     private const string RefType = "CS";
     private const string EngSurveyKind = "engineering-survey";
@@ -43,7 +44,7 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
                     || ledger.AssigneeId == assigneeId)
             orderby ledger.UpdatedAtUtc descending
             select new { ledger, task }
-        ).ToListAsync(cancellationToken);
+        ).Take(MaxListRows).ToListAsync(cancellationToken);
 
         var propertyIds = ledgers
             .Select(x => x.ledger.PropertyId)
@@ -80,6 +81,7 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
 
         var statements = await query
             .OrderByDescending(s => s.CreatedAtUtc)
+            .Take(MaxListRows)
             .ToListAsync(cancellationToken);
 
         if (statements.Count == 0) return [];

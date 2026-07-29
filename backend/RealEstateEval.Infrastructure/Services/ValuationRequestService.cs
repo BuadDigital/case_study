@@ -9,6 +9,7 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class ValuationRequestService : IValuationRequestService
 {
+    private const int MaxListRows = 500;
     private readonly ApplicationDbContext _db;
     private readonly IIntegrationEventPublisher _events;
 
@@ -25,6 +26,7 @@ public sealed class ValuationRequestService : IValuationRequestService
     {
         var rows = await _db.ValuationRequests.AsNoTracking()
             .OrderByDescending(x => x.RequestDate)
+            .Take(MaxListRows)
             .ToListAsync(cancellationToken);
         return rows.Select(ToDto).ToList();
     }

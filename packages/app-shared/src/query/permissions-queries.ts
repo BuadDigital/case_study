@@ -4,7 +4,8 @@ import {
   fetchPermissions,
   type PermissionsDto,
 } from "@platform/api-client";
-import { getValidAuthSession, notifyAuthExpired } from "@platform/auth-client";
+import { notifyAuthExpired } from "@platform/auth-client";
+import { ensureFreshAuthSession } from "../auth/ensure-fresh-session";
 
 export { ApiAuthError };
 
@@ -14,17 +15,29 @@ export const permissionsKeys = {
 };
 
 export function usePermissionsQuery(enabled = true) {
-  const session = getValidAuthSession();
   return useQuery({
     queryKey: permissionsKeys.current(),
-    enabled: enabled && Boolean(session?.token),
+    // Caller passes hasSession; do not re-read storage here for `enabled` —
+    // a stale render-time read can disable the query permanently on hard nav.
+    enabled,
     queryFn: async (): Promise<PermissionsDto> => {
+      const session = await ensureFreshAuthSession();
+      if (!session) {
+        notifyAuthExpired();
+        throw new ApiAuthError();
+      }
+
       try {
-        return await fetchPermissions({
-          token: session!.token,
-        });
+        return await fetchPermissions({ token: session.token });
       } catch (error) {
-        if (error instanceof ApiAuthError) notifyAuthExpired();
+        if (!(error instanceof ApiAuthError)) throw error;
+
+        // The access token may have lapsed in flight; renew once before logging out.
+        const renewed = await ensureFreshAuthSession({ force: true });
+        if (renewed && renewed.token !== session.token)
+          return await fetchPermissions({ token: renewed.token });
+
+        notifyAuthExpired();
         throw error;
       }
     },

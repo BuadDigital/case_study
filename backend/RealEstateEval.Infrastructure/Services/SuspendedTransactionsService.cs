@@ -8,6 +8,7 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class SuspendedTransactionsService : ISuspendedTransactionsService
 {
+    private const int MaxListRows = 500;
     private readonly ApplicationDbContext _db;
 
     public SuspendedTransactionsService(ApplicationDbContext db) => _db = db;
@@ -18,6 +19,7 @@ public sealed class SuspendedTransactionsService : ISuspendedTransactionsService
         var rows = await _db.PropertyFailures.AsNoTracking()
             .Where(x => x.Status == PropertyFailureStatus.Suspended)
             .OrderByDescending(x => x.SuspendedAtUtc ?? x.UpdatedAtUtc)
+            .Take(MaxListRows)
             .ToListAsync(cancellationToken);
 
         var names = await PersonLabelResolver.ResolveManyAsync(

@@ -62,43 +62,54 @@ public sealed class CourtsCatalogService : ICourtsCatalogService
     {
         await _courts.EnsureSeededAsync(cancellationToken);
 
-        var existingCourts = await _db.Courts.Include(c => c.Circuits).ToListAsync(cancellationToken);
-        var existingCircuits = existingCourts.SelectMany(c => c.Circuits).ToList();
-        _db.CourtCircuits.RemoveRange(existingCircuits);
-        _db.Courts.RemoveRange(existingCourts);
-        await _db.SaveChangesAsync(cancellationToken);
+        // Wipe then recreate needs two SaveChanges (same Ids may be reused), so wrap both
+        // in a transaction — otherwise a failure after the wipe leaves an empty catalog.
+        await DbContextTransaction.ExecuteInTransactionAsync(
+            _db,
+            async ct =>
+            {
+                var existingCourts = await _db.Courts
+                    .Include(c => c.Circuits)
+                    .ToListAsync(ct);
+                var existingCircuits = existingCourts.SelectMany(c => c.Circuits).ToList();
+                _db.CourtCircuits.RemoveRange(existingCircuits);
+                _db.Courts.RemoveRange(existingCourts);
+                await _db.SaveChangesAsync(ct);
 
-        foreach (var dto in request.Entries)
-        {
-            var court = new Court
-            {
-                Id = dto.Id == Guid.Empty ? Guid.NewGuid() : dto.Id,
-                Name = dto.Court.Trim(),
-                Region = dto.City.Trim(),
-                City = dto.City.Trim(),
-                IsActive = true,
-                CreatedBy = "system",
-                CreatedAtUtc = DateTime.UtcNow,
-            };
-            _db.Courts.Add(court);
-            foreach (var circuitNo in dto.Circuits
-                         .Select(c => c.Trim())
-                         .Where(c => c.Length > 0)
-                         .Distinct(StringComparer.Ordinal))
-            {
-                _db.CourtCircuits.Add(new CourtCircuit
+                foreach (var dto in request.Entries)
                 {
-                    Id = Guid.NewGuid(),
-                    CourtId = court.Id,
-                    CircuitNo = circuitNo,
-                    IsActive = true,
-                    CreatedBy = "system",
-                    CreatedAtUtc = DateTime.UtcNow,
-                });
-            }
-        }
+                    var court = new Court
+                    {
+                        Id = dto.Id == Guid.Empty ? Guid.NewGuid() : dto.Id,
+                        Name = dto.Court.Trim(),
+                        Region = dto.City.Trim(),
+                        City = dto.City.Trim(),
+                        IsActive = true,
+                        CreatedBy = "system",
+                        CreatedAtUtc = DateTime.UtcNow,
+                    };
+                    _db.Courts.Add(court);
+                    foreach (var circuitNo in dto.Circuits
+                                 .Select(c => c.Trim())
+                                 .Where(c => c.Length > 0)
+                                 .Distinct(StringComparer.Ordinal))
+                    {
+                        _db.CourtCircuits.Add(new CourtCircuit
+                        {
+                            Id = Guid.NewGuid(),
+                            CourtId = court.Id,
+                            CircuitNo = circuitNo,
+                            IsActive = true,
+                            CreatedBy = "system",
+                            CreatedAtUtc = DateTime.UtcNow,
+                        });
+                    }
+                }
 
-        await _db.SaveChangesAsync(cancellationToken);
+                await _db.SaveChangesAsync(ct);
+            },
+            cancellationToken);
+
         await _cache.RemoveAsync(CacheKeys.CourtsCatalog, cancellationToken);
         return await ListAsync(cancellationToken);
     }

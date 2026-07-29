@@ -10,6 +10,7 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class PartyFeePricingService : IPartyFeePricingService
 {
+    private const int MaxPricingTables = 100;
     public static readonly Guid DefaultEngineeringTableId =
         Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
 
@@ -47,6 +48,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
                 IsActive = x.IsActive,
                 UpdatedAtUtc = x.UpdatedAtUtc,
             })
+            .Take(MaxPricingTables)
             .ToListAsync(cancellationToken);
 
         if (tables.Count == 0) return tables;
@@ -212,19 +214,20 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         var wasActive = table.IsActive;
         var category = table.Category;
         _db.PartyFeePricingTables.Remove(table);
-        await _db.SaveChangesAsync(cancellationToken);
 
+        // Promote the next table in the same SaveChanges so a failure cannot leave the
+        // category without an active pricing table.
         if (wasActive)
         {
             var next = await _db.PartyFeePricingTables
-                .Where(x => x.Category == category)
+                .Where(x => x.Id != id && x.Category == category)
                 .OrderBy(x => x.Name)
                 .FirstAsync(cancellationToken);
             next.IsActive = true;
             next.UpdatedAtUtc = DateTime.UtcNow;
-            await _db.SaveChangesAsync(cancellationToken);
         }
 
+        await _db.SaveChangesAsync(cancellationToken);
         return true;
     }
 

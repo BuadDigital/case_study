@@ -16,4 +16,5 @@
   <Project Path="RealEstateEval.Application/RealEstateEval.Application.csproj" />
   <Project Path="RealEstateEval.Domain/RealEstateEval.Domain.csproj" />
   <Project Path="RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj" />
+  <Project Path="tools/DbMigrate/DbMigrate.csproj" />
 </Solution>

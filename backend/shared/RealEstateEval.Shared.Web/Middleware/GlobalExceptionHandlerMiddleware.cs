@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -37,6 +38,32 @@ public sealed class GlobalExceptionHandlerMiddleware
         catch (Exception ex) when (IsBenignCancellation(context, ex))
         {
             // Long-lived requests (SSE) and shutdown cancel in-flight writes — not errors.
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Optimistic concurrency conflict for {Method} {Path}",
+                context.Request.Method,
+                context.Request.Path);
+
+            if (context.Response.HasStarted)
+                throw;
+
+            context.Response.Clear();
+            context.Response.StatusCode = (int)HttpStatusCode.Conflict;
+            context.Response.ContentType = "application/problem+json";
+
+            var problem = new
+            {
+                type = "https://httpstatuses.com/409",
+                title = "Conflict",
+                status = 409,
+                detail = "The record was changed by another request. Reload it and try again.",
+                traceId = context.TraceIdentifier,
+            };
+
+            await context.Response.WriteAsync(JsonSerializer.Serialize(problem, JsonOptions));
         }
         catch (Exception ex)
         {

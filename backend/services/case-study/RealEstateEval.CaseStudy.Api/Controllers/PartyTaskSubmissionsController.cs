@@ -1,10 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
-using RealEstateEval.Infrastructure.Data;
-using RealEstateEval.Infrastructure.Permissions;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 
@@ -16,14 +13,14 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 public class PartyTaskSubmissionsController : ControllerBase
 {
     private readonly IPartyTaskSubmissionService _submissions;
-    private readonly ApplicationDbContext _db;
+    private readonly IPermissionService _permissions;
 
     public PartyTaskSubmissionsController(
         IPartyTaskSubmissionService submissions,
-        ApplicationDbContext db)
+        IPermissionService permissions)
     {
         _submissions = submissions;
-        _db = db;
+        _permissions = permissions;
     }
 
     [HttpGet]
@@ -40,7 +37,10 @@ public class PartyTaskSubmissionsController : ControllerBase
             .Where(id => id != Guid.Empty)
             .ToList();
 
-        return Ok(await _submissions.ListForTasksAsync(ids, cancellationToken));
+        return Ok(await _submissions.ListForTasksAsync(
+            ids,
+            await ResolveActorAsync(cancellationToken),
+            cancellationToken));
     }
 
     [HttpGet("{taskId:guid}")]
@@ -48,7 +48,10 @@ public class PartyTaskSubmissionsController : ControllerBase
         Guid taskId,
         CancellationToken cancellationToken)
     {
-        var dto = await _submissions.GetAsync(taskId, cancellationToken);
+        var dto = await _submissions.GetAsync(
+            taskId,
+            await ResolveActorAsync(cancellationToken),
+            cancellationToken);
         if (dto is null) return NotFound();
         return Ok(dto);
     }
@@ -128,26 +131,16 @@ public class PartyTaskSubmissionsController : ControllerBase
     private async Task<PartySubmissionActor> ResolveActorAsync(CancellationToken ct)
     {
         var userId = ActorClaims.Id(User);
-        var profile = string.IsNullOrWhiteSpace(userId) || userId == "unknown"
+        var permissions = string.IsNullOrWhiteSpace(userId) || userId == "unknown"
             ? null
-            : await _db.UserProfiles.AsNoTracking()
-                .FirstOrDefaultAsync(p => p.UserId == userId, ct);
-
-        var identityRoles = string.IsNullOrWhiteSpace(userId) || userId == "unknown"
-            ? new List<string>()
-            : await (
-                from ur in _db.UserRoles.AsNoTracking()
-                join r in _db.Roles.AsNoTracking() on ur.RoleId equals r.Id
-                where ur.UserId == userId
-                select r.Name!
-            ).ToListAsync(ct);
+            : await _permissions.GetForUserIdAsync(userId, ct);
 
         return new PartySubmissionActor
         {
             UserId = userId == "unknown" ? "" : userId,
             DisplayName = ActorClaims.DisplayName(User),
-            PrototypeRole = PrototypeRoleResolver.Resolve(profile, identityRoles),
-            DistributionAssigneeId = profile?.DistributionAssigneeId?.Trim(),
+            PrototypeRole = permissions?.PrototypeRole,
+            DistributionAssigneeId = permissions?.DistributionAssigneeId,
         };
     }
 }

@@ -16,10 +16,12 @@ public class EvaluatorRecallsController : ControllerBase
     public EvaluatorRecallsController(IEvaluatorRecallsService recalls) => _recalls = recalls;
 
     [HttpGet]
+    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
     public async Task<ActionResult<IReadOnlyList<EvaluatorRecallDto>>> List(CancellationToken ct)
         => Ok(await _recalls.ListAsync(ct));
 
     [HttpGet("{taskId}")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
     public async Task<ActionResult<EvaluatorRecallDto>> Get(string taskId, CancellationToken ct)
     {
         var dto = await _recalls.GetAsync(taskId, ct);

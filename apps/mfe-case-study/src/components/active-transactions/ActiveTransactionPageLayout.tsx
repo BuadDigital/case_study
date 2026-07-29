@@ -11,7 +11,6 @@ export function ActiveTransactionPageLayout({
   pageId,
   hasRail = false,
   panelOpen = false,
-  /** Keep the margin rail visible even when no row is selected (bourse empty state). */
   reserveRail = false,
   railGridClassName,
   aboveSituation,

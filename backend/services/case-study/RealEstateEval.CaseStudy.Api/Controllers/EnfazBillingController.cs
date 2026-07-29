@@ -16,11 +16,13 @@ public class EnfazBillingController : ControllerBase
     public EnfazBillingController(IPoEnfazBillingService billing) => _billing = billing;
 
     [HttpGet("ready-pos-summary")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadFinancialData)]
     public async Task<ActionResult<IReadOnlyList<EnfazReadyPoSummaryDto>>> ListReadyPosSummary(
         CancellationToken ct) =>
         Ok(await _billing.ListReadyPoSummariesAsync(ct));
 
     [HttpGet("{poNumber}")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadFinancialData)]
     public async Task<ActionResult<PoEnfazBillingDto>> GetPo(string poNumber, CancellationToken ct)
     {
         var dto = await _billing.GetPoBillingAsync(poNumber, ct);
@@ -39,6 +41,7 @@ public class EnfazBillingController : ControllerBase
     }
 
     [HttpGet("tracking")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadFinancialData)]
     public async Task<ActionResult<IReadOnlyList<EnfazTrackingRowDto>>> Tracking(
         CancellationToken ct) =>
         Ok(await _billing.ListTrackingAsync(ct));
@@ -68,6 +71,7 @@ public class EnfazBillingController : ControllerBase
     }
 
     [HttpGet("{poNumber}/properties/{propertyId:guid}")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadFinancialData)]
     public async Task<ActionResult<PropertyEnfazRevenueDto>> GetPropertyRevenue(
         string poNumber,
         Guid propertyId,

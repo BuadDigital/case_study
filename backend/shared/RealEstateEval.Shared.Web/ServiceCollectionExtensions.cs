@@ -42,21 +42,78 @@ public static class AuthorizationExtensions
                     || ctx.User.HasClaim(
                         CapabilityAuthorizationHandler.ClaimType,
                         PlatformCapabilities.SubmitPartyWork)));
+
+            options.AddPolicy(
+                CapabilityPolicyNames.ReadFinancialData,
+                policy => policy.RequireAssertion(ctx => HasAnyCapability(
+                    ctx,
+                    PlatformCapabilities.ManageFinancial,
+                    PlatformCapabilities.ManageWorkOrders)));
+
+            options.AddPolicy(
+                CapabilityPolicyNames.ReadManagementReports,
+                policy => policy.RequireAssertion(ctx => HasAnyCapability(
+                    ctx,
+                    PlatformCapabilities.ManageWorkOrders)));
+
+            options.AddPolicy(
+                CapabilityPolicyNames.ReadKeyData,
+                policy => policy.RequireAssertion(ctx => HasAnyCapability(
+                    ctx,
+                    PlatformCapabilities.ManageOperations,
+                    PlatformCapabilities.ManageFinancial)));
+
+            options.AddPolicy(
+                CapabilityPolicyNames.ReadValuationQueue,
+                policy => policy.RequireAssertion(ctx => HasAnyCapability(
+                    ctx,
+                    PlatformCapabilities.ManageValuationRequests,
+                    PlatformCapabilities.SubmitValuationReport)));
         });
 
         return services;
+    }
+
+    private static bool HasAnyCapability(
+        AuthorizationHandlerContext context,
+        params string[] capabilities)
+    {
+        return Array.Exists(
+            capabilities,
+            capability => context.User.HasClaim(
+                CapabilityAuthorizationHandler.ClaimType,
+                capability));
     }
 }
 
 public static class ServiceCollectionExtensions
 {
+    private const int MinimumJwtSigningKeyLength = 64;
+
     public static IServiceCollection AddRealEstateEvalJwt(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
-        var jwtIssuer = configuration["Jwt:Issuer"];
-        var jwtAudience = configuration["Jwt:Audience"];
-        var jwtSigningKey = configuration["Jwt:SigningKey"];
+        var jwtIssuer = RequireJwtValue(configuration, "Issuer");
+        var jwtAudience = RequireJwtValue(configuration, "Audience");
+        var jwtSigningKey = RequireJwtValue(configuration, "SigningKey");
+
+        if (!environment.IsDevelopment())
+        {
+            if (jwtSigningKey.Length < MinimumJwtSigningKeyLength)
+            {
+                throw new InvalidOperationException(
+                    $"Jwt:SigningKey must be at least {MinimumJwtSigningKeyLength} characters outside Development.");
+            }
+
+            if (jwtSigningKey.Contains("CHANGE_ME", StringComparison.OrdinalIgnoreCase)
+                || jwtSigningKey.Contains("DEV_ONLY", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    "Jwt:SigningKey contains a known placeholder and cannot be used outside Development.");
+            }
+        }
 
         services.AddAuthentication(options =>
             {
@@ -75,7 +132,7 @@ public static class ServiceCollectionExtensions
                     ValidIssuer = jwtIssuer,
                     ValidAudience = jwtAudience,
                     IssuerSigningKey = new SymmetricSecurityKey(
-                        Encoding.UTF8.GetBytes(jwtSigningKey ?? "")),
+                        Encoding.UTF8.GetBytes(jwtSigningKey)),
                     ClockSkew = TimeSpan.FromMinutes(1),
                     NameClaimType = JwtRegisteredClaimNames.Sub,
                     RoleClaimType = "role",
@@ -87,38 +144,62 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
+    private static string RequireJwtValue(IConfiguration configuration, string name)
+    {
+        var value = configuration[$"Jwt:{name}"];
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new InvalidOperationException($"Jwt:{name} is required.");
+        }
+
+        return value;
+    }
+
     public static IServiceCollection AddRealEstateEvalCors(
         this IServiceCollection services,
+        IConfiguration configuration,
         IHostEnvironment environment)
     {
+        var corsOptions = RealEstateEvalCorsOptions.FromConfiguration(configuration, environment);
+
         services.AddCors(options =>
         {
             options.AddDefaultPolicy(policy =>
             {
                 if (environment.IsDevelopment())
                 {
-                    policy
-                        .SetIsOriginAllowed(origin =>
-                        {
-                            if (string.IsNullOrEmpty(origin) ||
-                                !Uri.TryCreate(origin, UriKind.Absolute, out var uri))
-                                return false;
-                            return uri.Port is 3000 or 3001;
-                        })
-                        .AllowAnyHeader()
-                        .AllowAnyMethod();
+                    // Teammates browse the dev shell over the LAN, so any host on the Next.js
+                    // ports is allowed on top of whatever Cors:AllowedOrigins lists.
+                    var configured = corsOptions.AllowedOrigins.ToHashSet(
+                        StringComparer.OrdinalIgnoreCase);
+
+                    policy.SetIsOriginAllowed(origin =>
+                        configured.Contains(origin) || IsDevelopmentShellOrigin(origin));
                 }
                 else
                 {
-                    policy.WithOrigins("http://localhost:3000")
-                        .AllowAnyHeader()
-                        .AllowAnyMethod();
+                    // Empty list means "no cross-origin browser access", which is correct when
+                    // the frontend proxies /api through its own origin.
+                    policy.WithOrigins([.. corsOptions.AllowedOrigins]);
                 }
+
+                policy.AllowAnyHeader().AllowAnyMethod();
+
+                if (corsOptions.AllowCredentials)
+                    policy.AllowCredentials();
             });
         });
 
+        if (corsOptions.WarnOnMissingOrigins)
+            services.AddHostedService<MissingCorsOriginsAnnouncer>();
+
         return services;
     }
+
+    private static bool IsDevelopmentShellOrigin(string origin) =>
+        !string.IsNullOrEmpty(origin)
+        && Uri.TryCreate(origin, UriKind.Absolute, out var uri)
+        && uri.Port is 3000 or 3001;
 
     public static string RequireConnectionString(
         IConfiguration configuration,

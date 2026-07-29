@@ -9,6 +9,7 @@ namespace RealEstateEval.Infrastructure.Services;
 public sealed class PropertyTimelineService : IPropertyTimelineService
 {
     private const string CaseStudyPropertyKind = "case-study-property";
+    private const int MaxTimelineRows = 500;
 
     private readonly ApplicationDbContext _db;
 
@@ -23,8 +24,9 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
         var existing = await _db.PropertyTimelineEntries
             .AsNoTracking()
             .Where(e => e.PoNumber == po && e.PropertyId == propertyId)
-            .OrderBy(e => e.OccurredAtUtc)
+            .OrderByDescending(e => e.OccurredAtUtc)
             .ThenBy(e => e.EventKey)
+            .Take(MaxTimelineRows)
             .ToListAsync(cancellationToken);
 
         if (existing.Count == 0)
@@ -40,6 +42,8 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
 
         var (parent, children) = await LoadPartyTasksAsync(po, propertyId, cancellationToken);
         return existing
+            .OrderBy(e => e.OccurredAtUtc)
+            .ThenBy(e => e.EventKey)
             .Select(e => ToDto(ApplyDynamicTone(e, parent, children)))
             .ToList();
     }

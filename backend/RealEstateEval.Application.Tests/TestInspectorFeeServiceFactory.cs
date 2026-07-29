@@ -1,7 +1,5 @@
-using Microsoft.AspNetCore.Identity;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
-using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
@@ -12,19 +10,17 @@ internal static class TestInspectorFeeServiceFactory
 {
     public static InspectorFeeService Create(ApplicationDbContext db)
     {
-        var userManager = CreateUserManager();
         return new InspectorFeeService(
             db,
             new NullNotificationService(),
-            new NotificationRecipientResolver(db, userManager),
+            new NotificationRecipientResolver(db),
             new PartyFeePricingService(db));
     }
 
     public static WorkflowTaskService CreateWorkflow(ApplicationDbContext db)
     {
-        var userManager = CreateUserManager();
         var notifications = new NullNotificationService();
-        var recipients = new NotificationRecipientResolver(db, userManager);
+        var recipients = new NotificationRecipientResolver(db);
         var fees = new InspectorFeeService(
             db,
             notifications,
@@ -37,14 +33,8 @@ internal static class TestInspectorFeeServiceFactory
     public static (INotificationService Notifications, NotificationRecipientResolver Recipients)
         CreateNotificationDeps(ApplicationDbContext db)
     {
-        var userManager = CreateUserManager();
-        return (new NullNotificationService(), new NotificationRecipientResolver(db, userManager));
+        return (new NullNotificationService(), new NotificationRecipientResolver(db));
     }
-
-    private static UserManager<ApplicationUser> CreateUserManager() =>
-        new(
-            new NullUserStore(),
-            null!, null!, null!, null!, null!, null!, null!, null!);
 
     private sealed class NullNotificationService : INotificationService
     {
@@ -84,48 +74,4 @@ internal static class TestInspectorFeeServiceFactory
             Task.CompletedTask;
     }
 
-    private sealed class NullUserStore : IUserStore<ApplicationUser>
-    {
-        public void Dispose() { }
-
-        public Task<string> GetUserIdAsync(ApplicationUser user, CancellationToken cancellationToken) =>
-            Task.FromResult(user.Id);
-
-        public Task<string?> GetUserNameAsync(ApplicationUser user, CancellationToken cancellationToken) =>
-            Task.FromResult(user.UserName);
-
-        public Task SetUserNameAsync(
-            ApplicationUser user,
-            string? userName,
-            CancellationToken cancellationToken) =>
-            Task.CompletedTask;
-
-        public Task<string?> GetNormalizedUserNameAsync(
-            ApplicationUser user,
-            CancellationToken cancellationToken) =>
-            Task.FromResult(user.NormalizedUserName);
-
-        public Task SetNormalizedUserNameAsync(
-            ApplicationUser user,
-            string? normalizedName,
-            CancellationToken cancellationToken) =>
-            Task.CompletedTask;
-
-        public Task<IdentityResult> CreateAsync(ApplicationUser user, CancellationToken cancellationToken) =>
-            Task.FromResult(IdentityResult.Success);
-
-        public Task<IdentityResult> UpdateAsync(ApplicationUser user, CancellationToken cancellationToken) =>
-            Task.FromResult(IdentityResult.Success);
-
-        public Task<IdentityResult> DeleteAsync(ApplicationUser user, CancellationToken cancellationToken) =>
-            Task.FromResult(IdentityResult.Success);
-
-        public Task<ApplicationUser?> FindByIdAsync(string userId, CancellationToken cancellationToken) =>
-            Task.FromResult<ApplicationUser?>(null);
-
-        public Task<ApplicationUser?> FindByNameAsync(
-            string normalizedUserName,
-            CancellationToken cancellationToken) =>
-            Task.FromResult<ApplicationUser?>(null);
-    }
 }

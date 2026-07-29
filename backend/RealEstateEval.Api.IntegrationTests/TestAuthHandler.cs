@@ -12,6 +12,7 @@ public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationScheme
     public const string TestScheme = "IntegrationTest";
     public const string AuthOnlyToken = "auth-only";
     public const string FinancialToken = "financial-user";
+    public const string AttachmentsToken = "attachments-user";
 
     public TestAuthHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
@@ -31,7 +32,7 @@ public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationScheme
         }
 
         var token = header["Bearer ".Length..].Trim();
-        if (token is not (AuthOnlyToken or FinancialToken))
+        if (token is not (AuthOnlyToken or FinancialToken or AttachmentsToken))
             return Task.FromResult(AuthenticateResult.Fail("Unknown test token"));
 
         var claims = new List<Claim>
@@ -42,6 +43,8 @@ public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationScheme
 
         if (token == FinancialToken)
             claims.Add(new Claim(PlatformCapabilities.ClaimType, PlatformCapabilities.ManageFinancial));
+        if (token == AttachmentsToken)
+            claims.Add(new Claim(PlatformCapabilities.ClaimType, PlatformCapabilities.ManageAttachments));
 
         var identity = new ClaimsIdentity(claims, TestScheme);
         var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), TestScheme);

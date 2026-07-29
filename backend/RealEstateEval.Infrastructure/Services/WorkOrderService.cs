@@ -12,6 +12,7 @@ namespace RealEstateEval.Infrastructure.Services;
 public class WorkOrderService : IWorkOrderService
 {
     private const string CaseStudyPropertyKind = "case-study-property";
+    private const int MaxDetailRows = 500;
 
     private readonly ApplicationDbContext _db;
     private readonly IPropertyTimelineService _timeline;
@@ -30,23 +31,30 @@ public class WorkOrderService : IWorkOrderService
         _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
     }
 
-    public async Task<IReadOnlyList<WorkOrderListItemDto>> ListAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<WorkOrderListItemDto>> ListAsync(
+        PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default)
     {
         var (_, take, _, _) = NpgsqlConfiguration.ResolveListPaging(null, null, _dbOptions);
-        return await BuildListItemsAsync(null, take, cancellationToken);
+        return await BuildListItemsAsync(null, take, actor, cancellationToken);
     }
 
     public async Task<PagedResultDto<WorkOrderListItemDto>> ListPagedAsync(
         int? page,
         int? pageSize,
-        CancellationToken cancellationToken)
+        PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default)
     {
         var (skip, take, resolvedPage, _) = NpgsqlConfiguration.ResolveListPaging(
             page,
             pageSize,
             _dbOptions);
-        var total = await _db.WorkOrders.CountAsync(cancellationToken);
-        var items = await BuildListItemsAsync(skip, take, cancellationToken);
+        var visiblePos = await ResolveVisiblePoNumbersAsync(actor, cancellationToken);
+        var totalQuery = _db.WorkOrders.AsNoTracking();
+        if (visiblePos is not null)
+            totalQuery = totalQuery.Where(w => visiblePos.Contains(w.PoNumber));
+        var total = await totalQuery.CountAsync(cancellationToken);
+        var items = await BuildListItemsAsync(skip, take, actor, cancellationToken);
 
         return new PagedResultDto<WorkOrderListItemDto>
         {
@@ -60,11 +68,20 @@ public class WorkOrderService : IWorkOrderService
     private async Task<IReadOnlyList<WorkOrderListItemDto>> BuildListItemsAsync(
         int? skip,
         int? take,
+        PermissionsDto? actor,
         CancellationToken cancellationToken)
     {
         IQueryable<WorkOrder> query = _db.WorkOrders
             .AsNoTracking()
             .OrderByDescending(w => w.CreatedAtUtc);
+
+        var visiblePos = await ResolveVisiblePoNumbersAsync(actor, cancellationToken);
+        if (visiblePos is not null)
+        {
+            if (visiblePos.Count == 0)
+                return [];
+            query = query.Where(w => visiblePos.Contains(w.PoNumber));
+        }
 
         if (skip is > 0)
             query = query.Skip(skip.Value);
@@ -129,14 +146,24 @@ public class WorkOrderService : IWorkOrderService
     }
 
     public async Task<IReadOnlyList<WorkOrderDto>> ListDetailsAsync(
-        CancellationToken cancellationToken)
+        PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default)
     {
-        var list = await _db.WorkOrders
+        IQueryable<WorkOrder> query = _db.WorkOrders
             .AsNoTracking()
             .Include(w => w.Properties)
             .ThenInclude(p => p.Contacts)
-            .OrderByDescending(w => w.CreatedAtUtc)
-            .ToListAsync(cancellationToken);
+            .OrderByDescending(w => w.CreatedAtUtc);
+
+        var visiblePos = await ResolveVisiblePoNumbersAsync(actor, cancellationToken);
+        if (visiblePos is not null)
+        {
+            if (visiblePos.Count == 0)
+                return [];
+            query = query.Where(w => visiblePos.Contains(w.PoNumber));
+        }
+
+        var list = await query.Take(MaxDetailRows).ToListAsync(cancellationToken);
         return await WithResolvedSpecialistsAsync(
             list.Select(WorkOrderMapper.ToDto).ToList(),
             cancellationToken);
@@ -172,14 +199,24 @@ public class WorkOrderService : IWorkOrderService
     }
 
     public async Task<IReadOnlyList<PropertyListItemDto>> ListPropertyListItemsAsync(
-        CancellationToken cancellationToken)
+        PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default)
     {
-        var list = await _db.WorkOrders
+        IQueryable<WorkOrder> query = _db.WorkOrders
             .AsNoTracking()
             .Include(w => w.Properties)
             .ThenInclude(p => p.Contacts)
-            .OrderByDescending(w => w.CreatedAtUtc)
-            .ToListAsync(cancellationToken);
+            .OrderByDescending(w => w.CreatedAtUtc);
+
+        var visiblePos = await ResolveVisiblePoNumbersAsync(actor, cancellationToken);
+        if (visiblePos is not null)
+        {
+            if (visiblePos.Count == 0)
+                return [];
+            query = query.Where(w => visiblePos.Contains(w.PoNumber));
+        }
+
+        var list = await query.Take(MaxDetailRows).ToListAsync(cancellationToken);
 
         var approvedFailures = await _db.PropertyFailures
             .AsNoTracking()
@@ -229,12 +266,67 @@ public class WorkOrderService : IWorkOrderService
 
     public async Task<WorkOrderDto?> GetByPoNumberAsync(
         string poNumber,
-        CancellationToken cancellationToken)
+        PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default)
     {
+        if (!await CanReadPoAsync(poNumber, actor, cancellationToken))
+            return null;
+
         var entity = await LoadWorkOrderTrackedAsync(poNumber, cancellationToken, asNoTracking: true);
         return entity is null
             ? null
             : await WithResolvedSpecialistAsync(WorkOrderMapper.ToDto(entity), cancellationToken);
+    }
+
+    /// <summary>
+    /// Null means unrestricted (case staff). Empty set means the actor can see nothing.
+    /// </summary>
+    private async Task<HashSet<string>?> ResolveVisiblePoNumbersAsync(
+        PermissionsDto? actor,
+        CancellationToken cancellationToken)
+    {
+        if (actor is null)
+            return new HashSet<string>(StringComparer.Ordinal);
+
+        if (PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole)
+            || actor.Capabilities.Contains("manage-work-orders", StringComparer.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var assigneeId = actor.DistributionAssigneeId?.Trim() ?? "";
+        var userId = actor.UserId.Trim();
+        if (assigneeId.Length == 0 && userId.Length == 0)
+            return new HashSet<string>(StringComparer.Ordinal);
+
+        var query = _db.WorkflowTasks.AsNoTracking().AsQueryable();
+        if (assigneeId.Length > 0 && userId.Length > 0)
+            query = query.Where(t => t.AssigneeId == assigneeId || t.AssigneeId == userId);
+        else if (assigneeId.Length > 0)
+            query = query.Where(t => t.AssigneeId == assigneeId);
+        else
+            query = query.Where(t => t.AssigneeId == userId);
+
+        var pos = await query
+            .Where(t => t.PoNumber != null && t.PoNumber != "")
+            .Select(t => t.PoNumber)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        return pos
+            .Select(p => p.Trim())
+            .Where(p => p.Length > 0)
+            .ToHashSet(StringComparer.Ordinal);
+    }
+
+    private async Task<bool> CanReadPoAsync(
+        string poNumber,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken)
+    {
+        var visiblePos = await ResolveVisiblePoNumbersAsync(actor, cancellationToken);
+        if (visiblePos is null) return true;
+        return visiblePos.Contains(NormalizePo(poNumber));
     }
 
     public Task<bool> ExistsAsync(string poNumber, CancellationToken cancellationToken) =>
@@ -292,6 +384,7 @@ public class WorkOrderService : IWorkOrderService
             .ThenByDescending(p => p.WorkOrder!.ReceivedFromEnfathAt)
             .ThenBy(p => p.WorkOrder!.PoNumber)
             .ThenBy(p => p.DeedNumber)
+            .Take(MaxDetailRows)
             .ToListAsync(cancellationToken);
 
         return list.Select(WorkOrderMapper.ToPendingBourse).ToList();
