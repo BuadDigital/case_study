@@ -195,10 +195,9 @@ export function CourtCircuitSelects({
         onChange={(value) => {
           const selected = circuits.find((row) => row.id === value);
           onPatch("circuitId", value || "");
-          onPatch(
-            "circuit",
-            selected ? circuitDisplayLabel(selected) : "",
-          );
+          // Store the stable circuit number snapshot; the full Arabic name is
+          // resolved from circuitId for display.
+          onPatch("circuit", selected?.circuitNo ?? "");
         }}
       />
     </>
