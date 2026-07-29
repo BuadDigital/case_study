@@ -168,6 +168,72 @@ public class CourtsServiceAuditTests
         Assert.NotEmpty(db.Courts);
     }
 
+    [Fact]
+    public async Task EnsureSeededAsync_adds_fourteen_execution_courts_with_thirty_five_circuits_each()
+    {
+        await using var db = CreateDb();
+        var service = CreateService(db);
+
+        await service.EnsureSeededAsync();
+
+        var executionCourts = await db.Courts
+            .Include(c => c.Circuits)
+            .Where(c => c.Name.StartsWith("محكمة التنفيذ ب"))
+            .ToListAsync();
+
+        Assert.Equal(14, executionCourts.Count);
+        Assert.All(executionCourts, court =>
+        {
+            Assert.True(court.IsActive);
+            Assert.Equal(35, court.Circuits.Count);
+            Assert.Equal(
+                Enumerable.Range(1, 35).Select(n => n.ToString()),
+                court.Circuits.OrderBy(c => int.Parse(c.CircuitNo)).Select(c => c.CircuitNo));
+        });
+        Assert.Equal(490, executionCourts.Sum(c => c.Circuits.Count));
+    }
+
+    [Fact]
+    public async Task EnsureSeededAsync_is_idempotent_and_normalizes_system_legacy_circuits()
+    {
+        await using var db = CreateDb();
+        var court = new Court
+        {
+            Id = Guid.NewGuid(),
+            Name = "محكمة التنفيذ بالرياض",
+            Region = "الرياض",
+            City = "الرياض",
+            IsActive = true,
+            CreatedBy = "system",
+            CreatedAtUtc = DateTime.UtcNow,
+        };
+        court.Circuits.Add(new CourtCircuit
+        {
+            Id = Guid.NewGuid(),
+            CourtId = court.Id,
+            CircuitNo = "الدائرة الأولى",
+            IsActive = true,
+            CreatedBy = "system",
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+        db.Courts.Add(court);
+        await db.SaveChangesAsync();
+        var service = CreateService(db);
+
+        await service.EnsureSeededAsync();
+        await service.EnsureSeededAsync();
+
+        var seeded = await db.Courts
+            .Include(c => c.Circuits)
+            .SingleAsync(c => c.Id == court.Id);
+        Assert.Equal(35, seeded.Circuits.Count);
+        var first = Assert.Single(seeded.Circuits, c => c.CircuitNo == "1");
+        Assert.Equal("دائرة التنفيذ الأولى", first.CircuitName);
+        Assert.Equal(14, await db.Courts.CountAsync(c => c.Name.StartsWith("محكمة التنفيذ ب")));
+        Assert.Equal(490, await db.CourtCircuits.CountAsync(c =>
+            c.Court!.Name.StartsWith("محكمة التنفيذ ب")));
+    }
+
     private static CourtsService CreateService(ApplicationDbContext db)
     {
         var cache = new ApiResponseCache(
