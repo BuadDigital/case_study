@@ -13,17 +13,19 @@ namespace RealEstateEval.Failures.Api.Controllers;
 public class FailuresController : ControllerBase
 {
     private readonly IFailureService _failures;
+    private readonly IPermissionService _permissions;
 
-    public FailuresController(IFailureService failures)
+    public FailuresController(IFailureService failures, IPermissionService permissions)
     {
         _failures = failures;
+        _permissions = permissions;
     }
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<FailureRecordDto>>> List(
         CancellationToken cancellationToken)
     {
-        return Ok(await _failures.ListAsync(cancellationToken));
+        return Ok(await _failures.ListAsync(await ActorAsync(cancellationToken), cancellationToken));
     }
 
     [HttpGet("property")]
@@ -32,7 +34,11 @@ public class FailuresController : ControllerBase
         [FromQuery] string propertyId,
         CancellationToken cancellationToken)
     {
-        var dto = await _failures.GetActiveForPropertyAsync(poNumber, propertyId, cancellationToken);
+        var dto = await _failures.GetActiveForPropertyAsync(
+            poNumber,
+            propertyId,
+            await ActorAsync(cancellationToken),
+            cancellationToken);
         if (dto is null) return NotFound();
         return Ok(dto);
     }
@@ -137,5 +143,13 @@ public class FailuresController : ControllerBase
     {
         await _failures.DeleteForPoAsync(poNumber, cancellationToken);
         return NoContent();
+    }
+
+    private async Task<PermissionsDto?> ActorAsync(CancellationToken cancellationToken)
+    {
+        var userId = ActorClaims.Id(User);
+        if (string.IsNullOrWhiteSpace(userId) || userId == "unknown")
+            return null;
+        return await _permissions.GetForUserIdAsync(userId, cancellationToken);
     }
 }

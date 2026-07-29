@@ -4,6 +4,7 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Caching;
 using RealEstateEval.Reporting.Api.Services;
+using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.Reporting.Api.Controllers;
 
@@ -36,6 +37,7 @@ public class ReportingController : ControllerBase
     }
 
     [HttpGet("dashboard")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadManagementReports)]
     public async Task<ActionResult<ReportingDashboardDto>> Dashboard(CancellationToken ct)
     {
         var dto = await _cache.GetOrCreateAsync(

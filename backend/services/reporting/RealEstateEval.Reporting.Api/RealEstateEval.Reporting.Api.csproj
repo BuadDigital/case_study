@@ -14,4 +14,8 @@
     <ProjectReference Include="..\..\..\shared\RealEstateEval.Shared.Web\RealEstateEval.Shared.Web.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.8.0" />
+  </ItemGroup>
+
 </Project>

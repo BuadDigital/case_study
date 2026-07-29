@@ -1,12 +1,10 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Authorization;
 using RealEstateEval.Application.Contracts;
-using RealEstateEval.Infrastructure.Data;
-using RealEstateEval.Infrastructure.Permissions;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
@@ -17,12 +15,14 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 public class OperationsTasksController : ControllerBase
 {
     private readonly IOperationsTaskService _tasks;
-    private readonly ApplicationDbContext _db;
+    private readonly IPermissionService _permissions;
 
-    public OperationsTasksController(IOperationsTaskService tasks, ApplicationDbContext db)
+    public OperationsTasksController(
+        IOperationsTaskService tasks,
+        IPermissionService permissions)
     {
         _tasks = tasks;
-        _db = db;
+        _permissions = permissions;
     }
 
     [HttpGet]
@@ -46,7 +46,17 @@ public class OperationsTasksController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<CourtVisitFeeReportRowDto>>> ListCourtVisitFees(
         [FromQuery] string? creditAssigneeId,
         CancellationToken ct)
-        => Ok(await _tasks.ListCourtVisitFeesAsync(creditAssigneeId, ct));
+    {
+        var role = await ActorPrototypeRoleAsync(ct);
+        if (!PoRoleMatrixRules.CanManageOperationsTasks(role))
+        {
+            creditAssigneeId = await ActorAssigneeIdAsync(ct);
+            if (string.IsNullOrWhiteSpace(creditAssigneeId))
+                return Forbid();
+        }
+
+        return Ok(await _tasks.ListCourtVisitFeesAsync(creditAssigneeId, ct));
+    }
 
     [HttpPost]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
@@ -140,9 +150,8 @@ public class OperationsTasksController : ControllerBase
     {
         var userId = ActorId();
         if (userId.Length == 0) return null;
-        var profile = await _db.UserProfiles.AsNoTracking()
-            .FirstOrDefaultAsync(p => p.UserId == userId, ct);
-        return profile?.DistributionAssigneeId?.Trim();
+        var permissions = await _permissions.GetForUserIdAsync(userId, ct);
+        return permissions?.DistributionAssigneeId?.Trim();
     }
 
     /// <summary>
@@ -153,17 +162,8 @@ public class OperationsTasksController : ControllerBase
         var userId = ActorId();
         if (userId.Length == 0) return "";
 
-        var profile = await _db.UserProfiles.AsNoTracking()
-            .FirstOrDefaultAsync(p => p.UserId == userId, ct);
-
-        var identityRoles = await (
-            from ur in _db.UserRoles.AsNoTracking()
-            join r in _db.Roles.AsNoTracking() on ur.RoleId equals r.Id
-            where ur.UserId == userId
-            select r.Name!
-        ).ToListAsync(ct);
-
-        var resolved = PrototypeRoleResolver.Resolve(profile, identityRoles);
+        var permissions = await _permissions.GetForUserIdAsync(userId, ct);
+        var resolved = permissions?.PrototypeRole;
         if (!string.IsNullOrWhiteSpace(resolved))
             return resolved;
 

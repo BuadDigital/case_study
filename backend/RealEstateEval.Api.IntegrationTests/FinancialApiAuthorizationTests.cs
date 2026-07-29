@@ -59,6 +59,30 @@ public class FinancialApiAuthorizationTests : IClassFixture<FinancialApiWebAppli
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Get_summary_without_capability_returns_403()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/financial/v1/summary");
+        request.Headers.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            TestAuthHandler.AuthOnlyToken);
+
+        var response = await _client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Get_summary_with_manage_financial_returns_200()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/financial/v1/summary");
+        request.Headers.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            TestAuthHandler.FinancialToken);
+
+        var response = await _client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
     private static HttpRequestMessage BuildPut(FinancialSummaryDto body)
     {
         return new HttpRequestMessage(HttpMethod.Put, "/api/financial/v1/summary")

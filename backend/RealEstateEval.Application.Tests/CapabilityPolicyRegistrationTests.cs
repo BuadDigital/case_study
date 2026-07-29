@@ -22,8 +22,16 @@ public class CapabilityPolicyRegistrationTests
             Assert.NotNull(policy);
         }
 
-        var raiseFailures = await policyProvider.GetPolicyAsync(
-            CapabilityPolicyNames.RaiseFailures);
-        Assert.NotNull(raiseFailures);
+        foreach (var composite in new[]
+                 {
+                     CapabilityPolicyNames.RaiseFailures,
+                     CapabilityPolicyNames.ReadFinancialData,
+                     CapabilityPolicyNames.ReadManagementReports,
+                     CapabilityPolicyNames.ReadKeyData,
+                     CapabilityPolicyNames.ReadValuationQueue,
+                 })
+        {
+            Assert.NotNull(await policyProvider.GetPolicyAsync(composite));
+        }
     }
 }

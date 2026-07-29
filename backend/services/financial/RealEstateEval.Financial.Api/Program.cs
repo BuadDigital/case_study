@@ -22,8 +22,9 @@ var connectionString = ServiceCollectionExtensions.RequireConnectionString(
 builder.Services.AddPersistence(builder.Configuration, connectionString);
 builder.Services.AddIdentityInfrastructure();
 builder.Services.AddFinancialInfrastructure();
-builder.Services.AddRealEstateEvalJwt(builder.Configuration);
-builder.Services.AddRealEstateEvalCors(builder.Environment);
+builder.Services.AddRealEstateEvalJwt(builder.Configuration, builder.Environment);
+builder.Services.AddRealEstateEvalCors(builder.Configuration, builder.Environment);
+builder.Services.AddRealEstateEvalRateLimiting(builder.Configuration, builder.Environment);
 builder.Services.AddRealEstateEvalOpenApi("Financial API");
 
 var app = builder.Build();

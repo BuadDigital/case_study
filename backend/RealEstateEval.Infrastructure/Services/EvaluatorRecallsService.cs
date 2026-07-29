@@ -8,6 +8,7 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class EvaluatorRecallsService : IEvaluatorRecallsService
 {
+    private const int MaxListRows = 500;
     private readonly ApplicationDbContext _db;
 
     public EvaluatorRecallsService(ApplicationDbContext db) => _db = db;
@@ -17,6 +18,7 @@ public sealed class EvaluatorRecallsService : IEvaluatorRecallsService
     {
         var rows = await _db.EvaluatorRecallRecords.AsNoTracking()
             .OrderByDescending(x => x.RequestedAtUtc)
+            .Take(MaxListRows)
             .ToListAsync(cancellationToken);
         return rows.Select(ToDto).ToList();
     }

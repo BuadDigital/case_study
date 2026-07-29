@@ -358,6 +358,12 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("TaskId", "IsPartyForm")
@@ -628,6 +634,12 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CreditAssigneeId");
@@ -772,6 +784,12 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AssigneeId");
@@ -853,6 +871,12 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -962,6 +986,12 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
 
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("WorkflowTaskId");
 
@@ -1152,6 +1182,12 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("WorkflowTaskId");
 
                     b.HasIndex("AccruedAtUtc");
@@ -1317,6 +1353,12 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedAtUtc");
@@ -1368,6 +1410,12 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -1445,6 +1493,12 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<string>("ToUserId")
                         .HasMaxLength(450)
                         .HasColumnType("character varying(450)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -1548,6 +1602,12 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
 
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -1690,6 +1750,12 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AssigneeId");
@@ -1733,7 +1799,13 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeadLetteredAtUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Error")
@@ -1744,6 +1816,13 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
+
+                    b.Property<string>("LockedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime?>("LockedUntilUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("PayloadJson")
                         .IsRequired()
@@ -1757,6 +1836,8 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.HasIndex("CreatedAtUtc");
 
                     b.HasIndex("ProcessedAtUtc");
+
+                    b.HasIndex("ProcessedAtUtc", "DeadLetteredAtUtc", "LockedUntilUtc");
 
                     b.ToTable("OutboxMessages", "messaging");
                 });
@@ -1934,6 +2015,12 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.Property<Guid>("WorkflowTaskId")
                         .HasColumnType("uuid");
 
@@ -2082,6 +2169,30 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.ToTable("ProcServiceProviderProfiles", "identity");
                 });
 
+            modelBuilder.Entity("RealEstateEval.Domain.ProcessedIntegrationEvent", b =>
+                {
+                    b.Property<string>("Consumer")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime>("ProcessedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Consumer", "EventId");
+
+                    b.HasIndex("ProcessedAtUtc");
+
+                    b.ToTable("ProcessedIntegrationEvents", "messaging");
+                });
+
             modelBuilder.Entity("RealEstateEval.Domain.PropertyContact", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2177,6 +2288,12 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(450)
                         .HasColumnType("character varying(450)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -2274,6 +2391,12 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("PoNumber");
@@ -2321,6 +2444,12 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
 
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<string>("WorkflowStatus")
                         .IsRequired()
@@ -2382,6 +2511,52 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.HasIndex("PoNumber", "PropertyId", "OccurredAtUtc");
 
                     b.ToTable("PropertyTimelineEntries", "case_study");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Domain.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("RevokedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RevokedReason")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAtUtc");
+
+                    b.HasIndex("SessionId");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens", "identity");
                 });
 
             modelBuilder.Entity("RealEstateEval.Domain.Region", b =>
@@ -2563,6 +2738,12 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("UserId");
 
                     b.HasIndex("DistributionAssigneeId");
@@ -2613,6 +2794,12 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
 
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -2669,6 +2856,12 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<string>("ReceivedFromEnfathTime")
                         .HasMaxLength(8)
                         .HasColumnType("character varying(8)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<string>("WorkOrderDescription")
                         .HasMaxLength(2000)
@@ -2966,6 +3159,12 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedAtUtc");
@@ -3155,6 +3354,15 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Property");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Domain.RefreshToken", b =>
+                {
+                    b.HasOne("RealEstateEval.Domain.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("RealEstateEval.Domain.UserProfile", b =>

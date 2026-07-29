@@ -2,12 +2,10 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Authorization;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
@@ -18,12 +16,17 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 public class InspectorFeesController : ControllerBase
 {
     private readonly IInspectorFeeService _fees;
-    private readonly ApplicationDbContext _db;
+    private readonly IWorkflowTaskService _workflowTasks;
+    private readonly IPermissionService _permissions;
 
-    public InspectorFeesController(IInspectorFeeService fees, ApplicationDbContext db)
+    public InspectorFeesController(
+        IInspectorFeeService fees,
+        IWorkflowTaskService workflowTasks,
+        IPermissionService permissions)
     {
         _fees = fees;
-        _db = db;
+        _workflowTasks = workflowTasks;
+        _permissions = permissions;
     }
 
     [HttpGet]
@@ -34,8 +37,17 @@ public class InspectorFeesController : ControllerBase
         [FromQuery] string? taskKind = null,
         [FromQuery] string? billingStatus = null,
         [FromQuery] string? returnTo = null,
-        CancellationToken ct = default) =>
-        Ok(await _fees.GetSummaryAsync(
+        CancellationToken ct = default)
+    {
+        var ctx = await BuildActorContextAsync(ct);
+        if (!ctx.IsOperationsManager && !ctx.IsFinancialOfficer)
+        {
+            if (string.IsNullOrWhiteSpace(ctx.AssigneeId))
+                return Forbid();
+            assigneeId = ctx.AssigneeId;
+        }
+
+        return Ok(await _fees.GetSummaryAsync(
             assigneeId,
             workflowTaskId,
             submittedOnly,
@@ -43,12 +55,29 @@ public class InspectorFeesController : ControllerBase
             billingStatus,
             returnTo,
             ct));
+    }
 
     [HttpGet("{workflowTaskId:guid}/transitions")]
     public async Task<ActionResult<IReadOnlyList<InspectorFeeAuditEntryDto>>> ListTransitions(
         Guid workflowTaskId,
-        CancellationToken ct) =>
-        Ok(await _fees.ListTransitionsAsync(workflowTaskId, ct));
+        CancellationToken ct)
+    {
+        var ctx = await BuildActorContextAsync(ct);
+        if (!ctx.IsOperationsManager && !ctx.IsFinancialOfficer)
+        {
+            if (string.IsNullOrWhiteSpace(ctx.AssigneeId))
+                return Forbid();
+
+            var ownsTask = await _workflowTasks.IsAssignedToAsync(
+                workflowTaskId,
+                ctx.AssigneeId,
+                ct);
+            if (!ownsTask)
+                return NotFound();
+        }
+
+        return Ok(await _fees.ListTransitionsAsync(workflowTaskId, ct));
+    }
 
     [HttpPatch("{workflowTaskId:guid}")]
     [Authorize(Policy = CapabilityPolicyNames.ManageOperations)]
@@ -164,10 +193,8 @@ public class InspectorFeesController : ControllerBase
         string? assigneeId = null;
         if (!string.IsNullOrWhiteSpace(userId))
         {
-            assigneeId = await _db.UserProfiles.AsNoTracking()
-                .Where(p => p.UserId == userId)
-                .Select(p => p.DistributionAssigneeId)
-                .FirstOrDefaultAsync(ct);
+            var permissions = await _permissions.GetForUserIdAsync(userId, ct);
+            assigneeId = permissions?.DistributionAssigneeId;
         }
 
         return new ActorContext(userId, assigneeId, isOperationsManager, isFinancialOfficer);

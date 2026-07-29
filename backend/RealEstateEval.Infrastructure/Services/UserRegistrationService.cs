@@ -23,6 +23,42 @@ public class UserRegistrationService : IUserRegistrationService
         _userManager = userManager;
     }
 
+    public async Task<IReadOnlyList<DevLoginUserDto>> ListDevLoginUsersAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return await (
+            from user in _db.Users.AsNoTracking()
+            join profile in _db.UserProfiles.AsNoTracking() on user.Id equals profile.UserId
+            where profile.Status == UserStatus.Active && user.UserName != null
+            orderby user.UserName == "sliman" ? 0 : 1, user.DisplayName
+            select new DevLoginUserDto
+            {
+                Username = user.UserName!,
+                Label = string.IsNullOrWhiteSpace(profile.JobTitle)
+                    ? user.DisplayName
+                    : $"{user.DisplayName} — {profile.JobTitle}",
+            }).ToListAsync(cancellationToken);
+    }
+
+    public async Task<UserInfoDto?> GetIdentityUserAsync(
+        string userId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            return null;
+
+        return await _db.Users
+            .AsNoTracking()
+            .Where(user => user.Id == userId)
+            .Select(user => new UserInfoDto
+            {
+                Id = user.Id,
+                Email = user.Email ?? string.Empty,
+                DisplayName = user.DisplayName,
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<UserListItemDto>> ListAsync(
         RegistrationSource? sourceScope = null,
         CancellationToken cancellationToken = default)
@@ -70,15 +106,37 @@ public class UserRegistrationService : IUserRegistrationService
             .Include(p => p.ProcProvider)
             .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
 
-        if (profile is null)
-            return null;
-
         var roles = await (
             from ur in _db.UserRoles.AsNoTracking()
             join r in _db.Roles.AsNoTracking() on ur.RoleId equals r.Id
             where ur.UserId == userId && r.Name != null
             select r.Name!
         ).ToListAsync(cancellationToken);
+
+        if (profile is null)
+        {
+            var user = await _db.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(candidate => candidate.Id == userId, cancellationToken);
+            if (user is null)
+                return null;
+
+            return new UserListItemDto
+            {
+                Id = user.Id,
+                DisplayName = user.DisplayName,
+                JobTitle = string.Empty,
+                Email = user.Email ?? string.Empty,
+                UserName = user.UserName ?? string.Empty,
+                ContractType = ContractType.Internal,
+                Status = UserStatus.Active,
+                RegistrationSource = RegistrationSource.Hr,
+                PhoneNumber = user.PhoneNumber,
+                CreatedAtUtc = DateTime.UtcNow,
+                SystemRoles = roles,
+                Details = [],
+            };
+        }
 
         return RegistrationMapper.ToListItem(profile.User, profile, roles);
     }
@@ -406,8 +464,9 @@ public class UserRegistrationService : IUserRegistrationService
     private static string GenerateTemporaryPassword()
     {
         const string alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
-        Span<char> chars = stackalloc char[12];
-        for (var i = 0; i < chars.Length; i++)
+        Span<char> chars = stackalloc char[16];
+        "Tmp1!".AsSpan().CopyTo(chars);
+        for (var i = 5; i < chars.Length; i++)
         {
             chars[i] = alphabet[RandomNumberGenerator.GetInt32(alphabet.Length)];
         }

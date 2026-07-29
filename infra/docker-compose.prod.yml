@@ -1,17 +1,27 @@
 # Production stack for Real Estate Evaluation on Hostinger VPS.
-# Usage: IMAGE_OWNER=your-github-username TAG=latest docker compose -f docker-compose.prod.yml up -d
+# Usage: IMAGE_OWNER=your-github-username TAG=<sha> docker compose -f docker-compose.prod.yml up -d
+# Always run the migrate one-shot before (or via) deploy — apps never migrate in Production.
 
 name: realestate-eval-prod
 
+x-app-healthcheck: &app-healthcheck
+  test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/health || exit 1"]
+  interval: 15s
+  timeout: 5s
+  retries: 5
+  start_period: 40s
+
+x-otel-env: &otel-env
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+
 services:
-  # Database
   postgres:
-    image: postgres:17-alpine
+    image: postgres:17.5-alpine
     container_name: ree-prod-postgres
     restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       POSTGRES_DB: realestate_eval_prod
     volumes:
       - ree_prod_pgdata:/var/lib/postgresql/data
@@ -21,14 +31,14 @@ services:
       timeout: 5s
       retries: 5
 
-  # Message Broker
   rabbitmq:
-    image: rabbitmq:3.13-management-alpine
+    image: rabbitmq:3.13.7-management-alpine
     container_name: ree-prod-rabbitmq
     restart: always
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-dev}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-dev}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?Set RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}
+    entrypoint: ["/bin/sh", "-c", "rabbitmq-plugins enable --offline rabbitmq_prometheus; exec docker-entrypoint.sh rabbitmq-server"]
     volumes:
       - ree_prod_rabbitmqdata:/var/lib/rabbitmq
     healthcheck:
@@ -37,9 +47,8 @@ services:
       timeout: 5s
       retries: 5
 
-  # Caching
   redis:
-    image: redis:7-alpine
+    image: redis:7.4.2-alpine
     container_name: ree-prod-redis
     restart: always
     volumes:
@@ -50,171 +59,342 @@ services:
       timeout: 3s
       retries: 5
 
-  # Microservices
+  jaeger:
+    image: jaegertracing/all-in-one:1.60
+    container_name: ree-prod-jaeger
+    restart: always
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.114.0
+    container_name: ree-prod-otel-collector
+    restart: always
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./otel-collector/otel-collector-config.yml:/etc/otelcol/config.yaml:ro
+    depends_on:
+      - jaeger
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: ree-prod-prometheus
+    restart: always
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus/prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro
+      - ree_prod_prometheus_data:/prometheus
+    depends_on:
+      - otel-collector
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9090/-/healthy || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: ree-prod-grafana
+    restart: always
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ree_prod_grafana_data:/var/lib/grafana
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    container_name: ree-prod-elasticsearch
+    restart: always
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      xpack.security.http.ssl.enabled: "false"
+      ES_JAVA_OPTS: -Xms256m -Xmx256m
+    volumes:
+      - ree_prod_es_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+  fluent-bit:
+    image: fluent/fluent-bit:3.1.9
+    container_name: ree-prod-fluent-bit
+    restart: always
+    volumes:
+      - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ./fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  # Deploy-time schema migration (never run MigrateAsync inside Production apps).
+  migrate:
+    image: ghcr.io/${IMAGE_OWNER}/case_study/db-migrate:${TAG:-latest}
+    container_name: ree-prod-migrate
+    restart: "no"
+    environment:
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   identity:
     image: ghcr.io/${IMAGE_OWNER}/case_study/identity:${TAG:-latest}
     container_name: ree-prod-identity
     restart: always
     environment:
+      <<: *otel-env
       ASPNETCORE_ENVIRONMENT: Production
+      Database__MigrateOnStartup: "false"
       Redis__ConnectionString: redis:6379
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:-Admin}
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
-      Jwt__SigningKey: ${JWT_SIGNING_KEY:-CHANGE_ME_IN_PRODUCTION_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256}
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      otel-collector:
+        condition: service_started
+    healthcheck: *app-healthcheck
 
   case-study:
     image: ghcr.io/${IMAGE_OWNER}/case_study/case-study:${TAG:-latest}
     container_name: ree-prod-case-study
     restart: always
     environment:
+      <<: *otel-env
       ASPNETCORE_ENVIRONMENT: Production
+      Database__MigrateOnStartup: "false"
+      Database__SeedDemoData: "false"
       Redis__ConnectionString: redis:6379
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:-Admin}
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
-      Jwt__SigningKey: ${JWT_SIGNING_KEY:-CHANGE_ME_IN_PRODUCTION_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256}
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
       RabbitMQ__Host: rabbitmq
       RabbitMQ__Port: 5672
-      RabbitMQ__UserName: ${RABBITMQ_USER:-dev}
-      RabbitMQ__Password: ${RABBITMQ_PASSWORD:-dev}
+      RabbitMQ__UserName: ${RABBITMQ_USER:?Set RABBITMQ_USER}
+      RabbitMQ__Password: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      otel-collector:
+        condition: service_started
+    healthcheck: *app-healthcheck
 
   operations:
     image: ghcr.io/${IMAGE_OWNER}/case_study/operations:${TAG:-latest}
     container_name: ree-prod-operations
     restart: always
     environment:
+      <<: *otel-env
       ASPNETCORE_ENVIRONMENT: Production
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:-Admin}
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
-      Jwt__SigningKey: ${JWT_SIGNING_KEY:-CHANGE_ME_IN_PRODUCTION_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256}
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      otel-collector:
+        condition: service_started
+    healthcheck: *app-healthcheck
 
   reporting:
     image: ghcr.io/${IMAGE_OWNER}/case_study/reporting:${TAG:-latest}
     container_name: ree-prod-reporting
     restart: always
     environment:
+      <<: *otel-env
       ASPNETCORE_ENVIRONMENT: Production
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:-Admin}
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
-      Jwt__SigningKey: ${JWT_SIGNING_KEY:-CHANGE_ME_IN_PRODUCTION_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256}
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      otel-collector:
+        condition: service_started
+    healthcheck: *app-healthcheck
 
   financial:
     image: ghcr.io/${IMAGE_OWNER}/case_study/financial:${TAG:-latest}
     container_name: ree-prod-financial
     restart: always
     environment:
+      <<: *otel-env
       ASPNETCORE_ENVIRONMENT: Production
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:-Admin}
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
-      Jwt__SigningKey: ${JWT_SIGNING_KEY:-CHANGE_ME_IN_PRODUCTION_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256}
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      otel-collector:
+        condition: service_started
+    healthcheck: *app-healthcheck
 
   valuation:
     image: ghcr.io/${IMAGE_OWNER}/case_study/valuation:${TAG:-latest}
     container_name: ree-prod-valuation
     restart: always
     environment:
+      <<: *otel-env
       ASPNETCORE_ENVIRONMENT: Production
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:-Admin}
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
-      Jwt__SigningKey: ${JWT_SIGNING_KEY:-CHANGE_ME_IN_PRODUCTION_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256}
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
       RabbitMQ__Host: rabbitmq
       RabbitMQ__Port: 5672
-      RabbitMQ__UserName: ${RABBITMQ_USER:-dev}
-      RabbitMQ__Password: ${RABBITMQ_PASSWORD:-dev}
+      RabbitMQ__UserName: ${RABBITMQ_USER:?Set RABBITMQ_USER}
+      RabbitMQ__Password: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      otel-collector:
+        condition: service_started
+    healthcheck: *app-healthcheck
 
   failures:
     image: ghcr.io/${IMAGE_OWNER}/case_study/failures:${TAG:-latest}
     container_name: ree-prod-failures
     restart: always
     environment:
+      <<: *otel-env
       ASPNETCORE_ENVIRONMENT: Production
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:-Admin}
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
-      Jwt__SigningKey: ${JWT_SIGNING_KEY:-CHANGE_ME_IN_PRODUCTION_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256}
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      otel-collector:
+        condition: service_started
+    healthcheck: *app-healthcheck
 
   platform:
     image: ghcr.io/${IMAGE_OWNER}/case_study/platform:${TAG:-latest}
     container_name: ree-prod-platform
     restart: always
     environment:
+      <<: *otel-env
       ASPNETCORE_ENVIRONMENT: Production
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:-Admin}
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
-      Jwt__SigningKey: ${JWT_SIGNING_KEY:-CHANGE_ME_IN_PRODUCTION_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256}
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      otel-collector:
+        condition: service_started
+    healthcheck: *app-healthcheck
 
   attachments:
     image: ghcr.io/${IMAGE_OWNER}/case_study/attachments:${TAG:-latest}
     container_name: ree-prod-attachments
     restart: always
     environment:
+      <<: *otel-env
       ASPNETCORE_ENVIRONMENT: Production
       Redis__ConnectionString: redis:6379
-      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:-Admin}
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_prod;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
-      Jwt__SigningKey: ${JWT_SIGNING_KEY:-CHANGE_ME_IN_PRODUCTION_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256}
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY}
       BlobStorage__RootDirectory: /app/attachments-data
     volumes:
       - ree_prod_attachments_data:/app/attachments-data
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      otel-collector:
+        condition: service_started
+    healthcheck: *app-healthcheck
 
   gateway:
     image: ghcr.io/${IMAGE_OWNER}/case_study/gateway:${TAG:-latest}
     container_name: ree-prod-gateway
     restart: always
     environment:
+      <<: *otel-env
       ASPNETCORE_ENVIRONMENT: Production
     depends_on:
-      - identity
-      - case-study
-      - operations
-      - reporting
-      - financial
-      - valuation
-      - failures
-      - platform
-      - attachments
+      identity:
+        condition: service_healthy
+      case-study:
+        condition: service_healthy
+      operations:
+        condition: service_healthy
+      reporting:
+        condition: service_healthy
+      financial:
+        condition: service_healthy
+      valuation:
+        condition: service_healthy
+      failures:
+        condition: service_healthy
+      platform:
+        condition: service_healthy
+      attachments:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:5160/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
-  # Frontend Next.js Shell
   frontend:
     image: ghcr.io/${IMAGE_OWNER}/case_study/frontend:${TAG:-latest}
     container_name: ree-prod-frontend
@@ -223,11 +403,17 @@ services:
       NODE_ENV: production
       API_UPSTREAM_URL: http://gateway:5160
     depends_on:
-      - gateway
+      gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
-  # Nginx Reverse Proxy
   nginx:
-    image: nginx:alpine
+    image: nginx:1.27.4-alpine
     container_name: ree-prod-nginx
     restart: always
     ports:
@@ -235,11 +421,21 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      - frontend
-      - gateway
+      frontend:
+        condition: service_healthy
+      gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
 volumes:
   ree_prod_pgdata:
   ree_prod_rabbitmqdata:
   ree_prod_redisdata:
   ree_prod_attachments_data:
+  ree_prod_prometheus_data:
+  ree_prod_grafana_data:
+  ree_prod_es_data:

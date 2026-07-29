@@ -64,46 +64,54 @@ public sealed class FinancialReportService : IFinancialReportService
 
     private async Task<FinancialSummaryDto> BuildFromDatabaseAsync(CancellationToken cancellationToken)
     {
-        var ledgers = await _db.InspectorFeeLedgers.AsNoTracking().ToListAsync(cancellationToken);
-        ledgers = await FilterLedgersWithCompletedCaseStudyAsync(ledgers, cancellationToken);
+        var completedLedgers = CompletedCaseStudyLedgers();
+        var costRows = await BuildCostRowsAsync(completedLedgers, cancellationToken);
+        var revenueRows = await BuildRevenueRowsAsync(completedLedgers, cancellationToken);
 
-        var taskIds = ledgers.Select(l => l.WorkflowTaskId).Distinct().ToList();
-        var tasks = taskIds.Count == 0
-            ? new Dictionary<Guid, WorkflowTask>()
-            : await _db.WorkflowTasks.AsNoTracking()
-                .Where(t => taskIds.Contains(t.Id))
-                .ToDictionaryAsync(t => t.Id, cancellationToken);
+        var externalCosts = await completedLedgers
+            .Where(l => l.InspectorType != InspectorFeeRules.TypeEmployee)
+            .SumAsync(
+                l => (decimal?)(l.AgreedFeeSar - l.SupervisorDiscountSar),
+                cancellationToken) ?? 0m;
+        var pendingPayables = await completedLedgers
+            .Where(l => l.BillingStatus == InspectorFeeBillingStatus.AtFinance
+                || l.BillingStatus == InspectorFeeBillingStatus.Deferred
+                || l.BillingStatus == InspectorFeeBillingStatus.InStatement
+                || l.BillingStatus == InspectorFeeBillingStatus.DisbReq)
+            .SumAsync(
+                l => (decimal?)(l.AgreedFeeSar - l.SupervisorDiscountSar),
+                cancellationToken) ?? 0m;
 
-        var assigneeIds = ledgers
-            .Select(l => l.AssigneeId?.Trim())
-            .Where(id => !string.IsNullOrEmpty(id))
-            .Select(id => id!)
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
+        var enfazRevenueTotal = await _db.PoEnfazRevenueLines.AsNoTracking()
+            .Where(l => l.IncludedInBilling
+                && l.CaseStudyFeeSar + l.SurveyFeeSar > 0)
+            .SumAsync(
+                l => (decimal?)(l.CaseStudyFeeSar + l.SurveyFeeSar),
+                cancellationToken) ?? 0m;
+        var keyReceiptSummary = await _db.KeyReceiptFeeCharges.AsNoTracking()
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                Total = group.Sum(c => c.AmountSar),
+                Collected = group.Count(c =>
+                    c.CollectionStatus == KeyReceiptFeeStatuses.Collected),
+                Count = group.Count(),
+            })
+            .SingleOrDefaultAsync(cancellationToken);
+        var visitFeeSummary = await _db.CourtVisitFeeCharges.AsNoTracking()
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                Total = group.Sum(c => c.AmountSar),
+                Open = group
+                    .Where(c => c.Status == CourtVisitFeeStatuses.Open)
+                    .Sum(c => (decimal?)c.AmountSar) ?? 0m,
+            })
+            .SingleOrDefaultAsync(cancellationToken);
 
-        var nameByAssigneeId = await LoadAssigneeNamesAsync(assigneeIds, cancellationToken);
-
-        var costRows = BuildCostRows(ledgers, tasks, nameByAssigneeId);
-        var revenueRows = await BuildRevenueRowsAsync(ledgers, cancellationToken);
-
-        var externalCosts = ledgers
-            .Where(l => !string.Equals(l.InspectorType, "موظف", StringComparison.Ordinal))
-            .Sum(l => NetFee(l));
-        var pendingPayables = ledgers
-            .Where(l => l.BillingStatus is InspectorFeeBillingStatus.AtFinance
-                or InspectorFeeBillingStatus.Deferred
-                or InspectorFeeBillingStatus.InStatement
-                or InspectorFeeBillingStatus.DisbReq)
-            .Sum(l => NetFee(l));
-
-        var enfazLines = await _db.PoEnfazRevenueLines.AsNoTracking().ToListAsync(cancellationToken);
-        var keyReceiptFees = await _db.KeyReceiptFeeCharges.AsNoTracking().ToListAsync(cancellationToken);
-        var visitFees = await _db.CourtVisitFeeCharges.AsNoTracking().ToListAsync(cancellationToken);
-        var keyReceiptTotal = keyReceiptFees.Sum(c => c.AmountSar);
-        var visitFeeTotal = visitFees.Sum(c => c.AmountSar);
-        var revenueTotal = enfazLines
-            .Where(l => l.IncludedInBilling && l.TotalFeeSar > 0)
-            .Sum(l => l.TotalFeeSar) + keyReceiptTotal;
+        var keyReceiptTotal = keyReceiptSummary?.Total ?? 0m;
+        var visitFeeTotal = visitFeeSummary?.Total ?? 0m;
+        var revenueTotal = enfazRevenueTotal + keyReceiptTotal;
         var profitMargin = revenueTotal - (externalCosts + visitFeeTotal);
 
         if (visitFeeTotal > 0)
@@ -122,10 +130,10 @@ public sealed class FinancialReportService : IFinancialReportService
             revenueRows.Add(new FinancialRevenueRowDto
             {
                 Po = "أتعاب استلام مفاتيح",
-                Billed = keyReceiptFees.Count(c => c.CollectionStatus == KeyReceiptFeeStatuses.Collected),
-                Excluded = keyReceiptFees.Count(c => c.CollectionStatus != KeyReceiptFeeStatuses.Collected),
+                Billed = keyReceiptSummary!.Collected,
+                Excluded = keyReceiptSummary.Count - keyReceiptSummary.Collected,
                 Value = FormatSar(keyReceiptTotal),
-                Status = keyReceiptFees.All(c => c.CollectionStatus == KeyReceiptFeeStatuses.Collected)
+                Status = keyReceiptSummary.Collected == keyReceiptSummary.Count
                     ? "done"
                     : "progress",
                 InvoiceNumber = null,
@@ -139,42 +147,22 @@ public sealed class FinancialReportService : IFinancialReportService
             ExternalCostsTotal = FormatSar(externalCosts + visitFeeTotal),
             ProfitMarginTotal = FormatSar(profitMargin),
             ProfitMarginPercentLabel = MarginPercentLabel(revenueTotal, profitMargin),
-            PendingPayablesTotal = FormatSar(pendingPayables + visitFees
-                .Where(c => c.Status == CourtVisitFeeStatuses.Open)
-                .Sum(c => c.AmountSar)),
+            PendingPayablesTotal = FormatSar(pendingPayables + (visitFeeSummary?.Open ?? 0m)),
             RevenueGrandTotal = FormatSar(revenueTotal),
             RevenueRows = revenueRows,
             CostRows = costRows,
         };
     }
 
-    private async Task<List<InspectorFeeLedger>> FilterLedgersWithCompletedCaseStudyAsync(
-        List<InspectorFeeLedger> ledgers,
-        CancellationToken cancellationToken)
+    private IQueryable<InspectorFeeLedger> CompletedCaseStudyLedgers()
     {
-        if (ledgers.Count == 0) return ledgers;
-
-        var propertyIds = ledgers
-            .Where(l => l.PropertyId.HasValue)
-            .Select(l => l.PropertyId!.Value)
-            .Distinct()
-            .ToList();
-        if (propertyIds.Count == 0) return [];
-
-        var ready = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t =>
-                t.Kind == "case-study-property"
-                && t.PropertyId != null
-                && propertyIds.Contains(t.PropertyId.Value)
-                && t.Status == WorkflowTaskStatus.Completed)
-            .Select(t => t.PropertyId!.Value)
-            .Distinct()
-            .ToListAsync(cancellationToken);
-        var readySet = ready.ToHashSet();
-
-        return ledgers
-            .Where(l => l.PropertyId is Guid pid && readySet.Contains(pid))
-            .ToList();
+        return _db.InspectorFeeLedgers.AsNoTracking()
+            .Where(ledger =>
+                ledger.PropertyId != null
+                && _db.WorkflowTasks.Any(task =>
+                    task.Kind == "case-study-property"
+                    && task.PropertyId == ledger.PropertyId
+                    && task.Status == WorkflowTaskStatus.Completed));
     }
 
     private async Task<Dictionary<string, string>> LoadAssigneeNamesAsync(
@@ -188,6 +176,7 @@ public sealed class FinancialReportService : IFinancialReportService
             from profile in _db.UserProfiles.AsNoTracking()
             join user in _db.Users.AsNoTracking() on profile.UserId equals user.Id
             where profile.DistributionAssigneeId != null
+                && assigneeIds.Contains(profile.DistributionAssigneeId)
             select new
             {
                 AssigneeId = profile.DistributionAssigneeId!,
@@ -195,7 +184,6 @@ public sealed class FinancialReportService : IFinancialReportService
             }).ToListAsync(cancellationToken);
 
         var map = profiles
-            .Where(p => assigneeIds.Contains(p.AssigneeId, StringComparer.Ordinal))
             .ToDictionary(p => p.AssigneeId, p => p.DisplayName, StringComparer.Ordinal);
 
         foreach (var id in assigneeIds)
@@ -207,38 +195,64 @@ public sealed class FinancialReportService : IFinancialReportService
         return map;
     }
 
-    private static List<FinancialCostRowDto> BuildCostRows(
-        IReadOnlyList<InspectorFeeLedger> ledgers,
-        IReadOnlyDictionary<Guid, WorkflowTask> tasks,
-        IReadOnlyDictionary<string, string> nameByAssigneeId)
+    private async Task<List<FinancialCostRowDto>> BuildCostRowsAsync(
+        IQueryable<InspectorFeeLedger> completedLedgers,
+        CancellationToken cancellationToken)
     {
-        return ledgers
-            .GroupBy(l => l.AssigneeId?.Trim() ?? "—", StringComparer.Ordinal)
+        var aggregates = await (
+            from ledger in completedLedgers
+            join task in _db.WorkflowTasks.AsNoTracking()
+                on ledger.WorkflowTaskId equals task.Id into taskGroup
+            from task in taskGroup.DefaultIfEmpty()
+            let assigneeId = ledger.AssigneeId == null || ledger.AssigneeId.Trim() == ""
+                ? "—"
+                : ledger.AssigneeId.Trim()
+            group ledger by new
+            {
+                AssigneeId = assigneeId!,
+                ledger.InspectorType,
+                Kind = task == null ? null : task.Kind,
+            }
+            into grouped
+            select new
+            {
+                grouped.Key.AssigneeId,
+                grouped.Key.InspectorType,
+                grouped.Key.Kind,
+                Total = grouped.Sum(l => l.AgreedFeeSar - l.SupervisorDiscountSar),
+                Count = grouped.Count(),
+            }).ToListAsync(cancellationToken);
+
+        var assigneeIds = aggregates
+            .Select(row => row.AssigneeId)
+            .Where(id => id != "—")
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        var nameByAssigneeId = await LoadAssigneeNamesAsync(assigneeIds, cancellationToken);
+
+        return aggregates
+            .GroupBy(row => row.AssigneeId, StringComparer.Ordinal)
             .Select(group =>
             {
-                var assigneeId = group.Key;
-                var name = assigneeId == "—"
-                    ? "غير مسند"
-                    : nameByAssigneeId.GetValueOrDefault(assigneeId, assigneeId);
-                var total = group.Sum(NetFee);
+                var dominantType = group
+                    .GroupBy(row => row.InspectorType)
+                    .OrderByDescending(typeGroup => typeGroup.Sum(row => row.Count))
+                    .Select(typeGroup => typeGroup.Key)
+                    .FirstOrDefault() ?? InspectorFeeRules.TypeEmployee;
                 var dominantKind = group
-                    .Select(l => tasks.TryGetValue(l.WorkflowTaskId, out var t) ? t.Kind : null)
-                    .Where(k => !string.IsNullOrWhiteSpace(k))
-                    .GroupBy(k => k!)
-                    .OrderByDescending(g => g.Count())
-                    .Select(g => g.Key)
+                    .Where(row => !string.IsNullOrWhiteSpace(row.Kind))
+                    .GroupBy(row => row.Kind!)
+                    .OrderByDescending(kindGroup => kindGroup.Sum(row => row.Count))
+                    .Select(kindGroup => kindGroup.Key)
                     .FirstOrDefault();
-                var inspectorType = group
-                    .GroupBy(l => l.InspectorType)
-                    .OrderByDescending(g => g.Count())
-                    .Select(g => g.Key)
-                    .FirstOrDefault() ?? "موظف";
 
                 return new FinancialCostRowDto
                 {
-                    Name = name,
-                    Type = CostTypeCode(inspectorType),
-                    Cost = FormatSar(total),
+                    Name = group.Key == "—"
+                        ? "غير مسند"
+                        : nameByAssigneeId.GetValueOrDefault(group.Key, group.Key),
+                    Type = CostTypeCode(dominantType),
+                    Cost = FormatSar(group.Sum(row => row.Total)),
                     Category = CategoryLabel(dominantKind),
                 };
             })
@@ -247,13 +261,17 @@ public sealed class FinancialReportService : IFinancialReportService
     }
 
     private async Task<List<FinancialRevenueRowDto>> BuildRevenueRowsAsync(
-        IReadOnlyList<InspectorFeeLedger> ledgers,
+        IQueryable<InspectorFeeLedger> completedLedgers,
         CancellationToken cancellationToken)
     {
         var orders = await _db.WorkOrders.AsNoTracking()
-            .Include(w => w.Properties)
             .OrderByDescending(w => w.CreatedAtUtc)
             .ThenBy(w => w.PoNumber)
+            .Select(w => new
+            {
+                PoNumber = w.PoNumber.Trim(),
+                PropertyCount = w.Properties.Count,
+            })
             .ToListAsync(cancellationToken);
 
         if (orders.Count == 0)
@@ -273,16 +291,25 @@ public sealed class FinancialReportService : IFinancialReportService
 
         var invoicesByPo = await _db.PoEnfazInvoices.AsNoTracking()
             .ToDictionaryAsync(x => x.PoNumber.Trim(), x => x.InvoiceNumber, StringComparer.Ordinal, cancellationToken);
+        var ledgersByPo = await completedLedgers
+            .GroupBy(ledger => ledger.PoNumber.Trim())
+            .Select(group => new
+            {
+                PoNumber = group.Key,
+                Tracked = group.Count(),
+                Disbursed = group.Count(ledger =>
+                    ledger.BillingStatus == InspectorFeeBillingStatus.Disbursed),
+            })
+            .ToDictionaryAsync(row => row.PoNumber, StringComparer.Ordinal, cancellationToken);
 
         var rows = new List<FinancialRevenueRowDto>();
         foreach (var order in orders)
         {
-            var po = order.PoNumber.Trim();
-            var propertyCount = order.Properties.Count;
-            var poLedgers = ledgers.Where(l => l.PoNumber.Trim() == po).ToList();
-            var disbursed = poLedgers.Count(l =>
-                l.BillingStatus == InspectorFeeBillingStatus.Disbursed);
-            var tracked = poLedgers.Count;
+            var po = order.PoNumber;
+            var propertyCount = order.PropertyCount;
+            ledgersByPo.TryGetValue(po, out var ledger);
+            var disbursed = ledger?.Disbursed ?? 0;
+            var tracked = ledger?.Tracked ?? 0;
             var excluded = Math.Max(0, propertyCount - tracked);
             enfazByPo.TryGetValue(po, out var enfaz);
             var enfazTotal = enfaz?.Total ?? 0m;
@@ -305,9 +332,6 @@ public sealed class FinancialReportService : IFinancialReportService
 
         return rows;
     }
-
-    private static decimal NetFee(InspectorFeeLedger ledger) =>
-        InspectorFeeRules.NetFee(ledger.AgreedFeeSar, ledger.SupervisorDiscountSar);
 
     private static string CostTypeCode(string inspectorType) =>
         inspectorType switch

@@ -4,11 +4,14 @@ namespace RealEstateEval.Application.Abstractions;
 
 public interface IFailureService
 {
-    Task<IReadOnlyList<FailureRecordDto>> ListAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<FailureRecordDto>> ListAsync(
+        PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default);
 
     Task<FailureRecordDto?> GetActiveForPropertyAsync(
         string poNumber,
         string propertyId,
+        PermissionsDto? actor = null,
         CancellationToken cancellationToken = default);
 
     Task<(FailureRecordDto? Result, Dictionary<string, string>? Errors)> CreateAsync(

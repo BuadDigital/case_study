@@ -18,6 +18,34 @@ public interface INotificationService
         CreateUserNotificationRequest request,
         CancellationToken cancellationToken = default);
 
+    async Task<int> CreateForUsersAsync(
+        IReadOnlyDictionary<string, CreateUserNotificationRequest> requestsByUser,
+        CancellationToken cancellationToken = default)
+    {
+        var created = 0;
+        foreach (var (userId, request) in requestsByUser)
+        {
+            await CreateForUserAsync(userId, request, cancellationToken);
+            created++;
+        }
+
+        return created;
+    }
+
+    async Task<int> CreateManyAsync(
+        IReadOnlyCollection<(string UserId, CreateUserNotificationRequest Request)> notifications,
+        CancellationToken cancellationToken = default)
+    {
+        var created = 0;
+        foreach (var (userId, request) in notifications)
+        {
+            await CreateForUserAsync(userId, request, cancellationToken);
+            created++;
+        }
+
+        return created;
+    }
+
     Task<bool> MarkReadAsync(
         string userId,
         Guid id,

@@ -44,8 +44,10 @@ public sealed class NotificationService : INotificationService
         CreateUserNotificationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var row = await UpsertForUserAsync(userId, request, cancellationToken);
-        await TrimUserNotificationsAsync(userId, cancellationToken);
+        var rows = await CreateBatchAsync(
+            [new KeyValuePair<string, CreateUserNotificationRequest>(userId, request)],
+            cancellationToken);
+        var row = rows.Single();
         var dto = ToDto(row);
         _realtime.Publish(userId, dto);
         return dto;
@@ -63,16 +65,45 @@ public sealed class NotificationService : INotificationService
 
         if (distinct.Count == 0) return 0;
 
-        var created = 0;
-        foreach (var userId in distinct)
+        var requestsByUser = distinct.ToDictionary(
+            userId => userId,
+            _ => request,
+            StringComparer.Ordinal);
+        return await CreateForUsersAsync(requestsByUser, cancellationToken);
+    }
+
+    public async Task<int> CreateForUsersAsync(
+        IReadOnlyDictionary<string, CreateUserNotificationRequest> requestsByUser,
+        CancellationToken cancellationToken = default)
+    {
+        var normalized = requestsByUser
+            .Where(entry => !string.IsNullOrWhiteSpace(entry.Key))
+            .ToDictionary(entry => entry.Key, entry => entry.Value, StringComparer.Ordinal);
+        return await CreateManyAsync(
+            normalized.Select(entry => (entry.Key, entry.Value)).ToList(),
+            cancellationToken);
+    }
+
+    public async Task<int> CreateManyAsync(
+        IReadOnlyCollection<(string UserId, CreateUserNotificationRequest Request)> notifications,
+        CancellationToken cancellationToken = default)
+    {
+        var normalized = notifications
+            .Where(notification => !string.IsNullOrWhiteSpace(notification.UserId))
+            .Select(notification =>
+                new KeyValuePair<string, CreateUserNotificationRequest>(
+                    notification.UserId,
+                    notification.Request))
+            .ToList();
+        if (normalized.Count == 0) return 0;
+
+        var rows = await CreateBatchAsync(normalized, cancellationToken);
+        foreach (var row in rows)
         {
-            var row = await UpsertForUserAsync(userId, request, cancellationToken);
-            await TrimUserNotificationsAsync(userId, cancellationToken);
-            _realtime.Publish(userId, ToDto(row));
-            created++;
+            _realtime.Publish(row.UserId, ToDto(row));
         }
 
-        return created;
+        return rows.Count;
     }
 
     public async Task<bool> MarkReadAsync(
@@ -121,60 +152,80 @@ public sealed class NotificationService : INotificationService
             .ExecuteDeleteAsync(cancellationToken);
     }
 
-    private async Task<UserNotification> UpsertForUserAsync(
-        string userId,
-        CreateUserNotificationRequest request,
+    private async Task<IReadOnlyList<UserNotification>> CreateBatchAsync(
+        IReadOnlyCollection<KeyValuePair<string, CreateUserNotificationRequest>> requestsByUser,
         CancellationToken cancellationToken)
     {
         var now = DateTime.UtcNow;
+        var userIds = requestsByUser
+            .Select(entry => entry.Key)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        var existingRows = await _db.UserNotifications
+            .Where(n => userIds.Contains(n.UserId))
+            .ToListAsync(cancellationToken);
+        var result = new List<UserNotification>(userIds.Count);
 
-        if (!string.IsNullOrWhiteSpace(request.SourceEvent))
+        foreach (var (userId, request) in requestsByUser)
         {
-            var cutoff = now - DedupeWindow;
-            var existing = await _db.UserNotifications
-                .Where(n => n.UserId == userId)
-                .Where(n => n.SourceEvent == request.SourceEvent)
-                .Where(n => n.ReadAtUtc == null)
-                .Where(n => n.CreatedAtUtc >= cutoff)
-                .OrderByDescending(n => n.CreatedAtUtc)
-                .FirstOrDefaultAsync(cancellationToken);
-
-            if (existing is not null)
+            UserNotification? row = null;
+            if (!string.IsNullOrWhiteSpace(request.SourceEvent))
             {
-                existing.Title = request.Title;
-                existing.Body = request.Body;
-                existing.Href = request.Href;
-                existing.Tone = request.Tone;
-                existing.Category = request.Category;
-                existing.EntityType = request.EntityType;
-                existing.EntityId = request.EntityId;
-                existing.Actor = request.Actor;
-                existing.CreatedAtUtc = now;
-                await QueueNotificationCreatedEventAsync(userId, existing, cancellationToken);
-                await _db.SaveChangesAsync(cancellationToken);
-                return existing;
+                var cutoff = now - DedupeWindow;
+                row = existingRows
+                    .Where(n => n.UserId == userId)
+                    .Where(n => n.SourceEvent == request.SourceEvent)
+                    .Where(n => n.ReadAtUtc == null)
+                    .Where(n => n.CreatedAtUtc >= cutoff)
+                    .OrderByDescending(n => n.CreatedAtUtc)
+                    .FirstOrDefault();
             }
+
+            if (row is not null)
+            {
+                row.Title = request.Title;
+                row.Body = request.Body;
+                row.Href = request.Href;
+                row.Tone = request.Tone;
+                row.Category = request.Category;
+                row.EntityType = request.EntityType;
+                row.EntityId = request.EntityId;
+                row.Actor = request.Actor;
+                row.CreatedAtUtc = now;
+            }
+            else
+            {
+                row = new UserNotification
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    Title = request.Title,
+                    Body = request.Body,
+                    Href = request.Href,
+                    Tone = request.Tone,
+                    Category = request.Category,
+                    EntityType = request.EntityType,
+                    EntityId = request.EntityId,
+                    Actor = request.Actor,
+                    SourceEvent = request.SourceEvent,
+                    CreatedAtUtc = now,
+                };
+                _db.UserNotifications.Add(row);
+                existingRows.Add(row);
+            }
+
+            await QueueNotificationCreatedEventAsync(userId, row, cancellationToken);
+            result.Add(row);
         }
 
-        var row = new UserNotification
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Title = request.Title,
-            Body = request.Body,
-            Href = request.Href,
-            Tone = request.Tone,
-            Category = request.Category,
-            EntityType = request.EntityType,
-            EntityId = request.EntityId,
-            Actor = request.Actor,
-            SourceEvent = request.SourceEvent,
-            CreatedAtUtc = now,
-        };
-        _db.UserNotifications.Add(row);
-        await QueueNotificationCreatedEventAsync(userId, row, cancellationToken);
+        var overflow = existingRows
+            .GroupBy(n => n.UserId, StringComparer.Ordinal)
+            .SelectMany(g => g.OrderByDescending(n => n.CreatedAtUtc).Skip(MaxItemsPerUser))
+            .ToList();
+        _db.UserNotifications.RemoveRange(overflow);
+
         await _db.SaveChangesAsync(cancellationToken);
-        return row;
+        return result;
     }
 
     private async Task QueueNotificationCreatedEventAsync(
@@ -199,24 +250,6 @@ public sealed class NotificationService : INotificationService
                 row.CreatedAtUtc,
                 row.ReadAtUtc is not null),
             cancellationToken);
-    }
-
-    private async Task TrimUserNotificationsAsync(
-        string userId,
-        CancellationToken cancellationToken)
-    {
-        var overflowIds = await _db.UserNotifications.AsNoTracking()
-            .Where(n => n.UserId == userId)
-            .OrderByDescending(n => n.CreatedAtUtc)
-            .Skip(MaxItemsPerUser)
-            .Select(n => n.Id)
-            .ToListAsync(cancellationToken);
-
-        if (overflowIds.Count == 0) return;
-
-        await _db.UserNotifications
-            .Where(n => overflowIds.Contains(n.Id))
-            .ExecuteDeleteAsync(cancellationToken);
     }
 
     private static UserNotificationDto ToDto(UserNotification row) => new()

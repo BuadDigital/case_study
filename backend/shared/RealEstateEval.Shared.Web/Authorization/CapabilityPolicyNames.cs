@@ -20,5 +20,25 @@ public static class CapabilityPolicyNames
     /// <summary>Party workspaces raise failures; case staff manage the full queue.</summary>
     public const string RaiseFailures = "Capability:raise-failures";
 
+    /// <summary>
+    /// Revenue and billing reads. Finance owns the numbers, case staff see them on the PO and
+    /// property views; external parties never do.
+    /// </summary>
+    public const string ReadFinancialData = "Capability:read-financial-data";
+
+    /// <summary>
+    /// Management dashboards and cross-queue aggregates. Cached on a single global key, so this is
+    /// deliberately an all-or-nothing gate rather than per-actor scoping.
+    /// </summary>
+    public const string ReadManagementReports = "Capability:read-management-reports";
+
+    /// <summary>
+    /// Valuation queue and evaluator recalls — coordinators manage, appraisers submit/read own queue.
+    /// </summary>
+    public const string ReadValuationQueue = "Capability:read-valuation-queue";
+
+    /// <summary>Physical-key custody and fee data for operations or finance staff.</summary>
+    public const string ReadKeyData = "Capability:read-key-data";
+
     public static string For(string capability) => $"Capability:{capability}";
 }

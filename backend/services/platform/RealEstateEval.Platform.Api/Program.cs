@@ -23,13 +23,13 @@ var connectionString = ServiceCollectionExtensions.RequireConnectionString(build
 builder.Services.AddPersistence(builder.Configuration, connectionString);
 builder.Services.AddIdentityInfrastructure();
 builder.Services.AddPlatformInfrastructure();
-builder.Services.AddNotificationInfrastructure(builder.Configuration);
-builder.Services.Configure<RealEstateEval.Infrastructure.Integration.RabbitMqOptions>(
-    builder.Configuration.GetSection("RabbitMQ"));
+builder.Services.AddNotificationInfrastructure(builder.Configuration, builder.Environment);
 builder.Services.AddNotificationIntegrationHandlers();
+builder.Services.AddIntegrationEventInbox();
 builder.Services.AddHostedService<NotificationIntegrationEventConsumer>();
-builder.Services.AddRealEstateEvalJwt(builder.Configuration);
-builder.Services.AddRealEstateEvalCors(builder.Environment);
+builder.Services.AddRealEstateEvalJwt(builder.Configuration, builder.Environment);
+builder.Services.AddRealEstateEvalCors(builder.Configuration, builder.Environment);
+builder.Services.AddRealEstateEvalRateLimiting(builder.Configuration, builder.Environment);
 builder.Services.AddRealEstateEvalOpenApi("Platform API");
 
 var app = builder.Build();

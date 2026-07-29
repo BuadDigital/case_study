@@ -11,10 +11,33 @@ public class UsernameLoginRequest
     public string Username { get; set; } = string.Empty;
 }
 
+public class PasswordLoginRequest
+{
+    /// <summary>Email address (preferred) or legacy username.</summary>
+    [Required]
+    [MinLength(2)]
+    [MaxLength(64)]
+    public string Username { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(256)]
+    public string Password { get; set; } = string.Empty;
+}
+
+public class RefreshTokenRequest
+{
+    [Required]
+    [MaxLength(256)]
+    public string RefreshToken { get; set; } = string.Empty;
+}
+
 public class LoginResponse
 {
     public string Token { get; set; } = string.Empty;
     public DateTime ExpiresAtUtc { get; set; }
+    /// <summary>Opaque rotating token for <c>POST /api/auth/refresh</c>.</summary>
+    public string RefreshToken { get; set; } = string.Empty;
+    public DateTime RefreshTokenExpiresAtUtc { get; set; }
     public UserInfoDto User { get; set; } = null!;
 }
 

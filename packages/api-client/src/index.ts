@@ -182,7 +182,17 @@ export {
   type SavePartyTaskSubmissionRequest,
 } from "./party-task-submissions";
 
-export { fetchDevLoginUsers, fetchMyProfile, type DevLoginUserDto, type FetchMyProfileResult } from "./auth";
+export {
+  fetchDevLoginUsers,
+  fetchMyProfile,
+  normalizeAuthSessionPayload,
+  refreshAuthSession,
+  revokeAuthSession,
+  type AuthSessionPayload,
+  type DevLoginUserDto,
+  type FetchMyProfileResult,
+  type RefreshSessionResult,
+} from "./auth";
 
 export {
   getCaseStudyInfoRoles,

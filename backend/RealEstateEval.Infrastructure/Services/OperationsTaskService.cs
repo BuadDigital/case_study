@@ -11,6 +11,7 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class OperationsTaskService : IOperationsTaskService
 {
+    private const int MaxListRows = 500;
     private static readonly HashSet<string> ValidTypes =
     [
         "court_visit", "reshoot", "field_visit", "inquiry", "general",
@@ -113,6 +114,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
 
         var rows = await query
             .OrderByDescending(t => t.CreatedAtUtc)
+            .Take(MaxListRows)
             .ToListAsync(cancellationToken);
 
         var links = await LoadLinkedEnvelopeIdsAsync(rows.Select(r => r.Id), cancellationToken);
@@ -681,6 +683,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
                 Status = c.Status,
                 CreatedAtUtc = c.CreatedAtUtc,
             })
+            .Take(MaxListRows)
             .ToListAsync(cancellationToken);
     }
 
@@ -893,38 +896,38 @@ public sealed class OperationsTaskService : IOperationsTaskService
         }
         if (pos.Count == 0) return;
 
-        var assigneeIds = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t => t.PoNumber != null && pos.Contains(t.PoNumber))
-            .Where(t => t.Kind == "government-review")
-            .Where(t => t.Status != WorkflowTaskStatus.Completed
-                        && t.Status != WorkflowTaskStatus.Cancelled)
-            .Where(t => t.AssigneeId != null && t.AssigneeId != "")
-            .Select(t => t.AssigneeId!)
+        var userIds = await (
+                from task in _db.WorkflowTasks.AsNoTracking()
+                join profile in _db.UserProfiles.AsNoTracking()
+                    on task.AssigneeId equals profile.DistributionAssigneeId
+                where task.PoNumber != null
+                      && pos.Contains(task.PoNumber)
+                      && task.Kind == "government-review"
+                      && task.Status != WorkflowTaskStatus.Completed
+                      && task.Status != WorkflowTaskStatus.Cancelled
+                      && task.AssigneeId != null
+                      && task.AssigneeId != ""
+                select profile.UserId)
             .Distinct()
             .ToListAsync(cancellationToken);
+        if (userIds.Count == 0) return;
 
         var poLabel = string.Join("، ", pos);
-        foreach (var assigneeId in assigneeIds)
-        {
-            var userId = await ResolveUserIdForAssigneeAsync(assigneeId, cancellationToken);
-            if (userId is null) continue;
-
-            await _notifications.CreateForUserAsync(
-                userId,
-                new CreateUserNotificationRequest
-                {
-                    Title = "زيارة محكمة مكتملة",
-                    Body =
-                        $"اكتملت زيارة المحكمة ({entity.DisplayId}) لأمر العمل {poLabel}.",
-                    Tone = "success",
-                    Href = OperationsTaskHref(entity.Id),
-                    Category = "workflow",
-                    EntityType = "operations-task",
-                    EntityId = entity.Id.ToString(),
-                    SourceEvent = $"ops-task-court-done:{entity.Id}:{userId}",
-                },
-                cancellationToken);
-        }
+        await _notifications.CreateForUsersAsync(
+            userIds,
+            new CreateUserNotificationRequest
+            {
+                Title = "زيارة محكمة مكتملة",
+                Body =
+                    $"اكتملت زيارة المحكمة ({entity.DisplayId}) لأمر العمل {poLabel}.",
+                Tone = "success",
+                Href = OperationsTaskHref(entity.Id),
+                Category = "workflow",
+                EntityType = "operations-task",
+                EntityId = entity.Id.ToString(),
+                SourceEvent = $"ops-task-court-done:{entity.Id}",
+            },
+            cancellationToken);
     }
 
     private async Task<string?> ResolveUserIdForAssigneeAsync(

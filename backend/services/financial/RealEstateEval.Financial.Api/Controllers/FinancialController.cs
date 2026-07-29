@@ -23,6 +23,7 @@ public class FinancialController : ControllerBase
     }
 
     [HttpGet("summary")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
     public async Task<ActionResult<FinancialSummaryDto>> Summary(CancellationToken ct)
         => Ok(await _financial.GetSummaryAsync(ct));
 

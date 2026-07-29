@@ -10,6 +10,8 @@ namespace RealEstateEval.Infrastructure.Services;
 public sealed class PoEnfazBillingService : IPoEnfazBillingService
 {
     private const decimal VatRate = 0.15m;
+    private const int MaxOrderRows = 500;
+    private const int MaxTrackingRows = 2000;
     private readonly ApplicationDbContext _db;
 
     public PoEnfazBillingService(ApplicationDbContext db) => _db = db;
@@ -21,6 +23,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
             .Include(w => w.Properties)
             .OrderByDescending(w => w.CreatedAtUtc)
             .ThenBy(w => w.PoNumber)
+            .Take(MaxOrderRows)
             .ToListAsync(cancellationToken);
 
         var poNumbers = orders.Select(o => o.PoNumber.Trim()).Distinct().ToList();
@@ -213,6 +216,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
             .Include(w => w.Properties)
             .OrderByDescending(w => w.CreatedAtUtc)
             .ThenBy(w => w.PoNumber)
+            .Take(MaxOrderRows)
             .ToListAsync(cancellationToken);
 
         if (orders.Count == 0) return [];
@@ -265,7 +269,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
             }
         }
 
-        return rows;
+        return rows.Take(MaxTrackingRows).ToList();
     }
 
     public async Task<PoEnfazBillingDto?> IssueInvoiceAsync(

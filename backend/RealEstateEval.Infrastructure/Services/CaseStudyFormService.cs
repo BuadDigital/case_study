@@ -35,14 +35,42 @@ public class CaseStudyFormService : ICaseStudyFormService
     public async Task<CaseStudyFormDto?> GetAsync(
         Guid taskId,
         bool party,
+        CaseStudyFormActor? actor = null,
         CancellationToken cancellationToken = default)
     {
+        if (actor is not null && !await CanReadFormAsync(taskId, actor, cancellationToken))
+            return null;
+
         var entity = await _db.CaseStudyForms
             .AsNoTracking()
             .FirstOrDefaultAsync(
                 f => f.TaskId == taskId && f.IsPartyForm == party,
                 cancellationToken);
         return entity is null ? null : ToDto(entity);
+    }
+
+    /// <summary>
+    /// Case staff read every form. A party reads a form when assigned to the task itself or to
+    /// one of its child tasks — the party workspace seeds itself from the parent case-study form.
+    /// </summary>
+    private async Task<bool> CanReadFormAsync(
+        Guid taskId,
+        CaseStudyFormActor actor,
+        CancellationToken cancellationToken)
+    {
+        if (PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole)) return true;
+
+        var assigneeIds = await _db.WorkflowTasks
+            .AsNoTracking()
+            .Where(t => t.Id == taskId || t.ParentTaskId == taskId)
+            .Select(t => t.AssigneeId)
+            .ToListAsync(cancellationToken);
+
+        return assigneeIds.Exists(assigneeId => PoRoleMatrixRules.CanReadPartyTask(
+            actor.PrototypeRole,
+            assigneeId,
+            actor.UserId,
+            actor.DistributionAssigneeId));
     }
 
     public async Task<(CaseStudyFormDto? Result, Dictionary<string, string>? Errors)> SaveAsync(

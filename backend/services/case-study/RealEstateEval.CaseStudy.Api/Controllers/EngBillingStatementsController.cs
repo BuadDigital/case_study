@@ -2,11 +2,9 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Authorization;
 using RealEstateEval.Application.Contracts;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
@@ -17,14 +15,14 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 public class EngBillingStatementsController : ControllerBase
 {
     private readonly IEngineeringBillingStatementService _statements;
-    private readonly ApplicationDbContext _db;
+    private readonly IPermissionService _permissions;
 
     public EngBillingStatementsController(
         IEngineeringBillingStatementService statements,
-        ApplicationDbContext db)
+        IPermissionService permissions)
     {
         _statements = statements;
-        _db = db;
+        _permissions = permissions;
     }
 
     [HttpGet("ready-lines")]
@@ -142,10 +140,8 @@ public class EngBillingStatementsController : ControllerBase
         string? assigneeId = null;
         if (!string.IsNullOrWhiteSpace(userId))
         {
-            assigneeId = await _db.UserProfiles.AsNoTracking()
-                .Where(p => p.UserId == userId)
-                .Select(p => p.DistributionAssigneeId)
-                .FirstOrDefaultAsync(ct);
+            var permissions = await _permissions.GetForUserIdAsync(userId, ct);
+            assigneeId = permissions?.DistributionAssigneeId;
         }
 
         return new ActorContext(userId, assigneeId, isOperationsManager, isFinancialOfficer);

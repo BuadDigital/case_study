@@ -1,5 +1,6 @@
 "use client";
 
+import { revokeAuthSession } from "@platform/api-client";
 import { clearAuthSession, getValidAuthSession } from "@platform/auth-client";
 import { usePrototype } from "../contexts/PrototypeContext";
 
@@ -28,6 +29,7 @@ export function useAuth() {
     hasCapability,
     rolePages,
     logout() {
+      if (session?.refreshToken) void revokeAuthSession(session.refreshToken);
       clearAuthSession();
       window.location.href = "/login";
     },

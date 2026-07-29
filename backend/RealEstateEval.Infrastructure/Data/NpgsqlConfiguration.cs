@@ -41,6 +41,9 @@ public static class NpgsqlConfiguration
             pageSize ?? options.DefaultPageSize,
             1,
             options.MaxPageSize);
-        return ((resolvedPage - 1) * resolvedSize, resolvedSize, resolvedPage, true);
+        var skip = Math.Min(
+            (long)(resolvedPage - 1) * resolvedSize,
+            int.MaxValue);
+        return ((int)skip, resolvedSize, resolvedPage, true);
     }
 }
