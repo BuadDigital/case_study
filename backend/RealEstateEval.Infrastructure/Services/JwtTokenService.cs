@@ -11,6 +11,10 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public class JwtTokenService : IJwtTokenService
 {
+    /// <summary>Access tokens stay short because capabilities are baked into them.</summary>
+    public const int DefaultAccessTokenMinutes = 15;
+    private const int MaxAccessTokenMinutes = 480;
+
     private readonly IConfiguration _configuration;
 
     public JwtTokenService(IConfiguration configuration)
@@ -27,7 +31,11 @@ public class JwtTokenService : IJwtTokenService
         var audience = _configuration["Jwt:Audience"] ?? throw new InvalidOperationException("Jwt:Audience missing");
         var signingKey = _configuration["Jwt:SigningKey"] ?? throw new InvalidOperationException("Jwt:SigningKey missing");
 
-        var expiresAtUtc = DateTime.UtcNow.AddHours(8);
+        var lifetimeMinutes = Math.Clamp(
+            _configuration.GetValue("Jwt:AccessTokenMinutes", DefaultAccessTokenMinutes),
+            1,
+            MaxAccessTokenMinutes);
+        var expiresAtUtc = DateTime.UtcNow.AddMinutes(lifetimeMinutes);
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, user.Id),

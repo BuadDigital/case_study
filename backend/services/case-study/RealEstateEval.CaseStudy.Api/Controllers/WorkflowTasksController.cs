@@ -1,11 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
-using RealEstateEval.Infrastructure.Data;
-using RealEstateEval.Infrastructure.Permissions;
 using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
@@ -16,12 +13,14 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 public class WorkflowTasksController : ControllerBase
 {
     private readonly IWorkflowTaskService _tasks;
-    private readonly ApplicationDbContext _db;
+    private readonly IPermissionService _permissions;
 
-    public WorkflowTasksController(IWorkflowTaskService tasks, ApplicationDbContext db)
+    public WorkflowTasksController(
+        IWorkflowTaskService tasks,
+        IPermissionService permissions)
     {
         _tasks = tasks;
-        _db = db;
+        _permissions = permissions;
     }
 
     [HttpGet]
@@ -30,10 +29,11 @@ public class WorkflowTasksController : ControllerBase
         [FromQuery] int? pageSize,
         CancellationToken cancellationToken)
     {
+        var actor = await _permissions.GetForUserIdAsync(ActorId(), cancellationToken);
         if (page.HasValue || pageSize.HasValue)
-            return Ok(await _tasks.ListPagedAsync(page, pageSize, cancellationToken));
+            return Ok(await _tasks.ListPagedAsync(page, pageSize, actor, cancellationToken));
 
-        return Ok(await _tasks.ListAsync(cancellationToken));
+        return Ok(await _tasks.ListAsync(actor, cancellationToken));
     }
 
     [HttpPost("sync")]
@@ -209,17 +209,8 @@ public class WorkflowTasksController : ControllerBase
         var userId = ActorId();
         if (userId.Length == 0) return "";
 
-        var profile = await _db.UserProfiles.AsNoTracking()
-            .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
-
-        var identityRoles = await (
-            from ur in _db.UserRoles.AsNoTracking()
-            join r in _db.Roles.AsNoTracking() on ur.RoleId equals r.Id
-            where ur.UserId == userId
-            select r.Name!
-        ).ToListAsync(cancellationToken);
-
-        var resolved = PrototypeRoleResolver.Resolve(profile, identityRoles);
+        var permissions = await _permissions.GetForUserIdAsync(userId, cancellationToken);
+        var resolved = permissions?.PrototypeRole;
         if (!string.IsNullOrWhiteSpace(resolved))
             return resolved;
 

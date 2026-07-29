@@ -9,6 +9,7 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class PropertyKeysService : IPropertyKeysService
 {
+    private const int MaxListRows = 500;
     private readonly ApplicationDbContext _db;
 
     public PropertyKeysService(ApplicationDbContext db) => _db = db;
@@ -29,6 +30,7 @@ public sealed class PropertyKeysService : IPropertyKeysService
             .OrderByDescending(x => x.UpdatedAtUtc)
             .ThenBy(x => x.PoNumber)
             .ThenBy(x => x.PropertyId)
+            .Take(MaxListRows)
             .ToListAsync(cancellationToken);
 
         var poNumbers = rows.Select(r => r.PoNumber.Trim()).Distinct().ToList();

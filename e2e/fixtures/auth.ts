@@ -15,6 +15,19 @@ export const RELEASE_USERS = {
   financialOfficer: "eman",
 } as const;
 
+const RELEASE_USER_EMAILS: Record<string, string> = {
+  [RELEASE_USERS.cdo]: "s.salhy@gmail.com",
+  [RELEASE_USERS.caseSpecialist]: "osama@ejadah.dev",
+  [RELEASE_USERS.fieldInspector]: "ahmed@ejadah.dev",
+  [RELEASE_USERS.valuationCoordinator]: "valuation@ejadah.dev",
+  [RELEASE_USERS.appraiser]: "abdullah.kathiri@ejadah.dev",
+  [RELEASE_USERS.governmentReviewer]: "feras@ejadah.dev",
+  [RELEASE_USERS.engineeringOffice]: "survey.jeddah@ejadah.dev",
+  [RELEASE_USERS.financialOfficer]: "eman@ejadah.dev",
+};
+
+export const PASSWORD = "user1234";
+
 type LoginResponse = {
   token: string;
   expiresAtUtc: string;
@@ -35,14 +48,13 @@ function normalizeLoginResponse(raw: Record<string, unknown>): LoginResponse {
 }
 
 async function fetchLoginSession(username: string): Promise<LoginResponse> {
-  const res = await fetch(
-    `http://${API_HOST}:5160/api/auth/login-username`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username }),
-    },
-  );
+  const email = RELEASE_USER_EMAILS[username];
+  if (!email) throw new Error(`No demo email mapped for "${username}"`);
+  const res = await fetch(`http://${API_HOST}:5160/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: email, password: PASSWORD }),
+  });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(
@@ -113,13 +125,15 @@ export async function loginAs(page: Page, username: string) {
 export async function loginViaUi(page: Page, username: string) {
   await page.goto("/login", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("button", { name: "دخول" })).toBeVisible();
-  await page.locator("#username").selectOption(username);
-  await expect(page.locator("#username")).toHaveValue(username);
+  const email = RELEASE_USER_EMAILS[username];
+  if (!email) throw new Error(`No demo email mapped for "${username}"`);
+  await page.locator("#email").fill(email);
+  await page.locator("#password").fill(PASSWORD);
 
   const [response] = await Promise.all([
     page.waitForResponse(
       (res) =>
-        res.url().includes("/api/auth/login-username") &&
+        res.url().includes("/api/auth/login") &&
         res.request().method() === "POST",
       { timeout: 60_000 },
     ),
@@ -235,12 +249,6 @@ export const ROLE_MODULE_PAGES: Record<string, string[]> = {
     "keys",
     "system-screen-catalog",
   ],
-  [RELEASE_USERS.engineeringOffice]: [
-    "active-survey",
-    "system-screen-catalog",
-  ],
-  [RELEASE_USERS.financialOfficer]: [
-    "financial",
-    "system-screen-catalog",
-  ],
+  [RELEASE_USERS.engineeringOffice]: ["active-survey", "system-screen-catalog"],
+  [RELEASE_USERS.financialOfficer]: ["financial", "system-screen-catalog"],
 };

@@ -33,17 +33,20 @@ public class WorkOrdersController : ControllerBase
         [FromQuery] int? pageSize,
         CancellationToken cancellationToken)
     {
+        var actor = await ActorAsync(cancellationToken);
         if (page.HasValue || pageSize.HasValue)
-            return Ok(await _workOrders.ListPagedAsync(page, pageSize, cancellationToken));
+            return Ok(await _workOrders.ListPagedAsync(page, pageSize, actor, cancellationToken));
 
-        return Ok(await _workOrders.ListAsync(cancellationToken));
+        return Ok(await _workOrders.ListAsync(actor, cancellationToken));
     }
 
     [HttpGet("details")]
     public async Task<ActionResult<IReadOnlyList<WorkOrderDto>>> ListDetails(
         CancellationToken cancellationToken)
     {
-        return Ok(await _workOrders.ListDetailsAsync(cancellationToken));
+        return Ok(await _workOrders.ListDetailsAsync(
+            await ActorAsync(cancellationToken),
+            cancellationToken));
     }
 
     [HttpGet("property-rows")]
@@ -51,10 +54,13 @@ public class WorkOrdersController : ControllerBase
         CancellationToken cancellationToken)
     {
         Response.Headers.CacheControl = "private, max-age=60";
-        return Ok(await _workOrders.ListPropertyListItemsAsync(cancellationToken));
+        return Ok(await _workOrders.ListPropertyListItemsAsync(
+            await ActorAsync(cancellationToken),
+            cancellationToken));
     }
 
     [HttpGet("exists")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<bool>> Exists(
         [FromQuery] string poNumber,
         CancellationToken cancellationToken)
@@ -63,6 +69,7 @@ public class WorkOrdersController : ControllerBase
     }
 
     [HttpGet("properties/pending-bourse")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<IReadOnlyList<PendingBoursePropertyDto>>> ListPendingBourse(
         CancellationToken cancellationToken)
     {
@@ -70,6 +77,7 @@ public class WorkOrdersController : ControllerBase
     }
 
     [HttpGet("deeds/prior")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<PriorDeedRegistrationDto>> FindPriorDeed(
         [FromQuery] string deedNumber,
         [FromQuery] string? excludePo,
@@ -90,7 +98,10 @@ public class WorkOrdersController : ControllerBase
         string poNumber,
         CancellationToken cancellationToken)
     {
-        var dto = await _workOrders.GetByPoNumberAsync(poNumber, cancellationToken);
+        var dto = await _workOrders.GetByPoNumberAsync(
+            poNumber,
+            await ActorAsync(cancellationToken),
+            cancellationToken);
         if (dto is null) return NotFound();
         return Ok(dto);
     }
@@ -101,6 +112,9 @@ public class WorkOrdersController : ControllerBase
         Guid propertyId,
         CancellationToken cancellationToken)
     {
+        var actor = await ActorAsync(cancellationToken);
+        var order = await _workOrders.GetByPoNumberAsync(poNumber, actor, cancellationToken);
+        if (order is null) return NotFound();
         return Ok(await _timeline.GetForPropertyAsync(poNumber, propertyId, cancellationToken));
     }
 
@@ -290,6 +304,14 @@ public class WorkOrdersController : ControllerBase
             cancellationToken);
         if (!ok) return BadRequest(new { message = error });
         return NoContent();
+    }
+
+    private async Task<PermissionsDto?> ActorAsync(CancellationToken cancellationToken)
+    {
+        var userId = ActorClaims.Id(User);
+        if (string.IsNullOrWhiteSpace(userId) || userId == "unknown")
+            return null;
+        return await _permissions.GetForUserIdAsync(userId, cancellationToken);
     }
 
     private async Task<ActionResult?> ForbidUnlessAsync(

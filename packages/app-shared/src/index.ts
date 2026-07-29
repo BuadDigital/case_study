@@ -1,6 +1,11 @@
 export { PrototypeProvider, usePrototype } from "./contexts/PrototypeContext";
 export { Can, useCapability } from "./components/Can";
 export { useAuth } from "./hooks/useAuth";
+export { ensureFreshAuthSession } from "./auth/ensure-fresh-session";
+export {
+  useAuthSession,
+  useValidAuthSession,
+} from "./auth/use-auth-session";
 export { useOnlineStatus } from "./hooks/useOnlineStatus";
 export { getAppEnv } from "./env";
 export { isFeatureEnabled, type FeatureFlag } from "./feature-flags";

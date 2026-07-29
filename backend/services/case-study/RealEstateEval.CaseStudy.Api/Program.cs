@@ -20,16 +20,36 @@ builder.Services.AddHttpContextAccessor();
 var connectionString = ServiceCollectionExtensions.RequireConnectionString( builder.Configuration, ServiceDatabaseNames.CaseStudy);
 builder.Services.AddPersistence(builder.Configuration, connectionString);
 builder.Services.AddIdentityInfrastructure();
-builder.Services.AddCaseStudyInfrastructure(builder.Configuration);
+builder.Services.AddCaseStudyInfrastructure(builder.Configuration, builder.Environment);
 builder.Services.AddValuationInfrastructure();
-builder.Services.AddIntegrationEventPublishing(builder.Configuration);
-builder.Services.AddOutboxDispatcher(builder.Configuration);
+builder.Services.AddIntegrationEventPublishing(builder.Configuration, builder.Environment);
+builder.Services.AddOutboxDispatcher(builder.Configuration, builder.Environment);
 builder.Services.AddValuationIntegrationHandlers();
+builder.Services.AddIntegrationEventInbox();
 builder.Services.AddBlobStorage(builder.Configuration);
-builder.Services.AddRealEstateEvalJwt(builder.Configuration);
-builder.Services.AddRealEstateEvalCors(builder.Environment);
+builder.Services.AddRealEstateEvalJwt(builder.Configuration, builder.Environment);
+builder.Services.AddRealEstateEvalCors(builder.Configuration, builder.Environment);
+builder.Services.AddRealEstateEvalRateLimiting(builder.Configuration, builder.Environment);
 builder.Services.AddRealEstateEvalOpenApi("Case Study API");
 builder.Services.AddHostedService<ValuationIntegrationEventConsumer>();
+
+// MigrateOnStartup defaults on only in Development. Production must use the
+// deploy-time DbMigrate job (see infra/docker-compose.prod.yml + backend/tools/DbMigrate).
+var migrateOnStartup = builder.Configuration.GetValue<bool?>("Database:MigrateOnStartup")
+    ?? builder.Environment.IsDevelopment();
+var seedDemoData = builder.Configuration.GetValue<bool>("Database:SeedDemoData");
+
+if (builder.Environment.IsProduction() && migrateOnStartup)
+{
+    throw new InvalidOperationException(
+        "Database:MigrateOnStartup cannot be enabled in Production. Run the DbMigrate job instead.");
+}
+
+if (builder.Environment.IsProduction() && seedDemoData)
+{
+    throw new InvalidOperationException(
+        "Database:SeedDemoData cannot be enabled in Production.");
+}
 
 var app = builder.Build();
 
@@ -39,12 +59,18 @@ app.MapServiceHealth("case-study");
 app.MapDatabaseReady("case-study");
 app.MapControllers();
 
-using (var scope = app.Services.CreateScope())
+if (migrateOnStartup || seedDemoData)
 {
+    using var scope = app.Services.CreateScope();
     var sp = scope.ServiceProvider;
-    var db = sp.GetRequiredService<ApplicationDbContext>();
-    await db.Database.MigrateAsync();
-    await DataSeeder.SeedAsync(sp);
+    if (migrateOnStartup)
+    {
+        var db = sp.GetRequiredService<ApplicationDbContext>();
+        await db.Database.MigrateAsync();
+    }
+
+    if (seedDemoData)
+        await DataSeeder.SeedAsync(sp);
 }
 
 app.Run();

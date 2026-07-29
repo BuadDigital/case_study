@@ -4,9 +4,16 @@
 
 name: realestate-eval-infra
 
+x-app-healthcheck: &app-healthcheck
+  test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/health || exit 1"]
+  interval: 15s
+  timeout: 5s
+  retries: 5
+  start_period: 40s
+
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:17.5-alpine
     container_name: ree-postgres
     environment:
       POSTGRES_USER: postgres
@@ -24,14 +31,16 @@ services:
       retries: 10
 
   rabbitmq:
-    image: rabbitmq:3.13-management-alpine
+    image: rabbitmq:3.13.7-management-alpine
     container_name: ree-rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: dev
       RABBITMQ_DEFAULT_PASS: dev
+    entrypoint: ["/bin/sh", "-c", "rabbitmq-plugins enable --offline rabbitmq_prometheus; exec docker-entrypoint.sh rabbitmq-server"]
     ports:
       - "5672:5672"
       - "15672:15672"
+      - "15692:15692"
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
@@ -39,7 +48,7 @@ services:
       retries: 10
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.4.2-alpine
     container_name: ree-redis
     ports:
       - "6379:6379"
@@ -54,10 +63,22 @@ services:
     container_name: ree-jaeger
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
+    # UI only on the host; OTLP intake is via otel-collector (4317/4318 below).
     ports:
       - "16686:16686"
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.114.0
+    container_name: ree-otel-collector
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./otel-collector/otel-collector-config.yml:/etc/otelcol/config.yaml:ro
+    # Host apps (npm run dev:api) export OTLP here; collector forwards traces to Jaeger.
+    ports:
       - "4317:4317"
       - "4318:4318"
+    depends_on:
+      - jaeger
 
   prometheus:
     image: prom/prometheus:v2.54.1
@@ -71,6 +92,13 @@ services:
       - ree_prometheus_data:/prometheus
     ports:
       - "9090:9090"
+    depends_on:
+      - otel-collector
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9090/-/healthy || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
   grafana:
     image: grafana/grafana:11.2.0
@@ -85,8 +113,16 @@ services:
     ports:
       - "3001:3000"
     depends_on:
-      - prometheus
-      - jaeger
+      prometheus:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
@@ -116,18 +152,37 @@ services:
     depends_on:
       elasticsearch:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5601/api/status || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
 
   fluent-bit:
-    image: fluent/fluent-bit:3.1
+    image: fluent/fluent-bit:3.1.9
     container_name: ree-fluent-bit
     volumes:
       - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ./fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
     depends_on:
       elasticsearch:
         condition: service_healthy
-    # Optional: mount Docker container logs when running API in Docker later
-    # volumes:
-    #   - /var/lib/docker/containers:/var/lib/docker/containers:ro
+
+  # Optional one-shot migrator (apps still migrate on startup in Development).
+  migrate:
+    build:
+      context: ..
+      dockerfile: backend/tools/DbMigrate/Dockerfile
+    container_name: ree-migrate
+    environment:
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    profiles: ["migrate"]
 
   identity:
     build:
@@ -135,18 +190,24 @@ services:
       dockerfile: backend/services/identity/RealEstateEval.Identity.Api/Dockerfile
     container_name: ree-identity
     environment:
-      ASPNETCORE_ENVIRONMENT: Docker
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      ASPNETCORE_ENVIRONMENT: Development
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: CHANGE_ME_DEV_ONLY_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256_SIGNING_KEY_0123456789ABCDEF
+      Auth__EnableDevLogin: "true"
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
     expose:
       - "8080"
+    healthcheck: *app-healthcheck
 
   case-study:
     build:
@@ -154,8 +215,10 @@ services:
       dockerfile: backend/services/case-study/RealEstateEval.CaseStudy.Api/Dockerfile
     container_name: ree-case-study
     environment:
-      ASPNETCORE_ENVIRONMENT: Docker
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      ASPNETCORE_ENVIRONMENT: Development
+      Database__SeedDemoData: "true"
+      Database__MigrateOnStartup: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
       Jwt__Issuer: RealEstateEval
@@ -170,8 +233,11 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     expose:
       - "8080"
+    healthcheck: *app-healthcheck
 
   operations:
     build:
@@ -179,8 +245,8 @@ services:
       dockerfile: backend/services/operations/RealEstateEval.Operations.Api/Dockerfile
     container_name: ree-operations
     environment:
-      ASPNETCORE_ENVIRONMENT: Docker
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      ASPNETCORE_ENVIRONMENT: Development
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
       Jwt__Issuer: RealEstateEval
@@ -189,8 +255,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     expose:
       - "8080"
+    healthcheck: *app-healthcheck
 
   reporting:
     build:
@@ -198,8 +267,8 @@ services:
       dockerfile: backend/services/reporting/RealEstateEval.Reporting.Api/Dockerfile
     container_name: ree-reporting
     environment:
-      ASPNETCORE_ENVIRONMENT: Docker
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      ASPNETCORE_ENVIRONMENT: Development
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
       UpstreamServices__GatewayBaseUrl: http://gateway:5160
       UpstreamServices__CaseStudyBaseUrl: http://case-study:8080
@@ -211,13 +280,16 @@ services:
       Jwt__SigningKey: CHANGE_ME_DEV_ONLY_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256_SIGNING_KEY_0123456789ABCDEF
     depends_on:
       case-study:
-        condition: service_started
+        condition: service_healthy
       valuation:
-        condition: service_started
+        condition: service_healthy
       failures:
+        condition: service_healthy
+      otel-collector:
         condition: service_started
     expose:
       - "8080"
+    healthcheck: *app-healthcheck
 
   financial:
     build:
@@ -225,8 +297,8 @@ services:
       dockerfile: backend/services/financial/RealEstateEval.Financial.Api/Dockerfile
     container_name: ree-financial
     environment:
-      ASPNETCORE_ENVIRONMENT: Docker
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      ASPNETCORE_ENVIRONMENT: Development
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
       Jwt__Issuer: RealEstateEval
@@ -235,8 +307,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     expose:
       - "8080"
+    healthcheck: *app-healthcheck
 
   valuation:
     build:
@@ -244,8 +319,8 @@ services:
       dockerfile: backend/services/valuation/RealEstateEval.Valuation.Api/Dockerfile
     container_name: ree-valuation
     environment:
-      ASPNETCORE_ENVIRONMENT: Docker
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      ASPNETCORE_ENVIRONMENT: Development
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
       Jwt__Issuer: RealEstateEval
@@ -254,8 +329,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     expose:
       - "8080"
+    healthcheck: *app-healthcheck
 
   failures:
     build:
@@ -263,8 +341,8 @@ services:
       dockerfile: backend/services/failures/RealEstateEval.Failures.Api/Dockerfile
     container_name: ree-failures
     environment:
-      ASPNETCORE_ENVIRONMENT: Docker
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      ASPNETCORE_ENVIRONMENT: Development
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
       Jwt__Issuer: RealEstateEval
@@ -273,8 +351,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     expose:
       - "8080"
+    healthcheck: *app-healthcheck
 
   platform:
     build:
@@ -282,8 +363,8 @@ services:
       dockerfile: backend/services/platform/RealEstateEval.Platform.Api/Dockerfile
     container_name: ree-platform
     environment:
-      ASPNETCORE_ENVIRONMENT: Docker
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      ASPNETCORE_ENVIRONMENT: Development
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
       Jwt__Issuer: RealEstateEval
@@ -292,8 +373,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     expose:
       - "8080"
+    healthcheck: *app-healthcheck
 
   attachments:
     build:
@@ -301,8 +385,8 @@ services:
       dockerfile: backend/services/attachments/RealEstateEval.Attachments.Api/Dockerfile
     container_name: ree-attachments
     environment:
-      ASPNETCORE_ENVIRONMENT: Docker
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      ASPNETCORE_ENVIRONMENT: Development
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING: Host=postgres;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
       Jwt__Issuer: RealEstateEval
@@ -311,8 +395,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     expose:
       - "8080"
+    healthcheck: *app-healthcheck
 
   gateway:
     build:
@@ -320,20 +407,35 @@ services:
       dockerfile: backend/gateway/RealEstateEval.Gateway/Dockerfile
     container_name: ree-gateway
     environment:
-      ASPNETCORE_ENVIRONMENT: Docker
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      ASPNETCORE_ENVIRONMENT: Development
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     ports:
       - "5160:5160"
     depends_on:
-      - identity
-      - case-study
-      - operations
-      - reporting
-      - financial
-      - valuation
-      - failures
-      - platform
-      - attachments
+      identity:
+        condition: service_healthy
+      case-study:
+        condition: service_healthy
+      operations:
+        condition: service_healthy
+      reporting:
+        condition: service_healthy
+      financial:
+        condition: service_healthy
+      valuation:
+        condition: service_healthy
+      failures:
+        condition: service_healthy
+      platform:
+        condition: service_healthy
+      attachments:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:5160/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
 volumes:
   ree_pgdata:

@@ -67,8 +67,12 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
     public async Task<PartyTaskSubmissionDto?> GetAsync(
         Guid taskId,
+        PartySubmissionActor? actor = null,
         CancellationToken cancellationToken = default)
     {
+        if (actor is not null && !await CanReadTaskAsync(taskId, actor, cancellationToken))
+            return null;
+
         var entity = await _db.PartyTaskSubmissions
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.WorkflowTaskId == taskId, cancellationToken);
@@ -77,17 +81,67 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
     public async Task<IReadOnlyList<PartyTaskSubmissionDto>> ListForTasksAsync(
         IReadOnlyList<Guid> workflowTaskIds,
+        PartySubmissionActor? actor = null,
         CancellationToken cancellationToken = default)
     {
         if (workflowTaskIds.Count == 0) return [];
 
         var ids = workflowTaskIds.Distinct().Take(500).ToList();
+
+        if (actor is not null && !PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
+        {
+            var readable = await ReadableTaskIdsAsync(ids, actor, cancellationToken);
+            if (readable.Count == 0) return [];
+            ids = readable;
+        }
+
         var entities = await _db.PartyTaskSubmissions
             .AsNoTracking()
             .Where(s => ids.Contains(s.WorkflowTaskId))
             .ToListAsync(cancellationToken);
 
         return entities.Select(ToDto).ToList();
+    }
+
+    private async Task<bool> CanReadTaskAsync(
+        Guid taskId,
+        PartySubmissionActor actor,
+        CancellationToken cancellationToken)
+    {
+        if (PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole)) return true;
+
+        var assigneeId = await _db.WorkflowTasks
+            .AsNoTracking()
+            .Where(t => t.Id == taskId)
+            .Select(t => t.AssigneeId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return PoRoleMatrixRules.CanReadPartyTask(
+            actor.PrototypeRole,
+            assigneeId,
+            actor.UserId,
+            actor.DistributionAssigneeId);
+    }
+
+    private async Task<List<Guid>> ReadableTaskIdsAsync(
+        IReadOnlyList<Guid> taskIds,
+        PartySubmissionActor actor,
+        CancellationToken cancellationToken)
+    {
+        var tasks = await _db.WorkflowTasks
+            .AsNoTracking()
+            .Where(t => taskIds.Contains(t.Id))
+            .Select(t => new { t.Id, t.AssigneeId })
+            .ToListAsync(cancellationToken);
+
+        return tasks
+            .Where(t => PoRoleMatrixRules.CanReadPartyTask(
+                actor.PrototypeRole,
+                t.AssigneeId,
+                actor.UserId,
+                actor.DistributionAssigneeId))
+            .Select(t => t.Id)
+            .ToList();
     }
 
     public async Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> SaveDraftAsync(
@@ -219,15 +273,24 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (entity.Kind == "field-inspection")
             await SyncFieldInspectionWorkspaceAsync(entity, cancellationToken);
 
-        await _db.SaveChangesAsync(cancellationToken);
+        // Submission status and workflow completion must commit together; otherwise the
+        // party looks submitted while the task is still open (or the reverse on rollback).
+        await DbContextTransaction.ExecuteInTransactionAsync(
+            _db,
+            async ct =>
+            {
+                await _db.SaveChangesAsync(ct);
+                await _tasks.PatchAsync(
+                    taskId,
+                    new PatchWorkflowTaskRequest { Status = WorkflowTaskStatus.Completed, Phase = "done" },
+                    ct);
+            },
+            cancellationToken);
 
+        // Side effects after the durable state is committed. Key-envelope bridging clears
+        // the change tracker, so it must not run inside the transaction above.
         if (entity.Kind == "government-review")
             await BridgeGovernmentReviewToEnvelopeAsync(task, entity.PayloadJson, cancellationToken);
-
-        await _tasks.PatchAsync(
-            taskId,
-            new PatchWorkflowTaskRequest { Status = WorkflowTaskStatus.Completed, Phase = "done" },
-            cancellationToken);
 
         if (task.PropertyId is Guid propertyId)
         {
@@ -297,11 +360,18 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (task.Kind == "field-inspection")
             await SyncFieldInspectionWorkspaceAsync(entity, cancellationToken);
 
-        await _db.SaveChangesAsync(cancellationToken);
-
-        await _tasks.PatchAsync(
-            taskId,
-            new PatchWorkflowTaskRequest { Status = WorkflowTaskStatus.Open, Phase = "done" },
+        // Reopen the submission and reopen the workflow task in one transaction so a
+        // mid-failure cannot leave a reopened submission still marked completed on the task.
+        await DbContextTransaction.ExecuteInTransactionAsync(
+            _db,
+            async ct =>
+            {
+                await _db.SaveChangesAsync(ct);
+                await _tasks.PatchAsync(
+                    taskId,
+                    new PatchWorkflowTaskRequest { Status = WorkflowTaskStatus.Open, Phase = "done" },
+                    ct);
+            },
             cancellationToken);
 
         if (task.Kind == "engineering-survey")
@@ -345,24 +415,36 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             return (null, new Dictionary<string, string> { ["_"] = "مهمة الرفع المساحي غير مكتملة" });
 
         var actorUserId = string.IsNullOrWhiteSpace(actor.UserId) ? "system" : actor.UserId;
-        var (_, feeError) = await _inspectorFees.AccrueEngineeringSurveyFeeAsync(
-            taskId,
-            actorUserId,
+
+        // Fee accrual and acceptance timestamp must succeed or fail together.
+        var alreadyAccepted = entity.AcceptedAtUtc is not null;
+        var feeError = await DbContextTransaction.ExecuteInTransactionAsync(
+            _db,
+            async ct =>
+            {
+                var (_, error) = await _inspectorFees.AccrueEngineeringSurveyFeeAsync(
+                    taskId,
+                    actorUserId,
+                    ct);
+                if (error is not null)
+                    return (Commit: false, Result: error);
+
+                if (!alreadyAccepted)
+                {
+                    entity.AcceptedAtUtc = DateTime.UtcNow;
+                    entity.AcceptedByUserId = actorUserId;
+                    entity.AcceptedByName = string.IsNullOrWhiteSpace(actor.DisplayName)
+                        ? null
+                        : actor.DisplayName.Trim();
+                    await _db.SaveChangesAsync(ct);
+                }
+
+                return (Commit: true, Result: (string?)null);
+            },
             cancellationToken);
+
         if (feeError is not null)
             return (null, new Dictionary<string, string> { ["_"] = feeError });
-
-        // Fee accrual is idempotent; keep the first acceptance timestamp on re-accept.
-        var alreadyAccepted = entity.AcceptedAtUtc is not null;
-        if (!alreadyAccepted)
-        {
-            entity.AcceptedAtUtc = DateTime.UtcNow;
-            entity.AcceptedByUserId = actorUserId;
-            entity.AcceptedByName = string.IsNullOrWhiteSpace(actor.DisplayName)
-                ? null
-                : actor.DisplayName.Trim();
-            await _db.SaveChangesAsync(cancellationToken);
-        }
 
         if (task.PropertyId is Guid propertyId)
         {

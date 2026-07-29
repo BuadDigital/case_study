@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
-using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Shared.Web;
+using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
@@ -12,56 +12,32 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 [Authorize]
 public class FieldInspectionWorkspacesController : ControllerBase
 {
-    private readonly ApplicationDbContext _db;
+    private readonly IFieldInspectionWorkspaceService _workspaces;
+    private readonly IPermissionService _permissions;
 
-    public FieldInspectionWorkspacesController(ApplicationDbContext db) => _db = db;
+    public FieldInspectionWorkspacesController(
+        IFieldInspectionWorkspaceService workspaces,
+        IPermissionService permissions)
+    {
+        _workspaces = workspaces;
+        _permissions = permissions;
+    }
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<FieldInspectionWorkspaceListItemDto>>> List(
         CancellationToken ct)
     {
-        var rows = await _db.FieldInspectionWorkspaces.AsNoTracking()
-            .OrderByDescending(x => x.UpdatedAtUtc)
-            .Take(500)
-            .Select(x => new FieldInspectionWorkspaceListItemDto
-            {
-                WorkflowTaskId = x.WorkflowTaskId.ToString(),
-                PropertyId = x.PropertyId.HasValue ? x.PropertyId.Value.ToString() : null,
-                PoNumber = x.PoNumber,
-                InspectionDate = x.InspectionDate.HasValue
-                    ? x.InspectionDate.Value.ToString("yyyy-MM-dd")
-                    : null,
-                InspectionTime = x.InspectionTime,
-                Status = x.Status,
-                RequiredPhotoSlots = x.RequiredPhotoSlots,
-                CompletedPhotoSlots = x.CompletedPhotoSlots,
-                PendingPhotoApprovals = x.PendingPhotoApprovals,
-                ObservationCount = x.ObservationCount,
-                AttachmentCount = x.AttachmentCount,
-                SubmittedAtUtc = x.SubmittedAtUtc.HasValue
-                    ? x.SubmittedAtUtc.Value.ToString("O")
-                    : null,
-                UpdatedAtUtc = x.UpdatedAtUtc.ToString("O"),
-            })
-            .ToListAsync(ct);
+        var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
+        if (actor is null)
+            return Forbid();
 
-        return Ok(rows);
+        return Ok(await _workspaces.ListAsync(actor, ct));
     }
 
     [HttpGet("summary")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadManagementReports)]
     public async Task<ActionResult<FieldInspectionWorkspaceSummaryDto>> Summary(CancellationToken ct)
     {
-        var rows = await _db.FieldInspectionWorkspaces.AsNoTracking().ToListAsync(ct);
-
-        return Ok(new FieldInspectionWorkspaceSummaryDto
-        {
-            Total = rows.Count,
-            Draft = rows.Count(x => x.Status == PartyTaskSubmissionStatus.Draft),
-            Reopened = rows.Count(x => x.Status == PartyTaskSubmissionStatus.Reopened),
-            Submitted = rows.Count(x => x.Status == PartyTaskSubmissionStatus.Submitted),
-            PhotosPendingApproval = rows.Sum(x => x.PendingPhotoApprovals),
-            IncompleteRequiredPhotos = rows.Sum(x =>
-                Math.Max(0, x.RequiredPhotoSlots - x.CompletedPhotoSlots)),
-        });
+        return Ok(await _workspaces.GetSummaryAsync(ct));
     }
 }

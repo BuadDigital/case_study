@@ -21,7 +21,15 @@ public sealed class RabbitMqMessagePublisher : IDisposable
         _logger = logger;
     }
 
-    public async Task PublishAsync(
+    /// <summary>
+    /// Publishes one message to the topic exchange.
+    /// </summary>
+    /// <returns>
+    /// True only when the broker accepted the message. A disabled or unreachable broker
+    /// returns false so callers keep the message queued instead of treating the skip as a
+    /// delivery.
+    /// </returns>
+    public async Task<bool> PublishAsync(
         string routingKey,
         string payloadJson,
         CancellationToken cancellationToken = default)
@@ -29,14 +37,14 @@ public sealed class RabbitMqMessagePublisher : IDisposable
         if (!_options.Enabled)
         {
             _logger.LogDebug("RabbitMQ disabled; skipped publish {RoutingKey}", routingKey);
-            return;
+            return false;
         }
 
         await EnsureConnectedAsync(cancellationToken);
         if (_channel is null)
         {
             _logger.LogWarning("RabbitMQ unavailable; skipped publish {RoutingKey}", routingKey);
-            return;
+            return false;
         }
 
         var body = Encoding.UTF8.GetBytes(payloadJson);
@@ -47,6 +55,7 @@ public sealed class RabbitMqMessagePublisher : IDisposable
             cancellationToken: cancellationToken);
 
         _logger.LogInformation("Published message routingKey={RoutingKey}", routingKey);
+        return true;
     }
 
     private async Task EnsureConnectedAsync(CancellationToken cancellationToken)

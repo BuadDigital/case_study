@@ -9,15 +9,14 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class SurveyOfficesService : ISurveyOfficesService
 {
+    private const int MaxListRows = 500;
     private readonly ApplicationDbContext _db;
     private readonly ApiResponseCache _cache;
-
     public SurveyOfficesService(ApplicationDbContext db, ApiResponseCache cache)
     {
         _db = db;
         _cache = cache;
     }
-
     public async Task<IReadOnlyList<SurveyOfficeDto>> ListAsync(
         CancellationToken cancellationToken = default)
     {
@@ -28,6 +27,7 @@ public sealed class SurveyOfficesService : ISurveyOfficesService
             {
                 var rows = await _db.SurveyOffices.AsNoTracking()
                     .OrderBy(x => x.SortOrder).ThenBy(x => x.Name)
+                    .Take(MaxListRows)
                     .ToListAsync(ct);
                 return (IReadOnlyList<SurveyOfficeDto>)rows.Select(ToDto).ToList();
             },

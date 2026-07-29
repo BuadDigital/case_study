@@ -4,10 +4,23 @@ namespace RealEstateEval.Application.Abstractions;
 
 public interface IPartyTaskSubmissionService
 {
-    Task<PartyTaskSubmissionDto?> GetAsync(Guid taskId, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Reads one submission. When <paramref name="actor"/> is supplied the caller must pass
+    /// <see cref="Rules.PoRoleMatrixRules.CanReadPartyTask"/>; otherwise null is returned so
+    /// callers cannot distinguish "missing" from "not yours".
+    /// </summary>
+    Task<PartyTaskSubmissionDto?> GetAsync(
+        Guid taskId,
+        PartySubmissionActor? actor = null,
+        CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Reads submissions for the given tasks. When <paramref name="actor"/> is supplied,
+    /// tasks the actor may not read are silently dropped rather than failing the batch.
+    /// </summary>
     Task<IReadOnlyList<PartyTaskSubmissionDto>> ListForTasksAsync(
         IReadOnlyList<Guid> workflowTaskIds,
+        PartySubmissionActor? actor = null,
         CancellationToken cancellationToken = default);
 
     Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> SaveDraftAsync(

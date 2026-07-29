@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
@@ -9,12 +8,10 @@ namespace RealEstateEval.Infrastructure.Notifications;
 public sealed class NotificationRecipientResolver
 {
     private readonly ApplicationDbContext _db;
-    private readonly UserManager<ApplicationUser> _users;
 
-    public NotificationRecipientResolver(ApplicationDbContext db, UserManager<ApplicationUser> users)
+    public NotificationRecipientResolver(ApplicationDbContext db)
     {
         _db = db;
-        _users = users;
     }
 
     public async Task<IReadOnlyList<string>> ResolveAssigneeUserIdsForPropertyAsync(
@@ -22,16 +19,19 @@ public sealed class NotificationRecipientResolver
         IReadOnlyCollection<string> taskKinds,
         CancellationToken cancellationToken = default)
     {
-        var assigneeIds = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t => t.PropertyId == propertyId)
-            .Where(t => taskKinds.Contains(t.Kind))
-            .Where(t => t.Status != WorkflowTaskStatus.Completed && t.Status != WorkflowTaskStatus.Cancelled)
-            .Where(t => t.AssigneeId != null && t.AssigneeId != "")
-            .Select(t => t.AssigneeId!)
+        return await (
+                from task in _db.WorkflowTasks.AsNoTracking()
+                join profile in _db.UserProfiles.AsNoTracking()
+                    on task.AssigneeId equals profile.DistributionAssigneeId
+                where task.PropertyId == propertyId
+                      && taskKinds.Contains(task.Kind)
+                      && task.Status != WorkflowTaskStatus.Completed
+                      && task.Status != WorkflowTaskStatus.Cancelled
+                      && task.AssigneeId != null
+                      && task.AssigneeId != ""
+                select profile.UserId)
             .Distinct()
             .ToListAsync(cancellationToken);
-
-        return await ResolveUserIdsForDistributionAssigneesAsync(assigneeIds, cancellationToken);
     }
 
     public async Task<IReadOnlyList<string>> ResolveAssigneeUserIdsForPoAsync(
@@ -42,16 +42,19 @@ public sealed class NotificationRecipientResolver
         var po = poNumber.Trim();
         if (po.Length == 0) return [];
 
-        var assigneeIds = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t => t.PoNumber == po)
-            .Where(t => taskKinds.Contains(t.Kind))
-            .Where(t => t.Status != WorkflowTaskStatus.Completed && t.Status != WorkflowTaskStatus.Cancelled)
-            .Where(t => t.AssigneeId != null && t.AssigneeId != "")
-            .Select(t => t.AssigneeId!)
+        return await (
+                from task in _db.WorkflowTasks.AsNoTracking()
+                join profile in _db.UserProfiles.AsNoTracking()
+                    on task.AssigneeId equals profile.DistributionAssigneeId
+                where task.PoNumber == po
+                      && taskKinds.Contains(task.Kind)
+                      && task.Status != WorkflowTaskStatus.Completed
+                      && task.Status != WorkflowTaskStatus.Cancelled
+                      && task.AssigneeId != null
+                      && task.AssigneeId != ""
+                select profile.UserId)
             .Distinct()
             .ToListAsync(cancellationToken);
-
-        return await ResolveUserIdsForDistributionAssigneesAsync(assigneeIds, cancellationToken);
     }
 
     public async Task<string?> ResolveUserIdForDistributionAssigneeAsync(
@@ -67,6 +70,29 @@ public sealed class NotificationRecipientResolver
             .FirstOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyDictionary<string, string>> ResolveUserIdsForDistributionAssigneesAsync(
+        IReadOnlyCollection<string> distributionAssigneeIds,
+        CancellationToken cancellationToken = default)
+    {
+        var assigneeIds = distributionAssigneeIds
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Select(id => id.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (assigneeIds.Count == 0)
+            return new Dictionary<string, string>(StringComparer.Ordinal);
+
+        var rows = await _db.UserProfiles.AsNoTracking()
+            .Where(profile => profile.DistributionAssigneeId != null
+                              && assigneeIds.Contains(profile.DistributionAssigneeId))
+            .Select(profile => new { profile.DistributionAssigneeId, profile.UserId })
+            .ToListAsync(cancellationToken);
+
+        return rows
+            .GroupBy(row => row.DistributionAssigneeId!, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First().UserId, StringComparer.Ordinal);
+    }
+
     public async Task<IReadOnlyList<string>> ResolveUserIdsWithPrototypeRoleAsync(
         string prototypeRole,
         CancellationToken cancellationToken = default)
@@ -74,18 +100,34 @@ public sealed class NotificationRecipientResolver
         var role = prototypeRole.Trim().ToLowerInvariant();
         if (role.Length == 0) return [];
 
-        var profiles = await _db.UserProfiles.AsNoTracking()
-            .Where(p => p.Status == UserStatus.Active)
-            .Select(p => new { p.UserId, p.JobTitle, p.PermissionLevel })
+        var rows = await (
+                from profile in _db.UserProfiles.AsNoTracking()
+                where profile.Status == UserStatus.Active
+                join userRole in _db.UserRoles.AsNoTracking()
+                    on profile.UserId equals userRole.UserId into userRoles
+                from userRole in userRoles.DefaultIfEmpty()
+                join identityRole in _db.Roles.AsNoTracking()
+                    on userRole.RoleId equals identityRole.Id into identityRoles
+                from identityRole in identityRoles.DefaultIfEmpty()
+                select new
+                {
+                    profile.UserId,
+                    profile.JobTitle,
+                    profile.PermissionLevel,
+                    IdentityRole = identityRole == null ? null : identityRole.Name,
+                })
             .ToListAsync(cancellationToken);
 
         var matches = new List<string>();
-        foreach (var profile in profiles)
+        foreach (var group in rows.GroupBy(row => row.UserId, StringComparer.Ordinal))
         {
-            var user = await _users.FindByIdAsync(profile.UserId);
-            if (user is null) continue;
-
-            var identityRoles = await _users.GetRolesAsync(user);
+            var profile = group.First();
+            var identityRoles = group
+                .Select(row => row.IdentityRole)
+                .Where(roleName => roleName is not null)
+                .Cast<string>()
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
             var resolved = PrototypeRoleResolver.Resolve(
                 new UserProfile
                 {
@@ -93,25 +135,12 @@ public sealed class NotificationRecipientResolver
                     JobTitle = profile.JobTitle,
                     PermissionLevel = profile.PermissionLevel,
                 },
-                identityRoles.ToList());
+                identityRoles);
 
             if (string.Equals(resolved, role, StringComparison.OrdinalIgnoreCase))
                 matches.Add(profile.UserId);
         }
 
         return matches.Distinct(StringComparer.Ordinal).ToList();
-    }
-
-    private async Task<IReadOnlyList<string>> ResolveUserIdsForDistributionAssigneesAsync(
-        IReadOnlyCollection<string> distributionAssigneeIds,
-        CancellationToken cancellationToken)
-    {
-        if (distributionAssigneeIds.Count == 0) return [];
-
-        return await _db.UserProfiles.AsNoTracking()
-            .Where(p => p.DistributionAssigneeId != null && distributionAssigneeIds.Contains(p.DistributionAssigneeId))
-            .Select(p => p.UserId)
-            .Distinct()
-            .ToListAsync(cancellationToken);
     }
 }

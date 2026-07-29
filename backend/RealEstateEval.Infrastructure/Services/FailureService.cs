@@ -10,6 +10,7 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public class FailureService : IFailureService
 {
+    private const int MaxListRows = 500;
     private const string CaseStudyPropertyKind = "case-study-property";
 
     private static readonly HashSet<string> ActiveStatuses = PropertyFailureStatus.Active;
@@ -35,12 +36,22 @@ public class FailureService : IFailureService
     }
 
     public async Task<IReadOnlyList<FailureRecordDto>> ListAsync(
+        PermissionsDto? actor = null,
         CancellationToken cancellationToken = default)
     {
-        var list = await _db.PropertyFailures
+        IQueryable<PropertyFailure> query = _db.PropertyFailures
             .AsNoTracking()
-            .OrderByDescending(f => f.UpdatedAtUtc)
-            .ToListAsync(cancellationToken);
+            .OrderByDescending(f => f.UpdatedAtUtc);
+
+        var visiblePos = await ResolveVisiblePoNumbersAsync(actor, cancellationToken);
+        if (visiblePos is not null)
+        {
+            if (visiblePos.Count == 0)
+                return [];
+            query = query.Where(f => visiblePos.Contains(f.PoNumber));
+        }
+
+        var list = await query.Take(MaxListRows).ToListAsync(cancellationToken);
         var names = await PersonLabelResolver.ResolveManyAsync(
             _db,
             list.Select(f => f.Specialist),
@@ -51,10 +62,63 @@ public class FailureService : IFailureService
     public async Task<FailureRecordDto?> GetActiveForPropertyAsync(
         string poNumber,
         string propertyId,
+        PermissionsDto? actor = null,
         CancellationToken cancellationToken = default)
     {
+        if (!await CanReadPoAsync(poNumber, actor, cancellationToken))
+            return null;
+
         var entity = await FindActiveForPropertyAsync(poNumber, propertyId, cancellationToken);
         return entity is null ? null : await ToDtoAsync(entity, cancellationToken);
+    }
+
+    private async Task<HashSet<string>?> ResolveVisiblePoNumbersAsync(
+        PermissionsDto? actor,
+        CancellationToken cancellationToken)
+    {
+        if (actor is null)
+            return new HashSet<string>(StringComparer.Ordinal);
+
+        if (PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole)
+            || actor.Capabilities.Contains("manage-failures", StringComparer.OrdinalIgnoreCase)
+            || actor.Capabilities.Contains("manage-work-orders", StringComparer.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var assigneeId = actor.DistributionAssigneeId?.Trim() ?? "";
+        var userId = actor.UserId.Trim();
+        if (assigneeId.Length == 0 && userId.Length == 0)
+            return new HashSet<string>(StringComparer.Ordinal);
+
+        var query = _db.WorkflowTasks.AsNoTracking().AsQueryable();
+        if (assigneeId.Length > 0 && userId.Length > 0)
+            query = query.Where(t => t.AssigneeId == assigneeId || t.AssigneeId == userId);
+        else if (assigneeId.Length > 0)
+            query = query.Where(t => t.AssigneeId == assigneeId);
+        else
+            query = query.Where(t => t.AssigneeId == userId);
+
+        var pos = await query
+            .Where(t => t.PoNumber != null && t.PoNumber != "")
+            .Select(t => t.PoNumber)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        return pos
+            .Select(p => p.Trim())
+            .Where(p => p.Length > 0)
+            .ToHashSet(StringComparer.Ordinal);
+    }
+
+    private async Task<bool> CanReadPoAsync(
+        string poNumber,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken)
+    {
+        var visiblePos = await ResolveVisiblePoNumbersAsync(actor, cancellationToken);
+        if (visiblePos is null) return true;
+        return visiblePos.Contains(poNumber.Trim());
     }
 
     public async Task<(FailureRecordDto? Result, Dictionary<string, string>? Errors)> CreateAsync(

@@ -42,10 +42,11 @@ public class WorkflowTaskService : IWorkflowTaskService
     }
 
     public async Task<IReadOnlyList<WorkflowTaskDto>> ListAsync(
+        PermissionsDto? actor = null,
         CancellationToken cancellationToken = default)
     {
         var (_, take, _, _) = NpgsqlConfiguration.ResolveListPaging(null, null, _dbOptions);
-        var list = await OrderedTaskQuery()
+        var list = await VisibleTaskQuery(actor)
             .Take(take)
             .ToListAsync(cancellationToken);
         return list.Select(WorkflowTaskMapper.ToDto).ToList();
@@ -54,13 +55,14 @@ public class WorkflowTaskService : IWorkflowTaskService
     public async Task<PagedResultDto<WorkflowTaskDto>> ListPagedAsync(
         int? page,
         int? pageSize,
+        PermissionsDto? actor = null,
         CancellationToken cancellationToken = default)
     {
         var (skip, take, resolvedPage, _) = NpgsqlConfiguration.ResolveListPaging(
             page,
             pageSize,
             _dbOptions);
-        var query = OrderedTaskQuery();
+        var query = VisibleTaskQuery(actor);
         var total = await query.CountAsync(cancellationToken);
         var list = await query
             .Skip(skip)
@@ -76,12 +78,46 @@ public class WorkflowTaskService : IWorkflowTaskService
         };
     }
 
+    public Task<bool> IsAssignedToAsync(
+        Guid id,
+        string assigneeId,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedAssigneeId = assigneeId.Trim();
+        return _db.WorkflowTasks
+            .AsNoTracking()
+            .AnyAsync(
+                task => task.Id == id && task.AssigneeId == normalizedAssigneeId,
+                cancellationToken);
+    }
+
     private IQueryable<WorkflowTask> OrderedTaskQuery() =>
         _db.WorkflowTasks
             .AsNoTracking()
             .OrderByDescending(t => t.CreatedAtUtc)
             .ThenBy(t => t.PoNumber)
             .ThenBy(t => t.PropertyOrdinal);
+
+    private IQueryable<WorkflowTask> VisibleTaskQuery(PermissionsDto? actor)
+    {
+        var query = OrderedTaskQuery();
+        if (actor is null || PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
+            return query;
+
+        var role = actor.PrototypeRole?.Trim().ToLower() ?? "";
+        var userId = actor.UserId.Trim();
+        var assigneeId = actor.DistributionAssigneeId?.Trim() ?? "";
+        var displayName = actor.DisplayName?.Trim() ?? "";
+
+        if (role.Length == 0 || (userId.Length == 0 && assigneeId.Length == 0 && displayName.Length == 0))
+            return query.Where(_ => false);
+
+        return query.Where(task =>
+            task.AssigneeRole.ToLower() == role
+            && ((assigneeId.Length > 0 && task.AssigneeId == assigneeId)
+                || (userId.Length > 0 && task.AssigneeId == userId)
+                || (displayName.Length > 0 && task.AssigneeName == displayName)));
+    }
 
     public async Task<IReadOnlyList<WorkflowTaskDto>> SyncFromWorkOrdersAsync(
         CancellationToken cancellationToken = default)
@@ -102,7 +138,7 @@ public class WorkflowTaskService : IWorkflowTaskService
         }
 
         await _db.SaveChangesAsync(cancellationToken);
-        return await ListAsync(cancellationToken);
+        return await ListAsync(cancellationToken: cancellationToken);
     }
 
     public async Task<WorkflowTaskDto?> PatchDistributionAsync(
@@ -1197,16 +1233,21 @@ public class WorkflowTaskService : IWorkflowTaskService
         CancellationToken cancellationToken)
     {
         var assignmentsByUser = new Dictionary<string, List<WorkflowTask>>(StringComparer.Ordinal);
+        var assigneeIds = children
+            .Select(child => child.AssigneeId?.Trim())
+            .Where(assigneeId => !string.IsNullOrWhiteSpace(assigneeId))
+            .Cast<string>()
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        var usersByAssignee = await _recipients.ResolveUserIdsForDistributionAssigneesAsync(
+            assigneeIds,
+            cancellationToken);
 
         foreach (var child in children)
         {
             var assigneeId = child.AssigneeId?.Trim();
             if (string.IsNullOrWhiteSpace(assigneeId)) continue;
-
-            var userId = await _recipients.ResolveUserIdForDistributionAssigneeAsync(
-                assigneeId,
-                cancellationToken);
-            if (string.IsNullOrWhiteSpace(userId)) continue;
+            if (!usersByAssignee.TryGetValue(assigneeId, out var userId)) continue;
 
             if (!assignmentsByUser.TryGetValue(userId, out var list))
             {
@@ -1218,6 +1259,8 @@ public class WorkflowTaskService : IWorkflowTaskService
         }
 
         var refLabel = string.IsNullOrWhiteSpace(deed) ? parent.PoNumber : deed.Trim();
+        var requestsByUser =
+            new Dictionary<string, CreateUserNotificationRequest>(StringComparer.Ordinal);
         foreach (var entry in assignmentsByUser)
         {
             var userId = entry.Key;
@@ -1232,23 +1275,22 @@ public class WorkflowTaskService : IWorkflowTaskService
                 ? $"أُسندت إليك مهمة جديدة: {TaskNotificationLabel(single.Kind)} على {refLabel}."
                 : $"أُسندت إليك {assignedTasks.Count} مهام جديدة على {refLabel}.";
 
-            await _notifications.CreateForUserAsync(
-                userId,
-                new CreateUserNotificationRequest
-                {
-                    Title = "معاملة جديدة بانتظارك",
-                    Body = body,
-                    Tone = "info",
-                    Href = href,
-                    Category = "workflow",
-                    EntityType = "task",
-                    EntityId = single?.Id.ToString() ?? parent.Id.ToString(),
-                    SourceEvent = single is not null
-                        ? $"distribution-assigned:{single.Id}"
-                        : $"distribution-assigned-batch:{parent.Id}:{userId}",
-                },
-                cancellationToken);
+            requestsByUser[userId] = new CreateUserNotificationRequest
+            {
+                Title = "معاملة جديدة بانتظارك",
+                Body = body,
+                Tone = "info",
+                Href = href,
+                Category = "workflow",
+                EntityType = "task",
+                EntityId = single?.Id.ToString() ?? parent.Id.ToString(),
+                SourceEvent = single is not null
+                    ? $"distribution-assigned:{single.Id}"
+                    : $"distribution-assigned-batch:{parent.Id}:{userId}",
+            };
         }
+
+        await _notifications.CreateForUsersAsync(requestsByUser, cancellationToken);
     }
 
     private static string TaskNotificationLabel(string kind) => kind switch

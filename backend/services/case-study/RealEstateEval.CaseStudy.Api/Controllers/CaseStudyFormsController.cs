@@ -1,11 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
-using RealEstateEval.Infrastructure.Data;
-using RealEstateEval.Infrastructure.Permissions;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 
@@ -17,12 +14,14 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 public class CaseStudyFormsController : ControllerBase
 {
     private readonly ICaseStudyFormService _forms;
-    private readonly ApplicationDbContext _db;
+    private readonly IPermissionService _permissions;
 
-    public CaseStudyFormsController(ICaseStudyFormService forms, ApplicationDbContext db)
+    public CaseStudyFormsController(
+        ICaseStudyFormService forms,
+        IPermissionService permissions)
     {
         _forms = forms;
-        _db = db;
+        _permissions = permissions;
     }
 
     [HttpGet("{taskId:guid}")]
@@ -30,7 +29,11 @@ public class CaseStudyFormsController : ControllerBase
         Guid taskId,
         CancellationToken cancellationToken)
     {
-        var dto = await _forms.GetAsync(taskId, party: false, cancellationToken);
+        var dto = await _forms.GetAsync(
+            taskId,
+            party: false,
+            await ResolveActorAsync(cancellationToken),
+            cancellationToken);
         if (dto is null) return NotFound();
         return Ok(dto);
     }
@@ -57,7 +60,11 @@ public class CaseStudyFormsController : ControllerBase
         Guid taskId,
         CancellationToken cancellationToken)
     {
-        var dto = await _forms.GetAsync(taskId, party: true, cancellationToken);
+        var dto = await _forms.GetAsync(
+            taskId,
+            party: true,
+            await ResolveActorAsync(cancellationToken),
+            cancellationToken);
         if (dto is null) return NotFound();
         return Ok(dto);
     }
@@ -90,26 +97,16 @@ public class CaseStudyFormsController : ControllerBase
     private async Task<CaseStudyFormActor> ResolveActorAsync(CancellationToken ct)
     {
         var userId = ActorClaims.Id(User);
-        var profile = string.IsNullOrWhiteSpace(userId) || userId == "unknown"
+        var permissions = string.IsNullOrWhiteSpace(userId) || userId == "unknown"
             ? null
-            : await _db.UserProfiles.AsNoTracking()
-                .FirstOrDefaultAsync(p => p.UserId == userId, ct);
-
-        var identityRoles = string.IsNullOrWhiteSpace(userId) || userId == "unknown"
-            ? new List<string>()
-            : await (
-                from ur in _db.UserRoles.AsNoTracking()
-                join r in _db.Roles.AsNoTracking() on ur.RoleId equals r.Id
-                where ur.UserId == userId
-                select r.Name!
-            ).ToListAsync(ct);
+            : await _permissions.GetForUserIdAsync(userId, ct);
 
         return new CaseStudyFormActor
         {
             UserId = userId,
             DisplayName = ActorClaims.DisplayName(User),
-            PrototypeRole = PrototypeRoleResolver.Resolve(profile, identityRoles),
-            DistributionAssigneeId = profile?.DistributionAssigneeId?.Trim(),
+            PrototypeRole = permissions?.PrototypeRole,
+            DistributionAssigneeId = permissions?.DistributionAssigneeId,
         };
     }
 }

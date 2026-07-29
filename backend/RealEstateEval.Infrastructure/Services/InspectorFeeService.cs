@@ -10,6 +10,7 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public class InspectorFeeService : IInspectorFeeService
 {
+    private const int MaxSummaryRows = 2000;
     private readonly ApplicationDbContext _db;
     private readonly INotificationService _notifications;
     private readonly NotificationRecipientResolver _recipients;
@@ -242,7 +243,10 @@ public class InspectorFeeService : IInspectorFeeService
             query = query.Where(x => x.ReturnTo == target);
         }
 
-        var ledgers = await query.ToListAsync(cancellationToken);
+        var ledgers = await query
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .Take(MaxSummaryRows)
+            .ToListAsync(cancellationToken);
         if (ledgers.Count == 0) return EmptySummary();
 
         ledgers = await FilterLedgersWithCompletedCaseStudyAsync(ledgers, cancellationToken);
@@ -1372,30 +1376,37 @@ public class InspectorFeeService : IInspectorFeeService
         IReadOnlyList<InspectorFeeRowDto> rows,
         CancellationToken cancellationToken)
     {
+        var assigneeIds = rows
+            .Select(row => row.AssigneeId?.Trim())
+            .Where(assigneeId => !string.IsNullOrWhiteSpace(assigneeId))
+            .Cast<string>()
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        var usersByAssignee = await _recipients.ResolveUserIdsForDistributionAssigneesAsync(
+            assigneeIds,
+            cancellationToken);
+        var notifications =
+            new List<(string UserId, CreateUserNotificationRequest Request)>();
+
         foreach (var row in rows)
         {
             if (string.IsNullOrWhiteSpace(row.AssigneeId)) continue;
+            if (!usersByAssignee.TryGetValue(row.AssigneeId.Trim(), out var userId)) continue;
 
-            var userId = await _recipients.ResolveUserIdForDistributionAssigneeAsync(
-                row.AssigneeId,
-                cancellationToken);
-            if (userId is null) continue;
-
-            await _notifications.CreateForUserAsync(
-                userId,
-                new CreateUserNotificationRequest
-                {
-                    Title = "تم صرف الأتعاب",
-                    Body = $"صُرفت أتعاب العقار {row.PropertyLabel}.",
-                    Tone = "success",
-                    Href = "/party-fees",
-                    Category = "financial",
-                    EntityType = "task",
-                    EntityId = row.WorkflowTaskId,
-                    SourceEvent = $"fee-disbursed:{row.WorkflowTaskId}",
-                },
-                cancellationToken);
+            notifications.Add((userId, new CreateUserNotificationRequest
+            {
+                Title = "تم صرف الأتعاب",
+                Body = $"صُرفت أتعاب العقار {row.PropertyLabel}.",
+                Tone = "success",
+                Href = "/party-fees",
+                Category = "financial",
+                EntityType = "task",
+                EntityId = row.WorkflowTaskId,
+                SourceEvent = $"fee-disbursed:{row.WorkflowTaskId}",
+            }));
         }
+
+        await _notifications.CreateManyAsync(notifications, cancellationToken);
     }
 
     public async Task<IReadOnlyList<InspectorFeeAuditEntryDto>> ListTransitionsAsync(

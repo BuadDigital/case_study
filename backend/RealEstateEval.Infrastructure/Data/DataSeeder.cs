@@ -32,6 +32,15 @@ public static class DataSeeder
 
         if (await IsAlreadySeededAsync(services, cancellationToken))
         {
+            // Keep seed passwords/profile fields in sync on every demo startup.
+            await EnsureLegacyAdminAsync(userManager);
+            foreach (var staff in HrStaffSeeds)
+                await EnsureHrStaffAsync(userManager, db, staff, cancellationToken);
+            await EnsureProcProviderAsync(
+                userManager,
+                db,
+                JeddahSurveyOfficeSeed,
+                cancellationToken);
             await BackfillReviewerCityCoverageAsync(db, userManager, cancellationToken);
             await BackfillDistributionAssigneeIdsAsync(db, userManager, cancellationToken);
             try
@@ -195,7 +204,7 @@ public static class DataSeeder
 
             "s.salhy@gmail.com",
 
-            "sliman123",
+            "user1234",
 
             "سليمان",
 
@@ -221,7 +230,7 @@ public static class DataSeeder
 
             "salam@ejadah.dev",
 
-            "EjadaGM2025!",
+            "user1234",
 
             "سالم الغريب",
 
@@ -247,7 +256,7 @@ public static class DataSeeder
 
             "abdulrahman@ejadah.dev",
 
-            "EjadaSS2025!",
+            "user1234",
 
             "عبدالرحمن النفيعي",
 
@@ -273,7 +282,7 @@ public static class DataSeeder
 
             "osama@ejadah.dev",
 
-            "EjadaCS2025!",
+            "user1234",
 
             "أسامة الصالحي",
 
@@ -299,7 +308,7 @@ public static class DataSeeder
 
             "feras@ejadah.dev",
 
-            "EjadaCD2025!",
+            "user1234",
 
             "فراس كمرين",
 
@@ -325,7 +334,7 @@ public static class DataSeeder
 
             "valuation@ejadah.dev",
 
-            "EjadaVC2025!",
+            "user1234",
 
             "محمد دياب",
 
@@ -351,7 +360,7 @@ public static class DataSeeder
 
             "abdullah.kathiri@ejadah.dev",
 
-            "EjadaRA2025!",
+            "user1234",
 
             "عبدالله الكثيري",
 
@@ -377,7 +386,7 @@ public static class DataSeeder
 
             "ahmed@ejadah.dev",
 
-            "EjadaFI2025!",
+            "user1234",
 
             "أحمد سعيد",
 
@@ -403,7 +412,7 @@ public static class DataSeeder
 
             "abdullah.abdulmane@ejadah.dev",
 
-            "EjadaFI2025!",
+            "user1234",
 
             "عبدالله عبدالمانع",
 
@@ -429,7 +438,7 @@ public static class DataSeeder
 
             "eman@ejadah.dev",
 
-            "EjadaFO2025!",
+            "user1234",
 
             "إيمان النهدي",
 
@@ -459,7 +468,7 @@ public static class DataSeeder
 
         "survey.jeddah@ejadah.dev",
 
-        "EjadaEO2025!",
+        "user1234",
 
         "مكتب جدة للمساحة",
 
@@ -541,6 +550,49 @@ public static class DataSeeder
         if (!ReviewerCityCoverageByEmail.TryGetValue(email.Trim(), out var cities))
             return;
         profile.ReviewerCityCoverageJson = JsonSerializer.Serialize(cities);
+    }
+
+    /// <summary>
+    /// Applies <paramref name="password"/> through Identity's AddPasswordAsync.
+    /// SeedDemoData is forbidden in Production; local seed passwords are intentionally
+    /// simple, so validators are suspended only for this call.
+    /// </summary>
+    private static async Task EnsureSeedPasswordAsync(
+        UserManager<ApplicationUser> userManager,
+        ApplicationUser user,
+        string password)
+    {
+        if (await userManager.CheckPasswordAsync(user, password))
+            return;
+
+        var validators = userManager.PasswordValidators.ToList();
+        userManager.PasswordValidators.Clear();
+        try
+        {
+            if (await userManager.HasPasswordAsync(user))
+            {
+                var remove = await userManager.RemovePasswordAsync(user);
+                if (!remove.Succeeded)
+                {
+                    throw new InvalidOperationException(
+                        "Failed to clear password for " + (user.Email ?? user.UserName) + ": "
+                        + string.Join("; ", remove.Errors.Select(e => e.Description)));
+                }
+            }
+
+            var add = await userManager.AddPasswordAsync(user, password);
+            if (!add.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    "Failed to seed password for " + (user.Email ?? user.UserName) + ": "
+                    + string.Join("; ", add.Errors.Select(e => e.Description)));
+            }
+        }
+        finally
+        {
+            foreach (var validator in validators)
+                userManager.PasswordValidators.Add(validator);
+        }
     }
 
     private static async Task BackfillReviewerCityCoverageAsync(
@@ -716,7 +768,7 @@ public static class DataSeeder
 
 
 
-            var createResult = await userManager.CreateAsync(user, seed.Password);
+            var createResult = await userManager.CreateAsync(user);
 
             if (!createResult.Succeeded)
 
@@ -763,6 +815,8 @@ public static class DataSeeder
                 await userManager.UpdateAsync(user);
 
         }
+
+        await EnsureSeedPasswordAsync(userManager, user, seed.Password);
 
 
 
@@ -922,7 +976,7 @@ public static class DataSeeder
 
 
 
-            var createResult = await userManager.CreateAsync(user, seed.Password);
+            var createResult = await userManager.CreateAsync(user);
 
             if (!createResult.Succeeded)
 
@@ -969,6 +1023,8 @@ public static class DataSeeder
                 await userManager.UpdateAsync(user);
 
         }
+
+        await EnsureSeedPasswordAsync(userManager, user, seed.Password);
 
 
 
@@ -1093,48 +1149,33 @@ public static class DataSeeder
     {
 
         const string email = "admin@local.dev";
+        const string password = "user1234";
 
-        if (await userManager.FindByEmailAsync(email) is not null)
-
-            return;
-
-
-
-        var user = new ApplicationUser
-
+        var user = await userManager.FindByEmailAsync(email);
+        if (user is null)
         {
+            user = new ApplicationUser
+            {
+                UserName = email,
+                Email = email,
+                EmailConfirmed = true,
+                DisplayName = "سالم الغريب",
+            };
 
-            UserName = email,
-
-            Email = email,
-
-            EmailConfirmed = true,
-
-            DisplayName = "سالم الغريب",
-
-        };
-
-
-
-        const string password = "Admin123!";
-
-        var result = await userManager.CreateAsync(user, password);
-
-        if (!result.Succeeded)
-
-        {
-
-            throw new InvalidOperationException(
-
-                "Failed to seed default user: "
-
-                + string.Join("; ", result.Errors.Select(e => e.Description)));
-
+            var result = await userManager.CreateAsync(user);
+            if (!result.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    "Failed to seed default user: "
+                    + string.Join("; ", result.Errors.Select(e => e.Description)));
+            }
         }
 
+        await EnsureSeedPasswordAsync(userManager, user, password);
 
-
-        await userManager.AddToRoleAsync(user, "Admin");
+        var roles = await userManager.GetRolesAsync(user);
+        if (!roles.Contains("Admin"))
+            await userManager.AddToRoleAsync(user, "Admin");
 
     }
 

@@ -39,11 +39,15 @@ public static class ServicePipelineExtensions
     public static WebApplication UseRealEstateEvalServicePipeline(this WebApplication app)
     {
         app.UseGlobalExceptionHandler();
+        app.UseRealEstateEvalSecurityHeaders();
         app.UseResponseCompression();
         app.UseCorrelationId();
         if (!app.Environment.IsDevelopment())
             app.UseHttpsRedirection();
         app.UseCors();
+        // After CORS so a throttled browser can read the 429 body, before authentication so
+        // rejected floods never reach token validation.
+        app.UseRealEstateEvalRateLimiter();
         app.UseAuthentication();
         app.UseAuthorization();
         return app;
@@ -60,9 +64,15 @@ public static class GatewayPipelineExtensions
 {
     public static WebApplication UseRealEstateEvalGatewayPipeline(this WebApplication app)
     {
+        app.UseRealEstateEvalSecurityHeaders();
         app.UseResponseCompression();
         app.UseCorrelationId();
+        // Redirects only once an HTTPS port is configured; TLS currently terminates at the
+        // ingress proxy, which forwards plain HTTP with X-Forwarded-Proto.
+        if (!app.Environment.IsDevelopment())
+            app.UseHttpsRedirection();
         app.UseCors();
+        app.UseRealEstateEvalRateLimiter();
         return app;
     }
 }

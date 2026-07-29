@@ -8,7 +8,7 @@ namespace RealEstateEval.Operations.Api.Controllers;
 
 [ApiController]
 [Route("api/property-keys")]
-[Authorize]
+[Authorize(Policy = CapabilityPolicyNames.ReadKeyData)]
 public class PropertyKeysController : ControllerBase
 {
     private readonly IPropertyKeysService _keys;
