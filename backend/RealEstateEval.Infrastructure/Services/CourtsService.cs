@@ -10,6 +10,63 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class CourtsService : ICourtsService
 {
+    private static readonly (string Region, string City, string Name)[] ExecutionCourtSeeds =
+    [
+        ("الرياض", "الرياض", "محكمة التنفيذ بالرياض"),
+        ("مكة المكرمة", "مكة المكرمة", "محكمة التنفيذ بمكة المكرمة"),
+        ("مكة المكرمة", "جدة", "محكمة التنفيذ بجدة"),
+        ("مكة المكرمة", "الطائف", "محكمة التنفيذ بالطائف"),
+        ("المدينة المنورة", "المدينة المنورة", "محكمة التنفيذ بالمدينة المنورة"),
+        ("الشرقية", "الدمام", "محكمة التنفيذ بالدمام"),
+        ("الشرقية", "الخبر", "محكمة التنفيذ بالخبر"),
+        ("الشرقية", "الأحساء", "محكمة التنفيذ بالأحساء"),
+        ("القصيم", "بريدة", "محكمة التنفيذ ببريدة"),
+        ("عسير", "أبها", "محكمة التنفيذ بأبها"),
+        ("تبوك", "تبوك", "محكمة التنفيذ بتبوك"),
+        ("حائل", "حائل", "محكمة التنفيذ بحائل"),
+        ("جازان", "جازان", "محكمة التنفيذ بجازان"),
+        ("الجوف", "سكاكا", "محكمة التنفيذ بسكاكا"),
+    ];
+
+    private static readonly string[] ExecutionCircuitNames =
+    [
+        "دائرة التنفيذ الأولى",
+        "دائرة التنفيذ الثانية",
+        "دائرة التنفيذ الثالثة",
+        "دائرة التنفيذ الرابعة",
+        "دائرة التنفيذ الخامسة",
+        "دائرة التنفيذ السادسة",
+        "دائرة التنفيذ السابعة",
+        "دائرة التنفيذ الثامنة",
+        "دائرة التنفيذ التاسعة",
+        "دائرة التنفيذ العاشرة",
+        "دائرة التنفيذ الحادية عشرة",
+        "دائرة التنفيذ الثانية عشرة",
+        "دائرة التنفيذ الثالثة عشرة",
+        "دائرة التنفيذ الرابعة عشرة",
+        "دائرة التنفيذ الخامسة عشرة",
+        "دائرة التنفيذ السادسة عشرة",
+        "دائرة التنفيذ السابعة عشرة",
+        "دائرة التنفيذ الثامنة عشرة",
+        "دائرة التنفيذ التاسعة عشرة",
+        "دائرة التنفيذ العشرون",
+        "دائرة التنفيذ الواحدة والعشرون",
+        "دائرة التنفيذ الثانية والعشرون",
+        "دائرة التنفيذ الثالثة والعشرون",
+        "دائرة التنفيذ الرابعة والعشرون",
+        "دائرة التنفيذ الخامسة والعشرون",
+        "دائرة التنفيذ السادسة والعشرون",
+        "دائرة التنفيذ السابعة والعشرون",
+        "دائرة التنفيذ الثامنة والعشرون",
+        "دائرة التنفيذ التاسعة والعشرون",
+        "دائرة التنفيذ الثلاثون",
+        "دائرة التنفيذ الواحدة والثلاثون",
+        "دائرة التنفيذ الثانية والثلاثون",
+        "دائرة التنفيذ الثالثة والثلاثون",
+        "دائرة التنفيذ الرابعة والثلاثون",
+        "دائرة التنفيذ الخامسة والثلاثون",
+    ];
+
     private static readonly JsonSerializerOptions AuditJsonOpts = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -26,11 +83,9 @@ public sealed class CourtsService : ICourtsService
 
     public async Task EnsureSeededAsync(CancellationToken cancellationToken = default)
     {
-        if (await _db.Courts.AnyAsync(cancellationToken)) return;
-
-        var legacy = await _db.CourtCatalogEntries.AsNoTracking().ToListAsync(cancellationToken);
-        if (legacy.Count > 0)
+        if (!await _db.Courts.AnyAsync(cancellationToken))
         {
+            var legacy = await _db.CourtCatalogEntries.AsNoTracking().ToListAsync(cancellationToken);
             foreach (var row in legacy)
             {
                 var court = new Court
@@ -58,47 +113,82 @@ public sealed class CourtsService : ICourtsService
                     });
                 }
             }
-            await _db.SaveChangesAsync(cancellationToken);
-            await _cache.RemoveAsync(CacheKeys.CourtsCatalog, cancellationToken);
-            return;
+
+            if (legacy.Count > 0)
+            {
+                await _db.SaveChangesAsync(cancellationToken);
+            }
         }
 
-        var defaults = new (string City, string Court, string[] Circuits)[]
+        var courts = await _db.Courts
+            .Include(c => c.Circuits)
+            .ToListAsync(cancellationToken);
+        var now = DateTime.UtcNow;
+
+        foreach (var seed in ExecutionCourtSeeds)
         {
-            ("مكة المكرمة", "محكمة التنفيذ بمكة المكرمة", ["الدائرة الأولى", "الدائرة الثانية"]),
-            ("مكة المكرمة", "محكمة الاستئناف بمكة المكرمة", ["دائرة الأحوال"]),
-            ("جدة", "محكمة التنفيذ بجدة", ["الدائرة الأولى", "الدائرة الثانية", "الدائرة الثالثة"]),
-            ("الرياض", "محكمة التنفيذ بالرياض", ["الدائرة الأولى", "الدائرة الثانية"]),
-            ("الطائف", "محكمة التنفيذ بالطائف", ["الدائرة الأولى"]),
-        };
-        foreach (var d in defaults)
-        {
-            var court = new Court
+            var court = courts.FirstOrDefault(c =>
+                c.Name == seed.Name && c.City == seed.City);
+            if (court is null)
             {
-                Id = Guid.NewGuid(),
-                Name = d.Court,
-                Region = d.City,
-                City = d.City,
-                IsActive = true,
-                CreatedBy = "system",
-                CreatedAtUtc = DateTime.UtcNow,
-            };
-            _db.Courts.Add(court);
-            foreach (var circuitNo in d.Circuits)
+                court = new Court
+                {
+                    Id = Guid.NewGuid(),
+                    Name = seed.Name,
+                    Region = seed.Region,
+                    City = seed.City,
+                    IsActive = true,
+                    CreatedBy = "system",
+                    CreatedAtUtc = now,
+                };
+                courts.Add(court);
+                _db.Courts.Add(court);
+            }
+
+            for (var index = 0; index < ExecutionCircuitNames.Length; index++)
             {
-                _db.CourtCircuits.Add(new CourtCircuit
+                var circuitNo = (index + 1).ToString();
+                var circuitName = ExecutionCircuitNames[index];
+                var legacyName = circuitName.Replace("دائرة التنفيذ ", "الدائرة ");
+                var circuit = court.Circuits.FirstOrDefault(c => c.CircuitNo == circuitNo);
+
+                if (circuit is null)
+                {
+                    circuit = court.Circuits.FirstOrDefault(c =>
+                        c.CreatedBy == "system" &&
+                        (c.CircuitNo == legacyName || c.CircuitName == circuitName));
+                }
+
+                if (circuit is not null)
+                {
+                    if (circuit.CreatedBy == "system")
+                    {
+                        circuit.CircuitNo = circuitNo;
+                        circuit.CircuitName = circuitName;
+                    }
+                    continue;
+                }
+
+                var newCircuit = new CourtCircuit
                 {
                     Id = Guid.NewGuid(),
                     CourtId = court.Id,
                     CircuitNo = circuitNo,
+                    CircuitName = circuitName,
                     IsActive = true,
                     CreatedBy = "system",
-                    CreatedAtUtc = DateTime.UtcNow,
-                });
+                    CreatedAtUtc = now,
+                };
+                court.Circuits.Add(newCircuit);
+                _db.CourtCircuits.Add(newCircuit);
             }
         }
-        await _db.SaveChangesAsync(cancellationToken);
-        await _cache.RemoveAsync(CacheKeys.CourtsCatalog, cancellationToken);
+
+        if (_db.ChangeTracker.HasChanges())
+        {
+            await _db.SaveChangesAsync(cancellationToken);
+            await _cache.RemoveAsync(CacheKeys.CourtsCatalog, cancellationToken);
+        }
     }
 
     public async Task<CourtListResponseDto> ListAdminAsync(
