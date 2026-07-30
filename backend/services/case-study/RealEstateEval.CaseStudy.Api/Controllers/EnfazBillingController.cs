@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
@@ -37,7 +38,9 @@ public class EnfazBillingController : ControllerBase
         CancellationToken ct)
     {
         var dto = await _billing.SavePoBillingAsync(poNumber, request, ct);
-        return dto is null ? BadRequest(new { error = "تعذر حفظ أتعاب إنفاذ." }) : Ok(dto);
+        return dto is null
+            ? this.BadRequestProblem("تعذر حفظ أتعاب إنفاذ.")
+            : Ok(dto);
     }
 
     [HttpGet("tracking")]
@@ -54,7 +57,8 @@ public class EnfazBillingController : ControllerBase
     {
         var dto = await _billing.IssueInvoiceAsync(poNumber, ct);
         return dto is null
-            ? BadRequest(new { error = "تعذر إصدار الفاتورة — تحقق من اكتمال أمر العمل وتعبئة الأتعاب." })
+            ? this.BadRequestProblem(
+                "تعذر إصدار الفاتورة — تحقق من اكتمال أمر العمل وتعبئة الأتعاب.")
             : Ok(dto);
     }
 
@@ -64,7 +68,7 @@ public class EnfazBillingController : ControllerBase
     {
         var pdf = await _billing.GetInvoicePdfAsync(poNumber, ct);
         if (pdf is null)
-            return NotFound(new { error = "لا توجد فاتورة صادرة لهذا أمر العمل." });
+            return this.NotFoundProblem("لا توجد فاتورة صادرة لهذا أمر العمل.");
 
         var safePo = poNumber.Trim().Replace('"', '_');
         return File(pdf, "application/pdf", $"enfaz-invoice-{safePo}.pdf");

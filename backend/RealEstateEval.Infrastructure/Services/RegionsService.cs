@@ -4,7 +4,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Caching;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -15,10 +15,10 @@ public sealed class RegionsService : IRegionsService
         PropertyNameCaseInsensitive = true,
     };
 
-    private readonly ApplicationDbContext _db;
+    private readonly PlatformDbContext _db;
     private readonly ApiResponseCache _cache;
 
-    public RegionsService(ApplicationDbContext db, ApiResponseCache cache)
+    public RegionsService(PlatformDbContext db, ApiResponseCache cache)
     {
         _db = db;
         _cache = cache;

@@ -37,6 +37,7 @@ public sealed class RateLimitingOptions
         "/api/auth/login-username",
         "/api/auth/refresh",
         "/api/auth/dev-login-users",
+        "/api/auth/activate",
     ];
 
     /// <summary>Container healthchecks and post-deploy smoke checks poll these.</summary>

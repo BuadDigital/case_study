@@ -18,7 +18,8 @@ public class CaseStudyPartyFormLockTests
     [Fact]
     public async Task Parent_submission_locks_existing_party_forms()
     {
-        await using var db = CreateDb();
+        await using var contexts = CreateContexts();
+        var db = contexts.Legacy;
         SeedWorkflow(db);
         db.CaseStudyForms.Add(new CaseStudyForm
         {
@@ -32,7 +33,7 @@ public class CaseStudyPartyFormLockTests
         });
         await db.SaveChangesAsync();
 
-        var forms = CreateFormService(db);
+        var forms = CreateFormService(contexts);
         var (_, errors) = await forms.SaveAsync(
             ParentTaskId,
             party: false,
@@ -52,7 +53,8 @@ public class CaseStudyPartyFormLockTests
     [Fact]
     public async Task Party_save_rejected_when_parent_form_submitted()
     {
-        await using var db = CreateDb();
+        await using var contexts = CreateContexts();
+        var db = contexts.Legacy;
         SeedWorkflow(db);
         db.CaseStudyForms.Add(new CaseStudyForm
         {
@@ -66,7 +68,7 @@ public class CaseStudyPartyFormLockTests
         });
         await db.SaveChangesAsync();
 
-        var forms = CreateFormService(db);
+        var forms = CreateFormService(contexts);
         var (result, errors) = await forms.SaveAsync(
             AppraisalTaskId,
             party: true,
@@ -85,7 +87,8 @@ public class CaseStudyPartyFormLockTests
     [Fact]
     public async Task Parent_save_rejected_when_parent_form_submitted()
     {
-        await using var db = CreateDb();
+        await using var contexts = CreateContexts();
+        var db = contexts.Legacy;
         SeedWorkflow(db);
         db.CaseStudyForms.Add(new CaseStudyForm
         {
@@ -99,7 +102,7 @@ public class CaseStudyPartyFormLockTests
         });
         await db.SaveChangesAsync();
 
-        var forms = CreateFormService(db);
+        var forms = CreateFormService(contexts);
         var (result, errors) = await forms.SaveAsync(
             ParentTaskId,
             party: false,
@@ -121,7 +124,8 @@ public class CaseStudyPartyFormLockTests
     [Fact]
     public async Task Party_save_rejected_when_party_form_locked()
     {
-        await using var db = CreateDb();
+        await using var contexts = CreateContexts();
+        var db = contexts.Legacy;
         SeedWorkflow(db);
         db.CaseStudyForms.Add(new CaseStudyForm
         {
@@ -135,7 +139,7 @@ public class CaseStudyPartyFormLockTests
         });
         await db.SaveChangesAsync();
 
-        var forms = CreateFormService(db);
+        var forms = CreateFormService(contexts);
         var (result, errors) = await forms.SaveAsync(
             AppraisalTaskId,
             party: true,
@@ -151,12 +155,16 @@ public class CaseStudyPartyFormLockTests
         Assert.Contains("إغلاق نموذج الطرف", errors!["_"]);
     }
 
-    private static CaseStudyFormService CreateFormService(ApplicationDbContext db)
+    private static CaseStudyFormService CreateFormService(TestDatabases.ContextSet contexts)
     {
+        var db = contexts.Legacy;
         var timeline = new PropertyTimelineService(db);
         var valuation = new ValuationRequestService(
-            db,
-            new OutboxIntegrationEventPublisher(db, NullLogger<OutboxIntegrationEventPublisher>.Instance));
+            contexts.Valuation,
+            new ValuationOutboxPublisher(
+                contexts.Valuation,
+                NullLogger<ValuationOutboxPublisher>.Instance),
+            new CaseStudyPropertyPoNumberLookup(db));
         var dispatch = new CaseStudyValuationDispatchService(
             db,
             valuation,
@@ -166,13 +174,8 @@ public class CaseStudyPartyFormLockTests
         return new CaseStudyFormService(db, dispatch, workflow);
     }
 
-    private static ApplicationDbContext CreateDb()
-    {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"case-study-party-lock-{Guid.NewGuid():N}")
-            .Options;
-        return new ApplicationDbContext(options);
-    }
+    private static TestDatabases.ContextSet CreateContexts() =>
+        TestDatabases.Create("case-study-party-lock");
 
     private static void SeedWorkflow(ApplicationDbContext db)
     {
@@ -199,34 +202,24 @@ public class CaseStudyPartyFormLockTests
             DeedNumber = "1234567890",
         });
         db.WorkflowTasks.AddRange(
-            new WorkflowTask
-            {
-                Id = ParentTaskId,
-                Kind = "case-study-property",
-                PoNumber = "PO-900",
-                PropertyId = PropertyId,
-                PropertyOrdinal = 1,
-                Title = "دراسة حالة",
-                Phase = "case-study",
-                Status = WorkflowTaskStatus.Open,
-                CreatedAtUtc = now,
-                UpdatedAtUtc = now,
-            },
-            new WorkflowTask
-            {
-                Id = AppraisalTaskId,
-                Kind = "property-appraisal",
-                PoNumber = "PO-900",
-                PropertyId = PropertyId,
-                PropertyOrdinal = 1,
-                ParentTaskId = ParentTaskId,
-                Title = "تقييم عقاري",
-                Phase = "done",
-                AssigneeName = "عبدالله الكثيري",
-                Status = WorkflowTaskStatus.Open,
-                CreatedAtUtc = now,
-                UpdatedAtUtc = now,
-            });
+            WorkflowTask.Create(
+                WorkflowTaskKind.CaseStudyProperty,
+                "PO-900",
+                now,
+                title: "دراسة حالة",
+                phase: WorkflowTaskPhase.CaseStudy,
+                id: ParentTaskId,
+                propertyId: PropertyId),
+            WorkflowTask.Create(
+                WorkflowTaskKind.PropertyAppraisal,
+                "PO-900",
+                now,
+                title: "تقييم عقاري",
+                phase: WorkflowTaskPhase.Done,
+                assigneeName: "عبدالله الكثيري",
+                id: AppraisalTaskId,
+                propertyId: PropertyId,
+                parentTaskId: ParentTaskId));
         db.SaveChanges();
     }
 }

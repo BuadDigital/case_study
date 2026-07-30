@@ -11,11 +11,13 @@ const VALID_CATEGORIES = new Set([
 const VALID_ENTITY_TYPES = new Set([
   "property",
   "task",
+  "operations-task",
   "failure",
   "work-order",
 ]);
 
 function asTone(value?: string | null): AppNotification["tone"] {
+  if (value === "warning") return "warn";
   if (value && VALID_TONES.has(value)) {
     return value as AppNotification["tone"];
   }

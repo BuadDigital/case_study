@@ -6,13 +6,13 @@ using Microsoft.Extensions.Configuration;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class AuthSessionService(
     UserManager<ApplicationUser> userManager,
-    ApplicationDbContext db,
+    IdentityDbContext db,
     IPermissionService permissions,
     IJwtTokenService jwtTokenService,
     IConfiguration configuration) : IAuthSessionService
@@ -33,7 +33,7 @@ public sealed class AuthSessionService(
     /// </summary>
     private static readonly TimeSpan RotationGrace = TimeSpan.FromSeconds(60);
 
-    public async Task<LoginResponse?> IssueAsync(
+    private async Task<LoginResponse?> IssueAsync(
         ApplicationUser user,
         CancellationToken cancellationToken = default)
     {
@@ -41,6 +41,19 @@ public sealed class AuthSessionService(
             return null;
 
         return await IssueForSessionAsync(user, Guid.NewGuid(), cancellationToken);
+    }
+
+    public async Task<LoginResponse?> IssueForUserIdAsync(
+        string userId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            return null;
+
+        var user = await userManager.FindByIdAsync(userId);
+        return user is null
+            ? null
+            : await IssueAsync(user, cancellationToken);
     }
 
     public async Task<LoginResponse?> IssueForUsernameAsync(
@@ -149,9 +162,12 @@ public sealed class AuthSessionService(
         var roles = await userManager.GetRolesAsync(user);
         var userPermissions = await permissions.GetForUserIdAsync(user.Id, cancellationToken);
         var (accessToken, accessExpiresAtUtc) = jwtTokenService.CreateToken(
-            user,
+            new TokenSubject(user.Id, user.Email ?? string.Empty, user.DisplayName),
             roles,
-            userPermissions?.Capabilities ?? []);
+            userPermissions?.Capabilities ?? [],
+            userPermissions?.PrototypeRole,
+            userPermissions?.DistributionAssigneeId,
+            userPermissions?.Pages);
 
         var nowUtc = DateTime.UtcNow;
         var refreshToken = CreateTokenValue();

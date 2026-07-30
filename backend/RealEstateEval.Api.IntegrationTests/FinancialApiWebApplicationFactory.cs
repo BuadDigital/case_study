@@ -8,22 +8,19 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.Api.IntegrationTests;
 
 public sealed class FinancialApiWebApplicationFactory
     : WebApplicationFactory<FinancialApi::Program>
 {
-    public FinancialApiWebApplicationFactory()
-    {
-        Environment.SetEnvironmentVariable(
-            "REAL_ESTATE_EVAL_PG_CONNECTION_STRING_FINANCIAL",
-            "Host=localhost;Database=financial_integration_test");
-    }
-
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+        builder.UseSetting(
+            "ConnectionStrings:Financial",
+            "Host=localhost;Database=financial_integration_test");
         builder.ConfigureAppConfiguration((_, config) =>
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>
@@ -104,8 +101,19 @@ internal sealed class StubPartyFeePricingService : IPartyFeePricingService
         return Task.FromResult(row);
     }
 
+    /// <summary>Deleting this table blows up the way the real service does for the last table in a category.</summary>
+    public static readonly Guid ThrowingDeleteId = Guid.Parse("deadbeef-0000-4000-8000-000000000001");
+
+    /// <summary>Recognisable internal text that must never reach the HTTP response.</summary>
+    public const string InternalFailureMessage =
+        "Cannot delete the last pricing table in this category. [table=fee_pricing_tables]";
+
     public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
-        => Task.FromResult(true);
+    {
+        if (id == ThrowingDeleteId)
+            throw new InvalidOperationException(InternalFailureMessage);
+        return Task.FromResult(true);
+    }
 
     public Task<IReadOnlyList<string>> ListAssignmentsAsync(
         Guid tableId,
@@ -125,7 +133,7 @@ internal sealed class StubPartyFeePricingService : IPartyFeePricingService
     }
 
     public Task<decimal?> ResolveDefaultFeeAsync(
-        string taskKind,
+        WorkflowTaskKind taskKind,
         string partyType,
         decimal? areaM2 = null,
         string? assigneeId = null,

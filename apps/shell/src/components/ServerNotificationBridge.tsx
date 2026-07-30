@@ -21,6 +21,7 @@ import {
   NOTIFICATION_PUSHED_EVENT,
   NOTIFICATION_TOAST_EVENT,
   replaceNotificationsFromServer,
+  setNotificationStorageUser,
   upsertNotificationFromServer,
   type AppNotification,
 } from "@platform/app-shared/notifications/notification-store";
@@ -31,7 +32,7 @@ const LOCAL_SYNC_SUPPRESS_MS = 60_000;
 
 /** Server inbox sync via SSE with polling fallback. */
 export function ServerNotificationBridge() {
-  const { token, authReady, isAuthenticated, role } = useAuth();
+  const { token, authReady, isAuthenticated, role, user } = useAuth();
   const seenIdsRef = useRef<Set<string>>(new Set());
   const initialLoadRef = useRef(true);
   const localSyncSourceEventsRef = useRef<Map<string, number>>(new Map());
@@ -40,6 +41,10 @@ export function ServerNotificationBridge() {
     if (!isFeatureEnabled("notificationCenter")) return;
     if (!authReady || !isAuthenticated || !token) return;
 
+    setNotificationStorageUser(user?.id);
+    seenIdsRef.current.clear();
+    initialLoadRef.current = true;
+    localSyncSourceEventsRef.current.clear();
     let cancelled = false;
 
     async function pull(notifyNew: boolean) {
@@ -156,7 +161,7 @@ export function ServerNotificationBridge() {
       streamAbort.abort();
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [authReady, isAuthenticated, token, role]);
+  }, [authReady, isAuthenticated, token, role, user?.id]);
 
   useEffect(() => {
     if (!token) return;

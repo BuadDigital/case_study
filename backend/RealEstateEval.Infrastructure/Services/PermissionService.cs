@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Permissions;
 
 namespace RealEstateEval.Infrastructure.Services;
@@ -11,8 +11,8 @@ namespace RealEstateEval.Infrastructure.Services;
 public sealed class PermissionService : IPermissionService
 {
     private readonly UserManager<ApplicationUser> _users;
-    private readonly ApplicationDbContext _db;
-    public PermissionService(UserManager<ApplicationUser> users, ApplicationDbContext db)
+    private readonly IdentityDbContext _db;
+    public PermissionService(UserManager<ApplicationUser> users, IdentityDbContext db)
     {
         _users = users;
         _db = db;

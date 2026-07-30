@@ -126,16 +126,12 @@ public class IdentityApiDevGateTests : IClassFixture<IdentityApiWebApplicationFa
 public sealed class IdentityApiWebApplicationFactory
     : WebApplicationFactory<IdentityApi::Program>
 {
-    public IdentityApiWebApplicationFactory()
-    {
-        Environment.SetEnvironmentVariable(
-            "REAL_ESTATE_EVAL_PG_CONNECTION_STRING_IDENTITY",
-            "Host=localhost;Database=identity_integration_test");
-    }
-
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Production");
+        builder.UseSetting(
+            "ConnectionStrings:Identity",
+            "Host=localhost;Database=identity_integration_test");
         builder.UseSetting(
             "Jwt:SigningKey",
             "integration-test-signing-key-that-is-at-least-sixty-four-characters-long-1234567890");
@@ -186,8 +182,8 @@ internal sealed class StubAuthSessionService : IAuthSessionService
 {
     public const string ValidToken = "valid-refresh-token";
 
-    public Task<LoginResponse?> IssueAsync(
-        Domain.ApplicationUser user,
+    public Task<LoginResponse?> IssueForUserIdAsync(
+        string userId,
         CancellationToken cancellationToken = default) =>
         Task.FromResult<LoginResponse?>(null);
 

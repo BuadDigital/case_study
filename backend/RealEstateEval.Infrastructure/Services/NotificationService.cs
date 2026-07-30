@@ -10,20 +10,16 @@ namespace RealEstateEval.Infrastructure.Services;
 public sealed class NotificationService : INotificationService
 {
     private const int MaxItemsPerUser = 50;
-    private static readonly TimeSpan DedupeWindow = TimeSpan.FromSeconds(30);
 
     private readonly ApplicationDbContext _db;
     private readonly IIntegrationEventPublisher _events;
-    private readonly INotificationRealtimePublisher _realtime;
 
     public NotificationService(
         ApplicationDbContext db,
-        IIntegrationEventPublisher events,
-        INotificationRealtimePublisher realtime)
+        IIntegrationEventPublisher events)
     {
         _db = db;
         _events = events;
-        _realtime = realtime;
     }
 
     public async Task<IReadOnlyList<UserNotificationDto>> ListForUserAsync(
@@ -48,9 +44,7 @@ public sealed class NotificationService : INotificationService
             [new KeyValuePair<string, CreateUserNotificationRequest>(userId, request)],
             cancellationToken);
         var row = rows.Single();
-        var dto = ToDto(row);
-        _realtime.Publish(userId, dto);
-        return dto;
+        return ToDto(row);
     }
 
     public async Task<int> CreateForUsersAsync(
@@ -98,11 +92,6 @@ public sealed class NotificationService : INotificationService
         if (normalized.Count == 0) return 0;
 
         var rows = await CreateBatchAsync(normalized, cancellationToken);
-        foreach (var row in rows)
-        {
-            _realtime.Publish(row.UserId, ToDto(row));
-        }
-
         return rows.Count;
     }
 
@@ -156,6 +145,29 @@ public sealed class NotificationService : INotificationService
         IReadOnlyCollection<KeyValuePair<string, CreateUserNotificationRequest>> requestsByUser,
         CancellationToken cancellationToken)
     {
+        var checkpoint = ChangeTrackerCheckpoint.Capture(_db);
+        try
+        {
+            return await StageBatchAsync(requestsByUser, cancellationToken);
+        }
+        catch (DbUpdateException ex) when (
+            PostgresErrors.IsUniqueViolation(
+                ex,
+                DatabaseIndexNames.UserNotificationUnreadSourceEvent)
+            && _db.Database.CurrentTransaction is null)
+        {
+            // A concurrent delivery of the same event inserted the row first. The failed
+            // statement rolled back, so undo the staged work and redo it: the second pass
+            // reads the winning row and refreshes it instead of inserting a duplicate.
+            checkpoint.Rollback();
+            return await StageBatchAsync(requestsByUser, cancellationToken);
+        }
+    }
+
+    private async Task<IReadOnlyList<UserNotification>> StageBatchAsync(
+        IReadOnlyCollection<KeyValuePair<string, CreateUserNotificationRequest>> requestsByUser,
+        CancellationToken cancellationToken)
+    {
         var now = DateTime.UtcNow;
         var userIds = requestsByUser
             .Select(entry => entry.Key)
@@ -171,12 +183,12 @@ public sealed class NotificationService : INotificationService
             UserNotification? row = null;
             if (!string.IsNullOrWhiteSpace(request.SourceEvent))
             {
-                var cutoff = now - DedupeWindow;
+                // Must match IX_UserNotifications_UserId_SourceEvent_Unread exactly, or a
+                // resend the probe considers new is rejected by the index instead.
                 row = existingRows
                     .Where(n => n.UserId == userId)
                     .Where(n => n.SourceEvent == request.SourceEvent)
                     .Where(n => n.ReadAtUtc == null)
-                    .Where(n => n.CreatedAtUtc >= cutoff)
                     .OrderByDescending(n => n.CreatedAtUtc)
                     .FirstOrDefault();
             }
@@ -186,9 +198,9 @@ public sealed class NotificationService : INotificationService
                 row.Title = request.Title;
                 row.Body = request.Body;
                 row.Href = request.Href;
-                row.Tone = request.Tone;
-                row.Category = request.Category;
-                row.EntityType = request.EntityType;
+                row.Tone = NotificationContract.Tones.Normalize(request.Tone);
+                row.Category = NotificationContract.Categories.Normalize(request.Category);
+                row.EntityType = NotificationContract.EntityTypes.Normalize(request.EntityType);
                 row.EntityId = request.EntityId;
                 row.Actor = request.Actor;
                 row.CreatedAtUtc = now;
@@ -202,9 +214,9 @@ public sealed class NotificationService : INotificationService
                     Title = request.Title,
                     Body = request.Body,
                     Href = request.Href,
-                    Tone = request.Tone,
-                    Category = request.Category,
-                    EntityType = request.EntityType,
+                    Tone = NotificationContract.Tones.Normalize(request.Tone),
+                    Category = NotificationContract.Categories.Normalize(request.Category),
+                    EntityType = NotificationContract.EntityTypes.Normalize(request.EntityType),
                     EntityId = request.EntityId,
                     Actor = request.Actor,
                     SourceEvent = request.SourceEvent,
@@ -258,9 +270,9 @@ public sealed class NotificationService : INotificationService
         Title = row.Title,
         Body = row.Body,
         Href = row.Href,
-        Tone = row.Tone,
-        Category = row.Category,
-        EntityType = row.EntityType,
+        Tone = NotificationContract.Tones.Normalize(row.Tone),
+        Category = NotificationContract.Categories.Normalize(row.Category),
+        EntityType = NotificationContract.EntityTypes.Normalize(row.EntityType),
         EntityId = row.EntityId,
         Actor = row.Actor,
         SourceEvent = row.SourceEvent,

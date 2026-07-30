@@ -2,24 +2,29 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.Financial.Api.Controllers;
 
 [ApiController]
+[Route("api/financial")]
 [Route("api/financial/v1")]
 [Authorize]
 public class FinancialController : ControllerBase
 {
     private readonly IFinancialReportService _financial;
     private readonly IPartyFeePricingService _pricing;
+    private readonly ILogger<FinancialController> _logger;
 
     public FinancialController(
         IFinancialReportService financial,
-        IPartyFeePricingService pricing)
+        IPartyFeePricingService pricing,
+        ILogger<FinancialController> logger)
     {
         _financial = financial;
         _pricing = pricing;
+        _logger = logger;
     }
 
     [HttpGet("summary")]
@@ -115,7 +120,9 @@ public class FinancialController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { error = ex.Message });
+            _logger.LogWarning(ex, "Rejected delete of party fee pricing table {TableId}", id);
+            return this.BadRequestProblem(
+                "تعذر حذف جدول الأتعاب — يجب أن يبقى جدول واحد على الأقل في هذا التصنيف.");
         }
     }
 }

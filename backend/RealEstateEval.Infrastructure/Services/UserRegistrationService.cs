@@ -1,26 +1,29 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Permissions;
-using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 public class UserRegistrationService : IUserRegistrationService
 {
-    private readonly ApplicationDbContext _db;
+    private readonly IdentityDbContext _db;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IOptions<DataProtectionTokenProviderOptions> _activationTokenOptions;
 
     public UserRegistrationService(
-        ApplicationDbContext db,
-        UserManager<ApplicationUser> userManager)
+        IdentityDbContext db,
+        UserManager<ApplicationUser> userManager,
+        IOptions<DataProtectionTokenProviderOptions> activationTokenOptions)
     {
         _db = db;
         _userManager = userManager;
+        _activationTokenOptions = activationTokenOptions;
     }
 
     public async Task<IReadOnlyList<DevLoginUserDto>> ListDevLoginUsersAsync(
@@ -291,7 +294,6 @@ public class UserRegistrationService : IUserRegistrationService
         }
 
         var userName = await AllocateUniqueUserNameAsync(normalizedEmail, cancellationToken);
-        var temporaryPassword = GenerateTemporaryPassword();
 
         var user = new ApplicationUser
         {
@@ -301,7 +303,9 @@ public class UserRegistrationService : IUserRegistrationService
             DisplayName = displayName,
         };
 
-        var createResult = await _userManager.CreateAsync(user, temporaryPassword);
+        // Deliberately password-less: the account cannot sign in until its holder
+        // redeems an activation ticket, so no credential ever crosses the API boundary.
+        var createResult = await _userManager.CreateAsync(user);
         if (!createResult.Succeeded)
         {
             return (null, new Dictionary<string, string>
@@ -349,8 +353,73 @@ public class UserRegistrationService : IUserRegistrationService
         {
             User = dto,
             UserName = userName,
-            TemporaryPassword = temporaryPassword,
+            ActivationRequired = true,
         }, null);
+    }
+
+    public async Task<(ActivationTicketDto? Ticket, string? Error)> IssueActivationTicketAsync(
+        string userId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            return (null, "المستخدم غير موجود.");
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null || string.IsNullOrWhiteSpace(user.UserName))
+            return (null, "المستخدم غير موجود.");
+
+        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+        return (new ActivationTicketDto
+        {
+            UserName = user.UserName,
+            Token = token,
+            ExpiresAtUtc = DateTime.UtcNow.Add(_activationTokenOptions.Value.TokenLifespan),
+        }, null);
+    }
+
+    public async Task<(bool Ok, string? Error)> ActivateAccountAsync(
+        ActivateAccountRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        // One opaque message for every failure: unknown user, bad/expired ticket and weak
+        // password must be indistinguishable to an unauthenticated caller.
+        const string genericError = "رمز التفعيل غير صالح أو منتهي الصلاحية.";
+
+        var userName = request.UserName?.Trim() ?? "";
+        if (userName.Length == 0
+            || string.IsNullOrEmpty(request.Token)
+            || string.IsNullOrEmpty(request.NewPassword))
+        {
+            return (false, genericError);
+        }
+
+        var user = await _userManager.FindByNameAsync(userName)
+            ?? await _userManager.FindByEmailAsync(userName);
+        if (user is null)
+            return (false, genericError);
+
+        var profile = await _db.UserProfiles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.UserId == user.Id, cancellationToken);
+        if (profile is not null && profile.Status != UserStatus.Active)
+            return (false, genericError);
+
+        var result = await _userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
+        if (!result.Succeeded)
+        {
+            // Password-policy failures are the one case worth surfacing: the ticket already
+            // proved possession, so the detail leaks nothing an attacker does not have.
+            var policyOnly = result.Errors.All(e =>
+                e.Code.StartsWith("Password", StringComparison.Ordinal));
+            return (false, policyOnly
+                ? string.Join(" ", result.Errors.Select(e => e.Description))
+                : genericError);
+        }
+
+        // Redeeming a ticket clears any lockout left over from failed sign-in attempts.
+        await _userManager.ResetAccessFailedCountAsync(user);
+        await _userManager.SetLockoutEndDateAsync(user, null);
+        return (true, null);
     }
 
     public async Task<(bool Ok, string? Error)> DeleteStaffAsync(
@@ -459,19 +528,6 @@ public class UserRegistrationService : IUserRegistrationService
             slug = "user";
 
         return $"{prefix}-{slug}";
-    }
-
-    private static string GenerateTemporaryPassword()
-    {
-        const string alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
-        Span<char> chars = stackalloc char[16];
-        "Tmp1!".AsSpan().CopyTo(chars);
-        for (var i = 5; i < chars.Length; i++)
-        {
-            chars[i] = alphabet[RandomNumberGenerator.GetInt32(alphabet.Length)];
-        }
-
-        return new string(chars);
     }
 
     private sealed record StaffRoleDefaults(

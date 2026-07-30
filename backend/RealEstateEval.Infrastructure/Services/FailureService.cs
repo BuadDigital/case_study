@@ -11,7 +11,7 @@ namespace RealEstateEval.Infrastructure.Services;
 public class FailureService : IFailureService
 {
     private const int MaxListRows = 500;
-    private const string CaseStudyPropertyKind = "case-study-property";
+    private const WorkflowTaskKind CaseStudyPropertyKind = WorkflowTaskKind.CaseStudyProperty;
 
     private static readonly HashSet<string> ActiveStatuses = PropertyFailureStatus.Active;
 
@@ -411,11 +411,11 @@ public class FailureService : IFailureService
             task.Id,
             new PatchWorkflowTaskRequest
             {
-                Phase = "obstruction",
-                ObstructionPriorPhase = task.Phase,
+                Phase = WorkflowTaskPhaseValues.Obstruction,
+                ObstructionPriorPhase = task.Phase.ToDbValue(),
                 AssigneeRole = "section-supervisor",
                 AssigneeName = "مشرف دراسة الحالة",
-                Status = WorkflowTaskStatus.Blocked,
+                Status = WorkflowTaskStatusValues.Blocked,
                 ObstructionReason = reason.Trim(),
             },
             cancellationToken);
@@ -426,20 +426,19 @@ public class FailureService : IFailureService
         CancellationToken cancellationToken)
     {
         var task = await FindCaseStudyTaskAsync(failure.PoNumber, failure.PropertyId, cancellationToken);
-        if (task is null || task.Phase != "obstruction") return;
+        if (task is null || task.Phase != WorkflowTaskPhase.Obstruction) return;
 
-        var resumePhase = string.IsNullOrWhiteSpace(task.ObstructionPriorPhase)
-            ? (task.PropertyId.HasValue ? "bourse" : "enfath")
-            : task.ObstructionPriorPhase;
+        var resumePhase = task.ObstructionPriorPhase
+            ?? (task.PropertyId.HasValue ? WorkflowTaskPhase.Bourse : WorkflowTaskPhase.Enfath);
 
         await _tasks.PatchAsync(
             task.Id,
             new PatchWorkflowTaskRequest
             {
-                Phase = resumePhase,
+                Phase = resumePhase.ToDbValue(),
                 AssigneeRole = "case-specialist",
                 AssigneeName = "أخصائي دراسة الحالة",
-                Status = WorkflowTaskStatus.Open,
+                Status = WorkflowTaskStatusValues.Open,
                 ObstructionReason = "",
                 ObstructionPriorPhase = "",
             },
@@ -474,7 +473,7 @@ public class FailureService : IFailureService
                 task.Id,
                 new PatchWorkflowTaskRequest
                 {
-                    Status = WorkflowTaskStatus.Blocked,
+                    Status = WorkflowTaskStatusValues.Blocked,
                     ObstructionReason = reason,
                 },
                 cancellationToken);

@@ -38,6 +38,7 @@ import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { DevSystemResetPanel } from "../../components/DevSystemResetPanel";
 import { UserProfileModal } from "../../components/UserProfileModal";
 import {
+  requestActivationTicket,
   submitCreateStaffUser,
   submitDeleteStaffUser,
 } from "../../lib/users-api";
@@ -127,10 +128,16 @@ export function UsersOrganizationView() {
   const [profileUser, setProfileUser] = useState<StaffUser | null>(null);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
-  const [createdCredentials, setCreatedCredentials] = useState<{
+  const [createdUser, setCreatedUser] = useState<{
+    id: string;
     userName: string;
-    temporaryPassword: string;
   } | null>(null);
+  const [activationTicket, setActivationTicket] = useState<{
+    userName: string;
+    token: string;
+    expiresAtUtc: string;
+  } | null>(null);
+  const [issuingTicketFor, setIssuingTicketFor] = useState<string | null>(null);
 
   const filteredUsers = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -170,7 +177,8 @@ export function UsersOrganizationView() {
     }
 
     setSaving(true);
-    setCreatedCredentials(null);
+    setCreatedUser(null);
+    setActivationTicket(null);
     try {
       const result = await submitCreateStaffUser({
         displayName: form.displayName.trim(),
@@ -196,15 +204,37 @@ export function UsersOrganizationView() {
 
       setForm(EMPTY_FORM);
       setErrors({});
-      setCreatedCredentials({
+      setCreatedUser({
+        id: result.result.user.id,
         userName: result.result.userName,
-        temporaryPassword: result.result.temporaryPassword,
       });
       await queryClient.invalidateQueries({ queryKey: prototypeKeys.staffUsers() });
       await refetch();
       showToast("تم إنشاء المستخدم بنجاح.", "success");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function onIssueActivationTicket(userId: string) {
+    setIssuingTicketFor(userId);
+    setActivationTicket(null);
+    try {
+      const result = await requestActivationTicket(userId);
+      if (!result.ok) {
+        showToast(
+          result.kind === "network"
+            ? "تعذر الاتصال بالخادم."
+            : result.message ?? "تعذر إصدار رمز التفعيل.",
+          "error",
+        );
+        return;
+      }
+      setActivationTicket(result.ticket);
+      showToast("تم إصدار رمز التفعيل — اعرضه من بطاقة الإضافة أعلى الصفحة.", "success");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } finally {
+      setIssuingTicketFor(null);
     }
   }
 
@@ -310,21 +340,52 @@ export function UsersOrganizationView() {
                 </Note>
               ) : null}
 
-              {createdCredentials ? (
+              {createdUser ? (
                 <div className="rounded-lg border border-success/30 bg-success-bg px-4 py-3 text-xs leading-relaxed text-success-text">
-                  <strong>بيانات الدخول المؤقتة</strong>
+                  <strong>تم إنشاء الحساب — بانتظار التفعيل</strong>
+                  <div className="mt-2" dir="ltr">
+                    <span className="text-text-3">username:</span>{" "}
+                    {createdUser.userName}
+                  </div>
+                  <p className="m-0 mt-2 text-[11px]" dir="rtl">
+                    لا يملك الحساب كلمة مرور. أصدر رمز تفعيل لمرة واحدة وسلّمه لصاحب
+                    الحساب ليختار كلمة مروره من صفحة <bdi dir="ltr">/activate</bdi>.
+                  </p>
+                  <div className="mt-2.5">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={issuingTicketFor === createdUser.id}
+                      loading={issuingTicketFor === createdUser.id}
+                      onClick={() => void onIssueActivationTicket(createdUser.id)}
+                    >
+                      إصدار رمز التفعيل
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              {activationTicket ? (
+                <div className="rounded-lg border border-warning/40 bg-warning-bg px-4 py-3 text-xs leading-relaxed text-text">
+                  <strong>رمز التفعيل لمرة واحدة</strong>
                   <div className="mt-2 space-y-1" dir="ltr">
                     <div>
                       <span className="text-text-3">username:</span>{" "}
-                      {createdCredentials.userName}
+                      {activationTicket.userName}
                     </div>
-                    <div>
-                      <span className="text-text-3">password:</span>{" "}
-                      {createdCredentials.temporaryPassword}
-                    </div>
+                    <textarea
+                      readOnly
+                      rows={3}
+                      className="w-full resize-none rounded-md border border-border bg-surface p-2 font-mono text-[10px] text-text"
+                      value={activationTicket.token}
+                      onFocus={(e) => e.currentTarget.select()}
+                    />
                   </div>
                   <p className="m-0 mt-2 text-[10px] text-text-3" dir="rtl">
-                    احفظها الآن — لن تُعرض مرة أخرى.
+                    صالح حتى{" "}
+                    {new Date(activationTicket.expiresAtUtc).toLocaleString("ar")} —
+                    يُستخدم مرة واحدة ولن يُعرض مرة أخرى. سلّمه عبر قناة آمنة.
                   </p>
                 </div>
               ) : null}
@@ -454,6 +515,18 @@ export function UsersOrganizationView() {
                         >
                           البروفايل
                         </Button>
+                        {canManage ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={issuingTicketFor === user.id}
+                            loading={issuingTicketFor === user.id}
+                            onClick={() => void onIssueActivationTicket(user.id)}
+                          >
+                            رمز تفعيل
+                          </Button>
+                        ) : null}
                         {canManage && canDeleteUser(user, currentUserId) ? (
                           <Button
                             type="button"

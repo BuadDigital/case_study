@@ -1,7 +1,8 @@
 # ADR 0003: Split ApplicationDbContext before splitting databases
 
-- **Status:** Accepted
+- **Status:** Accepted — partially implemented (extraction step 1 of 5)
 - **Date:** 2026-07-29
+- **Progress last reviewed:** 2026-07-30
 
 ## Context
 
@@ -70,6 +71,25 @@ and is removed after the final slice; it must not receive new mappings.
   short-lived compatibility technique only while the database is shared.
 - ASP.NET Identity stores remain in the identity context; other services should validate
   claims and use identity contracts instead of registering Identity stores everywhere.
+
+## Implementation progress (2026-07-30)
+
+The decision above is unchanged; this section records only how far it has been carried out.
+
+- `AttachmentsDbContext`, `PlatformDbContext`, and `ValuationDbContext` exist and hold the
+  write path for their tables. `IdentityDbContext`, `CaseStudyDbContext`, `FailuresDbContext`,
+  `OperationsDbContext`, and `FinancialDbContext` do not exist yet.
+- Each new context has its own model snapshot, migration stream, and migrations-history table
+  in the schema it owns. The streams live in the existing Infrastructure assembly rather than
+  separate migrations assemblies; separate assemblies follow in Phase 2, when the per-context
+  projects are created.
+- The legacy stream is frozen at `20260729142123_DatabaseRaceGuardsAndIndexes`, and the
+  deploy-time migrator applies it before the context streams in a fixed order.
+- The legacy context keeps read-only mappings of the extracted tables so unmoved slices can
+  still query them. It received no new mappings.
+- One cross-context read was replaced with an owner interface (`IPropertyPoNumberLookup`);
+  the rest are listed with owners and removal criteria in
+  [`docs/architecture/table-ownership-catalog.md`](../architecture/table-ownership-catalog.md).
 
 ## Alternatives considered
 

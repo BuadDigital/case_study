@@ -19,10 +19,11 @@ public class CaseStudyValuationDispatchTests
     [Fact]
     public async Task Case_study_form_submission_creates_valuation_request()
     {
-        await using var db = CreateDb();
+        await using var contexts = TestDatabases.Create("case-study-valuation");
+        var db = contexts.Legacy;
         SeedWorkflow(db);
 
-        var forms = CreateFormService(db);
+        var forms = CreateFormService(contexts);
 
         var (dto, errors) = await forms.SaveAsync(
             ParentTaskId,
@@ -39,7 +40,7 @@ public class CaseStudyValuationDispatchTests
 
         var vr = await db.ValuationRequests.SingleAsync();
         Assert.Equal(PropertyId.ToString(), vr.PropertyId);
-        Assert.Equal("progress", vr.Status);
+        Assert.Equal(ValuationRequestStatus.Progress, vr.Status);
         Assert.Equal("جدة", vr.Area);
         Assert.Equal("فيلا", vr.PropertyType);
         Assert.Equal("عبدالله الكثيري", vr.Appraiser);
@@ -52,10 +53,11 @@ public class CaseStudyValuationDispatchTests
     [Fact]
     public async Task Submitted_form_is_locked_and_never_redispatches()
     {
-        await using var db = CreateDb();
+        await using var contexts = TestDatabases.Create("case-study-valuation");
+        var db = contexts.Legacy;
         SeedWorkflow(db);
 
-        var forms = CreateFormService(db);
+        var forms = CreateFormService(contexts);
 
         var form = new CaseStudyFormDto
         {
@@ -82,10 +84,11 @@ public class CaseStudyValuationDispatchTests
     [Fact]
     public async Task Case_study_form_submission_completes_parent_workflow_task()
     {
-        await using var db = CreateDb();
+        await using var contexts = TestDatabases.Create("case-study-valuation");
+        var db = contexts.Legacy;
         SeedWorkflow(db);
 
-        var forms = CreateFormService(db);
+        var forms = CreateFormService(contexts);
         var (dto, errors) = await forms.SaveAsync(
             ParentTaskId,
             party: false,
@@ -102,15 +105,23 @@ public class CaseStudyValuationDispatchTests
         var task = await db.WorkflowTasks.FindAsync(ParentTaskId);
         Assert.NotNull(task);
         Assert.Equal(WorkflowTaskStatus.Completed, task.Status);
-        Assert.Equal("done", task.Phase);
+        Assert.Equal(WorkflowTaskPhase.Done, task.Phase);
     }
 
-    private static CaseStudyFormService CreateFormService(ApplicationDbContext db)
+    private static CaseStudyFormService CreateFormService(TestDatabases.ContextSet contexts)
     {
+        var db = contexts.Legacy;
         var timeline = new PropertyTimelineService(db);
+
+        // The dispatch adapter runs in the Case Study process but writes valuation rows and
+        // their outbox event through the Valuation context, in one SaveChanges.
         var valuation = new ValuationRequestService(
-            db,
-            new OutboxIntegrationEventPublisher(db, NullLogger<OutboxIntegrationEventPublisher>.Instance));
+            contexts.Valuation,
+            new ValuationOutboxPublisher(
+                contexts.Valuation,
+                NullLogger<ValuationOutboxPublisher>.Instance),
+            new CaseStudyPropertyPoNumberLookup(db));
+
         var dispatch = new CaseStudyValuationDispatchService(
             db,
             valuation,
@@ -118,14 +129,6 @@ public class CaseStudyValuationDispatchTests
             NullLogger<CaseStudyValuationDispatchService>.Instance);
         var workflow = TestInspectorFeeServiceFactory.CreateWorkflow(db);
         return new CaseStudyFormService(db, dispatch, workflow);
-    }
-
-    private static ApplicationDbContext CreateDb()
-    {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"case-study-valuation-{Guid.NewGuid():N}")
-            .Options;
-        return new ApplicationDbContext(options);
     }
 
     private static void SeedWorkflow(ApplicationDbContext db)
@@ -153,34 +156,24 @@ public class CaseStudyValuationDispatchTests
             DeedNumber = "1234567890",
         });
         db.WorkflowTasks.AddRange(
-            new WorkflowTask
-            {
-                Id = ParentTaskId,
-                Kind = "case-study-property",
-                PoNumber = "PO-900",
-                PropertyId = PropertyId,
-                PropertyOrdinal = 1,
-                Title = "دراسة حالة",
-                Phase = "case-study",
-                Status = WorkflowTaskStatus.Open,
-                CreatedAtUtc = now,
-                UpdatedAtUtc = now,
-            },
-            new WorkflowTask
-            {
-                Id = AppraisalTaskId,
-                Kind = "property-appraisal",
-                PoNumber = "PO-900",
-                PropertyId = PropertyId,
-                PropertyOrdinal = 1,
-                ParentTaskId = ParentTaskId,
-                Title = "تقييم عقاري",
-                Phase = "done",
-                AssigneeName = "عبدالله الكثيري",
-                Status = WorkflowTaskStatus.Open,
-                CreatedAtUtc = now,
-                UpdatedAtUtc = now,
-            });
+            WorkflowTask.Create(
+                WorkflowTaskKind.CaseStudyProperty,
+                "PO-900",
+                now,
+                title: "دراسة حالة",
+                phase: WorkflowTaskPhase.CaseStudy,
+                id: ParentTaskId,
+                propertyId: PropertyId),
+            WorkflowTask.Create(
+                WorkflowTaskKind.PropertyAppraisal,
+                "PO-900",
+                now,
+                title: "تقييم عقاري",
+                phase: WorkflowTaskPhase.Done,
+                assigneeName: "عبدالله الكثيري",
+                id: AppraisalTaskId,
+                propertyId: PropertyId,
+                parentTaskId: ParentTaskId));
         db.SaveChanges();
     }
 }

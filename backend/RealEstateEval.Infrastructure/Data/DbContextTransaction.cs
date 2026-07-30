@@ -13,7 +13,7 @@ public static class DbContextTransaction
     /// Commits when <paramref name="action"/> completes without throwing.
     /// </summary>
     public static Task ExecuteInTransactionAsync(
-        ApplicationDbContext db,
+        DbContext db,
         Func<CancellationToken, Task> action,
         CancellationToken cancellationToken = default) =>
         ExecuteInTransactionAsync(
@@ -31,7 +31,7 @@ public static class DbContextTransaction
     /// useful for business-rule failures that already produced an error payload.
     /// </summary>
     public static async Task<T> ExecuteInTransactionAsync<T>(
-        ApplicationDbContext db,
+        DbContext db,
         Func<CancellationToken, Task<(bool Commit, T Result)>> action,
         CancellationToken cancellationToken = default)
     {

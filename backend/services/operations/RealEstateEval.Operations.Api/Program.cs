@@ -20,7 +20,7 @@ var connectionString = ServiceCollectionExtensions.RequireConnectionString(
     builder.Configuration,
     ServiceDatabaseNames.Operations);
 builder.Services.AddPersistence(builder.Configuration, connectionString);
-builder.Services.AddIdentityInfrastructure();
+builder.Services.AddClaimsPermissionService();
 builder.Services.AddOperationsInfrastructure();
 builder.Services.AddRealEstateEvalJwt(builder.Configuration, builder.Environment);
 builder.Services.AddRealEstateEvalCors(builder.Configuration, builder.Environment);
@@ -36,3 +36,5 @@ app.MapDatabaseReady("operations");
 app.MapControllers();
 
 app.Run();
+
+public partial class Program;

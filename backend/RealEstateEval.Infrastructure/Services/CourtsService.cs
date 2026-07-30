@@ -4,7 +4,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Caching;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -72,10 +72,10 @@ public sealed class CourtsService : ICourtsService
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
-    private readonly ApplicationDbContext _db;
+    private readonly PlatformDbContext _db;
     private readonly ApiResponseCache _cache;
 
-    public CourtsService(ApplicationDbContext db, ApiResponseCache cache)
+    public CourtsService(PlatformDbContext db, ApiResponseCache cache)
     {
         _db = db;
         _cache = cache;

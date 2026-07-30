@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
 } from "react";
@@ -15,12 +16,13 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
   NOTIFICATIONS_CHANGED_EVENT,
+  notificationStorageKey,
   pushNotification,
+  setNotificationStorageUser,
   unreadNotificationCount,
   type AppNotification,
 } from "./notification-store";
-
-const STORAGE_KEY = "ree-notifications";
+import { useValidAuthSession } from "../auth/use-auth-session";
 
 type NotificationContextValue = {
   items: AppNotification[];
@@ -37,17 +39,23 @@ const NotificationContext = createContext<NotificationContextValue | null>(null)
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<AppNotification[]>([]);
+  const session = useValidAuthSession();
 
   const refresh = useCallback(() => {
     setItems(listNotifications());
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    setItems([]);
+    setNotificationStorageUser(session?.user.id);
     refresh();
+  }, [refresh, session?.user.id]);
+
+  useEffect(() => {
     const onChange = () => refresh();
     window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, onChange);
     const onStorage = (event: StorageEvent) => {
-      if (event.key === STORAGE_KEY) refresh();
+      if (event.key === notificationStorageKey()) refresh();
     };
     window.addEventListener("storage", onStorage);
     return () => {

@@ -22,6 +22,9 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.HasSequence<int>("ValuationRequestDisplayId", "valuation")
+                .StartsAt(445L);
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
                     b.Property<string>("Id")
@@ -1760,10 +1763,14 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
 
                     b.HasIndex("AssigneeId");
 
+                    b.HasIndex("CreatedBy");
+
                     b.HasIndex("DisplayId")
                         .IsUnique();
 
                     b.HasIndex("DueAtUtc");
+
+                    b.HasIndex("PoNumber");
 
                     b.HasIndex("Status");
 
@@ -1837,7 +1844,8 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
 
                     b.HasIndex("ProcessedAtUtc");
 
-                    b.HasIndex("ProcessedAtUtc", "DeadLetteredAtUtc", "LockedUntilUtc");
+                    b.HasIndex(new[] { "CreatedAtUtc" }, "IX_OutboxMessages_Pending_CreatedAtUtc")
+                        .HasFilter("\"ProcessedAtUtc\" IS NULL AND \"DeadLetteredAtUtc\" IS NULL");
 
                     b.ToTable("OutboxMessages", "messaging");
                 });
@@ -2699,7 +2707,10 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
 
                     b.HasIndex("UserId", "ReadAtUtc");
 
-                    b.HasIndex("UserId", "SourceEvent");
+                    b.HasIndex("UserId", "SourceEvent")
+                        .IsUnique()
+                        .HasDatabaseName("IX_UserNotifications_UserId_SourceEvent_Unread")
+                        .HasFilter("\"SourceEvent\" IS NOT NULL AND \"ReadAtUtc\" IS NULL");
 
                     b.ToTable("UserNotifications", "messaging");
                 });
@@ -2803,7 +2814,14 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DisplayId");
+                    b.HasIndex("DisplayId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ValuationRequests_DisplayId");
+
+                    b.HasIndex("PropertyId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ValuationRequests_PropertyId_Open")
+                        .HasFilter("\"Status\" <> 'done'");
 
                     b.ToTable("ValuationRequests", "valuation");
                 });
@@ -3166,6 +3184,8 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasColumnName("xmin");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AssigneeId");
 
                     b.HasIndex("CreatedAtUtc");
 

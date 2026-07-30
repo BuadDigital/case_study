@@ -88,20 +88,15 @@ public class FieldInspectionWorkspaceServiceTests
     }
 
     private static WorkflowTask NewTask(Guid id, string assigneeId, DateTime now) =>
-        new()
-        {
-            Id = id,
-            Kind = "field-inspection",
-            PoNumber = "PO-FIELD",
-            PropertyOrdinal = 1,
-            Title = "معاينة",
-            Phase = "inspection",
-            Status = WorkflowTaskStatus.Open,
-            AssigneeId = assigneeId,
-            AssigneeRole = "field-inspector",
-            CreatedAtUtc = now,
-            UpdatedAtUtc = now,
-        };
+        WorkflowTask.Create(
+            WorkflowTaskKind.FieldInspection,
+            "PO-FIELD",
+            now,
+            title: "معاينة",
+            phase: WorkflowTaskPhase.Done,
+            assigneeRole: "field-inspector",
+            id: id,
+            assigneeId: assigneeId);
 
     private static FieldInspectionWorkspace NewWorkspace(
         Guid taskId,

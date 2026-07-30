@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.CaseStudy.Api.Integration;
 using RealEstateEval.Infrastructure;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Web;
 using RealEstateEval.Shared.Web;
 
@@ -10,6 +11,7 @@ builder.AddRealEstateEvalObservability("case-study");
 
 builder.Services
     .AddControllers()
+    .AddRealEstateEvalValidation()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
@@ -19,9 +21,9 @@ builder.Services.AddResponseCompression(options => options.EnableForHttps = true
 builder.Services.AddHttpContextAccessor();
 var connectionString = ServiceCollectionExtensions.RequireConnectionString( builder.Configuration, ServiceDatabaseNames.CaseStudy);
 builder.Services.AddPersistence(builder.Configuration, connectionString);
-builder.Services.AddIdentityInfrastructure();
+builder.Services.AddClaimsPermissionService();
 builder.Services.AddCaseStudyInfrastructure(builder.Configuration, builder.Environment);
-builder.Services.AddValuationInfrastructure();
+builder.Services.AddValuationRequestInfrastructure(builder.Configuration, connectionString);
 builder.Services.AddIntegrationEventPublishing(builder.Configuration, builder.Environment);
 builder.Services.AddOutboxDispatcher(builder.Configuration, builder.Environment);
 builder.Services.AddValuationIntegrationHandlers();
@@ -65,12 +67,27 @@ if (migrateOnStartup || seedDemoData)
     var sp = scope.ServiceProvider;
     if (migrateOnStartup)
     {
-        var db = sp.GetRequiredService<ApplicationDbContext>();
-        await db.Database.MigrateAsync();
+        // Same order as the deploy job: frozen legacy stream first, then whichever bounded
+        // contexts this process registers (backend/tools/DbMigrate covers all of them).
+        await sp.GetRequiredService<ApplicationDbContext>().Database.MigrateAsync();
+        foreach (var contextType in BoundedContextMigrations.ApplyOrder)
+        {
+            if (sp.GetService(contextType) is DbContext stream)
+                await stream.Database.MigrateAsync();
+        }
     }
 
     if (seedDemoData)
-        await DataSeeder.SeedAsync(sp);
+    {
+        // Demo seeding needs Identity stores; request paths use claims-based permissions.
+        var seedServices = new ServiceCollection();
+        seedServices.AddLogging();
+        seedServices.AddPersistence(app.Configuration, connectionString);
+        seedServices.AddIdentitySeedStores(app.Configuration, connectionString);
+        seedServices.AddSingleton(app.Configuration);
+        await using var seedProvider = seedServices.BuildServiceProvider();
+        await DataSeeder.SeedAsync(seedProvider);
+    }
 }
 
 app.Run();

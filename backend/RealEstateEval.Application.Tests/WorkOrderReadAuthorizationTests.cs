@@ -79,20 +79,15 @@ public class WorkOrderReadAuthorizationTests
                 PoNumber = "PO-OTHER",
                 CreatedAtUtc = now,
             });
-        db.WorkflowTasks.Add(new WorkflowTask
-        {
-            Id = Guid.NewGuid(),
-            Kind = "field-inspection",
-            PoNumber = "PO-OWNED",
-            Title = "معاينة",
-            Phase = "case-study",
-            AssigneeId = "party-assignee",
-            AssigneeRole = "field-inspector",
-            AssigneeName = "معاين",
-            Status = WorkflowTaskStatus.Open,
-            CreatedAtUtc = now,
-            UpdatedAtUtc = now,
-        });
+        db.WorkflowTasks.Add(WorkflowTask.Create(
+            WorkflowTaskKind.FieldInspection,
+            "PO-OWNED",
+            now,
+            title: "معاينة",
+            phase: WorkflowTaskPhase.Done,
+            assigneeRole: "field-inspector",
+            assigneeName: "معاين",
+            assigneeId: "party-assignee"));
         db.SaveChanges();
     }
 

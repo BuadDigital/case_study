@@ -405,7 +405,8 @@ public class OperationsTaskServiceTests
     {
         // 07:15 UTC = 10:15 Asia/Riyadh (UTC+3) Monday → next work hour 11:00 Riyadh = 08:00 UTC
         var from = new DateTime(2026, 7, 20, 7, 15, 0, DateTimeKind.Utc);
-        var next = OperationsTaskReminderCalculator.NextReminderUtc("high", from);
+        var next = OperationsTaskReminderCalculator.NextReminderUtc(
+            OperationsTaskPriority.High, from);
         Assert.Equal(new DateTime(2026, 7, 20, 8, 0, 0, DateTimeKind.Utc), next);
     }
 
@@ -414,12 +415,14 @@ public class OperationsTaskServiceTests
     {
         // 06:00 UTC = 09:00 Riyadh → noon checkpoint 12:00 Riyadh = 09:00 UTC
         var morning = new DateTime(2026, 7, 20, 6, 0, 0, DateTimeKind.Utc);
-        var noon = OperationsTaskReminderCalculator.NextReminderUtc("medium", morning);
+        var noon = OperationsTaskReminderCalculator.NextReminderUtc(
+            OperationsTaskPriority.Medium, morning);
         Assert.Equal(new DateTime(2026, 7, 20, 9, 0, 0, DateTimeKind.Utc), noon);
 
         // 10:00 UTC = 13:00 Riyadh → end of day 17:00 Riyadh = 14:00 UTC
         var afternoon = new DateTime(2026, 7, 20, 10, 0, 0, DateTimeKind.Utc);
-        var end = OperationsTaskReminderCalculator.NextReminderUtc("medium", afternoon);
+        var end = OperationsTaskReminderCalculator.NextReminderUtc(
+            OperationsTaskPriority.Medium, afternoon);
         Assert.Equal(new DateTime(2026, 7, 20, 14, 0, 0, DateTimeKind.Utc), end);
     }
 

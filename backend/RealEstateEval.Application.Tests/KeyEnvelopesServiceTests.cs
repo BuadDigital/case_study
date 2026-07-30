@@ -206,17 +206,7 @@ public class KeyEnvelopesServiceTests
         var property = NewProperty(workOrder.Id, "DEED-ACC", "REQ-ACC");
         db.WorkOrders.Add(workOrder);
         db.WorkOrderProperties.Add(property);
-        db.WorkflowTasks.Add(new WorkflowTask
-        {
-            Id = Guid.NewGuid(),
-            Kind = "case-study-property",
-            PoNumber = workOrder.PoNumber,
-            PropertyId = property.Id,
-            Status = WorkflowTaskStatus.Open,
-            Phase = "study",
-            CreatedAtUtc = DateTime.UtcNow,
-            UpdatedAtUtc = DateTime.UtcNow,
-        });
+        db.WorkflowTasks.Add(CaseStudyTask(workOrder.PoNumber, property.Id));
         var attachmentId = await AddAttachmentAsync(db, "eviction.pdf");
         await db.SaveChangesAsync();
 
@@ -238,7 +228,8 @@ public class KeyEnvelopesServiceTests
             f => f.PropertyId == property.Id.ToString()
                  && f.Status == PropertyFailureStatus.Suspended);
         var blocked = await db.WorkflowTasks.AsNoTracking()
-            .FirstAsync(t => t.PropertyId == property.Id && t.Kind == "case-study-property");
+            .FirstAsync(t => t.PropertyId == property.Id
+                             && t.Kind == WorkflowTaskKind.CaseStudyProperty);
         Assert.Equal(WorkflowTaskStatus.Blocked, blocked.Status);
     }
 
@@ -250,17 +241,7 @@ public class KeyEnvelopesServiceTests
         var property = NewProperty(workOrder.Id, "DEED-ACC-2", "REQ-ACC-2");
         db.WorkOrders.Add(workOrder);
         db.WorkOrderProperties.Add(property);
-        db.WorkflowTasks.Add(new WorkflowTask
-        {
-            Id = Guid.NewGuid(),
-            Kind = "case-study-property",
-            PoNumber = workOrder.PoNumber,
-            PropertyId = property.Id,
-            Status = WorkflowTaskStatus.Open,
-            Phase = "study",
-            CreatedAtUtc = DateTime.UtcNow,
-            UpdatedAtUtc = DateTime.UtcNow,
-        });
+        db.WorkflowTasks.Add(CaseStudyTask(workOrder.PoNumber, property.Id));
         var attachmentId = await AddAttachmentAsync(db, "eviction2.pdf");
         await db.SaveChangesAsync();
 
@@ -296,9 +277,10 @@ public class KeyEnvelopesServiceTests
             f => f.PropertyId == property.Id.ToString()
                  && f.Status == PropertyFailureStatus.Resolved);
         var resumed = await db.WorkflowTasks.AsNoTracking()
-            .FirstAsync(t => t.PropertyId == property.Id && t.Kind == "case-study-property");
+            .FirstAsync(t => t.PropertyId == property.Id
+                             && t.Kind == WorkflowTaskKind.CaseStudyProperty);
         Assert.Equal(WorkflowTaskStatus.Open, resumed.Status);
-        Assert.Equal("study", resumed.Phase);
+        Assert.Equal(WorkflowTaskPhase.CaseStudy, resumed.Phase);
     }
 
     [Fact]
@@ -484,7 +466,7 @@ public class KeyEnvelopesServiceTests
     }
 
     private static KeyEnvelopesService CreateService(ApplicationDbContext db) =>
-        new(db, new PropertyAccessHoldService(db));
+        new(db, new PropertyAccessHoldService(db), new KeyEnvelopePeopleResolver(db));
 
     private static async Task<KeyEnvelopeDto> CreateCourtEnvelopeAsync(
         ApplicationDbContext db,
@@ -513,6 +495,15 @@ public class KeyEnvelopesServiceTests
         Assert.Null(error);
         return envelope!;
     }
+
+    /// <summary>A parent slot in the case-study phase — the phase a court hold suspends.</summary>
+    private static WorkflowTask CaseStudyTask(string poNumber, Guid propertyId) =>
+        WorkflowTask.Create(
+            WorkflowTaskKind.CaseStudyProperty,
+            poNumber,
+            DateTime.UtcNow,
+            phase: WorkflowTaskPhase.CaseStudy,
+            propertyId: propertyId);
 
     private static WorkOrder NewWorkOrder(string po) => new()
     {

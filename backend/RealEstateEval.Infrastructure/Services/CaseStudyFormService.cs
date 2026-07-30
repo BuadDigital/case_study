@@ -15,7 +15,7 @@ public class CaseStudyFormService : ICaseStudyFormService
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
-    private const string CaseStudyPropertyKind = "case-study-property";
+    private const WorkflowTaskKind CaseStudyPropertyKind = WorkflowTaskKind.CaseStudyProperty;
     private const string FormStatusSubmitted = "submitted";
 
     private readonly ApplicationDbContext _db;
@@ -265,9 +265,7 @@ public class CaseStudyFormService : ICaseStudyFormService
         var task = await _db.WorkflowTasks
             .AsNoTracking()
             .FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
-        if (task is null
-            || !string.Equals(task.Kind, CaseStudyPropertyKind, StringComparison.OrdinalIgnoreCase)
-            || WorkflowTaskStatus.IsTerminal(task.Status))
+        if (task is null || task.Kind != CaseStudyPropertyKind || task.IsTerminal)
         {
             return;
         }
@@ -276,8 +274,8 @@ public class CaseStudyFormService : ICaseStudyFormService
             taskId,
             new PatchWorkflowTaskRequest
             {
-                Status = WorkflowTaskStatus.Completed,
-                Phase = "done",
+                Status = WorkflowTaskStatusValues.Completed,
+                Phase = WorkflowTaskPhaseValues.Done,
             },
             cancellationToken);
     }

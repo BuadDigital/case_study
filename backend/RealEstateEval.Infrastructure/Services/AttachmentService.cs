@@ -3,7 +3,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -11,10 +11,14 @@ public sealed class AttachmentService : IAttachmentService
 {
     private const string BlobContainer = "attachments";
     private const int MaxAttachmentsPerScope = 200;
-    private readonly ApplicationDbContext _db;
+
+    /// <summary>Base64 inflates by 4/3; allow a little slack for padding and whitespace.</summary>
+    private const int MaxBase64Length =
+        (int)(AttachmentUploadRules.DefaultMaxBytes / 3 + 1) * 4 + 1024;
+    private readonly AttachmentsDbContext _db;
     private readonly IBlobStorage _blobs;
 
-    public AttachmentService(ApplicationDbContext db, IBlobStorage blobs)
+    public AttachmentService(AttachmentsDbContext db, IBlobStorage blobs)
     {
         _db = db;
         _blobs = blobs;
@@ -30,7 +34,7 @@ public sealed class AttachmentService : IAttachmentService
             .OrderByDescending(x => x.CreatedAtUtc)
             .Take(MaxAttachmentsPerScope)
             .ToListAsync(cancellationToken);
-        return rows.Select(ToMeta).ToList();
+        return rows.Select(row => ToMeta(row)).ToList();
     }
 
     public async Task<(byte[]? Content, FileAttachmentMetaDto? Meta)> GetContentAsync(
@@ -42,7 +46,12 @@ public sealed class AttachmentService : IAttachmentService
         if (row is null) return (null, null);
 
         var content = await ReadContentAsync(row, cancellationToken);
-        return content is null ? (null, null) : (content, ToMeta(row));
+        if (content is null) return (null, null);
+
+        // Rows written before content verification may carry a client-chosen MIME type.
+        // Serve what the bytes actually are, or nothing the browser will render.
+        var format = FileSignatureInspector.Detect(content);
+        return (content, ToMeta(row, FileSignatureInspector.CanonicalMime(format)));
     }
 
     public async Task<(FileAttachmentMetaDto? Meta, string? Error)> UploadAsync(
@@ -50,6 +59,10 @@ public sealed class AttachmentService : IAttachmentService
         string uploadedByUserId,
         CancellationToken cancellationToken = default)
     {
+        // Reject implausibly large payloads before allocating the decoded buffer.
+        if (request.ContentBase64.Length > MaxBase64Length)
+            return (null, "حجم الملف يتجاوز الحد المسموح");
+
         byte[] content;
         try
         {
@@ -60,21 +73,16 @@ public sealed class AttachmentService : IAttachmentService
             return (null, "invalid base64 content");
         }
 
-        var contentType = string.IsNullOrWhiteSpace(request.ContentType)
-            ? "application/octet-stream"
-            : request.ContentType.Trim();
-        var validationError = AttachmentUploadRules.Validate(
+        var inspection = AttachmentUploadRules.Inspect(
             request.Scope,
-            contentType,
-            content.LongLength,
-            request.FileName);
-        if (validationError is not null)
-            return (null, validationError);
+            request.ContentType,
+            request.FileName,
+            content);
+        if (inspection.Error is not null)
+            return (null, inspection.Error);
 
         var id = Guid.NewGuid();
-        var safeName = Path.GetFileName(request.FileName.Trim());
-        if (string.IsNullOrWhiteSpace(safeName))
-            safeName = "file";
+        var safeName = inspection.FileName;
 
         var storageKey = await _blobs.SaveAsync(
             BlobContainer,
@@ -88,7 +96,8 @@ public sealed class AttachmentService : IAttachmentService
             Scope = request.Scope.Trim(),
             ScopeKey = request.ScopeKey.Trim(),
             FileName = safeName,
-            ContentType = contentType,
+            // Persist the verified type, so downloads can never echo a client-chosen MIME.
+            ContentType = inspection.ContentType,
             StorageKey = storageKey,
             Content = null,
             SizeBytes = content.LongLength,
@@ -121,13 +130,15 @@ public sealed class AttachmentService : IAttachmentService
         return row.Content;
     }
 
-    private static FileAttachmentMetaDto ToMeta(FileAttachment row) => new()
+    private static FileAttachmentMetaDto ToMeta(
+        FileAttachment row,
+        string? contentTypeOverride = null) => new()
     {
         Id = row.Id,
         Scope = row.Scope,
         ScopeKey = row.ScopeKey,
         FileName = row.FileName,
-        ContentType = row.ContentType,
+        ContentType = contentTypeOverride ?? row.ContentType,
         SizeBytes = row.SizeBytes > 0 ? row.SizeBytes : row.Content?.LongLength ?? 0,
         CreatedAtUtc = row.CreatedAtUtc,
     };

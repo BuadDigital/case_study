@@ -1,10 +1,14 @@
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using RealEstateEval.Infrastructure.Data;
 
 #nullable disable
 
 namespace RealEstateEval.Infrastructure.Data.Migrations;
 
 /// <inheritdoc />
+[DbContext(typeof(ApplicationDbContext))]
+[Migration("20260624140000_AddPoEnfazInvoices")]
 public partial class AddPoEnfazInvoices : Migration
 {
     /// <inheritdoc />

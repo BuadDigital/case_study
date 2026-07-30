@@ -18,13 +18,14 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
-    private static readonly HashSet<string> AllowedKinds =
+    /// <summary>Party kinds that submit work through this service — everything but the parent.</summary>
+    private static readonly HashSet<WorkflowTaskKind> AllowedKinds =
     [
-        "engineering-survey",
-        "property-appraisal",
-        "government-review",
-        "valuation-coordination",
-        "field-inspection",
+        WorkflowTaskKind.EngineeringSurvey,
+        WorkflowTaskKind.PropertyAppraisal,
+        WorkflowTaskKind.GovernmentReview,
+        WorkflowTaskKind.ValuationCoordination,
+        WorkflowTaskKind.FieldInspection,
     ];
 
     private readonly ApplicationDbContext _db;
@@ -182,7 +183,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             {
                 Id = Guid.NewGuid(),
                 WorkflowTaskId = taskId,
-                Kind = task.Kind,
+                Kind = task.Kind.ToDbValue(),
                 PropertyId = task.PropertyId,
                 PoNumber = task.PoNumber,
                 CreatedAtUtc = now,
@@ -194,10 +195,10 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             ? entity.PayloadJson
             : request.Payload.GetRawText();
 
-        if (task.Kind == "government-review")
+        if (task.Kind == WorkflowTaskKind.GovernmentReview)
             payloadJson = StripLegacyKeysProofDataUrls(payloadJson);
 
-        var status = ExtractStatus(payloadJson) ?? entity.Status;
+        var status = PartyTaskSubmissionPayloadRules.ExtractStatus(payloadJson) ?? entity.Status;
         if (status is PartyTaskSubmissionStatus.Submitted)
             return (null, new Dictionary<string, string> { ["_"] = "استخدم نقطة الإرسال لتقديم العمل" });
 
@@ -209,12 +210,12 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         entity.PoNumber = task.PoNumber;
         entity.UpdatedAtUtc = now;
 
-        if (task.Kind == "field-inspection")
+        if (task.Kind == WorkflowTaskKind.FieldInspection)
             await SyncFieldInspectionWorkspaceAsync(entity, cancellationToken);
 
         await _db.SaveChangesAsync(cancellationToken);
 
-        if (task.Kind == "government-review")
+        if (task.Kind == WorkflowTaskKind.GovernmentReview)
             await BridgeGovernmentReviewToEnvelopeAsync(task, payloadJson, cancellationToken);
 
         return (ToDto(entity), null);
@@ -268,7 +269,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 ? task.AssigneeName
                 : actor.DisplayName.Trim();
         }
-        entity.PayloadJson = SetPayloadStatus(entity.PayloadJson, PartyTaskSubmissionStatus.Submitted, now);
+        entity.PayloadJson = PartyTaskSubmissionPayloadRules.SetPayloadStatus(entity.PayloadJson, PartyTaskSubmissionStatus.Submitted, now);
 
         if (entity.Kind == "field-inspection")
             await SyncFieldInspectionWorkspaceAsync(entity, cancellationToken);
@@ -282,7 +283,11 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 await _db.SaveChangesAsync(ct);
                 await _tasks.PatchAsync(
                     taskId,
-                    new PatchWorkflowTaskRequest { Status = WorkflowTaskStatus.Completed, Phase = "done" },
+                    new PatchWorkflowTaskRequest
+                    {
+                        Status = WorkflowTaskStatusValues.Completed,
+                        Phase = WorkflowTaskPhaseValues.Done,
+                    },
                     ct);
             },
             cancellationToken);
@@ -322,15 +327,25 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (task is null)
             return (null, new Dictionary<string, string> { ["_"] = "المهمة غير موجودة" });
 
-        if (task.Kind is not ("engineering-survey" or "property-appraisal" or "field-inspection" or "government-review"))
+        if (task.Kind is not (WorkflowTaskKind.EngineeringSurvey
+            or WorkflowTaskKind.PropertyAppraisal
+            or WorkflowTaskKind.FieldInspection
+            or WorkflowTaskKind.GovernmentReview))
+        {
             return (null, new Dictionary<string, string> { ["_"] = "إعادة الفتح غير مدعومة لهذا النوع" });
+        }
 
         if (actor is not null && !PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
             return (null, new Dictionary<string, string> { ["_"] = "ليس لديك صلاحية إعادة فتح إرسال الطرف" });
 
         var returnNote = request.ReturnNote?.Trim() ?? "";
-        if (task.Kind is "engineering-survey" or "field-inspection" or "government-review" && string.IsNullOrWhiteSpace(returnNote))
+        if (task.Kind is WorkflowTaskKind.EngineeringSurvey
+                or WorkflowTaskKind.FieldInspection
+                or WorkflowTaskKind.GovernmentReview
+            && string.IsNullOrWhiteSpace(returnNote))
+        {
             return (null, new Dictionary<string, string> { ["returnNote"] = "ملاحظة الإرجاع مطلوبة" });
+        }
 
         var entity = await _db.PartyTaskSubmissions
             .FirstOrDefaultAsync(s => s.WorkflowTaskId == taskId, cancellationToken);
@@ -355,9 +370,9 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 : actor.DisplayName.Trim();
         }
         entity.UpdatedAtUtc = now;
-        entity.PayloadJson = SetPayloadReopened(entity.PayloadJson, returnNote, now);
+        entity.PayloadJson = PartyTaskSubmissionPayloadRules.SetPayloadReopened(entity.PayloadJson, returnNote, now);
 
-        if (task.Kind == "field-inspection")
+        if (task.Kind == WorkflowTaskKind.FieldInspection)
             await SyncFieldInspectionWorkspaceAsync(entity, cancellationToken);
 
         // Reopen the submission and reopen the workflow task in one transaction so a
@@ -369,12 +384,16 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 await _db.SaveChangesAsync(ct);
                 await _tasks.PatchAsync(
                     taskId,
-                    new PatchWorkflowTaskRequest { Status = WorkflowTaskStatus.Open, Phase = "done" },
+                    new PatchWorkflowTaskRequest
+                    {
+                        Status = WorkflowTaskStatusValues.Open,
+                        Phase = WorkflowTaskPhaseValues.Done,
+                    },
                     ct);
             },
             cancellationToken);
 
-        if (task.Kind == "engineering-survey")
+        if (task.Kind == WorkflowTaskKind.EngineeringSurvey)
             await NotifyEngineeringSurveyAssigneeAsync(
                 task,
                 title: "إعادة الرفع المساحي للتصحيح",
@@ -399,7 +418,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (task is null)
             return (null, new Dictionary<string, string> { ["_"] = "المهمة غير موجودة" });
 
-        if (task.Kind != "engineering-survey")
+        if (task.Kind != WorkflowTaskKind.EngineeringSurvey)
             return (null, new Dictionary<string, string> { ["_"] = "قبول المخرجات متاح لمهام الرفع المساحي فقط" });
 
         if (!PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
@@ -508,7 +527,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         PartyTaskSubmission entity,
         CancellationToken cancellationToken)
     {
-        var errors = ValidateForSubmit(entity);
+        var errors = PartyTaskSubmissionPayloadRules.ValidateForSubmit(entity);
         var documentary = await ValidateDocumentaryGatesAsync(entity, cancellationToken);
         foreach (var (key, message) in documentary)
             errors[key] = message;
@@ -618,7 +637,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                        ?? new Dictionary<string, JsonElement>();
             var mutable = dict.ToDictionary(
                 kv => kv.Key,
-                kv => (object?)DeserializeElement(kv.Value));
+                kv => (object?)PartyTaskSubmissionPayloadRules.DeserializeElement(kv.Value));
 
             var cleaned = new List<Dictionary<string, object?>>();
             foreach (var file in files.EnumerateArray())
@@ -635,7 +654,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                     {
                         continue;
                     }
-                    entry[prop.Name] = DeserializeElement(prop.Value);
+                    entry[prop.Name] = PartyTaskSubmissionPayloadRules.DeserializeElement(prop.Value);
                 }
                 cleaned.Add(entry);
             }
@@ -690,7 +709,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                         inspectionCompleted = await _db.WorkflowTasks.AsNoTracking().AnyAsync(
                             t => t.ParentTaskId == parentId
                                 && t.PropertyId == pid
-                                && t.Kind == "field-inspection"
+                                && t.Kind == WorkflowTaskKind.FieldInspection
                                 && t.Status == WorkflowTaskStatus.Completed,
                             cancellationToken);
                     }
@@ -712,13 +731,13 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
                 var hasPhone = property is not null
                     && DocumentaryWorkflowRules.HasAnyPartyPhone(property.Contacts);
-                var phoneWasPresent = GetBool(root, "declarationPhoneSatisfied");
+                var phoneWasPresent = PartyTaskSubmissionPayloadRules.GetBool(root, "declarationPhoneSatisfied");
                 var phoneBlock = DocumentaryWorkflowRules.DeclarationPhoneBlockReason(
                     bypass,
                     hasPhone,
                     phoneWasPresent);
                 if (phoneBlock is not null
-                    && (HasNonEmpty(root, "siteLetterFileName") || GetBool(root, "siteConfirmed")))
+                    && (PartyTaskSubmissionPayloadRules.HasNonEmpty(root, "siteLetterFileName") || PartyTaskSubmissionPayloadRules.GetBool(root, "siteConfirmed")))
                 {
                     errors["siteLetterFileName"] = phoneBlock;
                 }
@@ -738,8 +757,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                         errors["_documentary"] = informalBlock;
                 }
 
-                var vacantLand = GetBool(root, "vacantLand")
-                    || string.Equals(GetString(root, "vacantLand"), "yes", StringComparison.OrdinalIgnoreCase);
+                var vacantLand = PartyTaskSubmissionPayloadRules.GetBool(root, "vacantLand")
+                    || string.Equals(PartyTaskSubmissionPayloadRules.GetString(root, "vacantLand"), "yes", StringComparison.OrdinalIgnoreCase);
                 var gate = await _keyGates.ResolveAsync(
                     entity.PropertyId,
                     entity.PoNumber,
@@ -747,10 +766,10 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                     property?.RequestNumber,
                     cancellationToken);
                 var keyAvailable = gate.KeyAvailable
-                    || GetBool(root, "keyAvailable")
-                    || string.Equals(GetString(root, "keyHandedToInspector"), "yes", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(GetString(root, "keysStatus"), "received", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(GetString(root, "keysStatus"), "not_required", StringComparison.OrdinalIgnoreCase);
+                    || PartyTaskSubmissionPayloadRules.GetBool(root, "keyAvailable")
+                    || string.Equals(PartyTaskSubmissionPayloadRules.GetString(root, "keyHandedToInspector"), "yes", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(PartyTaskSubmissionPayloadRules.GetString(root, "keysStatus"), "received", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(PartyTaskSubmissionPayloadRules.GetString(root, "keysStatus"), "not_required", StringComparison.OrdinalIgnoreCase);
 
                 var keyBlock = DocumentaryWorkflowRules.InspectorSubmitKeyBlockReason(
                     bypass,
@@ -761,12 +780,12 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
                 var hasPhone = property is not null
                     && DocumentaryWorkflowRules.HasAnyPartyPhone(property.Contacts);
-                var phoneWasPresent = GetBool(root, "declarationPhoneSatisfied");
+                var phoneWasPresent = PartyTaskSubmissionPayloadRules.GetBool(root, "declarationPhoneSatisfied");
                 var phoneBlock = DocumentaryWorkflowRules.DeclarationPhoneBlockReason(
                     bypass,
                     hasPhone,
                     phoneWasPresent);
-                if (phoneBlock is not null && GetBool(root, "clientDeclarationSigned"))
+                if (phoneBlock is not null && PartyTaskSubmissionPayloadRules.GetBool(root, "clientDeclarationSigned"))
                     errors["clientDeclarationSigned"] = phoneBlock;
                 break;
             }
@@ -802,12 +821,6 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         return DocumentaryWorkflowRules.RoleBypassesDocumentaryGates(perms?.PrototypeRole);
     }
 
-    private static string? GetString(JsonElement root, string name)
-    {
-        if (!root.TryGetProperty(name, out var prop)) return null;
-        return prop.ValueKind == JsonValueKind.String ? prop.GetString() : prop.ToString();
-    }
-
     /// <summary>
     /// Light write bridge: when gov-review marks keys received/handed, sync envelope assignment/handoff.
     /// Missing envelope is a UI warning only — never blocks finalize.
@@ -824,8 +837,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         try
         {
             using var doc = JsonDocument.Parse(payloadJson);
-            keysStatus = GetString(doc.RootElement, "keysStatus")?.Trim() ?? "";
-            handed = GetString(doc.RootElement, "keyHandedToInspector")?.Trim() ?? "";
+            keysStatus = PartyTaskSubmissionPayloadRules.GetString(doc.RootElement, "keysStatus")?.Trim() ?? "";
+            handed = PartyTaskSubmissionPayloadRules.GetString(doc.RootElement, "keyHandedToInspector")?.Trim() ?? "";
         }
         catch
         {
@@ -924,142 +937,6 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         _db.Entry(existing).CurrentValues.SetValues(projected);
         existing.CreatedAtUtc = createdAtUtc;
     }
-
-    private static Dictionary<string, string> ValidateForSubmit(PartyTaskSubmission entity)
-    {
-        var errors = new Dictionary<string, string>();
-        try
-        {
-            using var doc = JsonDocument.Parse(entity.PayloadJson);
-            var root = doc.RootElement;
-
-            switch (entity.Kind)
-            {
-                case "engineering-survey":
-                    if (!HasNonEmpty(root, "latitude") || !HasNonEmpty(root, "longitude"))
-                        errors["coordinates"] = "الإحداثيات مطلوبة";
-                    if (!HasNonEmpty(root, "surveyReportFileName"))
-                        errors["surveyReportFileName"] = "تقرير الرفع المساحي مطلوب";
-                    if (!HasNonEmpty(root, "siteLetterFileName"))
-                        errors["siteLetterFileName"] = "خطاب الموقع مطلوب";
-                    if (!GetBool(root, "siteConfirmed"))
-                        errors["siteConfirmed"] = "يجب تأكيد الموقع";
-                    break;
-
-                case "property-appraisal":
-                    foreach (var (key, message) in PropertyAppraisalSubmissionValidator.Validate(root))
-                        errors[key] = message;
-                    break;
-
-                case "government-review":
-                    foreach (var (key, message) in GovernmentReviewSubmissionValidator.Validate(root))
-                        errors[key] = message;
-                    break;
-
-                case "valuation-coordination":
-                    if (!GetBool(root, "receiptConfirmed"))
-                        errors["receiptConfirmed"] = "يجب تأكيد الاستلام";
-                    break;
-
-                case "field-inspection":
-                    foreach (var (key, message) in FieldInspectionSubmissionValidator.Validate(root))
-                        errors[key] = message;
-                    break;
-            }
-        }
-        catch
-        {
-            errors["_"] = "بيانات الإرسال غير صالحة";
-        }
-
-        return errors;
-    }
-
-    private static bool HasNonEmpty(JsonElement root, string name)
-    {
-        if (!root.TryGetProperty(name, out var prop)) return false;
-        return prop.ValueKind switch
-        {
-            JsonValueKind.String => !string.IsNullOrWhiteSpace(prop.GetString()),
-            JsonValueKind.Number => true,
-            JsonValueKind.True => true,
-            _ => false,
-        };
-    }
-
-    private static bool GetBool(JsonElement root, string name)
-    {
-        if (!root.TryGetProperty(name, out var prop)) return false;
-        return prop.ValueKind == JsonValueKind.True;
-    }
-
-    private static string? ExtractStatus(string payloadJson)
-    {
-        try
-        {
-            using var doc = JsonDocument.Parse(payloadJson);
-            if (doc.RootElement.TryGetProperty("status", out var status))
-                return status.GetString();
-        }
-        catch
-        {
-            // ignore
-        }
-
-        return null;
-    }
-
-    private static string SetPayloadStatus(string payloadJson, string status, DateTime submittedAt)
-    {
-        try
-        {
-            var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(payloadJson, JsonOpts)
-                       ?? new Dictionary<string, JsonElement>();
-            var mutable = dict.ToDictionary(
-                kv => kv.Key,
-                kv => (object?)DeserializeElement(kv.Value));
-            mutable["status"] = status;
-            mutable["submittedAtUtc"] = submittedAt.ToString("O");
-            mutable["updatedAtUtc"] = submittedAt.ToString("O");
-            return JsonSerializer.Serialize(mutable, JsonOpts);
-        }
-        catch
-        {
-            return payloadJson;
-        }
-    }
-
-    private static string SetPayloadReopened(string payloadJson, string returnNote, DateTime now)
-    {
-        try
-        {
-            var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(payloadJson, JsonOpts)
-                       ?? new Dictionary<string, JsonElement>();
-            var mutable = dict.ToDictionary(
-                kv => kv.Key,
-                kv => (object?)DeserializeElement(kv.Value));
-            mutable["status"] = PartyTaskSubmissionStatus.Reopened;
-            mutable["returnNote"] = returnNote;
-            mutable["submittedAtUtc"] = null;
-            mutable["updatedAtUtc"] = now.ToString("O");
-            return JsonSerializer.Serialize(mutable, JsonOpts);
-        }
-        catch
-        {
-            return payloadJson;
-        }
-    }
-
-    private static object? DeserializeElement(JsonElement element) =>
-        element.ValueKind switch
-        {
-            JsonValueKind.String => element.GetString(),
-            JsonValueKind.Number => element.TryGetInt64(out var l) ? l : element.GetDouble(),
-            JsonValueKind.True => true,
-            JsonValueKind.False => false,
-            JsonValueKind.Null => null,
-            _ => JsonSerializer.Deserialize<object>(element.GetRawText(), JsonOpts),
-        };
 
     private static PartyTaskSubmissionDto ToDto(PartyTaskSubmission entity)
     {

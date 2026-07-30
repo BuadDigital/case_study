@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Http.Resilience;
 using RealEstateEval.Infrastructure;
 using RealEstateEval.Infrastructure.Caching;
+using RealEstateEval.Infrastructure.Web;
 using RealEstateEval.Reporting.Api.Services;
 using RealEstateEval.Shared.Web;
 
@@ -59,7 +60,7 @@ var app = builder.Build();
 app.UseRealEstateEvalServicePipeline();
 app.UseRealEstateEvalOpenApi("Reporting API");
 app.MapServiceHealth("reporting");
-app.MapGet("/ready", () => Results.Ok(new { status = "ready", service = "reporting" }));
+app.MapStatelessReady("reporting");
 app.MapControllers();
 
 app.Run();

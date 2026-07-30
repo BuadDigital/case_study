@@ -1,5 +1,4 @@
 using RealEstateEval.Application.Contracts;
-using RealEstateEval.Domain;
 
 namespace RealEstateEval.Application.Abstractions;
 
@@ -11,11 +10,11 @@ namespace RealEstateEval.Application.Abstractions;
 public interface IAuthSessionService
 {
     /// <summary>
-    /// Starts a new session for an already-authenticated user. Returns null when the
-    /// account is not active.
+    /// Starts a new session for an already-authenticated user id. Returns null when
+    /// the account is unknown or inactive.
     /// </summary>
-    Task<LoginResponse?> IssueAsync(
-        ApplicationUser user,
+    Task<LoginResponse?> IssueForUserIdAsync(
+        string userId,
         CancellationToken cancellationToken = default);
 
     /// <summary>

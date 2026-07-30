@@ -34,6 +34,36 @@ already nine autonomous services.
 - `xmin` concurrency is configured on 19 mutable entity types; the shared exception
   middleware returns HTTP 409.
 
+## Implementation status (2026-07-30)
+
+Ownership is approved, so Phase 0's ownership gate is closed and Phase 1 has started.
+Artifacts and guardrails live in
+[`docs/architecture/table-ownership-catalog.md`](architecture/table-ownership-catalog.md),
+[`docs/architecture/table-ownership.json`](architecture/table-ownership.json), and
+[`docs/architecture/boundary-baseline.json`](architecture/boundary-baseline.json), enforced by
+`backend/RealEstateEval.Architecture.Tests`. Current build and test results are in
+[`docs/status/architecture-split-status.md`](status/architecture-split-status.md).
+
+| Phase | State |
+| --- | --- |
+| 0 — freeze and measure | Repository work complete: 60-table ownership catalog (53 `DbSet`s plus seven inherited Identity tables), cross-boundary classification, and boundary tests. All 60 rows are approved and D1–D6 are recorded with outcomes and rationale; D6 is accepted with residual risk rather than answered. Owner nomination, the production-consumer inventory, and the captured production metrics are still outstanding and now block Phase 3/4 rather than Phase 1. |
+| 1 — split EF contexts | **In progress.** Extraction steps 1–2 are done: `AttachmentsDbContext`, `PlatformDbContext`, `ValuationDbContext`, and `IdentityDbContext` hold the write path for their tables, each with an empty baseline migration, model snapshot, migration stream, and migrations-history schema, against the same physical database. Non-Identity APIs resolve permissions from JWT claims. Steps 3–5 (Failures/Operations, Financial/Case Study, Messaging) are not started, so the phase exit criteria are not met — `ApplicationDbContext` still has runtime registrations and write paths for the unmoved slices. ADR 0006's deploy path is still validated only against a blank database, not a restored production-like one. |
+| 2–5 | Not started. |
+
+Findings that refine the baseline above, all now covered by tests:
+
+- The model contains **no cross-schema foreign keys and no cross-schema navigations**;
+  cross-boundary coupling is entirely in queries, transactions, and registrations.
+- Several persistence services are registered by more than one API, so several tables have
+  more than one writing process today (for example `FailureService` in Case Study and
+  Failures, `KeyEnvelopesService` in Case Study and Operations, and the Identity stores in all
+  eight database APIs). Rule 1 is therefore not satisfied at process level even before contexts
+  are split.
+- Reporting registers no persistence at all; it is already an HTTP read model.
+- `ApplicationDbContextModelSnapshot` had drifted from the model (the concurrent
+  race-guard/index migration's snapshot update was missing). The snapshot was regenerated so
+  the frozen legacy baseline stays trustworthy; no schema or data change was made.
+
 ## Boundary facts that block an immediate database split
 
 The following are code references, not inferred future dependencies:
@@ -100,6 +130,12 @@ wrong tables.
 - Production-only consumers are inventoried; unknown direct database clients are a stop
   condition for later database movement.
 
+**Status:** catalog, classification, and guardrails exist; all 60 rows are approved and D1–D6
+are recorded (2026-07-30); acceptance tests exist for the replacements made in Phase 1
+extraction step 1 and not for the rest; the production consumer inventory and metrics are
+outstanding. See
+[`docs/architecture/table-ownership-catalog.md`](architecture/table-ownership-catalog.md).
+
 **Rollback:** documentation and guardrails only; remove a faulty guard without runtime
 impact.
 
@@ -108,12 +144,20 @@ impact.
 **Why now:** this is the lowest-risk enforceable boundary. It reduces model and migration
 coupling without changing hostnames, table locations, or data.
 
+**Status:** in progress. Extraction steps 1–2 (Attachments, Platform catalogs, Valuation,
+Identity) are complete; steps 3–5 are not, so the exit criteria below are not yet met.
+
 **Before starting**
 
-- Phase 0 ownership catalog is approved.
+- Phase 0 ownership catalog is approved. **Met** (2026-07-30).
 - ADR 0006's deploy-time migration path works against a restored production-like database.
+  **Not met.** Step 1 proceeded anyway on the recorded judgment that it moves no data, emits
+  no DDL beyond empty baselines, and can be rolled back by re-pointing services at the legacy
+  context. This prerequisite still gates steps 2–5.
 - Current legacy migrations can build a blank database and upgrade a representative
-  existing database. Explicitly validate the generated `xmin` migration SQL.
+  existing database. Explicitly validate the generated `xmin` migration SQL. **Half met:**
+  the blank-database half passes and shows the `xmin` migration is DDL-neutral on this
+  PostgreSQL/Npgsql pair; the upgrade half needs a restore that is not available here.
 
 **Work**
 
@@ -138,21 +182,33 @@ coupling without changing hostnames, table locations, or data.
 **Suggested extraction order**
 
 1. Attachments, Platform catalogs, and Valuation: small contexts with relatively few sets.
+   **Done (2026-07-30).**
 2. Identity: isolate Identity stores; other APIs validate JWT claims and stop registering
-   `AddIdentityInfrastructure`.
-3. Failures and Operations: replace their known Case Study/Identity/Financial reads.
+   `AddIdentityInfrastructure`. **Done (2026-07-30)** — `IdentityDbContext` owns writes;
+   non-Identity APIs use `AddClaimsPermissionService` / JWT claims. Transitional Identity
+   *reads* remain on the legacy context until Phase 3.
+3. Failures and Operations: replace their known Case Study/Identity/Financial reads. Not
+   started.
 4. Financial and Case Study: largest and most entangled; move after contracts/projections
-   exist.
+   exist. Not started.
 5. Messaging: final service-local shape depends on producer/consumer ownership established
-   above.
+   above. Not started; the per-producer outbox mapping from D5 is in place for Valuation as a
+   forward-compatible step.
 
-**Exit criteria**
+**Exit criteria** (state after extraction step 1)
 
-- Each API resolves only its owned write contexts.
-- Every table is writable through exactly one context.
-- No new migration touches another context's schema.
+- Each API resolves only its owned write contexts. **Partially met** — Identity stores are
+  Identity-only; every API still registers `AddPersistence` for the legacy context. The
+  extracted contexts are additional, not exclusive, except Identity writes.
+- Every table is writable through exactly one context. **Met for the extracted tables** and
+  enforced by `BoundedContextBoundaryTests`; the unmoved slices still share the legacy
+  context, which is one context per table but not one context per owner.
+- No new migration touches another context's schema. **Met and enforced**; the legacy stream
+  is frozen at the catalogued cutover.
 - Blank-build and upgrade tests pass for the legacy baseline plus every context stream.
-- `ApplicationDbContext` has no runtime registrations or remaining write path.
+  **Partially met** — blank build passes; the production-like upgrade test is outstanding.
+- `ApplicationDbContext` has no runtime registrations or remaining write path. **Not met**,
+  and cannot be until step 5.
 
 **Rollback:** route the current vertical slice back to the legacy context while tables are
 still unchanged. Do not delete the legacy stream or context until the exit criteria hold

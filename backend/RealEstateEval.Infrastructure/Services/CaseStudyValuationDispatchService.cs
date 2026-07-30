@@ -43,7 +43,8 @@ public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispa
 
         var hasAppraisalChild = await _db.WorkflowTasks.AsNoTracking()
             .AnyAsync(
-                t => t.ParentTaskId == parentTaskId && t.Kind == "property-appraisal",
+                t => t.ParentTaskId == parentTaskId
+                     && t.Kind == WorkflowTaskKind.PropertyAppraisal,
                 cancellationToken);
         if (!hasAppraisalChild)
         {
@@ -57,7 +58,7 @@ public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispa
         var alreadyOpen = await _db.ValuationRequests.AsNoTracking()
             .AnyAsync(
                 v => v.PropertyId == propertyKey
-                     && v.Status != "done",
+                     && v.Status != ValuationRequestStatus.Done,
                 cancellationToken);
         if (alreadyOpen)
         {
@@ -71,7 +72,8 @@ public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispa
             .FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
 
         var appraisalTask = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t => t.ParentTaskId == parentTaskId && t.Kind == "property-appraisal")
+            .Where(t => t.ParentTaskId == parentTaskId
+                        && t.Kind == WorkflowTaskKind.PropertyAppraisal)
             .OrderByDescending(t => t.CreatedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -83,17 +85,28 @@ public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispa
             ? "—"
             : appraisalTask.AssigneeName.Trim();
 
-        var created = await _valuationRequests.CreateAsync(
+        var (created, error) = await _valuationRequests.CreateAsync(
             new SaveValuationRequestRequest
             {
                 PropId = propertyKey,
                 Area = area,
                 Type = type,
                 Appraiser = appraiser,
-                Status = "progress",
+                Status = ValuationRequestStatuses.Progress,
                 Date = DateTime.UtcNow.ToString("yyyy-MM-dd"),
             },
             cancellationToken);
+
+        if (created is null)
+        {
+            // A concurrent dispatch won the unique index; the request it created is the one
+            // that counts, so this pass behaves exactly like the pre-check above.
+            _logger.LogInformation(
+                "CaseStudyValuationDispatch: skipped for property {PropertyId} ({Error})",
+                propertyId,
+                error);
+            return;
+        }
 
         _logger.LogInformation(
             "CaseStudyValuationDispatch: created {DisplayId} for property {PropertyId} from task {TaskId}",

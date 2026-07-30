@@ -12,35 +12,6 @@ namespace RealEstateEval.Infrastructure.Services;
 public sealed class OperationsTaskService : IOperationsTaskService
 {
     private const int MaxListRows = 500;
-    private static readonly HashSet<string> ValidTypes =
-    [
-        "court_visit", "reshoot", "field_visit", "inquiry", "general",
-    ];
-
-    private static readonly HashSet<string> ValidScopes =
-    [
-        "transaction", "work_order", "multi", "general",
-    ];
-
-    private static readonly HashSet<string> ValidStatuses =
-    [
-        "created", "in_progress", "paused", "completed", "cancelled",
-    ];
-
-    private static readonly HashSet<string> ValidPriorities =
-    [
-        "high", "medium", "low",
-    ];
-
-    private static readonly HashSet<string> TerminalStatuses =
-    [
-        "completed", "cancelled",
-    ];
-
-    private static readonly HashSet<string> ValidCourtVisitKinds =
-    [
-        "received", "other_party", "none", "other",
-    ];
 
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
@@ -81,11 +52,15 @@ public sealed class OperationsTaskService : IOperationsTaskService
         if (!string.IsNullOrEmpty(creator))
             query = query.Where(t => t.CreatedBy == creator);
 
-        var statusFilter = status?.Trim();
-        if (!string.IsNullOrEmpty(statusFilter))
+        // An unrecognised status filter matches nothing rather than being ignored.
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            if (!OperationsTaskStatusValues.TryParse(status, out var statusFilter))
+                return [];
             query = query.Where(t => t.Status == statusFilter);
+        }
 
-        if (!IsManager(actorRole))
+        if (!OperationsTaskLifecycleRules.IsManager(actorRole))
         {
             var userId = actorUserId.Trim();
             var myAssignee = actorAssigneeId?.Trim() ?? "";
@@ -139,12 +114,10 @@ public sealed class OperationsTaskService : IOperationsTaskService
         string? createdByName,
         CancellationToken cancellationToken = default)
     {
-        var type = request.Type.Trim();
-        if (!ValidTypes.Contains(type))
+        if (!OperationsTaskTypeValues.TryParse(request.Type, out var type))
             return (null, "نوع المهمة غير مدعوم");
 
-        var scope = request.Scope.Trim();
-        if (!ValidScopes.Contains(scope))
+        if (!OperationsTaskScopeValues.TryParse(request.Scope, out var scope))
             return (null, "نطاق الربط غير مدعوم");
 
         var assigneeId = request.AssigneeId.Trim();
@@ -155,11 +128,12 @@ public sealed class OperationsTaskService : IOperationsTaskService
         if (title.Length == 0)
             return (null, "العنوان مطلوب");
 
-        var priority = string.IsNullOrWhiteSpace(request.Priority)
-            ? "medium"
-            : request.Priority.Trim();
-        if (!ValidPriorities.Contains(priority))
+        var priority = OperationsTaskPriority.Medium;
+        if (!string.IsNullOrWhiteSpace(request.Priority)
+            && !OperationsTaskPriorityValues.TryParse(request.Priority, out priority))
+        {
             return (null, "الأولوية غير مدعومة");
+        }
 
         var deeds = (request.Deeds ?? [])
             .Select(d => d.Trim())
@@ -168,47 +142,45 @@ public sealed class OperationsTaskService : IOperationsTaskService
             .ToList();
 
         var poNumber = request.PoNumber?.Trim();
-        var validationError = ValidateScope(scope, deeds, poNumber);
+        var validationError = OperationsTaskLifecycleRules.ValidateScope(scope, deeds, poNumber);
         if (validationError is not null)
             return (null, validationError);
 
         var now = DateTime.UtcNow;
-        var dueAt = request.DueAtUtc ?? DefaultDueAt(priority, now);
+        var dueAt = request.DueAtUtc ?? OperationsTaskLifecycleRules.DefaultDueAt(priority, now);
 
         var letterRows = request.LetterRows?.ToList() ?? [];
-        if (type == "court_visit" && letterRows.Count == 0)
+        var isCourtVisit = type == OperationsTaskType.CourtVisit;
+        if (isCourtVisit && letterRows.Count == 0)
             return (null, "مهمة زيارة المحكمة تتطلب صفوف خطاب التفويض");
 
         var strategy = _db.Database.CreateExecutionStrategy();
         return await strategy.ExecuteAsync(async () =>
         {
             await using var tx = await _db.Database.BeginTransactionAsync(cancellationToken);
-            var (displayId, reference) = await NextIdsAsync(now, type == "court_visit", cancellationToken);
+            var (displayId, reference) = await NextIdsAsync(now, isCourtVisit, cancellationToken);
 
-            var entity = new OperationsTask
-            {
-                Id = Guid.NewGuid(),
-                DisplayId = displayId,
-                Type = type,
-                Title = title,
-                Description = request.Description?.Trim(),
-                Scope = scope,
-                DeedsJson = deeds.Count > 0 ? JsonSerializer.Serialize(deeds, JsonOpts) : null,
-                PoNumber = poNumber,
-                AssigneeId = assigneeId,
-                AssigneeName = request.AssigneeName?.Trim() ?? "",
-                CreatedBy = createdBy.Trim(),
-                CreatedByName = createdByName?.Trim() ?? "",
-                Status = "created",
-                Priority = priority,
-                DueAtUtc = dueAt,
-                CreatedAtUtc = now,
-                UpdatedAtUtc = now,
-                Reference = reference,
-                LetterRowsJson = letterRows.Count > 0
+            var entity = OperationsTask.Create(
+                Guid.NewGuid(),
+                displayId,
+                type,
+                title,
+                scope,
+                assigneeId,
+                createdBy.Trim(),
+                priority,
+                dueAt,
+                now,
+                description: request.Description?.Trim(),
+                deedsJson: deeds.Count > 0 ? JsonSerializer.Serialize(deeds, JsonOpts) : null,
+                poNumber: poNumber,
+                assigneeName: request.AssigneeName?.Trim(),
+                createdByName: createdByName?.Trim(),
+                reference: reference,
+                letterRowsJson: letterRows.Count > 0
                     ? JsonSerializer.Serialize(letterRows, JsonOpts)
                     : null,
-                CommentsJson = JsonSerializer.Serialize(
+                commentsJson: JsonSerializer.Serialize(
                     new[]
                     {
                         new OperationsTaskCommentDto
@@ -219,8 +191,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
                             Kind = "update",
                         },
                     },
-                    JsonOpts),
-            };
+                    JsonOpts));
 
             _db.OperationsTasks.Add(entity);
             await _db.SaveChangesAsync(cancellationToken);
@@ -242,7 +213,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
         var entity = await _db.OperationsTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
         if (entity is null) return (null, "المهمة غير موجودة");
 
-        var isManager = IsManager(actorRole);
+        var isManager = OperationsTaskLifecycleRules.IsManager(actorRole);
         var actor = actorAssigneeId.Trim();
         var isAssignee = actor.Length > 0
             && string.Equals(entity.AssigneeId, actor, StringComparison.Ordinal);
@@ -265,65 +236,49 @@ public sealed class OperationsTaskService : IOperationsTaskService
         var changed = false;
         var becameCompleted = false;
         var becameCompletedCourtVisit = false;
-        string? oldPriority = null;
+        OperationsTaskPriority? oldPriority = null;
         DateTime? oldDue = null;
 
         if (!string.IsNullOrWhiteSpace(request.Status))
         {
-            var next = request.Status.Trim();
-            if (!ValidStatuses.Contains(next))
+            if (!OperationsTaskStatusValues.TryParse(request.Status, out var next))
                 return (null, "الحالة غير مدعومة");
 
             // Resume always means in_progress. Do not rewrite to PrevStatus —
             // pausing from "created" would otherwise resume to "created" and
             // fail ValidateStatusTransition.
 
-            var error = ValidateStatusTransition(entity, next, actorAssigneeId, actorRole);
+            var error = OperationsTaskLifecycleRules.ValidateStatusTransition(entity, next, actorAssigneeId, actorRole);
             if (error is not null) return (null, error);
 
-            if (next == "paused")
-            {
-                var pauseReason = request.PauseReason?.Trim() ?? "";
-                if (pauseReason.Length == 0)
-                    return (null, "سبب الإيقاف المؤقت مطلوب");
-                entity.PrevStatus = entity.Status;
-                entity.PauseReason = pauseReason;
-                entity.PausedAtUtc = now;
-                entity.PauseOverLimitRemindedAtUtc = null;
-            }
+            var pauseReason = request.PauseReason?.Trim();
+            if (next == OperationsTaskStatus.Paused && string.IsNullOrEmpty(pauseReason))
+                return (null, "سبب الإيقاف المؤقت مطلوب");
 
-            if (next == "cancelled")
-            {
-                var cancelReason = request.CancelReason?.Trim() ?? "";
-                if (cancelReason.Length == 0)
-                    return (null, "سبب الإلغاء مطلوب");
-                entity.CancelReason = cancelReason;
-            }
+            var cancelReason = request.CancelReason?.Trim();
+            if (next == OperationsTaskStatus.Cancelled && string.IsNullOrEmpty(cancelReason))
+                return (null, "سبب الإلغاء مطلوب");
 
-            if (next == "completed" && entity.Type == "court_visit")
+            if (next == OperationsTaskStatus.Completed && entity.IsCourtVisit)
             {
-                var (normalized, courtError) = NormalizeCourtVisitResult(request.CourtVisitResult);
+                var (normalized, courtError) = OperationsTaskCourtVisitRules.Normalize(request.CourtVisitResult);
                 if (courtError is not null) return (null, courtError);
-                AppendCourtVisitResultComments(comments, normalized!, now);
-                entity.CourtVisitResultJson = JsonSerializer.Serialize(normalized, JsonOpts);
+                OperationsTaskCourtVisitRules.AppendResultComments(comments, normalized!, now);
+                entity.RecordCourtVisitResult(JsonSerializer.Serialize(normalized, JsonOpts), now);
                 changed = true;
             }
 
-            if (next == "completed")
-                ApplyExecutionCredit(entity, request, comments, now, actorName);
+            if (next == OperationsTaskStatus.Completed)
+                OperationsTaskLifecycleRules.ApplyExecutionCredit(entity, request, comments, now, actorName);
 
             if (entity.Status != next)
             {
-                var fromStatus = entity.Status;
-                // Confirm receipt when entering in_progress (including resume after pause-from-created).
-                if (next == "in_progress" && entity.ReceiptConfirmedAtUtc is null)
-                    entity.ReceiptConfirmedAtUtc = now;
-
+                var fromStatus = entity.TransitionTo(next, now, pauseReason, cancelReason);
                 comments.Add(new OperationsTaskCommentDto
                 {
                     Who = "system",
                     At = now.ToString("O"),
-                    Text = StatusUpdateText(
+                    Text = OperationsTaskLifecycleRules.StatusUpdateText(
                         fromStatus,
                         next,
                         actorName,
@@ -331,39 +286,32 @@ public sealed class OperationsTaskService : IOperationsTaskService
                         entity.CancelReason),
                     Kind = "update",
                 });
-                if (fromStatus == "paused" && next != "paused")
-                {
-                    entity.PausedAtUtc = null;
-                    entity.PauseOverLimitRemindedAtUtc = null;
-                }
-                entity.Status = next;
                 changed = true;
-                if (next == "completed")
+                if (next == OperationsTaskStatus.Completed)
                 {
                     becameCompleted = true;
-                    if (entity.Type == "court_visit")
+                    if (entity.IsCourtVisit)
                         becameCompletedCourtVisit = true;
                 }
             }
         }
-        else if (request.CourtVisitResult is not null && entity.Type == "court_visit")
+        else if (request.CourtVisitResult is not null && entity.IsCourtVisit)
         {
-            var (normalized, courtError) = NormalizeCourtVisitResult(request.CourtVisitResult);
+            var (normalized, courtError) = OperationsTaskCourtVisitRules.Normalize(request.CourtVisitResult);
             if (courtError is not null) return (null, courtError);
-            AppendCourtVisitResultComments(comments, normalized!, now);
-            entity.CourtVisitResultJson = JsonSerializer.Serialize(normalized, JsonOpts);
+            OperationsTaskCourtVisitRules.AppendResultComments(comments, normalized!, now);
+            entity.RecordCourtVisitResult(JsonSerializer.Serialize(normalized, JsonOpts), now);
             changed = true;
         }
 
         if (!string.IsNullOrWhiteSpace(request.Priority))
         {
-            var priority = request.Priority.Trim();
-            if (!ValidPriorities.Contains(priority))
+            if (!OperationsTaskPriorityValues.TryParse(request.Priority, out var priority))
                 return (null, "الأولوية غير مدعومة");
             if (entity.Priority != priority)
             {
                 oldPriority = entity.Priority;
-                entity.Priority = priority;
+                entity.ChangePriority(priority, now);
                 changed = true;
             }
         }
@@ -371,7 +319,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
         if (request.DueAtUtc.HasValue && entity.DueAtUtc != request.DueAtUtc.Value)
         {
             oldDue = entity.DueAtUtc;
-            entity.DueAtUtc = request.DueAtUtc.Value;
+            entity.Reschedule(request.DueAtUtc.Value, now);
             changed = true;
         }
 
@@ -379,7 +327,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
         {
             var parts = new List<string>();
             if (oldPriority is not null)
-                parts.Add($"الأولوية إلى «{PriorityLabel(entity.Priority)}»");
+                parts.Add($"الأولوية إلى «{entity.Priority.ToArabicLabel()}»");
             if (oldDue is not null)
                 parts.Add($"موعد الاستحقاق إلى {FormatDueLabel(entity.DueAtUtc)}");
             comments.Add(new OperationsTaskCommentDto
@@ -396,21 +344,20 @@ public sealed class OperationsTaskService : IOperationsTaskService
             var title = request.Title.Trim();
             if (title.Length > 0 && entity.Title != title)
             {
-                entity.Title = title;
+                entity.Retitle(title, now);
                 changed = true;
             }
         }
 
         if (request.Description is not null)
         {
-            entity.Description = request.Description.Trim();
+            entity.Describe(request.Description.Trim(), now);
             changed = true;
         }
 
         if (!changed) return (await MapAsync(entity, cancellationToken), null);
 
-        entity.UpdatedAtUtc = now;
-        entity.CommentsJson = JsonSerializer.Serialize(comments, JsonOpts);
+        entity.ReplaceComments(JsonSerializer.Serialize(comments, JsonOpts), now);
 
         if (becameCompletedCourtVisit)
             await EnsureCourtVisitFeeChargeAsync(entity, cancellationToken);
@@ -434,13 +381,13 @@ public sealed class OperationsTaskService : IOperationsTaskService
         string actorRole,
         CancellationToken cancellationToken = default)
     {
-        if (!IsManager(actorRole))
+        if (!OperationsTaskLifecycleRules.IsManager(actorRole))
             return (null, "هذا الإجراء للمنشئ أو المشرف فقط");
 
         var entity = await _db.OperationsTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
         if (entity is null) return (null, "المهمة غير موجودة");
 
-        if (TerminalStatuses.Contains(entity.Status))
+        if (entity.IsTerminal)
             return (null, "المهمة في حالة نهائية");
 
         var reason = request.Reason?.Trim() ?? "";
@@ -457,21 +404,16 @@ public sealed class OperationsTaskService : IOperationsTaskService
             ? newAssigneeId
             : request.AssigneeName.Trim();
 
-        if (string.IsNullOrWhiteSpace(entity.OriginalAssigneeId))
-        {
-            entity.OriginalAssigneeId = entity.AssigneeId;
-            entity.OriginalAssigneeName = entity.AssigneeName;
-        }
-
         var dueChanged = request.DueAtUtc.HasValue && entity.DueAtUtc != request.DueAtUtc.Value;
         var text = dueChanged
             ? $"➤ أُعيد توجيه المهمة من «{oldName}» إلى «{newName}» — موعد التسليم {FormatDueLabel(request.DueAtUtc!.Value)} — السبب: {reason}"
             : $"➤ أُعيد توجيه المهمة من «{oldName}» إلى «{newName}» — السبب: {reason}";
 
-        entity.AssigneeId = newAssigneeId;
-        entity.AssigneeName = request.AssigneeName?.Trim() ?? "";
-        if (request.DueAtUtc.HasValue)
-            entity.DueAtUtc = request.DueAtUtc.Value;
+        entity.Reassign(
+            newAssigneeId,
+            request.AssigneeName?.Trim() ?? "",
+            request.DueAtUtc,
+            now);
 
         var comments = DeserializeComments(entity.CommentsJson).ToList();
         comments.Add(new OperationsTaskCommentDto
@@ -482,8 +424,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
             Kind = "update",
         });
 
-        entity.CommentsJson = JsonSerializer.Serialize(comments, JsonOpts);
-        entity.UpdatedAtUtc = now;
+        entity.ReplaceComments(JsonSerializer.Serialize(comments, JsonOpts), now);
         await _db.SaveChangesAsync(cancellationToken);
 
         await NotifyAssigneeAsync(entity, cancellationToken);
@@ -497,7 +438,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
         string actorRole,
         CancellationToken cancellationToken = default)
     {
-        if (!IsManager(actorRole))
+        if (!OperationsTaskLifecycleRules.IsManager(actorRole))
             return (null, "التذكير للمنشئ أو المشرف فقط");
 
         var entity = await _db.OperationsTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
@@ -509,7 +450,8 @@ public sealed class OperationsTaskService : IOperationsTaskService
     public async Task<int> ProcessDueAutoRemindersAsync(CancellationToken cancellationToken = default)
     {
         var active = await _db.OperationsTasks
-            .Where(t => t.Status == "created" || t.Status == "in_progress")
+            .Where(t => t.Status == OperationsTaskStatus.Created
+                || t.Status == OperationsTaskStatus.InProgress)
             .ToListAsync(cancellationToken);
 
         var now = DateTime.UtcNow;
@@ -532,7 +474,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
     public async Task<int> ProcessOverLimitPauseRemindersAsync(CancellationToken cancellationToken = default)
     {
         var paused = await _db.OperationsTasks
-            .Where(t => t.Status == "paused" && t.PausedAtUtc != null)
+            .Where(t => t.Status == OperationsTaskStatus.Paused && t.PausedAtUtc != null)
             .ToListAsync(cancellationToken);
 
         var now = DateTime.UtcNow;
@@ -556,9 +498,8 @@ public sealed class OperationsTaskService : IOperationsTaskService
                 Text = "⏸ تذكير: تجاوزت المهمة حد الإيقاف المؤقت (يوم عمل واحد) — يلزم الاستئناف.",
                 Kind = "reminder",
             });
-            entity.CommentsJson = JsonSerializer.Serialize(comments, JsonOpts);
-            entity.PauseOverLimitRemindedAtUtc = now;
-            entity.UpdatedAtUtc = now;
+            entity.ReplaceComments(JsonSerializer.Serialize(comments, JsonOpts), now);
+            entity.MarkPauseOverLimitReminded(now);
             await _db.SaveChangesAsync(cancellationToken);
             await NotifyPauseOverLimitAsync(entity, cancellationToken);
             successes++;
@@ -590,7 +531,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
             .Take(20)
             .ToList();
 
-        if (!IsManager(actorRole)
+        if (!OperationsTaskLifecycleRules.IsManager(actorRole)
             && entity.AssigneeId != actorAssigneeId.Trim())
         {
             return (null, "التعليق متاح للمنفّذ المكلّف أو المشرف فقط");
@@ -618,8 +559,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
             Files = files,
         });
 
-        entity.CommentsJson = JsonSerializer.Serialize(comments, JsonOpts);
-        entity.UpdatedAtUtc = DateTime.UtcNow;
+        entity.ReplaceComments(JsonSerializer.Serialize(comments, JsonOpts), DateTime.UtcNow);
         await _db.SaveChangesAsync(cancellationToken);
         return (await MapAsync(entity, cancellationToken), null);
     }
@@ -629,7 +569,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
         bool auto,
         CancellationToken cancellationToken)
     {
-        if (entity.Status is not ("created" or "in_progress"))
+        if (!entity.Status.IsActive())
             return (null, "التذكير متاح للمهام المنشأة أو قيد التنفيذ فقط");
 
         var now = DateTime.UtcNow;
@@ -651,9 +591,8 @@ public sealed class OperationsTaskService : IOperationsTaskService
             Kind = "reminder",
         });
 
-        entity.RemindersJson = JsonSerializer.Serialize(reminders, JsonOpts);
-        entity.CommentsJson = JsonSerializer.Serialize(comments, JsonOpts);
-        entity.UpdatedAtUtc = now;
+        entity.ReplaceReminders(JsonSerializer.Serialize(reminders, JsonOpts), now);
+        entity.ReplaceComments(JsonSerializer.Serialize(comments, JsonOpts), now);
         await _db.SaveChangesAsync(cancellationToken);
 
         await NotifyReminderAsync(entity, auto, cancellationToken);
@@ -701,7 +640,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
             : entity.CreditAssigneeName.Trim();
 
         var amount = await _pricing.ResolveDefaultFeeAsync(
-            "government-review",
+            WorkflowTaskKind.GovernmentReview,
             GovernmentReviewFeeRules.PartyType,
             areaM2: null,
             assigneeId: creditId,
@@ -724,13 +663,6 @@ public sealed class OperationsTaskService : IOperationsTaskService
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         });
-    }
-
-    private static bool IsManager(string actorRole)
-    {
-        var role = actorRole.Trim();
-        return role is "case-specialist" or "section-supervisor" or "general-manager"
-            || string.Equals(role, "cdo", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task NotifyAssigneeAsync(OperationsTask entity, CancellationToken cancellationToken)
@@ -902,7 +834,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
                     on task.AssigneeId equals profile.DistributionAssigneeId
                 where task.PoNumber != null
                       && pos.Contains(task.PoNumber)
-                      && task.Kind == "government-review"
+                      && task.Kind == WorkflowTaskKind.GovernmentReview
                       && task.Status != WorkflowTaskStatus.Completed
                       && task.Status != WorkflowTaskStatus.Cancelled
                       && task.AssigneeId != null
@@ -950,13 +882,6 @@ public sealed class OperationsTaskService : IOperationsTaskService
     private static string FormatDueLabel(DateTime dueAtUtc) =>
         dueAtUtc.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) + " UTC";
 
-    private static string PriorityLabel(string priority) => priority switch
-    {
-        "high" => "عالية",
-        "low" => "منخفضة",
-        _ => "متوسطة",
-    };
-
     private static DateTime ResolveLastReminderAnchorUtc(OperationsTask entity)
     {
         var reminders = DeserializeReminders(entity.RemindersJson);
@@ -975,75 +900,6 @@ public sealed class OperationsTaskService : IOperationsTaskService
             DateTimeKind.Utc => parsed,
             DateTimeKind.Local => parsed.ToUniversalTime(),
             _ => DateTime.SpecifyKind(parsed, DateTimeKind.Utc),
-        };
-    }
-
-    private static string? ValidateScope(string scope, IReadOnlyList<string> deeds, string? poNumber)
-    {
-        return scope switch
-        {
-            "transaction" when deeds.Count != 1 =>
-                "نطاق المعاملة يتطلب صكاً واحداً",
-            "work_order" when string.IsNullOrWhiteSpace(poNumber) =>
-                "نطاق أمر العمل يتطلب رقم PO",
-            "multi" when deeds.Count < 2 =>
-                "نطاق عدة معاملات يتطلب صكّين فأكثر",
-            _ => null,
-        };
-    }
-
-    private static string? ValidateStatusTransition(
-        OperationsTask entity,
-        string next,
-        string actorAssigneeId,
-        string actorRole)
-    {
-        if (TerminalStatuses.Contains(entity.Status))
-            return "المهمة في حالة نهائية";
-
-        var actor = actorAssigneeId.Trim();
-        var isManager = IsManager(actorRole);
-
-        if (next == "in_progress")
-        {
-            var confirmingReceipt = entity.Status == "created";
-            if (confirmingReceipt)
-            {
-                if (entity.AssigneeId != actor)
-                    return "هذا الإجراء للمنفّذ المكلّف فقط";
-            }
-            else if (entity.AssigneeId != actor && !isManager)
-            {
-                return "هذا الإجراء للمنفّذ المكلّف فقط";
-            }
-        }
-
-        if (next == "completed")
-        {
-            if (entity.AssigneeId != actor && !isManager)
-                return "هذا الإجراء للمنفّذ المكلّف فقط";
-        }
-
-        if ((next is "paused" or "cancelled") && !isManager)
-            return "هذا الإجراء للمنشئ أو المشرف فقط";
-
-        return next switch
-        {
-            "in_progress" when entity.Status is "created" or "paused" => null,
-            "completed" when entity.Status is "in_progress" or "paused" => null,
-            "paused" when entity.Status is "created" or "in_progress" => null,
-            "cancelled" when entity.Status is "created" or "in_progress" or "paused" => null,
-            _ => "انتقال حالة غير مسموح",
-        };
-    }
-
-    private static DateTime DefaultDueAt(string priority, DateTime now)
-    {
-        return priority switch
-        {
-            "high" => now.AddHours(4),
-            "low" => now.AddDays(1),
-            _ => now.AddHours(12),
         };
     }
 
@@ -1074,73 +930,6 @@ public sealed class OperationsTaskService : IOperationsTaskService
         var displayId = $"T-{year}-{seq:D4}";
         var reference = courtVisit ? $"خ.ت-{year}-{seq:D4}" : null;
         return (displayId, reference);
-    }
-
-    private static string StatusUpdateText(
-        string from,
-        string to,
-        string? actorName,
-        string? pauseReason = null,
-        string? cancelReason = null)
-    {
-        var actor = string.IsNullOrWhiteSpace(actorName) ? "النظام" : actorName.Trim();
-        return to switch
-        {
-            "in_progress" => from == "paused"
-                ? $"{actor} استأنف المهمة"
-                : $"{actor} أكّد الاستلام",
-            "completed" => $"{actor} أكمل المهمة",
-            "paused" => string.IsNullOrWhiteSpace(pauseReason)
-                ? $"{actor} أوقف المهمة مؤقتاً"
-                : $"⏸ {actor} أوقف المهمة مؤقتاً — السبب: {pauseReason.Trim()}",
-            "cancelled" => string.IsNullOrWhiteSpace(cancelReason)
-                ? $"{actor} ألغى المهمة"
-                : $"✕ {actor} ألغى المهمة — السبب: {cancelReason.Trim()}",
-            _ when from == "paused" => $"{actor} استأنف المهمة",
-            _ => $"{actor} غيّر الحالة إلى {to}",
-        };
-    }
-
-    private static void ApplyExecutionCredit(
-        OperationsTask entity,
-        PatchOperationsTaskRequest request,
-        List<OperationsTaskCommentDto> comments,
-        DateTime now,
-        string? actorName)
-    {
-        var creditId = request.CreditAssigneeId?.Trim() ?? "";
-        var creditName = request.CreditAssigneeName?.Trim() ?? "";
-
-        if (creditId.Length == 0)
-        {
-            if (!string.IsNullOrWhiteSpace(entity.OriginalAssigneeId))
-            {
-                creditId = entity.OriginalAssigneeId.Trim();
-                creditName = entity.OriginalAssigneeName?.Trim() ?? "";
-            }
-            else
-            {
-                creditId = entity.AssigneeId;
-                creditName = entity.AssigneeName;
-            }
-        }
-
-        entity.CreditAssigneeId = creditId;
-        entity.CreditAssigneeName = creditName;
-
-        if (!string.IsNullOrWhiteSpace(entity.OriginalAssigneeId)
-            && !string.Equals(entity.OriginalAssigneeId, entity.AssigneeId, StringComparison.Ordinal))
-        {
-            var label = string.IsNullOrWhiteSpace(creditName) ? creditId : creditName;
-            var actor = string.IsNullOrWhiteSpace(actorName) ? "النظام" : actorName.Trim();
-            comments.Add(new OperationsTaskCommentDto
-            {
-                Who = "system",
-                At = now.ToString("O"),
-                Text = $"◎ مسؤولية التنفيذ عند الإغلاق: «{label}» — بواسطة {actor}",
-                Kind = "update",
-            });
-        }
     }
 
     private async Task<OperationsTaskDto> MapAsync(OperationsTask row, CancellationToken cancellationToken)
@@ -1192,19 +981,19 @@ public sealed class OperationsTaskService : IOperationsTaskService
     {
         Id = row.Id.ToString(),
         DisplayId = row.DisplayId,
-        Type = row.Type,
+        Type = row.Type.ToDbValue(),
         Title = row.Title,
         Description = row.Description,
-        Scope = row.Scope,
+        Scope = row.Scope.ToDbValue(),
         Deeds = DeserializeStrings(row.DeedsJson),
         PoNumber = row.PoNumber,
         AssigneeId = row.AssigneeId,
         AssigneeName = row.AssigneeName,
         CreatedBy = row.CreatedBy,
         CreatedByName = row.CreatedByName,
-        Status = row.Status,
-        PrevStatus = row.PrevStatus,
-        Priority = row.Priority,
+        Status = row.Status.ToDbValue(),
+        PrevStatus = row.PrevStatus.ToDbValue(),
+        Priority = row.Priority.ToDbValue(),
         DueAt = row.DueAtUtc.ToString("O"),
         CreatedAt = row.CreatedAtUtc.ToString("O"),
         UpdatedAt = row.UpdatedAtUtc.ToString("O"),
@@ -1224,117 +1013,6 @@ public sealed class OperationsTaskService : IOperationsTaskService
         LinkedEnvelopeId = linkedEnvelopeId?.ToString(),
         VisitFeeAmountSar = visitFeeAmountSar,
     };
-
-    private static (OperationsTaskCourtVisitResultDto? Result, string? Error) NormalizeCourtVisitResult(
-        OperationsTaskCourtVisitResultDto? raw)
-    {
-        if (raw is null)
-            return (null, "نتيجة زيارة المحكمة مطلوبة عند إغلاق مهمة زيارة محكمة");
-
-        var kind = (raw.Kind ?? "").Trim();
-        if (!ValidCourtVisitKinds.Contains(kind))
-            return (null, "نتيجة زيارة المحكمة غير مدعومة");
-
-        var other = (raw.Other ?? "").Trim();
-        if (kind == "other" && other.Length == 0)
-            return (null, "يلزم توضيح النتيجة عند اختيار «أخرى»");
-
-        var statement = NullIfBlank(raw.Statement);
-        var perDeed = (raw.PerDeed ?? [])
-            .Select(p => new OperationsTaskCourtVisitDeedStatementDto
-            {
-                Deed = (p.Deed ?? "").Trim(),
-                Text = (p.Text ?? "").Trim(),
-            })
-            .Where(p => p.Deed.Length > 0 && p.Text.Length > 0)
-            .ToList();
-
-        var contacts = (raw.Contacts ?? [])
-            .Select(c => new OperationsTaskCourtVisitContactDto
-            {
-                Scope = string.IsNullOrWhiteSpace(c.Scope) ? "property" : c.Scope.Trim(),
-                Name = (c.Name ?? "").Trim(),
-                Role = NullIfBlank(c.Role),
-                Phone = NullIfBlank(c.Phone),
-                Note = NullIfBlank(c.Note),
-            })
-            .Where(c => c.Name.Length > 0 || !string.IsNullOrWhiteSpace(c.Phone))
-            .ToList();
-
-        if (kind == "other_party" && contacts.Count == 0)
-            return (null, "يلزم إدخال جهة اتصال واحدة على الأقل عندما يكون الظرف عند طرف آخر");
-
-        return (new OperationsTaskCourtVisitResultDto
-        {
-            Kind = kind,
-            Other = kind == "other" ? other : null,
-            Statement = statement,
-            PerDeed = perDeed,
-            Contacts = contacts,
-        }, null);
-    }
-
-    private static void AppendCourtVisitResultComments(
-        List<OperationsTaskCommentDto> comments,
-        OperationsTaskCourtVisitResultDto result,
-        DateTime now)
-    {
-        var at = now.ToString("O");
-        comments.Add(new OperationsTaskCommentDto
-        {
-            Who = "system",
-            At = at,
-            Text = "🏛 موقف المفاتيح لدى المحكمة: " + CourtVisitKindLabel(result),
-            Kind = "update",
-        });
-        if (!string.IsNullOrWhiteSpace(result.Statement))
-        {
-            comments.Add(new OperationsTaskCommentDto
-            {
-                Who = "system",
-                At = at,
-                Text = "📄 إفادة عامة للطلب: " + result.Statement.Trim(),
-                Kind = "update",
-            });
-        }
-        foreach (var pd in result.PerDeed)
-        {
-            comments.Add(new OperationsTaskCommentDto
-            {
-                Who = "system",
-                At = at,
-                Text = $"📄 إفادة الصك {pd.Deed}: {pd.Text}",
-                Kind = "update",
-            });
-        }
-        foreach (var c in result.Contacts)
-        {
-            var scopeLabel = c.Scope == "property" ? "العقار" : $"صك {c.Scope}";
-            var parts = new List<string> { c.Name };
-            if (!string.IsNullOrWhiteSpace(c.Role)) parts.Add(c.Role!);
-            if (!string.IsNullOrWhiteSpace(c.Phone)) parts.Add(c.Phone!);
-            var note = string.IsNullOrWhiteSpace(c.Note) ? "" : $" ({c.Note})";
-            comments.Add(new OperationsTaskCommentDto
-            {
-                Who = "system",
-                At = at,
-                Text = $"☎ جهة اتصال [{scopeLabel}]: {string.Join(" — ", parts)}{note}",
-                Kind = "update",
-            });
-        }
-    }
-
-    private static string CourtVisitKindLabel(OperationsTaskCourtVisitResultDto result) =>
-        result.Kind switch
-        {
-            "received" => "استُلم ظرف مفاتيح",
-            "other_party" => "الظرف عند طرف آخر",
-            "none" => "لا توجد مفاتيح مسجلة لدى الدائرة",
-            "other" => string.IsNullOrWhiteSpace(result.Other)
-                ? "أخرى"
-                : "أخرى — " + result.Other.Trim(),
-            _ => result.Kind,
-        };
 
     private static string? NullIfBlank(string? value)
     {

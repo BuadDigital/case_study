@@ -8,6 +8,7 @@ builder.AddRealEstateEvalObservability("identity");
 
 builder.Services
     .AddControllers()
+    .AddRealEstateEvalValidation()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy =
@@ -22,7 +23,7 @@ var connectionString = ServiceCollectionExtensions.RequireConnectionString(
     builder.Configuration,
     ServiceDatabaseNames.Identity);
 builder.Services.AddPersistence(builder.Configuration, connectionString);
-builder.Services.AddIdentityInfrastructure();
+builder.Services.AddIdentityInfrastructure(builder.Configuration, connectionString);
 builder.Services.AddRealEstateEvalJwt(builder.Configuration, builder.Environment);
 builder.Services.AddRealEstateEvalCors(builder.Configuration, builder.Environment);
 builder.Services.AddRealEstateEvalRateLimiting(builder.Configuration, builder.Environment);

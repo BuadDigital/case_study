@@ -6,6 +6,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -72,7 +73,7 @@ public class AuthSessionServiceTests
     {
         await using var provider = await CreateProviderAsync(UserStatus.Active);
         var sessions = provider.GetRequiredService<IAuthSessionService>();
-        var db = provider.GetRequiredService<ApplicationDbContext>();
+        var db = provider.GetRequiredService<IdentityDbContext>();
         var login = await LoginAsync(provider);
 
         var refreshed = await sessions.RefreshAsync(login.RefreshToken);
@@ -102,7 +103,7 @@ public class AuthSessionServiceTests
     {
         await using var provider = await CreateProviderAsync(UserStatus.Active);
         var sessions = provider.GetRequiredService<IAuthSessionService>();
-        var db = provider.GetRequiredService<ApplicationDbContext>();
+        var db = provider.GetRequiredService<IdentityDbContext>();
         var login = await LoginAsync(provider);
 
         var profile = await db.UserProfiles.FirstAsync();
@@ -118,7 +119,7 @@ public class AuthSessionServiceTests
         await using var provider = await CreateProviderAsync(UserStatus.Active);
         var sessions = provider.GetRequiredService<IAuthSessionService>();
         var login = await LoginAsync(provider);
-        var db = provider.GetRequiredService<ApplicationDbContext>();
+        var db = provider.GetRequiredService<IdentityDbContext>();
         var userId = (await db.UserProfiles.FirstAsync()).UserId;
 
         var revoked = await sessions.RevokeAllForUserAsync(userId, "roles-changed");
@@ -141,7 +142,7 @@ public class AuthSessionServiceTests
     public async Task Stored_refresh_tokens_are_hashed()
     {
         await using var provider = await CreateProviderAsync(UserStatus.Active);
-        var db = provider.GetRequiredService<ApplicationDbContext>();
+        var db = provider.GetRequiredService<IdentityDbContext>();
         var login = await LoginAsync(provider);
 
         var stored = await db.RefreshTokens.AsNoTracking().SingleAsync();
@@ -157,13 +158,13 @@ public class AuthSessionServiceTests
         var user = await userManager.FindByNameAsync("test-user");
         Assert.NotNull(user);
 
-        var login = await sessions.IssueAsync(user);
+        var login = await sessions.IssueForUserIdAsync(user.Id);
         Assert.NotNull(login);
         return login;
     }
 
     /// <summary>Backdates rotations so the concurrent-refresh grace window has passed.</summary>
-    private static async Task AgeRotationsAsync(ApplicationDbContext db, TimeSpan age)
+    private static async Task AgeRotationsAsync(IdentityDbContext db, TimeSpan age)
     {
         var rotated = await db.RefreshTokens
             .Where(token => token.RevokedAtUtc != null)
@@ -186,13 +187,16 @@ public class AuthSessionServiceTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton<IConfiguration>(configuration);
+        var databaseName = $"auth-session-{Guid.NewGuid()}";
         services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseInMemoryDatabase($"auth-session-{Guid.NewGuid()}"));
-        services.AddIdentityInfrastructure();
+            options.UseInMemoryDatabase(databaseName));
+        services.AddDbContext<IdentityDbContext>(options =>
+            options.UseInMemoryDatabase(databaseName));
+        services.AddIdentityApplicationServices();
 
         var provider = services.BuildServiceProvider();
-        var db = provider.GetRequiredService<ApplicationDbContext>();
-        await db.Database.EnsureCreatedAsync();
+        var identity = provider.GetRequiredService<IdentityDbContext>();
+        await identity.Database.EnsureCreatedAsync();
 
         var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
         var user = new ApplicationUser
@@ -207,7 +211,7 @@ public class AuthSessionServiceTests
             creation.Succeeded,
             string.Join("; ", creation.Errors.Select(error => error.Description)));
 
-        db.UserProfiles.Add(new UserProfile
+        identity.UserProfiles.Add(new UserProfile
         {
             UserId = user.Id,
             User = user,
@@ -217,7 +221,7 @@ public class AuthSessionServiceTests
             Status = status,
             CreatedAtUtc = DateTime.UtcNow,
         });
-        await db.SaveChangesAsync();
+        await identity.SaveChangesAsync();
 
         return provider;
     }

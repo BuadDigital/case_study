@@ -86,41 +86,32 @@ public class PartyTaskSubmissionAuthorizationTests
     private static void SeedTask(ApplicationDbContext db, string assigneeId)
     {
         var now = DateTime.UtcNow;
-        db.WorkflowTasks.Add(new WorkflowTask
-        {
-            Id = TaskId,
-            Kind = "government-review",
-            PoNumber = "PO-AUTH",
-            PropertyId = PropertyId,
-            PropertyOrdinal = 1,
-            Title = "مراجعة",
-            Phase = "done",
-            Status = WorkflowTaskStatus.Open,
-            AssigneeId = assigneeId,
-            AssigneeRole = "government-reviewer",
-            AssigneeName = "مراجع",
-            CreatedAtUtc = now,
-            UpdatedAtUtc = now,
-        });
+        db.WorkflowTasks.Add(WorkflowTask.Create(
+            WorkflowTaskKind.GovernmentReview,
+            "PO-AUTH",
+            now,
+            title: "مراجعة",
+            phase: WorkflowTaskPhase.Done,
+            assigneeRole: "government-reviewer",
+            assigneeName: "مراجع",
+            id: TaskId,
+            propertyId: PropertyId,
+            assigneeId: assigneeId));
         db.SaveChanges();
     }
 
     private static void SeedAcceptedableSurvey(ApplicationDbContext db)
     {
         var now = DateTime.UtcNow;
-        db.WorkflowTasks.Add(new WorkflowTask
-        {
-            Id = TaskId,
-            Kind = "engineering-survey",
-            PoNumber = "PO-AUTH",
-            PropertyId = PropertyId,
-            PropertyOrdinal = 1,
-            Title = "الرفع المساحي",
-            Phase = "done",
-            Status = WorkflowTaskStatus.Completed,
-            CreatedAtUtc = now,
-            UpdatedAtUtc = now,
-        });
+        db.WorkflowTasks.Add(WorkflowTask.Create(
+            WorkflowTaskKind.EngineeringSurvey,
+            "PO-AUTH",
+            now,
+            title: "الرفع المساحي",
+            phase: WorkflowTaskPhase.Done,
+            status: WorkflowTaskStatus.Completed,
+            id: TaskId,
+            propertyId: PropertyId));
         db.PartyTaskSubmissions.Add(new PartyTaskSubmission
         {
             Id = Guid.NewGuid(),
@@ -171,7 +162,7 @@ public class PartyTaskSubmissionAuthorizationTests
             new NullHttpContextAccessor(),
             new NullPermissionService(),
             new PropertyKeyGateResolver(db),
-            new KeyEnvelopesService(db, holds),
+            new KeyEnvelopesService(db, holds, new KeyEnvelopePeopleResolver(db)),
             TestInspectorFeeServiceFactory.Create(db),
             notifications,
             recipients);

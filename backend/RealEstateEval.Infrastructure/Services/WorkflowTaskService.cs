@@ -12,7 +12,7 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public class WorkflowTaskService : IWorkflowTaskService
 {
-    private const string CaseStudyPropertyKind = "case-study-property";
+    private const WorkflowTaskKind CaseStudyPropertyKind = WorkflowTaskKind.CaseStudyProperty;
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -23,6 +23,7 @@ public class WorkflowTaskService : IWorkflowTaskService
     private readonly INotificationService _notifications;
     private readonly NotificationRecipientResolver _recipients;
     private readonly IPropertyTimelineService _timeline;
+    private readonly IWorkflowTaskVisibilityFilter _visibility;
     private readonly DatabaseOptions _dbOptions;
 
     public WorkflowTaskService(
@@ -31,6 +32,7 @@ public class WorkflowTaskService : IWorkflowTaskService
         INotificationService notifications,
         NotificationRecipientResolver recipients,
         IPropertyTimelineService timeline,
+        IWorkflowTaskVisibilityFilter? visibility = null,
         IOptions<DatabaseOptions>? dbOptions = null)
     {
         _db = db;
@@ -38,6 +40,7 @@ public class WorkflowTaskService : IWorkflowTaskService
         _notifications = notifications;
         _recipients = recipients;
         _timeline = timeline;
+        _visibility = visibility ?? new WorkflowTaskVisibilityFilter();
         _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
     }
 
@@ -46,7 +49,7 @@ public class WorkflowTaskService : IWorkflowTaskService
         CancellationToken cancellationToken = default)
     {
         var (_, take, _, _) = NpgsqlConfiguration.ResolveListPaging(null, null, _dbOptions);
-        var list = await VisibleTaskQuery(actor)
+        var list = await _visibility.VisibleTaskQuery(_db.WorkflowTasks.AsNoTracking(), actor)
             .Take(take)
             .ToListAsync(cancellationToken);
         return list.Select(WorkflowTaskMapper.ToDto).ToList();
@@ -62,7 +65,7 @@ public class WorkflowTaskService : IWorkflowTaskService
             page,
             pageSize,
             _dbOptions);
-        var query = VisibleTaskQuery(actor);
+        var query = _visibility.VisibleTaskQuery(_db.WorkflowTasks.AsNoTracking(), actor);
         var total = await query.CountAsync(cancellationToken);
         var list = await query
             .Skip(skip)
@@ -89,34 +92,6 @@ public class WorkflowTaskService : IWorkflowTaskService
             .AnyAsync(
                 task => task.Id == id && task.AssigneeId == normalizedAssigneeId,
                 cancellationToken);
-    }
-
-    private IQueryable<WorkflowTask> OrderedTaskQuery() =>
-        _db.WorkflowTasks
-            .AsNoTracking()
-            .OrderByDescending(t => t.CreatedAtUtc)
-            .ThenBy(t => t.PoNumber)
-            .ThenBy(t => t.PropertyOrdinal);
-
-    private IQueryable<WorkflowTask> VisibleTaskQuery(PermissionsDto? actor)
-    {
-        var query = OrderedTaskQuery();
-        if (actor is null || PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
-            return query;
-
-        var role = actor.PrototypeRole?.Trim().ToLower() ?? "";
-        var userId = actor.UserId.Trim();
-        var assigneeId = actor.DistributionAssigneeId?.Trim() ?? "";
-        var displayName = actor.DisplayName?.Trim() ?? "";
-
-        if (role.Length == 0 || (userId.Length == 0 && assigneeId.Length == 0 && displayName.Length == 0))
-            return query.Where(_ => false);
-
-        return query.Where(task =>
-            task.AssigneeRole.ToLower() == role
-            && ((assigneeId.Length > 0 && task.AssigneeId == assigneeId)
-                || (userId.Length > 0 && task.AssigneeId == userId)
-                || (displayName.Length > 0 && task.AssigneeName == displayName)));
     }
 
     public async Task<IReadOnlyList<WorkflowTaskDto>> SyncFromWorkOrdersAsync(
@@ -149,9 +124,10 @@ public class WorkflowTaskService : IWorkflowTaskService
         var entity = await _db.WorkflowTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
         if (entity is null) return null;
 
-        var normalized = NormalizeDistribution(distribution);
-        entity.DistributionJson = WorkflowTaskMapper.SerializeDistribution(normalized);
-        entity.UpdatedAtUtc = DateTime.UtcNow;
+        var normalized = WorkflowTaskPhaseRules.NormalizeDistribution(distribution);
+        entity.SetDistribution(
+            WorkflowTaskMapper.SerializeDistribution(normalized),
+            DateTime.UtcNow);
         await _db.SaveChangesAsync(cancellationToken);
         return WorkflowTaskMapper.ToDto(entity);
     }
@@ -171,7 +147,7 @@ public class WorkflowTaskService : IWorkflowTaskService
             });
         }
 
-        if (parent.Phase != "distribution")
+        if (parent.Phase != WorkflowTaskPhase.Distribution)
         {
             return (null, new Dictionary<string, string>
             {
@@ -213,7 +189,7 @@ public class WorkflowTaskService : IWorkflowTaskService
             });
         }
 
-        var distribution = NormalizeDistribution(request.Distribution);
+        var distribution = WorkflowTaskPhaseRules.NormalizeDistribution(request.Distribution);
 
         if (distribution.GovernmentAuditor)
         {
@@ -242,11 +218,14 @@ public class WorkflowTaskService : IWorkflowTaskService
 
         if (distribution.GovernmentAuditor)
         {
-            children.Add(SpawnChild(
+            children.Add(WorkflowTaskPhaseRules.SpawnChild(
                 parent,
-                "government-review",
+                WorkflowTaskKind.GovernmentReview,
                 "government-reviewer",
-                ResolveName(names, "government-review", "مراجع حكومي"),
+                WorkflowTaskPhaseRules.ResolveName(
+                    names,
+                    WorkflowTaskKind.GovernmentReview,
+                    "مراجع حكومي"),
                 distribution.GovernmentAuditorId,
                 deed,
                 now));
@@ -254,27 +233,36 @@ public class WorkflowTaskService : IWorkflowTaskService
 
         if (distribution.ValuationDepartment)
         {
-            children.Add(SpawnChild(
+            children.Add(WorkflowTaskPhaseRules.SpawnChild(
                 parent,
-                "valuation-coordination",
+                WorkflowTaskKind.ValuationCoordination,
                 "valuation-coordinator",
-                ResolveName(names, "valuation-coordination", "منسق التقييم"),
+                WorkflowTaskPhaseRules.ResolveName(
+                    names,
+                    WorkflowTaskKind.ValuationCoordination,
+                    "منسق التقييم"),
                 distribution.OperationsCoordinatorId,
                 deed,
                 now));
-            children.Add(SpawnChild(
+            children.Add(WorkflowTaskPhaseRules.SpawnChild(
                 parent,
-                "field-inspection",
+                WorkflowTaskKind.FieldInspection,
                 "field-inspector",
-                ResolveName(names, "field-inspection", "معاين ميداني"),
+                WorkflowTaskPhaseRules.ResolveName(
+                    names,
+                    WorkflowTaskKind.FieldInspection,
+                    "معاين ميداني"),
                 distribution.InspectorId,
                 deed,
                 now));
-            children.Add(SpawnChild(
+            children.Add(WorkflowTaskPhaseRules.SpawnChild(
                 parent,
-                "property-appraisal",
+                WorkflowTaskKind.PropertyAppraisal,
                 "real-estate-appraiser",
-                ResolveName(names, "property-appraisal", "مقيم عقاري"),
+                WorkflowTaskPhaseRules.ResolveName(
+                    names,
+                    WorkflowTaskKind.PropertyAppraisal,
+                    "مقيم عقاري"),
                 distribution.ValuatorId,
                 deed,
                 now));
@@ -282,21 +270,23 @@ public class WorkflowTaskService : IWorkflowTaskService
 
         if (distribution.EngineeringOffice)
         {
-            children.Add(SpawnChild(
+            children.Add(WorkflowTaskPhaseRules.SpawnChild(
                 parent,
-                "engineering-survey",
+                WorkflowTaskKind.EngineeringSurvey,
                 "engineering-office",
-                ResolveName(names, "engineering-survey", "مكتب هندسي"),
+                WorkflowTaskPhaseRules.ResolveName(
+                    names,
+                    WorkflowTaskKind.EngineeringSurvey,
+                    "مكتب هندسي"),
                 distribution.EngineeringOfficeId,
                 deed,
                 now));
         }
 
-        parent.Phase = "case-study";
-        parent.Status = WorkflowTaskStatus.Open;
-        parent.Title = $"دراسة حالة — {(string.IsNullOrEmpty(deed) ? parent.PoNumber : deed)}";
-        parent.DistributionJson = WorkflowTaskMapper.SerializeDistribution(distribution);
-        parent.UpdatedAtUtc = now;
+        parent.ConfirmDistribution(
+            $"دراسة حالة — {(string.IsNullOrEmpty(deed) ? parent.PoNumber : deed)}",
+            WorkflowTaskMapper.SerializeDistribution(distribution),
+            now);
 
         _db.WorkflowTasks.AddRange(children);
         await _db.SaveChangesAsync(cancellationToken);
@@ -326,7 +316,7 @@ public class WorkflowTaskService : IWorkflowTaskService
                 parent.PoNumber,
                 propertyId,
                 $"party:{child.Id}:assigned",
-                PartyAssignedTitle(child.Kind),
+                WorkflowTaskPhaseRules.PartyAssignedTitle(child.Kind),
                 child.AssigneeName,
                 "active",
                 child.CreatedAtUtc)));
@@ -361,7 +351,7 @@ public class WorkflowTaskService : IWorkflowTaskService
         var parent = await _db.WorkflowTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
         if (parent is null) return (null, null);
 
-        if (!string.Equals(parent.Kind, CaseStudyPropertyKind, StringComparison.OrdinalIgnoreCase))
+        if (parent.Kind != CaseStudyPropertyKind)
         {
             return (null, new Dictionary<string, string>
             {
@@ -369,7 +359,7 @@ public class WorkflowTaskService : IWorkflowTaskService
             });
         }
 
-        if (parent.Phase != "case-study")
+        if (parent.Phase != WorkflowTaskPhase.CaseStudy)
         {
             return (null, new Dictionary<string, string>
             {
@@ -394,24 +384,25 @@ public class WorkflowTaskService : IWorkflowTaskService
             });
         }
 
-        var distribution = NormalizeDistribution(request.Distribution);
+        var distribution = WorkflowTaskPhaseRules.NormalizeDistribution(request.Distribution);
         var names = request.AssigneeNames ?? new Dictionary<string, string>();
 
         var children = await _db.WorkflowTasks
             .Where(t => t.ParentTaskId == parent.Id)
             .ToListAsync(cancellationToken);
 
-        var mappings = new (bool Enabled, string Kind, string Role, string AssigneeId, string Fallback)[]
+        var mappings =
+            new (bool Enabled, WorkflowTaskKind Kind, string Role, string AssigneeId, string Fallback)[]
         {
-            (distribution.GovernmentAuditor, "government-review", "government-reviewer",
+            (distribution.GovernmentAuditor, WorkflowTaskKind.GovernmentReview, "government-reviewer",
                 distribution.GovernmentAuditorId, "مراجع حكومي"),
-            (distribution.ValuationDepartment, "valuation-coordination", "valuation-coordinator",
+            (distribution.ValuationDepartment, WorkflowTaskKind.ValuationCoordination, "valuation-coordinator",
                 distribution.OperationsCoordinatorId, "منسق التقييم"),
-            (distribution.ValuationDepartment, "field-inspection", "field-inspector",
+            (distribution.ValuationDepartment, WorkflowTaskKind.FieldInspection, "field-inspector",
                 distribution.InspectorId, "معاين ميداني"),
-            (distribution.ValuationDepartment, "property-appraisal", "real-estate-appraiser",
+            (distribution.ValuationDepartment, WorkflowTaskKind.PropertyAppraisal, "real-estate-appraiser",
                 distribution.ValuatorId, "مقيم عقاري"),
-            (distribution.EngineeringOffice, "engineering-survey", "engineering-office",
+            (distribution.EngineeringOffice, WorkflowTaskKind.EngineeringSurvey, "engineering-office",
                 distribution.EngineeringOfficeId, "مكتب هندسي"),
         };
 
@@ -423,8 +414,7 @@ public class WorkflowTaskService : IWorkflowTaskService
         {
             if (!mapping.Enabled) continue;
 
-            var child = children.FirstOrDefault(c =>
-                string.Equals(c.Kind, mapping.Kind, StringComparison.OrdinalIgnoreCase));
+            var child = children.FirstOrDefault(c => c.Kind == mapping.Kind);
             if (child is null || child.Status != WorkflowTaskStatus.Open) continue;
 
             var newAssigneeId = string.IsNullOrWhiteSpace(mapping.AssigneeId)
@@ -432,11 +422,8 @@ public class WorkflowTaskService : IWorkflowTaskService
                 : mapping.AssigneeId.Trim();
             if (string.Equals(child.AssigneeId, newAssigneeId, StringComparison.Ordinal)) continue;
 
-            var newName = ResolveName(names, mapping.Kind, mapping.Fallback);
-            child.AssigneeId = newAssigneeId;
-            child.AssigneeName = newName;
-            child.AssigneeRole = mapping.Role;
-            child.UpdatedAtUtc = now;
+            var newName = WorkflowTaskPhaseRules.ResolveName(names, mapping.Kind, mapping.Fallback);
+            child.Assign(newAssigneeId, newName, mapping.Role, now);
             changed.Add(child);
 
             if (parent.PropertyId is Guid propertyId)
@@ -448,15 +435,14 @@ public class WorkflowTaskService : IWorkflowTaskService
                     parent.PoNumber,
                     propertyId,
                     $"party:{child.Id}:redistributed:{now.Ticks}",
-                    $"إعادة إسناد — {PartyAssignedTitle(child.Kind)}",
+                    $"إعادة إسناد — {WorkflowTaskPhaseRules.PartyAssignedTitle(child.Kind)}",
                     detail,
                     "active",
                     now));
             }
         }
 
-        parent.DistributionJson = WorkflowTaskMapper.SerializeDistribution(distribution);
-        parent.UpdatedAtUtc = now;
+        parent.SetDistribution(WorkflowTaskMapper.SerializeDistribution(distribution), now);
         await _db.SaveChangesAsync(cancellationToken);
 
         if (timelineEvents.Count > 0)
@@ -495,15 +481,16 @@ public class WorkflowTaskService : IWorkflowTaskService
             if (prop is null || prop.IsRemoved) return null;
         }
 
-        var phase = PhaseAfterEnfath(request.IdentifierType, request.BourseDataCompleted);
+        var phase = WorkflowTaskPhaseRules.PhaseAfterEnfath(request.IdentifierType, request.BourseDataCompleted);
         var deed = request.DeedNumber.Trim();
         var po = entity.PoNumber.Trim();
-        entity.PropertyId = propertyId;
-        entity.Phase = phase;
-        entity.Title = phase == "distribution"
-            ? $"توزيع الأطراف — {(string.IsNullOrEmpty(deed) ? po : deed)}"
-            : PropertyTaskTitle(deed, po);
-        entity.UpdatedAtUtc = DateTime.UtcNow;
+        entity.AdvanceAfterEnfath(
+            propertyId,
+            phase,
+            phase == WorkflowTaskPhase.Distribution
+                ? $"توزيع الأطراف — {(string.IsNullOrEmpty(deed) ? po : deed)}"
+                : WorkflowTaskPhaseRules.PropertyTaskTitle(deed, po),
+            DateTime.UtcNow);
         await _db.SaveChangesAsync(cancellationToken);
         return WorkflowTaskMapper.ToDto(entity);
     }
@@ -525,9 +512,9 @@ public class WorkflowTaskService : IWorkflowTaskService
 
         var deed = request.DeedNumber.Trim();
         var po = entity.PoNumber.Trim();
-        entity.Phase = "distribution";
-        entity.Title = $"توزيع الأطراف — {(string.IsNullOrEmpty(deed) ? po : deed)}";
-        entity.UpdatedAtUtc = DateTime.UtcNow;
+        entity.AdvanceAfterBourse(
+            $"توزيع الأطراف — {(string.IsNullOrEmpty(deed) ? po : deed)}",
+            DateTime.UtcNow);
         await _db.SaveChangesAsync(cancellationToken);
 
         if (entity.PropertyId is Guid propertyId)
@@ -551,8 +538,10 @@ public class WorkflowTaskService : IWorkflowTaskService
         RevertWorkflowTaskPhaseRequest request,
         CancellationToken cancellationToken = default)
     {
-        var target = (request.TargetPhase ?? "").Trim().ToLowerInvariant();
-        if (target is not ("enfath" or "bourse"))
+        if (!WorkflowTaskPhaseValues.TryParse(
+                (request.TargetPhase ?? "").Trim().ToLowerInvariant(),
+                out var target)
+            || target is not (WorkflowTaskPhase.Enfath or WorkflowTaskPhase.Bourse))
         {
             return (null, new Dictionary<string, string>
             {
@@ -563,7 +552,7 @@ public class WorkflowTaskService : IWorkflowTaskService
         var entity = await _db.WorkflowTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
         if (entity is null) return (null, null);
 
-        if (!string.Equals(entity.Kind, CaseStudyPropertyKind, StringComparison.OrdinalIgnoreCase))
+        if (entity.Kind != CaseStudyPropertyKind)
         {
             return (null, new Dictionary<string, string>
             {
@@ -571,7 +560,7 @@ public class WorkflowTaskService : IWorkflowTaskService
             });
         }
 
-        if (WorkflowTaskStatus.IsTerminal(entity.Status) || entity.Phase is "done" or "case-study")
+        if (entity.IsTerminal || entity.Phase is WorkflowTaskPhase.Done or WorkflowTaskPhase.CaseStudy)
         {
             return (null, new Dictionary<string, string>
             {
@@ -580,10 +569,7 @@ public class WorkflowTaskService : IWorkflowTaskService
         }
 
         var current = entity.Phase;
-        var allowed =
-            (current == "distribution" && target == "bourse")
-            || (current == "bourse" && target == "enfath");
-        if (!allowed)
+        if (!entity.CanRevertTo(target))
         {
             return (null, new Dictionary<string, string>
             {
@@ -607,10 +593,11 @@ public class WorkflowTaskService : IWorkflowTaskService
             property.BourseCompletedAtUtc = null;
         }
 
-        if (current == "distribution")
+        if (current == WorkflowTaskPhase.Distribution)
         {
-            entity.DistributionJson = WorkflowTaskMapper.SerializeDistribution(
-                WorkflowTaskMapper.DefaultDistribution());
+            entity.SetDistribution(
+                WorkflowTaskMapper.SerializeDistribution(WorkflowTaskMapper.DefaultDistribution()),
+                DateTime.UtcNow);
 
             var children = await _db.WorkflowTasks
                 .Where(t => t.ParentTaskId == entity.Id)
@@ -633,21 +620,21 @@ public class WorkflowTaskService : IWorkflowTaskService
             deed = prop?.DeedNumber?.Trim() ?? "";
         }
 
-        entity.Phase = target;
-        entity.Status = WorkflowTaskStatus.Open;
-        entity.Title = PropertyTaskTitle(deed, po);
-        entity.UpdatedAtUtc = DateTime.UtcNow;
+        entity.RevertToPhase(
+            target,
+            WorkflowTaskPhaseRules.PropertyTaskTitle(deed, po),
+            DateTime.UtcNow);
         await _db.SaveChangesAsync(cancellationToken);
 
         if (entity.PropertyId is Guid timelinePropertyId)
         {
-            var label = target == "enfath"
+            var label = target == WorkflowTaskPhase.Enfath
                 ? "إرجاع للبيانات الأولية"
                 : "إرجاع لاستعلام البورصة";
             await _timeline.RecordAsync(
                 entity.PoNumber,
                 timelinePropertyId,
-                $"task:{entity.Id}:phase-revert:{target}",
+                $"task:{entity.Id}:phase-revert:{target.ToDbValue()}",
                 label,
                 null,
                 "active",
@@ -667,40 +654,36 @@ public class WorkflowTaskService : IWorkflowTaskService
         if (entity is null) return null;
 
         var wasCaseStudyCompleted =
-            string.Equals(entity.Kind, CaseStudyPropertyKind, StringComparison.OrdinalIgnoreCase)
+            entity.Kind == CaseStudyPropertyKind
             && entity.Status == WorkflowTaskStatus.Completed;
 
-        if (request.Phase is not null) entity.Phase = request.Phase;
-        if (request.Status is not null) entity.Status = request.Status;
-        if (request.Title is not null) entity.Title = request.Title;
-        if (request.AssigneeRole is not null) entity.AssigneeRole = request.AssigneeRole;
-        if (request.AssigneeName is not null) entity.AssigneeName = request.AssigneeName;
-        if (request.AssigneeId is not null) entity.AssigneeId = request.AssigneeId;
-        if (request.PropertyId is not null)
-        {
-            entity.PropertyId = string.IsNullOrWhiteSpace(request.PropertyId)
+        entity.ApplyShellPatch(
+            phase: WorkflowTaskPhaseValues.ParseOptional(request.Phase),
+            status: request.Status is null ? null : WorkflowTaskStatusValues.Parse(request.Status),
+            title: request.Title,
+            assigneeRole: request.AssigneeRole,
+            assigneeName: request.AssigneeName,
+            assigneeId: request.AssigneeId,
+            assigneeIdProvided: request.AssigneeId is not null,
+            propertyId: string.IsNullOrWhiteSpace(request.PropertyId)
                 ? null
-                : Guid.Parse(request.PropertyId);
-        }
-        if (request.ObstructionReason is not null)
-            entity.ObstructionReason = string.IsNullOrWhiteSpace(request.ObstructionReason)
+                : Guid.Parse(request.PropertyId),
+            propertyIdProvided: request.PropertyId is not null,
+            obstructionReason: string.IsNullOrWhiteSpace(request.ObstructionReason)
                 ? null
-                : request.ObstructionReason;
-        if (request.ObstructionPriorPhase is not null)
-            entity.ObstructionPriorPhase = string.IsNullOrWhiteSpace(request.ObstructionPriorPhase)
+                : request.ObstructionReason,
+            obstructionReasonProvided: request.ObstructionReason is not null,
+            obstructionPriorPhase: WorkflowTaskPhaseValues.ParseOptional(request.ObstructionPriorPhase),
+            obstructionPriorPhaseProvided: request.ObstructionPriorPhase is not null,
+            distributionJson: request.Distribution is null
                 ? null
-                : request.ObstructionPriorPhase;
-        if (request.Distribution is not null)
-        {
-            entity.DistributionJson = WorkflowTaskMapper.SerializeDistribution(
-                NormalizeDistribution(request.Distribution));
-        }
-
-        entity.UpdatedAtUtc = DateTime.UtcNow;
+                : WorkflowTaskMapper.SerializeDistribution(
+                    WorkflowTaskPhaseRules.NormalizeDistribution(request.Distribution)),
+            nowUtc: DateTime.UtcNow);
         await _db.SaveChangesAsync(cancellationToken);
 
         var nowCaseStudyCompleted =
-            string.Equals(entity.Kind, CaseStudyPropertyKind, StringComparison.OrdinalIgnoreCase)
+            entity.Kind == CaseStudyPropertyKind
             && entity.Status == WorkflowTaskStatus.Completed;
         if (!wasCaseStudyCompleted
             && nowCaseStudyCompleted
@@ -737,7 +720,7 @@ public class WorkflowTaskService : IWorkflowTaskService
         var task = await _db.WorkflowTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
         if (task is null) return (false, null);
 
-        if (!string.Equals(task.Kind, CaseStudyPropertyKind, StringComparison.OrdinalIgnoreCase))
+        if (task.Kind != CaseStudyPropertyKind)
         {
             return (false, new Dictionary<string, string>
             {
@@ -745,7 +728,7 @@ public class WorkflowTaskService : IWorkflowTaskService
             });
         }
 
-        if (task.Phase is "done" or "case-study")
+        if (task.Phase is WorkflowTaskPhase.Done or WorkflowTaskPhase.CaseStudy)
         {
             return (false, new Dictionary<string, string>
             {
@@ -809,7 +792,7 @@ public class WorkflowTaskService : IWorkflowTaskService
                 .Where(t =>
                     t.Kind == CaseStudyPropertyKind
                     && t.PropertyId is null
-                    && t.Phase == "enfath"
+                    && t.Phase == WorkflowTaskPhase.Enfath
                     && t.PropertyOrdinal > order.ExpectedPropertyCount)
                 .ToList();
             if (excess.Count > 0)
@@ -878,12 +861,7 @@ public class WorkflowTaskService : IWorkflowTaskService
             });
         }
 
-        entity.Status = WorkflowTaskStatus.Open;
-        if (string.Equals(entity.Kind, CaseStudyPropertyKind, StringComparison.OrdinalIgnoreCase))
-        {
-            entity.Phase = "case-study";
-        }
-        entity.UpdatedAtUtc = DateTime.UtcNow;
+        entity.Reopen(DateTime.UtcNow);
         await _db.SaveChangesAsync(cancellationToken);
 
         if (entity.PropertyId is Guid propertyId)
@@ -963,15 +941,13 @@ public class WorkflowTaskService : IWorkflowTaskService
             await RemovePartySubmissionsForTasksAsync(toRemove.Select(t => t.Id).ToList(), cancellationToken);
             _db.WorkflowTasks.RemoveRange(toRemove);
 
-            linked.PropertyId = null;
-            linked.Phase = "enfath";
-            linked.Status = WorkflowTaskStatus.Open;
-            linked.Title = SlotTaskTitle(nPo, linked.PropertyOrdinal, Math.Max(1, expectedPropertyCount));
-            linked.DistributionJson = WorkflowTaskMapper.SerializeDistribution(
-                WorkflowTaskMapper.DefaultDistribution());
-            linked.ObstructionReason = null;
-            linked.ObstructionPriorPhase = null;
-            linked.UpdatedAtUtc = DateTime.UtcNow;
+            linked.ResetToEmptySlot(
+                WorkflowTaskPhaseRules.SlotTaskTitle(
+                    nPo,
+                    linked.PropertyOrdinal,
+                    Math.Max(1, expectedPropertyCount)),
+                WorkflowTaskMapper.SerializeDistribution(WorkflowTaskMapper.DefaultDistribution()),
+                DateTime.UtcNow);
         }
         else
         {
@@ -1000,7 +976,7 @@ public class WorkflowTaskService : IWorkflowTaskService
             t.PoNumber == poNumber &&
             t.PropertyOrdinal > expected &&
             t.PropertyId is null &&
-            t.Phase == "enfath");
+            t.Phase == WorkflowTaskPhase.Enfath);
 
         var tasks = allTasks
             .Where(t => t.Kind == CaseStudyPropertyKind && t.PoNumber == poNumber)
@@ -1017,7 +993,12 @@ public class WorkflowTaskService : IWorkflowTaskService
         {
             if (!byOrdinal.ContainsKey(ord))
             {
-                var task = NewSlotTask(poNumber, ord, expected, assignmentLabel);
+                var task = WorkflowTaskPhaseRules.NewSlotTask(
+                    poNumber,
+                    ord,
+                    expected,
+                    assignmentLabel,
+                    WorkflowTaskMapper.SerializeDistribution(WorkflowTaskMapper.DefaultDistribution()));
                 allTasks.Add(task);
                 _db.WorkflowTasks.Add(task);
                 byOrdinal[ord] = task;
@@ -1025,9 +1006,9 @@ public class WorkflowTaskService : IWorkflowTaskService
             else if (byOrdinal[ord].PropertyId is null)
             {
                 var existing = byOrdinal[ord];
-                existing.Title = SlotTaskTitle(poNumber, ord, expected);
-                existing.AssignmentType = assignmentLabel;
-                existing.UpdatedAtUtc = DateTime.UtcNow;
+                var slotNow = DateTime.UtcNow;
+                existing.Retitle(WorkflowTaskPhaseRules.SlotTaskTitle(poNumber, ord, expected), slotNow);
+                existing.SetAssignmentType(assignmentLabel, slotNow);
             }
         }
 
@@ -1042,15 +1023,10 @@ public class WorkflowTaskService : IWorkflowTaskService
         foreach (var orphan in tasks.Where(t =>
                      t.PropertyId.HasValue && removedPropertyIds.Contains(t.PropertyId.Value)))
         {
-            orphan.PropertyId = null;
-            orphan.Phase = "enfath";
-            orphan.Status = WorkflowTaskStatus.Open;
-            orphan.Title = SlotTaskTitle(poNumber, orphan.PropertyOrdinal, expected);
-            orphan.DistributionJson = WorkflowTaskMapper.SerializeDistribution(
-                WorkflowTaskMapper.DefaultDistribution());
-            orphan.ObstructionReason = null;
-            orphan.ObstructionPriorPhase = null;
-            orphan.UpdatedAtUtc = DateTime.UtcNow;
+            orphan.ResetToEmptySlot(
+                WorkflowTaskPhaseRules.SlotTaskTitle(poNumber, orphan.PropertyOrdinal, expected),
+                WorkflowTaskMapper.SerializeDistribution(WorkflowTaskMapper.DefaultDistribution()),
+                DateTime.UtcNow);
         }
 
         var linkedIds = tasks
@@ -1066,18 +1042,22 @@ public class WorkflowTaskService : IWorkflowTaskService
             {
                 var linked = tasks.FirstOrDefault(t => t.PropertyId == prop.Id);
                 if (linked is not null &&
-                    linked.Phase is not "done" and not "obstruction" and not "case-study" and not "enfath")
+                    linked.Phase is not (WorkflowTaskPhase.Done
+                        or WorkflowTaskPhase.Obstruction
+                        or WorkflowTaskPhase.CaseStudy
+                        or WorkflowTaskPhase.Enfath))
                 {
-                    var targetPhase = PhaseAfterEnfath(
+                    var targetPhase = WorkflowTaskPhaseRules.PhaseAfterEnfath(
                         PropertyIdentifierTypeLabels.ToApiValue(prop.IdentifierType),
                         prop.BourseDataCompleted);
                     if (linked.Phase != targetPhase)
                     {
-                        linked.Phase = targetPhase;
-                        linked.Title = targetPhase == "distribution"
-                            ? $"توزيع الأطراف — {FormatDeedDisplay(prop)}"
-                            : PropertyTaskTitle(prop.DeedNumber, poNumber);
-                        linked.UpdatedAtUtc = DateTime.UtcNow;
+                        linked.MoveToPhase(
+                            targetPhase,
+                            targetPhase == WorkflowTaskPhase.Distribution
+                                ? $"توزيع الأطراف — {WorkflowTaskPhaseRules.FormatDeedDisplay(prop)}"
+                                : WorkflowTaskPhaseRules.PropertyTaskTitle(prop.DeedNumber, poNumber),
+                            DateTime.UtcNow);
                     }
                 }
                 continue;
@@ -1091,140 +1071,18 @@ public class WorkflowTaskService : IWorkflowTaskService
                 .FirstOrDefault();
             if (slot is null) continue;
 
-            slot.PropertyId = prop.Id;
-            slot.Phase = PhaseAfterEnfath(
-                PropertyIdentifierTypeLabels.ToApiValue(prop.IdentifierType),
-                prop.BourseDataCompleted);
-            slot.Title = PropertyTaskTitle(prop.DeedNumber, poNumber);
-            slot.AssignmentType = assignmentLabel;
-            slot.UpdatedAtUtc = DateTime.UtcNow;
+            var linkNow = DateTime.UtcNow;
+            slot.LinkProperty(
+                prop.Id,
+                WorkflowTaskPhaseRules.PhaseAfterEnfath(
+                    PropertyIdentifierTypeLabels.ToApiValue(prop.IdentifierType),
+                    prop.BourseDataCompleted),
+                WorkflowTaskPhaseRules.PropertyTaskTitle(prop.DeedNumber, poNumber),
+                linkNow);
+            slot.SetAssignmentType(assignmentLabel, linkNow);
             linkedIds.Add(prop.Id);
         }
     }
-
-    private static WorkflowTask NewSlotTask(
-        string poNumber,
-        int ordinal,
-        int total,
-        string? assignmentType)
-    {
-        var now = DateTime.UtcNow;
-        return new WorkflowTask
-        {
-            Id = Guid.NewGuid(),
-            Kind = CaseStudyPropertyKind,
-            PoNumber = poNumber,
-            PropertyOrdinal = ordinal,
-            Title = SlotTaskTitle(poNumber, ordinal, total),
-            Phase = "enfath",
-            AssigneeRole = "case-specialist",
-            AssigneeName = "أخصائي دراسة الحالة",
-            Status = WorkflowTaskStatus.Open,
-            DistributionJson = WorkflowTaskMapper.SerializeDistribution(
-                WorkflowTaskMapper.DefaultDistribution()),
-            AssignmentType = assignmentType,
-            CreatedAtUtc = now,
-            UpdatedAtUtc = now,
-        };
-    }
-
-    private static WorkflowTask SpawnChild(
-        WorkflowTask parent,
-        string kind,
-        string role,
-        string defaultName,
-        string assigneeId,
-        string deed,
-        DateTime now)
-    {
-        var refLabel = string.IsNullOrWhiteSpace(deed) ? parent.PoNumber : deed;
-        var title = kind switch
-        {
-            "field-inspection" => $"معاينة ميدانية — {refLabel}",
-            "government-review" => $"مراجعة حكومية — {refLabel}",
-            "valuation-coordination" => $"منسق التقييم — {refLabel}",
-            "property-appraisal" => $"تقييم عقاري — {refLabel}",
-            _ => $"رفع مساحي — {refLabel}",
-        };
-
-        return new WorkflowTask
-        {
-            Id = Guid.NewGuid(),
-            Kind = kind,
-            PoNumber = parent.PoNumber,
-            PropertyId = parent.PropertyId,
-            PropertyOrdinal = parent.PropertyOrdinal,
-            Title = title,
-            Phase = "done",
-            AssigneeRole = role,
-            AssigneeName = defaultName,
-            AssigneeId = string.IsNullOrWhiteSpace(assigneeId) ? null : assigneeId.Trim(),
-            ParentTaskId = parent.Id,
-            Status = WorkflowTaskStatus.Open,
-            CreatedAtUtc = now,
-            UpdatedAtUtc = now,
-        };
-    }
-
-    private static TaskDistributionDraftDto NormalizeDistribution(TaskDistributionDraftDto dto)
-    {
-        if (!dto.GovernmentAuditor) dto.GovernmentAuditorId = "";
-        if (!dto.ValuationDepartment)
-        {
-            dto.OperationsCoordinatorId = "";
-            dto.InspectorId = "";
-            dto.ValuatorId = "";
-        }
-        if (!dto.EngineeringOffice) dto.EngineeringOfficeId = "";
-        return dto;
-    }
-
-    private static string PhaseAfterEnfath(string identifierType, bool bourseCompleted)
-    {
-        if (identifierType == PropertyIdentifierTypeLabels.RealEstateReg) return "distribution";
-        if (bourseCompleted) return "distribution";
-        return "bourse";
-    }
-
-    private static string SlotTaskTitle(string poNumber, int ordinal, int total) =>
-        $"تسجيل عقار {ordinal} من {total} — {poNumber}";
-
-    private static string PropertyTaskTitle(string deed, string poNumber)
-    {
-        var d = deed.Trim();
-        return string.IsNullOrEmpty(d) ? $"عقار — {poNumber}" : $"{d} — {poNumber}";
-    }
-
-    private static string ResolveName(
-        Dictionary<string, string> names,
-        string kind,
-        string fallback) =>
-        names.TryGetValue(kind, out var name) && !string.IsNullOrWhiteSpace(name)
-            ? name.Trim()
-            : fallback;
-
-    private static string FormatDeedDisplay(WorkOrderProperty prop)
-    {
-        var deed = prop.DeedNumber.Trim();
-        if (!string.IsNullOrEmpty(deed) && !deed.StartsWith("INQ-", StringComparison.Ordinal))
-            return deed;
-        if (prop.IdentifierType == PropertyIdentifierType.BourseInquiry ||
-            deed.StartsWith("INQ-", StringComparison.Ordinal))
-        {
-            return "استعلام بورصة — بانتظار البيانات";
-        }
-        return string.IsNullOrEmpty(deed) ? "—" : deed;
-    }
-
-    private static string PartyAssignedTitle(string kind) => kind switch
-    {
-        "field-inspection" => "تعيين المعاين الميداني",
-        "engineering-survey" => "تعيين المكتب الهندسي",
-        "property-appraisal" => "تعيين المقيّم العقاري",
-        "government-review" => "تعيين المراجع الحكومي",
-        "valuation-coordination" => "تعيين منسق التقييم",
-        _ => "تعيين طرف",
-    };
 
     private async Task NotifyDistributionAssignedAsync(
         WorkflowTask parent,
@@ -1293,27 +1151,27 @@ public class WorkflowTaskService : IWorkflowTaskService
         await _notifications.CreateForUsersAsync(requestsByUser, cancellationToken);
     }
 
-    private static string TaskNotificationLabel(string kind) => kind switch
+    private static string TaskNotificationLabel(WorkflowTaskKind kind) => kind switch
     {
-        "field-inspection" => "معاينة العقار",
-        "engineering-survey" => "الرفع المساحي",
-        "property-appraisal" => "تقييم العقار",
-        "government-review" => "المراجعة الحكومية",
-        "valuation-coordination" => "استلام التقييم",
+        WorkflowTaskKind.FieldInspection => "معاينة العقار",
+        WorkflowTaskKind.EngineeringSurvey => "الرفع المساحي",
+        WorkflowTaskKind.PropertyAppraisal => "تقييم العقار",
+        WorkflowTaskKind.GovernmentReview => "المراجعة الحكومية",
+        WorkflowTaskKind.ValuationCoordination => "استلام التقييم",
         _ => "مهمة جديدة",
     };
 
-    private static string TaskHref(string kind, Guid taskId)
+    private static string TaskHref(WorkflowTaskKind kind, Guid taskId)
     {
         var id = Uri.EscapeDataString(taskId.ToString());
         return kind switch
         {
-            "engineering-survey" => $"/active-survey/{id}",
-            "field-inspection" => $"/property-inspection/{id}",
-            "property-appraisal" => $"/property-appraisal/{id}",
+            WorkflowTaskKind.EngineeringSurvey => $"/active-survey/{id}",
+            WorkflowTaskKind.FieldInspection => $"/property-inspection/{id}",
+            WorkflowTaskKind.PropertyAppraisal => $"/property-appraisal/{id}",
             // Reviewers use operations-tasks; CDO can still open /government-review manually.
-            "government-review" => "/operations-tasks",
-            "valuation-coordination" => $"/valuation-coordination/{id}",
+            WorkflowTaskKind.GovernmentReview => "/operations-tasks",
+            WorkflowTaskKind.ValuationCoordination => $"/valuation-coordination/{id}",
             _ => "/active-primary-data",
         };
     }

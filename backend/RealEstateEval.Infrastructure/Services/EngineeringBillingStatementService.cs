@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
@@ -13,20 +14,23 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
     private const int MaxListRows = 500;
     private const string RefDept = "FN";
     private const string RefType = "CS";
-    private const string EngSurveyKind = "engineering-survey";
+    private const WorkflowTaskKind EngSurveyKind = WorkflowTaskKind.EngineeringSurvey;
 
     private readonly ApplicationDbContext _db;
     private readonly INotificationService _notifications;
     private readonly NotificationRecipientResolver _recipients;
+    private readonly ILogger<EngineeringBillingStatementService> _logger;
 
     public EngineeringBillingStatementService(
         ApplicationDbContext db,
         INotificationService notifications,
-        NotificationRecipientResolver recipients)
+        NotificationRecipientResolver recipients,
+        ILogger<EngineeringBillingStatementService> logger)
     {
         _db = db;
         _notifications = notifications;
         _recipients = recipients;
+        _logger = logger;
     }
 
     public async Task<IReadOnlyList<EngBillingReadyLineDto>> ListReadyLinesAsync(
@@ -199,7 +203,16 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
         }
         catch (Exception ex)
         {
-            return new CreateEngBillingStatementResult { Error = ex.Message };
+            // Reference allocation reads a sequence and can surface storage-level detail.
+            // Keep it in the log; the caller only learns that the attempt failed.
+            _logger.LogError(
+                ex,
+                "Failed to allocate an engineering billing statement reference for assignee {AssigneeId}",
+                assigneeId);
+            return new CreateEngBillingStatementResult
+            {
+                Error = "تعذر إنشاء كشف الفوترة. حاول مرة أخرى، وإذا تكرر الخطأ راجع الدعم الفني.",
+            };
         }
 
         var statementId = Guid.NewGuid();

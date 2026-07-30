@@ -2,7 +2,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Authorization;
-using RealEstateEval.Domain;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -23,9 +22,12 @@ public class JwtTokenService : IJwtTokenService
     }
 
     public (string token, DateTime expiresAtUtc) CreateToken(
-        ApplicationUser user,
+        TokenSubject subject,
         IEnumerable<string> roles,
-        IEnumerable<string>? capabilities = null)
+        IEnumerable<string>? capabilities = null,
+        string? prototypeRole = null,
+        string? distributionAssigneeId = null,
+        IEnumerable<string>? pages = null)
     {
         var issuer = _configuration["Jwt:Issuer"] ?? throw new InvalidOperationException("Jwt:Issuer missing");
         var audience = _configuration["Jwt:Audience"] ?? throw new InvalidOperationException("Jwt:Audience missing");
@@ -38,9 +40,9 @@ public class JwtTokenService : IJwtTokenService
         var expiresAtUtc = DateTime.UtcNow.AddMinutes(lifetimeMinutes);
         var claims = new List<Claim>
         {
-            new(JwtRegisteredClaimNames.Sub, user.Id),
-            new(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
-            new("displayName", user.DisplayName),
+            new(JwtRegisteredClaimNames.Sub, subject.Id),
+            new(JwtRegisteredClaimNames.Email, subject.Email),
+            new("displayName", subject.DisplayName),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
         claims.AddRange(roles.Select(r => new Claim("role", r)));
@@ -48,6 +50,13 @@ public class JwtTokenService : IJwtTokenService
         {
             claims.AddRange(capabilities.Select(c => new Claim(PlatformCapabilities.ClaimType, c)));
         }
+
+        if (!string.IsNullOrWhiteSpace(prototypeRole))
+            claims.Add(new Claim("prototypeRole", prototypeRole.Trim()));
+        if (!string.IsNullOrWhiteSpace(distributionAssigneeId))
+            claims.Add(new Claim("distributionAssigneeId", distributionAssigneeId.Trim()));
+        if (pages is not null)
+            claims.AddRange(pages.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => new Claim("page", p)));
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

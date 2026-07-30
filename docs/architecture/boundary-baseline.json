@@ -1,0 +1,499 @@
+{
+  "note": "Generated from the repository by RealEstateEval.Architecture.Tests. It records the coupling that exists today so the guardrails can prevent growth. Entries may only be added together with an approved ownership change in docs/architecture/table-ownership.json.",
+  "projectReferences": {
+    "backend/RealEstateEval.Api.ContainerTests/RealEstateEval.Api.ContainerTests.csproj": [
+      "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/services/attachments/RealEstateEval.Attachments.Api/RealEstateEval.Attachments.Api.csproj",
+      "backend/services/case-study/RealEstateEval.CaseStudy.Api/RealEstateEval.CaseStudy.Api.csproj",
+      "backend/services/failures/RealEstateEval.Failures.Api/RealEstateEval.Failures.Api.csproj",
+      "backend/services/financial/RealEstateEval.Financial.Api/RealEstateEval.Financial.Api.csproj",
+      "backend/services/identity/RealEstateEval.Identity.Api/RealEstateEval.Identity.Api.csproj",
+      "backend/services/operations/RealEstateEval.Operations.Api/RealEstateEval.Operations.Api.csproj"
+    ],
+    "backend/RealEstateEval.Api.IntegrationTests/RealEstateEval.Api.IntegrationTests.csproj": [
+      "backend/gateway/RealEstateEval.Gateway/RealEstateEval.Gateway.csproj",
+      "backend/services/attachments/RealEstateEval.Attachments.Api/RealEstateEval.Attachments.Api.csproj",
+      "backend/services/failures/RealEstateEval.Failures.Api/RealEstateEval.Failures.Api.csproj",
+      "backend/services/financial/RealEstateEval.Financial.Api/RealEstateEval.Financial.Api.csproj",
+      "backend/services/identity/RealEstateEval.Identity.Api/RealEstateEval.Identity.Api.csproj",
+      "backend/services/operations/RealEstateEval.Operations.Api/RealEstateEval.Operations.Api.csproj",
+      "backend/services/platform/RealEstateEval.Platform.Api/RealEstateEval.Platform.Api.csproj",
+      "backend/services/reporting/RealEstateEval.Reporting.Api/RealEstateEval.Reporting.Api.csproj"
+    ],
+    "backend/RealEstateEval.Application/RealEstateEval.Application.csproj": [
+      "backend/RealEstateEval.Domain/RealEstateEval.Domain.csproj"
+    ],
+    "backend/RealEstateEval.Application.Tests/RealEstateEval.Application.Tests.csproj": [
+      "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
+      "backend/RealEstateEval.Domain/RealEstateEval.Domain.csproj",
+      "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj"
+    ],
+    "backend/RealEstateEval.Architecture.Tests/RealEstateEval.Architecture.Tests.csproj": [
+      "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj"
+    ],
+    "backend/RealEstateEval.Domain/RealEstateEval.Domain.csproj": [],
+    "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj": [
+      "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
+      "backend/RealEstateEval.Domain/RealEstateEval.Domain.csproj",
+      "backend/shared/RealEstateEval.Shared.Contracts/RealEstateEval.Shared.Contracts.csproj"
+    ],
+    "backend/gateway/RealEstateEval.Gateway/RealEstateEval.Gateway.csproj": [
+      "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj"
+    ],
+    "backend/scripts/reseed-ahmed-tool/ReseedAhmed.csproj": [
+      "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj"
+    ],
+    "backend/shared/RealEstateEval.Shared.Contracts/RealEstateEval.Shared.Contracts.csproj": [],
+    "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj": [
+      "backend/RealEstateEval.Application/RealEstateEval.Application.csproj"
+    ],
+    "backend/tools/DbMigrate/DbMigrate.csproj": [
+      "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj"
+    ],
+    "backend/services/attachments/RealEstateEval.Attachments.Api/RealEstateEval.Attachments.Api.csproj": [
+      "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
+      "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj"
+    ],
+    "backend/services/case-study/RealEstateEval.CaseStudy.Api/RealEstateEval.CaseStudy.Api.csproj": [
+      "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
+      "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/shared/RealEstateEval.Shared.Contracts/RealEstateEval.Shared.Contracts.csproj",
+      "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj"
+    ],
+    "backend/services/failures/RealEstateEval.Failures.Api/RealEstateEval.Failures.Api.csproj": [
+      "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
+      "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj"
+    ],
+    "backend/services/financial/RealEstateEval.Financial.Api/RealEstateEval.Financial.Api.csproj": [
+      "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
+      "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj"
+    ],
+    "backend/services/identity/RealEstateEval.Identity.Api/RealEstateEval.Identity.Api.csproj": [
+      "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
+      "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj"
+    ],
+    "backend/services/operations/RealEstateEval.Operations.Api/RealEstateEval.Operations.Api.csproj": [
+      "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
+      "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj"
+    ],
+    "backend/services/platform/RealEstateEval.Platform.Api/RealEstateEval.Platform.Api.csproj": [
+      "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
+      "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/shared/RealEstateEval.Shared.Contracts/RealEstateEval.Shared.Contracts.csproj",
+      "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj"
+    ],
+    "backend/services/reporting/RealEstateEval.Reporting.Api/RealEstateEval.Reporting.Api.csproj": [
+      "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
+      "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj"
+    ],
+    "backend/services/valuation/RealEstateEval.Valuation.Api/RealEstateEval.Valuation.Api.csproj": [
+      "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
+      "backend/RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj",
+      "backend/shared/RealEstateEval.Shared.Contracts/RealEstateEval.Shared.Contracts.csproj",
+      "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj"
+    ]
+  },
+  "apiSchemaAccess": {
+    "attachments": [
+      "attachments"
+    ],
+    "case-study": [
+      "attachments",
+      "case_study",
+      "failures",
+      "financial",
+      "identity",
+      "messaging",
+      "operations",
+      "platform",
+      "valuation"
+    ],
+    "failures": [
+      "attachments",
+      "case_study",
+      "failures",
+      "financial",
+      "identity",
+      "messaging"
+    ],
+    "financial": [
+      "case_study",
+      "financial",
+      "identity"
+    ],
+    "identity": [
+      "identity"
+    ],
+    "operations": [
+      "attachments",
+      "case_study",
+      "failures",
+      "financial",
+      "identity",
+      "operations"
+    ],
+    "platform": [
+      "case_study",
+      "identity",
+      "messaging",
+      "platform"
+    ],
+    "reporting": [],
+    "valuation": [
+      "case_study",
+      "messaging",
+      "valuation"
+    ]
+  },
+  "infrastructureFileSchemaAccess": {
+    "backend/RealEstateEval.Infrastructure/Data/DataSeeder.cs": [
+      "case_study",
+      "failures",
+      "financial",
+      "identity",
+      "operations",
+      "valuation"
+    ],
+    "backend/RealEstateEval.Infrastructure/Integration/IntegrationEventInbox.cs": [
+      "messaging"
+    ],
+    "backend/RealEstateEval.Infrastructure/Integration/OutboxDispatcherHostedService.cs": [
+      "messaging"
+    ],
+    "backend/RealEstateEval.Infrastructure/Integration/OutboxIntegrationEventPublisher.cs": [
+      "messaging"
+    ],
+    "backend/RealEstateEval.Infrastructure/Integration/ValuationReportWorkflowHandler.cs": [
+      "case_study"
+    ],
+    "backend/RealEstateEval.Infrastructure/Notifications/NotificationRecipientResolver.cs": [
+      "case_study",
+      "identity"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/AttachmentService.cs": [
+      "attachments"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/AuthSessionService.cs": [
+      "identity"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/CaseStudyFormService.cs": [
+      "case_study"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/CaseStudyInfoRolesConfigService.cs": [
+      "platform"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/CaseStudyPropertyPoNumberLookup.cs": [
+      "case_study"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/CaseStudyValuationDispatchService.cs": [
+      "case_study",
+      "valuation"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/CourtsCatalogService.cs": [
+      "platform"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/CourtsService.cs": [
+      "platform"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/EngineeringBillingStatementService.cs": [
+      "attachments",
+      "case_study",
+      "financial"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/EvaluatorRecallsService.cs": [
+      "valuation"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/FailureService.cs": [
+      "case_study",
+      "failures"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/FailureTypesCatalogService.cs": [
+      "failures"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/FieldDictionaryService.cs": [
+      "platform"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/FieldInspectionAttachmentVerifier.cs": [
+      "attachments"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/FieldInspectionWorkspaceService.cs": [
+      "case_study"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/FinancialReportService.cs": [
+      "case_study",
+      "financial",
+      "identity"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/InspectorFeeService.cs": [
+      "case_study",
+      "identity"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/KeyEnvelopePeopleResolver.cs": [
+      "identity"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/KeyEnvelopesService.cs": [
+      "attachments",
+      "case_study",
+      "financial",
+      "operations"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/NotificationService.cs": [
+      "messaging"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/OperationsTaskService.cs": [
+      "case_study",
+      "financial",
+      "identity",
+      "operations"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/PartyFeePricingService.cs": [
+      "financial"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/PartyTaskSubmissionService.cs": [
+      "attachments",
+      "case_study",
+      "failures",
+      "operations"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/PermissionService.cs": [
+      "identity"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/PersonLabelResolver.cs": [
+      "identity"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/PoEnfazBillingService.cs": [
+      "case_study",
+      "financial"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/PoIntakeDraftService.cs": [
+      "case_study"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/PropertyAccessHoldService.cs": [
+      "case_study",
+      "failures"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/PropertyKeyGateResolver.cs": [
+      "case_study",
+      "operations"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/PropertyKeysService.cs": [
+      "case_study",
+      "operations"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/PropertyTimelineService.cs": [
+      "case_study",
+      "failures"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/RegionsService.cs": [
+      "platform"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/SurveyOfficesService.cs": [
+      "operations"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/SuspendedTransactionsService.cs": [
+      "failures"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/SystemMaintenanceService.cs": [
+      "attachments",
+      "case_study",
+      "failures",
+      "financial",
+      "messaging",
+      "operations",
+      "platform",
+      "valuation"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/UserRegistrationService.cs": [
+      "identity"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/ValuationRequestService.cs": [
+      "valuation"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/WorkOrderService.cs": [
+      "case_study",
+      "failures",
+      "financial"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/WorkOrderVisibilityFilter.cs": [
+      "case_study"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/WorkflowTaskService.cs": [
+      "case_study",
+      "failures"
+    ]
+  },
+  "serviceRegistrationFanOut": {
+    "AttachmentService": [
+      "attachments"
+    ],
+    "AuthSessionService": [
+      "case-study",
+      "identity"
+    ],
+    "CaseStudyFormService": [
+      "case-study"
+    ],
+    "CaseStudyInfoRolesConfigService": [
+      "platform"
+    ],
+    "CaseStudyPropertyPoNumberLookup": [
+      "case-study",
+      "valuation"
+    ],
+    "CaseStudyValuationDispatchService": [
+      "case-study"
+    ],
+    "CourtsCatalogService": [
+      "platform"
+    ],
+    "CourtsService": [
+      "platform"
+    ],
+    "EngineeringBillingStatementService": [
+      "case-study",
+      "failures"
+    ],
+    "EvaluatorRecallsService": [
+      "valuation"
+    ],
+    "FailureService": [
+      "case-study",
+      "failures"
+    ],
+    "FailureTypesCatalogService": [
+      "failures"
+    ],
+    "FieldDictionaryService": [
+      "platform"
+    ],
+    "FieldInspectionAttachmentVerifier": [
+      "case-study"
+    ],
+    "FieldInspectionWorkspaceService": [
+      "case-study"
+    ],
+    "FinancialReportService": [
+      "financial"
+    ],
+    "InspectorFeeService": [
+      "case-study",
+      "failures"
+    ],
+    "IntegrationEventInbox": [
+      "case-study",
+      "platform"
+    ],
+    "KeyEnvelopePeopleResolver": [
+      "case-study",
+      "operations"
+    ],
+    "KeyEnvelopesService": [
+      "case-study",
+      "operations"
+    ],
+    "NotificationRecipientResolver": [
+      "case-study",
+      "failures",
+      "platform"
+    ],
+    "NotificationService": [
+      "platform"
+    ],
+    "OperationsTaskService": [
+      "case-study"
+    ],
+    "OutboxDispatcherHostedService": [
+      "case-study"
+    ],
+    "OutboxIntegrationEventPublisher": [
+      "case-study",
+      "failures",
+      "platform",
+      "valuation"
+    ],
+    "PartyFeePricingService": [
+      "case-study",
+      "failures",
+      "financial"
+    ],
+    "PartyTaskSubmissionService": [
+      "case-study"
+    ],
+    "PermissionService": [
+      "case-study",
+      "identity"
+    ],
+    "PoEnfazBillingService": [
+      "case-study",
+      "failures"
+    ],
+    "PoIntakeDraftService": [
+      "case-study"
+    ],
+    "PropertyAccessHoldService": [
+      "case-study",
+      "operations"
+    ],
+    "PropertyKeyGateResolver": [
+      "case-study",
+      "operations"
+    ],
+    "PropertyKeysService": [
+      "operations"
+    ],
+    "PropertyTimelineService": [
+      "case-study",
+      "failures"
+    ],
+    "RegionsService": [
+      "platform"
+    ],
+    "SurveyOfficesService": [
+      "operations"
+    ],
+    "SuspendedTransactionsService": [
+      "case-study"
+    ],
+    "SystemMaintenanceService": [
+      "case-study"
+    ],
+    "UserRegistrationService": [
+      "case-study",
+      "identity"
+    ],
+    "ValuationOutboxPublisher": [
+      "case-study",
+      "valuation"
+    ],
+    "ValuationReportWorkflowHandler": [
+      "case-study"
+    ],
+    "ValuationRequestService": [
+      "case-study",
+      "valuation"
+    ],
+    "WorkOrderService": [
+      "case-study"
+    ],
+    "WorkOrderVisibilityFilter": [
+      "case-study"
+    ],
+    "WorkflowTaskService": [
+      "case-study",
+      "failures"
+    ]
+  },
+  "crossSchemaForeignKeys": [],
+  "crossSchemaNavigations": [],
+  "godContextUsageOutsideInfrastructure": [
+    "backend/services/case-study/RealEstateEval.CaseStudy.Api/Program.cs",
+    "backend/tools/DbMigrate/Program.cs"
+  ]
+}

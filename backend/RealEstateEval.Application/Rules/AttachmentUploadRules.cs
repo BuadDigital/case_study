@@ -1,3 +1,4 @@
+using System.Buffers;
 using RealEstateEval.Domain;
 
 namespace RealEstateEval.Application.Rules;
@@ -45,6 +46,98 @@ public static class AttachmentUploadRules
         "evaluator-plan-image",
     };
 
+    /// <summary>
+    /// Result of a content-verified upload check. <see cref="Error"/> is non-null exactly
+    /// when the upload must be rejected; otherwise the caller must persist
+    /// <see cref="ContentType"/> and <see cref="FileName"/> instead of what the client sent.
+    /// </summary>
+    public sealed record InspectedUpload(
+        string? Error,
+        DetectedFileFormat Format,
+        string ContentType,
+        string FileName);
+
+    /// <summary>
+    /// Full upload gate: identifies the content from its own bytes, requires the declared
+    /// MIME type and the file-name extension to agree with it, then applies the scope's
+    /// format and size budget. Everything outside the allow-list is rejected.
+    /// </summary>
+    public static InspectedUpload Inspect(
+        string scope,
+        string? declaredContentType,
+        string? fileName,
+        ReadOnlySpan<byte> content)
+    {
+        var format = FileSignatureInspector.Detect(content);
+        var safeName = SanitizeFileName(fileName, format);
+
+        if (content.Length <= 0)
+            return Reject("حجم الملف غير صالح", format, safeName);
+
+        if (format == DetectedFileFormat.Unknown)
+        {
+            return Reject(
+                "محتوى الملف غير مدعوم — يُسمح بصور JPEG/PNG/GIF/WebP أو ملفات PDF فقط",
+                format,
+                safeName);
+        }
+
+        var declared = (declaredContentType ?? "").Trim();
+        var declaredIsSpecific =
+            declared.Length > 0
+            && !string.Equals(declared, "application/octet-stream", StringComparison.OrdinalIgnoreCase);
+        if (declaredIsSpecific && !FileSignatureInspector.MatchesDeclaredMime(format, declared))
+            return Reject("نوع المحتوى المعلن لا يطابق محتوى الملف", format, safeName);
+
+        var extension = Path.GetExtension(safeName);
+        if (string.IsNullOrEmpty(extension))
+            return Reject("اسم الملف يجب أن ينتهي بامتداد معروف", format, safeName);
+        if (!FileSignatureInspector.MatchesExtension(format, extension))
+            return Reject("امتداد الملف لا يطابق محتوى الملف", format, safeName);
+
+        // Scope + size budget is judged on the verified type, never the declared one.
+        var verifiedMime = FileSignatureInspector.CanonicalMime(format);
+        var scopeError = Validate(scope, verifiedMime, content.Length, safeName);
+        if (scopeError is not null)
+            return Reject(scopeError, format, safeName);
+
+        return new InspectedUpload(null, format, verifiedMime, safeName);
+    }
+
+    /// <summary>
+    /// Strips any directory component — including Windows-style separators, which
+    /// <see cref="Path.GetFileName(string)"/> ignores on Linux — and any character that
+    /// has no business in a stored file name.
+    /// </summary>
+    public static string SanitizeFileName(string? fileName, DetectedFileFormat format)
+    {
+        var name = (fileName ?? "").Trim();
+        var lastSeparator = name.LastIndexOfAny(['/', '\\', ':']);
+        if (lastSeparator >= 0)
+            name = name[(lastSeparator + 1)..];
+
+        var cleaned = new string([.. name.Where(c =>
+            !char.IsControl(c) && !InvalidFileNameChars.Contains(c))]).Trim().Trim('.');
+
+        if (cleaned.Length > 200)
+            cleaned = cleaned[^200..];
+
+        if (cleaned.Length == 0)
+            cleaned = "file" + FileSignatureInspector.CanonicalExtension(format);
+
+        return cleaned;
+    }
+
+    private static readonly SearchValues<char> InvalidFileNameChars =
+        SearchValues.Create("<>:\"/\\|?*\0");
+
+    private static InspectedUpload Reject(string error, DetectedFileFormat format, string fileName) =>
+        new(error, format, FileSignatureInspector.CanonicalMime(format), fileName);
+
+    /// <summary>
+    /// Metadata-only gate (scope allow-list plus size budget). Callers handling real bytes
+    /// must use <see cref="Inspect"/>, which additionally verifies the content itself.
+    /// </summary>
     public static string? Validate(string scope, string contentType, long sizeBytes, string? fileName = null)
     {
         if (sizeBytes <= 0)

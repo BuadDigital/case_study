@@ -1,0 +1,114 @@
+using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
+using RealEstateEval.Domain;
+
+namespace RealEstateEval.Infrastructure.Services;
+
+public static class InspectorFeeRowMapper
+{
+    public static InspectorFeeRowDto ToRowDto(
+        InspectorFeeLedger ledger,
+        WorkflowTask task,
+        string propertyLabel,
+        bool workSubmitted,
+        DateTime? workSubmittedAtUtc,
+        DateTime? poReceivedAtUtc,
+        string? lastTransitionReason)
+    {
+        var discount = Math.Max(0m, ledger.SupervisorDiscountSar);
+        var workStatus = workSubmitted ? "done" : (
+            task.Status == WorkflowTaskStatus.Cancelled ? "cancelled" : "in_progress");
+
+        return new InspectorFeeRowDto
+        {
+            WorkflowTaskId = ledger.WorkflowTaskId.ToString(),
+            PropertyId = ledger.PropertyId?.ToString(),
+            PropertyLabel = propertyLabel,
+            PoNumber = ledger.PoNumber,
+            AssigneeId = ledger.AssigneeId,
+            TaskKind = task.Kind.ToDbValue(),
+            InspectorType = ledger.InspectorType,
+            AgreedFeeSar = ledger.AgreedFeeSar,
+            SupervisorDiscountSar = discount,
+            DiscountReason = discount > 0
+                ? (string.IsNullOrWhiteSpace(ledger.DiscountReason) ? "—" : ledger.DiscountReason)
+                : null,
+            NetFeeSar = InspectorFeeRules.NetFee(ledger.AgreedFeeSar, discount),
+            BillingStatus = ledger.BillingStatus,
+            BillingStatusLabel = InspectorFeeBillingRules.StatusLabel(ledger.BillingStatus),
+            WorkStatus = workStatus,
+            WorkStatusLabel = InspectorFeeBillingRules.WorkStatusLabel(workStatus),
+            ExcludedFromBatch = ledger.ExcludedFromBatch,
+            ExclusionReason = ledger.ExclusionReason,
+            ReturnTo = ledger.ReturnTo,
+            DisbursementBatchId = ledger.DisbursementBatchId?.ToString(),
+            DisbursementVoucher = ledger.DisbursementVoucher,
+            EngineeringBillingStatementId = ledger.EngineeringBillingStatementId?.ToString(),
+            LastTransitionReason = lastTransitionReason,
+            UpdatedAtUtc = ledger.UpdatedAtUtc,
+            AccruedAtUtc = ledger.AccruedAtUtc,
+            WorkSubmittedAtUtc = workSubmittedAtUtc,
+            PoReceivedAtUtc = poReceivedAtUtc,
+            IsEditable = InspectorFeeBillingRules.IsEditableStatus(ledger.BillingStatus),
+            CanSubmitToSupervisor = workStatus == "done"
+                && !ledger.ExcludedFromBatch
+                && ledger.BillingStatus is InspectorFeeBillingStatus.Draft
+                    or InspectorFeeBillingStatus.Returned
+                    or InspectorFeeBillingStatus.Inquiry
+                && (ledger.BillingStatus != InspectorFeeBillingStatus.Returned
+                    || ledger.ReturnTo == InspectorFeeReturnTo.Office)
+                && (ledger.BillingStatus != InspectorFeeBillingStatus.Inquiry
+                    || ledger.ReturnTo == InspectorFeeReturnTo.Office)
+                && task.Kind != WorkflowTaskKind.EngineeringSurvey,
+            CanApproveToFinance = workStatus == "done"
+                && !ledger.ExcludedFromBatch
+                && ledger.BillingStatus == InspectorFeeBillingStatus.SupReview,
+            CanCreateDisbursementRequest = workStatus == "done"
+                && !ledger.ExcludedFromBatch
+                && ledger.BillingStatus == InspectorFeeBillingStatus.AtFinance
+                && task.Kind != WorkflowTaskKind.EngineeringSurvey,
+            CanOfficeApproveDiscount = workStatus == "done"
+                && !ledger.ExcludedFromBatch
+                && task.Kind == WorkflowTaskKind.EngineeringSurvey
+                && ledger.BillingStatus == InspectorFeeBillingStatus.OfficeReview
+                && discount > 0m,
+            CanOfficeDispute = workStatus == "done"
+                && !ledger.ExcludedFromBatch
+                && task.Kind == WorkflowTaskKind.EngineeringSurvey
+                && ledger.BillingStatus == InspectorFeeBillingStatus.OfficeReview
+                && discount > 0m,
+            CanResolveDispute = workStatus == "done"
+                && !ledger.ExcludedFromBatch
+                && task.Kind == WorkflowTaskKind.EngineeringSurvey
+                && ledger.BillingStatus == InspectorFeeBillingStatus.Disputed,
+        };
+    }
+
+    public static InspectorFeesSummaryDto Summarize(IReadOnlyList<InspectorFeeRowDto> rows)
+    {
+        decimal SumNet(Func<InspectorFeeRowDto, bool> predicate) =>
+            rows.Where(predicate).Sum(r => r.NetFeeSar);
+
+        return new InspectorFeesSummaryDto
+        {
+            NetDraftSar = SumNet(r => r.BillingStatus == InspectorFeeBillingStatus.Draft),
+            SupReviewSar = SumNet(r => r.BillingStatus == InspectorFeeBillingStatus.SupReview),
+            AtFinanceSar = SumNet(r => r.BillingStatus == InspectorFeeBillingStatus.AtFinance),
+            DisbReqSar = SumNet(r => r.BillingStatus == InspectorFeeBillingStatus.DisbReq),
+            DisbursedSar = SumNet(r => r.BillingStatus == InspectorFeeBillingStatus.Disbursed),
+            TotalDiscountsSar = rows.Sum(r => r.SupervisorDiscountSar),
+            Rows = rows,
+        };
+    }
+
+    public static InspectorFeesSummaryDto EmptySummary() => new()
+    {
+        NetDraftSar = 0m,
+        SupReviewSar = 0m,
+        AtFinanceSar = 0m,
+        DisbReqSar = 0m,
+        DisbursedSar = 0m,
+        TotalDiscountsSar = 0m,
+        Rows = [],
+    };
+}

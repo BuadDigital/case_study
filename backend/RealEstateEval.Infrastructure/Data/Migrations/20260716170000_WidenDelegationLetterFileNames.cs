@@ -1,10 +1,14 @@
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using RealEstateEval.Infrastructure.Data;
 
 #nullable disable
 
 namespace RealEstateEval.Infrastructure.Data.Migrations;
 
 /// <inheritdoc />
+[DbContext(typeof(ApplicationDbContext))]
+[Migration("20260716170000_WidenDelegationLetterFileNames")]
 public partial class WidenDelegationLetterFileNames : Migration
 {
     /// <inheritdoc />

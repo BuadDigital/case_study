@@ -16,7 +16,7 @@ public sealed class NotificationRecipientResolver
 
     public async Task<IReadOnlyList<string>> ResolveAssigneeUserIdsForPropertyAsync(
         Guid propertyId,
-        IReadOnlyCollection<string> taskKinds,
+        IReadOnlyCollection<WorkflowTaskKind> taskKinds,
         CancellationToken cancellationToken = default)
     {
         return await (
@@ -36,7 +36,7 @@ public sealed class NotificationRecipientResolver
 
     public async Task<IReadOnlyList<string>> ResolveAssigneeUserIdsForPoAsync(
         string poNumber,
-        IReadOnlyCollection<string> taskKinds,
+        IReadOnlyCollection<WorkflowTaskKind> taskKinds,
         CancellationToken cancellationToken = default)
     {
         var po = poNumber.Trim();

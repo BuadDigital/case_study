@@ -37,8 +37,14 @@ public class ValuationRequestsController : ControllerBase
         [FromBody] SaveValuationRequestRequest request,
         CancellationToken ct)
     {
-        var dto = await _service.CreateAsync(request, ct);
-        return CreatedAtAction(nameof(Get), new { id = dto.Id }, dto);
+        var (dto, error) = await _service.CreateAsync(request, ct);
+        return error switch
+        {
+            "valuation_already_open" => Conflict(
+                new { error = "an open valuation request already exists for this property" }),
+            "duplicate_display_id" => Conflict(new { error = "display id already in use" }),
+            _ => CreatedAtAction(nameof(Get), new { id = dto!.Id }, dto),
+        };
     }
 
     [HttpPost("{id:guid}/submit-report")]

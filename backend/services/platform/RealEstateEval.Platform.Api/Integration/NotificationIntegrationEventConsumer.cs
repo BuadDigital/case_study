@@ -72,11 +72,19 @@ public sealed class NotificationIntegrationEventConsumer : BackgroundService
             _logger,
             stoppingToken);
 
+        // Older deployments bound created events to this shared work queue. Realtime now
+        // uses per-process fan-out queues, so remove the stale durable binding on upgrade.
+        await channel.QueueUnbindAsync(
+            QueueName,
+            _options.Exchange,
+            IntegrationEventTypes.NotificationUserCreated,
+            cancellationToken: stoppingToken);
+
         foreach (var routingKey in new[]
                  {
                      IntegrationEventTypes.ValuationReportSubmitted,
                      IntegrationEventTypes.ValuationRequestCreated,
-                     IntegrationEventTypes.NotificationUserCreated,
+                     IntegrationEventTypes.NotificationUsersRequested,
                  })
         {
             await channel.QueueBindAsync(
@@ -136,10 +144,7 @@ public sealed class NotificationIntegrationEventConsumer : BackgroundService
         {
             var domainHandler = scope.ServiceProvider
                 .GetRequiredService<NotificationIntegrationEventHandler>();
-            var pushHandler = scope.ServiceProvider
-                .GetRequiredService<NotificationRealtimePushHandler>();
             await domainHandler.HandleEnvelopeAsync(json, stoppingToken);
-            await pushHandler.HandleEnvelopeAsync(json, stoppingToken);
             await channel.BasicAckAsync(args.DeliveryTag, multiple: false, stoppingToken);
         }
         catch (Exception ex)
