@@ -46,6 +46,7 @@ import {
   deletePartyFeePricingTable,
   loadPartyFeePricingById,
   loadPartyFeePricingTables,
+  revisePartyFeePricingConfig,
   savePartyFeePricingAssignments,
   savePartyFeePricingConfig,
 } from "../lib/financial-api";
@@ -104,7 +105,6 @@ function emptyDraft(
           ]
         : [],
     governmentReviewFeeSar: 0,
-    keyReceiptFeeSar: 0,
     fieldInspectorIndividualFeeSar: 0,
     fieldInspectorOrganizationFeeSar: 0,
     ...partial,
@@ -265,14 +265,18 @@ export function FinancePartyFeePricing() {
     if (!draft.id) return;
     setSaving(true);
     try {
-      const saved = await savePartyFeePricingConfig(draft.id, {
+      const request = {
         ...draft,
         category: selectedCategory,
         areaTiers:
           selectedCategory === "engineering-survey"
             ? reindexTiers(draft.areaTiers)
             : [],
-      });
+      };
+      const createsRevision = (draft.assignedCount ?? 0) > 0;
+      const saved = createsRevision
+        ? await revisePartyFeePricingConfig(draft.id, request)
+        : await savePartyFeePricingConfig(draft.id, request);
       setDraft(saved);
       setTables((prev) =>
         prev.map((t) =>
@@ -280,7 +284,12 @@ export function FinancePartyFeePricing() {
         ),
       );
       await refreshTables(selectedCategory, saved.id);
-      showToast("تم حفظ التسعيرة", "success");
+      showToast(
+        createsRevision
+          ? "تم إنشاء نسخة جديدة ونقل الإسنادات إليها"
+          : "تم حفظ التسعيرة",
+        "success",
+      );
     } catch (err: unknown) {
       showToast(
         err instanceof Error ? err.message : "تعذّر حفظ التسعير",
@@ -606,7 +615,11 @@ export function FinancePartyFeePricing() {
                         variant="ghost"
                         size="sm"
                         className="shrink-0"
-                        disabled={locked || tables.length <= 1}
+                        disabled={
+                          locked ||
+                          tables.length <= 1 ||
+                          (draft.assignedCount ?? 0) > 0
+                        }
                         onClick={() => void removeTable()}
                       >
                         حذف
@@ -629,6 +642,13 @@ export function FinancePartyFeePricing() {
                     </p>
                   )}
                 </div>
+
+                {(draft.assignedCount ?? 0) > 0 ? (
+                  <Note tone="info">
+                    هذا الجدول مرتبط بأطراف، لذلك لا يتغير تاريخيًا. عند الحفظ
+                    ستُنشأ نسخة جديدة وتُنقل الإسنادات إليها في عملية ذرّية.
+                  </Note>
+                ) : null}
 
                 {selectedCategory === "engineering-survey" ? (
                   <section className="space-y-3">
@@ -733,8 +753,8 @@ export function FinancePartyFeePricing() {
                         أتعاب المراجع الحكومي
                       </h3>
                       <p className="m-0 mt-0.5 text-[11px] text-text-3">
-                        أتعاب الزيارة تُستحق بإكمال مهمة زيارة محكمة؛ أتعاب
-                        الاستلام عند تسجيل الظرف مع الصورة. متعاون فرد فقط.
+                        أتعاب الزيارة تُستحق بإكمال مهمة زيارة محكمة. متعاون فرد
+                        فقط.
                       </p>
                     </div>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -757,26 +777,12 @@ export function FinancePartyFeePricing() {
                           }
                         />
                       </FormGroup>
-                      <FormGroup>
-                        <Label
-                          htmlFor="fee-key-receipt"
-                          className="mb-1 text-[11px] font-semibold text-text-2"
-                        >
-                          أتعاب استلام المفاتيح (ر.س)
-                        </Label>
-                        <MoneyInput
-                          id="fee-key-receipt"
-                          value={draft.keyReceiptFeeSar}
-                          locked={locked}
-                          onChange={(n) =>
-                            setDraft((d) => ({
-                              ...d,
-                              keyReceiptFeeSar: n,
-                            }))
-                          }
-                        />
-                      </FormGroup>
                     </div>
+                    <p className="m-0 rounded-lg border border-border bg-surface-2 px-3 py-2 text-[11px] text-text-3">
+                      أتعاب استلام المفاتيح خارج التسعيرة — إيراد للشركة من إنفاذ
+                      يثبت استحقاقه بتسجيل الظرف، والمبلغ تُدخله المالية ضمن
+                      فوترة إنفاذ.
+                    </p>
                   </section>
                 ) : null}
 
@@ -844,7 +850,9 @@ export function FinancePartyFeePricing() {
                       showActionToast={false}
                       onClick={() => void save()}
                     >
-                      حفظ التسعيرة
+                      {(draft.assignedCount ?? 0) > 0
+                        ? "حفظ كنسخة جديدة"
+                        : "حفظ التسعيرة"}
                     </Button>
                   </div>
                 </Can>
@@ -876,7 +884,7 @@ export function FinancePartyFeePricing() {
             </ModalHeader>
             <ModalBody className="max-h-[50vh] space-y-1 overflow-y-auto">
               {categoryParties.length === 0 ? (
-                <Note tone="warning">
+                <Note tone="warn">
                   لا يوجد أطراف متاحون لهذه الفئة (تحقق من معرّف التوزيع).
                 </Note>
               ) : (

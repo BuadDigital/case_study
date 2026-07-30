@@ -1,5 +1,6 @@
 import type { UserListItem } from "@platform/types";
 import { getApiBase } from "./index";
+import { repositoryFetch as fetch } from "./write-repository";
 
 export type DevLoginUserDto = {
   username: string;

@@ -54,7 +54,9 @@ public class InspectorFeesController : ControllerBase
             taskKind,
             billingStatus,
             returnTo,
-            ct));
+            hideDisputed: ctx.IsFinanceOnly,
+            cancellationToken: ct,
+            supervisingDepartment: ctx.VisibleDepartment));
     }
 
     [HttpGet("{workflowTaskId:guid}/transitions")]
@@ -76,6 +78,18 @@ public class InspectorFeesController : ControllerBase
                 return NotFound();
         }
 
+        if (ctx.IsFinanceOnly)
+        {
+            // The list already hides disputed rows from finance; the history must hide with it,
+            // otherwise the amount under dispute leaks through the audit entries.
+            var row = await _fees.GetByWorkflowTaskIdAsync(workflowTaskId, ct);
+            if (row is not null
+                && row.BillingStatus == InspectorFeeBillingStatus.Disputed)
+            {
+                return NotFound();
+            }
+        }
+
         return Ok(await _fees.ListTransitionsAsync(workflowTaskId, ct));
     }
 
@@ -86,7 +100,19 @@ public class InspectorFeesController : ControllerBase
         [FromBody] PatchInspectorFeeRequest request,
         CancellationToken ct)
     {
-        var row = await _fees.PatchAsync(workflowTaskId, request, ct);
+        var ctx = await BuildActorContextAsync(ct);
+        if (ctx.UserId is null) return Unauthorized();
+        if (!ctx.CanSuperviseAnyDepartment) return Forbid();
+        var existing = await _fees.GetByWorkflowTaskIdAsync(workflowTaskId, ct);
+        if (existing is null) return NotFound();
+        if (!ctx.CanManage(existing.SupervisingDepartment)) return Forbid();
+
+        var row = await _fees.PatchAsync(
+            workflowTaskId,
+            request,
+            ct,
+            ctx.Department,
+            ctx.CanManageAllDepartments);
         return row is null
             ? BadRequest(new { error = "تعذر حفظ الأتعاب — تحقق من الحالة والحسم والاستبعاد." })
             : Ok(row);
@@ -111,7 +137,9 @@ public class InspectorFeesController : ControllerBase
             ctx.AssigneeId,
             ctx.IsOperationsManager,
             ctx.IsFinancialOfficer,
-            ct);
+            ct,
+            ctx.Department,
+            ctx.CanManageAllDepartments);
         if (error is not null)
             return BadRequest(new { error });
         return row is null ? NotFound() : Ok(row);
@@ -134,7 +162,9 @@ public class InspectorFeesController : ControllerBase
             ctx.AssigneeId,
             ctx.IsOperationsManager,
             ctx.IsFinancialOfficer,
-            ct);
+            ct,
+            ctx.Department,
+            ctx.CanManageAllDepartments);
         return Ok(result);
     }
 
@@ -169,7 +199,9 @@ public class InspectorFeesController : ControllerBase
             InspectorFeeActions.ApproveToFinance
                 or InspectorFeeActions.ResendToFinance
                 or InspectorFeeActions.ReturnToOffice
-                or InspectorFeeActions.ResolveDispute => ctx.IsOperationsManager,
+                or InspectorFeeActions.ResolveDispute
+                or InspectorFeeActions.Suspend
+                or InspectorFeeActions.LiftSuspension => ctx.CanSuperviseAnyDepartment,
 
             InspectorFeeActions.Disburse
                 or InspectorFeeActions.ReturnToSupervisor
@@ -191,18 +223,55 @@ public class InspectorFeesController : ControllerBase
             PlatformCapabilities.ManageFinancial);
 
         string? assigneeId = null;
+        string? department = null;
+        string? prototypeRole = null;
         if (!string.IsNullOrWhiteSpace(userId))
         {
             var permissions = await _permissions.GetForUserIdAsync(userId, ct);
             assigneeId = permissions?.DistributionAssigneeId;
+            department = permissions?.Department;
+            prototypeRole = permissions?.PrototypeRole;
         }
 
-        return new ActorContext(userId, assigneeId, isOperationsManager, isFinancialOfficer);
+        return new ActorContext(
+            userId,
+            assigneeId,
+            prototypeRole,
+            department,
+            isOperationsManager,
+            isFinancialOfficer);
     }
 
     private sealed record ActorContext(
         string? UserId,
         string? AssigneeId,
+        string? PrototypeRole,
+        string? Department,
         bool IsOperationsManager,
-        bool IsFinancialOfficer);
+        bool IsFinancialOfficer)
+    {
+        public bool CanManageAllDepartments =>
+            PrototypeRole is "cdo" or "general-manager";
+
+        public bool CanSuperviseAnyDepartment =>
+            CanManageAllDepartments || PrototypeRole == "section-supervisor";
+
+        public string? VisibleDepartment =>
+            PrototypeRole == "section-supervisor"
+                // Fail closed: a supervisor without a resolved department must not see every queue.
+                ? Department ?? SupervisingDepartments.Unassigned
+                : null;
+
+        public bool CanManage(string supervisingDepartment) =>
+            SupervisingDepartments.CanManage(
+                supervisingDepartment,
+                Department,
+                CanManageAllDepartments);
+
+        /// <summary>
+        /// Finance and nothing else. Operations resolves pricing disputes, so an actor who also holds
+        /// that capability — a CDO or a general manager — still needs to see disputed lines.
+        /// </summary>
+        public bool IsFinanceOnly => IsFinancialOfficer && !IsOperationsManager;
+    }
 }

@@ -6,6 +6,7 @@ import {
   fetchPartyFeePricingById,
   fetchPartyFeePricingTables,
   financialApiEnabled as apiEnabled,
+  revisePartyFeePricing,
   savePartyFeePricing,
   setPartyFeePricingAssignments,
   type FinancialSummaryDto,
@@ -67,6 +68,15 @@ export async function savePartyFeePricingConfig(
   const config = requirePrototypeModulesApiConfig();
   const result = await savePartyFeePricing(config, id, body);
   return unwrapApiResult(result, "تعذّر حفظ تسعير الأتعاب");
+}
+
+export async function revisePartyFeePricingConfig(
+  id: string,
+  body: PartyFeePricingDto,
+): Promise<PartyFeePricingDto> {
+  const config = requirePrototypeModulesApiConfig();
+  const result = await revisePartyFeePricing(config, id, body);
+  return unwrapApiResult(result, "تعذّر إنشاء نسخة التسعيرة وإعادة الإسناد");
 }
 
 export async function activatePartyFeePricingTable(

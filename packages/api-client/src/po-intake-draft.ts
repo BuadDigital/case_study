@@ -1,4 +1,5 @@
 import { getApiBase } from "./index";
+import { repositoryFetch as fetch } from "./write-repository";
 import type { PrototypeModulesApiConfig, PrototypeModulesResult } from "./prototype-modules";
 
 export type PoIntakeDraftDto = {

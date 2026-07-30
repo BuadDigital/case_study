@@ -3,13 +3,15 @@ export type FeatureFlag =
   | "liveQueuePolling"
   | "notificationCenter"
   | "auditLog"
-  | "offlineBanner";
+  | "offlineBanner"
+  | "webPush";
 
 const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   liveQueuePolling: true,
   notificationCenter: true,
   auditLog: true,
   offlineBanner: true,
+  webPush: false,
 };
 
 function envFlag(flag: FeatureFlag): boolean | null {

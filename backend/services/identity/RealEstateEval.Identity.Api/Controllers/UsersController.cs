@@ -49,11 +49,55 @@ public class UsersController : ControllerBase
         [FromBody] CreateStaffUserRequest request,
         CancellationToken cancellationToken)
     {
-        var (result, errors) = await _users.CreateStaffAsync(request, cancellationToken);
+        var (result, errors) = await _users.CreateStaffAsync(
+            request,
+            ActorClaims.Id(User),
+            cancellationToken);
         if (errors is not null)
             return this.FieldErrorsProblem(errors);
 
         return Ok(result);
+    }
+
+    /// <summary>
+    /// Partial update of one staff account. Absent members keep their stored value, so a
+    /// caller can change a single field without resubmitting the whole profile.
+    /// </summary>
+    [HttpPatch("{id}")]
+    public async Task<ActionResult<UserListItemDto>> Update(
+        string id,
+        [FromBody] UpdateStaffUserRequest request,
+        CancellationToken cancellationToken)
+    {
+        var (result, errors) = await _users.UpdateStaffAsync(
+            id,
+            request,
+            ActorClaims.Id(User),
+            cancellationToken);
+        if (errors is not null)
+            return this.FieldErrorsProblem(errors);
+
+        return Ok(result);
+    }
+
+    /// <summary>Clears an Identity lockout after too many failed sign-in attempts.</summary>
+    [HttpPost("{id}/unlock")]
+    public async Task<IActionResult> Unlock(
+        string id,
+        CancellationToken cancellationToken)
+    {
+        var (ok, error) = await _users.UnlockStaffAsync(
+            id,
+            ActorClaims.Id(User),
+            cancellationToken);
+
+        if (!ok)
+            return this.FieldErrorsProblem(new Dictionary<string, string>
+            {
+                ["_form"] = error ?? "تعذر فك قفل الحساب.",
+            });
+
+        return NoContent();
     }
 
     /// <summary>
@@ -66,7 +110,10 @@ public class UsersController : ControllerBase
         [FromRoute] IssueActivationTicketRequest request,
         CancellationToken cancellationToken)
     {
-        var (ticket, error) = await _users.IssueActivationTicketAsync(request.Id, cancellationToken);
+        var (ticket, error) = await _users.IssueActivationTicketAsync(
+            request.Id,
+            ActorClaims.Id(User),
+            cancellationToken);
         if (ticket is null)
         {
             _logger.LogInformation(
@@ -114,7 +161,7 @@ public class UsersController : ControllerBase
         if (!ok)
             return this.FieldErrorsProblem(new Dictionary<string, string>
             {
-                ["_form"] = error ?? "تعذر حذف المستخدم.",
+                ["_form"] = error ?? "تعذر تعطيل المستخدم.",
             });
 
         return NoContent();

@@ -2,14 +2,30 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { notifyAuthExpired, subscribeAuthExpired } from "@platform/auth-client";
-import { ensureFreshAuthSession } from "@platform/app-shared";
+import {
+  getAuthSession,
+  isRefreshTokenExpired,
+  isSessionExpired,
+  notifyAuthExpired,
+  subscribeAuthExpired,
+} from "@platform/auth-client";
+import {
+  ensureFreshAuthSession,
+  evaluateOfflineLease,
+  isOfflineCapableRole,
+} from "@platform/app-shared";
+import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { beginOfflineLease } from "@platform/offline-client";
 
 const CHECK_INTERVAL_MS = 30_000;
 
-/** Keeps the access token renewed and redirects to login once renewal fails. */
+/**
+ * Keeps the access token renewed. For field roles, network failures during
+ * offline work start a 3-hour offline lease instead of immediate logout.
+ */
 export function AuthSessionWatcher() {
   const router = useRouter();
+  const { role } = usePrototype();
 
   useEffect(() => {
     const redirect = () => router.replace("/login");
@@ -21,14 +37,34 @@ export function AuthSessionWatcher() {
       running = true;
       try {
         const session = await ensureFreshAuthSession();
-        if (!session) notifyAuthExpired();
+        if (session) return;
+
+        const stored = getAuthSession();
+        const offlineCapable = isOfflineCapableRole(role);
+        const networkDown =
+          typeof navigator !== "undefined" && navigator.onLine === false;
+
+        if (
+          offlineCapable &&
+          stored &&
+          !isRefreshTokenExpired(stored) &&
+          (networkDown || isSessionExpired(stored))
+        ) {
+          await beginOfflineLease(stored.user.id);
+          const lease = await evaluateOfflineLease();
+          if (lease?.locked) {
+            notifyAuthExpired();
+          }
+          return;
+        }
+
+        notifyAuthExpired();
       } finally {
         running = false;
       }
     };
 
     const timer = window.setInterval(() => void check(), CHECK_INTERVAL_MS);
-    // Timers are throttled in background tabs, so re-check as soon as one returns.
     const onVisible = () => {
       if (document.visibilityState === "visible") void check();
     };
@@ -39,7 +75,7 @@ export function AuthSessionWatcher() {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [router]);
+  }, [router, role]);
 
   return null;
 }

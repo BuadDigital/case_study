@@ -2,17 +2,20 @@
 
 import { useMemo } from "react";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
+import { supervisingDepartmentLabel } from "@platform/app-shared/users/admin-staff-roles";
 import { Badge } from "@platform/design-system";
 
 function statusTone(status: string | undefined): "success" | "danger" | "default" {
   if (status === "Active") return "success";
-  if (status === "Inactive") return "danger";
+  if (status === "Disabled" || status === "Locked") return "danger";
   return "default";
 }
 
 function statusLabel(status: string | undefined): string {
   if (status === "Active") return "فعّال";
-  if (status === "Inactive") return "معطّل";
+  if (status === "Disabled") return "معطّل";
+  if (status === "PendingActivation") return "بانتظار التفعيل";
+  if (status === "Locked") return "مقفول";
   return status || "—";
 }
 
@@ -55,11 +58,21 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
   return (
     <div className="space-y-4 max-lg:space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3 max-lg:rounded-[12px] max-lg:bg-surface-2 max-lg:px-3.5 max-lg:py-3">
-        <div className="min-w-0">
-          <h2 className="m-0 text-[18px] font-extrabold text-heading max-lg:text-[17px]">
-            {user.name}
-          </h2>
-          <p className="m-0 mt-1 text-[13px] text-text-3">{user.role || "—"}</p>
+        <div className="flex min-w-0 items-center gap-3">
+          {user.avatarUrl ? (
+            <img
+              src={user.avatarUrl}
+              alt=""
+              referrerPolicy="no-referrer"
+              className="size-12 shrink-0 rounded-full border border-border object-cover"
+            />
+          ) : null}
+          <div className="min-w-0">
+            <h2 className="m-0 text-[18px] font-extrabold text-heading max-lg:text-[17px]">
+              {user.name}
+            </h2>
+            <p className="m-0 mt-1 text-[13px] text-text-3">{user.role || "—"}</p>
+          </div>
         </div>
         <Badge tone={statusTone(user.status)} dot>
           {statusLabel(user.status)}
@@ -75,6 +88,13 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
           <ProfileField label="الدور / المسمى" value={user.role} />
           <ProfileField label="البريد الإلكتروني" value={user.email} dir="ltr" />
           <ProfileField label="نوع العقد" value={typeLabel(user.type)} />
+          {user.city ? <ProfileField label="المدينة" value={user.city} /> : null}
+          {user.department ? (
+            <ProfileField
+              label="الإدارة"
+              value={supervisingDepartmentLabel(user.department)}
+            />
+          ) : null}
           {user.phone ? (
             <ProfileField label="الجوال" value={user.phone} dir="ltr" />
           ) : null}

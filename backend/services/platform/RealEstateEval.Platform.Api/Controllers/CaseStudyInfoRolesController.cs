@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.Platform.Api.Controllers;
@@ -31,7 +32,10 @@ public class CaseStudyInfoRolesController : ControllerBase
     {
         try
         {
-            return Ok(await _service.SaveAsync(request, cancellationToken));
+            return Ok(await _service.SaveAsync(
+                request,
+                ActorClaims.Id(User),
+                cancellationToken));
         }
         catch (ArgumentException ex)
         {

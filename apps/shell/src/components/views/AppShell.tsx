@@ -52,6 +52,7 @@ import { findPropertyForTask } from "@case-study/mfe";
 import { formatPropertyDeedDisplay } from "@case-study/mfe";
 import { AppBreadcrumb } from "@/components/views/AppBreadcrumb";
 import { NotificationCenter } from "@/components/NotificationCenter";
+import { OfflineSyncCoordinator } from "@/components/OfflineSyncCoordinator";
 import { resolvePoChrome, buildPoPropertyWorkspaceSegments } from "@/lib/po-chrome";
 import { slashTrailToSegments } from "@/lib/breadcrumb";
 import { resolveMyTasksChrome } from "@/lib/my-tasks-chrome";
@@ -64,6 +65,13 @@ import { useFailuresNavBadge } from "@/lib/query/use-failures-nav-badge";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import { cn } from "@platform/design-system";
 import { clearAuthSession, getAuthSession } from "@platform/auth-client";
+import { revokeAuthSession } from "@platform/api-client";
+import {
+  closeOfflineDb,
+  countPendingOutbox,
+  purgeOfflineData,
+} from "@platform/offline-client";
+import { unsubscribeFromPushSafe } from "@/lib/push-logout";
 import {
   PullToRefreshIndicator,
   usePullToRefresh,
@@ -1167,7 +1175,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const def = ROLES[role];
   const chipName = sessionUser?.displayName?.trim() || def.name;
 
-  function handleLogout(): void {
+  async function handleLogout(): Promise<void> {
+    const session = getAuthSession();
+    const userId = session?.user?.id;
+    if (userId) {
+      try {
+        const pending = await countPendingOutbox(userId);
+        if (pending > 0) {
+          const proceed = window.confirm(
+            `هناك ${pending} عناصر لم تُرفع بعد. أبقِ النظام مفتوحاً حتى تكتمل.\nهل تريد تسجيل الخروج على أي حال؟`,
+          );
+          if (!proceed) return;
+        }
+      } catch {
+        /* continue logout */
+      }
+    }
+
+    await unsubscribeFromPushSafe();
+    if (session?.refreshToken) {
+      try {
+        await revokeAuthSession(session.refreshToken);
+      } catch {
+        /* continue */
+      }
+    }
+    if (userId) {
+      try {
+        await purgeOfflineData(userId, "logout");
+        await closeOfflineDb();
+      } catch {
+        /* continue */
+      }
+    }
     clearAuthSession();
     queryClient.clear();
     router.replace("/login");
@@ -1550,6 +1590,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 )}
               />
             </button>
+            <OfflineSyncCoordinator />
             <NotificationCenter />
             <div className="h-[26px] w-px shrink-0 bg-border-md max-lg:hidden" aria-hidden />
             {onActiveSurveyPropertyDetail ? (

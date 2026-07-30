@@ -11,6 +11,7 @@ public static class DatabaseIndexNames
     public const string UserNotificationUnreadSourceEvent =
         "IX_UserNotifications_UserId_SourceEvent_Unread";
     public const string OutboxPendingByCreatedAt = "IX_OutboxMessages_Pending_CreatedAtUtc";
+    public const string PushSubscriptionEndpoint = "IX_PushSubscriptions_Endpoint";
 }
 
 /// <summary>PostgreSQL sequences owned by the model.</summary>

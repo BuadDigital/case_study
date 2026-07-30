@@ -107,7 +107,7 @@ public class AuthSessionServiceTests
         var login = await LoginAsync(provider);
 
         var profile = await db.UserProfiles.FirstAsync();
-        profile.Status = UserStatus.Inactive;
+        profile.Status = UserStatus.Disabled;
         await db.SaveChangesAsync();
 
         Assert.Null(await sessions.RefreshAsync(login.RefreshToken));

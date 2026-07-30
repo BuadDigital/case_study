@@ -21,6 +21,9 @@ public class OperationsApiAuthorizationTests : IClassFixture<OperationsApiFactor
     private static readonly string PartyToken =
         TestAuthHandler.TokenFor(PlatformCapabilities.SubmitPartyWork);
 
+    private static readonly string FeeCollectedPath =
+        $"/api/key-envelopes/{Guid.NewGuid()}/fee-collected";
+
     private readonly HttpClient _client;
 
     public OperationsApiAuthorizationTests(OperationsApiFactory factory)
@@ -97,6 +100,36 @@ public class OperationsApiAuthorizationTests : IClassFixture<OperationsApiFactor
         var response = await PostAsync("/api/key-envelopes", token);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    /// <summary>
+    /// Confirming key-receipt collection is a finance act. It used to sit behind
+    /// <c>submit-party-work</c>, which finance staff do not hold, so the button labelled "المالية"
+    /// could only be pressed by the parties it was meant to keep out.
+    /// </summary>
+    [Theory]
+    [InlineData(nameof(PartyToken))]
+    [InlineData(nameof(OperationsToken))]
+    public async Task Confirming_fee_collection_is_denied_to_everyone_but_finance(string actor)
+    {
+        var token = actor == nameof(PartyToken) ? PartyToken : OperationsToken;
+
+        var response = await PostAsync(FeeCollectedPath, token);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    /// <summary>
+    /// This pipeline never reaches storage, so finance clearing the gate can only be shown by the
+    /// absence of a rejection — the handler fails later, on the database it cannot open.
+    /// </summary>
+    [Fact]
+    public async Task Finance_staff_clear_the_fee_collection_gate()
+    {
+        var response = await PostAsync(FeeCollectedPath, ReadKeyDataToken);
+
+        Assert.NotEqual(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]

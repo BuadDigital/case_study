@@ -106,6 +106,7 @@
     ],
     "case-study": [
       "attachments",
+      "audit",
       "case_study",
       "failures",
       "financial",
@@ -117,6 +118,7 @@
     ],
     "failures": [
       "attachments",
+      "audit",
       "case_study",
       "failures",
       "financial",
@@ -124,11 +126,13 @@
       "messaging"
     ],
     "financial": [
+      "audit",
       "case_study",
       "financial",
       "identity"
     ],
     "identity": [
+      "audit",
       "identity"
     ],
     "operations": [
@@ -140,6 +144,7 @@
       "operations"
     ],
     "platform": [
+      "audit",
       "case_study",
       "identity",
       "messaging",
@@ -187,6 +192,7 @@
       "case_study"
     ],
     "backend/RealEstateEval.Infrastructure/Services/CaseStudyInfoRolesConfigService.cs": [
+      "audit",
       "platform"
     ],
     "backend/RealEstateEval.Infrastructure/Services/CaseStudyPropertyPoNumberLookup.cs": [
@@ -197,9 +203,11 @@
       "valuation"
     ],
     "backend/RealEstateEval.Infrastructure/Services/CourtsCatalogService.cs": [
+      "audit",
       "platform"
     ],
     "backend/RealEstateEval.Infrastructure/Services/CourtsService.cs": [
+      "audit",
       "platform"
     ],
     "backend/RealEstateEval.Infrastructure/Services/EngineeringBillingStatementService.cs": [
@@ -218,6 +226,7 @@
       "failures"
     ],
     "backend/RealEstateEval.Infrastructure/Services/FieldDictionaryService.cs": [
+      "audit",
       "platform"
     ],
     "backend/RealEstateEval.Infrastructure/Services/FieldInspectionAttachmentVerifier.cs": [
@@ -254,6 +263,7 @@
       "operations"
     ],
     "backend/RealEstateEval.Infrastructure/Services/PartyFeePricingService.cs": [
+      "audit",
       "financial"
     ],
     "backend/RealEstateEval.Infrastructure/Services/PartyTaskSubmissionService.cs": [
@@ -311,6 +321,7 @@
       "valuation"
     ],
     "backend/RealEstateEval.Infrastructure/Services/UserRegistrationService.cs": [
+      "audit",
       "identity"
     ],
     "backend/RealEstateEval.Infrastructure/Services/ValuationRequestService.cs": [

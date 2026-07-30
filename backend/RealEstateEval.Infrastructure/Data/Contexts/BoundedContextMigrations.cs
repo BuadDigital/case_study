@@ -11,8 +11,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 public static class BoundedContextMigrations
 {
     /// <summary>Last legacy migration; the legacy stream is frozen at it for extracted schemas.</summary>
-    public const string LegacyCutover = "20260729142123_DatabaseRaceGuardsAndIndexes";
-
+    public const string LegacyCutover = "20260730092246_AddPushSubscriptions";
     public const string HistoryTable = "__EFMigrationsHistory";
 
     /// <summary>Order the deploy migrator applies the context streams in, after the legacy stream.</summary>

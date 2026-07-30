@@ -37,14 +37,12 @@ builder.Services.AddHostedService<ValuationIntegrationEventConsumer>();
 
 // MigrateOnStartup defaults on only in Development. Production must use the
 // deploy-time DbMigrate job (see infra/docker-compose.prod.yml + backend/tools/DbMigrate).
-var migrateOnStartup = builder.Configuration.GetValue<bool?>("Database:MigrateOnStartup")
-    ?? builder.Environment.IsDevelopment();
+var migrateOnStartup = builder.Configuration.GetValue<bool?>("Database:MigrateOnStartup") ?? builder.Environment.IsDevelopment();
 var seedDemoData = builder.Configuration.GetValue<bool>("Database:SeedDemoData");
 
 if (builder.Environment.IsProduction() && migrateOnStartup)
 {
-    throw new InvalidOperationException(
-        "Database:MigrateOnStartup cannot be enabled in Production. Run the DbMigrate job instead.");
+    throw new InvalidOperationException("Database:MigrateOnStartup cannot be enabled in Production. Run the DbMigrate job instead.");
 }
 
 if (builder.Environment.IsProduction() && seedDemoData)
@@ -80,12 +78,7 @@ if (migrateOnStartup || seedDemoData)
     if (seedDemoData)
     {
         // Demo seeding needs Identity stores; request paths use claims-based permissions.
-        var seedServices = new ServiceCollection();
-        seedServices.AddLogging();
-        seedServices.AddPersistence(app.Configuration, connectionString);
-        seedServices.AddIdentitySeedStores(app.Configuration, connectionString);
-        seedServices.AddSingleton(app.Configuration);
-        await using var seedProvider = seedServices.BuildServiceProvider();
+        await using var seedProvider = RealEstateEval.Infrastructure.DependencyInjection.CreateIdentityMaintenanceProvider(app.Configuration,connectionString);
         await DataSeeder.SeedAsync(seedProvider);
     }
 }

@@ -24,6 +24,9 @@ public class StaffAccountActivationTests
     {
         DisplayName = "موظف تجريبي",
         Email = "New.Staff@example.test",
+        Mobile = "0500000099",
+        City = "الرياض",
+        NationalId = "1000000091",
         RoleId = "case-specialist",
     };
 
@@ -49,11 +52,18 @@ public class StaffAccountActivationTests
         await using var provider = await CreateProviderAsync();
         var users = provider.GetRequiredService<IUserRegistrationService>();
 
-        var (result, errors) = await users.CreateStaffAsync(SampleRequest);
+        var (result, errors) = await users.CreateStaffAsync(SampleRequest, "admin");
 
         Assert.Null(errors);
         Assert.NotNull(result);
         Assert.True(result.ActivationRequired);
+        Assert.Equal(UserStatus.PendingActivation, result.User.Status);
+        Assert.Equal("case-specialist", result.User.RoleId);
+        Assert.Equal("+966500000099", result.User.Mobile);
+        var db = provider.GetRequiredService<IdentityDbContext>();
+        var audit = Assert.Single(db.AuditLogs, entry => entry.Action == "USER_CREATED");
+        Assert.Equal("admin", audit.ActorId);
+        Assert.Equal(result.User.Id, audit.EntityId);
 
         var json = JsonSerializer.Serialize(result);
         Assert.DoesNotContain("password", json, StringComparison.OrdinalIgnoreCase);
@@ -67,7 +77,7 @@ public class StaffAccountActivationTests
         var users = provider.GetRequiredService<IUserRegistrationService>();
         var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
 
-        var (result, _) = await users.CreateStaffAsync(SampleRequest);
+        var (result, _) = await users.CreateStaffAsync(SampleRequest, "admin");
         var user = await userManager.FindByNameAsync(result!.UserName);
 
         Assert.NotNull(user);
@@ -83,8 +93,10 @@ public class StaffAccountActivationTests
         await using var provider = await CreateProviderAsync();
         var users = provider.GetRequiredService<IUserRegistrationService>();
 
-        var (created, _) = await users.CreateStaffAsync(SampleRequest);
-        var (ticket, ticketError) = await users.IssueActivationTicketAsync(created!.User.Id);
+        var (created, _) = await users.CreateStaffAsync(SampleRequest, "admin");
+        var (ticket, ticketError) = await users.IssueActivationTicketAsync(
+            created!.User.Id,
+            "admin");
 
         Assert.Null(ticketError);
         Assert.NotNull(ticket);
@@ -103,6 +115,11 @@ public class StaffAccountActivationTests
         var auth = provider.GetRequiredService<IPasswordAuthenticationService>();
         var session = await auth.AuthenticateAsync(created.UserName, "ChosenByHolder1!");
         Assert.NotNull(session);
+        var db = provider.GetRequiredService<IdentityDbContext>();
+        Assert.Equal(
+            UserStatus.Active,
+            (await db.UserProfiles.SingleAsync(profile => profile.UserId == created.User.Id)).Status);
+        Assert.Contains(db.AuditLogs, audit => audit.Action == "USER_ACTIVATED");
     }
 
     [Fact]
@@ -111,8 +128,8 @@ public class StaffAccountActivationTests
         await using var provider = await CreateProviderAsync();
         var users = provider.GetRequiredService<IUserRegistrationService>();
 
-        var (created, _) = await users.CreateStaffAsync(SampleRequest);
-        var (ticket, _) = await users.IssueActivationTicketAsync(created!.User.Id);
+        var (created, _) = await users.CreateStaffAsync(SampleRequest, "admin");
+        var (ticket, _) = await users.IssueActivationTicketAsync(created!.User.Id, "admin");
 
         var first = await users.ActivateAccountAsync(new ActivateAccountRequest
         {
@@ -137,7 +154,7 @@ public class StaffAccountActivationTests
         await using var provider = await CreateProviderAsync();
         var users = provider.GetRequiredService<IUserRegistrationService>();
 
-        var (created, _) = await users.CreateStaffAsync(SampleRequest);
+        var (created, _) = await users.CreateStaffAsync(SampleRequest, "admin");
         var (_, unknownUserError) = await users.ActivateAccountAsync(new ActivateAccountRequest
         {
             UserName = "nobody-here",
@@ -161,10 +178,33 @@ public class StaffAccountActivationTests
         await using var provider = await CreateProviderAsync();
         var users = provider.GetRequiredService<IUserRegistrationService>();
 
-        var (ticket, error) = await users.IssueActivationTicketAsync(Guid.NewGuid().ToString());
+        var (ticket, error) = await users.IssueActivationTicketAsync(
+            Guid.NewGuid().ToString(),
+            "admin");
 
         Assert.Null(ticket);
         Assert.NotNull(error);
+    }
+
+    [Fact]
+    public async Task Disable_keeps_the_user_and_records_an_audit_entry()
+    {
+        await using var provider = await CreateProviderAsync();
+        var users = provider.GetRequiredService<IUserRegistrationService>();
+        var (created, _) = await users.CreateStaffAsync(SampleRequest, "admin");
+
+        var (ok, error) = await users.DeleteStaffAsync(
+            created!.User.Id,
+            "different-admin");
+
+        Assert.True(ok, error);
+        var db = provider.GetRequiredService<IdentityDbContext>();
+        Assert.NotNull(await db.Users.FindAsync(created.User.Id));
+        Assert.Equal(
+            UserStatus.Disabled,
+            (await db.UserProfiles.SingleAsync(profile => profile.UserId == created.User.Id)).Status);
+        var audit = Assert.Single(db.AuditLogs, entry => entry.Action == "USER_DISABLED");
+        Assert.Equal("different-admin", audit.ActorId);
     }
 
     private static async Task<ServiceProvider> CreateProviderAsync()

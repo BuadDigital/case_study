@@ -22,8 +22,20 @@ public class KeyEnvelope
     public string ReceiveScenario { get; set; } = KeyReceiveScenarios.Court;
     /// <summary>reviewer | assessor | external | returned</summary>
     public string Status { get; set; } = KeyEnvelopeStatuses.Reviewer;
+    /// <summary>
+    /// Historical only. Key-receipt revenue used to be stamped here from the pricing table; it is now
+    /// billed to إنفاذ by finance, so nothing writes these any more. Kept because financial records are
+    /// never deleted.
+    /// </summary>
     public bool FeeGenerated { get; set; }
     public decimal? FeeAmountSar { get; set; }
+
+    /// <summary>
+    /// مؤشر استحقاق — set when a court envelope is registered, which is what earns the receipt revenue
+    /// from إنفاذ. It carries no amount: finance enters that during enforcement billing.
+    /// </summary>
+    public DateTime? RevenueEntitlementAtUtc { get; set; }
+
     public string CreatedByUserId { get; set; } = "";
     public string CreatedByName { get; set; } = "";
     public DateTime CreatedAtUtc { get; set; }
@@ -148,7 +160,10 @@ public static class KeyEnvelopeTimelineEvents
     public const string AssignmentConfirmed = "assignment_confirmed";
     public const string HandoffCreated = "handoff_created";
     public const string HandoffConfirmed = "handoff_confirmed";
+    /// <summary>Historical: a key-receipt amount was stamped from the pricing table.</summary>
     public const string FeeGenerated = "fee_generated";
+    /// <summary>مؤشر استحقاق إيراد استلام المفاتيح — بلا مبلغ.</summary>
+    public const string RevenueEntitlement = "revenue_entitlement";
     public const string StatusChanged = "status_changed";
 }
 

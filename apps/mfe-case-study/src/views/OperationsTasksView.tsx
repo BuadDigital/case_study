@@ -1049,7 +1049,7 @@ function assigneesForType(
   return staffUsers
     .filter(
       (u) =>
-        u.status !== "Inactive" && Boolean(u.distributionAssigneeId?.trim()),
+        u.status === "Active" && Boolean(u.distributionAssigneeId?.trim()),
     )
     .map((u) => ({
       id: u.distributionAssigneeId!.trim(),

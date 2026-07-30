@@ -32,15 +32,15 @@ public class CourtsServiceAuditTests
         Assert.Null(error);
         Assert.NotNull(court);
 
-        var audit = Assert.Single(db.CourtAuditLogs.Where(a => a.EntityId == court!.Id));
+        var audit = Assert.Single(db.AuditLogs.Where(a => a.EntityId == court!.Id.ToString()));
         Assert.Equal(CourtAuditActions.CourtCreated, audit.Action);
         Assert.Equal(CourtAuditEntityTypes.Court, audit.EntityType);
-        Assert.Equal(court!.Id, audit.EntityId);
+        Assert.Equal(court!.Id.ToString(), audit.EntityId);
         Assert.Equal("actor-1", audit.ActorId);
 
-        using var json = JsonDocument.Parse(audit.ChangesJson);
-        Assert.Equal("محكمة اختبار التدقيق", json.RootElement.GetProperty("name").GetProperty("after").GetString());
-        Assert.True(json.RootElement.GetProperty("isActive").GetProperty("after").GetBoolean());
+        using var json = JsonDocument.Parse(audit.AfterJson);
+        Assert.Equal("محكمة اختبار التدقيق", json.RootElement.GetProperty("name").GetString());
+        Assert.True(json.RootElement.GetProperty("isActive").GetBoolean());
     }
 
     [Fact]
@@ -58,7 +58,7 @@ public class CourtsServiceAuditTests
             },
             "actor-1");
 
-        db.CourtAuditLogs.RemoveRange(db.CourtAuditLogs);
+        db.AuditLogs.RemoveRange(db.AuditLogs);
         await db.SaveChangesAsync();
 
         var (updated, error) = await service.UpdateAsync(
@@ -69,14 +69,15 @@ public class CourtsServiceAuditTests
         Assert.Null(error);
         Assert.NotNull(updated);
 
-        var audit = Assert.Single(db.CourtAuditLogs);
+        var audit = Assert.Single(db.AuditLogs);
         Assert.Equal(CourtAuditActions.CourtUpdated, audit.Action);
         Assert.Equal("actor-2", audit.ActorId);
 
-        using var json = JsonDocument.Parse(audit.ChangesJson);
-        Assert.Equal("محكمة اختبار التعديل", json.RootElement.GetProperty("name").GetProperty("before").GetString());
-        Assert.Equal("محكمة اختبار التعديل - محدّثة", json.RootElement.GetProperty("name").GetProperty("after").GetString());
-        Assert.False(json.RootElement.TryGetProperty("city", out _));
+        using var before = JsonDocument.Parse(audit.BeforeJson);
+        using var after = JsonDocument.Parse(audit.AfterJson);
+        Assert.Equal("محكمة اختبار التعديل", before.RootElement.GetProperty("name").GetString());
+        Assert.Equal("محكمة اختبار التعديل - محدّثة", after.RootElement.GetProperty("name").GetString());
+        Assert.False(after.RootElement.TryGetProperty("city", out _));
     }
 
     [Fact]
@@ -94,13 +95,13 @@ public class CourtsServiceAuditTests
             },
             "actor-1");
 
-        db.CourtAuditLogs.RemoveRange(db.CourtAuditLogs);
+        db.AuditLogs.RemoveRange(db.AuditLogs);
         await db.SaveChangesAsync();
 
         await service.SetCourtStatusAsync(created!.Id, false, "actor-2");
         await service.SetCourtStatusAsync(created.Id, true, "actor-3");
 
-        var audits = db.CourtAuditLogs.OrderBy(a => a.TimestampUtc).ToList();
+        var audits = db.AuditLogs.OrderBy(a => a.CreatedAtUtc).ToList();
         Assert.Equal(2, audits.Count);
         Assert.Equal(CourtAuditActions.CourtDeactivated, audits[0].Action);
         Assert.Equal(CourtAuditActions.CourtActivated, audits[1].Action);
@@ -123,7 +124,7 @@ public class CourtsServiceAuditTests
             },
             "actor-1");
 
-        db.CourtAuditLogs.RemoveRange(db.CourtAuditLogs);
+        db.AuditLogs.RemoveRange(db.AuditLogs);
         await db.SaveChangesAsync();
 
         var (circuit, createError) = await service.CreateCircuitAsync(
@@ -145,15 +146,16 @@ public class CourtsServiceAuditTests
 
         await service.SetCircuitStatusAsync(court.Id, circuit.Id, false, "actor-4");
 
-        var actions = db.CourtAuditLogs.Select(a => a.Action).ToList();
+        var actions = db.AuditLogs.Select(a => a.Action).ToList();
         Assert.Contains(CourtAuditActions.CircuitCreated, actions);
         Assert.Contains(CourtAuditActions.CircuitUpdated, actions);
         Assert.Contains(CourtAuditActions.CircuitDeactivated, actions);
 
-        var update = Assert.Single(db.CourtAuditLogs, a => a.Action == CourtAuditActions.CircuitUpdated);
-        using var json = JsonDocument.Parse(update.ChangesJson);
-        Assert.Equal("الأولى", json.RootElement.GetProperty("circuitNo").GetProperty("before").GetString());
-        Assert.Equal("الثانية", json.RootElement.GetProperty("circuitNo").GetProperty("after").GetString());
+        var update = Assert.Single(db.AuditLogs, a => a.Action == CourtAuditActions.CircuitUpdated);
+        using var before = JsonDocument.Parse(update.BeforeJson);
+        using var after = JsonDocument.Parse(update.AfterJson);
+        Assert.Equal("الأولى", before.RootElement.GetProperty("circuitNo").GetString());
+        Assert.Equal("الثانية", after.RootElement.GetProperty("circuitNo").GetString());
     }
 
     [Fact]
@@ -164,7 +166,7 @@ public class CourtsServiceAuditTests
 
         await service.EnsureSeededAsync();
 
-        Assert.Empty(db.CourtAuditLogs);
+        Assert.Empty(db.AuditLogs);
         Assert.NotEmpty(db.Courts);
     }
 
@@ -240,7 +242,7 @@ public class CourtsServiceAuditTests
             new NullDistributedCache(),
             Options.Create(new RedisCacheOptions { Enabled = false }),
             NullLogger<ApiResponseCache>.Instance);
-        return new CourtsService(db, cache);
+        return new CourtsService(db, cache, new AuditLogWriter());
     }
 
     private static PlatformDbContext CreateDb() => TestDatabases.Platform("courts-audit");

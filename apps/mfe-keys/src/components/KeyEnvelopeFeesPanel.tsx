@@ -43,12 +43,14 @@ export function KeyEnvelopeFeesPanel({
     () => rows.filter((r) => (r.collectionStatus ?? "open") !== "collected"),
     [rows],
   );
+  // Only the historical stamped rows carry an amount, so the totals speak for those alone. Rows
+  // without one are entitlements waiting to be priced in enforcement billing.
   const totalOpen = useMemo(
     () => openRows.reduce((sum, r) => sum + (r.feeAmountSar || 0), 0),
     [openRows],
   );
-  const totalAll = useMemo(
-    () => rows.reduce((sum, r) => sum + (r.feeAmountSar || 0), 0),
+  const unpricedCount = useMemo(
+    () => rows.filter((r) => !r.feeAmountSar).length,
     [rows],
   );
 
@@ -77,25 +79,24 @@ export function KeyEnvelopeFeesPanel({
             {ready ? rows.length : "—"}
           </div>
           <div className="mt-1.5 text-[12.5px] text-text-2">
-            بنود أتعاب (سيناريو المحكمة)
+            أظرف مستحقة (سيناريو المحكمة)
           </div>
         </div>
         <div className={keysDashCardClassName}>
           <div className="text-[30px] font-extrabold leading-none text-[#8a5e14] tabular-nums">
-            {ready ? totalOpen.toLocaleString("ar-SA") : "—"}{" "}
-            <span className="text-[15px]">ر.س</span>
+            {ready ? unpricedCount : "—"}
           </div>
           <div className="mt-1.5 text-[12.5px] text-text-2">
-            مفتوح للتحصيل ({ready ? openRows.length : "—"})
+            بانتظار فوترة إنفاذ (بلا مبلغ)
           </div>
         </div>
         <div className={keysDashCardClassName}>
           <div className="text-[30px] font-extrabold leading-none text-[#2f7a4d] tabular-nums">
-            {ready ? totalAll.toLocaleString("ar-SA") : "—"}{" "}
+            {ready ? totalOpen.toLocaleString("ar-SA") : "—"}{" "}
             <span className="text-[15px]">ر.س</span>
           </div>
           <div className="mt-1.5 text-[12.5px] text-text-2">
-            إجمالي الأتعاب المولّدة
+            مبالغ مختومة سابقاً مفتوحة للتحصيل
           </div>
         </div>
       </div>
@@ -139,6 +140,7 @@ export function KeyEnvelopeFeesPanel({
                 const collected =
                   (row.collectionStatus ?? "open") === "collected";
                 const c = collected ? "#2f7a4d" : "#d9a441";
+                const priced = !!row.feeAmountSar;
                 return (
                   <KeysGridRow
                     key={row.envelopeId}
@@ -157,13 +159,25 @@ export function KeyEnvelopeFeesPanel({
                       </span>
                     </KeysTd>
                     <KeysTd>
-                      <span className="text-[14px] font-extrabold tabular-nums text-heading">
-                        {row.feeAmountSar.toLocaleString("ar-SA")} ر.س
-                      </span>
+                      {priced ? (
+                        <span className="text-[14px] font-extrabold tabular-nums text-heading">
+                          {row.feeAmountSar!.toLocaleString("ar-SA")} ر.س
+                        </span>
+                      ) : (
+                        <span className="text-[12px] text-text-3">
+                          تُدخله المالية
+                        </span>
+                      )}
                     </KeysTd>
                     <KeysTd>
                       <KeysStatusPill
-                        label={collected ? "محصّلة" : "بانتظار التحصيل"}
+                        label={
+                          collected
+                            ? "محصّلة"
+                            : priced
+                              ? "بانتظار التحصيل"
+                              : "بانتظار فوترة إنفاذ"
+                        }
                         color={c}
                       />
                     </KeysTd>
@@ -172,7 +186,7 @@ export function KeyEnvelopeFeesPanel({
                         <span className="text-[11.5px] text-text-3">
                           أكّدته المالية
                         </span>
-                      ) : canCollect ? (
+                      ) : canCollect && priced ? (
                         <button
                           type="button"
                           disabled={busyId !== null}
@@ -225,6 +239,7 @@ export function KeyEnvelopeFeesPanel({
                   const collected =
                     (row.collectionStatus ?? "open") === "collected";
                   const c = collected ? "#2f7a4d" : "#d9a441";
+                  const priced = !!row.feeAmountSar;
                   return (
                     <li key={`m-${row.envelopeId}`}>
                       <button
@@ -242,19 +257,31 @@ export function KeyEnvelopeFeesPanel({
                             </div>
                           </div>
                           <KeysStatusPill
-                            label={collected ? "محصّلة" : "بانتظار التحصيل"}
+                            label={
+                              collected
+                                ? "محصّلة"
+                                : priced
+                                  ? "بانتظار التحصيل"
+                                  : "بانتظار فوترة إنفاذ"
+                            }
                             color={c}
                           />
                         </div>
                         <div className="flex items-center justify-between gap-2">
-                          <span className="tabular-nums text-[15px] font-extrabold text-heading">
-                            {row.feeAmountSar.toLocaleString("ar-SA")} ر.س
-                          </span>
+                          {priced ? (
+                            <span className="tabular-nums text-[15px] font-extrabold text-heading">
+                              {row.feeAmountSar!.toLocaleString("ar-SA")} ر.س
+                            </span>
+                          ) : (
+                            <span className="text-[12.5px] text-text-3">
+                              المبلغ تُدخله المالية
+                            </span>
+                          )}
                           {collected ? (
                             <span className="text-[11.5px] text-text-3">
                               أكّدته المالية
                             </span>
-                          ) : canCollect ? (
+                          ) : canCollect && priced ? (
                             <button
                               type="button"
                               disabled={busyId !== null}
@@ -287,9 +314,9 @@ export function KeyEnvelopeFeesPanel({
       </div>
 
       <p className="m-0 px-1 pt-3 text-[11.5px] text-text-3">
-        تسجيل الظرف وتصويره يُنشئ حالة مالية بوجوب رفع أتعاب استلام المفتاح —
-        التحصيل يتم بعد اكتمال دراسة الحالة ورفع صورة الظرف على إنفاذ، وتأكيد
-        الاستلام من موظف المالية حصراً.
+        تسجيل الظرف وتصويره يثبت استحقاق إيراد استلام المفاتيح من إنفاذ — بلا
+        مبلغ مضبوط في التسعيرة. المبلغ تُدخله المالية ضمن فوترة إنفاذ. البنود
+        ذات المبالغ المختومة سابقاً تبقى قابلة للتحصيل من موظف المالية حصراً.
       </p>
     </div>
   );

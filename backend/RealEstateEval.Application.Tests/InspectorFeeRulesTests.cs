@@ -1,3 +1,4 @@
+using System.Reflection;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 
@@ -77,6 +78,41 @@ public class InspectorFeeRulesTests
         Assert.Equal(900m, fee);
     }
 
+    /// <summary>
+    /// The old behaviour replaced an empty schedule with a built-in ladder, so a table nobody had
+    /// filled in still produced invoiceable amounts. Emptiness must now be unanswerable.
+    /// </summary>
+    [Fact]
+    public void An_empty_schedule_resolves_to_no_fee_at_all()
+    {
+        Assert.Null(EngineeringSurveyFeeRules.ResolveFeeFromTiers(750m, []));
+        Assert.False(EngineeringSurveyFeeRules.HasTiers([]));
+        Assert.False(EngineeringSurveyFeeRules.HasTiers(null));
+    }
+
+    /// <summary>
+    /// The pricing screen scaffolds a new schedule with zero amounts, so a table can be saved with
+    /// tiers that carry no rate. Zero there means "nobody filled this in", not "this band is free".
+    /// </summary>
+    [Fact]
+    public void A_tier_left_at_zero_counts_as_unpriced()
+    {
+        Assert.Null(EngineeringSurveyFeeRules.ResolveFeeFromTiers(
+            300m,
+            [new(500m, 0m), new(null, 0m)]));
+
+        // A priced band still answers even when a neighbouring band is blank.
+        Assert.Equal(900m, EngineeringSurveyFeeRules.ResolveFeeFromTiers(
+            900m,
+            [new(500m, 0m), new(null, 900m)]));
+    }
+
+    [Fact]
+    public void Normalising_an_empty_schedule_is_rejected_rather_than_seeded()
+    {
+        Assert.Throws<ArgumentException>(() => EngineeringSurveyFeeRules.NormalizeTiers([]));
+    }
+
     [Theory]
     [InlineData("1200", true, 1200)]
     [InlineData("1,250.5", true, 1250.5)]
@@ -90,17 +126,34 @@ public class InspectorFeeRulesTests
     }
 
     [Fact]
-    public void Government_review_is_always_individual_cooperator_at_350()
+    public void Government_review_is_always_an_individual_cooperator()
     {
         Assert.Equal(InspectorFeeRules.TypeCooperatorIndividual, GovernmentReviewFeeRules.PartyType);
-        Assert.Equal(350m, GovernmentReviewFeeRules.FallbackFeeSar);
+    }
+
+    /// <summary>
+    /// The rates that used to live in code — 350 for a visit, 400/500 for a cooperator, and the
+    /// 300…4000 tier ladder — are gone by decision ق٨. Reflection is the only way to keep them from
+    /// creeping back as a "temporary" constant.
+    /// </summary>
+    [Theory]
+    [InlineData(typeof(GovernmentReviewFeeRules))]
+    [InlineData(typeof(InspectorFeeRules))]
+    [InlineData(typeof(EngineeringSurveyFeeRules))]
+    public void Fee_rules_hold_no_hard_coded_amounts(Type rulesType)
+    {
+        var amounts = rulesType
+            .GetFields(BindingFlags.Public | BindingFlags.Static)
+            .Where(f => f.IsLiteral && f.FieldType == typeof(decimal))
+            .Select(f => f.Name)
+            .ToList();
+
+        Assert.Empty(amounts);
     }
 
     [Fact]
-    public void Seed_cooperator_fee_constants_and_classification_helpers()
+    public void Classification_helpers_cover_every_cooperator_label()
     {
-        Assert.Equal(400m, InspectorFeeRules.CooperatorIndividualFeeSar);
-        Assert.Equal(500m, InspectorFeeRules.CooperatorOrganizationFeeSar);
         Assert.True(InspectorFeeRules.IsCooperator("متعاون"));
         Assert.True(InspectorFeeRules.IsCooperator("متعاون فرد"));
         Assert.True(InspectorFeeRules.IsCooperator("متعاون شركة"));

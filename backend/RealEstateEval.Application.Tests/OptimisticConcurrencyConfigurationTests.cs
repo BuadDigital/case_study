@@ -34,6 +34,9 @@ public class OptimisticConcurrencyConfigurationTests
         typeof(CourtVisitFeeCharge),
         typeof(OperationsTask),
         typeof(EvaluatorRecallRecord),
+        typeof(PartyFeePricingTable),
+        typeof(PartyFeePricingTier),
+        typeof(PartyFeePricingAssignment),
     ];
 
     [Fact]

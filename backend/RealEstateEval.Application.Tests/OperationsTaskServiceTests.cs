@@ -507,6 +507,7 @@ public class OperationsTaskServiceTests
     public async Task PatchAsync_complete_court_visit_persists_outcome()
     {
         await using var db = CreateDb();
+        var pricingTableId = await SetVisitPriceAsync(db, 350m);
         var service = CreateService(db);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
@@ -572,6 +573,8 @@ public class OperationsTaskServiceTests
         Assert.Equal(Guid.Parse(created.Id), visitCharge.OperationsTaskId);
         Assert.Equal("a1", visitCharge.CreditAssigneeId);
         Assert.Equal(350m, visitCharge.AmountSar);
+        // The amount carries its source, so the rate behind a charge stays provable after a rate change.
+        Assert.Equal(pricingTableId, visitCharge.PricingTableId);
         Assert.Equal(CourtVisitFeeStatuses.Open, visitCharge.Status);
         Assert.Empty(db.KeyReceiptFeeCharges);
     }
@@ -580,6 +583,7 @@ public class OperationsTaskServiceTests
     public async Task PatchAsync_complete_court_visit_is_idempotent_for_visit_fee()
     {
         await using var db = CreateDb();
+        await SetVisitPriceAsync(db, 350m);
         var service = CreateService(db);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
@@ -654,10 +658,78 @@ public class OperationsTaskServiceTests
         Assert.Single(db.CourtVisitFeeCharges);
     }
 
+    /// <summary>
+    /// The visit used to close no matter what, because an unresolved price fell back to 350 twice
+    /// over. Now an unpriced table stops the closure, so work is never recorded as done with an
+    /// invented fee — or with no fee that anyone would notice.
+    /// </summary>
+    [Fact]
+    public async Task PatchAsync_refuses_to_complete_a_court_visit_that_has_no_price()
+    {
+        await using var db = CreateDb();
+        var service = CreateService(db);
+        var (created, _) = await service.CreateAsync(
+            new CreateOperationsTaskRequest
+            {
+                Type = "court_visit",
+                Title = "زيارة محكمة",
+                Scope = "work_order",
+                PoNumber = "PO-9",
+                AssigneeId = "a1",
+                AssigneeName = "مراجع",
+                LetterRows =
+                [
+                    new OperationsTaskLetterRowDto
+                    {
+                        Po = "PO-9",
+                        Deed = "D-9",
+                        Owner = "مالك",
+                        Request = "REQ-9",
+                        Court = "محكمة",
+                        Circuit = "دائرة",
+                    },
+                ],
+            },
+            "creator-1",
+            "منشئ");
+
+        await service.PatchAsync(
+            Guid.Parse(created!.Id),
+            new PatchOperationsTaskRequest { Status = "in_progress" },
+            "a1",
+            "مراجع",
+            "government-reviewer",
+            "user-1");
+
+        var (done, error) = await service.PatchAsync(
+            Guid.Parse(created.Id),
+            new PatchOperationsTaskRequest
+            {
+                Status = "completed",
+                CourtVisitResult = new OperationsTaskCourtVisitResultDto
+                {
+                    Kind = "none",
+                    Statement = "لا مفاتيح",
+                },
+            },
+            "a1",
+            "مراجع",
+            "government-reviewer",
+            "user-1");
+
+        Assert.Null(done);
+        Assert.Equal(PricingErrors.FeeUnresolved, error);
+        Assert.Empty(db.CourtVisitFeeCharges);
+
+        var stillOpen = await db.OperationsTasks.SingleAsync();
+        Assert.NotEqual(OperationsTaskStatus.Completed, stillOpen.Status);
+    }
+
     [Fact]
     public async Task PatchAsync_complete_court_visit_credits_execution_assignee()
     {
         await using var db = CreateDb();
+        await SetVisitPriceAsync(db, 350m);
         var service = CreateService(db);
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
@@ -737,6 +809,26 @@ public class OperationsTaskServiceTests
             .ConfigureWarnings(w =>
                 w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
             .Options);
+
+    /// <summary>
+    /// Visit fees have no built-in rate any more, so a test that expects a charge has to put one in
+    /// the table first — the same thing an administrator now has to do.
+    /// </summary>
+    private static async Task<Guid> SetVisitPriceAsync(ApplicationDbContext db, decimal amountSar)
+    {
+        var tableId = Guid.NewGuid();
+        db.PartyFeePricingTables.Add(new PartyFeePricingTable
+        {
+            Id = tableId,
+            Category = PartyFeePricingCategories.GovernmentReview,
+            Name = "اختبار",
+            IsActive = true,
+            GovernmentReviewFeeSar = amountSar,
+            UpdatedAtUtc = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+        return tableId;
+    }
 
     private static OperationsTaskService CreateService(ApplicationDbContext db) =>
         new(db, new NullNotificationService(), new PartyFeePricingService(db));

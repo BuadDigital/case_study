@@ -2,6 +2,7 @@
  * Engineering-office monthly billing statements (كشف فوترة) — stages 6–8.
  */
 import { getApiBase } from "./index";
+import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
 export type EngBillingStatementsApiConfig = WorkOrdersApiConfig;

@@ -23,6 +23,19 @@ public static class RegistrationMapper
             JobTitle = profile.JobTitle,
             Email = user.Email ?? string.Empty,
             UserName = user.UserName ?? string.Empty,
+            RoleId = profile.RoleId,
+            Mobile = user.PhoneNumber,
+            City = profile.City,
+            Department = profile.Department,
+            NationalId = profile.NationalId,
+            AvatarUrl = profile.AvatarUrl,
+            InspectorType = profile.InspectorType,
+            HasCompensation = profile.HasCompensation,
+            FeeValueSar = profile.FeeValueSar,
+            Iban = profile.Iban,
+            TaxNumber = profile.TaxNumber,
+            CommercialRegistration = profile.CommercialRegistration,
+            JoinedAt = profile.JoinedAt,
             DistributionAssigneeId = profile.DistributionAssigneeId,
             ReviewerCityCoverage = ParseReviewerCityCoverage(profile.ReviewerCityCoverageJson),
             ContractType = profile.ContractType,
@@ -79,20 +92,27 @@ public static class RegistrationMapper
                 _ => null,
             });
         Add(SecAccount, "المسمى الوظيفي", profile.JobTitle);
-
+        Add(SecAccount, "الدور", profile.RoleId);
         Add(SecAccount, "مستوى الصلاحيات", profile.PermissionLevel);
         Add(SecAccount, "الجوال", user.PhoneNumber);
+        Add(SecAccount, "المدينة", profile.City);
+        Add(SecAccount, "رقم الهوية", profile.NationalId);
+        Add(SecAccount, "الإدارة", profile.Department);
+        Add(SecAccount, "نوع المعاين", profile.InspectorType);
+        Add(SecProcBilling, "الآيبان", profile.Iban);
+        Add(SecProcBilling, "الرقم الضريبي", profile.TaxNumber);
+        Add(SecProcIdentity, "السجل التجاري", profile.CommercialRegistration);
+        if (profile.FeeValueSar is { } fee)
+            Add(SecProcBilling, "قيمة الأتعاب", $"{fee:0.##} ر.س");
+        if (profile.JoinedAt is { } joinedAt)
+            Add(SecHr, "تاريخ الالتحاق", joinedAt.ToString("yyyy/MM/dd"));
 
         switch (profile.RegistrationSource)
         {
             case RegistrationSource.Hr when profile.HrEmployee is { } hr:
                 Add(SecHr, "نوع التوظيف", hr.EmploymentType);
-                Add(SecHr, "الإدارة", hr.Department);
                 Add(SecHr, "القسم", hr.Section);
-                Add(SecHr, "رقم الهوية", hr.NationalId);
                 Add(SecHr, "رقم العضوية", hr.EmployeeNumber);
-                if (hr.JoinDate is { } join)
-                    Add(SecHr, "تاريخ الالتحاق", join.ToString("yyyy/MM/dd"));
                 break;
 
             case RegistrationSource.Proc when profile.ProcProvider is { } proc:
@@ -103,16 +123,11 @@ public static class RegistrationMapper
                 Add(SecProcIdentity, "الاسم", proc.FullName);
                 Add(SecProcIdentity, "اسم الجهة", proc.OrganizationName);
                 Add(SecProcIdentity, "المفوض", proc.DelegateName);
-                Add(SecProcIdentity, "السجل التجاري", proc.CommercialRegistration);
-                Add(SecProcIdentity, "رقم الهوية", proc.NationalId);
                 Add(SecProcService, "نوع الخدمة", proc.ServiceType);
                 Add(SecProcService, "القطاع", proc.Sector);
-                Add(SecProcService, "المنطقة", proc.Region);
                 Add(SecProcService, "العنوان", proc.Address);
                 Add(SecProcBilling, "البنك", proc.BankName);
-                Add(SecProcBilling, "الآيبان", proc.Iban);
                 Add(SecProcBilling, "بريد الفوترة", proc.BillingEmail);
-                Add(SecProcBilling, "الرقم الضريبي", proc.VatRegistration);
                 break;
         }
 

@@ -25,6 +25,7 @@ public static class KeyEnvelopeMapper
         Status = row.Status,
         FeeGenerated = row.FeeGenerated,
         FeeAmountSar = row.FeeAmountSar,
+        RevenueEntitlementAtUtc = row.RevenueEntitlementAtUtc,
         CreatedByUserId = row.CreatedByUserId,
         CreatedByName = row.CreatedByName,
         CreatedAtUtc = row.CreatedAtUtc,

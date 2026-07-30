@@ -26,6 +26,11 @@ export function financeDisburseVisibleRows(rows: InspectorFeeRowDto[]): Inspecto
       r.billingStatus !== "disbursed" &&
       r.billingStatus !== "draft" &&
       r.billingStatus !== "sup-review" &&
+      // A line under pricing dispute belongs to operations until it is resolved, and must not show
+      // up on the finance surface even for an actor who can see it elsewhere. A suspended line is
+      // withheld by the supervisor, so it is not payable either.
+      r.billingStatus !== "disputed" &&
+      r.billingStatus !== "suspended" &&
       !isEngSurveyBillingPath(r),
   );
 }

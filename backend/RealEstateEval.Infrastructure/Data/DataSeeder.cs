@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Infrastructure.Permissions;
 using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Infrastructure.Data;
@@ -545,6 +546,22 @@ public static class DataSeeder
             ["survey.jeddah@ejadah.dev"] = "eo-jeddah",
         };
 
+    private static readonly Dictionary<string, string> DemoMobileByLogin =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["sliman"] = "+966500000001",
+            ["salam"] = "+966500000002",
+            ["abdulrahman"] = "+966500000003",
+            ["osama"] = "+966500000004",
+            ["feras"] = "+966500000005",
+            ["mohammed"] = "+966500000006",
+            ["abdullah"] = "+966500000007",
+            ["ahmed"] = "+966500000008",
+            ["abdullah_m"] = "+966500000009",
+            ["eman"] = "+966500000010",
+            ["jeddah_survey"] = "+966500000011",
+        };
+
     private static readonly Dictionary<string, string[]> ReviewerCityCoverageByEmail =
         new(StringComparer.OrdinalIgnoreCase)
         {
@@ -774,6 +791,10 @@ public static class DataSeeder
 
                 DisplayName = seed.DisplayName,
 
+                PhoneNumber = DemoMobileByLogin[seed.LoginUsername],
+
+                PhoneNumberConfirmed = true,
+
             };
 
 
@@ -818,6 +839,16 @@ public static class DataSeeder
 
                 changed = true;
 
+            }
+
+            if (!string.Equals(
+                    user.PhoneNumber,
+                    DemoMobileByLogin[seed.LoginUsername],
+                    StringComparison.Ordinal))
+            {
+                user.PhoneNumber = DemoMobileByLogin[seed.LoginUsername];
+                user.PhoneNumberConfirmed = true;
+                changed = true;
             }
 
             if (changed)
@@ -866,7 +897,17 @@ public static class DataSeeder
 
                 ContractType = seed.ContractType,
 
+                RoleId = PrototypeRoleResolver.LegacyRoleIdForJobTitle(seed.JobTitle),
+
                 JobTitle = seed.JobTitle,
+
+                Department = ResolveCanonicalDepartment(seed),
+
+                City = "الرياض",
+
+                InspectorType = seed.JobTitle == "معاين ميداني"
+                    ? seed.ContractType == ContractType.Internal ? "employee" : "contractor"
+                    : null,
 
                 DistributionAssigneeId = DistributionAssigneeIdsByEmail.GetValueOrDefault(normalizedEmail),
 
@@ -905,7 +946,17 @@ public static class DataSeeder
 
             profile.ContractType = seed.ContractType;
 
+            profile.RoleId = PrototypeRoleResolver.LegacyRoleIdForJobTitle(seed.JobTitle);
+
             profile.JobTitle = seed.JobTitle;
+
+            profile.Department = ResolveCanonicalDepartment(seed);
+
+            profile.City ??= "الرياض";
+
+            profile.InspectorType = seed.JobTitle == "معاين ميداني"
+                ? seed.ContractType == ContractType.Internal ? "employee" : "contractor"
+                : null;
 
             profile.DistributionAssigneeId =
                 DistributionAssigneeIdsByEmail.GetValueOrDefault(normalizedEmail);
@@ -982,6 +1033,10 @@ public static class DataSeeder
 
                 DisplayName = seed.OrganizationName,
 
+                PhoneNumber = DemoMobileByLogin[seed.LoginUsername],
+
+                PhoneNumberConfirmed = true,
+
             };
 
 
@@ -1028,6 +1083,16 @@ public static class DataSeeder
 
             }
 
+            if (!string.Equals(
+                    user.PhoneNumber,
+                    DemoMobileByLogin[seed.LoginUsername],
+                    StringComparison.Ordinal))
+            {
+                user.PhoneNumber = DemoMobileByLogin[seed.LoginUsername];
+                user.PhoneNumberConfirmed = true;
+                changed = true;
+            }
+
             if (changed)
 
                 await userManager.UpdateAsync(user);
@@ -1068,7 +1133,13 @@ public static class DataSeeder
 
                 ContractType = ContractType.ServiceProvider,
 
+                RoleId = "engineering-office",
+
                 JobTitle = "مقدم خدمة — جهة",
+
+                Department = SupervisingDepartments.External,
+
+                City = "جدة",
 
                 DistributionAssigneeId =
                     DistributionAssigneeIdsByEmail.GetValueOrDefault(normalizedEmail),
@@ -1109,7 +1180,13 @@ public static class DataSeeder
 
             profile.ContractType = ContractType.ServiceProvider;
 
+            profile.RoleId = "engineering-office";
+
             profile.JobTitle = "مقدم خدمة — جهة";
+
+            profile.Department = SupervisingDepartments.External;
+
+            profile.City = "جدة";
 
             profile.DistributionAssigneeId =
                 DistributionAssigneeIdsByEmail.GetValueOrDefault(normalizedEmail);
@@ -1320,6 +1397,24 @@ public static class DataSeeder
 
     private static readonly string[] RetiredOrgAdminUsernames =
         ["alaa", "ali", "shahd"];
+
+    /// <summary>
+    /// UserProfile.Department stores the canonical supervising-department code. Legacy Arabic
+    /// administration / section labels remain on HrEmployee for display only.
+    /// </summary>
+    private static string? ResolveCanonicalDepartment(HrStaffSeed seed)
+    {
+        var roleId = PrototypeRoleResolver.LegacyRoleIdForJobTitle(seed.JobTitle);
+        if (string.IsNullOrWhiteSpace(roleId))
+            return SupervisingDepartments.NormalizeProfileValue(seed.Section)
+                ?? SupervisingDepartments.NormalizeProfileValue(seed.Department);
+
+        var (department, _) = SupervisingDepartments.ResolveForStaff(
+            roleId,
+            requestedDepartment: seed.Section ?? seed.Department,
+            fallbackSection: seed.Section);
+        return department;
+    }
 
     /// <summary>Drops retired HR/PROC/CRM admin demo accounts (alaa / ali / shahd).</summary>
     private static async Task RemoveRetiredOrgAdminUsersAsync(
