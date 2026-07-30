@@ -11,15 +11,15 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 [Authorize(Policy = CapabilityPolicyNames.ResetSystemData)]
 public class SystemController : ControllerBase
 {
-    private readonly ISystemMaintenanceService _maintenance;
     private readonly IWebHostEnvironment _env;
+    private readonly IServiceProvider _services;
 
     public SystemController(
-        ISystemMaintenanceService maintenance,
-        IWebHostEnvironment env)
+        IWebHostEnvironment env,
+        IServiceProvider services)
     {
-        _maintenance = maintenance;
         _env = env;
+        _services = services;
     }
 
     /// <summary>Development only — wipes operational + prototype config data; keeps org admin accounts; re-seeds demo users and catalog rows.</summary>
@@ -30,6 +30,7 @@ public class SystemController : ControllerBase
         if (!_env.IsDevelopment())
             return NotFound();
 
-        return Ok(await _maintenance.ResetAllOperationalDataAsync(cancellationToken));
+        var maintenance = _services.GetRequiredService<ISystemMaintenanceService>();
+        return Ok(await maintenance.ResetAllOperationalDataAsync(cancellationToken));
     }
 }
