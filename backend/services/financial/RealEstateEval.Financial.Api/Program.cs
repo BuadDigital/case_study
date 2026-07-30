@@ -20,7 +20,7 @@ var connectionString = ServiceCollectionExtensions.RequireConnectionString(
     builder.Configuration,
     ServiceDatabaseNames.Financial);
 builder.Services.AddPersistence(builder.Configuration, connectionString);
-builder.Services.AddIdentityInfrastructure();
+builder.Services.AddClaimsPermissionService();
 builder.Services.AddFinancialInfrastructure();
 builder.Services.AddRealEstateEvalJwt(builder.Configuration, builder.Environment);
 builder.Services.AddRealEstateEvalCors(builder.Configuration, builder.Environment);

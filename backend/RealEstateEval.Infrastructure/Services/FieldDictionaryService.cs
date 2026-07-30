@@ -3,16 +3,16 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class FieldDictionaryService : IFieldDictionaryService
 {
     private static readonly Guid SingletonId = Guid.Parse("b1c2d3e4-f5a6-7890-abcd-ef1234567891");
-    private readonly ApplicationDbContext _db;
+    private readonly PlatformDbContext _db;
 
-    public FieldDictionaryService(ApplicationDbContext db) => _db = db;
+    public FieldDictionaryService(PlatformDbContext db) => _db = db;
 
     public async Task<FieldDictionaryStateDto> GetAsync(CancellationToken cancellationToken = default)
     {

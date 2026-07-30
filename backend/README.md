@@ -39,26 +39,33 @@ backend/
 ## Gateway routes
 
 | Path | Service |
-
 |------|---------|
-
 | `/api/auth/*`, `/api/users/*`, `/api/permissions` | Identity |
-
 | `/api/survey-offices/*`, `/api/property-keys/*` | Operations |
-
 | `/api/valuation-requests/*`, `/api/evaluator-recalls/*` | Valuation |
-
 | `/api/reporting/*` | Reporting |
-
 | `/api/financial/*` | Financial |
-
 | `/api/failures/*`, `/api/failure-types-catalog/*` | Failures |
-
 | `/api/field-dictionary/*`, `/api/courts/*`, `/api/custom-assigned-screens/*`, `/api/case-study-info-roles/*` | Platform |
-
 | `/api/attachments/*` | Attachments |
-
 | `/api/*` (catch-all) | Case Study |
+
+### Route versioning
+
+The public API uses a compatibility-first URL convention:
+
+- Unversioned `/api/...` routes are the canonical current contract and mean **v1**.
+- Existing explicit `/v1` routes remain supported aliases. Currently this applies to
+  `/api/financial/v1/...` and `/api/reporting/v1/...`; their canonical equivalents are
+  `/api/financial/...` and `/api/reporting/...`.
+- The gateway forwards both forms to the same service, and clients may migrate to the
+  canonical form independently. Existing frontend callers are not forced to change.
+- A breaking v2 must use an explicit `/v2` route (or adopt `Asp.Versioning` across the
+  affected service) while leaving the unversioned v1 contract and existing `/v1` aliases
+  operational for the documented compatibility window.
+
+There is no header or query-string version negotiation. Do not add one-off version
+segments to new v1 endpoints.
 
 ## Local development
 
@@ -110,6 +117,12 @@ Rollback keeps the database at the target migration (EF migrates *down* to that
 point). Take a Postgres dump before production rollbacks. Re-deploy the app
 image that matches the rolled-back schema.
 
+Rolling back the newest migration and re-applying it is covered by
+`RealEstateEval.Api.ContainerTests`. Rolling all the way back to `0` currently fails:
+reverting far enough re-creates the `IX_PartyFeePricingTables_OneActive` unique index while
+rows inserted by earlier migrations still violate it. Recreate the database instead of
+rolling back to an empty schema until that is fixed.
+
 ## Docker (full API stack)
 
 ```bash
@@ -117,6 +130,57 @@ docker compose -f infra/docker-compose.yml up -d postgres rabbitmq redis identit
 ```
 
 Gateway: `http://localhost:5160`
+
+## Tests
+
+```bash
+dotnet test backend/RealEstateEval.slnx
+```
+
+| Project | Covers | Needs |
+| --- | --- | --- |
+| `RealEstateEval.Application.Tests` | Domain rules, mappers, and services over the in-memory provider | — |
+| `RealEstateEval.Architecture.Tests` | Project-reference and layering rules | — |
+| `RealEstateEval.Api.IntegrationTests` | Real service pipelines: authentication, capability policies, rate limiting, security headers, correlation ids, readiness options | — |
+| `RealEstateEval.Api.ContainerTests` | Throwaway Postgres, RabbitMQ, and Redis containers: migrations, demo seeding, `/ready`, outbox delivery and dead-lettering, Redis-backed cache | Docker |
+
+Container tests skip themselves when no Docker daemon is reachable, so the suite
+stays green on a workstation without Docker. Force the decision either way with
+`REAL_ESTATE_EVAL_CONTAINER_TESTS=1` or `=0`.
+
+The integration tests never reach a database: they assert what the pipeline decides
+before a handler touches storage. Anything that needs real SQL belongs in the container
+project. Factories pass configuration as host settings rather than environment variables,
+because a mutated process environment leaks into every other test in the run.
+
+### Coverage
+
+```bash
+dotnet test backend/RealEstateEval.slnx \
+  --settings backend/coverlet.runsettings --collect:"XPlat Code Coverage"
+```
+
+Generated EF migrations are excluded — they are larger than the entire hand-written
+codebase and drown the percentage. `Threshold` in the runsettings is a regression floor
+below today's numbers, not a target; raise it as coverage grows. Enable container tests
+when collecting coverage, otherwise the skipped project reports 0% and trips the floor.
+CI runs this on every push and pull request, prints a per-report table in the job
+summary, and uploads the Cobertura reports as the `backend-coverage` artifact.
+
+## Demo-user reseed tool
+
+`backend/scripts/reseed-ahmed-tool` (`ReseedAhmed`) restores demo HR and procurement
+accounts — password and profile fields — without wiping anything else. It must run from the
+repository root, because it reads the Identity service's `appsettings*.json` for the
+connection string; the wrappers handle that:
+
+```bash
+node backend/scripts/reseed-ahmed.mjs      # the ahmed demo login
+node backend/scripts/reseed-all-users.mjs  # every demo account
+```
+
+The project is part of `RealEstateEval.slnx`, so it builds with the solution and stops
+drifting out of sync with the entities it seeds.
 
 ## Production secrets
 
@@ -181,6 +245,31 @@ Login returns a short-lived access token plus an opaque refresh token:
   access immediately should call `IAuthSessionService.RevokeAllForUserAsync` and rely
   on the short access-token window.
 
+### Staff account activation
+
+`POST /api/users` creates the account **without a password** and never returns a
+credential. The response is `{ user, userName, activationRequired: true }`; until the
+account is activated, `PasswordHash` is null and every password login attempt fails.
+
+Handing over the account is a separate, explicitly authorized step:
+
+1. `POST /api/users/{id}/activation-ticket` (`CanManageUsers`) mints a single-use
+   activation ticket — an Identity password-reset token, `Cache-Control: no-store`,
+   valid for 24 hours (`DataProtectionTokenProviderOptions.TokenLifespan`). Issuing is
+   logged. The ticket is not a password: it cannot be used to sign in.
+2. The administrator delivers the ticket out of band, and the holder redeems it at
+   `POST /api/auth/activate` (anonymous, auth rate-limit budget) with the username and
+   their chosen password. Redeeming rotates the security stamp, so a ticket works once.
+
+Activation answers with one opaque message for unknown users, forged tickets, and
+expired tickets alike, so the endpoint cannot be used to enumerate accounts. Only
+password-policy failures are reported specifically — the caller already proved
+possession of the ticket, so that detail leaks nothing.
+
+The shell serves the redemption form at `/activate` (a public route in `apps/shell`).
+Re-issuing a ticket for an existing user is available from the users list in settings;
+it does not invalidate the current password.
+
 ## HTTP security (shared pipeline)
 
 `UseRealEstateEvalServicePipeline` (all nine services) and
@@ -188,6 +277,22 @@ Login returns a short-lived access token plus an opaque refresh token:
 security headers → compression → correlation id → HTTPS redirection (outside
 Development) → CORS → rate limiter → authentication/authorization. Authentication stays
 in the services; the gateway deliberately does not authenticate.
+
+### Error responses
+
+Failures answer with RFC 7807 `application/problem+json` (`type`, `title`, `status`,
+`detail`, `traceId`) — from model binding, from the rate limiter, from the global
+exception handler, and from hand-written controller failures via
+`ApiProblemExtensions` (`BadRequestProblem`, `NotFoundProblem`, `ConflictProblem`,
+`FieldErrorsProblem`). Those helpers also copy the message into an `error` (or `errors`)
+extension member, which serializes as a top-level property, so front-end callers written
+against the older `{ error }` / `{ errors }` shapes keep working.
+
+`detail` is always a message written for the caller. Exception text stays in the log:
+handled failures log the exception and answer with a fixed sentence, and the global
+handler only echoes `ex.Message` in Development. Attachments, engineering billing, Enfaz
+billing, party-fee pricing and user management are converted; other controllers still
+return their original ad-hoc shapes and can be migrated as they are touched.
 
 ### Rate limiting (`RateLimiting`)
 
@@ -203,7 +308,7 @@ Authentication endpoints draw on a much smaller budget than the rest of the API.
 | `RateLimiting:Global:QueueLimit` | `0` | `0` | Queued requests; `0` rejects immediately |
 | `RateLimiting:Auth:PermitLimit` | `1000` | `10` | Budget for `AuthPathPrefixes` |
 | `RateLimiting:Auth:WindowSeconds` / `QueueLimit` | `60` / `0` | `60` / `0` | As above |
-| `RateLimiting:AuthPathPrefixes` | `/api/auth/login`, `/api/auth/login-username`, `/api/auth/refresh`, `/api/auth/dev-login-users` | same | Strict-budget paths |
+| `RateLimiting:AuthPathPrefixes` | `/api/auth/login`, `/api/auth/login-username`, `/api/auth/refresh`, `/api/auth/dev-login-users`, `/api/auth/activate` | same | Strict-budget paths |
 | `RateLimiting:ExemptPathPrefixes` | `/health`, `/ready` | same | Never throttled, so healthchecks and post-deploy smoke checks cannot trip limits |
 | `RateLimiting:ClientAddressHeaderName` | `X-Real-IP` | same | Caller address published by the ingress proxy |
 | `RateLimiting:TrustForwardedForHeader` | `true` | same | Fall back to the right-most `X-Forwarded-For` entry |
@@ -282,11 +387,56 @@ them answer their liveness endpoint.
 | `Gateway:Readiness:UpstreamHealthPath` | `/health` | Probed path on each upstream |
 | `Gateway:Readiness:RequiredClusters` | empty | Empty means every configured cluster |
 
+### Service readiness (`Readiness`)
+
+Domain services answer `/ready` from their database: reachable, and migrated. A probe
+failure is logged with the exception (a pending-migration verdict at `Error`, an
+unreachable database at `Warning`) instead of being reduced to a bare `503`, and the body
+names the reason so an orchestrator's logs are enough to tell the two apart.
+
+| Key | Development | Other environments | Meaning |
+| --- | --- | --- | --- |
+| `Readiness:CheckMigrations` | `false` | `true` | Report not-ready while migrations are pending |
+| `Readiness:CacheSeconds` | `5` | `5` | Result reuse, so frequent probes do not query per request (0–300) |
+
+```json
+{ "status": "not_ready", "service": "financial", "database": "migrations_pending", "pendingMigrations": 3 }
+```
+
+`database` is `ready`, `unreachable`, or `migrations_pending`. The migration check is off in
+Development because the shared dev database is migrated by whichever service starts first,
+so `npm run dev:api` would otherwise wait on a condition that never applies to a deployment
+— the deploy workflow runs the `migrate` job before app containers start.
+
+Reporting holds no schema of its own, so it maps `MapStatelessReady`: it is ready once it is
+listening, and its upstreams are covered by the gateway's readiness probe.
+
 ## Remaining toward full microservices
 
 - Separate physical databases per service in production (per-service connection strings are wired; dev still shares one DB)
 - Contract tests + load tests on gateway
 - Decommission remaining frontend prototype storage/constants
+
+## Architecture guardrails
+
+`RealEstateEval.Architecture.Tests` enforces the decomposition gates in
+[`docs/architecture-split-plan.md`](../docs/architecture-split-plan.md). It reads two files:
+`docs/architecture/table-ownership.json` (one write owner per table) and
+`docs/architecture/boundary-baseline.json` (the coupling that exists today). Baseline entries
+are a ceiling: removing cross-schema access always passes, adding it fails until the baseline
+is updated in the same change.
+
+The tests cover project-reference direction, references to the shared
+`Application`/`Infrastructure`/`Domain` assemblies, per-API and per-file schema reach, how many
+processes register each persistence service, cross-schema foreign keys and navigations, model
+versus migration-snapshot drift, and the single migration stream.
+
+```bash
+dotnet test backend/RealEstateEval.Architecture.Tests
+
+# After an approved boundary change, regenerate and review the diff:
+REE_ARCH_BASELINE=update dotnet test backend/RealEstateEval.Architecture.Tests
+```
 
 ## Per-service connection strings
 
@@ -332,7 +482,9 @@ settings fail fast during startup.
 ## CI
 
 GitHub Actions: `.github/workflows/deploy.yml` builds and tests
-`backend/RealEstateEval.slnx` before publishing images and deploying them.
+`backend/RealEstateEval.slnx` before publishing images and deploying them. The test job
+collects coverage (see [Coverage](#coverage)) and runs the container tests against real
+Postgres, RabbitMQ, and Redis on the runner's Docker daemon.
 
 ## Frontend permissions
 
@@ -399,6 +551,27 @@ Roles come from Identity (`CDO`, `HrAdmin`, …) and optional `UserProfile.Permi
 
 Files are stored under `data/blobs/` at repo root (local provider). DB keeps metadata + `StorageKey` only.
 
+### Upload validation
+
+`POST /api/attachments` identifies content from its leading bytes
+(`FileSignatureInspector`) and ignores the client's claims about it. The allow-list is
+JPEG, PNG, GIF, WebP and PDF; anything not positively recognised — SVG, HTML, archives,
+executables — is rejected. On top of the signature check the gate requires:
+
+- the declared MIME type to agree with the detected format (`application/octet-stream`
+  is accepted as "unspecified", which is what browsers send for drag-and-drop);
+- the file-name extension to agree with the detected format, which is what stops
+  `deed.png.exe` and PDF/image polyglots;
+- the scope's format and size budget, judged on the **verified** type, not the declared
+  one (`AttachmentUploadRules`: 8 MB images, 20 MB PDFs, PDF-only scopes).
+
+What gets persisted is the canonical MIME type and a sanitized file name (directory
+components stripped for both separator styles, control and reserved characters removed).
+Downloads re-derive the content type from the stored bytes, so rows written before this
+gate existed cannot serve a client-chosen MIME type either.
+
+Rejections are `400 application/problem+json` describing the rule that fired.
+
 ## Integration events (outbox + RabbitMQ)
 
 
@@ -441,7 +614,7 @@ Services do **not** expose a Prometheus `/metrics` HTTP endpoint.
 | Endpoint                  | Purpose                                |
 |---------------------------|----------------------------------------|
 | `GET /health`             | Liveness                               |
-| `GET /ready`              | DB connectivity (domain services); upstream cluster probe (gateway) |
+| `GET /ready`              | Database reachable and migrated (domain services); upstream cluster probe (gateway) |
 | `X-Correlation-Id` header | Returned on every response             |
 
 Override: `OpenTelemetry:OtlpEndpoint` or env `OTEL_EXPORTER_OTLP_ENDPOINT`.
@@ -450,5 +623,20 @@ Local UIs: Jaeger [http://localhost:16686](http://localhost:16686), Prometheus
 [http://localhost:3001](http://localhost:3001) (provisioned dashboard
 **Real Estate Eval — Service Overview**). Fluent Bit tails Docker json-file
 logs into Elasticsearch (`fluentbit-*` in Kibana).
+
+### Correlation ids and log format
+
+A caller may supply `X-Correlation-Id`; the value is echoed back, written into every log
+line for the request, and tagged on the current span. Because it is echoed and logged, it
+is only trusted when it looks like an id — up to 128 characters of letters, digits, `-`,
+`_`, `.`, or `:`. Anything else (control characters, whitespace, quotes, or a repeated
+header) is replaced with a fresh id and logged as ignored, which keeps header injection and
+log forging out of the pipeline. A GUID, a W3C `traceparent`, and a caller's own request id
+all pass unchanged.
+
+Outside Development, logs are one JSON object per line, including the `CorrelationId` scope
+and the current trace and span ids, so shipped logs can be filtered and joined to traces.
+Development keeps the readable console writer. Override with
+`Observability:JsonConsoleLogging`.
 
 Requires `docker compose … rabbitmq` for integration events; both **valuation** + **case-study** must be running.

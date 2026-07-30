@@ -1,3 +1,5 @@
+using RealEstateEval.Domain;
+
 namespace RealEstateEval.Application.Rules;
 
 /// <summary>
@@ -14,15 +16,14 @@ public static class OperationsTaskReminderCalculator
         OperatingSystem.IsWindows() ? "Arab Standard Time" : "Asia/Riyadh");
 
     /// <summary>Next reminder instant (UTC) after <paramref name="fromUtc"/> for the given priority.</summary>
-    public static DateTime NextReminderUtc(string priority, DateTime fromUtc)
+    public static DateTime NextReminderUtc(OperationsTaskPriority priority, DateTime fromUtc)
     {
         var utc = DateTime.SpecifyKind(fromUtc.ToUniversalTime(), DateTimeKind.Utc);
         var local = TimeZoneInfo.ConvertTimeFromUtc(utc, RiyadhTz);
-        var p = string.IsNullOrWhiteSpace(priority) ? "medium" : priority.Trim().ToLowerInvariant();
-        var nextLocal = p switch
+        var nextLocal = priority switch
         {
-            "high" => NextWorkHour(local),
-            "low" => NextWorkDayNoon(local),
+            OperationsTaskPriority.High => NextWorkHour(local),
+            OperationsTaskPriority.Low => NextWorkDayNoon(local),
             _ => NextCheckpoint(local),
         };
         return TimeZoneInfo.ConvertTimeToUtc(

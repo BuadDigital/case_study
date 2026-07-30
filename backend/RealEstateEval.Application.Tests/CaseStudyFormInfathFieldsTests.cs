@@ -14,9 +14,10 @@ public class CaseStudyFormInfathFieldsTests
     public async Task Save_persists_infath_specialist_fields()
     {
         var taskId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
-        await using var db = CreateDb();
+        await using var contexts = TestDatabases.Create("case-study-infath");
+        var db = contexts.Legacy;
 
-        var forms = CreateFormService(db);
+        var forms = CreateFormService(contexts);
         var form = new CaseStudyFormDto
         {
             TaskId = taskId.ToString(),
@@ -44,12 +45,16 @@ public class CaseStudyFormInfathFieldsTests
         Assert.Equal("ملاحظات ختامية", entity.InfathClosingNotes);
     }
 
-    private static CaseStudyFormService CreateFormService(ApplicationDbContext db)
+    private static CaseStudyFormService CreateFormService(TestDatabases.ContextSet contexts)
     {
+        var db = contexts.Legacy;
         var timeline = new PropertyTimelineService(db);
         var valuation = new ValuationRequestService(
-            db,
-            new OutboxIntegrationEventPublisher(db, NullLogger<OutboxIntegrationEventPublisher>.Instance));
+            contexts.Valuation,
+            new ValuationOutboxPublisher(
+                contexts.Valuation,
+                NullLogger<ValuationOutboxPublisher>.Instance),
+            new CaseStudyPropertyPoNumberLookup(db));
         var dispatch = new CaseStudyValuationDispatchService(
             db,
             valuation,
@@ -57,13 +62,5 @@ public class CaseStudyFormInfathFieldsTests
             NullLogger<CaseStudyValuationDispatchService>.Instance);
         var workflow = TestInspectorFeeServiceFactory.CreateWorkflow(db);
         return new CaseStudyFormService(db, dispatch, workflow);
-    }
-
-    private static ApplicationDbContext CreateDb()
-    {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"case-study-infath-{Guid.NewGuid():N}")
-            .Options;
-        return new ApplicationDbContext(options);
     }
 }

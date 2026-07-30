@@ -34,7 +34,8 @@ public class InspectorFeeService : IInspectorFeeService
     {
         // Engineering-survey fees accrue only on specialist acceptance — not here.
         var feeTasks = tasks
-            .Where(t => t.Kind is "field-inspection" or "government-review")
+            .Where(t => t.Kind is WorkflowTaskKind.FieldInspection
+                or WorkflowTaskKind.GovernmentReview)
             .ToList();
         if (feeTasks.Count == 0) return;
 
@@ -95,7 +96,7 @@ public class InspectorFeeService : IInspectorFeeService
         if (task is null)
             return (null, "المهمة غير موجودة.");
 
-        if (!string.Equals(task.Kind, "engineering-survey", StringComparison.OrdinalIgnoreCase))
+        if (task.Kind != WorkflowTaskKind.EngineeringSurvey)
             return (null, "الاستحقاق خاص بمهام الرفع المساحي فقط.");
 
         var submission = await _db.PartyTaskSubmissions.AsNoTracking()
@@ -198,8 +199,8 @@ public class InspectorFeeService : IInspectorFeeService
         var feeTasks = await _db.WorkflowTasks.AsNoTracking()
             .Where(t =>
                 t.PropertyId == propertyId
-                && (t.Kind == "field-inspection"
-                    || t.Kind == "government-review"))
+                && (t.Kind == WorkflowTaskKind.FieldInspection
+                    || t.Kind == WorkflowTaskKind.GovernmentReview))
             .ToListAsync(cancellationToken);
         if (feeTasks.Count == 0) return;
 
@@ -247,23 +248,26 @@ public class InspectorFeeService : IInspectorFeeService
             .OrderByDescending(x => x.CreatedAtUtc)
             .Take(MaxSummaryRows)
             .ToListAsync(cancellationToken);
-        if (ledgers.Count == 0) return EmptySummary();
+        if (ledgers.Count == 0) return InspectorFeeRowMapper.EmptySummary();
 
         ledgers = await FilterLedgersWithCompletedCaseStudyAsync(ledgers, cancellationToken);
-        if (ledgers.Count == 0) return EmptySummary();
+        if (ledgers.Count == 0) return InspectorFeeRowMapper.EmptySummary();
 
         var taskIds = ledgers.Select(x => x.WorkflowTaskId).ToList();
         var tasks = await _db.WorkflowTasks.AsNoTracking()
             .Where(t => taskIds.Contains(t.Id))
             .ToDictionaryAsync(t => t.Id, cancellationToken);
 
+        // An unrecognised filter value must match nothing rather than everything.
         if (!string.IsNullOrWhiteSpace(taskKind))
         {
-            var kind = taskKind.Trim();
-            ledgers = ledgers
-                .Where(l => tasks.TryGetValue(l.WorkflowTaskId, out var t) && t.Kind == kind)
-                .ToList();
-            if (ledgers.Count == 0) return EmptySummary();
+            var kindMatched = WorkflowTaskKindValues.TryParse(taskKind, out var kind);
+            ledgers = kindMatched
+                ? ledgers
+                    .Where(l => tasks.TryGetValue(l.WorkflowTaskId, out var t) && t.Kind == kind)
+                    .ToList()
+                : [];
+            if (ledgers.Count == 0) return InspectorFeeRowMapper.EmptySummary();
             taskIds = ledgers.Select(x => x.WorkflowTaskId).ToList();
         }
 
@@ -297,7 +301,7 @@ public class InspectorFeeService : IInspectorFeeService
         var rows = new List<InspectorFeeRowDto>();
         foreach (var ledger in ledgers.OrderByDescending(x => x.CreatedAtUtc).ThenByDescending(x => x.UpdatedAtUtc).ThenBy(x => x.PoNumber, StringComparer.Ordinal))
         {
-            if (submittedOnly && !IsWorkSubmitted(ledger.WorkflowTaskId, tasks, workspaces, submissions))
+            if (submittedOnly && !InspectorFeeWorkStatusRules.IsWorkSubmitted(ledger.WorkflowTaskId, tasks, workspaces, submissions))
                 continue;
 
             if (!tasks.TryGetValue(ledger.WorkflowTaskId, out var task))
@@ -306,17 +310,17 @@ public class InspectorFeeService : IInspectorFeeService
             poReceivedByNumber.TryGetValue(ledger.PoNumber.Trim(), out var poReceived);
             lastReasonByTask.TryGetValue(ledger.WorkflowTaskId, out var lastReason);
 
-            rows.Add(ToRowDto(
+            rows.Add(InspectorFeeRowMapper.ToRowDto(
                 ledger,
                 task,
                 propertyLabels.GetValueOrDefault(ledger.WorkflowTaskId, "—"),
-                IsWorkSubmitted(ledger.WorkflowTaskId, tasks, workspaces, submissions),
-                ResolveWorkSubmittedAtUtc(task, workspaces, submissions),
+                InspectorFeeWorkStatusRules.IsWorkSubmitted(ledger.WorkflowTaskId, tasks, workspaces, submissions),
+                InspectorFeeWorkStatusRules.ResolveWorkSubmittedAtUtc(task, workspaces, submissions),
                 poReceived,
                 lastReason));
         }
 
-        return Summarize(rows);
+        return InspectorFeeRowMapper.Summarize(rows);
     }
 
     public async Task<InspectorFeeRowDto?> GetByWorkflowTaskIdAsync(
@@ -345,18 +349,18 @@ public class InspectorFeeService : IInspectorFeeService
             .ToDictionaryAsync(s => s.WorkflowTaskId, cancellationToken);
 
         var labels = await BuildPropertyLabelsAsync([ledger], cancellationToken);
-        var workSubmitted = IsWorkSubmitted(
+        var workSubmitted = InspectorFeeWorkStatusRules.IsWorkSubmitted(
             workflowTaskId,
             new Dictionary<Guid, WorkflowTask> { [workflowTaskId] = task },
             workspaces,
             submissions);
 
-        return ToRowDto(
+        return InspectorFeeRowMapper.ToRowDto(
             ledger,
             task,
             labels.GetValueOrDefault(workflowTaskId, "—"),
             workSubmitted,
-            ResolveWorkSubmittedAtUtc(task, workspaces, submissions),
+            InspectorFeeWorkStatusRules.ResolveWorkSubmittedAtUtc(task, workspaces, submissions),
             null,
             null);
     }
@@ -419,7 +423,7 @@ public class InspectorFeeService : IInspectorFeeService
             .Where(t => t.Id == workflowTaskId)
             .Select(t => t.Kind)
             .FirstOrDefaultAsync(cancellationToken);
-        if (string.Equals(taskKind, "engineering-survey", StringComparison.OrdinalIgnoreCase)
+        if (taskKind == WorkflowTaskKind.EngineeringSurvey
             && ledger.AccruedAtUtc is not null
             && ledger.BillingStatus is InspectorFeeBillingStatus.Draft
                 or InspectorFeeBillingStatus.AtFinance
@@ -685,7 +689,7 @@ public class InspectorFeeService : IInspectorFeeService
         var action = request.Action.Trim().ToLowerInvariant();
         var fromStatus = ledger.BillingStatus;
 
-        if (!CanPerformAction(action, ledger, actorAssigneeId, isOperationsManager, isFinancialOfficer))
+        if (!InspectorFeeTransitionAuthorization.CanPerformAction(action, ledger, actorAssigneeId, isOperationsManager, isFinancialOfficer))
             return "غير مصرّح بتنفيذ هذا الإجراء.";
 
         if (action is InspectorFeeActions.SubmitToSupervisor
@@ -695,7 +699,7 @@ public class InspectorFeeService : IInspectorFeeService
                 .Where(t => t.Id == ledger.WorkflowTaskId)
                 .Select(t => t.Kind)
                 .FirstOrDefaultAsync(cancellationToken);
-            if (string.Equals(taskKind, "engineering-survey", StringComparison.OrdinalIgnoreCase))
+            if (taskKind == WorkflowTaskKind.EngineeringSurvey)
             {
                 return action == InspectorFeeActions.SubmitToSupervisor
                     ? "مسار المكتب الهندسي لا يدعم رفع الأتعاب للمشرف — استخدم موافقة الحسم أو الاعتراض من الكشف المبدئي."
@@ -861,35 +865,6 @@ public class InspectorFeeService : IInspectorFeeService
         return null;
     }
 
-    private static bool CanPerformAction(
-        string action,
-        InspectorFeeLedger ledger,
-        string? actorAssigneeId,
-        bool isOperationsManager,
-        bool isFinancialOfficer)
-    {
-        return action switch
-        {
-            InspectorFeeActions.SubmitToSupervisor
-                or InspectorFeeActions.CreateDisbursementRequest
-                or InspectorFeeActions.OfficeApproveDiscount
-                or InspectorFeeActions.OfficeDispute =>
-                !string.IsNullOrWhiteSpace(actorAssigneeId)
-                && string.Equals(ledger.AssigneeId?.Trim(), actorAssigneeId.Trim(), StringComparison.Ordinal),
-
-            InspectorFeeActions.ApproveToFinance
-                or InspectorFeeActions.ResendToFinance
-                or InspectorFeeActions.ReturnToOffice
-                or InspectorFeeActions.ResolveDispute => isOperationsManager,
-
-            InspectorFeeActions.Disburse
-                or InspectorFeeActions.ReturnToSupervisor
-                or InspectorFeeActions.InquiryToOffice => isFinancialOfficer,
-
-            _ => false,
-        };
-    }
-
     private async Task<bool> IsLedgerWorkSubmittedAsync(
         Guid workflowTaskId,
         CancellationToken cancellationToken)
@@ -905,7 +880,7 @@ public class InspectorFeeService : IInspectorFeeService
             .Where(s => s.WorkflowTaskId == workflowTaskId)
             .ToDictionaryAsync(s => s.WorkflowTaskId, cancellationToken);
 
-        return IsWorkSubmitted(
+        return InspectorFeeWorkStatusRules.IsWorkSubmitted(
             workflowTaskId,
             new Dictionary<Guid, WorkflowTask> { [workflowTaskId] = task },
             workspaces,
@@ -966,8 +941,8 @@ public class InspectorFeeService : IInspectorFeeService
         // Engineering-survey ledgers are created only via AccrueEngineeringSurveyFeeAsync.
         var feeTasks = await _db.WorkflowTasks.AsNoTracking()
             .Where(t =>
-                t.Kind == "field-inspection"
-                || t.Kind == "government-review")
+                t.Kind == WorkflowTaskKind.FieldInspection
+                || t.Kind == WorkflowTaskKind.GovernmentReview)
             .ToListAsync(cancellationToken);
         if (feeTasks.Count == 0) return;
 
@@ -1042,7 +1017,7 @@ public class InspectorFeeService : IInspectorFeeService
 
         var taskIds = ledgers.Select(l => l.WorkflowTaskId).Distinct().ToList();
         var engSurveyIds = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t => taskIds.Contains(t.Id) && t.Kind == "engineering-survey")
+            .Where(t => taskIds.Contains(t.Id) && t.Kind == WorkflowTaskKind.EngineeringSurvey)
             .Select(t => t.Id)
             .ToListAsync(cancellationToken);
         var engSet = engSurveyIds.ToHashSet();
@@ -1079,7 +1054,7 @@ public class InspectorFeeService : IInspectorFeeService
 
         var ready = await _db.WorkflowTasks.AsNoTracking()
             .Where(t =>
-                t.Kind == "case-study-property"
+                t.Kind == WorkflowTaskKind.CaseStudyProperty
                 && t.PropertyId != null
                 && ids.Contains(t.PropertyId.Value)
                 && t.Status == WorkflowTaskStatus.Completed)
@@ -1087,46 +1062,6 @@ public class InspectorFeeService : IInspectorFeeService
             .Distinct()
             .ToListAsync(cancellationToken);
         return ready.ToHashSet();
-    }
-
-    private static bool IsWorkSubmitted(
-        Guid workflowTaskId,
-        IReadOnlyDictionary<Guid, WorkflowTask> tasks,
-        IReadOnlyDictionary<Guid, FieldInspectionWorkspace> workspaces,
-        IReadOnlyDictionary<Guid, PartyTaskSubmission> submissions)
-    {
-        if (!tasks.TryGetValue(workflowTaskId, out var task))
-            return false;
-
-        return ResolveWorkStatus(task, workspaces, submissions) == "done";
-    }
-
-    private static string ResolveWorkStatus(
-        WorkflowTask task,
-        IReadOnlyDictionary<Guid, FieldInspectionWorkspace> workspaces,
-        IReadOnlyDictionary<Guid, PartyTaskSubmission> submissions)
-    {
-        if (task.Status == WorkflowTaskStatus.Cancelled)
-            return "cancelled";
-
-        if (task.Status == WorkflowTaskStatus.Completed)
-            return "done";
-
-        if (task.Kind == "field-inspection" &&
-            workspaces.TryGetValue(task.Id, out var workspace) &&
-            workspace.Status == PartyTaskSubmissionStatus.Submitted)
-        {
-            return "done";
-        }
-
-        if (task.Kind is "engineering-survey" or "government-review" &&
-            submissions.TryGetValue(task.Id, out var submission) &&
-            submission.Status == PartyTaskSubmissionStatus.Submitted)
-        {
-            return "done";
-        }
-
-        return "in_progress";
     }
 
     private async Task<Dictionary<Guid, string>> BuildPropertyLabelsAsync(
@@ -1172,139 +1107,16 @@ public class InspectorFeeService : IInspectorFeeService
         return result;
     }
 
-    private static DateTime? ResolveWorkSubmittedAtUtc(
-        WorkflowTask task,
-        IReadOnlyDictionary<Guid, FieldInspectionWorkspace> workspaces,
-        IReadOnlyDictionary<Guid, PartyTaskSubmission> submissions)
-    {
-        if (task.Status == WorkflowTaskStatus.Completed)
-            return task.UpdatedAtUtc;
-
-        if (task.Kind == "field-inspection" &&
-            workspaces.TryGetValue(task.Id, out var workspace) &&
-            workspace.Status == PartyTaskSubmissionStatus.Submitted)
-        {
-            return workspace.SubmittedAtUtc ?? workspace.UpdatedAtUtc;
-        }
-
-        if (task.Kind == "engineering-survey" &&
-            submissions.TryGetValue(task.Id, out var submission) &&
-            submission.Status == PartyTaskSubmissionStatus.Submitted)
-        {
-            return submission.SubmittedAtUtc ?? submission.UpdatedAtUtc;
-        }
-
-        return null;
-    }
-
-    private static InspectorFeeRowDto ToRowDto(
-        InspectorFeeLedger ledger,
-        WorkflowTask task,
-        string propertyLabel,
-        bool workSubmitted,
-        DateTime? workSubmittedAtUtc,
-        DateTime? poReceivedAtUtc,
-        string? lastTransitionReason)
-    {
-        var discount = Math.Max(0m, ledger.SupervisorDiscountSar);
-        var workStatus = workSubmitted ? "done" : (
-            task.Status == WorkflowTaskStatus.Cancelled ? "cancelled" : "in_progress");
-
-        return new InspectorFeeRowDto
-        {
-            WorkflowTaskId = ledger.WorkflowTaskId.ToString(),
-            PropertyId = ledger.PropertyId?.ToString(),
-            PropertyLabel = propertyLabel,
-            PoNumber = ledger.PoNumber,
-            AssigneeId = ledger.AssigneeId,
-            TaskKind = task.Kind,
-            InspectorType = ledger.InspectorType,
-            AgreedFeeSar = ledger.AgreedFeeSar,
-            SupervisorDiscountSar = discount,
-            DiscountReason = discount > 0
-                ? (string.IsNullOrWhiteSpace(ledger.DiscountReason) ? "—" : ledger.DiscountReason)
-                : null,
-            NetFeeSar = InspectorFeeRules.NetFee(ledger.AgreedFeeSar, discount),
-            BillingStatus = ledger.BillingStatus,
-            BillingStatusLabel = InspectorFeeBillingRules.StatusLabel(ledger.BillingStatus),
-            WorkStatus = workStatus,
-            WorkStatusLabel = InspectorFeeBillingRules.WorkStatusLabel(workStatus),
-            ExcludedFromBatch = ledger.ExcludedFromBatch,
-            ExclusionReason = ledger.ExclusionReason,
-            ReturnTo = ledger.ReturnTo,
-            DisbursementBatchId = ledger.DisbursementBatchId?.ToString(),
-            DisbursementVoucher = ledger.DisbursementVoucher,
-            EngineeringBillingStatementId = ledger.EngineeringBillingStatementId?.ToString(),
-            LastTransitionReason = lastTransitionReason,
-            UpdatedAtUtc = ledger.UpdatedAtUtc,
-            AccruedAtUtc = ledger.AccruedAtUtc,
-            WorkSubmittedAtUtc = workSubmittedAtUtc,
-            PoReceivedAtUtc = poReceivedAtUtc,
-            IsEditable = InspectorFeeBillingRules.IsEditableStatus(ledger.BillingStatus),
-            CanSubmitToSupervisor = workStatus == "done"
-                && !ledger.ExcludedFromBatch
-                && ledger.BillingStatus is InspectorFeeBillingStatus.Draft
-                    or InspectorFeeBillingStatus.Returned
-                    or InspectorFeeBillingStatus.Inquiry
-                && (ledger.BillingStatus != InspectorFeeBillingStatus.Returned
-                    || ledger.ReturnTo == InspectorFeeReturnTo.Office)
-                && (ledger.BillingStatus != InspectorFeeBillingStatus.Inquiry
-                    || ledger.ReturnTo == InspectorFeeReturnTo.Office)
-                // Engineering office: table-price lines go straight to at-finance on accrual;
-                // discounted lines use office-approve / dispute instead of submit-to-supervisor.
-                && task.Kind != "engineering-survey",
-            CanApproveToFinance = workStatus == "done"
-                && !ledger.ExcludedFromBatch
-                && ledger.BillingStatus == InspectorFeeBillingStatus.SupReview,
-            CanCreateDisbursementRequest = workStatus == "done"
-                && !ledger.ExcludedFromBatch
-                && ledger.BillingStatus == InspectorFeeBillingStatus.AtFinance
-                // Engineering office uses future office invoicing/statements — not party disbursement requests.
-                && task.Kind != "engineering-survey",
-            CanOfficeApproveDiscount = workStatus == "done"
-                && !ledger.ExcludedFromBatch
-                && task.Kind == "engineering-survey"
-                && ledger.BillingStatus == InspectorFeeBillingStatus.OfficeReview
-                && discount > 0m,
-            CanOfficeDispute = workStatus == "done"
-                && !ledger.ExcludedFromBatch
-                && task.Kind == "engineering-survey"
-                && ledger.BillingStatus == InspectorFeeBillingStatus.OfficeReview
-                && discount > 0m,
-            CanResolveDispute = workStatus == "done"
-                && !ledger.ExcludedFromBatch
-                && task.Kind == "engineering-survey"
-                && ledger.BillingStatus == InspectorFeeBillingStatus.Disputed,
-        };
-    }
-
-    private static InspectorFeesSummaryDto Summarize(IReadOnlyList<InspectorFeeRowDto> rows)
-    {
-        decimal SumNet(Func<InspectorFeeRowDto, bool> predicate) =>
-            rows.Where(predicate).Sum(r => r.NetFeeSar);
-
-        return new InspectorFeesSummaryDto
-        {
-            NetDraftSar = SumNet(r => r.BillingStatus == InspectorFeeBillingStatus.Draft),
-            SupReviewSar = SumNet(r => r.BillingStatus == InspectorFeeBillingStatus.SupReview),
-            AtFinanceSar = SumNet(r => r.BillingStatus == InspectorFeeBillingStatus.AtFinance),
-            DisbReqSar = SumNet(r => r.BillingStatus == InspectorFeeBillingStatus.DisbReq),
-            DisbursedSar = SumNet(r => r.BillingStatus == InspectorFeeBillingStatus.Disbursed),
-            TotalDiscountsSar = rows.Sum(r => r.SupervisorDiscountSar),
-            Rows = rows,
-        };
-    }
-
     private async Task<string> ResolvePartyTypeAsync(
         WorkflowTask task,
         CancellationToken cancellationToken)
     {
         // Product rules: engineering office is always an external entity;
         // government cooperator classification is always «متعاون فرد».
-        if (string.Equals(task.Kind, "engineering-survey", StringComparison.OrdinalIgnoreCase))
+        if (task.Kind == WorkflowTaskKind.EngineeringSurvey)
             return EngineeringSurveyFeeRules.OfficePartyType;
 
-        if (string.Equals(task.Kind, "government-review", StringComparison.OrdinalIgnoreCase))
+        if (task.Kind == WorkflowTaskKind.GovernmentReview)
             return GovernmentReviewFeeRules.PartyType;
 
         if (string.IsNullOrWhiteSpace(task.AssigneeId))
@@ -1337,16 +1149,6 @@ public class InspectorFeeService : IInspectorFeeService
         return InspectorFeeRules.ResolveInspectorType(aid);
     }
 
-    private static InspectorFeesSummaryDto EmptySummary() => new()
-    {
-        NetDraftSar = 0m,
-        SupReviewSar = 0m,
-        AtFinanceSar = 0m,
-        DisbReqSar = 0m,
-        DisbursedSar = 0m,
-        TotalDiscountsSar = 0m,
-        Rows = [],
-    };
 
     private async Task NotifyFinanceDisbursementBatchCreatedAsync(
         int propertyCount,

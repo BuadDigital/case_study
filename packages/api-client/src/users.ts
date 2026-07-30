@@ -66,7 +66,8 @@ export type CreateStaffUserRequest = {
 export type CreateStaffUserResponse = {
   user: UserListItem;
   userName: string;
-  temporaryPassword: string;
+  /** Accounts are created without a password; the holder sets one via an activation ticket. */
+  activationRequired: boolean;
 };
 
 export type CreateStaffUserResult =
@@ -95,6 +96,77 @@ export async function createStaffUser(
     if (!res.ok) return { ok: false, kind: "server" };
     const result = (await res.json()) as CreateStaffUserResponse;
     return { ok: true, result };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export type ActivationTicket = {
+  userName: string;
+  token: string;
+  expiresAtUtc: string;
+};
+
+export type IssueActivationTicketResult =
+  | { ok: true; ticket: ActivationTicket }
+  | { ok: false; kind: "network" | "server"; message?: string };
+
+/**
+ * Mints a single-use ticket the administrator hands to the account holder.
+ * The ticket is never persisted client-side — treat it as a one-shot secret.
+ */
+export async function issueActivationTicket(
+  config: UsersApiConfig,
+  userId: string,
+): Promise<IssueActivationTicketResult> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/users/${encodeURIComponent(userId)}/activation-ticket`,
+      { method: "POST", headers: headers(config.token) },
+    );
+    if (!res.ok) {
+      const payload = (await res.json().catch(() => null)) as
+        | { errors?: Record<string, string> }
+        | null;
+      return {
+        ok: false,
+        kind: "server",
+        message: payload?.errors?._form,
+      };
+    }
+    return { ok: true, ticket: (await res.json()) as ActivationTicket };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export type ActivateAccountResult =
+  | { ok: true }
+  | { ok: false; kind: "network" | "server"; message?: string };
+
+export async function activateAccount(
+  baseUrl: string | undefined,
+  body: { userName: string; token: string; newPassword: string },
+): Promise<ActivateAccountResult> {
+  const base = baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/auth/activate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const payload = (await res.json().catch(() => null)) as
+        | { message?: string; detail?: string }
+        | null;
+      return {
+        ok: false,
+        kind: "server",
+        message: payload?.message ?? payload?.detail,
+      };
+    }
+    return { ok: true };
   } catch {
     return { ok: false, kind: "network" };
   }

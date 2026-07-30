@@ -8,6 +8,7 @@ builder.AddRealEstateEvalObservability("attachments");
 
 builder.Services
     .AddControllers()
+    .AddRealEstateEvalValidation()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(
@@ -20,9 +21,9 @@ var connectionString = ServiceCollectionExtensions.RequireConnectionString(
     builder.Configuration,
     ServiceDatabaseNames.Attachments);
 builder.Services.AddPersistence(builder.Configuration, connectionString);
-builder.Services.AddIdentityInfrastructure();
+builder.Services.AddClaimsPermissionService();
 builder.Services.AddBlobStorage(builder.Configuration);
-builder.Services.AddAttachmentsInfrastructure();
+builder.Services.AddAttachmentsInfrastructure(builder.Configuration, connectionString);
 builder.Services.AddRealEstateEvalJwt(builder.Configuration, builder.Environment);
 builder.Services.AddRealEstateEvalCors(builder.Configuration, builder.Environment);
 builder.Services.AddRealEstateEvalRateLimiting(builder.Configuration, builder.Environment);

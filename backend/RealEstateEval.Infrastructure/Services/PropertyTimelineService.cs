@@ -8,7 +8,6 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class PropertyTimelineService : IPropertyTimelineService
 {
-    private const string CaseStudyPropertyKind = "case-study-property";
     private const int MaxTimelineRows = 500;
 
     private readonly ApplicationDbContext _db;
@@ -58,7 +57,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
             .Where(t => t.PoNumber == poNumber && t.PropertyId == propertyId)
             .ToListAsync(cancellationToken);
 
-        var parent = tasks.FirstOrDefault(t => t.Kind == CaseStudyPropertyKind);
+        var parent = tasks.FirstOrDefault(t => t.Kind == WorkflowTaskKind.CaseStudyProperty);
         var children = parent is null
             ? []
             : tasks.Where(t => t.ParentTaskId == parent.Id).ToList();
@@ -104,7 +103,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
     }
 
     private static bool IsCaseStudyComplete(WorkflowTask parent) =>
-        parent.Status == WorkflowTaskStatus.Completed || parent.Phase == "done";
+        parent.Status == WorkflowTaskStatus.Completed || parent.Phase == WorkflowTaskPhase.Done;
 
     public async Task RecordAsync(
         string poNumber,
@@ -244,7 +243,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
             .OrderBy(t => t.CreatedAtUtc)
             .ToListAsync(cancellationToken);
 
-        var parent = tasks.FirstOrDefault(t => t.Kind == CaseStudyPropertyKind);
+        var parent = tasks.FirstOrDefault(t => t.Kind == WorkflowTaskKind.CaseStudyProperty);
         if (parent is not null)
         {
             AddEvent(
@@ -277,7 +276,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                     bourseAt,
                     recordedAt);
 
-                if (parent.Phase is not "enfath" and not "bourse")
+                if (parent.Phase is not WorkflowTaskPhase.Enfath and not WorkflowTaskPhase.Bourse)
                 {
                     AddEvent(
                         events,
@@ -325,7 +324,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                 }
             }
 
-            if (parent.Phase is "case-study" or "done")
+            if (parent.Phase is WorkflowTaskPhase.CaseStudy or WorkflowTaskPhase.Done)
             {
                 var caseStudyAt = children.Count > 0
                     ? children.Max(c => c.CreatedAtUtc)
@@ -342,7 +341,8 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                     recordedAt);
             }
 
-            if (parent.Status == WorkflowTaskStatus.Blocked || parent.Phase == "obstruction")
+            if (parent.Status == WorkflowTaskStatus.Blocked
+                || parent.Phase == WorkflowTaskPhase.Obstruction)
             {
                 AddEvent(
                     events,
@@ -492,23 +492,23 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
             _ => "done",
         };
 
-    private static string TaskPhaseLabel(string phase) => phase switch
+    private static string TaskPhaseLabel(WorkflowTaskPhase phase) => phase switch
     {
-        "enfath" => "البيانات الأولية للعقار",
-        "bourse" => "المرحلة 2 — بيانات البورصة",
-        "distribution" => "المرحلة 3 — توزيع الأطراف",
-        "case-study" => "دراسة حالة العقار",
-        "obstruction" => "تعذر — بانتظار المشرف",
+        WorkflowTaskPhase.Enfath => "البيانات الأولية للعقار",
+        WorkflowTaskPhase.Bourse => "المرحلة 2 — بيانات البورصة",
+        WorkflowTaskPhase.Distribution => "المرحلة 3 — توزيع الأطراف",
+        WorkflowTaskPhase.CaseStudy => "دراسة حالة العقار",
+        WorkflowTaskPhase.Obstruction => "تعذر — بانتظار المشرف",
         _ => "مكتملة",
     };
 
-    private static string PartyAssignedTitle(string kind) => kind switch
+    private static string PartyAssignedTitle(WorkflowTaskKind kind) => kind switch
     {
-        "field-inspection" => "تعيين المعاين الميداني",
-        "engineering-survey" => "تعيين المكتب الهندسي",
-        "property-appraisal" => "تعيين المقيّم العقاري",
-        "government-review" => "تعيين المراجع الحكومي",
-        "valuation-coordination" => "تعيين منسق التقييم",
+        WorkflowTaskKind.FieldInspection => "تعيين المعاين الميداني",
+        WorkflowTaskKind.EngineeringSurvey => "تعيين المكتب الهندسي",
+        WorkflowTaskKind.PropertyAppraisal => "تعيين المقيّم العقاري",
+        WorkflowTaskKind.GovernmentReview => "تعيين المراجع الحكومي",
+        WorkflowTaskKind.ValuationCoordination => "تعيين منسق التقييم",
         _ => "تعيين طرف",
     };
 

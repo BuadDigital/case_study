@@ -71,25 +71,18 @@ public class WorkflowTaskReadAuthorizationTests
         db.SaveChanges();
     }
 
-    private static WorkflowTask Task(string assigneeId, string role)
-    {
-        var now = DateTime.UtcNow;
-        return new WorkflowTask
-        {
-            Id = Guid.NewGuid(),
-            Kind = role == "field-inspector" ? "field-inspection" : "engineering-survey",
-            PoNumber = $"PO-{assigneeId}",
-            PropertyOrdinal = 1,
-            Title = assigneeId,
-            Phase = "case-study",
-            AssigneeId = assigneeId,
-            AssigneeRole = role,
-            AssigneeName = assigneeId,
-            Status = WorkflowTaskStatus.Open,
-            CreatedAtUtc = now,
-            UpdatedAtUtc = now,
-        };
-    }
+    private static WorkflowTask Task(string assigneeId, string role) =>
+        WorkflowTask.Create(
+            role == "field-inspector"
+                ? WorkflowTaskKind.FieldInspection
+                : WorkflowTaskKind.EngineeringSurvey,
+            $"PO-{assigneeId}",
+            DateTime.UtcNow,
+            title: assigneeId,
+            phase: WorkflowTaskPhase.Done,
+            assigneeRole: role,
+            assigneeName: assigneeId,
+            assigneeId: assigneeId);
 
     private static ApplicationDbContext CreateDb()
     {

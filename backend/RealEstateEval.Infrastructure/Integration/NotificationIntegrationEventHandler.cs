@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Shared.Contracts;
 
@@ -46,6 +47,17 @@ public sealed class NotificationIntegrationEventHandler
 
         var payloadElement = root.TryGetProperty("payload", out var p) ? p : root.GetProperty("Payload");
 
+        if (string.Equals(eventType, IntegrationEventTypes.NotificationUsersRequested, StringComparison.Ordinal))
+        {
+            var payload = payloadElement.Deserialize<NotificationUsersRequestedPayload>(JsonOpts);
+            if (payload is not null)
+            {
+                await HandleNotificationUsersRequestedAsync(payload, eventId, cancellationToken);
+            }
+
+            return;
+        }
+
         if (string.Equals(eventType, IntegrationEventTypes.ValuationReportSubmitted, StringComparison.Ordinal))
         {
             var payload = payloadElement.Deserialize<ValuationReportSubmittedPayload>(JsonOpts);
@@ -67,6 +79,40 @@ public sealed class NotificationIntegrationEventHandler
         }
     }
 
+    private async Task HandleNotificationUsersRequestedAsync(
+        NotificationUsersRequestedPayload payload,
+        string? eventId,
+        CancellationToken cancellationToken)
+    {
+        var recipients = payload.UserIds
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Select(id => id.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (recipients.Count == 0 || string.IsNullOrWhiteSpace(payload.Title))
+            return;
+
+        var sourceEvent = string.IsNullOrWhiteSpace(payload.SourceEvent)
+            ? BuildSourceEvent(IntegrationEventTypes.NotificationUsersRequested, eventId)
+            : payload.SourceEvent;
+
+        await _notifications.CreateForUsersAsync(
+            recipients,
+            new CreateUserNotificationRequest
+            {
+                Title = payload.Title,
+                Body = payload.Body,
+                Href = payload.Href,
+                Tone = NotificationContract.Tones.Normalize(payload.Tone),
+                Category = NotificationContract.Categories.Normalize(payload.Category),
+                EntityType = NotificationContract.EntityTypes.Normalize(payload.EntityType),
+                EntityId = payload.EntityId,
+                Actor = payload.Actor,
+                SourceEvent = sourceEvent,
+            },
+            cancellationToken);
+    }
+
     private async Task HandleValuationReportSubmittedAsync(
         ValuationReportSubmittedPayload payload,
         string? eventId,
@@ -77,7 +123,11 @@ public sealed class NotificationIntegrationEventHandler
 
         var recipientIds = await _recipients.ResolveAssigneeUserIdsForPropertyAsync(
             propertyId,
-            ["property-appraisal", "valuation-coordination", "case-study-property"],
+            [
+                WorkflowTaskKind.PropertyAppraisal,
+                WorkflowTaskKind.ValuationCoordination,
+                WorkflowTaskKind.CaseStudyProperty,
+            ],
             cancellationToken);
 
         if (recipientIds.Count == 0)
@@ -118,7 +168,7 @@ public sealed class NotificationIntegrationEventHandler
 
         var recipientIds = await _recipients.ResolveAssigneeUserIdsForPropertyAsync(
             propertyId,
-            ["property-appraisal", "valuation-coordination"],
+            [WorkflowTaskKind.PropertyAppraisal, WorkflowTaskKind.ValuationCoordination],
             cancellationToken);
 
         if (recipientIds.Count == 0)

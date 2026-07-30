@@ -190,7 +190,7 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
         var task = await _db.WorkflowTasks
             .FirstOrDefaultAsync(
                 t =>
-                    t.Kind == "case-study-property"
+                    t.Kind == WorkflowTaskKind.CaseStudyProperty
                     && t.PoNumber == poNumber
                     && t.PropertyId == propertyId
                     && t.Status != WorkflowTaskStatus.Completed
@@ -198,12 +198,7 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
                 cancellationToken);
         if (task is null) return;
 
-        if (task.Status != WorkflowTaskStatus.Blocked)
-            task.ObstructionPriorPhase = task.Phase;
-        task.Phase = "obstruction";
-        task.Status = WorkflowTaskStatus.Blocked;
-        task.ObstructionReason = reason;
-        task.UpdatedAtUtc = DateTime.UtcNow;
+        task.Block(reason, DateTime.UtcNow);
         await _db.SaveChangesAsync(cancellationToken);
     }
 
@@ -217,22 +212,16 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
         var task = await _db.WorkflowTasks
             .FirstOrDefaultAsync(
                 t =>
-                    t.Kind == "case-study-property"
+                    t.Kind == WorkflowTaskKind.CaseStudyProperty
                     && t.PoNumber == poNumber
                     && t.PropertyId == propertyId
                     && t.Status == WorkflowTaskStatus.Blocked
-                    && t.Phase == "obstruction",
+                    && t.Phase == WorkflowTaskPhase.Obstruction,
                 cancellationToken);
         if (task is null) return;
 
-        var resumePhase = string.IsNullOrWhiteSpace(task.ObstructionPriorPhase)
-            ? "bourse"
-            : task.ObstructionPriorPhase;
-        task.Phase = resumePhase;
-        task.Status = WorkflowTaskStatus.Open;
-        task.ObstructionReason = "";
-        task.ObstructionPriorPhase = "";
-        task.UpdatedAtUtc = DateTime.UtcNow;
+        // The property is linked here, so a row with no remembered phase resumes at bourse.
+        task.Unblock(DateTime.UtcNow, WorkflowTaskPhase.Bourse);
         await _db.SaveChangesAsync(cancellationToken);
     }
 }

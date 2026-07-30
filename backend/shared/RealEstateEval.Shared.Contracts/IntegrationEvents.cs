@@ -11,6 +11,7 @@ public static class IntegrationEventTypes
 {
     public const string ValuationRequestCreated = "valuation.request.created.v1";
     public const string ValuationReportSubmitted = "valuation.report.submitted.v1";
+    public const string NotificationUsersRequested = "notification.users.requested.v1";
     public const string NotificationUserCreated = "notification.user.created.v1";
 }
 
@@ -24,6 +25,22 @@ public sealed record ValuationReportSubmittedPayload(
     string PropertyId,
     string DisplayId,
     string Appraiser);
+
+/// <summary>
+/// Requests that Platform, the notification inbox owner, persist one notification for
+/// each recipient. The enclosing integration event id is the idempotency boundary.
+/// </summary>
+public sealed record NotificationUsersRequestedPayload(
+    IReadOnlyList<string> UserIds,
+    string Title,
+    string? Body,
+    string? Href,
+    string? Tone,
+    string? Category,
+    string? EntityType,
+    string? EntityId,
+    string? Actor,
+    string? SourceEvent);
 
 /// <summary>Published after a <c>UserNotifications</c> row is committed — fans out to SSE on Platform.</summary>
 public sealed record NotificationUserCreatedPayload(

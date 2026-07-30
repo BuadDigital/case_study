@@ -13,7 +13,11 @@ are decision-record dates, not necessarily the first date the code implemented t
 | [0006](0006-deploy-time-database-migrations.md) | Proposed — implementation in flight | Move schema migration from Case Study process startup to a deploy-time step |
 
 The decomposition sequence and gates are in
-[`docs/architecture-split-plan.md`](../architecture-split-plan.md).
+[`docs/architecture-split-plan.md`](../architecture-split-plan.md). Phase 0 of that plan is
+implemented: the ownership catalog and the executable boundary guardrails are in
+[`docs/architecture/table-ownership-catalog.md`](../architecture/table-ownership-catalog.md).
+ADRs 0001, 0002, and 0003 are therefore still fully transitional — no context, assembly, or
+database has been split yet.
 
 ## Status meanings
 

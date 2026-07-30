@@ -21,12 +21,13 @@ builder.Services.AddResponseCompression(options => options.EnableForHttps = true
 
 var connectionString = ServiceCollectionExtensions.RequireConnectionString(builder.Configuration,ServiceDatabaseNames.Platform);
 builder.Services.AddPersistence(builder.Configuration, connectionString);
-builder.Services.AddIdentityInfrastructure();
-builder.Services.AddPlatformInfrastructure();
-builder.Services.AddNotificationInfrastructure(builder.Configuration, builder.Environment);
+builder.Services.AddClaimsPermissionService();
+builder.Services.AddPlatformInfrastructure(builder.Configuration, connectionString);
+builder.Services.AddPlatformNotificationInfrastructure(builder.Configuration, builder.Environment);
 builder.Services.AddNotificationIntegrationHandlers();
 builder.Services.AddIntegrationEventInbox();
 builder.Services.AddHostedService<NotificationIntegrationEventConsumer>();
+builder.Services.AddHostedService<NotificationRealtimeIntegrationConsumer>();
 builder.Services.AddRealEstateEvalJwt(builder.Configuration, builder.Environment);
 builder.Services.AddRealEstateEvalCors(builder.Configuration, builder.Environment);
 builder.Services.AddRealEstateEvalRateLimiting(builder.Configuration, builder.Environment);
@@ -41,3 +42,5 @@ app.MapDatabaseReady("platform");
 app.MapControllers();
 
 app.Run();
+
+public partial class Program;

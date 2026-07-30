@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.Api.IntegrationTests;
 
@@ -91,6 +92,10 @@ public sealed class AttachmentsApiWebApplicationFactory
     }
 }
 
+/// <summary>
+/// Stands in for storage but runs the real upload gate, so HTTP-level tests exercise the
+/// production validation rules rather than a hand-written approximation of them.
+/// </summary>
 internal sealed class StubAttachmentService : IAttachmentService
 {
     public Task<IReadOnlyList<FileAttachmentMetaDto>> ListAsync(
@@ -108,7 +113,38 @@ internal sealed class StubAttachmentService : IAttachmentService
         UploadAttachmentRequest request,
         string uploadedByUserId,
         CancellationToken cancellationToken = default)
-        => Task.FromResult<(FileAttachmentMetaDto?, string?)>((null, "not used"));
+    {
+        byte[] content;
+        try
+        {
+            content = Convert.FromBase64String(request.ContentBase64);
+        }
+        catch
+        {
+            return Task.FromResult<(FileAttachmentMetaDto?, string?)>((null, "invalid base64 content"));
+        }
+
+        var inspection = AttachmentUploadRules.Inspect(
+            request.Scope,
+            request.ContentType,
+            request.FileName,
+            content);
+        if (inspection.Error is not null)
+            return Task.FromResult<(FileAttachmentMetaDto?, string?)>((null, inspection.Error));
+
+        return Task.FromResult<(FileAttachmentMetaDto?, string?)>((
+            new FileAttachmentMetaDto
+            {
+                Id = Guid.NewGuid(),
+                Scope = request.Scope,
+                ScopeKey = request.ScopeKey,
+                FileName = inspection.FileName,
+                ContentType = inspection.ContentType,
+                SizeBytes = content.LongLength,
+                CreatedAtUtc = DateTime.UtcNow,
+            },
+            null));
+    }
 
     public Task<bool> DeleteAsync(
         Guid id,

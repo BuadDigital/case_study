@@ -3,11 +3,13 @@ import {
   deleteStaffUser,
   fetchMyProfile,
   getApiBase,
+  issueActivationTicket,
   listDistributionAssignees,
   listUsers,
   type CreateStaffUserRequest,
   type CreateStaffUserResult,
   type DeleteStaffUserResult,
+  type IssueActivationTicketResult,
   type UsersApiConfig,
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
@@ -81,6 +83,14 @@ export async function submitCreateStaffUser(
   const config = apiConfig();
   if (!config) return { ok: false, kind: "network" };
   return createStaffUser(config, body);
+}
+
+export async function requestActivationTicket(
+  userId: string,
+): Promise<IssueActivationTicketResult> {
+  const config = apiConfig();
+  if (!config) return { ok: false, kind: "network" };
+  return issueActivationTicket(config, userId);
 }
 
 export async function submitDeleteStaffUser(

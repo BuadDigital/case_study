@@ -856,6 +856,18 @@ export async function uploadAttachment(
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 400) {
+      // The server rejects on content, not on the declared type — pass the reason through
+      // so the user learns which rule fired instead of seeing a generic failure.
+      const problem = (await res.json().catch(() => null)) as
+        | { detail?: string; error?: string }
+        | null;
+      return {
+        ok: false,
+        kind: "validation",
+        message: problem?.detail ?? problem?.error,
+      };
+    }
     if (!res.ok) return { ok: false, kind: "server" };
     return { ok: true, data: await parseJson<FileAttachmentMetaDto>(res) };
   } catch {

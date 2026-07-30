@@ -65,7 +65,7 @@ public sealed class ValuationReportWorkflowHandler
         }
 
         var task = await _db.WorkflowTasks
-            .Where(t => t.Kind == "property-appraisal")
+            .Where(t => t.Kind == WorkflowTaskKind.PropertyAppraisal)
             .Where(t => t.PropertyId == propertyId)
             .Where(t => t.Status != WorkflowTaskStatus.Completed && t.Status != WorkflowTaskStatus.Cancelled)
             .OrderByDescending(t => t.UpdatedAtUtc)
@@ -81,7 +81,11 @@ public sealed class ValuationReportWorkflowHandler
 
         await _tasks.PatchAsync(
             task.Id,
-            new PatchWorkflowTaskRequest { Status = WorkflowTaskStatus.Completed, Phase = "done" },
+            new PatchWorkflowTaskRequest
+            {
+                Status = WorkflowTaskStatusValues.Completed,
+                Phase = WorkflowTaskPhaseValues.Done,
+            },
             cancellationToken);
 
         _logger.LogInformation(

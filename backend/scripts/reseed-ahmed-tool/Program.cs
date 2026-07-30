@@ -19,7 +19,7 @@ var connectionString = config.GetConnectionString("DefaultConnection")
 var services = new ServiceCollection();
 services.AddLogging();
 services.AddPersistence(config, connectionString);
-services.AddIdentityInfrastructure();
+services.AddIdentityInfrastructure(config, connectionString);
 
 await using var provider = services.BuildServiceProvider();
 

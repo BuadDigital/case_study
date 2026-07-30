@@ -4,6 +4,7 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Caching;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -12,12 +13,12 @@ namespace RealEstateEval.Infrastructure.Services;
 /// </summary>
 public sealed class CourtsCatalogService : ICourtsCatalogService
 {
-    private readonly ApplicationDbContext _db;
+    private readonly PlatformDbContext _db;
     private readonly ApiResponseCache _cache;
     private readonly ICourtsService _courts;
 
     public CourtsCatalogService(
-        ApplicationDbContext db,
+        PlatformDbContext db,
         ApiResponseCache cache,
         ICourtsService courts)
     {

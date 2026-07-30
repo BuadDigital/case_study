@@ -31,8 +31,29 @@ public interface IUserRegistrationService
     Task<OrganizationOverviewDto> GetOrganizationOverviewAsync(
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Creates a staff account with no password. The holder activates it with a ticket
+    /// from <see cref="IssueActivationTicketAsync"/>; no secret is returned here.
+    /// </summary>
     Task<(CreateStaffUserResponseDto? Result, Dictionary<string, string>? Errors)> CreateStaffAsync(
         CreateStaffUserRequest request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Issues a single-use, time-limited activation ticket for a staff account.
+    /// Issuing a new ticket does not invalidate the existing password, if any.
+    /// </summary>
+    Task<(ActivationTicketDto? Ticket, string? Error)> IssueActivationTicketAsync(
+        string userId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Redeems an activation ticket and sets the account's first (or replacement) password.
+    /// Returns a single opaque error for every failure mode so the endpoint cannot be used
+    /// to enumerate accounts.
+    /// </summary>
+    Task<(bool Ok, string? Error)> ActivateAccountAsync(
+        ActivateAccountRequest request,
         CancellationToken cancellationToken = default);
 
     /// <summary>Deletes one staff user. Protects the caller and seeded primary admin accounts.</summary>

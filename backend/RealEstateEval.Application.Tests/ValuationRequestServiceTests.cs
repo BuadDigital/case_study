@@ -2,7 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Shared.Contracts;
@@ -16,25 +17,10 @@ public class ValuationRequestServiceTests
     {
         await using var db = CreateDb();
         var id = Guid.Parse("a1000001-0000-4000-8000-000000000001");
-        db.ValuationRequests.Add(new ValuationRequest
-        {
-            Id = id,
-            DisplayId = "VR-500",
-            PropertyId = Guid.NewGuid().ToString(),
-            Area = "جدة",
-            PropertyType = "فيلا",
-            Appraiser = "مقيم",
-            Status = "progress",
-            RequestDate = "2026-06-25",
-            UpdatedAtUtc = DateTime.UtcNow,
-        });
+        db.ValuationRequests.Add(OpenRequest(id, "VR-500"));
         await db.SaveChangesAsync();
 
-        var service = new ValuationRequestService(
-            db,
-            new OutboxIntegrationEventPublisher(
-                db,
-                NullLogger<OutboxIntegrationEventPublisher>.Instance));
+        var service = CreateService(db);
 
         var (result, error) = await service.RecordImpedimentAsync(
             id,
@@ -45,7 +31,29 @@ public class ValuationRequestServiceTests
         Assert.Equal("fail", result!.Status);
 
         var row = await db.ValuationRequests.SingleAsync();
-        Assert.Equal("fail", row.Status);
+        Assert.Equal(ValuationRequestStatus.Failed, row.Status);
+    }
+
+    [Fact]
+    public async Task Create_numbers_the_request_and_queues_the_created_event()
+    {
+        await using var db = CreateDb();
+        var service = CreateService(db);
+
+        var (result, error) = await service.CreateAsync(new SaveValuationRequestRequest
+        {
+            PropId = Guid.NewGuid().ToString(),
+            Area = "جدة",
+            Type = "فيلا",
+            Appraiser = "مقيم",
+            Status = ValuationRequestStatuses.Progress,
+            Date = "2026-07-29",
+        });
+
+        Assert.Null(error);
+        Assert.NotNull(result);
+        Assert.StartsWith("VR-", result!.DisplayId);
+        Assert.Equal(IntegrationEventTypes.ValuationRequestCreated, (await db.OutboxMessages.SingleAsync()).EventType);
     }
 
     [Fact]
@@ -53,25 +61,10 @@ public class ValuationRequestServiceTests
     {
         await using var db = CreateDb();
         var id = Guid.Parse("a1000001-0000-4000-8000-000000000002");
-        db.ValuationRequests.Add(new ValuationRequest
-        {
-            Id = id,
-            DisplayId = "VR-501",
-            PropertyId = Guid.NewGuid().ToString(),
-            Area = "جدة",
-            PropertyType = "فيلا",
-            Appraiser = "مقيم",
-            Status = "progress",
-            RequestDate = "2026-06-25",
-            UpdatedAtUtc = DateTime.UtcNow,
-        });
+        db.ValuationRequests.Add(OpenRequest(id, "VR-501"));
         await db.SaveChangesAsync();
 
-        var service = new ValuationRequestService(
-            db,
-            new OutboxIntegrationEventPublisher(
-                db,
-                NullLogger<OutboxIntegrationEventPublisher>.Instance));
+        var service = CreateService(db);
 
         var (result, error) = await service.RecordImpedimentAsync(
             id,
@@ -81,11 +74,33 @@ public class ValuationRequestServiceTests
         Assert.Null(result);
     }
 
-    private static ApplicationDbContext CreateDb()
+    private static ValuationRequest OpenRequest(Guid id, string displayId) =>
+        ValuationRequest.Create(
+            id,
+            displayId,
+            Guid.NewGuid().ToString(),
+            "جدة",
+            "فيلا",
+            "مقيم",
+            "2026-06-25",
+            DateTime.UtcNow);
+
+    private static ValuationDbContext CreateDb() => TestDatabases.Valuation("valuation-request");
+
+    /// <summary>
+    /// The Valuation context cannot read Case Study tables, so the PO number arrives through
+    /// the owner interface (split plan, Phase 1 work item 6).
+    /// </summary>
+    private static ValuationRequestService CreateService(ValuationDbContext db) =>
+        new(
+            db,
+            new ValuationOutboxPublisher(db, NullLogger<ValuationOutboxPublisher>.Instance),
+            new StubPoNumberLookup("PO-900"));
+
+    private sealed class StubPoNumberLookup(string poNumber) : IPropertyPoNumberLookup
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"valuation-request-{Guid.NewGuid():N}")
-            .Options;
-        return new ApplicationDbContext(options);
+        public Task<string> ResolveForPropertyAsync(
+            string propertyId,
+            CancellationToken cancellationToken = default) => Task.FromResult(poNumber);
     }
 }

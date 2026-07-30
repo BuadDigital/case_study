@@ -7,12 +7,20 @@ using RealEstateEval.Application.Authorization;
 
 namespace RealEstateEval.Api.IntegrationTests;
 
+/// <summary>
+/// Stands in for JWT bearer authentication so tests can assert the authorization policies
+/// themselves. Every accepted token is authenticated; capabilities come from the token value, so
+/// a test can describe exactly the actor it needs with <see cref="TokenFor"/>.
+/// </summary>
 public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 {
     public const string TestScheme = "IntegrationTest";
     public const string AuthOnlyToken = "auth-only";
-    public const string FinancialToken = "financial-user";
-    public const string AttachmentsToken = "attachments-user";
+    public static readonly string FinancialToken = TokenFor(PlatformCapabilities.ManageFinancial);
+    public static readonly string AttachmentsToken =
+        TokenFor(PlatformCapabilities.ManageAttachments);
+
+    private const string CapabilityTokenPrefix = "caps:";
 
     public TestAuthHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
@@ -21,6 +29,10 @@ public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationScheme
         : base(options, logger, encoder)
     {
     }
+
+    /// <summary>Builds a bearer token for an actor holding exactly <paramref name="capabilities"/>.</summary>
+    public static string TokenFor(params string[] capabilities) =>
+        CapabilityTokenPrefix + string.Join(',', capabilities);
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
@@ -32,7 +44,7 @@ public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationScheme
         }
 
         var token = header["Bearer ".Length..].Trim();
-        if (token is not (AuthOnlyToken or FinancialToken or AttachmentsToken))
+        if (!TryReadCapabilities(token, out var capabilities))
             return Task.FromResult(AuthenticateResult.Fail("Unknown test token"));
 
         var claims = new List<Claim>
@@ -41,13 +53,30 @@ public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationScheme
             new(PlatformCapabilities.ClaimType, PlatformCapabilities.Authenticated),
         };
 
-        if (token == FinancialToken)
-            claims.Add(new Claim(PlatformCapabilities.ClaimType, PlatformCapabilities.ManageFinancial));
-        if (token == AttachmentsToken)
-            claims.Add(new Claim(PlatformCapabilities.ClaimType, PlatformCapabilities.ManageAttachments));
+        foreach (var capability in capabilities)
+            claims.Add(new Claim(PlatformCapabilities.ClaimType, capability));
 
         var identity = new ClaimsIdentity(claims, TestScheme);
         var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), TestScheme);
         return Task.FromResult(AuthenticateResult.Success(ticket));
+    }
+
+    private static bool TryReadCapabilities(string token, out string[] capabilities)
+    {
+        if (token == AuthOnlyToken)
+        {
+            capabilities = [];
+            return true;
+        }
+
+        if (token.StartsWith(CapabilityTokenPrefix, StringComparison.Ordinal))
+        {
+            capabilities = token[CapabilityTokenPrefix.Length..]
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            return true;
+        }
+
+        capabilities = [];
+        return false;
     }
 }

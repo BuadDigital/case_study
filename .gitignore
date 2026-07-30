@@ -16,6 +16,9 @@ node_modules/
 /playwright-report/
 /test-results/
 /blob-report/
+# dotnet test output (coverage reports, trx logs)
+/artifacts/
+**/TestResults/
 
 # next.js
 /.next/

@@ -44,8 +44,57 @@ jobs:
       - name: Build Backend
         run: dotnet build backend/RealEstateEval.slnx --configuration Release --no-restore
 
-      - name: Run Backend Tests
-        run: dotnet test backend/RealEstateEval.slnx --configuration Release --no-build --verbosity normal
+      # Testcontainers needs a Docker daemon; GitHub runners have one, so the Postgres,
+      # RabbitMQ, and Redis smoke tests run for real here rather than skipping.
+      - name: Run Backend Tests With Coverage
+        env:
+          REAL_ESTATE_EVAL_CONTAINER_TESTS: "1"
+        run: |
+          dotnet test backend/RealEstateEval.slnx \
+            --configuration Release --no-build --verbosity normal \
+            --settings backend/coverlet.runsettings \
+            --collect:"XPlat Code Coverage" \
+            --results-directory artifacts/coverage
+
+      - name: Summarize Coverage
+        if: always()
+        run: |
+          set -eu
+          shopt -s nullglob
+          reports=(artifacts/coverage/*/coverage.cobertura.xml)
+          if [ ${#reports[@]} -eq 0 ]; then
+            echo "::error::no coverage reports were produced"
+            exit 1
+          fi
+
+          # The root <coverage> element carries the run totals.
+          attribute() {
+            sed -n "s/.*$2=\"\([^\"]*\)\".*/\1/p" "$1" | head -n 1
+          }
+
+          percent() {
+            awk -v rate="$1" 'BEGIN { printf "%.2f%%", rate * 100 }'
+          }
+
+          {
+            echo "### Backend coverage (EF migrations excluded)"
+            echo
+            echo "| Lines covered | Line rate | Branch rate |"
+            echo "| --- | --- | --- |"
+            for report in "${reports[@]}"; do
+              covered=$(attribute "$report" lines-covered)
+              valid=$(attribute "$report" lines-valid)
+              echo "| ${covered}/${valid} | $(percent "$(attribute "$report" line-rate)") | $(percent "$(attribute "$report" branch-rate)") |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Coverage Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: artifacts/coverage/**/coverage.cobertura.xml
+          if-no-files-found: error
 
   # ----------------------------------------------------
   # Job 2: Build & Push Docker Images to GHCR

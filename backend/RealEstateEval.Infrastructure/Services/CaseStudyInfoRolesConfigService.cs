@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -21,9 +21,9 @@ public sealed class CaseStudyInfoRolesConfigService : ICaseStudyInfoRolesConfigS
         "primary", "secondary", "verify", "none",
     ];
 
-    private readonly ApplicationDbContext _db;
+    private readonly PlatformDbContext _db;
 
-    public CaseStudyInfoRolesConfigService(ApplicationDbContext db) => _db = db;
+    public CaseStudyInfoRolesConfigService(PlatformDbContext db) => _db = db;
 
     public async Task<CaseStudyInfoRolesConfigDto> GetAsync(
         CancellationToken cancellationToken = default)

@@ -11,23 +11,26 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public class WorkOrderService : IWorkOrderService
 {
-    private const string CaseStudyPropertyKind = "case-study-property";
+    private const WorkflowTaskKind CaseStudyPropertyKind = WorkflowTaskKind.CaseStudyProperty;
     private const int MaxDetailRows = 500;
 
     private readonly ApplicationDbContext _db;
     private readonly IPropertyTimelineService _timeline;
     private readonly IFailureService _failures;
+    private readonly IWorkOrderVisibilityFilter _visibility;
     private readonly DatabaseOptions _dbOptions;
 
     public WorkOrderService(
         ApplicationDbContext db,
         IPropertyTimelineService timeline,
         IFailureService failures,
+        IWorkOrderVisibilityFilter? visibility = null,
         IOptions<DatabaseOptions>? dbOptions = null)
     {
         _db = db;
         _timeline = timeline;
         _failures = failures;
+        _visibility = visibility ?? new WorkOrderVisibilityFilter(db);
         _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
     }
 
@@ -49,7 +52,7 @@ public class WorkOrderService : IWorkOrderService
             page,
             pageSize,
             _dbOptions);
-        var visiblePos = await ResolveVisiblePoNumbersAsync(actor, cancellationToken);
+        var visiblePos = await _visibility.ResolveVisiblePoNumbersAsync(actor, cancellationToken);
         var totalQuery = _db.WorkOrders.AsNoTracking();
         if (visiblePos is not null)
             totalQuery = totalQuery.Where(w => visiblePos.Contains(w.PoNumber));
@@ -75,7 +78,7 @@ public class WorkOrderService : IWorkOrderService
             .AsNoTracking()
             .OrderByDescending(w => w.CreatedAtUtc);
 
-        var visiblePos = await ResolveVisiblePoNumbersAsync(actor, cancellationToken);
+        var visiblePos = await _visibility.ResolveVisiblePoNumbersAsync(actor, cancellationToken);
         if (visiblePos is not null)
         {
             if (visiblePos.Count == 0)
@@ -114,7 +117,7 @@ public class WorkOrderService : IWorkOrderService
                 g => g.Key,
                 g => g.Any(t =>
                     t.Status == WorkflowTaskStatus.Completed
-                    || string.Equals(t.Phase, "done", StringComparison.Ordinal)));
+                    || t.Phase == WorkflowTaskPhase.Done));
 
         var billedPos = poNumbers.Count == 0
             ? new HashSet<string>(StringComparer.Ordinal)
@@ -155,7 +158,7 @@ public class WorkOrderService : IWorkOrderService
             .ThenInclude(p => p.Contacts)
             .OrderByDescending(w => w.CreatedAtUtc);
 
-        var visiblePos = await ResolveVisiblePoNumbersAsync(actor, cancellationToken);
+        var visiblePos = await _visibility.ResolveVisiblePoNumbersAsync(actor, cancellationToken);
         if (visiblePos is not null)
         {
             if (visiblePos.Count == 0)
@@ -208,7 +211,7 @@ public class WorkOrderService : IWorkOrderService
             .ThenInclude(p => p.Contacts)
             .OrderByDescending(w => w.CreatedAtUtc);
 
-        var visiblePos = await ResolveVisiblePoNumbersAsync(actor, cancellationToken);
+        var visiblePos = await _visibility.ResolveVisiblePoNumbersAsync(actor, cancellationToken);
         if (visiblePos is not null)
         {
             if (visiblePos.Count == 0)
@@ -269,7 +272,7 @@ public class WorkOrderService : IWorkOrderService
         PermissionsDto? actor = null,
         CancellationToken cancellationToken = default)
     {
-        if (!await CanReadPoAsync(poNumber, actor, cancellationToken))
+        if (!await _visibility.CanReadPoAsync(NormalizePo(poNumber), actor, cancellationToken))
             return null;
 
         var entity = await LoadWorkOrderTrackedAsync(poNumber, cancellationToken, asNoTracking: true);
@@ -281,54 +284,6 @@ public class WorkOrderService : IWorkOrderService
     /// <summary>
     /// Null means unrestricted (case staff). Empty set means the actor can see nothing.
     /// </summary>
-    private async Task<HashSet<string>?> ResolveVisiblePoNumbersAsync(
-        PermissionsDto? actor,
-        CancellationToken cancellationToken)
-    {
-        if (actor is null)
-            return new HashSet<string>(StringComparer.Ordinal);
-
-        if (PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole)
-            || actor.Capabilities.Contains("manage-work-orders", StringComparer.OrdinalIgnoreCase))
-        {
-            return null;
-        }
-
-        var assigneeId = actor.DistributionAssigneeId?.Trim() ?? "";
-        var userId = actor.UserId.Trim();
-        if (assigneeId.Length == 0 && userId.Length == 0)
-            return new HashSet<string>(StringComparer.Ordinal);
-
-        var query = _db.WorkflowTasks.AsNoTracking().AsQueryable();
-        if (assigneeId.Length > 0 && userId.Length > 0)
-            query = query.Where(t => t.AssigneeId == assigneeId || t.AssigneeId == userId);
-        else if (assigneeId.Length > 0)
-            query = query.Where(t => t.AssigneeId == assigneeId);
-        else
-            query = query.Where(t => t.AssigneeId == userId);
-
-        var pos = await query
-            .Where(t => t.PoNumber != null && t.PoNumber != "")
-            .Select(t => t.PoNumber)
-            .Distinct()
-            .ToListAsync(cancellationToken);
-
-        return pos
-            .Select(p => p.Trim())
-            .Where(p => p.Length > 0)
-            .ToHashSet(StringComparer.Ordinal);
-    }
-
-    private async Task<bool> CanReadPoAsync(
-        string poNumber,
-        PermissionsDto? actor,
-        CancellationToken cancellationToken)
-    {
-        var visiblePos = await ResolveVisiblePoNumbersAsync(actor, cancellationToken);
-        if (visiblePos is null) return true;
-        return visiblePos.Contains(NormalizePo(poNumber));
-    }
-
     public Task<bool> ExistsAsync(string poNumber, CancellationToken cancellationToken) =>
         _db.WorkOrders.AnyAsync(
             w => w.PoNumber == NormalizePo(poNumber),
@@ -379,7 +334,7 @@ public class WorkOrderService : IWorkOrderService
                 t.PropertyId == p.Id
                 && t.Kind == CaseStudyPropertyKind
                 && t.ParentTaskId == null
-                && t.Phase == "bourse"))
+                && t.Phase == WorkflowTaskPhase.Bourse))
             .OrderByDescending(p => p.WorkOrder!.CreatedAtUtc)
             .ThenByDescending(p => p.WorkOrder!.ReceivedFromEnfathAt)
             .ThenBy(p => p.WorkOrder!.PoNumber)

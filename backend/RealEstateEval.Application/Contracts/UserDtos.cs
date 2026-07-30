@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using RealEstateEval.Domain;
 
 namespace RealEstateEval.Application.Contracts;
@@ -50,5 +51,39 @@ public sealed class CreateStaffUserResponseDto
 {
     public required UserListItemDto User { get; init; }
     public required string UserName { get; init; }
-    public required string TemporaryPassword { get; init; }
+
+    /// <summary>
+    /// Always true: staff accounts are created without a password and cannot sign in
+    /// until the holder redeems an activation ticket.
+    /// </summary>
+    public bool ActivationRequired { get; init; } = true;
+}
+
+/// <summary>
+/// One-time, short-lived ticket that lets an account holder choose their first password.
+/// Issued only through an explicit, separately authorized admin action — never as a
+/// side effect of creating or listing users.
+/// </summary>
+public sealed class ActivationTicketDto
+{
+    public required string UserName { get; init; }
+    public required string Token { get; init; }
+    public required DateTime ExpiresAtUtc { get; init; }
+}
+
+public sealed class IssueActivationTicketRequest
+{
+    public string Id { get; init; } = "";
+}
+
+public sealed class ActivateAccountRequest
+{
+    [Required, MaxLength(256)]
+    public string UserName { get; init; } = "";
+
+    [Required, MaxLength(4096)]
+    public string Token { get; init; } = "";
+
+    [Required, MaxLength(256)]
+    public string NewPassword { get; init; } = "";
 }

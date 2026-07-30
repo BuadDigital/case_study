@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.8" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Testcontainers.PostgreSql" Version="4.13.0" />
+    <PackageReference Include="Testcontainers.RabbitMq" Version="4.13.0" />
+    <PackageReference Include="Testcontainers.Redis" Version="4.13.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RealEstateEval.Infrastructure\RealEstateEval.Infrastructure.csproj" />
+    <ProjectReference Include="..\services\attachments\RealEstateEval.Attachments.Api\RealEstateEval.Attachments.Api.csproj" Aliases="AttachmentsApi" />
+    <ProjectReference Include="..\services\case-study\RealEstateEval.CaseStudy.Api\RealEstateEval.CaseStudy.Api.csproj" Aliases="CaseStudyApi" />
+    <ProjectReference Include="..\services\financial\RealEstateEval.Financial.Api\RealEstateEval.Financial.Api.csproj" Aliases="FinancialApi" />
+    <ProjectReference Include="..\services\identity\RealEstateEval.Identity.Api\RealEstateEval.Identity.Api.csproj" Aliases="IdentityApi" />
+    <ProjectReference Include="..\services\operations\RealEstateEval.Operations.Api\RealEstateEval.Operations.Api.csproj" Aliases="OperationsApi" />
+    <ProjectReference Include="..\services\failures\RealEstateEval.Failures.Api\RealEstateEval.Failures.Api.csproj" Aliases="FailuresApi" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>
