@@ -261,6 +261,23 @@ public static class DependencyInjection
         services.AddCaseStudyCoreInfrastructure();
         services.AddCaseStudyAuxiliaryInfrastructure();
         services.AddNotificationInfrastructure(configuration, environment);
+        return services;
+    }
+
+    /// <summary>
+    /// Development-only reset support. Identity stores stay out of normal Case Study request
+    /// paths and are registered only because the reset operation deletes and re-seeds demo users.
+    /// </summary>
+    public static IServiceCollection AddDevelopmentSystemMaintenance(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString,
+        IHostEnvironment environment)
+    {
+        if (!environment.IsDevelopment()) return services;
+
+        services.AddIdentitySeedStores(configuration, connectionString);
+        services.AddScoped<IUserRegistrationService, UserRegistrationService>();
         services.AddScoped<ISystemMaintenanceService, SystemMaintenanceService>();
         return services;
     }
