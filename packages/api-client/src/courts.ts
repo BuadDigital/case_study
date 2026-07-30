@@ -1,4 +1,5 @@
 import { getApiBase } from "./index";
+import { repositoryFetch as fetch } from "./write-repository";
 
 export type CourtsApiConfig = {
   baseUrl?: string;

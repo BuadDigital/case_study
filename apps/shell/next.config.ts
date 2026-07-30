@@ -42,7 +42,6 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   /** Required when colleagues open http://YOUR_LAN_IP:3000 — otherwise login JS is blocked. */
   allowedDevOrigins,
-  /** Keep the service worker fresh so clients pick up shell updates. */
   async headers() {
     return [
       {
@@ -61,6 +60,32 @@ const nextConfig: NextConfig = {
           {
             key: "Cache-Control",
             value: "public, max-age=0, must-revalidate",
+          },
+        ],
+      },
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Referrer-Policy", value: "no-referrer" },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(self), geolocation=(self), microphone=()",
+          },
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: blob:",
+              "font-src 'self' data:",
+              "connect-src 'self' https: http: ws: wss:",
+              "worker-src 'self' blob:",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+            ].join("; "),
           },
         ],
       },
@@ -94,6 +119,7 @@ const nextConfig: NextConfig = {
     "@platform/app-shared",
     "@platform/api-client",
     "@platform/auth-client",
+    "@platform/offline-client",
     "@platform/design-system",
     "@platform/types",
   ],

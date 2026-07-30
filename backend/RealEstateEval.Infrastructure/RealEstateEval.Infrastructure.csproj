@@ -12,6 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Lib.Net.Http.WebPush" Version="3.3.1" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.8" />
     <!-- compile is included so the per-context design-time factories (ADR 0003) can be
          declared next to their contexts; PrivateAssets keeps it out of consuming projects. -->

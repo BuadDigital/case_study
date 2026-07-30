@@ -19,11 +19,14 @@ public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> option
     public DbSet<Court> Courts => Set<Court>();
     public DbSet<CourtCircuit> CourtCircuits => Set<CourtCircuit>();
     public DbSet<CourtAuditLog> CourtAuditLogs => Set<CourtAuditLog>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<Region> Regions => Set<Region>();
     public DbSet<City> Cities => Set<City>();
     public DbSet<FieldDictionaryConfig> FieldDictionaryConfigs => Set<FieldDictionaryConfig>();
     public DbSet<CaseStudyInfoRolesConfig> CaseStudyInfoRolesConfigs => Set<CaseStudyInfoRolesConfig>();
 
     protected override void OnModelCreating(ModelBuilder builder) =>
-        builder.ApplyPlatformModel();
+        builder
+            .ApplyPlatformModel()
+            .ApplyAuditModel(ownsMigrations: true);
 }

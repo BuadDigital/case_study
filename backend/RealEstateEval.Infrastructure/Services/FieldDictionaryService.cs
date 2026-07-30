@@ -11,8 +11,13 @@ public sealed class FieldDictionaryService : IFieldDictionaryService
 {
     private static readonly Guid SingletonId = Guid.Parse("b1c2d3e4-f5a6-7890-abcd-ef1234567891");
     private readonly PlatformDbContext _db;
+    private readonly IAuditLogWriter _audit;
 
-    public FieldDictionaryService(PlatformDbContext db) => _db = db;
+    public FieldDictionaryService(PlatformDbContext db, IAuditLogWriter audit)
+    {
+        _db = db;
+        _audit = audit;
+    }
 
     public async Task<FieldDictionaryStateDto> GetAsync(CancellationToken cancellationToken = default)
     {
@@ -23,6 +28,7 @@ public sealed class FieldDictionaryService : IFieldDictionaryService
 
     public async Task<FieldDictionaryStateDto> SaveAsync(
         SaveFieldDictionaryStateRequest request,
+        string actorId,
         CancellationToken cancellationToken = default)
     {
         var payload = JsonSerializer.Serialize(new
@@ -32,6 +38,7 @@ public sealed class FieldDictionaryService : IFieldDictionaryService
         });
 
         var row = await _db.FieldDictionaryConfigs.FirstOrDefaultAsync(cancellationToken);
+        var before = row is null ? null : ToDto(row);
         var now = DateTime.UtcNow;
         if (row is null)
         {
@@ -49,8 +56,16 @@ public sealed class FieldDictionaryService : IFieldDictionaryService
             row.UpdatedAtUtc = now;
         }
 
+        var after = ToDto(row);
+        _db.AuditLogs.Add(_audit.Create(
+            actorId,
+            "FIELD_DICTIONARY_SAVED",
+            "field_dictionary",
+            row.Id.ToString(),
+            before,
+            after));
         await _db.SaveChangesAsync(cancellationToken);
-        return ToDto(row);
+        return after;
     }
 
     private static FieldDictionaryStateDto Empty() => new()

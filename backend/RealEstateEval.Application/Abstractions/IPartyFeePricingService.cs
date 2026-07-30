@@ -16,18 +16,36 @@ public interface IPartyFeePricingService
 
     Task<PartyFeePricingDto> CreateAsync(
         CreatePartyFeePricingTableRequest request,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        string actorId = "system");
 
     Task<PartyFeePricingDto> SaveAsync(
         Guid id,
         PartyFeePricingDto request,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        string actorId = "system");
+
+    /// <summary>
+    /// Copies an assigned immutable table, applies the requested rates to the copy, and moves all
+    /// of the source table's assignments to it in one database save.
+    /// </summary>
+    Task<PartyFeePricingDto> ReviseAsync(
+        Guid sourceId,
+        PartyFeePricingDto request,
+        CancellationToken cancellationToken = default,
+        string actorId = "system");
 
     /// <summary>Marks the table as the category default (fallback when unassigned).</summary>
-    Task<PartyFeePricingDto> ActivateAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<PartyFeePricingDto> ActivateAsync(
+        Guid id,
+        CancellationToken cancellationToken = default,
+        string actorId = "system");
 
     /// <summary>Returns false when the table was not found.</summary>
-    Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<bool> DeleteAsync(
+        Guid id,
+        CancellationToken cancellationToken = default,
+        string actorId = "system");
 
     Task<IReadOnlyList<string>> ListAssignmentsAsync(
         Guid tableId,
@@ -40,15 +58,16 @@ public interface IPartyFeePricingService
     Task<PartyFeePricingDto> SetAssignmentsAsync(
         Guid tableId,
         IReadOnlyList<string> assigneeIds,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        string actorId = "system");
 
     /// <summary>
-    /// Resolves the default agreed fee for a new ledger.
+    /// Resolves the default agreed fee for a new ledger, with the table that produced it.
     /// Uses the assignee's assigned table when present; otherwise the category default.
-    /// Engineering survey returns null when area is missing.
-    /// Employees (field inspector) return null (manual entry).
+    /// Engineering survey is unresolved when area is missing.
+    /// Employees (field inspector) are unresolved (manual entry).
     /// </summary>
-    Task<decimal?> ResolveDefaultFeeAsync(
+    Task<ResolvedPartyFee> ResolveDefaultFeeAsync(
         WorkflowTaskKind taskKind,
         string partyType,
         decimal? areaM2 = null,

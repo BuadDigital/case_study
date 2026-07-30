@@ -22,8 +22,15 @@ public sealed class CaseStudyInfoRolesConfigService : ICaseStudyInfoRolesConfigS
     ];
 
     private readonly PlatformDbContext _db;
+    private readonly IAuditLogWriter _audit;
 
-    public CaseStudyInfoRolesConfigService(PlatformDbContext db) => _db = db;
+    public CaseStudyInfoRolesConfigService(
+        PlatformDbContext db,
+        IAuditLogWriter audit)
+    {
+        _db = db;
+        _audit = audit;
+    }
 
     public async Task<CaseStudyInfoRolesConfigDto> GetAsync(
         CancellationToken cancellationToken = default)
@@ -37,6 +44,7 @@ public sealed class CaseStudyInfoRolesConfigService : ICaseStudyInfoRolesConfigS
 
     public async Task<CaseStudyInfoRolesConfigDto> SaveAsync(
         SaveCaseStudyInfoRolesRequest request,
+        string actorId,
         CancellationToken cancellationToken = default)
     {
         if (request.Matrix is null)
@@ -47,6 +55,7 @@ public sealed class CaseStudyInfoRolesConfigService : ICaseStudyInfoRolesConfigS
 
         var row = await _db.CaseStudyInfoRolesConfigs
             .FirstOrDefaultAsync(cancellationToken);
+        var before = row is null ? null : ToDto(row);
 
         var now = DateTime.UtcNow;
         if (row is null)
@@ -67,8 +76,16 @@ public sealed class CaseStudyInfoRolesConfigService : ICaseStudyInfoRolesConfigS
             row.UpdatedAtUtc = now;
         }
 
+        var after = ToDto(row);
+        _db.AuditLogs.Add(_audit.Create(
+            actorId,
+            "CASE_STUDY_INFO_ROLES_SAVED",
+            "case_study_info_roles",
+            row.Id.ToString(),
+            before,
+            after));
         await _db.SaveChangesAsync(cancellationToken);
-        return ToDto(row);
+        return after;
     }
 
     private static Dictionary<string, Dictionary<string, string>> SanitizeMatrix(

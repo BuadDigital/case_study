@@ -2,7 +2,11 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { fetchPermissions, getApiBase } from "@platform/api-client";
+import {
+  fetchPermissions,
+  getApiBase,
+  repositoryFetch as fetch,
+} from "@platform/api-client";
 import {
   setAuthSession,
   type AuthSession,

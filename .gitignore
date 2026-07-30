@@ -36,6 +36,7 @@ apps/*/out/
 
 # requirements / reference HTML (local specs, not app assets)
 *.html
+!apps/shell/public/offline.html
 
 # debug
 npm-debug.log*

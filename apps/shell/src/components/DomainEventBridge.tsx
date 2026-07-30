@@ -2,12 +2,11 @@
 
 import { useEffect } from "react";
 import { useAuth } from "@platform/app-shared/hooks/useAuth";
-import { appendAuditLogEntry } from "@platform/app-shared/audit/audit-log-store";
 import { pushNotification } from "@platform/app-shared/notifications/notification-store";
 import { shouldDeliverDomainNotification } from "@platform/app-shared/notifications/role-notification-policy";
 import { DOMAIN_NOTIFICATION_RULES } from "@/lib/domain-notification-rules";
 
-/** Bridges domain window events to notifications + audit log. */
+/** Bridges domain window events to transient client notifications. */
 export function DomainEventBridge() {
   const { displayName, role } = useAuth();
 
@@ -18,11 +17,6 @@ export function DomainEventBridge() {
       function onDomainEvent() {
         if (!shouldDeliverDomainNotification(role, rule.event)) return;
         pushNotification({ ...rule.notification, actor });
-        appendAuditLogEntry({
-          actor,
-          action: rule.auditAction,
-          entity: rule.auditEntity,
-        });
       }
 
       window.addEventListener(rule.event, onDomainEvent);

@@ -30,6 +30,7 @@ public sealed class PermissionService : IPermissionService
         var profile = await _db.UserProfiles
             .AsNoTracking()
             .Include(p => p.ProcProvider)
+            .Include(p => p.HrEmployee)
             .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
         var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -56,6 +57,12 @@ public sealed class PermissionService : IPermissionService
 
         capabilities.Add("authenticated");
 
+        // Prefer the stored department; fall back to the legacy HR section label so seeded
+        // supervisors whose UserProfile still says "إدارة التقييم العقاري" keep their authority.
+        var department = SupervisingDepartments.NormalizeProfileValue(profile?.Department)
+            ?? SupervisingDepartments.NormalizeProfileValue(profile?.HrEmployee?.Section)
+            ?? SupervisingDepartments.DeriveForRole(prototypeRole ?? profile?.RoleId);
+
         return new PermissionsDto
         {
             UserId = userId,
@@ -63,6 +70,7 @@ public sealed class PermissionService : IPermissionService
             PrototypeRole = prototypeRole,
             DisplayName = user.DisplayName,
             DistributionAssigneeId = profile?.DistributionAssigneeId?.Trim(),
+            Department = department,
             Pages = pages.OrderBy(p => p).ToList(),
             Capabilities = capabilities.OrderBy(c => c).ToList(),
         };

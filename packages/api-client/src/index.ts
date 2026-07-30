@@ -33,12 +33,23 @@ export function getApiBase(): string {
 }
 
 export {
+  clearApiWriteInterceptor,
+  installApiWriteInterceptor,
+  repositoryFetch,
+  type ApiWriteInterceptor,
+  type ApiWriteMethod,
+  type ApiWriteRequest,
+} from "./write-repository";
+
+export {
   activateAccount,
   createStaffUser,
   deleteStaffUser,
   issueActivationTicket,
   listDistributionAssignees,
   listUsers,
+  unlockStaffUser,
+  updateStaffUser,
   type ActivateAccountResult,
   type ActivationTicket,
   type CreateStaffUserRequest,
@@ -47,6 +58,9 @@ export {
   type DeleteStaffUserResult,
   type IssueActivationTicketResult,
   type ListUsersResult,
+  type UnlockStaffUserResult,
+  type UpdateStaffUserRequest,
+  type UpdateStaffUserResult,
   type UsersApiConfig,
 } from "./users";
 
@@ -312,6 +326,7 @@ export {
   fetchPartyFeePricingById,
   createPartyFeePricing,
   savePartyFeePricing,
+  revisePartyFeePricing,
   activatePartyFeePricing,
   setPartyFeePricingAssignments,
   deletePartyFeePricing,

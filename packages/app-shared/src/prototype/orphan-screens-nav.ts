@@ -29,7 +29,8 @@ export const ORPHAN_SCREENS_NAV: OrphanScreenNavItem[] = [
   },
 ];
 
-export const ORPHAN_SCREENS_GROUP = "الشاشات اليتيمة";
+/** Matches Case Study.html sidebar draft group label. */
+export const ORPHAN_SCREENS_GROUP = "الشاشات (Draft)";
 
 export const ORPHAN_SCREENS_GROUP_ICON =
   "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM16 16h2v2h-2zM20 16h2v2h-2zM16 20h2v2h-2zM20 20h2v2h-2z";

@@ -14,6 +14,7 @@ type Ctx = {
   viewerEmail: string | null;
   viewerDisplayName: string | null;
   distributionAssigneeId: string | null;
+  department: string | null;
   rolePages: PageId[];
   capabilities: string[];
   hasCapability: (capability: string) => boolean;
@@ -98,6 +99,7 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
         session?.user.displayName?.trim() ||
         null,
       distributionAssigneeId: permissions?.distributionAssigneeId?.trim() || null,
+      department: permissions?.department?.trim() || null,
       rolePages,
       capabilities,
       hasCapability: (capability) => capabilities.includes(capability),
@@ -109,6 +111,7 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
       session?.user.displayName,
       permissions?.displayName,
       permissions?.distributionAssigneeId,
+      permissions?.department,
       rolePages,
       capabilities,
     ],

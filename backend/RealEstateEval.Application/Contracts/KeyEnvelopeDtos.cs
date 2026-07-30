@@ -67,8 +67,11 @@ public class KeyEnvelopeDto
     public string? Notes { get; init; }
     public string ReceiveScenario { get; init; } = "court";
     public string Status { get; init; } = "reviewer";
+    /// <summary>Historical stamp — see <see cref="RevenueEntitlementAtUtc"/> for current envelopes.</summary>
     public bool FeeGenerated { get; init; }
     public decimal? FeeAmountSar { get; init; }
+    /// <summary>مؤشر استحقاق إيراد استلام المفاتيح — بلا مبلغ.</summary>
+    public DateTime? RevenueEntitlementAtUtc { get; init; }
     public string CreatedByUserId { get; init; } = "";
     public string CreatedByName { get; init; } = "";
     public DateTime CreatedAtUtc { get; init; }
@@ -88,7 +91,8 @@ public class KeyEnvelopeFeeReportRowDto
     public string Circuit { get; init; } = "";
     public Guid? PhotoAttachmentId { get; init; }
     public Guid? ReceiptAttachmentId { get; init; }
-    public decimal FeeAmountSar { get; init; }
+    /// <summary>Null for an entitlement finance has not yet priced in enforcement billing.</summary>
+    public decimal? FeeAmountSar { get; init; }
     public string CollectionStatus { get; init; } = "open";
     public string? InvoiceReference { get; init; }
     public DateTime? CollectedAtUtc { get; init; }

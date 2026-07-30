@@ -25,6 +25,7 @@ import { caseStudyTaskForProperty } from "../../lib/prototype/tasks-storage";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useFailuresQuery } from "@failures/mfe";
 import { derivePropertyUiStatus } from "../../lib/prototype/property-detail-ui-status";
+import { useFavoriteProperties } from "../../lib/prototype/favorite-properties";
 
 function deedTitle(property: { deedNumber: string }): string {
   return property.deedNumber.trim() || "—";
@@ -191,7 +192,9 @@ export function PropertyDetailHero({
 }) {
   const { data: tasks = [] } = useWorkflowTasksQuery();
   const { data: failures = [] } = useFailuresQuery();
+  const { isFavorite, toggleFavorite } = useFavoriteProperties();
   const titleDeed = deedTitle(property);
+  const favorite = isFavorite(record.poNumber, property.id);
   const locationLine = formatPropertyLocation(property);
   const courtLine = [property.court, property.circuit]
     .filter(Boolean)
@@ -273,6 +276,36 @@ export function PropertyDetailHero({
               <PoNumber value={record.poNumber} />
             </div>
             <div className="flex flex-wrap items-center gap-2 text-[19px] leading-snug font-bold text-heading">
+              <button
+                type="button"
+                className={cn(
+                  "inline-flex size-9 shrink-0 items-center justify-center rounded-lg border bg-surface text-text-3 shadow-sm transition-all hover:border-gold hover:text-gold-d active:scale-95",
+                  favorite &&
+                    "border-gold bg-[color-mix(in_srgb,var(--gold)_13%,var(--surface))] text-gold-d",
+                )}
+                aria-label={
+                  favorite ? "إزالة المعاملة من المفضلة" : "إضافة المعاملة إلى المفضلة"
+                }
+                aria-pressed={favorite}
+                title={
+                  favorite ? "إزالة من المفضلة" : "إضافة إلى المفضلة"
+                }
+                onClick={() => toggleFavorite(record.poNumber, property.id)}
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill={favorite ? "currentColor" : "none"}
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
+                >
+                  <path d="m12 2.8 2.84 5.75 6.35.92-4.6 4.48 1.09 6.33L12 17.3l-5.68 2.98 1.09-6.33-4.6-4.48 6.35-.92L12 2.8Z" />
+                </svg>
+              </button>
               <span>
                 صك رقم{" "}
                 <bdi dir="ltr" className={ltrValueClass}>

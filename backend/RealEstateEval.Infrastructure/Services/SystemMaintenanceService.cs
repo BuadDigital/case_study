@@ -1,25 +1,27 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Data;
+using Di = RealEstateEval.Infrastructure.DependencyInjection;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 public class SystemMaintenanceService : ISystemMaintenanceService
 {
     private readonly ApplicationDbContext _db;
-    private readonly IUserRegistrationService _users;
     private readonly IServiceProvider _services;
+    private readonly IConfiguration _configuration;
 
     public SystemMaintenanceService(
         ApplicationDbContext db,
-        IUserRegistrationService users,
-        IServiceProvider services)
+        IServiceProvider services,
+        IConfiguration configuration)
     {
         _db = db;
-        _users = users;
         _services = services;
+        _configuration = configuration;
     }
 
     public async Task<SystemResetResultDto> ResetAllOperationalDataAsync(
@@ -88,10 +90,24 @@ public class SystemMaintenanceService : ISystemMaintenanceService
                 await _db.SurveyOffices.ExecuteDeleteAsync(cancellationToken);
                 await _db.FinancialReportConfigs.ExecuteDeleteAsync(cancellationToken);
                 await _db.OutboxMessages.ExecuteDeleteAsync(cancellationToken);
+                await _db.PushSubscriptions.ExecuteDeleteAsync(cancellationToken);
+                await _db.PushPreferences.ExecuteDeleteAsync(cancellationToken);
+
+                var connectionString = _db.Database.GetConnectionString()
+                    ?? throw new InvalidOperationException(
+                        "ApplicationDbContext has no connection string for identity maintenance.");
+
+                // Identity writes stay off the Case Study request container (Phase 1 step 2).
+                await using var identityRoot = Di.CreateIdentityMaintenanceProvider(
+                    _configuration,
+                    connectionString);
+                await using var identityScope = identityRoot.CreateAsyncScope();
+                var identitySp = identityScope.ServiceProvider;
+                var users = identitySp.GetRequiredService<IUserRegistrationService>();
 
                 var registeredUsersDeleted =
-                    await _users.DeleteAllRegisteredAsync(cancellationToken);
-                await DataSeeder.ReseedAllDemoUsersAsync(_services, cancellationToken);
+                    await users.DeleteAllRegisteredAsync(cancellationToken);
+                await DataSeeder.ReseedAllDemoUsersAsync(identitySp, cancellationToken);
                 await DataSeeder.ReseedPrototypeModuleDataAsync(_db, cancellationToken);
 
                 await transaction.CommitAsync(cancellationToken);

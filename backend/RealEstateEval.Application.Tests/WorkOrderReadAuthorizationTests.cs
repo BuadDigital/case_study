@@ -110,6 +110,11 @@ public class WorkOrderReadAuthorizationTests
             timeline,
             notifications,
             recipients);
-        return new RealEstateEval.Infrastructure.Services.WorkOrderService(db, timeline, failures);
+        return new RealEstateEval.Infrastructure.Services.WorkOrderService(
+            db,
+            timeline,
+            failures,
+            notifications,
+            recipients);
     }
 }

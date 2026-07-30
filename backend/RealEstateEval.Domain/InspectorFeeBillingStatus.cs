@@ -20,6 +20,11 @@ public static class InspectorFeeBillingStatus
     public const string Disbursed = "disbursed";
     public const string Returned = "returned";
     public const string Inquiry = "inquiry";
+    /// <summary>
+    /// Withheld by the supervisor. The amount stays on the row so the history survives, but the line
+    /// is neither payable nor eligible for a statement until the suspension is lifted.
+    /// </summary>
+    public const string Suspended = "suspended";
 
     public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.Ordinal)
     {
@@ -32,6 +37,21 @@ public static class InspectorFeeBillingStatus
         InStatement,
         DisbReq,
         Disbursed,
+        Returned,
+        Inquiry,
+        Suspended,
+    };
+
+    /// <summary>
+    /// States a line can be withheld from. Once it joins a statement or a disbursement request the
+    /// money is already committed elsewhere, so it must be pulled back through those paths first.
+    /// </summary>
+    public static readonly IReadOnlySet<string> Suspendable = new HashSet<string>(StringComparer.Ordinal)
+    {
+        Draft,
+        SupReview,
+        AtFinance,
+        Deferred,
         Returned,
         Inquiry,
     };
@@ -77,4 +97,10 @@ public static class InspectorFeeActions
 
     /// <summary>Finance — at-finance | disb-req → inquiry (to office).</summary>
     public const string InquiryToOffice = "inquiry-to-office";
+
+    /// <summary>Supervisor — a suspendable state → suspended (withhold the incentive).</summary>
+    public const string Suspend = "suspend";
+
+    /// <summary>Supervisor — suspended → the state it was withheld from.</summary>
+    public const string LiftSuspension = "lift-suspension";
 }
