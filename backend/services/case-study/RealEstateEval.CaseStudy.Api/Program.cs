@@ -23,6 +23,10 @@ var connectionString = ServiceCollectionExtensions.RequireConnectionString( buil
 builder.Services.AddPersistence(builder.Configuration, connectionString);
 builder.Services.AddClaimsPermissionService();
 builder.Services.AddCaseStudyInfrastructure(builder.Configuration, builder.Environment);
+builder.Services.AddDevelopmentSystemMaintenance(
+    builder.Configuration,
+    connectionString,
+    builder.Environment);
 builder.Services.AddValuationRequestInfrastructure(builder.Configuration, connectionString);
 builder.Services.AddIntegrationEventPublishing(builder.Configuration, builder.Environment);
 builder.Services.AddOutboxDispatcher(builder.Configuration, builder.Environment);
