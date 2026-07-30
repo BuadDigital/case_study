@@ -13,6 +13,9 @@ x-app-healthcheck: &app-healthcheck
 
 x-otel-env: &otel-env
   OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+  # Public TLS terminates at nginx. Trust the single private-network proxy hop so
+  # ASP.NET sees the original HTTPS scheme and client address.
+  ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
 
 services:
   postgres:
@@ -418,15 +421,18 @@ services:
     restart: always
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ${TLS_CERTIFICATE_PATH:?Set TLS_CERTIFICATE_PATH}:/etc/nginx/tls/fullchain.pem:ro
+      - ${TLS_PRIVATE_KEY_PATH:?Set TLS_PRIVATE_KEY_PATH}:/etc/nginx/tls/privkey.pem:ro
     depends_on:
       frontend:
         condition: service_healthy
       gateway:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80/ || exit 1"]
+      test: ["CMD-SHELL", "wget --no-check-certificate -qO- https://127.0.0.1/ || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5

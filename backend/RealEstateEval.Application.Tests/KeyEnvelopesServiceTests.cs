@@ -9,7 +9,7 @@ namespace RealEstateEval.Application.Tests;
 public class KeyEnvelopesServiceTests
 {
     [Fact]
-    public async Task CreateAsync_links_properties_and_generates_fee_for_court_scenario()
+    public async Task CreateAsync_links_properties_and_marks_entitlement_for_court_scenario()
     {
         await using var db = CreateDb();
         var requestNumber = "REQ-ENV-100";
@@ -49,8 +49,8 @@ public class KeyEnvelopesServiceTests
         Assert.Null(error);
         Assert.NotNull(envelope);
         Assert.True(envelope!.CountMismatch);
-        Assert.True(envelope.FeeGenerated);
-        Assert.Equal(350m, envelope.FeeAmountSar);
+        Assert.NotNull(envelope.RevenueEntitlementAtUtc);
+        Assert.Null(envelope.FeeAmountSar);
         Assert.Equal(KeyEnvelopeStatuses.Reviewer, envelope.Status);
         Assert.Single(envelope.LinkedProperties);
         Assert.Single(envelope.Assignments);
@@ -83,7 +83,7 @@ public class KeyEnvelopesServiceTests
     }
 
     [Fact]
-    public async Task CreateAsync_missing_scenario_requires_phones_and_skips_fee()
+    public async Task CreateAsync_missing_scenario_requires_phones_and_earns_nothing()
     {
         await using var db = CreateDb();
         var service = CreateService(db);
@@ -114,7 +114,8 @@ public class KeyEnvelopesServiceTests
             "مراجع");
         Assert.Null(error);
         Assert.NotNull(ok);
-        Assert.False(ok!.FeeGenerated);
+        // Only the court scenario earns receipt revenue from إنفاذ.
+        Assert.Null(ok!.RevenueEntitlementAtUtc);
         Assert.Equal(0, ok.KeysCountActual);
     }
 
@@ -351,32 +352,12 @@ public class KeyEnvelopesServiceTests
     }
 
     [Fact]
-    public async Task CreateAsync_writes_key_receipt_fee_charge()
-    {
-        await using var db = CreateDb();
-        var service = CreateService(db);
-        var envelope = await CreateCourtEnvelopeAsync(db, service);
-
-        var charge = await db.KeyReceiptFeeCharges.AsNoTracking()
-            .FirstOrDefaultAsync(c => c.EnvelopeId == envelope.Id);
-        Assert.NotNull(charge);
-        Assert.Equal(KeyReceiptFeeStatuses.Open, charge!.CollectionStatus);
-        Assert.Equal(350m, charge.AmountSar);
-
-        var (collected, collectError) = await service.MarkFeeCollectedAsync(
-            envelope.Id,
-            "INV-KEYS-1");
-        Assert.Null(collectError);
-        Assert.Equal(KeyReceiptFeeStatuses.Collected, collected!.CollectionStatus);
-        Assert.Equal("INV-KEYS-1", collected.InvoiceReference);
-    }
-
-    [Fact]
     public async Task DeleteAsync_removes_envelope_children_and_fee_charge()
     {
         await using var db = CreateDb();
         var service = CreateService(db);
         var envelope = await CreateCourtEnvelopeAsync(db, service);
+        await AddHistoricalChargeAsync(db, envelope.Id, envelope.RequestNumber, 275m);
 
         var deleted = await service.DeleteAsync(envelope.Id);
 
@@ -441,11 +422,15 @@ public class KeyEnvelopesServiceTests
         Assert.True(row.Key);
     }
 
+    /// <summary>
+    /// Registering the envelope is what earns the receipt revenue from إنفاذ, and that is all it does.
+    /// It used to stamp an amount off the government-review table — a figure the pricing screen owned
+    /// but nobody had agreed to bill — and it must not be confused with the visit fee either.
+    /// </summary>
     [Fact]
-    public async Task CreateAsync_court_envelope_does_not_create_visit_fee_charge()
+    public async Task CreateAsync_court_envelope_marks_entitlement_without_any_amount()
     {
         await using var db = CreateDb();
-        // Seed distinct pricing so visit vs key-receipt amounts differ.
         db.PartyFeePricingTables.Add(new PartyFeePricingTable
         {
             Id = Guid.NewGuid(),
@@ -453,20 +438,102 @@ public class KeyEnvelopesServiceTests
             Category = "government-review",
             IsActive = true,
             GovernmentReviewFeeSar = 400m,
-            KeyReceiptFeeSar = 275m,
             UpdatedAtUtc = DateTime.UtcNow,
         });
         await db.SaveChangesAsync();
 
         var envelope = await CreateCourtEnvelopeAsync(db, CreateService(db));
-        Assert.True(envelope.FeeGenerated);
-        Assert.Equal(275m, envelope.FeeAmountSar);
-        Assert.Single(db.KeyReceiptFeeCharges);
+
+        Assert.NotNull(envelope.RevenueEntitlementAtUtc);
+        Assert.False(envelope.FeeGenerated);
+        Assert.Null(envelope.FeeAmountSar);
+        Assert.Empty(db.KeyReceiptFeeCharges);
         Assert.Empty(db.CourtVisitFeeCharges);
+        Assert.Contains(
+            envelope.Timeline,
+            t => t.Summary.Contains("فوترة إنفاذ", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// The report is one list: what finance already has amounts for, and what is merely owed to be
+    /// billed. Reading either side alone hid the other.
+    /// </summary>
+    [Fact]
+    public async Task The_fee_report_shows_entitlements_beside_the_historical_charges()
+    {
+        await using var db = CreateDb();
+        var service = CreateService(db);
+        var entitlement = await CreateCourtEnvelopeAsync(db, service);
+        var historical = await CreateCourtEnvelopeAsync(db, service);
+        await AddHistoricalChargeAsync(db, historical.Id, historical.RequestNumber, 275m);
+
+        var report = await service.ListFeeReportAsync();
+
+        Assert.Equal(2, report.Count);
+        Assert.Equal(275m, Assert.Single(report, r => r.EnvelopeId == historical.Id).FeeAmountSar);
+        Assert.Null(Assert.Single(report, r => r.EnvelopeId == entitlement.Id).FeeAmountSar);
+    }
+
+    /// <summary>
+    /// There is nothing for finance to confirm on an entitlement — the amount is entered during
+    /// enforcement billing — so the refusal has to say that rather than claim the record is missing.
+    /// </summary>
+    [Fact]
+    public async Task Confirming_collection_on_an_entitlement_explains_it_carries_no_amount()
+    {
+        await using var db = CreateDb();
+        var service = CreateService(db);
+        var envelope = await CreateCourtEnvelopeAsync(db, service);
+
+        var (row, error) = await service.MarkFeeCollectedAsync(envelope.Id, null);
+
+        Assert.Null(row);
+        Assert.Contains("فوترة إنفاذ", error);
+    }
+
+    [Fact]
+    public async Task Confirming_collection_still_works_on_a_historical_charge()
+    {
+        await using var db = CreateDb();
+        var service = CreateService(db);
+        var envelope = await CreateCourtEnvelopeAsync(db, service);
+        await AddHistoricalChargeAsync(db, envelope.Id, envelope.RequestNumber, 275m);
+
+        var (row, error) = await service.MarkFeeCollectedAsync(envelope.Id, "INV-9");
+
+        Assert.Null(error);
+        Assert.Equal(KeyReceiptFeeStatuses.Collected, row!.CollectionStatus);
+        Assert.Equal("INV-9", row.InvoiceReference);
     }
 
     private static KeyEnvelopesService CreateService(ApplicationDbContext db) =>
         new(db, new PropertyAccessHoldService(db), new KeyEnvelopePeopleResolver(db));
+
+    /// <summary>
+    /// A charge from before key-receipt revenue left the pricing table. Nothing creates these any
+    /// more, but they stay readable and collectable.
+    /// </summary>
+    private static async Task AddHistoricalChargeAsync(
+        ApplicationDbContext db,
+        Guid envelopeId,
+        string requestNumber,
+        decimal amountSar)
+    {
+        var now = DateTime.UtcNow;
+        db.KeyReceiptFeeCharges.Add(new KeyReceiptFeeCharge
+        {
+            Id = Guid.NewGuid(),
+            EnvelopeId = envelopeId,
+            RequestNumber = requestNumber,
+            AmountSar = amountSar,
+            CollectionStatus = KeyReceiptFeeStatuses.Open,
+            CreatedByUserId = "u1",
+            CreatedByName = "مراجع",
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+        });
+        await db.SaveChangesAsync();
+    }
 
     private static async Task<KeyEnvelopeDto> CreateCourtEnvelopeAsync(
         ApplicationDbContext db,

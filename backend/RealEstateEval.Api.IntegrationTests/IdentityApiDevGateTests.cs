@@ -113,6 +113,24 @@ public class IdentityApiDevGateTests : IClassFixture<IdentityApiWebApplicationFa
     }
 
     [Fact]
+    public async Task Updating_a_user_requires_authentication()
+    {
+        var response = await _client.PatchAsJsonAsync(
+            "/api/users/some-user-id",
+            new { city = "جدة" });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Unlocking_a_user_requires_authentication()
+    {
+        var response = await _client.PostAsync("/api/users/some-user-id/unlock", null);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Logout_revokes_without_requiring_an_access_token()
     {
         var response = await _client.PostAsJsonAsync(

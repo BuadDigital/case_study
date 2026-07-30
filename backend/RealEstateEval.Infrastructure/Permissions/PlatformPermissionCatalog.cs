@@ -6,7 +6,7 @@ public static class PlatformPermissionCatalog
     public static readonly IReadOnlyList<string> AllPages =
     [
         "dashboard", "active-primary-data", "active-distribution", "active-case-study",
-        "po", "all-transactions", "bourse-inquiry", "survey", "keys", "failures", "suspended-transactions",
+        "po", "all-transactions", "favorites", "bourse-inquiry", "survey", "keys", "failures", "suspended-transactions",
         "valuation-requests", "property-inspection", "government-review", "operations-tasks",
         "valuation-coordination", "property-appraisal", "active-survey", "party-fees",
         "system-fields-catalog", "system-screen-catalog", "financial",
@@ -47,47 +47,47 @@ public static class PlatformPermissionCatalog
         ["cdo"] = AllPages.ToArray(),
         ["general-manager"] =
         [
-            "po", "all-transactions", "active-primary-data", "bourse-inquiry", "active-distribution",
+            "po", "all-transactions", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "keys", "failures", "suspended-transactions",
             "valuation-requests", "system-screen-catalog",
             "financial", "courts", "failure-types", "case-study-info-roles",
         ],
         ["section-supervisor"] =
         [
-            "po", "active-primary-data", "bourse-inquiry", "active-distribution",
+            "po", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "operations-tasks", "keys", "failures", "suspended-transactions", "failure-types",
             "party-fees",
             "system-screen-catalog",
         ],
         ["case-specialist"] =
         [
-            "po", "active-primary-data", "bourse-inquiry", "active-distribution",
+            "po", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "operations-tasks", "failures", "suspended-transactions",
             "system-screen-catalog",
         ],
         ["valuation-coordinator"] =
         [
-            "all-transactions", "valuation-coordination",
+            "all-transactions", "favorites", "valuation-coordination",
             "system-screen-catalog",
         ],
         ["real-estate-appraiser"] =
         [
-            "po", "all-transactions", "operations-tasks", "property-appraisal", "failures", "suspended-transactions",
+            "po", "all-transactions", "favorites", "operations-tasks", "property-appraisal", "failures", "suspended-transactions",
             "system-screen-catalog",
         ],
         ["field-inspector"] =
         [
-            "all-transactions", "operations-tasks", "property-inspection", "party-fees", "failures",
+            "all-transactions", "favorites", "operations-tasks", "property-inspection", "party-fees", "failures",
             "system-screen-catalog",
         ],
         ["government-reviewer"] =
         [
-            "po", "operations-tasks", "party-fees", "keys", "failures",
+            "po", "favorites", "operations-tasks", "party-fees", "keys", "failures",
             "system-screen-catalog",
         ],
         ["engineering-office"] =
         [
-            "all-transactions", "active-survey", "party-fees", "failures",
+            "all-transactions", "favorites", "active-survey", "party-fees", "failures",
             "system-screen-catalog",
         ],
         ["financial-officer"] =

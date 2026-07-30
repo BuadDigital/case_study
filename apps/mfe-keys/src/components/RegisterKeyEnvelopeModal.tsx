@@ -406,9 +406,11 @@ export function RegisterKeyEnvelopeModal({
       showToast(result.error, "error");
       return;
     }
-    const fee = result.data.feeGenerated;
+    const entitled = !!result.data.revenueEntitlementAtUtc;
     showToast(
-      `تم تسجيل الظرف ${request}${fee ? " وتوليد بند الأتعاب." : "."}`,
+      `تم تسجيل الظرف ${request}${
+        entitled ? " وإثبات استحقاق أتعاب الاستلام من إنفاذ." : "."
+      }`,
       "success",
     );
     onRegistered(result.data.id);

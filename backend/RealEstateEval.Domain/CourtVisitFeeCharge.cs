@@ -14,6 +14,11 @@ public class CourtVisitFeeCharge
     public string CreditAssigneeId { get; set; } = "";
     public string CreditAssigneeName { get; set; } = "";
     public decimal AmountSar { get; set; }
+    /// <summary>
+    /// The <c>PartyFeePricingTable</c> the amount was read from, stamped alongside it. Deliberately
+    /// not a foreign key — the id has to keep naming its source even if the table is later removed.
+    /// </summary>
+    public Guid? PricingTableId { get; set; }
     /// <summary>open | settled (settled reserved for future disbursement).</summary>
     public string Status { get; set; } = CourtVisitFeeStatuses.Open;
     public DateTime CreatedAtUtc { get; set; }

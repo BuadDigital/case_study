@@ -1,5 +1,6 @@
 import { parseFieldErrorsFromResponse } from "./field-errors";
 import { getApiBase } from "./index";
+import { repositoryFetch as fetch } from "./write-repository";
 import { fetchAllListPages } from "./pagination";
 
 export type WorkOrdersApiConfig = {

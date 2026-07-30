@@ -7,7 +7,7 @@
   "ownershipStatus": "approved",
   "statusValues": ["proposed", "pending-decision", "approved"],
   "ownershipModels": ["single-owner", "per-producer", "per-consumer"],
-  "legacyMigrationCutover": "20260729142123_DatabaseRaceGuardsAndIndexes",
+  "legacyMigrationCutover": "20260730092246_AddPushSubscriptions",
   "schemas": [
     "identity",
     "case_study",
@@ -17,7 +17,8 @@
     "valuation",
     "attachments",
     "financial",
-    "messaging"
+    "messaging",
+    "audit"
   ],
   "contexts": [
     {
@@ -43,10 +44,10 @@
       "state": "extracted",
       "extractedOn": "2026-07-30",
       "owner": "platform",
-      "schemas": ["platform"],
+      "schemas": ["platform", "audit"],
       "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Platform/Migrations",
       "migrationsHistorySchema": "platform",
-      "note": "Platform catalogs and configuration only. messaging.UserNotifications is Platform-owned (D3) but stays on the legacy context until the messaging slice (extraction order, step 5)."
+      "note": "Platform catalogs and configuration, plus the shared audit schema whose single table this stream creates and shapes (D7); the ledger's rows are owned per producer. messaging.UserNotifications is Platform-owned (D3) but stays on the legacy context until the messaging slice (extraction order, step 5)."
     },
     {
       "name": "ValuationDbContext",
@@ -135,6 +136,17 @@
       "outcome": "not discoverable from this repository; does not block Phase 1, remains a hard gate for Phase 3 grant changes and Phase 4 data movement",
       "rationale": "Phase 1 changes only which EF context holds a write path. It renames no table, moves no row, changes no grant and emits no DDL, so an unknown external reader cannot be broken by it. The inventory is still required before schema-limited roles are granted (Phase 3) and is a stop condition for physical data movement (Phase 4).",
       "note": "Judgment call recorded on approval: the ownership decisions D1-D5 were approved without it; the operations deliverable is still outstanding and is listed in the remaining gate."
+    },
+    {
+      "id": "D7",
+      "question": "Where does the shared audit ledger live, and who may write it?",
+      "candidates": ["platform-owned table", "dedicated audit schema, per-producer rows", "one audit table per context"],
+      "input": "platform engineering + security",
+      "status": "approved",
+      "decidedOn": "2026-07-30",
+      "outcome": "dedicated audit schema holding one append-only table; rows owned per producer",
+      "rationale": "Identity, platform and case-study all append audit rows in the same transaction as the change they record, so the ledger cannot belong to a single owner's schema without granting every writer that owner's whole schema — putting courts, regions and configuration within reach of the Identity service, which otherwise sees only identity. A schema containing this one table keeps the central query surface intact while letting Phase 3 grant INSERT on the ledger alone. Splitting into one table per context was rejected: it fragments the central audit view and its pagination for no boundary gain, since rows are already per-producer.",
+      "note": "Consequence: audit.AuditLogs is mapped by every writing context. PlatformDbContext creates and shapes it; the others exclude it from migrations. UPDATE and DELETE are rejected by a database trigger, so append-only holds even for a direct SQL client."
     }
   ],
   "tables": [
@@ -205,6 +217,10 @@
 
     { "table": "OutboxMessages", "schema": "messaging", "dbSet": "OutboxMessages", "entity": "OutboxMessage", "owner": "per-producer", "status": "approved", "ownershipModel": "per-producer", "contexts": ["ApplicationDbContext", "ValuationDbContext"], "transactionGroup": "messaging.outbox", "decision": "D5", "note": "Each producing context owns the rows it inserts (D5). Claimed and dispatched only by the Case Study dispatcher until the messaging slice." },
     { "table": "ProcessedIntegrationEvents", "schema": "messaging", "dbSet": "ProcessedIntegrationEvents", "entity": "ProcessedIntegrationEvent", "owner": "per-consumer", "status": "approved", "ownershipModel": "per-consumer", "contexts": ["ApplicationDbContext"], "transactionGroup": "messaging.inbox", "decision": "D5", "note": "Deduplication keyed by (Consumer, EventId); each consumer owns the rows carrying its own Consumer value." },
-    { "table": "UserNotifications", "schema": "messaging", "dbSet": "UserNotifications", "entity": "UserNotification", "owner": "platform", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "notifications.inbox", "decision": "D3", "note": "Platform-owned (D3). Moves to a Platform-owned messaging context in extraction step 5; other services already request notifications through the outbox adapter instead of writing rows." }
+    { "table": "UserNotifications", "schema": "messaging", "dbSet": "UserNotifications", "entity": "UserNotification", "owner": "platform", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "notifications.inbox", "decision": "D3", "note": "Platform-owned (D3). Moves to a Platform-owned messaging context in extraction step 5; other services already request notifications through the outbox adapter instead of writing rows." },
+    { "table": "PushSubscriptions", "schema": "messaging", "dbSet": "PushSubscriptions", "entity": "PushSubscription", "owner": "platform", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "notifications.push", "decision": "D3", "note": "Web-push endpoints for the notification inbox; same owner as UserNotifications (D3)." },
+    { "table": "PushPreferences", "schema": "messaging", "dbSet": "PushPreferences", "entity": "PushPreference", "owner": "platform", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "notifications.push", "decision": "D3", "note": "Per-user opt-out consulted before a push is delivered." },
+
+    { "table": "AuditLogs", "schema": "audit", "dbSet": "AuditLogs", "entity": "AuditLog", "owner": "per-producer", "status": "approved", "ownershipModel": "per-producer", "contexts": ["ApplicationDbContext", "PlatformDbContext", "IdentityDbContext"], "transactionGroup": "audit.log", "decision": "D7", "note": "Append-only ledger. Each producer owns the rows it inserts and appends them in the same transaction as the change they describe (D7); a database trigger rejects UPDATE and DELETE. PlatformDbContext creates and shapes the table, every other context maps it excluded from migrations." }
   ]
 }

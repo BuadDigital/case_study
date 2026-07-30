@@ -28,6 +28,7 @@ builder.Services.AddNotificationIntegrationHandlers();
 builder.Services.AddIntegrationEventInbox();
 builder.Services.AddHostedService<NotificationIntegrationEventConsumer>();
 builder.Services.AddHostedService<NotificationRealtimeIntegrationConsumer>();
+builder.Services.AddHostedService<PushDispatchIntegrationConsumer>();
 builder.Services.AddRealEstateEvalJwt(builder.Configuration, builder.Environment);
 builder.Services.AddRealEstateEvalCors(builder.Configuration, builder.Environment);
 builder.Services.AddRealEstateEvalRateLimiting(builder.Configuration, builder.Environment);

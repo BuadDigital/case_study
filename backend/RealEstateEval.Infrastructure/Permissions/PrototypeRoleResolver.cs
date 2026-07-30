@@ -3,8 +3,8 @@ using RealEstateEval.Domain;
 namespace RealEstateEval.Infrastructure.Permissions;
 
 /// <summary>
-/// Maps identity roles + HR job titles to English prototype role ids (RoleId).
-/// Job-title mapping is an exact allowlist from seeded prototype users only — no fuzzy matching.
+/// Resolves the one canonical product role stored on the user profile.
+/// Job titles are display metadata and never grant permissions.
 /// </summary>
 public static class PrototypeRoleResolver
 {
@@ -37,6 +37,7 @@ public static class PrototypeRoleResolver
         "real-estate-appraiser",
         "field-inspector",
         "financial-officer",
+        "engineering-office",
     ];
 
     public static bool IsCreatableStaffRoleId(string? roleId) =>
@@ -58,24 +59,22 @@ public static class PrototypeRoleResolver
         return null;
     }
 
+    /// <summary>Seed/migration compatibility only; authorization never calls this method.</summary>
+    public static string? LegacyRoleIdForJobTitle(string? jobTitle) =>
+        string.IsNullOrWhiteSpace(jobTitle)
+            ? null
+            : ExactJobTitleToRoleId.GetValueOrDefault(jobTitle.Trim());
+
     public static string? Resolve(UserProfile? profile, IReadOnlyList<string> identityRoles)
     {
         if (identityRoles.Any(PlatformPermissionCatalog.IsSuperAdminIdentityRole))
             return "cdo";
 
-        var level = profile?.PermissionLevel?.Trim().ToLowerInvariant();
-        if (level == "cdo")
-            return "cdo";
-
-        return ResolveFromJobTitle(profile?.JobTitle);
-    }
-
-    private static string? ResolveFromJobTitle(string? jobTitle)
-    {
-        if (string.IsNullOrWhiteSpace(jobTitle))
+        var roleId = profile?.RoleId?.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(roleId))
             return null;
 
-        return ExactJobTitleToRoleId.TryGetValue(jobTitle.Trim(), out var roleId)
+        return ExactJobTitleToRoleId.Values.Contains(roleId, StringComparer.Ordinal)
             ? roleId
             : null;
     }

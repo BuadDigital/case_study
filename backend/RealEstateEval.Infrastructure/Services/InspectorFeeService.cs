@@ -58,7 +58,13 @@ public class InspectorFeeService : IInspectorFeeService
                 partyType,
                 areaM2,
                 task.AssigneeId,
-                cancellationToken) ?? 0m;
+                cancellationToken);
+
+            // Employees are priced by hand, so an unresolved fee is expected for them and the ledger
+            // opens at zero. For a cooperator it means the table has no rate, and inventing one here
+            // is exactly what we are removing — the accrual waits until the rate exists.
+            var isEmployee = InspectorFeeRules.IsEmployee(partyType);
+            if (!agreedFee.IsResolved && !isEmployee) continue;
 
             _db.InspectorFeeLedgers.Add(new InspectorFeeLedger
             {
@@ -68,7 +74,9 @@ public class InspectorFeeService : IInspectorFeeService
                 PropertyOrdinal = task.PropertyOrdinal,
                 AssigneeId = task.AssigneeId,
                 InspectorType = partyType,
-                AgreedFeeSar = agreedFee,
+                SupervisingDepartment = SupervisingDepartments.ForTaskKind(task.Kind),
+                AgreedFeeSar = agreedFee.FeeSar ?? 0m,
+                PricingTableId = agreedFee.PricingTableId,
                 SupervisorDiscountSar = 0m,
                 DiscountReason = null,
                 BillingStatus = InspectorFeeBillingStatus.Draft,
@@ -117,15 +125,17 @@ public class InspectorFeeService : IInspectorFeeService
         var partyType = ledger?.InspectorType
             ?? await ResolvePartyTypeAsync(task, cancellationToken);
         var areaM2 = await ResolvePropertyAreaM2Async(task, cancellationToken);
-        var agreedFee = await _pricing.ResolveDefaultFeeAsync(
+        var resolvedFee = await _pricing.ResolveDefaultFeeAsync(
             task.Kind,
             partyType,
             areaM2,
             ledger?.AssigneeId ?? task.AssigneeId,
-            cancellationToken) ?? 0m;
+            cancellationToken);
 
-        if (agreedFee <= 0m)
-            return (null, "تعذر تحديد الأتعاب من جدول التسعير — راجع ضبط الأسعار.");
+        if (!resolvedFee.IsResolved)
+            return (null, PricingErrors.FeeUnresolved);
+
+        var agreedFee = resolvedFee.FeeSar!.Value;
 
         var now = DateTime.UtcNow;
         if (ledger is null)
@@ -138,7 +148,9 @@ public class InspectorFeeService : IInspectorFeeService
                 PropertyOrdinal = task.PropertyOrdinal,
                 AssigneeId = task.AssigneeId,
                 InspectorType = partyType,
+                SupervisingDepartment = SupervisingDepartments.ForTaskKind(task.Kind),
                 AgreedFeeSar = agreedFee,
+                PricingTableId = resolvedFee.PricingTableId,
                 SupervisorDiscountSar = 0m,
                 DiscountReason = null,
                 // Table price → ready for billing without office approval.
@@ -157,7 +169,9 @@ public class InspectorFeeService : IInspectorFeeService
         else
         {
             ledger.AgreedFeeSar = agreedFee;
+            ledger.PricingTableId = resolvedFee.PricingTableId;
             ledger.InspectorType = partyType;
+            ledger.SupervisingDepartment = SupervisingDepartments.ForTaskKind(task.Kind);
             ledger.AssigneeId = task.AssigneeId;
             ledger.PropertyId = task.PropertyId;
             ledger.PropertyOrdinal = task.PropertyOrdinal;
@@ -214,12 +228,34 @@ public class InspectorFeeService : IInspectorFeeService
         string? taskKind = null,
         string? billingStatus = null,
         string? returnTo = null,
-        CancellationToken cancellationToken = default)
+        bool hideDisputed = false,
+        CancellationToken cancellationToken = default,
+        string? supervisingDepartment = null)
     {
         await BackfillMissingLedgersAsync(cancellationToken);
         await SyncLedgerSnapshotsFromTasksAsync(cancellationToken);
 
         var query = _db.InspectorFeeLedgers.AsNoTracking();
+
+        // Applied to the query itself, before any row cap or projection, so a disputed line cannot
+        // reach finance through the list, the totals, or the queue counts derived from them.
+        if (hideDisputed)
+        {
+            query = query.Where(x =>
+                x.BillingStatus != InspectorFeeBillingStatus.Disputed);
+        }
+
+        // A non-null supervisingDepartment means the caller is department-scoped. Fail closed when
+        // the value is missing/unknown (e.g. Unassigned) so a supervisor without a department sees
+        // nothing rather than every queue.
+        if (supervisingDepartment is not null)
+        {
+            var normalizedDepartment =
+                SupervisingDepartments.NormalizeProfileValue(supervisingDepartment);
+            query = normalizedDepartment is null
+                ? query.Where(_ => false)
+                : query.Where(x => x.SupervisingDepartment == normalizedDepartment);
+        }
 
         if (!string.IsNullOrWhiteSpace(workflowTaskId) &&
             Guid.TryParse(workflowTaskId.Trim(), out var taskGuid))
@@ -368,11 +404,20 @@ public class InspectorFeeService : IInspectorFeeService
     public async Task<InspectorFeeRowDto?> PatchAsync(
         Guid workflowTaskId,
         PatchInspectorFeeRequest request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? actorDepartment = null,
+        bool canManageAllDepartments = false)
     {
         var ledger = await _db.InspectorFeeLedgers
             .FirstOrDefaultAsync(x => x.WorkflowTaskId == workflowTaskId, cancellationToken);
         if (ledger is null) return null;
+        if (!SupervisingDepartments.CanManage(
+                ledger.SupervisingDepartment,
+                actorDepartment,
+                canManageAllDepartments))
+        {
+            return null;
+        }
 
         if (!InspectorFeeBillingRules.IsEditableStatus(ledger.BillingStatus))
             return null;
@@ -382,6 +427,8 @@ public class InspectorFeeService : IInspectorFeeService
             if (!InspectorFeeRules.IsEmployee(ledger.InspectorType))
                 return null;
             ledger.AgreedFeeSar = Math.Max(0m, request.AgreedFeeSar.Value);
+            // A hand-entered amount is no longer the table's, so the stamp must not keep claiming it.
+            ledger.PricingTableId = null;
         }
 
         if (request.SupervisorDiscountSar.HasValue)
@@ -452,7 +499,9 @@ public class InspectorFeeService : IInspectorFeeService
         string? actorAssigneeId,
         bool isOperationsManager,
         bool isFinancialOfficer,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? actorDepartment = null,
+        bool canManageAllDepartments = false)
     {
         var ledger = await _db.InspectorFeeLedgers
             .FirstOrDefaultAsync(x => x.WorkflowTaskId == workflowTaskId, cancellationToken);
@@ -466,7 +515,9 @@ public class InspectorFeeService : IInspectorFeeService
             actorAssigneeId,
             isOperationsManager,
             isFinancialOfficer,
-            cancellationToken);
+            cancellationToken,
+            actorDepartment: actorDepartment,
+            canManageAllDepartments: canManageAllDepartments);
         if (error is not null)
             return (null, error);
 
@@ -481,7 +532,9 @@ public class InspectorFeeService : IInspectorFeeService
         string? actorAssigneeId,
         bool isOperationsManager,
         bool isFinancialOfficer,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? actorDepartment = null,
+        bool canManageAllDepartments = false)
     {
         var succeeded = new List<InspectorFeeRowDto>();
         var failed = new List<InspectorFeeTransitionErrorDto>();
@@ -522,7 +575,9 @@ public class InspectorFeeService : IInspectorFeeService
                 actorAssigneeId,
                 isOperationsManager,
                 isFinancialOfficer,
-                cancellationToken);
+                cancellationToken,
+                actorDepartment: actorDepartment,
+                canManageAllDepartments: canManageAllDepartments);
 
             if (error is not null)
             {
@@ -684,13 +739,23 @@ public class InspectorFeeService : IInspectorFeeService
         bool isOperationsManager,
         bool isFinancialOfficer,
         CancellationToken cancellationToken,
-        Guid? disbursementBatchId = null)
+        Guid? disbursementBatchId = null,
+        string? actorDepartment = null,
+        bool canManageAllDepartments = false)
     {
         var action = request.Action.Trim().ToLowerInvariant();
         var fromStatus = ledger.BillingStatus;
 
         if (!InspectorFeeTransitionAuthorization.CanPerformAction(action, ledger, actorAssigneeId, isOperationsManager, isFinancialOfficer))
             return "غير مصرّح بتنفيذ هذا الإجراء.";
+        if (RequiresDepartmentSupervisor(action)
+            && !SupervisingDepartments.CanManage(
+                ledger.SupervisingDepartment,
+                actorDepartment,
+                canManageAllDepartments))
+        {
+            return "هذا البند يتبع قسماً آخر — الإجراء متاح لمشرف قسم المعاملة فقط.";
+        }
 
         if (action is InspectorFeeActions.SubmitToSupervisor
             or InspectorFeeActions.CreateDisbursementRequest)
@@ -712,9 +777,25 @@ public class InspectorFeeService : IInspectorFeeService
                 action,
                 out var nextStatus,
                 out var nextReturnTo,
-                out var transitionError))
+                out var transitionError,
+                ledger.PreSuspensionStatus))
         {
             return transitionError;
+        }
+
+        if (action == InspectorFeeActions.Suspend)
+        {
+            if (string.IsNullOrWhiteSpace(request.Reason))
+                return "سبب الإيقاف مطلوب.";
+
+            ledger.PreSuspensionStatus = fromStatus;
+            ledger.SuspensionReason = request.Reason.Trim();
+        }
+
+        if (action == InspectorFeeActions.LiftSuspension)
+        {
+            ledger.PreSuspensionStatus = null;
+            ledger.SuspensionReason = null;
         }
 
         if (action == InspectorFeeActions.SubmitToSupervisor)
@@ -864,6 +945,14 @@ public class InspectorFeeService : IInspectorFeeService
 
         return null;
     }
+
+    private static bool RequiresDepartmentSupervisor(string action) =>
+        action is InspectorFeeActions.ApproveToFinance
+            or InspectorFeeActions.ResendToFinance
+            or InspectorFeeActions.ReturnToOffice
+            or InspectorFeeActions.ResolveDispute
+            or InspectorFeeActions.Suspend
+            or InspectorFeeActions.LiftSuspension;
 
     private async Task<bool> IsLedgerWorkSubmittedAsync(
         Guid workflowTaskId,

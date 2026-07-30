@@ -26,6 +26,7 @@
     "@platform/api-client": "*",
     "@platform/auth-client": "*",
     "@platform/design-system": "*",
+    "@platform/offline-client": "*",
     "@platform/types": "*",
     "@tanstack/react-query": "^5.100.11",
     "next": "16.2.6",

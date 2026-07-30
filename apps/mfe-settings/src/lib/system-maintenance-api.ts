@@ -1,4 +1,4 @@
-import { getApiBase } from "@platform/api-client";
+import { getApiBase, repositoryFetch as fetch } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
 
 export type SystemResetResult = {

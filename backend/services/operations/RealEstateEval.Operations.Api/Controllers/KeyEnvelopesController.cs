@@ -38,8 +38,12 @@ public class KeyEnvelopesController : ControllerBase
         CancellationToken ct)
         => Ok(await _envelopes.ListFeeReportAsync(ct));
 
+    /// <summary>
+    /// Confirming collection is a finance act, so it sits behind <c>manage-financial</c> rather than
+    /// the party-work gate the rest of this controller uses.
+    /// </summary>
     [HttpPost("{id:guid}/fee-collected")]
-    [Authorize(Policy = CapabilityPolicyNames.SubmitPartyWork)]
+    [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
     public async Task<ActionResult<KeyEnvelopeFeeReportRowDto>> MarkFeeCollected(
         Guid id,
         [FromBody] MarkKeyReceiptFeeCollectedRequest? body,

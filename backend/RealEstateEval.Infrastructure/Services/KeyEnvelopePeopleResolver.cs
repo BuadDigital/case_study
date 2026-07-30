@@ -129,6 +129,7 @@ public sealed class KeyEnvelopePeopleResolver : IKeyEnvelopePeopleResolver
             Status = row.Status,
             FeeGenerated = row.FeeGenerated,
             FeeAmountSar = row.FeeAmountSar,
+            RevenueEntitlementAtUtc = row.RevenueEntitlementAtUtc,
             CreatedByUserId = row.CreatedByUserId,
             CreatedByName = Fix(row.CreatedByName, row.CreatedByUserId),
             CreatedAtUtc = row.CreatedAtUtc,

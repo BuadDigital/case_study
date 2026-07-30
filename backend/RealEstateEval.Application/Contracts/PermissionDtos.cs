@@ -7,6 +7,7 @@ public class PermissionsDto
     public string? PrototypeRole { get; init; }
     public string? DisplayName { get; init; }
     public string? DistributionAssigneeId { get; init; }
+    public string? Department { get; init; }
     public IReadOnlyList<string> Pages { get; init; } = [];
     public IReadOnlyList<string> Capabilities { get; init; } = [];
 }

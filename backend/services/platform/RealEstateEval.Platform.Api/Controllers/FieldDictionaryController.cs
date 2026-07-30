@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.Platform.Api.Controllers;
@@ -24,5 +25,5 @@ public class FieldDictionaryController : ControllerBase
     public async Task<ActionResult<FieldDictionaryStateDto>> Save(
         [FromBody] SaveFieldDictionaryStateRequest request,
         CancellationToken ct)
-        => Ok(await _service.SaveAsync(request, ct));
+        => Ok(await _service.SaveAsync(request, ActorClaims.Id(User), ct));
 }

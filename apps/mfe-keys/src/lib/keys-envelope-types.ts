@@ -69,6 +69,7 @@ export type KeyEnvelopeRow = {
   status: KeyEnvelopeStatus;
   feeGenerated: boolean;
   feeAmountSar?: number | null;
+  revenueEntitlementAtUtc?: string | null;
   createdByName: string;
   createdAtUtc: string;
   operationsTaskId?: string | null;
@@ -85,7 +86,8 @@ export type KeyEnvelopeFeeReportRow = {
   circuit: string;
   photoAttachmentId?: string | null;
   receiptAttachmentId?: string | null;
-  feeAmountSar: number;
+  /** بلا مبلغ = مؤشر استحقاق تُسعّره المالية عند فوترة إنفاذ. */
+  feeAmountSar?: number | null;
   collectionStatus?: string;
   invoiceReference?: string | null;
   collectedAtUtc?: string | null;

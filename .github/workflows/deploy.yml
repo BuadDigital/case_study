@@ -327,6 +327,15 @@ jobs:
             # Export variables for compose
             export IMAGE_OWNER="${{ needs.build-and-push.outputs.image_owner }}"
             export TAG="${{ needs.build-and-push.outputs.tag }}"
+            export TLS_CERTIFICATE_PATH="${{ secrets.TLS_CERTIFICATE_PATH }}"
+            export TLS_PRIVATE_KEY_PATH="${{ secrets.TLS_PRIVATE_KEY_PATH }}"
+            export PUBLIC_APP_URL="${{ secrets.PUBLIC_APP_URL }}"
+
+            # TLS is mandatory in Production. Fail before touching the running stack
+            # when the host certificate has not been provisioned or renewed correctly.
+            test -r "$TLS_CERTIFICATE_PATH"
+            test -r "$TLS_PRIVATE_KEY_PATH"
+            test -n "$PUBLIC_APP_URL"
 
             # Pull images, apply EF migrations (one-shot), then bring the stack up.
             docker compose -f docker-compose.prod.yml pull
@@ -360,6 +369,11 @@ jobs:
             check_endpoint "Identity readiness" "http://identity:8080/ready"
             check_endpoint "Case Study health" "http://case-study:8080/health"
             check_endpoint "Case Study readiness" "http://case-study:8080/ready"
+
+            # Validate the public certificate chain and HTTPS ingress, not just the
+            # private container network.
+            curl --fail --silent --show-error --max-time 20 \
+              "${PUBLIC_APP_URL%/}/" >/dev/null
 
             # Preserve SHA-tagged releases for rollback; remove dangling images only.
             docker image prune -f

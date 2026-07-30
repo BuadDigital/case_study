@@ -56,7 +56,7 @@ public class PasswordAuthenticationServiceTests
     [Fact]
     public async Task Authenticate_rejects_inactive_user()
     {
-        await using var provider = await CreateProviderAsync(UserStatus.Inactive);
+        await using var provider = await CreateProviderAsync(UserStatus.Disabled);
         var service = provider.GetRequiredService<IPasswordAuthenticationService>();
 
         var result = await service.AuthenticateAsync("test-user", "StrongPass123!");

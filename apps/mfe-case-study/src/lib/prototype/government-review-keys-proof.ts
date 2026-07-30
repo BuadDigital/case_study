@@ -3,6 +3,7 @@ import {
   downloadAttachmentBlob,
   uploadAttachment,
 } from "@platform/api-client";
+import { uploadAttachmentWithOfflineFallback } from "@platform/app-shared/offline/offline-write";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 import type { GovernmentReviewKeysProofFile } from "./government-review-work-data";
 
@@ -78,30 +79,43 @@ export async function fileToGovernmentReviewKeysProof(
   const mimeType = file.type || "application/octet-stream";
   const dataUrl = await readAsDataUrl(file);
   const config = prototypeModulesApiConfig();
+  const bytes = await file.arrayBuffer();
+  const scopeKey = governmentReviewKeysProofScopeKey(taskId, id);
 
-  if (!config || !taskId.trim()) {
-    // Offline / demo fallback — keep legacy embedded dataUrl.
-    return { id, fileName: file.name, mimeType, dataUrl };
-  }
-
-  const upload = await uploadAttachment(config, {
+  const uploaded = await uploadAttachmentWithOfflineFallback({
     scope: GOVERNMENT_REVIEW_KEYS_PROOF_SCOPE,
-    scopeKey: governmentReviewKeysProofScopeKey(taskId, id),
+    scopeKey,
     fileName: file.name,
     contentType: mimeType,
-    contentBase64: await fileToBase64(file),
+    bytes,
+    onlineUpload: async () => {
+      if (!config || !taskId.trim()) {
+        throw new Error(
+          "تعذّر رفع إثبات المفتاح — تحقق من الاتصال وحاول مجدداً",
+        );
+      }
+      const upload = await uploadAttachment(config, {
+        scope: GOVERNMENT_REVIEW_KEYS_PROOF_SCOPE,
+        scopeKey,
+        fileName: file.name,
+        contentType: mimeType,
+        contentBase64: await fileToBase64(file),
+      });
+      if (!upload.ok) {
+        throw new Error(
+          "تعذّر رفع إثبات المفتاح — تحقق من الاتصال وحاول مجدداً",
+        );
+      }
+      return upload.data.id;
+    },
   });
-
-  if (!upload.ok) {
-    throw new Error("تعذّر رفع إثبات المفتاح — تحقق من الاتصال وحاول مجدداً");
-  }
 
   return {
     id,
     fileName: file.name,
     mimeType,
     dataUrl,
-    attachmentId: upload.data.id,
+    attachmentId: uploaded.attachmentId,
     sizeBytes: file.size,
   };
 }

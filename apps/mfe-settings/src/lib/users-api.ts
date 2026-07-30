@@ -6,10 +6,15 @@ import {
   issueActivationTicket,
   listDistributionAssignees,
   listUsers,
+  unlockStaffUser,
+  updateStaffUser,
   type CreateStaffUserRequest,
   type CreateStaffUserResult,
   type DeleteStaffUserResult,
   type IssueActivationTicketResult,
+  type UnlockStaffUserResult,
+  type UpdateStaffUserRequest,
+  type UpdateStaffUserResult,
   type UsersApiConfig,
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
@@ -83,6 +88,23 @@ export async function submitCreateStaffUser(
   const config = apiConfig();
   if (!config) return { ok: false, kind: "network" };
   return createStaffUser(config, body);
+}
+
+export async function submitUpdateStaffUser(
+  userId: string,
+  body: UpdateStaffUserRequest,
+): Promise<UpdateStaffUserResult> {
+  const config = apiConfig();
+  if (!config) return { ok: false, kind: "network" };
+  return updateStaffUser(config, userId, body);
+}
+
+export async function submitUnlockStaffUser(
+  userId: string,
+): Promise<UnlockStaffUserResult> {
+  const config = apiConfig();
+  if (!config) return { ok: false, kind: "network" };
+  return unlockStaffUser(config, userId);
 }
 
 export async function requestActivationTicket(

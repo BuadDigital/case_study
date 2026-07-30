@@ -22,6 +22,10 @@ public interface IInspectorFeeService
         string actorUserId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Set <paramref name="hideDisputed"/> for a finance-only actor: a line under pricing dispute must
+    /// not reach finance in any response, counts included, until operations resolves it.
+    /// </summary>
     Task<InspectorFeesSummaryDto> GetSummaryAsync(
         string? assigneeId,
         string? workflowTaskId,
@@ -29,7 +33,9 @@ public interface IInspectorFeeService
         string? taskKind = null,
         string? billingStatus = null,
         string? returnTo = null,
-        CancellationToken cancellationToken = default);
+        bool hideDisputed = false,
+        CancellationToken cancellationToken = default,
+        string? supervisingDepartment = null);
 
     Task<InspectorFeeRowDto?> GetByWorkflowTaskIdAsync(
         Guid workflowTaskId,
@@ -38,7 +44,9 @@ public interface IInspectorFeeService
     Task<InspectorFeeRowDto?> PatchAsync(
         Guid workflowTaskId,
         PatchInspectorFeeRequest request,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        string? actorDepartment = null,
+        bool canManageAllDepartments = false);
 
     Task<(InspectorFeeRowDto? Row, string? Error)> TransitionAsync(
         Guid workflowTaskId,
@@ -47,7 +55,9 @@ public interface IInspectorFeeService
         string? actorAssigneeId,
         bool isOperationsManager,
         bool isFinancialOfficer,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        string? actorDepartment = null,
+        bool canManageAllDepartments = false);
 
     Task<BatchInspectorFeeTransitionResult> BatchTransitionAsync(
         BatchInspectorFeeTransitionRequest request,
@@ -55,7 +65,9 @@ public interface IInspectorFeeService
         string? actorAssigneeId,
         bool isOperationsManager,
         bool isFinancialOfficer,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        string? actorDepartment = null,
+        bool canManageAllDepartments = false);
 
     Task<CreateDisbursementBatchResult> CreateDisbursementBatchAsync(
         CreateDisbursementBatchRequest request,

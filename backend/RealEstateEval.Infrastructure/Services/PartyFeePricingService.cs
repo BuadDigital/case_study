@@ -21,8 +21,18 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         Guid.Parse("c3d4e5f6-a7b8-9012-cdef-123456789012");
 
     private readonly ApplicationDbContext _db;
+    private readonly IAuditLogWriter _audit;
 
-    public PartyFeePricingService(ApplicationDbContext db) => _db = db;
+    public PartyFeePricingService(ApplicationDbContext db)
+        : this(db, new AuditLogWriter())
+    {
+    }
+
+    public PartyFeePricingService(ApplicationDbContext db, IAuditLogWriter audit)
+    {
+        _db = db;
+        _audit = audit;
+    }
 
     public async Task<IReadOnlyList<PartyFeePricingTableSummaryDto>> ListAsync(
         string? category = null,
@@ -31,7 +41,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         await EnsureAllCategoriesSeededAsync(cancellationToken);
         var normalizedCategory = string.IsNullOrWhiteSpace(category)
             ? null
-            : PartyFeePricingCategories.Normalize(category);
+            : PartyFeePricingCategories.Require(category);
 
         var query = _db.PartyFeePricingTables.AsNoTracking();
         if (normalizedCategory is not null)
@@ -84,41 +94,53 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
 
     public async Task<PartyFeePricingDto> CreateAsync(
         CreatePartyFeePricingTableRequest request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string actorId = "system")
     {
         await EnsureAllCategoriesSeededAsync(cancellationToken);
-        var category = PartyFeePricingCategories.Normalize(request.Category);
+        var category = PartyFeePricingCategories.Require(request.Category);
         var name = NormalizeName(request.Name, category);
 
-        PartyFeePricingTable? source = null;
+        PartyFeePricingTable? source;
         if (request.CopyFromTableId is Guid copyId)
-            source = await LoadTableAsync(copyId, tracking: false, cancellationToken);
+        {
+            // An explicit copy request that cannot be honoured must fail. Falling through to another
+            // table would hand the new table rates the caller never asked for.
+            source = await LoadTableAsync(copyId, tracking: false, cancellationToken)
+                ?? throw new InvalidOperationException(
+                    "جدول المصدر المطلوب النسخ منه غير موجود.");
 
-        source ??= await _db.PartyFeePricingTables.AsNoTracking()
-            .Include(x => x.AreaTiers)
-            .Where(x => x.Category == category)
-            .OrderByDescending(x => x.IsActive)
-            .ThenByDescending(x => x.UpdatedAtUtc)
-            .FirstOrDefaultAsync(cancellationToken);
+            if (source.Category != category)
+            {
+                throw new InvalidOperationException(
+                    "لا يمكن النسخ من تصنيف تسعير مختلف — الشرائح والمبالغ لا تتقابل بين التصنيفات.");
+            }
+        }
+        else
+        {
+            // No source asked for: start from the current rates of the same category.
+            source = await _db.PartyFeePricingTables.AsNoTracking()
+                .Include(x => x.AreaTiers)
+                .Where(x => x.Category == category)
+                .OrderByDescending(x => x.IsActive)
+                .ThenByDescending(x => x.UpdatedAtUtc)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
 
         var hasAnyInCategory = await _db.PartyFeePricingTables
             .AnyAsync(x => x.Category == category, cancellationToken);
 
+        // Without a source to copy, the table is created unpriced (zeros / no tiers). Filling it in
+        // is a deliberate act by whoever owns the rates, not something this service guesses.
         var table = new PartyFeePricingTable
         {
             Id = Guid.NewGuid(),
             Category = category,
             Name = name,
             IsActive = !hasAnyInCategory,
-            GovernmentReviewFeeSar = source?.GovernmentReviewFeeSar
-                ?? GovernmentReviewFeeRules.FallbackFeeSar,
-            KeyReceiptFeeSar = source is null
-                ? GovernmentReviewFeeRules.FallbackFeeSar
-                : (source.KeyReceiptFeeSar > 0 ? source.KeyReceiptFeeSar : source.GovernmentReviewFeeSar),
-            FieldInspectorIndividualFeeSar = source?.FieldInspectorIndividualFeeSar
-                ?? InspectorFeeRules.CooperatorIndividualFeeSar,
-            FieldInspectorOrganizationFeeSar = source?.FieldInspectorOrganizationFeeSar
-                ?? InspectorFeeRules.CooperatorOrganizationFeeSar,
+            GovernmentReviewFeeSar = source?.GovernmentReviewFeeSar ?? 0m,
+            FieldInspectorIndividualFeeSar = source?.FieldInspectorIndividualFeeSar ?? 0m,
+            FieldInspectorOrganizationFeeSar = source?.FieldInspectorOrganizationFeeSar ?? 0m,
             UpdatedAtUtc = DateTime.UtcNow,
         };
 
@@ -128,12 +150,18 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
                 .OrderBy(t => t.SortOrder)
                 .Select(t => new EngineeringSurveyFeeRules.AreaFeeTier(t.MaxAreaM2, t.FeeSar))
                 .ToList();
-            ApplyTiersInMemory(table, sourceTiers is { Count: > 0 }
-                ? sourceTiers
-                : EngineeringSurveyFeeRules.SeedTiers());
+            if (EngineeringSurveyFeeRules.HasTiers(sourceTiers))
+                ApplyTiersInMemory(table, sourceTiers!);
         }
 
         _db.PartyFeePricingTables.Add(table);
+        AddAudit(
+            actorId,
+            "PRICING_TABLE_CREATED",
+            nameof(PartyFeePricingTable),
+            table.Id,
+            before: null,
+            after: Snapshot(table));
         await _db.SaveChangesAsync(cancellationToken);
         return await ToDtoAsync(table, cancellationToken);
     }
@@ -141,11 +169,18 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
     public async Task<PartyFeePricingDto> SaveAsync(
         Guid id,
         PartyFeePricingDto request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string actorId = "system")
     {
-        var table = await _db.PartyFeePricingTables
-            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+        var table = await LoadTableAsync(id, tracking: true, cancellationToken)
             ?? throw new KeyNotFoundException($"Pricing table {id} was not found.");
+        if (await _db.PartyFeePricingAssignments
+            .AnyAsync(a => a.TableId == id, cancellationToken))
+        {
+            throw new InvalidOperationException(
+                "لا يمكن تعديل جدول مرتبط بأطراف — احفظ التغيير كنسخة جديدة لإعادة ربطهم ذرّياً.");
+        }
+        var before = Snapshot(table);
 
         table.Name = NormalizeName(request.Name, table.Category);
         table.UpdatedAtUtc = DateTime.UtcNow;
@@ -154,19 +189,15 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         {
             case PartyFeePricingCategories.EngineeringSurvey:
             {
-                var incoming = (request.AreaTiers ?? [])
-                    .OrderBy(t => t.SortOrder)
-                    .Select(t => new EngineeringSurveyFeeRules.AreaFeeTier(t.MaxAreaM2, t.FeeSar))
-                    .ToList();
+                var incoming = NormalizeRequestedTiers(request);
                 await ReplaceTiersAsync(
                     table,
-                    EngineeringSurveyFeeRules.NormalizeTiers(incoming),
+                    incoming,
                     cancellationToken);
                 break;
             }
             case PartyFeePricingCategories.GovernmentReview:
                 table.GovernmentReviewFeeSar = Math.Max(0m, request.GovernmentReviewFeeSar);
-                table.KeyReceiptFeeSar = Math.Max(0m, request.KeyReceiptFeeSar);
                 break;
             case PartyFeePricingCategories.FieldInspector:
                 table.FieldInspectorIndividualFeeSar = Math.Max(0m, request.FieldInspectorIndividualFeeSar);
@@ -174,33 +205,169 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
                 break;
         }
 
+        AddAudit(
+            actorId,
+            "PRICING_TABLE_UPDATED",
+            nameof(PartyFeePricingTable),
+            table.Id,
+            before,
+            SnapshotFromTrackedState(table));
         await _db.SaveChangesAsync(cancellationToken);
         var reloaded = await LoadTableAsync(id, tracking: false, cancellationToken)
             ?? throw new KeyNotFoundException($"Pricing table {id} was not found after save.");
         return await ToDtoAsync(reloaded, cancellationToken);
     }
 
+    public async Task<PartyFeePricingDto> ReviseAsync(
+        Guid sourceId,
+        PartyFeePricingDto request,
+        CancellationToken cancellationToken = default,
+        string actorId = "system")
+    {
+        var source = await LoadTableAsync(sourceId, tracking: true, cancellationToken)
+            ?? throw new KeyNotFoundException($"Pricing table {sourceId} was not found.");
+        var assignments = await _db.PartyFeePricingAssignments
+            .Where(a => a.TableId == sourceId)
+            .OrderBy(a => a.AssigneeId)
+            .ToListAsync(cancellationToken);
+        if (assignments.Count == 0)
+        {
+            throw new InvalidOperationException(
+                "الجدول غير مرتبط بأطراف ويمكن تعديله مباشرة دون إنشاء نسخة.");
+        }
+
+        var now = DateTime.UtcNow;
+        var sourceBefore = Snapshot(source);
+        var revision = new PartyFeePricingTable
+        {
+            Id = Guid.NewGuid(),
+            Category = source.Category,
+            Name = NormalizeName(request.Name, source.Category),
+            IsActive = source.IsActive,
+            GovernmentReviewFeeSar = source.GovernmentReviewFeeSar,
+            FieldInspectorIndividualFeeSar = source.FieldInspectorIndividualFeeSar,
+            FieldInspectorOrganizationFeeSar = source.FieldInspectorOrganizationFeeSar,
+            UpdatedAtUtc = now,
+        };
+
+        switch (source.Category)
+        {
+            case PartyFeePricingCategories.EngineeringSurvey:
+            {
+                var incoming = NormalizeRequestedTiers(request);
+                ApplyTiersInMemory(revision, incoming);
+                break;
+            }
+            case PartyFeePricingCategories.GovernmentReview:
+                revision.GovernmentReviewFeeSar = Math.Max(0m, request.GovernmentReviewFeeSar);
+                break;
+            case PartyFeePricingCategories.FieldInspector:
+                revision.FieldInspectorIndividualFeeSar =
+                    Math.Max(0m, request.FieldInspectorIndividualFeeSar);
+                revision.FieldInspectorOrganizationFeeSar =
+                    Math.Max(0m, request.FieldInspectorOrganizationFeeSar);
+                break;
+        }
+
+        if (source.IsActive)
+        {
+            source.IsActive = false;
+            source.UpdatedAtUtc = now;
+            AddAudit(
+                actorId,
+                "PRICING_TABLE_DEACTIVATED",
+                nameof(PartyFeePricingTable),
+                source.Id,
+                sourceBefore,
+                Snapshot(source));
+        }
+
+        var categoryBefore = await _db.PartyFeePricingAssignments.AsNoTracking()
+            .Where(a => a.Category == source.Category)
+            .OrderBy(a => a.TableId)
+            .ThenBy(a => a.AssigneeId)
+            .Select(a => new PricingAssignmentSnapshot(a.TableId, a.AssigneeId))
+            .ToListAsync(cancellationToken);
+        foreach (var assignment in assignments)
+        {
+            assignment.TableId = revision.Id;
+            assignment.UpdatedAtUtc = now;
+        }
+
+        _db.PartyFeePricingTables.Add(revision);
+        var categoryAfter = categoryBefore
+            .Select(a => a.TableId == sourceId
+                ? a with { TableId = revision.Id }
+                : a)
+            .OrderBy(a => a.TableId)
+            .ThenBy(a => a.AssigneeId)
+            .ToList();
+        AddAudit(
+            actorId,
+            "PRICING_TABLE_REVISED",
+            nameof(PartyFeePricingTable),
+            revision.Id,
+            sourceBefore,
+            Snapshot(revision));
+        AddAudit(
+            actorId,
+            "PRICING_ASSIGNMENTS_RELINKED",
+            nameof(PartyFeePricingAssignment),
+            revision.Id,
+            categoryBefore,
+            categoryAfter);
+
+        await _db.SaveChangesAsync(cancellationToken);
+        var reloaded = await LoadTableAsync(revision.Id, tracking: false, cancellationToken)
+            ?? throw new KeyNotFoundException(
+                $"Pricing table revision {revision.Id} was not found after save.");
+        return await ToDtoAsync(reloaded, cancellationToken);
+    }
+
     public async Task<PartyFeePricingDto> ActivateAsync(
         Guid id,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string actorId = "system")
     {
         await EnsureAllCategoriesSeededAsync(cancellationToken);
         var table = await LoadTableAsync(id, tracking: true, cancellationToken)
             ?? throw new KeyNotFoundException($"Pricing table {id} was not found.");
 
         var others = await _db.PartyFeePricingTables
+            .Include(x => x.AreaTiers)
             .Where(x => x.Id != id && x.Category == table.Category && x.IsActive)
             .ToListAsync(cancellationToken);
+        var targetBefore = Snapshot(table);
         foreach (var other in others)
+        {
+            var before = Snapshot(other);
             other.IsActive = false;
+            AddAudit(
+                actorId,
+                "PRICING_TABLE_DEACTIVATED",
+                nameof(PartyFeePricingTable),
+                other.Id,
+                before,
+                Snapshot(other));
+        }
 
         table.IsActive = true;
         table.UpdatedAtUtc = DateTime.UtcNow;
+        AddAudit(
+            actorId,
+            "PRICING_TABLE_ACTIVATED",
+            nameof(PartyFeePricingTable),
+            table.Id,
+            targetBefore,
+            Snapshot(table));
         await _db.SaveChangesAsync(cancellationToken);
         return await ToDtoAsync(table, cancellationToken);
     }
 
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteAsync(
+        Guid id,
+        CancellationToken cancellationToken = default,
+        string actorId = "system")
     {
         await EnsureAllCategoriesSeededAsync(cancellationToken);
         var table = await LoadTableAsync(id, tracking: true, cancellationToken);
@@ -210,9 +377,16 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             .CountAsync(x => x.Category == table.Category, cancellationToken);
         if (countInCategory <= 1)
             throw new InvalidOperationException("Cannot delete the last pricing table in this category.");
+        if (await _db.PartyFeePricingAssignments
+            .AnyAsync(a => a.TableId == id, cancellationToken))
+        {
+            throw new InvalidOperationException(
+                "لا يمكن حذف جدول مرتبط بأطراف — انقل الإسنادات أولاً.");
+        }
 
         var wasActive = table.IsActive;
         var category = table.Category;
+        var deletedSnapshot = Snapshot(table);
         _db.PartyFeePricingTables.Remove(table);
 
         // Promote the next table in the same SaveChanges so a failure cannot leave the
@@ -220,13 +394,29 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         if (wasActive)
         {
             var next = await _db.PartyFeePricingTables
+                .Include(x => x.AreaTiers)
                 .Where(x => x.Id != id && x.Category == category)
                 .OrderBy(x => x.Name)
                 .FirstAsync(cancellationToken);
+            var nextBefore = Snapshot(next);
             next.IsActive = true;
             next.UpdatedAtUtc = DateTime.UtcNow;
+            AddAudit(
+                actorId,
+                "PRICING_TABLE_ACTIVATED",
+                nameof(PartyFeePricingTable),
+                next.Id,
+                nextBefore,
+                Snapshot(next));
         }
 
+        AddAudit(
+            actorId,
+            "PRICING_TABLE_DELETED",
+            nameof(PartyFeePricingTable),
+            table.Id,
+            deletedSnapshot,
+            after: null);
         await _db.SaveChangesAsync(cancellationToken);
         return true;
     }
@@ -245,7 +435,8 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
     public async Task<PartyFeePricingDto> SetAssignmentsAsync(
         Guid tableId,
         IReadOnlyList<string> assigneeIds,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string actorId = "system")
     {
         await EnsureAllCategoriesSeededAsync(cancellationToken);
         var table = await LoadTableAsync(tableId, tracking: true, cancellationToken)
@@ -256,6 +447,12 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             .Where(id => id.Length > 0)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
+        var categoryBefore = await _db.PartyFeePricingAssignments.AsNoTracking()
+            .Where(a => a.Category == table.Category)
+            .OrderBy(a => a.TableId)
+            .ThenBy(a => a.AssigneeId)
+            .Select(a => new PricingAssignmentSnapshot(a.TableId, a.AssigneeId))
+            .ToListAsync(cancellationToken);
 
         var now = DateTime.UtcNow;
 
@@ -289,6 +486,22 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         }
 
         table.UpdatedAtUtc = now;
+        var normalizedSet = normalized.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var categoryAfter = categoryBefore
+            .Where(a =>
+                a.TableId != tableId
+                && !normalizedSet.Contains(a.AssigneeId))
+            .Concat(normalized.Select(a => new PricingAssignmentSnapshot(tableId, a)))
+            .OrderBy(a => a.TableId)
+            .ThenBy(a => a.AssigneeId)
+            .ToList();
+        AddAudit(
+            actorId,
+            "PRICING_ASSIGNMENTS_REPLACED",
+            nameof(PartyFeePricingAssignment),
+            table.Id,
+            categoryBefore,
+            categoryAfter);
         await _db.SaveChangesAsync(cancellationToken);
 
         var reloaded = await LoadTableAsync(tableId, tracking: false, cancellationToken)
@@ -296,7 +509,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         return await ToDtoAsync(reloaded, cancellationToken);
     }
 
-    public async Task<decimal?> ResolveDefaultFeeAsync(
+    public async Task<ResolvedPartyFee> ResolveDefaultFeeAsync(
         WorkflowTaskKind taskKind,
         string partyType,
         decimal? areaM2 = null,
@@ -304,15 +517,18 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         CancellationToken cancellationToken = default)
     {
         var category = CategoryForTaskKind(taskKind);
-        if (category is null) return null;
+        if (category is null) return ResolvedPartyFee.Unresolved;
 
         var pricing = await ResolveTableDtoForAssigneeAsync(
             category,
             assigneeId,
             cancellationToken);
-        if (pricing is null) return null;
+        if (pricing is null) return ResolvedPartyFee.Unresolved;
 
-        return ResolveFromDto(pricing, taskKind, partyType, areaM2);
+        var fee = ResolveFromDto(pricing, taskKind, partyType, areaM2);
+
+        // A table that priced nothing is not the source of anything, so it is not recorded as one.
+        return fee is > 0m ? new ResolvedPartyFee(fee, pricing.Id) : ResolvedPartyFee.Unresolved;
     }
 
     public static decimal? ResolveFromDto(
@@ -332,19 +548,27 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         }
 
         if (taskKind == WorkflowTaskKind.GovernmentReview)
-            return pricing.GovernmentReviewFeeSar;
+            return Configured(pricing.GovernmentReviewFeeSar);
 
         if (InspectorFeeRules.IsEmployee(partyType))
             return null;
 
         return partyType switch
         {
-            InspectorFeeRules.TypeCooperatorOrganization => pricing.FieldInspectorOrganizationFeeSar,
+            InspectorFeeRules.TypeCooperatorOrganization =>
+                Configured(pricing.FieldInspectorOrganizationFeeSar),
             InspectorFeeRules.TypeCooperatorIndividual
-                or InspectorFeeRules.TypeCooperatorLegacy => pricing.FieldInspectorIndividualFeeSar,
+                or InspectorFeeRules.TypeCooperatorLegacy =>
+                Configured(pricing.FieldInspectorIndividualFeeSar),
             _ => null,
         };
     }
+
+    /// <summary>
+    /// An amount of zero means nobody set a rate, which is a different answer from "the rate is
+    /// zero" — callers must treat it as unresolved and refuse to bill.
+    /// </summary>
+    private static decimal? Configured(decimal amount) => amount > 0m ? amount : null;
 
     private static string? CategoryForTaskKind(WorkflowTaskKind taskKind) => taskKind switch
     {
@@ -424,38 +648,42 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             .FirstOrDefaultAsync(cancellationToken);
         if (any is not null)
         {
+            var before = Snapshot(any);
             any.IsActive = true;
             any.UpdatedAtUtc = DateTime.UtcNow;
+            AddAudit(
+                "system",
+                "PRICING_TABLE_ACTIVATED",
+                nameof(PartyFeePricingTable),
+                any.Id,
+                before,
+                Snapshot(any));
             await _db.SaveChangesAsync(cancellationToken);
             return;
         }
 
-        var legacy = await _db.PartyFeePricingTables.AsNoTracking()
-            .OrderByDescending(x => x.UpdatedAtUtc)
-            .FirstOrDefaultAsync(cancellationToken);
-
+        // A placeholder so each category always has an active row for the pricing screen to edit.
+        // It carries no amounts: an empty table must block fees, not quietly supply them. Migrating an
+        // installation that predates the category split is the job of the migration that split it, not
+        // of this placeholder — it used to copy amounts off whatever table was newest, across
+        // categories.
         var table = new PartyFeePricingTable
         {
             Id = defaultId,
             Category = category,
             Name = defaultName,
             IsActive = true,
-            GovernmentReviewFeeSar = legacy?.GovernmentReviewFeeSar
-                ?? GovernmentReviewFeeRules.FallbackFeeSar,
-            KeyReceiptFeeSar = legacy is null
-                ? GovernmentReviewFeeRules.FallbackFeeSar
-                : (legacy.KeyReceiptFeeSar > 0 ? legacy.KeyReceiptFeeSar : legacy.GovernmentReviewFeeSar),
-            FieldInspectorIndividualFeeSar = legacy?.FieldInspectorIndividualFeeSar
-                ?? InspectorFeeRules.CooperatorIndividualFeeSar,
-            FieldInspectorOrganizationFeeSar = legacy?.FieldInspectorOrganizationFeeSar
-                ?? InspectorFeeRules.CooperatorOrganizationFeeSar,
             UpdatedAtUtc = DateTime.UtcNow,
         };
 
-        if (category == PartyFeePricingCategories.EngineeringSurvey)
-            ApplyTiersInMemory(table, EngineeringSurveyFeeRules.SeedTiers());
-
         _db.PartyFeePricingTables.Add(table);
+        AddAudit(
+            "system",
+            "PRICING_TABLE_CREATED",
+            nameof(PartyFeePricingTable),
+            table.Id,
+            before: null,
+            after: Snapshot(table));
         await _db.SaveChangesAsync(cancellationToken);
     }
 
@@ -478,9 +706,6 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             IsActive = true,
             AreaTiers = engDto.AreaTiers,
             GovernmentReviewFeeSar = government.GovernmentReviewFeeSar,
-            KeyReceiptFeeSar = government.KeyReceiptFeeSar > 0
-                ? government.KeyReceiptFeeSar
-                : government.GovernmentReviewFeeSar,
             FieldInspectorIndividualFeeSar = inspector.FieldInspectorIndividualFeeSar,
             FieldInspectorOrganizationFeeSar = inspector.FieldInspectorOrganizationFeeSar,
             UpdatedAtUtc = new[] { engineering.UpdatedAtUtc, government.UpdatedAtUtc, inspector.UpdatedAtUtc }.Max(),
@@ -504,9 +729,13 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
     {
         var normalized = EngineeringSurveyFeeRules.NormalizeTiers(tiers);
 
-        await _db.PartyFeePricingTiers
+        // Removed through the change tracker rather than ExecuteDelete so the old tiers and the new
+        // ones land in one SaveChanges — a failure between the two would otherwise leave the table
+        // with no schedule at all.
+        var old = await _db.PartyFeePricingTiers
             .Where(t => t.TableId == table.Id)
-            .ExecuteDeleteAsync(cancellationToken);
+            .ToListAsync(cancellationToken);
+        _db.PartyFeePricingTiers.RemoveRange(old);
 
         var newRows = normalized
             .Select((t, i) => new PartyFeePricingTier
@@ -519,6 +748,22 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             })
             .ToList();
         _db.PartyFeePricingTiers.AddRange(newRows);
+    }
+
+    private static IReadOnlyList<EngineeringSurveyFeeRules.AreaFeeTier> NormalizeRequestedTiers(
+        PartyFeePricingDto request)
+    {
+        var incoming = (request.AreaTiers ?? [])
+            .OrderBy(t => t.SortOrder)
+            .Select(t => new EngineeringSurveyFeeRules.AreaFeeTier(t.MaxAreaM2, t.FeeSar))
+            .ToList();
+        if (!EngineeringSurveyFeeRules.HasTiers(incoming))
+        {
+            throw new InvalidOperationException(
+                "جدول الرفع المساحي يجب أن يحتوي شريحة واحدة على الأقل.");
+        }
+
+        return EngineeringSurveyFeeRules.NormalizeTiers(incoming);
     }
 
     private static void ApplyTiersInMemory(
@@ -538,6 +783,75 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             });
         }
     }
+
+    private PricingTableSnapshot SnapshotFromTrackedState(PartyFeePricingTable table)
+    {
+        var tiers = _db.ChangeTracker.Entries<PartyFeePricingTier>()
+            .Where(e => e.Entity.TableId == table.Id && e.State != EntityState.Deleted)
+            .Select(e => e.Entity)
+            .OrderBy(t => t.SortOrder)
+            .Select(t => new PricingTierSnapshot(t.SortOrder, t.MaxAreaM2, t.FeeSar))
+            .ToList();
+        return Snapshot(table, tiers);
+    }
+
+    private static PricingTableSnapshot Snapshot(PartyFeePricingTable table) =>
+        Snapshot(
+            table,
+            table.AreaTiers
+                .OrderBy(t => t.SortOrder)
+                .Select(t => new PricingTierSnapshot(t.SortOrder, t.MaxAreaM2, t.FeeSar))
+                .ToList());
+
+    private static PricingTableSnapshot Snapshot(
+        PartyFeePricingTable table,
+        IReadOnlyList<PricingTierSnapshot> tiers) =>
+        new(
+            table.Id,
+            table.Category,
+            table.Name,
+            table.IsActive,
+            table.GovernmentReviewFeeSar,
+            table.FieldInspectorIndividualFeeSar,
+            table.FieldInspectorOrganizationFeeSar,
+            tiers);
+
+    private void AddAudit(
+        string actorId,
+        string action,
+        string entityType,
+        Guid entityId,
+        object? before,
+        object? after)
+    {
+        _db.Set<AuditLog>().Add(_audit.Create(
+            NormalizeActor(actorId),
+            action,
+            entityType,
+            entityId.ToString(),
+            before,
+            after));
+    }
+
+    private static string NormalizeActor(string? actorId) =>
+        string.IsNullOrWhiteSpace(actorId) ? "system" : actorId.Trim();
+
+    private sealed record PricingTableSnapshot(
+        Guid Id,
+        string Category,
+        string Name,
+        bool IsActive,
+        decimal GovernmentReviewFeeSar,
+        decimal FieldInspectorIndividualFeeSar,
+        decimal FieldInspectorOrganizationFeeSar,
+        IReadOnlyList<PricingTierSnapshot> AreaTiers);
+
+    private sealed record PricingTierSnapshot(
+        int SortOrder,
+        decimal? MaxAreaM2,
+        decimal FeeSar);
+
+    private sealed record PricingAssignmentSnapshot(Guid TableId, string AssigneeId);
 
     private static string NormalizeName(string? name, string category)
     {
@@ -562,7 +876,10 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             .OrderBy(t => t.SortOrder)
             .Select(t => new EngineeringSurveyFeeRules.AreaFeeTier(t.MaxAreaM2, t.FeeSar))
             .ToList();
-        var normalized = EngineeringSurveyFeeRules.NormalizeTiers(tiers);
+        // An unpriced table stays visibly empty here so the pricing screen shows it needs setting up.
+        var normalized = EngineeringSurveyFeeRules.HasTiers(tiers)
+            ? EngineeringSurveyFeeRules.NormalizeTiers(tiers)
+            : [];
 
         return new PartyFeePricingDto
         {
@@ -581,9 +898,6 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
                 })
                 .ToList(),
             GovernmentReviewFeeSar = table.GovernmentReviewFeeSar,
-            KeyReceiptFeeSar = table.KeyReceiptFeeSar > 0
-                ? table.KeyReceiptFeeSar
-                : table.GovernmentReviewFeeSar,
             FieldInspectorIndividualFeeSar = table.FieldInspectorIndividualFeeSar,
             FieldInspectorOrganizationFeeSar = table.FieldInspectorOrganizationFeeSar,
             UpdatedAtUtc = table.UpdatedAtUtc,

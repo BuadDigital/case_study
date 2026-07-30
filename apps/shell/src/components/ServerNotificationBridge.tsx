@@ -174,7 +174,12 @@ export function ServerNotificationBridge() {
       }
       void createNotification(
         { token: token! },
-        notificationToCreateRequest(item),
+        {
+          ...notificationToCreateRequest(item),
+          sourceEvent: item.sourceEvent
+            ? `local:${item.sourceEvent}`
+            : "self-authored",
+        },
       ).catch((err) => {
         console.warn("Failed to sync local notification to server", err);
       });
@@ -183,6 +188,47 @@ export function ServerNotificationBridge() {
     window.addEventListener(NOTIFICATION_PUSHED_EVENT, onPushed);
     return () => window.removeEventListener(NOTIFICATION_PUSHED_EVENT, onPushed);
   }, [token]);
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+
+    function onMessage(event: MessageEvent) {
+      const data = event.data as
+        | { type?: string; payload?: UserNotificationDto; href?: string }
+        | undefined;
+      if (!data?.type) return;
+      if (data.type === "PUSH_NOTIFICATION" && data.payload) {
+        const item = notificationFromDto({
+          id: String(data.payload.id ?? crypto.randomUUID()),
+          title: data.payload.title ?? "إجادة",
+          body: data.payload.body,
+          href: data.payload.href,
+          tone: data.payload.tone,
+          category: data.payload.category,
+          sourceEvent: data.payload.sourceEvent,
+          createdAtUtc: new Date().toISOString(),
+          read: false,
+        });
+        upsertNotificationFromServer(item);
+        window.dispatchEvent(
+          new CustomEvent<AppNotification>(NOTIFICATION_TOAST_EVENT, {
+            detail: item,
+          }),
+        );
+      }
+      if (data.type === "PUSH_NAVIGATE" && data.href) {
+        window.location.assign(data.href);
+      }
+    }
+
+    navigator.serviceWorker.addEventListener("message", onMessage);
+    void import("@/lib/web-push-client").then((mod) =>
+      mod.reconcilePushSubscription(),
+    );
+    return () => {
+      navigator.serviceWorker.removeEventListener("message", onMessage);
+    };
+  }, [token, role]);
 
   return null;
 }

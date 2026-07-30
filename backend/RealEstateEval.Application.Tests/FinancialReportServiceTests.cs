@@ -51,6 +51,54 @@ public class FinancialReportServiceTests
         Assert.Empty(db.ChangeTracker.Entries());
     }
 
+    /// <summary>
+    /// A disputed line has no agreed amount yet, so counting it would overstate external costs and
+    /// understate the margin. The exclusion has to hold for the aggregates, not just the fee list.
+    /// </summary>
+    [Fact]
+    public async Task Disputed_lines_stay_out_of_the_cost_aggregates()
+    {
+        await using var db = CreateDb(new EntityMaterializationCounter());
+        await SeedAsync(db);
+        db.ChangeTracker.Clear();
+        var before = await CreateService(db).GetSummaryAsync();
+
+        var disputedTaskId = Guid.NewGuid();
+        var completedPropertyId = await db.WorkflowTasks
+            .Where(task => task.Kind == WorkflowTaskKind.CaseStudyProperty)
+            .Select(task => task.PropertyId)
+            .FirstAsync();
+        var now = DateTime.UtcNow;
+        db.WorkflowTasks.Add(WorkflowTask.Create(
+            WorkflowTaskKind.FieldInspection,
+            "PO-100",
+            now,
+            status: WorkflowTaskStatus.Completed,
+            id: disputedTaskId,
+            propertyId: completedPropertyId));
+        db.InspectorFeeLedgers.Add(new InspectorFeeLedger
+        {
+            WorkflowTaskId = disputedTaskId,
+            PoNumber = "PO-100",
+            PropertyId = completedPropertyId,
+            AssigneeId = "inspector-disputed",
+            InspectorType = InspectorFeeRules.TypeCooperatorIndividual,
+            AgreedFeeSar = 4_000m,
+            BillingStatus = InspectorFeeBillingStatus.Disputed,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+        });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var after = await CreateService(db).GetSummaryAsync();
+
+        Assert.DoesNotContain(after.CostRows, row => row.Name == "inspector-disputed");
+        Assert.Equal(before.ExternalCostsTotal, after.ExternalCostsTotal);
+        Assert.Equal(before.ProfitMarginTotal, after.ProfitMarginTotal);
+        Assert.Equal(before.PendingPayablesTotal, after.PendingPayablesTotal);
+    }
+
     private static FinancialReportService CreateService(ApplicationDbContext db)
     {
         var cache = new ApiResponseCache(

@@ -1,9 +1,9 @@
 namespace RealEstateEval.Application.Rules;
 
 /// <summary>
-/// Field-inspection party types and seed/fallback fees for cooperator rates.
-/// Employee inspectors are outside the pricing table — agreed fee is entered manually.
-/// Live cooperator defaults come from the active <c>PartyFeePricingTable</c>.
+/// Field-inspection party types. Cooperator rates live entirely in the active
+/// <c>PartyFeePricingTable</c>; employee inspectors sit outside it and have their fee entered
+/// manually. No rate is hard-coded here — an unpriced table must stop the fee.
 /// </summary>
 public static class InspectorFeeRules
 {
@@ -12,9 +12,6 @@ public static class InspectorFeeRules
     public const string TypeCooperatorOrganization = "متعاون شركة";
     /// <summary>Legacy label kept for older ledgers.</summary>
     public const string TypeCooperatorLegacy = "متعاون";
-
-    public const decimal CooperatorIndividualFeeSar = 400m;
-    public const decimal CooperatorOrganizationFeeSar = 500m;
 
     private static readonly HashSet<string> CooperatorAssigneeIds = new(StringComparer.Ordinal)
     {
