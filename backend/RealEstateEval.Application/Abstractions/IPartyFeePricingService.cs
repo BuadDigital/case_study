@@ -1,4 +1,5 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.Application.Abstractions;
 
@@ -48,7 +49,7 @@ public interface IPartyFeePricingService
     /// Employees (field inspector) return null (manual entry).
     /// </summary>
     Task<decimal?> ResolveDefaultFeeAsync(
-        string taskKind,
+        WorkflowTaskKind taskKind,
         string partyType,
         decimal? areaM2 = null,
         string? assigneeId = null,

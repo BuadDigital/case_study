@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.Attachments.Api.Controllers;
@@ -14,8 +15,15 @@ namespace RealEstateEval.Attachments.Api.Controllers;
 public class AttachmentsController : ControllerBase
 {
     private readonly IAttachmentService _attachments;
+    private readonly ILogger<AttachmentsController> _logger;
 
-    public AttachmentsController(IAttachmentService attachments) => _attachments = attachments;
+    public AttachmentsController(
+        IAttachmentService attachments,
+        ILogger<AttachmentsController> logger)
+    {
+        _attachments = attachments;
+        _logger = logger;
+    }
 
     [HttpGet]
     [Authorize(Policy = CapabilityPolicyNames.ManageAttachments)]
@@ -25,7 +33,7 @@ public class AttachmentsController : ControllerBase
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(scope) || string.IsNullOrWhiteSpace(scopeKey))
-            return BadRequest(new { error = "scope and scopeKey are required" });
+            return this.BadRequestProblem("scope and scopeKey are required");
 
         return Ok(await _attachments.ListAsync(scope, scopeKey, ct));
     }
@@ -51,7 +59,15 @@ public class AttachmentsController : ControllerBase
 
         var (meta, error) = await _attachments.UploadAsync(request, userId, ct);
         if (error is not null)
-            return BadRequest(new { error });
+        {
+            _logger.LogInformation(
+                "Rejected attachment upload for scope {Scope} by user {UserId}: {Reason}",
+                request.Scope,
+                userId,
+                error);
+            return this.BadRequestProblem(error);
+        }
+
         return CreatedAtAction(nameof(Download), new { id = meta!.Id }, meta);
     }
 

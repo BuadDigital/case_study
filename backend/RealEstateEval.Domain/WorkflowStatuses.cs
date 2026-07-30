@@ -1,16 +1,5 @@
 namespace RealEstateEval.Domain;
 
-public static class WorkflowTaskStatus
-{
-    public const string Open = "open";
-    public const string Completed = "completed";
-    public const string Cancelled = "cancelled";
-    public const string Blocked = "blocked";
-
-    public static bool IsTerminal(string? status) =>
-        status is Completed or Cancelled;
-}
-
 public static class PropertyFailureStatus
 {
     public const string Internal = "internal";

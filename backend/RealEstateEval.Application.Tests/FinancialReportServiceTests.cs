@@ -109,36 +109,26 @@ public class FinancialReportServiceTests
             ],
         });
         db.WorkflowTasks.AddRange(
-            new WorkflowTask
-            {
-                Id = Guid.NewGuid(),
-                Kind = "case-study-property",
-                PoNumber = "PO-100",
-                PropertyId = completedPropertyId,
-                Status = WorkflowTaskStatus.Completed,
-                CreatedAtUtc = now,
-                UpdatedAtUtc = now,
-            },
-            new WorkflowTask
-            {
-                Id = feeTaskId,
-                Kind = "field-inspection",
-                PoNumber = "PO-100",
-                PropertyId = completedPropertyId,
-                Status = WorkflowTaskStatus.Completed,
-                CreatedAtUtc = now,
-                UpdatedAtUtc = now,
-            },
-            new WorkflowTask
-            {
-                Id = excludedFeeTaskId,
-                Kind = "field-inspection",
-                PoNumber = "PO-100",
-                PropertyId = incompletePropertyId,
-                Status = WorkflowTaskStatus.Completed,
-                CreatedAtUtc = now,
-                UpdatedAtUtc = now,
-            });
+            WorkflowTask.Create(
+                WorkflowTaskKind.CaseStudyProperty,
+                "PO-100",
+                now,
+                status: WorkflowTaskStatus.Completed,
+                propertyId: completedPropertyId),
+            WorkflowTask.Create(
+                WorkflowTaskKind.FieldInspection,
+                "PO-100",
+                now,
+                status: WorkflowTaskStatus.Completed,
+                id: feeTaskId,
+                propertyId: completedPropertyId),
+            WorkflowTask.Create(
+                WorkflowTaskKind.FieldInspection,
+                "PO-100",
+                now,
+                status: WorkflowTaskStatus.Completed,
+                id: excludedFeeTaskId,
+                propertyId: incompletePropertyId));
         db.InspectorFeeLedgers.AddRange(
             new InspectorFeeLedger
             {

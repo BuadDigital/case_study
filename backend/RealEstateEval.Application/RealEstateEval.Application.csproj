@@ -11,4 +11,8 @@
     <ProjectReference Include="..\RealEstateEval.Domain\RealEstateEval.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
+  </ItemGroup>
+
 </Project>

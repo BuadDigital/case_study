@@ -32,6 +32,6 @@ public sealed class PasswordAuthenticationService(
         if (!signInResult.Succeeded)
             return null;
 
-        return await sessions.IssueAsync(user, cancellationToken);
+        return await sessions.IssueForUserIdAsync(user.Id, cancellationToken);
     }
 }

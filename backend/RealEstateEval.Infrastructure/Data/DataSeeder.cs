@@ -2,8 +2,11 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Infrastructure.Data;
@@ -11,6 +14,7 @@ namespace RealEstateEval.Infrastructure.Data;
 public static class DataSeeder
 
 {
+    private const string LogCategory = "RealEstateEval.DataSeeder";
 
     private static readonly string[] LegacyRoles =
 
@@ -27,6 +31,9 @@ public static class DataSeeder
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
 
         var db = services.GetRequiredService<ApplicationDbContext>();
+
+        var logger = services.GetService<ILoggerFactory>()?.CreateLogger(LogCategory)
+            ?? NullLogger.Instance;
 
 
 
@@ -45,12 +52,11 @@ public static class DataSeeder
             await BackfillDistributionAssigneeIdsAsync(db, userManager, cancellationToken);
             try
             {
-                await BackfillPartyChildAssigneeIdsAsync(db, cancellationToken);
+                await BackfillPartyChildAssigneeIdsAsync(db, logger, cancellationToken);
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine(
-                    $"BackfillPartyChildAssigneeIds skipped: {ex.Message}");
+                logger.LogWarning(ex, "BackfillPartyChildAssigneeIds skipped.");
             }
             await RemoveDemoPropertyKeyRecordsAsync(db, cancellationToken);
             await RemoveSeededFinancialReportConfigAsync(db, cancellationToken);
@@ -647,11 +653,12 @@ public static class DataSeeder
     /// </summary>
     private static async Task BackfillPartyChildAssigneeIdsAsync(
         ApplicationDbContext db,
+        ILogger logger,
         CancellationToken cancellationToken)
     {
         var parentIds = await db.WorkflowTasks
             .AsNoTracking()
-            .Where(t => t.Kind == "case-study-property")
+            .Where(t => t.Kind == WorkflowTaskKind.CaseStudyProperty)
             .Select(t => t.Id)
             .ToListAsync(cancellationToken);
 
@@ -671,8 +678,10 @@ public static class DataSeeder
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine(
-                    $"BackfillPartyChildAssigneeIds: failed to load parent {parentId}: {ex.Message}");
+                logger.LogWarning(
+                    ex,
+                    "BackfillPartyChildAssigneeIds: failed to load parent {ParentId}.",
+                    parentId);
                 continue;
             }
 
@@ -692,8 +701,10 @@ public static class DataSeeder
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine(
-                    $"BackfillPartyChildAssigneeIds: failed to load children for parent {parentId}: {ex.Message}");
+                logger.LogWarning(
+                    ex,
+                    "BackfillPartyChildAssigneeIds: failed to load children for parent {ParentId}.",
+                    parentId);
                 continue;
             }
             foreach (var child in children)
@@ -705,8 +716,7 @@ public static class DataSeeder
                 if (string.Equals(child.AssigneeId, trimmed, StringComparison.Ordinal))
                     continue;
 
-                child.AssigneeId = trimmed;
-                child.UpdatedAtUtc = now;
+                child.Assign(trimmed, child.AssigneeName, child.AssigneeRole, now);
                 changed = true;
             }
         }
@@ -716,16 +726,16 @@ public static class DataSeeder
     }
 
     private static string? PartyAssigneeIdFromDistribution(
-        string kind,
+        WorkflowTaskKind kind,
         TaskDistributionDraftDto distribution)
     {
         return kind switch
         {
-            "government-review" => distribution.GovernmentAuditorId,
-            "field-inspection" => distribution.InspectorId,
-            "property-appraisal" => distribution.ValuatorId,
-            "valuation-coordination" => distribution.OperationsCoordinatorId,
-            "engineering-survey" => distribution.EngineeringOfficeId,
+            WorkflowTaskKind.GovernmentReview => distribution.GovernmentAuditorId,
+            WorkflowTaskKind.FieldInspection => distribution.InspectorId,
+            WorkflowTaskKind.PropertyAppraisal => distribution.ValuatorId,
+            WorkflowTaskKind.ValuationCoordination => distribution.OperationsCoordinatorId,
+            WorkflowTaskKind.EngineeringSurvey => distribution.EngineeringOfficeId,
             _ => null,
         };
     }
@@ -1243,54 +1253,44 @@ public static class DataSeeder
         {
             var now = DateTime.UtcNow;
             db.ValuationRequests.AddRange(
-                new ValuationRequest
-                {
-                    Id = Guid.Parse("b2000001-0000-4000-8000-000000000001"),
-                    DisplayId = "VR-441",
-                    PropertyId = "E-4401",
-                    Area = "مكة المكرمة",
-                    PropertyType = "أرض",
-                    Appraiser = "عبدالله الكثيري",
-                    Status = "done",
-                    RequestDate = "2025-01-13",
-                    UpdatedAtUtc = now,
-                },
-                new ValuationRequest
-                {
-                    Id = Guid.Parse("b2000001-0000-4000-8000-000000000002"),
-                    DisplayId = "VR-442",
-                    PropertyId = "E-4402",
-                    Area = "مكة المكرمة",
-                    PropertyType = "شقة",
-                    Appraiser = "محمد العساف",
-                    Status = "progress",
-                    RequestDate = "2025-01-14",
-                    UpdatedAtUtc = now,
-                },
-                new ValuationRequest
-                {
-                    Id = Guid.Parse("b2000001-0000-4000-8000-000000000003"),
-                    DisplayId = "VR-443",
-                    PropertyId = "E-4403",
-                    Area = "جدة",
-                    PropertyType = "فيلا",
-                    Appraiser = "عبدالله الكثيري",
-                    Status = "done",
-                    RequestDate = "2025-01-12",
-                    UpdatedAtUtc = now,
-                },
-                new ValuationRequest
-                {
-                    Id = Guid.Parse("b2000001-0000-4000-8000-000000000004"),
-                    DisplayId = "VR-444",
-                    PropertyId = "E-4405",
-                    Area = "الطائف",
-                    PropertyType = "عمارة",
-                    Appraiser = "محمد العساف",
-                    Status = "progress",
-                    RequestDate = "2025-01-14",
-                    UpdatedAtUtc = now,
-                });
+                ValuationRequest.Create(
+                    Guid.Parse("b2000001-0000-4000-8000-000000000001"),
+                    "VR-441",
+                    "E-4401",
+                    "مكة المكرمة",
+                    "أرض",
+                    "عبدالله الكثيري",
+                    "2025-01-13",
+                    now,
+                    ValuationRequestStatus.Done),
+                ValuationRequest.Create(
+                    Guid.Parse("b2000001-0000-4000-8000-000000000002"),
+                    "VR-442",
+                    "E-4402",
+                    "مكة المكرمة",
+                    "شقة",
+                    "محمد العساف",
+                    "2025-01-14",
+                    now),
+                ValuationRequest.Create(
+                    Guid.Parse("b2000001-0000-4000-8000-000000000003"),
+                    "VR-443",
+                    "E-4403",
+                    "جدة",
+                    "فيلا",
+                    "عبدالله الكثيري",
+                    "2025-01-12",
+                    now,
+                    ValuationRequestStatus.Done),
+                ValuationRequest.Create(
+                    Guid.Parse("b2000001-0000-4000-8000-000000000004"),
+                    "VR-444",
+                    "E-4405",
+                    "الطائف",
+                    "عمارة",
+                    "محمد العساف",
+                    "2025-01-14",
+                    now));
         }
 
         if (!await db.FailureTypesCatalogConfigs.AnyAsync(cancellationToken))

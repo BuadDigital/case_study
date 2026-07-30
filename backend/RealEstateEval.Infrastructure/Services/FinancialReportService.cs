@@ -160,7 +160,7 @@ public sealed class FinancialReportService : IFinancialReportService
             .Where(ledger =>
                 ledger.PropertyId != null
                 && _db.WorkflowTasks.Any(task =>
-                    task.Kind == "case-study-property"
+                    task.Kind == WorkflowTaskKind.CaseStudyProperty
                     && task.PropertyId == ledger.PropertyId
                     && task.Status == WorkflowTaskStatus.Completed));
     }
@@ -211,7 +211,7 @@ public sealed class FinancialReportService : IFinancialReportService
             {
                 AssigneeId = assigneeId!,
                 ledger.InspectorType,
-                Kind = task == null ? null : task.Kind,
+                Kind = task == null ? null : (WorkflowTaskKind?)task.Kind,
             }
             into grouped
             select new
@@ -240,8 +240,8 @@ public sealed class FinancialReportService : IFinancialReportService
                     .Select(typeGroup => typeGroup.Key)
                     .FirstOrDefault() ?? InspectorFeeRules.TypeEmployee;
                 var dominantKind = group
-                    .Where(row => !string.IsNullOrWhiteSpace(row.Kind))
-                    .GroupBy(row => row.Kind!)
+                    .Where(row => row.Kind.HasValue)
+                    .GroupBy(row => row.Kind!.Value)
                     .OrderByDescending(kindGroup => kindGroup.Sum(row => row.Count))
                     .Select(kindGroup => kindGroup.Key)
                     .FirstOrDefault();
@@ -344,12 +344,12 @@ public sealed class FinancialReportService : IFinancialReportService
             _ => "ext",
         };
 
-    private static string CategoryLabel(string? kind) => kind switch
+    private static string CategoryLabel(WorkflowTaskKind? kind) => kind switch
     {
-        "field-inspection" => "معاينة",
-        "engineering-survey" => "رفع مساحي",
-        "government-review" => "مراجعة حكومية",
-        "property-appraisal" => "تقييم",
+        WorkflowTaskKind.FieldInspection => "معاينة",
+        WorkflowTaskKind.EngineeringSurvey => "رفع مساحي",
+        WorkflowTaskKind.GovernmentReview => "مراجعة حكومية",
+        WorkflowTaskKind.PropertyAppraisal => "تقييم",
         _ => "أخرى",
     };
 

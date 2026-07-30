@@ -7,6 +7,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Caching;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
@@ -16,18 +17,6 @@ namespace RealEstateEval.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddInfrastructure(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString,
-        IHostEnvironment environment)
-    {
-        services.AddPersistence(configuration, connectionString);
-        services.AddIdentityInfrastructure();
-        services.AddCaseStudyInfrastructure(configuration, environment);
-        return services;
-    }
-
     public static IServiceCollection AddPersistence(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -49,6 +38,57 @@ public static class DependencyInjection
             }));
 
         services.AddRedisCaching(configuration);
+        return services;
+    }
+
+    /// <summary>Attachments write context (ADR 0003, plan Phase 1).</summary>
+    public static IServiceCollection AddAttachmentsPersistence(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString) =>
+        services.AddBoundedContextPersistence<AttachmentsDbContext>(configuration, connectionString);
+
+    /// <summary>Platform catalog write context (ADR 0003, plan Phase 1).</summary>
+    public static IServiceCollection AddPlatformPersistence(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString) =>
+        services.AddBoundedContextPersistence<PlatformDbContext>(configuration, connectionString);
+
+    /// <summary>Valuation write context, including its own outbox rows (ADR 0003, D5).</summary>
+    public static IServiceCollection AddValuationPersistence(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString) =>
+        services.AddBoundedContextPersistence<ValuationDbContext>(configuration, connectionString);
+
+    /// <summary>
+    /// Registers one bounded-context pool against the same physical database as the legacy
+    /// context. Phase 1 separates models and migration streams, not connections: only the
+    /// migrations-history table differs, so each stream records itself in the schema it owns.
+    /// </summary>
+    private static IServiceCollection AddBoundedContextPersistence<TContext>(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString)
+        where TContext : DbContext
+    {
+        var dbOptions = configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>()
+            ?? new DatabaseOptions();
+        var pooledConnectionString = NpgsqlConfiguration.EnhanceConnectionString(
+            connectionString,
+            configuration);
+
+        services.AddDbContextPool<TContext>(options =>
+            options.UseNpgsql(pooledConnectionString, npgsql =>
+            {
+                npgsql.EnableRetryOnFailure(maxRetryCount: 3);
+                npgsql.CommandTimeout(dbOptions.CommandTimeoutSeconds);
+                npgsql.MigrationsHistoryTable(
+                    BoundedContextMigrations.HistoryTable,
+                    BoundedContextMigrations.HistorySchemaFor<TContext>());
+            }));
+
         return services;
     }
 
@@ -78,7 +118,49 @@ public static class DependencyInjection
         return services;
     }
 
-    public static IServiceCollection AddIdentityInfrastructure(this IServiceCollection services)
+    /// <summary>Identity write context (ADR 0003, plan Phase 1 extraction step 2).</summary>
+    public static IServiceCollection AddIdentityPersistence(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString) =>
+        services.AddBoundedContextPersistence<IdentityDbContext>(configuration, connectionString);
+
+    /// <summary>
+    /// ASP.NET Identity stores and Identity write/permission services. Callers must register
+    /// <see cref="IdentityDbContext"/> first (via <see cref="AddIdentityPersistence"/> or a
+    /// test InMemory registration).
+    /// </summary>
+    public static IServiceCollection AddIdentityApplicationServices(this IServiceCollection services)
+    {
+        services.AddIdentityStores();
+        services.AddScoped<IJwtTokenService, JwtTokenService>();
+        services.AddScoped<IAuthSessionService, AuthSessionService>();
+        services.AddScoped<IPasswordAuthenticationService, PasswordAuthenticationService>();
+        services.AddScoped<IUserRegistrationService, UserRegistrationService>();
+        services.AddScoped<IPermissionService, PermissionService>();
+        return services;
+    }
+
+    /// <summary>
+    /// Full Identity host registration: stores, session/auth writes, and database-backed
+    /// permission resolution. Only the Identity API (and Identity-focused tests/tools) should
+    /// call this.
+    /// </summary>
+    public static IServiceCollection AddIdentityInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString)
+    {
+        services.AddIdentityPersistence(configuration, connectionString);
+        services.AddIdentityApplicationServices();
+        return services;
+    }
+
+    /// <summary>
+    /// ASP.NET Identity stores against <see cref="IdentityDbContext"/>. Used by the Identity
+    /// host and by Development seeding hosts that still need <see cref="UserManager{TUser}"/>.
+    /// </summary>
+    public static IServiceCollection AddIdentityStores(this IServiceCollection services)
     {
         services
             .AddIdentity<ApplicationUser, IdentityRole>(options =>
@@ -93,14 +175,37 @@ public static class DependencyInjection
                 options.Lockout.MaxFailedAccessAttempts = 5;
                 options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
             })
-            .AddEntityFrameworkStores<ApplicationDbContext>()
+            .AddEntityFrameworkStores<IdentityDbContext>()
             .AddDefaultTokenProviders();
 
-        services.AddScoped<IJwtTokenService, JwtTokenService>();
-        services.AddScoped<IAuthSessionService, AuthSessionService>();
-        services.AddScoped<IPasswordAuthenticationService, PasswordAuthenticationService>();
-        services.AddScoped<IUserRegistrationService, UserRegistrationService>();
-        services.AddScoped<IPermissionService, PermissionService>();
+        services.Configure<DataProtectionTokenProviderOptions>(options =>
+            options.TokenLifespan = TimeSpan.FromHours(24));
+
+        return services;
+    }
+
+    /// <summary>
+    /// Resolves the caller's permissions from JWT claims. Non-Identity APIs use this instead of
+    /// opening Identity stores (plan Phase 1 extraction step 2).
+    /// </summary>
+    public static IServiceCollection AddClaimsPermissionService(this IServiceCollection services)
+    {
+        services.AddHttpContextAccessor();
+        services.AddScoped<IPermissionService, ClaimsPermissionService>();
+        return services;
+    }
+
+    /// <summary>
+    /// Development-only Identity stores for demo seeding. Does not register auth write services
+    /// or database-backed <see cref="IPermissionService"/> — request paths still use claims.
+    /// </summary>
+    public static IServiceCollection AddIdentitySeedStores(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString)
+    {
+        services.AddIdentityPersistence(configuration, connectionString);
+        services.AddIdentityStores();
         return services;
     }
 
@@ -118,6 +223,8 @@ public static class DependencyInjection
     {
         services.AddScoped<IWorkOrderService, WorkOrderService>();
         services.AddScoped<IWorkflowTaskService, WorkflowTaskService>();
+        services.AddScoped<IWorkflowTaskVisibilityFilter, WorkflowTaskVisibilityFilter>();
+        services.AddScoped<IWorkOrderVisibilityFilter, WorkOrderVisibilityFilter>();
         services.AddScoped<ICaseStudyFormService, CaseStudyFormService>();
         services.AddScoped<ICaseStudyValuationDispatchService, CaseStudyValuationDispatchService>();
         services.AddScoped<IPartyTaskSubmissionService, PartyTaskSubmissionService>();
@@ -131,6 +238,7 @@ public static class DependencyInjection
         services.AddScoped<IFailureService, FailureService>();
         services.AddScoped<IPropertyKeyGateResolver, PropertyKeyGateResolver>();
         services.AddScoped<IPropertyAccessHoldService, PropertyAccessHoldService>();
+        services.AddScoped<IKeyEnvelopePeopleResolver, KeyEnvelopePeopleResolver>();
         services.AddScoped<IKeyEnvelopesService, KeyEnvelopesService>();
         return services;
     }
@@ -174,8 +282,12 @@ public static class DependencyInjection
         return services;
     }
 
-    public static IServiceCollection AddAttachmentsInfrastructure(this IServiceCollection services)
+    public static IServiceCollection AddAttachmentsInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString)
     {
+        services.AddAttachmentsPersistence(configuration, connectionString);
         services.AddScoped<IAttachmentService, AttachmentService>();
         return services;
     }
@@ -193,12 +305,17 @@ public static class DependencyInjection
         services.AddScoped<IPropertyKeysService, PropertyKeysService>();
         services.AddScoped<IPropertyKeyGateResolver, PropertyKeyGateResolver>();
         services.AddScoped<IPropertyAccessHoldService, PropertyAccessHoldService>();
+        services.AddScoped<IKeyEnvelopePeopleResolver, KeyEnvelopePeopleResolver>();
         services.AddScoped<IKeyEnvelopesService, KeyEnvelopesService>();
         return services;
     }
 
-    public static IServiceCollection AddPlatformInfrastructure(this IServiceCollection services)
+    public static IServiceCollection AddPlatformInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString)
     {
+        services.AddPlatformPersistence(configuration, connectionString);
         services.AddScoped<IFieldDictionaryService, FieldDictionaryService>();
         services.AddScoped<ICourtsService, CourtsService>();
         services.AddScoped<ICourtsCatalogService, CourtsCatalogService>();
@@ -207,8 +324,23 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>Per-user inbox, SSE hub, recipient resolution, and outbox event publishing.</summary>
+    /// <summary>
+    /// Notification commands for non-owner services. Recipients are resolved locally, then
+    /// persistence is requested from Platform through the shared outbox.
+    /// </summary>
     public static IServiceCollection AddNotificationInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        IHostEnvironment environment)
+    {
+        services.AddIntegrationEventPublishing(configuration, environment);
+        services.AddScoped<NotificationRecipientResolver>();
+        services.AddScoped<INotificationService, PlatformNotificationRequestService>();
+        return services;
+    }
+
+    /// <summary>Platform-owned per-user inbox and process-local SSE delivery endpoint.</summary>
+    public static IServiceCollection AddPlatformNotificationInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration,
         IHostEnvironment environment)
@@ -222,9 +354,32 @@ public static class DependencyInjection
         return services;
     }
 
-    public static IServiceCollection AddValuationInfrastructure(this IServiceCollection services)
+    /// <summary>
+    /// The valuation-request write path only: the Valuation context, its per-producer outbox
+    /// publisher (D5), the Case Study PO-number lookup it reads through, and the request service.
+    /// Case Study registers this rather than the full set because
+    /// <see cref="CaseStudyValuationDispatchService"/> creates a valuation request when a
+    /// case-study form is submitted; process ownership moves in Phase 3.
+    /// </summary>
+    public static IServiceCollection AddValuationRequestInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString)
     {
+        services.AddValuationPersistence(configuration, connectionString);
+        services.AddScoped<IValuationEventPublisher, ValuationOutboxPublisher>();
+        services.AddScoped<IPropertyPoNumberLookup, CaseStudyPropertyPoNumberLookup>();
         services.AddScoped<IValuationRequestService, ValuationRequestService>();
+        return services;
+    }
+
+    /// <summary>Everything the Valuation host serves, including evaluator recalls.</summary>
+    public static IServiceCollection AddValuationInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString)
+    {
+        services.AddValuationRequestInfrastructure(configuration, connectionString);
         services.AddScoped<IEvaluatorRecallsService, EvaluatorRecallsService>();
         return services;
     }

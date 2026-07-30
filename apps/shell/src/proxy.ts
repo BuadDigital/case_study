@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 
 const AUTH_COOKIE_NAME = "ree-auth";
 
-const PUBLIC_PATHS = ["/login"];
+const PUBLIC_PATHS = ["/login", "/activate"];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some(

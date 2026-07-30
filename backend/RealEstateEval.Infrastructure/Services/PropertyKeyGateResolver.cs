@@ -162,7 +162,7 @@ public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
         {
             var govTask = await _db.WorkflowTasks.AsNoTracking()
                 .Where(t =>
-                    t.Kind == "government-review"
+                    t.Kind == WorkflowTaskKind.GovernmentReview
                     && t.PropertyId == legacyPid
                     && t.PoNumber == resolvedPo)
                 .OrderByDescending(t => t.CreatedAtUtc)

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Authorization;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
@@ -76,7 +77,7 @@ public class EngBillingStatementsController : ControllerBase
 
         var result = await _statements.CreateStatementAsync(request, userId, ct);
         if (result.Error is not null)
-            return BadRequest(new { error = result.Error });
+            return this.BadRequestProblem(result.Error);
         return Ok(result);
     }
 
@@ -91,7 +92,7 @@ public class EngBillingStatementsController : ControllerBase
 
         var (dto, error) = await _statements.IssueStatementAsync(statementId, userId, ct);
         if (error is not null)
-            return BadRequest(new { error });
+            return this.BadRequestProblem(error);
         return dto is null ? NotFound() : Ok(dto);
     }
 
@@ -107,7 +108,7 @@ public class EngBillingStatementsController : ControllerBase
 
         var (dto, error) = await _statements.CloseStatementAsync(statementId, request, userId, ct);
         if (error is not null)
-            return BadRequest(new { error });
+            return this.BadRequestProblem(error);
         return dto is null ? NotFound() : Ok(dto);
     }
 

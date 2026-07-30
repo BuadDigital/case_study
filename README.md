@@ -110,7 +110,7 @@ The project is built on a **modern, production-oriented** stack:
 
 ### ⚙️ Platform & Administration
 
-- **User management (إدارة المستخدمين)** — list staff; **add user** modal (name, role, email, password, contract type: موظف داخلي / متعاون / مزود خدمة); persisted in browser `localStorage` until API is connected
+- **User management (إدارة المستخدمين)** — list staff; **add user** form (name, role, email, contract type: موظف داخلي / متعاون / مزود خدمة). New accounts are created without a password: an administrator issues a single-use activation ticket and the holder chooses their own password at `/activate` (see `backend/README.md` → *Staff account activation*)
 - **Secure login** — JWT in `sessionStorage`; optional backend Identity API
 - **Planned per-role accounts** — `@ejadah.dev` (see `docs/DEMO_ROLE_CREDENTIALS.txt`)
 
@@ -166,7 +166,8 @@ Future API calls → Authorization: Bearer <token>
 | **Secrets in config** | ⚠️ Dev | DB password in `appsettings.Development.json`; JWT key in `appsettings.json` — **override in production** |
 | **Env override for DB** | ✅ | `REAL_ESTATE_EVAL_PG_CONNECTION_STRING` avoids committing passwords |
 | **User secrets / Key Vault** | ⏳ | Use .NET user secrets or cloud vault for prod JWT key and connection strings |
-| **Add-user passwords in UI** | ⚠️ Demo | Stored in **`localStorage`** with staff list — **not secure**; for prototype until Identity API |
+| **Add-user credentials** | ✅ | Create-user APIs return no secret; accounts start password-less and are claimed with a single-use, 24-hour activation ticket |
+| **Attachment uploads** | ✅ | Content identified by magic bytes; declared MIME and extension must agree; allow-list is JPEG/PNG/GIF/WebP/PDF |
 | **No passwords in JWT** | ✅ | Only claims + metadata in token |
 | **EF Core migrations** | ✅ | Schema applied on startup; seeded admin user |
 
@@ -208,7 +209,7 @@ NEXT_PUBLIC_API_URL=http://localhost:5160
 - [ ] Enforce **HTTPS** only; secure cookies if moving token from `sessionStorage`
 - [ ] Seed real users with `@ejadah.dev`; permissions from Identity + `UserProfile.PermissionLevel`
 - [ ] Enforce roles on **every** API endpoint (`[Authorize]` + policies)
-- [ ] Stop storing staff passwords in `localStorage`; use Identity `UserManager` only
+- [x] Stop storing staff passwords in `localStorage`; use Identity `UserManager` only
 - [ ] Add **refresh tokens** or short TTL + re-auth for sensitive actions
 - [ ] Enable **audit logging** for admin and workflow approvals
 - [ ] Restrict CORS to production shell origin only
@@ -424,6 +425,8 @@ Base URL (dev): `http://localhost:5160`
 | Method | Endpoint | Description | Auth |
 | :----- | :------- | :---------- | :--- |
 | `POST` | `/api/auth/login` | Email + password → JWT | Public |
+| `POST` | `/api/auth/activate` | Redeem an activation ticket and set the first password | Public |
+| `POST` | `/api/users/{id}/activation-ticket` | Mint a single-use activation ticket | `CanManageUsers` |
 
 **Response:** `token`, `expiresAtUtc`, `user` (`id`, `email`, `displayName`).
 

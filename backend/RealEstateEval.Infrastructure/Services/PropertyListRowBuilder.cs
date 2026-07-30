@@ -13,10 +13,6 @@ public static class PropertyListRowBuilder
     private const string UnitInsideBuildingClassification = "وحدة داخل مبنى";
     private const string DeedUnderVerification = "قيد التحقق";
     private const string DeedSuspended = "موقوف";
-    private const string CaseStudyPropertyKind = "case-study-property";
-    private const string EngineeringSurveyKind = "engineering-survey";
-    private const string PropertyAppraisalKind = "property-appraisal";
-
     public static IReadOnlyList<PropertyListItemDto> Build(
         IReadOnlyList<WorkOrder> orders,
         IReadOnlySet<string> approvedFailureKeys,
@@ -87,8 +83,8 @@ public static class PropertyListRowBuilder
             : Array.Empty<WorkflowTask>();
 
         var fromTasks = ResolveStatusFromTasks(propertyTasks);
-        var surveyFromTasks = ResolveKindStage(propertyTasks, EngineeringSurveyKind);
-        var valFromTasks = ResolveKindStage(propertyTasks, PropertyAppraisalKind);
+        var surveyFromTasks = ResolveKindStage(propertyTasks, WorkflowTaskKind.EngineeringSurvey);
+        var valFromTasks = ResolveKindStage(propertyTasks, WorkflowTaskKind.PropertyAppraisal);
         var studyFromTasks = ResolveStudyStage(propertyTasks);
 
         var survey = boursePending
@@ -137,54 +133,47 @@ public static class PropertyListRowBuilder
         if (propertyTasks.Count == 0) return null;
 
         var active = propertyTasks
-            .Where(t => !string.Equals(t.Status, WorkflowTaskStatus.Cancelled, StringComparison.Ordinal))
+            .Where(t => t.Status != WorkflowTaskStatus.Cancelled)
             .ToList();
         if (active.Count == 0) return "fail";
 
         // «مكتمل» فقط عند رفع نموذج الدراسة للنظام (اكتمال مهمة دراسة الحالة).
-        var parent = active.FirstOrDefault(t =>
-            string.Equals(t.Kind, CaseStudyPropertyKind, StringComparison.Ordinal));
+        var parent = active.FirstOrDefault(t => t.Kind == WorkflowTaskKind.CaseStudyProperty);
         if (parent is not null &&
-            (string.Equals(parent.Status, WorkflowTaskStatus.Completed, StringComparison.Ordinal) ||
-             string.Equals(parent.Phase, "done", StringComparison.Ordinal)))
+            (parent.Status == WorkflowTaskStatus.Completed || parent.Phase == WorkflowTaskPhase.Done))
         {
             return "done";
         }
 
         var started = active.Any(t =>
-            string.Equals(t.Status, WorkflowTaskStatus.Completed, StringComparison.Ordinal) ||
-            string.Equals(t.Phase, "distribution", StringComparison.Ordinal) ||
-            string.Equals(t.Phase, "case-study", StringComparison.Ordinal) ||
-            string.Equals(t.Phase, "done", StringComparison.Ordinal) ||
-            !string.Equals(t.Kind, CaseStudyPropertyKind, StringComparison.Ordinal));
+            t.Status == WorkflowTaskStatus.Completed ||
+            t.Phase is WorkflowTaskPhase.Distribution
+                or WorkflowTaskPhase.CaseStudy
+                or WorkflowTaskPhase.Done ||
+            t.Kind != WorkflowTaskKind.CaseStudyProperty);
 
         return started ? "progress" : "new";
     }
 
-    private static string? ResolveKindStage(IReadOnlyList<WorkflowTask> propertyTasks, string kind)
+    private static string? ResolveKindStage(
+        IReadOnlyList<WorkflowTask> propertyTasks,
+        WorkflowTaskKind kind)
     {
-        var task = propertyTasks.FirstOrDefault(t =>
-            string.Equals(t.Kind, kind, StringComparison.Ordinal));
+        var task = propertyTasks.FirstOrDefault(t => t.Kind == kind);
         if (task is null) return null;
-        if (string.Equals(task.Status, WorkflowTaskStatus.Cancelled, StringComparison.Ordinal))
-            return "new";
-        if (string.Equals(task.Status, WorkflowTaskStatus.Completed, StringComparison.Ordinal))
-            return "done";
+        if (task.Status == WorkflowTaskStatus.Cancelled) return "new";
+        if (task.Status == WorkflowTaskStatus.Completed) return "done";
         return "progress";
     }
 
     private static string? ResolveStudyStage(IReadOnlyList<WorkflowTask> propertyTasks)
     {
-        var parent = propertyTasks.FirstOrDefault(t =>
-            string.Equals(t.Kind, CaseStudyPropertyKind, StringComparison.Ordinal));
+        var parent = propertyTasks.FirstOrDefault(t => t.Kind == WorkflowTaskKind.CaseStudyProperty);
         if (parent is null) return null;
-        if (string.Equals(parent.Status, WorkflowTaskStatus.Completed, StringComparison.Ordinal) ||
-            string.Equals(parent.Phase, "done", StringComparison.Ordinal))
+        if (parent.Status == WorkflowTaskStatus.Completed || parent.Phase == WorkflowTaskPhase.Done)
             return "done";
-        if (string.Equals(parent.Phase, "case-study", StringComparison.Ordinal) ||
-            string.Equals(parent.Phase, "distribution", StringComparison.Ordinal) ||
-            string.Equals(parent.Status, WorkflowTaskStatus.Open, StringComparison.Ordinal) ||
-            string.Equals(parent.Status, WorkflowTaskStatus.Blocked, StringComparison.Ordinal))
+        if (parent.Phase is WorkflowTaskPhase.CaseStudy or WorkflowTaskPhase.Distribution ||
+            parent.Status is WorkflowTaskStatus.Open or WorkflowTaskStatus.Blocked)
             return "progress";
         return "new";
     }

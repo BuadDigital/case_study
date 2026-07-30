@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web;
 
 namespace RealEstateEval.Identity.Api.Controllers;
 
@@ -51,6 +52,25 @@ public class AuthController : ControllerBase
         return result is null
             ? Unauthorized(new { message = "اسم المستخدم أو كلمة المرور غير صحيحة" })
             : Ok(result);
+    }
+
+    /// <summary>
+    /// Redeems a one-time activation ticket and sets the account's first password.
+    /// Anonymous by necessity — the ticket itself is the proof of possession.
+    /// </summary>
+    [HttpPost("activate")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Activate(
+        [FromBody] ActivateAccountRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+            return ValidationProblem(ModelState);
+
+        var (ok, error) = await _users.ActivateAccountAsync(request, cancellationToken);
+        return ok
+            ? NoContent()
+            : this.BadRequestProblem(error ?? "تعذر تفعيل الحساب.");
     }
 
     [HttpGet("dev-login-users")]

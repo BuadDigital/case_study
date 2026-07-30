@@ -6,14 +6,29 @@ export type NotificationsApiConfig = {
   token: string;
 };
 
+export type NotificationTone = "info" | "success" | "warn";
+export type NotificationWireTone = NotificationTone | "warning";
+export type NotificationCategory =
+  | "workflow"
+  | "financial"
+  | "failures"
+  | "system";
+export type NotificationEntityType =
+  | "property"
+  | "task"
+  | "operations-task"
+  | "failure"
+  | "work-order";
+
 export type UserNotificationDto = {
   id: string;
   title: string;
   body?: string | null;
   href?: string | null;
-  tone?: string | null;
-  category?: string | null;
-  entityType?: string | null;
+  /** `warning` is accepted only for rows/events written before the canonical `warn` contract. */
+  tone?: NotificationWireTone | (string & {}) | null;
+  category?: NotificationCategory | (string & {}) | null;
+  entityType?: NotificationEntityType | (string & {}) | null;
   entityId?: string | null;
   actor?: string | null;
   sourceEvent?: string | null;
@@ -25,9 +40,9 @@ export type CreateUserNotificationRequest = {
   title: string;
   body?: string;
   href?: string;
-  tone?: string;
-  category?: string;
-  entityType?: string;
+  tone?: NotificationTone;
+  category?: NotificationCategory;
+  entityType?: NotificationEntityType;
   entityId?: string;
   actor?: string;
   sourceEvent?: string;

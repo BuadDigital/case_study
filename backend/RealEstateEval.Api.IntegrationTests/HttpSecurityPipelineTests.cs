@@ -221,16 +221,12 @@ public sealed class HardenedIdentityApiWebApplicationFactory
 {
     public const string AllowedOrigin = "https://app.example.test";
 
-    public HardenedIdentityApiWebApplicationFactory()
-    {
-        Environment.SetEnvironmentVariable(
-            "REAL_ESTATE_EVAL_PG_CONNECTION_STRING_IDENTITY",
-            "Host=localhost;Database=identity_security_test");
-    }
-
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Production");
+        builder.UseSetting(
+            "ConnectionStrings:Identity",
+            "Host=localhost;Database=identity_security_test");
         builder.UseSetting(
             "Jwt:SigningKey",
             "integration-test-signing-key-that-is-at-least-sixty-four-characters-long-1234567890");

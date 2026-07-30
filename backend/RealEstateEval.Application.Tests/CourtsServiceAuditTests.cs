@@ -6,7 +6,7 @@ using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Caching;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
@@ -234,7 +234,7 @@ public class CourtsServiceAuditTests
             c.Court!.Name.StartsWith("محكمة التنفيذ ب")));
     }
 
-    private static CourtsService CreateService(ApplicationDbContext db)
+    private static CourtsService CreateService(PlatformDbContext db)
     {
         var cache = new ApiResponseCache(
             new NullDistributedCache(),
@@ -243,13 +243,7 @@ public class CourtsServiceAuditTests
         return new CourtsService(db, cache);
     }
 
-    private static ApplicationDbContext CreateDb()
-    {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"courts-audit-{Guid.NewGuid():N}")
-            .Options;
-        return new ApplicationDbContext(options);
-    }
+    private static PlatformDbContext CreateDb() => TestDatabases.Platform("courts-audit");
 
     private sealed class NullDistributedCache : IDistributedCache
     {

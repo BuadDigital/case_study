@@ -2,16 +2,16 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class EvaluatorRecallsService : IEvaluatorRecallsService
 {
     private const int MaxListRows = 500;
-    private readonly ApplicationDbContext _db;
+    private readonly ValuationDbContext _db;
 
-    public EvaluatorRecallsService(ApplicationDbContext db) => _db = db;
+    public EvaluatorRecallsService(ValuationDbContext db) => _db = db;
 
     public async Task<IReadOnlyList<EvaluatorRecallDto>> ListAsync(
         CancellationToken cancellationToken = default)

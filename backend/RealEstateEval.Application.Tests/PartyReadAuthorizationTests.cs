@@ -108,22 +108,17 @@ public class PartyTaskSubmissionReadAuthorizationTests
         string assigneeId)
     {
         var now = DateTime.UtcNow;
-        db.WorkflowTasks.Add(new WorkflowTask
-        {
-            Id = taskId,
-            Kind = "engineering-survey",
-            PoNumber = "PO-READ",
-            PropertyId = PropertyId,
-            PropertyOrdinal = 1,
-            Title = "الرفع المساحي",
-            Phase = "survey",
-            Status = WorkflowTaskStatus.Open,
-            AssigneeId = assigneeId,
-            AssigneeRole = "engineering-office",
-            AssigneeName = "مكتب هندسي",
-            CreatedAtUtc = now,
-            UpdatedAtUtc = now,
-        });
+        db.WorkflowTasks.Add(WorkflowTask.Create(
+            WorkflowTaskKind.EngineeringSurvey,
+            "PO-READ",
+            now,
+            title: "الرفع المساحي",
+            phase: WorkflowTaskPhase.Done,
+            assigneeRole: "engineering-office",
+            assigneeName: "مكتب هندسي",
+            id: taskId,
+            propertyId: PropertyId,
+            assigneeId: assigneeId));
         db.PartyTaskSubmissions.Add(new PartyTaskSubmission
         {
             Id = Guid.NewGuid(),
@@ -158,7 +153,7 @@ public class PartyTaskSubmissionReadAuthorizationTests
             new NullHttpContextAccessor(),
             new NullPermissionService(),
             new PropertyKeyGateResolver(db),
-            new KeyEnvelopesService(db, holds),
+            new KeyEnvelopesService(db, holds, new KeyEnvelopePeopleResolver(db)),
             TestInspectorFeeServiceFactory.Create(db),
             notifications,
             recipients);
@@ -207,10 +202,10 @@ public class CaseStudyFormReadAuthorizationTests
     [Fact]
     public async Task GetParty_returns_own_form()
     {
-        await using var db = CreateDb();
-        Seed(db);
+        await using var contexts = CreateContexts();
+        Seed(contexts.Legacy);
 
-        var dto = await CreateFormService(db).GetAsync(PartyTaskId, party: true, Party);
+        var dto = await CreateFormService(contexts).GetAsync(PartyTaskId, party: true, Party);
 
         Assert.NotNull(dto);
     }
@@ -218,10 +213,10 @@ public class CaseStudyFormReadAuthorizationTests
     [Fact]
     public async Task GetParty_hides_other_partys_form()
     {
-        await using var db = CreateDb();
-        Seed(db);
+        await using var contexts = CreateContexts();
+        Seed(contexts.Legacy);
 
-        var dto = await CreateFormService(db).GetAsync(ForeignPartyTaskId, party: true, Party);
+        var dto = await CreateFormService(contexts).GetAsync(ForeignPartyTaskId, party: true, Party);
 
         Assert.Null(dto);
     }
@@ -229,10 +224,10 @@ public class CaseStudyFormReadAuthorizationTests
     [Fact]
     public async Task Get_parent_form_visible_to_assigned_child_party()
     {
-        await using var db = CreateDb();
-        Seed(db);
+        await using var contexts = CreateContexts();
+        Seed(contexts.Legacy);
 
-        var dto = await CreateFormService(db).GetAsync(ParentTaskId, party: false, Party);
+        var dto = await CreateFormService(contexts).GetAsync(ParentTaskId, party: false, Party);
 
         Assert.NotNull(dto);
     }
@@ -240,10 +235,10 @@ public class CaseStudyFormReadAuthorizationTests
     [Fact]
     public async Task Get_parent_form_hidden_from_unrelated_party()
     {
-        await using var db = CreateDb();
-        Seed(db);
+        await using var contexts = CreateContexts();
+        Seed(contexts.Legacy);
 
-        var dto = await CreateFormService(db).GetAsync(ParentTaskId, party: false, Outsider);
+        var dto = await CreateFormService(contexts).GetAsync(ParentTaskId, party: false, Outsider);
 
         Assert.Null(dto);
     }
@@ -251,10 +246,10 @@ public class CaseStudyFormReadAuthorizationTests
     [Fact]
     public async Task Get_parent_form_visible_to_case_staff()
     {
-        await using var db = CreateDb();
-        Seed(db);
+        await using var contexts = CreateContexts();
+        Seed(contexts.Legacy);
 
-        var dto = await CreateFormService(db).GetAsync(
+        var dto = await CreateFormService(contexts).GetAsync(
             ParentTaskId,
             party: false,
             new CaseStudyFormActor { UserId = "staff", PrototypeRole = "case-specialist" });
@@ -266,9 +261,13 @@ public class CaseStudyFormReadAuthorizationTests
     {
         var now = DateTime.UtcNow;
         db.WorkflowTasks.AddRange(
-            NewTask(ParentTaskId, "case-study-property", "dist-specialist", null),
-            NewTask(PartyTaskId, "engineering-survey", "dist-party", ParentTaskId),
-            NewTask(ForeignPartyTaskId, "engineering-survey", "dist-outsider", ParentTaskId));
+            NewTask(ParentTaskId, WorkflowTaskKind.CaseStudyProperty, "dist-specialist", null),
+            NewTask(PartyTaskId, WorkflowTaskKind.EngineeringSurvey, "dist-party", ParentTaskId),
+            NewTask(
+                ForeignPartyTaskId,
+                WorkflowTaskKind.EngineeringSurvey,
+                "dist-outsider",
+                ParentTaskId));
 
         db.CaseStudyForms.AddRange(
             new CaseStudyForm
@@ -301,40 +300,35 @@ public class CaseStudyFormReadAuthorizationTests
         db.SaveChanges();
     }
 
-    private static WorkflowTask NewTask(Guid id, string kind, string assigneeId, Guid? parentTaskId)
-    {
-        var now = DateTime.UtcNow;
-        return new WorkflowTask
-        {
-            Id = id,
-            Kind = kind,
-            PoNumber = "PO-FORM-READ",
-            PropertyId = PropertyId,
-            PropertyOrdinal = 1,
-            Title = kind,
-            Phase = "enfath",
-            Status = WorkflowTaskStatus.Open,
-            AssigneeId = assigneeId,
-            ParentTaskId = parentTaskId,
-            CreatedAtUtc = now,
-            UpdatedAtUtc = now,
-        };
-    }
+    private static WorkflowTask NewTask(
+        Guid id,
+        WorkflowTaskKind kind,
+        string assigneeId,
+        Guid? parentTaskId) =>
+        WorkflowTask.Create(
+            kind,
+            "PO-FORM-READ",
+            DateTime.UtcNow,
+            title: kind.ToDbValue(),
+            phase: WorkflowTaskPhase.Enfath,
+            id: id,
+            propertyId: PropertyId,
+            assigneeId: assigneeId,
+            parentTaskId: parentTaskId);
 
-    private static ApplicationDbContext CreateDb()
-    {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"case-study-form-read-{Guid.NewGuid():N}")
-            .Options;
-        return new ApplicationDbContext(options);
-    }
+    private static TestDatabases.ContextSet CreateContexts() =>
+        TestDatabases.Create("case-study-form-read");
 
-    private static CaseStudyFormService CreateFormService(ApplicationDbContext db)
+    private static CaseStudyFormService CreateFormService(TestDatabases.ContextSet contexts)
     {
+        var db = contexts.Legacy;
         var timeline = new PropertyTimelineService(db);
         var valuation = new ValuationRequestService(
-            db,
-            new OutboxIntegrationEventPublisher(db, NullLogger<OutboxIntegrationEventPublisher>.Instance));
+            contexts.Valuation,
+            new ValuationOutboxPublisher(
+                contexts.Valuation,
+                NullLogger<ValuationOutboxPublisher>.Instance),
+            new CaseStudyPropertyPoNumberLookup(db));
         var dispatch = new CaseStudyValuationDispatchService(
             db,
             valuation,

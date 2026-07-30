@@ -33,14 +33,19 @@ export function getApiBase(): string {
 }
 
 export {
+  activateAccount,
   createStaffUser,
   deleteStaffUser,
+  issueActivationTicket,
   listDistributionAssignees,
   listUsers,
+  type ActivateAccountResult,
+  type ActivationTicket,
   type CreateStaffUserRequest,
   type CreateStaffUserResponse,
   type CreateStaffUserResult,
   type DeleteStaffUserResult,
+  type IssueActivationTicketResult,
   type ListUsersResult,
   type UsersApiConfig,
 } from "./users";

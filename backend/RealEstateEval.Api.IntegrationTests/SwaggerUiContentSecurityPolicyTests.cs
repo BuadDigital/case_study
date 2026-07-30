@@ -98,17 +98,13 @@ public class SwaggerUiContentSecurityPolicyTests
 public sealed class SwaggerEnabledIdentityApiWebApplicationFactory
     : WebApplicationFactory<IdentityApi::Program>
 {
-    public SwaggerEnabledIdentityApiWebApplicationFactory()
-    {
-        Environment.SetEnvironmentVariable(
-            "REAL_ESTATE_EVAL_PG_CONNECTION_STRING_IDENTITY",
-            "Host=localhost;Database=identity_swagger_test");
-    }
-
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         // Swagger UI is only mapped in Development and Docker.
         builder.UseEnvironment("Development");
+        builder.UseSetting(
+            "ConnectionStrings:Identity",
+            "Host=localhost;Database=identity_swagger_test");
         builder.UseSetting(
             "Jwt:SigningKey",
             "integration-test-signing-key-that-is-at-least-sixty-four-characters-long-1234567890");

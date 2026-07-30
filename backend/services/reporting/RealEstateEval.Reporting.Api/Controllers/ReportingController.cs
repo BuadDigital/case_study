@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
@@ -9,6 +9,7 @@ using RealEstateEval.Shared.Web.Authorization;
 namespace RealEstateEval.Reporting.Api.Controllers;
 
 [ApiController]
+[Route("api/reporting")]
 [Route("api/reporting/v1")]
 [Authorize]
 public class ReportingController : ControllerBase
@@ -55,7 +56,7 @@ public class ReportingController : ControllerBase
         var valuationRows = BuildRecentValuationRequests(allTasks);
 
         var openPartyTasks = allTasks
-            .Where(t => !WorkflowTaskStatus.IsTerminal(t.Status))
+            .Where(t => !WorkflowTaskStatusValues.IsTerminalValue(t.Status))
             .Where(t =>
                 t.Kind == "property-inspection"
                 || t.Kind == "property-appraisal"
@@ -90,7 +91,7 @@ public class ReportingController : ControllerBase
 
         var governmentReviews = allTasks
             .Where(t => t.Kind == "government-review")
-            .OrderBy(t => WorkflowTaskStatus.IsTerminal(t.Status))
+            .OrderBy(t => WorkflowTaskStatusValues.IsTerminalValue(t.Status))
             .ThenByDescending(t => t.UpdatedAt)
             .Take(6)
             .Select(t => new ReportingGovernmentReviewRowDto
@@ -99,7 +100,7 @@ public class ReportingController : ControllerBase
                 PoNumber = t.PoNumber,
                 Title = t.Title,
                 ReviewerName = t.AssigneeName,
-                Status = WorkflowTaskStatus.IsTerminal(t.Status) ? "done" : "progress",
+                Status = WorkflowTaskStatusValues.IsTerminalValue(t.Status) ? "done" : "progress",
             })
             .ToList();
 
@@ -164,7 +165,7 @@ public class ReportingController : ControllerBase
     {
         var appraisalRows = allTasks
             .Where(t => t.Kind == "property-appraisal")
-            .Where(t => !WorkflowTaskStatus.IsTerminal(t.Status))
+            .Where(t => !WorkflowTaskStatusValues.IsTerminalValue(t.Status))
             .OrderByDescending(t => t.UpdatedAt)
             .Take(6)
             .Select(MapAppraisalTaskToValuationRequest)
@@ -174,7 +175,7 @@ public class ReportingController : ControllerBase
 
         return allTasks
             .Where(t => t.Kind == "valuation-coordination")
-            .Where(t => !WorkflowTaskStatus.IsTerminal(t.Status))
+            .Where(t => !WorkflowTaskStatusValues.IsTerminalValue(t.Status))
             .OrderByDescending(t => t.UpdatedAt)
             .Take(6)
             .Select(MapAppraisalTaskToValuationRequest)
@@ -196,7 +197,7 @@ public class ReportingController : ControllerBase
             Area = "",
             Type = "",
             Appraiser = task.AssigneeName,
-            Status = WorkflowTaskStatus.IsTerminal(task.Status) ? "done" : "progress",
+            Status = WorkflowTaskStatusValues.IsTerminalValue(task.Status) ? "done" : "progress",
             Date = task.UpdatedAt,
         };
     }
@@ -255,7 +256,7 @@ public class ReportingController : ControllerBase
     /// Same open-work rules as sidebar badges and active-transaction queues (excludes completed/cancelled).
     /// </summary>
     private static bool IsActiveQueueStatus(string? status) =>
-        status is WorkflowTaskStatus.Open or WorkflowTaskStatus.Blocked;
+        status is WorkflowTaskStatusValues.Open or WorkflowTaskStatusValues.Blocked;
 
     /// <summary>
     /// Count only tasks that belong on each role's active queue — not every open task for that assignee role.

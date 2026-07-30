@@ -227,7 +227,7 @@ public sealed class PropertyKeysService : IPropertyKeysService
         CancellationToken cancellationToken)
     {
         var govTasks = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t => t.Kind == "government-review" && t.PropertyId != null)
+            .Where(t => t.Kind == WorkflowTaskKind.GovernmentReview && t.PropertyId != null)
             .ToListAsync(cancellationToken);
         if (govTasks.Count == 0) return;
 

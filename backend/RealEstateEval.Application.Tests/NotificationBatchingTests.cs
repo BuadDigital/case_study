@@ -18,13 +18,11 @@ public sealed class NotificationBatchingTests
     {
         var saveCounter = new SaveCounterInterceptor();
         await using var db = CreateDb(saveCounter);
-        var realtime = new RecordingRealtimePublisher();
         var service = new NotificationService(
             db,
             new OutboxIntegrationEventPublisher(
                 db,
-                NullLogger<OutboxIntegrationEventPublisher>.Instance),
-            realtime);
+                NullLogger<OutboxIntegrationEventPublisher>.Instance));
         var userIds = Enumerable.Range(1, 25).Select(i => $"user-{i}").ToList();
 
         var count = await service.CreateForUsersAsync(
@@ -35,7 +33,6 @@ public sealed class NotificationBatchingTests
         Assert.Equal(1, saveCounter.SaveChangesCalls);
         Assert.Equal(userIds.Count, await db.UserNotifications.CountAsync());
         Assert.Equal(userIds.Count, await db.OutboxMessages.CountAsync());
-        Assert.Equal(userIds.Order(), realtime.UserIds.Order());
     }
 
     [Fact]
@@ -43,13 +40,11 @@ public sealed class NotificationBatchingTests
     {
         var saveCounter = new SaveCounterInterceptor();
         await using var db = CreateDb(saveCounter);
-        var realtime = new RecordingRealtimePublisher();
         var service = new NotificationService(
             db,
             new OutboxIntegrationEventPublisher(
                 db,
-                NullLogger<OutboxIntegrationEventPublisher>.Instance),
-            realtime);
+                NullLogger<OutboxIntegrationEventPublisher>.Instance));
         string[] userIds = ["user-1", "user-2", "user-3"];
 
         await service.CreateForUsersAsync(userIds, CreateRequest("same-event"));
@@ -151,13 +146,5 @@ public sealed class NotificationBatchingTests
         }
 
         public void Reset() => SaveChangesCalls = 0;
-    }
-
-    private sealed class RecordingRealtimePublisher : INotificationRealtimePublisher
-    {
-        public List<string> UserIds { get; } = [];
-
-        public void Publish(string userId, UserNotificationDto notification) =>
-            UserIds.Add(userId);
     }
 }

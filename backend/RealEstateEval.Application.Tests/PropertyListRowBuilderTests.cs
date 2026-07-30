@@ -97,15 +97,12 @@ public class PropertyListRowBuilderTests
     {
       [propertyId] =
       [
-        new WorkflowTask
-        {
-          Id = Guid.NewGuid(),
-          Kind = "case-study-property",
-          PoNumber = "PO-300",
-          PropertyId = propertyId,
-          Status = WorkflowTaskStatus.Completed,
-          Phase = "done",
-        },
+        Task(
+          WorkflowTaskKind.CaseStudyProperty,
+          "PO-300",
+          propertyId,
+          WorkflowTaskStatus.Completed,
+          WorkflowTaskPhase.Done),
       ],
     };
 
@@ -146,35 +143,27 @@ public class PropertyListRowBuilderTests
     {
       [propertyId] =
       [
-        new WorkflowTask
-        {
-          Id = parentId,
-          Kind = "case-study-property",
-          PoNumber = "PO-400",
-          PropertyId = propertyId,
-          Status = WorkflowTaskStatus.Open,
-          Phase = "case-study",
-        },
-        new WorkflowTask
-        {
-          Id = Guid.NewGuid(),
-          Kind = "field-inspection",
-          PoNumber = "PO-400",
-          PropertyId = propertyId,
-          ParentTaskId = parentId,
-          Status = WorkflowTaskStatus.Completed,
-          Phase = "done",
-        },
-        new WorkflowTask
-        {
-          Id = Guid.NewGuid(),
-          Kind = "property-appraisal",
-          PoNumber = "PO-400",
-          PropertyId = propertyId,
-          ParentTaskId = parentId,
-          Status = WorkflowTaskStatus.Completed,
-          Phase = "done",
-        },
+        Task(
+          WorkflowTaskKind.CaseStudyProperty,
+          "PO-400",
+          propertyId,
+          WorkflowTaskStatus.Open,
+          WorkflowTaskPhase.CaseStudy,
+          id: parentId),
+        Task(
+          WorkflowTaskKind.FieldInspection,
+          "PO-400",
+          propertyId,
+          WorkflowTaskStatus.Completed,
+          WorkflowTaskPhase.Done,
+          parentTaskId: parentId),
+        Task(
+          WorkflowTaskKind.PropertyAppraisal,
+          "PO-400",
+          propertyId,
+          WorkflowTaskStatus.Completed,
+          WorkflowTaskPhase.Done,
+          parentTaskId: parentId),
       ],
     };
 
@@ -187,4 +176,22 @@ public class PropertyListRowBuilderTests
     Assert.Equal("progress", row.Status);
     Assert.Equal("progress", row.Study);
   }
+
+  private static WorkflowTask Task(
+    WorkflowTaskKind kind,
+    string poNumber,
+    Guid propertyId,
+    WorkflowTaskStatus status,
+    WorkflowTaskPhase phase,
+    Guid? id = null,
+    Guid? parentTaskId = null) =>
+    WorkflowTask.Create(
+      kind,
+      poNumber,
+      DateTime.UtcNow,
+      phase: phase,
+      status: status,
+      id: id,
+      propertyId: propertyId,
+      parentTaskId: parentTaskId);
 }

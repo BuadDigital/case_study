@@ -80,7 +80,7 @@ public class FieldInspectionSubmissionIntegrationTests
 
         var task = await db.WorkflowTasks.AsNoTracking().SingleAsync(t => t.Id == TaskId);
         Assert.Equal(WorkflowTaskStatus.Completed, task.Status);
-        Assert.Equal("done", task.Phase);
+        Assert.Equal(WorkflowTaskPhase.Done, task.Phase);
     }
 
     [Fact]
@@ -182,7 +182,7 @@ public class FieldInspectionSubmissionIntegrationTests
             new NullHttpContextAccessor(),
             new NullPermissionService(),
             new PropertyKeyGateResolver(db),
-            new KeyEnvelopesService(db, holds),
+            new KeyEnvelopesService(db, holds, new KeyEnvelopePeopleResolver(db)),
             TestInspectorFeeServiceFactory.Create(db),
             notifications,
             recipients);
@@ -203,20 +203,14 @@ public class FieldInspectionSubmissionIntegrationTests
 
     private static void SeedInspectionTask(ApplicationDbContext db)
     {
-        var now = DateTime.UtcNow;
-        db.WorkflowTasks.Add(new WorkflowTask
-        {
-            Id = TaskId,
-            Kind = "field-inspection",
-            PoNumber = "PO-100",
-            PropertyId = PropertyId,
-            PropertyOrdinal = 1,
-            Title = "معاينة العقار",
-            Phase = "bourse",
-            Status = WorkflowTaskStatus.Open,
-            CreatedAtUtc = now,
-            UpdatedAtUtc = now,
-        });
+        db.WorkflowTasks.Add(WorkflowTask.Create(
+            WorkflowTaskKind.FieldInspection,
+            "PO-100",
+            DateTime.UtcNow,
+            title: "معاينة العقار",
+            phase: WorkflowTaskPhase.Done,
+            id: TaskId,
+            propertyId: PropertyId));
         db.SaveChanges();
     }
 

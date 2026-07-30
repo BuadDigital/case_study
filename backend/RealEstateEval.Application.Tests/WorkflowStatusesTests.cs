@@ -7,10 +7,10 @@ public class WorkflowStatusesTests
     [Fact]
     public void WorkflowTaskStatus_IsTerminal_matches_completed_and_cancelled()
     {
-        Assert.True(WorkflowTaskStatus.IsTerminal(WorkflowTaskStatus.Completed));
-        Assert.True(WorkflowTaskStatus.IsTerminal(WorkflowTaskStatus.Cancelled));
-        Assert.False(WorkflowTaskStatus.IsTerminal(WorkflowTaskStatus.Open));
-        Assert.False(WorkflowTaskStatus.IsTerminal(WorkflowTaskStatus.Blocked));
+        Assert.True(WorkflowTaskStatus.Completed.IsTerminal());
+        Assert.True(WorkflowTaskStatus.Cancelled.IsTerminal());
+        Assert.False(WorkflowTaskStatus.Open.IsTerminal());
+        Assert.False(WorkflowTaskStatus.Blocked.IsTerminal());
     }
 
     [Fact]

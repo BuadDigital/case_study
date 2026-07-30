@@ -1,11 +1,24 @@
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using RealEstateEval.Domain;
+using RealEstateEval.Infrastructure.Data.Contexts;
 namespace RealEstateEval.Infrastructure.Data;
 
-public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
+/// <summary>
+/// The legacy shared context (ADR 0003). It still holds every slice that Phase 1 has not
+/// extracted yet, plus the mappings of already-extracted tables that non-owner slices keep
+/// reading until plan Phase 3 replaces those reads with owner APIs and projections. Extracted
+/// tables are configured from the owner's model definition, so the two mappings cannot drift,
+/// and no new mapping may be added here.
+/// <para>
+/// It still inherits ASP.NET Identity's store context so transitional Identity reads keep a
+/// complete model (keys, indexes). The write path is <see cref="IdentityDbContext"/> via
+/// <c>AddEntityFrameworkStores</c>; this class must not be registered as the Identity store.
+/// </para>
+/// </summary>
+public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxContext
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options): base(options) {}
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
@@ -67,75 +80,21 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
         base.OnModelCreating(builder);
 
-        builder.Entity<ApplicationUser>(e => e.ToTable("Users", DatabaseSchemas.Identity));
-        builder.Entity<IdentityRole>(e => e.ToTable("Roles", DatabaseSchemas.Identity));
-        builder.Entity<IdentityUserRole<string>>(e => e.ToTable("UserRoles", DatabaseSchemas.Identity));
-        builder.Entity<IdentityUserClaim<string>>(e => e.ToTable("UserClaims", DatabaseSchemas.Identity));
-        builder.Entity<IdentityRoleClaim<string>>(e => e.ToTable("RoleClaims", DatabaseSchemas.Identity));
-        builder.Entity<IdentityUserLogin<string>>(e => e.ToTable("UserLogins", DatabaseSchemas.Identity));
-        builder.Entity<IdentityUserToken<string>>(e => e.ToTable("UserTokens", DatabaseSchemas.Identity));
-
-        builder.Entity<UserProfile>(e =>
-        {
-            e.ToTable("UserProfiles", DatabaseSchemas.Identity);
-            UseOptimisticConcurrency(e);
-            e.HasKey(x => x.UserId);
-            e.HasOne(x => x.User)
-                .WithOne()
-                .HasForeignKey<UserProfile>(x => x.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
-            e.Property(x => x.JobTitle).HasMaxLength(256);
-            e.Property(x => x.DistributionAssigneeId).HasMaxLength(128);
-            e.Property(x => x.ReviewerCityCoverageJson).HasMaxLength(1024);
-            e.Property(x => x.PermissionLevel).HasMaxLength(64);
-            e.HasIndex(x => x.DistributionAssigneeId);
-        });
-
-        builder.Entity<RefreshToken>(e =>
-        {
-            e.ToTable("RefreshTokens", DatabaseSchemas.Identity);
-            e.HasKey(x => x.Id);
-            e.Property(x => x.UserId).HasMaxLength(450).IsRequired();
-            e.Property(x => x.TokenHash).HasMaxLength(64).IsRequired();
-            e.Property(x => x.RevokedReason).HasMaxLength(128);
-            e.HasIndex(x => x.TokenHash).IsUnique();
-            e.HasIndex(x => x.UserId);
-            e.HasIndex(x => x.SessionId);
-            e.HasIndex(x => x.ExpiresAtUtc);
-            e.HasOne<ApplicationUser>()
-                .WithMany()
-                .HasForeignKey(x => x.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        builder.Entity<HrEmployeeProfile>(e =>
-        {
-            e.ToTable("HrEmployeeProfiles", DatabaseSchemas.Identity);
-            e.HasKey(x => x.UserId);
-            e.HasOne(x => x.Profile)
-                .WithOne(x => x.HrEmployee)
-                .HasForeignKey<HrEmployeeProfile>(x => x.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
-            e.Property(x => x.EmploymentType).HasMaxLength(64);
-            e.Property(x => x.Department).HasMaxLength(256);
-            e.Property(x => x.Section).HasMaxLength(256);
-        });
-
-        builder.Entity<ProcServiceProviderProfile>(e =>
-        {
-            e.ToTable("ProcServiceProviderProfiles", DatabaseSchemas.Identity);
-            e.HasKey(x => x.UserId);
-            e.HasOne(x => x.Profile)
-                .WithOne(x => x.ProcProvider)
-                .HasForeignKey<ProcServiceProviderProfile>(x => x.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
-            e.Property(x => x.ServiceType).HasMaxLength(128);
-        });
+        // Slices already extracted in Phase 1. Their owner context is the write path; these
+        // mappings only keep the remaining cross-boundary reads compiling and are removed
+        // with those reads in Phase 3.
+        builder
+            .ApplyIdentityModel()
+            .ApplyAttachmentsModel()
+            .ApplyPlatformModel()
+            .ApplyValuationModel()
+            .ApplyOutboxModel()
+            .ApplyInboxModel();
 
         builder.Entity<WorkOrder>(e =>
         {
             e.ToTable("WorkOrders", DatabaseSchemas.CaseStudy);
-            UseOptimisticConcurrency(e);
+            e.UseOptimisticConcurrency();
             e.HasIndex(x => x.PoNumber).IsUnique();
             e.Property(x => x.PoNumber).HasMaxLength(64);
             e.Property(x => x.AssignmentSpecialist).HasMaxLength(256).IsRequired(false);
@@ -205,91 +164,29 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.Phone).HasMaxLength(32);
         });
 
-        builder.Entity<CourtCatalogEntry>(e =>
-        {
-            e.ToTable("CourtCatalogEntries", DatabaseSchemas.Platform);
-            e.Property(x => x.City).HasMaxLength(128);
-            e.Property(x => x.Court).HasMaxLength(256);
-            e.Property(x => x.CircuitsJson).HasColumnType("jsonb");
-        });
-
-        builder.Entity<Court>(e =>
-        {
-            e.ToTable("Courts", DatabaseSchemas.Platform);
-            e.Property(x => x.Name).HasMaxLength(150).IsRequired();
-            e.Property(x => x.Region).HasMaxLength(80).IsRequired();
-            e.Property(x => x.City).HasMaxLength(80).IsRequired();
-            e.Property(x => x.CreatedBy).HasMaxLength(128).IsRequired();
-            e.Property(x => x.UpdatedBy).HasMaxLength(128);
-            e.HasIndex(x => new { x.Name, x.City }).IsUnique();
-            e.HasIndex(x => new { x.Region, x.City });
-            e.HasIndex(x => x.IsActive);
-            e.HasMany(x => x.Circuits)
-                .WithOne(x => x.Court)
-                .HasForeignKey(x => x.CourtId)
-                .OnDelete(DeleteBehavior.Restrict);
-        });
-
-        builder.Entity<CourtCircuit>(e =>
-        {
-            e.ToTable("CourtCircuits", DatabaseSchemas.Platform);
-            e.Property(x => x.CircuitNo).HasMaxLength(50).IsRequired();
-            e.Property(x => x.CircuitName).HasMaxLength(150);
-            e.Property(x => x.CreatedBy).HasMaxLength(128).IsRequired();
-            e.Property(x => x.UpdatedBy).HasMaxLength(128);
-            e.HasIndex(x => new { x.CourtId, x.CircuitNo }).IsUnique();
-            e.HasIndex(x => x.IsActive);
-        });
-
-        builder.Entity<CourtAuditLog>(e =>
-        {
-            e.ToTable("CourtAuditLogs", DatabaseSchemas.Platform);
-            e.Property(x => x.Action).HasMaxLength(64).IsRequired();
-            e.Property(x => x.EntityType).HasMaxLength(32).IsRequired();
-            e.Property(x => x.ActorId).HasMaxLength(128).IsRequired();
-            e.Property(x => x.ChangesJson).HasColumnType("jsonb");
-            e.HasIndex(x => new { x.EntityType, x.EntityId });
-            e.HasIndex(x => x.TimestampUtc);
-            e.HasIndex(x => x.Action);
-        });
-
-        builder.Entity<Region>(e =>
-        {
-            e.ToTable("Regions", DatabaseSchemas.Platform);
-            e.Property(x => x.Code).HasMaxLength(4).IsRequired();
-            e.Property(x => x.NameAr).HasMaxLength(100).IsRequired();
-            e.Property(x => x.CapitalAr).HasMaxLength(100).IsRequired();
-            e.HasIndex(x => x.Code).IsUnique();
-            e.HasIndex(x => x.IsActive);
-            e.HasMany(x => x.Cities)
-                .WithOne(x => x.Region)
-                .HasForeignKey(x => x.RegionId)
-                .OnDelete(DeleteBehavior.Restrict);
-        });
-
-        builder.Entity<City>(e =>
-        {
-            e.ToTable("Cities", DatabaseSchemas.Platform);
-            e.Property(x => x.NameAr).HasMaxLength(100).IsRequired();
-            e.HasIndex(x => new { x.RegionId, x.NameAr }).IsUnique();
-            e.HasIndex(x => x.IsActive);
-        });
-
         builder.Entity<WorkflowTask>(e =>
         {
             e.ToTable("WorkflowTasks", DatabaseSchemas.CaseStudy);
-            UseOptimisticConcurrency(e);
-            e.Property(x => x.Kind).HasMaxLength(64);
+            e.UseOptimisticConcurrency();
+            e.Property(x => x.Kind)
+                .HasConversion(DomainEnumConverters.WorkflowTaskKind)
+                .HasMaxLength(64);
             e.Property(x => x.PoNumber).HasMaxLength(64);
             e.Property(x => x.Title).HasMaxLength(512);
-            e.Property(x => x.Phase).HasMaxLength(32);
+            e.Property(x => x.Phase)
+                .HasConversion(DomainEnumConverters.WorkflowTaskPhase)
+                .HasMaxLength(32);
             e.Property(x => x.AssigneeRole).HasMaxLength(64);
             e.Property(x => x.AssigneeName).HasMaxLength(256);
             e.Property(x => x.AssigneeId).HasMaxLength(64);
-            e.Property(x => x.Status).HasMaxLength(32);
+            e.Property(x => x.Status)
+                .HasConversion(DomainEnumConverters.WorkflowTaskStatus)
+                .HasMaxLength(32);
             e.Property(x => x.DistributionJson).HasColumnType("jsonb");
             e.Property(x => x.ObstructionReason).HasMaxLength(2000);
-            e.Property(x => x.ObstructionPriorPhase).HasMaxLength(32);
+            e.Property(x => x.ObstructionPriorPhase)
+                .HasConversion(DomainEnumConverters.WorkflowTaskPhase)
+                .HasMaxLength(32);
             e.Property(x => x.AssignmentType).HasMaxLength(64);
             e.HasIndex(x => x.PoNumber);
             e.HasIndex(x => new { x.PoNumber, x.PropertyOrdinal });
@@ -298,19 +195,15 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(x => x.ParentTaskId);
             e.HasIndex(x => new { x.Kind, x.Status });
             e.HasIndex(x => x.CreatedAtUtc);
-        });
-
-        builder.Entity<CaseStudyInfoRolesConfig>(e =>
-        {
-            e.ToTable("CaseStudyInfoRolesConfigs", DatabaseSchemas.Platform);
-            e.Property(x => x.MatrixJson).HasColumnType("jsonb");
-            e.Property(x => x.NotesJson).HasColumnType("jsonb");
+            // "My tasks" lookups filter on AssigneeId alone in the task, failure, work-order
+            // and operations list paths, none of which can use the PoNumber-led indexes.
+            e.HasIndex(x => x.AssigneeId);
         });
 
         builder.Entity<PartyTaskSubmission>(e =>
         {
             e.ToTable("PartyTaskSubmissions", DatabaseSchemas.CaseStudy);
-            UseOptimisticConcurrency(e);
+            e.UseOptimisticConcurrency();
             e.Property(x => x.Kind).HasMaxLength(64);
             e.Property(x => x.Status).HasMaxLength(32);
             e.Property(x => x.PoNumber).HasMaxLength(64);
@@ -329,7 +222,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<FieldInspectionWorkspace>(e =>
         {
             e.ToTable("FieldInspectionWorkspaces", DatabaseSchemas.CaseStudy);
-            UseOptimisticConcurrency(e);
+            e.UseOptimisticConcurrency();
             e.HasKey(x => x.WorkflowTaskId);
             e.Property(x => x.PoNumber).HasMaxLength(64);
             e.Property(x => x.InspectionTime).HasMaxLength(16);
@@ -345,7 +238,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<InspectorFeeLedger>(e =>
         {
             e.ToTable("InspectorFeeLedgers", DatabaseSchemas.CaseStudy);
-            UseOptimisticConcurrency(e);
+            e.UseOptimisticConcurrency();
             e.HasKey(x => x.WorkflowTaskId);
             e.Property(x => x.PoNumber).HasMaxLength(64);
             e.Property(x => x.AssigneeId).HasMaxLength(128);
@@ -380,7 +273,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<EngineeringBillingStatement>(e =>
         {
             e.ToTable("EngineeringBillingStatements", DatabaseSchemas.Financial);
-            UseOptimisticConcurrency(e);
+            e.UseOptimisticConcurrency();
             e.HasKey(x => x.Id);
             e.Property(x => x.ReferenceNumber).HasMaxLength(32);
             e.Property(x => x.AssigneeId).HasMaxLength(128);
@@ -445,7 +338,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<PropertyFailure>(e =>
         {
             e.ToTable("PropertyFailures", DatabaseSchemas.Failures);
-            UseOptimisticConcurrency(e);
+            e.UseOptimisticConcurrency();
             e.Property(x => x.PoNumber).HasMaxLength(64);
             e.Property(x => x.PropertyId).HasMaxLength(128);
             e.Property(x => x.DeedNumber).HasMaxLength(128);
@@ -468,7 +361,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<CaseStudyForm>(e =>
         {
             e.ToTable("CaseStudyForms", DatabaseSchemas.CaseStudy);
-            UseOptimisticConcurrency(e);
+            e.UseOptimisticConcurrency();
             e.Property(x => x.Status).HasMaxLength(32);
             e.Property(x => x.RequestNumber).HasMaxLength(128);
             e.Property(x => x.RequestDate).HasMaxLength(32);
@@ -495,12 +388,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(x => new { x.TaskId, x.IsPartyForm }).IsUnique();
         });
 
-        builder.Entity<FieldDictionaryConfig>(e =>
-        {
-            e.ToTable("FieldDictionaryConfigs", DatabaseSchemas.Platform);
-            e.Property(x => x.StateJson).HasColumnType("jsonb");
-        });
-
         builder.Entity<FailureTypesCatalogConfig>(e =>
         {
             e.ToTable("FailureTypesCatalogConfigs", DatabaseSchemas.Failures);
@@ -516,24 +403,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(x => x.SortOrder);
         });
 
-        builder.Entity<ValuationRequest>(e =>
-        {
-            e.ToTable("ValuationRequests", DatabaseSchemas.Valuation);
-            UseOptimisticConcurrency(e);
-            e.Property(x => x.DisplayId).HasMaxLength(64);
-            e.Property(x => x.PropertyId).HasMaxLength(128);
-            e.Property(x => x.Area).HasMaxLength(128);
-            e.Property(x => x.PropertyType).HasMaxLength(128);
-            e.Property(x => x.Appraiser).HasMaxLength(256);
-            e.Property(x => x.Status).HasMaxLength(32);
-            e.Property(x => x.RequestDate).HasMaxLength(32);
-            e.HasIndex(x => x.DisplayId);
-        });
-
         builder.Entity<PropertyKeyRecord>(e =>
         {
             e.ToTable("PropertyKeyRecords", DatabaseSchemas.Operations);
-            UseOptimisticConcurrency(e);
+            e.UseOptimisticConcurrency();
             e.Property(x => x.PropertyId).HasMaxLength(128);
             e.Property(x => x.PoNumber).HasMaxLength(64);
             e.Property(x => x.Area).HasMaxLength(128);
@@ -546,7 +419,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<KeyEnvelope>(e =>
         {
             e.ToTable("KeyEnvelopes", DatabaseSchemas.Operations);
-            UseOptimisticConcurrency(e);
+            e.UseOptimisticConcurrency();
             e.Property(x => x.RequestNumber).HasMaxLength(128);
             e.Property(x => x.Court).HasMaxLength(256);
             e.Property(x => x.Circuit).HasMaxLength(150);
@@ -579,7 +452,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<KeyEnvelopeAssignment>(e =>
         {
             e.ToTable("KeyEnvelopeAssignments", DatabaseSchemas.Operations);
-            UseOptimisticConcurrency(e);
+            e.UseOptimisticConcurrency();
             e.Property(x => x.DeedNumber).HasMaxLength(128);
             e.Property(x => x.Status).HasMaxLength(32);
             e.Property(x => x.Notes).HasMaxLength(2000);
@@ -592,7 +465,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<KeyEnvelopeHandoff>(e =>
         {
             e.ToTable("KeyEnvelopeHandoffs", DatabaseSchemas.Operations);
-            UseOptimisticConcurrency(e);
+            e.UseOptimisticConcurrency();
             e.Property(x => x.Kind).HasMaxLength(32);
             e.Property(x => x.FromParty).HasMaxLength(256);
             e.Property(x => x.ToParty).HasMaxLength(256);
@@ -621,7 +494,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<PropertyCourtAccess>(e =>
         {
             e.ToTable("PropertyCourtAccesses", DatabaseSchemas.Operations);
-            UseOptimisticConcurrency(e);
+            e.UseOptimisticConcurrency();
             e.Property(x => x.PoNumber).HasMaxLength(64);
             e.Property(x => x.DeedNumber).HasMaxLength(128);
             e.Property(x => x.RequestNumber).HasMaxLength(128);
@@ -638,7 +511,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<KeyReceiptFeeCharge>(e =>
         {
             e.ToTable("KeyReceiptFeeCharges", DatabaseSchemas.Financial);
-            UseOptimisticConcurrency(e);
+            e.UseOptimisticConcurrency();
             e.Property(x => x.RequestNumber).HasMaxLength(128);
             e.Property(x => x.AmountSar).HasPrecision(12, 2);
             e.Property(x => x.CollectionStatus).HasMaxLength(32);
@@ -653,7 +526,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<CourtVisitFeeCharge>(e =>
         {
             e.ToTable("CourtVisitFeeCharges", DatabaseSchemas.Financial);
-            UseOptimisticConcurrency(e);
+            e.UseOptimisticConcurrency();
             e.Property(x => x.TaskDisplayId).HasMaxLength(32);
             e.Property(x => x.PoNumber).HasMaxLength(64);
             e.Property(x => x.CreditAssigneeId).HasMaxLength(128);
@@ -663,18 +536,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(x => x.OperationsTaskId).IsUnique();
             e.HasIndex(x => x.CreditAssigneeId);
             e.HasIndex(x => x.Status);
-        });
-
-        builder.Entity<FileAttachment>(e =>
-        {
-            e.ToTable("FileAttachments", DatabaseSchemas.Attachments);
-            e.Property(x => x.Scope).HasMaxLength(64);
-            e.Property(x => x.ScopeKey).HasMaxLength(512);
-            e.Property(x => x.FileName).HasMaxLength(512);
-            e.Property(x => x.ContentType).HasMaxLength(128);
-            e.Property(x => x.StorageKey).HasMaxLength(1024);
-            e.Property(x => x.UploadedByUserId).HasMaxLength(450);
-            e.HasIndex(x => new { x.Scope, x.ScopeKey });
         });
 
         builder.Entity<InternalDelegationLetterSet>(e =>
@@ -688,21 +549,31 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<OperationsTask>(e =>
         {
             e.ToTable("OperationsTasks", DatabaseSchemas.CaseStudy);
-            UseOptimisticConcurrency(e);
+            e.UseOptimisticConcurrency();
             e.Property(x => x.DisplayId).HasMaxLength(32);
-            e.Property(x => x.Type).HasMaxLength(32);
+            e.Property(x => x.Type)
+                .HasConversion(DomainEnumConverters.OperationsTaskType)
+                .HasMaxLength(32);
             e.Property(x => x.Title).HasMaxLength(500);
             e.Property(x => x.Description).HasMaxLength(4000);
-            e.Property(x => x.Scope).HasMaxLength(32);
+            e.Property(x => x.Scope)
+                .HasConversion(DomainEnumConverters.OperationsTaskScope)
+                .HasMaxLength(32);
             e.Property(x => x.DeedsJson).HasColumnType("jsonb");
             e.Property(x => x.PoNumber).HasMaxLength(64);
             e.Property(x => x.AssigneeId).HasMaxLength(128);
             e.Property(x => x.AssigneeName).HasMaxLength(256);
             e.Property(x => x.CreatedBy).HasMaxLength(128);
             e.Property(x => x.CreatedByName).HasMaxLength(256);
-            e.Property(x => x.Status).HasMaxLength(32);
-            e.Property(x => x.PrevStatus).HasMaxLength(32);
-            e.Property(x => x.Priority).HasMaxLength(16);
+            e.Property(x => x.Status)
+                .HasConversion(DomainEnumConverters.OperationsTaskStatus)
+                .HasMaxLength(32);
+            e.Property(x => x.PrevStatus)
+                .HasConversion(DomainEnumConverters.OperationsTaskStatus)
+                .HasMaxLength(32);
+            e.Property(x => x.Priority)
+                .HasConversion(DomainEnumConverters.OperationsTaskPriority)
+                .HasMaxLength(16);
             e.Property(x => x.Reference).HasMaxLength(64);
             e.Property(x => x.LetterRowsJson).HasColumnType("jsonb");
             e.Property(x => x.CommentsJson).HasColumnType("jsonb");
@@ -718,6 +589,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(x => x.AssigneeId);
             e.HasIndex(x => x.Status);
             e.HasIndex(x => x.DueAtUtc);
+            // Non-manager list visibility ORs on the creator and on the PO numbers the
+            // caller works, so both need to be seekable independently of AssigneeId.
+            e.HasIndex(x => x.CreatedBy);
+            e.HasIndex(x => x.PoNumber);
         });
 
         builder.Entity<OperationsTaskSequence>(e =>
@@ -733,20 +608,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.Type).HasMaxLength(8);
             e.Property(x => x.DateKey).HasMaxLength(8);
             e.HasIndex(x => new { x.Dept, x.Type, x.DateKey }).IsUnique();
-        });
-
-        builder.Entity<EvaluatorRecallRecord>(e =>
-        {
-            e.ToTable("EvaluatorRecallRecords", DatabaseSchemas.Valuation);
-            UseOptimisticConcurrency(e);
-            e.Property(x => x.TaskId).HasMaxLength(64);
-            e.Property(x => x.PoNumber).HasMaxLength(64);
-            e.Property(x => x.PropertyId).HasMaxLength(128);
-            e.Property(x => x.Status).HasMaxLength(32);
-            e.Property(x => x.Reason).HasMaxLength(4000);
-            e.Property(x => x.SpecialistNote).HasMaxLength(4000);
-            e.HasIndex(x => x.TaskId).IsUnique();
-            e.HasIndex(x => x.Status);
         });
 
         builder.Entity<PoIntakeDraft>(e =>
@@ -817,30 +678,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(x => new { x.PoNumber, x.PropertyId, x.OccurredAtUtc });
         });
 
-        builder.Entity<OutboxMessage>(e =>
-        {
-            e.ToTable("OutboxMessages", DatabaseSchemas.Messaging);
-            e.Property(x => x.EventType).HasMaxLength(128);
-            e.Property(x => x.PayloadJson).HasColumnType("jsonb");
-            e.Property(x => x.Error).HasMaxLength(2000);
-            e.Property(x => x.LockedBy).HasMaxLength(128);
-            e.HasIndex(x => x.ProcessedAtUtc);
-            e.HasIndex(x => x.CreatedAtUtc);
-            // Drives the dispatcher claim query: unprocessed, not dead-lettered, lease free.
-            e.HasIndex(x => new { x.ProcessedAtUtc, x.DeadLetteredAtUtc, x.LockedUntilUtc });
-        });
-
-        builder.Entity<ProcessedIntegrationEvent>(e =>
-        {
-            e.ToTable("ProcessedIntegrationEvents", DatabaseSchemas.Messaging);
-            // Composite key is the dedupe guarantee: the insert fails if the same consumer
-            // already handled the event, which is how redelivery is detected.
-            e.HasKey(x => new { x.Consumer, x.EventId });
-            e.Property(x => x.Consumer).HasMaxLength(128);
-            e.Property(x => x.EventType).HasMaxLength(128);
-            e.HasIndex(x => x.ProcessedAtUtc);
-        });
-
         builder.Entity<UserNotification>(e =>
         {
             e.ToTable("UserNotifications", DatabaseSchemas.Messaging);
@@ -856,17 +693,13 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.SourceEvent).HasMaxLength(256);
             e.HasIndex(x => new { x.UserId, x.CreatedAtUtc });
             e.HasIndex(x => new { x.UserId, x.ReadAtUtc });
-            e.HasIndex(x => new { x.UserId, x.SourceEvent });
+            // Dedupe rule: a user never holds two unread notifications for the same source
+            // event. Enforced here so concurrent deliveries of one event collide in the
+            // database instead of both passing a check-then-insert probe.
+            e.HasIndex(x => new { x.UserId, x.SourceEvent })
+                .IsUnique()
+                .HasFilter("\"SourceEvent\" IS NOT NULL AND \"ReadAtUtc\" IS NULL")
+                .HasDatabaseName(DatabaseIndexNames.UserNotificationUnreadSourceEvent);
         });
     }
-
-    /// <summary>
-    /// Maps a shadow row-version property to PostgreSQL's system <c>xmin</c> column.
-    /// Npgsql updates xmin for every write, so EF includes the value loaded at query time
-    /// in UPDATE/DELETE predicates and throws when another request changed the row first.
-    /// </summary>
-    private static void UseOptimisticConcurrency<TEntity>(
-        EntityTypeBuilder<TEntity> entity)
-        where TEntity : class =>
-        entity.Property<uint>("Version").IsRowVersion();
 }

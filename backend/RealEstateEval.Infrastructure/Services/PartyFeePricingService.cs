@@ -297,7 +297,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
     }
 
     public async Task<decimal?> ResolveDefaultFeeAsync(
-        string taskKind,
+        WorkflowTaskKind taskKind,
         string partyType,
         decimal? areaM2 = null,
         string? assigneeId = null,
@@ -317,11 +317,11 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
 
     public static decimal? ResolveFromDto(
         PartyFeePricingDto pricing,
-        string taskKind,
+        WorkflowTaskKind taskKind,
         string partyType,
         decimal? areaM2 = null)
     {
-        if (string.Equals(taskKind, "engineering-survey", StringComparison.OrdinalIgnoreCase))
+        if (taskKind == WorkflowTaskKind.EngineeringSurvey)
         {
             if (areaM2 is not > 0m) return null;
             var tiers = (pricing.AreaTiers ?? [])
@@ -331,7 +331,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             return EngineeringSurveyFeeRules.ResolveFeeFromTiers(areaM2.Value, tiers);
         }
 
-        if (string.Equals(taskKind, "government-review", StringComparison.OrdinalIgnoreCase))
+        if (taskKind == WorkflowTaskKind.GovernmentReview)
             return pricing.GovernmentReviewFeeSar;
 
         if (InspectorFeeRules.IsEmployee(partyType))
@@ -346,16 +346,13 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         };
     }
 
-    private static string? CategoryForTaskKind(string taskKind)
+    private static string? CategoryForTaskKind(WorkflowTaskKind taskKind) => taskKind switch
     {
-        if (string.Equals(taskKind, "engineering-survey", StringComparison.OrdinalIgnoreCase))
-            return PartyFeePricingCategories.EngineeringSurvey;
-        if (string.Equals(taskKind, "government-review", StringComparison.OrdinalIgnoreCase))
-            return PartyFeePricingCategories.GovernmentReview;
-        if (string.Equals(taskKind, "field-inspection", StringComparison.OrdinalIgnoreCase))
-            return PartyFeePricingCategories.FieldInspector;
-        return null;
-    }
+        WorkflowTaskKind.EngineeringSurvey => PartyFeePricingCategories.EngineeringSurvey,
+        WorkflowTaskKind.GovernmentReview => PartyFeePricingCategories.GovernmentReview,
+        WorkflowTaskKind.FieldInspection => PartyFeePricingCategories.FieldInspector,
+        _ => null,
+    };
 
     private async Task<PartyFeePricingDto?> ResolveTableDtoForAssigneeAsync(
         string category,

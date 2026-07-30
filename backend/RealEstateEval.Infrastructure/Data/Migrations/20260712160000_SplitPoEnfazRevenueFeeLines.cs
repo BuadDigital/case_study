@@ -1,4 +1,6 @@
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using RealEstateEval.Infrastructure.Data;
 
 #nullable disable
 
@@ -7,6 +9,8 @@ namespace RealEstateEval.Infrastructure.Data.Migrations;
 /// <summary>
 /// Split EnfazFeeSar into CaseStudyFeeSar + SurveyFeeSar (agreed finance model).
 /// </summary>
+[DbContext(typeof(ApplicationDbContext))]
+[Migration("20260712160000_SplitPoEnfazRevenueFeeLines")]
 public partial class SplitPoEnfazRevenueFeeLines : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
