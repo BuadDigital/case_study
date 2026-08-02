@@ -60,4 +60,19 @@ public class FinancialApiErrorBodyTests : IClassFixture<FinancialApiWebApplicati
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Invalid_pricing_category_filter_returns_400()
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            "/api/financial/v1/party-fee-pricing/tables?category=engineering_survey");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", SystemConfigToken);
+
+        var response = await _client.SendAsync(request);
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("تصنيف", body, StringComparison.Ordinal);
+    }
 }

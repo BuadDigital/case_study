@@ -92,6 +92,30 @@ public class PartyFeePricingServiceTests
     }
 
     [Fact]
+    public async Task Copying_from_a_flat_table_is_refused()
+    {
+        await using var db = CreateDb();
+        var service = new PartyFeePricingService(db);
+        var flat = await service.CreateAsync(new CreatePartyFeePricingTableRequest
+        {
+            Category = PartyFeePricingCategories.FieldInspector,
+            Name = "حافز",
+            PricingKind = PartyFeePricingKinds.Flat,
+            FlatAmountSar = 200m,
+        });
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.CreateAsync(new CreatePartyFeePricingTableRequest
+            {
+                Category = PartyFeePricingCategories.FieldInspector,
+                Name = "نسخة",
+                CopyFromTableId = flat.Id,
+            }));
+
+        Assert.Contains("حوافز", error.Message);
+    }
+
+    [Fact]
     public async Task Copying_inside_the_category_carries_the_rates_over()
     {
         await using var db = CreateDb();

@@ -112,6 +112,57 @@ public class FeeProvenanceTests
         Assert.Equal(tableId, ledger.PricingTableId);
     }
 
+    [Fact]
+    public async Task An_engineering_accrual_refuses_when_the_table_has_no_price()
+    {
+        await using var db = CreateDb();
+        var propertyId = Guid.NewGuid();
+        db.WorkOrderProperties.Add(new WorkOrderProperty
+        {
+            Id = propertyId,
+            WorkOrderId = Guid.NewGuid(),
+            Area = "300",
+        });
+        // Placeholder survey table with no tiers — ResolveDefaultFeeAsync must fail closed.
+        db.PartyFeePricingTables.Add(new PartyFeePricingTable
+        {
+            Id = Guid.NewGuid(),
+            Category = PartyFeePricingCategories.EngineeringSurvey,
+            Name = "فارغ",
+            IsActive = true,
+            UpdatedAtUtc = DateTime.UtcNow,
+        });
+        var task = WorkflowTask.Create(
+            WorkflowTaskKind.EngineeringSurvey,
+            "PO-PROV-EMPTY",
+            DateTime.UtcNow,
+            status: WorkflowTaskStatus.Completed,
+            assigneeRole: "engineering-office",
+            assigneeName: "مكتب هندسي",
+            id: Guid.NewGuid(),
+            assigneeId: "eng-office-empty",
+            propertyId: propertyId);
+        db.WorkflowTasks.Add(task);
+        db.PartyTaskSubmissions.Add(new PartyTaskSubmission
+        {
+            Id = Guid.NewGuid(),
+            WorkflowTaskId = task.Id,
+            Kind = "engineering-survey",
+            Status = PartyTaskSubmissionStatus.Submitted,
+            PropertyId = propertyId,
+            PoNumber = "PO-PROV-EMPTY",
+            SubmittedAtUtc = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        var (row, error) = await TestInspectorFeeServiceFactory.Create(db)
+            .AccrueEngineeringSurveyFeeAsync(task.Id, "user-1");
+
+        Assert.Null(row);
+        Assert.Equal(PricingErrors.FeeUnresolved, error);
+        Assert.Empty(db.InspectorFeeLedgers);
+    }
+
     /// <summary>
     /// Survey fees come from an area schedule that offices renegotiate, which makes the accrual the
     /// place where provenance matters most.
