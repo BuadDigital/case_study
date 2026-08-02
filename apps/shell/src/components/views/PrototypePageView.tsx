@@ -83,6 +83,10 @@ const CourtsView = dynamic(
   () => import("@settings/mfe").then((m) => m.CourtsView),
   { ssr: false },
 );
+const LocationsPendingView = dynamic(
+  () => import("@settings/mfe").then((m) => m.LocationsPendingView),
+  { ssr: false },
+);
 const OrganizationSettingsView = dynamic(
   () => import("@settings/mfe").then((m) => m.OrganizationSettingsView),
   { ssr: false },
@@ -146,6 +150,7 @@ const VIEWS: Partial<Record<PageId, ComponentType>> = {
   users: UsersView,
   profile: ProfileView,
   courts: CourtsView,
+  "location-pending": LocationsPendingView,
   "organization-settings": OrganizationSettingsView,
   "failure-types": FailureTypesView,
   "case-study-info-roles": CaseStudyInfoRolesView,

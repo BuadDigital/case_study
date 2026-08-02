@@ -23,6 +23,12 @@ export const SYSTEM_FIELDS_NAV: SystemFieldsNavItem[] = [
     available: true,
   },
   {
+    id: "location-pending",
+    label: "مراجعة المسميات",
+    icon: "M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z",
+    available: true,
+  },
+  {
     id: "failure-types",
     label: "أنواع التعذرات",
     icon: "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z",

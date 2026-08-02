@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import {
   Badge,
@@ -210,8 +210,10 @@ export function InspectorDefinedPhotosSection({
     slotId: string,
     updater: (slot: InspectorDefinedPhotoSlot) => InspectorDefinedPhotoSlot,
   ) {
-    const current = draft.definedPhotos[slotId];
-    if (!current) return;
+    const current = draft.definedPhotos[slotId] ?? {
+      none: false,
+      photos: [],
+    };
     onPatch({
       definedPhotos: {
         ...draft.definedPhotos,
@@ -402,19 +404,47 @@ export function InspectorDefinedPhotosSection({
           )
         }
       >
-        <p className="mb-3.5 text-[11px] leading-relaxed text-text-3">
-          ارفع الصور من جهازك (كاميرا أو معرض). لكل خانة: ارفع صورتها أو فعّل
-          «لا يوجد». الصور الإضافية تُعرّف بنوعها بنقرة.
-        </p>
+        {bare ? null : (
+          <p className="mb-3.5 text-[11px] leading-relaxed text-text-3">
+            ارفع الصور من جهازك (كاميرا أو معرض). لكل خانة: ارفع صورتها أو فعّل
+            «لا يوجد». الصور الإضافية تُعرّف بنوعها بنقرة.
+          </p>
+        )}
 
-        <div
-          className={cn(
-            "grid gap-3",
-            bare
-              ? "grid-cols-2 gap-2.5"
-              : "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3",
-          )}
-        >
+        {bare ? (
+          <div className="grid grid-cols-3 gap-2.5">
+            {visibleSlots.map((def) => {
+              const slot = draft.definedPhotos[def.id] ?? {
+                none: false,
+                photos: [],
+              };
+              const done =
+                slot.none || slot.photos.some((photo) => photo.approved);
+              return (
+                <MobilePhotoTile
+                  key={def.id}
+                  label={def.name}
+                  done={done}
+                  none={slot.none}
+                  disabled={Boolean(disabled || uploading)}
+                  onUpload={(files) => uploadSlotPhotos(def.id, files)}
+                  onToggleNone={() => toggleSlotNone(def.id, !slot.none)}
+                  onOpenDone={
+                    slot.photos[0]
+                      ? () =>
+                          setPreviewRef({
+                            kind: "slot",
+                            slotId: def.id,
+                            photoId: slot.photos[0]!.id,
+                          })
+                      : undefined
+                  }
+                />
+              );
+            })}
+          </div>
+        ) : (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {visibleSlots.map((def) => {
             const slot = draft.definedPhotos[def.id] ?? {
               none: false,
@@ -503,18 +533,25 @@ export function InspectorDefinedPhotosSection({
             );
           })}
         </div>
+        )}
 
-        <div className="mb-2.5 mt-5 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-text">
-            <i className="ti ti-photo-plus text-primary" aria-hidden />
-            صور إضافية
-          </div>
+        <div className={cn("mb-2.5 mt-5 flex flex-wrap items-center justify-between gap-2", bare && "mt-4")}>
+          {bare ? null : (
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-text">
+              <i className="ti ti-photo-plus text-primary" aria-hidden />
+              صور إضافية
+            </div>
+          )}
           <InspectorPhotoFilePicker
-            label="رفع صور إضافية"
+            label={bare ? "صور إضافية" : "رفع صور إضافية"}
             disabled={disabled}
             loading={uploading}
             multiple
-            className="w-auto"
+            className={cn(
+              bare
+                ? "w-full [&_button]:min-h-11 [&_button]:rounded-xl [&_button]:border-[1.5px] [&_button]:border-dashed [&_button]:border-[var(--gold-d,#a4906f)] [&_button]:bg-[color-mix(in_srgb,var(--gold)_8%,transparent)] [&_button]:text-[13px] [&_button]:font-bold [&_button]:text-[var(--gold-d,#a4906f)]"
+                : "w-auto",
+            )}
             onFilesSelected={uploadFreePhotos}
           />
         </div>
@@ -697,5 +734,98 @@ export function InspectorDefinedPhotosSection({
         </ModalOverlay>
       ) : null}
     </>
+  );
+}
+
+/** Case Study.html `photoTile` — square 3-col capture cell. */
+function MobilePhotoTile({
+  label,
+  done,
+  none,
+  disabled,
+  onUpload,
+  onToggleNone,
+  onOpenDone,
+}: {
+  label: string;
+  done: boolean;
+  none: boolean;
+  disabled?: boolean;
+  onUpload: (files: File[]) => boolean | void | Promise<boolean | void>;
+  onToggleNone: () => void;
+  onOpenDone?: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { runWithUploadToast } = useToast();
+
+  return (
+    <div className="flex flex-col gap-1">
+      <button
+        type="button"
+        disabled={disabled}
+        className={cn(
+          "relative flex aspect-square flex-col items-center justify-center gap-1.5 rounded-[14px] border-[1.5px] p-2 font-inherit",
+          done
+            ? "border-solid border-border bg-surface-2"
+            : "border-dashed border-[var(--border-md,#ddd8cc)] bg-surface",
+        )}
+        onClick={() => {
+          if (done && onOpenDone) {
+            onOpenDone();
+            return;
+          }
+          if (none) {
+            onToggleNone();
+            return;
+          }
+          inputRef.current?.click();
+        }}
+      >
+        {done ? (
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1f6f6f" strokeWidth="1.6" aria-hidden>
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <circle cx="8.5" cy="9.5" r="1.5" />
+            <path d="m4 17 5-5 4 4 3-2 4 4" />
+          </svg>
+        ) : (
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--gold-d,#a4906f)" strokeWidth="1.8" aria-hidden>
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        )}
+        <span className="text-center text-[11px] leading-tight text-text-2">
+          {none ? `لا يوجد · ${label}` : label}
+        </span>
+        {done ? (
+          <span className="absolute start-1.5 top-1.5 grid size-4 place-items-center rounded-full bg-[#1f9d6f] text-white">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" aria-hidden>
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+          </span>
+        ) : null}
+      </button>
+      <button
+        type="button"
+        disabled={disabled}
+        className="text-center text-[10px] font-semibold text-text-3"
+        onClick={onToggleNone}
+      >
+        {none ? "إلغاء «لا يوجد»" : "لا يوجد"}
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*,.heic,.heif"
+        capture="environment"
+        disabled={disabled}
+        className="sr-only"
+        onChange={(e) => {
+          const files = Array.from(e.target.files ?? []);
+          e.target.value = "";
+          if (files.length > 0) {
+            void runWithUploadToast(() => onUpload(files));
+          }
+        }}
+      />
+    </div>
   );
 }

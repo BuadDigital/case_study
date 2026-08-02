@@ -94,38 +94,6 @@ export function EngField({
   );
 }
 
-export function ValBackLink({
-  onClick,
-  children = "العودة إلى قائمة التقييم",
-}: {
-  onClick: () => void;
-  children?: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="mb-2 inline-flex items-center gap-1.5 border-none bg-transparent p-0 py-1.5 text-[12.5px] font-semibold text-text-2 transition-colors hover:text-gold-d"
-    >
-      <svg
-        width="14"
-        height="14"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="-scale-x-100"
-        aria-hidden
-      >
-        <path d="m9 18 6-6-6-6" />
-      </svg>
-      {children}
-    </button>
-  );
-}
-
 export function ValStatusPill({
   label,
   color,

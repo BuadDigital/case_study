@@ -2,7 +2,7 @@
 export const pageGutterClassName = "px-4";
 
 export const pageBodyClassName =
-  "min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:py-5";
+  "min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:py-5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden";
 
 export const pageShellHeaderClassName =
   "grid items-center gap-1 border-b border-border bg-gradient-to-br from-surface-2 to-surface px-4 py-2.5";
@@ -10,16 +10,17 @@ export const pageShellHeaderClassName =
 export const pageToolbarClassName =
   "flex flex-wrap items-center gap-2 border-b border-border bg-surface-2/50 px-4 py-2.5";
 
-export const emptyStateClassName = "px-4 py-8 text-center";
-
 /** KPI-style canvas — light gray background with padded content rhythm.
- *  Height follows content (no nested scroll); the shell `#content` scrolls the page. */
+ *  Height follows content (no nested scroll); the shell `#content` scrolls the page.
+ *  Avoid flex-1 / min-h fill so short pages don't leave a tall empty white panel. */
 export const operationalPageBodyClassName =
-  "flex w-full min-w-0 max-w-full flex-col gap-3 overflow-x-hidden bg-bg px-4 py-4 sm:py-5";
+  "flex h-fit w-full min-w-0 max-w-full flex-col gap-2.5 overflow-x-clip bg-bg px-4 py-3 sm:gap-3 sm:py-4";
 
 /** White content panel on the operational canvas (tables, toolbars, forms). */
 export const operationalPanelClassName =
-  "flex min-w-0 max-w-full flex-col overflow-x-clip rounded-[var(--radius-lg)] border border-border bg-surface shadow-none";
+  "flex h-fit w-full min-w-0 max-w-full flex-col overflow-x-clip rounded-[var(--radius-lg)] border border-border bg-surface shadow-none";
+
+export const emptyStateClassName = "px-4 py-4 text-center";
 
 /** Stats row flush with queue tables — full width, shared dividers. */
 export const statGridFlushClassName =

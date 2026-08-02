@@ -892,6 +892,8 @@ export type PoPropertyIntake = {
   regionId: string;
   /** دليل المدن — مرجع المدينة. */
   cityId: string;
+  /** دليل الأحياء — مرجع الحي (اختياري حتى الاعتماد). */
+  districtId: string;
   classification: string;
   propertyType: string;
   assignmentDocFileNames: string[];
@@ -966,6 +968,7 @@ export function emptyProperty(): PoPropertyIntake {
     circuitId: "",
     regionId: "",
     cityId: "",
+    districtId: "",
     classification: "",
     propertyType: "",
     assignmentDocFileNames: [],

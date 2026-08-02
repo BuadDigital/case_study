@@ -104,4 +104,27 @@ public static class PersonLabelResolver
 
         return normalized;
     }
+
+    /// <summary>
+    /// Prefer a real person name; if the stored label is empty or a user id, look up
+    /// <paramref name="userId"/> / the label itself. Never returns a raw GUID when unresolved —
+    /// returns empty so UIs can show a friendly fallback.
+    /// </summary>
+    public static string ResolveDisplayLabel(
+        string? storedLabel,
+        string? userId,
+        IReadOnlyDictionary<string, string> namesById)
+    {
+        if (LooksLikePersonName(storedLabel))
+            return storedLabel!.Trim();
+
+        foreach (var candidate in new[] { storedLabel, userId })
+        {
+            var resolved = ApplyResolved(candidate, namesById);
+            if (LooksLikePersonName(resolved))
+                return resolved;
+        }
+
+        return "";
+    }
 }

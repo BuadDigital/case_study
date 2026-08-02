@@ -73,6 +73,8 @@ internal static class PlatformModel
             e.Property(x => x.NameAr).HasMaxLength(100).IsRequired();
             e.Property(x => x.CapitalAr).HasMaxLength(100).IsRequired();
             e.HasIndex(x => x.Code).IsUnique();
+            e.HasIndex(x => x.OfficialId).IsUnique();
+            e.HasIndex(x => x.AdminAreaId).IsUnique();
             e.HasIndex(x => x.IsActive);
             e.HasMany(x => x.Cities)
                 .WithOne(x => x.Region)
@@ -83,9 +85,51 @@ internal static class PlatformModel
         builder.Entity<City>(e =>
         {
             e.ToTable("Cities", DatabaseSchemas.Platform);
-            e.Property(x => x.NameAr).HasMaxLength(100).IsRequired();
-            e.HasIndex(x => new { x.RegionId, x.NameAr }).IsUnique();
+            e.Property(x => x.NameAr).HasMaxLength(150).IsRequired();
+            e.Property(x => x.NameEn).HasMaxLength(150);
+            e.Property(x => x.NameSearch).HasMaxLength(150).IsRequired();
+            e.Property(x => x.Status).HasMaxLength(16).IsRequired();
+            e.Property(x => x.RawInput).HasMaxLength(150);
+            e.Property(x => x.CreatedByUserId).HasMaxLength(128);
+            e.Property(x => x.ReviewedByUserId).HasMaxLength(128);
+            // Official national IDs are unique when present; pending suggestions have null.
+            e.HasIndex(x => x.OfficialId)
+                .IsUnique()
+                .HasFilter("\"OfficialId\" IS NOT NULL");
+            e.HasIndex(x => x.NameSearch);
+            e.HasIndex(x => new { x.RegionId, x.IsGovernorate });
+            e.HasIndex(x => new { x.RegionId, x.Status });
             e.HasIndex(x => x.IsActive);
+            e.HasOne(x => x.MergedIntoCity)
+                .WithMany()
+                .HasForeignKey(x => x.MergedIntoCityId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasMany(x => x.Districts)
+                .WithOne(x => x.City)
+                .HasForeignKey(x => x.CityId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<District>(e =>
+        {
+            if (ownsMigrations)
+                e.ToTable("Districts", DatabaseSchemas.Platform);
+            else
+                e.ToTable("Districts", DatabaseSchemas.Platform, t => t.ExcludeFromMigrations());
+
+            e.Property(x => x.NameAr).HasMaxLength(150).IsRequired();
+            e.Property(x => x.NameSearch).HasMaxLength(150).IsRequired();
+            e.Property(x => x.Status).HasMaxLength(16).IsRequired();
+            e.Property(x => x.RawInput).HasMaxLength(150);
+            e.Property(x => x.CreatedByUserId).HasMaxLength(128);
+            e.Property(x => x.ReviewedByUserId).HasMaxLength(128);
+            e.HasIndex(x => x.NameSearch);
+            e.HasIndex(x => new { x.CityId, x.Status });
+            e.HasIndex(x => x.IsActive);
+            e.HasOne(x => x.MergedIntoDistrict)
+                .WithMany()
+                .HasForeignKey(x => x.MergedIntoDistrictId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<FieldDictionaryConfig>(e =>

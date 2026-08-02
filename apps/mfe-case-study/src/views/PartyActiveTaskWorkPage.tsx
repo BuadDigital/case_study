@@ -78,7 +78,7 @@ export function PartyActiveTaskWorkPage({
       className={
         documentScrollWorkspace
           ? "flex w-full flex-col"
-          : "flex min-h-0 flex-1 flex-col"
+          : "flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden"
       }
     >
       <PartyActiveTaskWork

@@ -59,13 +59,11 @@ import {
   applyChecklistToCaseStudyAnswers,
   caseStudyAnswersChanged,
 } from "../lib/engineering-survey-checklist-sync";
-import { EngineeringSurveyFailuresHistory } from "./EngineeringSurveyFailuresHistory";
 import { QuickActionsFab } from "./QuickActionsFab";
 import { usePartyTaskRecallRequest } from "@case-study/mfe/hooks/use-party-task-recall-request";
 import { usePartyTaskRecallEligibility } from "@case-study/mfe/hooks/use-party-task-recall-eligibility";
 import { isEngineeringSurveyTransactionActive } from "../lib/engineering-survey-transaction-active";
 import {
-  EngBackLink,
   EngField,
   EngInfo,
   EngSection,
@@ -122,7 +120,6 @@ export function EngineeringSurveyWorkPanel({
   childTask: task,
   hostRef,
   deedNumber,
-  onBack,
   onFailureSubmitted,
   variant = "workspace",
   forceReadOnly = false,
@@ -906,8 +903,6 @@ export function EngineeringSurveyWorkPanel({
   return (
     <>
       <div className="mx-auto w-full max-w-[1100px]">
-        {onBack ? <EngBackLink onClick={onBack} /> : null}
-
         <div className={engPpHeadClassName}>
           <h1 className="m-0 flex flex-wrap items-center gap-2.5 text-[18px] font-extrabold leading-tight text-heading">
             <span>مساحة عمل الرفع المساحي</span>
@@ -1065,34 +1060,21 @@ export function EngineeringSurveyWorkPanel({
             ) : null}
 
             {workTab === "failures" && propertyId ? (
-              <>
-                <EngSection>تسجيل تعذر</EngSection>
-                {formDisabled ? (
-                  <EngInfo variant="amber">
-                    {viewOnly
-                      ? "وضع الاستعراض — لا يمكن تسجيل تعذر من هنا."
-                      : "لا يمكن تسجيل تعذر بعد إرسال المعاملة."}
-                  </EngInfo>
-                ) : (
-                  <div className="mb-3 max-w-[560px]">
-                    <FailureRaisePanel
-                      poNumber={task.poNumber}
-                      propertyId={propertyId}
-                      deedNumber={deedNumber}
-                      specialist={task.assigneeName || def.assigneeSubtitle}
-                      raisedByRole={failureRaiserRoleForParty(def)}
-                      onSubmitted={onFailureSubmitted}
-                      autoOpenRaise={failureRaiseOpen}
-                    />
-                  </div>
-                )}
-                <EngSection>سجل التعذرات</EngSection>
-                <EngineeringSurveyFailuresHistory
-                  poNumber={task.poNumber}
-                  propertyId={propertyId}
-                  deedNumber={deedNumber}
-                />
-              </>
+              <FailureRaisePanel
+                poNumber={task.poNumber}
+                propertyId={propertyId}
+                deedNumber={deedNumber}
+                specialist={task.assigneeName || def.assigneeSubtitle}
+                raisedByRole={failureRaiserRoleForParty(def)}
+                onSubmitted={onFailureSubmitted}
+                autoOpenRaise={failureRaiseOpen}
+                raiseDisabled={formDisabled}
+                raiseDisabledReason={
+                  viewOnly
+                    ? "وضع الاستعراض — لا يمكن تسجيل تعذر من هنا."
+                    : "لا يمكن تسجيل تعذر بعد إرسال المعاملة."
+                }
+              />
             ) : null}
           </div>
         </div>

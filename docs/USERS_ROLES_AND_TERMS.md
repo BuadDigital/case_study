@@ -86,19 +86,19 @@ exist in a real deployment.
 
 ### Organization placement
 
-| Username | Department (الإدارة) | Section (القسم) | Permission level | Employment | Contract type | Identity roles | Assignee id |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `sliman` | الإدارة التنفيذية | — | `cdo` | دوام كامل | Internal | `CDO`, `HR` | — |
-| `salam` | إدارة التقييم العقاري | — | مدير | دوام كامل | Internal | `HR`, `Editor` | — |
-| `abdulrahman` | إدارة التقييم العقاري | قسم دراسة الحالة | مشرف | دوام كامل | Internal | `HR`, `Supervisor` | — |
-| `osama` | إدارة التقييم العقاري | قسم دراسة الحالة | محرر | دوام كامل | Internal | `HR`, `Editor` | — |
-| `feras` | إدارة التقييم العقاري | قسم دراسة الحالة | محرر | دوام كامل | Internal | `HR`, `Editor` | `gov-firas` |
-| `mohammed` | إدارة التقييم العقاري | قسم تقييم الأفراد | مشرف | دوام كامل | Internal | `HR`, `Supervisor` | `vc-mohammed-diab` |
-| `abdullah` | إدارة التقييم العقاري | قسم تقييم الأفراد | محرر | دوام كامل | Internal | `HR`, `Editor` | `val-abdullah` |
-| `ahmed` | إدارة التقييم العقاري | قسم تقييم الأفراد | محرر | متعاون | Freelance | `HR`, `Editor` | `fi-ahmed` |
-| `abdullah_m` | إدارة التقييم العقاري | قسم تقييم الأفراد | محرر | دوام كامل | Internal | `HR`, `Editor` | `fi-abdullah-abdulmane` |
-| `eman` | الإدارة المالية | قسم المحاسبة | محرر | دوام كامل | Internal | `HR`, `Editor` | — |
-| `jeddah_survey` | مكتب جدة للمساحة (مسح ميداني، مكة المكرمة) | — | — | — | ServiceProvider | `PROC` | `eo-jeddah` |
+| Username | Department (الإدارة) | Section (القسم) | Permission level | Employment | Contract type | Identity roles | Assignee id | رقم العضوية |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `sliman` | الإدارة التنفيذية | — | `cdo` | دوام كامل | Internal | `CDO`, `HR` | — | — |
+| `salam` | إدارة التقييم العقاري | — | مدير | دوام كامل | Internal | `HR`, `Editor` | — | — |
+| `abdulrahman` | إدارة التقييم العقاري | قسم دراسة الحالة | مشرف | دوام كامل | Internal | `HR`, `Supervisor` | — | — |
+| `osama` | إدارة التقييم العقاري | قسم دراسة الحالة | محرر | دوام كامل | Internal | `HR`, `Editor` | — | — |
+| `feras` | إدارة التقييم العقاري | قسم دراسة الحالة | محرر | دوام كامل | Internal | `HR`, `Editor` | `gov-firas` | — |
+| `mohammed` | إدارة التقييم العقاري | قسم تقييم الأفراد | مشرف | دوام كامل | Internal | `HR`, `Supervisor` | `vc-mohammed-diab` | — |
+| `abdullah` | إدارة التقييم العقاري | قسم تقييم الأفراد | محرر | دوام كامل | Internal | `HR`, `Editor` | `val-abdullah` | — |
+| `ahmed` | إدارة التقييم العقاري | قسم تقييم الأفراد | محرر | متعاون | Freelance | `HR`, `Editor` | `fi-ahmed` | `FI-002` |
+| `abdullah_m` | إدارة التقييم العقاري | قسم تقييم الأفراد | محرر | دوام كامل | Internal | `HR`, `Editor` | `fi-abdullah-abdulmane` | `FI-001` |
+| `eman` | الإدارة المالية | قسم المحاسبة | محرر | دوام كامل | Internal | `HR`, `Editor` | — | — |
+| `jeddah_survey` | مكتب جدة للمساحة (مسح ميداني، مكة المكرمة) | — | — | — | ServiceProvider | `PROC` | `eo-jeddah` | — |
 
 Notes:
 

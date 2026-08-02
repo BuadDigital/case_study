@@ -58,7 +58,6 @@ import {
   EngField,
   EngInfo,
   EngSection,
-  ValBackLink,
   ValDepChip,
   ValStatusPill,
   ValTabBar,
@@ -91,7 +90,6 @@ export function EvaluatorWindow({
   propertySummary,
   initialTab = "valuation",
   deedLabel,
-  onBack,
 }: {
   task: WorkflowTask;
   tasks: WorkflowTask[];
@@ -459,8 +457,6 @@ export function EvaluatorWindow({
 
   return (
     <div className="flex flex-col">
-      {onBack ? <ValBackLink onClick={onBack} /> : null}
-
       <div className={valPpHeadClassName}>
         <h1 className="m-0 flex flex-wrap items-center gap-2.5 text-[18px] font-extrabold text-heading">
           <span>نافذة المقيم العقاري</span>

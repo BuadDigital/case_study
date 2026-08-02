@@ -5,6 +5,8 @@ import {
   decryptJson,
   encryptBytes,
   encryptJson,
+  isWebCryptoAvailable,
+  OfflineCryptoUnavailableError,
   type EncryptedPayload,
 } from "./crypto";
 import {
@@ -118,6 +120,9 @@ async function getDb(): Promise<IDBPDatabase<OfflineDb>> {
 }
 
 export async function ensureOfflineKey(userId: string): Promise<CryptoKey> {
+  if (!isWebCryptoAvailable()) {
+    throw new OfflineCryptoUnavailableError();
+  }
   const cached = keyCache.get(userId);
   if (cached) return cached;
   const db = await getDb();
@@ -139,6 +144,9 @@ async function putEncrypted<T>(
   value: T,
   meta?: EncryptedRow["meta"],
 ): Promise<void> {
+  if (!isWebCryptoAvailable()) {
+    throw new OfflineCryptoUnavailableError();
+  }
   const key = await ensureOfflineKey(userId);
   const enc = await encryptJson(key, value);
   const db = await getDb();
@@ -157,6 +165,7 @@ async function getEncrypted<T>(
   userId: string,
   id: string,
 ): Promise<T | null> {
+  if (!isWebCryptoAvailable()) return null;
   const db = await getDb();
   const row = await db.get(store, id);
   if (!row || row.userId !== userId) return null;
@@ -171,6 +180,7 @@ async function listEncrypted<T>(
   store: "drafts" | "blobs" | "outbox" | "prefetch",
   userId: string,
 ): Promise<T[]> {
+  if (!isWebCryptoAvailable()) return [];
   const db = await getDb();
   const rows = await db.getAllFromIndex(store, "by-user", userId);
   const key = await ensureOfflineKey(userId);
@@ -215,6 +225,9 @@ export async function listOfflineDrafts(
 export async function saveOfflineBlob(
   blob: OfflineBlobRecord,
 ): Promise<void> {
+  if (!isWebCryptoAvailable()) {
+    throw new OfflineCryptoUnavailableError();
+  }
   const key = await ensureOfflineKey(blob.userId);
   const enc = await encryptBytes(key, blob.bytes);
   const metaPayload = {
@@ -262,6 +275,7 @@ export async function getOfflineBlob(
   userId: string,
   id: string,
 ): Promise<OfflineBlobRecord | null> {
+  if (!isWebCryptoAvailable()) return null;
   const db = await getDb();
   const row = await db.get("blobs", id);
   if (!row || row.userId !== userId) return null;
@@ -360,6 +374,8 @@ export async function publishPendingCount(userId: string): Promise<number> {
 export async function savePrefetch(
   record: OfflinePrefetchRecord,
 ): Promise<void> {
+  // Soft-skip on insecure contexts (LAN http://192.168.x.x) — prefetch is best-effort.
+  if (!isWebCryptoAvailable()) return;
   await putEncrypted("prefetch", record.userId, record.id, record, {
     kind: record.kind,
   });

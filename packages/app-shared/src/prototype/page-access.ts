@@ -53,6 +53,8 @@ export function pageIdFromPathname(pathname: string): PageId | null {
       return "active-case-study";
     case "active-survey":
       return "active-survey";
+    case "active-inspection":
+      return "active-inspection";
     case "property-appraisal":
       return "property-appraisal";
     case "property-inspection":
@@ -106,10 +108,11 @@ export function isPoPropertyEditPath(pathname: string): boolean {
 const PROPERTY_DETAIL_WITHOUT_PO_LIST: readonly PageId[] = [
   "government-review",
   "property-inspection",
+  "active-inspection",
   "property-appraisal",
   "active-survey",
   "valuation-coordination",
-  /** المعاين يعمل من تفاصيل العقار بعد نقل قائمة المعاينة لليتيمة. */
+  /** المعاين يعمل من تفاصيل العقار أو طابور المعاينة الرسمية. */
   "all-transactions",
   "favorites",
   "failures",

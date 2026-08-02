@@ -13,6 +13,7 @@ export type PageId =
   | "suspended-transactions"
   | "valuation-requests"
   | "property-inspection"
+  | "active-inspection"
   | "government-review"
   | "operations-tasks"
   | "valuation-coordination"
@@ -25,6 +26,7 @@ export type PageId =
   | "financial"
   | "users"
   | "courts"
+  | "location-pending"
   | "failure-types"
   | "case-study-info-roles"
   | "audit-log"
@@ -96,6 +98,7 @@ export function isPageId(value: string): value is PageId {
     value === "suspended-transactions" ||
     value === "valuation-requests" ||
     value === "property-inspection" ||
+    value === "active-inspection" ||
     value === "government-review" ||
     value === "operations-tasks" ||
     value === "valuation-coordination" ||
@@ -108,6 +111,7 @@ export function isPageId(value: string): value is PageId {
     value === "financial" ||
     value === "users" ||
     value === "courts" ||
+    value === "location-pending" ||
     value === "failure-types" ||
     value === "case-study-info-roles" ||
     value === "audit-log" ||

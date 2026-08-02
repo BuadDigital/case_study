@@ -1,9 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Card, CardBody, CardHeader, Button, cn, useToast } from "@platform/design-system";
+import { Button, cn, useToast } from "@platform/design-system";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import {
   activeFailureForProperty,
@@ -11,7 +10,6 @@ import {
   historicalFailuresForProperty,
 } from "../../lib/failure-property-match";
 import { createFailure } from "../../lib/failures-repository";
-import type { FailureSeverity } from "../../lib/failures-types";
 import {
   failureOccurrenceSuffix,
   failureRecordTitle,
@@ -21,26 +19,31 @@ import {
   isPanelBlockingFailure,
 } from "../../lib/failures-labels";
 import { formatDateAr } from "@case-study/mfe";
-import { failureProblemTypeLabel } from "../../lib/failure-types-data";
 import { useFailuresQuery } from "../../query/failures-queries";
-import { FailureRaiseFields } from "./FailureRaiseFields";
+import {
+  FailureRaiseFields,
+  failurePayloadFromDescription,
+} from "./FailureRaiseFields";
 
 const noteWarnClass = cn(
-  "rounded-[var(--radius-DEFAULT)] border border-amber border-e-[3px] border-e-amber bg-amber-light px-3.5 py-2.5 text-xs leading-relaxed text-amber-text",
-);
-
-const noteOkClass = cn(
-  "rounded-[var(--radius-DEFAULT)] border border-success/30 border-e-[3px] border-e-success bg-success-light px-3.5 py-2.5 text-xs leading-relaxed text-success-text",
+  "rounded-lg border border-amber border-e-[3px] border-e-amber bg-amber-light px-3.5 py-2.5 text-xs leading-relaxed text-amber-text",
 );
 
 const noteNeutralClass = cn(
-  "rounded-[var(--radius-DEFAULT)] border border-border-md bg-surface-2 px-3.5 py-2.5 text-xs leading-relaxed text-text-2",
+  "rounded-lg border border-border-md bg-surface-2 px-3.5 py-2.5 text-xs leading-relaxed text-text-2",
 );
 
 const noteInfoClass = cn(
-  "rounded-[var(--radius-DEFAULT)] border border-primary/20 bg-primary-light px-3.5 py-2.5 text-xs leading-relaxed text-text-2",
+  "rounded-lg border border-primary/20 bg-primary-light px-3.5 py-2.5 text-xs leading-relaxed text-text-2",
 );
 
+const sectionClassName =
+  "mb-2.5 mt-0 border-b border-border pb-[7px] text-[13px] font-bold text-heading";
+
+/**
+ * System-wide failure raise surface — Case Study.html template:
+ * تسجيل تعذر (وصف) + رفع التعذر + سجل.
+ */
 export function FailureRaisePanel({
   poNumber,
   propertyId,
@@ -50,6 +53,8 @@ export function FailureRaisePanel({
   onSubmitted,
   autoOpenRaise = false,
   initialProblemTypeId = "",
+  raiseDisabled = false,
+  raiseDisabledReason,
 }: {
   poNumber: string;
   propertyId: string;
@@ -57,23 +62,20 @@ export function FailureRaisePanel({
   specialist: string;
   raisedByRole: string;
   onSubmitted?: () => void;
-  /** Opens the raise form when the panel mounts (e.g. from quick actions). */
   autoOpenRaise?: boolean;
-  /** Prefills problem type (e.g. key-wont-open). */
+  /** Kept for call-site compatibility — HTML template is free-text only. */
   initialProblemTypeId?: string;
+  /** Hide the raise form (view / locked) but keep السجل. */
+  raiseDisabled?: boolean;
+  raiseDisabledReason?: string;
 }) {
+  void initialProblemTypeId;
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const { data: failures = [] } = useFailuresQuery();
-  const [open, setOpen] = useState(autoOpenRaise);
-  const [severity, setSeverity] = useState<FailureSeverity>("internal");
-  const [problemTypeId, setProblemTypeId] = useState(initialProblemTypeId);
-  const [note, setNote] = useState("");
+  const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (initialProblemTypeId) setProblemTypeId(initialProblemTypeId);
-  }, [initialProblemTypeId]);
+  const [invalid, setInvalid] = useState(false);
 
   const propertyRef = useMemo(
     () => ({ poNumber, propertyId, deedNumber }),
@@ -113,58 +115,58 @@ export function FailureRaisePanel({
   );
 
   useEffect(() => {
-    if (autoOpenRaise && !openFailureForCreate) {
-      setOpen(true);
-    }
-  }, [autoOpenRaise, openFailureForCreate]);
+    if (autoOpenRaise) setInvalid(false);
+  }, [autoOpenRaise]);
 
   function formatFailureDate(iso: string): string {
     const day = iso.slice(0, 10);
     return day ? formatDateAr(day) : "—";
   }
 
-  function handleSubmit() {
-    if (!problemTypeId.trim() || openFailureForCreate || saving) return;
-    void (async () => {
-      setSaving(true);
-      try {
-        await createFailure({
-          poNumber,
-          propertyId,
-          deedNumber,
-          problemTypeId,
-          title: failureProblemTypeLabel(problemTypeId),
-          severity,
-          raisedByRole,
-          internalNote: note,
-          specialist,
-        });
-        await queryClient.invalidateQueries({
-          queryKey: prototypeKeys.failures(),
-        });
-        await queryClient.invalidateQueries({
-          queryKey: prototypeKeys.propertyKeys(),
-        });
-        setOpen(false);
-        setProblemTypeId("");
-        setNote("");
-        onSubmitted?.();
-      } catch {
-        showToast("تعذر حفظ التعذر — تحقق من الاتصال وحاول مرة أخرى.", "error");
-      } finally {
-        setSaving(false);
-      }
-    })();
+  async function handleSubmit() {
+    const trimmed = description.trim();
+    if (!trimmed) {
+      setInvalid(true);
+      return;
+    }
+    if (openFailureForCreate || saving) return;
+
+    setSaving(true);
+    setInvalid(false);
+    try {
+      const payload = failurePayloadFromDescription(trimmed);
+      await createFailure({
+        poNumber,
+        propertyId,
+        deedNumber,
+        ...payload,
+        raisedByRole,
+        specialist,
+      });
+      await queryClient.invalidateQueries({
+        queryKey: prototypeKeys.failures(),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: prototypeKeys.propertyKeys(),
+      });
+      setDescription("");
+      showToast("تم رفع التعذر — سيظهر لأخصائي دراسة الحالة.", "success");
+      onSubmitted?.();
+    } catch {
+      showToast("تعذر حفظ التعذر — تحقق من الاتصال وحاول مرة أخرى.", "error");
+    } finally {
+      setSaving(false);
+    }
   }
 
   function renderStatusSection() {
     if (blockingFailures.length > 0) {
       if (blockingFailures.length === 1) {
-        const failure = blockingFailures[0];
-        const title = failureRecordTitle(failure);
+        const failure = blockingFailures[0]!;
         return (
-          <div className={noteWarnClass}>
-            <strong>تعذر قائم على هذا العقار:</strong> {title}
+          <div className={cn(noteWarnClass, "mb-3")}>
+            <strong>تعذر قائم على هذا العقار:</strong>{" "}
+            {failureRecordTitle(failure)}
             <div className="mt-1.5 text-xs text-text-2">
               {failureSeverityLabel(failure.severity)} ·{" "}
               {failureStatusLabel(failure.status)}
@@ -172,9 +174,8 @@ export function FailureRaisePanel({
           </div>
         );
       }
-
       return (
-        <div className={noteWarnClass}>
+        <div className={cn(noteWarnClass, "mb-3")}>
           <strong>تعذرات قائمة على هذا العقار</strong>
           <ul className="mt-2 list-disc space-y-1 ps-4">
             {blockingFailures.slice(0, 4).map((failure) => (
@@ -186,30 +187,21 @@ export function FailureRaisePanel({
               </li>
             ))}
           </ul>
-          {blockingFailures.length > 4 ? (
-            <p className="mt-1.5 text-[10px] text-text-3">
-              +{blockingFailures.length - 4} تعذرات أخرى
-            </p>
-          ) : null}
         </div>
       );
     }
 
     if (approvedFailure) {
-      const title = failureRecordTitle(approvedFailure);
       return (
-        <div className={noteInfoClass}>
-          <strong>تعذر معتمد:</strong> {title}
-          <div className="mt-1.5 text-xs text-text-3">
-            يمكن متابعة العمل بعد اعتماد المشرف — لا يُعرض كتعذر نشط.
-          </div>
+        <div className={cn(noteInfoClass, "mb-3")}>
+          <strong>تعذر معتمد:</strong> {failureRecordTitle(approvedFailure)}
         </div>
       );
     }
 
     if (groupedPastFailures.length > 0) {
       return (
-        <div className={noteNeutralClass}>
+        <div className={cn(noteNeutralClass, "mb-3")}>
           <strong>تعذرات سابقة على هذا العقار</strong>
           <ul className="mt-2 list-disc space-y-1 ps-4">
             {groupedPastFailures.slice(0, 4).map((row) => (
@@ -223,80 +215,114 @@ export function FailureRaisePanel({
               </li>
             ))}
           </ul>
-          {groupedPastFailures.length > 4 ? (
-            <p className="mt-1.5 text-[10px] text-text-3">
-              +{groupedPastFailures.length - 4} تعذرات أخرى
-            </p>
-          ) : null}
         </div>
       );
     }
 
-    return (
-      <div className={noteOkClass}>
-        <strong>صافي</strong> — لا توجد تعذرات على هذا العقار.
-      </div>
-    );
+    return null;
   }
 
   return (
-    <FailureCard>
-      {renderStatusSection()}
+    <div className="min-w-0">
+      <div className={sectionClassName}>تسجيل تعذر</div>
+      {raiseDisabled ? (
+        <p className="mb-3 max-w-[560px] rounded-lg border border-[#fad7a0] bg-[#fef3d7] px-3 py-2.5 text-[11.5px] leading-[1.7] text-[#7a5b12]">
+          {raiseDisabledReason ??
+            "لا يمكن تسجيل تعذر في الوضع الحالي."}
+        </p>
+      ) : (
+        <>
+          {renderStatusSection()}
 
-      {!open && !openFailureForCreate ? (
-        <Button
-          type="button"
-          variant="dangerOutline"
-          size="sm"
-          className="mt-3"
-          showActionToast={false}
-          onClick={() => setOpen(true)}
-        >
-          تسجيل تعذر
-        </Button>
-      ) : null}
+          {openFailureForCreate ? (
+            <p className="m-0 max-w-[560px] text-[12px] leading-relaxed text-text-3">
+              يوجد تعذر قائم على هذا العقار — أكمل معالجته قبل رفع تعذر جديد.
+            </p>
+          ) : (
+            <div className="grid max-w-[560px] gap-2.5">
+              <FailureRaiseFields
+                idPrefix={`raise-${propertyId}`}
+                description={description}
+                onDescriptionChange={(v) => {
+                  setDescription(v);
+                  if (invalid) setInvalid(false);
+                }}
+                invalid={invalid}
+                autoFocus={autoOpenRaise}
+              />
+              <div>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  loading={saving}
+                  disabled={saving}
+                  showActionToast={false}
+                  className="!px-[18px] !py-[7px] !text-xs"
+                  onClick={() => void handleSubmit()}
+                >
+                  رفع التعذر
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
-      {open ? (
-        <div className="mt-3 border-t border-border pt-3">
-          <div className="mb-3 flex items-center justify-between">
-            <span className="text-[13px] font-semibold">رفع تعذر</span>
-            <Button type="button" size="sm" onClick={() => setOpen(false)}>
-              إلغاء
-            </Button>
-          </div>
-          <FailureRaiseFields
-            idPrefix={`raise-${propertyId}`}
-            severity={severity}
-            onSeverityChange={setSeverity}
-            problemTypeId={problemTypeId}
-            onProblemTypeIdChange={setProblemTypeId}
-            note={note}
-            onNoteChange={setNote}
-          />
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            loading={saving}
-            disabled={!problemTypeId.trim() || saving}
-            showActionToast={false}
-            onClick={handleSubmit}
-          >
-            {severity === "internal" ? "حفظ تعذر داخلي" : "تسجيل احتمال تعذر"}
-          </Button>
-        </div>
-      ) : null}
-    </FailureCard>
+      <div className={cn(sectionClassName, "mt-[18px]")}>سجل التعذرات</div>
+      <FailureHistoryList failures={propertyFailures} />
+    </div>
   );
 }
 
-function FailureCard({ children }: { children: ReactNode }) {
+function FailureHistoryList({
+  failures,
+}: {
+  failures: ReturnType<typeof failuresForProperty>;
+}) {
+  if (failures.length === 0) {
+    return (
+      <p className="m-0 text-xs leading-relaxed text-text-3">
+        لا توجد تعذرات مسجلة على هذا العقار.
+      </p>
+    );
+  }
+
+  const sorted = [...failures].sort(
+    (a, b) =>
+      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+  );
+
   return (
-    <Card className="mt-4 overflow-hidden shadow-none">
-      <CardHeader>
-        <span className="text-[13px] font-semibold text-text">التعذرات</span>
-      </CardHeader>
-      <CardBody>{children}</CardBody>
-    </Card>
+    <div className="grid gap-2">
+      {sorted.map((failure) => {
+        const text =
+          failure.internalNote?.trim() || failureRecordTitle(failure);
+        const open =
+          failure.status === "internal" ||
+          failure.status === "review" ||
+          failure.status === "suspended";
+        return (
+          <div
+            key={failure.id}
+            className="flex items-start justify-between gap-2.5 rounded-lg border border-border bg-surface-2 px-3 py-2.5"
+          >
+            <span className="min-w-0 flex-1 text-xs leading-relaxed text-text">
+              {text}
+            </span>
+            <span
+              className={cn(
+                "inline-flex shrink-0 rounded-md px-2 py-0.5 text-[10.5px] font-bold",
+                open
+                  ? "bg-[color-mix(in_srgb,#d9694f_12%,transparent)] text-[#d9694f]"
+                  : "bg-[color-mix(in_srgb,#3f8f5f_12%,transparent)] text-[#3f8f5f]",
+              )}
+            >
+              {open ? "مفتوح" : failureStatusLabel(failure.status)}
+            </span>
+          </div>
+        );
+      })}
+    </div>
   );
 }

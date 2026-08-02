@@ -38,7 +38,9 @@ const shellBtn = (variant: "default" | "primary" = "default") =>
 const heroBtn = (variant: "default" | "primary" = "default") =>
   cn(
     "inline-flex items-center justify-center gap-1.5 rounded-lg border px-3.5 py-1.5 text-[11.5px] font-bold no-underline transition-[background,transform] duration-150",
-    "max-lg:min-h-11 max-lg:flex-1",
+    /* Mobile: full-width stack — avoid a skinny side column beside the caption. */
+    "max-lg:min-h-11 max-lg:w-full max-lg:flex-none max-lg:text-[13px]",
+    "lg:w-auto",
     variant === "primary"
       ? "border-transparent bg-ink text-white shadow-[0_6px_16px_-8px_rgba(18,40,76,0.6)] hover:bg-[#22406e]"
       : "border-border-md bg-surface text-text-2 hover:border-[#a4906f] hover:text-[#8c7857]",
@@ -178,10 +180,10 @@ export function PoPropertyDetailTopbarActions({
   return (
     <div
       className={cn(
-        "flex min-w-0 max-w-full flex-wrap items-center gap-2",
+        "flex min-w-0 max-w-full items-center gap-2",
         isHero
-          ? "w-full flex-1 justify-start"
-          : "justify-end max-lg:w-full max-lg:[&>button]:min-h-11 max-lg:[&>button]:flex-1",
+          ? "w-full flex-col items-stretch max-lg:gap-2 lg:flex-row lg:flex-wrap lg:items-center lg:justify-start"
+          : "flex-wrap justify-end max-lg:w-full max-lg:[&>button]:min-h-11 max-lg:[&>button]:flex-1 max-lg:[&>a]:min-h-11 max-lg:[&>a]:flex-1",
       )}
       aria-label="إجراءات العقار"
     >
@@ -264,7 +266,7 @@ export function PoPropertyDetailTopbarActions({
       {canCreateOps ? (
         <>
           {isHero ? (
-            <span className="ms-auto hidden min-w-2 flex-1 sm:block" aria-hidden />
+            <span className="ms-auto hidden min-w-2 flex-1 lg:block" aria-hidden />
           ) : null}
           <Link href={createTaskHref} className={btn()}>
             <svg

@@ -674,7 +674,9 @@ export function ActiveTransactionQueueView({
     [config, inspectionWorkspaceByTaskId, submissionCacheGen],
   );
 
-  const isPropertyInspectionQueue = config.pageId === "property-inspection";
+  const isPropertyInspectionQueue =
+    config.pageId === "property-inspection" ||
+    config.pageId === "active-inspection";
 
   const isDistributionTable =
     config.tableLayout === "distribution" ||
@@ -686,7 +688,7 @@ export function ActiveTransactionQueueView({
     isEngineeringSurveyTable || isPropertyAppraisalTable;
   const showPartyColumns = config.tableLayout === "case-study";
   const distributionSkeletonCols = 8 + (showPartyColumns ? 3 : 0);
-  const primarySkeletonCols = 6;
+  const primarySkeletonCols = 7;
   const allTransactionsSkeletonCols = 7;
 
   const allTransactionsRowMeta = useMemo(() => {
@@ -2146,6 +2148,7 @@ export function ActiveTransactionQueueView({
                     <THead>
                       <Tr hoverable={false}>
                         <Th>{PROPERTY_IDENTIFIER_COLUMN_LABEL}</Th>
+                        <Th>أمر العمل</Th>
                         <Th>نوع الإسناد</Th>
                         <Th>المدينة</Th>
                         <Th>الحي</Th>
@@ -2168,6 +2171,9 @@ export function ActiveTransactionQueueView({
                         );
                         const active = selectedId === task.id;
                         const moreItems = resolveRowMoreItems(task, property?.id);
+                        const isStudyLabel = row.propertySlot.startsWith(
+                          "قيد الدراسة",
+                        );
                         return (
                           <Tr
                             key={task.id}
@@ -2177,11 +2183,23 @@ export function ActiveTransactionQueueView({
                           >
                             <Td className="whitespace-nowrap">
                               <span
-                                dir="ltr"
-                                className="inline-block text-[12px] font-medium text-primary"
+                                className={cn(
+                                  "inline-block text-[12.5px] font-bold",
+                                  isStudyLabel
+                                    ? "text-gold-d"
+                                    : "text-primary",
+                                )}
+                                dir={isStudyLabel ? "rtl" : "ltr"}
                               >
                                 {row.propertySlot}
                               </span>
+                            </Td>
+                            <Td className="text-text-2">
+                              <PoNumber
+                                value={task.poNumber}
+                                link
+                                className="!text-[12.5px] !font-semibold text-text-2"
+                              />
                             </Td>
                             <Td className="text-text-2">{row.assignmentType}</Td>
                             <Td className="text-text-2">{row.city}</Td>
