@@ -4,6 +4,8 @@
   "private": true,
   "exports": {
     ".": "./src/index.ts",
-    "./notifications": "./src/notifications.ts"
+    "./audit": "./src/audit.ts",
+    "./notifications": "./src/notifications.ts",
+    "./push": "./src/push.ts"
   }
 }

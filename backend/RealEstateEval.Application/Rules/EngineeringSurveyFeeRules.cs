@@ -2,53 +2,52 @@ namespace RealEstateEval.Application.Rules;
 
 /// <summary>
 /// Engineering-survey fees: offices are always external counterparties.
-/// Live rates and area bounds come from the active <c>PartyFeePricingTable</c>.
+/// Every rate and area bound comes from the active <c>PartyFeePricingTable</c>. There are no seed
+/// or fallback amounts here on purpose — an unpriced table must stop the fee, not invent one.
 /// </summary>
 public static class EngineeringSurveyFeeRules
 {
     public const string OfficePartyType = InspectorFeeRules.TypeCooperatorOrganization;
 
-    public const decimal SeedTier1MaxM2 = 500m;
-    public const decimal SeedTier2MaxM2 = 1000m;
-    public const decimal SeedTier3MaxM2 = 1500m;
-    public const decimal SeedTier4MaxM2 = 10000m;
-
-    public const decimal SeedTier1FeeSar = 300m;
-    public const decimal SeedTier2FeeSar = 450m;
-    public const decimal SeedTier3FeeSar = 900m;
-    public const decimal SeedTier4FeeSar = 1500m;
-    public const decimal SeedTier5FeeSar = 4000m;
-
     public readonly record struct AreaFeeTier(decimal? MaxAreaM2, decimal FeeSar);
 
-    public static IReadOnlyList<AreaFeeTier> SeedTiers() =>
-    [
-        new(SeedTier1MaxM2, SeedTier1FeeSar),
-        new(SeedTier2MaxM2, SeedTier2FeeSar),
-        new(SeedTier3MaxM2, SeedTier3FeeSar),
-        new(SeedTier4MaxM2, SeedTier4FeeSar),
-        new(null, SeedTier5FeeSar),
-    ];
-
-    public static decimal ResolveFeeFromTiers(decimal areaM2, IReadOnlyList<AreaFeeTier> tiers)
+    /// <summary>
+    /// Returns <c>null</c> when the schedule cannot answer — either it has no tiers at all, or the
+    /// matching tier was left at zero, which means unset rather than free. Callers surface the
+    /// pricing error instead of billing an amount nobody configured.
+    /// </summary>
+    public static decimal? ResolveFeeFromTiers(decimal areaM2, IReadOnlyList<AreaFeeTier> tiers)
     {
+        if (!HasTiers(tiers)) return null;
+
         var normalized = NormalizeTiers(tiers);
+        var matched = normalized[^1];
         foreach (var tier in normalized)
         {
             if (tier.MaxAreaM2 is null || areaM2 <= tier.MaxAreaM2.Value)
-                return tier.FeeSar;
+            {
+                matched = tier;
+                break;
+            }
         }
 
-        return normalized.Count > 0 ? normalized[^1].FeeSar : 0m;
+        return matched.FeeSar > 0m ? matched.FeeSar : null;
     }
 
+    public static bool HasTiers(IReadOnlyList<AreaFeeTier>? tiers) => tiers is { Count: > 0 };
+
     /// <summary>
-    /// Ensures ≥1 tier, strictly increasing positive closed maxes, and a final open-ended tier.
+    /// Ensures strictly increasing positive closed maxes and a final open-ended tier. Callers must
+    /// reject an empty table first: normalising nothing would mean inventing a price.
     /// </summary>
     public static IReadOnlyList<AreaFeeTier> NormalizeTiers(IReadOnlyList<AreaFeeTier> tiers)
     {
-        if (tiers is null || tiers.Count == 0)
-            return SeedTiers();
+        if (!HasTiers(tiers))
+        {
+            throw new ArgumentException(
+                "جدول التسعير يجب أن يحتوي شريحة واحدة على الأقل.",
+                nameof(tiers));
+        }
 
         var list = new List<AreaFeeTier>(tiers.Count);
         decimal prevMax = 0m;

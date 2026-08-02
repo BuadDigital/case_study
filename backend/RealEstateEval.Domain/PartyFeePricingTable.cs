@@ -16,8 +16,9 @@ public class PartyFeePricingTable
     /// <summary>أتعاب الزيارة — earned on ops <c>court_visit</c> complete (متعاون فرد).</summary>
     public decimal GovernmentReviewFeeSar { get; set; }
 
-    /// <summary>أتعاب استلام المفاتيح — earned on court envelope register + photo (تحصيل من إنفاذ).</summary>
-    public decimal KeyReceiptFeeSar { get; set; }
+    // Key-receipt fees are deliberately absent. They are company revenue billed to إنفاذ, not a rate
+    // owed to a party, and finance enters the amount by hand during enforcement billing. Registering
+    // the envelope only marks the entitlement — see KeyEnvelope.RevenueEntitlementAtUtc.
 
     public decimal FieldInspectorIndividualFeeSar { get; set; }
     public decimal FieldInspectorOrganizationFeeSar { get; set; }

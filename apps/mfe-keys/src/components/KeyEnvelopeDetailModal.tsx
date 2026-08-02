@@ -245,7 +245,7 @@ export function KeyEnvelopeDetailPage({
     return users
       .filter(
         (u) =>
-          u.status !== "Inactive" &&
+          u.status === "Active" &&
           u.role.trim() === FIELD_INSPECTOR_JOB_TITLE &&
           (u.id.trim() || u.distributionAssigneeId?.trim()),
       )

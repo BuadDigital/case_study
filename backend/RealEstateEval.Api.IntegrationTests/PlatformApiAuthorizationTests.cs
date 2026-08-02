@@ -67,6 +67,24 @@ public class PlatformApiAuthorizationTests : IClassFixture<PlatformApiFactory>
         Assert.Equal(HttpStatusCode.Forbidden, (await PutAsync(path, WorkOrderToken)).StatusCode);
     }
 
+    [Fact]
+    public async Task Audit_log_requires_authentication()
+    {
+        var response = await _client.GetAsync("/api/audit-log");
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Audit_log_rejects_a_user_without_system_configuration_access()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/audit-log");
+        request.Headers.Authorization =
+            new AuthenticationHeaderValue("Bearer", TestAuthHandler.AuthOnlyToken);
+
+        var response = await _client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
     private async Task<HttpResponseMessage> PutAsync(string path, string token)
     {
         using var request = new HttpRequestMessage(HttpMethod.Put, path)

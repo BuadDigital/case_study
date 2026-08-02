@@ -31,7 +31,8 @@ public static class InspectorFeeBillingRules
         string action,
         out string nextStatus,
         out string? returnTo,
-        out string? error)
+        out string? error,
+        string? preSuspensionStatus = null)
     {
         nextStatus = "";
         returnTo = null;
@@ -40,6 +41,32 @@ public static class InspectorFeeBillingRules
 
         switch (actionKey)
         {
+            case InspectorFeeActions.Suspend:
+                if (InspectorFeeBillingStatus.Suspendable.Contains(currentStatus))
+                {
+                    nextStatus = InspectorFeeBillingStatus.Suspended;
+                    returnTo = null;
+                    return true;
+                }
+
+                error = "لا يمكن إيقاف البند من هذه الحالة — أخرجه من الكشف أو أمر الصرف أولاً.";
+                return false;
+
+            case InspectorFeeActions.LiftSuspension:
+                if (currentStatus != InspectorFeeBillingStatus.Suspended)
+                {
+                    error = "لا يمكن رفع الإيقاف إلا عن بند موقوف.";
+                    return false;
+                }
+
+                // Restore exactly where the line was withheld from: a draft must not be promoted to
+                // finance just because it spent time suspended.
+                nextStatus = InspectorFeeBillingStatus.Suspendable.Contains(preSuspensionStatus ?? "")
+                    ? preSuspensionStatus!
+                    : InspectorFeeBillingStatus.SupReview;
+                returnTo = null;
+                return true;
+
             case InspectorFeeActions.SubmitToSupervisor:
                 if (currentStatus == InspectorFeeBillingStatus.Draft
                     || currentStatus == InspectorFeeBillingStatus.Returned
@@ -184,6 +211,7 @@ public static class InspectorFeeBillingRules
         InspectorFeeBillingStatus.Disbursed => "مفوترة / مدفوعة",
         InspectorFeeBillingStatus.Returned => "مُعاد للتعديل",
         InspectorFeeBillingStatus.Inquiry => "استفسار مفتوح",
+        InspectorFeeBillingStatus.Suspended => "موقوف",
         _ => "—",
     };
 

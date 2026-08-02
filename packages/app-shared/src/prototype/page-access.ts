@@ -111,6 +111,7 @@ const PROPERTY_DETAIL_WITHOUT_PO_LIST: readonly PageId[] = [
   "valuation-coordination",
   /** المعاين يعمل من تفاصيل العقار بعد نقل قائمة المعاينة لليتيمة. */
   "all-transactions",
+  "favorites",
   "failures",
 ];
 

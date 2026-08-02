@@ -1,0 +1,66 @@
+/* Design tokens — aligned with docs/property_detail.html :root */
+:root {
+  /* ── HTML semantic palette ── */
+  --bg: #f7f8fa;
+  --surface: #ffffff;
+  --surface-2: #f2f4f7;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-md: rgba(0, 0, 0, 0.14);
+  --text-1: #111827;
+  --text-2: #6b7280;
+  --text-3: #9ca3af;
+  --teal: #1d9e75;
+  --teal-light: #e1f5ee;
+  --teal-text: #0f6e56;
+  --amber: #ef9f27;
+  --amber-light: #faeeda;
+  --amber-text: #854f0b;
+  --red: #e24b4a;
+  --red-light: #fcebeb;
+  --red-text: #a32d2d;
+  --blue: #378add;
+  --blue-light: #e6f1fb;
+  --blue-text: #185fa5;
+  --sidebar-w: 200px;
+  --topbar-h: 52px;
+  --tabs-h: 42px;
+  --page-gutter-x: 1rem;
+  --page-gutter-x-sm: 1.5rem;
+  --page-body-y: 1rem;
+  --page-body-y-sm: 1.25rem;
+  --panel-header-y: 0.875rem;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-sm: 6px;
+
+  /* ── Legacy app aliases (prototype.css + registration.css) ── */
+  --primary: var(--teal);
+  --primary-mid: #188f69;
+  --primary-light: var(--teal);
+  --primary-bg: var(--teal-light);
+  --accent: var(--teal);
+  --accent-dark: var(--teal-text);
+  --accent-light: var(--teal-light);
+  --sidebar: #1a2232;
+  --bg2: var(--surface-2);
+  --surface2: var(--surface-2);
+  --surface3: #e8ebf0;
+  --border2: var(--border-md);
+  --text: var(--text-1);
+  --text2: var(--text-2);
+  --text3: var(--text-3);
+  --success: var(--teal);
+  --success-bg: var(--teal-light);
+  --warning: var(--amber);
+  --warning-bg: var(--amber-light);
+  --danger: var(--red);
+  --danger-bg: var(--red-light);
+  --info: var(--blue);
+  --info-bg: var(--blue-light);
+  --purple: #8e44ad;
+  --purple-bg: #ebd9f7;
+  --orange: #d35400;
+  --orange-bg: #fae5d3;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.1);
+}

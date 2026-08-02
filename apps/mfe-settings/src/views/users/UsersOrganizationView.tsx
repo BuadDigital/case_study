@@ -2,10 +2,15 @@
 
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import type { RoleId } from "@platform/types";
+import type { RoleId, UserStatusApi } from "@platform/types";
+import type { UpdateStaffUserRequest } from "@platform/api-client";
 import { Can, useCapability } from "@platform/app-shared/components/Can";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { adminStaffRoleOptions } from "@platform/app-shared/users/admin-staff-roles";
+import {
+  isSectionSupervisorRole,
+  SUPERVISOR_DEPARTMENT_OPTIONS,
+} from "@platform/app-shared/users/admin-staff-roles";
 import {
   RegField,
   RegSelect,
@@ -36,11 +41,14 @@ import {
 import { getAuthSession } from "@platform/auth-client";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { DevSystemResetPanel } from "../../components/DevSystemResetPanel";
+import { EditStaffUserModal } from "../../components/EditStaffUserModal";
 import { UserProfileModal } from "../../components/UserProfileModal";
 import {
   requestActivationTicket,
   submitCreateStaffUser,
   submitDeleteStaffUser,
+  submitUnlockStaffUser,
+  submitUpdateStaffUser,
 } from "../../lib/users-api";
 import { useStaffUsersQuery } from "../../query/settings-queries";
 
@@ -56,7 +64,17 @@ type FormState = {
   displayName: string;
   roleId: RoleId | "";
   email: string;
-  employeeNumber: string;
+  mobile: string;
+  city: string;
+  department: string;
+  inspectorType: "employee" | "contractor" | "";
+  hasCompensation: boolean;
+  feeValueSar: string;
+  iban: string;
+  taxNumber: string;
+  commercialRegistration: string;
+  joinedAt: string;
+  avatarUrl: string;
   nationalId: string;
 };
 
@@ -64,7 +82,17 @@ const EMPTY_FORM: FormState = {
   displayName: "",
   roleId: "",
   email: "",
-  employeeNumber: "",
+  mobile: "",
+  city: "",
+  department: "",
+  inspectorType: "",
+  hasCompensation: false,
+  feeValueSar: "",
+  iban: "",
+  taxNumber: "",
+  commercialRegistration: "",
+  joinedAt: "",
+  avatarUrl: "",
   nationalId: "",
 };
 
@@ -75,8 +103,11 @@ function validateForm(form: FormState): FieldErrors {
         displayName: form.displayName,
         roleId: form.roleId,
         email: form.email,
+        mobile: form.mobile,
+        city: form.city,
+        nationalId: form.nationalId,
       },
-      ["displayName", "roleId", "email"],
+      ["displayName", "roleId", "email", "mobile", "city", "nationalId"],
     ),
     form.email.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())
       ? { email: "صيغة البريد الإلكتروني غير صحيحة." }
@@ -85,18 +116,44 @@ function validateForm(form: FormState): FieldErrors {
       ? { displayName: fieldRequired(form.displayName)! }
       : undefined,
     fieldRequired(form.roleId) ? { roleId: fieldRequired(form.roleId)! } : undefined,
+    form.mobile.trim() && !/^(\+9665|05)\d{8}$/.test(form.mobile.trim())
+      ? { mobile: "صيغة رقم الجوال غير صحيحة." }
+      : undefined,
+    form.nationalId.trim() && !/^[12]\d{9}$/.test(form.nationalId.trim())
+      ? { nationalId: "رقم الهوية يجب أن يتكون من 10 أرقام." }
+      : undefined,
+    form.roleId === "field-inspector" && !form.inspectorType
+      ? { inspectorType: "نوع المعاين مطلوب." }
+      : undefined,
+    isSectionSupervisorRole(form.roleId) &&
+      !SUPERVISOR_DEPARTMENT_OPTIONS.some((o) => o.value === form.department)
+      ? { department: "يجب اختيار قسم المشرف: دراسة الحالة أو التقييم." }
+      : undefined,
+    form.hasCompensation && (!form.feeValueSar || Number(form.feeValueSar) < 0)
+      ? { feeValueSar: "قيمة الأتعاب مطلوبة." }
+      : undefined,
+    form.iban.trim() &&
+      !/^SA\d{22}$/i.test(form.iban.replace(/\s/g, ""))
+      ? { iban: "صيغة الآيبان السعودي غير صحيحة." }
+      : undefined,
+    form.avatarUrl.trim() &&
+      !/^https?:\/\/\S+$/i.test(form.avatarUrl.trim())
+      ? { avatarUrl: "رابط الصورة الشخصية غير صالح." }
+      : undefined,
   );
 }
 
 function statusTone(status: string | undefined): "success" | "danger" | "default" {
   if (status === "Active") return "success";
-  if (status === "Inactive") return "danger";
+  if (status === "Disabled" || status === "Locked") return "danger";
   return "default";
 }
 
 function statusLabel(status: string | undefined): string {
   if (status === "Active") return "فعّال";
-  if (status === "Inactive") return "معطّل";
+  if (status === "Disabled") return "معطّل";
+  if (status === "PendingActivation") return "بانتظار التفعيل";
+  if (status === "Locked") return "موقوف";
   return status || "—";
 }
 
@@ -126,8 +183,11 @@ export function UsersOrganizationView() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [profileUser, setProfileUser] = useState<StaffUser | null>(null);
+  const [editingUser, setEditingUser] = useState<StaffUser | null>(null);
+  const [pendingActionId, setPendingActionId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<UserStatusApi | "">("");
   const [createdUser, setCreatedUser] = useState<{
     id: string;
     userName: string;
@@ -143,6 +203,7 @@ export function UsersOrganizationView() {
     const q = search.trim().toLowerCase();
     return users.filter((user) => {
       if (roleFilter && user.role !== roleFilter) return false;
+      if (statusFilter && user.status !== statusFilter) return false;
       if (!q) return true;
       return (
         user.name.toLowerCase().includes(q) ||
@@ -151,7 +212,7 @@ export function UsersOrganizationView() {
         user.role.toLowerCase().includes(q)
       );
     });
-  }, [users, search, roleFilter]);
+  }, [users, search, roleFilter, statusFilter]);
 
   const roleFilterOptions = useMemo(() => {
     const titles = [...new Set(users.map((u) => u.role).filter(Boolean))];
@@ -183,9 +244,21 @@ export function UsersOrganizationView() {
       const result = await submitCreateStaffUser({
         displayName: form.displayName.trim(),
         email: form.email.trim(),
+        mobile: form.mobile.trim(),
+        city: form.city.trim(),
         roleId: form.roleId,
-        employeeNumber: form.employeeNumber.trim() || undefined,
-        nationalId: form.nationalId.trim() || undefined,
+        department: isSectionSupervisorRole(form.roleId)
+          ? form.department.trim()
+          : undefined,
+        inspectorType: form.inspectorType || undefined,
+        hasCompensation: form.hasCompensation,
+        feeValueSar: form.hasCompensation ? Number(form.feeValueSar) : undefined,
+        iban: form.iban.trim() || undefined,
+        taxNumber: form.taxNumber.trim() || undefined,
+        commercialRegistration: form.commercialRegistration.trim() || undefined,
+        joinedAt: form.joinedAt || undefined,
+        avatarUrl: form.avatarUrl.trim() || undefined,
+        nationalId: form.nationalId.trim(),
       });
 
       if (!result.ok) {
@@ -242,26 +315,100 @@ export function UsersOrganizationView() {
     id: string;
     name: string;
   }) {
-    if (!window.confirm(`حذف المستخدم «${user.name}»؟ لا يمكن التراجع.`)) return;
+    if (!window.confirm(`تعطيل المستخدم «${user.name}» وإنهاء جلساته النشطة؟`)) return;
     setDeletingId(user.id);
     try {
       const result = await submitDeleteStaffUser(user.id);
       if (!result.ok) {
         showToast(
           result.kind === "validation"
-            ? result.message ?? "تعذر حذف المستخدم."
+            ? result.message ?? "تعذر تعطيل المستخدم."
             : result.kind === "network"
               ? "تعذر الاتصال بالخادم."
-              : "تعذر حذف المستخدم.",
+              : "تعذر تعطيل المستخدم.",
           "error",
         );
         return;
       }
       await queryClient.invalidateQueries({ queryKey: prototypeKeys.staffUsers() });
       await refetch();
-      showToast("تم حذف المستخدم.", "success");
+      showToast("تم تعطيل المستخدم.", "success");
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  /** Returns field errors for the modal to render, or null once the update succeeded. */
+  async function onSaveEdit(
+    userId: string,
+    patch: UpdateStaffUserRequest,
+  ): Promise<FieldErrors | null> {
+    setPendingActionId(userId);
+    try {
+      const result = await submitUpdateStaffUser(userId, patch);
+      if (!result.ok) {
+        if (result.kind === "validation" && result.errors) return result.errors;
+        return {
+          _form:
+            result.kind === "network"
+              ? "تعذر الاتصال بالخادم."
+              : "تعذر حفظ التعديلات.",
+        };
+      }
+
+      setEditingUser(null);
+      await queryClient.invalidateQueries({ queryKey: prototypeKeys.staffUsers() });
+      await refetch();
+      showToast("تم حفظ التعديلات.", "success");
+      return null;
+    } finally {
+      setPendingActionId(null);
+    }
+  }
+
+  async function onReactivateUser(user: { id: string; name: string }) {
+    setPendingActionId(user.id);
+    try {
+      const result = await submitUpdateStaffUser(user.id, { status: "Active" });
+      if (!result.ok) {
+        showToast(
+          result.kind === "validation"
+            ? (result.errors?._form ??
+                result.errors?.status ??
+                "تعذر تفعيل المستخدم.")
+            : result.kind === "network"
+              ? "تعذر الاتصال بالخادم."
+              : "تعذر تفعيل المستخدم.",
+          "error",
+        );
+        return;
+      }
+      await queryClient.invalidateQueries({ queryKey: prototypeKeys.staffUsers() });
+      await refetch();
+      showToast("تم تفعيل المستخدم.", "success");
+    } finally {
+      setPendingActionId(null);
+    }
+  }
+
+  async function onUnlockUser(user: { id: string; name: string }) {
+    setPendingActionId(user.id);
+    try {
+      const result = await submitUnlockStaffUser(user.id);
+      if (!result.ok) {
+        showToast(
+          result.kind === "network"
+            ? "تعذر الاتصال بالخادم."
+            : (result.message ?? "تعذر فك قفل الحساب."),
+          "error",
+        );
+        return;
+      }
+      await queryClient.invalidateQueries({ queryKey: prototypeKeys.staffUsers() });
+      await refetch();
+      showToast("تم فك قفل الحساب.", "success");
+    } finally {
+      setPendingActionId(null);
     }
   }
 
@@ -303,7 +450,22 @@ export function UsersOrganizationView() {
                   label: o.label,
                 }))}
                 value={form.roleId}
-                onChange={(v) => updateField("roleId", v as RoleId | "")}
+                onChange={(v) => {
+                  const roleId = v as RoleId | "";
+                  setForm((prev) => ({
+                    ...prev,
+                    roleId,
+                    department: isSectionSupervisorRole(roleId)
+                      ? prev.department
+                      : "",
+                  }));
+                  setErrors((prev) => {
+                    const next = { ...prev };
+                    delete next.roleId;
+                    delete next.department;
+                    return next;
+                  });
+                }}
                 error={errors.roleId}
               />
               <RegField
@@ -317,20 +479,132 @@ export function UsersOrganizationView() {
                 error={errors.email}
               />
               <RegField
-                id="staff-employeeNumber"
-                label="رقم العضوية"
-                value={form.employeeNumber}
-                onChange={(v) => updateField("employeeNumber", v)}
-                hint="اختياري"
+                id="staff-mobile"
+                label="رقم الجوال"
+                required
+                dir="ltr"
+                inputMode="tel"
+                placeholder="05xxxxxxxx"
+                value={form.mobile}
+                onChange={(v) => updateField("mobile", v)}
+                error={errors.mobile}
               />
+              <RegField
+                id="staff-city"
+                label="المدينة"
+                required
+                value={form.city}
+                onChange={(v) => updateField("city", v)}
+                error={errors.city}
+              />
+              {isSectionSupervisorRole(form.roleId) ? (
+                <RegSelect
+                  id="staff-department"
+                  label="قسم الإشراف"
+                  required
+                  placeholder="اختر القسم"
+                  options={SUPERVISOR_DEPARTMENT_OPTIONS.map((o) => ({
+                    value: o.value,
+                    label: o.label,
+                  }))}
+                  value={form.department}
+                  onChange={(v) => updateField("department", v)}
+                  error={errors.department}
+                />
+              ) : null}
               <RegField
                 id="staff-nationalId"
                 label="رقم الهوية"
+                required
                 value={form.nationalId}
                 onChange={(v) => updateField("nationalId", v)}
-                hint="اختياري"
+                error={errors.nationalId}
                 inputMode="numeric"
               />
+              {form.roleId === "field-inspector" ? (
+                <RegSelect
+                  id="staff-inspectorType"
+                  label="نوع المعاين"
+                  required
+                  placeholder="اختر النوع"
+                  options={[
+                    { value: "employee", label: "موظف" },
+                    { value: "contractor", label: "متعاون" },
+                  ]}
+                  value={form.inspectorType}
+                  onChange={(v) =>
+                    updateField("inspectorType", v as FormState["inspectorType"])
+                  }
+                  error={errors.inspectorType}
+                />
+              ) : null}
+              <RegField
+                id="staff-joinedAt"
+                label="تاريخ الالتحاق"
+                type="date"
+                value={form.joinedAt}
+                onChange={(v) => updateField("joinedAt", v)}
+                hint="اختياري"
+              />
+              <RegField
+                id="staff-avatarUrl"
+                label="رابط الصورة الشخصية"
+                dir="ltr"
+                value={form.avatarUrl}
+                onChange={(v) => updateField("avatarUrl", v)}
+                error={errors.avatarUrl}
+                hint="اختياري"
+              />
+              <label className="flex items-center gap-2 text-xs font-medium text-text">
+                <input
+                  type="checkbox"
+                  checked={form.hasCompensation}
+                  onChange={(event) =>
+                    updateField("hasCompensation", event.target.checked)
+                  }
+                />
+                يستحق تعويضاً مالياً
+              </label>
+              {form.hasCompensation ? (
+                <RegField
+                  id="staff-feeValueSar"
+                  label="قيمة الأتعاب (ر.س)"
+                  required
+                  type="number"
+                  value={form.feeValueSar}
+                  onChange={(v) => updateField("feeValueSar", v)}
+                  error={errors.feeValueSar}
+                />
+              ) : null}
+              <RegField
+                id="staff-iban"
+                label="الآيبان"
+                dir="ltr"
+                value={form.iban}
+                onChange={(v) => updateField("iban", v)}
+                error={errors.iban}
+                hint="اختياري"
+              />
+              {form.roleId === "engineering-office" ? (
+                <>
+                  <RegField
+                    id="staff-taxNumber"
+                    label="الرقم الضريبي"
+                    dir="ltr"
+                    value={form.taxNumber}
+                    onChange={(v) => updateField("taxNumber", v)}
+                    hint="اختياري"
+                  />
+                  <RegField
+                    id="staff-commercialRegistration"
+                    label="السجل التجاري"
+                    dir="ltr"
+                    value={form.commercialRegistration}
+                    onChange={(v) => updateField("commercialRegistration", v)}
+                    hint="اختياري"
+                  />
+                </>
+              ) : null}
             </div>
 
             <div className="space-y-4 px-5 py-5 sm:px-6">
@@ -443,6 +717,20 @@ export function UsersOrganizationView() {
                 </option>
               ))}
             </Select>
+            <Select
+              aria-label="تصفية حسب الحالة"
+              value={statusFilter}
+              onChange={(e) =>
+                setStatusFilter(e.target.value as UserStatusApi | "")
+              }
+              className="w-[150px] text-xs"
+            >
+              <option value="">كل الحالات</option>
+              <option value="Active">نشط</option>
+              <option value="PendingActivation">بانتظار التفعيل</option>
+              <option value="Locked">مقفل</option>
+              <option value="Disabled">معطّل</option>
+            </Select>
           </div>
         </div>
 
@@ -527,7 +815,40 @@ export function UsersOrganizationView() {
                             رمز تفعيل
                           </Button>
                         ) : null}
-                        {canManage && canDeleteUser(user, currentUserId) ? (
+                        {canManage ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setEditingUser(user)}
+                          >
+                            تعديل
+                          </Button>
+                        ) : null}
+                        {canManage && user.status === "Locked" ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={pendingActionId === user.id}
+                            loading={pendingActionId === user.id}
+                            onClick={() => void onUnlockUser(user)}
+                          >
+                            فك القفل
+                          </Button>
+                        ) : null}
+                        {canManage && user.status === "Disabled" ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={pendingActionId === user.id}
+                            loading={pendingActionId === user.id}
+                            onClick={() => void onReactivateUser(user)}
+                          >
+                            تفعيل
+                          </Button>
+                        ) : canManage && canDeleteUser(user, currentUserId) ? (
                           <Button
                             type="button"
                             variant="dangerOutline"
@@ -536,7 +857,7 @@ export function UsersOrganizationView() {
                             loading={deletingId === user.id}
                             onClick={() => void onDeleteUser(user)}
                           >
-                            حذف
+                            تعطيل
                           </Button>
                         ) : null}
                       </div>
@@ -555,6 +876,15 @@ export function UsersOrganizationView() {
         <UserProfileModal
           user={profileUser}
           onClose={() => setProfileUser(null)}
+        />
+      ) : null}
+
+      {editingUser ? (
+        <EditStaffUserModal
+          user={editingUser}
+          saving={pendingActionId === editingUser.id}
+          onSubmit={(patch) => onSaveEdit(editingUser.id, patch)}
+          onClose={() => setEditingUser(null)}
         />
       ) : null}
     </div>

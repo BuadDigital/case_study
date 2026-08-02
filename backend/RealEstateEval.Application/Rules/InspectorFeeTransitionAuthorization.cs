@@ -26,7 +26,9 @@ public static class InspectorFeeTransitionAuthorization
             InspectorFeeActions.ApproveToFinance
                 or InspectorFeeActions.ResendToFinance
                 or InspectorFeeActions.ReturnToOffice
-                or InspectorFeeActions.ResolveDispute => isOperationsManager,
+                or InspectorFeeActions.ResolveDispute
+                or InspectorFeeActions.Suspend
+                or InspectorFeeActions.LiftSuspension => isOperationsManager,
 
             InspectorFeeActions.Disburse
                 or InspectorFeeActions.ReturnToSupervisor

@@ -11,6 +11,7 @@ import {
   TabPanel,
 } from "@platform/design-system";
 import { KeyEnvelopeFeesPanel } from "@keys/mfe/components/KeyEnvelopeFeesPanel";
+import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { loadEngBillingStatements } from "@platform/app-shared/prototype/eng-billing-statements-api";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
@@ -59,6 +60,7 @@ export function PartyFeesWorkspace({
   isSupervisor: boolean;
 }) {
   const isEngineering = variant === "engineering-survey";
+  const { hasCapability } = usePrototype();
   const [tab, setTab] = useState<PartyFeesTab>(
     isSupervisor ? "financial" : isEngineering ? "action" : "fees",
   );
@@ -94,6 +96,18 @@ export function PartyFeesWorkspace({
     () => rows.filter((r) => r.billingStatus === "disputed"),
     [rows],
   );
+
+  const suspendedRows = useMemo(
+    () => rows.filter((r) => r.billingStatus === "suspended"),
+    [rows],
+  );
+
+  // Suspended lines are counted too: a withheld line still waits on a supervisor decision.
+  const supervisorAttentionCount =
+    supReviewRows.length +
+    returnedToSup.length +
+    disputedRows.length +
+    suspendedRows.length;
 
   const engActionCount = useMemo(
     () =>
@@ -204,9 +218,7 @@ export function PartyFeesWorkspace({
         <TabBar className="mb-0">
           <Tab active={tab === "financial"} onClick={() => setTab("financial")}>
             الأمور المالية
-            {supReviewRows.length + returnedToSup.length + disputedRows.length > 0
-              ? ` (${supReviewRows.length + returnedToSup.length + disputedRows.length})`
-              : ""}
+            {supervisorAttentionCount > 0 ? ` (${supervisorAttentionCount})` : ""}
           </Tab>
           <Tab active={tab === "fees"} onClick={() => setTab("fees")}>
             الحسم والمراجعة
@@ -307,7 +319,7 @@ export function PartyFeesWorkspace({
         {tab === "key-fees" && showVisitAndKeyFees ? (
           <>
             <KeyEnvelopeFeesPanel
-              canCollect
+              canCollect={hasCapability("manage-financial")}
               onOpenEnvelope={(envelopeId) => {
                 window.location.assign(
                   `/keys?envelope=${encodeURIComponent(envelopeId)}`,
@@ -348,6 +360,16 @@ export function PartyFeesWorkspace({
                 <EmptyState line="لا بنود خلاف تسعير." />
               ) : (
                 <PartyFeeWorkflowTable rows={disputedRows} role="supervisor" />
+              )}
+            </section>
+            <section>
+              <h3 className="mb-2 text-[13px] font-semibold text-text">
+                الموقوفة
+              </h3>
+              {suspendedRows.length === 0 ? (
+                <EmptyState line="لا بنود موقوفة." />
+              ) : (
+                <PartyFeeWorkflowTable rows={suspendedRows} role="supervisor" />
               )}
             </section>
             <section>

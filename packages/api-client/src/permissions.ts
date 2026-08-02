@@ -18,6 +18,7 @@ export type PermissionsDto = {
   prototypeRole?: string | null;
   displayName?: string | null;
   distributionAssigneeId?: string | null;
+  department?: string | null;
   pages: string[];
   capabilities: string[];
 };

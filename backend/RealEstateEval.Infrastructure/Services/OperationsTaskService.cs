@@ -236,6 +236,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
         var changed = false;
         var becameCompleted = false;
         var becameCompletedCourtVisit = false;
+        var courtVisitFee = ResolvedPartyFee.Unresolved;
         OperationsTaskPriority? oldPriority = null;
         DateTime? oldDue = null;
 
@@ -263,6 +264,13 @@ public sealed class OperationsTaskService : IOperationsTaskService
             {
                 var (normalized, courtError) = OperationsTaskCourtVisitRules.Normalize(request.CourtVisitResult);
                 if (courtError is not null) return (null, courtError);
+
+                // Price the visit before touching the task. Refusing further down would leave a
+                // completed entity sitting in the change tracker even though nothing was saved.
+                (courtVisitFee, var pricingError) =
+                    await ResolveCourtVisitFeeAsync(entity, request, cancellationToken);
+                if (pricingError is not null) return (null, pricingError);
+
                 OperationsTaskCourtVisitRules.AppendResultComments(comments, normalized!, now);
                 entity.RecordCourtVisitResult(JsonSerializer.Serialize(normalized, JsonOpts), now);
                 changed = true;
@@ -359,8 +367,8 @@ public sealed class OperationsTaskService : IOperationsTaskService
 
         entity.ReplaceComments(JsonSerializer.Serialize(comments, JsonOpts), now);
 
-        if (becameCompletedCourtVisit)
-            await EnsureCourtVisitFeeChargeAsync(entity, cancellationToken);
+        if (becameCompletedCourtVisit && courtVisitFee.IsResolved)
+            AddCourtVisitFeeCharge(entity, courtVisitFee);
 
         await _db.SaveChangesAsync(cancellationToken);
 
@@ -626,29 +634,48 @@ public sealed class OperationsTaskService : IOperationsTaskService
             .ToListAsync(cancellationToken);
     }
 
-    private async Task EnsureCourtVisitFeeChargeAsync(
+    /// <summary>
+    /// Prices the visit without mutating anything, so a missing rate can be refused before the task
+    /// is touched. A visit that was already charged needs no rate — the fee comes back unresolved and
+    /// no second charge is written.
+    /// </summary>
+    private async Task<(ResolvedPartyFee Fee, string? Error)> ResolveCourtVisitFeeAsync(
         OperationsTask entity,
+        PatchOperationsTaskRequest request,
         CancellationToken cancellationToken)
     {
-        var exists = await _db.CourtVisitFeeCharges
+        var alreadyCharged = await _db.CourtVisitFeeCharges
             .AnyAsync(c => c.OperationsTaskId == entity.Id, cancellationToken);
-        if (exists) return;
+        if (alreadyCharged) return (ResolvedPartyFee.Unresolved, null);
 
-        var creditId = (entity.CreditAssigneeId ?? entity.AssigneeId).Trim();
-        var creditName = string.IsNullOrWhiteSpace(entity.CreditAssigneeName)
-            ? entity.AssigneeName
-            : entity.CreditAssigneeName.Trim();
-
-        var amount = await _pricing.ResolveDefaultFeeAsync(
+        var fee = await _pricing.ResolveDefaultFeeAsync(
             WorkflowTaskKind.GovernmentReview,
             GovernmentReviewFeeRules.PartyType,
             areaM2: null,
-            assigneeId: creditId,
-            cancellationToken) ?? GovernmentReviewFeeRules.FallbackFeeSar;
+            assigneeId: PendingCreditAssigneeId(entity, request),
+            cancellationToken);
 
-        if (amount <= 0)
-            amount = GovernmentReviewFeeRules.FallbackFeeSar;
+        return fee.IsResolved ? (fee, null) : (ResolvedPartyFee.Unresolved, PricingErrors.FeeUnresolved);
+    }
 
+    /// <summary>
+    /// Mirrors <see cref="OperationsTask.ApplyExecutionCredit"/> so the rate can be looked up for the
+    /// assignee who will hold the credit, before that credit is actually stamped.
+    /// </summary>
+    private static string PendingCreditAssigneeId(
+        OperationsTask entity,
+        PatchOperationsTaskRequest request)
+    {
+        var requested = request.CreditAssigneeId?.Trim();
+        if (!string.IsNullOrEmpty(requested)) return requested;
+
+        return string.IsNullOrWhiteSpace(entity.OriginalAssigneeId)
+            ? entity.AssigneeId.Trim()
+            : entity.OriginalAssigneeId.Trim();
+    }
+
+    private void AddCourtVisitFeeCharge(OperationsTask entity, ResolvedPartyFee fee)
+    {
         var now = DateTime.UtcNow;
         _db.CourtVisitFeeCharges.Add(new CourtVisitFeeCharge
         {
@@ -656,9 +683,12 @@ public sealed class OperationsTaskService : IOperationsTaskService
             OperationsTaskId = entity.Id,
             TaskDisplayId = entity.DisplayId,
             PoNumber = NullIfBlank(entity.PoNumber),
-            CreditAssigneeId = creditId,
-            CreditAssigneeName = creditName,
-            AmountSar = amount,
+            CreditAssigneeId = (entity.CreditAssigneeId ?? entity.AssigneeId).Trim(),
+            CreditAssigneeName = string.IsNullOrWhiteSpace(entity.CreditAssigneeName)
+                ? entity.AssigneeName
+                : entity.CreditAssigneeName.Trim(),
+            AmountSar = fee.FeeSar!.Value,
+            PricingTableId = fee.PricingTableId,
             Status = CourtVisitFeeStatuses.Open,
             CreatedAtUtc = now,
             UpdatedAtUtc = now,

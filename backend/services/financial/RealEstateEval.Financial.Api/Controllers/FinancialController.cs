@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Web;
@@ -43,7 +44,14 @@ public class FinancialController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<PartyFeePricingTableSummaryDto>>> ListPartyFeePricingTables(
         [FromQuery] string? category,
         CancellationToken ct)
-        => Ok(await _pricing.ListAsync(category, ct));
+    {
+        // An unknown filter used to be coerced to engineering-survey, so a typo silently returned
+        // another category's tables as if they were the ones asked for.
+        if (!string.IsNullOrWhiteSpace(category) && !PartyFeePricingCategories.IsValid(category))
+            return this.BadRequestProblem(PartyFeePricingCategories.InvalidMessage(category));
+
+        return Ok(await _pricing.ListAsync(category, ct));
+    }
 
     [HttpGet("party-fee-pricing/{id:guid}")]
     public async Task<ActionResult<PartyFeePricingDto>> GetPartyFeePricing(Guid id, CancellationToken ct)
@@ -57,7 +65,20 @@ public class FinancialController : ControllerBase
     public async Task<ActionResult<PartyFeePricingDto>> CreatePartyFeePricing(
         [FromBody] CreatePartyFeePricingTableRequest request,
         CancellationToken ct)
-        => Ok(await _pricing.CreateAsync(request, ct));
+    {
+        if (!PartyFeePricingCategories.IsValid(request.Category))
+            return this.BadRequestProblem(PartyFeePricingCategories.InvalidMessage(request.Category));
+
+        try
+        {
+            return Ok(await _pricing.CreateAsync(request, ct, ActorClaims.Id(User)));
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Rejected create of party fee pricing table");
+            return this.BadRequestProblem(ex.Message);
+        }
+    }
 
     [HttpPut("party-fee-pricing/{id:guid}")]
     [Authorize(Policy = CapabilityPolicyNames.ManageSystemConfig)]
@@ -68,11 +89,38 @@ public class FinancialController : ControllerBase
     {
         try
         {
-            return Ok(await _pricing.SaveAsync(id, request, ct));
+            return Ok(await _pricing.SaveAsync(id, request, ct, ActorClaims.Id(User)));
         }
         catch (KeyNotFoundException)
         {
             return NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Rejected save of party fee pricing table {TableId}", id);
+            return this.BadRequestProblem(ex.Message);
+        }
+    }
+
+    [HttpPost("party-fee-pricing/{id:guid}/revision")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageSystemConfig)]
+    public async Task<ActionResult<PartyFeePricingDto>> RevisePartyFeePricing(
+        Guid id,
+        [FromBody] PartyFeePricingDto request,
+        CancellationToken ct)
+    {
+        try
+        {
+            return Ok(await _pricing.ReviseAsync(id, request, ct, ActorClaims.Id(User)));
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Rejected revision of party fee pricing table {TableId}", id);
+            return this.BadRequestProblem(ex.Message);
         }
     }
 
@@ -84,7 +132,7 @@ public class FinancialController : ControllerBase
     {
         try
         {
-            return Ok(await _pricing.ActivateAsync(id, ct));
+            return Ok(await _pricing.ActivateAsync(id, ct, ActorClaims.Id(User)));
         }
         catch (KeyNotFoundException)
         {
@@ -101,7 +149,11 @@ public class FinancialController : ControllerBase
     {
         try
         {
-            return Ok(await _pricing.SetAssignmentsAsync(id, request.AssigneeIds ?? [], ct));
+            return Ok(await _pricing.SetAssignmentsAsync(
+                id,
+                request.AssigneeIds ?? [],
+                ct,
+                ActorClaims.Id(User)));
         }
         catch (KeyNotFoundException)
         {
@@ -115,14 +167,14 @@ public class FinancialController : ControllerBase
     {
         try
         {
-            var deleted = await _pricing.DeleteAsync(id, ct);
+            var deleted = await _pricing.DeleteAsync(id, ct, ActorClaims.Id(User));
             return deleted ? NoContent() : NotFound();
         }
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Rejected delete of party fee pricing table {TableId}", id);
             return this.BadRequestProblem(
-                "تعذر حذف جدول الأتعاب — يجب أن يبقى جدول واحد على الأقل في هذا التصنيف.");
+                "تعذر حذف جدول الأتعاب — يجب ألا يكون مرتبطاً بأطراف، ويجب أن يبقى جدول واحد على الأقل في التصنيف.");
         }
     }
 }

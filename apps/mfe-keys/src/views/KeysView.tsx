@@ -245,7 +245,7 @@ export function KeysView() {
   const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { role } = usePrototype();
+  const { role, hasCapability } = usePrototype();
   const viewOnly = !isSuperAdmin(role) && role === "general-manager";
   const canEditEnvelope =
     !viewOnly &&
@@ -259,6 +259,9 @@ export function KeysView() {
     (isSuperAdmin(role) ||
       role === "government-reviewer" ||
       role === "section-supervisor");
+  // Confirming collection belongs to finance, matching the manage-financial gate on
+  // POST /api/key-envelopes/{id}/fee-collected.
+  const canCollectFee = !viewOnly && hasCapability("manage-financial");
 
   const envelopesQuery = useKeyEnvelopesQuery();
   const invalidateEnvelopes = useInvalidateKeyEnvelopes();
@@ -441,7 +444,7 @@ export function KeysView() {
     return (
       <PageShell variant="canvas" className="min-h-0 flex-1 space-y-0">
         <KeyEnvelopeFeesPanel
-          canCollect={canRegisterEnvelope || isSuperAdmin(role)}
+          canCollect={canCollectFee}
           onOpenEnvelope={(id) => openEnvelope(id)}
           onBack={backToList}
         />

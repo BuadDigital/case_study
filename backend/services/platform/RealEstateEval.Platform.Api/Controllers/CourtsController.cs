@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.Platform.Api.Controllers;
@@ -32,7 +33,10 @@ public class CourtsController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<CourtCatalogEntryDto>>> ReplaceAll(
         [FromBody] SaveCourtsCatalogRequest request,
         CancellationToken cancellationToken)
-        => Ok(await _catalog.ReplaceAllAsync(request, cancellationToken));
+        => Ok(await _catalog.ReplaceAllAsync(
+            request,
+            ActorClaims.Id(User),
+            cancellationToken));
 
     [HttpGet("selectable")]
     public async Task<ActionResult<IReadOnlyList<SelectableCourtDto>>> Selectable(

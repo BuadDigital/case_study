@@ -29,9 +29,22 @@ export function useAuth() {
     hasCapability,
     rolePages,
     logout() {
-      if (session?.refreshToken) void revokeAuthSession(session.refreshToken);
-      clearAuthSession();
-      window.location.href = "/login";
+      void (async () => {
+        try {
+          const { purgeOfflineData, closeOfflineDb } = await import(
+            "@platform/offline-client"
+          );
+          if (session?.user?.id) {
+            await purgeOfflineData(session.user.id, "logout");
+            await closeOfflineDb();
+          }
+        } catch {
+          /* ignore */
+        }
+        if (session?.refreshToken) void revokeAuthSession(session.refreshToken);
+        clearAuthSession();
+        window.location.href = "/login";
+      })();
     },
   };
 }

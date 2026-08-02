@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Domain;
@@ -37,6 +38,7 @@ public static class DependencyInjection
                 npgsql.CommandTimeout(dbOptions.CommandTimeoutSeconds);
             }));
 
+        services.TryAddSingleton<IAuditLogWriter, AuditLogWriter>();
         services.AddRedisCaching(configuration);
         return services;
     }
@@ -132,6 +134,7 @@ public static class DependencyInjection
     /// </summary>
     public static IServiceCollection AddIdentityApplicationServices(this IServiceCollection services)
     {
+        services.TryAddSingleton<IAuditLogWriter, AuditLogWriter>();
         services.AddIdentityStores();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IAuthSessionService, AuthSessionService>();
@@ -207,6 +210,23 @@ public static class DependencyInjection
         services.AddIdentityPersistence(configuration, connectionString);
         services.AddIdentityStores();
         return services;
+    }
+
+    /// <summary>
+    /// Short-lived DI graph for Development identity seed/reset. Case Study request paths stay
+    /// claims-only; only this throwaway provider opens Identity stores and registration writes.
+    /// </summary>
+    public static ServiceProvider CreateIdentityMaintenanceProvider(
+        IConfiguration configuration,
+        string connectionString)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(configuration);
+        services.AddPersistence(configuration, connectionString);
+        services.AddIdentitySeedStores(configuration, connectionString);
+        services.AddScoped<IUserRegistrationService, UserRegistrationService>();
+        return services.BuildServiceProvider();
     }
 
     public static IServiceCollection AddBlobStorage(
@@ -338,6 +358,7 @@ public static class DependencyInjection
         services.AddScoped<ICourtsCatalogService, CourtsCatalogService>();
         services.AddScoped<IRegionsService, RegionsService>();
         services.AddScoped<ICaseStudyInfoRolesConfigService, CaseStudyInfoRolesConfigService>();
+        services.AddScoped<IAuditLogQueryService, AuditLogQueryService>();
         return services;
     }
 
@@ -368,6 +389,18 @@ public static class DependencyInjection
             sp.GetRequiredService<NotificationRealtimeHub>());
         services.AddScoped<NotificationRecipientResolver>();
         services.AddScoped<INotificationService, NotificationService>();
+        services.AddOptions<WebPushOptions>()
+            .Bind(configuration.GetSection(WebPushOptions.SectionName))
+            .Validate(
+                o => !o.Enabled || !string.IsNullOrWhiteSpace(o.PrivateKey),
+                "WebPush:PrivateKey is required when WebPush is enabled.")
+            .Validate(
+                o => !o.Enabled || !string.IsNullOrWhiteSpace(o.PublicKey),
+                "WebPush:PublicKey is required when WebPush is enabled.")
+            .ValidateOnStart();
+        services.AddHttpClient("webpush");
+        services.AddScoped<IPushSubscriptionService, PushSubscriptionService>();
+        services.AddScoped<WebPushDeliveryHandler>();
         return services;
     }
 
