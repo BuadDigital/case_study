@@ -9,10 +9,14 @@ export type FinanceDisburseBuckets = {
 
 const ATTENTION_STATUSES: InspectorFeeBillingStatus[] = ["returned", "inquiry"];
 
-/** Engineering office ready/deferred/statement lines are not party صرف. */
-function isEngSurveyBillingPath(row: InspectorFeeRowDto): boolean {
+/** ج٩: party fee statement path — not the legacy DisbursementBatch صرف queue. */
+function isStatementBillingPath(row: InspectorFeeRowDto): boolean {
+  const statementKind =
+    row.taskKind === "engineering-survey" ||
+    row.taskKind === "field-inspection" ||
+    row.taskKind === "government-review";
   return (
-    row.taskKind === "engineering-survey" &&
+    statementKind &&
     (row.billingStatus === "at-finance" ||
       row.billingStatus === "deferred" ||
       row.billingStatus === "in-statement")
@@ -31,7 +35,7 @@ export function financeDisburseVisibleRows(rows: InspectorFeeRowDto[]): Inspecto
       // withheld by the supervisor, so it is not payable either.
       r.billingStatus !== "disputed" &&
       r.billingStatus !== "suspended" &&
-      !isEngSurveyBillingPath(r),
+      !isStatementBillingPath(r),
   );
 }
 
@@ -52,11 +56,8 @@ export function bucketFinanceDisburseRows(rows: InspectorFeeRowDto[]): FinanceDi
 
   return {
     readyToDisburse: sorted.filter((r) => r.billingStatus === "disb-req"),
-    waitingOffice: sorted.filter(
-      (r) =>
-        r.billingStatus === "at-finance" &&
-        r.taskKind !== "engineering-survey",
-    ),
+    // Only legacy rows that somehow remain at-finance outside the statement path.
+    waitingOffice: sorted.filter((r) => r.billingStatus === "at-finance"),
     needsAttention: sorted.filter((r) =>
       ATTENTION_STATUSES.includes(r.billingStatus),
     ),
@@ -67,11 +68,7 @@ export function countFinanceDisburseActions(rows: InspectorFeeRowDto[]) {
   const visible = financeDisburseVisibleRows(rows);
   return {
     readyToDisburse: visible.filter((r) => r.billingStatus === "disb-req").length,
-    waitingOffice: visible.filter(
-      (r) =>
-        r.billingStatus === "at-finance" &&
-        r.taskKind !== "engineering-survey",
-    ).length,
+    waitingOffice: visible.filter((r) => r.billingStatus === "at-finance").length,
     needsAttention: visible.filter((r) =>
       ATTENTION_STATUSES.includes(r.billingStatus),
     ).length,

@@ -1008,6 +1008,45 @@ public sealed class OperationsTaskService : IOperationsTaskService
         CancellationToken cancellationToken)
     {
         var year = now.Year;
+        var seq = await NextOperationsTaskSeqAsync(year, now, cancellationToken);
+        var displayId = $"T-{year}-{seq:D4}";
+        var reference = courtVisit ? $"خ.ت-{year}-{seq:D4}" : null;
+        return (displayId, reference);
+    }
+
+    /// <summary>
+    /// Race-safe yearly counter (ج٩). Mirrors DocumentReferenceCounter upsert used by billing statements.
+    /// </summary>
+    private async Task<int> NextOperationsTaskSeqAsync(
+        int year,
+        DateTime nowUtc,
+        CancellationToken cancellationToken)
+    {
+        if (_db.Database.IsNpgsql())
+        {
+            var id = Guid.NewGuid();
+            var rows = await _db.Database
+                .SqlQueryRaw<int>(
+                    """
+                    INSERT INTO case_study."OperationsTaskSequences"
+                        ("Id", "Year", "NextSeq", "UpdatedAtUtc")
+                    VALUES ({0}, {1}, 2, {2})
+                    ON CONFLICT ("Year") DO UPDATE SET
+                        "NextSeq" = case_study."OperationsTaskSequences"."NextSeq" + 1,
+                        "UpdatedAtUtc" = EXCLUDED."UpdatedAtUtc"
+                    RETURNING case_study."OperationsTaskSequences"."NextSeq" - 1
+                    """,
+                    id,
+                    year,
+                    nowUtc)
+                .ToListAsync(cancellationToken);
+
+            var seq = rows.FirstOrDefault();
+            if (seq <= 0)
+                throw new InvalidOperationException("تعذّر توليد رقم المهمة التشغيلية.");
+            return seq;
+        }
+
         var seqRow = await _db.OperationsTaskSequences
             .FirstOrDefaultAsync(s => s.Year == year, cancellationToken);
 
@@ -1018,17 +1057,15 @@ public sealed class OperationsTaskService : IOperationsTaskService
                 Id = Guid.NewGuid(),
                 Year = year,
                 NextSeq = 1,
-                UpdatedAtUtc = now,
+                UpdatedAtUtc = nowUtc,
             };
             _db.OperationsTaskSequences.Add(seqRow);
         }
 
-        var seq = seqRow.NextSeq;
+        var allocated = seqRow.NextSeq;
         seqRow.NextSeq += 1;
-        seqRow.UpdatedAtUtc = now;
-        var displayId = $"T-{year}-{seq:D4}";
-        var reference = courtVisit ? $"خ.ت-{year}-{seq:D4}" : null;
-        return (displayId, reference);
+        seqRow.UpdatedAtUtc = nowUtc;
+        return allocated;
     }
 
     private async Task<OperationsTaskDto> MapAsync(OperationsTask row, CancellationToken cancellationToken)

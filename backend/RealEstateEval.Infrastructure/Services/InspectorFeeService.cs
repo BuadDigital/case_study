@@ -860,11 +860,19 @@ public class InspectorFeeService : IInspectorFeeService
                 .Where(t => t.Id == ledger.WorkflowTaskId)
                 .Select(t => t.Kind)
                 .FirstOrDefaultAsync(cancellationToken);
-            if (taskKind == WorkflowTaskKind.EngineeringSurvey)
+            if (taskKind == WorkflowTaskKind.EngineeringSurvey
+                && action == InspectorFeeActions.SubmitToSupervisor)
             {
-                return action == InspectorFeeActions.SubmitToSupervisor
-                    ? "مسار المكتب الهندسي لا يدعم رفع الأتعاب للمشرف — استخدم موافقة الحسم أو الاعتراض من الكشف المبدئي."
-                    : "مسار المكتب الهندسي لا يدعم إنشاء طلب صرف — البنود الجاهزة تُفوتر لاحقاً عبر كشف المكتب.";
+                return "مسار المكتب الهندسي لا يدعم رفع الأتعاب للمشرف — استخدم موافقة الحسم أو الاعتراض من الكشف المبدئي.";
+            }
+
+            // ج٩: new work goes through billing statements, not DisbursementBatch.
+            if (action == InspectorFeeActions.CreateDisbursementRequest
+                && taskKind is WorkflowTaskKind.EngineeringSurvey
+                    or WorkflowTaskKind.FieldInspection
+                    or WorkflowTaskKind.GovernmentReview)
+            {
+                return "إنشاء طلب صرف متوقف — البنود الجاهزة تُفوتر عبر كشف الأطراف.";
             }
         }
 

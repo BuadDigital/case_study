@@ -95,7 +95,7 @@ export function FinanceWorkspace({
           active={tab === "eng-billing"}
           onClick={() => setTab("eng-billing")}
         >
-          فوترة المكتب الهندسي
+          فوترة الأطراف
           {!counts.isPending ? tabBadge(counts.engReady, "info") : null}
         </Tab>
         <Tab active={tab === "enfaz"} onClick={() => setTab("enfaz")}>
