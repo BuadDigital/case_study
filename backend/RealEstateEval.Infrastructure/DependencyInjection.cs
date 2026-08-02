@@ -252,6 +252,7 @@ public static class DependencyInjection
         services.AddScoped<IInspectorFeeService, InspectorFeeService>();
         services.AddScoped<IPartyFeePricingService, PartyFeePricingService>();
         services.AddScoped<IIncentiveSuspensionService, IncentiveSuspensionService>();
+        services.AddScoped<IDiscountFlagService, DiscountFlagService>();
         services.AddScoped<IPoEnfazBillingService, PoEnfazBillingService>();
         services.AddScoped<IEngineeringBillingStatementService, EngineeringBillingStatementService>();
         services.AddScoped<IFieldInspectionAttachmentVerifier, FieldInspectionAttachmentVerifier>();
@@ -312,6 +313,7 @@ public static class DependencyInjection
         services.AddScoped<IInspectorFeeService, InspectorFeeService>();
         services.AddScoped<IPartyFeePricingService, PartyFeePricingService>();
         services.AddScoped<IIncentiveSuspensionService, IncentiveSuspensionService>();
+        services.AddScoped<IDiscountFlagService, DiscountFlagService>();
         services.AddScoped<IPoEnfazBillingService, PoEnfazBillingService>();
         services.AddScoped<IEngineeringBillingStatementService, EngineeringBillingStatementService>();
         services.AddScoped<IPropertyTimelineService, PropertyTimelineService>();
@@ -336,6 +338,7 @@ public static class DependencyInjection
         services.AddScoped<IFinancialReportService, FinancialReportService>();
         services.AddScoped<IPartyFeePricingService, PartyFeePricingService>();
         services.AddScoped<IIncentiveSuspensionService, IncentiveSuspensionService>();
+        services.AddScoped<IDiscountFlagService, DiscountFlagService>();
         return services;
     }
 
