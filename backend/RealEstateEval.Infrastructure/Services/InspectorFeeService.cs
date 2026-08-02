@@ -52,6 +52,18 @@ public class InspectorFeeService : IInspectorFeeService
             if (existingSet.Contains(task.Id)) continue;
 
             var partyType = await ResolvePartyTypeAsync(task, cancellationToken);
+            var isEmployee = InspectorFeeRules.IsEmployee(partyType);
+
+            // Employee incentives require an active compensation flag and a resolved flat table.
+            // Opening a zero draft for every employee was the hand-entry path ج٦ replaces.
+            if (isEmployee)
+            {
+                var hasCompensation = await AssigneeHasCompensationAsync(
+                    task.AssigneeId,
+                    cancellationToken);
+                if (!hasCompensation) continue;
+            }
+
             var areaM2 = await ResolvePropertyAreaM2Async(task, cancellationToken);
             var agreedFee = await _pricing.ResolveDefaultFeeAsync(
                 task.Kind,
@@ -60,26 +72,46 @@ public class InspectorFeeService : IInspectorFeeService
                 task.AssigneeId,
                 cancellationToken);
 
-            // Employees are priced by hand, so an unresolved fee is expected for them and the ledger
-            // opens at zero. For a cooperator it means the table has no rate, and inventing one here
-            // is exactly what we are removing — the accrual waits until the rate exists.
-            var isEmployee = InspectorFeeRules.IsEmployee(partyType);
-            if (!agreedFee.IsResolved && !isEmployee) continue;
+            // Unresolved means no rate yet — inventing zero here is exactly what we are removing.
+            if (!agreedFee.IsResolved) continue;
+
+            var po = task.PoNumber.Trim();
+            var billingStatus = InspectorFeeBillingStatus.Draft;
+            string? preSuspension = null;
+            string? suspensionReason = null;
+            if (isEmployee && !string.IsNullOrWhiteSpace(task.AssigneeId))
+            {
+                var withhold = await _db.IncentiveSuspensions.AsNoTracking()
+                    .Where(x =>
+                        x.AssigneeId == task.AssigneeId.Trim()
+                        && x.TransactionKey == po
+                        && x.LiftedAtUtc == null)
+                    .Select(x => x.Reason)
+                    .FirstOrDefaultAsync(cancellationToken);
+                if (withhold is not null)
+                {
+                    billingStatus = InspectorFeeBillingStatus.Suspended;
+                    preSuspension = InspectorFeeBillingStatus.Draft;
+                    suspensionReason = withhold;
+                }
+            }
 
             _db.InspectorFeeLedgers.Add(new InspectorFeeLedger
             {
                 WorkflowTaskId = task.Id,
-                PoNumber = task.PoNumber.Trim(),
+                PoNumber = po,
                 PropertyId = task.PropertyId,
                 PropertyOrdinal = task.PropertyOrdinal,
                 AssigneeId = task.AssigneeId,
                 InspectorType = partyType,
                 SupervisingDepartment = SupervisingDepartments.ForTaskKind(task.Kind),
-                AgreedFeeSar = agreedFee.FeeSar ?? 0m,
+                AgreedFeeSar = agreedFee.FeeSar!.Value,
                 PricingTableId = agreedFee.PricingTableId,
                 SupervisorDiscountSar = 0m,
                 DiscountReason = null,
-                BillingStatus = InspectorFeeBillingStatus.Draft,
+                BillingStatus = billingStatus,
+                PreSuspensionStatus = preSuspension,
+                SuspensionReason = suspensionReason,
                 ExcludedFromBatch = false,
                 ExclusionReason = null,
                 ReturnTo = null,
@@ -426,9 +458,11 @@ public class InspectorFeeService : IInspectorFeeService
         {
             if (!InspectorFeeRules.IsEmployee(ledger.InspectorType))
                 return null;
+            // Flat-priced incentives keep their table stamp; hand override is only for the legacy
+            // zero-draft rows that never resolved from a flat schedule.
+            if (ledger.PricingTableId is not null)
+                return null;
             ledger.AgreedFeeSar = Math.Max(0m, request.AgreedFeeSar.Value);
-            // A hand-entered amount is no longer the table's, so the stamp must not keep claiming it.
-            ledger.PricingTableId = null;
         }
 
         if (request.SupervisorDiscountSar.HasValue)
@@ -1194,6 +1228,18 @@ public class InspectorFeeService : IInspectorFeeService
         }
 
         return result;
+    }
+
+    private async Task<bool> AssigneeHasCompensationAsync(
+        string? assigneeId,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(assigneeId)) return false;
+        var aid = assigneeId.Trim();
+        return await _db.UserProfiles.AsNoTracking()
+            .AnyAsync(
+                p => p.DistributionAssigneeId == aid && p.HasCompensation,
+                cancellationToken);
     }
 
     private async Task<string> ResolvePartyTypeAsync(
