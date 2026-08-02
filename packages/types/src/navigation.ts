@@ -29,6 +29,7 @@ export type PageId =
   | "case-study-info-roles"
   | "audit-log"
   | "fee-pricing"
+  | "organization-settings"
   | "profile";
 
 export type RoleId =

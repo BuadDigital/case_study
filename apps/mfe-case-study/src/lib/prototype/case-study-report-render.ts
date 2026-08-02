@@ -2,8 +2,8 @@ import {
   CASE_STUDY_REPORT_SUBTITLE,
   CASE_STUDY_REPORT_TITLE,
   CASE_STUDY_SECTION_REMARKS_HINT,
-  CASE_STUDY_SIGNATURE_IMAGE,
-  CASE_STUDY_STAMP_IMAGE,
+  caseStudySignatureImage,
+  caseStudyStampImage,
 } from "./case-study-form-data";
 import type { CaseStudyQuestionSection } from "./case-study-form-data";
 import type {
@@ -285,10 +285,10 @@ export function buildCaseStudyReportBodyHtml(
 ): string {
   const origin = options?.origin;
   const signatureSrc = caseStudyReportAssetUrl(
-    CASE_STUDY_SIGNATURE_IMAGE,
+    caseStudySignatureImage(),
     origin,
   );
-  const stampSrc = caseStudyReportAssetUrl(CASE_STUDY_STAMP_IMAGE, origin);
+  const stampSrc = caseStudyReportAssetUrl(caseStudyStampImage(), origin);
   const esc = escapeCaseStudyReportHtml;
 
   return `<div class="csrd-root" lang="ar" dir="rtl">

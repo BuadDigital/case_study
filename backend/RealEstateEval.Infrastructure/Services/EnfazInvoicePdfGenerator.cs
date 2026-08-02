@@ -70,10 +70,11 @@ public static class EnfazInvoicePdfGenerator
                     {
                         table.ColumnsDefinition(columns =>
                         {
-                            columns.RelativeColumn(3.2f);
-                            columns.RelativeColumn(1.4f);
-                            columns.RelativeColumn(1.4f);
-                            columns.RelativeColumn(1.4f);
+                            columns.RelativeColumn(3.0f);
+                            columns.RelativeColumn(1.2f);
+                            columns.RelativeColumn(1.2f);
+                            columns.RelativeColumn(1.2f);
+                            columns.RelativeColumn(1.2f);
                         });
 
                         table.Header(header =>
@@ -81,24 +82,27 @@ public static class EnfazInvoicePdfGenerator
                             header.Cell().Element(HeaderCell).Text("المعاملة");
                             header.Cell().Element(HeaderCell).AlignCenter().Text("دخل الدراسة");
                             header.Cell().Element(HeaderCell).AlignCenter().Text("دخل الرفع");
+                            header.Cell().Element(HeaderCell).AlignCenter().Text("مفاتيح");
                             header.Cell().Element(HeaderCell).AlignCenter().Text("المجموع");
                         });
 
                         foreach (var line in billable)
                         {
-                            var total = line.CaseStudyFeeSar + line.SurveyFeeSar;
+                            var total = line.CaseStudyFeeSar + line.SurveyFeeSar + line.KeyFeeSar;
                             table.Cell().Element(BodyCell).Text(line.PropertyLabel);
                             table.Cell().Element(BodyCell).AlignCenter()
                                 .Text(FormatSar(line.CaseStudyFeeSar));
                             table.Cell().Element(BodyCell).AlignCenter()
                                 .Text(FormatSar(line.SurveyFeeSar));
                             table.Cell().Element(BodyCell).AlignCenter()
+                                .Text(FormatSar(line.KeyFeeSar));
+                            table.Cell().Element(BodyCell).AlignCenter()
                                 .Text(FormatSar(total));
                         }
 
                         if (billable.Count == 0)
                         {
-                            table.Cell().ColumnSpan(4).Element(BodyCell)
+                            table.Cell().ColumnSpan(5).Element(BodyCell)
                                 .AlignCenter().Text("لا توجد بنود مشمولة في الفاتورة.");
                         }
                     });

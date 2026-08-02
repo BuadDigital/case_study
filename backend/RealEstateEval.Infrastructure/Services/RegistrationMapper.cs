@@ -42,6 +42,7 @@ public static class RegistrationMapper
             Status = profile.Status,
             RegistrationSource = profile.RegistrationSource,
             PhoneNumber = user.PhoneNumber,
+            LastLoginAtUtc = profile.LastLoginAtUtc,
             CreatedAtUtc = profile.CreatedAtUtc,
             SystemRoles = systemRoles,
             Details = BuildDetails(user, profile),

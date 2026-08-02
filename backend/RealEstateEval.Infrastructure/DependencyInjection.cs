@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -254,7 +254,7 @@ public static class DependencyInjection
         services.AddScoped<IIncentiveSuspensionService, IncentiveSuspensionService>();
         services.AddScoped<IDiscountFlagService, DiscountFlagService>();
         services.AddScoped<IPoEnfazBillingService, PoEnfazBillingService>();
-        services.AddScoped<IEngineeringBillingStatementService, EngineeringBillingStatementService>();
+        services.AddScoped<IPartyBillingStatementService, PartyBillingStatementService>();
         services.AddScoped<IFieldInspectionAttachmentVerifier, FieldInspectionAttachmentVerifier>();
         services.AddScoped<IPropertyTimelineService, PropertyTimelineService>();
         services.AddScoped<IFailureService, FailureService>();
@@ -315,7 +315,7 @@ public static class DependencyInjection
         services.AddScoped<IIncentiveSuspensionService, IncentiveSuspensionService>();
         services.AddScoped<IDiscountFlagService, DiscountFlagService>();
         services.AddScoped<IPoEnfazBillingService, PoEnfazBillingService>();
-        services.AddScoped<IEngineeringBillingStatementService, EngineeringBillingStatementService>();
+        services.AddScoped<IPartyBillingStatementService, PartyBillingStatementService>();
         services.AddScoped<IPropertyTimelineService, PropertyTimelineService>();
         services.AddScoped<IWorkflowTaskService, WorkflowTaskService>();
         services.AddScoped<IFailureService, FailureService>();
@@ -364,6 +364,7 @@ public static class DependencyInjection
         services.AddScoped<ICourtsCatalogService, CourtsCatalogService>();
         services.AddScoped<IRegionsService, RegionsService>();
         services.AddScoped<ICaseStudyInfoRolesConfigService, CaseStudyInfoRolesConfigService>();
+        services.AddScoped<IOrganizationSettingsService, OrganizationSettingsService>();
         services.AddScoped<IAuditLogQueryService, AuditLogQueryService>();
         return services;
     }

@@ -17,6 +17,12 @@ export const SETTINGS_NAV: SettingsNavItem[] = [
     available: true,
   },
   {
+    id: "organization-settings",
+    label: "إعدادات المنشأة",
+    icon: "M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6",
+    available: true,
+  },
+  {
     id: "fee-pricing",
     label: "التسعيرة",
     icon: "M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6",

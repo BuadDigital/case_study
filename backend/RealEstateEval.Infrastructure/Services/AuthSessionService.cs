@@ -180,6 +180,16 @@ public sealed class AuthSessionService(
             CreatedAtUtc = nowUtc,
             ExpiresAtUtc = refreshExpiresAtUtc,
         });
+
+        // Stamp last login on fresh session issue only — refresh rotation keeps the family window.
+        if (sessionExpiresAtUtc is null)
+        {
+            var profile = await db.UserProfiles
+                .FirstOrDefaultAsync(p => p.UserId == user.Id, cancellationToken);
+            if (profile is not null)
+                profile.LastLoginAtUtc = nowUtc;
+        }
+
         await PruneAsync(user.Id, nowUtc, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
 

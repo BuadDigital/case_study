@@ -2,8 +2,8 @@ import {
   CASE_STUDY_REPORT_SUBTITLE,
   CASE_STUDY_REPORT_TITLE,
   CASE_STUDY_SECTION_REMARKS_HINT,
-  CASE_STUDY_SIGNATURE_IMAGE,
-  CASE_STUDY_STAMP_IMAGE,
+  caseStudySignatureImage,
+  caseStudyStampImage,
 } from "../../lib/prototype/case-study-form-data";
 import { Fragment } from "react";
 import type { CaseStudyQuestionSection } from "../../lib/prototype/case-study-form-data";
@@ -251,10 +251,10 @@ function ApprovalBlock({ model }: { model: CaseStudyReportModel }) {
             <td>{approval.approverName}</td>
             <td className="csrd-ltr">{approval.reportDate}</td>
             <td>
-              <img src={CASE_STUDY_SIGNATURE_IMAGE} alt="توقيع معتمد التقرير" />
+              <img src={caseStudySignatureImage()} alt="توقيع معتمد التقرير" />
             </td>
             <td>
-              <img src={CASE_STUDY_STAMP_IMAGE} alt="ختم الشركة" />
+              <img src={caseStudyStampImage()} alt="ختم الشركة" />
             </td>
           </tr>
         </tbody>

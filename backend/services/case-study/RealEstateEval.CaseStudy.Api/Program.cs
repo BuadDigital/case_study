@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application.Abstractions;
 using RealEstateEval.CaseStudy.Api.Integration;
 using RealEstateEval.Infrastructure;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Infrastructure.Web;
 using RealEstateEval.Shared.Web;
 
@@ -21,6 +23,8 @@ builder.Services.AddResponseCompression(options => options.EnableForHttps = true
 builder.Services.AddHttpContextAccessor();
 var connectionString = ServiceCollectionExtensions.RequireConnectionString( builder.Configuration, ServiceDatabaseNames.CaseStudy);
 builder.Services.AddPersistence(builder.Configuration, connectionString);
+builder.Services.AddPlatformPersistence(builder.Configuration, connectionString);
+builder.Services.AddScoped<IOrganizationSettingsService, OrganizationSettingsService>();
 builder.Services.AddClaimsPermissionService();
 builder.Services.AddCaseStudyInfrastructure(builder.Configuration, builder.Environment);
 builder.Services.AddDevelopmentSystemMaintenance(

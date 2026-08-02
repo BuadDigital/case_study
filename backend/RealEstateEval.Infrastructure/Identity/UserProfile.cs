@@ -28,6 +28,8 @@ public class UserProfile
     public string? ReviewerCityCoverageJson { get; set; }
     public string? PermissionLevel { get; set; }
     public UserStatus Status { get; set; } = UserStatus.Active;
+    /// <summary>Last successful session issue (د — قائمة المستخدمين / سجل الدخول).</summary>
+    public DateTime? LastLoginAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime? UpdatedAtUtc { get; set; }
 

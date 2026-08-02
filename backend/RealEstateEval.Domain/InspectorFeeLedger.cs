@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+﻿namespace RealEstateEval.Domain;
 
 /// <summary>
 /// Per-property party fee row.
@@ -14,8 +14,8 @@ public class InspectorFeeLedger
     public Guid TransactionId { get; set; }
 
     /// <summary>
-    /// Deed/property id. Until PO-level tasks are split, a task without <see cref="PropertyId"/>
-    /// uses <see cref="WorkflowTaskId"/> as a stand-in so the unique triple still holds.
+    /// Deed/property id. PO-level tasks (no <see cref="PropertyId"/>) expand to one ledger
+    /// row per work-order property; legacy rows may still use <see cref="WorkflowTaskId"/> as stand-in.
     /// </summary>
     public Guid DeedId { get; set; }
 
@@ -41,6 +41,10 @@ public class InspectorFeeLedger
     public Guid? PricingTableId { get; set; }
     public decimal SupervisorDiscountSar { get; set; }
     public string? DiscountReason { get; set; }
+    /// <summary>Snapshot of max(0, Agreed − Discount). Stamped on every save.</summary>
+    public decimal NetFeeSar { get; set; }
+    /// <summary>Amount paid out. Set to <see cref="NetFeeSar"/> when status becomes disbursed.</summary>
+    public decimal PaidAmountSar { get; set; }
     /// <summary>
     /// draft | office-review | disputed | sup-review | at-finance | deferred |
     /// in-statement | disb-req | disbursed | returned | inquiry | suspended
@@ -60,7 +64,7 @@ public class InspectorFeeLedger
     public Guid? DisbursementBatchId { get; set; }
     public string? DisbursementVoucher { get; set; }
     /// <summary>Engineering-office monthly billing statement membership (stages 6–8).</summary>
-    public Guid? EngineeringBillingStatementId { get; set; }
+    public Guid? PartyBillingStatementId { get; set; }
     /// <summary>
     /// When the engineering-office fee became payable (specialist acceptance).
     /// Null until acceptance; re-uploads after accrual do not create a new fee.

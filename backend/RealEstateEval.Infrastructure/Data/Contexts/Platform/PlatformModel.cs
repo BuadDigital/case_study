@@ -96,6 +96,12 @@ internal static class PlatformModel
             e.Property(x => x.NotesJson).HasColumnType("jsonb");
         });
 
+        builder.Entity<OrganizationSettings>(e =>
+        {
+            e.ToTable("OrganizationSettings", DatabaseSchemas.Platform);
+            e.Property(x => x.SettingsJson).HasColumnType("jsonb");
+        });
+
         return builder;
     }
 }

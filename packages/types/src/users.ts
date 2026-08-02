@@ -34,6 +34,7 @@ export type UserListItem = {
   registrationSource: RegistrationSourceApi;
   phoneNumber?: string | null;
   createdAtUtc?: string;
+  lastLoginAtUtc?: string | null;
   systemRoles?: string[];
   details?: UserDetailField[];
 };

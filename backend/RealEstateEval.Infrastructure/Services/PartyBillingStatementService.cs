@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
@@ -9,7 +9,7 @@ using RealEstateEval.Infrastructure.Notifications;
 
 namespace RealEstateEval.Infrastructure.Services;
 
-public class EngineeringBillingStatementService : IEngineeringBillingStatementService
+public class PartyBillingStatementService : IPartyBillingStatementService
 {
     private const int MaxListRows = 500;
     private const string RefDept = "FN";
@@ -26,13 +26,13 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
     private readonly ApplicationDbContext _db;
     private readonly INotificationService _notifications;
     private readonly NotificationRecipientResolver _recipients;
-    private readonly ILogger<EngineeringBillingStatementService> _logger;
+    private readonly ILogger<PartyBillingStatementService> _logger;
 
-    public EngineeringBillingStatementService(
+    public PartyBillingStatementService(
         ApplicationDbContext db,
         INotificationService notifications,
         NotificationRecipientResolver recipients,
-        ILogger<EngineeringBillingStatementService> logger)
+        ILogger<PartyBillingStatementService> logger)
     {
         _db = db;
         _notifications = notifications;
@@ -40,7 +40,7 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
         _logger = logger;
     }
 
-    public async Task<IReadOnlyList<EngBillingReadyLineDto>> ListReadyLinesAsync(
+    public async Task<IReadOnlyList<PartyBillingReadyLineDto>> ListReadyLinesAsync(
         string? assigneeId = null,
         CancellationToken cancellationToken = default)
     {
@@ -69,13 +69,13 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
         return ledgers.Select(x => ToReadyDto(x.ledger, labels)).ToList();
     }
 
-    public async Task<IReadOnlyList<EngBillingStatementDto>> ListStatementsAsync(
+    public async Task<IReadOnlyList<PartyBillingStatementDto>> ListStatementsAsync(
         string? assigneeId = null,
         string? status = null,
         bool issuedOrLaterOnly = false,
         CancellationToken cancellationToken = default)
     {
-        var query = _db.EngineeringBillingStatements.AsNoTracking().AsQueryable();
+        var query = _db.PartyBillingStatements.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(assigneeId))
             query = query.Where(s => s.AssigneeId == assigneeId);
@@ -86,8 +86,8 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
         if (issuedOrLaterOnly)
         {
             query = query.Where(s =>
-                s.Status == EngineeringBillingStatementStatus.Issued
-                || s.Status == EngineeringBillingStatementStatus.Closed);
+                s.Status == PartyBillingStatementStatus.Issued
+                || s.Status == PartyBillingStatementStatus.Closed);
         }
 
         var statements = await query
@@ -98,22 +98,22 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
         if (statements.Count == 0) return [];
 
         var ids = statements.Select(s => s.Id).ToList();
-        var lines = await _db.EngineeringBillingStatementLines.AsNoTracking()
+        var lines = await _db.PartyBillingStatementLines.AsNoTracking()
             .Where(l => ids.Contains(l.StatementId))
             .ToListAsync(cancellationToken);
 
         return await MapStatementsAsync(statements, lines, cancellationToken);
     }
 
-    public async Task<EngBillingStatementDto?> GetStatementAsync(
+    public async Task<PartyBillingStatementDto?> GetStatementAsync(
         Guid statementId,
         CancellationToken cancellationToken = default)
     {
-        var statement = await _db.EngineeringBillingStatements.AsNoTracking()
+        var statement = await _db.PartyBillingStatements.AsNoTracking()
             .FirstOrDefaultAsync(s => s.Id == statementId, cancellationToken);
         if (statement is null) return null;
 
-        var lines = await _db.EngineeringBillingStatementLines.AsNoTracking()
+        var lines = await _db.PartyBillingStatementLines.AsNoTracking()
             .Where(l => l.StatementId == statementId)
             .ToListAsync(cancellationToken);
 
@@ -121,15 +121,15 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
         return mapped.FirstOrDefault();
     }
 
-    public async Task<CreateEngBillingStatementResult> CreateStatementAsync(
-        CreateEngBillingStatementRequest request,
+    public async Task<CreatePartyBillingStatementResult> CreateStatementAsync(
+        CreatePartyBillingStatementRequest request,
         string actorUserId,
         CancellationToken cancellationToken = default)
     {
         var taskIds = ParseTaskIds(request.WorkflowTaskIds);
         if (taskIds.Count == 0)
         {
-            return new CreateEngBillingStatementResult
+            return new CreatePartyBillingStatementResult
             {
                 Error = "اختر بنداً واحداً على الأقل لإنشاء كشف الفوترة.",
             };
@@ -141,7 +141,7 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
 
         if (ledgers.Count != taskIds.Count)
         {
-            return new CreateEngBillingStatementResult
+            return new CreatePartyBillingStatementResult
             {
                 Error = "بعض البنود المحددة غير موجودة في سجل الأتعاب.",
             };
@@ -155,7 +155,7 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
         if (taskKinds.Count != taskIds.Count
             || taskKinds.Any(t => !StatementKinds.Contains(t.Kind)))
         {
-            return new CreateEngBillingStatementResult
+            return new CreatePartyBillingStatementResult
             {
                 Error = "كشف الفوترة يقبل بنود المعاينة والمراجع والرفع المساحي فقط.",
             };
@@ -163,7 +163,7 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
 
         if (taskKinds.Select(t => t.Kind).Distinct().Count() != 1)
         {
-            return new CreateEngBillingStatementResult
+            return new CreatePartyBillingStatementResult
             {
                 Error = "يجب أن تكون كل بنود الكشف من نفس نوع المهمة.",
             };
@@ -179,7 +179,7 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
 
         if (assignees.Count != 1)
         {
-            return new CreateEngBillingStatementResult
+            return new CreatePartyBillingStatementResult
             {
                 Error = "يجب أن تكون كل بنود الكشف لنفس الطرف.",
             };
@@ -190,7 +190,7 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
         {
             if (ledger.ExcludedFromBatch)
             {
-                return new CreateEngBillingStatementResult
+                return new CreatePartyBillingStatementResult
                 {
                     Error = "لا يمكن إدراج بند مستبعد في كشف الفوترة.",
                 };
@@ -198,15 +198,15 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
 
             if (!InspectorFeeBillingRules.IsReadyForEngStatement(ledger.BillingStatus))
             {
-                return new CreateEngBillingStatementResult
+                return new CreatePartyBillingStatementResult
                 {
                     Error = "لا يُدرج في كشف الفوترة إلا البنود الجاهزة أو المرحَّلة.",
                 };
             }
 
-            if (ledger.EngineeringBillingStatementId.HasValue)
+            if (ledger.PartyBillingStatementId.HasValue)
             {
-                return new CreateEngBillingStatementResult
+                return new CreatePartyBillingStatementResult
                 {
                     Error = "أحد البنود مُدرج مسبقاً في كشف فوترة.",
                 };
@@ -227,7 +227,7 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
                 ex,
                 "Failed to allocate an engineering billing statement reference for assignee {AssigneeId}",
                 assigneeId);
-            return new CreateEngBillingStatementResult
+            return new CreatePartyBillingStatementResult
             {
                 Error = "تعذر إنشاء كشف الفوترة. حاول مرة أخرى، وإذا تكرر الخطأ راجع الدعم الفني.",
             };
@@ -235,7 +235,7 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
 
         var statementId = Guid.NewGuid();
         var total = 0m;
-        var statementLines = new List<EngineeringBillingStatementLine>();
+        var statementLines = new List<PartyBillingStatementLine>();
 
         foreach (var ledger in ledgers)
         {
@@ -243,10 +243,10 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
             total += net;
             var fromStatus = ledger.BillingStatus;
             ledger.BillingStatus = InspectorFeeBillingStatus.InStatement;
-            ledger.EngineeringBillingStatementId = statementId;
+            ledger.PartyBillingStatementId = statementId;
             ledger.UpdatedAtUtc = now;
 
-            statementLines.Add(new EngineeringBillingStatementLine
+            statementLines.Add(new PartyBillingStatementLine
             {
                 Id = Guid.NewGuid(),
                 StatementId = statementId,
@@ -266,7 +266,7 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
             });
         }
 
-        var deferredDtos = new List<EngBillingReadyLineDto>();
+        var deferredDtos = new List<PartyBillingReadyLineDto>();
         if (request.DeferUnselectedForAssignee)
         {
             var selectedSet = taskIds.ToHashSet();
@@ -276,7 +276,7 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
                     && l.BillingStatus == InspectorFeeBillingStatus.AtFinance
                     && !l.ExcludedFromBatch
                     && !selectedSet.Contains(l.WorkflowTaskId)
-                    && !l.EngineeringBillingStatementId.HasValue)
+                    && !l.PartyBillingStatementId.HasValue)
                 .ToListAsync(cancellationToken);
 
             var unselectedIds = unselected.Select(l => l.WorkflowTaskId).ToList();
@@ -314,12 +314,12 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
             }
         }
 
-        _db.EngineeringBillingStatements.Add(new EngineeringBillingStatement
+        _db.PartyBillingStatements.Add(new PartyBillingStatement
         {
             Id = statementId,
             ReferenceNumber = reference,
             AssigneeId = assigneeId,
-            Status = EngineeringBillingStatementStatus.Draft,
+            Status = PartyBillingStatementStatus.Draft,
             TotalNetSar = total,
             CreatedByUserId = actorUserId,
             CreatedAtUtc = now,
@@ -330,33 +330,33 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
         await _db.SaveChangesAsync(cancellationToken);
 
         var dto = await GetStatementAsync(statementId, cancellationToken);
-        return new CreateEngBillingStatementResult
+        return new CreatePartyBillingStatementResult
         {
             Statement = dto,
             DeferredLines = deferredDtos,
         };
     }
 
-    public async Task<(EngBillingStatementDto? Statement, string? Error)> IssueStatementAsync(
+    public async Task<(PartyBillingStatementDto? Statement, string? Error)> IssueStatementAsync(
         Guid statementId,
         string actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var statement = await _db.EngineeringBillingStatements
+        var statement = await _db.PartyBillingStatements
             .FirstOrDefaultAsync(s => s.Id == statementId, cancellationToken);
         if (statement is null)
             return (null, "كشف الفوترة غير موجود.");
 
-        if (statement.Status != EngineeringBillingStatementStatus.Draft)
+        if (statement.Status != PartyBillingStatementStatus.Draft)
             return (null, "لا يمكن إرسال إلا كشوف المسودة.");
 
-        var lineCount = await _db.EngineeringBillingStatementLines
+        var lineCount = await _db.PartyBillingStatementLines
             .CountAsync(l => l.StatementId == statementId, cancellationToken);
         if (lineCount == 0)
             return (null, "لا يمكن إرسال كشف بلا بنود.");
 
         var now = DateTime.UtcNow;
-        statement.Status = EngineeringBillingStatementStatus.Issued;
+        statement.Status = PartyBillingStatementStatus.Issued;
         statement.IssuedAtUtc = now;
         statement.IssuedByUserId = actorUserId;
 
@@ -367,18 +367,18 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
         return (dto, null);
     }
 
-    public async Task<(EngBillingStatementDto? Statement, string? Error)> CloseStatementAsync(
+    public async Task<(PartyBillingStatementDto? Statement, string? Error)> CloseStatementAsync(
         Guid statementId,
-        CloseEngBillingStatementRequest request,
+        ClosePartyBillingStatementRequest request,
         string actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var statement = await _db.EngineeringBillingStatements
+        var statement = await _db.PartyBillingStatements
             .FirstOrDefaultAsync(s => s.Id == statementId, cancellationToken);
         if (statement is null)
             return (null, "كشف الفوترة غير موجود.");
 
-        if (statement.Status != EngineeringBillingStatementStatus.Issued)
+        if (statement.Status != PartyBillingStatementStatus.Issued)
             return (null, "لا يمكن إقفال إلا كشف صادر مرسل للمكتب.");
 
         var invoice = (request.ExternalInvoiceNumber ?? "").Trim();
@@ -407,7 +407,7 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
                 return (null, "مرفق إيصال التحويل غير موجود.");
         }
 
-        var lines = await _db.EngineeringBillingStatementLines
+        var lines = await _db.PartyBillingStatementLines
             .Where(l => l.StatementId == statementId)
             .ToListAsync(cancellationToken);
         var taskIds = lines.Select(l => l.WorkflowTaskId).ToList();
@@ -418,7 +418,7 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
         var now = DateTime.UtcNow;
         var paidAt = request.PaidAtUtc?.ToUniversalTime() ?? now;
 
-        statement.Status = EngineeringBillingStatementStatus.Closed;
+        statement.Status = PartyBillingStatementStatus.Closed;
         statement.ClosedAtUtc = now;
         statement.ClosedByUserId = actorUserId;
         statement.ExternalInvoiceNumber = invoice;
@@ -453,17 +453,17 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
         return (dto, null);
     }
 
-    public async Task<DeferEngBillingLinesResult> DeferLinesAsync(
-        DeferEngBillingLinesRequest request,
+    public async Task<DeferPartyBillingLinesResult> DeferLinesAsync(
+        DeferPartyBillingLinesRequest request,
         string actorUserId,
         CancellationToken cancellationToken = default)
     {
         var taskIds = ParseTaskIds(request.WorkflowTaskIds);
-        var succeeded = new List<EngBillingReadyLineDto>();
+        var succeeded = new List<PartyBillingReadyLineDto>();
         var failed = new List<InspectorFeeTransitionErrorDto>();
 
         if (taskIds.Count == 0)
-            return new DeferEngBillingLinesResult { Deferred = succeeded, Failed = failed };
+            return new DeferPartyBillingLinesResult { Deferred = succeeded, Failed = failed };
 
         var ledgers = await _db.InspectorFeeLedgers
             .Where(l => taskIds.Contains(l.WorkflowTaskId))
@@ -533,12 +533,12 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
         if (succeeded.Count > 0)
             await _db.SaveChangesAsync(cancellationToken);
 
-        return new DeferEngBillingLinesResult { Deferred = succeeded, Failed = failed };
+        return new DeferPartyBillingLinesResult { Deferred = succeeded, Failed = failed };
     }
 
-    private async Task<IReadOnlyList<EngBillingStatementDto>> MapStatementsAsync(
-        IReadOnlyList<EngineeringBillingStatement> statements,
-        IReadOnlyList<EngineeringBillingStatementLine> lines,
+    private async Task<IReadOnlyList<PartyBillingStatementDto>> MapStatementsAsync(
+        IReadOnlyList<PartyBillingStatement> statements,
+        IReadOnlyList<PartyBillingStatementLine> lines,
         CancellationToken cancellationToken)
     {
         var taskIds = lines.Select(l => l.WorkflowTaskId).Distinct().ToList();
@@ -559,13 +559,13 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
         return statements.Select(s =>
         {
             var stmtLines = linesByStatement.GetValueOrDefault(s.Id) ?? [];
-            return new EngBillingStatementDto
+            return new PartyBillingStatementDto
             {
                 Id = s.Id.ToString(),
                 ReferenceNumber = s.ReferenceNumber,
                 AssigneeId = s.AssigneeId,
                 Status = s.Status,
-                StatusLabel = EngineeringBillingStatementStatus.Label(s.Status),
+                StatusLabel = PartyBillingStatementStatus.Label(s.Status),
                 TotalNetSar = s.TotalNetSar,
                 CreatedByUserId = s.CreatedByUserId,
                 CreatedAtUtc = s.CreatedAtUtc,
@@ -580,7 +580,7 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
                 {
                     ledgers.TryGetValue(line.WorkflowTaskId, out var ledger);
                     var status = ledger?.BillingStatus ?? InspectorFeeBillingStatus.InStatement;
-                    return new EngBillingStatementLineDto
+                    return new PartyBillingStatementLineDto
                     {
                         Id = line.Id.ToString(),
                         WorkflowTaskId = line.WorkflowTaskId.ToString(),
@@ -626,12 +626,12 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
         return result;
     }
 
-    private static EngBillingReadyLineDto ToReadyDto(
+    private static PartyBillingReadyLineDto ToReadyDto(
         InspectorFeeLedger ledger,
         IReadOnlyDictionary<Guid, string> labels)
     {
         var discount = Math.Max(0m, ledger.SupervisorDiscountSar);
-        return new EngBillingReadyLineDto
+        return new PartyBillingReadyLineDto
         {
             WorkflowTaskId = ledger.WorkflowTaskId.ToString(),
             PropertyId = ledger.PropertyId?.ToString(),
@@ -723,7 +723,7 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
     }
 
     private async Task NotifyStatementIssuedAsync(
-        EngineeringBillingStatement statement,
+        PartyBillingStatement statement,
         int lineCount,
         CancellationToken cancellationToken)
     {
@@ -767,7 +767,7 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
     }
 
     private async Task NotifyStatementClosedAsync(
-        EngineeringBillingStatement statement,
+        PartyBillingStatement statement,
         int lineCount,
         CancellationToken cancellationToken)
     {

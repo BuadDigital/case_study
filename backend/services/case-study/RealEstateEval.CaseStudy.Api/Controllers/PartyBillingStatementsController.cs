@@ -1,4 +1,4 @@
-using System.IdentityModel.Tokens.Jwt;
+﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,15 +11,16 @@ using RealEstateEval.Shared.Web.Authorization;
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
 [ApiController]
-[Route("api/eng-billing-statements")]
+[Route("api/party-billing-statements")]
+[Route("api/eng-billing-statements")] // legacy alias
 [Authorize]
-public class EngBillingStatementsController : ControllerBase
+public class PartyBillingStatementsController : ControllerBase
 {
-    private readonly IEngineeringBillingStatementService _statements;
+    private readonly IPartyBillingStatementService _statements;
     private readonly IPermissionService _permissions;
 
-    public EngBillingStatementsController(
-        IEngineeringBillingStatementService statements,
+    public PartyBillingStatementsController(
+        IPartyBillingStatementService statements,
         IPermissionService permissions)
     {
         _statements = statements;
@@ -28,13 +29,13 @@ public class EngBillingStatementsController : ControllerBase
 
     [HttpGet("ready-lines")]
     [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
-    public async Task<ActionResult<IReadOnlyList<EngBillingReadyLineDto>>> ListReadyLines(
+    public async Task<ActionResult<IReadOnlyList<PartyBillingReadyLineDto>>> ListReadyLines(
         [FromQuery] string? assigneeId = null,
         CancellationToken ct = default) =>
         Ok(await _statements.ListReadyLinesAsync(assigneeId, ct));
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<EngBillingStatementDto>>> List(
+    public async Task<ActionResult<IReadOnlyList<PartyBillingStatementDto>>> List(
         [FromQuery] string? assigneeId = null,
         [FromQuery] string? status = null,
         [FromQuery] bool issuedOrLaterOnly = false,
@@ -68,8 +69,8 @@ public class EngBillingStatementsController : ControllerBase
 
     [HttpPost]
     [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
-    public async Task<ActionResult<CreateEngBillingStatementResult>> Create(
-        [FromBody] CreateEngBillingStatementRequest request,
+    public async Task<ActionResult<CreatePartyBillingStatementResult>> Create(
+        [FromBody] CreatePartyBillingStatementRequest request,
         CancellationToken ct)
     {
         var userId = CurrentUserId();
@@ -83,7 +84,7 @@ public class EngBillingStatementsController : ControllerBase
 
     [HttpPost("{statementId:guid}/issue")]
     [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
-    public async Task<ActionResult<EngBillingStatementDto>> Issue(
+    public async Task<ActionResult<PartyBillingStatementDto>> Issue(
         Guid statementId,
         CancellationToken ct)
     {
@@ -98,9 +99,9 @@ public class EngBillingStatementsController : ControllerBase
 
     [HttpPost("{statementId:guid}/close")]
     [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
-    public async Task<ActionResult<EngBillingStatementDto>> Close(
+    public async Task<ActionResult<PartyBillingStatementDto>> Close(
         Guid statementId,
-        [FromBody] CloseEngBillingStatementRequest request,
+        [FromBody] ClosePartyBillingStatementRequest request,
         CancellationToken ct)
     {
         var userId = CurrentUserId();
@@ -114,8 +115,8 @@ public class EngBillingStatementsController : ControllerBase
 
     [HttpPost("defer-lines")]
     [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
-    public async Task<ActionResult<DeferEngBillingLinesResult>> DeferLines(
-        [FromBody] DeferEngBillingLinesRequest request,
+    public async Task<ActionResult<DeferPartyBillingLinesResult>> DeferLines(
+        [FromBody] DeferPartyBillingLinesRequest request,
         CancellationToken ct)
     {
         var userId = CurrentUserId();

@@ -21,10 +21,11 @@ import {
 } from "@platform/design-system";
 import type { FinancialSummaryDto } from "../lib/financial-api";
 import { useFinanceTabCounts } from "../query/finance-tab-counts";
-import { FinancePartyDisburse } from "./FinancePartyDisburse";
 import { FinanceEnfazPoBilling } from "./FinanceEnfazPoBilling";
+import { FinanceEnfazAgingReport } from "./FinanceEnfazAgingReport";
 import { FinancePartyBrowse } from "./FinancePartyBrowse";
-import { FinanceEngBillingStatements } from "./FinanceEngBillingStatements";
+import { FinancePartyDisburse } from "./FinancePartyDisburse";
+import { FinancePartyBillingStatements } from "./FinancePartyBillingStatements";
 
 function ContractBadge({ type }: { type: string }) {
   const tone = type === "ext" ? "default" : type === "int" ? "info" : "warning";
@@ -75,7 +76,7 @@ export function FinanceWorkspace({
   ready: boolean;
 }) {
   const [tab, setTab] = useState<
-    "disburse" | "eng-billing" | "enfaz" | "browse" | "reports"
+    "disburse" | "party-billing" | "enfaz" | "browse" | "reports"
   >("disburse");
   const counts = useFinanceTabCounts();
   const revenueRows = summary?.revenueRows ?? [];
@@ -92,8 +93,8 @@ export function FinanceWorkspace({
             : null}
         </Tab>
         <Tab
-          active={tab === "eng-billing"}
-          onClick={() => setTab("eng-billing")}
+          active={tab === "party-billing"}
+          onClick={() => setTab("party-billing")}
         >
           فوترة الأطراف
           {!counts.isPending ? tabBadge(counts.engReady, "info") : null}
@@ -134,91 +135,98 @@ export function FinanceWorkspace({
             <FinancePartyDisburse />
           </>
         ) : null}
-        {tab === "eng-billing" ? <FinanceEngBillingStatements /> : null}
+        {tab === "party-billing" ? <FinancePartyBillingStatements /> : null}
         {tab === "enfaz" ? <FinanceEnfazPoBilling /> : null}
         {tab === "browse" ? <FinancePartyBrowse /> : null}
         {tab === "reports" ? (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <ReportTableSection title="إيرادات إنفاذ">
-              {!ready ? (
-                <Table pending>
-                  <TBody>
-                    <SkeletonTableRows rows={4} cols={6} />
-                  </TBody>
-                </Table>
-              ) : revenueRows.length === 0 ? (
-                <EmptyState
-                  line="لا توجد إيرادات مسجّلة بعد."
-                  hint="صدر فواتير إنفاذ من تبويب «فوترة إنفاذ»."
-                />
-              ) : (
-                <Table>
-                  <THead>
-                    <Tr hoverable={false}>
-                      <Th>PO</Th>
-                      <Th>مُفوتَرة</Th>
-                      <Th>مستثنيات</Th>
-                      <Th>القيمة</Th>
-                      <Th>الفاتورة</Th>
-                      <Th>الحالة</Th>
-                    </Tr>
-                  </THead>
-                  <TBody>
-                    {revenueRows.map((r) => (
-                      <Tr key={r.po} hoverable={false}>
-                        <Td className="font-medium text-primary-light">
-                          {r.po}
-                        </Td>
-                        <Td>{r.billed}</Td>
-                        <Td>{r.excluded}</Td>
-                        <Td>{r.value}</Td>
-                        <Td className="text-text-2">
-                          {r.invoiceNumber ?? "—"}
-                        </Td>
-                        <Td>
-                          <Badge tone={r.status === "done" ? "success" : "warning"}>
-                            {r.status === "done" ? "مُفوتَر" : "جزئي"}
-                          </Badge>
-                        </Td>
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <ReportTableSection title="إيرادات إنفاذ">
+                {!ready ? (
+                  <Table pending>
+                    <TBody>
+                      <SkeletonTableRows rows={4} cols={6} />
+                    </TBody>
+                  </Table>
+                ) : revenueRows.length === 0 ? (
+                  <EmptyState
+                    line="لا توجد إيرادات مسجّلة بعد."
+                    hint="صدر فواتير إنفاذ من تبويب «فوترة إنفاذ»."
+                  />
+                ) : (
+                  <Table>
+                    <THead>
+                      <Tr hoverable={false}>
+                        <Th>PO</Th>
+                        <Th>مُفوتَرة</Th>
+                        <Th>مستثنيات</Th>
+                        <Th>القيمة</Th>
+                        <Th>الفاتورة</Th>
+                        <Th>الحالة</Th>
                       </Tr>
-                    ))}
-                  </TBody>
-                </Table>
-              )}
-            </ReportTableSection>
-            <ReportTableSection title="تكاليف مزودي الخدمة">
-              {!ready ? (
-                <Table pending>
-                  <TBody>
-                    <SkeletonTableRows rows={4} cols={4} />
-                  </TBody>
-                </Table>
-              ) : costRows.length === 0 ? (
-                <EmptyState line="لا توجد تكاليف مسجّلة بعد." />
-              ) : (
-                <Table>
-                  <THead>
-                    <Tr hoverable={false}>
-                      <Th>المزود</Th>
-                      <Th>النوع</Th>
-                      <Th>التكلفة</Th>
-                      <Th>الفئة</Th>
-                    </Tr>
-                  </THead>
-                  <TBody>
-                    {costRows.map((r) => (
-                      <Tr key={`${r.name}-${r.category}`} hoverable={false}>
-                        <Td className="font-medium">{r.name}</Td>
-                        <Td>
-                          <ContractBadge type={r.type} />
-                        </Td>
-                        <Td>{r.cost}</Td>
-                        <Td>{r.category}</Td>
+                    </THead>
+                    <TBody>
+                      {revenueRows.map((r) => (
+                        <Tr key={r.po} hoverable={false}>
+                          <Td className="font-medium text-primary-light">
+                            {r.po}
+                          </Td>
+                          <Td>{r.billed}</Td>
+                          <Td>{r.excluded}</Td>
+                          <Td>{r.value}</Td>
+                          <Td className="text-text-2">
+                            {r.invoiceNumber ?? "—"}
+                          </Td>
+                          <Td>
+                            <Badge
+                              tone={r.status === "done" ? "success" : "warning"}
+                            >
+                              {r.status === "done" ? "مُفوتَر" : "جزئي"}
+                            </Badge>
+                          </Td>
+                        </Tr>
+                      ))}
+                    </TBody>
+                  </Table>
+                )}
+              </ReportTableSection>
+              <ReportTableSection title="تكاليف مزودي الخدمة">
+                {!ready ? (
+                  <Table pending>
+                    <TBody>
+                      <SkeletonTableRows rows={4} cols={4} />
+                    </TBody>
+                  </Table>
+                ) : costRows.length === 0 ? (
+                  <EmptyState line="لا توجد تكاليف مسجّلة بعد." />
+                ) : (
+                  <Table>
+                    <THead>
+                      <Tr hoverable={false}>
+                        <Th>المزود</Th>
+                        <Th>النوع</Th>
+                        <Th>التكلفة</Th>
+                        <Th>الفئة</Th>
                       </Tr>
-                    ))}
-                  </TBody>
-                </Table>
-              )}
+                    </THead>
+                    <TBody>
+                      {costRows.map((r) => (
+                        <Tr key={`${r.name}-${r.category}`} hoverable={false}>
+                          <Td className="font-medium">{r.name}</Td>
+                          <Td>
+                            <ContractBadge type={r.type} />
+                          </Td>
+                          <Td>{r.cost}</Td>
+                          <Td>{r.category}</Td>
+                        </Tr>
+                      ))}
+                    </TBody>
+                  </Table>
+                )}
+              </ReportTableSection>
+            </div>
+            <ReportTableSection title="تقادم ذمم إنفاذ (Aging)">
+              <FinanceEnfazAgingReport />
             </ReportTableSection>
           </div>
         ) : null}

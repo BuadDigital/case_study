@@ -2,10 +2,14 @@ import {
   getPoEnfazBilling,
   getPropertyEnfazRevenue,
   issuePoEnfazInvoice,
+  collectPoEnfazInvoice,
   downloadPoEnfazInvoicePdf,
   listEnfazTracking,
+  listEnfazAging,
   listReadyEnfazPoSummaries,
   savePoEnfazBilling,
+  type CollectPoEnfazInvoiceRequest,
+  type EnfazAgingReportDto,
   type PoEnfazBillingDto,
   type PropertyEnfazRevenueDto,
   type SavePoEnfazBillingRequest,
@@ -48,10 +52,38 @@ export async function loadEnfazTracking() {
   return result.ok ? result.data : [];
 }
 
+export async function loadEnfazAgingReport(): Promise<EnfazAgingReportDto> {
+  const config = workOrdersApiConfig();
+  if (!config) {
+    return {
+      asOfUtc: new Date().toISOString(),
+      totalOutstandingSar: 0,
+      openInvoiceCount: 0,
+      buckets: [],
+      invoices: [],
+    };
+  }
+  const result = await listEnfazAging(config);
+  if (!result.ok) {
+    throw new Error(apiErrorMessage(result.kind, "تعذّر تحميل تقرير التقادم"));
+  }
+  return result.data;
+}
+
 export async function issueEnfazInvoice(poNumber: string) {
   const config = workOrdersApiConfig();
   if (!config) return null;
   const result = await issuePoEnfazInvoice(config, poNumber);
+  return result.ok ? result.data : null;
+}
+
+export async function collectEnfazInvoice(
+  poNumber: string,
+  body: CollectPoEnfazInvoiceRequest,
+): Promise<PoEnfazBillingDto | null> {
+  const config = workOrdersApiConfig();
+  if (!config) return null;
+  const result = await collectPoEnfazInvoice(config, poNumber, body);
   return result.ok ? result.data : null;
 }
 
@@ -72,6 +104,16 @@ export async function downloadEnfazInvoicePdf(
   a.remove();
   URL.revokeObjectURL(url);
   return true;
+}
+
+export async function openEnfazAttachment(
+  attachmentId: string,
+  fileName = "مرفق-إنفاذ",
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { openPartyBillingAttachment } = await import(
+    "./party-billing-statements-api"
+  );
+  return openPartyBillingAttachment(attachmentId, fileName);
 }
 
 export async function loadPropertyEnfazRevenue(

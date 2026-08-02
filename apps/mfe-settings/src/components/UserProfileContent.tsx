@@ -1,9 +1,16 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  listInspectorFees,
+  type InspectorFeeRowDto,
+} from "@platform/api-client";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { supervisingDepartmentLabel } from "@platform/app-shared/users/admin-staff-roles";
-import { Badge } from "@platform/design-system";
+import { getAuthSession } from "@platform/auth-client";
+import { Badge, Spinner, Table, TBody, Td, Th, THead, Tr } from "@platform/design-system";
+
+type ProfileTab = "basic" | "login" | "activity" | "financial";
 
 function statusTone(status: string | undefined): "success" | "danger" | "default" {
   if (status === "Active") return "success";
@@ -25,6 +32,18 @@ function typeLabel(type: StaffUser["type"]): string {
   return "خارجي";
 }
 
+function formatAt(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  try {
+    return new Intl.DateTimeFormat("ar-SA", {
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
 function ProfileField({
   label,
   value,
@@ -44,7 +63,24 @@ function ProfileField({
   );
 }
 
+function completedRows(rows: InspectorFeeRowDto[]): InspectorFeeRowDto[] {
+  return rows.filter(
+    (row) =>
+      row.workStatus === "done" ||
+      row.billingStatus === "disbursed" ||
+      row.billingStatus === "at-finance" ||
+      row.billingStatus === "in-statement" ||
+      row.billingStatus === "disb-req",
+  );
+}
+
 export function UserProfileContent({ user }: { user: StaffUser }) {
+  const showFinancial = Boolean(user.hasCompensation);
+  const [tab, setTab] = useState<ProfileTab>("basic");
+  const [feeRows, setFeeRows] = useState<InspectorFeeRowDto[]>([]);
+  const [feesLoading, setFeesLoading] = useState(false);
+  const [feesFailed, setFeesFailed] = useState(false);
+
   const detailSections = useMemo(() => {
     const map = new Map<string, { label: string; value: string }[]>();
     for (const field of user.details ?? []) {
@@ -54,6 +90,71 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
     }
     return [...map.entries()];
   }, [user.details]);
+
+  const tabs = useMemo(() => {
+    const items: { id: ProfileTab; label: string }[] = [
+      { id: "basic", label: "البيانات الأساسية" },
+      { id: "login", label: "بيانات الدخول" },
+      { id: "activity", label: "سجل الأعمال" },
+    ];
+    if (showFinancial) items.push({ id: "financial", label: "المالية" });
+    return items;
+  }, [showFinancial]);
+
+  useEffect(() => {
+    if (tab !== "activity" && tab !== "financial") return;
+    const token = getAuthSession()?.token;
+    if (!token) return;
+    let cancelled = false;
+    setFeesLoading(true);
+    setFeesFailed(false);
+    void listInspectorFees(
+      { token },
+      user.distributionAssigneeId
+        ? { assigneeId: user.distributionAssigneeId }
+        : {},
+    ).then((result) => {
+      if (cancelled) return;
+      if (!result.ok) {
+        setFeesFailed(true);
+        setFeeRows([]);
+      } else {
+        const rows = user.distributionAssigneeId
+          ? result.data.rows
+          : result.data.rows.filter(
+              (row) =>
+                row.assigneeId &&
+                (row.assigneeId === user.id ||
+                  row.assigneeId === user.distributionAssigneeId),
+            );
+        setFeeRows(rows);
+      }
+      setFeesLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, user.distributionAssigneeId, user.id]);
+
+  const activityRows = useMemo(() => completedRows(feeRows), [feeRows]);
+
+  const financialSummary = useMemo(() => {
+    let due = 0;
+    let paid = 0;
+    let suspended = 0;
+    for (const row of feeRows) {
+      const paidAmt = row.paidAmountSar > 0 ? row.paidAmountSar : 0;
+      const net = row.netFeeSar;
+      if (row.billingStatus === "disbursed" || paidAmt > 0) {
+        paid += paidAmt > 0 ? paidAmt : net;
+      } else if (row.billingStatus === "suspended") {
+        suspended += net;
+      } else {
+        due += net;
+      }
+    }
+    return { due, paid, suspended, remaining: Math.max(0, due) };
+  }, [feeRows]);
 
   return (
     <div className="space-y-4 max-lg:space-y-5">
@@ -79,68 +180,217 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
         </Badge>
       </div>
 
-      <section>
-        <h3 className="m-0 mb-3 text-[13px] font-bold text-heading">
-          البيانات الأساسية
-        </h3>
-        <div className="grid gap-3 sm:grid-cols-2 max-lg:gap-2.5">
-          <ProfileField label="الاسم" value={user.name} />
-          <ProfileField label="الدور / المسمى" value={user.role} />
-          <ProfileField label="البريد الإلكتروني" value={user.email} dir="ltr" />
-          <ProfileField label="نوع العقد" value={typeLabel(user.type)} />
-          {user.city ? <ProfileField label="المدينة" value={user.city} /> : null}
-          {user.department ? (
-            <ProfileField
-              label="الإدارة"
-              value={supervisingDepartmentLabel(user.department)}
-            />
-          ) : null}
-          {user.phone ? (
-            <ProfileField label="الجوال" value={user.phone} dir="ltr" />
-          ) : null}
-          {user.distributionAssigneeId ? (
-            <ProfileField
-              label="معرّف التوزيع"
-              value={user.distributionAssigneeId}
-              dir="ltr"
-            />
-          ) : null}
-        </div>
-        {user.reviewerCityCoverage && user.reviewerCityCoverage.length > 0 ? (
-          <div className="mt-3 rounded-lg border border-border bg-surface-2 px-3 py-2.5">
-            <div className="text-[11px] font-medium text-text-3">
-              نطاق المدن (مراجع حكومي)
-            </div>
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {user.reviewerCityCoverage.map((city) => (
-                <Badge key={city} tone="info">
-                  {city}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        ) : null}
-      </section>
+      <div className="flex flex-wrap gap-2 border-b border-border pb-2">
+        {tabs.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setTab(item.id)}
+            className={`rounded-md px-3 py-1.5 text-[12px] font-semibold transition-colors ${
+              tab === item.id
+                ? "bg-primary text-white"
+                : "bg-surface-2 text-text-2 hover:border-border-md"
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
 
-      {detailSections.map(([section, fields]) => (
-        <section key={section}>
-          <h3 className="m-0 mb-3 text-[13px] font-bold text-heading">{section}</h3>
-          <div className="grid gap-3 sm:grid-cols-2 max-lg:gap-2.5">
-            {fields.map((field) => (
-              <ProfileField
-                key={`${section}-${field.label}`}
-                label={field.label}
-                value={field.value}
-                dir={
-                  /إيميل|بريد|جوال|هوية|عضوية|مستخدم|معرّف/i.test(field.label)
-                    ? "ltr"
-                    : undefined
-                }
-              />
-            ))}
+      {tab === "basic" ? (
+        <>
+          <section>
+            <h3 className="m-0 mb-3 text-[13px] font-bold text-heading">
+              البيانات الأساسية
+            </h3>
+            <div className="grid gap-3 sm:grid-cols-2 max-lg:gap-2.5">
+              <ProfileField label="الاسم" value={user.name} />
+              <ProfileField label="الدور / المسمى" value={user.role} />
+              <ProfileField label="البريد الإلكتروني" value={user.email} dir="ltr" />
+              <ProfileField label="نوع العقد" value={typeLabel(user.type)} />
+              {user.city ? <ProfileField label="المدينة" value={user.city} /> : null}
+              {user.department ? (
+                <ProfileField
+                  label="الإدارة"
+                  value={supervisingDepartmentLabel(user.department)}
+                />
+              ) : null}
+              {user.phone ? (
+                <ProfileField label="الجوال" value={user.phone} dir="ltr" />
+              ) : null}
+              {user.distributionAssigneeId ? (
+                <ProfileField
+                  label="معرّف التوزيع"
+                  value={user.distributionAssigneeId}
+                  dir="ltr"
+                />
+              ) : null}
+              {showFinancial ? (
+                <>
+                  <ProfileField label="يستحق تعويضاً" value="نعم" />
+                  <ProfileField
+                    label="قيمة الأتعاب (ر.س)"
+                    value={
+                      user.feeValueSar != null ? String(user.feeValueSar) : "—"
+                    }
+                    dir="ltr"
+                  />
+                </>
+              ) : null}
+            </div>
+            {user.reviewerCityCoverage && user.reviewerCityCoverage.length > 0 ? (
+              <div className="mt-3 rounded-lg border border-border bg-surface-2 px-3 py-2.5">
+                <div className="text-[11px] font-medium text-text-3">
+                  نطاق المدن (مراجع حكومي)
+                </div>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {user.reviewerCityCoverage.map((city) => (
+                    <Badge key={city} tone="info">
+                      {city}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </section>
+
+          {detailSections.map(([section, fields]) => (
+            <section key={section}>
+              <h3 className="m-0 mb-3 text-[13px] font-bold text-heading">{section}</h3>
+              <div className="grid gap-3 sm:grid-cols-2 max-lg:gap-2.5">
+                {fields.map((field) => (
+                  <ProfileField
+                    key={`${section}-${field.label}`}
+                    label={field.label}
+                    value={field.value}
+                    dir={
+                      /إيميل|بريد|جوال|هوية|عضوية|مستخدم|معرّف/i.test(field.label)
+                        ? "ltr"
+                        : undefined
+                    }
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+        </>
+      ) : null}
+
+      {tab === "login" ? (
+        <section className="grid gap-3 sm:grid-cols-2">
+          <ProfileField label="الحالة" value={statusLabel(user.status)} />
+          <ProfileField
+            label="آخر دخول"
+            value={formatAt(user.lastLoginAtUtc)}
+            dir="ltr"
+          />
+          <ProfileField
+            label="اسم الدخول"
+            value={user.userName || "—"}
+            dir="ltr"
+          />
+          <div className="rounded-lg border border-dashed border-border bg-surface-2 px-3 py-2.5 sm:col-span-2">
+            <div className="text-[11px] font-medium text-text-3">الأجهزة والمحاولات</div>
+            <p className="m-0 mt-1 text-[12px] text-text-2">
+              إدارة الأجهزة وبصمة الجلسة تُبنى مع مرحلة الدعوات وOTP (د — مراحل ١–٣).
+            </p>
           </div>
         </section>
-      ))}
+      ) : null}
+
+      {tab === "activity" ? (
+        <section>
+          {feesLoading ? (
+            <div className="flex justify-center py-10">
+              <Spinner />
+            </div>
+          ) : feesFailed ? (
+            <p className="text-[12px] text-danger">تعذّر تحميل سجل الأعمال.</p>
+          ) : activityRows.length === 0 ? (
+            <p className="text-[12px] text-text-3">لا توجد أعمال منجزة ظاهرة لهذا المستخدم.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table className="min-w-[560px]">
+                <THead>
+                  <Tr hoverable={false}>
+                    <Th>أمر العمل</Th>
+                    <Th>تاريخ الإنجاز</Th>
+                    <Th>نوع المهمة</Th>
+                    <Th>الحالة</Th>
+                  </Tr>
+                </THead>
+                <TBody>
+                  {activityRows.map((row) => (
+                    <Tr key={row.workflowTaskId}>
+                      <Td dir="ltr">{row.poNumber || "—"}</Td>
+                      <Td dir="ltr">
+                        {formatAt(row.accruedAtUtc ?? row.workSubmittedAtUtc ?? row.updatedAtUtc)}
+                      </Td>
+                      <Td>{row.taskKind || "—"}</Td>
+                      <Td>{row.workStatusLabel || row.billingStatusLabel}</Td>
+                    </Tr>
+                  ))}
+                </TBody>
+              </Table>
+            </div>
+          )}
+        </section>
+      ) : null}
+
+      {tab === "financial" && showFinancial ? (
+        <section className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-4">
+            <ProfileField
+              label="المستحق"
+              value={`${financialSummary.due.toLocaleString("ar-SA")} ر.س`}
+            />
+            <ProfileField
+              label="المدفوع"
+              value={`${financialSummary.paid.toLocaleString("ar-SA")} ر.س`}
+            />
+            <ProfileField
+              label="المتبقي"
+              value={`${financialSummary.remaining.toLocaleString("ar-SA")} ر.س`}
+            />
+            <ProfileField
+              label="موقوف"
+              value={`${financialSummary.suspended.toLocaleString("ar-SA")} ر.س`}
+            />
+          </div>
+          {feesLoading ? (
+            <div className="flex justify-center py-8">
+              <Spinner />
+            </div>
+          ) : feeRows.length === 0 ? (
+            <p className="text-[12px] text-text-3">لا توجد بنود مالية لهذا المستخدم.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table className="min-w-[640px]">
+                <THead>
+                  <Tr hoverable={false}>
+                    <Th>أمر العمل</Th>
+                    <Th>الصافي</Th>
+                    <Th>المدفوع</Th>
+                    <Th>الحالة</Th>
+                    <Th>آخر تحديث</Th>
+                  </Tr>
+                </THead>
+                <TBody>
+                  {feeRows.map((row) => (
+                    <Tr key={row.workflowTaskId}>
+                      <Td dir="ltr">{row.poNumber || "—"}</Td>
+                      <Td dir="ltr">{row.netFeeSar.toLocaleString("ar-SA")}</Td>
+                      <Td dir="ltr">{row.paidAmountSar.toLocaleString("ar-SA")}</Td>
+                      <Td>{row.billingStatusLabel}</Td>
+                      <Td dir="ltr">{formatAt(row.updatedAtUtc)}</Td>
+                    </Tr>
+                  ))}
+                </TBody>
+              </Table>
+            </div>
+          )}
+        </section>
+      ) : null}
     </div>
   );
 }

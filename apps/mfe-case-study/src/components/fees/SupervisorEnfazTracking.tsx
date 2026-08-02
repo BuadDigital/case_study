@@ -17,6 +17,30 @@ import {
 import { inspectorFeeWorkStatusTone } from "@platform/api-client";
 import type { EnfazTrackingRowDto } from "@platform/api-client";
 
+function invoiceStatusLabel(status: string | null | undefined): string {
+  switch (status) {
+    case "collected":
+      return "محصّلة";
+    case "partially_collected":
+      return "تحصيل جزئي";
+    case "issued":
+      return "صادرة";
+    default:
+      return "بلا فاتورة";
+  }
+}
+
+function invoiceStatusTone(
+  status: string | null | undefined,
+  overdue: boolean,
+): "success" | "warning" | "danger" | "info" | "default" {
+  if (overdue) return "danger";
+  if (status === "collected") return "success";
+  if (status === "partially_collected") return "warning";
+  if (status === "issued") return "info";
+  return "default";
+}
+
 export function SupervisorEnfazTracking() {
   const { data = [], isPending } = useQuery({
     queryKey: [...prototypeKeys.all, "enfaz-billing", "tracking"],
@@ -27,7 +51,7 @@ export function SupervisorEnfazTracking() {
     return (
       <Table pending>
         <TBody>
-          <SkeletonTableRows rows={5} cols={4} />
+          <SkeletonTableRows rows={5} cols={5} />
         </TBody>
       </Table>
     );
@@ -45,7 +69,8 @@ export function SupervisorEnfazTracking() {
             <Th>أمر العمل</Th>
             <Th>المعاملة</Th>
             <Th>حالة العمل</Th>
-            <Th>فوترة إنفاذ</Th>
+            <Th>تعبئة الأتعاب</Th>
+            <Th>الفاتورة / التحصيل</Th>
           </Tr>
         </THead>
         <TBody>
@@ -71,10 +96,35 @@ export function SupervisorEnfazTracking() {
                   <Badge tone="danger">لا تُفوتر</Badge>
                 ) : row.enfazFilled ? (
                   <Badge tone="success">
-                    مُفوترة {row.enfazFeeSar.toLocaleString("ar-SA")} ر.س
+                    مُعبّأة {row.enfazFeeSar.toLocaleString("ar-SA")} ر.س
                   </Badge>
                 ) : (
                   <Badge tone="warning">بانتظار التعبئة</Badge>
+                )}
+              </Td>
+              <Td>
+                {row.workStatus === "cancelled" ? (
+                  <span className="text-text-3">—</span>
+                ) : row.invoiceNumber ? (
+                  <div className="flex flex-col gap-1">
+                    <Badge
+                      tone={invoiceStatusTone(
+                        row.invoiceStatus,
+                        row.isOverdue,
+                      )}
+                    >
+                      {invoiceStatusLabel(row.invoiceStatus)}
+                      {row.isOverdue ? " · متأخر" : ""}
+                    </Badge>
+                    <span className="text-[11px] text-text-3">
+                      {row.invoiceNumber}
+                      {row.collectedAmountSar > 0
+                        ? ` · محصّل ${row.collectedAmountSar.toLocaleString("ar-SA")} ر.س`
+                        : ""}
+                    </span>
+                  </div>
+                ) : (
+                  <Badge tone="default">بلا فاتورة</Badge>
                 )}
               </Td>
             </Tr>
@@ -82,7 +132,8 @@ export function SupervisorEnfazTracking() {
         </TBody>
       </Table>
       <p className="mt-3 text-xs text-text-3">
-        متابعة فقط — التعبئة الفعلية من سطح المالية.
+        متابعة فقط — التعبئة والتحصيل من سطح المالية. المتأخر = أكثر من ٣٠ يوماً
+        من الإصدار بلا تحصيل كامل.
       </p>
     </>
   );

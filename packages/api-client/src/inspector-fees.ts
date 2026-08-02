@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Inspector fees API — per-property fee ledger persisted in PostgreSQL.
  */
 import { normalizeFieldErrors } from "./field-errors";
@@ -87,6 +87,7 @@ export type InspectorFeeRowDto = {
   supervisorDiscountSar: number;
   discountReason: string | null;
   netFeeSar: number;
+  paidAmountSar: number;
   billingStatus: InspectorFeeBillingStatus;
   billingStatusLabel: string;
   workStatus: InspectorFeeWorkStatus;
@@ -96,7 +97,7 @@ export type InspectorFeeRowDto = {
   returnTo: string | null;
   disbursementBatchId: string | null;
   disbursementVoucher: string | null;
-  engineeringBillingStatementId: string | null;
+  partyBillingStatementId: string | null;
   lastTransitionReason: string | null;
   updatedAtUtc: string | null;
   accruedAtUtc: string | null;
@@ -210,6 +211,7 @@ function normalizeRow(raw: Record<string, unknown>): InspectorFeeRowDto {
     discountReason:
       (raw.discountReason ?? raw.DiscountReason ?? null) as string | null,
     netFeeSar: Number(raw.netFeeSar ?? raw.NetFeeSar ?? 0),
+    paidAmountSar: Number(raw.paidAmountSar ?? raw.PaidAmountSar ?? 0),
     billingStatus: (raw.billingStatus ?? raw.BillingStatus ?? "draft") as
       InspectorFeeBillingStatus,
     billingStatusLabel: String(
@@ -232,7 +234,9 @@ function normalizeRow(raw: Record<string, unknown>): InspectorFeeRowDto {
     disbursementVoucher: (raw.disbursementVoucher ??
       raw.DisbursementVoucher ??
       null) as string | null,
-    engineeringBillingStatementId: (raw.engineeringBillingStatementId ??
+    partyBillingStatementId: (raw.partyBillingStatementId ??
+      raw.PartyBillingStatementId ??
+      raw.engineeringBillingStatementId ??
       raw.EngineeringBillingStatementId ??
       null) as string | null,
     lastTransitionReason: (raw.lastTransitionReason ??
