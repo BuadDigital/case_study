@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
@@ -28,6 +29,77 @@ public class RegionsController : ControllerBase
     [HttpGet("{id:guid}/cities/selectable")]
     public async Task<ActionResult<IReadOnlyList<SelectableCityDto>>> SelectableCities(
         Guid id,
+        [FromQuery] string? q,
         CancellationToken cancellationToken)
-        => Ok(await _regions.ListSelectableCitiesAsync(id, cancellationToken));
+        => Ok(await _regions.SearchCitiesAsync(id, q, cancellationToken));
+
+    [HttpGet("cities/{cityId:guid}/districts")]
+    public async Task<ActionResult<IReadOnlyList<SelectableDistrictDto>>> SearchDistricts(
+        Guid cityId,
+        [FromQuery] string? q,
+        CancellationToken cancellationToken)
+        => Ok(await _regions.SearchDistrictsAsync(cityId, q, cancellationToken));
+
+    [HttpPost("suggest")]
+    public async Task<ActionResult<SuggestLocationResultDto>> Suggest(
+        [FromBody] SuggestLocationRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
+        try
+        {
+            return Ok(await _regions.SuggestAsync(request, userId, cancellationToken));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpGet("pending")]
+    [Authorize(Policy = "CanManageUsers")]
+    public async Task<ActionResult<IReadOnlyList<PendingLocationDto>>> Pending(
+        CancellationToken cancellationToken)
+        => Ok(await _regions.ListPendingAsync(cancellationToken));
+
+    [HttpPost("cities/{id:guid}/review")]
+    [Authorize(Policy = "CanManageUsers")]
+    public async Task<IActionResult> ReviewCity(
+        Guid id,
+        [FromBody] ReviewLocationRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
+        try
+        {
+            await _regions.ReviewCityAsync(id, request, userId, cancellationToken);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("districts/{id:guid}/review")]
+    [Authorize(Policy = "CanManageUsers")]
+    public async Task<IActionResult> ReviewDistrict(
+        Guid id,
+        [FromBody] ReviewLocationRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
+        try
+        {
+            await _regions.ReviewDistrictAsync(id, request, userId, cancellationToken);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
 }

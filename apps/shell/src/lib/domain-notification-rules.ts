@@ -57,7 +57,7 @@ export const DOMAIN_NOTIFICATION_RULES: DomainNotificationRule[] = [
       title: "إرسال معاينة",
       body: "تم إرسال المعاينة الميدانية.",
       tone: "success",
-      href: "/all-transactions",
+      href: "/active-inspection",
       category: "workflow",
       entityType: "task",
       sourceEvent: FIELD_INSPECTION_SUBMITTED_EVENT,

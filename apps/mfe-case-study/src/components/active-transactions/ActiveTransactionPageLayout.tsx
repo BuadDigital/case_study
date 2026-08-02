@@ -34,7 +34,7 @@ export function ActiveTransactionPageLayout({
     railGridClassName ?? "lg:grid-cols-2";
 
   return (
-    <PageShell variant="canvas" className="min-w-0 max-w-full">
+    <PageShell variant="canvas" className="h-fit min-w-0 max-w-full">
       {aboveSituation}
       <ActiveTransactionsSituationBar pageId={pageId} />
 

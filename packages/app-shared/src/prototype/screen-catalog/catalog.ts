@@ -263,14 +263,23 @@ function buildPoSubRoutes(): SystemScreenEntry[] {
 function buildTaskWorkRoutes(): SystemScreenEntry[] {
   return [
     taskWorkEntry({
+      id: "active-inspection-work",
+      name: "إنجاز معاينة العقار",
+      path: "/active-inspection/{taskId}",
+      whereToFind: "المعاملات النشطة ← معاينة العقار ← اختيار مهمة",
+      pageId: "active-inspection",
+      notes:
+        "المسار الرسمي للمعاين — قائمة المهام تحت المعاملات النشطة + مساحة عمل الجوال/سطح المكتب.",
+    }),
+    taskWorkEntry({
       id: "property-inspection-work",
       name: "إنجاز معاينة العقار (يتيم)",
       path: "/property-inspection/{taskId}",
       whereToFind:
-        "الشاشات (Draft) ← معاينة العقار (يتيم) ← اختيار مهمة — أو تفاصيل العقار ← تبويب معاينة العقار (المسار الأساسي)",
+        "الشاشات (Draft) ← معاينة العقار (يتيم) ← اختيار مهمة — أو تفاصيل العقار ← تبويب معاينة العقار",
       pageId: "property-inspection",
       notes:
-        "مسار عمل قديم للقائمة الكاملة — الإدخال الأساسي داخل تفاصيل العقار (وضع سطح المكتب من الـ HTML).",
+        "مسار عمل قديم للقائمة الكاملة — الإدخال الأساسي داخل تفاصيل العقار أو عبر active-inspection.",
     }),
     taskWorkEntry({
       id: "government-review-work",

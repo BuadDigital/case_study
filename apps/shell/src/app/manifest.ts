@@ -49,7 +49,7 @@ export default function manifest(): MetadataRoute.Manifest {
         name: "معاينة العقار",
         short_name: "معاينة",
         description: "قائمة معاينات الميدان",
-        url: "/property-inspection?source=pwa",
+        url: "/active-inspection?source=pwa",
         icons: [{ src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
       },
       {

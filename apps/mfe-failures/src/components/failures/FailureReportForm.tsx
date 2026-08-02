@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { Button, Card, CardBody, CardHeader, useToast } from "@platform/design-system";
-import { failureProblemTypeLabel } from "../../lib/failure-types-data";
-import { createFailure } from "../../lib/failures-repository";
-import type { FailureSeverity } from "../../lib/failures-types";
-import { FailureRaiseFields } from "./FailureRaiseFields";
+import { PageGutter, cn } from "@platform/design-system";
+import { FailureRaisePanel } from "./FailureRaisePanel";
 
+/**
+ * Full-page failure raise — same chrome as engineering-office
+ * مساحة عمل التعذرات (pp-head + card + FailureRaisePanel).
+ */
 export function FailureReportForm({
   poNumber,
   propertyId,
@@ -24,68 +24,56 @@ export function FailureReportForm({
   onDone: () => void;
   onCancel: () => void;
 }) {
-  const { showToast } = useToast();
-  const [severity, setSeverity] = useState<FailureSeverity>("internal");
-  const [problemTypeId, setProblemTypeId] = useState("");
-  const [note, setNote] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  async function handleSubmit() {
-    if (!problemTypeId.trim() || saving) return;
-    setSaving(true);
-    try {
-      await createFailure({
-        poNumber,
-        propertyId,
-        deedNumber,
-        problemTypeId,
-        title: failureProblemTypeLabel(problemTypeId),
-        severity,
-        raisedByRole,
-        internalNote: note,
-        specialist,
-      });
-      onDone();
-    } catch {
-      showToast("تعذّر تسجيل التعذر — حاول مرة أخرى", "error");
-    } finally {
-      setSaving(false);
-    }
-  }
-
   return (
-    <Card className="mb-4 overflow-hidden shadow-none">
-      <CardHeader>
-        <span className="text-[13px] font-semibold text-text">
-          تسجيل تعذر — {deedNumber || poNumber}
-        </span>
-      </CardHeader>
-      <CardBody>
-        <FailureRaiseFields
-          severity={severity}
-          onSeverityChange={setSeverity}
-          problemTypeId={problemTypeId}
-          onProblemTypeIdChange={setProblemTypeId}
-          note={note}
-          onNoteChange={setNote}
-        />
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            loading={saving}
-            disabled={!problemTypeId.trim() || saving}
-            showActionToast={false}
-            onClick={() => void handleSubmit()}
-          >
-            {severity === "internal" ? "حفظ تعذر داخلي" : "تسجيل احتمال تعذر"}
-          </Button>
-          <Button type="button" size="sm" disabled={saving} onClick={onCancel}>
-            إلغاء
-          </Button>
+    <PageGutter className="py-6 sm:py-[26px]">
+      <div className="mx-auto w-full max-w-[1100px]">
+        <div
+          className={cn(
+            "mb-3.5 rounded-[14px] border border-border bg-surface px-[22px] py-[18px]",
+            "shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]",
+          )}
+        >
+          <h1 className="m-0 flex flex-wrap items-center gap-2.5 text-[18px] font-extrabold leading-tight text-heading">
+            <span>تسجيل تعذر</span>
+            {deedNumber ? (
+              <span className="text-[14px] font-bold text-gold-d [direction:ltr]">
+                صك {deedNumber}
+              </span>
+            ) : null}
+          </h1>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1 rounded-md bg-gold-soft px-2.5 py-[3px] text-[12px] font-bold text-gold-d">
+              {specialist || "أخصائي"}
+            </span>
+          </div>
         </div>
-      </CardBody>
-    </Card>
+
+        <div
+          className={cn(
+            "rounded-xl border border-border bg-surface p-[18px_20px]",
+            "shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]",
+          )}
+        >
+          <FailureRaisePanel
+            poNumber={poNumber}
+            propertyId={propertyId}
+            deedNumber={deedNumber}
+            specialist={specialist}
+            raisedByRole={raisedByRole}
+            autoOpenRaise
+            onSubmitted={onDone}
+          />
+          <div className="mt-4 border-t border-border pt-3">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="inline-flex cursor-pointer items-center rounded-lg border border-border-2 bg-surface px-3.5 py-[7px] text-[12px] font-semibold text-text-2 transition-colors hover:bg-surface-2 hover:text-heading"
+            >
+              إلغاء
+            </button>
+          </div>
+        </div>
+      </div>
+    </PageGutter>
   );
 }

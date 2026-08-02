@@ -8,8 +8,7 @@ import { Button, useToast } from "@platform/design-system";
 import {
   FailureRaiseFields,
   createFailure,
-  failureProblemTypeLabel,
-  type FailureSeverity,
+  failurePayloadFromDescription,
 } from "@failures/mfe";
 
 export function FailureRaiseModal({
@@ -33,17 +32,15 @@ export function FailureRaiseModal({
 }) {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
-  const [severity, setSeverity] = useState<FailureSeverity>("internal");
-  const [problemTypeId, setProblemTypeId] = useState("");
-  const [note, setNote] = useState("");
+  const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
+  const [invalid, setInvalid] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setSeverity("internal");
-    setProblemTypeId("");
-    setNote("");
+    setDescription("");
     setSaving(false);
+    setInvalid(false);
   }, [open, propertyId]);
 
   function requestClose() {
@@ -52,22 +49,29 @@ export function FailureRaiseModal({
   }
 
   async function handleSubmit() {
-    if (!problemTypeId.trim() || saving) return;
+    const trimmed = description.trim();
+    if (!trimmed) {
+      setInvalid(true);
+      return;
+    }
+    if (saving) return;
     setSaving(true);
+    setInvalid(false);
     try {
+      const payload = failurePayloadFromDescription(trimmed);
       await createFailure({
         poNumber,
         propertyId,
         deedNumber,
-        problemTypeId,
-        title: failureProblemTypeLabel(problemTypeId),
-        severity,
+        ...payload,
         raisedByRole,
-        internalNote: note,
         specialist,
       });
-      await queryClient.invalidateQueries({ queryKey: prototypeKeys.failures() });
+      await queryClient.invalidateQueries({
+        queryKey: prototypeKeys.failures(),
+      });
       await queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
+      showToast("تم رفع التعذر — سيظهر لأخصائي دراسة الحالة.", "success");
       onSubmitted?.();
       onClose();
     } catch {
@@ -96,24 +100,25 @@ export function FailureRaiseModal({
             type="button"
             variant="primary"
             loading={saving}
-            disabled={saving || !problemTypeId.trim()}
+            disabled={saving}
             className="min-w-[9.5rem]"
             showActionToast={false}
             onClick={() => void handleSubmit()}
           >
-            تسجيل التعذر
+            رفع التعذر
           </Button>
         </>
       }
     >
       <FailureRaiseFields
         idPrefix={`modal-${propertyId}`}
-        severity={severity}
-        onSeverityChange={setSeverity}
-        problemTypeId={problemTypeId}
-        onProblemTypeIdChange={setProblemTypeId}
-        note={note}
-        onNoteChange={setNote}
+        description={description}
+        onDescriptionChange={(v) => {
+          setDescription(v);
+          if (invalid) setInvalid(false);
+        }}
+        invalid={invalid}
+        autoFocus={open}
       />
     </AppModal>
   );

@@ -19,7 +19,7 @@ import type { QueueTaskStatusBadge } from "../../lib/prototype/active-queue-list
 
 /**
  * Mobile task-card list matching docs/المعاين/inspector_screen 1.html.
- * Shown under max-lg for property-inspection queue only.
+ * Shown under max-lg for field-inspection queues (active-inspection / legacy).
  */
 export function InspectorMobileQueue({
   tasks,

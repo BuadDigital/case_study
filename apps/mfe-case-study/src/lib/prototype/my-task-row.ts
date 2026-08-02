@@ -1,5 +1,6 @@
 import type { PoIntakeRecord, PoPropertyIntake } from "./po-intake-data";
 import {
+  BOURSE_INQUIRY_IDENTIFIER_STATUS,
   dueDateToDeadline,
   formatPropertyDeedDisplay,
 } from "./po-intake-data";
@@ -133,18 +134,16 @@ export function formatDeliveryRemainingLabel(
   return "0 أيام";
 }
 
+/** Unregistered / bourse-inquiry slot — e.g. «قيد الدراسة 1». */
 export function formatPropertySlotOnPo(
   task: WorkflowTask,
-  record: PoIntakeRecord | undefined,
+  _record?: PoIntakeRecord,
 ): string {
-  const total = Math.max(
-    1,
-    record?.expectedPropertyCount ?? task.propertyOrdinal,
-  );
-  return `${task.propertyOrdinal}/${total}`;
+  const ordinal = Math.max(1, task.propertyOrdinal || 1);
+  return `${BOURSE_INQUIRY_IDENTIFIER_STATUS} ${ordinal}`;
 }
 
-/** Deed when registered; otherwise slot index on the PO (e.g. 3/12). */
+/** Deed/reg when registered; otherwise «قيد الدراسة N» (not N/total). */
 export function formatPrimaryDataPropertyLabel(
   task: WorkflowTask,
   property: PoPropertyIntake | null,
@@ -152,7 +151,13 @@ export function formatPrimaryDataPropertyLabel(
 ): string {
   if (property) {
     const label = formatPropertyDeedDisplay(property);
-    if (label !== "—") return label;
+    if (
+      label &&
+      label !== "—" &&
+      label !== BOURSE_INQUIRY_IDENTIFIER_STATUS
+    ) {
+      return label;
+    }
   }
   return formatPropertySlotOnPo(task, record);
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { cn } from "@platform/design-system";
@@ -10,7 +9,6 @@ import { DetailBadge, ltrValueClass } from "./PropertyDetailFields";
 import {
   assignmentCompositeTag,
   formatDateAr,
-  formatPoDisplay,
   formatPropertyLocation,
   identifierTypeLabel,
   propertyUiStatusLabel,
@@ -19,7 +17,6 @@ import {
   type PoIntakeRecord,
   type PoPropertyIntake,
 } from "../../lib/prototype/po-intake-data";
-import { poPropertiesPath } from "../../lib/po-routes";
 import { childTasksForCaseStudyParent } from "../../lib/prototype/case-study-party-answers";
 import { caseStudyTaskForProperty } from "../../lib/prototype/tasks-storage";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
@@ -67,9 +64,13 @@ function StripCell({
   return (
     <div
       className={cn(
-        "min-w-0 px-0 py-1 pe-[22px] ps-[18px]",
-        !first && "border-s border-border",
-        first && "ps-0 pe-[22px]",
+        "min-w-0 py-1",
+        /* Mobile: 2-col grid cells — no side borders. */
+        "max-lg:border-0 max-lg:px-0",
+        /* Desktop: horizontal strip with dividers. */
+        "lg:pe-[22px] lg:ps-[18px]",
+        !first && "lg:border-s lg:border-border",
+        first && "lg:ps-0 lg:pe-[22px]",
       )}
     >
       <div className="mb-0.5 text-[11px] text-text-3">{label}</div>
@@ -246,42 +247,21 @@ export function PropertyDetailHero({
 
   return (
     <>
-      <Link
-        href={poPropertiesPath(record.poNumber)}
-        className="mb-2 inline-flex items-center gap-[7px] border-0 bg-transparent p-0 py-1.5 text-[12.5px] font-semibold text-text-2 no-underline transition-colors hover:text-gold-d"
-      >
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="-scale-x-100"
-          aria-hidden
-        >
-          <path d="M19 12H5M12 19l-7-7 7-7" />
-        </svg>
-        <span>عقارات {formatPoDisplay(record.poNumber)}</span>
-      </Link>
-
-      <header className="mb-3.5 shrink-0 rounded-[12px] border border-border bg-surface px-5 pt-4 shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+      <header className="mb-3.5 shrink-0 rounded-[12px] border border-border bg-surface px-3.5 pt-3.5 shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)] sm:px-5 sm:pt-4">
+        <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4">
           <div className="min-w-0 flex-1">
             <div className="mb-[5px] flex flex-wrap items-center gap-1.5 text-[11px] text-text-3">
               <BuildingIcon />
               عقار {propertyIndex} من {record.properties.length} في{" "}
               <PoNumber value={record.poNumber} />
             </div>
-            <div className="flex flex-wrap items-center gap-2 text-[19px] leading-snug font-bold text-heading">
+            <div className="flex flex-wrap items-center gap-2 text-[17px] leading-snug font-bold text-heading sm:text-[19px]">
               <button
                 type="button"
                 className={cn(
-                  "inline-flex size-9 shrink-0 items-center justify-center rounded-lg border bg-surface text-text-3 shadow-sm transition-all hover:border-gold hover:text-gold-d active:scale-95",
+                  "inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-[color-mix(in_srgb,var(--gold)_28%,transparent)] bg-[color-mix(in_srgb,var(--gold)_12%,transparent)] text-[var(--gold-d,#8c7857)] shadow-sm transition-all hover:border-gold hover:bg-[color-mix(in_srgb,var(--gold)_18%,transparent)] active:scale-95",
                   favorite &&
-                    "border-gold bg-[color-mix(in_srgb,var(--gold)_13%,var(--surface))] text-gold-d",
+                    "border-gold bg-[color-mix(in_srgb,var(--gold)_22%,var(--surface))] text-gold-d",
                 )}
                 aria-label={
                   favorite ? "إزالة المعاملة من المفضلة" : "إضافة المعاملة إلى المفضلة"
@@ -342,7 +322,7 @@ export function PropertyDetailHero({
         </div>
 
         <div
-          className="mt-3 flex flex-wrap gap-0 border-b border-border pb-3"
+          className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-b border-border pb-3 lg:flex lg:flex-wrap lg:gap-0"
           aria-label="ملخص العقار"
         >
           <StripCell label="اسم المالك" first>
@@ -385,8 +365,8 @@ export function PropertyDetailHero({
           </StripCell>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 py-[11px]">
-          <span className="text-[11px] font-semibold text-text-3">
+        <div className="flex flex-col gap-2 py-3 max-lg:pb-3.5 lg:flex-row lg:flex-wrap lg:items-center lg:gap-2 lg:py-[11px]">
+          <span className="text-[11px] font-semibold leading-relaxed text-text-3 lg:shrink-0">
             الصفحة للاطلاع — الإجراءات حسب صلاحيات دورك:
           </span>
           <PoPropertyDetailTopbarActions

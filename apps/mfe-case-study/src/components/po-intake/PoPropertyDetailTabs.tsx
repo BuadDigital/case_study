@@ -65,6 +65,7 @@ import {
 import { usePropertyTimelineQuery } from "../../query/use-property-timeline-query";
 import {
   caseStudyTaskForProperty,
+  type WorkflowTask,
 } from "../../lib/prototype/tasks-storage";
 import { childTasksForCaseStudyParent } from "../../lib/prototype/case-study-party-answers";
 import {
@@ -528,25 +529,45 @@ function BasicTab({
   );
 }
 
+export type PoPropertyDetailInspectorWorkspace = {
+  /** Active field-inspection task for this property (desktop HTML inspect-desktop). */
+  task: WorkflowTask;
+  /** Keep edit mode on (inspector workspace). Cancel calls onCancel. */
+  forceEdit?: boolean;
+  onSubmitted?: () => void;
+  onCancel?: () => void;
+};
+
 export function PoPropertyDetailTabs({
   record,
   property,
   showDecree,
+  inspectorWorkspace,
 }: {
   record: PoIntakeRecord;
   property: PoPropertyIntake;
   showDecree: boolean;
+  /**
+   * Case Study.html `inspect-desktop`: stay on property-detail chrome with
+   * معاينة العقار in input mode. Used by /active-inspection desktop.
+   */
+  inspectorWorkspace?: PoPropertyDetailInspectorWorkspace;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialTab = searchParams.get("tab");
   const inspectParam = searchParams.get("inspect");
-  const [tab, setTab] = useState<TabId>(() =>
-    TABS.some((t) => t.id === initialTab) ? (initialTab as TabId) : "basic",
-  );
-  const [inspectEdit, setInspectEdit] = useState(
-    () => inspectParam === "edit",
-  );
+  const workspaceForced = Boolean(inspectorWorkspace);
+  const [tab, setTab] = useState<TabId>(() => {
+    if (workspaceForced) return "inspection";
+    return TABS.some((t) => t.id === initialTab)
+      ? (initialTab as TabId)
+      : "basic";
+  });
+  const [inspectEdit, setInspectEdit] = useState(() => {
+    if (workspaceForced) return inspectorWorkspace?.forceEdit !== false;
+    return inspectParam === "edit";
+  });
   const [seenTabs, setSeenTabs] = useState<Set<string>>(() => new Set());
   const { data: tasks = [] } = useWorkflowTasksQuery();
   const { data: staffResult } = useStaffUsersQuery();
@@ -554,6 +575,8 @@ export function PoPropertyDetailTabs({
   const poNumber = record.poNumber.trim();
 
   const replaceInspectQuery = (inspect: "edit" | null) => {
+    /* Inspector workspace stays on /active-inspection — do not jump to PO property URL. */
+    if (workspaceForced) return;
     const base = poPropertyPath(poNumber, property.id);
     if (inspect === "edit") {
       router.replace(`${base}?tab=inspection&inspect=edit`, { scroll: false });
@@ -563,6 +586,11 @@ export function PoPropertyDetailTabs({
   };
 
   useEffect(() => {
+    if (workspaceForced) {
+      setTab("inspection");
+      setInspectEdit(inspectorWorkspace?.forceEdit !== false);
+      return;
+    }
     const nextTab = searchParams.get("tab");
     if (TABS.some((t) => t.id === nextTab)) {
       setTab(nextTab as TabId);
@@ -570,7 +598,7 @@ export function PoPropertyDetailTabs({
     const nextInspect = searchParams.get("inspect");
     /* وضع الإدخال فقط عند ?inspect=edit (من الزر) — لا من مجرد فتح التبويب. */
     setInspectEdit(nextInspect === "edit");
-  }, [searchParams]);
+  }, [searchParams, workspaceForced, inspectorWorkspace?.forceEdit]);
 
   useEffect(() => {
     setSeenTabs(loadSeenPropertyTabs(property.id));
@@ -620,6 +648,7 @@ export function PoPropertyDetailTabs({
   }, [task, tasks]);
 
   const inspectionTask = useMemo(() => {
+    if (inspectorWorkspace?.task) return inspectorWorkspace.task;
     const fromParent = task
       ? childTasksForCaseStudyParent(task.id, tasks).find(
           (t) => t.kind === "field-inspection",
@@ -634,7 +663,7 @@ export function PoPropertyDetailTabs({
           t.propertyId === property.id,
       ) ?? null
     );
-  }, [task, tasks, poNumber, property.id]);
+  }, [inspectorWorkspace?.task, task, tasks, poNumber, property.id]);
 
   const governmentTask = useMemo(
     () =>
@@ -676,8 +705,20 @@ export function PoPropertyDetailTabs({
     staffUsers,
   });
   const appraisalCard = partyCards.find((c) => c.roleKey === "appraisal") ?? null;
-  const inspectionCard =
+  const inspectionCardFromParties =
     partyCards.find((c) => c.roleKey === "inspection") ?? null;
+  const inspectionCard: PropertyDetailPartyCard | null =
+    inspectionCardFromParties ??
+    (inspectionTask
+      ? {
+          roleKey: "inspection",
+          role: "المعاين",
+          name: inspectionTask.assigneeName?.trim() || "المعاين",
+          unassigned: false,
+          state: "progress",
+          enabled: true,
+        }
+      : null);
   const surveyCard = partyCards.find((c) => c.roleKey === "survey") ?? null;
   const coordinatorCard = partyCards.find((c) => c.roleKey === "coordinator");
   const coordinatorName =
@@ -756,7 +797,7 @@ export function PoPropertyDetailTabs({
         failureCount={propertyFailures.length}
         onOpenTab={(next) => {
           setTab(next as typeof tab);
-          if (next === "inspection" && inspectEdit) {
+          if (inspectEdit) {
             setInspectEdit(false);
             replaceInspectQuery(null);
           }
@@ -779,6 +820,7 @@ export function PoPropertyDetailTabs({
                   active={active}
                   onClick={() => {
                     setTab(t.id);
+                    if (workspaceForced) return;
                     /* التبويب للعرض فقط — وضع الإدخال يُفتح من زر «معاينة العقار». */
                     if (t.id === "inspection" && inspectEdit) {
                       setInspectEdit(false);
@@ -931,9 +973,17 @@ export function PoPropertyDetailTabs({
               inspectionTask={inspectionTask}
               inspectionCard={inspectionCard}
               editMode={inspectEdit}
+              lockEditMode={workspaceForced && inspectorWorkspace?.forceEdit !== false}
               onEditModeChange={(edit) => {
+                if (workspaceForced && !edit) {
+                  inspectorWorkspace?.onCancel?.();
+                  return;
+                }
                 setInspectEdit(edit);
                 replaceInspectQuery(edit ? "edit" : null);
+              }}
+              onSubmitted={() => {
+                inspectorWorkspace?.onSubmitted?.();
               }}
             />
           ) : null}

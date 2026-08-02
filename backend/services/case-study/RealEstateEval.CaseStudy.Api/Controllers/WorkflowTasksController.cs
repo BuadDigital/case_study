@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
@@ -219,13 +220,11 @@ public class WorkflowTasksController : ControllerBase
             ?? "";
     }
 
-    private string ActorId() =>
-        User.FindFirstValue(ClaimTypes.NameIdentifier)?.Trim()
-        ?? User.FindFirstValue("sub")?.Trim()
-        ?? "";
+    private string ActorId() => ActorClaims.Id(User);
 
-    private string? ActorName() =>
-        User.FindFirstValue("displayName")?.Trim()
-        ?? User.FindFirstValue("name")?.Trim()
-        ?? User.Identity?.Name?.Trim();
+    /// <summary>
+    /// Never fall back to <see cref="System.Security.Claims.ClaimsIdentity.Name"/> —
+    /// NameClaimType is <c>sub</c>, so Identity.Name is the user id GUID.
+    /// </summary>
+    private string ActorName() => ActorClaims.DisplayName(User);
 }

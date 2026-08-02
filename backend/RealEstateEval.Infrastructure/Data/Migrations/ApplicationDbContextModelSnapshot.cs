@@ -465,26 +465,79 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<int?>("DuplicateOfOfficialId")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
                     b.Property<bool>("IsCapital")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsGovernorate")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("MergedIntoCityId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("NameAr")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("NameEn")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("NameSearch")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<int?>("OfficialId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RawInput")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
 
                     b.Property<Guid>("RegionId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ReviewedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReviewedByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int>("UsageCount")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
                     b.HasIndex("IsActive");
 
-                    b.HasIndex("RegionId", "NameAr")
-                        .IsUnique();
+                    b.HasIndex("MergedIntoCityId");
+
+                    b.HasIndex("NameSearch");
+
+                    b.HasIndex("OfficialId")
+                        .IsUnique()
+                        .HasFilter("\"OfficialId\" IS NOT NULL");
+
+                    b.HasIndex("RegionId", "IsGovernorate");
+
+                    b.HasIndex("RegionId", "Status");
 
                     b.ToTable("Cities", "platform");
                 });
@@ -812,6 +865,73 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.HasIndex("TransactionKey", "TargetAssigneeId", "Status");
 
                     b.ToTable("DiscountFlags", "financial");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Domain.District", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("MergedIntoDistrictId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("NameAr")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("NameSearch")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("RawInput")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<DateTime?>("ReviewedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReviewedByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int>("UsageCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("MergedIntoDistrictId");
+
+                    b.HasIndex("NameSearch");
+
+                    b.HasIndex("CityId", "Status");
+
+                    b.ToTable("Districts", "platform", t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Domain.DocumentReferenceCounter", b =>
@@ -3064,6 +3184,9 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int>("AdminAreaId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("CapitalAr")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -3085,12 +3208,21 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<int>("OfficialId")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("AdminAreaId")
+                        .IsUnique();
 
                     b.HasIndex("Code")
                         .IsUnique();
 
                     b.HasIndex("IsActive");
+
+                    b.HasIndex("OfficialId")
+                        .IsUnique();
 
                     b.ToTable("Regions", "platform");
                 });
@@ -3817,11 +3949,18 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("RealEstateEval.Domain.City", b =>
                 {
+                    b.HasOne("RealEstateEval.Domain.City", "MergedIntoCity")
+                        .WithMany()
+                        .HasForeignKey("MergedIntoCityId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("RealEstateEval.Domain.Region", "Region")
                         .WithMany("Cities")
                         .HasForeignKey("RegionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("MergedIntoCity");
 
                     b.Navigation("Region");
                 });
@@ -3835,6 +3974,24 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Court");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Domain.District", b =>
+                {
+                    b.HasOne("RealEstateEval.Domain.City", "City")
+                        .WithMany("Districts")
+                        .HasForeignKey("CityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RealEstateEval.Domain.District", "MergedIntoDistrict")
+                        .WithMany()
+                        .HasForeignKey("MergedIntoDistrictId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("City");
+
+                    b.Navigation("MergedIntoDistrict");
                 });
 
             modelBuilder.Entity("RealEstateEval.Domain.HrEmployeeProfile", b =>
@@ -3965,6 +4122,11 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("WorkOrder");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Domain.City", b =>
+                {
+                    b.Navigation("Districts");
                 });
 
             modelBuilder.Entity("RealEstateEval.Domain.Court", b =>

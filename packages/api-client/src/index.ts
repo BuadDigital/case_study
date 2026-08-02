@@ -131,13 +131,28 @@ export {
 
 export {
   listAllSelectableCities,
+  listPendingLocations,
   listSelectableCities,
+  listSelectableDistricts,
   listSelectableRegions,
+  reviewPendingCity,
+  reviewPendingDistrict,
+  suggestLocation,
+  type LocationSimilarityDto,
+  type PendingLocationDto,
+  type PendingLocationsResult,
   type RegionsApiConfig,
+  type ReviewLocationRequest,
+  type ReviewLocationResult,
   type SelectableCitiesResult,
   type SelectableCityDto,
+  type SelectableDistrictDto,
+  type SelectableDistrictsResult,
   type SelectableRegionDto,
   type SelectableRegionsResult,
+  type SuggestLocationRequest,
+  type SuggestLocationResult,
+  type SuggestLocationResultDto,
 } from "./regions";
 
 export {

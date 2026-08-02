@@ -42,52 +42,56 @@ export function FieldOfflinePrefetch() {
     ];
 
     void (async () => {
-      await requestPersistentStorage();
-      if (taskIds.length) {
-        await prefetchPartySubmissionsForTasks(taskIds);
-        await savePrefetch({
-          id: `tasks:${user.id}`,
-          userId: user.id,
-          kind: "workflow-tasks",
-          payloadJson: JSON.stringify({ taskIds, tasks }),
-          updatedAtUtc: new Date().toISOString(),
-        });
-      }
-      for (const po of poNumbers.slice(0, 40)) {
-        prefetchPoRecord(queryClient, po);
-        const cached = queryClient.getQueryData(["po-record", po]);
-        if (cached) {
+      try {
+        await requestPersistentStorage();
+        if (taskIds.length) {
+          await prefetchPartySubmissionsForTasks(taskIds);
           await savePrefetch({
-            id: `po:${user.id}:${po}`,
+            id: `tasks:${user.id}`,
             userId: user.id,
-            kind: "po-record",
-            payloadJson: JSON.stringify(cached),
+            kind: "workflow-tasks",
+            payloadJson: JSON.stringify({ taskIds, tasks }),
             updatedAtUtc: new Date().toISOString(),
           });
         }
-      }
-      // Basic document hints from tasks (deed/assignment refs) for offline display.
-      const docHints = tasks
-        .map((task) => ({
-          taskId: String(task.id ?? task.Id ?? ""),
-          poNumber: String(task.poNumber ?? task.PoNumber ?? ""),
-          deedNumber: String(task.deedNumber ?? task.DeedNumber ?? ""),
-          propertyId: String(task.propertyId ?? task.PropertyId ?? ""),
-          assignmentMandateNumber: String(
-            task.assignmentMandateNumber ??
-              task.AssignmentMandateNumber ??
-              "",
-          ),
-        }))
-        .filter((row) => row.taskId);
-      if (docHints.length) {
-        await savePrefetch({
-          id: `docs:${user.id}`,
-          userId: user.id,
-          kind: "basic-docs",
-          payloadJson: JSON.stringify(docHints),
-          updatedAtUtc: new Date().toISOString(),
-        });
+        for (const po of poNumbers.slice(0, 40)) {
+          prefetchPoRecord(queryClient, po);
+          const cached = queryClient.getQueryData(["po-record", po]);
+          if (cached) {
+            await savePrefetch({
+              id: `po:${user.id}:${po}`,
+              userId: user.id,
+              kind: "po-record",
+              payloadJson: JSON.stringify(cached),
+              updatedAtUtc: new Date().toISOString(),
+            });
+          }
+        }
+        // Basic document hints from tasks (deed/assignment refs) for offline display.
+        const docHints = tasks
+          .map((task) => ({
+            taskId: String(task.id ?? task.Id ?? ""),
+            poNumber: String(task.poNumber ?? task.PoNumber ?? ""),
+            deedNumber: String(task.deedNumber ?? task.DeedNumber ?? ""),
+            propertyId: String(task.propertyId ?? task.PropertyId ?? ""),
+            assignmentMandateNumber: String(
+              task.assignmentMandateNumber ??
+                task.AssignmentMandateNumber ??
+                "",
+            ),
+          }))
+          .filter((row) => row.taskId);
+        if (docHints.length) {
+          await savePrefetch({
+            id: `docs:${user.id}`,
+            userId: user.id,
+            kind: "basic-docs",
+            payloadJson: JSON.stringify(docHints),
+            updatedAtUtc: new Date().toISOString(),
+          });
+        }
+      } catch {
+        // Offline crypto/IDB may be unavailable (non-secure context); ignore.
       }
     })();
   }, [

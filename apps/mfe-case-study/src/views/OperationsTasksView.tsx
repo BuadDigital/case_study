@@ -23,6 +23,7 @@ import {
 } from "@platform/design-system";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
+import { displayPersonName } from "@platform/app-shared/prototype/person-display-name";
 import { useStaffUsersQuery, useDistributionAssigneesQuery } from "@settings/mfe/query/settings-queries";
 import { usePoRecordsQuery } from "../query/case-study-queries";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../lib/prototype/po-intake-data";
@@ -1235,8 +1236,16 @@ function CommentThread({
               }
               const isC = c.who === "creator";
               const name = isC
-                ? task.createdByName || "المنشئ"
-                : task.assigneeName || "المنفّذ";
+                ? displayPersonName(task.createdByName, {
+                    userId: task.createdBy,
+                    staffUsers,
+                    fallback: "المنشئ",
+                  })
+                : displayPersonName(task.assigneeName, {
+                    userId: task.assigneeId,
+                    staffUsers,
+                    fallback: "المنفّذ",
+                  });
               const role = isC ? "منشئ المهمة" : assigneeRole;
               const col = isC ? "var(--ink)" : "var(--gold-d)";
               return (
@@ -2336,7 +2345,13 @@ export function OperationsTasksView() {
             </div>
             <div className={opsPpCell}>
               <div className={opsPpCellK}>المنشئ</div>
-              <div className={opsPpCellV}>{detail.createdByName || detail.createdBy}</div>
+              <div className={opsPpCellV}>
+                {displayPersonName(detail.createdByName, {
+                  userId: detail.createdBy,
+                  staffUsers,
+                  fallback: "—",
+                })}
+              </div>
             </div>
             <div className={opsPpCell}>
               <div className={opsPpCellK}>النطاق / الربط</div>

@@ -1,20 +1,33 @@
 "use client";
 
 import { useCallback, useEffect, useState, type ReactNode, type RefObject } from "react";
-import { Badge, Button, FormRow, InlineLoadingSkeleton, Input, Label, Note, Select, Textarea, cn, formControlClassName, useToast } from "@platform/design-system";
+import { Button, FormRow, InlineLoadingSkeleton, Input, Label, Note, Select, Textarea, cn, formControlClassName, useToast } from "@platform/design-system";
 import { RegField, RegTextarea} from "@platform/app-shared/registration/FormFields";
-import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { EngineeringSurveyMap } from "@engineering-office/mfe/components/EngineeringSurveyMap";
 import { JEDDAH_DEFAULT_LAT, JEDDAH_DEFAULT_LNG } from "@engineering-office/mfe/lib/jeddah-default-coords";
 import { InspectorDefinedPhotosSection } from "./InspectorDefinedPhotosSection";
 import { InspectorSubmitFooter } from "./InspectorSubmitFooter";
 import { InspectorPhotoFilePicker } from "./InspectorPhotoFilePicker";
 import { InspectorStampedPhotoThumb } from "./InspectorStampedPhotoThumb";
+import {
+  MobileChips,
+  MobileFieldLabel,
+  MobilePills,
+  MobileSearchSelect,
+  MobileSuggestRow,
+  featureUsesPills,
+  mobileControlClassName,
+} from "./InspectMobileControls";
 import { useInspectorKeyAvailability } from "./InspectorKeyStatusTab";
 import { clearInspectorPhotoDataUrl, uploadInspectorPhotoFromFile } from "../../lib/prototype/inspector-photo-upload";
-import { boundariesMarkedUnavailable, formatPoDisplay, formatPropertyDeedDisplay, PROPERTY_BOUNDARY_ROWS, type PoPropertyIntake } from "../../lib/prototype/po-intake-data";
+import {
+  approximatePropertyGeo,
+  boundariesMarkedUnavailable,
+  formatPropertyDeedDisplay,
+  PROPERTY_BOUNDARY_ROWS,
+  type PoPropertyIntake,
+} from "../../lib/prototype/po-intake-data";
 import {
   informalAccessGate,
   inspectorKeySubmitGate,
@@ -66,11 +79,42 @@ const BOUNDARY_ROW_MAP: Record<
   west: PROPERTY_BOUNDARY_ROWS[3],
 };
 
-const CHECKBOX_ITEM =
-  "flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-surface-2 px-2.5 py-2 text-xs text-text-2 max-lg:min-h-11 max-lg:gap-2.5 max-lg:rounded-xl max-lg:px-3.5 max-lg:py-2.5 max-lg:text-[13px]";
 const TABLE_TH =
-  "border border-border bg-surface-2 px-3 py-2 text-center text-[11px] font-semibold text-text-2";
-const TABLE_TD = "border border-border px-3 py-2 align-middle text-xs";
+  "border border-border bg-surface-2 px-2.5 py-[7px] text-[11px] font-bold text-text-2";
+const TABLE_TD = "border border-border px-2.5 py-1.5 align-middle text-[12px]";
+
+const EDIT_CONTROL_CLASS =
+  "w-full appearance-none rounded-lg border border-border-md bg-surface px-[11px] py-[7px] text-[12.5px] text-text font-inherit";
+
+/** Case Study.html `insBadge`. */
+function InsBadge({
+  label,
+  tone = "def",
+}: {
+  label: string;
+  tone?: "info" | "danger" | "purple" | "def";
+}) {
+  const colors =
+    tone === "info"
+      ? { fg: "#1f6f6f", base: "#2a8f8f" }
+      : tone === "danger"
+        ? { fg: "#b23b3b", base: "#d9694f" }
+        : tone === "purple"
+          ? { fg: "#6b46c1", base: "#8b5cf6" }
+          : { fg: "var(--text-2)", base: "var(--border-2)" };
+  return (
+    <span
+      className="inline-flex shrink-0 rounded-md border px-2 py-0.5 text-[10px] font-bold"
+      style={{
+        color: colors.fg,
+        background: `color-mix(in srgb, ${colors.base} 14%, transparent)`,
+        borderColor: `color-mix(in srgb, ${colors.base} 30%, transparent)`,
+      }}
+    >
+      {label}
+    </span>
+  );
+}
 
 export type FieldInspectionWorkHostRef = {
   submit?: () => Promise<boolean>;
@@ -79,6 +123,54 @@ export type FieldInspectionWorkHostRef = {
   onSavingChange?: (saving: boolean) => void;
   focusNotes?: () => void;
 };
+
+function MobileInspectOsmMap({
+  latitude,
+  longitude,
+  property,
+  heightClass = "h-[180px]",
+}: {
+  latitude: string;
+  longitude: string;
+  property?: PoPropertyIntake | null;
+  heightClass?: string;
+}) {
+  const latNum = Number.parseFloat(latitude);
+  const lngNum = Number.parseFloat(longitude);
+  const hasPin = Number.isFinite(latNum) && Number.isFinite(lngNum);
+  const fallback =
+    !hasPin && property
+      ? approximatePropertyGeo(property)
+      : null;
+  const lat = hasPin ? latNum : fallback?.lat;
+  const lng = hasPin ? lngNum : fallback?.lng;
+  if (lat == null || lng == null) {
+    return (
+      <div className="rounded-xl border border-dashed border-border-2 bg-surface px-3 py-8 text-center text-[12px] text-text-3">
+        حدّد موقعك لعرض الخريطة
+      </div>
+    );
+  }
+  const src = `https://www.openstreetmap.org/export/embed.html?bbox=${(lng - 0.006).toFixed(5)}%2C${(lat - 0.004).toFixed(5)}%2C${(lng + 0.006).toFixed(5)}%2C${(lat + 0.004).toFixed(5)}&layer=mapnik&marker=${lat}%2C${lng}`;
+  return (
+    <div className={cn("relative overflow-hidden rounded-lg border border-border", heightClass)}>
+      <iframe
+        title="خريطة المعاينة"
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+        className="block h-full w-full border-0"
+        src={src}
+      />
+    </div>
+  );
+}
+
+function arabicStepLabel(step: number | string): string {
+  const n = typeof step === "number" ? step : Number.parseInt(String(step), 10);
+  const map = ["١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩", "١٠"];
+  if (Number.isFinite(n) && n >= 1 && n <= 10) return map[n - 1]!;
+  return String(step);
+}
 
 function InspectorCard({
   title,
@@ -104,16 +196,19 @@ function InspectorCard({
 
   if (mobile) {
     return (
-      <div className="border-b-8 border-bg bg-surface" data-registration-card>
+      <div
+        className="border-b-8 border-[var(--bg)] bg-transparent"
+        data-registration-card
+      >
         <button
           type="button"
-          className="flex w-full items-center gap-3 bg-surface px-4 py-4 text-start font-inherit"
+          className="flex w-full items-center gap-3 border-none bg-surface px-4 py-4 text-start font-inherit"
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
         >
           {step != null ? (
-            <span className="grid size-[30px] shrink-0 place-items-center rounded-full bg-ink text-[14px] font-extrabold text-[var(--gold-2,#e8c56a)]">
-              {step}
+            <span className="grid size-[30px] shrink-0 place-items-center rounded-full bg-ink text-[14px] font-extrabold text-[var(--gold-2,#c8b591)]">
+              {arabicStepLabel(step)}
             </span>
           ) : (
             <i className={`ti ${icon} shrink-0 text-lg text-primary`} aria-hidden />
@@ -124,31 +219,43 @@ function InspectorCard({
               <span className="mt-0.5 block text-[12px] text-text-3">{subtitle}</span>
             ) : null}
           </span>
-          <i
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
             className={cn(
-              "ti ti-chevron-down shrink-0 text-xl text-text-3 transition-transform duration-200",
+              "shrink-0 text-text-3 transition-transform duration-200",
               open && "rotate-180",
             )}
             aria-hidden
-          />
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
         </button>
-        <div className={cn("px-4 pb-[18px]", !open && "hidden")}>{children}</div>
+        <div
+          className={cn(
+            "bg-[var(--bg)] px-4 pb-[18px] pt-0",
+            !open && "hidden",
+          )}
+        >
+          {children}
+        </div>
       </div>
     );
   }
 
   return (
-    <RegistrationFormCard
-      title={title}
-      headerRight={
-        <div className="flex shrink-0 items-center gap-2">
-          <i className={`ti ${icon} text-base text-primary`} aria-hidden />
-          {badge}
-        </div>
-      }
-    >
+    <section className="mb-3 rounded-[12px] border border-border bg-surface px-4 py-3.5 shadow-none">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <h4 className="m-0 text-[13px] font-bold text-heading">{title}</h4>
+        <span className="flex-1" />
+        {badge}
+      </div>
       {children}
-    </RegistrationFormCard>
+    </section>
   );
 }
 
@@ -391,13 +498,6 @@ export function FieldInspectionWorkBody({
     };
   }, [hostRef, submit, saveDraft]);
 
-  const handleCoordsChange = useCallback(
-    (lat: string, lng: string) => {
-      persist({ mapLatitude: lat, mapLongitude: lng });
-    },
-    [persist],
-  );
-
   const captureDeviceGps = useCallback(() => {
     if (!navigator.geolocation) {
       showToast("المتصفح لا يدعم تحديد الموقع", "error");
@@ -516,7 +616,49 @@ export function FieldInspectionWorkBody({
   const cardLayout = layout;
 
   return (
-    <div className={cn(mobile ? "pb-2" : "pb-4")}>
+    <div className={cn(mobile ? "min-h-full bg-[var(--bg)] pb-2" : "pb-4")}>
+      {/* Case Study.html pdInspectionHtml edit banner */}
+      {!mobile && !locked ? (
+        <div className="mb-3.5 flex flex-col gap-3 rounded-lg border border-[color-mix(in_srgb,var(--gold)_35%,transparent)] bg-[color-mix(in_srgb,var(--gold)_10%,transparent)] px-3.5 py-[11px] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2.5">
+          <div className="text-xs leading-relaxed text-text-2">
+            <strong className="text-gold-d">وضع الإدخال</strong> — تُدخل
+            بيانات المعاينة الميدانية وتُرسل بعد اكتمالها.
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="primary"
+              loading={submitting}
+              disabled={submitting || workLocked}
+              onClick={() => void hostRef.current?.submit?.()}
+            >
+              حفظ وإرسال
+            </Button>
+            {onRegisterFailure ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={submitting || workLocked}
+                onClick={onRegisterFailure}
+              >
+                تسجيل تعذر
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={submitting || workLocked}
+              onClick={() => void saveDraft()}
+            >
+              حفظ مسودة
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       {locked ? (
         <Note tone="success" className={cn("mb-4", mobile && "mx-4 mt-3")}>
           تم إرسال المعاينة — النموذج للقراءة فقط.
@@ -614,77 +756,31 @@ export function FieldInspectionWorkBody({
             "pointer-events-none select-none rounded-[10px] bg-[#F1F5F9] p-3 opacity-70 grayscale-[0.35]",
         )}
       >
-        {!mobile ? (
-          <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-purple-bg bg-purple-bg px-4 py-3 text-xs leading-relaxed text-text-2">
-            <i className="ti ti-info-circle mt-0.5 text-purple" aria-hidden />
-            <div>
-              الحقول الموسومة <Badge tone="purple">مشترك</Badge> تُجمع من المعاين
-              والمكتب الهندسي معاً — يُدخل كل طرف قيمته بشكل مستقل، ويختار{" "}
-              <strong>أخصائي دراسة الحالة</strong> القيمة المعتمدة النهائية.
-              الحقول <Badge tone="info">من إنفاذ</Badge> تأتي تلقائياً وتحتاج
-              تحققاً ميدانياً فقط.
-            </div>
-          </div>
-        ) : null}
-
-        {!mobile ? (
-          <InspectorCard
-            title="بيانات العقار"
-            icon="ti-home"
-            badge={<Badge tone="info">من إنفاذ — للاطلاع</Badge>}
-            layout={cardLayout}
-          >
-            <PropertySummary property={property} task={task} draft={draft} />
-          </InspectorCard>
-        ) : null}
-
         <div id="ins-map-section">
         <InspectorCard
-          title={mobile ? "إثبات الموقع" : "بيانات المعاينة"}
+          title="بيانات المعاينة"
           icon="ti-clipboard-check"
-          badge={mobile ? undefined : <Badge tone="danger">إلزامي</Badge>}
+          badge={mobile ? undefined : <InsBadge label="إلزامي" tone="danger" />}
           layout={cardLayout}
           step={mobile ? 1 : undefined}
-          subtitle={mobile ? "التقاط GPS للموقع" : undefined}
+          subtitle={mobile ? "موقع GPS للعقار" : undefined}
           defaultOpen
         >
-          <FormRow className="mb-4 grid-cols-1 sm:grid-cols-2">
-            <RegField
-              id="ins-date"
-              label="تاريخ المعاينة"
-              required
-              type="date"
-              dir="ltr"
-              value={draft.inspectionDate}
-              error={fieldErrors.inspectionDate}
-              onChange={(v) => persist({ inspectionDate: v })}
-            />
-            <RegField
-              id="ins-time"
-              label="وقت المعاينة"
-              required
-              type="time"
-              dir="ltr"
-              value={draft.inspectionTime}
-              error={fieldErrors.inspectionTime}
-              onChange={(v) => persist({ inspectionTime: v })}
-            />
-          </FormRow>
-
-          <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-text-2">
-            <span>
-              موقع العقار على الخريطة (GPS){" "}
-              <span className="text-danger-text">*</span>
-            </span>
-            <Badge tone="purple">مشترك</Badge>
-            <span className="font-normal text-text-3">
-              — إثبات النزول الميداني
-            </span>
-          </div>
-          <p className="mb-3 text-[11px] leading-relaxed text-text-3">
-            يُستخدم الموقع للتحقق من النزول الميداني. يجب أن تتطابق الإحداثيات
-            مع موقع العقار الفعلي — اضغط على الخريطة أو اسحب الدبوس لضبطه.
-          </p>
+          {mobile ? (
+            <div className="mb-2 text-[13px] font-bold text-heading">
+              موقع العقار (GPS)
+            </div>
+          ) : (
+            <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-semibold text-text-2">
+                موقع العقار على الخريطة (GPS)
+              </span>
+              <InsBadge label="مشترك" tone="purple" />
+              <span className="text-[10.5px] text-text-3">
+                — إثبات النزول الميداني
+              </span>
+            </div>
+          )}
           {mobile ? (
             <button
               type="button"
@@ -693,53 +789,57 @@ export function FieldInspectionWorkBody({
               onClick={captureDeviceGps}
             >
               <i className="ti ti-current-location text-base" aria-hidden />
-              التقاط موقعي الحالي
+              تحديد موقعي الحالي
             </button>
           ) : null}
-          <div className="mb-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-            <div>
-              <Label htmlFor="ins-lat" className="text-xs">
-                خط العرض (Latitude) <span className="text-danger-text">*</span>
-              </Label>
-              <Input
-                id="ins-lat"
-                dir="ltr"
-                className="font-sans text-[13px]"
-                disabled={locked}
-                value={draft.mapLatitude}
-                placeholder={JEDDAH_DEFAULT_LAT}
-                onChange={(e) => persist({ mapLatitude: e.target.value })}
-              />
+          {!mobile ? (
+            <div className="mb-2.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="min-w-0">
+                <div className="mb-1 text-[11px] font-semibold text-text-2">
+                  خط العرض
+                </div>
+                <Input
+                  id="ins-lat"
+                  dir="ltr"
+                  className={EDIT_CONTROL_CLASS}
+                  disabled={locked}
+                  value={draft.mapLatitude}
+                  placeholder={JEDDAH_DEFAULT_LAT}
+                  onChange={(e) => persist({ mapLatitude: e.target.value })}
+                />
+              </div>
+              <div className="min-w-0">
+                <div className="mb-1 text-[11px] font-semibold text-text-2">
+                  خط الطول
+                </div>
+                <Input
+                  id="ins-lng"
+                  dir="ltr"
+                  className={EDIT_CONTROL_CLASS}
+                  disabled={locked}
+                  value={draft.mapLongitude}
+                  placeholder={JEDDAH_DEFAULT_LNG}
+                  onChange={(e) => persist({ mapLongitude: e.target.value })}
+                />
+              </div>
             </div>
-            <div>
-              <Label htmlFor="ins-lng" className="text-xs">
-                خط الطول (Longitude) <span className="text-danger-text">*</span>
-              </Label>
-              <Input
-                id="ins-lng"
-                dir="ltr"
-                className="font-sans text-[13px]"
-                disabled={locked}
-                value={draft.mapLongitude}
-                placeholder={JEDDAH_DEFAULT_LNG}
-                onChange={(e) => persist({ mapLongitude: e.target.value })}
-              />
-            </div>
-          </div>
+          ) : null}
           {fieldErrors.mapLatitude ? (
             <p className="mb-3 text-[11px] text-danger-text" role="alert">
               {fieldErrors.mapLatitude}
             </p>
           ) : null}
-          <EngineeringSurveyMap
+          <MobileInspectOsmMap
             latitude={draft.mapLatitude}
             longitude={draft.mapLongitude}
-            disabled={locked}
-            onCoordsChange={handleCoordsChange}
+            property={property}
+            heightClass={mobile ? "h-[180px] rounded-xl" : "h-[200px]"}
           />
-          {mobile && (draft.mapLatitude || draft.mapLongitude) ? (
+          {mobile ? (
             <div className="mt-1.5 text-center text-[12px] text-text-3" dir="ltr">
-              {draft.mapLatitude || "—"}, {draft.mapLongitude || "—"}
+              {draft.mapLatitude && draft.mapLongitude
+                ? `${draft.mapLatitude}, ${draft.mapLongitude}`
+                : "—"}
             </div>
           ) : null}
         </InspectorCard>
@@ -758,10 +858,10 @@ export function FieldInspectionWorkBody({
             <table className="w-full min-w-[640px] border-collapse">
               <thead>
                 <tr>
-                  <th className={cn(TABLE_TH, "w-8")}>#</th>
+                  <th className={cn(TABLE_TH, "w-8 text-center")}>#</th>
                   <th className={cn(TABLE_TH, "text-right")}>الحقل</th>
-                  <th className={cn(TABLE_TH, "w-[180px]")}>القيمة</th>
-                  <th className={cn(TABLE_TH, "w-[140px]")}>صورة توثيقية</th>
+                  <th className={cn(TABLE_TH, "w-[180px] text-center")}>القيمة</th>
+                  <th className={cn(TABLE_TH, "w-[140px] text-center")}>صورة</th>
                 </tr>
               </thead>
               <tbody>
@@ -777,9 +877,7 @@ export function FieldInspectionWorkBody({
                       <td className={TABLE_TD}>
                         {field.label}
                         {field.shared ? (
-                          <Badge tone="purple" className="mr-1">
-                            مشترك
-                          </Badge>
+                          <InsBadge label="مشترك" tone="purple" />
                         ) : null}
                       </td>
                       <td className={TABLE_TD}>
@@ -882,14 +980,14 @@ export function FieldInspectionWorkBody({
             </table>
           </div>
 
-          {/* Mobile: stacked field cards (HTML renderInspectMobile style) */}
-          <div className={cn("flex flex-col gap-4", !mobile && "hidden")}>
-            {INSPECTOR_FEATURE_FIELDS.map((field) => {
+          {/* Mobile: pills / suggest+search (HTML renderInspectMobile) */}
+          <div className={cn("flex flex-col", !mobile && "hidden")}>
+            {INSPECTOR_FEATURE_FIELDS.map((field, fi) => {
               const value = draft.featureValues[field.key] ?? "";
               const attachment = draft.featurePhotoAttachments[field.key];
               const photoRef = `feature:${field.key}`;
               const needsPhoto = inspectorFeatureRequiresPhoto(field, value);
-              const usePills = field.options.length > 0 && field.options.length <= 3;
+              const usePills = featureUsesPills(field);
 
               function setFeatureValue(next: string) {
                 persist({
@@ -910,54 +1008,32 @@ export function FieldInspectionWorkBody({
               }
 
               return (
-                <div
-                  key={field.key}
-                  className="border-b border-border pb-4 last:border-b-0 last:pb-0"
-                >
-                  <div className="mb-2.5 flex flex-wrap items-center gap-1.5 text-[13px] font-bold text-text">
+                <div key={field.key} className="mb-4">
+                  <MobileFieldLabel shared={field.shared}>
                     {field.label}
-                    {field.shared ? (
-                      <Badge tone="purple">مشترك</Badge>
-                    ) : null}
-                  </div>
+                  </MobileFieldLabel>
                   {usePills ? (
-                    <div className="flex flex-wrap gap-2">
-                      {field.options.map((opt) => {
-                        const on = opt === value;
-                        return (
-                          <button
-                            key={opt}
-                            type="button"
-                            disabled={locked}
-                            className={cn(
-                              "min-h-11 rounded-full border-[1.5px] px-4 py-2.5 font-inherit text-[14px] font-semibold transition-colors",
-                              on
-                                ? "border-ink bg-ink text-white"
-                                : "border-border-md bg-surface text-text-2",
-                            )}
-                            onClick={() => setFeatureValue(opt)}
-                          >
-                            {opt}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <Select
+                    <MobilePills
+                      options={field.options}
                       value={value}
-                      onChange={(e) => setFeatureValue(e.target.value)}
-                      className={cn(
-                        formControlClassName,
-                        "min-h-12 text-[15px]",
-                      )}
-                    >
-                      <option value="">— اختر —</option>
-                      {field.options.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
-                    </Select>
+                      disabled={locked}
+                      onChange={setFeatureValue}
+                    />
+                  ) : (
+                    <>
+                      <MobileSuggestRow
+                        fieldKey={field.key}
+                        value={value}
+                        disabled={locked}
+                        onPick={setFeatureValue}
+                      />
+                      <MobileSearchSelect
+                        options={field.options}
+                        value={value}
+                        disabled={locked}
+                        onChange={setFeatureValue}
+                      />
+                    </>
                   )}
                   {needsPhoto ? (
                     <div className="mt-2.5">
@@ -986,8 +1062,9 @@ export function FieldInspectionWorkBody({
                         />
                       ) : (
                         <InspectorPhotoFilePicker
-                          label="إرفاق صورة توثيقية — مطلوب"
+                          label="صورة إثبات مطلوبة — التقاط *"
                           disabled={locked}
+                          className="[&_button]:min-h-12 [&_button]:rounded-xl [&_button]:border-[1.5px] [&_button]:border-dashed [&_button]:border-[var(--gold-d,#a4906f)] [&_button]:bg-[color-mix(in_srgb,var(--gold)_8%,transparent)] [&_button]:text-[13.5px] [&_button]:font-bold [&_button]:text-[var(--gold-d,#a4906f)]"
                           onFilesSelected={async (files) => {
                             const file = files[0];
                             if (!file) return false;
@@ -1015,6 +1092,19 @@ export function FieldInspectionWorkBody({
                       )}
                     </div>
                   ) : null}
+                  {fi === 0 && value !== "أرض" ? (
+                    <div className="mt-4">
+                      <MobileFieldLabel shared>
+                        عمر العقار (سنوات)
+                      </MobileFieldLabel>
+                      <MobileCountStepper
+                        label="العمر"
+                        value={draft.propertyAgeYears}
+                        disabled={locked}
+                        onChange={(v) => persist({ propertyAgeYears: v })}
+                      />
+                    </div>
+                  ) : null}
                 </div>
               );
             })}
@@ -1029,46 +1119,97 @@ export function FieldInspectionWorkBody({
         <InspectorCard
           title="الموقع والوصول"
           icon="ti-road"
-          badge={mobile ? undefined : <Badge tone="danger">إدخال ميداني</Badge>}
+          badge={mobile ? undefined : <InsBadge label="إدخال ميداني" tone="danger" />}
           layout={cardLayout}
           step={mobile ? 3 : undefined}
           subtitle={mobile ? "الشارع وطريقة الوصول" : undefined}
         >
-          <FormRow className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            <RegField
-              id="ins-street"
-              label="اسم الشارع"
-              value={draft.streetName}
-              onChange={(v) => persist({ streetName: v })}
-            />
-            <RegField
-              id="ins-main-street"
-              label="أقرب شارع رئيسي"
-              value={draft.mainStreetName}
-              onChange={(v) => persist({ mainStreetName: v })}
-            />
-            <RegField
-              id="ins-street-width"
-              label="عرض الشارع (م)"
-              type="number"
-              value={draft.streetWidthM}
-              onChange={(v) => persist({ streetWidthM: v })}
-            />
-          </FormRow>
-          <RegTextarea
-            id="ins-access"
-            label="طريقة الوصول للعقار"
-            rows={3}
-            className="mt-3"
-            value={draft.accessRouteDescription}
-            onChange={(v) => persist({ accessRouteDescription: v })}
-          />
+          {mobile ? (
+            <div className="grid gap-3.5">
+              <div>
+                <MobileFieldLabel>اسم الشارع</MobileFieldLabel>
+                <Input
+                  id="ins-street"
+                  value={draft.streetName}
+                  disabled={locked}
+                  onChange={(e) => persist({ streetName: e.target.value })}
+                  className={mobileControlClassName}
+                />
+              </div>
+              <div>
+                <MobileFieldLabel>أقرب شارع رئيسي</MobileFieldLabel>
+                <Input
+                  id="ins-main-street"
+                  value={draft.mainStreetName}
+                  disabled={locked}
+                  onChange={(e) => persist({ mainStreetName: e.target.value })}
+                  className={mobileControlClassName}
+                />
+              </div>
+              <div>
+                <MobileFieldLabel>عرض الشارع الرئيسي (م)</MobileFieldLabel>
+                <Input
+                  id="ins-street-width"
+                  type="number"
+                  value={draft.streetWidthM}
+                  disabled={locked}
+                  onChange={(e) => persist({ streetWidthM: e.target.value })}
+                  className={mobileControlClassName}
+                />
+              </div>
+              <div>
+                <MobileFieldLabel>طريقة الوصول</MobileFieldLabel>
+                <Textarea
+                  id="ins-access"
+                  rows={2}
+                  value={draft.accessRouteDescription}
+                  disabled={locked}
+                  onChange={(e) =>
+                    persist({ accessRouteDescription: e.target.value })
+                  }
+                  className={cn(mobileControlClassName, "min-h-[72px] resize-y")}
+                />
+              </div>
+            </div>
+          ) : (
+            <>
+              <FormRow className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                <RegField
+                  id="ins-street"
+                  label="اسم الشارع"
+                  value={draft.streetName}
+                  onChange={(v) => persist({ streetName: v })}
+                />
+                <RegField
+                  id="ins-main-street"
+                  label="أقرب شارع رئيسي"
+                  value={draft.mainStreetName}
+                  onChange={(v) => persist({ mainStreetName: v })}
+                />
+                <RegField
+                  id="ins-street-width"
+                  label="عرض الشارع (م)"
+                  type="number"
+                  value={draft.streetWidthM}
+                  onChange={(v) => persist({ streetWidthM: v })}
+                />
+              </FormRow>
+              <RegTextarea
+                id="ins-access"
+                label="طريقة الوصول للعقار"
+                rows={3}
+                className="mt-3"
+                value={draft.accessRouteDescription}
+                onChange={(v) => persist({ accessRouteDescription: v })}
+              />
+            </>
+          )}
         </InspectorCard>
 
         <InspectorCard
           title="مكوّنات العقار"
           icon="ti-building-estate"
-          badge={mobile ? undefined : <Badge tone="danger">إدخال ميداني</Badge>}
+          badge={mobile ? undefined : <InsBadge label="إدخال ميداني" tone="danger" />}
           layout={cardLayout}
           step={mobile ? 4 : undefined}
           subtitle={mobile ? "الغرف والمرافق" : undefined}
@@ -1099,7 +1240,9 @@ export function FieldInspectionWorkBody({
                 ["towerCount", "عدد الأبراج", null],
                 ["propertyAgeYears", "عمر العقار (سنوات)", null],
               ] as const
-            ).map(([key, label, photoMeta]) => {
+            )
+              .filter(([key]) => !(mobile && key === "propertyAgeYears"))
+              .map(([key, label, photoMeta]) => {
               if (key === "propertyAgeYears") {
                 return (
                   <div key={key}>
@@ -1110,25 +1253,17 @@ export function FieldInspectionWorkBody({
                       >
                         {label}
                       </label>
-                      <Badge tone="purple">مشترك</Badge>
+                      <InsBadge label="مشترك" tone="purple" />
                     </div>
-                    {mobile ? (
-                      <MobileCountStepper
-                        value={draft.propertyAgeYears}
-                        disabled={locked}
-                        onChange={(v) => persist({ propertyAgeYears: v })}
-                      />
-                    ) : (
-                      <Input
-                        id="ins-propertyAgeYears"
-                        type="number"
-                        value={draft.propertyAgeYears}
-                        onChange={(e) =>
-                          persist({ propertyAgeYears: e.target.value })
-                        }
-                        className="text-xs"
-                      />
-                    )}
+                    <Input
+                      id="ins-propertyAgeYears"
+                      type="number"
+                      value={draft.propertyAgeYears}
+                      onChange={(e) =>
+                        persist({ propertyAgeYears: e.target.value })
+                      }
+                      className="text-xs"
+                    />
                   </div>
                 );
               }
@@ -1159,14 +1294,12 @@ export function FieldInspectionWorkBody({
               return (
                 <div key={key}>
                   {mobile ? (
-                    <div className="border-b border-border py-1">
-                      <MobileCountStepper
-                        label={label}
-                        value={value}
-                        disabled={locked}
-                        onChange={setCount}
-                      />
-                    </div>
+                    <MobileCountStepper
+                      label={label}
+                      value={value}
+                      disabled={locked}
+                      onChange={setCount}
+                    />
                   ) : (
                     <RegField
                       id={`ins-${key}`}
@@ -1237,27 +1370,45 @@ export function FieldInspectionWorkBody({
                 </div>
               );
             })}
-            <div>
-              <label
-                htmlFor="ins-has-annex"
-                className="mb-1 block text-[11px] font-semibold text-text-2"
-              >
-                يوجد ملاحق؟
-              </label>
-              <Select
-                id="ins-has-annex"
-                value={draft.hasAnnex}
-                onChange={(e) =>
-                  persist({
-                    hasAnnex: e.target.value as InspectorWorkspaceDraft["hasAnnex"],
-                  })
-                }
-                className={cn(formControlClassName, "text-xs")}
-              >
-                <option value="">— اختر —</option>
-                <option value="نعم">نعم</option>
-                <option value="لا">لا</option>
-              </Select>
+            <div className={cn(mobile && "mt-4")}>
+              {mobile ? (
+                <>
+                  <MobileFieldLabel>هل يوجد ملحق؟</MobileFieldLabel>
+                  <MobilePills
+                    options={["نعم", "لا"]}
+                    value={draft.hasAnnex}
+                    disabled={locked}
+                    onChange={(next) =>
+                      persist({
+                        hasAnnex: next as InspectorWorkspaceDraft["hasAnnex"],
+                      })
+                    }
+                  />
+                </>
+              ) : (
+                <>
+                  <label
+                    htmlFor="ins-has-annex"
+                    className="mb-1 block text-[11px] font-semibold text-text-2"
+                  >
+                    يوجد ملاحق؟
+                  </label>
+                  <Select
+                    id="ins-has-annex"
+                    value={draft.hasAnnex}
+                    onChange={(e) =>
+                      persist({
+                        hasAnnex: e.target.value as InspectorWorkspaceDraft["hasAnnex"],
+                      })
+                    }
+                    className={cn(formControlClassName, "text-xs")}
+                  >
+                    <option value="">— اختر —</option>
+                    <option value="نعم">نعم</option>
+                    <option value="لا">لا</option>
+                  </Select>
+                </>
+              )}
             </div>
           </FormRow>
           {fieldErrors.componentPhotos ? (
@@ -1270,31 +1421,57 @@ export function FieldInspectionWorkBody({
         <InspectorCard
           title={mobile ? "مساحات المباني" : "مساحات المباني"}
           icon="ti-ruler-measure"
-          badge={mobile ? undefined : <Badge tone="danger">إدخال ميداني</Badge>}
+          badge={mobile ? undefined : <InsBadge label="إدخال ميداني" tone="danger" />}
           layout={cardLayout}
           step={mobile ? 5 : undefined}
           subtitle={mobile ? "م²" : undefined}
         >
-          <FormRow className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {(
-              [
-                ["builtArea", "مساحة البناء (م²)"],
-                ["buildingFloors", "عدد أدوار المباني"],
-                ["basementTotal", "إجمالي مساحة القبو (م²)"],
-                ["annexTotal", "إجمالي مساحة اللاحق (م²)"],
-                ["buildingsTotal", "إجمالي مساحة المباني (م²)"],
-              ] as const
-            ).map(([key, label]) => (
-              <RegField
-                key={key}
-                id={`ins-${key}`}
-                label={label}
-                type="number"
-                value={draft[key]}
-                onChange={(v) => persist({ [key]: v })}
-              />
-            ))}
-          </FormRow>
+          {mobile ? (
+            <div className="grid gap-3.5">
+              {(
+                [
+                  ["builtArea", "مساحة البناء (م²)"],
+                  ["buildingFloors", "عدد أدوار المباني"],
+                  ["basementTotal", "إجمالي مساحة القبو (م²)"],
+                  ["annexTotal", "إجمالي مساحة اللاحق (م²)"],
+                  ["buildingsTotal", "إجمالي مساحة المباني (م²)"],
+                ] as const
+              ).map(([key, label]) => (
+                <div key={key}>
+                  <MobileFieldLabel>{label}</MobileFieldLabel>
+                  <Input
+                    id={`ins-${key}`}
+                    type="number"
+                    value={draft[key]}
+                    disabled={locked}
+                    onChange={(e) => persist({ [key]: e.target.value })}
+                    className={mobileControlClassName}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <FormRow className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+              {(
+                [
+                  ["builtArea", "مساحة البناء (م²)"],
+                  ["buildingFloors", "عدد أدوار المباني"],
+                  ["basementTotal", "إجمالي مساحة القبو (م²)"],
+                  ["annexTotal", "إجمالي مساحة اللاحق (م²)"],
+                  ["buildingsTotal", "إجمالي مساحة المباني (م²)"],
+                ] as const
+              ).map(([key, label]) => (
+                <RegField
+                  key={key}
+                  id={`ins-${key}`}
+                  label={label}
+                  type="number"
+                  value={draft[key]}
+                  onChange={(v) => persist({ [key]: v })}
+                />
+              ))}
+            </FormRow>
+          )}
         </InspectorCard>
 
         {!boundariesUnavailable && property ? (
@@ -1303,40 +1480,97 @@ export function FieldInspectionWorkBody({
             icon="ti-vector"
             badge={
               mobile ? undefined : (
-                <Badge tone="info">للمطابقة — المصدر: الأخصائي (البورصة)</Badge>
+                <InsBadge
+                  label="للمطابقة — المصدر: الأخصائي (البورصة)"
+                  tone="info"
+                />
               )
             }
             layout={cardLayout}
             step={mobile ? 6 : undefined}
             subtitle={mobile ? "مطابقة الصك" : undefined}
           >
-            <p className="mb-3 text-[11px] text-text-3">
-              الحدود والأطوال يُدخلها الأخصائي عند الاستعلام عن الصك من البورصة.
-              دور المعاين هنا <strong>المطابقة واكتشاف الخطأ</strong> فقط — ويطابقها
-              أيضاً المكتب الهندسي.
-            </p>
+            {mobile ? null : (
+              <p className="mb-3 text-[11px] text-text-3">
+                الحدود والأطوال يُدخلها الأخصائي عند الاستعلام عن الصك من البورصة.
+                دور المعاين هنا <strong>المطابقة واكتشاف الخطأ</strong> فقط — ويطابقها
+                أيضاً المكتب الهندسي.
+              </p>
+            )}
             {BOUNDARY_KEYS.map((key) => {
               const row = BOUNDARY_ROW_MAP[key];
               const desc = property[row.descKey]?.trim() || "—";
               const len = property[row.lenKey]?.trim() || "—";
               const match = draft.boundaryMatches[key];
+              if (mobile) {
+                return (
+                  <div
+                    key={key}
+                    className="border-b border-border py-3.5 last:border-b-0"
+                  >
+                    <div className="mb-2.5 flex items-start justify-between gap-2">
+                      <span className="text-[14px] font-bold text-heading">
+                        {row.label}
+                      </span>
+                      <span className="shrink-0 text-[13px] text-text-3">
+                        {desc} · {len !== "—" ? `${len} م` : "—"}
+                      </span>
+                    </div>
+                    <MobilePills
+                      options={["مطابق", "عدم تطابق"]}
+                      value={match.matches ? "مطابق" : "عدم تطابق"}
+                      disabled={locked}
+                      onChange={(next) =>
+                        persist({
+                          boundaryMatches: {
+                            ...draft.boundaryMatches,
+                            [key]: {
+                              ...match,
+                              matches: next === "مطابق",
+                            },
+                          },
+                        })
+                      }
+                    />
+                    {!match.matches ? (
+                      <Input
+                        placeholder="ملاحظة عدم التطابق"
+                        value={match.mismatchNote}
+                        disabled={locked}
+                        onChange={(e) =>
+                          persist({
+                            boundaryMatches: {
+                              ...draft.boundaryMatches,
+                              [key]: {
+                                ...match,
+                                mismatchNote: e.target.value,
+                              },
+                            },
+                          })
+                        }
+                        className={cn(mobileControlClassName, "mt-2")}
+                      />
+                    ) : null}
+                  </div>
+                );
+              }
               return (
                 <div
                   key={key}
-                  className="grid grid-cols-1 items-start gap-3 border-b border-border py-2.5 last:border-b-0 max-lg:gap-2.5 max-lg:py-3.5 md:grid-cols-[90px_1fr_90px_minmax(200px,250px)]"
+                  className="grid grid-cols-1 items-start gap-3 border-b border-border py-2.5 last:border-b-0 md:grid-cols-[90px_1fr_90px_minmax(200px,250px)]"
                 >
-                  <span className="text-xs font-semibold text-text-2 max-lg:text-[14px]">
+                  <span className="text-xs font-semibold text-text-2">
                     {row.label}
                   </span>
-                  <span className="text-xs max-lg:text-[13px]">{desc}</span>
-                  <span className="text-xs font-semibold max-lg:text-[13px]">
+                  <span className="text-xs">{desc}</span>
+                  <span className="text-xs font-semibold">
                     {len !== "—" ? `${len} م` : "—"}
                   </span>
                   <div>
-                    <label className="flex min-h-9 cursor-pointer items-center gap-2.5 max-lg:min-h-11">
+                    <label className="flex min-h-9 cursor-pointer items-center gap-2.5">
                       <input
                         type="checkbox"
-                        className="size-4 max-lg:size-5"
+                        className="size-4"
                         checked={match.matches}
                         onChange={(e) =>
                           persist({
@@ -1352,7 +1586,7 @@ export function FieldInspectionWorkBody({
                       />
                       <span
                         className={cn(
-                          "text-xs font-bold max-lg:text-[14px]",
+                          "text-xs font-bold",
                           match.matches ? "text-teal-text" : "text-danger-text",
                         )}
                       >
@@ -1386,87 +1620,141 @@ export function FieldInspectionWorkBody({
         ) : null}
 
         <InspectorCard
-          title="الخدمات والمرافق المحيطة"
+          title={mobile ? "الخدمات والمرافق" : "الخدمات والمرافق المحيطة"}
           icon="ti-plug"
-          badge={mobile ? undefined : <Badge tone="default">اختيار متعدد</Badge>}
+          badge={mobile ? undefined : <InsBadge label="اختيار متعدد" />}
           layout={cardLayout}
           step={mobile ? 7 : undefined}
           subtitle={mobile ? "اختيار متعدد" : undefined}
         >
-          <p className="mb-2 text-[11px] font-semibold text-text-2">
-            الخدمات المتوفرة
-          </p>
-          <CheckboxGrid
-            options={INSPECTOR_SERVICE_OPTIONS}
-            selected={draft.services}
-            onChange={(services) => persist({ services })}
-          />
-          <p className="mb-2 mt-4 text-[11px] font-semibold text-text-2">
-            المرافق المحيطة
-          </p>
-          <CheckboxGrid
-            options={INSPECTOR_AMENITY_OPTIONS}
-            selected={draft.amenities}
-            onChange={(amenities) => persist({ amenities })}
-          />
+          {mobile ? (
+            <>
+              <MobileFieldLabel>الخدمات المتوفرة</MobileFieldLabel>
+              <MobileChips
+                options={INSPECTOR_SERVICE_OPTIONS}
+                selected={draft.services}
+                disabled={locked}
+                onChange={(services) => persist({ services })}
+              />
+              <div className="h-4" />
+              <MobileFieldLabel>المرافق المحيطة</MobileFieldLabel>
+              <MobileChips
+                options={INSPECTOR_AMENITY_OPTIONS}
+                selected={draft.amenities}
+                disabled={locked}
+                onChange={(amenities) => persist({ amenities })}
+              />
+            </>
+          ) : (
+            <>
+              <p className="mb-2 text-[11px] font-semibold text-text-2">
+                الخدمات المتوفرة
+              </p>
+              <MobileChips
+                options={INSPECTOR_SERVICE_OPTIONS}
+                selected={draft.services}
+                disabled={locked}
+                onChange={(services) => persist({ services })}
+              />
+              <p className="mb-2 mt-3.5 text-[11px] font-semibold text-text-2">
+                المرافق المحيطة
+              </p>
+              <MobileChips
+                options={INSPECTOR_AMENITY_OPTIONS}
+                selected={draft.amenities}
+                disabled={locked}
+                onChange={(amenities) => persist({ amenities })}
+              />
+            </>
+          )}
         </InspectorCard>
 
         <InspectorCard
           title="الوصف والملاحظات"
           icon="ti-notes"
-          badge={mobile ? undefined : <Badge tone="default">نص حر</Badge>}
+          badge={mobile ? undefined : <InsBadge label="نص حر" />}
           layout={cardLayout}
           step={mobile ? 8 : undefined}
           subtitle={mobile ? "نص حر" : undefined}
         >
-          <RegTextarea
-            id="ins-desc"
-            label="وصف العقار"
-            rows={3}
-            value={draft.propertyDescription}
-            onChange={(v) => persist({ propertyDescription: v })}
-          />
-          <RegTextarea
-            id="ins-pros-cons"
-            label="الإيجابيات والعيوب الظاهرة على الحي"
-            rows={3}
-            className="mt-3"
-            value={draft.districtProsCons}
-            onChange={(v) => persist({ districtProsCons: v })}
-          />
-          <RegTextarea
-            id="ins-asset-notes"
-            label="ملاحظات على الأصل"
-            rows={3}
-            className="mt-3"
-            value={draft.assetNotes}
-            onChange={(v) => persist({ assetNotes: v })}
-          />
+          {mobile ? (
+            <div className="grid gap-3.5">
+              <div>
+                <MobileFieldLabel>وصف العقار</MobileFieldLabel>
+                <Textarea
+                  id="ins-desc"
+                  rows={3}
+                  value={draft.propertyDescription}
+                  disabled={locked}
+                  onChange={(e) =>
+                    persist({ propertyDescription: e.target.value })
+                  }
+                  className={cn(mobileControlClassName, "min-h-[88px] resize-y")}
+                />
+              </div>
+              <div>
+                <MobileFieldLabel>إيجابيات وعيوب الحي</MobileFieldLabel>
+                <Textarea
+                  id="ins-pros-cons"
+                  rows={3}
+                  value={draft.districtProsCons}
+                  disabled={locked}
+                  onChange={(e) =>
+                    persist({ districtProsCons: e.target.value })
+                  }
+                  className={cn(mobileControlClassName, "min-h-[88px] resize-y")}
+                />
+              </div>
+            </div>
+          ) : (
+            <>
+              <RegTextarea
+                id="ins-desc"
+                label="وصف العقار"
+                rows={3}
+                value={draft.propertyDescription}
+                onChange={(v) => persist({ propertyDescription: v })}
+              />
+              <RegTextarea
+                id="ins-pros-cons"
+                label="الإيجابيات والعيوب الظاهرة على الحي"
+                rows={3}
+                className="mt-3"
+                value={draft.districtProsCons}
+                onChange={(v) => persist({ districtProsCons: v })}
+              />
+              <RegTextarea
+                id="ins-asset-notes"
+                label="ملاحظات على الأصل"
+                rows={3}
+                className="mt-3"
+                value={draft.assetNotes}
+                onChange={(v) => persist({ assetNotes: v })}
+              />
+            </>
+          )}
         </InspectorCard>
 
         <div id="ins-defined-photos">
-          {mobile ? (
-            <InspectorCard
-              title="صور العقار"
-              icon="ti-photo"
-              layout={cardLayout}
-              step={9}
-              subtitle={photoCoverage}
-            >
-              <InspectorDefinedPhotosSection
-                draft={draft}
-                disabled={locked}
-                onPatch={(patch) => persist(patch)}
-                bare
-              />
-            </InspectorCard>
-          ) : (
+          <InspectorCard
+            title={mobile ? "صور العقار" : "صور العقار الموثّقة"}
+            icon="ti-photo"
+            layout={cardLayout}
+            step={mobile ? 9 : undefined}
+            subtitle={mobile ? photoCoverage : undefined}
+            badge={
+              mobile ? undefined : (
+                <InsBadge label={photoCoverage} tone="info" />
+              )
+            }
+          >
             <InspectorDefinedPhotosSection
               draft={draft}
               disabled={locked}
               onPatch={(patch) => persist(patch)}
+              bare
             />
-          )}
+          </InspectorCard>
           {fieldErrors.definedPhotos ? (
             <p className="-mt-2 mb-4 px-4 text-[10px] text-danger-text" role="alert">
               {fieldErrors.definedPhotos}
@@ -1476,30 +1764,152 @@ export function FieldInspectionWorkBody({
 
         <div id="ins-observations">
         <InspectorCard
-          title={mobile ? "ملاحظات ميدانية" : "ملاحظات العقار الموثّقة بالصور"}
+          title={mobile ? "الملاحظات المصوّرة" : "ملاحظات العقار الموثّقة بالصور"}
           icon="ti-camera-plus"
           badge={
             mobile ? undefined : (
-              <Badge tone="danger">شرح + صورة لكل ملاحظة</Badge>
+              <InsBadge label="شرح + صورة لكل ملاحظة" tone="danger" />
             )
           }
           layout={cardLayout}
           step={mobile ? 10 : undefined}
-          subtitle={mobile ? "نص + صورة" : undefined}
+          subtitle={mobile ? "شرح + صورة" : undefined}
         >
-          <p className="mb-3 text-[11px] leading-relaxed text-text-3">
-            كل ملاحظة على العقار يجب أن تتضمّن{" "}
-            <strong>شرحاً نصياً وصورة توثيقية بجانبها</strong>. أضِف ملاحظة
-            منفصلة لكل عيب أو ميزة أو حالة تستدعي التوثيق — لا يُقبل إرسال
-            المعاينة دون إرفاق صورة لكل ملاحظة.
-          </p>
-          {draft.observations.length === 0 ? (
+          {mobile ? null : (
+            <p className="mb-3 text-[11px] leading-relaxed text-text-3">
+              كل ملاحظة على العقار يجب أن تتضمّن{" "}
+              <strong>شرحاً نصياً وصورة توثيقية بجانبها</strong>. أضِف ملاحظة
+              منفصلة لكل عيب أو ميزة أو حالة تستدعي التوثيق — لا يُقبل إرسال
+              المعاينة دون إرفاق صورة لكل ملاحظة.
+            </p>
+          )}
+          {!mobile && draft.observations.length === 0 ? (
             <p className="rounded-lg border border-dashed border-border p-6 text-center text-xs text-text-3">
               لا توجد ملاحظات — اضغط «إضافة ملاحظة موثّقة».
             </p>
           ) : null}
           {draft.observations.map((obs) => {
             const obsPhotoRef = `observation:${obs.id}`;
+
+            if (mobile) {
+              return (
+                <div
+                  key={obs.id}
+                  className="mb-2.5 flex gap-2.5 rounded-xl border border-border bg-surface-2 p-2.5"
+                >
+                  <div className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-[10px] border border-border bg-surface">
+                    {obs.photo?.fileName ? (
+                      <InspectorStampedPhotoThumb
+                        stamp={photoStamp}
+                        taskId={draft.taskId}
+                        photoRef={obsPhotoRef}
+                        attachment={obs.photo}
+                        onClear={
+                          locked
+                            ? undefined
+                            : () => {
+                                clearInspectorPhotoDataUrl(
+                                  draft.taskId,
+                                  obsPhotoRef,
+                                );
+                                persist({
+                                  observations: draft.observations.map((o) =>
+                                    o.id === obs.id ? { ...o, photo: null } : o,
+                                  ),
+                                });
+                              }
+                        }
+                      />
+                    ) : (
+                      <InspectorPhotoFilePicker
+                        label="صورة"
+                        disabled={locked}
+                        className="size-full [&_button]:h-full [&_button]:min-h-0 [&_button]:border-0 [&_button]:bg-transparent [&_button]:px-0 [&_button]:py-0 [&_button]:text-[10px]"
+                        onFilesSelected={async (files) => {
+                          const file = files[0];
+                          if (!file) return false;
+                          const result = await uploadInspectorPhotoFromFile(
+                            draft.taskId,
+                            obsPhotoRef,
+                            file,
+                            {
+                              draft: liveDraft,
+                              deedNumber: property?.deedNumber,
+                            },
+                          );
+                          if (!result.ok) {
+                            showToast(result.error, "error");
+                            return false;
+                          }
+                          persist({
+                            observations: draft.observations.map((o) =>
+                              o.id === obs.id
+                                ? { ...o, photo: result.attachment }
+                                : o,
+                            ),
+                          });
+                        }}
+                      />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    {obs.category ? (
+                      <span className="inline-block rounded-full bg-[var(--gold-soft,color-mix(in_srgb,var(--gold)_18%,transparent))] px-2.5 py-0.5 text-[11px] font-bold text-[var(--gold-d,#a4906f)]">
+                        {obs.category}
+                      </span>
+                    ) : (
+                      <div className="mb-1 flex flex-wrap gap-1.5">
+                        {INSPECTOR_OBSERVATION_CATEGORIES.map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            disabled={locked}
+                            className="rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-semibold text-text-2"
+                            onClick={() =>
+                              persist({
+                                observations: draft.observations.map((o) =>
+                                  o.id === obs.id ? { ...o, category: c } : o,
+                                ),
+                              })
+                            }
+                          >
+                            {c}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <Textarea
+                      rows={2}
+                      placeholder="اشرح الملاحظة..."
+                      value={obs.text}
+                      disabled={locked}
+                      onChange={(e) =>
+                        persist({
+                          observations: draft.observations.map((o) =>
+                            o.id === obs.id ? { ...o, text: e.target.value } : o,
+                          ),
+                        })
+                      }
+                      className="mt-1.5 min-h-[52px] w-full resize-y border-0 bg-transparent p-0 text-[13px] leading-relaxed text-text-2 outline-none"
+                    />
+                    <button
+                      type="button"
+                      disabled={locked}
+                      className="mt-1 text-[12px] font-semibold text-danger-text"
+                      onClick={() =>
+                        persist({
+                          observations: draft.observations.filter(
+                            (o) => o.id !== obs.id,
+                          ),
+                        })
+                      }
+                    >
+                      حذف
+                    </button>
+                  </div>
+                </div>
+              );
+            }
 
             return (
             <div
@@ -1656,27 +2066,53 @@ export function FieldInspectionWorkBody({
             </div>
             );
           })}
-          <Button
-            type="button"
-            variant="default"
-            size="sm"
-            className="mt-1"
-            onClick={() =>
-              persist({
-                observations: [
-                  ...draft.observations,
-                  {
-                    id: newObservationId(),
-                    category: "",
-                    text: "",
-                    photo: null,
-                  },
-                ],
-              })
-            }
-          >
-            <i className="ti ti-plus" aria-hidden /> إضافة ملاحظة موثّقة
-          </Button>
+          {mobile ? (
+            <button
+              type="button"
+              disabled={locked}
+              className="flex min-h-12 w-full items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-dashed border-[var(--gold-d,#a4906f)] bg-[color-mix(in_srgb,var(--gold)_8%,transparent)] font-inherit text-[14px] font-bold text-[var(--gold-d,#a4906f)]"
+              onClick={() =>
+                persist({
+                  observations: [
+                    ...draft.observations,
+                    {
+                      id: newObservationId(),
+                      category: "",
+                      text: "",
+                      photo: null,
+                    },
+                  ],
+                })
+              }
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden>
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              إضافة ملاحظة موثّقة بالصورة
+            </button>
+          ) : (
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              className="mt-1"
+              onClick={() =>
+                persist({
+                  observations: [
+                    ...draft.observations,
+                    {
+                      id: newObservationId(),
+                      category: "",
+                      text: "",
+                      photo: null,
+                    },
+                  ],
+                })
+              }
+            >
+              <i className="ti ti-plus" aria-hidden /> إضافة ملاحظة موثّقة
+            </Button>
+          )}
           <label className="mt-4 flex cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-surface-2 p-3 text-xs leading-relaxed text-text-2">
             <input
               type="checkbox"
@@ -1778,44 +2214,6 @@ export function FieldInspectionWorkBody({
   );
 }
 
-function PropertySummary({
-  property,
-  task,
-  draft,
-}: {
-  property: PoPropertyIntake | undefined;
-  task: WorkflowTask;
-  draft: InspectorWorkspaceDraft;
-}) {
-  const rows = [
-    { label: "رقم العقار", value: draft.propertyDisplayId || "—" },
-    { label: "رقم أمر الشراء", value: formatPoDisplay(task.poNumber) },
-    {
-      label: "الحي / المدينة",
-      value: property
-        ? [property.district, property.city].filter(Boolean).join(" — ") || "—"
-        : "—",
-    },
-    { label: "رقم الصك", value: property?.deedNumber?.trim() || "—" },
-    {
-      label: "المساحة من الصك",
-      value: property?.area?.trim() ? `${property.area.trim()} م²` : "—",
-    },
-    { label: "اسم المالك", value: property?.ownerName?.trim() || "—" },
-  ];
-
-  return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-      {rows.map((row) => (
-        <div key={row.label}>
-          <div className="mb-1 text-[11px] text-text-3">{row.label}</div>
-          <div className="text-[13px] font-semibold text-text">{row.value}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function MobileCountStepper({
   label,
   value,
@@ -1829,7 +2227,7 @@ function MobileCountStepper({
 }) {
   const n = Math.max(0, parseInspectorCount(value));
   return (
-    <div className="flex items-center justify-between gap-3 py-1.5">
+    <div className="flex items-center justify-between gap-3 border-b border-border py-[11px]">
       {label ? (
         <span className="text-[14px] text-text-2">{label}</span>
       ) : (
@@ -1839,7 +2237,7 @@ function MobileCountStepper({
         <button
           type="button"
           disabled={disabled || n <= 0}
-          className="grid size-11 place-items-center rounded-xl border-[1.5px] border-border-md bg-surface text-[22px] font-bold text-ink disabled:opacity-40"
+          className="grid size-11 place-items-center rounded-xl border-[1.5px] border-[var(--border-md,#ddd8cc)] bg-surface text-[22px] font-bold leading-none text-ink disabled:opacity-40"
           onClick={() => onChange(String(Math.max(0, n - 1)))}
         >
           −
@@ -1850,46 +2248,12 @@ function MobileCountStepper({
         <button
           type="button"
           disabled={disabled}
-          className="grid size-11 place-items-center rounded-xl border-[1.5px] border-ink bg-ink text-[22px] font-bold text-white disabled:opacity-40"
+          className="grid size-11 place-items-center rounded-xl border-[1.5px] border-ink bg-ink text-[22px] font-bold leading-none text-white disabled:opacity-40"
           onClick={() => onChange(String(n + 1))}
         >
           +
         </button>
       </div>
-    </div>
-  );
-}
-
-function CheckboxGrid({
-  options,
-  selected,
-  onChange,
-}: {
-  options: readonly string[];
-  selected: string[];
-  onChange: (next: string[]) => void;
-}) {
-  return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-      {options.map((opt) => {
-        const checked = selected.includes(opt);
-        return (
-          <label key={opt} className={CHECKBOX_ITEM}>
-            <input
-              type="checkbox"
-              checked={checked}
-              onChange={() => {
-                onChange(
-                  checked
-                    ? selected.filter((s) => s !== opt)
-                    : [...selected, opt],
-                );
-              }}
-            />
-            {opt}
-          </label>
-        );
-      })}
     </div>
   );
 }

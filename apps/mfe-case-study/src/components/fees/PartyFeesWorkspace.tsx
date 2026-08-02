@@ -11,18 +11,12 @@ import { loadPartyBillingStatements } from "@platform/app-shared/prototype/party
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import { InspectorFeesBillingTable } from "../field-inspection/InspectorFeesBillingTable";
 import { PartyFeeWorkflowTable } from "./PartyFeeWorkflowTable";
-import {
-  EngOfficeFeesBillingTable,
-  engFeeUiStatus,
-} from "./EngOfficeFeesBillingTable";
+import { EngOfficeFeesBillingTable, engFeeUiStatus } from "./EngOfficeFeesBillingTable";
 import { PartyReturnedQueue } from "./PartyReturnedQueue";
 import { SupervisorEnfazTracking } from "./SupervisorEnfazTracking";
 import { CourtVisitFeesPanel } from "./CourtVisitFeesPanel";
 import { PartyOfficeBillingStatementsPanel } from "./PartyOfficeBillingStatementsPanel";
-import {
-  EngFeesHtmlTabs,
-  EngFeesSectionTitle,
-} from "./EngFeesHtmlTabs";
+import { EngFeesHtmlTabs, EngFeesSectionTitle } from "./EngFeesHtmlTabs";
 import { sortInspectorFeeRowsNewestFirst } from "@platform/app-shared/fees/party-fee-meta";
 
 type PartyFeesTab =
@@ -138,7 +132,7 @@ export function PartyFeesWorkspace({
         : "financial";
 
     return (
-      <div className="flex min-h-0 flex-col gap-0 px-3 pb-4 sm:px-4">
+      <div className="flex flex-col gap-0 px-3 pb-3 sm:px-4 sm:pb-4">
         <EngFeesHtmlTabs
           active={supTab}
           onChange={(id) => setTab(id as PartyFeesTab)}
@@ -314,7 +308,7 @@ export function PartyFeesWorkspace({
   ];
 
   return (
-    <div className="flex min-h-0 flex-col gap-0 px-3 pb-4 sm:px-4">
+    <div className="flex flex-col gap-0 px-3 pb-3 sm:px-4 sm:pb-4">
       <EngFeesHtmlTabs
         active={partyTab}
         onChange={(id) => setTab(id as PartyFeesTab)}
@@ -332,7 +326,7 @@ export function PartyFeesWorkspace({
             tab="action"
             pending={isLoading && !isFetched}
           />
-          <div className="mt-4">
+          <div className="mt-2">
             <EngFeesSectionTitle
               title="المُعاد لي / استفسارات المالية"
               sub="عالجها ثم أعد رفعها للمشرف عند الحاجة."

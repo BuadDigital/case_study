@@ -374,6 +374,8 @@ export function PropertyDetailInspectionTab({
   inspectionCard,
   editMode = false,
   onEditModeChange,
+  lockEditMode = false,
+  onSubmitted,
 }: {
   property: PoPropertyIntake;
   inspectionTask: WorkflowTask | null;
@@ -381,6 +383,9 @@ export function PropertyDetailInspectionTab({
   /** Case Study.html `ed` — in-tab input mode. */
   editMode?: boolean;
   onEditModeChange?: (edit: boolean) => void;
+  /** Keep input mode (inspector workspace). Cancel exits via onEditModeChange(false). */
+  lockEditMode?: boolean;
+  onSubmitted?: () => void;
 }) {
   const { showToast } = useToast();
   const [draft, setDraft] = useState<InspectorWorkspaceDraft | null>(null);
@@ -478,6 +483,10 @@ export function PropertyDetailInspectionTab({
   }
 
   async function handleCancelEdit() {
+    if (lockEditMode) {
+      onEditModeChange?.(false);
+      return;
+    }
     if (inspectionTask) {
       setLoading(true);
       const snapshot = await loadInspectorWorkspaceSnapshot(inspectionTask.id);
@@ -522,7 +531,10 @@ export function PropertyDetailInspectionTab({
 
       setDraft(result.draft);
       showToast("تم حفظ بيانات المعاينة وإرسالها.", "success");
-      onEditModeChange?.(false);
+      onSubmitted?.();
+      if (!lockEditMode) {
+        onEditModeChange?.(false);
+      }
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "تعذّر حفظ بيانات المعاينة";

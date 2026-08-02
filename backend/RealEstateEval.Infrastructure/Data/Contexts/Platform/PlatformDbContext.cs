@@ -22,6 +22,7 @@ public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> option
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<Region> Regions => Set<Region>();
     public DbSet<City> Cities => Set<City>();
+    public DbSet<District> Districts => Set<District>();
     public DbSet<FieldDictionaryConfig> FieldDictionaryConfigs => Set<FieldDictionaryConfig>();
     public DbSet<CaseStudyInfoRolesConfig> CaseStudyInfoRolesConfigs => Set<CaseStudyInfoRolesConfig>();
     public DbSet<OrganizationSettings> OrganizationSettings => Set<OrganizationSettings>();

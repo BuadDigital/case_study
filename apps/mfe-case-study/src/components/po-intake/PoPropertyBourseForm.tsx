@@ -130,14 +130,6 @@ export function PoPropertyBourseForm({
             onPatch={onPatch}
           />
           <RegField
-            id="district"
-            label="الحي"
-            required
-            value={property.district}
-            error={fieldErrors.district}
-            onChange={(v) => onPatch("district", v)}
-          />
-          <RegField
             id="area"
             label="المساحة"
             value={property.area}

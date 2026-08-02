@@ -130,26 +130,6 @@ function readSidebarCollapsed(): boolean {
   }
 }
 
-function RefreshIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      width="20"
-      height="20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M21 12a9 9 0 1 1-2.64-6.36" />
-      <path d="M21 3v6h-6" />
-    </svg>
-  );
-}
-
 function CloseIcon() {
   return (
     <svg
@@ -910,7 +890,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
-  const { refresh, busy: refreshBusy } = useAppDataRefresh();
+  const { refresh } = useAppDataRefresh();
   // Read sessionStorage once per render cycle, not multiple times.
   const sessionUser = useMemo(() => getAuthSession()?.user, []);
 
@@ -976,7 +956,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   /** Workspace pages lock `#content` scroll — disable shell PTR there. */
   const contentScrollLocked =
-    pathParts[0] === "property-inspection" && pathParts.length >= 2;
+    (pathParts[0] === "property-inspection" ||
+      pathParts[0] === "active-inspection") &&
+    pathParts.length >= 2;
 
   const silentRefresh = useCallback(
     () => refresh({ silent: true }),
@@ -1030,13 +1012,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const onActiveSurveyRoute = pathParts[0] === "active-survey" && pathParts.length >= 2;
   const onActiveSurveyEntry = onActiveSurveyRoute && pathParts[2] === "entry";
   const onPropertyAppraisalWorkspace = pathParts[0] === "property-appraisal" && pathParts.length >= 2;
+  const onActiveInspectionWorkspace = pathParts[0] === "active-inspection" && pathParts.length >= 2;
   const onPropertyInspectionWorkspace = pathParts[0] === "property-inspection" && pathParts.length >= 2;
+  const onFieldInspectionWorkspace =
+    onActiveInspectionWorkspace || onPropertyInspectionWorkspace;
   const onGovernmentReviewWorkspace = pathParts[0] === "government-review" && pathParts.length >= 2;
   const onValuationCoordinationWorkspace = pathParts[0] === "valuation-coordination" && pathParts.length >= 2;
   const caseStudyTaskId = onCaseStudyWorkspace ? (pathParts[1] ?? null) : null;
   const activeSurveyTaskId = onActiveSurveyRoute ? (pathParts[1] ?? null) : null;
   const propertyAppraisalTaskId = onPropertyAppraisalWorkspace ? (pathParts[1] ?? null) : null;
-  const propertyInspectionTaskId = onPropertyInspectionWorkspace ? (pathParts[1] ?? null) : null;
+  const fieldInspectionTaskId = onFieldInspectionWorkspace ? (pathParts[1] ?? null) : null;
   const governmentReviewTaskId = onGovernmentReviewWorkspace ? (pathParts[1] ?? null) : null;
   const valuationCoordinationTaskId = onValuationCoordinationWorkspace ? (pathParts[1] ?? null) : null;
 
@@ -1113,7 +1098,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onCaseStudyWorkspace ||
               onActiveSurveyRoute ||
               onPropertyAppraisalWorkspace ||
-              onPropertyInspectionWorkspace ||
+              onFieldInspectionWorkspace ||
               onGovernmentReviewWorkspace ||
               onValuationCoordinationWorkspace ||
               isPartyTaskPage(currentPage)
@@ -1123,8 +1108,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   ? activeSurveyTaskId
                   : onPropertyAppraisalWorkspace
                     ? propertyAppraisalTaskId
-                    : onPropertyInspectionWorkspace
-                      ? propertyInspectionTaskId
+                    : onFieldInspectionWorkspace
+                      ? fieldInspectionTaskId
                       : onGovernmentReviewWorkspace
                         ? governmentReviewTaskId
                         : onValuationCoordinationWorkspace
@@ -1146,13 +1131,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       onCaseStudyWorkspace,
       onActiveSurveyRoute,
       onPropertyAppraisalWorkspace,
-      onPropertyInspectionWorkspace,
+      onFieldInspectionWorkspace,
       onGovernmentReviewWorkspace,
       onValuationCoordinationWorkspace,
       caseStudyTaskId,
       activeSurveyTaskId,
       propertyAppraisalTaskId,
-      propertyInspectionTaskId,
+      fieldInspectionTaskId,
       governmentReviewTaskId,
       valuationCoordinationTaskId,
       caseStudyDeedLabel,
@@ -1167,7 +1152,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     (currentPage === "active-distribution" && Boolean(taskQuery)) ||
     onActiveSurveyRoute ||
     onPropertyAppraisalWorkspace ||
-    onPropertyInspectionWorkspace ||
+    onFieldInspectionWorkspace ||
     onGovernmentReviewWorkspace ||
     onValuationCoordinationWorkspace ||
     (pathname ? isPartyTaskWorkPath(pathname) && Boolean(taskQuery) : false);
@@ -1275,8 +1260,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const displayBreadcrumbSegments = breadcrumbSegments ?? [];
 
   return (
-    <div id="app" className="flex h-svh overflow-hidden bg-bg">
-      {mobileNavOpen ? (
+    <div id="app" className="flex h-full max-h-dvh min-h-0 overflow-hidden bg-bg">
+      {/* Field-inspection workspace = standalone page (no shell chrome). */}
+      {!onFieldInspectionWorkspace && mobileNavOpen ? (
         <button
           type="button"
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
@@ -1284,11 +1270,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onClick={() => setMobileNavOpen(false)}
         />
       ) : null}
+        {!onFieldInspectionWorkspace ? (
         <div
           id="sidebar"
           data-collapsed={desktopRail ? "true" : undefined}
           className={cn(
-            "group/sidebar flex h-svh w-sidebar shrink-0 flex-col overflow-hidden border-s border-white/[0.06] bg-sidebar text-white [color-scheme:dark]",
+            "group/sidebar flex h-full min-h-0 w-sidebar shrink-0 flex-col overflow-hidden border-s border-white/[0.06] bg-sidebar text-white [color-scheme:dark]",
             "transition-[width] duration-200 ease-out",
             "max-lg:fixed max-lg:inset-y-0 max-lg:start-0 max-lg:z-50 max-lg:w-sidebar max-lg:shadow-xl max-lg:transition-transform max-lg:duration-200 max-lg:ease-out",
             "max-lg:pt-[env(safe-area-inset-top)] max-lg:pb-[env(safe-area-inset-bottom)]",
@@ -1513,7 +1500,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
         </div>
       </div>
-      <div id="main" className="flex min-w-0 flex-1 flex-col overflow-hidden bg-bg">
+        ) : null}
+      <div id="main" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-bg">
+        {/* Field-inspection workspace = standalone page (no shell topbar/sidebar). */}
+        {!onFieldInspectionWorkspace ? (
         <div
           id="topbar"
           className="flex min-h-topbar shrink-0 items-center justify-between gap-2 border-b-[0.5px] border-border bg-surface px-4 py-3.5 pt-[max(0.875rem,env(safe-area-inset-top))] sm:gap-3 sm:px-[30px]"
@@ -1571,25 +1561,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <button
-              type="button"
-              className={cn(
-                topbarActionIconBtn,
-                "text-text-2",
-                (refreshBusy || ptrRefreshing) && "pointer-events-none opacity-60",
-              )}
-              aria-label="تحديث البيانات"
-              title="تحديث"
-              disabled={refreshBusy || ptrRefreshing}
-              onClick={() => void refresh()}
-            >
-              <RefreshIcon
-                className={cn(
-                  "size-5",
-                  (refreshBusy || ptrRefreshing) && "animate-spin",
-                )}
-              />
-            </button>
             <OfflineSyncCoordinator />
             <NotificationCenter />
             <div className="h-[26px] w-px shrink-0 bg-border-md max-lg:hidden" aria-hidden />
@@ -1605,21 +1576,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             />
           </div>
         </div>
+        ) : null}
         <div
           id="content"
           ref={contentRef}
           data-workspace-scroll={
-            onPropertyInspectionWorkspace ? "locked" : undefined
+            onFieldInspectionWorkspace ? "locked" : undefined
           }
           className={cn(
-            "flex min-h-0 min-w-0 flex-1 flex-col items-stretch bg-bg p-0",
-            "relative",
-            /* Clip X so wide tables/shadows never create left/right page scroll (RTL). */
-            onPropertyInspectionWorkspace
-              ? "overflow-hidden"
-              : "overflow-x-hidden overflow-y-auto",
-            "max-lg:pb-[env(safe-area-inset-bottom)]",
-            !contentScrollLocked && "overscroll-y-contain",
+            /* Block layout so tall list pages scroll on #content; workspaces use flex + inner scroll. */
+            "relative min-h-0 min-w-0 flex-1 bg-bg p-0",
+            onFieldInspectionWorkspace
+              ? /* Standalone inspect page — fullscreen content, no shell chrome. */
+                "flex flex-col overflow-hidden"
+              : "overflow-x-hidden overflow-y-auto max-lg:pb-[env(safe-area-inset-bottom)]",
           )}
         >
           {!contentScrollLocked ? (

@@ -9,6 +9,7 @@ import { VALUATION_COORDINATION_SUBMISSION_CHANGED_EVENT } from "./prototype/val
 
 const PARTY_PAGE_SUBMISSION_EVENTS: Partial<Record<PageId, string>> = {
   "property-inspection": FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
+  "active-inspection": FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
   "active-survey": ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
   "property-appraisal": EVALUATOR_SUBMISSION_CHANGED_EVENT,
   "government-review": GOVERNMENT_REVIEW_SUBMISSION_CHANGED_EVENT,
@@ -23,7 +24,7 @@ export function refreshPartyTaskWorkQueries(
   void queryClient.invalidateQueries({
     queryKey: prototypeKeys.workflowTasks(),
   });
-  if (pageId === "property-inspection") {
+  if (pageId === "property-inspection" || pageId === "active-inspection") {
     void queryClient.invalidateQueries({
       queryKey: prototypeKeys.fieldInspectionWorkspaces(),
     });

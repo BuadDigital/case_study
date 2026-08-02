@@ -1,6 +1,7 @@
 /** @settings/mfe — الإعدادات + جميع حقول النظام (users, courts, info-roles, حقول النظام). */
 
 export { CourtsView } from "./views/CourtsView";
+export { LocationsPendingView } from "./views/LocationsPendingView";
 export { UsersView } from "./views/UsersView";
 export { UsersOrganizationView } from "./views/users/UsersOrganizationView";
 export { OrganizationSettingsView } from "./views/OrganizationSettingsView";
