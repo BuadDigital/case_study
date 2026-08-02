@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
-using RealEstateEval.Infrastructure.Permissions;
 
 namespace RealEstateEval.Infrastructure.Notifications;
 
@@ -70,6 +69,24 @@ public sealed class NotificationRecipientResolver
             .FirstOrDefaultAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Maps an assignment-specialist email to the Identity user id via
+    /// <see cref="ApplicationUser.NormalizedEmail"/>.
+    /// </summary>
+    public async Task<string?> ResolveUserIdForEmailAsync(
+        string email,
+        CancellationToken cancellationToken = default)
+    {
+        var trimmed = email.Trim();
+        if (trimmed.Length == 0) return null;
+
+        var normalized = trimmed.ToUpperInvariant();
+        return await _db.Users.AsNoTracking()
+            .Where(user => user.NormalizedEmail == normalized)
+            .Select(user => user.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyDictionary<string, string>> ResolveUserIdsForDistributionAssigneesAsync(
         IReadOnlyCollection<string> distributionAssigneeIds,
         CancellationToken cancellationToken = default)
@@ -100,47 +117,13 @@ public sealed class NotificationRecipientResolver
         var role = prototypeRole.Trim().ToLowerInvariant();
         if (role.Length == 0) return [];
 
-        var rows = await (
-                from profile in _db.UserProfiles.AsNoTracking()
-                where profile.Status == UserStatus.Active
-                join userRole in _db.UserRoles.AsNoTracking()
-                    on profile.UserId equals userRole.UserId into userRoles
-                from userRole in userRoles.DefaultIfEmpty()
-                join identityRole in _db.Roles.AsNoTracking()
-                    on userRole.RoleId equals identityRole.Id into identityRoles
-                from identityRole in identityRoles.DefaultIfEmpty()
-                select new
-                {
-                    profile.UserId,
-                    profile.JobTitle,
-                    profile.PermissionLevel,
-                    IdentityRole = identityRole == null ? null : identityRole.Name,
-                })
+        return await _db.UserProfiles
+            .AsNoTracking()
+            .Where(profile =>
+                profile.Status == UserStatus.Active
+                && profile.RoleId == role)
+            .Select(profile => profile.UserId)
+            .Distinct()
             .ToListAsync(cancellationToken);
-
-        var matches = new List<string>();
-        foreach (var group in rows.GroupBy(row => row.UserId, StringComparer.Ordinal))
-        {
-            var profile = group.First();
-            var identityRoles = group
-                .Select(row => row.IdentityRole)
-                .Where(roleName => roleName is not null)
-                .Cast<string>()
-                .Distinct(StringComparer.Ordinal)
-                .ToList();
-            var resolved = PrototypeRoleResolver.Resolve(
-                new UserProfile
-                {
-                    UserId = profile.UserId,
-                    JobTitle = profile.JobTitle,
-                    PermissionLevel = profile.PermissionLevel,
-                },
-                identityRoles);
-
-            if (string.Equals(resolved, role, StringComparison.OrdinalIgnoreCase))
-                matches.Add(profile.UserId);
-        }
-
-        return matches.Distinct(StringComparer.Ordinal).ToList();
     }
 }

@@ -19,6 +19,10 @@ const AllAssignedTransactionsView = dynamic(
   () => import("@case-study/mfe").then((m) => m.AllAssignedTransactionsView),
   { ssr: false },
 );
+const FavoriteTransactionsView = dynamic(
+  () => import("@case-study/mfe").then((m) => m.FavoriteTransactionsView),
+  { ssr: false },
+);
 const ActiveDistributionView = dynamic(
   () => import("@case-study/mfe").then((m) => m.ActiveDistributionView),
   { ssr: false },
@@ -117,6 +121,7 @@ const VIEWS: Partial<Record<PageId, ComponentType>> = {
   dashboard: DashboardView,
   "active-primary-data": MyTasksView,
   "all-transactions": AllAssignedTransactionsView,
+  favorites: FavoriteTransactionsView,
   "bourse-inquiry": BourseInquiryView,
   "active-distribution": ActiveDistributionView,
   "active-case-study": ActiveCaseStudyView,

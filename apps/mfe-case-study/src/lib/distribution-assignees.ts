@@ -49,7 +49,7 @@ export function staffUsersForPartyRole(
   return users
     .filter(
       (u) =>
-        u.status !== "Inactive" &&
+        u.status === "Active" &&
         u.distributionAssigneeId?.trim() &&
         partyRoleForStaffUser(u) === roleId,
     )

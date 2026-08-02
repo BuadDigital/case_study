@@ -27,6 +27,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     pages: [
       "po",
       "all-transactions",
+      "favorites",
       "active-primary-data",
       "bourse-inquiry",
       "active-distribution",
@@ -50,6 +51,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     tc: "var(--warning)",
     pages: [
       "po",
+      "favorites",
       "active-primary-data",
       "bourse-inquiry",
       "active-distribution",
@@ -71,6 +73,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     tc: "var(--success)",
     pages: [
       "po",
+      "favorites",
       "active-primary-data",
       "bourse-inquiry",
       "active-distribution",
@@ -89,6 +92,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     tc: "var(--purple)",
     pages: [
       "all-transactions",
+      "favorites",
       "valuation-coordination",
       "system-screen-catalog",
     ],
@@ -102,6 +106,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     pages: [
       "po",
       "all-transactions",
+      "favorites",
       "operations-tasks",
       "property-appraisal",
       "failures",
@@ -117,6 +122,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     tc: "var(--info)",
     pages: [
       "all-transactions",
+      "favorites",
       "operations-tasks",
       "party-fees",
       "failures",
@@ -133,6 +139,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
       "operations-tasks",
       "keys",
       "po",
+      "favorites",
       "party-fees",
       "failures",
       "system-screen-catalog",
@@ -146,6 +153,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     tc: "var(--purple)",
     pages: [
       "all-transactions",
+      "favorites",
       "active-survey",
       "party-fees",
       "failures",
@@ -174,6 +182,12 @@ export const NAV: NavItem[] = [
     id: "all-transactions",
     label: "جميع المعاملات",
     icon: "M4 6h16M4 12h16M4 18h10",
+    grp: "قسم دراسة الحالة",
+  },
+  {
+    id: "favorites",
+    label: "المفضلة",
+    icon: "m12 2.8 2.84 5.75 6.35.92-4.6 4.48 1.09 6.33L12 17.3l-5.68 2.98 1.09-6.33-4.6-4.48 6.35-.92L12 2.8Z",
     grp: "قسم دراسة الحالة",
   },
   {
@@ -229,6 +243,7 @@ export const PAGE_TITLES: Record<PageId, string> = {
   "active-case-study": "دراسة حالة العقارات",
   po: "أوامر العمل (PO)",
   "all-transactions": "جميع المعاملات",
+  favorites: "المفضلة",
   "bourse-inquiry": "استعلام بورصة",
   keys: "محفظة المفاتيح",
   failures: "إدارة التعذرات",
@@ -268,12 +283,13 @@ export const PAGE_BREADCRUMB: Record<PageId, string> = {
   "active-case-study": "لوحة التحكم / دراسة حالة العقارات",
   po: "لوحة التحكم / دراسة الحالة / أوامر العمل",
   "all-transactions": "لوحة التحكم / جميع المعاملات",
+  favorites: "لوحة التحكم / المفضلة",
   "bourse-inquiry": "لوحة التحكم / استعلام بورصة",
   keys: "لوحة التحكم / دراسة الحالة / محفظة المفاتيح",
   failures: "لوحة التحكم / إدارة التعذرات",
   "suspended-transactions": "لوحة التحكم / المعاملات المعلقة",
   "valuation-requests": "لوحة التحكم / طلبات التقييم",
-  "property-inspection": "الشاشات اليتيمة / معاينة العقار",
+  "property-inspection": "الشاشات (Draft) / معاينة العقار",
   "government-review": "دراسة الحالة / المعاملات النشطة / المراجعة الحكومية",
   "operations-tasks": "لوحة التحكم / المهام",
   "valuation-coordination": "لوحة التحكم / استلام التقييم",
@@ -372,8 +388,20 @@ export type StaffUser = {
   type: "internal" | "freelance" | "external";
   source?: "hr" | "proc" | "crm";
   phone?: string | null;
+  roleId?: string | null;
+  city?: string | null;
+  department?: string | null;
+  nationalId?: string | null;
+  avatarUrl?: string | null;
+  inspectorType?: "employee" | "contractor" | null;
+  hasCompensation?: boolean;
+  feeValueSar?: number | null;
+  iban?: string | null;
+  taxNumber?: string | null;
+  commercialRegistration?: string | null;
+  joinedAt?: string | null;
   createdAt?: string;
-  status?: "Active" | "Inactive";
+  status?: "Active" | "Disabled" | "PendingActivation" | "Locked";
   systemRoles?: string[];
   details?: StaffUserDetail[];
   registration?: Record<string, string>;

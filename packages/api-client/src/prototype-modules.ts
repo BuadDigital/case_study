@@ -1,4 +1,5 @@
 import { getApiBase } from "./index";
+import { repositoryFetch as fetch } from "./write-repository";
 import { parseFieldErrorsFromResponse } from "./field-errors";
 
 export type PrototypeModulesApiConfig = {
@@ -372,6 +373,7 @@ export type KeyEnvelopeDto = {
   status: string;
   feeGenerated: boolean;
   feeAmountSar?: number | null;
+  revenueEntitlementAtUtc?: string | null;
   createdByUserId: string;
   createdByName: string;
   createdAtUtc: string;
@@ -390,7 +392,8 @@ export type KeyEnvelopeFeeReportRowDto = {
   circuit: string;
   photoAttachmentId?: string | null;
   receiptAttachmentId?: string | null;
-  feeAmountSar: number;
+  /** Null for an entitlement finance has not yet priced in enforcement billing. */
+  feeAmountSar?: number | null;
   collectionStatus?: string;
   invoiceReference?: string | null;
   collectedAtUtc?: string | null;

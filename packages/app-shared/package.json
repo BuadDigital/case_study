@@ -12,6 +12,7 @@
     "@failures/mfe": "*",
     "@platform/api-client": "*",
     "@platform/auth-client": "*",
+    "@platform/offline-client": "*",
     "@platform/types": "*",
     "@tanstack/react-query": "^5.100.11"
   },

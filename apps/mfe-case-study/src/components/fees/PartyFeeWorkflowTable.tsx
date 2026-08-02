@@ -30,6 +30,13 @@ import { PoNumber } from "../ui/PoNumber";
 
 export type PartyFeeWorkflowRole = "office" | "supervisor" | "finance" | "readonly";
 
+/** Actions the backend refuses without a written justification. */
+type ReasonAction =
+  | "return-to-supervisor"
+  | "inquiry-to-office"
+  | "office-dispute"
+  | "suspend";
+
 function Sar({ value }: { value: number }) {
   return (
     <span className="tabular-nums whitespace-nowrap font-medium">
@@ -50,10 +57,7 @@ function FeeRowActions({
   role: PartyFeeWorkflowRole;
   busy: boolean;
   onAct: (row: InspectorFeeRowDto, action: InspectorFeeAction) => void;
-  onReason: (
-    row: InspectorFeeRowDto,
-    action: "return-to-supervisor" | "inquiry-to-office" | "office-dispute",
-  ) => void;
+  onReason: (row: InspectorFeeRowDto, action: ReasonAction) => void;
 }) {
   return (
     <div className="flex flex-wrap gap-1.5 max-lg:[&>button]:min-h-11">
@@ -143,6 +147,30 @@ function FeeRowActions({
           </Button>
         </>
       ) : null}
+      {role === "supervisor" && row.canSuspend ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          loading={busy}
+          showActionToast={false}
+          onClick={() => onReason(row, "suspend")}
+        >
+          إيقاف
+        </Button>
+      ) : null}
+      {role === "supervisor" && row.canLiftSuspension ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="primary"
+          loading={busy}
+          showActionToast={false}
+          onClick={() => onAct(row, "lift-suspension")}
+        >
+          رفع الإيقاف
+        </Button>
+      ) : null}
       {role === "finance" && row.billingStatus === "disb-req" ? (
         <Button
           type="button"
@@ -201,10 +229,7 @@ export function PartyFeeWorkflowTable({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [reasonModal, setReasonModal] = useState<{
     row: InspectorFeeRowDto;
-    action:
-      | "return-to-supervisor"
-      | "inquiry-to-office"
-      | "office-dispute";
+    action: ReasonAction;
   } | null>(null);
 
   const invalidate = useCallback(async () => {
@@ -236,10 +261,8 @@ export function PartyFeeWorkflowTable({
   };
 
   const showActions = role !== "readonly";
-  const onReason = (
-    row: InspectorFeeRowDto,
-    action: "return-to-supervisor" | "inquiry-to-office" | "office-dispute",
-  ) => setReasonModal({ row, action });
+  const onReason = (row: InspectorFeeRowDto, action: ReasonAction) =>
+    setReasonModal({ row, action });
 
   return (
     <div
@@ -299,6 +322,11 @@ export function PartyFeeWorkflowTable({
                         {row.disbursementVoucher ? (
                           <span className="text-[10px] text-text-3">
                             {row.disbursementVoucher}
+                          </span>
+                        ) : null}
+                        {row.suspensionReason ? (
+                          <span className="text-[10px] text-text-3">
+                            سبب الإيقاف: {row.suspensionReason}
                           </span>
                         ) : null}
                       </div>
@@ -377,6 +405,11 @@ export function PartyFeeWorkflowTable({
                       {row.disbursementVoucher}
                     </p>
                   ) : null}
+                  {row.suspensionReason ? (
+                    <p className="mb-2 m-0 text-[11px] text-text-3">
+                      سبب الإيقاف: {row.suspensionReason}
+                    </p>
+                  ) : null}
                   {showActions ? (
                     <FeeRowActions
                       row={row}
@@ -400,14 +433,18 @@ export function PartyFeeWorkflowTable({
             ? "استفسار للمكتب"
             : reasonModal?.action === "office-dispute"
               ? "اعتراض على الحسم"
-              : "إرجاع للمشرف"
+              : reasonModal?.action === "suspend"
+                ? "إيقاف البند"
+                : "إرجاع للمشرف"
         }
         label={
           reasonModal?.action === "inquiry-to-office"
             ? "نص الاستفسار"
             : reasonModal?.action === "office-dispute"
               ? "سبب الاعتراض"
-              : "سبب الإرجاع"
+              : reasonModal?.action === "suspend"
+                ? "سبب الإيقاف"
+                : "سبب الإرجاع"
         }
         confirmLabel="تأكيد"
         onClose={() => setReasonModal(null)}

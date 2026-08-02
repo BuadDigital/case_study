@@ -6,6 +6,7 @@ export default defineConfig({
     environment: "jsdom",
     include: [
       "packages/**/__tests__/**/*.{test,spec}.{ts,tsx}",
+      "packages/**/src/**/*.{test,spec}.{ts,tsx}",
       "apps/**/__tests__/**/*.{test,spec}.{ts,tsx}",
     ],
     globals: true,
@@ -15,6 +16,10 @@ export default defineConfig({
       "@platform/auth-client": path.resolve(__dirname, "packages/auth-client/src"),
       "@platform/app-shared": path.resolve(__dirname, "packages/app-shared/src"),
       "@platform/api-client": path.resolve(__dirname, "packages/api-client/src"),
+      "@platform/offline-client": path.resolve(
+        __dirname,
+        "packages/offline-client/src",
+      ),
       "@settings/mfe/lib": path.resolve(__dirname, "apps/mfe-settings/src/lib"),
       "@settings/mfe": path.resolve(__dirname, "apps/mfe-settings/src"),
       "@case-study/mfe/lib": path.resolve(__dirname, "apps/mfe-case-study/src/lib"),

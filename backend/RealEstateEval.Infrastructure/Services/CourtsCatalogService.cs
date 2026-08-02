@@ -16,15 +16,18 @@ public sealed class CourtsCatalogService : ICourtsCatalogService
     private readonly PlatformDbContext _db;
     private readonly ApiResponseCache _cache;
     private readonly ICourtsService _courts;
+    private readonly IAuditLogWriter _audit;
 
     public CourtsCatalogService(
         PlatformDbContext db,
         ApiResponseCache cache,
-        ICourtsService courts)
+        ICourtsService courts,
+        IAuditLogWriter audit)
     {
         _db = db;
         _cache = cache;
         _courts = courts;
+        _audit = audit;
     }
 
     public async Task<IReadOnlyList<CourtCatalogEntryDto>> ListAsync(
@@ -59,6 +62,7 @@ public sealed class CourtsCatalogService : ICourtsCatalogService
 
     public async Task<IReadOnlyList<CourtCatalogEntryDto>> ReplaceAllAsync(
         SaveCourtsCatalogRequest request,
+        string actorId,
         CancellationToken cancellationToken = default)
     {
         await _courts.EnsureSeededAsync(cancellationToken);
@@ -72,6 +76,17 @@ public sealed class CourtsCatalogService : ICourtsCatalogService
                 var existingCourts = await _db.Courts
                     .Include(c => c.Circuits)
                     .ToListAsync(ct);
+                var before = existingCourts.Select(c => new
+                {
+                    c.Id,
+                    c.Name,
+                    c.Region,
+                    c.City,
+                    c.IsActive,
+                    circuits = c.Circuits
+                        .Select(x => new { x.Id, x.CircuitNo, x.CircuitName, x.IsActive })
+                        .ToList(),
+                }).ToList();
                 var existingCircuits = existingCourts.SelectMany(c => c.Circuits).ToList();
                 _db.CourtCircuits.RemoveRange(existingCircuits);
                 _db.Courts.RemoveRange(existingCourts);
@@ -107,6 +122,13 @@ public sealed class CourtsCatalogService : ICourtsCatalogService
                     }
                 }
 
+                _db.AuditLogs.Add(_audit.Create(
+                    actorId,
+                    "COURT_CATALOG_REPLACED",
+                    "court_catalog",
+                    "all",
+                    before,
+                    request.Entries));
                 await _db.SaveChangesAsync(ct);
             },
             cancellationToken);

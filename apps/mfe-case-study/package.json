@@ -25,6 +25,7 @@
     "@platform/app-shared": "*",
     "@platform/auth-client": "*",
     "@platform/design-system": "*",
+    "@platform/offline-client": "*",
     "@platform/types": "*",
     "@settings/mfe": "*",
     "@tanstack/react-query": "^5.100.11",

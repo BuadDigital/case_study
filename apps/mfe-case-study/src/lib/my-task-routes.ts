@@ -122,6 +122,14 @@ export function allTransactionsTaskPath(taskId: string): string {
   return `/all-transactions?task=${encodeURIComponent(taskId)}`;
 }
 
+export function favoritesPath(): string {
+  return "/favorites";
+}
+
+export function favoritesTaskPath(taskId: string): string {
+  return `/favorites?task=${encodeURIComponent(taskId)}`;
+}
+
 /** Full-page workspace for distributed party tasks opened from جميع المعاملات. */
 export function partyTaskWorkspacePath(task: WorkflowTask): string | undefined {
   switch (task.kind) {

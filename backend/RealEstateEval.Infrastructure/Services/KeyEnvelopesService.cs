@@ -67,34 +67,29 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
             .OrderByDescending(c => c.CreatedAtUtc)
             .Take(MaxListRows)
             .ToListAsync(cancellationToken);
-        if (charges.Count == 0)
+
+        var chargedEnvelopeIds = charges.Select(c => c.EnvelopeId).ToHashSet();
+
+        // Entitlements and the historical stamped charges are one report, not an either/or: reading
+        // only the charges hid every envelope registered since the amount left the pricing table, and
+        // reading only the envelopes hid what finance had already collected.
+        var entitlements = await _db.KeyEnvelopes.AsNoTracking()
+            .Where(x => x.RevenueEntitlementAtUtc != null || (x.FeeGenerated && x.FeeAmountSar != null))
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .Take(MaxListRows)
+            .ToListAsync(cancellationToken);
+
+        var envelopes = entitlements.ToDictionary(e => e.Id);
+        if (chargedEnvelopeIds.Except(envelopes.Keys).Any())
         {
-            return await _db.KeyEnvelopes.AsNoTracking()
-                .Where(x => x.FeeGenerated && x.FeeAmountSar != null)
-                .OrderByDescending(x => x.CreatedAtUtc)
-                .Select(x => new KeyEnvelopeFeeReportRowDto
-                {
-                    EnvelopeId = x.Id,
-                    RequestNumber = x.RequestNumber,
-                    Court = x.Court,
-                    Circuit = x.Circuit,
-                    PhotoAttachmentId = x.PhotoAttachmentId,
-                    ReceiptAttachmentId = x.ReceiptAttachmentId,
-                    FeeAmountSar = x.FeeAmountSar!.Value,
-                    CollectionStatus = KeyReceiptFeeStatuses.Open,
-                    CreatedByName = x.CreatedByName,
-                    CreatedAtUtc = x.CreatedAtUtc,
-                })
-                .Take(MaxListRows)
+            var missing = await _db.KeyEnvelopes.AsNoTracking()
+                .Where(e => chargedEnvelopeIds.Contains(e.Id) && !envelopes.Keys.Contains(e.Id))
                 .ToListAsync(cancellationToken);
+            foreach (var envelope in missing)
+                envelopes[envelope.Id] = envelope;
         }
 
-        var envelopeIds = charges.Select(c => c.EnvelopeId).ToList();
-        var envelopes = await _db.KeyEnvelopes.AsNoTracking()
-            .Where(e => envelopeIds.Contains(e.Id))
-            .ToDictionaryAsync(e => e.Id, cancellationToken);
-
-        return charges.Select(c =>
+        var rows = charges.Select(c =>
         {
             envelopes.TryGetValue(c.EnvelopeId, out var env);
             return new KeyEnvelopeFeeReportRowDto
@@ -113,6 +108,28 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
                 CreatedAtUtc = c.CreatedAtUtc,
             };
         }).ToList();
+
+        rows.AddRange(entitlements
+            .Where(e => !chargedEnvelopeIds.Contains(e.Id))
+            .Select(e => new KeyEnvelopeFeeReportRowDto
+            {
+                EnvelopeId = e.Id,
+                RequestNumber = e.RequestNumber,
+                Court = e.Court,
+                Circuit = e.Circuit,
+                PhotoAttachmentId = e.PhotoAttachmentId,
+                ReceiptAttachmentId = e.ReceiptAttachmentId,
+                // No amount to show: it is set when finance bills إنفاذ, outside this report.
+                FeeAmountSar = e.FeeAmountSar,
+                CollectionStatus = KeyReceiptFeeStatuses.Open,
+                CreatedByName = e.CreatedByName,
+                CreatedAtUtc = e.CreatedAtUtc,
+            }));
+
+        return rows
+            .OrderByDescending(r => r.CreatedAtUtc)
+            .Take(MaxListRows)
+            .ToList();
     }
 
     public async Task<bool> DeleteAsync(
@@ -148,7 +165,17 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
         var charge = await _db.KeyReceiptFeeCharges
             .FirstOrDefaultAsync(c => c.EnvelopeId == envelopeId, cancellationToken);
         if (charge is null)
-            return (null, "بند الأتعاب غير موجود لهذا الظرف");
+        {
+            // Only the historical stamped charges are collectable here. An entitlement carries no
+            // amount, so there is nothing for finance to confirm until enforcement billing prices it.
+            var isEntitlement = await _db.KeyEnvelopes.AsNoTracking()
+                .AnyAsync(e => e.Id == envelopeId && e.RevenueEntitlementAtUtc != null, cancellationToken);
+            return (
+                null,
+                isEntitlement
+                    ? "لا مبلغ مختوم لهذا الظرف — تحصيل أتعاب الاستلام يتم ضمن فوترة إنفاذ"
+                    : "بند الأتعاب غير موجود لهذا الظرف");
+        }
 
         var now = DateTime.UtcNow;
         charge.CollectionStatus = KeyReceiptFeeStatuses.Collected;
@@ -277,30 +304,17 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
 
         if (scenario == KeyReceiveScenarios.Court)
         {
-            var fee = await ResolveKeyReceiptFeeAsync(cancellationToken);
-            entity.FeeGenerated = true;
-            entity.FeeAmountSar = fee;
+            // Receipt revenue is billed to إنفاذ by finance, not owed to a party at a configured rate,
+            // so registration marks the entitlement and stops there. Stamping an amount from the
+            // pricing table produced a figure nobody had agreed to bill.
+            entity.RevenueEntitlementAtUtc = now;
             AddTimelineOnCreate(
                 entity,
-                KeyEnvelopeTimelineEvents.FeeGenerated,
-                $"توليد بند أتعاب استلام مفاتيح ({fee:0.##} ر.س)",
+                KeyEnvelopeTimelineEvents.RevenueEntitlement,
+                "استحقاق إيراد استلام المفاتيح — المبلغ تُدخله المالية عند فوترة إنفاذ",
                 actorUserId,
                 actorDisplayName,
                 now);
-            _db.KeyReceiptFeeCharges.Add(new KeyReceiptFeeCharge
-            {
-                Id = Guid.NewGuid(),
-                EnvelopeId = entity.Id,
-                RequestNumber = requestNumber,
-                AmountSar = fee,
-                CollectionStatus = KeyReceiptFeeStatuses.Open,
-                PhotoAttachmentId = entity.PhotoAttachmentId,
-                ReceiptAttachmentId = entity.ReceiptAttachmentId,
-                CreatedByUserId = actorUserId,
-                CreatedByName = actorDisplayName.Trim(),
-                CreatedAtUtc = now,
-                UpdatedAtUtc = now,
-            });
         }
 
         _db.KeyEnvelopes.Add(entity);
@@ -829,22 +843,6 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
         }
 
         return null;
-    }
-
-    private async Task<decimal> ResolveKeyReceiptFeeAsync(CancellationToken cancellationToken)
-    {
-        // Key-receipt fee only — never create a visit fee here.
-        // Visit fees are stamped on court_visit ops-task completion (CourtVisitFeeCharge).
-        var pricing = await _db.PartyFeePricingTables.AsNoTracking()
-            .Where(x => x.Category == PartyFeePricingCategories.GovernmentReview && x.IsActive)
-            .OrderByDescending(x => x.UpdatedAtUtc)
-            .FirstOrDefaultAsync(cancellationToken);
-        if (pricing is not null && pricing.KeyReceiptFeeSar > 0)
-            return pricing.KeyReceiptFeeSar;
-        // Legacy fallback when KeyReceiptFeeSar was never set independently.
-        if (pricing is not null && pricing.GovernmentReviewFeeSar > 0)
-            return pricing.GovernmentReviewFeeSar;
-        return DefaultKeyReceiptFeeSar;
     }
 
     private static Guid? EmptyToNull(Guid? id) =>

@@ -88,6 +88,9 @@ public sealed class FinancialReportService : IFinancialReportService
             .SumAsync(
                 l => (decimal?)(l.CaseStudyFeeSar + l.SurveyFeeSar),
                 cancellationToken) ?? 0m;
+        // Historical only. Nothing stamps key-receipt amounts any more — registering the envelope
+        // marks the entitlement and finance bills إنفاذ by hand — so this line covers the charges
+        // written before that change and empties out on its own.
         var keyReceiptSummary = await _db.KeyReceiptFeeCharges.AsNoTracking()
             .GroupBy(_ => 1)
             .Select(group => new
@@ -157,6 +160,12 @@ public sealed class FinancialReportService : IFinancialReportService
     private IQueryable<InspectorFeeLedger> CompletedCaseStudyLedgers()
     {
         return _db.InspectorFeeLedgers.AsNoTracking()
+            // Disputed lines have no agreed amount yet and suspended ones are withheld, so neither is
+            // a committed cost. Excluding them here keeps them out of every aggregate: costs, margin,
+            // payables, and the per-PO tracked/disbursed counts.
+            .Where(ledger =>
+                ledger.BillingStatus != InspectorFeeBillingStatus.Disputed
+                && ledger.BillingStatus != InspectorFeeBillingStatus.Suspended)
             .Where(ledger =>
                 ledger.PropertyId != null
                 && _db.WorkflowTasks.Any(task =>

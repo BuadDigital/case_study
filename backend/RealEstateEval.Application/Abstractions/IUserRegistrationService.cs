@@ -37,6 +37,23 @@ public interface IUserRegistrationService
     /// </summary>
     Task<(CreateStaffUserResponseDto? Result, Dictionary<string, string>? Errors)> CreateStaffAsync(
         CreateStaffUserRequest request,
+        string actorId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Applies a partial update to one staff account. Absent members keep their stored value;
+    /// changing the role re-derives the job title, permission level and identity roles.
+    /// </summary>
+    Task<(UserListItemDto? Result, Dictionary<string, string>? Errors)> UpdateStaffAsync(
+        string userId,
+        UpdateStaffUserRequest request,
+        string actorId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Clears an Identity lockout so a locked-out holder can sign in again.</summary>
+    Task<(bool Ok, string? Error)> UnlockStaffAsync(
+        string userId,
+        string actorId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -45,6 +62,7 @@ public interface IUserRegistrationService
     /// </summary>
     Task<(ActivationTicketDto? Ticket, string? Error)> IssueActivationTicketAsync(
         string userId,
+        string actorId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -56,7 +74,7 @@ public interface IUserRegistrationService
         ActivateAccountRequest request,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Deletes one staff user. Protects the caller and seeded primary admin accounts.</summary>
+    /// <summary>Soft-disables one staff user and revokes sessions; no identity row is deleted.</summary>
     Task<(bool Ok, string? Error)> DeleteStaffAsync(
         string userId,
         string? requestingUserId,

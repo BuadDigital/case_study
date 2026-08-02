@@ -14,7 +14,15 @@ internal static class IdentityModel
 {
     public static ModelBuilder ApplyIdentityModel(this ModelBuilder builder)
     {
-        builder.Entity<ApplicationUser>(e => e.ToTable("Users", DatabaseSchemas.Identity));
+        builder.Entity<ApplicationUser>(e =>
+        {
+            e.ToTable("Users", DatabaseSchemas.Identity);
+            e.Property(x => x.DisplayName).HasMaxLength(256).IsRequired();
+            e.Property(x => x.PhoneNumber).HasMaxLength(20);
+            e.HasIndex(x => x.PhoneNumber)
+                .IsUnique()
+                .HasFilter("\"PhoneNumber\" IS NOT NULL");
+        });
         builder.Entity<IdentityRole>(e => e.ToTable("Roles", DatabaseSchemas.Identity));
         builder.Entity<IdentityUserRole<string>>(e => e.ToTable("UserRoles", DatabaseSchemas.Identity));
         builder.Entity<IdentityUserClaim<string>>(e => e.ToTable("UserClaims", DatabaseSchemas.Identity));
@@ -24,7 +32,21 @@ internal static class IdentityModel
 
         builder.Entity<UserProfile>(e =>
         {
-            e.ToTable("UserProfiles", DatabaseSchemas.Identity);
+            e.ToTable("UserProfiles", DatabaseSchemas.Identity, table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_UserProfiles_Status",
+                    "\"Status\" BETWEEN 0 AND 3");
+                table.HasCheckConstraint(
+                    "CK_UserProfiles_FeeValueSar",
+                    "\"FeeValueSar\" IS NULL OR \"FeeValueSar\" >= 0");
+                table.HasCheckConstraint(
+                    "CK_UserProfiles_InspectorType",
+                    "\"InspectorType\" IS NULL OR \"InspectorType\" IN ('employee', 'contractor')");
+                table.HasCheckConstraint(
+                    "CK_UserProfiles_ActiveRequiresRoleAndCity",
+                    "\"Status\" <> 0 OR (\"RoleId\" IS NOT NULL AND \"City\" IS NOT NULL)");
+            });
             e.UseOptimisticConcurrency();
             e.HasKey(x => x.UserId);
             e.HasOne(x => x.User)
@@ -32,9 +54,24 @@ internal static class IdentityModel
                 .HasForeignKey<UserProfile>(x => x.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
             e.Property(x => x.JobTitle).HasMaxLength(256);
+            e.Property(x => x.RoleId).HasMaxLength(64);
+            e.Property(x => x.Department).HasMaxLength(128);
+            e.Property(x => x.City).HasMaxLength(128);
+            e.Property(x => x.NationalId).HasMaxLength(10);
+            e.Property(x => x.AvatarUrl).HasMaxLength(2048);
+            e.Property(x => x.InspectorType).HasMaxLength(32);
+            e.Property(x => x.FeeValueSar).HasPrecision(18, 2);
+            e.Property(x => x.Iban).HasMaxLength(34);
+            e.Property(x => x.TaxNumber).HasMaxLength(32);
+            e.Property(x => x.CommercialRegistration).HasMaxLength(64);
             e.Property(x => x.DistributionAssigneeId).HasMaxLength(128);
             e.Property(x => x.ReviewerCityCoverageJson).HasMaxLength(1024);
             e.Property(x => x.PermissionLevel).HasMaxLength(64);
+            e.HasIndex(x => x.RoleId);
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.NationalId)
+                .IsUnique()
+                .HasFilter("\"NationalId\" IS NOT NULL");
             e.HasIndex(x => x.DistributionAssigneeId);
         });
 

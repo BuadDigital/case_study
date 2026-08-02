@@ -8,6 +8,10 @@ import {
   type PartyTaskSubmissionDto,
 } from "@platform/api-client";
 import {
+  saveDraftWithOfflineFallback,
+  submitWithOfflineFallback,
+} from "../offline/offline-write";
+import {
   apiErrorMessage,
   mutationFromApiResult,
   resolveApiError,
@@ -56,11 +60,64 @@ export async function persistPartySubmissionPayload(
   payload: Record<string, unknown>,
 ): Promise<PartySubmissionMutationResult> {
   const config = workOrdersApiConfig();
-  if (!config) return { ok: false, error: apiErrorMessage("auth") };
-  const result = await savePartyTaskSubmission(config, taskId, payload);
-  const mapped = mutationFromApiResult(result, "تعذّر حفظ مسودة المهمة");
-  if (mapped.ok) setCachedPartySubmission(mapped.data, taskId);
-  return mapped;
+  if (!config) {
+    const queued = await saveDraftWithOfflineFallback({
+      taskId,
+      kind: "government-review",
+      payload,
+      onlineSave: async () => {
+        throw new Error(apiErrorMessage("auth"));
+      },
+    });
+    if (queued.queued) {
+      const now = new Date().toISOString();
+      const local: PartyTaskSubmissionDto = {
+        taskId,
+        kind: "government-review",
+        status: "draft",
+        payload,
+        updatedAtUtc: now,
+      };
+      setCachedPartySubmission(local, taskId);
+      return { ok: true, data: local };
+    }
+    return { ok: false, error: apiErrorMessage("auth") };
+  }
+
+  try {
+    const queued = await saveDraftWithOfflineFallback({
+      taskId,
+      kind: "government-review",
+      payload,
+      onlineSave: async () => {
+        const result = await savePartyTaskSubmission(config, taskId, payload);
+        const mapped = mutationFromApiResult(result, "تعذّر حفظ مسودة المهمة");
+        if (!mapped.ok) throw new Error(mapped.error);
+        setCachedPartySubmission(mapped.data, taskId);
+      },
+    });
+    if (queued.queued) {
+      const now = new Date().toISOString();
+      const local: PartyTaskSubmissionDto = {
+        taskId,
+        kind: "government-review",
+        status: "draft",
+        payload,
+        updatedAtUtc: now,
+      };
+      setCachedPartySubmission(local, taskId);
+      return { ok: true, data: local };
+    }
+    return {
+      ok: true,
+      data: getCachedPartySubmission(taskId)!,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "تعذّر حفظ مسودة المهمة",
+    };
+  }
 }
 
 export type PartySubmissionMutationResult =
@@ -74,11 +131,56 @@ export async function submitPartySubmission(
   taskId: string,
 ): Promise<PartySubmissionMutationResult> {
   const config = workOrdersApiConfig();
-  if (!config) return { ok: false, error: apiErrorMessage("auth") };
-  const result = await submitPartyTaskSubmission(config, taskId);
-  const mapped = mutationFromApiResult(result, "تعذّر إرسال مهمة الطرف");
-  if (mapped.ok) setCachedPartySubmission(mapped.data, taskId);
-  return mapped;
+  const cached = getCachedPartySubmission(taskId);
+  if (!config) {
+    if (cached) {
+      const queued = await submitWithOfflineFallback({
+        taskId,
+        kind: "government-review",
+        payload: cached.payload ?? {},
+        onlineSubmit: async () => {
+          throw new Error(apiErrorMessage("auth"));
+        },
+      });
+      if (queued.queued) return { ok: true, data: cached };
+    }
+    return { ok: false, error: apiErrorMessage("auth") };
+  }
+
+  try {
+    const queued = await submitWithOfflineFallback({
+      taskId,
+      kind: "government-review",
+      payload: cached?.payload ?? {},
+      onlineSubmit: async () => {
+        const result = await submitPartyTaskSubmission(config, taskId);
+        const mapped = mutationFromApiResult(result, "تعذّر إرسال مهمة الطرف");
+        if (!mapped.ok) throw new Error(mapped.error);
+        setCachedPartySubmission(mapped.data, taskId);
+      },
+    });
+    if (queued.queued) {
+      return {
+        ok: true,
+        data: cached ?? {
+          taskId,
+          kind: "government-review",
+          status: "draft",
+          payload: {},
+          updatedAtUtc: new Date().toISOString(),
+        },
+      };
+    }
+    return {
+      ok: true,
+      data: getCachedPartySubmission(taskId)!,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "تعذّر إرسال مهمة الطرف",
+    };
+  }
 }
 
 export async function reopenPartySubmission(

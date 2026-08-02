@@ -5,6 +5,7 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Notifications;
 using System.Text.Json;
 
 namespace RealEstateEval.Infrastructure.Services;
@@ -17,6 +18,8 @@ public class WorkOrderService : IWorkOrderService
     private readonly ApplicationDbContext _db;
     private readonly IPropertyTimelineService _timeline;
     private readonly IFailureService _failures;
+    private readonly INotificationService _notifications;
+    private readonly NotificationRecipientResolver _recipients;
     private readonly IWorkOrderVisibilityFilter _visibility;
     private readonly DatabaseOptions _dbOptions;
 
@@ -24,12 +27,16 @@ public class WorkOrderService : IWorkOrderService
         ApplicationDbContext db,
         IPropertyTimelineService timeline,
         IFailureService failures,
+        INotificationService notifications,
+        NotificationRecipientResolver recipients,
         IWorkOrderVisibilityFilter? visibility = null,
         IOptions<DatabaseOptions>? dbOptions = null)
     {
         _db = db;
         _timeline = timeline;
         _failures = failures;
+        _notifications = notifications;
+        _recipients = recipients;
         _visibility = visibility ?? new WorkOrderVisibilityFilter(db);
         _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
     }
@@ -437,6 +444,11 @@ public class WorkOrderService : IWorkOrderService
                 dueAt),
         }).ToList();
         await _timeline.RecordManyAsync(timelineEvents, cancellationToken);
+        await NotifySpecialistAssignedIfChangedAsync(
+            po,
+            previousEmail: null,
+            newEmail: workOrder.AssignmentSpecialistEmail,
+            cancellationToken);
 
         var loaded = await LoadWorkOrderTrackedAsync(po, cancellationToken, asNoTracking: true);
         return (loaded is null
@@ -470,6 +482,7 @@ public class WorkOrderService : IWorkOrderService
         }
 
         var promulgation = DateOnly.Parse(request.PromulgationDate);
+        var previousSpecialistEmail = entity.AssignmentSpecialistEmail;
 
         entity.AssignmentType = assignmentType;
         entity.PromulgationDate = promulgation;
@@ -480,12 +493,15 @@ public class WorkOrderService : IWorkOrderService
         entity.ExpectedPropertyCount = request.ExpectedPropertyCount;
         entity.PropertiesRegion = NormalizeOptionalText(request.PropertiesRegion);
         entity.WorkOrderDescription = NormalizeOptionalText(request.WorkOrderDescription);
-        entity.DueDateAt = BusinessDueDateCalculator.Compute(
-            promulgation,
-            request.ReceivedFromEnfathTime,
-            AssignmentTypeRules.BusinessDaysRequired(assignmentType));
+        // DueDateAt is the SLA snapshot taken when Enfath first hands us the work order. Editing
+        // header facts later must not move the deadline of work that is already in progress.
 
         await _db.SaveChangesAsync(cancellationToken);
+        await NotifySpecialistAssignedIfChangedAsync(
+            entity.PoNumber,
+            previousSpecialistEmail,
+            entity.AssignmentSpecialistEmail,
+            cancellationToken);
         return (await WithResolvedSpecialistAsync(WorkOrderMapper.ToDto(entity), cancellationToken), null);
     }
 
@@ -882,6 +898,39 @@ public class WorkOrderService : IWorkOrderService
 
     private static string? NormalizeOptionalText(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private async Task NotifySpecialistAssignedIfChangedAsync(
+        string poNumber,
+        string? previousEmail,
+        string? newEmail,
+        CancellationToken cancellationToken)
+    {
+        var next = newEmail?.Trim() ?? "";
+        if (next.Length == 0) return;
+
+        var previous = previousEmail?.Trim() ?? "";
+        if (string.Equals(previous, next, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        var userId = await _recipients.ResolveUserIdForEmailAsync(next, cancellationToken);
+        if (userId is null) return;
+
+        var po = poNumber.Trim();
+        await _notifications.CreateForUserAsync(
+            userId,
+            new CreateUserNotificationRequest
+            {
+                Title = "معاملة جديدة بانتظارك",
+                Body = $"أُسند إليك أمر العمل {po}.",
+                Tone = "info",
+                Href = $"/po/{Uri.EscapeDataString(po)}/property",
+                Category = "workflow",
+                EntityType = "work-order",
+                EntityId = po,
+                SourceEvent = $"work-order-assigned:{po}:{userId}",
+            },
+            cancellationToken);
+    }
 
     private static string? NormalizeRestrictionType(string? present, string? type)
     {

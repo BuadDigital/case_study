@@ -9,12 +9,27 @@ public class UserProfile
 
     public RegistrationSource RegistrationSource { get; set; }
     public ContractType ContractType { get; set; }
+    /// <summary>Canonical product role id (for example case-specialist).</summary>
+    public string? RoleId { get; set; }
     public string JobTitle { get; set; } = string.Empty;
+    public string? Department { get; set; }
+    public string? City { get; set; }
+    public string? NationalId { get; set; }
+    public string? AvatarUrl { get; set; }
+    /// <summary>employee | contractor; only meaningful for field-inspector.</summary>
+    public string? InspectorType { get; set; }
+    public bool HasCompensation { get; set; }
+    public decimal? FeeValueSar { get; set; }
+    public string? Iban { get; set; }
+    public string? TaxNumber { get; set; }
+    public string? CommercialRegistration { get; set; }
+    public DateOnly? JoinedAt { get; set; }
     public string? DistributionAssigneeId { get; set; }
     public string? ReviewerCityCoverageJson { get; set; }
     public string? PermissionLevel { get; set; }
     public UserStatus Status { get; set; } = UserStatus.Active;
     public DateTime CreatedAtUtc { get; set; }
+    public DateTime? UpdatedAtUtc { get; set; }
 
     public HrEmployeeProfile? HrEmployee { get; set; }
     public ProcServiceProviderProfile? ProcProvider { get; set; }

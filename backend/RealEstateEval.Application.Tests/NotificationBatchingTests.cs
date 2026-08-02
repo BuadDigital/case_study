@@ -75,14 +75,16 @@ public sealed class NotificationBatchingTests
         db.UserProfiles.AddRange(expected.Select(userId => new UserProfile
         {
             UserId = userId,
+            RoleId = "government-reviewer",
             JobTitle = "مراجع حكومي",
             Status = UserStatus.Active,
         }));
         db.UserProfiles.Add(new UserProfile
         {
             UserId = "inactive-reviewer",
+            RoleId = "government-reviewer",
             JobTitle = "مراجع حكومي",
-            Status = UserStatus.Inactive,
+            Status = UserStatus.Disabled,
         });
         await db.SaveChangesAsync();
 

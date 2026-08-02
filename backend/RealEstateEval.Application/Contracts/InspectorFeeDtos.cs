@@ -9,6 +9,7 @@ public class InspectorFeeRowDto
     public string? AssigneeId { get; set; }
     public string TaskKind { get; set; } = "";
     public string InspectorType { get; set; } = "";
+    public string SupervisingDepartment { get; set; } = "";
     public decimal AgreedFeeSar { get; set; }
     public decimal SupervisorDiscountSar { get; set; }
     public string? DiscountReason { get; set; }
@@ -28,6 +29,7 @@ public class InspectorFeeRowDto
     public DateTime? AccruedAtUtc { get; set; }
     public DateTime? WorkSubmittedAtUtc { get; set; }
     public DateTime? PoReceivedAtUtc { get; set; }
+    public string? SuspensionReason { get; set; }
     public bool IsEditable { get; set; }
     public bool CanSubmitToSupervisor { get; set; }
     public bool CanApproveToFinance { get; set; }
@@ -35,6 +37,8 @@ public class InspectorFeeRowDto
     public bool CanOfficeApproveDiscount { get; set; }
     public bool CanOfficeDispute { get; set; }
     public bool CanResolveDispute { get; set; }
+    public bool CanSuspend { get; set; }
+    public bool CanLiftSuspension { get; set; }
 }
 
 public class InspectorFeesSummaryDto
@@ -44,6 +48,8 @@ public class InspectorFeesSummaryDto
     public decimal AtFinanceSar { get; set; }
     public decimal DisbReqSar { get; set; }
     public decimal DisbursedSar { get; set; }
+    /// <summary>Withheld money. Deliberately outside the payable buckets above.</summary>
+    public decimal SuspendedSar { get; set; }
     public decimal TotalDiscountsSar { get; set; }
     public IReadOnlyList<InspectorFeeRowDto> Rows { get; set; } = [];
 }

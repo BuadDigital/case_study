@@ -28,6 +28,7 @@ public static class InspectorFeeRowMapper
             AssigneeId = ledger.AssigneeId,
             TaskKind = task.Kind.ToDbValue(),
             InspectorType = ledger.InspectorType,
+            SupervisingDepartment = ledger.SupervisingDepartment,
             AgreedFeeSar = ledger.AgreedFeeSar,
             SupervisorDiscountSar = discount,
             DiscountReason = discount > 0
@@ -81,6 +82,9 @@ public static class InspectorFeeRowMapper
                 && !ledger.ExcludedFromBatch
                 && task.Kind == WorkflowTaskKind.EngineeringSurvey
                 && ledger.BillingStatus == InspectorFeeBillingStatus.Disputed,
+            SuspensionReason = ledger.SuspensionReason,
+            CanSuspend = InspectorFeeBillingStatus.Suspendable.Contains(ledger.BillingStatus),
+            CanLiftSuspension = ledger.BillingStatus == InspectorFeeBillingStatus.Suspended,
         };
     }
 
@@ -96,6 +100,7 @@ public static class InspectorFeeRowMapper
             AtFinanceSar = SumNet(r => r.BillingStatus == InspectorFeeBillingStatus.AtFinance),
             DisbReqSar = SumNet(r => r.BillingStatus == InspectorFeeBillingStatus.DisbReq),
             DisbursedSar = SumNet(r => r.BillingStatus == InspectorFeeBillingStatus.Disbursed),
+            SuspendedSar = SumNet(r => r.BillingStatus == InspectorFeeBillingStatus.Suspended),
             TotalDiscountsSar = rows.Sum(r => r.SupervisorDiscountSar),
             Rows = rows,
         };
@@ -108,6 +113,7 @@ public static class InspectorFeeRowMapper
         AtFinanceSar = 0m,
         DisbReqSar = 0m,
         DisbursedSar = 0m,
+        SuspendedSar = 0m,
         TotalDiscountsSar = 0m,
         Rows = [],
     };

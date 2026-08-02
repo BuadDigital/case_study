@@ -353,10 +353,13 @@ enough) while its React components set inline `style` attributes (so `style-src`
 inline script allowed there. `SwaggerUiContentSecurityPolicyTests` fails if a
 Swashbuckle upgrade introduces an inline script or a cross-origin asset.
 
-HSTS and HTTPS redirection are honest about the current topology: TLS terminates at
-nginx, which speaks plain HTTP on `:80`, so no `Strict-Transport-Security` is emitted
-and `UseHttpsRedirection` stays inert until an HTTPS port exists. Once nginx serves TLS
-and forwards `X-Forwarded-Proto: https`, HSTS starts flowing with no code change.
+TLS terminates at nginx, which serves `:443` from the host certificate and redirects
+`:80` with a `308`. The application containers never see the private key. Because the
+proxy forwards `X-Forwarded-Proto: https` and `ASPNETCORE_FORWARDEDHEADERS_ENABLED` is
+on, `UseHttpsRedirection` and the HSTS gate both treat proxied requests as HTTPS.
+nginx owns the `Strict-Transport-Security` header on public responses and strips the
+copy coming back from the gateway, so a browser never receives it twice. The middleware
+still emits it for a service reached directly on the private network.
 
 ### CORS (`Cors`)
 

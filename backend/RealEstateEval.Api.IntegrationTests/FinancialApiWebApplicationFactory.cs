@@ -64,15 +64,14 @@ internal sealed class StubPartyFeePricingService : IPartyFeePricingService
             },
         ]);
 
-    public Task<PartyFeePricingDto> GetActiveAsync(CancellationToken cancellationToken = default)
-        => Task.FromResult(Sample());
+    public Task<PartyFeePricingDto> GetActiveAsync(CancellationToken cancellationToken = default) => Task.FromResult(Sample());
 
-    public Task<PartyFeePricingDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
-        => Task.FromResult<PartyFeePricingDto?>(id == Sample().Id ? Sample() : null);
+    public Task<PartyFeePricingDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult<PartyFeePricingDto?>(id == Sample().Id ? Sample() : null);
 
     public Task<PartyFeePricingDto> CreateAsync(
         CreatePartyFeePricingTableRequest request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string actorId = "system")
     {
         var row = Sample();
         row.Id = Guid.NewGuid();
@@ -87,13 +86,27 @@ internal sealed class StubPartyFeePricingService : IPartyFeePricingService
     public Task<PartyFeePricingDto> SaveAsync(
         Guid id,
         PartyFeePricingDto request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string actorId = "system")
     {
         request.Id = id;
         return Task.FromResult(request);
     }
 
-    public Task<PartyFeePricingDto> ActivateAsync(Guid id, CancellationToken cancellationToken = default)
+    public Task<PartyFeePricingDto> ReviseAsync(
+        Guid sourceId,
+        PartyFeePricingDto request,
+        CancellationToken cancellationToken = default,
+        string actorId = "system")
+    {
+        request.Id = Guid.NewGuid();
+        return Task.FromResult(request);
+    }
+
+    public Task<PartyFeePricingDto> ActivateAsync(
+        Guid id,
+        CancellationToken cancellationToken = default,
+        string actorId = "system")
     {
         var row = Sample();
         row.Id = id;
@@ -108,7 +121,10 @@ internal sealed class StubPartyFeePricingService : IPartyFeePricingService
     public const string InternalFailureMessage =
         "Cannot delete the last pricing table in this category. [table=fee_pricing_tables]";
 
-    public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public Task<bool> DeleteAsync(
+        Guid id,
+        CancellationToken cancellationToken = default,
+        string actorId = "system")
     {
         if (id == ThrowingDeleteId)
             throw new InvalidOperationException(InternalFailureMessage);
@@ -123,7 +139,8 @@ internal sealed class StubPartyFeePricingService : IPartyFeePricingService
     public Task<PartyFeePricingDto> SetAssignmentsAsync(
         Guid tableId,
         IReadOnlyList<string> assigneeIds,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string actorId = "system")
     {
         var row = Sample();
         row.Id = tableId;
@@ -132,13 +149,13 @@ internal sealed class StubPartyFeePricingService : IPartyFeePricingService
         return Task.FromResult(row);
     }
 
-    public Task<decimal?> ResolveDefaultFeeAsync(
+    public Task<ResolvedPartyFee> ResolveDefaultFeeAsync(
         WorkflowTaskKind taskKind,
         string partyType,
         decimal? areaM2 = null,
         string? assigneeId = null,
         CancellationToken cancellationToken = default)
-        => Task.FromResult<decimal?>(0m);
+        => Task.FromResult(ResolvedPartyFee.Unresolved);
 
     private static PartyFeePricingDto Sample() => new()
     {
@@ -155,7 +172,6 @@ internal sealed class StubPartyFeePricingService : IPartyFeePricingService
             new PartyFeePricingTierDto { SortOrder = 4, MaxAreaM2 = null, FeeSar = 4000 },
         ],
         GovernmentReviewFeeSar = 350,
-        KeyReceiptFeeSar = 350,
         FieldInspectorIndividualFeeSar = 400,
         FieldInspectorOrganizationFeeSar = 500,
     };
