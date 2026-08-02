@@ -11,7 +11,12 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 /// </summary>
 internal static class PlatformModel
 {
-    public static ModelBuilder ApplyPlatformModel(this ModelBuilder builder)
+    /// <param name="ownsMigrations">
+    /// True only for <see cref="PlatformDbContext"/>. The legacy context mirrors platform tables
+    /// for cross-boundary reads and must not scaffold create/alter ops for tables Platform owns
+    /// (e.g. OrganizationSettings, FieldSyncStatuses).
+    /// </param>
+    public static ModelBuilder ApplyPlatformModel(this ModelBuilder builder, bool ownsMigrations = true)
     {
         builder.Entity<CourtCatalogEntry>(e =>
         {
@@ -98,13 +103,21 @@ internal static class PlatformModel
 
         builder.Entity<OrganizationSettings>(e =>
         {
-            e.ToTable("OrganizationSettings", DatabaseSchemas.Platform);
+            if (ownsMigrations)
+                e.ToTable("OrganizationSettings", DatabaseSchemas.Platform);
+            else
+                e.ToTable("OrganizationSettings", DatabaseSchemas.Platform, t => t.ExcludeFromMigrations());
+
             e.Property(x => x.SettingsJson).HasColumnType("jsonb");
         });
 
         builder.Entity<FieldSyncStatus>(e =>
         {
-            e.ToTable("FieldSyncStatuses", DatabaseSchemas.Platform);
+            if (ownsMigrations)
+                e.ToTable("FieldSyncStatuses", DatabaseSchemas.Platform);
+            else
+                e.ToTable("FieldSyncStatuses", DatabaseSchemas.Platform, t => t.ExcludeFromMigrations());
+
             e.HasIndex(x => x.UserId).IsUnique();
             e.Property(x => x.UserId).HasMaxLength(128);
             e.Property(x => x.DisplayName).HasMaxLength(256);

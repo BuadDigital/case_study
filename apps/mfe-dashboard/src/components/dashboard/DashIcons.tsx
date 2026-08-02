@@ -1,6 +1,13 @@
 "use client";
 
-import type { DashActivityIcon } from "../../lib/dashboard-mock";
+export type DashActivityIcon =
+  | "bell"
+  | "file"
+  | "eye"
+  | "pin"
+  | "tri"
+  | "mail"
+  | "check";
 
 export function DashActivityIconSvg({
   name,

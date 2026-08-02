@@ -91,7 +91,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
         builder
             .ApplyIdentityModel()
             .ApplyAttachmentsModel()
-            .ApplyPlatformModel()
+            .ApplyPlatformModel(ownsMigrations: false)
             .ApplyValuationModel()
             .ApplyAuditModel(ownsMigrations: false)
             .ApplyOutboxModel()
