@@ -70,16 +70,19 @@ public static class InspectorFeeRowMapper
                 && task.Kind != WorkflowTaskKind.EngineeringSurvey,
             CanOfficeApproveDiscount = workStatus == "done"
                 && !ledger.ExcludedFromBatch
+                && !InspectorFeeRules.IsEmployee(ledger.InspectorType)
                 && task.Kind == WorkflowTaskKind.EngineeringSurvey
                 && ledger.BillingStatus == InspectorFeeBillingStatus.OfficeReview
                 && discount > 0m,
             CanOfficeDispute = workStatus == "done"
                 && !ledger.ExcludedFromBatch
+                && !InspectorFeeRules.IsEmployee(ledger.InspectorType)
                 && task.Kind == WorkflowTaskKind.EngineeringSurvey
                 && ledger.BillingStatus == InspectorFeeBillingStatus.OfficeReview
                 && discount > 0m,
             CanResolveDispute = workStatus == "done"
                 && !ledger.ExcludedFromBatch
+                && !InspectorFeeRules.IsEmployee(ledger.InspectorType)
                 && task.Kind == WorkflowTaskKind.EngineeringSurvey
                 && ledger.BillingStatus == InspectorFeeBillingStatus.Disputed,
             SuspensionReason = ledger.SuspensionReason,
