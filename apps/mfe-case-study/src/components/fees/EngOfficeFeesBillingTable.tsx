@@ -284,7 +284,7 @@ export function EngOfficeFeesBillingTable({
               <Tr hoverable={false}>
                 <Td
                   colSpan={7}
-                  className="!py-10 text-center text-[13px] text-text-3"
+                  className="!py-5 text-center text-[13px] text-text-3"
                 >
                   لا توجد بنود مطابقة.
                 </Td>
@@ -401,7 +401,7 @@ export function EngOfficeFeesBillingTable({
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <p className="m-0 py-8 text-center text-[13px] text-text-3">
+          <p className="m-0 py-4 text-center text-[13px] text-text-3">
             لا توجد بنود مطابقة.
           </p>
         ) : (

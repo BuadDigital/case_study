@@ -1,15 +1,21 @@
 "use client";
 
 import { useMemo } from "react";
-import { formatDateAr } from "@case-study/mfe";
 import {
   failureRecordTitle,
-  failureSeverityLabel,
   failureStatusLabel,
   failuresForProperty,
 } from "@failures/mfe";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
+import {
+  engBoxClassName,
+  EngStatusPill,
+} from "./EngineeringSurveyHtmlPrimitives";
 
+/**
+ * Case Study.html eng survey failures log:
+ * ENG_BOX rows with text + pill «مفتوح», or empty line.
+ */
 export function EngineeringSurveyFailuresHistory({
   poNumber,
   propertyId,
@@ -32,32 +38,36 @@ export function EngineeringSurveyFailuresHistory({
 
   if (rows.length === 0) {
     return (
-      <p className="mt-3 text-xs leading-relaxed text-text-3">
-        لا توجد تعذرات مسجلة على هذا العقار بعد.
+      <p className="m-0 text-xs leading-relaxed text-text-3">
+        لا توجد تعذرات مسجلة على هذا العقار.
       </p>
     );
   }
 
   return (
-    <ul className="mt-3 space-y-2">
-      {rows.map((failure) => (
-        <li
-          key={failure.id}
-          className="rounded-lg border border-border bg-surface-2 px-3 py-2.5 text-xs"
-        >
-          <p className="m-0 font-medium text-text">
-            {failureRecordTitle(failure)}
-          </p>
-          {failure.internalNote?.trim() ? (
-            <p className="mt-1 mb-0 text-text-2">{failure.internalNote.trim()}</p>
-          ) : null}
-          <p className="mt-1.5 mb-0 text-[11px] text-text-3">
-            {failureSeverityLabel(failure.severity)} ·{" "}
-            {failureStatusLabel(failure.status)} ·{" "}
-            {formatDateAr(failure.updatedAt.slice(0, 10))}
-          </p>
-        </li>
-      ))}
-    </ul>
+    <div className="grid gap-2">
+      {rows.map((failure) => {
+        const text =
+          failure.internalNote?.trim() || failureRecordTitle(failure);
+        const open =
+          failure.status === "internal" ||
+          failure.status === "review" ||
+          failure.status === "suspended";
+        return (
+          <div
+            key={failure.id}
+            className={`${engBoxClassName} flex items-start justify-between gap-2.5`}
+          >
+            <span className="min-w-0 flex-1 text-xs leading-relaxed text-text">
+              {text}
+            </span>
+            <EngStatusPill
+              label={open ? "مفتوح" : failureStatusLabel(failure.status)}
+              color={open ? "#d9694f" : "#3f8f5f"}
+            />
+          </div>
+        );
+      })}
+    </div>
   );
 }

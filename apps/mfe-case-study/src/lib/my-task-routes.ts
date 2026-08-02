@@ -66,7 +66,17 @@ export function isPropertyAppraisalWorkspacePath(pathname: string): boolean {
   return parts[0] === "property-appraisal" && parts.length >= 2;
 }
 
-/** Full-page workspace for المعاين الميداني (معاينة العقار). */
+/** Full-page workspace for المعاين الميداني — المسار الرسمي تحت المعاملات النشطة. */
+export function activeInspectionWorkspacePath(taskId: string): string {
+  return `/active-inspection/${encodeURIComponent(taskId)}`;
+}
+
+export function isActiveInspectionWorkspacePath(pathname: string): boolean {
+  const parts = pathname.split("/").filter(Boolean);
+  return parts[0] === "active-inspection" && parts.length >= 2;
+}
+
+/** Full-page workspace for المعاين الميداني (معاينة العقار — شاشة يتيمة). */
 export function propertyInspectionWorkspacePath(taskId: string): string {
   return `/property-inspection/${encodeURIComponent(taskId)}`;
 }
@@ -74,6 +84,16 @@ export function propertyInspectionWorkspacePath(taskId: string): string {
 export function isPropertyInspectionWorkspacePath(pathname: string): boolean {
   const parts = pathname.split("/").filter(Boolean);
   return parts[0] === "property-inspection" && parts.length >= 2;
+}
+
+/** Resolve full-page inspection workspace from party task page id. */
+export function fieldInspectionWorkspacePath(
+  pageId: PageId,
+  taskId: string,
+): string {
+  return pageId === "property-inspection"
+    ? propertyInspectionWorkspacePath(taskId)
+    : activeInspectionWorkspacePath(taskId);
 }
 
 /** Full-page workspace for legacy party government-review tasks (CDO / in-flight). */
@@ -138,7 +158,7 @@ export function partyTaskWorkspacePath(task: WorkflowTask): string | undefined {
       if (propertyId) {
         return poPropertyInspectionInputPath(task.poNumber, propertyId);
       }
-      return propertyInspectionWorkspacePath(task.id);
+      return activeInspectionWorkspacePath(task.id);
     }
     case "engineering-survey":
       return activeSurveyWorkspacePath(task.id);

@@ -66,7 +66,8 @@ export function useActiveTransactionPageSituation(
   const needsPo = Boolean(cards && pageId !== "bourse-inquiry" && !isFeesPage);
   const needsBourse = pageId === "bourse-inquiry";
   const needsFailures = pageId === "bourse-inquiry";
-  const needsInspectionWorkspaces = pageId === "property-inspection";
+  const needsInspectionWorkspaces =
+    pageId === "property-inspection" || pageId === "active-inspection";
   const needsPartyPrefetch = Boolean(pageId && PARTY_PAGE_IDS.has(pageId));
 
   const isSupervisorFees =

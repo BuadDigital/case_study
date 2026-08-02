@@ -138,6 +138,7 @@ function dtoToProperty(dto: WorkOrderPropertyDto): PoPropertyIntake {
     circuitId: dto.circuitId ?? "",
     regionId: dto.regionId ?? "",
     cityId: dto.cityId ?? "",
+    districtId: "",
     classification: dto.classification ?? "",
     propertyType: dto.propertyType ?? "",
     assignmentDocFileNames: dto.assignmentDocFileNames ?? [],
@@ -463,10 +464,11 @@ export function priorDeedToPropertyIntake(
   return {
     ...enfath,
     city: prior.city?.trim() ?? "",
-    region: prior.region?.trim() ?? "",
-    regionId: prior.regionId?.trim() ?? "",
-    cityId: prior.cityId?.trim() ?? "",
+    region: "",
+    regionId: "",
+    cityId: "",
     district: prior.district?.trim() ?? "",
+    districtId: "",
     classification: prior.classification?.trim() ?? "",
     propertyType: prior.propertyType?.trim() ?? "",
     area: prior.area?.trim() ?? "",
@@ -522,6 +524,7 @@ function mergePriorOntoExisting(
     circuitId: draft.circuitId || existing.circuitId,
     regionId: draft.regionId || existing.regionId,
     cityId: draft.cityId || existing.cityId,
+    districtId: draft.districtId || existing.districtId,
     bourseDataCompleted: false,
   };
 }

@@ -19,6 +19,7 @@ import {
   useToast,
 } from "@platform/design-system";
 import { useDistributionAssigneesQuery } from "@settings/mfe/query/settings-queries";
+import { displayPersonName as sharedDisplayPersonName } from "@platform/app-shared/prototype/person-display-name";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "@case-study/mfe";
 import {
   confirmEnvelopeAssignment,
@@ -83,12 +84,7 @@ function formatDate(iso: string): string {
 
 /** Hide raw user ids that were wrongly stored as display names. */
 function displayPersonName(value: string | null | undefined): string {
-  const v = value?.trim() || "";
-  if (!v) return "—";
-  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)) {
-    return "—";
-  }
-  return v;
+  return sharedDisplayPersonName(value, { fallback: "—" });
 }
 
 function EnvIcon() {

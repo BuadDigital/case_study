@@ -17,7 +17,7 @@ import {
   partyTaskPath,
   partyTaskTaskPath,
   propertyAppraisalWorkspacePath,
-  propertyInspectionWorkspacePath,
+  fieldInspectionWorkspacePath,
   valuationCoordinationWorkspacePath,
 } from "../lib/my-task-routes";
 import type { PageId } from "@platform/types";
@@ -76,7 +76,8 @@ function queueConfig(
       ...base,
       hidePageTitle: true,
       tableHint: "اضغط الصف لفتح نموذج المعاينة في صفحة مستقلة.",
-      fullPageTaskPath: propertyInspectionWorkspacePath,
+      fullPageTaskPath: (taskId) =>
+        fieldInspectionWorkspacePath(def.pageId, taskId),
       statusColumnLabel: "الحالة",
       getTaskStatusBadge: (task) =>
         fieldInspectionTaskStatusBadge(task.id, task.status),
@@ -156,7 +157,7 @@ function PartyActiveTaskViewBody({
       return;
     }
     if (def?.kind === "field-inspection") {
-      router.replace(propertyInspectionWorkspacePath(taskId));
+      router.replace(fieldInspectionWorkspacePath(def.pageId, taskId));
       return;
     }
     if (def?.kind === "government-review") {

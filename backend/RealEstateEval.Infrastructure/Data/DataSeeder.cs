@@ -51,6 +51,7 @@ public static class DataSeeder
                 cancellationToken);
             await BackfillReviewerCityCoverageAsync(db, userManager, cancellationToken);
             await BackfillDistributionAssigneeIdsAsync(db, userManager, cancellationToken);
+            await BackfillFieldInspectorEmployeeNumbersAsync(db, userManager, cancellationToken);
             try
             {
                 await BackfillPartyChildAssigneeIdsAsync(db, logger, cancellationToken);
@@ -546,6 +547,14 @@ public static class DataSeeder
             ["survey.jeddah@ejadah.dev"] = "eo-jeddah",
         };
 
+    /// <summary>HR membership / badge numbers shown as «رقم العضوية».</summary>
+    private static readonly Dictionary<string, string> EmployeeNumbersByEmail =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["ahmed@ejadah.dev"] = "FI-002",
+            ["abdullah.abdulmane@ejadah.dev"] = "FI-001",
+        };
+
     private static readonly Dictionary<string, string> DemoMobileByLogin =
         new(StringComparer.OrdinalIgnoreCase)
         {
@@ -660,6 +669,85 @@ public static class DataSeeder
                 continue;
 
             profile.DistributionAssigneeId = assigneeId;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task BackfillFieldInspectorEmployeeNumbersAsync(
+        ApplicationDbContext db,
+        UserManager<ApplicationUser> userManager,
+        CancellationToken cancellationToken)
+    {
+        foreach (var (email, employeeNumber) in EmployeeNumbersByEmail)
+        {
+            var user = await userManager.FindByEmailAsync(email.Trim());
+            if (user is null) continue;
+
+            var profile = await db.UserProfiles
+                .Include(p => p.HrEmployee)
+                .FirstOrDefaultAsync(p => p.UserId == user.Id, cancellationToken);
+            if (profile is null) continue;
+
+            if (profile.HrEmployee is null)
+            {
+                profile.HrEmployee = new HrEmployeeProfile
+                {
+                    UserId = user.Id,
+                    EmploymentType = profile.ContractType == ContractType.Internal
+                        ? "دوام كامل"
+                        : "متعاون",
+                    Department = profile.Department ?? "إدارة التقييم العقاري",
+                    EmployeeNumber = employeeNumber,
+                };
+                db.HrEmployeeProfiles.Add(profile.HrEmployee);
+            }
+            else if (!string.Equals(
+                         profile.HrEmployee.EmployeeNumber,
+                         employeeNumber,
+                         StringComparison.Ordinal))
+            {
+                profile.HrEmployee.EmployeeNumber = employeeNumber;
+            }
+
+            if (profile.JobTitle == "معاين ميداني")
+            {
+                profile.HasCompensation = true;
+                if (profile.InspectorType == "employee" && profile.FeeValueSar is null)
+                    profile.FeeValueSar = 100m;
+            }
+        }
+
+        // Cooperator fee rates on the active field-inspector pricing table.
+        var fiTable = await db.PartyFeePricingTables
+            .FirstOrDefaultAsync(
+                t => t.Category == "field-inspector" && t.IsActive,
+                cancellationToken);
+        if (fiTable is not null
+            && fiTable.FieldInspectorIndividualFeeSar <= 0
+            && fiTable.FieldInspectorOrganizationFeeSar <= 0)
+        {
+            fiTable.FieldInspectorIndividualFeeSar = 400m;
+            fiTable.FieldInspectorOrganizationFeeSar = 500m;
+            fiTable.UpdatedAtUtc = DateTime.UtcNow;
+        }
+
+        if (fiTable is not null)
+        {
+            var hasAhmed = await db.PartyFeePricingAssignments.AnyAsync(
+                a => a.Category == "field-inspector" && a.AssigneeId == "fi-ahmed",
+                cancellationToken);
+            if (!hasAhmed)
+            {
+                db.PartyFeePricingAssignments.Add(new PartyFeePricingAssignment
+                {
+                    Id = Guid.NewGuid(),
+                    TableId = fiTable.Id,
+                    Category = "field-inspector",
+                    AssigneeId = "fi-ahmed",
+                    UpdatedAtUtc = DateTime.UtcNow,
+                });
+            }
         }
 
         await db.SaveChangesAsync(cancellationToken);
@@ -911,6 +999,11 @@ public static class DataSeeder
 
                 DistributionAssigneeId = DistributionAssigneeIdsByEmail.GetValueOrDefault(normalizedEmail),
 
+                HasCompensation = seed.JobTitle is "معاين ميداني",
+                FeeValueSar = seed.JobTitle == "معاين ميداني"
+                    ? seed.ContractType == ContractType.Internal ? 100m : null
+                    : null,
+
                 PermissionLevel = seed.PermissionLevel,
 
                 Status = UserStatus.Active,
@@ -928,6 +1021,8 @@ public static class DataSeeder
                     Department = seed.Department,
 
                     Section = seed.Section,
+
+                    EmployeeNumber = EmployeeNumbersByEmail.GetValueOrDefault(normalizedEmail),
 
                 },
 
@@ -961,6 +1056,13 @@ public static class DataSeeder
             profile.DistributionAssigneeId =
                 DistributionAssigneeIdsByEmail.GetValueOrDefault(normalizedEmail);
 
+            if (seed.JobTitle == "معاين ميداني")
+            {
+                profile.HasCompensation = true;
+                if (seed.ContractType == ContractType.Internal && profile.FeeValueSar is null)
+                    profile.FeeValueSar = 100m;
+            }
+
             ApplyReviewerCityCoverage(profile, normalizedEmail);
 
             profile.PermissionLevel = seed.PermissionLevel;
@@ -990,6 +1092,9 @@ public static class DataSeeder
             profile.HrEmployee.Department = seed.Department;
 
             profile.HrEmployee.Section = seed.Section;
+
+            if (EmployeeNumbersByEmail.TryGetValue(normalizedEmail, out var employeeNumber))
+                profile.HrEmployee.EmployeeNumber = employeeNumber;
 
         }
 

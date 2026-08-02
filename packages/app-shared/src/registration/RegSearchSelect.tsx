@@ -33,6 +33,14 @@ type Props = {
     options: readonly RegSearchSelectOption[],
     query: string,
   ) => RegSearchSelectOption[];
+  /** بحث من الخادم — يُستدعى عند تغيّر نص البحث (بدون فلترة محلية إن وُجد). */
+  onQueryChange?: (query: string) => void;
+  /** تعطيل الفلترة المحلية (للنتائج القادمة من API). */
+  serverFiltered?: boolean;
+  /** خيار إضافة اسم جديد عند عدم وجود نتائج مطابقة. */
+  createLabel?: (query: string) => string;
+  onCreate?: (query: string) => void;
+  loading?: boolean;
   inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
 };
 
@@ -49,6 +57,11 @@ export function RegSearchSelect({
   placeholder = "ابحث…",
   hint,
   filterOptions,
+  onQueryChange,
+  serverFiltered = false,
+  createLabel,
+  onCreate,
+  loading = false,
   inputMode,
 }: Props) {
   const listId = useId();
@@ -63,11 +76,28 @@ export function RegSearchSelect({
   }, [options, value]);
 
   const filtered = useMemo(() => {
+    if (serverFiltered) return [...options];
     if (filterOptions) return filterOptions(options, query);
     const q = query.trim().toLowerCase();
     if (!q) return [...options];
     return options.filter((o) => o.label.toLowerCase().includes(q));
-  }, [filterOptions, options, query]);
+  }, [filterOptions, options, query, serverFiltered]);
+
+  const trimmedQuery = query.trim();
+  const showCreate =
+    Boolean(createLabel && onCreate && trimmedQuery.length >= 2) &&
+    !filtered.some((o) => {
+      const label = o.label.trim();
+      return (
+        label === trimmedQuery ||
+        label.startsWith(`${trimmedQuery} `) ||
+        label.startsWith(`${trimmedQuery} ·`) ||
+        label.startsWith(`${trimmedQuery} ★`) ||
+        label.startsWith(`${trimmedQuery} (`)
+      );
+    });
+
+  const rowCount = filtered.length + (showCreate ? 1 : 0);
 
   useEffect(() => {
     if (!open) setQuery("");
@@ -94,6 +124,13 @@ export function RegSearchSelect({
     },
     [onChange],
   );
+
+  const create = useCallback(() => {
+    if (!onCreate || !trimmedQuery) return;
+    onCreate(trimmedQuery);
+    setOpen(false);
+    setQuery("");
+  }, [onCreate, trimmedQuery]);
 
   const showValue = open ? query : selectedLabel;
 
@@ -125,10 +162,13 @@ export function RegSearchSelect({
             if (disabled) return;
             setOpen(true);
             setQuery("");
+            onQueryChange?.("");
           }}
           onChange={(e) => {
-            setQuery(e.target.value);
+            const next = e.target.value;
+            setQuery(next);
             setOpen(true);
+            onQueryChange?.(next);
           }}
           onKeyDown={(e) => {
             if (disabled) return;
@@ -136,15 +176,18 @@ export function RegSearchSelect({
               e.preventDefault();
               setOpen(true);
               setHighlight((h) =>
-                filtered.length === 0 ? 0 : Math.min(h + 1, filtered.length - 1),
+                rowCount === 0 ? 0 : Math.min(h + 1, rowCount - 1),
               );
             } else if (e.key === "ArrowUp") {
               e.preventDefault();
               setHighlight((h) => Math.max(h - 1, 0));
             } else if (e.key === "Enter") {
-              if (open && filtered[highlight]) {
-                e.preventDefault();
+              if (!open) return;
+              e.preventDefault();
+              if (highlight < filtered.length && filtered[highlight]) {
                 pick(filtered[highlight]!.value);
+              } else if (showCreate) {
+                create();
               }
             } else if (e.key === "Escape") {
               setOpen(false);
@@ -161,28 +204,48 @@ export function RegSearchSelect({
               "border border-border bg-surface py-1 shadow-md",
             )}
           >
-            {filtered.length === 0 ? (
+            {loading ? (
+              <li className="px-2.5 py-2 text-[11px] text-text-3">جاري البحث…</li>
+            ) : null}
+            {!loading && filtered.length === 0 && !showCreate ? (
               <li className="px-2.5 py-2 text-[11px] text-text-3">لا نتائج</li>
-            ) : (
-              filtered.map((opt, i) => (
-                <li key={opt.value} role="option" aria-selected={opt.value === value}>
-                  <button
-                    type="button"
-                    className={cn(
-                      "flex w-full px-2.5 py-1.5 text-start text-xs text-text",
-                      i === highlight || opt.value === value
-                        ? "bg-surface-2 font-semibold"
-                        : "hover:bg-surface-2",
-                    )}
-                    onMouseEnter={() => setHighlight(i)}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => pick(opt.value)}
-                  >
-                    {opt.label}
-                  </button>
-                </li>
-              ))
-            )}
+            ) : null}
+            {filtered.map((opt, i) => (
+              <li key={opt.value} role="option" aria-selected={opt.value === value}>
+                <button
+                  type="button"
+                  className={cn(
+                    "flex w-full px-2.5 py-1.5 text-start text-xs text-text",
+                    i === highlight || opt.value === value
+                      ? "bg-surface-2 font-semibold"
+                      : "hover:bg-surface-2",
+                  )}
+                  onMouseEnter={() => setHighlight(i)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => pick(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              </li>
+            ))}
+            {showCreate ? (
+              <li role="option">
+                <button
+                  type="button"
+                  className={cn(
+                    "flex w-full px-2.5 py-1.5 text-start text-xs font-semibold text-primary",
+                    highlight === filtered.length
+                      ? "bg-surface-2"
+                      : "hover:bg-surface-2",
+                  )}
+                  onMouseEnter={() => setHighlight(filtered.length)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={create}
+                >
+                  {createLabel!(trimmedQuery)}
+                </button>
+              </li>
+            ) : null}
           </ul>
         ) : null}
       </div>

@@ -4,7 +4,11 @@ export { FailuresView } from "./views/FailuresView";
 export { FailureTypesView } from "./views/FailureTypesView";
 export { FailureReportForm } from "./components/failures/FailureReportForm";
 export { FailureRaisePanel } from "./components/failures/FailureRaisePanel";
-export { FailureRaiseFields } from "./components/failures/FailureRaiseFields";
+export {
+  FailureRaiseFields,
+  failurePayloadFromDescription,
+  FAILURE_HTML_DEFAULT_PROBLEM_TYPE_ID,
+} from "./components/failures/FailureRaiseFields";
 export {
   FAILURE_RAISER_SPECIALIST,
   FAILURE_RAISER_SUPERVISOR,

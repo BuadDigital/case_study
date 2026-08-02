@@ -94,10 +94,12 @@ public sealed class OperationsTaskService : IOperationsTaskService
 
         var links = await LoadLinkedEnvelopeIdsAsync(rows.Select(r => r.Id), cancellationToken);
         var visitFees = await LoadVisitFeeAmountsAsync(rows.Select(r => r.Id), cancellationToken);
+        var peopleNames = await LoadPeopleNamesAsync(rows, cancellationToken);
         return rows.Select(r => Map(
             r,
             links.GetValueOrDefault(r.Id),
-            visitFees.GetValueOrDefault(r.Id))).ToList();
+            visitFees.GetValueOrDefault(r.Id),
+            peopleNames)).ToList();
     }
 
     public async Task<OperationsTaskDto?> GetAsync(Guid id, CancellationToken cancellationToken = default)
@@ -170,6 +172,11 @@ public sealed class OperationsTaskService : IOperationsTaskService
             return (null, "مبلغ أتعاب الزيارة يخص مهام زيارة المحكمة فقط.");
         }
 
+        var resolvedCreatorName = await ResolveActorDisplayNameAsync(
+            createdBy,
+            createdByName,
+            cancellationToken);
+
         var strategy = _db.Database.CreateExecutionStrategy();
         return await strategy.ExecuteAsync(async () =>
         {
@@ -191,7 +198,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
                 deedsJson: deeds.Count > 0 ? JsonSerializer.Serialize(deeds, JsonOpts) : null,
                 poNumber: poNumber,
                 assigneeName: request.AssigneeName?.Trim(),
-                createdByName: createdByName?.Trim(),
+                createdByName: resolvedCreatorName,
                 reference: reference,
                 letterRowsJson: letterRows.Count > 0
                     ? JsonSerializer.Serialize(letterRows, JsonOpts)
@@ -215,7 +222,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
             await _db.SaveChangesAsync(cancellationToken);
             await tx.CommitAsync(cancellationToken);
             await NotifyAssigneeAsync(entity, cancellationToken);
-            return ((OperationsTaskDto?)Map(entity), (string?)null);
+            return ((OperationsTaskDto?)await MapAsync(entity, cancellationToken), (string?)null);
         });
     }
 
@@ -1072,10 +1079,44 @@ public sealed class OperationsTaskService : IOperationsTaskService
     {
         var links = await LoadLinkedEnvelopeIdsAsync([row.Id], cancellationToken);
         var visitFees = await LoadVisitFeeAmountsAsync([row.Id], cancellationToken);
+        var peopleNames = await LoadPeopleNamesAsync([row], cancellationToken);
         return Map(
             row,
             links.GetValueOrDefault(row.Id),
-            visitFees.GetValueOrDefault(row.Id));
+            visitFees.GetValueOrDefault(row.Id),
+            peopleNames);
+    }
+
+    private async Task<string> ResolveActorDisplayNameAsync(
+        string userId,
+        string? claimName,
+        CancellationToken cancellationToken)
+    {
+        if (PersonLabelResolver.LooksLikePersonName(claimName))
+            return claimName!.Trim();
+
+        var fromDb = await PersonLabelResolver.ResolveAsync(_db, userId, cancellationToken);
+        return PersonLabelResolver.LooksLikePersonName(fromDb) ? fromDb : "";
+    }
+
+    private async Task<IReadOnlyDictionary<string, string>> LoadPeopleNamesAsync(
+        IReadOnlyList<OperationsTask> rows,
+        CancellationToken cancellationToken)
+    {
+        if (rows.Count == 0)
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        return await PersonLabelResolver.ResolveManyAsync(
+            _db,
+            rows.SelectMany(r => new[]
+            {
+                r.CreatedBy,
+                r.CreatedByName,
+                r.AssigneeName,
+                r.OriginalAssigneeName,
+                r.CreditAssigneeName,
+            }),
+            cancellationToken);
     }
 
     private async Task<Dictionary<Guid, decimal?>> LoadVisitFeeAmountsAsync(
@@ -1113,42 +1154,54 @@ public sealed class OperationsTaskService : IOperationsTaskService
     private static OperationsTaskDto Map(
         OperationsTask row,
         Guid? linkedEnvelopeId = null,
-        decimal? visitFeeAmountSar = null) => new()
+        decimal? visitFeeAmountSar = null,
+        IReadOnlyDictionary<string, string>? peopleNames = null)
     {
-        Id = row.Id.ToString(),
-        DisplayId = row.DisplayId,
-        Type = row.Type.ToDbValue(),
-        Title = row.Title,
-        Description = row.Description,
-        Scope = row.Scope.ToDbValue(),
-        Deeds = DeserializeStrings(row.DeedsJson),
-        PoNumber = row.PoNumber,
-        AssigneeId = row.AssigneeId,
-        AssigneeName = row.AssigneeName,
-        CreatedBy = row.CreatedBy,
-        CreatedByName = row.CreatedByName,
-        Status = row.Status.ToDbValue(),
-        PrevStatus = row.PrevStatus.ToDbValue(),
-        Priority = row.Priority.ToDbValue(),
-        DueAt = row.DueAtUtc.ToString("O"),
-        CreatedAt = row.CreatedAtUtc.ToString("O"),
-        UpdatedAt = row.UpdatedAtUtc.ToString("O"),
-        Reference = row.Reference,
-        LetterRows = DeserializeLetterRows(row.LetterRowsJson),
-        Comments = DeserializeComments(row.CommentsJson),
-        Reminders = DeserializeReminders(row.RemindersJson),
-        CourtVisitResult = DeserializeCourtVisitResult(row.CourtVisitResultJson),
-        PauseReason = row.PauseReason,
-        PausedAt = row.PausedAtUtc?.ToString("O"),
-        OriginalAssigneeId = row.OriginalAssigneeId,
-        OriginalAssigneeName = row.OriginalAssigneeName,
-        CreditAssigneeId = row.CreditAssigneeId,
-        CreditAssigneeName = row.CreditAssigneeName,
-        ReceiptConfirmedAt = row.ReceiptConfirmedAtUtc?.ToString("O"),
-        CancelReason = row.CancelReason,
-        LinkedEnvelopeId = linkedEnvelopeId?.ToString(),
-        VisitFeeAmountSar = visitFeeAmountSar ?? row.AgreedVisitFeeSar,
-    };
+        var names = peopleNames
+            ?? (IReadOnlyDictionary<string, string>)
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        return new()
+        {
+            Id = row.Id.ToString(),
+            DisplayId = row.DisplayId,
+            Type = row.Type.ToDbValue(),
+            Title = row.Title,
+            Description = row.Description,
+            Scope = row.Scope.ToDbValue(),
+            Deeds = DeserializeStrings(row.DeedsJson),
+            PoNumber = row.PoNumber,
+            AssigneeId = row.AssigneeId,
+            AssigneeName = PersonLabelResolver.ResolveDisplayLabel(
+                row.AssigneeName, null, names),
+            CreatedBy = row.CreatedBy,
+            CreatedByName = PersonLabelResolver.ResolveDisplayLabel(
+                row.CreatedByName, row.CreatedBy, names),
+            Status = row.Status.ToDbValue(),
+            PrevStatus = row.PrevStatus.ToDbValue(),
+            Priority = row.Priority.ToDbValue(),
+            DueAt = row.DueAtUtc.ToString("O"),
+            CreatedAt = row.CreatedAtUtc.ToString("O"),
+            UpdatedAt = row.UpdatedAtUtc.ToString("O"),
+            Reference = row.Reference,
+            LetterRows = DeserializeLetterRows(row.LetterRowsJson),
+            Comments = DeserializeComments(row.CommentsJson),
+            Reminders = DeserializeReminders(row.RemindersJson),
+            CourtVisitResult = DeserializeCourtVisitResult(row.CourtVisitResultJson),
+            PauseReason = row.PauseReason,
+            PausedAt = row.PausedAtUtc?.ToString("O"),
+            OriginalAssigneeId = row.OriginalAssigneeId,
+            OriginalAssigneeName = PersonLabelResolver.ResolveDisplayLabel(
+                row.OriginalAssigneeName, null, names),
+            CreditAssigneeId = row.CreditAssigneeId,
+            CreditAssigneeName = PersonLabelResolver.ResolveDisplayLabel(
+                row.CreditAssigneeName, null, names),
+            ReceiptConfirmedAt = row.ReceiptConfirmedAtUtc?.ToString("O"),
+            CancelReason = row.CancelReason,
+            LinkedEnvelopeId = linkedEnvelopeId?.ToString(),
+            VisitFeeAmountSar = visitFeeAmountSar ?? row.AgreedVisitFeeSar,
+        };
+    }
 
     private static string? NullIfBlank(string? value)
     {

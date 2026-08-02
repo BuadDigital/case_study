@@ -1,29 +1,14 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  Badge,
   Button,
   Note,
   PageGutter,
-  PageShell,
-  PageShellHeader,
-  EmptyState,
-  StatusBadge,
-  Table,
-  TBody,
-  Td,
-  TdAction,
-  Th,
-  ThAction,
-  THead,
-  Tr,
   cn,
   PanelSkeleton,
-  type BadgeTone,
 } from "@platform/design-system";
 import { RowMoreMenu } from "@case-study/mfe/components/ui/RowMoreMenu";
 import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
@@ -31,19 +16,36 @@ import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import { ltrValueClass } from "../components/po-intake/PropertyDetailFields";
 import { CopyFromPriorTransactionModal } from "../components/po-intake/CopyFromPriorTransactionModal";
 import {
+  PpBadge,
+  PpCard,
+  PpCell,
+  PpDeedCell,
+  PpEmpty,
+  PpFooterHint,
+  PpGrid,
+  PpHead,
+  PpMeta,
+  PpPo,
+  PpRow,
+  PpStatus,
+  PpSummary,
+  PpTd,
+  PpTh,
+  PpThead,
+  PpTitle,
+  assignmentTypeTone,
+  deedStatusStyle,
+  propertyWorkflowStatusStyle,
+} from "../components/po-intake/PoPropertiesHtmlPrimitives";
+import {
   assignmentCompositeTag,
   formatDateAr,
   formatPropertyLocation,
   formatPropertyTypeLine,
   hasBourseDetailFields,
   isPastDue,
-  PROPERTY_IDENTIFIER_COLUMN_LABEL,
-  requiresAssignmentDecree,
 } from "../lib/prototype/po-intake-data";
-import {
-  poPropertyPath,
-  poListPath,
-} from "../lib/po-routes";
+import { poPropertyPath, poListPath } from "../lib/po-routes";
 import { operationsTasksPath } from "../lib/my-task-routes";
 import { buildCopyPriorTargetOptions } from "../lib/prototype/po-intake-storage";
 import {
@@ -81,13 +83,6 @@ function governmentReviewTaskForProperty(
   );
 }
 
-function assignmentTypeBadgeTone(type: string): BadgeTone {
-  if (type === "تنفيذ") return "info";
-  if (type === "تركات") return "warning";
-  if (type === "قطاع خاص") return "primary";
-  return "default";
-}
-
 function deedLabel(property: PoPropertyIntake): string {
   return (
     property.deedNumber.trim() ||
@@ -112,24 +107,6 @@ function formatDateTimeAr(iso: string, separateTime?: string): string {
   if (extra) return `${date} ${extra}`;
   const timeMatch = iso.trim().match(/T(\d{2}:\d{2})/);
   return timeMatch ? `${date} ${timeMatch[1]}` : date;
-}
-
-function BackIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M19 12H5M12 19l-7-7 7-7" />
-    </svg>
-  );
 }
 
 export function PoPropertiesPage({
@@ -174,10 +151,7 @@ export function PoPropertiesPage({
   }, [propertyListItems, poNumber]);
 
   const copyTargets = useMemo(
-    () =>
-      record
-        ? buildCopyPriorTargetOptions(record, workflowTasks)
-        : [],
+    () => (record ? buildCopyPriorTargetOptions(record, workflowTasks) : []),
     [record, workflowTasks],
   );
 
@@ -265,250 +239,101 @@ export function PoPropertiesPage({
     );
   }
 
-  const showDecree = requiresAssignmentDecree(record.assignmentType);
+  const visibleProperties = record.properties;
   const count = record.properties.filter((p) => !p.isRemoved).length;
   const expected = record.expectedPropertyCount ?? count;
   const dueUrgent = record.dueDateAt
     ? isPastDue(record.dueDateAt) || isDueSoon(record.dueDateAt)
     : false;
+  const typeTone = assignmentTypeTone(record.assignmentType);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg">
-      <PageShell>
-        <PageShellHeader
-          actions={
-            showEdit ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="primary"
-                onClick={() => openCopyModal(null)}
-              >
-                نسخ من معاملة سابقة
-              </Button>
-            ) : undefined
-          }
-        >
-          <Link
-            href={poListPath()}
-            className="mb-2 inline-flex w-fit items-center gap-1.5 py-1 text-[11px] font-medium text-text-2 no-underline transition-colors hover:text-primary [&_svg]:-scale-x-100"
-          >
-            <BackIcon />
-            <span>أوامر العمل</span>
-          </Link>
-          <h1 className="m-0 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-base font-bold leading-snug text-text">
-            <span>عقارات</span>
+    <div className="min-h-0 flex-1 overflow-y-auto bg-bg px-4 py-5 max-lg:px-3 sm:px-[30px] sm:py-[26px]">
+      <PpHead>
+        <PpTitle>
+          <span>عقارات</span>
+          <PpPo>
             <PoNumber
               value={record.poNumber}
-              className="text-primary"
+              className="!text-[14px] font-bold text-inherit"
             />
-          </h1>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-text-2">
-            <Badge tone={assignmentTypeBadgeTone(record.assignmentType)}>
-              {assignmentCompositeTag(record.assignmentType)}
-            </Badge>
-            <span className="select-none text-text-3" aria-hidden>
-              ·
-            </span>
-            <span className="font-medium text-text-2">
-              {count} من {expected}{" "}
-              {expected === 1 ? "عقار" : "عقارات"}
-            </span>
-          </div>
-          <div
-            className="mt-3 flex flex-nowrap gap-0 overflow-x-auto pb-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:h-0"
-            aria-label="ملخص أمر العمل"
-          >
-            <div className="shrink-0 pe-4 ps-0">
-              <div className="mb-0.5 text-[11px] text-text-3">اسم الأخصائي</div>
-              <div className="text-[13px] font-medium text-text">
-                {record.assignmentSpecialist.trim() || "—"}
-              </div>
-            </div>
-            <div className="shrink-0 border-s border-border px-4">
-              <div className="mb-0.5 text-[11px] text-text-3">استلام إنفاذ</div>
-              <div className="text-[13px] font-medium text-text">
-                {record.receivedFromEnfathAt ? (
-                  <bdi dir="ltr" className={ltrValueClass}>
-                    {formatDateTimeAr(
-                      record.receivedFromEnfathAt,
-                      record.receivedFromEnfathTime,
-                    )}
-                  </bdi>
-                ) : (
-                  "—"
+          </PpPo>
+        </PpTitle>
+        <PpMeta>
+          <PpBadge tone={typeTone}>
+            {assignmentCompositeTag(record.assignmentType)}
+          </PpBadge>
+          <span className="text-text-3" aria-hidden>
+            ·
+          </span>
+          <span>
+            {count} من {expected} {expected === 1 ? "عقار" : "عقارات"}
+          </span>
+        </PpMeta>
+        <PpSummary>
+          <PpCell label="أخصائي الإسناد" first>
+            {record.assignmentSpecialist.trim() || "—"}
+          </PpCell>
+          <PpCell label="استلام إنفاذ">
+            {record.receivedFromEnfathAt ? (
+              <bdi dir="ltr" className={ltrValueClass}>
+                {formatDateTimeAr(
+                  record.receivedFromEnfathAt,
+                  record.receivedFromEnfathTime,
                 )}
-              </div>
-            </div>
-            <div className="shrink-0 border-s border-border px-4">
-              <div className="mb-0.5 text-[11px] text-text-3">تاريخ الاستحقاق</div>
-              <div
-                className={cn(
-                  "text-[13px] font-medium",
-                  dueUrgent ? "text-red" : "text-text",
-                )}
+              </bdi>
+            ) : (
+              "—"
+            )}
+          </PpCell>
+          <PpCell label="تاريخ الاستحقاق">
+            {record.dueDateAt ? (
+              <bdi
+                dir="ltr"
+                className={cn(ltrValueClass, dueUrgent && "text-[#d9694f]")}
               >
-                {record.dueDateAt ? (
-                  <bdi dir="ltr" className={ltrValueClass}>
-                    {formatDateTimeAr(record.dueDateAt)}
-                  </bdi>
-                ) : (
-                  "—"
-                )}
-              </div>
-            </div>
-            <div className="shrink-0 border-s border-border px-4">
-              <div className="mb-0.5 text-[11px] text-text-3">المتبقي للتسليم</div>
-              <DeliveryCountdown dueIso={record.dueDateAt} />
-            </div>
-            </div>
-        </PageShellHeader>
+                {formatDateTimeAr(record.dueDateAt)}
+              </bdi>
+            ) : (
+              "—"
+            )}
+          </PpCell>
+          <PpCell label="المتبقي للتسليم">
+            <DeliveryCountdown
+              dueIso={record.dueDateAt}
+              className="text-[13.5px] font-semibold"
+            />
+          </PpCell>
+        </PpSummary>
+      </PpHead>
 
-        {count === 0 ? (
-          <EmptyState line="لا توجد عقارات في هذا الأمر." />
+      <PpCard>
+        {visibleProperties.length === 0 ? (
+          <PpEmpty />
         ) : (
-          <>
-            <div className="hidden w-full overflow-x-auto lg:block">
-              <Table>
-                <THead>
-                  <Tr hoverable={false}>
-                    <Th>{PROPERTY_IDENTIFIER_COLUMN_LABEL}</Th>
-                    <Th>الموقع</Th>
-                    <Th>المحكمة / الدائرة</Th>
-                    <Th>التصنيف / النوع</Th>
-                    <Th>حالة الصك</Th>
-                    <Th>الحالة</Th>
-                    {showRowMenu ? (
-                      <ThAction aria-label="المزيد" />
-                    ) : null}
-                  </Tr>
-                </THead>
-                <TBody>
-                  {record.properties.map((prop, index) => {
-                    const serverStatus =
-                      statusByPropertyId.get(prop.id) ?? "new";
-                    const boursePending = !prop.bourseDataCompleted;
-                    const locRaw = formatPropertyLocation(prop);
-                    const location =
-                      locRaw === "بانتظار البورصة" &&
-                      !hasBourseDetailFields(prop)
-                        ? "—"
-                        : locRaw === "بانتظار البورصة"
-                          ? "—"
-                          : locRaw;
-                    const typeLine = formatPropertyTypeLine(prop);
-                    const typeDisplay =
-                      boursePending && !hasBourseDetailFields(prop)
-                        ? "بانتظار البورصة"
-                        : typeLine || "—";
-                    const courtCircuit =
-                      [prop.court.trim(), prop.circuit.trim()]
-                        .filter(Boolean)
-                        .join(" / ") || "—";
-                    const detailHref = poPropertyPath(poNumber, prop.id);
-                    const label = deedLabel(prop);
-                    const govReviewTask = isGovernmentReviewer
-                      ? governmentReviewTaskForProperty(
-                          workflowTasks,
-                          poNumber,
-                          prop.id,
-                        )
-                      : undefined;
-                    const deedOpensReview = Boolean(govReviewTask);
-
-                    return (
-                      <Tr
-                        key={prop.id}
-                        hoverable={false}
-                        className="cursor-pointer transition-colors hover:bg-[color-mix(in_srgb,var(--info-bg)_40%,var(--surface))]"
-                        onClick={() => {
-                          if (deedOpensReview && govReviewTask) {
-                            router.push(operationsTasksPath());
-                            return;
-                          }
-                          router.push(detailHref);
-                        }}
-                      >
-                        <Td>
-                          <span className="inline-flex min-w-0 items-center justify-end gap-2">
-                            <span
-                              className="inline-flex h-[22px] min-w-[22px] shrink-0 items-center justify-center rounded-md bg-surface-3 text-[10px] font-semibold text-text-3"
-                              aria-hidden
-                            >
-                              {index + 1}
-                            </span>
-                            <span
-                              dir="ltr"
-                              className={cn(
-                                "inline-block text-[13px] font-medium text-primary",
-                                deedOpensReview &&
-                                  "underline decoration-primary underline-offset-2",
-                              )}
-                              title={
-                                deedOpensReview
-                                  ? "فتح المهام التشغيلية"
-                                  : undefined
-                              }
-                            >
-                              {label}
-                            </span>
-                          </span>
-                        </Td>
-                        <Td className="text-text-2">{location}</Td>
-                        <Td className="text-text-2">{courtCircuit}</Td>
-                        <Td>{typeDisplay}</Td>
-                        <Td className="text-text-2">
-                          {prop.deedStatus || "—"}
-                        </Td>
-                        <Td>
-                          {prop.isRemoved ? (
-                            <div className="flex flex-col items-start gap-0.5">
-                              <StatusBadge status="removed" />
-                              {prop.removalReason.trim() ? (
-                                <span className="text-[11px] font-medium text-danger-text">
-                                  {prop.removalReason.trim()}
-                                </span>
-                              ) : null}
-                            </div>
-                          ) : boursePending ? (
-                            <Badge tone="warning">بانتظار البورصة</Badge>
-                          ) : (
-                            <StatusBadge status={serverStatus} />
-                          )}
-                        </Td>
-                        {showRowMenu ? (
-                          <TdAction onClick={(e) => e.stopPropagation()}>
-                            <RowMoreMenu items={resolveRowMoreItems(prop)} />
-                          </TdAction>
-                        ) : null}
-                      </Tr>
-                    );
-                  })}
-                </TBody>
-              </Table>
-            </div>
-
-            <ul className="m-0 flex list-none flex-col gap-2.5 p-3 lg:hidden">
-              {record.properties.map((prop, index) => {
+          <div className="overflow-x-auto">
+            <PpGrid>
+              <PpThead>
+                <PpTh>رقم الصك</PpTh>
+                <PpTh>الموقع</PpTh>
+                <PpTh>التصنيف / النوع</PpTh>
+                <PpTh>حالة الصك</PpTh>
+                <PpTh>الحالة</PpTh>
+                <PpTh center />
+              </PpThead>
+              {visibleProperties.map((prop, index) => {
                 const serverStatus = statusByPropertyId.get(prop.id) ?? "new";
-                const boursePending = !prop.bourseDataCompleted;
+                const boursePending = !prop.bourseDataCompleted && !prop.isRemoved;
                 const locRaw = formatPropertyLocation(prop);
                 const location =
-                  locRaw === "بانتظار البورصة" &&
-                  !hasBourseDetailFields(prop)
-                    ? "—"
-                    : locRaw === "بانتظار البورصة"
-                      ? "—"
-                      : locRaw;
+                  locRaw === "بانتظار البورصة"
+                    ? "بانتظار البورصة"
+                    : locRaw || "—";
                 const typeLine = formatPropertyTypeLine(prop);
                 const typeDisplay =
                   boursePending && !hasBourseDetailFields(prop)
-                    ? "بانتظار البورصة"
+                    ? "—"
                     : typeLine || "—";
-                const courtCircuit =
-                  [prop.court.trim(), prop.circuit.trim()]
-                    .filter(Boolean)
-                    .join(" / ") || "—";
                 const detailHref = poPropertyPath(poNumber, prop.id);
                 const label = deedLabel(prop);
                 const govReviewTask = isGovernmentReviewer
@@ -519,97 +344,82 @@ export function PoPropertiesPage({
                     )
                   : undefined;
                 const deedOpensReview = Boolean(govReviewTask);
+                const workflowStyle = prop.isRemoved
+                  ? propertyWorkflowStatusStyle("removed")
+                  : boursePending
+                    ? {
+                        label: "بانتظار البورصة",
+                        base: "#a67c1a",
+                        fg: "#8a6a18",
+                      }
+                    : propertyWorkflowStatusStyle(serverStatus);
+                const deedSt = prop.deedStatus.trim();
 
                 return (
-                  <li key={`m-${prop.id}`}>
-                    <button
-                      type="button"
-                      className="flex w-full cursor-pointer flex-col gap-2 rounded-[12px] border border-border bg-surface px-3.5 py-3 text-start shadow-card transition-colors active:bg-row-hover"
-                      onClick={() => {
-                        if (deedOpensReview && govReviewTask) {
-                          router.push(operationsTasksPath());
-                          return;
-                        }
-                        router.push(detailHref);
-                      }}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="inline-flex h-[22px] min-w-[22px] shrink-0 items-center justify-center rounded-md bg-surface-3 text-[10px] font-semibold text-text-3">
-                              {index + 1}
-                            </span>
-                            <span
-                              dir="ltr"
-                              className={cn(
-                                "text-[14px] font-bold text-primary",
-                                deedOpensReview &&
-                                  "underline decoration-primary underline-offset-2",
-                              )}
-                            >
-                              {label}
-                            </span>
-                          </div>
-                          <div className="mt-1 text-[12.5px] text-text-2">
-                            {courtCircuit}
-                          </div>
-                        </div>
-                        {prop.isRemoved ? (
-                          <StatusBadge status="removed" />
-                        ) : boursePending ? (
-                          <Badge tone="warning">بانتظار البورصة</Badge>
-                        ) : (
-                          <StatusBadge status={serverStatus} />
-                        )}
-                      </div>
-                      <div className="space-y-1 text-[12.5px]">
-                        <div className="flex justify-between gap-3">
-                          <span className="text-text-3">الموقع</span>
-                          <span className="text-end text-heading">
-                            {location}
+                  <PpRow
+                    key={prop.id}
+                    onClick={() => {
+                      if (deedOpensReview && govReviewTask) {
+                        router.push(operationsTasksPath());
+                        return;
+                      }
+                      router.push(detailHref);
+                    }}
+                  >
+                    <PpTd>
+                      <PpDeedCell
+                        index={index + 1}
+                        deed={label}
+                        emphasize={deedOpensReview}
+                      />
+                    </PpTd>
+                    <PpTd muted>{location}</PpTd>
+                    <PpTd>
+                      {boursePending && !hasBourseDetailFields(prop) ? (
+                        <span className="text-[13px] text-text-2">—</span>
+                      ) : (
+                        <span className="truncate text-[13px] text-text">
+                          {typeDisplay}
+                        </span>
+                      )}
+                    </PpTd>
+                    <PpTd>
+                      {boursePending || !deedSt ? (
+                        <span className="text-[13px] text-text-2">—</span>
+                      ) : (
+                        <PpStatus label={deedSt} style={deedStatusStyle(deedSt)} />
+                      )}
+                    </PpTd>
+                    <PpTd>
+                      <div className="flex min-w-0 flex-col items-start gap-0.5">
+                        <PpStatus
+                          label={workflowStyle.label}
+                          style={workflowStyle}
+                        />
+                        {prop.isRemoved && prop.removalReason.trim() ? (
+                          <span className="text-[11px] font-medium text-[#c0553d]">
+                            {prop.removalReason.trim()}
                           </span>
-                        </div>
-                        <div className="flex justify-between gap-3">
-                          <span className="text-text-3">النوع</span>
-                          <span className="text-end text-heading">
-                            {typeDisplay}
-                          </span>
-                        </div>
-                        {prop.deedStatus ? (
-                          <div className="flex justify-between gap-3">
-                            <span className="text-text-3">حالة الصك</span>
-                            <span className="text-end text-text-2">
-                              {prop.deedStatus}
-                            </span>
-                          </div>
                         ) : null}
                       </div>
-                    </button>
-                  </li>
+                    </PpTd>
+                    <PpTd
+                      className="justify-center overflow-visible"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {showRowMenu ? (
+                        <RowMoreMenu items={resolveRowMoreItems(prop)} />
+                      ) : null}
+                    </PpTd>
+                  </PpRow>
                 );
               })}
-            </ul>
-            {showDecree ? (
-              <p className="px-4 py-2 pb-3 text-[11px] text-text-3 sm:px-6">
-                مسار التنفيذ — قرار إسناد مستقل لكل صك.
-                {isGovernmentReviewer
-                  ? " اضغط رقم الصك (أو الصف) لفتح نموذج المراجعة عند وجود مهمة."
-                  : showRowMenu
-                    ? " اضغط الصف للتفاصيل أو ⋮ للإجراءات."
-                    : " اضغط الصف للتفاصيل."}
-              </p>
-            ) : (
-              <p className="px-4 py-2 pb-3 text-[11px] text-text-3 sm:px-6">
-                {isGovernmentReviewer
-                  ? "اضغط رقم الصك لفتح نموذج المراجعة الحكومية — إن لم توجد مهمة يُفتح تفاصيل العقار."
-                  : showRowMenu
-                    ? "اضغط الصف لمعاينة العقار أو ⋮ للإجراءات (تفاصيل · طلب استرجاع المعاملة…)."
-                    : "اضغط الصف لمعاينة تفاصيل العقار."}
-              </p>
-            )}
-          </>
+            </PpGrid>
+          </div>
         )}
-      </PageShell>
+      </PpCard>
+
+      {visibleProperties.length > 0 ? <PpFooterHint /> : null}
 
       {showEdit ? (
         <CopyFromPriorTransactionModal

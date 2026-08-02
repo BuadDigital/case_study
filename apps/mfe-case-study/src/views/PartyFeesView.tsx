@@ -25,7 +25,7 @@ export function PartyFeesView() {
       <ActiveTransactionPageLayout
         pageId="party-fees"
         queuePanel={
-          <OperationalPanel className="min-h-0 flex-1 flex-none p-0">
+          <OperationalPanel className="w-full shrink-0 p-0">
             <p className="p-4 text-sm text-text-3">
               لا تتوفر شاشة الاتعاب والفوتره لهذا الدور.
             </p>
@@ -39,7 +39,7 @@ export function PartyFeesView() {
     <ActiveTransactionPageLayout
       pageId="party-fees"
       queuePanel={
-        <OperationalPanel className="min-h-0 flex-1 flex-none p-0">
+        <OperationalPanel className="w-full shrink-0 p-0">
           <PartyFeesWorkspace
             variant={variant ?? "field-inspection"}
             assigneeId={isSupervisor ? undefined : distributionAssigneeId ?? undefined}

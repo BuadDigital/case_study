@@ -6,12 +6,10 @@ import {
   useRef,
   useState,
   useEffect,
-  type ReactNode,
   type RefObject,
 } from "react";
 import { useRouter } from "next/navigation";
 import { TaskCompletionSuccess } from "../components/party-tasks/TaskCompletionSuccess";
-import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
 import {
   GovernmentReviewWorkBody,
   type GovernmentReviewWorkHostRef,
@@ -21,15 +19,13 @@ import {
   ValuationCoordinationWorkBody,
   type ValuationCoordinationWorkHostRef,
 } from "../components/valuation-coordination/ValuationCoordinationWorkBody";
-import {
-  FieldInspectionWorkPanel,
-} from "../components/field-inspection/FieldInspectionWorkPanel";
 import { FieldInspectionMobileShell } from "../components/field-inspection/FieldInspectionMobileShell";
 import {
-  FieldInspectionWorkBody,
   type FieldInspectionWorkHostRef,
 } from "../components/field-inspection/FieldInspectionWorkBody";
 import { PartyCaseStudyFormTab } from "../components/case-study/PartyCaseStudyFormTab";
+import { PropertyDetailInspectionTab } from "../components/po-intake/PropertyDetailInspectionTab";
+import type { PropertyDetailPartyCard } from "../lib/prototype/property-detail-parties";
 import { useFieldInspectionWorkspacesQuery } from "../query/field-inspection-workspaces-queries";
 import { isFieldInspectionLocked } from "../lib/prototype/field-inspection-work-queue";
 import { isGovernmentReviewLocked } from "../lib/prototype/government-review-work-queue";
@@ -68,8 +64,6 @@ import {
   cn,
   InlineLoadingSkeleton,
   Note,
-  PageShell,
-  PanelSkeleton,
   useToast,
 } from "@platform/design-system";
 import { FailureRaisePanel } from "@failures/mfe";
@@ -85,8 +79,6 @@ const PARTY_FAILURE_RAISE_KINDS = new Set([
 ]);
 
 const LOADING_TEXT = "text-xs text-text-3";
-const PAGE_WRAP =
-  "flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg";
 const TAB_CONTENT = "min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:p-5";
 
 function PartyWorkTabs({
@@ -258,7 +250,7 @@ export function PartyActiveTaskWork({
     [task.id],
   );
 
-  const isFieldInspectionPage = def.pageId === "property-inspection";
+  const isFieldInspectionPage = def.kind === "field-inspection";
   const { data: inspectionWorkspaces = [] } = useFieldInspectionWorkspacesQuery(
     isFieldInspectionPage,
   );
@@ -358,66 +350,71 @@ export function PartyActiveTaskWork({
     showToast("تعذّر إتمام المهمة — حاول مرة أخرى", "error");
   }
 
-  async function submitFieldInspection() {
-    await runHostSubmit(fieldInspectionLocked, fieldInspectionHostRef);
-  }
-
   const surveyProperty = useMemo(
     () => record?.properties.find((p) => p.id === task.propertyId) ?? null,
     [record, task.propertyId],
   );
-  const surveyPropertyIndex = useMemo(() => {
-    if (!record || !surveyProperty) return -1;
-    return record.properties.findIndex((p) => p.id === surveyProperty.id);
-  }, [record, surveyProperty]);
-
-  function renderPropertyTaskShell(body: ReactNode) {
-    if (recordLoading && !record) {
-      return (
-        <div className={PAGE_WRAP}>
-          <PanelSkeleton />
-        </div>
-      );
-    }
-
-    if (!record || !surveyProperty || surveyPropertyIndex < 0) {
-      return (
-        <div className={PAGE_WRAP}>
-          <Note tone="warn" className="m-6">
-            لم تُعثر على بيانات العقار.
-          </Note>
-        </div>
-      );
-    }
-
-    return (
-      <div className={PAGE_WRAP}>
-        <PageShell>
-          <PropertyDetailHero
-            record={record}
-            property={surveyProperty}
-            propertyIndex={surveyPropertyIndex + 1}
-          />
-          {body}
-        </PageShell>
-      </div>
-    );
-  }
 
   if (isFieldInspection && layout === "page") {
-    const panel =
+    const inspectionReadOnly = fieldInspectionLocked || submitSuccess;
+    const inspectorCard: PropertyDetailPartyCard = {
+      roleKey: "inspection",
+      role: "المعاين",
+      name: task.assigneeName?.trim() || def.assigneeSubtitle || "المعاين",
+      unassigned: false,
+      state: inspectionReadOnly ? "done" : "progress",
+      enabled: true,
+    };
+
+    const desktopStandalone =
       record && surveyProperty ? (
-        <FieldInspectionWorkPanel
-          def={def}
-          task={task}
-          hostRef={fieldInspectionHostRef}
-          record={record}
-          property={surveyProperty}
-          deedNumber={deedLabel}
-          submitting={saving}
-          onFailureSubmitted={refresh}
-          forceReadOnly={fieldInspectionLocked}
-        />
+        <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee]">
+          <header className="flex shrink-0 items-center gap-3 border-b border-border bg-surface px-5 py-3.5">
+            <button
+              type="button"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border-md bg-surface px-3 text-[12.5px] font-semibold text-text-2 transition-colors hover:bg-surface-2 hover:text-heading"
+              onClick={exit}
+            >
+              <span aria-hidden>←</span>
+              رجوع
+            </button>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[15px] font-bold text-heading">
+                {def.workTitle}
+              </div>
+              <div className="mt-0.5 truncate text-[12px] text-text-3">
+                صك {deedLabel}
+                <span className="mx-1.5 text-border-md">·</span>
+                {formatPoDisplay(task.poNumber)}
+                {location ? (
+                  <>
+                    <span className="mx-1.5 text-border-md">·</span>
+                    {location}
+                  </>
+                ) : null}
+              </div>
+            </div>
+          </header>
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-8">
+            <div className="mx-auto max-w-[920px]">
+              <PropertyDetailInspectionTab
+                property={surveyProperty}
+                inspectionTask={task}
+                inspectionCard={inspectorCard}
+                editMode={!inspectionReadOnly}
+                lockEditMode={!inspectionReadOnly}
+                onEditModeChange={(edit) => {
+                  if (!edit) exit();
+                }}
+                onSubmitted={() =>
+                  completePartyTaskSubmit(def.completeMessage, {
+                    showToast: false,
+                  })
+                }
+              />
+            </div>
+          </div>
+        </div>
       ) : (
         <InlineLoadingSkeleton className={LOADING_TEXT} />
       );
@@ -425,9 +422,9 @@ export function PartyActiveTaskWork({
     return (
       <>
         <div className="hidden min-h-0 w-full flex-1 flex-col overflow-hidden lg:flex">
-          {renderPropertyTaskShell(panel)}
+          {desktopStandalone}
         </div>
-        <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden lg:hidden">
+        <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden lg:hidden">
           {record && surveyProperty ? (
             <FieldInspectionMobileShell
               def={def}
@@ -597,6 +594,14 @@ export function PartyActiveTaskWork({
 
   if (isFieldInspection) {
     const inspectionReadOnly = fieldInspectionLocked || submitSuccess;
+    const inspectorCard: PropertyDetailPartyCard = {
+      roleKey: "inspection",
+      role: "المعاين",
+      name: task.assigneeName?.trim() || def.assigneeSubtitle || "المعاين",
+      unassigned: false,
+      state: inspectionReadOnly ? "done" : "progress",
+      enabled: true,
+    };
 
     return (
       <>
@@ -617,49 +622,44 @@ export function PartyActiveTaskWork({
               deedBadge={deedLabel}
               saving={saving}
               onClose={exit}
-              onSave={submitFieldInspection}
+              onSave={exit}
               saveLabel={inspectionReadOnly ? "رجوع" : def.saveLabel}
-              showFooter
+              showFooter={false}
             >
-              <div className="grid min-w-0 gap-4 xl:grid-cols-2">
-                <section className="min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
-                  <h3 className="m-0 mb-2 text-sm font-semibold text-text">
-                    {def.workTitle}
-                  </h3>
-                  <Note tone="info" className="mb-4">
-                    {def.workIntro}
-                  </Note>
-                  <FieldInspectionWorkBody
+              {/* Case Study.html pdInspectionHtml — same surface as property-detail edit */}
+              <div className="mx-auto max-w-[920px]">
+                {surveyProperty ? (
+                  <PropertyDetailInspectionTab
+                    property={surveyProperty}
+                    inspectionTask={task}
+                    inspectionCard={inspectorCard}
+                    editMode={!inspectionReadOnly}
+                    lockEditMode={!inspectionReadOnly}
+                    onEditModeChange={(edit) => {
+                      if (!edit) exit();
+                    }}
+                    onSubmitted={() =>
+                      completePartyTaskSubmit(def.completeMessage, {
+                        showToast: false,
+                      })
+                    }
+                  />
+                ) : (
+                  <InlineLoadingSkeleton className={LOADING_TEXT} />
+                )}
+                <div ref={fieldInspectionFailureRef}>
+                  <PartyTaskFailureRaise
                     def={def}
                     task={task}
-                    hostRef={fieldInspectionHostRef}
-                    submitting={saving}
+                    deedNumber={deedLabel}
+                    onSubmitted={refresh}
                   />
-                  <div ref={fieldInspectionFailureRef}>
-                    <PartyTaskFailureRaise
-                      def={def}
-                      task={task}
-                      deedNumber={deedLabel}
-                      onSubmitted={refresh}
-                    />
-                  </div>
-                </section>
-
-                <section className="min-w-0 overflow-y-auto rounded-xl border border-border bg-surface p-3">
-                  <h3 className="m-0 mb-2 text-sm font-semibold text-text">
-                    نموذج الدراسة
-                  </h3>
-                  <PartyCaseStudyFormTab
-                    def={def}
-                    childTask={task}
-                    forceReadOnly={inspectionReadOnly}
-                  />
-                </section>
+                </div>
               </div>
             </TaskWorkChrome>
           </PartyTaskRecallOverlay>
         </div>
-        <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden lg:hidden">
+        <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden lg:hidden">
           <FieldInspectionMobileShell
             def={def}
             task={task}

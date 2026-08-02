@@ -107,6 +107,7 @@ export function prefetchPrototypePage(
     case "active-distribution":
     case "active-case-study":
     case "property-inspection":
+    case "active-inspection":
     case "government-review":
     case "valuation-coordination":
     case "property-appraisal":

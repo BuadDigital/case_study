@@ -62,6 +62,29 @@ const PARTY_TASK_PAGES_MAP = {
     assigneeSubtitle: "منسق عمليات التقييم",
     icon: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 8 0 4 4 0 0 0-8 0z",
   },
+  /** Official queue under المعاملات النشطة (field-inspector). */
+  "active-inspection": {
+    pageId: "active-inspection",
+    kind: "field-inspection",
+    roleId: "field-inspector",
+    pageTitle: "معاينة العقار",
+    emptyLine: "لا توجد معاينات ميدانية بانتظار التنفيذ.",
+    emptyHint:
+      "تظهر هنا بعد تأكيد التوزيع عند اختيار المعاين الميداني.",
+    tableHint:
+      "اضغط الصف لفتح نموذج المعاينة — اضغط نفس الصف مرة أخرى للإغلاق.",
+    breadcrumbTitle: "معاينة العقار",
+    workTitle: "معاينة العقار",
+    workIntro:
+      "وصلت هذه المهمة بعد تأكيد التوزيع — أكمل نموذج المعاينة الميدانية.",
+    saveLabel: "حفظ وإرسال المعاينة",
+    completeTitle: "تم إرسال المعاينة",
+    completeMessage: "اكتملت معاينة هذا العقار وتم إرسال النموذج.",
+    assigneeSubtitle: "معاين ميداني",
+    icon: "M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z",
+    useFieldForm: true,
+  },
+  /** Legacy orphan list under الشاشات (Draft) — CDO only. */
   "property-inspection": {
     pageId: "property-inspection",
     kind: "field-inspection",

@@ -7,7 +7,7 @@ public static class PlatformPermissionCatalog
     [
         "dashboard", "active-primary-data", "active-distribution", "active-case-study",
         "po", "all-transactions", "favorites", "bourse-inquiry", "survey", "keys", "failures", "suspended-transactions",
-        "valuation-requests", "property-inspection", "government-review", "operations-tasks",
+        "valuation-requests", "property-inspection", "active-inspection", "government-review", "operations-tasks",
         "valuation-coordination", "property-appraisal", "active-survey", "party-fees",
         "system-fields-catalog", "system-screen-catalog", "financial",
         "users", "courts", "failure-types", "case-study-info-roles",
@@ -77,7 +77,7 @@ public static class PlatformPermissionCatalog
         ],
         ["field-inspector"] =
         [
-            "all-transactions", "favorites", "operations-tasks", "property-inspection", "party-fees", "failures",
+            "all-transactions", "favorites", "operations-tasks", "active-inspection", "party-fees", "failures",
             "system-screen-catalog",
         ],
         ["government-reviewer"] =

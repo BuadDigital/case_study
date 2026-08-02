@@ -53,6 +53,14 @@ export function resolveMyTasksChrome(
     };
   }
 
+  if (page === "active-inspection" && parts[1]) {
+    decodeTaskParam(parts[1]);
+    return {
+      breadcrumb: "لوحة التحكم / معاينة العقار / مساحة العمل",
+      title: "معاينة العقار",
+    };
+  }
+
   if (page === "property-inspection" && parts[1]) {
     decodeTaskParam(parts[1]);
     return {

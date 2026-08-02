@@ -36,7 +36,7 @@ export function PoPropertyFailureRoute({
     role === "engineering-office"
       ? "/active-survey"
       : role === "field-inspector"
-        ? "/property-inspection"
+        ? "/active-inspection"
         : role === "real-estate-appraiser"
           ? "/property-appraisal"
           : poPropertiesPath(poNumber);

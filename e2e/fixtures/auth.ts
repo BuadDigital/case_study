@@ -209,7 +209,8 @@ export const MODULE_PAGES: { id: string; title: string }[] = [
   { id: "failures", title: "إدارة التعذرات" },
   { id: "suspended-transactions", title: "المعاملات المعلقة" },
   { id: "valuation-requests", title: "طلبات التقييم" },
-  { id: "property-inspection", title: "معاينة العقار" },
+  { id: "property-inspection", title: "معاينة العقار (يتيم)" },
+  { id: "active-inspection", title: "معاينة العقار" },
   { id: "government-review", title: "المراجعة الحكومية" },
   { id: "operations-tasks", title: "المهام" },
   { id: "valuation-coordination", title: "استلام التقييم" },
@@ -221,6 +222,7 @@ export const MODULE_PAGES: { id: string; title: string }[] = [
   { id: "users", title: "المستخدمون" },
   { id: "fee-pricing", title: "التسعيرة" },
   { id: "courts", title: "المحاكم و الدوائر" },
+  { id: "location-pending", title: "مراجعة المسميات" },
   { id: "failure-types", title: "أنواع التعذرات" },
   { id: "case-study-info-roles", title: "علاقة المستخدم بالمعلومة" },
 ];
@@ -241,6 +243,7 @@ export const ROLE_MODULE_PAGES: Record<string, string[]> = {
   [RELEASE_USERS.fieldInspector]: [
     "all-transactions",
     "operations-tasks",
+    "active-inspection",
     "party-fees",
     "failures",
     "system-screen-catalog",

@@ -271,30 +271,57 @@
 
 }
 
-/* App shell fills the viewport — one scroll surface only (inside task forms). */
+/* App shell fills the viewport — one scroll surface: #content. */
 html:has(#app),
 html:has(#app) body {
   overflow: hidden;
   height: 100%;
-  max-height: 100svh;
+  max-height: 100%;
 }
 
 #app {
-  max-height: 100svh;
+  height: 100%;
+  max-height: 100dvh;
+  min-height: 0;
 }
 
 #sidebar,
 #main {
-  max-height: 100svh;
+  min-height: 0;
+  max-height: 100%;
 }
 
-#content[data-workspace-scroll="locked"] {
-  overflow: hidden;
+#main {
+  /* Bound the column so #content can scroll instead of growing the page. */
+  height: 100%;
 }
 
 #content {
   min-width: 0;
   max-width: 100%;
+  min-height: 0;
+  flex: 1 1 0%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  /* App shell: scroll without a permanent track (RTL puts it on the left). */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  /* Block layout so page shells size to content instead of stretching. */
+  display: block;
+}
+
+#content::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+#content[data-workspace-scroll="locked"] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* Login page step transitions (docs/new look login HTML) */

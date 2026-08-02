@@ -24,7 +24,7 @@ export function EngFeesHtmlTabs({
   return (
     <div
       className={cn(
-        "mb-4 mt-5 flex gap-0 overflow-x-auto border-b border-border",
+        "mb-3 mt-3 flex gap-0 overflow-x-auto border-b border-border [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
         className,
       )}
       role="tablist"
@@ -74,7 +74,7 @@ export function EngFeesSectionTitle({
   sub: ReactNode;
 }) {
   return (
-    <div className="mb-2.5 mt-[22px] first:mt-0">
+    <div className="mb-2 mt-3 first:mt-0">
       <div className="text-[14px] font-bold text-heading">{title}</div>
       <div className="mt-0.5 text-[11.5px] text-text-3">{sub}</div>
     </div>
