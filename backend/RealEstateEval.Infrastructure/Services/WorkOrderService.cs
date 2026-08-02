@@ -22,6 +22,7 @@ public class WorkOrderService : IWorkOrderService
     private readonly NotificationRecipientResolver _recipients;
     private readonly IWorkOrderVisibilityFilter _visibility;
     private readonly DatabaseOptions _dbOptions;
+    private readonly IOrganizationSettingsService? _organizationSettings;
 
     public WorkOrderService(
         ApplicationDbContext db,
@@ -30,7 +31,8 @@ public class WorkOrderService : IWorkOrderService
         INotificationService notifications,
         NotificationRecipientResolver recipients,
         IWorkOrderVisibilityFilter? visibility = null,
-        IOptions<DatabaseOptions>? dbOptions = null)
+        IOptions<DatabaseOptions>? dbOptions = null,
+        IOrganizationSettingsService? organizationSettings = null)
     {
         _db = db;
         _timeline = timeline;
@@ -39,6 +41,7 @@ public class WorkOrderService : IWorkOrderService
         _recipients = recipients;
         _visibility = visibility ?? new WorkOrderVisibilityFilter(db);
         _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
+        _organizationSettings = organizationSettings;
     }
 
     public async Task<IReadOnlyList<WorkOrderListItemDto>> ListAsync(
@@ -406,7 +409,7 @@ public class WorkOrderService : IWorkOrderService
             DueDateAt = BusinessDueDateCalculator.Compute(
                 promulgation,
                 request.ReceivedFromEnfathTime,
-                AssignmentTypeRules.BusinessDaysRequired(assignmentType)),
+                await ResolveBusinessDaysAsync(assignmentType, cancellationToken)),
             CreatedAtUtc = DateTime.UtcNow,
         };
 
@@ -1201,6 +1204,27 @@ public class WorkOrderService : IWorkOrderService
                     ContinueInstructions = "يمكن استئناف العمل على العقار.",
                 },
                 cancellationToken);
+        }
+    }
+
+    private async Task<int> ResolveBusinessDaysAsync(
+        AssignmentType assignmentType,
+        CancellationToken cancellationToken)
+    {
+        if (_organizationSettings is null)
+            return AssignmentTypeRules.BusinessDaysRequired(assignmentType);
+
+        try
+        {
+            var settings = await _organizationSettings.GetAsync(cancellationToken);
+            return AssignmentTypeRules.BusinessDaysRequired(
+                assignmentType,
+                settings.Sla.DefaultBusinessDays,
+                settings.Sla.PrivateSectorBusinessDays);
+        }
+        catch
+        {
+            return AssignmentTypeRules.BusinessDaysRequired(assignmentType);
         }
     }
 }

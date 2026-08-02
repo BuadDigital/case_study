@@ -1,4 +1,4 @@
-using RealEstateEval.Application.Contracts;
+﻿using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 
@@ -34,7 +34,10 @@ public static class InspectorFeeRowMapper
             DiscountReason = discount > 0
                 ? (string.IsNullOrWhiteSpace(ledger.DiscountReason) ? "—" : ledger.DiscountReason)
                 : null,
-            NetFeeSar = InspectorFeeRules.NetFee(ledger.AgreedFeeSar, discount),
+            NetFeeSar = ledger.NetFeeSar > 0m || ledger.AgreedFeeSar == 0m
+                ? ledger.NetFeeSar
+                : InspectorFeeRules.NetFee(ledger.AgreedFeeSar, discount),
+            PaidAmountSar = ledger.PaidAmountSar,
             BillingStatus = ledger.BillingStatus,
             BillingStatusLabel = InspectorFeeBillingRules.StatusLabel(ledger.BillingStatus),
             WorkStatus = workStatus,
@@ -44,7 +47,7 @@ public static class InspectorFeeRowMapper
             ReturnTo = ledger.ReturnTo,
             DisbursementBatchId = ledger.DisbursementBatchId?.ToString(),
             DisbursementVoucher = ledger.DisbursementVoucher,
-            EngineeringBillingStatementId = ledger.EngineeringBillingStatementId?.ToString(),
+            PartyBillingStatementId = ledger.PartyBillingStatementId?.ToString(),
             LastTransitionReason = lastTransitionReason,
             UpdatedAtUtc = ledger.UpdatedAtUtc,
             AccruedAtUtc = ledger.AccruedAtUtc,

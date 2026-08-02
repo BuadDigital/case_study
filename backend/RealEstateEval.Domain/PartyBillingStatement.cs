@@ -1,17 +1,17 @@
-namespace RealEstateEval.Domain;
+﻿namespace RealEstateEval.Domain;
 
 /// <summary>
 /// Monthly engineering-office billing statement (كشف فوترة) — stages 6–8.
 /// Reference format: FN-CS-YYMMDD-NNN.
 /// </summary>
-public class EngineeringBillingStatement
+public class PartyBillingStatement
 {
     public Guid Id { get; set; }
     public string ReferenceNumber { get; set; } = "";
     /// <summary>Engineering office distribution assignee id.</summary>
     public string AssigneeId { get; set; } = "";
     /// <summary>draft | issued | closed</summary>
-    public string Status { get; set; } = EngineeringBillingStatementStatus.Draft;
+    public string Status { get; set; } = PartyBillingStatementStatus.Draft;
     public decimal TotalNetSar { get; set; }
     public string CreatedByUserId { get; set; } = "";
     public DateTime CreatedAtUtc { get; set; }
@@ -28,11 +28,11 @@ public class EngineeringBillingStatement
     public DateTime? PaidAtUtc { get; set; }
     public string? Notes { get; set; }
 
-    public ICollection<EngineeringBillingStatementLine> Lines { get; set; } =
-        new List<EngineeringBillingStatementLine>();
+    public ICollection<PartyBillingStatementLine> Lines { get; set; } =
+        new List<PartyBillingStatementLine>();
 }
 
-public class EngineeringBillingStatementLine
+public class PartyBillingStatementLine
 {
     public Guid Id { get; set; }
     public Guid StatementId { get; set; }
@@ -40,10 +40,10 @@ public class EngineeringBillingStatementLine
     /// <summary>Net fee snapshot at statement creation.</summary>
     public decimal NetFeeSar { get; set; }
 
-    public EngineeringBillingStatement? Statement { get; set; }
+    public PartyBillingStatement? Statement { get; set; }
 }
 
-public static class EngineeringBillingStatementStatus
+public static class PartyBillingStatementStatus
 {
     public const string Draft = "draft";
     public const string Issued = "issued";

@@ -36,6 +36,7 @@ public class UserListItemDto
     public required UserStatus Status { get; init; }
     public required RegistrationSource RegistrationSource { get; init; }
     public string? PhoneNumber { get; init; }
+    public DateTime? LastLoginAtUtc { get; init; }
     public DateTime CreatedAtUtc { get; init; }
     public IReadOnlyList<string> SystemRoles { get; init; } = [];
     public IReadOnlyList<UserDetailFieldDto> Details { get; init; } = [];

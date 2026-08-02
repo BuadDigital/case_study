@@ -26,7 +26,18 @@ public static class AssignmentTypeRules
         type != AssignmentType.PrivateSector;
 
     public static int BusinessDaysRequired(AssignmentType type) =>
-        type == AssignmentType.PrivateSector ? 10 : 4;
+        BusinessDaysRequired(
+            type,
+            BusinessDueDateCalculator.DefaultBusinessDays,
+            BusinessDueDateCalculator.PrivateSectorBusinessDays);
+
+    public static int BusinessDaysRequired(
+        AssignmentType type,
+        int defaultBusinessDays,
+        int privateSectorBusinessDays) =>
+        type == AssignmentType.PrivateSector
+            ? Math.Max(1, privateSectorBusinessDays)
+            : Math.Max(1, defaultBusinessDays);
 
     public static string PrimaryLabel(AssignmentType type) =>
         type == AssignmentType.PrivateSector ? "خاص" : "تنفيذ";

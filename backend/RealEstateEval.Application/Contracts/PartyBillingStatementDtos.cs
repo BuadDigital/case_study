@@ -1,6 +1,6 @@
-namespace RealEstateEval.Application.Contracts;
+﻿namespace RealEstateEval.Application.Contracts;
 
-public class EngBillingReadyLineDto
+public class PartyBillingReadyLineDto
 {
     public string WorkflowTaskId { get; set; } = "";
     public string? PropertyId { get; set; }
@@ -16,7 +16,7 @@ public class EngBillingReadyLineDto
     public DateTime? UpdatedAtUtc { get; set; }
 }
 
-public class EngBillingStatementLineDto
+public class PartyBillingStatementLineDto
 {
     public string Id { get; set; } = "";
     public string WorkflowTaskId { get; set; } = "";
@@ -28,7 +28,7 @@ public class EngBillingStatementLineDto
     public string BillingStatusLabel { get; set; } = "";
 }
 
-public class EngBillingStatementDto
+public class PartyBillingStatementDto
 {
     public string Id { get; set; } = "";
     public string ReferenceNumber { get; set; } = "";
@@ -45,10 +45,10 @@ public class EngBillingStatementDto
     public string? TransferReceiptRef { get; set; }
     public DateTime? PaidAtUtc { get; set; }
     public string? Notes { get; set; }
-    public IReadOnlyList<EngBillingStatementLineDto> Lines { get; set; } = [];
+    public IReadOnlyList<PartyBillingStatementLineDto> Lines { get; set; } = [];
 }
 
-public class CreateEngBillingStatementRequest
+public class CreatePartyBillingStatementRequest
 {
     public IReadOnlyList<string> WorkflowTaskIds { get; init; } = [];
     /// <summary>
@@ -58,14 +58,14 @@ public class CreateEngBillingStatementRequest
     public string? Notes { get; init; }
 }
 
-public class CreateEngBillingStatementResult
+public class CreatePartyBillingStatementResult
 {
-    public EngBillingStatementDto? Statement { get; set; }
-    public IReadOnlyList<EngBillingReadyLineDto> DeferredLines { get; set; } = [];
+    public PartyBillingStatementDto? Statement { get; set; }
+    public IReadOnlyList<PartyBillingReadyLineDto> DeferredLines { get; set; } = [];
     public string? Error { get; set; }
 }
 
-public class CloseEngBillingStatementRequest
+public class ClosePartyBillingStatementRequest
 {
     public required string ExternalInvoiceNumber { get; init; }
     public string? TransferReceiptAttachmentId { get; init; }
@@ -74,13 +74,13 @@ public class CloseEngBillingStatementRequest
     public string? Notes { get; init; }
 }
 
-public class DeferEngBillingLinesRequest
+public class DeferPartyBillingLinesRequest
 {
     public IReadOnlyList<string> WorkflowTaskIds { get; init; } = [];
 }
 
-public class DeferEngBillingLinesResult
+public class DeferPartyBillingLinesResult
 {
-    public IReadOnlyList<EngBillingReadyLineDto> Deferred { get; set; } = [];
+    public IReadOnlyList<PartyBillingReadyLineDto> Deferred { get; set; } = [];
     public IReadOnlyList<InspectorFeeTransitionErrorDto> Failed { get; set; } = [];
 }

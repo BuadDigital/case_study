@@ -58,6 +58,13 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
     if (permissions) setRuntimeCapabilities(permissions.capabilities);
   }, [permissions]);
 
+  useEffect(() => {
+    if (!hasSession) return;
+    void import("../organization/organization-settings-cache").then((m) =>
+      m.ensureOrganizationSettingsLoaded(),
+    );
+  }, [hasSession]);
+
   const role = useMemo(() => {
     if (!permissionsResolved) return "general-manager";
     return roleFromPermissions(

@@ -1,41 +1,41 @@
-using RealEstateEval.Application.Contracts;
+﻿using RealEstateEval.Application.Contracts;
 
 namespace RealEstateEval.Application.Abstractions;
 
-public interface IEngineeringBillingStatementService
+public interface IPartyBillingStatementService
 {
-    Task<IReadOnlyList<EngBillingReadyLineDto>> ListReadyLinesAsync(
+    Task<IReadOnlyList<PartyBillingReadyLineDto>> ListReadyLinesAsync(
         string? assigneeId = null,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<EngBillingStatementDto>> ListStatementsAsync(
+    Task<IReadOnlyList<PartyBillingStatementDto>> ListStatementsAsync(
         string? assigneeId = null,
         string? status = null,
         bool issuedOrLaterOnly = false,
         CancellationToken cancellationToken = default);
 
-    Task<EngBillingStatementDto?> GetStatementAsync(
+    Task<PartyBillingStatementDto?> GetStatementAsync(
         Guid statementId,
         CancellationToken cancellationToken = default);
 
-    Task<CreateEngBillingStatementResult> CreateStatementAsync(
-        CreateEngBillingStatementRequest request,
+    Task<CreatePartyBillingStatementResult> CreateStatementAsync(
+        CreatePartyBillingStatementRequest request,
         string actorUserId,
         CancellationToken cancellationToken = default);
 
-    Task<(EngBillingStatementDto? Statement, string? Error)> IssueStatementAsync(
+    Task<(PartyBillingStatementDto? Statement, string? Error)> IssueStatementAsync(
         Guid statementId,
         string actorUserId,
         CancellationToken cancellationToken = default);
 
-    Task<(EngBillingStatementDto? Statement, string? Error)> CloseStatementAsync(
+    Task<(PartyBillingStatementDto? Statement, string? Error)> CloseStatementAsync(
         Guid statementId,
-        CloseEngBillingStatementRequest request,
+        ClosePartyBillingStatementRequest request,
         string actorUserId,
         CancellationToken cancellationToken = default);
 
-    Task<DeferEngBillingLinesResult> DeferLinesAsync(
-        DeferEngBillingLinesRequest request,
+    Task<DeferPartyBillingLinesResult> DeferLinesAsync(
+        DeferPartyBillingLinesRequest request,
         string actorUserId,
         CancellationToken cancellationToken = default);
 }

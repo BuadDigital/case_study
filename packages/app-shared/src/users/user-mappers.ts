@@ -44,6 +44,7 @@ export function userListItemToStaff(u: UserListItem): StaffUser {
     commercialRegistration: u.commercialRegistration,
     joinedAt: u.joinedAt,
     createdAt: u.createdAtUtc,
+    lastLoginAtUtc: u.lastLoginAtUtc,
     status: u.status,
     systemRoles: u.systemRoles ?? [],
     details: (u.details ?? []).map((d) => ({

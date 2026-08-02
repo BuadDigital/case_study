@@ -1,4 +1,4 @@
-namespace RealEstateEval.Application.Contracts;
+﻿namespace RealEstateEval.Application.Contracts;
 
 public class InspectorFeeRowDto
 {
@@ -14,6 +14,7 @@ public class InspectorFeeRowDto
     public decimal SupervisorDiscountSar { get; set; }
     public string? DiscountReason { get; set; }
     public decimal NetFeeSar { get; set; }
+    public decimal PaidAmountSar { get; set; }
     public string BillingStatus { get; set; } = "";
     public string BillingStatusLabel { get; set; } = "";
     public string WorkStatus { get; set; } = "";
@@ -23,7 +24,7 @@ public class InspectorFeeRowDto
     public string? ReturnTo { get; set; }
     public string? DisbursementBatchId { get; set; }
     public string? DisbursementVoucher { get; set; }
-    public string? EngineeringBillingStatementId { get; set; }
+    public string? PartyBillingStatementId { get; set; }
     public string? LastTransitionReason { get; set; }
     public DateTime? UpdatedAtUtc { get; set; }
     public DateTime? AccruedAtUtc { get; set; }
@@ -129,7 +130,13 @@ public class PoEnfazRevenueLineDto
     public decimal CaseStudyFeeSar { get; set; }
     /// <summary>دخل تكاليف الرفع.</summary>
     public decimal SurveyFeeSar { get; set; }
-    /// <summary>Computed total (CaseStudy + Survey) for display compatibility.</summary>
+    /// <summary>أتعاب مفاتيح (يدوي عند وجود استحقاق).</summary>
+    public decimal KeyFeeSar { get; set; }
+    public string? KeyEntitlementEnvelopeId { get; set; }
+    public bool HasKeyEntitlement { get; set; }
+    /// <summary>مراجع مرفقات ظرف المفتاح (صورة/إيصال) — عرض فقط.</summary>
+    public IReadOnlyList<string> KeyAttachmentIds { get; set; } = [];
+    /// <summary>Computed total (CaseStudy + Survey + Key).</summary>
     public decimal EnfazFeeSar { get; set; }
     public bool IncludedInBilling { get; set; }
 }
@@ -144,6 +151,12 @@ public class PoEnfazBillingDto
     public decimal TotalSar { get; set; }
     public string? InvoiceNumber { get; set; }
     public DateTime? InvoiceIssuedAtUtc { get; set; }
+    public string? InvoiceStatus { get; set; }
+    public decimal CollectedAmountSar { get; set; }
+    public DateTime? CollectedAtUtc { get; set; }
+    public bool IsOverdue { get; set; }
+    /// <summary>مرفقات مرتبطة بالفاتورة / ظروف المفاتيح — عرض فقط.</summary>
+    public IReadOnlyList<string> AttachmentIds { get; set; } = [];
 }
 
 public class EnfazTrackingRowDto
@@ -157,6 +170,11 @@ public class EnfazTrackingRowDto
     public decimal CaseStudyFeeSar { get; set; }
     public decimal SurveyFeeSar { get; set; }
     public decimal EnfazFeeSar { get; set; }
+    public string? InvoiceNumber { get; set; }
+    public string? InvoiceStatus { get; set; }
+    public decimal CollectedAmountSar { get; set; }
+    public DateTime? InvoiceIssuedAtUtc { get; set; }
+    public bool IsOverdue { get; set; }
 }
 
 public class EnfazReadyPoSummaryDto
@@ -176,7 +194,15 @@ public class PoEnfazRevenueLineInput
     public string PropertyId { get; init; } = "";
     public decimal CaseStudyFeeSar { get; init; }
     public decimal SurveyFeeSar { get; init; }
+    public decimal KeyFeeSar { get; init; }
+    public string? KeyEntitlementEnvelopeId { get; init; }
     public bool IncludedInBilling { get; init; } = true;
+}
+
+public class CollectPoEnfazInvoiceRequest
+{
+    public decimal AmountSar { get; init; }
+    public string? Note { get; init; }
 }
 
 public class PropertyEnfazRevenueDto
@@ -185,4 +211,37 @@ public class PropertyEnfazRevenueDto
     public decimal? SurveyFeeSar { get; set; }
     public decimal? EnfazFeeSar { get; set; }
     public bool HasEnfazRevenue { get; set; }
+}
+
+/// <summary>Open Enfaz receivables aging (تقادم الذمم).</summary>
+public class EnfazAgingReportDto
+{
+    public DateTime AsOfUtc { get; set; }
+    public decimal TotalOutstandingSar { get; set; }
+    public int OpenInvoiceCount { get; set; }
+    public IReadOnlyList<EnfazAgingBucketDto> Buckets { get; set; } = [];
+    public IReadOnlyList<EnfazAgingInvoiceRowDto> Invoices { get; set; } = [];
+}
+
+public class EnfazAgingBucketDto
+{
+    /// <summary>0_30 | 31_60 | 61_90 | 90_plus</summary>
+    public string Key { get; set; } = "";
+    public string Label { get; set; } = "";
+    public int InvoiceCount { get; set; }
+    public decimal OutstandingSar { get; set; }
+}
+
+public class EnfazAgingInvoiceRowDto
+{
+    public string PoNumber { get; set; } = "";
+    public string InvoiceNumber { get; set; } = "";
+    public string Status { get; set; } = "";
+    public DateTime IssuedAtUtc { get; set; }
+    public int AgeDays { get; set; }
+    public string BucketKey { get; set; } = "";
+    public string BucketLabel { get; set; } = "";
+    public decimal TotalSar { get; set; }
+    public decimal CollectedAmountSar { get; set; }
+    public decimal OutstandingSar { get; set; }
 }

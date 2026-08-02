@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { loadInspectorFeesSummary } from "@platform/app-shared/prototype/inspector-fees-api";
 import { loadReadyEnfazPoSummaries } from "@platform/app-shared/prototype/enfaz-billing-api";
-import { loadEngBillingReadyLines } from "@platform/app-shared/prototype/eng-billing-statements-api";
+import { loadPartyBillingReadyLines } from "@platform/app-shared/prototype/party-billing-statements-api";
 import { countFinanceDisburseActions } from "../lib/finance-queue-stats";
 
 export function useFinanceTabCounts() {
@@ -25,8 +25,8 @@ export function useFinanceTabCounts() {
   });
 
   const engQuery = useQuery({
-    queryKey: [...prototypeKeys.all, "eng-billing", "ready-lines", "counts"],
-    queryFn: () => loadEngBillingReadyLines(),
+    queryKey: [...prototypeKeys.all, "party-billing", "ready-lines", "counts"],
+    queryFn: () => loadPartyBillingReadyLines(),
     staleTime: 30_000,
   });
 

@@ -267,7 +267,15 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Identity.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AuditLogs", "platform", t =>
+                    b.HasIndex("Action");
+
+                    b.HasIndex("ActorId");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("EntityType", "EntityId");
+
+                    b.ToTable("AuditLogs", "audit", t =>
                         {
                             t.ExcludeFromMigrations();
                         });
@@ -459,6 +467,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Identity.Migrations
 
                     b.Property<DateOnly?>("JoinedAt")
                         .HasColumnType("date");
+
+                    b.Property<DateTime?>("LastLoginAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("NationalId")
                         .HasMaxLength(10)

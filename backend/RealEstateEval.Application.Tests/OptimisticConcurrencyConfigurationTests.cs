@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -21,7 +21,7 @@ public class OptimisticConcurrencyConfigurationTests
         typeof(PartyTaskSubmission),
         typeof(FieldInspectionWorkspace),
         typeof(InspectorFeeLedger),
-        typeof(EngineeringBillingStatement),
+        typeof(PartyBillingStatement),
         typeof(PropertyFailure),
         typeof(CaseStudyForm),
         typeof(ValuationRequest),

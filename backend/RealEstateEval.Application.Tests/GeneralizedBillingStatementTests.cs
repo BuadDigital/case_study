@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
@@ -23,7 +23,7 @@ public class GeneralizedBillingStatementTests
         var service = CreateStatementService(db);
 
         var result = await service.CreateStatementAsync(
-            new CreateEngBillingStatementRequest
+            new CreatePartyBillingStatementRequest
             {
                 WorkflowTaskIds = [taskId.ToString()],
             },
@@ -33,7 +33,7 @@ public class GeneralizedBillingStatementTests
         Assert.NotNull(result.Statement);
         var ledger = await db.InspectorFeeLedgers.SingleAsync();
         Assert.Equal(InspectorFeeBillingStatus.InStatement, ledger.BillingStatus);
-        Assert.NotNull(ledger.EngineeringBillingStatementId);
+        Assert.NotNull(ledger.PartyBillingStatementId);
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public class GeneralizedBillingStatementTests
         var service = CreateStatementService(db);
 
         var result = await service.CreateStatementAsync(
-            new CreateEngBillingStatementRequest
+            new CreatePartyBillingStatementRequest
             {
                 WorkflowTaskIds = [fieldId.ToString(), engId.ToString()],
             },
@@ -112,12 +112,12 @@ public class GeneralizedBillingStatementTests
         return taskId;
     }
 
-    private static EngineeringBillingStatementService CreateStatementService(ApplicationDbContext db) =>
+    private static PartyBillingStatementService CreateStatementService(ApplicationDbContext db) =>
         new(
             db,
             new NullNotificationService(),
             new NotificationRecipientResolver(db),
-            NullLogger<EngineeringBillingStatementService>.Instance);
+            NullLogger<PartyBillingStatementService>.Instance);
 
     private static ApplicationDbContext CreateDb() =>
         new(new DbContextOptionsBuilder<ApplicationDbContext>()

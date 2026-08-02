@@ -266,6 +266,7 @@ export const PAGE_TITLES: Record<PageId, string> = {
   "case-study-info-roles": "علاقة المستخدم بالمعلومة",
   "audit-log": "سجل التدقيق",
   "fee-pricing": "التسعيرة",
+  "organization-settings": "إعدادات المنشأة",
   profile: "البروفايل",
 };
 
@@ -306,6 +307,7 @@ export const PAGE_BREADCRUMB: Record<PageId, string> = {
   "case-study-info-roles": "لوحة التحكم / علاقة المستخدم بالمعلومة",
   "audit-log": "لوحة التحكم / سجل التدقيق",
   "fee-pricing": "لوحة التحكم / التسعيرة",
+  "organization-settings": "لوحة التحكم / إعدادات المنشأة",
   profile: "البروفايل",
 };
 
@@ -401,6 +403,7 @@ export type StaffUser = {
   commercialRegistration?: string | null;
   joinedAt?: string | null;
   createdAt?: string;
+  lastLoginAtUtc?: string | null;
   status?: "Active" | "Disabled" | "PendingActivation" | "Locked";
   systemRoles?: string[];
   details?: StaffUserDetail[];

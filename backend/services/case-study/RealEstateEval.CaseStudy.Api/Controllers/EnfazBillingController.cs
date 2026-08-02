@@ -49,6 +49,11 @@ public class EnfazBillingController : ControllerBase
         CancellationToken ct) =>
         Ok(await _billing.ListTrackingAsync(ct));
 
+    [HttpGet("aging")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadFinancialData)]
+    public async Task<ActionResult<EnfazAgingReportDto>> Aging(CancellationToken ct) =>
+        Ok(await _billing.GetAgingReportAsync(ct));
+
     [HttpPost("{poNumber}/issue-invoice")]
     [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
     public async Task<ActionResult<PoEnfazBillingDto>> IssueInvoice(
@@ -60,6 +65,23 @@ public class EnfazBillingController : ControllerBase
             ? this.BadRequestProblem(
                 "تعذر إصدار الفاتورة — تحقق من اكتمال أمر العمل وتعبئة الأتعاب.")
             : Ok(dto);
+    }
+
+    [HttpPost("{poNumber}/collect")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
+    public async Task<ActionResult<PoEnfazBillingDto>> Collect(
+        string poNumber,
+        [FromBody] CollectPoEnfazInvoiceRequest request,
+        CancellationToken ct)
+    {
+        var (dto, error) = await _billing.CollectInvoiceAsync(
+            poNumber,
+            request,
+            ActorClaims.Id(User),
+            ct);
+        if (error is not null)
+            return this.BadRequestProblem(error);
+        return dto is null ? NotFound() : Ok(dto);
     }
 
     [HttpGet("{poNumber}/invoice.pdf")]

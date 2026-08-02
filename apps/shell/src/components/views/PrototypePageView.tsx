@@ -79,6 +79,10 @@ const CourtsView = dynamic(
   () => import("@settings/mfe").then((m) => m.CourtsView),
   { ssr: false },
 );
+const OrganizationSettingsView = dynamic(
+  () => import("@settings/mfe").then((m) => m.OrganizationSettingsView),
+  { ssr: false },
+);
 const SystemFieldsCatalogView = dynamic(
   () => import("@settings/mfe").then((m) => m.SystemFieldsCatalogView),
   { ssr: false },
@@ -137,6 +141,7 @@ const VIEWS: Partial<Record<PageId, ComponentType>> = {
   users: UsersView,
   profile: ProfileView,
   courts: CourtsView,
+  "organization-settings": OrganizationSettingsView,
   "failure-types": FailureTypesView,
   "case-study-info-roles": CaseStudyInfoRolesView,
   "party-fees": PartyFeesView,

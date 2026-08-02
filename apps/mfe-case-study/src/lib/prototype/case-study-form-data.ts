@@ -1,6 +1,10 @@
 /** Question banks for نموذج دراسة الحالة — labels من قاموس الحقول (API) مع افتراضيات محلية. */
 
 import {
+  getCachedOrganizationBranding,
+  getCachedOrganizationCompanyName,
+} from "@platform/app-shared/organization/organization-settings-cache";
+import {
   DEFAULT_CASE_STUDY_QUESTION_CATALOG,
   type CaseStudyQuestionSection,
 } from "./case-study-question-catalog";
@@ -17,13 +21,29 @@ export const CASE_STUDY_FORM_STEPS = [
   { id: 5, label: "ملاحظات إضافية" },
 ] as const;
 
-export const CASE_STUDY_PROVIDER_NAME = "شركة إجادة المهنية للتقييم";
+const DEFAULT_PROVIDER_NAME = "شركة إجادة المهنية للتقييم";
+const DEFAULT_STAMP = "/case-study/ejadah-stamp.png";
+const DEFAULT_SIGNATURE = "/case-study/emad-signature.png";
+
+/** Resolved from OrganizationSettings when cache is warm; falls back to built-in defaults. */
+export function caseStudyProviderName(): string {
+  return getCachedOrganizationCompanyName(DEFAULT_PROVIDER_NAME);
+}
+
+/** @deprecated Prefer caseStudyProviderName() — kept for existing static imports. */
+export const CASE_STUDY_PROVIDER_NAME = DEFAULT_PROVIDER_NAME;
 export const CASE_STUDY_REPORT_TITLE = "نموذج دراسة الحالة";
 export const CASE_STUDY_REPORT_SUBTITLE = "منصة إدارة التقييم العقاري";
 /** معتمد التقرير — ثابت في التقرير (ليس أخصائي الإسناد من أمر العمل). */
 export const CASE_STUDY_REPORT_APPROVER_NAME = "عماد رشيد الرشيد";
-export const CASE_STUDY_SIGNATURE_IMAGE = "/case-study/emad-signature.png";
-export const CASE_STUDY_STAMP_IMAGE = "/case-study/ejadah-stamp.png";
+export function caseStudySignatureImage(): string {
+  return getCachedOrganizationBranding()?.signatureUrl || DEFAULT_SIGNATURE;
+}
+export function caseStudyStampImage(): string {
+  return getCachedOrganizationBranding()?.stampUrl || DEFAULT_STAMP;
+}
+export const CASE_STUDY_SIGNATURE_IMAGE = DEFAULT_SIGNATURE;
+export const CASE_STUDY_STAMP_IMAGE = DEFAULT_STAMP;
 
 /** نص ثابت أسفل جداول الصك والرفع المساحي — مطابق للنموذج الورقي. */
 export const CASE_STUDY_SECTION_REMARKS_HINT =
