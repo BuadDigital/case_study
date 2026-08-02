@@ -103,7 +103,10 @@ public class OperationsTaskDto
     public string? CancelReason { get; set; }
     /// <summary>Linked key envelope id when registered against this task.</summary>
     public string? LinkedEnvelopeId { get; set; }
-    /// <summary>Visit fee stamped when court_visit completed (null if not generated).</summary>
+    /// <summary>
+    /// Cooperator visit fee: agreed at create, then mirrored from the stamped charge after complete.
+    /// Null for employee reviewers (no visit fee).
+    /// </summary>
     public decimal? VisitFeeAmountSar { get; set; }
 }
 
@@ -150,6 +153,12 @@ public class CreateOperationsTaskRequest
     public DateTime? DueAtUtc { get; set; }
 
     public IReadOnlyList<OperationsTaskLetterRowDto>? LetterRows { get; set; }
+
+    /// <summary>
+    /// Required for cooperator court_visit assignees when the active pricing table has no default.
+    /// Ignored (must be null) for employee reviewers.
+    /// </summary>
+    public decimal? VisitFeeAmountSar { get; set; }
 }
 
 public class PatchOperationsTaskRequest

@@ -154,6 +154,22 @@ public sealed class OperationsTaskService : IOperationsTaskService
         if (isCourtVisit && letterRows.Count == 0)
             return (null, "مهمة زيارة المحكمة تتطلب صفوف خطاب التفويض");
 
+        decimal? agreedVisitFee = null;
+        Guid? visitFeePricingTableId = null;
+        if (isCourtVisit)
+        {
+            var (visitFee, visitTableId, visitError) =
+                await ResolveCreateVisitFeeAsync(assigneeId, request.VisitFeeAmountSar, cancellationToken);
+            if (visitError is not null)
+                return (null, visitError);
+            agreedVisitFee = visitFee;
+            visitFeePricingTableId = visitTableId;
+        }
+        else if (request.VisitFeeAmountSar is not null)
+        {
+            return (null, "مبلغ أتعاب الزيارة يخص مهام زيارة المحكمة فقط.");
+        }
+
         var strategy = _db.Database.CreateExecutionStrategy();
         return await strategy.ExecuteAsync(async () =>
         {
@@ -191,7 +207,9 @@ public sealed class OperationsTaskService : IOperationsTaskService
                             Kind = "update",
                         },
                     },
-                    JsonOpts));
+                    JsonOpts),
+                agreedVisitFeeSar: agreedVisitFee,
+                visitFeePricingTableId: visitFeePricingTableId);
 
             _db.OperationsTasks.Add(entity);
             await _db.SaveChangesAsync(cancellationToken);
@@ -635,9 +653,61 @@ public sealed class OperationsTaskService : IOperationsTaskService
     }
 
     /// <summary>
-    /// Prices the visit without mutating anything, so a missing rate can be refused before the task
-    /// is touched. A visit that was already charged needs no rate — the fee comes back unresolved and
-    /// no second charge is written.
+    /// Create-time visit fee for court_visit: employees get none; cooperators need an amount
+    /// (request value, else the active table default).
+    /// </summary>
+    private async Task<(decimal? Fee, Guid? PricingTableId, string? Error)> ResolveCreateVisitFeeAsync(
+        string assigneeId,
+        decimal? requestedAmount,
+        CancellationToken cancellationToken)
+    {
+        var profile = await _db.UserProfiles.AsNoTracking()
+            .Include(p => p.HrEmployee)
+            .Include(p => p.ProcProvider)
+            .FirstOrDefaultAsync(p => p.DistributionAssigneeId == assigneeId, cancellationToken);
+        var reviewerType = GovernmentReviewFeeRules.ResolveReviewerType(
+            profile?.ContractType,
+            profile?.ProcProvider?.ProviderKind,
+            profile?.HrEmployee?.EmploymentType,
+            assigneeId);
+
+        if (!GovernmentReviewFeeRules.RequiresVisitFee(reviewerType))
+        {
+            if (requestedAmount is not null)
+                return (null, null, "المراجع الموظف لا يستحق أتعاب زيارة — الحوافز عبر جدول flat.");
+            return (null, null, null);
+        }
+
+        if (requestedAmount is > 0m)
+        {
+            // Keep provenance when the specialist edited a table default.
+            var tableHint = await _pricing.ResolveDefaultFeeAsync(
+                WorkflowTaskKind.GovernmentReview,
+                GovernmentReviewFeeRules.PartyType,
+                areaM2: null,
+                assigneeId,
+                cancellationToken);
+            return (requestedAmount, tableHint.PricingTableId, null);
+        }
+
+        if (requestedAmount is <= 0m)
+            return (null, null, "مبلغ أتعاب الزيارة يجب أن يكون أكبر من صفر.");
+
+        var fromTable = await _pricing.ResolveDefaultFeeAsync(
+            WorkflowTaskKind.GovernmentReview,
+            GovernmentReviewFeeRules.PartyType,
+            areaM2: null,
+            assigneeId,
+            cancellationToken);
+        if (!fromTable.IsResolved)
+            return (null, null, PricingErrors.FeeUnresolved);
+
+        return (fromTable.FeeSar, fromTable.PricingTableId, null);
+    }
+
+    /// <summary>
+    /// Stamps the create-time agreed amount on complete. Employees and already-charged visits
+    /// return unresolved with no error so completion can proceed without a second charge.
     /// </summary>
     private async Task<(ResolvedPartyFee Fee, string? Error)> ResolveCourtVisitFeeAsync(
         OperationsTask entity,
@@ -648,14 +718,13 @@ public sealed class OperationsTaskService : IOperationsTaskService
             .AnyAsync(c => c.OperationsTaskId == entity.Id, cancellationToken);
         if (alreadyCharged) return (ResolvedPartyFee.Unresolved, null);
 
-        var fee = await _pricing.ResolveDefaultFeeAsync(
-            WorkflowTaskKind.GovernmentReview,
-            GovernmentReviewFeeRules.PartyType,
-            areaM2: null,
-            assigneeId: PendingCreditAssigneeId(entity, request),
-            cancellationToken);
+        if (entity.AgreedVisitFeeSar is null)
+            return (ResolvedPartyFee.Unresolved, null);
 
-        return fee.IsResolved ? (fee, null) : (ResolvedPartyFee.Unresolved, PricingErrors.FeeUnresolved);
+        if (entity.AgreedVisitFeeSar <= 0m)
+            return (ResolvedPartyFee.Unresolved, PricingErrors.FeeUnresolved);
+
+        return (new ResolvedPartyFee(entity.AgreedVisitFeeSar, entity.VisitFeePricingTableId), null);
     }
 
     /// <summary>
@@ -1041,7 +1110,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
         ReceiptConfirmedAt = row.ReceiptConfirmedAtUtc?.ToString("O"),
         CancelReason = row.CancelReason,
         LinkedEnvelopeId = linkedEnvelopeId?.ToString(),
-        VisitFeeAmountSar = visitFeeAmountSar,
+        VisitFeeAmountSar = visitFeeAmountSar ?? row.AgreedVisitFeeSar,
     };
 
     private static string? NullIfBlank(string? value)

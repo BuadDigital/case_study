@@ -593,6 +593,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
             e.Property(x => x.CommentsJson).HasColumnType("jsonb");
             e.Property(x => x.RemindersJson).HasColumnType("jsonb");
             e.Property(x => x.CourtVisitResultJson).HasColumnType("jsonb");
+            e.Property(x => x.AgreedVisitFeeSar).HasPrecision(12, 2);
             e.Property(x => x.PauseReason).HasMaxLength(2000);
             e.Property(x => x.CancelReason).HasMaxLength(2000);
             e.Property(x => x.OriginalAssigneeId).HasMaxLength(128);

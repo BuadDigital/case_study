@@ -507,6 +507,7 @@ public class OperationsTaskServiceTests
     public async Task PatchAsync_complete_court_visit_persists_outcome()
     {
         await using var db = CreateDb();
+        await SeedCooperatorAsync(db, "a1");
         var pricingTableId = await SetVisitPriceAsync(db, 350m);
         var service = CreateService(db);
         var (created, _) = await service.CreateAsync(
@@ -518,6 +519,7 @@ public class OperationsTaskServiceTests
                 PoNumber = "PO-1",
                 AssigneeId = "a1",
                 AssigneeName = "مراجع",
+                VisitFeeAmountSar = 350m,
                 LetterRows =
                 [
                     new OperationsTaskLetterRowDto
@@ -583,6 +585,7 @@ public class OperationsTaskServiceTests
     public async Task PatchAsync_complete_court_visit_is_idempotent_for_visit_fee()
     {
         await using var db = CreateDb();
+        await SeedCooperatorAsync(db, "a1");
         await SetVisitPriceAsync(db, 350m);
         var service = CreateService(db);
         var (created, _) = await service.CreateAsync(
@@ -594,6 +597,7 @@ public class OperationsTaskServiceTests
                 PoNumber = "PO-2",
                 AssigneeId = "a1",
                 AssigneeName = "مراجع",
+                VisitFeeAmountSar = 350m,
                 LetterRows =
                 [
                     new OperationsTaskLetterRowDto
@@ -659,16 +663,16 @@ public class OperationsTaskServiceTests
     }
 
     /// <summary>
-    /// The visit used to close no matter what, because an unresolved price fell back to 350 twice
-    /// over. Now an unpriced table stops the closure, so work is never recorded as done with an
-    /// invented fee — or with no fee that anyone would notice.
+    /// A cooperator visit fee is decided at create. Without an amount and without a priced table,
+    /// the task must not be created — otherwise complete would invent or skip money silently.
     /// </summary>
     [Fact]
-    public async Task PatchAsync_refuses_to_complete_a_court_visit_that_has_no_price()
+    public async Task CreateAsync_refuses_cooperator_court_visit_without_a_price()
     {
         await using var db = CreateDb();
+        await SeedCooperatorAsync(db, "a1");
         var service = CreateService(db);
-        var (created, _) = await service.CreateAsync(
+        var (created, error) = await service.CreateAsync(
             new CreateOperationsTaskRequest
             {
                 Type = "court_visit",
@@ -693,11 +697,51 @@ public class OperationsTaskServiceTests
             "creator-1",
             "منشئ");
 
+        Assert.Null(created);
+        Assert.Equal(PricingErrors.FeeUnresolved, error);
+        Assert.Empty(db.OperationsTasks);
+        Assert.Empty(db.CourtVisitFeeCharges);
+    }
+
+    [Fact]
+    public async Task Employee_court_visit_completes_without_a_visit_charge()
+    {
+        await using var db = CreateDb();
+        await SeedEmployeeAsync(db, "emp-1");
+        var service = CreateService(db);
+        var (created, createError) = await service.CreateAsync(
+            new CreateOperationsTaskRequest
+            {
+                Type = "court_visit",
+                Title = "زيارة محكمة",
+                Scope = "work_order",
+                PoNumber = "PO-EMP",
+                AssigneeId = "emp-1",
+                AssigneeName = "موظف",
+                LetterRows =
+                [
+                    new OperationsTaskLetterRowDto
+                    {
+                        Po = "PO-EMP",
+                        Deed = "D-E",
+                        Owner = "مالك",
+                        Request = "REQ-E",
+                        Court = "محكمة",
+                        Circuit = "دائرة",
+                    },
+                ],
+            },
+            "creator-1",
+            "منشئ");
+
+        Assert.Null(createError);
+        Assert.Null(created!.VisitFeeAmountSar);
+
         await service.PatchAsync(
-            Guid.Parse(created!.Id),
+            Guid.Parse(created.Id),
             new PatchOperationsTaskRequest { Status = "in_progress" },
-            "a1",
-            "مراجع",
+            "emp-1",
+            "موظف",
             "government-reviewer",
             "user-1");
 
@@ -712,23 +756,59 @@ public class OperationsTaskServiceTests
                     Statement = "لا مفاتيح",
                 },
             },
-            "a1",
-            "مراجع",
+            "emp-1",
+            "موظف",
             "government-reviewer",
             "user-1");
 
-        Assert.Null(done);
-        Assert.Equal(PricingErrors.FeeUnresolved, error);
+        Assert.Null(error);
+        Assert.Equal("completed", done!.Status);
+        Assert.Null(done.VisitFeeAmountSar);
         Assert.Empty(db.CourtVisitFeeCharges);
+    }
 
-        var stillOpen = await db.OperationsTasks.SingleAsync();
-        Assert.NotEqual(OperationsTaskStatus.Completed, stillOpen.Status);
+    [Fact]
+    public async Task CreateAsync_rejects_visit_fee_for_employee_reviewer()
+    {
+        await using var db = CreateDb();
+        await SeedEmployeeAsync(db, "emp-1");
+        var service = CreateService(db);
+        var (created, error) = await service.CreateAsync(
+            new CreateOperationsTaskRequest
+            {
+                Type = "court_visit",
+                Title = "زيارة محكمة",
+                Scope = "work_order",
+                PoNumber = "PO-EMP-2",
+                AssigneeId = "emp-1",
+                AssigneeName = "موظف",
+                VisitFeeAmountSar = 200m,
+                LetterRows =
+                [
+                    new OperationsTaskLetterRowDto
+                    {
+                        Po = "PO-EMP-2",
+                        Deed = "D-E2",
+                        Owner = "مالك",
+                        Request = "REQ-E2",
+                        Court = "محكمة",
+                        Circuit = "دائرة",
+                    },
+                ],
+            },
+            "creator-1",
+            "منشئ");
+
+        Assert.Null(created);
+        Assert.Contains("المراجع الموظف", error);
     }
 
     [Fact]
     public async Task PatchAsync_complete_court_visit_credits_execution_assignee()
     {
         await using var db = CreateDb();
+        await SeedCooperatorAsync(db, "original-1");
+        await SeedCooperatorAsync(db, "new-1");
         await SetVisitPriceAsync(db, 350m);
         var service = CreateService(db);
         var (created, _) = await service.CreateAsync(
@@ -740,6 +820,7 @@ public class OperationsTaskServiceTests
                 PoNumber = "PO-3",
                 AssigneeId = "original-1",
                 AssigneeName = "أصلي",
+                VisitFeeAmountSar = 350m,
                 LetterRows =
                 [
                     new OperationsTaskLetterRowDto
@@ -828,6 +909,35 @@ public class OperationsTaskServiceTests
         });
         await db.SaveChangesAsync();
         return tableId;
+    }
+
+    private static async Task SeedCooperatorAsync(ApplicationDbContext db, string assigneeId)
+    {
+        db.UserProfiles.Add(new UserProfile
+        {
+            UserId = Guid.NewGuid().ToString("N"),
+            DistributionAssigneeId = assigneeId,
+            ContractType = ContractType.Freelance,
+            RoleId = "government-reviewer",
+            JobTitle = "مراجع حكومي",
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+    }
+
+    private static async Task SeedEmployeeAsync(ApplicationDbContext db, string assigneeId)
+    {
+        db.UserProfiles.Add(new UserProfile
+        {
+            UserId = Guid.NewGuid().ToString("N"),
+            DistributionAssigneeId = assigneeId,
+            ContractType = ContractType.Internal,
+            RoleId = "government-reviewer",
+            JobTitle = "مراجع حكومي",
+            HasCompensation = true,
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
     }
 
     private static OperationsTaskService CreateService(ApplicationDbContext db) =>
