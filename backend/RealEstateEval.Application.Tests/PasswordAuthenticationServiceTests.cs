@@ -40,6 +40,18 @@ public class PasswordAuthenticationServiceTests
     }
 
     [Fact]
+    public async Task Authenticate_accepts_saudi_mobile_with_valid_password()
+    {
+        await using var provider = await CreateProviderAsync(UserStatus.Active);
+        var service = provider.GetRequiredService<IPasswordAuthenticationService>();
+
+        var result = await service.AuthenticateAsync("500000099", "StrongPass123!");
+
+        Assert.NotNull(result);
+        Assert.Equal("test-user@example.test", result.User.Email);
+    }
+
+    [Fact]
     public async Task Authenticate_rejects_wrong_password_and_tracks_failure()
     {
         await using var provider = await CreateProviderAsync(UserStatus.Active);
@@ -109,6 +121,8 @@ public class PasswordAuthenticationServiceTests
             UserName = "test-user",
             Email = "test-user@example.test",
             EmailConfirmed = true,
+            PhoneNumber = "+966500000099",
+            PhoneNumberConfirmed = true,
             DisplayName = "Test User",
         };
         var creation = await userManager.CreateAsync(user, "StrongPass123!");

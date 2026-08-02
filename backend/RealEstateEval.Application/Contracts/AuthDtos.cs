@@ -13,10 +13,10 @@ public class UsernameLoginRequest
 
 public class PasswordLoginRequest
 {
-    /// <summary>Email address (preferred) or legacy username.</summary>
+    /// <summary>Mobile (preferred), email, or legacy username.</summary>
     [Required]
     [MinLength(2)]
-    [MaxLength(64)]
+    [MaxLength(120)]
     public string Username { get; set; } = string.Empty;
 
     [Required]

@@ -102,6 +102,16 @@ internal static class PlatformModel
             e.Property(x => x.SettingsJson).HasColumnType("jsonb");
         });
 
+        builder.Entity<FieldSyncStatus>(e =>
+        {
+            e.ToTable("FieldSyncStatuses", DatabaseSchemas.Platform);
+            e.HasIndex(x => x.UserId).IsUnique();
+            e.Property(x => x.UserId).HasMaxLength(128);
+            e.Property(x => x.DisplayName).HasMaxLength(256);
+            e.Property(x => x.RoleId).HasMaxLength(64);
+            e.Property(x => x.KindsJson).HasColumnType("jsonb");
+        });
+
         return builder;
     }
 }

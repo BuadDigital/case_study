@@ -146,6 +146,7 @@ public class FileAttachmentMetaDto
     public required string ContentType { get; init; }
     public long SizeBytes { get; init; }
     public DateTime CreatedAtUtc { get; init; }
+    public PhotoMetadataDto? PhotoMetadata { get; init; }
 }
 
 public class UploadAttachmentRequest
@@ -170,6 +171,18 @@ public class PhotoMetadataInput
     public double? Latitude { get; init; }
     public double? Longitude { get; init; }
     public DateTime? CapturedAtUtc { get; init; }
+    /// <summary>Property GPS at capture time — used to stamp distance/flag (phase 2).</summary>
+    public double? PropertyLatitude { get; init; }
+    public double? PropertyLongitude { get; init; }
+}
+
+public class PhotoMetadataDto
+{
+    public double? Latitude { get; init; }
+    public double? Longitude { get; init; }
+    public DateTime? CapturedAtUtc { get; init; }
+    public double? DistanceM { get; init; }
+    public string? Flag { get; init; }
 }
 
 public class SuspendedTransactionDto

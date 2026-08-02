@@ -37,6 +37,7 @@ import {
   type InspectorBoundaryKey,
   type InspectorWorkspaceDraft,
 } from "../../lib/prototype/inspector-workspace-data";
+import { photoLocationFlagLabel } from "@platform/app-shared/media/photo-location";
 import {
   firstInspectorWorkspaceError,
   validateInspectorWorkspace,
@@ -307,10 +308,24 @@ function ChipRow({
 function PhotoTile({
   label,
   filled,
+  locationFlag,
+  distanceM,
 }: {
   label: string;
   filled: boolean;
+  locationFlag?: string | null;
+  distanceM?: number | null;
 }) {
+  const flagLabel = photoLocationFlagLabel(locationFlag);
+  const flagTone =
+    locationFlag === "outside_property"
+      ? "bg-amber-600"
+      : locationFlag === "location_unavailable"
+        ? "bg-slate-600"
+        : locationFlag === "match"
+          ? "bg-emerald-700"
+          : null;
+
   return (
     <div className="relative grid h-[100px] place-items-center overflow-hidden rounded-lg border border-border bg-surface-2">
       {filled ? (
@@ -330,6 +345,17 @@ function PhotoTile({
       ) : (
         <span className="text-[10.5px] text-[#d9694f]">بانتظار الرفع</span>
       )}
+      {flagTone && flagLabel ? (
+        <span
+          className={`absolute inset-x-1 top-1 z-[1] rounded px-1 py-0.5 text-center text-[9px] font-semibold text-white ${flagTone}`}
+          title={
+            distanceM != null ? `${flagLabel} · ${distanceM} م` : flagLabel
+          }
+        >
+          {flagLabel}
+          {distanceM != null ? ` · ${Math.round(distanceM)}م` : ""}
+        </span>
+      ) : null}
       <span className="absolute inset-x-0 bottom-0 bg-[rgba(16,43,78,0.72)] px-1.5 py-[3px] text-center text-[9.5px] text-white">
         {label}
       </span>
@@ -1317,8 +1343,19 @@ export function PropertyDetailInspectionTab({
                 const filled = Boolean(
                   slot && !slot.none && slot.photos.length > 0,
                 );
+                const worst = slot?.photos?.find(
+                  (p) =>
+                    p.locationFlag === "outside_property" ||
+                    p.locationFlag === "location_unavailable",
+                ) ?? slot?.photos?.[0];
                 return (
-                  <PhotoTile key={def.id} label={def.name} filled={filled} />
+                  <PhotoTile
+                    key={def.id}
+                    label={def.name}
+                    filled={filled}
+                    locationFlag={worst?.locationFlag}
+                    distanceM={worst?.distanceM}
+                  />
                 );
               })}
             </div>

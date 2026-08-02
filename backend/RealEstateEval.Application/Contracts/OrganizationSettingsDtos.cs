@@ -34,11 +34,23 @@ public sealed class OrganizationBrandingSettingsDto
 
 public sealed class OrganizationCommunicationsSettingsDto
 {
-    /// <summary>dev-log | sms | email — wiring for OTP providers (Stage 2).</summary>
+    /// <summary>dev-log | sms | email</summary>
     public string OtpProvider { get; init; } = "dev-log";
     public string DefaultOtpChannel { get; init; } = "sms";
     public string? SmsSenderId { get; init; }
     public string? EmailFrom { get; init; }
+
+    public string? SmsApiUrl { get; init; }
+    /// <summary>Write-only on save; never returned in clear text from GET.</summary>
+    public string? SmsApiKey { get; init; }
+    public bool SmsApiKeyConfigured { get; init; }
+
+    public string? SmtpHost { get; init; }
+    public int SmtpPort { get; init; } = 587;
+    public string? SmtpUsername { get; init; }
+    /// <summary>Write-only on save; never returned in clear text from GET.</summary>
+    public string? SmtpPassword { get; init; }
+    public bool SmtpPasswordConfigured { get; init; }
 }
 
 public sealed class OrganizationSlaSettingsDto
@@ -54,4 +66,17 @@ public sealed class SaveOrganizationSettingsRequest
     public OrganizationBrandingSettingsDto? Branding { get; init; }
     public OrganizationCommunicationsSettingsDto? Communications { get; init; }
     public OrganizationSlaSettingsDto? Sla { get; init; }
+}
+
+public sealed class TestCommunicationRequest
+{
+    public string Channel { get; init; } = "sms";
+    public string Destination { get; init; } = "";
+}
+
+public sealed class TestCommunicationResultDto
+{
+    public bool Ok { get; init; }
+    public string Provider { get; init; } = "";
+    public string? Detail { get; init; }
 }

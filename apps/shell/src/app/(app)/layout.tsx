@@ -10,6 +10,7 @@ import { ServerNotificationBridge } from "@/components/ServerNotificationBridge"
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
 import { FieldOfflinePrefetch } from "@/components/FieldOfflinePrefetch";
+import { OfflineWriteInterceptorHost } from "@/components/OfflineWriteInterceptorHost";
 import { PageAccessGate } from "@/components/PageAccessGate";
 import { AppShell } from "@/components/views/AppShell";
 import { PrototypeProvider } from "@platform/app-shared/contexts/PrototypeContext";
@@ -34,6 +35,7 @@ export default function AppSectionLayout({
               <NotificationToastBridge />
               <ServerNotificationBridge />
               <FieldOfflinePrefetch />
+              <OfflineWriteInterceptorHost />
               <PageAccessGate>
                 <ErrorBoundary fallbackTitle="تعذّر تحميل التطبيق.">
                   <OfflineBanner />

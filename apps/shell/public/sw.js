@@ -2,7 +2,7 @@
  * Web Push, and offline navigation fallback.
  * Auth/API traffic is never cached. Compatible with Next Turbopack (no build plugin).
  */
-const CACHE_VERSION = "ejada-shell-v3";
+const CACHE_VERSION = "ejada-shell-v4";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const OFFLINE_URL = "/offline.html";
 const FIELD_ROUTE_PREFIXES = ["/property-inspection", "/government-review"];
@@ -114,6 +114,24 @@ self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
   }
+});
+
+/** Background Sync tag — page registers this when outbox has pending writes. */
+const OFFLINE_SYNC_TAG = "ejada-offline-sync";
+
+self.addEventListener("sync", (event) => {
+  if (event.tag !== OFFLINE_SYNC_TAG) return;
+  event.waitUntil(
+    (async () => {
+      const clients = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      for (const client of clients) {
+        client.postMessage({ type: "RUN_OFFLINE_SYNC", source: "background-sync" });
+      }
+    })(),
+  );
 });
 
 self.addEventListener("push", (event) => {

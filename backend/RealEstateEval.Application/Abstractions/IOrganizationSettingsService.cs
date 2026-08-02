@@ -6,6 +6,9 @@ public interface IOrganizationSettingsService
 {
     Task<OrganizationSettingsDto> GetAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Unmasked settings for server-side providers (OTP delivery).</summary>
+    Task<OrganizationSettingsDto> GetInternalAsync(CancellationToken cancellationToken = default);
+
     Task<OrganizationSettingsDto> SaveAsync(
         SaveOrganizationSettingsRequest request,
         string actorId,
