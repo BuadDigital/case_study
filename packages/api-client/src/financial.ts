@@ -35,10 +35,15 @@ export type PartyFeePricingCategory =
   | "government-review"
   | "field-inspector";
 
+export type PartyFeePricingKind = "tiered" | "party-rates" | "flat";
+export type PartyFeePricingManagedBy = "system-admin" | "supervisor";
+
 export type PartyFeePricingTableSummaryDto = {
   id: string;
   category: PartyFeePricingCategory;
   name: string;
+  pricingKind?: PartyFeePricingKind | string;
+  managedBy?: PartyFeePricingManagedBy | string;
   isActive: boolean;
   assignedCount?: number;
   updatedAtUtc?: string | null;
@@ -55,6 +60,8 @@ export type PartyFeePricingDto = {
   id: string;
   category: PartyFeePricingCategory;
   name: string;
+  pricingKind?: PartyFeePricingKind | string;
+  managedBy?: PartyFeePricingManagedBy | string;
   isActive: boolean;
   assignedCount?: number;
   assignedAssigneeIds?: string[];
@@ -62,13 +69,34 @@ export type PartyFeePricingDto = {
   governmentReviewFeeSar: number;
   fieldInspectorIndividualFeeSar: number;
   fieldInspectorOrganizationFeeSar: number;
+  flatAmountSar?: number;
   updatedAtUtc?: string | null;
 };
 
 export type CreatePartyFeePricingTableRequest = {
   category: PartyFeePricingCategory;
   name: string;
+  pricingKind?: PartyFeePricingKind;
+  managedBy?: PartyFeePricingManagedBy;
+  flatAmountSar?: number;
   copyFromTableId?: string | null;
+};
+
+export type IncentiveSuspensionDto = {
+  id: string;
+  userId: string;
+  assigneeId: string;
+  transactionKey: string;
+  reason: string;
+  isActive: boolean;
+  createdAtUtc: string;
+  liftedAtUtc?: string | null;
+};
+
+export type CreateIncentiveSuspensionRequest = {
+  assigneeId: string;
+  transactionKey: string;
+  reason: string;
 };
 
 export type SetPartyFeePricingAssignmentsRequest = {

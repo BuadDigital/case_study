@@ -300,17 +300,29 @@ export function FinancePartyFeePricing() {
     }
   };
 
-  const createTable = async () => {
+  const createTable = async (kind: "party-rates" | "flat" = "party-rates") => {
     setBusy(true);
     try {
       const created = await createPartyFeePricingTable(
         selectedCategory,
-        defaultTableName(tables.length),
-        selectedId || null,
+        kind === "flat"
+          ? `حوافز موظفين ${tables.filter((t) => t.pricingKind === "flat").length + 1}`
+          : defaultTableName(tables.length),
+        kind === "flat" ? null : selectedId || null,
+        kind === "flat"
+          ? {
+              pricingKind: "flat",
+              managedBy: "supervisor",
+              flatAmountSar: 0,
+            }
+          : undefined,
       );
       await refreshTables(selectedCategory, created.id);
       setDraft(created);
-      showToast("تم إنشاء جدول جديد", "success");
+      showToast(
+        kind === "flat" ? "تم إنشاء جدول حوافز مقطوع" : "تم إنشاء جدول جديد",
+        "success",
+      );
     } catch (err: unknown) {
       showToast(
         err instanceof Error ? err.message : "تعذّر إنشاء الجدول",
@@ -488,15 +500,28 @@ export function FinancePartyFeePricing() {
               جداول {activeCategory?.label}
             </h3>
             <Can capability="manage-system-config">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={locked}
-                onClick={() => void createTable()}
-              >
-                إضافة
-              </Button>
+              <div className="flex flex-wrap gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={locked}
+                  onClick={() => void createTable("party-rates")}
+                >
+                  إضافة
+                </Button>
+                {selectedCategory === "field-inspector" ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={locked}
+                    onClick={() => void createTable("flat")}
+                  >
+                    حوافز
+                  </Button>
+                ) : null}
+              </div>
             </Can>
           </div>
 
@@ -786,14 +811,50 @@ export function FinancePartyFeePricing() {
                   </section>
                 ) : null}
 
-                {selectedCategory === "field-inspector" ? (
+                {selectedCategory === "field-inspector"
+                && draft.pricingKind === "flat" ? (
+                  <section className="space-y-3">
+                    <div>
+                      <h3 className="m-0 text-[13px] font-semibold text-text">
+                        حافز موظف مقطوع
+                      </h3>
+                      <p className="m-0 mt-0.5 text-[11px] text-text-3">
+                        يُسند للموظفين الذين لديهم حوافز مفعّلة، ويسري على
+                        الاستحقاقات الجديدة فقط.
+                      </p>
+                    </div>
+                    <FormGroup>
+                      <Label
+                        htmlFor="fee-flat"
+                        className="mb-1 text-[11px] font-semibold text-text-2"
+                      >
+                        مبلغ الحافز (ر.س)
+                      </Label>
+                      <MoneyInput
+                        id="fee-flat"
+                        value={draft.flatAmountSar ?? 0}
+                        locked={locked}
+                        onChange={(n) =>
+                          setDraft((d) => ({
+                            ...d,
+                            flatAmountSar: n,
+                          }))
+                        }
+                      />
+                    </FormGroup>
+                  </section>
+                ) : null}
+
+                {selectedCategory === "field-inspector"
+                && draft.pricingKind !== "flat" ? (
                   <section className="space-y-3">
                     <div>
                       <h3 className="m-0 text-[13px] font-semibold text-text">
                         أتعاب المعاين الميداني
                       </h3>
                       <p className="m-0 mt-0.5 text-[11px] text-text-3">
-                        معاين الموظف خارج التسعيرة — يُدخل يدويًا على السجل.
+                        أسعار المتعاونين. حوافز الموظف من زر «حوافز» كجدول
+                        مقطوع مُسند.
                       </p>
                     </div>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

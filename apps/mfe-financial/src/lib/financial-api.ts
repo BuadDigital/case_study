@@ -51,12 +51,21 @@ export async function createPartyFeePricingTable(
   category: PartyFeePricingCategory,
   name: string,
   copyFromTableId?: string | null,
+  options?: {
+    pricingKind?: "tiered" | "party-rates" | "flat";
+    managedBy?: "system-admin" | "supervisor";
+    flatAmountSar?: number;
+  },
 ): Promise<PartyFeePricingDto> {
   const config = requirePrototypeModulesApiConfig();
   const result = await createPartyFeePricing(config, {
     category,
     name,
-    copyFromTableId: copyFromTableId ?? null,
+    copyFromTableId:
+      options?.pricingKind === "flat" ? null : (copyFromTableId ?? null),
+    pricingKind: options?.pricingKind,
+    managedBy: options?.managedBy,
+    flatAmountSar: options?.flatAmountSar,
   });
   return unwrapApiResult(result, "تعذّر إنشاء جدول التسعير");
 }

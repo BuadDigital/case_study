@@ -16,15 +16,18 @@ public class FinancialController : ControllerBase
 {
     private readonly IFinancialReportService _financial;
     private readonly IPartyFeePricingService _pricing;
+    private readonly IIncentiveSuspensionService _incentiveSuspensions;
     private readonly ILogger<FinancialController> _logger;
 
     public FinancialController(
         IFinancialReportService financial,
         IPartyFeePricingService pricing,
+        IIncentiveSuspensionService incentiveSuspensions,
         ILogger<FinancialController> logger)
     {
         _financial = financial;
         _pricing = pricing;
+        _incentiveSuspensions = incentiveSuspensions;
         _logger = logger;
     }
 
@@ -138,6 +141,10 @@ public class FinancialController : ControllerBase
         {
             return NotFound();
         }
+        catch (InvalidOperationException ex)
+        {
+            return this.BadRequestProblem(ex.Message);
+        }
     }
 
     [HttpPut("party-fee-pricing/{id:guid}/assignments")]
@@ -176,5 +183,43 @@ public class FinancialController : ControllerBase
             return this.BadRequestProblem(
                 "تعذر حذف جدول الأتعاب — يجب ألا يكون مرتبطاً بأطراف، ويجب أن يبقى جدول واحد على الأقل في التصنيف.");
         }
+    }
+
+    [HttpGet("incentive-suspensions")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageOperations)]
+    public async Task<ActionResult<IReadOnlyList<IncentiveSuspensionDto>>> ListIncentiveSuspensions(
+        [FromQuery] string? transactionKey,
+        [FromQuery] string? assigneeId,
+        [FromQuery] bool activeOnly = true,
+        CancellationToken ct = default) =>
+        Ok(await _incentiveSuspensions.ListAsync(transactionKey, assigneeId, activeOnly, ct));
+
+    [HttpPost("incentive-suspensions")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageOperations)]
+    public async Task<ActionResult<IncentiveSuspensionDto>> CreateIncentiveSuspension(
+        [FromBody] CreateIncentiveSuspensionRequest request,
+        CancellationToken ct)
+    {
+        var (row, error) = await _incentiveSuspensions.CreateAsync(
+            request,
+            ActorClaims.Id(User),
+            ct);
+        return error is not null
+            ? this.BadRequestProblem(error)
+            : Ok(row);
+    }
+
+    [HttpPost("incentive-suspensions/{id:guid}/lift")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageOperations)]
+    public async Task<ActionResult<IncentiveSuspensionDto>> LiftIncentiveSuspension(
+        Guid id,
+        CancellationToken ct)
+    {
+        var (row, error) = await _incentiveSuspensions.LiftAsync(id, ActorClaims.Id(User), ct);
+        if (error is not null && row is null && error.Contains("غير موجود", StringComparison.Ordinal))
+            return NotFound();
+        return error is not null
+            ? this.BadRequestProblem(error)
+            : Ok(row);
     }
 }

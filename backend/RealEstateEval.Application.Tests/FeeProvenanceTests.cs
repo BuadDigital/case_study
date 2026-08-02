@@ -36,11 +36,11 @@ public class FeeProvenanceTests
     }
 
     /// <summary>
-    /// An employee's fee is negotiated case by case and typed in later, so the ledger opens at zero
-    /// with no table behind it. Naming one would claim a rate the table never gave.
+    /// Without a flat assignment and compensation flag, accrual must not invent a zero employee
+    /// draft — that was the old hand-entry path.
     /// </summary>
     [Fact]
-    public async Task An_employee_ledger_names_no_table_because_none_priced_it()
+    public async Task An_employee_without_a_flat_table_does_not_open_a_ledger()
     {
         await using var db = CreateDb();
         await SetGovernmentRateAsync(db, GovernmentRate);
@@ -56,18 +56,15 @@ public class FeeProvenanceTests
 
         await TestInspectorFeeServiceFactory.Create(db).EnsureLedgersForTasksAsync([task]);
 
-        var ledger = await db.InspectorFeeLedgers.SingleAsync();
-        Assert.Equal(0m, ledger.AgreedFeeSar);
-        Assert.Null(ledger.PricingTableId);
-        Assert.Equal(SupervisingDepartments.Valuation, ledger.SupervisingDepartment);
+        Assert.Empty(await db.InspectorFeeLedgers.ToListAsync());
     }
 
     /// <summary>
-    /// Typing an amount in replaces whatever the table said, so the ledger stops crediting the table
-    /// for a figure it did not produce.
+    /// A flat-priced incentive keeps its table stamp. Hand override is refused so provenance cannot
+    /// be erased by typing over the amount.
     /// </summary>
     [Fact]
-    public async Task Entering_a_fee_by_hand_drops_the_table_it_used_to_name()
+    public async Task A_flat_priced_employee_fee_rejects_hand_override()
     {
         await using var db = CreateDb();
         var tableId = await SetGovernmentRateAsync(db, GovernmentRate);
@@ -93,14 +90,15 @@ public class FeeProvenanceTests
         });
         await db.SaveChangesAsync();
 
-        await TestInspectorFeeServiceFactory.Create(db).PatchAsync(
+        var patched = await TestInspectorFeeServiceFactory.Create(db).PatchAsync(
             taskId,
             new PatchInspectorFeeRequest { AgreedFeeSar = 275m },
             canManageAllDepartments: true);
 
+        Assert.Null(patched);
         var ledger = await db.InspectorFeeLedgers.SingleAsync();
-        Assert.Equal(275m, ledger.AgreedFeeSar);
-        Assert.Null(ledger.PricingTableId);
+        Assert.Equal(GovernmentRate, ledger.AgreedFeeSar);
+        Assert.Equal(tableId, ledger.PricingTableId);
     }
 
     /// <summary>
