@@ -41,7 +41,7 @@ export const SYSTEM_SETTINGS_PRIMARY_NAV: SystemSettingsNavItem[] = [
   },
   {
     id: "party-fees",
-    label: "الأتعاب والصرف",
+    label: "فوترة الأتعاب",
     icon: "M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6",
   },
   ...SETTINGS_NAV.map((item) => ({
@@ -70,7 +70,7 @@ export function systemSettingsPrimaryNavForRole(
   role?: RoleId,
 ): SystemSettingsNavItem[] {
   return SYSTEM_SETTINGS_PRIMARY_NAV.filter((item) => {
-    // المكتب الهندسي / المسؤول: فوترة الأتعاب تحت المعاملات النشطة، وليس هنا.
+    // أدوار الأطراف والمشرف: فوترة الأتعاب تحت المعاملات النشطة، وليس هنا.
     if (item.id === "party-fees" && isPartyFeesUnderActiveTransactions(role)) {
       return false;
     }

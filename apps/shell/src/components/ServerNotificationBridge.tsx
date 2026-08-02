@@ -7,6 +7,7 @@ import {
   subscribeNotificationStream,
   type UserNotificationDto,
 } from "@platform/api-client/notifications";
+import { ApiAuthError } from "@platform/api-client";
 import { isFeatureEnabled } from "@platform/app-shared/feature-flags";
 import { useAuth } from "@platform/app-shared/hooks/useAuth";
 import {
@@ -30,6 +31,13 @@ const POLL_FALLBACK_MS = 180_000;
 const SSE_RETRY_MS = 5_000;
 const LOCAL_SYNC_SUPPRESS_MS = 60_000;
 
+function isNetworkFailure(err: unknown): boolean {
+  return (
+    err instanceof TypeError ||
+    (err instanceof Error && /failed to fetch|networkerror|load failed/i.test(err.message))
+  );
+}
+
 /** Server inbox sync via SSE with polling fallback. */
 export function ServerNotificationBridge() {
   const { token, authReady, isAuthenticated, role, user } = useAuth();
@@ -46,10 +54,12 @@ export function ServerNotificationBridge() {
     initialLoadRef.current = true;
     localSyncSourceEventsRef.current.clear();
     let cancelled = false;
+    let stopSync = false;
+    let warnedNetwork = false;
 
     async function pull(notifyNew: boolean) {
       const authToken = token;
-      if (!authToken) return;
+      if (!authToken || stopSync) return;
       try {
         const dtos = await listNotifications({ token: authToken });
         if (cancelled) return;
@@ -78,7 +88,22 @@ export function ServerNotificationBridge() {
         }
 
         initialLoadRef.current = false;
+        warnedNetwork = false;
       } catch (err) {
+        if (cancelled) return;
+        if (err instanceof ApiAuthError) {
+          stopSync = true;
+          return;
+        }
+        if (isNetworkFailure(err)) {
+          if (!warnedNetwork) {
+            warnedNetwork = true;
+            console.warn(
+              "Notification inbox unreachable (API offline?); keeping local inbox",
+            );
+          }
+          return;
+        }
         console.warn("Notification inbox pull failed; keeping local inbox", err);
       }
     }
@@ -136,7 +161,7 @@ export function ServerNotificationBridge() {
 
     async function connectStream() {
       const authToken = token;
-      if (!authToken || cancelled) return;
+      if (!authToken || cancelled || stopSync) return;
 
       try {
         await subscribeNotificationStream(
@@ -144,8 +169,12 @@ export function ServerNotificationBridge() {
           handleServerDto,
           streamAbort.signal,
         );
-      } catch {
-        if (cancelled || streamAbort.signal.aborted) return;
+      } catch (err) {
+        if (cancelled || streamAbort.signal.aborted || stopSync) return;
+        if (err instanceof ApiAuthError) {
+          stopSync = true;
+          return;
+        }
         retryTimer = window.setTimeout(() => {
           void connectStream();
         }, SSE_RETRY_MS);

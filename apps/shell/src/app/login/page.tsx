@@ -546,6 +546,8 @@ export default function LoginPage() {
                       className={cn(
                         fieldInput,
                         "pl-[46px] text-left",
+                        // Hide Edge/IE native password reveal so only our eye control shows.
+                        "[&::-ms-reveal]:hidden [&::-ms-clear]:hidden",
                         passwordBad && fieldInputBad,
                       )}
                     />
