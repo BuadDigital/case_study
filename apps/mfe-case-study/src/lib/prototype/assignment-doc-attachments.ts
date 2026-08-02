@@ -14,6 +14,7 @@ import {
   pdfBlobToFirstPageDataUrl,
   pdfFileToFirstPageDataUrl,
 } from "./pdf-first-page-preview";
+import { processEvidencePhoto } from "./process-evidence-photo";
 
 export type PropertyDocKind =
   | "decree"
@@ -33,6 +34,8 @@ const API_SCOPE: Record<PropertyDocKind, string> = {
 };
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_IMAGE_INPUT_BYTES = 20 * 1024 * 1024;
+const MAX_PROCESSED_IMAGE_BYTES = 1024 * 1024;
 const MAX_PDF_PREVIEW_BYTES = 20 * 1024 * 1024;
 
 export type CachedAssignmentDoc = {
@@ -232,6 +235,50 @@ async function writeCachedDoc(
     return { ok: false, error: "بيانات العقار ناقصة." };
   }
 
+  let uploadFile = file;
+  let photoMetadata:
+    | {
+        latitude: number | null;
+        longitude: number | null;
+        capturedAtUtc: string | null;
+      }
+    | undefined;
+
+  // Keys-proof images follow the evidence pipeline; PDFs/other docs stay raw (هـ).
+  if (
+    kind === "keys-proof" &&
+    !isPdfFile(file) &&
+    (file.type.startsWith("image/") ||
+      /\.(heic|heif|jpe?g|png|webp|gif)$/i.test(file.name))
+  ) {
+    if (file.size > MAX_IMAGE_INPUT_BYTES) {
+      return {
+        ok: false,
+        error: "الحجم الأقصى للصورة قبل المعالجة 20 ميجابايت.",
+      };
+    }
+    try {
+      const processed = await processEvidencePhoto(file);
+      uploadFile = processed.file;
+      photoMetadata = {
+        latitude: processed.exif.latitude ?? null,
+        longitude: processed.exif.longitude ?? null,
+        capturedAtUtc: processed.exif.capturedAt ?? null,
+      };
+    } catch {
+      return {
+        ok: false,
+        error: "تعذّر معالجة الصورة قبل الرفع. حاول بصيغة JPG.",
+      };
+    }
+    if (uploadFile.size > MAX_PROCESSED_IMAGE_BYTES) {
+      return {
+        ok: false,
+        error: "تعذّر ضغط الصورة إلى أقل من 1 ميجابايت.",
+      };
+    }
+  }
+
   const replaceAll = options?.replaceAll ?? kind === "keys-proof";
   const key = cacheKey(kind, poNumber, propertyId);
   const generation = bumpWriteGeneration(key);
@@ -241,7 +288,7 @@ async function writeCachedDoc(
     notifyCacheListeners();
   }
 
-  const payload = await buildPreviewPayload(file);
+  const payload = await buildPreviewPayload(uploadFile);
   if (!isCurrentGeneration(key, generation)) {
     return { ok: true };
   }
@@ -266,9 +313,10 @@ async function writeCachedDoc(
     const upload = await uploadAttachment(config, {
       scope,
       scopeKey: sk,
-      fileName: file.name,
+      fileName: uploadFile.name,
       contentType: payload.mimeType,
-      contentBase64: await fileToBase64(file),
+      contentBase64: await fileToBase64(uploadFile),
+      photoMetadata,
     });
 
     if (!isCurrentGeneration(key, generation)) {

@@ -1,14 +1,11 @@
 import {
   batchTransitionInspectorFees,
-  createDisbursementBatch,
   listInspectorFees,
   listInspectorFeeTransitions,
   patchInspectorFee,
   transitionInspectorFee,
   type BatchInspectorFeeTransitionRequest,
   type BatchInspectorFeeTransitionResult,
-  type CreateDisbursementBatchRequest,
-  type CreateDisbursementBatchResult,
   type InspectorFeeRowDto,
   type InspectorFeesSummaryDto,
   type InspectorFeeAuditEntryDto,
@@ -65,16 +62,6 @@ export async function runInspectorFeeBatchTransition(
 
   const result = await batchTransitionInspectorFees(config, body);
   return mutationFromApiResult(result, "تعذّر تنفيذ إجراء الأتعاب الجماعي");
-}
-
-export async function runCreateDisbursementBatch(
-  body: CreateDisbursementBatchRequest,
-): Promise<InspectorFeeMutationResult<CreateDisbursementBatchResult>> {
-  const config = workOrdersApiConfig();
-  if (!config) return { ok: false, error: apiErrorMessage("auth") };
-
-  const result = await createDisbursementBatch(config, body);
-  return mutationFromApiResult(result, "تعذّر إنشاء أمر الصرف");
 }
 
 export async function loadInspectorFeeTransitions(

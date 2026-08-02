@@ -14,7 +14,9 @@
     "@platform/auth-client": "*",
     "@platform/offline-client": "*",
     "@platform/types": "*",
-    "@tanstack/react-query": "^5.100.11"
+    "@tanstack/react-query": "^5.100.11",
+    "exifr": "^7.1.3",
+    "heic2any": "^0.0.4"
   },
   "peerDependencies": {
     "@platform/design-system": "*",

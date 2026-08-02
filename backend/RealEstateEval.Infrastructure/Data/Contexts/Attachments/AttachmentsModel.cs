@@ -25,6 +25,14 @@ internal static class AttachmentsModel
             e.HasIndex(x => new { x.Scope, x.ScopeKey });
         });
 
+        builder.Entity<PhotoMetadata>(e =>
+        {
+            e.ToTable("PhotoMetadata", DatabaseSchemas.Attachments);
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Flag).HasMaxLength(64);
+            e.HasIndex(x => x.PhotoId).IsUnique();
+        });
+
         return builder;
     }
 }

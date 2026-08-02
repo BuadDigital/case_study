@@ -418,6 +418,7 @@ export async function batchTransitionInspectorFees(
   }
 }
 
+/** @deprecated ج٩/ق٦ — endpoint returns 410; use party billing statements. */
 export async function createDisbursementBatch(
   config: InspectorFeesApiConfig,
   body: CreateDisbursementBatchRequest,
@@ -431,6 +432,13 @@ export async function createDisbursementBatch(
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return { ok: false, kind: "auth" };
+    if (res.status === 410) {
+      return {
+        ok: false,
+        kind: "validation",
+        message: "إنشاء طلب صرف متوقف — البنود الجاهزة تُفوتر عبر كشف الأطراف.",
+      };
+    }
     if (!res.ok) return { ok: false, kind: "server" };
     const raw = (await res.json()) as Record<string, unknown>;
     const rowsRaw = (raw.rows ?? raw.Rows ?? []) as Record<string, unknown>[];

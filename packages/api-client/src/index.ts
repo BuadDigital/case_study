@@ -310,6 +310,7 @@ export {
   type SuspendedTransactionDto,
   type UpdatePropertyKeyRequest,
   type UploadAttachmentRequest,
+  type PhotoMetadataInput,
   type ValuationRequestDto,
 } from "./prototype-modules";
 

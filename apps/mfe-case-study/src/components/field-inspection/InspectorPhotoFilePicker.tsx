@@ -68,7 +68,7 @@ export function InspectorPhotoFilePicker({
         <input
           ref={cameraRef}
           type="file"
-          accept="image/*"
+          accept="image/*,.heic,.heif"
           capture="environment"
           multiple={multiple}
           disabled={blocked}
@@ -78,7 +78,7 @@ export function InspectorPhotoFilePicker({
         <input
           ref={galleryRef}
           type="file"
-          accept="image/*"
+          accept="image/*,.heic,.heif"
           multiple={multiple}
           disabled={blocked}
           className="sr-only"
@@ -105,7 +105,7 @@ export function InspectorPhotoFilePicker({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,.heic,.heif"
         multiple={multiple}
         disabled={blocked}
         className="sr-only"

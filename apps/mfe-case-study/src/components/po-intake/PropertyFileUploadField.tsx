@@ -102,7 +102,7 @@ export function PropertyFileUploadField({
       <Input
         id={id}
         type="file"
-        accept=".pdf,.jpg,.jpeg,.png"
+        accept=".pdf,.jpg,.jpeg,.png,.heic,.heif"
         multiple={multiple}
         className="text-xs"
         onChange={(e) => {

@@ -10,9 +10,15 @@ import type {
 } from "./inspector-workspace-data";
 import { INSPECTOR_DEFINED_PHOTOS } from "./inspector-workspace-data";
 import { burnInspectorPhotoStamp } from "./inspector-photo-stamp";
+import {
+  buildEvidenceStampLines,
+  processEvidencePhoto,
+  type EvidencePhotoExif,
+} from "./process-evidence-photo";
 
 const SCOPE = "field-inspection-photo";
-const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+/** Pre-process ceiling; after هـ compress the upload is ≤ 1 MB. */
+const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 
 const previewCache = new Map<string, string>();
 
@@ -164,11 +170,36 @@ export async function prefetchInspectorWorkspacePhotos(
   await Promise.all(jobs);
 }
 
+export type UploadInspectorPhotoOptions = {
+  /** Legacy prebuilt stamp; ignored when draft is provided. */
+  stampText?: string;
+  deedNumber?: string | null;
+  draft?: InspectorWorkspaceDraft | null;
+};
+
+function stampFromContext(
+  options: UploadInspectorPhotoOptions | undefined,
+  exif: EvidencePhotoExif,
+): string {
+  if (options?.draft) {
+    const draft = options.draft;
+    return buildEvidenceStampLines({
+      deedNumber: options.deedNumber ?? draft.propertyDisplayId,
+      latitude: exif.latitude ?? draft.mapLatitude,
+      longitude: exif.longitude ?? draft.mapLongitude,
+      capturedAt: exif.capturedAt,
+      fallbackDate: draft.inspectionDate,
+      fallbackTime: draft.inspectionTime,
+    });
+  }
+  return options?.stampText?.trim() ?? "";
+}
+
 export async function uploadInspectorPhotoFromFile(
   taskId: string,
   photoRef: string,
   file: File,
-  options?: { stampText?: string },
+  options?: UploadInspectorPhotoOptions,
 ): Promise<
   | { ok: true; attachment: InspectorPhotoAttachment }
   | { ok: false; error: string }
@@ -176,26 +207,41 @@ export async function uploadInspectorPhotoFromFile(
   if (!taskId) {
     return { ok: false, error: "تعذّر حفظ الصورة." };
   }
-  if (!file.type.startsWith("image/")) {
-    return { ok: false, error: "يُقبل ملفات الصور فقط (JPG، PNG، …)." };
+  const looksLikeImage =
+    file.type.startsWith("image/") ||
+    /\.(heic|heif|jpe?g|png|webp|gif)$/i.test(file.name);
+  if (!looksLikeImage) {
+    return { ok: false, error: "يُقبل ملفات الصور فقط (JPG، HEIC، PNG، …)." };
   }
   if (file.size > MAX_IMAGE_BYTES) {
-    return { ok: false, error: "الحجم الأقصى للصورة 8 ميجابايت." };
+    return { ok: false, error: "الحجم الأقصى للصورة قبل المعالجة 20 ميجابايت." };
   }
 
-  const stamp = options?.stampText?.trim() ?? "";
   let uploadFile = file;
+  let exif: EvidencePhotoExif = {};
   try {
+    const processed = await processEvidencePhoto(file);
+    uploadFile = processed.file;
+    exif = processed.exif;
+    const stamp = stampFromContext(options, exif);
     if (stamp) {
-      uploadFile = await burnInspectorPhotoStamp(file, stamp);
+      uploadFile = await burnInspectorPhotoStamp(uploadFile, stamp);
     }
   } catch (err) {
-    console.warn("Inspector photo stamp failed; uploading original image", err);
+    console.warn("Evidence photo processing failed", err);
+    return {
+      ok: false,
+      error: "تعذّر معالجة الصورة قبل الرفع. حاول بصيغة JPG.",
+    };
+  }
+
+  if (uploadFile.size > 1024 * 1024) {
+    return { ok: false, error: "تعذّر ضغط الصورة إلى أقل من 1 ميجابايت." };
   }
 
   const attachment: InspectorPhotoAttachment = {
     fileName: uploadFile.name,
-    mimeType: uploadFile.type || "image/jpeg",
+    mimeType: "image/jpeg",
     sizeBytes: uploadFile.size,
   };
 
@@ -208,6 +254,11 @@ export async function uploadInspectorPhotoFromFile(
 
   const config = prototypeModulesApiConfig();
   const bytes = await uploadFile.arrayBuffer();
+  const photoMetadata = {
+    latitude: exif.latitude ?? null,
+    longitude: exif.longitude ?? null,
+    capturedAtUtc: exif.capturedAt ?? null,
+  };
   try {
     const uploaded = await uploadAttachmentWithOfflineFallback({
       scope: SCOPE,
@@ -225,6 +276,7 @@ export async function uploadInspectorPhotoFromFile(
           fileName: uploadFile.name,
           contentType: attachment.mimeType,
           contentBase64: await fileToBase64(uploadFile),
+          photoMetadata,
         });
         if (!upload.ok) {
           throw new Error(
