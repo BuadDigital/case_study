@@ -245,7 +245,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
         {
             e.ToTable("InspectorFeeLedgers", DatabaseSchemas.CaseStudy);
             e.UseOptimisticConcurrency();
-            e.HasKey(x => x.WorkflowTaskId);
+            e.HasKey(x => x.Id);
+            e.Property(x => x.UserId).HasMaxLength(128).IsRequired();
             e.Property(x => x.PoNumber).HasMaxLength(64);
             e.Property(x => x.AssigneeId).HasMaxLength(128);
             e.Property(x => x.InspectorType).HasMaxLength(32);
@@ -259,6 +260,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
             e.Property(x => x.DisbursementVoucher).HasMaxLength(128);
             e.Property(x => x.AgreedFeeSar).HasPrecision(12, 2);
             e.Property(x => x.SupervisorDiscountSar).HasPrecision(12, 2);
+            e.HasIndex(x => x.WorkflowTaskId);
+            e.HasIndex(x => new { x.TransactionId, x.DeedId, x.UserId })
+                .IsUnique()
+                .HasDatabaseName("UX_InspectorFeeLedgers_Transaction_Deed_User");
             e.HasIndex(x => x.AccruedAtUtc);
             e.HasIndex(x => x.PoNumber);
             e.HasIndex(x => x.AssigneeId);
@@ -768,5 +773,56 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
             e.HasKey(x => x.UserId);
             e.Property(x => x.UserId).HasMaxLength(450);
         });
+    }
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        StampInspectorFeeLedgerIdentity();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(
+        bool acceptAllChangesOnSuccess,
+        CancellationToken cancellationToken = default)
+    {
+        StampInspectorFeeLedgerIdentity();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    /// <summary>
+    /// Fills ج٨ identity columns when callers still construct ledgers with only WorkflowTaskId /
+    /// PropertyId / AssigneeId (tests and transitional paths).
+    /// </summary>
+    private void StampInspectorFeeLedgerIdentity()
+    {
+        foreach (var entry in ChangeTracker.Entries<InspectorFeeLedger>())
+        {
+            if (entry.State is not (EntityState.Added or EntityState.Modified))
+                continue;
+
+            var ledger = entry.Entity;
+            if (ledger.Id == Guid.Empty)
+                ledger.Id = Guid.NewGuid();
+            if (string.IsNullOrWhiteSpace(ledger.UserId))
+                ledger.UserId = ledger.AssigneeId?.Trim() ?? "";
+            if (ledger.DeedId == Guid.Empty)
+                ledger.DeedId = ledger.PropertyId ?? ledger.WorkflowTaskId;
+            if (ledger.TransactionId == Guid.Empty)
+            {
+                var po = ledger.PoNumber?.Trim() ?? "";
+                ledger.TransactionId = string.IsNullOrEmpty(po)
+                    ? ledger.WorkflowTaskId
+                    : StableGuidFromKey($"tx:{po}");
+            }
+        }
+    }
+
+    private static Guid StableGuidFromKey(string key)
+    {
+        var hash = System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(key));
+        Span<byte> bytes = stackalloc byte[16];
+        hash.AsSpan(0, 16).CopyTo(bytes);
+        return new Guid(bytes);
     }
 }
