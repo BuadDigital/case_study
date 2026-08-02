@@ -4,8 +4,6 @@ import { useState } from "react";
 import {
   Badge,
   EmptyState,
-  Note,
-  PageToolbar,
   SkeletonTableRows,
   Tab,
   TabBar,
@@ -24,7 +22,6 @@ import { useFinanceTabCounts } from "../query/finance-tab-counts";
 import { FinanceEnfazPoBilling } from "./FinanceEnfazPoBilling";
 import { FinanceEnfazAgingReport } from "./FinanceEnfazAgingReport";
 import { FinancePartyBrowse } from "./FinancePartyBrowse";
-import { FinancePartyDisburse } from "./FinancePartyDisburse";
 import { FinancePartyBillingStatements } from "./FinancePartyBillingStatements";
 
 function ContractBadge({ type }: { type: string }) {
@@ -76,8 +73,8 @@ export function FinanceWorkspace({
   ready: boolean;
 }) {
   const [tab, setTab] = useState<
-    "disburse" | "party-billing" | "enfaz" | "browse" | "reports"
-  >("disburse");
+    "party-billing" | "enfaz" | "browse" | "reports"
+  >("party-billing");
   const counts = useFinanceTabCounts();
   const revenueRows = summary?.revenueRows ?? [];
   const costRows = summary?.costRows ?? [];
@@ -85,13 +82,6 @@ export function FinanceWorkspace({
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 py-4">
       <TabBar className="mb-0 shrink-0">
-        <Tab active={tab === "disburse"} onClick={() => setTab("disburse")}>
-          صرف الالتزامات
-          {!counts.isPending ? tabBadge(counts.readyToDisburse, "success") : null}
-          {!counts.isPending && counts.readyToDisburse === 0 && counts.waitingOffice > 0
-            ? tabBadge(counts.waitingOffice, "info")
-            : null}
-        </Tab>
         <Tab
           active={tab === "party-billing"}
           onClick={() => setTab("party-billing")}
@@ -112,29 +102,6 @@ export function FinanceWorkspace({
       </TabBar>
 
       <TabPanel className="min-h-0 flex-1 overflow-y-auto px-0 py-0">
-        {tab === "disburse" ? (
-          <>
-            {!counts.isPending && counts.readyToDisburse > 0 ? (
-              <PageToolbar className="mb-3 border-0 bg-success-bg/25">
-                <Note tone="success" className="m-0 flex-1">
-                  لديك <strong>{counts.readyToDisburse}</strong> عقار جاهز للصرف
-                  الآن — ادخل للطرف ونفّذ من قسم «جاهز للصرف الآن».
-                </Note>
-              </PageToolbar>
-            ) : null}
-            {!counts.isPending &&
-            counts.readyToDisburse === 0 &&
-            counts.waitingOffice > 0 ? (
-              <PageToolbar className="mb-3 border-0 bg-warning-bg/40">
-                <Note tone="warn" className="m-0 flex-1">
-                  {counts.waitingOffice} عقار بانتظار المكتب لإنشاء أمر صرف — لا
-                  يمكنك الصرف حتى يُنشئ الطرف طلباً من «الاتعاب والصرف».
-                </Note>
-              </PageToolbar>
-            ) : null}
-            <FinancePartyDisburse />
-          </>
-        ) : null}
         {tab === "party-billing" ? <FinancePartyBillingStatements /> : null}
         {tab === "enfaz" ? <FinanceEnfazPoBilling /> : null}
         {tab === "browse" ? <FinancePartyBrowse /> : null}

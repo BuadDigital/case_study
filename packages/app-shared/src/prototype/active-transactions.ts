@@ -41,7 +41,7 @@ export function filterTasksForCaseStudy(
   return tasks.filter((t) => taskMatchesCaseStudy(t));
 }
 
-/** فوترة الأتعاب — تحت المعاملات النشطة (المكتب الهندسي + المسؤول). */
+/** فوترة الأتعاب — تحت المعاملات النشطة لكل أدوار الأطراف والمشرف. */
 export const ENGINEERING_FEES_ACTIVE_NAV_ITEM: ActiveTransactionNavItem = {
   id: "party-fees",
   label: "فوترة الأتعاب",
@@ -51,7 +51,13 @@ export const ENGINEERING_FEES_ACTIVE_NAV_ITEM: ActiveTransactionNavItem = {
 
 /** أدوار تظهر فيها فوترة الأتعاب تحت المعاملات النشطة وليس تحت إعدادات النظام. */
 export function isPartyFeesUnderActiveTransactions(role?: RoleId): boolean {
-  return role === "engineering-office" || role === "cdo";
+  return (
+    role === "engineering-office" ||
+    role === "field-inspector" ||
+    role === "government-reviewer" ||
+    role === "section-supervisor" ||
+    role === "cdo"
+  );
 }
 
 export const ACTIVE_TRANSACTIONS_NAV: ActiveTransactionNavItem[] = [
