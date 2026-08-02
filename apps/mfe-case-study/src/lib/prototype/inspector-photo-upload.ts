@@ -15,6 +15,7 @@ import {
   processEvidencePhoto,
   type EvidencePhotoExif,
 } from "./process-evidence-photo";
+import { parseCoord } from "@platform/app-shared/media/photo-location";
 
 const SCOPE = "field-inspection-photo";
 /** Pre-process ceiling; after هـ compress the upload is ≤ 1 MB. */
@@ -258,6 +259,8 @@ export async function uploadInspectorPhotoFromFile(
     latitude: exif.latitude ?? null,
     longitude: exif.longitude ?? null,
     capturedAtUtc: exif.capturedAt ?? null,
+    propertyLatitude: parseCoord(options?.draft?.mapLatitude),
+    propertyLongitude: parseCoord(options?.draft?.mapLongitude),
   };
   try {
     const uploaded = await uploadAttachmentWithOfflineFallback({
@@ -283,10 +286,25 @@ export async function uploadInspectorPhotoFromFile(
             "تعذّر رفع الصورة — تحقق من الاتصال وحاول مجدداً.",
           );
         }
+        attachment.locationFlag = upload.data.photoMetadata?.flag ?? null;
+        attachment.distanceM = upload.data.photoMetadata?.distanceM ?? null;
         return upload.data.id;
       },
     });
     attachment.attachmentId = uploaded.attachmentId;
+    if (uploaded.attachmentId.startsWith("local:") && !attachment.locationFlag) {
+      const { evaluatePhotoLocation } = await import(
+        "@platform/app-shared/media/photo-location"
+      );
+      const evaluated = evaluatePhotoLocation({
+        photoLatitude: photoMetadata.latitude,
+        photoLongitude: photoMetadata.longitude,
+        propertyLatitude: photoMetadata.propertyLatitude,
+        propertyLongitude: photoMetadata.propertyLongitude,
+      });
+      attachment.locationFlag = evaluated.flag;
+      attachment.distanceM = evaluated.distanceM;
+    }
   } catch (err) {
     return {
       ok: false,

@@ -1,7 +1,7 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// EXIF captured before compression (هـ). Distance/flag reserved for phase-2 location checks.
+/// EXIF captured before compression (هـ). Distance/flag stamped at upload (phase 2).
 /// </summary>
 public class PhotoMetadata
 {

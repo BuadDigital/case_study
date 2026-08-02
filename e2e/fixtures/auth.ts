@@ -124,10 +124,11 @@ export async function loginAs(page: Page, username: string) {
 /** Exercises the real login form — used only by login.spec.ts. */
 export async function loginViaUi(page: Page, username: string) {
   await page.goto("/login", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("button", { name: "دخول" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "متابعة" })).toBeVisible();
   const email = RELEASE_USER_EMAILS[username];
   if (!email) throw new Error(`No demo email mapped for "${username}"`);
-  await page.locator("#email").fill(email);
+  // Email mode is accepted in the identifier field until mobile login is wired.
+  await page.locator("#mobile").fill(email);
   await page.locator("#password").fill(PASSWORD);
 
   const [response] = await Promise.all([
@@ -153,6 +154,16 @@ export async function loginViaUi(page: Page, username: string) {
       `UI login failed (HTTP ${response.status()}): ${alertText.trim()}`,
     );
   }
+
+  await expect(page.getByRole("heading", { name: "أدخل رمز التحقق" })).toBeVisible({
+    timeout: 15_000,
+  });
+  const otpBoxes = page.locator('[aria-label^="رقم التحقق"]');
+  await expect(otpBoxes).toHaveCount(6);
+  for (let i = 0; i < 6; i++) {
+    await otpBoxes.nth(i).fill(String(i + 1));
+  }
+  await page.getByRole("button", { name: "تأكيد الدخول" }).click();
 
   const landing = POST_LOGIN_LANDING[username] ?? {
     path: "/po",

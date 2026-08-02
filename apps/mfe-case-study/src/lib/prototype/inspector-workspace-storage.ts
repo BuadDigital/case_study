@@ -11,6 +11,7 @@ import {
 import {
   saveDraftWithOfflineFallback,
   submitWithOfflineFallback,
+  loadQueuedDraftPayload,
 } from "@platform/app-shared/offline/offline-write";
 import { reopenPartySubmission, type PartyWorkMutationResult } from "@platform/app-shared/prototype/party-submission-api";
 import { dispatchPartySubmissionChanged } from "@platform/app-shared/prototype/party-submission-changed-event";
@@ -422,11 +423,63 @@ export async function fetchInspectorWorkspace(
   taskId: string,
 ): Promise<InspectorWorkspaceDraft | null> {
   const config = workOrdersApiConfig();
-  if (!config) return loadInspectorWorkspace(taskId);
+  if (!config) {
+    const queued = await loadQueuedDraftPayload<Record<string, unknown>>(
+      "field-inspection",
+      taskId,
+    );
+    if (queued) {
+      const local: PartyTaskSubmissionDto = {
+        taskId,
+        kind: "field-inspection",
+        status: "draft",
+        payload: queued,
+        updatedAtUtc: new Date().toISOString(),
+      };
+      const draft = payloadToDraft(local);
+      setCache(draft);
+      return draft;
+    }
+    return loadInspectorWorkspace(taskId);
+  }
 
   const result = await getPartyTaskSubmission(config, taskId);
   if (!result.ok) {
-    if (result.kind === "not_found") return null;
+    if (result.kind === "not_found") {
+      const queued = await loadQueuedDraftPayload<Record<string, unknown>>(
+        "field-inspection",
+        taskId,
+      );
+      if (queued) {
+        const local: PartyTaskSubmissionDto = {
+          taskId,
+          kind: "field-inspection",
+          status: "draft",
+          payload: queued,
+          updatedAtUtc: new Date().toISOString(),
+        };
+        const draft = payloadToDraft(local);
+        setCache(draft);
+        return draft;
+      }
+      return null;
+    }
+    const queued = await loadQueuedDraftPayload<Record<string, unknown>>(
+      "field-inspection",
+      taskId,
+    );
+    if (queued) {
+      const local: PartyTaskSubmissionDto = {
+        taskId,
+        kind: "field-inspection",
+        status: "draft",
+        payload: queued,
+        updatedAtUtc: new Date().toISOString(),
+      };
+      const draft = payloadToDraft(local);
+      setCache(draft);
+      return draft;
+    }
     return loadInspectorWorkspace(taskId);
   }
 

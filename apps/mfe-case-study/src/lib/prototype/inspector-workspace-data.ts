@@ -16,6 +16,9 @@ export type InspectorPhotoAttachment = {
   mimeType: string;
   attachmentId?: string;
   sizeBytes?: number;
+  /** match | outside_property | location_unavailable — specialist review only */
+  locationFlag?: string | null;
+  distanceM?: number | null;
 };
 
 export type InspectorObservation = {
@@ -32,6 +35,8 @@ export type InspectorSlotPhoto = {
   mimeType: string;
   attachmentId?: string;
   sizeBytes?: number;
+  locationFlag?: string | null;
+  distanceM?: number | null;
 };
 
 export type InspectorDefinedPhotoSlot = {
@@ -47,6 +52,8 @@ export type InspectorFreePhoto = {
   mimeType: string;
   attachmentId?: string;
   sizeBytes?: number;
+  locationFlag?: string | null;
+  distanceM?: number | null;
 };
 
 export type InspectorFeatureField = {

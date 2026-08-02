@@ -11,7 +11,7 @@ public static class PlatformPermissionCatalog
         "valuation-coordination", "property-appraisal", "active-survey", "party-fees",
         "system-fields-catalog", "system-screen-catalog", "financial",
         "users", "courts", "failure-types", "case-study-info-roles",
-        "audit-log", "fee-pricing", "organization-settings",
+        "audit-log", "fee-pricing", "organization-settings", "field-sync-board",
     ];
 
     public static readonly IReadOnlyList<string> AllCapabilities =
@@ -55,7 +55,7 @@ public static class PlatformPermissionCatalog
         ["section-supervisor"] =
         [
             "po", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
-            "active-case-study", "operations-tasks", "keys", "failures", "suspended-transactions", "failure-types",
+            "active-case-study", "operations-tasks", "keys", "field-sync-board", "failures", "suspended-transactions", "failure-types",
             "party-fees",
             "system-screen-catalog",
         ],

@@ -13,6 +13,7 @@ export {
   syncOfflineQueue,
   uploadAttachmentWithOfflineFallback,
 } from "./offline/offline-write";
+export { installOfflineWriteInterceptor } from "./offline/install-offline-write-interceptor";
 export {
   buildEvidenceStampLines,
   compressEvidenceImage,
@@ -21,6 +22,15 @@ export {
   type EvidencePhotoExif,
   type ProcessedEvidencePhoto,
 } from "./media/process-evidence-photo";
+export {
+  evaluatePhotoLocation,
+  haversineMeters,
+  parseCoord,
+  photoLocationFlagLabel,
+  PHOTO_LOCATION_FLAGS,
+  PHOTO_LOCATION_MAX_MATCH_M,
+  type PhotoLocationFlag,
+} from "./media/photo-location";
 export {
   useAuthSession,
   useValidAuthSession,

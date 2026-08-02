@@ -7,6 +7,7 @@ import {
   saveOutboxItem,
 } from "./store";
 import {
+  OFFLINE_BACKGROUND_SYNC_TAG,
   OFFLINE_SYNC_EVENT,
   type OfflineOutboxItem,
   type OfflineSyncState,
@@ -30,10 +31,27 @@ export type SubmissionSubmitFn = (input: {
   taskId: string;
 }) => Promise<{ ok: true } | { ok: false; error: string; terminal?: boolean }>;
 
+export type KeyEnvelopeCreateFn = (input: {
+  bodyJson: string;
+}) => Promise<
+  | { ok: true; envelopeId: string }
+  | { ok: false; error: string; terminal?: boolean }
+>;
+
+export type KeyEnvelopeMutationFn = (input: {
+  envelopeId: string;
+  payloadJson: string;
+}) => Promise<{ ok: true } | { ok: false; error: string; terminal?: boolean }>;
+
 export type OfflineSyncDeps = {
   uploadAttachment: AttachmentUploadFn;
   saveSubmission: SubmissionSaveFn;
   submitSubmission: SubmissionSubmitFn;
+  createKeyEnvelope?: KeyEnvelopeCreateFn;
+  addKeyEnvelopeAssignment?: KeyEnvelopeMutationFn;
+  confirmKeyEnvelopeAssignment?: KeyEnvelopeMutationFn;
+  createKeyEnvelopeHandoff?: KeyEnvelopeMutationFn;
+  confirmKeyEnvelopeHandoff?: KeyEnvelopeMutationFn;
 };
 
 let syncState: OfflineSyncState = "synced";
@@ -78,13 +96,80 @@ export async function enqueueOutbox(
     lastError: item.lastError,
   };
   await saveOutboxItem(full);
+  void requestBackgroundSync();
   return full;
+}
+
+/** Ask the SW to wake the page and sync when connectivity returns (Chrome/Android). */
+export async function requestBackgroundSync(): Promise<boolean> {
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
+    return false;
+  }
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const syncManager = (
+      reg as ServiceWorkerRegistration & {
+        sync?: { register: (tag: string) => Promise<void> };
+      }
+    ).sync;
+    if (!syncManager?.register) return false;
+    await syncManager.register(OFFLINE_BACKGROUND_SYNC_TAG);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function kindOrder(kind: OutboxKind): number {
   if (kind === "attachment-upload") return 0;
   if (kind === "party-submission-save") return 1;
-  return 2;
+  if (kind === "key-envelope-create") return 1;
+  if (
+    kind === "key-envelope-assignment-add" ||
+    kind === "key-envelope-handoff-create"
+  ) {
+    return 2;
+  }
+  if (
+    kind === "key-envelope-assignment-confirm" ||
+    kind === "key-envelope-handoff-confirm"
+  ) {
+    return 3;
+  }
+  return 4; // party-submission-submit
+}
+
+function isLocalEnvelopeId(id: string): boolean {
+  return (
+    id.startsWith("local-pending:") ||
+    id.startsWith("pending:") ||
+    id.startsWith("local:")
+  );
+}
+
+function envelopeMapKey(userId: string, clientId: string): string {
+  return `envelope-map:${userId}:${clientId}`;
+}
+
+export async function rememberEnvelopeIdMap(
+  userId: string,
+  clientId: string,
+  serverId: string,
+): Promise<void> {
+  const { setMeta } = await import("./store");
+  await setMeta(envelopeMapKey(userId, clientId), { serverId });
+}
+
+export async function resolveEnvelopeId(
+  userId: string,
+  envelopeId: string,
+): Promise<string | null> {
+  if (!isLocalEnvelopeId(envelopeId)) return envelopeId;
+  const { getMeta } = await import("./store");
+  const mapped = await getMeta<{ serverId?: string }>(
+    envelopeMapKey(userId, envelopeId),
+  );
+  return mapped?.serverId?.trim() || null;
 }
 
 /** Replace local: attachment placeholders with server ids inside a JSON string. */
@@ -262,6 +347,143 @@ async function processSubmit(
   return true;
 }
 
+async function processKeyEnvelopeCreate(
+  userId: string,
+  item: OfflineOutboxItem,
+  deps: OfflineSyncDeps,
+): Promise<boolean> {
+  if (!deps.createKeyEnvelope) {
+    await saveOutboxItem({
+      ...item,
+      status: "failed",
+      lastError: "مزامنة الظروف غير مفعّلة",
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+  const map = await buildLocalAttachmentMap(userId);
+  const bodyJson = rewriteLocalAttachmentIds(item.payloadJson, map);
+  if (bodyJson.includes("local:")) {
+    await saveOutboxItem({
+      ...item,
+      status: "failed",
+      lastError: "بانتظار رفع مرفقات الظرف",
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+  const result = await deps.createKeyEnvelope({ bodyJson });
+  if (!result.ok) {
+    await saveOutboxItem({
+      ...item,
+      status: result.terminal ? "terminal" : "failed",
+      attempts: item.attempts + 1,
+      lastError: result.error,
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+  // Map client placeholder ids so later assignment/handoff outbox items can resolve.
+  if (result.envelopeId) {
+    await rememberEnvelopeIdMap(userId, item.targetId, result.envelopeId);
+    try {
+      const parsed = JSON.parse(item.payloadJson) as {
+        clientEnvelopeId?: string;
+      };
+      if (parsed.clientEnvelopeId) {
+        await rememberEnvelopeIdMap(
+          userId,
+          parsed.clientEnvelopeId,
+          result.envelopeId,
+        );
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  await deleteOutboxItem(userId, item.id);
+  return true;
+}
+
+async function processKeyEnvelopeMutation(
+  userId: string,
+  item: OfflineOutboxItem,
+  deps: OfflineSyncDeps,
+  mutate:
+    | "addKeyEnvelopeAssignment"
+    | "confirmKeyEnvelopeAssignment"
+    | "createKeyEnvelopeHandoff"
+    | "confirmKeyEnvelopeHandoff",
+): Promise<boolean> {
+  const fn = deps[mutate];
+  if (!fn) {
+    await saveOutboxItem({
+      ...item,
+      status: "failed",
+      lastError: "مزامنة المناولة/الإسناد غير مفعّلة",
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+
+  let payload: { envelopeId?: string; [key: string]: unknown };
+  try {
+    payload = JSON.parse(item.payloadJson) as {
+      envelopeId?: string;
+      [key: string]: unknown;
+    };
+  } catch {
+    await saveOutboxItem({
+      ...item,
+      status: "terminal",
+      lastError: "بيانات غير صالحة",
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+
+  const clientEnvelopeId = String(payload.envelopeId ?? item.targetId).trim();
+  const envelopeId = await resolveEnvelopeId(userId, clientEnvelopeId);
+  if (!envelopeId) {
+    await saveOutboxItem({
+      ...item,
+      status: "failed",
+      lastError: "بانتظار مزامنة تسجيل الظرف",
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+
+  const map = await buildLocalAttachmentMap(userId);
+  const payloadJson = rewriteLocalAttachmentIds(
+    JSON.stringify({ ...payload, envelopeId }),
+    map,
+  );
+  if (payloadJson.includes("local:")) {
+    await saveOutboxItem({
+      ...item,
+      status: "failed",
+      lastError: "بانتظار رفع مرفقات المناولة",
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+
+  const result = await fn({ envelopeId, payloadJson });
+  if (!result.ok) {
+    await saveOutboxItem({
+      ...item,
+      status: result.terminal ? "terminal" : "failed",
+      attempts: item.attempts + 1,
+      lastError: result.error,
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+  await deleteOutboxItem(userId, item.id);
+  return true;
+}
+
 export async function runOfflineSync(
   userId: string,
   deps: OfflineSyncDeps,
@@ -305,8 +527,46 @@ export async function runOfflineSync(
         ok = await processAttachment(userId, item, deps);
       } else if (item.kind === "party-submission-save") {
         ok = await processSave(userId, item, deps);
-      } else {
+      } else if (item.kind === "party-submission-submit") {
         ok = await processSubmit(userId, item, deps);
+      } else if (item.kind === "key-envelope-create") {
+        ok = await processKeyEnvelopeCreate(userId, item, deps);
+      } else if (item.kind === "key-envelope-assignment-add") {
+        ok = await processKeyEnvelopeMutation(
+          userId,
+          item,
+          deps,
+          "addKeyEnvelopeAssignment",
+        );
+      } else if (item.kind === "key-envelope-assignment-confirm") {
+        ok = await processKeyEnvelopeMutation(
+          userId,
+          item,
+          deps,
+          "confirmKeyEnvelopeAssignment",
+        );
+      } else if (item.kind === "key-envelope-handoff-create") {
+        ok = await processKeyEnvelopeMutation(
+          userId,
+          item,
+          deps,
+          "createKeyEnvelopeHandoff",
+        );
+      } else if (item.kind === "key-envelope-handoff-confirm") {
+        ok = await processKeyEnvelopeMutation(
+          userId,
+          item,
+          deps,
+          "confirmKeyEnvelopeHandoff",
+        );
+      } else {
+        ok = false;
+        await saveOutboxItem({
+          ...item,
+          status: "terminal",
+          lastError: `نوع طابور غير معروف: ${item.kind}`,
+          updatedAtUtc: new Date().toISOString(),
+        });
       }
       if (!ok) failed += 1;
     }

@@ -3,7 +3,12 @@ export type OfflineSyncState = "synced" | "syncing" | "failed" | "offline";
 export type OutboxKind =
   | "attachment-upload"
   | "party-submission-save"
-  | "party-submission-submit";
+  | "party-submission-submit"
+  | "key-envelope-create"
+  | "key-envelope-assignment-add"
+  | "key-envelope-assignment-confirm"
+  | "key-envelope-handoff-create"
+  | "key-envelope-handoff-confirm";
 
 export type OutboxStatus =
   | "pending"
@@ -88,6 +93,8 @@ export const OFFLINE_DB_VERSION = 1;
 export const OFFLINE_LEASE_MS = 3 * 60 * 60 * 1000;
 export const OFFLINE_WARN_1H_MS = 60 * 60 * 1000;
 export const OFFLINE_WARN_2H_MS = 2 * 60 * 60 * 1000;
+/** Service Worker Background Sync tag (must match apps/shell/public/sw.js). */
+export const OFFLINE_BACKGROUND_SYNC_TAG = "ejada-offline-sync";
 
 export const LOCAL_ATTACHMENT_PREFIX = "local:";
 

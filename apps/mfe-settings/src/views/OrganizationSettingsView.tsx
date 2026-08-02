@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   getOrganizationSettings,
   saveOrganizationSettings,
+  testOrganizationCommunication,
   type OrganizationSettingsDto,
 } from "@platform/api-client";
 import { Can, useCapability } from "@platform/app-shared/components/Can";
@@ -46,6 +47,14 @@ function emptySettings(): OrganizationSettingsDto {
       defaultOtpChannel: "sms",
       smsSenderId: "",
       emailFrom: "",
+      smsApiUrl: "",
+      smsApiKey: "",
+      smsApiKeyConfigured: false,
+      smtpHost: "",
+      smtpPort: 587,
+      smtpUsername: "",
+      smtpPassword: "",
+      smtpPasswordConfigured: false,
     },
     sla: { defaultBusinessDays: 4, privateSectorBusinessDays: 10 },
     updatedAtUtc: new Date().toISOString(),
@@ -60,6 +69,8 @@ export function OrganizationSettingsView() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [testDestination, setTestDestination] = useState("");
+  const [testing, setTesting] = useState(false);
 
   const refresh = useCallback(async () => {
     const config = organizationSettingsApiConfig();
@@ -120,6 +131,30 @@ export function OrganizationSettingsView() {
       showToast("تم حفظ إعدادات المنشأة. المهل الجديدة تسري على المعاملات الجديدة فقط.", "success");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function runTest() {
+    const config = organizationSettingsApiConfig();
+    if (!config || !testDestination.trim()) return;
+    setTesting(true);
+    try {
+      const result = await testOrganizationCommunication(config, {
+        channel: draft.communications.defaultOtpChannel || "sms",
+        destination: testDestination.trim(),
+      });
+      if (!result.ok) {
+        showToast(result.message ?? "تعذّر اختبار الإرسال", "error");
+        return;
+      }
+      showToast(
+        result.data.ok
+          ? `${result.data.detail ?? "تم الإرسال"} (${result.data.provider})`
+          : result.data.detail ?? "فشل الاختبار",
+        result.data.ok ? "success" : "error",
+      );
+    } finally {
+      setTesting(false);
     }
   }
 
@@ -322,6 +357,11 @@ export function OrganizationSettingsView() {
 
             {tab === "communications" ? (
               <section className="grid max-w-2xl gap-3 sm:grid-cols-2">
+                <Note tone="info" className="sm:col-span-2 text-xs">
+                  واجهة موحّدة لإرسال OTP والدعوات. الافتراضي <code>dev-log</code> يكتب
+                  الرمز في سجل الخادم. مفاتيح API وكلمات مرور SMTP لا تُعاد في الاستجابة —
+                  اترك الحقل فارغاً للإبقاء على القيمة الحالية.
+                </Note>
                 <div>
                   <Label>مزوّد OTP</Label>
                   <Select
@@ -394,6 +434,152 @@ export function OrganizationSettingsView() {
                       }))
                     }
                   />
+                </div>
+                <div className="sm:col-span-2">
+                  <Label>عنوان API للرسائل (SMS)</Label>
+                  <Input
+                    dir="ltr"
+                    placeholder="https://…"
+                    value={draft.communications.smsApiUrl ?? ""}
+                    disabled={!canEdit}
+                    onChange={(e) =>
+                      setDraft((d) => ({
+                        ...d,
+                        communications: {
+                          ...d.communications,
+                          smsApiUrl: e.target.value,
+                        },
+                      }))
+                    }
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <Label>
+                    مفتاح API للرسائل
+                    {draft.communications.smsApiKeyConfigured
+                      ? " (محفوظ — اترك فارغاً للإبقاء)"
+                      : ""}
+                  </Label>
+                  <Input
+                    dir="ltr"
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder={
+                      draft.communications.smsApiKeyConfigured ? "••••••••" : ""
+                    }
+                    value={draft.communications.smsApiKey ?? ""}
+                    disabled={!canEdit}
+                    onChange={(e) =>
+                      setDraft((d) => ({
+                        ...d,
+                        communications: {
+                          ...d.communications,
+                          smsApiKey: e.target.value,
+                        },
+                      }))
+                    }
+                  />
+                </div>
+                <div>
+                  <Label>خادم SMTP</Label>
+                  <Input
+                    dir="ltr"
+                    value={draft.communications.smtpHost ?? ""}
+                    disabled={!canEdit}
+                    onChange={(e) =>
+                      setDraft((d) => ({
+                        ...d,
+                        communications: {
+                          ...d.communications,
+                          smtpHost: e.target.value,
+                        },
+                      }))
+                    }
+                  />
+                </div>
+                <div>
+                  <Label>منفذ SMTP</Label>
+                  <Input
+                    dir="ltr"
+                    type="number"
+                    value={String(draft.communications.smtpPort ?? 587)}
+                    disabled={!canEdit}
+                    onChange={(e) =>
+                      setDraft((d) => ({
+                        ...d,
+                        communications: {
+                          ...d.communications,
+                          smtpPort: Number(e.target.value) || 587,
+                        },
+                      }))
+                    }
+                  />
+                </div>
+                <div>
+                  <Label>مستخدم SMTP</Label>
+                  <Input
+                    dir="ltr"
+                    value={draft.communications.smtpUsername ?? ""}
+                    disabled={!canEdit}
+                    onChange={(e) =>
+                      setDraft((d) => ({
+                        ...d,
+                        communications: {
+                          ...d.communications,
+                          smtpUsername: e.target.value,
+                        },
+                      }))
+                    }
+                  />
+                </div>
+                <div>
+                  <Label>
+                    كلمة مرور SMTP
+                    {draft.communications.smtpPasswordConfigured
+                      ? " (محفوظة)"
+                      : ""}
+                  </Label>
+                  <Input
+                    dir="ltr"
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder={
+                      draft.communications.smtpPasswordConfigured
+                        ? "••••••••"
+                        : ""
+                    }
+                    value={draft.communications.smtpPassword ?? ""}
+                    disabled={!canEdit}
+                    onChange={(e) =>
+                      setDraft((d) => ({
+                        ...d,
+                        communications: {
+                          ...d.communications,
+                          smtpPassword: e.target.value,
+                        },
+                      }))
+                    }
+                  />
+                </div>
+                <div className="sm:col-span-2 flex flex-wrap items-end gap-2 border-t border-border pt-3">
+                  <div className="min-w-[12rem] flex-1">
+                    <Label>وجهة اختبار (جوال أو بريد)</Label>
+                    <Input
+                      dir="ltr"
+                      value={testDestination}
+                      disabled={!canEdit}
+                      onChange={(e) => setTestDestination(e.target.value)}
+                      placeholder="+9665… أو email@…"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!canEdit || testing || !testDestination.trim()}
+                    onClick={() => void runTest()}
+                  >
+                    {testing ? "جاري الإرسال…" : "اختبار الإرسال"}
+                  </Button>
                 </div>
               </section>
             ) : null}
