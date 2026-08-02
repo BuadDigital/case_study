@@ -19,12 +19,10 @@ import {
   type PropertyCourtAccessDto,
   type UpsertPropertyCourtAccessRequest,
 } from "@platform/api-client";
-import {
-  apiErrorMessage,
-  resolveApiError,
-  type MutationResult,
-} from "@platform/app-shared/prototype/work-orders-api-config";
+import { apiErrorMessage, resolveApiError, type MutationResult, } from "@platform/app-shared/prototype/work-orders-api-config";
 import { processEvidencePhoto } from "@platform/app-shared/media/process-evidence-photo";
+import { currentOfflineUserId, isBrowserOffline, uploadAttachmentWithOfflineFallback } from "@platform/app-shared/offline/offline-write";
+import { beginOfflineLease, enqueueOutbox, type OutboxKind } from "@platform/offline-client";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 import type {
   KeyAssignmentMatchStatus,
@@ -72,6 +70,56 @@ function fail(result: { kind: string; message?: string }, fallback: string) {
     ok: false as const,
     error: result.message ?? resolveApiError(result.kind, undefined, fallback),
   };
+}
+
+function pendingEnvelopeStub(
+  body: CreateKeyEnvelopeRequest,
+  clientId: string,
+): KeyEnvelopeRow {
+  const now = new Date().toISOString();
+  return {
+    id: clientId,
+    requestNumber: body.requestNumber,
+    court: body.court,
+    circuit: body.circuit,
+    keysCountLabeled: body.keysCountLabeled,
+    keysCountActual: body.keysCountActual,
+    countMismatch: body.keysCountLabeled !== body.keysCountActual,
+    receiptAttachmentId: body.receiptAttachmentId,
+    photoAttachmentId: body.photoAttachmentId,
+    thirdPartyLetterAttachmentId: body.thirdPartyLetterAttachmentId,
+    contactPhones: body.contactPhones,
+    notes: body.notes,
+    receiveScenario: body.receiveScenario ?? "court",
+    status: "reviewer",
+    feeGenerated: false,
+    feeAmountSar: null,
+    revenueEntitlementAtUtc: null,
+    createdByName: "",
+    createdAtUtc: now,
+    operationsTaskId: body.operationsTaskId ?? null,
+    assignments: [],
+    handoffs: [],
+    timeline: [],
+    linkedProperties: [],
+  };
+}
+
+async function enqueueKeyEnvelopeWrite(
+  kind: OutboxKind,
+  envelopeId: string,
+  payload: Record<string, unknown>,
+): Promise<boolean> {
+  const userId = currentOfflineUserId();
+  if (!userId) return false;
+  await enqueueOutbox({
+    userId,
+    kind,
+    targetId: envelopeId,
+    payloadJson: JSON.stringify({ envelopeId, ...payload }),
+  });
+  await beginOfflineLease(userId);
+  return true;
 }
 
 export async function loadKeyEnvelopes(): Promise<KeyEnvelopeRow[]> {
@@ -211,25 +259,38 @@ export async function uploadEnvelopeAttachment(
     }
   }
 
-  const upload = await uploadAttachment(config, {
+  const bytes = await uploadFile.arrayBuffer();
+  const offlineUpload = await uploadAttachmentWithOfflineFallback({
     scope,
     scopeKey: scopeKey.trim() || "draft",
     fileName: uploadFile.name,
     contentType: uploadFile.type || "application/octet-stream",
-    contentBase64: await fileToBase64(uploadFile),
-    photoMetadata,
+    bytes,
+    onlineUpload: async () => {
+      if (!config) throw new Error(apiErrorMessage("auth"));
+      const upload = await uploadAttachment(config, {
+        scope,
+        scopeKey: scopeKey.trim() || "draft",
+        fileName: uploadFile.name,
+        contentType: uploadFile.type || "application/octet-stream",
+        contentBase64: await fileToBase64(uploadFile),
+        photoMetadata,
+      });
+      if (!upload.ok) {
+        throw new Error(
+          resolveApiError(upload.kind, undefined, "تعذّر رفع الملف"),
+        );
+      }
+      return upload.data.id;
+    },
   });
-
-  if (!upload.ok) {
-    return {
-      ok: false,
-      error: resolveApiError(upload.kind, undefined, "تعذّر رفع الملف"),
-    };
-  }
 
   return {
     ok: true,
-    data: { id: upload.data.id, fileName: upload.data.fileName },
+    data: {
+      id: offlineUpload.attachmentId,
+      fileName: uploadFile.name,
+    },
   };
 }
 
@@ -253,8 +314,6 @@ export async function registerKeyEnvelope(
   input: CreateEnvelopeInput,
 ): Promise<MutationResult<KeyEnvelopeRow>> {
   const config = prototypeModulesApiConfig();
-  if (!config) return { ok: false, error: apiErrorMessage("auth") };
-
   const body: CreateKeyEnvelopeRequest = {
     requestNumber: input.requestNumber.trim(),
     court: input.court.trim(),
@@ -274,9 +333,55 @@ export async function registerKeyEnvelope(
     })),
   };
 
-  const result = await createKeyEnvelope(config, body);
-  if (!result.ok) return fail(result, "تعذّر تسجيل الظرف");
-  return { ok: true, data: mapEnvelope(result.data) };
+  const userId = currentOfflineUserId();
+  if ((!config || isBrowserOffline()) && userId) {
+    const clientId = `local-pending:${crypto.randomUUID()}`;
+    await enqueueOutbox({
+      userId,
+      kind: "key-envelope-create",
+      targetId: clientId,
+      payloadJson: JSON.stringify({ ...body, clientEnvelopeId: clientId }),
+    });
+    await beginOfflineLease(userId);
+    return { ok: true, data: pendingEnvelopeStub(body, clientId) };
+  }
+
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
+
+  try {
+    const result = await createKeyEnvelope(config, body);
+    if (!result.ok) {
+      if (result.kind === "network" && userId) {
+        const clientId = `local-pending:${crypto.randomUUID()}`;
+        await enqueueOutbox({
+          userId,
+          kind: "key-envelope-create",
+          targetId: clientId,
+          payloadJson: JSON.stringify({ ...body, clientEnvelopeId: clientId }),
+        });
+        await beginOfflineLease(userId);
+        return { ok: true, data: pendingEnvelopeStub(body, clientId) };
+      }
+      return fail(result, "تعذّر تسجيل الظرف");
+    }
+    return { ok: true, data: mapEnvelope(result.data) };
+  } catch (err) {
+    if (userId) {
+      const clientId = `local-pending:${crypto.randomUUID()}`;
+      await enqueueOutbox({
+        userId,
+        kind: "key-envelope-create",
+        targetId: clientId,
+        payloadJson: JSON.stringify({ ...body, clientEnvelopeId: clientId }),
+      });
+      await beginOfflineLease(userId);
+      return { ok: true, data: pendingEnvelopeStub(body, clientId) };
+    }
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "تعذّر تسجيل الظرف",
+    };
+  }
 }
 
 export async function addEnvelopeAssignment(
@@ -285,13 +390,57 @@ export async function addEnvelopeAssignment(
   propertyId?: string,
 ): Promise<MutationResult<KeyEnvelopeRow>> {
   const config = prototypeModulesApiConfig();
+  const body = { deedNumber, propertyId: propertyId ?? null };
+  const userId = currentOfflineUserId();
+  if ((!config || isBrowserOffline()) && userId) {
+    await enqueueKeyEnvelopeWrite("key-envelope-assignment-add", envelopeId, body);
+    return {
+      ok: true,
+      data: {
+        ...pendingEnvelopeStub(
+          {
+            requestNumber: "",
+            court: "",
+            circuit: "",
+            keysCountLabeled: 0,
+            keysCountActual: 0,
+            receiveScenario: "court",
+          },
+          envelopeId,
+        ),
+        id: envelopeId,
+        assignments: [
+          {
+            id: `local-pending:${crypto.randomUUID()}`,
+            deedNumber,
+            propertyId: propertyId ?? null,
+            status: "pending",
+          },
+        ],
+      },
+    };
+  }
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
-  const result = await addKeyEnvelopeAssignment(config, envelopeId, {
-    deedNumber,
-    propertyId: propertyId ?? null,
-  });
-  if (!result.ok) return fail(result, "تعذّر إضافة الإسناد");
-  return { ok: true, data: mapEnvelope(result.data) };
+  try {
+    const result = await addKeyEnvelopeAssignment(config, envelopeId, body);
+    if (!result.ok) {
+      if (result.kind === "network" && userId) {
+        await enqueueKeyEnvelopeWrite("key-envelope-assignment-add", envelopeId, body);
+        return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
+      }
+      return fail(result, "تعذّر إضافة الإسناد");
+    }
+    return { ok: true, data: mapEnvelope(result.data) };
+  } catch (err) {
+    if (userId) {
+      await enqueueKeyEnvelopeWrite("key-envelope-assignment-add", envelopeId, body);
+      return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
+    }
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "تعذّر إضافة الإسناد",
+    };
+  }
 }
 
 export async function confirmEnvelopeAssignment(
@@ -301,15 +450,50 @@ export async function confirmEnvelopeAssignment(
   notes?: string,
 ): Promise<MutationResult<KeyEnvelopeRow>> {
   const config = prototypeModulesApiConfig();
+  const body = { assignmentId, status, notes: notes ?? null };
+  const userId = currentOfflineUserId();
+  if ((!config || isBrowserOffline()) && userId) {
+    await enqueueKeyEnvelopeWrite(
+      "key-envelope-assignment-confirm",
+      envelopeId,
+      body,
+    );
+    return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
+  }
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
-  const result = await confirmKeyEnvelopeAssignment(
-    config,
-    envelopeId,
-    assignmentId,
-    { status, notes: notes ?? null },
-  );
-  if (!result.ok) return fail(result, "تعذّر تحديث الإسناد");
-  return { ok: true, data: mapEnvelope(result.data) };
+  try {
+    const result = await confirmKeyEnvelopeAssignment(
+      config,
+      envelopeId,
+      assignmentId,
+      { status, notes: notes ?? null },
+    );
+    if (!result.ok) {
+      if (result.kind === "network" && userId) {
+        await enqueueKeyEnvelopeWrite(
+          "key-envelope-assignment-confirm",
+          envelopeId,
+          body,
+        );
+        return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
+      }
+      return fail(result, "تعذّر تحديث الإسناد");
+    }
+    return { ok: true, data: mapEnvelope(result.data) };
+  } catch (err) {
+    if (userId) {
+      await enqueueKeyEnvelopeWrite(
+        "key-envelope-assignment-confirm",
+        envelopeId,
+        body,
+      );
+      return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
+    }
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "تعذّر تحديث الإسناد",
+    };
+  }
 }
 
 export async function createEnvelopeHandoff(
@@ -317,10 +501,38 @@ export async function createEnvelopeHandoff(
   body: CreateKeyEnvelopeHandoffRequest,
 ): Promise<MutationResult<KeyEnvelopeRow>> {
   const config = prototypeModulesApiConfig();
+  const userId = currentOfflineUserId();
+  if ((!config || isBrowserOffline()) && userId) {
+    await enqueueKeyEnvelopeWrite("key-envelope-handoff-create", envelopeId, {
+      ...body,
+    });
+    return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
+  }
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
-  const result = await createKeyEnvelopeHandoff(config, envelopeId, body);
-  if (!result.ok) return fail(result, "تعذّر تسجيل المناولة");
-  return { ok: true, data: mapEnvelope(result.data) };
+  try {
+    const result = await createKeyEnvelopeHandoff(config, envelopeId, body);
+    if (!result.ok) {
+      if (result.kind === "network" && userId) {
+        await enqueueKeyEnvelopeWrite("key-envelope-handoff-create", envelopeId, {
+          ...body,
+        });
+        return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
+      }
+      return fail(result, "تعذّر تسجيل المناولة");
+    }
+    return { ok: true, data: mapEnvelope(result.data) };
+  } catch (err) {
+    if (userId) {
+      await enqueueKeyEnvelopeWrite("key-envelope-handoff-create", envelopeId, {
+        ...body,
+      });
+      return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
+    }
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "تعذّر تسجيل المناولة",
+    };
+  }
 }
 
 export async function confirmEnvelopeHandoff(
@@ -328,10 +540,38 @@ export async function confirmEnvelopeHandoff(
   handoffId: string,
 ): Promise<MutationResult<KeyEnvelopeRow>> {
   const config = prototypeModulesApiConfig();
+  const userId = currentOfflineUserId();
+  if ((!config || isBrowserOffline()) && userId) {
+    await enqueueKeyEnvelopeWrite("key-envelope-handoff-confirm", envelopeId, {
+      handoffId,
+    });
+    return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
+  }
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
-  const result = await confirmKeyEnvelopeHandoff(config, envelopeId, handoffId);
-  if (!result.ok) return fail(result, "تعذّر تأكيد المناولة");
-  return { ok: true, data: mapEnvelope(result.data) };
+  try {
+    const result = await confirmKeyEnvelopeHandoff(config, envelopeId, handoffId);
+    if (!result.ok) {
+      if (result.kind === "network" && userId) {
+        await enqueueKeyEnvelopeWrite("key-envelope-handoff-confirm", envelopeId, {
+          handoffId,
+        });
+        return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
+      }
+      return fail(result, "تعذّر تأكيد المناولة");
+    }
+    return { ok: true, data: mapEnvelope(result.data) };
+  } catch (err) {
+    if (userId) {
+      await enqueueKeyEnvelopeWrite("key-envelope-handoff-confirm", envelopeId, {
+        handoffId,
+      });
+      return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
+    }
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "تعذّر تأكيد المناولة",
+    };
+  }
 }
 
 export async function markEnvelopeFeeCollected(

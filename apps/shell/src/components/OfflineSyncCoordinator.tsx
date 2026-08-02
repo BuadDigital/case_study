@@ -12,6 +12,8 @@ import {
   OFFLINE_PENDING_EVENT,
   OFFLINE_SYNC_EVENT,
   listOutboxItems,
+  purgeOfflineData,
+  requestBackgroundSync,
   type OfflineOutboxItem,
   type OfflineSyncState,
   getOfflineSyncState,
@@ -21,7 +23,14 @@ import {
   savePartyTaskSubmission,
   submitPartyTaskSubmission,
   uploadAttachment,
+  createKeyEnvelope,
+  addKeyEnvelopeAssignment,
+  confirmKeyEnvelopeAssignment,
+  createKeyEnvelopeHandoff,
+  confirmKeyEnvelopeHandoff,
+  upsertFieldSyncStatus,
 } from "@platform/api-client";
+import { getValidAuthSession } from "@platform/auth-client";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 import { workOrdersApiConfig } from "@platform/app-shared/prototype/work-orders-api-config";
 
@@ -34,10 +43,78 @@ function arrayBufferToBase64(buf: ArrayBuffer): string {
   return btoa(binary);
 }
 
-async function runSync(): Promise<void> {
+function outboxKindLabel(kind: string): string {
+  switch (kind) {
+    case "attachment-upload":
+      return "رفع مرفق";
+    case "party-submission-save":
+      return "حفظ مسودة";
+    case "party-submission-submit":
+      return "إرسال مهمة";
+    case "key-envelope-create":
+      return "تسجيل ظرف مفاتيح";
+    case "key-envelope-assignment-add":
+      return "إسناد ظرف";
+    case "key-envelope-assignment-confirm":
+      return "تأكيد إسناد";
+    case "key-envelope-handoff-create":
+      return "مناولة مفاتيح";
+    case "key-envelope-handoff-confirm":
+      return "تأكيد مناولة";
+    default:
+      return kind;
+  }
+}
+
+function ageHours(iso: string): number {
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return 0;
+  return (Date.now() - t) / (60 * 60 * 1000);
+}
+
+async function reportFieldSyncHeartbeat(
+  items: OfflineOutboxItem[],
+  meta: { displayName?: string | null; roleId?: string | null },
+): Promise<void> {
+  const session = getValidAuthSession();
+  if (!session?.token) return;
+  const active = items.filter(
+    (item) =>
+      item.status === "pending" ||
+      item.status === "uploading" ||
+      item.status === "failed",
+  );
+  if (active.length === 0) {
+    await upsertFieldSyncStatus(
+      { token: session.token },
+      {
+        pendingCount: 0,
+        kinds: [],
+        displayName: meta.displayName,
+        roleId: meta.roleId,
+      },
+    );
+    return;
+  }
+  const oldest = active.map((item) => item.createdAtUtc).sort()[0];
+  const kinds = [...new Set(active.map((item) => item.kind))];
+  await upsertFieldSyncStatus(
+    { token: session.token },
+    {
+      pendingCount: active.length,
+      oldestPendingAtUtc: oldest ?? null,
+      kinds,
+      displayName: meta.displayName,
+      roleId: meta.roleId,
+    },
+  );
+  void requestBackgroundSync();
+}
+
+async function runSync(userId: string): Promise<void> {
   const modulesConfig = prototypeModulesApiConfig();
   const workOrdersConfig = workOrdersApiConfig();
-  await syncOfflineQueue({
+  const result = await syncOfflineQueue({
     uploadAttachment: async (input) => {
       if (!modulesConfig) {
         return { ok: false, error: "غير مصادق", terminal: true };
@@ -68,6 +145,9 @@ async function runSync(): Promise<void> {
         contentBase64: arrayBufferToBase64(input.bytes),
       });
       if (!upload.ok) {
+        if (upload.kind === "auth" || upload.kind === "forbidden") {
+          await purgeOfflineData(userId, "auth-rejected");
+        }
         return {
           ok: false,
           error: "تعذّر رفع المرفق",
@@ -86,19 +166,22 @@ async function runSync(): Promise<void> {
       } catch {
         return { ok: false, error: "مسودة غير صالحة", terminal: true };
       }
-      const result = await savePartyTaskSubmission(
+      const saveResult = await savePartyTaskSubmission(
         workOrdersConfig,
         input.taskId,
         payload,
       );
-      if (!result.ok) {
+      if (!saveResult.ok) {
+        if (saveResult.kind === "auth" || saveResult.kind === "forbidden") {
+          await purgeOfflineData(userId, "auth-rejected");
+        }
         return {
           ok: false,
           error: "تعذّر حفظ المسودة",
           terminal:
-            result.kind === "auth" ||
-            result.kind === "forbidden" ||
-            result.kind === "validation",
+            saveResult.kind === "auth" ||
+            saveResult.kind === "forbidden" ||
+            saveResult.kind === "validation",
         };
       }
       return { ok: true };
@@ -107,31 +190,188 @@ async function runSync(): Promise<void> {
       if (!workOrdersConfig) {
         return { ok: false, error: "غير مصادق", terminal: true };
       }
-      const result = await submitPartyTaskSubmission(
+      const submitResult = await submitPartyTaskSubmission(
         workOrdersConfig,
         input.taskId,
       );
-      if (!result.ok) {
+      if (!submitResult.ok) {
+        if (submitResult.kind === "auth" || submitResult.kind === "forbidden") {
+          await purgeOfflineData(userId, "auth-rejected");
+        }
         return {
           ok: false,
           error: "تعذّر إرسال المهمة",
           terminal:
-            result.kind === "auth" ||
-            result.kind === "forbidden" ||
-            result.kind === "validation",
+            submitResult.kind === "auth" ||
+            submitResult.kind === "forbidden" ||
+            submitResult.kind === "validation",
+        };
+      }
+      return { ok: true };
+    },
+    createKeyEnvelope: async (input) => {
+      if (!modulesConfig) {
+        return { ok: false, error: "غير مصادق", terminal: true };
+      }
+      let body: Parameters<typeof createKeyEnvelope>[1];
+      try {
+        const parsed = JSON.parse(input.bodyJson) as Record<string, unknown>;
+        const { clientEnvelopeId: _clientId, ...rest } = parsed;
+        body = rest as Parameters<typeof createKeyEnvelope>[1];
+      } catch {
+        return { ok: false, error: "بيانات ظرف غير صالحة", terminal: true };
+      }
+      const createResult = await createKeyEnvelope(modulesConfig, body);
+      if (!createResult.ok) {
+        if (createResult.kind === "auth" || createResult.kind === "forbidden") {
+          await purgeOfflineData(userId, "auth-rejected");
+        }
+        return {
+          ok: false,
+          error: "تعذّر تسجيل الظرف",
+          terminal:
+            createResult.kind === "auth" || createResult.kind === "forbidden",
+        };
+      }
+      return { ok: true, envelopeId: createResult.data.id };
+    },
+    addKeyEnvelopeAssignment: async (input) => {
+      if (!modulesConfig) {
+        return { ok: false, error: "غير مصادق", terminal: true };
+      }
+      let payload: { deedNumber?: string; propertyId?: string | null };
+      try {
+        payload = JSON.parse(input.payloadJson) as typeof payload;
+      } catch {
+        return { ok: false, error: "بيانات إسناد غير صالحة", terminal: true };
+      }
+      if (!payload.deedNumber?.trim()) {
+        return { ok: false, error: "رقم الصك مطلوب", terminal: true };
+      }
+      const result = await addKeyEnvelopeAssignment(
+        modulesConfig,
+        input.envelopeId,
+        {
+          deedNumber: payload.deedNumber,
+          propertyId: payload.propertyId ?? null,
+        },
+      );
+      if (!result.ok) {
+        if (result.kind === "auth" || result.kind === "forbidden") {
+          await purgeOfflineData(userId, "auth-rejected");
+        }
+        return {
+          ok: false,
+          error: "تعذّر إضافة الإسناد",
+          terminal: result.kind === "auth" || result.kind === "forbidden",
+        };
+      }
+      return { ok: true };
+    },
+    confirmKeyEnvelopeAssignment: async (input) => {
+      if (!modulesConfig) {
+        return { ok: false, error: "غير مصادق", terminal: true };
+      }
+      let payload: {
+        assignmentId?: string;
+        status?: string;
+        notes?: string | null;
+      };
+      try {
+        payload = JSON.parse(input.payloadJson) as typeof payload;
+      } catch {
+        return { ok: false, error: "بيانات تأكيد غير صالحة", terminal: true };
+      }
+      if (!payload.assignmentId || !payload.status) {
+        return { ok: false, error: "بيانات تأكيد ناقصة", terminal: true };
+      }
+      const result = await confirmKeyEnvelopeAssignment(
+        modulesConfig,
+        input.envelopeId,
+        payload.assignmentId,
+        { status: payload.status, notes: payload.notes ?? null },
+      );
+      if (!result.ok) {
+        if (result.kind === "auth" || result.kind === "forbidden") {
+          await purgeOfflineData(userId, "auth-rejected");
+        }
+        return {
+          ok: false,
+          error: "تعذّر تأكيد الإسناد",
+          terminal: result.kind === "auth" || result.kind === "forbidden",
+        };
+      }
+      return { ok: true };
+    },
+    createKeyEnvelopeHandoff: async (input) => {
+      if (!modulesConfig) {
+        return { ok: false, error: "غير مصادق", terminal: true };
+      }
+      let payload: Parameters<typeof createKeyEnvelopeHandoff>[2];
+      try {
+        const parsed = JSON.parse(input.payloadJson) as Record<string, unknown>;
+        const { envelopeId: _e, ...rest } = parsed;
+        payload = rest as Parameters<typeof createKeyEnvelopeHandoff>[2];
+      } catch {
+        return { ok: false, error: "بيانات مناولة غير صالحة", terminal: true };
+      }
+      const result = await createKeyEnvelopeHandoff(
+        modulesConfig,
+        input.envelopeId,
+        payload,
+      );
+      if (!result.ok) {
+        if (result.kind === "auth" || result.kind === "forbidden") {
+          await purgeOfflineData(userId, "auth-rejected");
+        }
+        return {
+          ok: false,
+          error: "تعذّر تسجيل المناولة",
+          terminal: result.kind === "auth" || result.kind === "forbidden",
+        };
+      }
+      return { ok: true };
+    },
+    confirmKeyEnvelopeHandoff: async (input) => {
+      if (!modulesConfig) {
+        return { ok: false, error: "غير مصادق", terminal: true };
+      }
+      let payload: { handoffId?: string };
+      try {
+        payload = JSON.parse(input.payloadJson) as typeof payload;
+      } catch {
+        return { ok: false, error: "بيانات تأكيد غير صالحة", terminal: true };
+      }
+      if (!payload.handoffId) {
+        return { ok: false, error: "معرّف المناولة مطلوب", terminal: true };
+      }
+      const result = await confirmKeyEnvelopeHandoff(
+        modulesConfig,
+        input.envelopeId,
+        payload.handoffId,
+      );
+      if (!result.ok) {
+        if (result.kind === "auth" || result.kind === "forbidden") {
+          await purgeOfflineData(userId, "auth-rejected");
+        }
+        return {
+          ok: false,
+          error: "تعذّر تأكيد المناولة",
+          terminal: result.kind === "auth" || result.kind === "forbidden",
         };
       }
       return { ok: true };
     },
   });
+  void result;
 }
 
 /**
- * Coordinates offline lease, silent sync, and top-bar pending list for
- * field-inspector / government-reviewer.
+ * Coordinates offline lease, silent sync, Background Sync wake-ups,
+ * supervisor heartbeat, and top-bar pending list for field roles.
  */
 export function OfflineSyncCoordinator() {
-  const { role, user, isAuthenticated } = useAuth();
+  const { role, user, isAuthenticated, displayName } = useAuth();
   const online = useOnlineStatus();
   const capable = isOfflineCapableRole(role);
   const [syncState, setSyncState] = useState<OfflineSyncState>("synced");
@@ -204,17 +444,56 @@ export function OfflineSyncCoordinator() {
       return;
     }
 
-    void runSync();
-    const timer = window.setInterval(() => void runSync(), 30_000);
+    const userId = user?.id;
+    if (!userId) return;
+    void runSync(userId);
+    const timer = window.setInterval(() => void runSync(userId), 30_000);
     const onVisible = () => {
-      if (document.visibilityState === "visible") void runSync();
+      if (document.visibilityState === "visible") void runSync(userId);
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [capable, isAuthenticated, online]);
+  }, [capable, isAuthenticated, online, user?.id]);
+
+  useEffect(() => {
+    if (!capable || !isAuthenticated || !user?.id) return;
+    const onSwMessage = (event: MessageEvent) => {
+      if (event.data?.type !== "RUN_OFFLINE_SYNC") return;
+      if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+      void runSync(user.id);
+    };
+    navigator.serviceWorker?.addEventListener("message", onSwMessage);
+    return () => {
+      navigator.serviceWorker?.removeEventListener("message", onSwMessage);
+    };
+  }, [capable, isAuthenticated, user?.id]);
+
+  useEffect(() => {
+    if (!capable || !isAuthenticated || !online || !user?.id) return;
+    const report = () => {
+      void listOutboxItems(user.id).then((items) => {
+        void reportFieldSyncHeartbeat(items, {
+          displayName: displayName ?? user.displayName,
+          roleId: role,
+        });
+      });
+    };
+    report();
+    const timer = window.setInterval(report, 60_000);
+    return () => window.clearInterval(timer);
+  }, [
+    capable,
+    displayName,
+    isAuthenticated,
+    online,
+    pending,
+    role,
+    user?.displayName,
+    user?.id,
+  ]);
 
   useEffect(() => {
     if (!capable) return;
@@ -228,10 +507,15 @@ export function OfflineSyncCoordinator() {
   }, [capable, pending]);
 
   const label = useMemo(() => {
-    if (locked) return "جلسة Offline مقفلة";
+    if (locked) return "جلسة offline مقفلة";
     if (syncState === "syncing") return "جاري المزامنة";
-    if (syncState === "failed" || pending > 0) return "فشلت المزامنة — إعادة محاولة";
-    if (syncState === "offline") return "دون اتصال";
+    if (syncState === "offline") {
+      return pending > 0
+        ? `دون اتصال — ${pending} في طابور الحفظ`
+        : "دون اتصال";
+    }
+    if (syncState === "failed") return "فشلت المزامنة — إعادة محاولة";
+    if (pending > 0) return `${pending} بانتظار المزامنة`;
     return "تمت المزامنة";
   }, [locked, pending, syncState]);
 
@@ -295,7 +579,14 @@ export function OfflineSyncCoordinator() {
                     key={item.id}
                     className="rounded-lg bg-surface-2 px-2 py-1.5 text-[11px] text-text-2"
                   >
-                    <div className="font-medium text-text-1">{item.kind}</div>
+                    <div className="font-medium text-text-1">
+                      {outboxKindLabel(item.kind)}
+                      {ageHours(item.createdAtUtc) >= 2 ? (
+                        <span className="ms-1 text-amber-600">
+                          · معلّق &gt; ساعتين
+                        </span>
+                      ) : null}
+                    </div>
                     <div>{item.targetId}</div>
                     {item.lastError ? <div>{item.lastError}</div> : null}
                   </li>

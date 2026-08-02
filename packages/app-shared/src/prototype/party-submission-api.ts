@@ -10,6 +10,7 @@ import {
 import {
   saveDraftWithOfflineFallback,
   submitWithOfflineFallback,
+  loadQueuedDraftPayload,
 } from "../offline/offline-write";
 import {
   apiErrorMessage,
@@ -36,15 +37,76 @@ export function setCachedPartySubmission(
   else submissionCache.delete(taskId);
 }
 
+function detectSubmissionKind(
+  payload: Record<string, unknown>,
+): "field-inspection" | "government-review" {
+  if (
+    payload.slotPhotos != null ||
+    payload.freePhotos != null ||
+    payload.boundaryMatches != null ||
+    payload.mapLatitude != null
+  ) {
+    return "field-inspection";
+  }
+  return "government-review";
+}
+
 export async function fetchPartySubmission(
   taskId: string,
 ): Promise<PartyTaskSubmissionDto | null> {
   const config = workOrdersApiConfig();
-  if (!config) return getCachedPartySubmission(taskId);
+  if (!config) {
+    const queued = await loadQueuedDraftPayload<Record<string, unknown>>(
+      "government-review",
+      taskId,
+    );
+    const fieldQueued =
+      queued ??
+      (await loadQueuedDraftPayload<Record<string, unknown>>(
+        "field-inspection",
+        taskId,
+      ));
+    if (fieldQueued) {
+      const kind = detectSubmissionKind(fieldQueued);
+      const local: PartyTaskSubmissionDto = {
+        taskId,
+        kind,
+        status: "draft",
+        payload: fieldQueued,
+        updatedAtUtc: new Date().toISOString(),
+      };
+      setCachedPartySubmission(local, taskId);
+      return local;
+    }
+    return getCachedPartySubmission(taskId);
+  }
   const result = await getPartyTaskSubmission(config, taskId);
   if (result.ok) {
     setCachedPartySubmission(result.data, taskId);
     return result.data;
+  }
+  if (result.kind === "not_found" || result.kind === "network") {
+    const queuedGov = await loadQueuedDraftPayload<Record<string, unknown>>(
+      "government-review",
+      taskId,
+    );
+    const queued =
+      queuedGov ??
+      (await loadQueuedDraftPayload<Record<string, unknown>>(
+        "field-inspection",
+        taskId,
+      ));
+    if (queued) {
+      const local: PartyTaskSubmissionDto = {
+        taskId,
+        kind: detectSubmissionKind(queued),
+        status: "draft",
+        payload: queued,
+        updatedAtUtc: new Date().toISOString(),
+      };
+      setCachedPartySubmission(local, taskId);
+      return local;
+    }
   }
   if (result.kind === "not_found") {
     setCachedPartySubmission(null, taskId);
@@ -59,11 +121,12 @@ export async function persistPartySubmissionPayload(
   taskId: string,
   payload: Record<string, unknown>,
 ): Promise<PartySubmissionMutationResult> {
+  const kind = detectSubmissionKind(payload);
   const config = workOrdersApiConfig();
   if (!config) {
     const queued = await saveDraftWithOfflineFallback({
       taskId,
-      kind: "government-review",
+      kind,
       payload,
       onlineSave: async () => {
         throw new Error(apiErrorMessage("auth"));
@@ -73,7 +136,7 @@ export async function persistPartySubmissionPayload(
       const now = new Date().toISOString();
       const local: PartyTaskSubmissionDto = {
         taskId,
-        kind: "government-review",
+        kind,
         status: "draft",
         payload,
         updatedAtUtc: now,
@@ -87,7 +150,7 @@ export async function persistPartySubmissionPayload(
   try {
     const queued = await saveDraftWithOfflineFallback({
       taskId,
-      kind: "government-review",
+      kind,
       payload,
       onlineSave: async () => {
         const result = await savePartyTaskSubmission(config, taskId, payload);
@@ -100,7 +163,7 @@ export async function persistPartySubmissionPayload(
       const now = new Date().toISOString();
       const local: PartyTaskSubmissionDto = {
         taskId,
-        kind: "government-review",
+        kind,
         status: "draft",
         payload,
         updatedAtUtc: now,

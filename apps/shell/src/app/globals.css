@@ -297,4 +297,19 @@ html:has(#app) body {
   max-width: 100%;
 }
 
+/* Login page step transitions (docs/new look login HTML) */
+@keyframes login-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes login-pop {
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+}
+
 

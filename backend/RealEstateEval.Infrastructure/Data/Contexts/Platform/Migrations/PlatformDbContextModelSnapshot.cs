@@ -309,6 +309,46 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
                     b.ToTable("FieldDictionaryConfigs", "platform");
                 });
 
+            modelBuilder.Entity("RealEstateEval.Domain.FieldSyncStatus", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("KindsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("LastSeenAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("OldestPendingAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("PendingCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RoleId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("FieldSyncStatuses", "platform");
+                });
+
             modelBuilder.Entity("RealEstateEval.Domain.OrganizationSettings", b =>
                 {
                     b.Property<Guid>("Id")

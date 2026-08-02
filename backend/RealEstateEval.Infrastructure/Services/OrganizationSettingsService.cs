@@ -24,6 +24,13 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
 
     public async Task<OrganizationSettingsDto> GetAsync(CancellationToken cancellationToken = default)
     {
+        var internalDto = await GetInternalAsync(cancellationToken);
+        return MaskSecrets(internalDto);
+    }
+
+    public async Task<OrganizationSettingsDto> GetInternalAsync(
+        CancellationToken cancellationToken = default)
+    {
         var row = await _db.OrganizationSettings.AsNoTracking()
             .FirstOrDefaultAsync(cancellationToken);
         return row is null ? Defaults() : FromRow(row);
@@ -34,9 +41,10 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
         string actorId,
         CancellationToken cancellationToken = default)
     {
-        var current = await GetAsync(cancellationToken);
+        var current = await GetInternalAsync(cancellationToken);
         var next = Merge(current, request);
         ValidateSla(next.Sla);
+        ValidateCommunications(next.Communications);
 
         var row = await _db.OrganizationSettings.FirstOrDefaultAsync(cancellationToken);
         var now = DateTime.UtcNow;
@@ -59,15 +67,16 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
         }
 
         next = FromRow(row);
+        // Audit without secret values — only configuration shape.
         _db.AuditLogs.Add(_audit.Create(
             string.IsNullOrWhiteSpace(actorId) ? "system" : actorId,
             "ORGANIZATION_SETTINGS_SAVED",
             "organization_settings",
             row.Id.ToString(),
-            current,
-            next));
+            MaskSecrets(current),
+            MaskSecrets(next)));
         await _db.SaveChangesAsync(cancellationToken);
-        return next;
+        return MaskSecrets(next);
     }
 
     private static void ValidateSla(OrganizationSlaSettingsDto sla)
@@ -76,6 +85,15 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
             throw new ArgumentOutOfRangeException(nameof(sla.DefaultBusinessDays), "مهلة التنفيذ يجب أن تكون بين 1 و 60 يوم عمل.");
         if (sla.PrivateSectorBusinessDays < 1 || sla.PrivateSectorBusinessDays > 60)
             throw new ArgumentOutOfRangeException(nameof(sla.PrivateSectorBusinessDays), "مهلة القطاع الخاص يجب أن تكون بين 1 و 60 يوم عمل.");
+    }
+
+    private static void ValidateCommunications(OrganizationCommunicationsSettingsDto c)
+    {
+        var provider = (c.OtpProvider ?? "dev-log").Trim().ToLowerInvariant();
+        if (provider is not ("dev-log" or "sms" or "email"))
+            throw new ArgumentOutOfRangeException(nameof(c.OtpProvider), "مزوّد OTP غير معروف.");
+        if (c.SmtpPort is < 1 or > 65535)
+            throw new ArgumentOutOfRangeException(nameof(c.SmtpPort), "منفذ SMTP غير صالح.");
     }
 
     private static OrganizationSettingsDto Defaults() => new()
@@ -99,7 +117,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
                 Company = dto.Company ?? new OrganizationCompanySettingsDto(),
                 Evaluator = dto.Evaluator ?? new OrganizationEvaluatorSettingsDto(),
                 Branding = dto.Branding ?? new OrganizationBrandingSettingsDto(),
-                Communications = dto.Communications ?? new OrganizationCommunicationsSettingsDto(),
+                Communications = NormalizeCommunications(dto.Communications),
                 Sla = NormalizeSla(dto.Sla),
                 UpdatedAtUtc = row.UpdatedAtUtc,
             };
@@ -118,6 +136,55 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
             };
         }
     }
+
+    private static OrganizationCommunicationsSettingsDto NormalizeCommunications(
+        OrganizationCommunicationsSettingsDto? c) =>
+        c is null
+            ? new OrganizationCommunicationsSettingsDto()
+            : new OrganizationCommunicationsSettingsDto
+            {
+                OtpProvider = string.IsNullOrWhiteSpace(c.OtpProvider) ? "dev-log" : c.OtpProvider,
+                DefaultOtpChannel = string.IsNullOrWhiteSpace(c.DefaultOtpChannel)
+                    ? "sms"
+                    : c.DefaultOtpChannel,
+                SmsSenderId = c.SmsSenderId,
+                EmailFrom = c.EmailFrom,
+                SmsApiUrl = c.SmsApiUrl,
+                SmsApiKey = c.SmsApiKey,
+                SmsApiKeyConfigured = !string.IsNullOrWhiteSpace(c.SmsApiKey),
+                SmtpHost = c.SmtpHost,
+                SmtpPort = c.SmtpPort is < 1 or > 65535 ? 587 : c.SmtpPort,
+                SmtpUsername = c.SmtpUsername,
+                SmtpPassword = c.SmtpPassword,
+                SmtpPasswordConfigured = !string.IsNullOrWhiteSpace(c.SmtpPassword),
+            };
+
+    private static OrganizationSettingsDto MaskSecrets(OrganizationSettingsDto dto) =>
+        new()
+        {
+            Company = dto.Company,
+            Evaluator = dto.Evaluator,
+            Branding = dto.Branding,
+            Communications = new OrganizationCommunicationsSettingsDto
+            {
+                OtpProvider = dto.Communications.OtpProvider,
+                DefaultOtpChannel = dto.Communications.DefaultOtpChannel,
+                SmsSenderId = dto.Communications.SmsSenderId,
+                EmailFrom = dto.Communications.EmailFrom,
+                SmsApiUrl = dto.Communications.SmsApiUrl,
+                SmsApiKey = null,
+                SmsApiKeyConfigured = !string.IsNullOrWhiteSpace(dto.Communications.SmsApiKey)
+                    || dto.Communications.SmsApiKeyConfigured,
+                SmtpHost = dto.Communications.SmtpHost,
+                SmtpPort = dto.Communications.SmtpPort,
+                SmtpUsername = dto.Communications.SmtpUsername,
+                SmtpPassword = null,
+                SmtpPasswordConfigured = !string.IsNullOrWhiteSpace(dto.Communications.SmtpPassword)
+                    || dto.Communications.SmtpPasswordConfigured,
+            },
+            Sla = dto.Sla,
+            UpdatedAtUtc = dto.UpdatedAtUtc,
+        };
 
     private static OrganizationSlaSettingsDto NormalizeSla(OrganizationSlaSettingsDto? sla) =>
         new()
@@ -138,8 +205,36 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
             Company = request.Company ?? current.Company,
             Evaluator = request.Evaluator ?? current.Evaluator,
             Branding = request.Branding ?? current.Branding,
-            Communications = request.Communications ?? current.Communications,
+            Communications = MergeCommunications(current.Communications, request.Communications),
             Sla = NormalizeSla(request.Sla ?? current.Sla),
             UpdatedAtUtc = DateTime.UtcNow,
         };
+
+    private static OrganizationCommunicationsSettingsDto MergeCommunications(
+        OrganizationCommunicationsSettingsDto current,
+        OrganizationCommunicationsSettingsDto? incoming)
+    {
+        if (incoming is null) return current;
+        return new OrganizationCommunicationsSettingsDto
+        {
+            OtpProvider = string.IsNullOrWhiteSpace(incoming.OtpProvider)
+                ? current.OtpProvider
+                : incoming.OtpProvider,
+            DefaultOtpChannel = string.IsNullOrWhiteSpace(incoming.DefaultOtpChannel)
+                ? current.DefaultOtpChannel
+                : incoming.DefaultOtpChannel,
+            SmsSenderId = incoming.SmsSenderId ?? current.SmsSenderId,
+            EmailFrom = incoming.EmailFrom ?? current.EmailFrom,
+            SmsApiUrl = incoming.SmsApiUrl ?? current.SmsApiUrl,
+            SmsApiKey = string.IsNullOrWhiteSpace(incoming.SmsApiKey)
+                ? current.SmsApiKey
+                : incoming.SmsApiKey,
+            SmtpHost = incoming.SmtpHost ?? current.SmtpHost,
+            SmtpPort = incoming.SmtpPort > 0 ? incoming.SmtpPort : current.SmtpPort,
+            SmtpUsername = incoming.SmtpUsername ?? current.SmtpUsername,
+            SmtpPassword = string.IsNullOrWhiteSpace(incoming.SmtpPassword)
+                ? current.SmtpPassword
+                : incoming.SmtpPassword,
+        };
+    }
 }

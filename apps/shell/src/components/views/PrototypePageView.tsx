@@ -51,6 +51,10 @@ const KeysView = dynamic(
   () => import("@keys/mfe").then((m) => m.KeysView),
   { ssr: false },
 );
+const FieldSyncSupervisorView = dynamic(
+  () => import("@case-study/mfe").then((m) => m.FieldSyncSupervisorView),
+  { ssr: false },
+);
 const FailuresView = dynamic(
   () => import("@failures/mfe").then((m) => m.FailuresView),
   { ssr: false },
@@ -130,6 +134,7 @@ const VIEWS: Partial<Record<PageId, ComponentType>> = {
   "active-distribution": ActiveDistributionView,
   "active-case-study": ActiveCaseStudyView,
   keys: KeysView,
+  "field-sync-board": FieldSyncSupervisorView,
   failures: FailuresView,
   "suspended-transactions": SuspendedTransactionsView,
   "valuation-requests": ValuationRequestsView,

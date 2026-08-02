@@ -475,6 +475,7 @@ export {
 export {
   getOrganizationSettings,
   saveOrganizationSettings,
+  testOrganizationCommunication,
   type OrganizationBrandingSettings,
   type OrganizationCommunicationsSettings,
   type OrganizationCompanySettings,
@@ -485,3 +486,12 @@ export {
   type OrganizationSlaSettings,
   type SaveOrganizationSettingsRequest,
 } from "./organization-settings";
+
+export {
+  clearFieldSyncStatus,
+  listStaleFieldSyncStatuses,
+  upsertFieldSyncStatus,
+  type FieldSyncApiConfig,
+  type FieldSyncStatusDto,
+  type UpsertFieldSyncStatusRequest,
+} from "./field-sync-status";

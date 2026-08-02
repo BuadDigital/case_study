@@ -11,7 +11,7 @@ const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   notificationCenter: true,
   auditLog: true,
   offlineBanner: true,
-  webPush: false,
+  webPush: true,
 };
 
 function envFlag(flag: FeatureFlag): boolean | null {

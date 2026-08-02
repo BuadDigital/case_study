@@ -365,6 +365,8 @@ public static class DependencyInjection
         services.AddScoped<IRegionsService, RegionsService>();
         services.AddScoped<ICaseStudyInfoRolesConfigService, CaseStudyInfoRolesConfigService>();
         services.AddScoped<IOrganizationSettingsService, OrganizationSettingsService>();
+        services.AddScoped<IOtpDeliveryService, OtpDeliveryService>();
+        services.AddScoped<IFieldSyncStatusService, FieldSyncStatusService>();
         services.AddScoped<IAuditLogQueryService, AuditLogQueryService>();
         return services;
     }

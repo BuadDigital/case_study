@@ -34,7 +34,13 @@ public sealed class AttachmentService : IAttachmentService
             .OrderByDescending(x => x.CreatedAtUtc)
             .Take(MaxAttachmentsPerScope)
             .ToListAsync(cancellationToken);
-        return rows.Select(row => ToMeta(row)).ToList();
+        var ids = rows.Select(r => r.Id).ToList();
+        var photos = ids.Count == 0
+            ? new Dictionary<Guid, PhotoMetadata>()
+            : await _db.PhotoMetadata.AsNoTracking()
+                .Where(p => ids.Contains(p.PhotoId))
+                .ToDictionaryAsync(p => p.PhotoId, cancellationToken);
+        return rows.Select(row => ToMeta(row, photos.GetValueOrDefault(row.Id))).ToList();
     }
 
     public async Task<(byte[]? Content, FileAttachmentMetaDto? Meta)> GetContentAsync(
@@ -51,7 +57,7 @@ public sealed class AttachmentService : IAttachmentService
         // Rows written before content verification may carry a client-chosen MIME type.
         // Serve what the bytes actually are, or nothing the browser will render.
         var format = FileSignatureInspector.Detect(content);
-        return (content, ToMeta(row, FileSignatureInspector.CanonicalMime(format)));
+        return (content, ToMeta(row, contentTypeOverride: FileSignatureInspector.CanonicalMime(format)));
     }
 
     public async Task<(FileAttachmentMetaDto? Meta, string? Error)> UploadAsync(
@@ -109,15 +115,25 @@ public sealed class AttachmentService : IAttachmentService
         if (request.PhotoMetadata is not null
             && IsEvidencePhotoScope(row.Scope))
         {
-            _db.PhotoMetadata.Add(new PhotoMetadata
+            var (distanceM, flag) = PhotoLocationRules.Evaluate(
+                request.PhotoMetadata.Latitude,
+                request.PhotoMetadata.Longitude,
+                request.PhotoMetadata.PropertyLatitude,
+                request.PhotoMetadata.PropertyLongitude);
+            var photoMeta = new PhotoMetadata
             {
                 Id = Guid.NewGuid(),
                 PhotoId = id,
                 Latitude = request.PhotoMetadata.Latitude,
                 Longitude = request.PhotoMetadata.Longitude,
                 CapturedAtUtc = request.PhotoMetadata.CapturedAtUtc,
+                DistanceM = distanceM,
+                Flag = flag,
                 CreatedAtUtc = DateTime.UtcNow,
-            });
+            };
+            _db.PhotoMetadata.Add(photoMeta);
+            await _db.SaveChangesAsync(cancellationToken);
+            return (ToMeta(row, photoMeta), null);
         }
 
         await _db.SaveChangesAsync(cancellationToken);
@@ -137,6 +153,9 @@ public sealed class AttachmentService : IAttachmentService
         if (!string.IsNullOrWhiteSpace(row.StorageKey))
             await _blobs.DeleteAsync(row.StorageKey, cancellationToken);
 
+        var photo = await _db.PhotoMetadata.FirstOrDefaultAsync(x => x.PhotoId == id, cancellationToken);
+        if (photo is not null) _db.PhotoMetadata.Remove(photo);
+
         _db.FileAttachments.Remove(row);
         await _db.SaveChangesAsync(cancellationToken);
         return true;
@@ -152,6 +171,7 @@ public sealed class AttachmentService : IAttachmentService
 
     private static FileAttachmentMetaDto ToMeta(
         FileAttachment row,
+        PhotoMetadata? photo = null,
         string? contentTypeOverride = null) => new()
     {
         Id = row.Id,
@@ -161,5 +181,15 @@ public sealed class AttachmentService : IAttachmentService
         ContentType = contentTypeOverride ?? row.ContentType,
         SizeBytes = row.SizeBytes > 0 ? row.SizeBytes : row.Content?.LongLength ?? 0,
         CreatedAtUtc = row.CreatedAtUtc,
+        PhotoMetadata = photo is null
+            ? null
+            : new PhotoMetadataDto
+            {
+                Latitude = photo.Latitude,
+                Longitude = photo.Longitude,
+                CapturedAtUtc = photo.CapturedAtUtc,
+                DistanceM = photo.DistanceM,
+                Flag = photo.Flag,
+            },
     };
 }

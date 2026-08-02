@@ -32,6 +32,7 @@ export { ActiveTransactionQueueView } from "./views/ActiveTransactionQueueView";
 export { CaseStudyTaskWork } from "./views/MyTaskWorkView";
 export { SuspendedTransactionsView } from "./views/SuspendedTransactionsView";
 export { PartyFeesView } from "./views/PartyFeesView";
+export { FieldSyncSupervisorView } from "./views/FieldSyncSupervisorView";
 export { PoHeaderEditRoute } from "./views/po-routes/PoHeaderEditRoute";
 export { PoPropertyEditRoute } from "./views/po-routes/PoPropertyEditRoute";
 export { PoPropertyFailureRoute } from "./views/po-routes/PoPropertyFailureRoute";

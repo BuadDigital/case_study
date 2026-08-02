@@ -817,12 +817,23 @@ export type FileAttachmentMetaDto = {
   contentType: string;
   sizeBytes: number;
   createdAtUtc: string;
+  photoMetadata?: PhotoMetadataDto | null;
+};
+
+export type PhotoMetadataDto = {
+  latitude?: number | null;
+  longitude?: number | null;
+  capturedAtUtc?: string | null;
+  distanceM?: number | null;
+  flag?: string | null;
 };
 
 export type PhotoMetadataInput = {
   latitude?: number | null;
   longitude?: number | null;
   capturedAtUtc?: string | null;
+  propertyLatitude?: number | null;
+  propertyLongitude?: number | null;
 };
 
 export type UploadAttachmentRequest = {

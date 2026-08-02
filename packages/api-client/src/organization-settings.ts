@@ -31,6 +31,14 @@ export type OrganizationCommunicationsSettings = {
   defaultOtpChannel: string;
   smsSenderId?: string | null;
   emailFrom?: string | null;
+  smsApiUrl?: string | null;
+  smsApiKey?: string | null;
+  smsApiKeyConfigured?: boolean;
+  smtpHost?: string | null;
+  smtpPort?: number;
+  smtpUsername?: string | null;
+  smtpPassword?: string | null;
+  smtpPasswordConfigured?: boolean;
 };
 
 export type OrganizationSlaSettings = {
@@ -62,6 +70,49 @@ export type OrganizationSettingsResult<T> =
       kind: "network" | "server" | "auth" | "forbidden" | "validation";
       message?: string;
     };
+
+function normalizeCommunications(
+  communications: Record<string, unknown>,
+): OrganizationCommunicationsSettings {
+  return {
+    otpProvider: String(
+      communications.otpProvider ?? communications.OtpProvider ?? "dev-log",
+    ),
+    defaultOtpChannel: String(
+      communications.defaultOtpChannel ??
+        communications.DefaultOtpChannel ??
+        "sms",
+    ),
+    smsSenderId: (communications.smsSenderId ??
+      communications.SmsSenderId ??
+      null) as string | null,
+    emailFrom: (communications.emailFrom ??
+      communications.EmailFrom ??
+      null) as string | null,
+    smsApiUrl: (communications.smsApiUrl ??
+      communications.SmsApiUrl ??
+      null) as string | null,
+    smsApiKey: null,
+    smsApiKeyConfigured: Boolean(
+      communications.smsApiKeyConfigured ??
+        communications.SmsApiKeyConfigured ??
+        false,
+    ),
+    smtpHost: (communications.smtpHost ??
+      communications.SmtpHost ??
+      null) as string | null,
+    smtpPort: Number(communications.smtpPort ?? communications.SmtpPort ?? 587),
+    smtpUsername: (communications.smtpUsername ??
+      communications.SmtpUsername ??
+      null) as string | null,
+    smtpPassword: null,
+    smtpPasswordConfigured: Boolean(
+      communications.smtpPasswordConfigured ??
+        communications.SmtpPasswordConfigured ??
+        false,
+    ),
+  };
+}
 
 function normalizeSettings(raw: Record<string, unknown>): OrganizationSettingsDto {
   const company = (raw.company ?? raw.Company ?? {}) as Record<string, unknown>;
@@ -99,22 +150,7 @@ function normalizeSettings(raw: Record<string, unknown>): OrganizationSettingsDt
       headerUrl: (branding.headerUrl ?? branding.HeaderUrl ?? null) as string | null,
       watermarkText: String(branding.watermarkText ?? branding.WatermarkText ?? "EJADAH"),
     },
-    communications: {
-      otpProvider: String(
-        communications.otpProvider ?? communications.OtpProvider ?? "dev-log",
-      ),
-      defaultOtpChannel: String(
-        communications.defaultOtpChannel ??
-          communications.DefaultOtpChannel ??
-          "sms",
-      ),
-      smsSenderId: (communications.smsSenderId ??
-        communications.SmsSenderId ??
-        null) as string | null,
-      emailFrom: (communications.emailFrom ??
-        communications.EmailFrom ??
-        null) as string | null,
-    },
+    communications: normalizeCommunications(communications),
     sla: {
       defaultBusinessDays: Number(
         sla.defaultBusinessDays ?? sla.DefaultBusinessDays ?? 4,
@@ -178,6 +214,50 @@ export async function saveOrganizationSettings(
     if (!res.ok) return { ok: false, kind: "server" };
     const raw = (await res.json()) as Record<string, unknown>;
     return { ok: true, data: normalizeSettings(raw) };
+  } catch (err) {
+    if (err instanceof ApiAuthError) return { ok: false, kind: "auth" };
+    return { ok: false, kind: "network" };
+  }
+}
+
+export async function testOrganizationCommunication(
+  config: OrganizationSettingsApiConfig,
+  body: { channel: string; destination: string },
+): Promise<
+  OrganizationSettingsResult<{ ok: boolean; provider: string; detail?: string | null }>
+> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/organization-settings/test-communication`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.token}`,
+      },
+      body: JSON.stringify(body),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403) return { ok: false, kind: "forbidden" };
+    if (res.status === 400) {
+      const payload = (await res.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      return {
+        ok: false,
+        kind: "validation",
+        message: payload?.error ?? "بيانات غير صالحة",
+      };
+    }
+    if (!res.ok) return { ok: false, kind: "server" };
+    const raw = (await res.json()) as Record<string, unknown>;
+    return {
+      ok: true,
+      data: {
+        ok: Boolean(raw.ok ?? raw.Ok),
+        provider: String(raw.provider ?? raw.Provider ?? ""),
+        detail: (raw.detail ?? raw.Detail ?? null) as string | null,
+      },
+    };
   } catch (err) {
     if (err instanceof ApiAuthError) return { ok: false, kind: "auth" };
     return { ok: false, kind: "network" };
