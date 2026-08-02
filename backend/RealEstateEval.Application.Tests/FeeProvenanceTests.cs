@@ -23,6 +23,15 @@ public class FeeProvenanceTests
     {
         await using var db = CreateDb();
         var tableId = await SetGovernmentRateAsync(db, GovernmentRate);
+        db.UserProfiles.Add(new UserProfile
+        {
+            UserId = Guid.NewGuid().ToString("N"),
+            DistributionAssigneeId = "gr-1",
+            ContractType = ContractType.Freelance,
+            RoleId = "government-reviewer",
+            JobTitle = "مراجع حكومي",
+            CreatedAtUtc = DateTime.UtcNow,
+        });
         var task = GovernmentReviewTask("PO-PROV-1", "gr-1");
         db.WorkflowTasks.Add(task);
         await db.SaveChangesAsync();
@@ -33,6 +42,8 @@ public class FeeProvenanceTests
         Assert.Equal(GovernmentRate, ledger.AgreedFeeSar);
         Assert.Equal(tableId, ledger.PricingTableId);
         Assert.Equal(SupervisingDepartments.CaseStudy, ledger.SupervisingDepartment);
+        Assert.Equal("gr-1", ledger.UserId);
+        Assert.NotEqual(Guid.Empty, ledger.Id);
     }
 
     /// <summary>
