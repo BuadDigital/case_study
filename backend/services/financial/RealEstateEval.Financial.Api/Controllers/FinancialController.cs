@@ -17,17 +17,20 @@ public class FinancialController : ControllerBase
     private readonly IFinancialReportService _financial;
     private readonly IPartyFeePricingService _pricing;
     private readonly IIncentiveSuspensionService _incentiveSuspensions;
+    private readonly IDiscountFlagService _discountFlags;
     private readonly ILogger<FinancialController> _logger;
 
     public FinancialController(
         IFinancialReportService financial,
         IPartyFeePricingService pricing,
         IIncentiveSuspensionService incentiveSuspensions,
+        IDiscountFlagService discountFlags,
         ILogger<FinancialController> logger)
     {
         _financial = financial;
         _pricing = pricing;
         _incentiveSuspensions = incentiveSuspensions;
+        _discountFlags = discountFlags;
         _logger = logger;
     }
 
@@ -221,5 +224,63 @@ public class FinancialController : ControllerBase
         return error is not null
             ? this.BadRequestProblem(error)
             : Ok(row);
+    }
+
+    [HttpGet("discount-flags")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageOperations)]
+    public async Task<ActionResult<IReadOnlyList<DiscountFlagDto>>> ListDiscountFlags(
+        [FromQuery] string? transactionKey,
+        [FromQuery] string? status,
+        CancellationToken ct = default) =>
+        Ok(await _discountFlags.ListAsync(transactionKey, status, ct));
+
+    [HttpPost("discount-flags")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageOperations)]
+    public async Task<ActionResult<DiscountFlagDto>> CreateDiscountFlag(
+        [FromBody] CreateDiscountFlagRequest request,
+        CancellationToken ct)
+    {
+        var (row, error) = await _discountFlags.CreateAsync(request, ActorClaims.Id(User), ct);
+        return error is not null ? this.BadRequestProblem(error) : Ok(row);
+    }
+
+    [HttpPost("discount-flags/{id:guid}/approve")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageOperations)]
+    public async Task<ActionResult<DiscountFlagDto>> ApproveDiscountFlag(
+        Guid id,
+        [FromBody] ResolveDiscountFlagRequest? request,
+        CancellationToken ct)
+    {
+        // ManageOperations holders act across departments on the financial host; department
+        // scoping is enforced in Case Study supervisor queues via InspectorFeesController.
+        var (row, error) = await _discountFlags.ApproveAsync(
+            id,
+            request ?? new ResolveDiscountFlagRequest(),
+            ActorClaims.Id(User),
+            actorDepartment: null,
+            canManageAllDepartments: true,
+            ct);
+        if (error is not null && error.Contains("غير موجود", StringComparison.Ordinal))
+            return NotFound();
+        return error is not null ? this.BadRequestProblem(error) : Ok(row);
+    }
+
+    [HttpPost("discount-flags/{id:guid}/reject")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageOperations)]
+    public async Task<ActionResult<DiscountFlagDto>> RejectDiscountFlag(
+        Guid id,
+        [FromBody] ResolveDiscountFlagRequest? request,
+        CancellationToken ct)
+    {
+        var (row, error) = await _discountFlags.RejectAsync(
+            id,
+            request ?? new ResolveDiscountFlagRequest(),
+            ActorClaims.Id(User),
+            actorDepartment: null,
+            canManageAllDepartments: true,
+            ct);
+        if (error is not null && error.Contains("غير موجود", StringComparison.Ordinal))
+            return NotFound();
+        return error is not null ? this.BadRequestProblem(error) : Ok(row);
     }
 }

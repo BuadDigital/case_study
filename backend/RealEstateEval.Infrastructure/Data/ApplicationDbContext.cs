@@ -73,6 +73,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
     public DbSet<PartyFeePricingTier> PartyFeePricingTiers => Set<PartyFeePricingTier>();
     public DbSet<PartyFeePricingAssignment> PartyFeePricingAssignments => Set<PartyFeePricingAssignment>();
     public DbSet<IncentiveSuspension> IncentiveSuspensions => Set<IncentiveSuspension>();
+    public DbSet<DiscountFlag> DiscountFlags => Set<DiscountFlag>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<ProcessedIntegrationEvent> ProcessedIntegrationEvents =>
         Set<ProcessedIntegrationEvent>();
@@ -668,6 +669,23 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
             e.Property(x => x.LiftedByUserId).HasMaxLength(450);
             e.HasIndex(x => new { x.AssigneeId, x.TransactionKey });
             e.HasIndex(x => new { x.AssigneeId, x.TransactionKey }).IsUnique().HasFilter("\"LiftedAtUtc\" IS NULL").HasDatabaseName("IX_IncentiveSuspensions_ActiveAssigneeTransaction");
+        });
+
+        builder.Entity<DiscountFlag>(e =>
+        {
+            e.ToTable("DiscountFlags", DatabaseSchemas.Financial);
+            e.HasKey(x => x.Id);
+            e.Property(x => x.TransactionKey).HasMaxLength(64).IsRequired();
+            e.Property(x => x.TargetAssigneeId).HasMaxLength(128).IsRequired();
+            e.Property(x => x.FlaggedByUserId).HasMaxLength(450).IsRequired();
+            e.Property(x => x.Reason).HasMaxLength(2000).IsRequired();
+            e.Property(x => x.Status).HasMaxLength(32).IsRequired();
+            e.Property(x => x.ApprovedByUserId).HasMaxLength(450);
+            e.Property(x => x.ResolutionNote).HasMaxLength(2000);
+            e.Property(x => x.ProposedDiscountSar).HasPrecision(12, 2);
+            e.HasIndex(x => x.TransactionKey);
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => new { x.TransactionKey, x.TargetAssigneeId, x.Status });
         });
 
         builder.Entity<PartyFeePricingTier>(e =>
