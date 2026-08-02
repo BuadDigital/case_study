@@ -14,6 +14,15 @@ public static class InspectorFeeTransitionAuthorization
         bool isOperationsManager,
         bool isFinancialOfficer)
     {
+        // Employees never enter the office-approval / dispute loop (ج٥).
+        if (InspectorFeeRules.IsEmployee(ledger.InspectorType)
+            && action is InspectorFeeActions.OfficeApproveDiscount
+                or InspectorFeeActions.OfficeDispute
+                or InspectorFeeActions.ResolveDispute)
+        {
+            return false;
+        }
+
         return action switch
         {
             InspectorFeeActions.SubmitToSupervisor

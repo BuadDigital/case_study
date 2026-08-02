@@ -499,12 +499,31 @@ public class InspectorFeeService : IInspectorFeeService
             return null;
         }
 
-        // Engineering-office billing: discounted lines need explicit office approval.
+        var fromStatus = ledger.BillingStatus;
         var taskKind = await _db.WorkflowTasks.AsNoTracking()
             .Where(t => t.Id == workflowTaskId)
             .Select(t => t.Kind)
             .FirstOrDefaultAsync(cancellationToken);
-        if (taskKind == WorkflowTaskKind.EngineeringSurvey
+        var isEmployee = InspectorFeeRules.IsEmployee(ledger.InspectorType);
+        var discountApplied = request.SupervisorDiscountSar.HasValue
+            && ledger.SupervisorDiscountSar > 0m;
+
+        // Employees never enter the office-approval / dispute loop. A supervisor discount sends the
+        // line straight to finance and the assignee is told.
+        if (isEmployee
+            && discountApplied
+            && ledger.BillingStatus is InspectorFeeBillingStatus.Draft
+                or InspectorFeeBillingStatus.SupReview
+                or InspectorFeeBillingStatus.AtFinance
+                or InspectorFeeBillingStatus.Returned
+                or InspectorFeeBillingStatus.Inquiry
+                or InspectorFeeBillingStatus.OfficeReview
+                or InspectorFeeBillingStatus.Disputed)
+        {
+            ledger.BillingStatus = InspectorFeeBillingStatus.AtFinance;
+        }
+        else if (!isEmployee
+            && taskKind == WorkflowTaskKind.EngineeringSurvey
             && ledger.AccruedAtUtc is not null
             && ledger.BillingStatus is InspectorFeeBillingStatus.Draft
                 or InspectorFeeBillingStatus.AtFinance
@@ -512,6 +531,7 @@ public class InspectorFeeService : IInspectorFeeService
                 or InspectorFeeBillingStatus.Disputed
                 or InspectorFeeBillingStatus.SupReview)
         {
+            // Engineering-office billing: discounted cooperator lines need explicit office approval.
             if (ledger.SupervisorDiscountSar > 0m)
                 ledger.BillingStatus = InspectorFeeBillingStatus.OfficeReview;
             else if (ledger.BillingStatus is InspectorFeeBillingStatus.OfficeReview
@@ -521,7 +541,24 @@ public class InspectorFeeService : IInspectorFeeService
         }
 
         ledger.UpdatedAtUtc = DateTime.UtcNow;
+        if (fromStatus != ledger.BillingStatus)
+        {
+            _db.InspectorFeeTransitions.Add(new InspectorFeeTransition
+            {
+                Id = Guid.NewGuid(),
+                WorkflowTaskId = ledger.WorkflowTaskId,
+                FromStatus = fromStatus,
+                ToStatus = ledger.BillingStatus,
+                Reason = ledger.DiscountReason,
+                ActorUserId = "system",
+                CreatedAtUtc = DateTime.UtcNow,
+            });
+        }
+
         await _db.SaveChangesAsync(cancellationToken);
+
+        if (isEmployee && discountApplied)
+            await NotifyEmployeeDiscountAppliedAsync(ledger, cancellationToken);
 
         return await GetByWorkflowTaskIdAsync(workflowTaskId, cancellationToken);
     }
@@ -779,6 +816,14 @@ public class InspectorFeeService : IInspectorFeeService
     {
         var action = request.Action.Trim().ToLowerInvariant();
         var fromStatus = ledger.BillingStatus;
+
+        if (InspectorFeeRules.IsEmployee(ledger.InspectorType)
+            && action is InspectorFeeActions.OfficeApproveDiscount
+                or InspectorFeeActions.OfficeDispute
+                or InspectorFeeActions.ResolveDispute)
+        {
+            return "مسار الموظف لا يدعم خلاف التسعير — الخصم يُبلَّغ ويصبح جاهزاً مباشرة.";
+        }
 
         if (!InspectorFeeTransitionAuthorization.CanPerformAction(action, ledger, actorAssigneeId, isOperationsManager, isFinancialOfficer))
             return "غير مصرّح بتنفيذ هذا الإجراء.";
@@ -1284,6 +1329,38 @@ public class InspectorFeeService : IInspectorFeeService
         return InspectorFeeRules.ResolveInspectorType(aid);
     }
 
+
+    private async Task NotifyEmployeeDiscountAppliedAsync(
+        InspectorFeeLedger ledger,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(ledger.AssigneeId)) return;
+
+        var usersByAssignee = await _recipients.ResolveUserIdsForDistributionAssigneesAsync(
+            [ledger.AssigneeId.Trim()],
+            cancellationToken);
+        if (!usersByAssignee.TryGetValue(ledger.AssigneeId.Trim(), out var userId)
+            || string.IsNullOrWhiteSpace(userId))
+        {
+            return;
+        }
+
+        var net = InspectorFeeRules.NetFee(ledger.AgreedFeeSar, ledger.SupervisorDiscountSar);
+        await _notifications.CreateForUsersAsync(
+            [userId],
+            new CreateUserNotificationRequest
+            {
+                Title = "خصم على أتعابك",
+                Body =
+                    $"طُبّق خصم {ledger.SupervisorDiscountSar:N0} ر.س على أمر العمل {ledger.PoNumber}."
+                    + $" الصافي {net:N0} ر.س — البند جاهز للفوترة.",
+                Tone = "warning",
+                Href = "/party-fees",
+                Category = "financial",
+                SourceEvent = $"fee-discount-notified:{ledger.WorkflowTaskId:N}",
+            },
+            cancellationToken);
+    }
 
     private async Task NotifyFinanceDisbursementBatchCreatedAsync(
         int propertyCount,
