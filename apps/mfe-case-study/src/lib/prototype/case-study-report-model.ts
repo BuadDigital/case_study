@@ -3,7 +3,7 @@ import {
   type CaseStudyQuestionCatalog,
 } from "./case-study-question-catalog";
 import {
-  CASE_STUDY_PROVIDER_NAME,
+  caseStudyProviderName,
   CASE_STUDY_REPORT_APPROVER_NAME,
   CASE_STUDY_REPORT_TITLE,
   CASE_STUDY_TABLE_HEADERS,
@@ -114,8 +114,8 @@ export function buildCaseStudyReportApproval(
   const reportDateIso = resolveRequestDateIso(poRecord, draft);
 
   return {
-    providerName: CASE_STUDY_PROVIDER_NAME,
-    declarationText: `نقر ${CASE_STUDY_PROVIDER_NAME} بصحة ما ورد في النموذج أعلاه مع تحمل كافة المسؤولية نحو ذلك.`,
+    providerName: caseStudyProviderName(),
+    declarationText: `نقر ${caseStudyProviderName()} بصحة ما ورد في النموذج أعلاه مع تحمل كافة المسؤولية نحو ذلك.`,
     deedNumber,
     approverName: CASE_STUDY_REPORT_APPROVER_NAME,
     reportDate: reportDateIso ? formatDateAr(reportDateIso) : "—",
@@ -223,7 +223,7 @@ export function buildCaseStudyReportModel(
 
   return {
     title: CASE_STUDY_REPORT_TITLE,
-    providerName: CASE_STUDY_PROVIDER_NAME,
+    providerName: caseStudyProviderName(),
     requestNumber: approval.requestNumber,
     requestDate: requestDateIso ? formatDateAr(requestDateIso) : "—",
     requestDateIso,

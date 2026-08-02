@@ -82,12 +82,38 @@ public sealed class FinancialReportService : IFinancialReportService
                 l => (decimal?)(l.AgreedFeeSar - l.SupervisorDiscountSar),
                 cancellationToken) ?? 0m;
 
-        var enfazRevenueTotal = await _db.PoEnfazRevenueLines.AsNoTracking()
-            .Where(l => l.IncludedInBilling
-                && l.CaseStudyFeeSar + l.SurveyFeeSar > 0)
-            .SumAsync(
-                l => (decimal?)(l.CaseStudyFeeSar + l.SurveyFeeSar),
-                cancellationToken) ?? 0m;
+        // Collected Enfaz invoices only — entitlements / unissued lines do not count as revenue.
+        var invoices = await _db.PoEnfazInvoices.AsNoTracking()
+            .Where(i => i.CollectedAmountSar > 0)
+            .ToListAsync(cancellationToken);
+        var collectedPoNumbers = invoices.Select(i => i.PoNumber).ToHashSet(StringComparer.Ordinal);
+        var collectedLines = collectedPoNumbers.Count == 0
+            ? []
+            : await _db.PoEnfazRevenueLines.AsNoTracking()
+                .Where(l => collectedPoNumbers.Contains(l.PoNumber) && l.IncludedInBilling)
+                .ToListAsync(cancellationToken);
+
+        decimal enfazCoreCollected = 0m;
+        decimal keyViaEnfazCollected = 0m;
+        foreach (var invoice in invoices)
+        {
+            var ratio = invoice.TotalSar > 0
+                ? Math.Min(1m, invoice.CollectedAmountSar / invoice.TotalSar)
+                : 0m;
+            var lines = collectedLines.Where(l => l.PoNumber == invoice.PoNumber).ToList();
+            var core = lines.Sum(l => l.CaseStudyFeeSar + l.SurveyFeeSar);
+            var keys = lines.Sum(l => l.KeyFeeSar);
+            if (core + keys <= 0 && invoice.SubtotalSar > 0)
+            {
+                // Fallback when lines were wiped after issue: use stamped invoice subtotal.
+                enfazCoreCollected += Math.Round(invoice.SubtotalSar * ratio, 2, MidpointRounding.AwayFromZero);
+                continue;
+            }
+
+            enfazCoreCollected += Math.Round(core * ratio, 2, MidpointRounding.AwayFromZero);
+            keyViaEnfazCollected += Math.Round(keys * ratio, 2, MidpointRounding.AwayFromZero);
+        }
+
         // Historical only. Nothing stamps key-receipt amounts any more — registering the envelope
         // marks the entitlement and finance bills إنفاذ by hand — so this line covers the charges
         // written before that change and empties out on its own.
@@ -114,7 +140,7 @@ public sealed class FinancialReportService : IFinancialReportService
 
         var keyReceiptTotal = keyReceiptSummary?.Total ?? 0m;
         var visitFeeTotal = visitFeeSummary?.Total ?? 0m;
-        var revenueTotal = enfazRevenueTotal + keyReceiptTotal;
+        var revenueTotal = enfazCoreCollected + keyViaEnfazCollected + keyReceiptTotal;
         var profitMargin = revenueTotal - (externalCosts + visitFeeTotal);
 
         if (visitFeeTotal > 0)
@@ -125,6 +151,34 @@ public sealed class FinancialReportService : IFinancialReportService
                 Type = "free",
                 Cost = FormatSar(visitFeeTotal),
                 Category = "زيارة محكمة",
+            });
+        }
+
+        if (enfazCoreCollected > 0)
+        {
+            revenueRows.Insert(0, new FinancialRevenueRowDto
+            {
+                Po = "إيراد إنفاذ (محصّل)",
+                Billed = invoices.Count(i => i.Status == PoEnfazInvoiceStatus.Collected),
+                Excluded = invoices.Count(i => i.Status != PoEnfazInvoiceStatus.Collected),
+                Value = FormatSar(enfazCoreCollected),
+                Status = invoices.All(i => i.Status == PoEnfazInvoiceStatus.Collected)
+                    ? "done"
+                    : "progress",
+                InvoiceNumber = null,
+            });
+        }
+
+        if (keyViaEnfazCollected > 0)
+        {
+            revenueRows.Add(new FinancialRevenueRowDto
+            {
+                Po = "مفاتيح (فوترة إنفاذ)",
+                Billed = collectedLines.Count(l => l.KeyFeeSar > 0),
+                Excluded = 0,
+                Value = FormatSar(keyViaEnfazCollected),
+                Status = "done",
+                InvoiceNumber = null,
             });
         }
 
@@ -292,14 +346,19 @@ public sealed class FinancialReportService : IFinancialReportService
             {
                 PoNumber = g.Key,
                 Total = g.Where(x => x.IncludedInBilling)
-                    .Sum(x => x.CaseStudyFeeSar + x.SurveyFeeSar),
+                    .Sum(x => x.CaseStudyFeeSar + x.SurveyFeeSar + x.KeyFeeSar),
                 Filled = g.Count(x =>
-                    x.IncludedInBilling && (x.CaseStudyFeeSar + x.SurveyFeeSar) > 0),
+                    x.IncludedInBilling
+                    && (x.CaseStudyFeeSar + x.SurveyFeeSar + x.KeyFeeSar) > 0),
             })
             .ToDictionaryAsync(x => x.PoNumber.Trim(), x => x, StringComparer.Ordinal, cancellationToken);
 
         var invoicesByPo = await _db.PoEnfazInvoices.AsNoTracking()
-            .ToDictionaryAsync(x => x.PoNumber.Trim(), x => x.InvoiceNumber, StringComparer.Ordinal, cancellationToken);
+            .ToDictionaryAsync(
+                x => x.PoNumber.Trim(),
+                x => x,
+                StringComparer.Ordinal,
+                cancellationToken);
         var ledgersByPo = await completedLedgers
             .GroupBy(ledger => ledger.PoNumber.Trim())
             .Select(group => new
@@ -321,8 +380,19 @@ public sealed class FinancialReportService : IFinancialReportService
             var tracked = ledger?.Tracked ?? 0;
             var excluded = Math.Max(0, propertyCount - tracked);
             enfazByPo.TryGetValue(po, out var enfaz);
-            var enfazTotal = enfaz?.Total ?? 0m;
+            invoicesByPo.TryGetValue(po, out var invoice);
+            var ratio = invoice is not null && invoice.TotalSar > 0
+                ? Math.Min(1m, invoice.CollectedAmountSar / invoice.TotalSar)
+                : 0m;
+            var enfazTotal = Math.Round((enfaz?.Total ?? 0m) * ratio, 2, MidpointRounding.AwayFromZero);
             var enfazFilled = enfaz?.Filled ?? 0;
+            var status = invoice?.Status == PoEnfazInvoiceStatus.Collected
+                ? "done"
+                : invoice is not null && invoice.CollectedAmountSar > 0
+                    ? "progress"
+                    : enfazFilled > 0
+                        ? "progress"
+                        : "progress";
 
             rows.Add(new FinancialRevenueRowDto
             {
@@ -330,12 +400,8 @@ public sealed class FinancialReportService : IFinancialReportService
                 Billed = enfazFilled > 0 ? enfazFilled : disbursed,
                 Excluded = excluded,
                 Value = enfazTotal > 0 ? FormatSar(enfazTotal) : "—",
-                Status = enfazTotal > 0 && enfazFilled >= propertyCount
-                    ? "done"
-                    : enfazFilled > 0
-                        ? "progress"
-                        : "progress",
-                InvoiceNumber = invoicesByPo.GetValueOrDefault(po),
+                Status = status,
+                InvoiceNumber = invoice?.InvoiceNumber,
             });
         }
 

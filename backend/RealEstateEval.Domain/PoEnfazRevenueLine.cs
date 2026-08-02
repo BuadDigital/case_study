@@ -13,8 +13,12 @@ public class PoEnfazRevenueLine
     public decimal CaseStudyFeeSar { get; set; }
     /// <summary>دخل لتكاليف الرفع.</summary>
     public decimal SurveyFeeSar { get; set; }
+    /// <summary>أتعاب استلام مفاتيح — تدخلها المالية يدوياً عند وجود استحقاق ظرف.</summary>
+    public decimal KeyFeeSar { get; set; }
+    /// <summary>Optional link to a key envelope entitlement row on this property/PO.</summary>
+    public Guid? KeyEntitlementEnvelopeId { get; set; }
     public bool IncludedInBilling { get; set; } = true;
     public DateTime UpdatedAtUtc { get; set; }
 
-    public decimal TotalFeeSar => CaseStudyFeeSar + SurveyFeeSar;
+    public decimal TotalFeeSar => CaseStudyFeeSar + SurveyFeeSar + KeyFeeSar;
 }

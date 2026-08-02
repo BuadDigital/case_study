@@ -2,6 +2,7 @@ import {
   getApiBase,
   type CaseStudyInfoRolesApiConfig,
   type CourtsApiConfig,
+  type OrganizationSettingsApiConfig,
   type RegionsApiConfig,
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
@@ -19,6 +20,12 @@ export function regionsApiConfig(): RegionsApiConfig | null {
 }
 
 export function caseStudyInfoRolesApiConfig(): CaseStudyInfoRolesApiConfig | null {
+  const session = getAuthSession();
+  if (!session?.token) return null;
+  return { token: session.token, baseUrl: getApiBase() };
+}
+
+export function organizationSettingsApiConfig(): OrganizationSettingsApiConfig | null {
   const session = getAuthSession();
   if (!session?.token) return null;
   return { token: session.token, baseUrl: getApiBase() };

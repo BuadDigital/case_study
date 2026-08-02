@@ -8,7 +8,9 @@ import {
   loadReadyEnfazPoSummaries,
   savePoEnfazBillingData,
   issueEnfazInvoice,
+  collectEnfazInvoice,
   downloadEnfazInvoicePdf,
+  openEnfazAttachment,
 } from "@platform/app-shared/prototype/enfaz-billing-api";
 import {
   Badge,
@@ -37,12 +39,40 @@ import {
 type LineDraft = {
   caseStudyFee: string;
   surveyFee: string;
+  keyFee: string;
   inc: boolean;
 };
 
 function lineTotal(d: LineDraft | undefined): number {
   if (!d) return 0;
-  return (Number(d.caseStudyFee) || 0) + (Number(d.surveyFee) || 0);
+  return (
+    (Number(d.caseStudyFee) || 0) +
+    (Number(d.surveyFee) || 0) +
+    (Number(d.keyFee) || 0)
+  );
+}
+
+function invoiceStatusLabel(status: string | null | undefined): string {
+  switch (status) {
+    case "collected":
+      return "محصّلة";
+    case "partially_collected":
+      return "تحصيل جزئي";
+    case "issued":
+      return "صادرة";
+    default:
+      return "مُفوتَرة";
+  }
+}
+
+function invoiceStatusTone(
+  status: string | null | undefined,
+  overdue: boolean,
+): "success" | "warning" | "danger" | "info" {
+  if (overdue) return "danger";
+  if (status === "collected") return "success";
+  if (status === "partially_collected") return "warning";
+  return "info";
 }
 
 export function FinanceEnfazPoBilling() {
@@ -50,6 +80,7 @@ export function FinanceEnfazPoBilling() {
   const { showToast } = useToast();
   const [selectedPo, setSelectedPo] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, LineDraft>>({});
+  const [collectAmount, setCollectAmount] = useState("");
   const [busy, setBusy] = useState(false);
 
   const { data: readySummaries = [] } = useQuery({
@@ -76,10 +107,16 @@ export function FinanceEnfazPoBilling() {
       next[line.propertyId] = {
         caseStudyFee: String(line.caseStudyFeeSar || ""),
         surveyFee: String(line.surveyFeeSar || ""),
+        keyFee: String(line.keyFeeSar || ""),
         inc: line.includedInBilling,
       };
     }
     setDraft(next);
+    const remaining = Math.max(
+      0,
+      (billing.totalSar || 0) - (billing.collectedAmountSar || 0),
+    );
+    setCollectAmount(remaining > 0 ? String(remaining) : "");
   }, [billing]);
 
   const totals = useMemo(() => {
@@ -96,6 +133,9 @@ export function FinanceEnfazPoBilling() {
     return { sub, vat, total: sub + vat, billable };
   }, [billing, draft]);
 
+  const issued = Boolean(billing?.invoiceNumber);
+  const fullyCollected = billing?.invoiceStatus === "collected";
+
   const save = async () => {
     if (!selectedPo || !billing) return;
     setBusy(true);
@@ -107,6 +147,8 @@ export function FinanceEnfazPoBilling() {
             propertyId: line.propertyId,
             caseStudyFeeSar: Number(d?.caseStudyFee) || 0,
             surveyFeeSar: Number(d?.surveyFee) || 0,
+            keyFeeSar: Number(d?.keyFee) || 0,
+            keyEntitlementEnvelopeId: line.keyEntitlementEnvelopeId,
             includedInBilling: d?.inc ?? true,
           };
         }),
@@ -128,8 +170,8 @@ export function FinanceEnfazPoBilling() {
     if (!selectedPo) return;
     setBusy(true);
     try {
-      const issued = await issueEnfazInvoice(selectedPo);
-      if (!issued) {
+      const issuedBilling = await issueEnfazInvoice(selectedPo);
+      if (!issuedBilling) {
         showToast("تعذّر إصدار الفاتورة — حاول مرة أخرى", "error");
         return;
       }
@@ -141,6 +183,31 @@ export function FinanceEnfazPoBilling() {
       if (!downloaded) {
         showToast("صدرت الفاتورة لكن تعذّر تنزيل PDF", "info");
       }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const collect = async () => {
+    if (!selectedPo) return;
+    const amount = Number(collectAmount);
+    if (!(amount > 0)) {
+      showToast("أدخل مبلغ تحصيل أكبر من صفر", "error");
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = await collectEnfazInvoice(selectedPo, {
+        amountSar: amount,
+      });
+      if (!result) {
+        showToast("تعذّر تسجيل التحصيل — تحقق من المبلغ", "error");
+        return;
+      }
+      showToast("تم تسجيل التحصيل", "success");
+      await queryClient.invalidateQueries({
+        queryKey: [...prototypeKeys.all, "enfaz-billing"],
+      });
     } finally {
       setBusy(false);
     }
@@ -167,6 +234,7 @@ export function FinanceEnfazPoBilling() {
       [propertyId]: {
         caseStudyFee: prev[propertyId]?.caseStudyFee ?? "",
         surveyFee: prev[propertyId]?.surveyFee ?? "",
+        keyFee: prev[propertyId]?.keyFee ?? "",
         inc: prev[propertyId]?.inc ?? true,
         ...patch,
       },
@@ -178,7 +246,12 @@ export function FinanceEnfazPoBilling() {
     const d = draft[line.propertyId];
     return (
       <Tr key={line.propertyId} hoverable={false} className={cancelled ? "opacity-50" : ""}>
-        <Td className="font-medium">{line.propertyLabel}</Td>
+        <Td className="font-medium">
+          {line.propertyLabel}
+          {line.hasKeyEntitlement ? (
+            <span className="ms-1 text-[10px] text-text-3">· مفتاح</span>
+          ) : null}
+        </Td>
         <Td>
           <Badge tone={inspectorFeeWorkStatusTone(line.workStatus as "done")}>
             {line.workStatusLabel}
@@ -193,6 +266,7 @@ export function FinanceEnfazPoBilling() {
               min={0}
               className="h-8 w-24 text-xs"
               value={d?.caseStudyFee ?? ""}
+              disabled={issued}
               onChange={(e) =>
                 patchDraft(line.propertyId, { caseStudyFee: e.target.value })
               }
@@ -209,11 +283,31 @@ export function FinanceEnfazPoBilling() {
               min={0}
               className="h-8 w-24 text-xs"
               value={d?.surveyFee ?? ""}
+              disabled={issued}
               onChange={(e) =>
                 patchDraft(line.propertyId, { surveyFee: e.target.value })
               }
               aria-label={`دخل تكاليف الرفع ${line.propertyLabel}`}
             />
+          )}
+        </Td>
+        <Td>
+          {cancelled ? (
+            <span className="text-text-3">—</span>
+          ) : line.hasKeyEntitlement ? (
+            <Input
+              type="number"
+              min={0}
+              className="h-8 w-24 text-xs"
+              value={d?.keyFee ?? ""}
+              disabled={issued}
+              onChange={(e) =>
+                patchDraft(line.propertyId, { keyFee: e.target.value })
+              }
+              aria-label={`أتعاب المفاتيح ${line.propertyLabel}`}
+            />
+          ) : (
+            <span className="text-text-3">—</span>
           )}
         </Td>
         <Td className="tabular-nums text-text-2">
@@ -231,6 +325,7 @@ export function FinanceEnfazPoBilling() {
               type="checkbox"
               className="size-4 accent-primary"
               checked={d?.inc ?? true}
+              disabled={issued}
               onChange={(e) =>
                 patchDraft(line.propertyId, { inc: e.target.checked })
               }
@@ -255,8 +350,8 @@ export function FinanceEnfazPoBilling() {
     <div className="flex flex-col gap-3">
       <PageToolbar className="border-0 bg-surface-2/60">
         <Note tone="info" className="m-0 flex-1">
-          المسار: اختر PO ← عبّئ دخل الدراسة ودخل الرفع للمكتملة ← احفظ ← أصدر
-          الفاتورة. الإيراد يظهر في التقارير وهامش المعاملة.
+          المسار: اختر PO ← عبّئ دخل الدراسة والرفع (وأتعاب المفاتيح عند
+          الاستحقاق) ← احفظ ← أصدر الفاتورة ← سجّل التحصيل.
         </Note>
       </PageToolbar>
 
@@ -315,7 +410,16 @@ export function FinanceEnfazPoBilling() {
                   {selectedPo}
                 </h3>
                 {billing.invoiceNumber ? (
-                  <Badge tone="success">مُفوتَر · {billing.invoiceNumber}</Badge>
+                  <Badge
+                    tone={invoiceStatusTone(
+                      billing.invoiceStatus,
+                      billing.isOverdue,
+                    )}
+                  >
+                    {invoiceStatusLabel(billing.invoiceStatus)}
+                    {billing.isOverdue ? " · متأخر" : ""} ·{" "}
+                    {billing.invoiceNumber}
+                  </Badge>
                 ) : billing.poReadyForBilling ? (
                   <Badge tone="info">جاهز للإصدار</Badge>
                 ) : (
@@ -336,6 +440,7 @@ export function FinanceEnfazPoBilling() {
                       <Th>الحالة</Th>
                       <Th>دخل الدراسة</Th>
                       <Th>دخل الرفع</Th>
+                      <Th>مفاتيح</Th>
                       <Th>المجموع</Th>
                       <Th>مشمول</Th>
                     </Tr>
@@ -351,21 +456,68 @@ export function FinanceEnfazPoBilling() {
                 <div className="flex justify-between py-1 text-text-2">
                   <span>المجموع قبل الضريبة</span>
                   <span className="tabular-nums">
-                    {totals.sub.toLocaleString("ar-SA")} ر.س
+                    {(issued ? billing.subtotalSar : totals.sub).toLocaleString(
+                      "ar-SA",
+                    )}{" "}
+                    ر.س
                   </span>
                 </div>
                 <div className="flex justify-between py-1 text-text-2">
                   <span>ضريبة 15%</span>
                   <span className="tabular-nums">
-                    {totals.vat.toLocaleString("ar-SA")} ر.س
+                    {(issued ? billing.vatSar : totals.vat).toLocaleString(
+                      "ar-SA",
+                    )}{" "}
+                    ر.س
                   </span>
                 </div>
                 <div className="mt-1 flex justify-between border-t border-border pt-2 font-semibold">
                   <span>الإجمالي</span>
                   <span className="tabular-nums">
-                    {totals.total.toLocaleString("ar-SA")} ر.س
+                    {(issued ? billing.totalSar : totals.total).toLocaleString(
+                      "ar-SA",
+                    )}{" "}
+                    ر.س
                   </span>
                 </div>
+                {issued ? (
+                  <div className="mt-2 flex justify-between border-t border-border pt-2 text-text-2">
+                    <span>المحصّل</span>
+                    <span className="tabular-nums">
+                      {billing.collectedAmountSar.toLocaleString("ar-SA")} ر.س
+                    </span>
+                  </div>
+                ) : null}
+                {billing.attachmentIds.length > 0 ? (
+                  <div className="mt-3 border-t border-border pt-3">
+                    <div className="mb-2 text-[11px] text-text-3">
+                      مرفقات ظروف المفاتيح (عرض فقط)
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {billing.attachmentIds.map((id, index) => (
+                        <Button
+                          key={id}
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          showActionToast={false}
+                          onClick={() => {
+                            void openEnfazAttachment(
+                              id,
+                              `مرفق-مفتاح-${index + 1}`,
+                            ).then((result) => {
+                              if (!result.ok) {
+                                showToast(result.error, "error");
+                              }
+                            });
+                          }}
+                        >
+                          مرفق {index + 1}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
               <div
@@ -375,57 +527,83 @@ export function FinanceEnfazPoBilling() {
                 )}
               >
                 <span className="text-xs text-text-2">
-                  {billing.invoiceNumber
-                    ? "تم إصدار الفاتورة — يمكنك تعديل الأتعاب وحفظها فقط."
-                    : totals.sub <= 0
-                      ? "عبّئ أتعاب عقار واحد على الأقل قبل الإصدار."
-                      : "احفظ ثم أصدر الفاتورة."}
+                  {fullyCollected
+                    ? "الفاتورة محصّلة بالكامل."
+                    : issued
+                      ? "سجّل مبلغ التحصيل (جزئي أو كامل)."
+                      : totals.sub <= 0
+                        ? "عبّئ أتعاب عقار واحد على الأقل قبل الإصدار."
+                        : "احفظ ثم أصدر الفاتورة."}
                 </span>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    loading={busy}
-                    disabled={Boolean(billing.invoiceNumber)}
-                    showActionToast={false}
-                    onClick={() => void save()}
-                  >
-                    حفظ الأتعاب
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="primary"
-                    loading={busy}
-                    disabled={
-                      !billing.poReadyForBilling ||
-                      totals.sub <= 0 ||
-                      Boolean(billing.invoiceNumber)
-                    }
-                    showActionToast={false}
-                    onClick={() => void issueInvoice()}
-                  >
-                    إصدار الفاتورة
-                  </Button>
-                  {billing.invoiceNumber ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      loading={busy}
-                      showActionToast={false}
-                      onClick={() => void downloadPdf()}
-                    >
-                      تحميل PDF
-                    </Button>
-                  ) : null}
+                <div className="flex flex-wrap items-center gap-2">
+                  {!issued ? (
+                    <>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        loading={busy}
+                        showActionToast={false}
+                        onClick={() => void save()}
+                      >
+                        حفظ الأتعاب
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="primary"
+                        loading={busy}
+                        disabled={
+                          !billing.poReadyForBilling || totals.sub <= 0
+                        }
+                        showActionToast={false}
+                        onClick={() => void issueInvoice()}
+                      >
+                        إصدار الفاتورة
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      {!fullyCollected ? (
+                        <>
+                          <Input
+                            type="number"
+                            min={0}
+                            className="h-8 w-28 text-xs"
+                            value={collectAmount}
+                            onChange={(e) => setCollectAmount(e.target.value)}
+                            aria-label="مبلغ التحصيل"
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="primary"
+                            loading={busy}
+                            showActionToast={false}
+                            onClick={() => void collect()}
+                          >
+                            تسجيل تحصيل
+                          </Button>
+                        </>
+                      ) : null}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        loading={busy}
+                        showActionToast={false}
+                        onClick={() => void downloadPdf()}
+                      >
+                        تحميل PDF
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
 
               <QueueTableHint className="px-0">
-                المعاملات الملغاة لا تُفوتر. بعد الإصدار يظهر الإيراد في تبويب
-                «التقارير» وفي مالية كل عقار.
+                المعاملات الملغاة لا تُفوتر. أتعاب المفاتيح اختيارية عند وجود
+                استحقاق ظرف. الإيراد المحصّل يظهر في التقارير.
               </QueueTableHint>
             </div>
           )}

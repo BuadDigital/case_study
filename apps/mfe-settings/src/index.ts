@@ -3,6 +3,7 @@
 export { CourtsView } from "./views/CourtsView";
 export { UsersView } from "./views/UsersView";
 export { UsersOrganizationView } from "./views/users/UsersOrganizationView";
+export { OrganizationSettingsView } from "./views/OrganizationSettingsView";
 export { ProfileView } from "./views/ProfileView";
 export { CaseStudyInfoRolesView } from "./views/CaseStudyInfoRolesView";
 export { SystemFieldsCatalogView } from "./views/SystemFieldsCatalogView";

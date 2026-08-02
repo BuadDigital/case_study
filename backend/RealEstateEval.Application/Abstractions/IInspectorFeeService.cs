@@ -108,6 +108,15 @@ public interface IPoEnfazBillingService
         string poNumber,
         CancellationToken cancellationToken = default);
 
+    Task<(PoEnfazBillingDto? Billing, string? Error)> CollectInvoiceAsync(
+        string poNumber,
+        CollectPoEnfazInvoiceRequest request,
+        string actorUserId,
+        CancellationToken cancellationToken = default);
+
+    Task<EnfazAgingReportDto> GetAgingReportAsync(
+        CancellationToken cancellationToken = default);
+
     /// <summary>Returns PDF bytes for an already-issued Enfaz invoice, or null if none.</summary>
     Task<byte[]?> GetInvoicePdfAsync(
         string poNumber,

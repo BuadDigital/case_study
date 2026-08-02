@@ -1,5 +1,7 @@
 /** PO intake wizard — steps and reference lists (from متطلبات النظام v1.2). */
 
+import { getCachedOrganizationSla } from "@platform/app-shared/organization/organization-settings-cache";
+
 export const PO_INTAKE_FLOW = {
   flowClass: "reg-flow-po",
   dept: "قسم دراسة الحالة",
@@ -84,7 +86,11 @@ export function requiresContacts(type: AssignmentType): boolean {
 }
 
 export function businessDaysForAssignmentType(type: AssignmentType): number {
-  return type === "قطاع خاص" ? 10 : 4;
+  // Defaults 4/10; overridden by OrganizationSettings when the cache is warm.
+  const sla = getCachedOrganizationSla();
+  return type === "قطاع خاص"
+    ? Math.max(1, sla.privateSectorBusinessDays)
+    : Math.max(1, sla.defaultBusinessDays);
 }
 
 export const DEED_STATUS_OPTIONS = ["فعال", "موقوف", "قيد التحقق"] as const;

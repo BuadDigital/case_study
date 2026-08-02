@@ -13,7 +13,7 @@ import {
 import { KeyEnvelopeFeesPanel } from "@keys/mfe/components/KeyEnvelopeFeesPanel";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { loadEngBillingStatements } from "@platform/app-shared/prototype/eng-billing-statements-api";
+import { loadPartyBillingStatements } from "@platform/app-shared/prototype/party-billing-statements-api";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import { InspectorFeesBillingTable } from "../field-inspection/InspectorFeesBillingTable";
 import { PartyFeeWorkflowTable } from "./PartyFeeWorkflowTable";
@@ -21,7 +21,7 @@ import { EngOfficeFeesBillingTable, engFeeUiStatus } from "./EngOfficeFeesBillin
 import { PartyReturnedQueue } from "./PartyReturnedQueue";
 import { SupervisorEnfazTracking } from "./SupervisorEnfazTracking";
 import { CourtVisitFeesPanel } from "./CourtVisitFeesPanel";
-import { EngOfficeBillingStatementsPanel } from "./EngOfficeBillingStatementsPanel";
+import { PartyOfficeBillingStatementsPanel } from "./PartyOfficeBillingStatementsPanel";
 import {
   EngFeesHtmlTabs,
   EngFeesSectionTitle,
@@ -127,13 +127,13 @@ export function PartyFeesWorkspace({
   const { data: engStatements = [] } = useQuery({
     queryKey: [
       ...prototypeKeys.all,
-      "eng-billing",
+      "party-billing",
       "statements",
       assigneeId ?? "all",
       "issued+",
     ],
     queryFn: () =>
-      loadEngBillingStatements({
+      loadPartyBillingStatements({
         assigneeId,
         issuedOrLaterOnly: true,
       }),
@@ -201,7 +201,7 @@ export function PartyFeesWorkspace({
         ) : null}
 
         {engTab === "statements" ? (
-          <EngOfficeBillingStatementsPanel
+          <PartyOfficeBillingStatementsPanel
             assigneeId={assigneeId}
             issuedOrLaterOnly
           />
@@ -393,13 +393,13 @@ export function PartyFeesWorkspace({
               <h3 className="mb-2 text-[13px] font-semibold text-text">
                 كشوف فوترة الأطراف
               </h3>
-              <EngOfficeBillingStatementsPanel issuedOrLaterOnly />
+              <PartyOfficeBillingStatementsPanel issuedOrLaterOnly />
             </section>
           </div>
         ) : null}
 
         {tab === "statements" ? (
-          <EngOfficeBillingStatementsPanel
+          <PartyOfficeBillingStatementsPanel
             assigneeId={isSupervisor ? undefined : assigneeId}
             issuedOrLaterOnly
           />

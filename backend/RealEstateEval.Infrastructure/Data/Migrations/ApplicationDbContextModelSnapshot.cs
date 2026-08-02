@@ -849,7 +849,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.ToTable("DocumentReferenceCounters", "case_study");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.EngineeringBillingStatement", b =>
+            modelBuilder.Entity("RealEstateEval.Domain.PartyBillingStatement", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -931,10 +931,10 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
 
                     b.HasIndex("Status");
 
-                    b.ToTable("EngineeringBillingStatements", "financial");
+                    b.ToTable("PartyBillingStatements", "financial");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.EngineeringBillingStatementLine", b =>
+            modelBuilder.Entity("RealEstateEval.Domain.PartyBillingStatementLine", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -957,7 +957,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.HasIndex("WorkflowTaskId")
                         .IsUnique();
 
-                    b.ToTable("EngineeringBillingStatementLines", "financial");
+                    b.ToTable("PartyBillingStatementLines", "financial");
                 });
 
             modelBuilder.Entity("RealEstateEval.Domain.EvaluatorRecallRecord", b =>
@@ -1335,7 +1335,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
-                    b.Property<Guid?>("EngineeringBillingStatementId")
+                    b.Property<Guid?>("PartyBillingStatementId")
                         .HasColumnType("uuid");
 
                     b.Property<bool>("ExcludedFromBatch")
@@ -1349,6 +1349,14 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
+
+                    b.Property<decimal>("NetFeeSar")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<decimal>("PaidAmountSar")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
 
                     b.Property<string>("PoNumber")
                         .IsRequired()
@@ -1415,7 +1423,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
 
                     b.HasIndex("DisbursementBatchId");
 
-                    b.HasIndex("EngineeringBillingStatementId");
+                    b.HasIndex("PartyBillingStatementId");
 
                     b.HasIndex("ExcludedFromBatch");
 
@@ -2036,6 +2044,24 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.ToTable("OperationsTaskSequences", "case_study");
                 });
 
+            modelBuilder.Entity("RealEstateEval.Domain.OrganizationSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SettingsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("OrganizationSettings", "platform");
+                });
+
             modelBuilder.Entity("RealEstateEval.Domain.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2308,11 +2334,57 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.ToTable("PartyTaskSubmissions", "case_study");
                 });
 
+            modelBuilder.Entity("RealEstateEval.Domain.PhotoMetadata", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CapturedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double?>("DistanceM")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Flag")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid>("PhotoId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PhotoId")
+                        .IsUnique();
+
+                    b.ToTable("PhotoMetadata", "attachments");
+                });
+
             modelBuilder.Entity("RealEstateEval.Domain.PoEnfazInvoice", b =>
                 {
                     b.Property<string>("PoNumber")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
+
+                    b.Property<string>("AttachmentIdsJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<decimal>("CollectedAmountSar")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<DateTime?>("CollectedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("InvoiceNumber")
                         .IsRequired()
@@ -2321,6 +2393,23 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
 
                     b.Property<DateTime>("IssuedAtUtc")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<decimal>("SubtotalSar")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<decimal>("TotalSar")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<decimal>("VatSar")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
 
                     b.HasKey("PoNumber");
 
@@ -2340,6 +2429,13 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<bool>("IncludedInBilling")
                         .HasColumnType("boolean");
 
+                    b.Property<Guid?>("KeyEntitlementEnvelopeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("KeyFeeSar")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
                     b.Property<string>("PoNumber")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -2356,6 +2452,8 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("KeyEntitlementEnvelopeId");
 
                     b.HasIndex("PoNumber", "PropertyId")
                         .IsUnique();
@@ -3116,6 +3214,9 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Property<DateOnly?>("JoinedAt")
                         .HasColumnType("date");
 
+                    b.Property<DateTime?>("LastLoginAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("NationalId")
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
@@ -3690,9 +3791,9 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Navigation("Court");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.EngineeringBillingStatementLine", b =>
+            modelBuilder.Entity("RealEstateEval.Domain.PartyBillingStatementLine", b =>
                 {
-                    b.HasOne("RealEstateEval.Domain.EngineeringBillingStatement", "Statement")
+                    b.HasOne("RealEstateEval.Domain.PartyBillingStatement", "Statement")
                         .WithMany("Lines")
                         .HasForeignKey("StatementId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -3825,7 +3926,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                     b.Navigation("Circuits");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.EngineeringBillingStatement", b =>
+            modelBuilder.Entity("RealEstateEval.Domain.PartyBillingStatement", b =>
                 {
                     b.Navigation("Lines");
                 });

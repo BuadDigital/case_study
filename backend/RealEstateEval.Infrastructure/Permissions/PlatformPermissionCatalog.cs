@@ -11,7 +11,7 @@ public static class PlatformPermissionCatalog
         "valuation-coordination", "property-appraisal", "active-survey", "party-fees",
         "system-fields-catalog", "system-screen-catalog", "financial",
         "users", "courts", "failure-types", "case-study-info-roles",
-        "audit-log", "fee-pricing",
+        "audit-log", "fee-pricing", "organization-settings",
     ];
 
     public static readonly IReadOnlyList<string> AllCapabilities =

@@ -88,6 +88,24 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
                 envelopes[envelope.Id] = envelope;
         }
 
+        var entitlementIds = entitlements.Select(e => e.Id).ToList();
+        var enfazKeyLines = entitlementIds.Count == 0
+            ? []
+            : await _db.PoEnfazRevenueLines.AsNoTracking()
+                .Where(l => l.KeyEntitlementEnvelopeId != null
+                    && entitlementIds.Contains(l.KeyEntitlementEnvelopeId.Value)
+                    && l.KeyFeeSar > 0)
+                .ToListAsync(cancellationToken);
+        var enfazInvoiceByPo = enfazKeyLines.Count == 0
+            ? new Dictionary<string, PoEnfazInvoice>(StringComparer.Ordinal)
+            : await _db.PoEnfazInvoices.AsNoTracking()
+                .Where(i => enfazKeyLines.Select(l => l.PoNumber).Contains(i.PoNumber))
+                .ToDictionaryAsync(i => i.PoNumber.Trim(), StringComparer.Ordinal, cancellationToken);
+        var enfazByEnvelope = enfazKeyLines
+            .Where(l => l.KeyEntitlementEnvelopeId.HasValue)
+            .GroupBy(l => l.KeyEntitlementEnvelopeId!.Value)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.UpdatedAtUtc).First());
+
         var rows = charges.Select(c =>
         {
             envelopes.TryGetValue(c.EnvelopeId, out var env);
@@ -110,19 +128,35 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
 
         rows.AddRange(entitlements
             .Where(e => !chargedEnvelopeIds.Contains(e.Id))
-            .Select(e => new KeyEnvelopeFeeReportRowDto
+            .Select(e =>
             {
-                EnvelopeId = e.Id,
-                RequestNumber = e.RequestNumber,
-                Court = e.Court,
-                Circuit = e.Circuit,
-                PhotoAttachmentId = e.PhotoAttachmentId,
-                ReceiptAttachmentId = e.ReceiptAttachmentId,
-                // No amount to show: it is set when finance bills إنفاذ, outside this report.
-                FeeAmountSar = e.FeeAmountSar,
-                CollectionStatus = KeyReceiptFeeStatuses.Open,
-                CreatedByName = e.CreatedByName,
-                CreatedAtUtc = e.CreatedAtUtc,
+                enfazByEnvelope.TryGetValue(e.Id, out var line);
+                PoEnfazInvoice? invoice = null;
+                if (line is not null)
+                    enfazInvoiceByPo.TryGetValue(line.PoNumber.Trim(), out invoice);
+                var collectedViaEnfaz = invoice is not null
+                    && invoice.Status == PoEnfazInvoiceStatus.Collected;
+                return new KeyEnvelopeFeeReportRowDto
+                {
+                    EnvelopeId = e.Id,
+                    RequestNumber = e.RequestNumber,
+                    Court = e.Court,
+                    Circuit = e.Circuit,
+                    PhotoAttachmentId = e.PhotoAttachmentId,
+                    ReceiptAttachmentId = e.ReceiptAttachmentId,
+                    FeeAmountSar = line?.KeyFeeSar > 0 ? line.KeyFeeSar : e.FeeAmountSar,
+                    CollectionStatus = collectedViaEnfaz
+                        ? KeyReceiptFeeStatuses.Collected
+                        : KeyReceiptFeeStatuses.Open,
+                    InvoiceReference = collectedViaEnfaz
+                        ? $"مُحصَّل عبر فاتورة إنفاذ {invoice!.InvoiceNumber}"
+                        : invoice?.InvoiceNumber is string inv
+                            ? $"فوترة إنفاذ {inv}"
+                            : null,
+                    CollectedAtUtc = collectedViaEnfaz ? invoice!.CollectedAtUtc : null,
+                    CreatedByName = e.CreatedByName,
+                    CreatedAtUtc = e.CreatedAtUtc,
+                };
             }));
 
         return rows

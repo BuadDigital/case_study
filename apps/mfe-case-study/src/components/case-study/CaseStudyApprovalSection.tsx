@@ -1,4 +1,7 @@
-import { CASE_STUDY_SIGNATURE_IMAGE, CASE_STUDY_STAMP_IMAGE } from "../../lib/prototype/case-study-form-data";
+import {
+  caseStudySignatureImage,
+  caseStudyStampImage,
+} from "../../lib/prototype/case-study-form-data";
 import type { CaseStudyReportApproval } from "../../lib/prototype/case-study-report-model";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../../lib/prototype/po-intake-data";
 import "./case-study-report.css";
@@ -45,14 +48,14 @@ export function CaseStudyApprovalSection({
               <td>
                 <img
                   className="cs-form-sig-img cs-form-sig-img--signature"
-                  src={CASE_STUDY_SIGNATURE_IMAGE}
+                  src={caseStudySignatureImage()}
                   alt="توقيع معتمد التقرير"
                 />
               </td>
               <td>
                 <img
                   className="cs-form-sig-img cs-form-sig-img--stamp"
-                  src={CASE_STUDY_STAMP_IMAGE}
+                  src={caseStudyStampImage()}
                   alt="ختم الشركة"
                 />
               </td>

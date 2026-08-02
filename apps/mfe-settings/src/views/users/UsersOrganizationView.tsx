@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { RoleId, UserStatusApi } from "@platform/types";
 import type { UpdateStaffUserRequest } from "@platform/api-client";
 import { Can, useCapability } from "@platform/app-shared/components/Can";
+import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { adminStaffRoleOptions } from "@platform/app-shared/users/admin-staff-roles";
 import {
@@ -169,10 +170,27 @@ function canDeleteUser(user: {
   return true;
 }
 
+function formatLastLogin(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  try {
+    return new Intl.DateTimeFormat("ar-SA", {
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
 export function UsersOrganizationView() {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
+  const { role } = usePrototype();
   const canManage = useCapability("manage-users");
+  /** Admin = full columns + actions; supervisor = status/last login; others = directory. */
+  const showStatusColumn = canManage || role === "section-supervisor" || role === "cdo";
+  const showLastLoginColumn = showStatusColumn;
+  const showActionsColumn = canManage;
   const currentUserId = getAuthSession()?.user.id ?? null;
   const { data, isPending, refetch } = useStaffUsersQuery();
   const users = data?.users ?? [];
@@ -298,13 +316,13 @@ export function UsersOrganizationView() {
         showToast(
           result.kind === "network"
             ? "تعذر الاتصال بالخادم."
-            : result.message ?? "تعذر إصدار رمز التفعيل.",
+            : result.message ?? "تعذر إصدار دعوة التفعيل.",
           "error",
         );
         return;
       }
       setActivationTicket(result.ticket);
-      showToast("تم إصدار رمز التفعيل — اعرضه من بطاقة الإضافة أعلى الصفحة.", "success");
+      showToast("تم إصدار دعوة التفعيل — اعرض الرمز من بطاقة الإضافة أعلى الصفحة.", "success");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } finally {
       setIssuingTicketFor(null);
@@ -622,8 +640,8 @@ export function UsersOrganizationView() {
                     {createdUser.userName}
                   </div>
                   <p className="m-0 mt-2 text-[11px]" dir="rtl">
-                    لا يملك الحساب كلمة مرور. أصدر رمز تفعيل لمرة واحدة وسلّمه لصاحب
-                    الحساب ليختار كلمة مروره من صفحة <bdi dir="ltr">/activate</bdi>.
+                    لا يملك الحساب كلمة مرور. أرسل دعوة تفعيل لمرة واحدة ليختار صاحب
+                    الحساب كلمة مروره من صفحة <bdi dir="ltr">/activate</bdi>.
                   </p>
                   <div className="mt-2.5">
                     <Button
@@ -634,7 +652,7 @@ export function UsersOrganizationView() {
                       loading={issuingTicketFor === createdUser.id}
                       onClick={() => void onIssueActivationTicket(createdUser.id)}
                     >
-                      إصدار رمز التفعيل
+                      إرسال دعوة التفعيل
                     </Button>
                   </div>
                 </div>
@@ -755,10 +773,12 @@ export function UsersOrganizationView() {
                 <Tr hoverable={false}>
                   <Th>الاسم</Th>
                   <Th>الدور</Th>
-                  <Th>البريد</Th>
-                  <Th>اسم الدخول</Th>
-                  <Th className="w-28 text-center">الحالة</Th>
-                  <ThAction>إجراءات</ThAction>
+                  <Th>الجوال</Th>
+                  {showStatusColumn ? (
+                    <Th className="w-28 text-center">الحالة</Th>
+                  ) : null}
+                  {showLastLoginColumn ? <Th>آخر دخول</Th> : null}
+                  {showActionsColumn ? <ThAction>إجراءات</ThAction> : null}
                 </Tr>
               </THead>
               <TBody>
@@ -780,19 +800,24 @@ export function UsersOrganizationView() {
                     </Td>
                     <Td className="py-3.5">
                       <span className="text-[12px] text-text-2" dir="ltr">
-                        {user.email}
+                        {user.phone || "—"}
                       </span>
                     </Td>
-                    <Td className="py-3.5">
-                      <span className="text-[12px] font-medium text-text" dir="ltr">
-                        {user.userName || "—"}
-                      </span>
-                    </Td>
-                    <Td className="py-3.5 text-center">
-                      <Badge tone={statusTone(user.status)} dot>
-                        {statusLabel(user.status)}
-                      </Badge>
-                    </Td>
+                    {showStatusColumn ? (
+                      <Td className="py-3.5 text-center">
+                        <Badge tone={statusTone(user.status)} dot>
+                          {statusLabel(user.status)}
+                        </Badge>
+                      </Td>
+                    ) : null}
+                    {showLastLoginColumn ? (
+                      <Td className="py-3.5">
+                        <span className="text-[12px] text-text-2" dir="ltr">
+                          {formatLastLogin(user.lastLoginAtUtc)}
+                        </span>
+                      </Td>
+                    ) : null}
+                    {showActionsColumn ? (
                     <TdAction>
                       <div className="flex flex-wrap items-center justify-end gap-1.5">
                         <Button
@@ -812,7 +837,9 @@ export function UsersOrganizationView() {
                             loading={issuingTicketFor === user.id}
                             onClick={() => void onIssueActivationTicket(user.id)}
                           >
-                            رمز تفعيل
+                            {user.status === "PendingActivation" || user.status === "Disabled"
+                              ? "إعادة دعوة"
+                              : "دعوة تفعيل"}
                           </Button>
                         ) : null}
                         {canManage ? (
@@ -862,6 +889,7 @@ export function UsersOrganizationView() {
                         ) : null}
                       </div>
                     </TdAction>
+                    ) : null}
                   </Tr>
                 ))}
               </TBody>

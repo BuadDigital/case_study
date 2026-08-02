@@ -12,9 +12,15 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
     private const decimal VatRate = 0.15m;
     private const int MaxOrderRows = 500;
     private const int MaxTrackingRows = 2000;
+    private static readonly TimeSpan OverdueAfter = TimeSpan.FromDays(30);
     private readonly ApplicationDbContext _db;
+    private readonly IAuditLogWriter _audit;
 
-    public PoEnfazBillingService(ApplicationDbContext db) => _db = db;
+    public PoEnfazBillingService(ApplicationDbContext db, IAuditLogWriter audit)
+    {
+        _db = db;
+        _audit = audit;
+    }
 
     public async Task<IReadOnlyList<EnfazReadyPoSummaryDto>> ListReadyPoSummariesAsync(
         CancellationToken cancellationToken = default)
@@ -86,6 +92,10 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
             .ToDictionaryAsync(x => x.PropertyId, cancellationToken);
 
         var taskStatuses = await LoadPropertyWorkStatusesAsync(normalized, propertyIds, cancellationToken);
+        var entitlements = await LoadKeyEntitlementsByPropertyAsync(
+            normalized,
+            propertyIds,
+            cancellationToken);
 
         var lines = order.Properties
             .OrderBy(p => p.RequestNumber ?? p.DeedNumber, StringComparer.Ordinal)
@@ -99,6 +109,12 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
                 if (!string.IsNullOrWhiteSpace(p.District))
                     label = $"{label} — {p.District.Trim()}";
 
+                var hasEntitlement = entitlements.TryGetValue(p.Id, out var entitlement);
+                var envelopeId = row?.KeyEntitlementEnvelopeId
+                    ?? (hasEntitlement ? entitlement.EnvelopeId : (Guid?)null);
+                IReadOnlyList<string> keyAttachments = hasEntitlement
+                    ? entitlement.AttachmentIds
+                    : [];
                 return new PoEnfazRevenueLineDto
                 {
                     Id = row?.Id.ToString() ?? "",
@@ -109,7 +125,12 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
                     WorkStatusLabel = work.Item2,
                     CaseStudyFeeSar = row?.CaseStudyFeeSar ?? 0m,
                     SurveyFeeSar = row?.SurveyFeeSar ?? 0m,
-                    EnfazFeeSar = row?.TotalFeeSar ?? 0m,
+                    KeyFeeSar = row?.KeyFeeSar ?? 0m,
+                    KeyEntitlementEnvelopeId = envelopeId?.ToString(),
+                    HasKeyEntitlement = hasEntitlement || row?.KeyEntitlementEnvelopeId is not null,
+                    KeyAttachmentIds = keyAttachments,
+                    EnfazFeeSar = row?.TotalFeeSar
+                        ?? ((row?.CaseStudyFeeSar ?? 0m) + (row?.SurveyFeeSar ?? 0m) + (row?.KeyFeeSar ?? 0m)),
                     IncludedInBilling = row?.IncludedInBilling ?? work.Item1 != "cancelled",
                 };
             })
@@ -122,8 +143,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
             normalized,
             IsPoReadyForEnfazBilling(order, tasks),
             lines,
-            invoice?.InvoiceNumber,
-            invoice?.IssuedAtUtc);
+            invoice);
     }
 
     public async Task<PoEnfazBillingDto?> SavePoBillingAsync(
@@ -171,8 +191,31 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
 
             row.CaseStudyFeeSar = Math.Max(0m, input.CaseStudyFeeSar);
             row.SurveyFeeSar = Math.Max(0m, input.SurveyFeeSar);
+            row.KeyFeeSar = Math.Max(0m, input.KeyFeeSar);
+            if (Guid.TryParse(input.KeyEntitlementEnvelopeId, out var envelopeId))
+                row.KeyEntitlementEnvelopeId = envelopeId;
+            else if (row.KeyFeeSar > 0 && row.KeyEntitlementEnvelopeId is null)
+            {
+                // Keep link if finance entered a key fee without resending envelope id.
+            }
+            else if (row.KeyFeeSar <= 0)
+                row.KeyEntitlementEnvelopeId = null;
             row.IncludedInBilling = input.IncludedInBilling;
             row.UpdatedAtUtc = now;
+        }
+
+        var entitlements = await LoadKeyEntitlementsByPropertyAsync(
+            normalized,
+            validPropertyIds.ToList(),
+            cancellationToken);
+        foreach (var row in existingRows.Values)
+        {
+            if (row.KeyFeeSar > 0
+                && row.KeyEntitlementEnvelopeId is null
+                && entitlements.TryGetValue(row.PropertyId, out var info))
+            {
+                row.KeyEntitlementEnvelopeId = info.EnvelopeId;
+            }
         }
 
         await _db.SaveChangesAsync(cancellationToken);
@@ -229,6 +272,10 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
             x => (x.PoNumber.Trim(), x.PropertyId),
             x => x);
 
+        var invoicesByPo = await _db.PoEnfazInvoices.AsNoTracking()
+            .Where(x => poNumbers.Contains(x.PoNumber))
+            .ToDictionaryAsync(x => x.PoNumber.Trim(), StringComparer.Ordinal, cancellationToken);
+
         var allPropertyIds = orders.SelectMany(o => o.Properties.Select(p => p.Id)).ToList();
         var allTasks = await _db.WorkflowTasks.AsNoTracking()
             .Where(t => poNumbers.Contains(t.PoNumber)
@@ -242,6 +289,10 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         {
             var po = order.PoNumber.Trim();
             var taskStatuses = taskStatusesByPo.GetValueOrDefault(po, []);
+            invoicesByPo.TryGetValue(po, out var invoice);
+            var overdue = invoice is not null
+                && invoice.Status != PoEnfazInvoiceStatus.Collected
+                && DateTime.UtcNow - invoice.IssuedAtUtc > OverdueAfter;
 
             foreach (var property in order.Properties.OrderBy(p => p.RequestNumber ?? p.DeedNumber, StringComparer.Ordinal))
             {
@@ -265,6 +316,11 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
                     CaseStudyFeeSar = enfaz?.CaseStudyFeeSar ?? 0m,
                     SurveyFeeSar = enfaz?.SurveyFeeSar ?? 0m,
                     EnfazFeeSar = enfaz?.TotalFeeSar ?? 0m,
+                    InvoiceNumber = invoice?.InvoiceNumber,
+                    InvoiceStatus = invoice?.Status,
+                    CollectedAmountSar = invoice?.CollectedAmountSar ?? 0m,
+                    InvoiceIssuedAtUtc = invoice?.IssuedAtUtc,
+                    IsOverdue = overdue,
                 });
             }
         }
@@ -283,6 +339,12 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
 
         var invoiceNumber = $"INV-{normalized}-{DateTime.UtcNow:yyyyMMddHHmmss}";
         var now = DateTime.UtcNow;
+        var attachmentIdsJson = SerializeAttachmentIds(
+            billing.Lines
+                .Where(l => l.IncludedInBilling && l.WorkStatus == "done")
+                .SelectMany(l => l.KeyAttachmentIds)
+                .Concat(billing.AttachmentIds)
+                .Distinct(StringComparer.OrdinalIgnoreCase));
         var existing = await _db.PoEnfazInvoices
             .FirstOrDefaultAsync(x => x.PoNumber == normalized, cancellationToken);
         if (existing is null)
@@ -292,17 +354,153 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
                 PoNumber = normalized,
                 InvoiceNumber = invoiceNumber,
                 IssuedAtUtc = now,
+                Status = PoEnfazInvoiceStatus.Issued,
+                SubtotalSar = billing.SubtotalSar,
+                VatSar = billing.VatSar,
+                TotalSar = billing.TotalSar,
+                CollectedAmountSar = 0m,
+                AttachmentIdsJson = attachmentIdsJson,
             });
         }
         else
         {
             existing.InvoiceNumber = invoiceNumber;
             existing.IssuedAtUtc = now;
+            existing.Status = PoEnfazInvoiceStatus.Issued;
+            existing.SubtotalSar = billing.SubtotalSar;
+            existing.VatSar = billing.VatSar;
+            existing.TotalSar = billing.TotalSar;
+            existing.CollectedAmountSar = 0m;
+            existing.CollectedAtUtc = null;
+            existing.AttachmentIdsJson = attachmentIdsJson;
         }
 
         await _db.SaveChangesAsync(cancellationToken);
         return await GetPoBillingAsync(normalized, cancellationToken);
     }
+
+    public async Task<(PoEnfazBillingDto? Billing, string? Error)> CollectInvoiceAsync(
+        string poNumber,
+        CollectPoEnfazInvoiceRequest request,
+        string actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var normalized = poNumber.Trim();
+        var invoice = await _db.PoEnfazInvoices
+            .FirstOrDefaultAsync(x => x.PoNumber == normalized, cancellationToken);
+        if (invoice is null)
+            return (null, "لا توجد فاتورة صادرة لهذا أمر العمل.");
+
+        if (invoice.Status == PoEnfazInvoiceStatus.Collected
+            || invoice.CollectedAmountSar + 0.009m >= invoice.TotalSar)
+            return (null, "الفاتورة محصّلة بالكامل.");
+
+        var amount = Math.Max(0m, request.AmountSar);
+        if (amount <= 0m)
+            return (null, "مبلغ التحصيل يجب أن يكون أكبر من صفر.");
+
+        var nextCollected = invoice.CollectedAmountSar + amount;
+        if (nextCollected > invoice.TotalSar + 0.01m)
+            return (null, "مبلغ التحصيل يتجاوز إجمالي الفاتورة.");
+
+        var previousCollected = invoice.CollectedAmountSar;
+        invoice.CollectedAmountSar = nextCollected;
+        invoice.CollectedAtUtc = DateTime.UtcNow;
+        invoice.Status = nextCollected + 0.009m >= invoice.TotalSar
+            ? PoEnfazInvoiceStatus.Collected
+            : PoEnfazInvoiceStatus.PartiallyCollected;
+
+        _db.AuditLogs.Add(_audit.Create(
+            string.IsNullOrWhiteSpace(actorUserId) ? "system" : actorUserId,
+            "ENFAZ_INVOICE_COLLECTED",
+            "po_enfaz_invoice",
+            normalized,
+            new { collectedAmountSar = previousCollected, note = request.Note },
+            new
+            {
+                invoice.CollectedAmountSar,
+                invoice.Status,
+                invoice.TotalSar,
+            }));
+
+        await _db.SaveChangesAsync(cancellationToken);
+        return (await GetPoBillingAsync(normalized, cancellationToken), null);
+    }
+
+    public async Task<EnfazAgingReportDto> GetAgingReportAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var asOf = DateTime.UtcNow;
+        var invoices = await _db.PoEnfazInvoices.AsNoTracking()
+            .Where(i => i.Status != PoEnfazInvoiceStatus.Collected
+                && i.CollectedAmountSar + 0.009m < i.TotalSar)
+            .OrderBy(i => i.IssuedAtUtc)
+            .ThenBy(i => i.PoNumber)
+            .ToListAsync(cancellationToken);
+
+        var rows = new List<EnfazAgingInvoiceRowDto>(invoices.Count);
+        foreach (var invoice in invoices)
+        {
+            var outstanding = Math.Max(0m, invoice.TotalSar - invoice.CollectedAmountSar);
+            if (outstanding <= 0.009m)
+                continue;
+
+            var ageDays = Math.Max(0, (int)Math.Floor((asOf - invoice.IssuedAtUtc).TotalDays));
+            var (bucketKey, bucketLabel) = ResolveAgingBucket(ageDays);
+            rows.Add(new EnfazAgingInvoiceRowDto
+            {
+                PoNumber = invoice.PoNumber,
+                InvoiceNumber = invoice.InvoiceNumber,
+                Status = invoice.Status,
+                IssuedAtUtc = invoice.IssuedAtUtc,
+                AgeDays = ageDays,
+                BucketKey = bucketKey,
+                BucketLabel = bucketLabel,
+                TotalSar = invoice.TotalSar,
+                CollectedAmountSar = invoice.CollectedAmountSar,
+                OutstandingSar = Math.Round(outstanding, 2, MidpointRounding.AwayFromZero),
+            });
+        }
+
+        var buckets = new[]
+        {
+            ("0_30", "0–30 يوماً"),
+            ("31_60", "31–60 يوماً"),
+            ("61_90", "61–90 يوماً"),
+            ("90_plus", "أكثر من 90 يوماً"),
+        }.Select(def =>
+        {
+            var inBucket = rows.Where(r => r.BucketKey == def.Item1).ToList();
+            return new EnfazAgingBucketDto
+            {
+                Key = def.Item1,
+                Label = def.Item2,
+                InvoiceCount = inBucket.Count,
+                OutstandingSar = inBucket.Sum(r => r.OutstandingSar),
+            };
+        }).ToList();
+
+        return new EnfazAgingReportDto
+        {
+            AsOfUtc = asOf,
+            TotalOutstandingSar = rows.Sum(r => r.OutstandingSar),
+            OpenInvoiceCount = rows.Count,
+            Buckets = buckets,
+            Invoices = rows
+                .OrderByDescending(r => r.AgeDays)
+                .ThenBy(r => r.PoNumber, StringComparer.Ordinal)
+                .ToList(),
+        };
+    }
+
+    private static (string Key, string Label) ResolveAgingBucket(int ageDays) =>
+        ageDays switch
+        {
+            <= 30 => ("0_30", "0–30 يوماً"),
+            <= 60 => ("31_60", "31–60 يوماً"),
+            <= 90 => ("61_90", "61–90 يوماً"),
+            _ => ("90_plus", "أكثر من 90 يوماً"),
+        };
 
     public async Task<byte[]?> GetInvoicePdfAsync(
         string poNumber,
@@ -402,28 +600,130 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         return true;
     }
 
+    private readonly record struct KeyEntitlementInfo(Guid EnvelopeId, IReadOnlyList<string> AttachmentIds);
+
+    private async Task<Dictionary<Guid, KeyEntitlementInfo>> LoadKeyEntitlementsByPropertyAsync(
+        string poNumber,
+        IReadOnlyList<Guid> propertyIds,
+        CancellationToken cancellationToken)
+    {
+        _ = poNumber;
+        if (propertyIds.Count == 0)
+            return new Dictionary<Guid, KeyEntitlementInfo>();
+
+        // Entitled court envelopes linked to PO properties via assignments.
+        var rows = await (
+            from a in _db.KeyEnvelopeAssignments.AsNoTracking()
+            join e in _db.KeyEnvelopes.AsNoTracking() on a.EnvelopeId equals e.Id
+            where e.RevenueEntitlementAtUtc != null
+                  && a.PropertyId != null
+                  && propertyIds.Contains(a.PropertyId.Value)
+            orderby e.RevenueEntitlementAtUtc
+            select new
+            {
+                EnvelopeId = e.Id,
+                PropertyId = a.PropertyId!.Value,
+                e.PhotoAttachmentId,
+                e.ReceiptAttachmentId,
+                e.ThirdPartyLetterAttachmentId,
+            })
+            .ToListAsync(cancellationToken);
+
+        var map = new Dictionary<Guid, KeyEntitlementInfo>();
+        foreach (var row in rows)
+        {
+            if (map.ContainsKey(row.PropertyId))
+                continue;
+
+            var ids = new List<string>(3);
+            if (row.PhotoAttachmentId is Guid photo)
+                ids.Add(photo.ToString());
+            if (row.ReceiptAttachmentId is Guid receipt)
+                ids.Add(receipt.ToString());
+            if (row.ThirdPartyLetterAttachmentId is Guid letter)
+                ids.Add(letter.ToString());
+
+            map[row.PropertyId] = new KeyEntitlementInfo(row.EnvelopeId, ids);
+        }
+
+        return map;
+    }
+
     private static PoEnfazBillingDto BuildDto(
         string poNumber,
         bool poReady,
         IReadOnlyList<PoEnfazRevenueLineDto> lines,
-        string? invoiceNumber = null,
-        DateTime? invoiceIssuedAtUtc = null)
+        PoEnfazInvoice? invoice = null)
     {
         var subtotal = lines
             .Where(l => l.WorkStatus == "done" && l.IncludedInBilling)
-            .Sum(l => l.CaseStudyFeeSar + l.SurveyFeeSar);
+            .Sum(l => l.CaseStudyFeeSar + l.SurveyFeeSar + l.KeyFeeSar);
         var vat = Math.Round(subtotal * VatRate, 2, MidpointRounding.AwayFromZero);
+        var total = subtotal + vat;
+        var collected = invoice?.CollectedAmountSar ?? 0m;
+        var status = invoice?.Status;
+        var issuedAt = invoice?.IssuedAtUtc;
+        var overdue = invoice is not null
+            && status != PoEnfazInvoiceStatus.Collected
+            && issuedAt.HasValue
+            && DateTime.UtcNow - issuedAt.Value > OverdueAfter;
+
+        var invoiceAttachments = ParseAttachmentIds(invoice?.AttachmentIdsJson);
+        var lineAttachments = lines
+            .SelectMany(l => l.KeyAttachmentIds)
+            .Where(id => !string.IsNullOrWhiteSpace(id));
+        var attachmentIds = invoiceAttachments.Count > 0
+            ? invoiceAttachments
+            : lineAttachments.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
         return new PoEnfazBillingDto
         {
             PoNumber = poNumber,
             PoReadyForBilling = poReady,
             Lines = lines,
-            SubtotalSar = subtotal,
-            VatSar = vat,
-            TotalSar = subtotal + vat,
-            InvoiceNumber = invoiceNumber,
-            InvoiceIssuedAtUtc = invoiceIssuedAtUtc,
+            SubtotalSar = invoice?.SubtotalSar > 0 ? invoice.SubtotalSar : subtotal,
+            VatSar = invoice?.VatSar > 0 ? invoice.VatSar : vat,
+            TotalSar = invoice?.TotalSar > 0 ? invoice.TotalSar : total,
+            InvoiceNumber = invoice?.InvoiceNumber,
+            InvoiceIssuedAtUtc = issuedAt,
+            InvoiceStatus = status,
+            CollectedAmountSar = collected,
+            CollectedAtUtc = invoice?.CollectedAtUtc,
+            IsOverdue = overdue,
+            AttachmentIds = attachmentIds,
         };
+    }
+
+    private static IReadOnlyList<string> ParseAttachmentIds(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return [];
+
+        try
+        {
+            var ids = System.Text.Json.JsonSerializer.Deserialize<List<string>>(json);
+            return ids?
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Select(id => id.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList()
+                ?? [];
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return [];
+        }
+    }
+
+    private static string? SerializeAttachmentIds(IEnumerable<string> ids)
+    {
+        var list = ids
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Select(id => id.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        return list.Count == 0
+            ? null
+            : System.Text.Json.JsonSerializer.Serialize(list);
     }
 }

@@ -43,8 +43,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
     public DbSet<InspectorFeeLedger> InspectorFeeLedgers => Set<InspectorFeeLedger>();
     public DbSet<InspectorFeeTransition> InspectorFeeTransitions => Set<InspectorFeeTransition>();
     public DbSet<DisbursementBatch> DisbursementBatches => Set<DisbursementBatch>();
-    public DbSet<EngineeringBillingStatement> EngineeringBillingStatements => Set<EngineeringBillingStatement>();
-    public DbSet<EngineeringBillingStatementLine> EngineeringBillingStatementLines => Set<EngineeringBillingStatementLine>();
+    public DbSet<PartyBillingStatement> PartyBillingStatements => Set<PartyBillingStatement>();
+    public DbSet<PartyBillingStatementLine> PartyBillingStatementLines => Set<PartyBillingStatementLine>();
     public DbSet<PoEnfazRevenueLine> PoEnfazRevenueLines => Set<PoEnfazRevenueLine>();
     public DbSet<PoEnfazInvoice> PoEnfazInvoices => Set<PoEnfazInvoice>();
     public DbSet<PropertyFailure> PropertyFailures => Set<PropertyFailure>();
@@ -260,6 +260,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
             e.Property(x => x.DisbursementVoucher).HasMaxLength(128);
             e.Property(x => x.AgreedFeeSar).HasPrecision(12, 2);
             e.Property(x => x.SupervisorDiscountSar).HasPrecision(12, 2);
+            e.Property(x => x.NetFeeSar).HasPrecision(12, 2);
+            e.Property(x => x.PaidAmountSar).HasPrecision(12, 2);
             e.HasIndex(x => x.WorkflowTaskId);
             e.HasIndex(x => new { x.TransactionId, x.DeedId, x.UserId })
                 .IsUnique()
@@ -273,7 +275,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
             e.HasIndex(x => x.PricingTableId);
             e.HasIndex(x => x.ExcludedFromBatch);
             e.HasIndex(x => x.DisbursementBatchId);
-            e.HasIndex(x => x.EngineeringBillingStatementId);
+            e.HasIndex(x => x.PartyBillingStatementId);
         });
 
         builder.Entity<DisbursementBatch>(e =>
@@ -287,9 +289,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
             e.HasIndex(x => x.CreatedAtUtc);
         });
 
-        builder.Entity<EngineeringBillingStatement>(e =>
+        builder.Entity<PartyBillingStatement>(e =>
         {
-            e.ToTable("EngineeringBillingStatements", DatabaseSchemas.Financial);
+            e.ToTable("PartyBillingStatements", DatabaseSchemas.Financial);
             e.UseOptimisticConcurrency();
             e.HasKey(x => x.Id);
             e.Property(x => x.ReferenceNumber).HasMaxLength(32);
@@ -312,9 +314,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        builder.Entity<EngineeringBillingStatementLine>(e =>
+        builder.Entity<PartyBillingStatementLine>(e =>
         {
-            e.ToTable("EngineeringBillingStatementLines", DatabaseSchemas.Financial);
+            e.ToTable("PartyBillingStatementLines", DatabaseSchemas.Financial);
             e.HasKey(x => x.Id);
             e.Property(x => x.NetFeeSar).HasPrecision(12, 2);
             e.HasIndex(x => x.StatementId);
@@ -328,8 +330,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
             e.Property(x => x.PoNumber).HasMaxLength(64);
             e.Property(x => x.CaseStudyFeeSar).HasPrecision(12, 2);
             e.Property(x => x.SurveyFeeSar).HasPrecision(12, 2);
+            e.Property(x => x.KeyFeeSar).HasPrecision(12, 2);
             e.Ignore(x => x.TotalFeeSar);
             e.HasIndex(x => new { x.PoNumber, x.PropertyId }).IsUnique();
+            e.HasIndex(x => x.KeyEntitlementEnvelopeId);
         });
 
         builder.Entity<PoEnfazInvoice>(e =>
@@ -338,6 +342,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
             e.HasKey(x => x.PoNumber);
             e.Property(x => x.PoNumber).HasMaxLength(64);
             e.Property(x => x.InvoiceNumber).HasMaxLength(128);
+            e.Property(x => x.Status).HasMaxLength(32);
+            e.Property(x => x.SubtotalSar).HasPrecision(14, 2);
+            e.Property(x => x.VatSar).HasPrecision(14, 2);
+            e.Property(x => x.TotalSar).HasPrecision(14, 2);
+            e.Property(x => x.CollectedAmountSar).HasPrecision(14, 2);
+            e.Property(x => x.AttachmentIdsJson).HasColumnType("jsonb");
         });
 
         builder.Entity<InspectorFeeTransition>(e =>
@@ -791,7 +801,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
 
     /// <summary>
     /// Fills ج٨ identity columns when callers still construct ledgers with only WorkflowTaskId /
-    /// PropertyId / AssigneeId (tests and transitional paths).
+    /// PropertyId / AssigneeId (tests and transitional paths). Also stamps NetFeeSar / PaidAmountSar.
     /// </summary>
     private void StampInspectorFeeLedgerIdentity()
     {
@@ -814,6 +824,15 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
                     ? ledger.WorkflowTaskId
                     : StableGuidFromKey($"tx:{po}");
             }
+
+            ledger.NetFeeSar = Math.Max(
+                0m,
+                ledger.AgreedFeeSar - Math.Max(0m, ledger.SupervisorDiscountSar));
+            if (string.Equals(
+                    ledger.BillingStatus,
+                    InspectorFeeBillingStatus.Disbursed,
+                    StringComparison.OrdinalIgnoreCase))
+                ledger.PaidAmountSar = ledger.NetFeeSar;
         }
     }
 

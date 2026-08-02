@@ -309,6 +309,24 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Platform.Migrations
                     b.ToTable("FieldDictionaryConfigs", "platform");
                 });
 
+            modelBuilder.Entity("RealEstateEval.Domain.OrganizationSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SettingsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("OrganizationSettings", "platform");
+                });
+
             modelBuilder.Entity("RealEstateEval.Domain.Region", b =>
                 {
                     b.Property<Guid>("Id")
