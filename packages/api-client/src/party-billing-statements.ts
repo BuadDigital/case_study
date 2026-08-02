@@ -345,7 +345,7 @@ export async function deferPartyBillingLines(
   }
 }
 
-export function PartyBillingStatementStatusTone(
+export function partyBillingStatementStatusTone(
   status: PartyBillingStatementStatus,
 ): "default" | "warning" | "success" | "info" {
   switch (status) {
