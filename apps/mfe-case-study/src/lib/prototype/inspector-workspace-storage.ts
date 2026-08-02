@@ -8,6 +8,10 @@ import {
   submitPartyTaskSubmission,
   type PartyTaskSubmissionDto,
 } from "@platform/api-client";
+import {
+  saveDraftWithOfflineFallback,
+  submitWithOfflineFallback,
+} from "@platform/app-shared/offline/offline-write";
 import { reopenPartySubmission, type PartyWorkMutationResult } from "@platform/app-shared/prototype/party-submission-api";
 import { dispatchPartySubmissionChanged } from "@platform/app-shared/prototype/party-submission-changed-event";
 import { dispatchWorkflowSubmitted, FIELD_INSPECTION_SUBMITTED_EVENT } from "@platform/app-shared/prototype/party-workflow-events";
@@ -466,11 +470,7 @@ export async function saveInspectorWorkspaceDraft(
   draft: InspectorWorkspaceDraft,
 ): Promise<InspectorWorkspaceDraft> {
   const config = workOrdersApiConfig();
-  if (!config) {
-    throw new Error("تعذّر حفظ مسودة المعاينة — تحقق من تسجيل الدخول");
-  }
-
-  const payload = draftToPayload({
+  const nextDraft: InspectorWorkspaceDraft = {
     ...draft,
     status:
       draft.status === "submitted"
@@ -479,22 +479,51 @@ export async function saveInspectorWorkspaceDraft(
           ? "reopened"
           : "draft",
     updatedAtUtc: new Date().toISOString(),
-  });
+  };
+  const payload = draftToPayload(nextDraft);
 
-  const result = await savePartyTaskSubmission(
-    config,
-    draft.taskId,
-    payload,
-  );
-  if (!result.ok) {
-    throw new Error(
-      resolveApiError(result.kind, result.errors, "تعذّر حفظ مسودة المعاينة"),
-    );
+  if (!config) {
+    const queued = await saveDraftWithOfflineFallback({
+      taskId: draft.taskId,
+      kind: "field-inspection",
+      payload,
+      onlineSave: async () => {
+        throw new Error("تعذّر حفظ مسودة المعاينة — تحقق من تسجيل الدخول");
+      },
+    });
+    if (queued.queued) {
+      writeCache(nextDraft);
+      return nextDraft;
+    }
+    throw new Error("تعذّر حفظ مسودة المعاينة — تحقق من تسجيل الدخول");
   }
 
-  const next = payloadToDraft(result.data, draft);
-  writeCache(next);
-  return next;
+  const queued = await saveDraftWithOfflineFallback({
+    taskId: draft.taskId,
+    kind: "field-inspection",
+    payload,
+    onlineSave: async () => {
+      const result = await savePartyTaskSubmission(
+        config,
+        draft.taskId,
+        payload,
+      );
+      if (!result.ok) {
+        throw new Error(
+          resolveApiError(result.kind, result.errors, "تعذّر حفظ مسودة المعاينة"),
+        );
+      }
+      const next = payloadToDraft(result.data, draft);
+      writeCache(next);
+    },
+  });
+
+  if (queued.queued) {
+    writeCache(nextDraft);
+    return nextDraft;
+  }
+
+  return loadInspectorWorkspace(draft.taskId) ?? nextDraft;
 }
 
 export async function updateInspectorWorkspace(
@@ -542,10 +571,6 @@ export async function submitInspectorWorkspace(
   | { ok: false; message: string; errors?: Record<string, string> }
 > {
   const config = workOrdersApiConfig();
-  if (!config) {
-    return { ok: false, message: "يجب تسجيل الدخول أولاً" };
-  }
-
   const current =
     loadInspectorWorkspace(taskId) ?? (await fetchInspectorWorkspace(taskId));
   if (!current) {
@@ -555,21 +580,57 @@ export async function submitInspectorWorkspace(
     return { ok: true, draft: current };
   }
 
-  const saved = await saveInspectorWorkspaceDraft(current);
-
-  const result = await submitPartyTaskSubmission(config, taskId);
-  if (!result.ok) {
-    return {
-      ok: false,
-      message: resolveApiError(result.kind, result.errors),
-      errors: result.errors,
-    };
+  if (!config) {
+    return { ok: false, message: "يجب تسجيل الدخول أولاً" };
   }
 
-  const draft = payloadToDraft(result.data, saved);
-  writeCache(draft);
-  dispatchWorkflowSubmitted(FIELD_INSPECTION_SUBMITTED_EVENT);
-  return { ok: true, draft };
+  const saved = await saveInspectorWorkspaceDraft(current);
+  const payload = draftToPayload(saved);
+
+  try {
+    const queued = await submitWithOfflineFallback({
+      taskId,
+      kind: "field-inspection",
+      payload,
+      onlineSubmit: async () => {
+        const result = await submitPartyTaskSubmission(config, taskId);
+        if (!result.ok) {
+          const message = resolveApiError(result.kind, result.errors);
+          const err = new Error(message) as Error & {
+            errors?: Record<string, string>;
+          };
+          err.errors = result.errors;
+          throw err;
+        }
+        const draft = payloadToDraft(result.data, saved);
+        writeCache(draft);
+        dispatchWorkflowSubmitted(FIELD_INSPECTION_SUBMITTED_EVENT);
+      },
+    });
+
+    if (queued.queued) {
+      const pending: InspectorWorkspaceDraft = {
+        ...saved,
+        status: "draft",
+        updatedAtUtc: new Date().toISOString(),
+      };
+      writeCache(pending);
+      return { ok: true, draft: pending };
+    }
+
+    return {
+      ok: true,
+      draft: loadInspectorWorkspace(taskId) ?? saved,
+    };
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "تعذّر إرسال المعاينة";
+    const errors =
+      err && typeof err === "object" && "errors" in err
+        ? (err as { errors?: Record<string, string> }).errors
+        : undefined;
+    return { ok: false, message, errors };
+  }
 }
 
 export async function reopenInspectorWorkspace(

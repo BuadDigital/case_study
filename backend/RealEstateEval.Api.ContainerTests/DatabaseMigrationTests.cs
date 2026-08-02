@@ -72,16 +72,30 @@ public class DatabaseMigrationTests
         var services = new ServiceCollection();
         services.AddLogging(logging => logging.SetMinimumLevel(LogLevel.Warning));
         services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(connectionString));
-        services.AddDbContext<IdentityDbContext>(options => options.UseNpgsql(connectionString));
+        services.AddDbContext<AttachmentsDbContext>(options =>
+            UseStream<AttachmentsDbContext>(options, connectionString));
+        services.AddDbContext<PlatformDbContext>(options =>
+            UseStream<PlatformDbContext>(options, connectionString));
+        services.AddDbContext<ValuationDbContext>(options =>
+            UseStream<ValuationDbContext>(options, connectionString));
+        services.AddDbContext<IdentityDbContext>(options =>
+            UseStream<IdentityDbContext>(options, connectionString));
         services.AddIdentityApplicationServices();
         services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
 
         await using var provider = services.BuildServiceProvider();
 
+        // The seeder writes identity and platform tables, so it needs every stream the deploy
+        // migrator applies — the legacy one alone stops at the bounded-context cutover.
         await using (var scope = provider.CreateAsyncScope())
         {
             await scope.ServiceProvider.GetRequiredService<ApplicationDbContext>()
                 .Database.MigrateAsync();
+            foreach (var context in BoundedContextMigrations.ApplyOrder)
+            {
+                await ((DbContext)scope.ServiceProvider.GetRequiredService(context))
+                    .Database.MigrateAsync();
+            }
         }
 
         await using (var scope = provider.CreateAsyncScope())
@@ -114,4 +128,12 @@ public class DatabaseMigrationTests
         new(new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseNpgsql(connectionString)
             .Options);
+
+    private static void UseStream<TContext>(
+        DbContextOptionsBuilder options,
+        string connectionString)
+        where TContext : DbContext =>
+        options.UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable(
+            BoundedContextMigrations.HistoryTable,
+            BoundedContextMigrations.HistorySchemaFor<TContext>()));
 }

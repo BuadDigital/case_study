@@ -168,7 +168,8 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Identity.Migrations
 
                     b.Property<string>("DisplayName")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
 
                     b.Property<string>("Email")
                         .HasMaxLength(256)
@@ -195,7 +196,8 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Identity.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("PhoneNumber")
-                        .HasColumnType("text");
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("boolean");
@@ -219,7 +221,56 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Identity.Migrations
                         .IsUnique()
                         .HasDatabaseName("UserNameIndex");
 
+                    b.HasIndex("PhoneNumber")
+                        .IsUnique()
+                        .HasFilter("\"PhoneNumber\" IS NOT NULL");
+
                     b.ToTable("Users", "identity");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Domain.AuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("ActorId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("AfterJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("BeforeJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EntityId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AuditLogs", "platform", t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Domain.HrEmployeeProfile", b =>
@@ -360,20 +411,58 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Identity.Migrations
                     b.Property<string>("UserId")
                         .HasColumnType("text");
 
+                    b.Property<string>("AvatarUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("CommercialRegistration")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<int>("ContractType")
                         .HasColumnType("integer");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Department")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<string>("DistributionAssigneeId")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
+
+                    b.Property<decimal?>("FeeValueSar")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<bool>("HasCompensation")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Iban")
+                        .HasMaxLength(34)
+                        .HasColumnType("character varying(34)");
+
+                    b.Property<string>("InspectorType")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<string>("JobTitle")
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
+
+                    b.Property<DateOnly?>("JoinedAt")
+                        .HasColumnType("date");
+
+                    b.Property<string>("NationalId")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
 
                     b.Property<string>("PermissionLevel")
                         .HasMaxLength(64)
@@ -386,8 +475,19 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Identity.Migrations
                         .HasMaxLength(1024)
                         .HasColumnType("character varying(1024)");
 
+                    b.Property<string>("RoleId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
+
+                    b.Property<string>("TaxNumber")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<uint>("Version")
                         .IsConcurrencyToken()
@@ -399,7 +499,24 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Identity.Migrations
 
                     b.HasIndex("DistributionAssigneeId");
 
-                    b.ToTable("UserProfiles", "identity");
+                    b.HasIndex("NationalId")
+                        .IsUnique()
+                        .HasFilter("\"NationalId\" IS NOT NULL");
+
+                    b.HasIndex("RoleId");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("UserProfiles", "identity", t =>
+                        {
+                            t.HasCheckConstraint("CK_UserProfiles_ActiveRequiresRoleAndCity", "\"Status\" <> 0 OR (\"RoleId\" IS NOT NULL AND \"City\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_UserProfiles_FeeValueSar", "\"FeeValueSar\" IS NULL OR \"FeeValueSar\" >= 0");
+
+                            t.HasCheckConstraint("CK_UserProfiles_InspectorType", "\"InspectorType\" IS NULL OR \"InspectorType\" IN ('employee', 'contractor')");
+
+                            t.HasCheckConstraint("CK_UserProfiles_Status", "\"Status\" BETWEEN 0 AND 3");
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

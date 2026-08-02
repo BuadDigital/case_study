@@ -8,6 +8,8 @@ import { EngineeringOfficeNotificationCleanup } from "@/components/EngineeringOf
 import { NotificationToastBridge } from "@/components/NotificationToastBridge";
 import { ServerNotificationBridge } from "@/components/ServerNotificationBridge";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
+import { FieldOfflinePrefetch } from "@/components/FieldOfflinePrefetch";
 import { PageAccessGate } from "@/components/PageAccessGate";
 import { AppShell } from "@/components/views/AppShell";
 import { PrototypeProvider } from "@platform/app-shared/contexts/PrototypeContext";
@@ -31,10 +33,12 @@ export default function AppSectionLayout({
               <EngineeringOfficeNotificationCleanup />
               <NotificationToastBridge />
               <ServerNotificationBridge />
+              <FieldOfflinePrefetch />
               <PageAccessGate>
                 <ErrorBoundary fallbackTitle="تعذّر تحميل التطبيق.">
                   <OfflineBanner />
                   <AppShell>{children}</AppShell>
+                  <PushPermissionPrompt />
                 </ErrorBoundary>
               </PageAccessGate>
             </PrototypeProvider>

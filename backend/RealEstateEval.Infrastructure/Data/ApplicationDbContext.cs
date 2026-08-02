@@ -32,6 +32,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
     public DbSet<Court> Courts => Set<Court>();
     public DbSet<CourtCircuit> CourtCircuits => Set<CourtCircuit>();
     public DbSet<CourtAuditLog> CourtAuditLogs => Set<CourtAuditLog>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<Region> Regions => Set<Region>();
     public DbSet<City> Cities => Set<City>();
     public DbSet<WorkflowTask> WorkflowTasks => Set<WorkflowTask>();
@@ -75,6 +76,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
     public DbSet<ProcessedIntegrationEvent> ProcessedIntegrationEvents =>
         Set<ProcessedIntegrationEvent>();
     public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
+    public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
+    public DbSet<PushPreference> PushPreferences => Set<PushPreference>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -88,6 +91,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
             .ApplyAttachmentsModel()
             .ApplyPlatformModel()
             .ApplyValuationModel()
+            .ApplyAuditModel(ownsMigrations: false)
             .ApplyOutboxModel()
             .ApplyInboxModel();
 
@@ -243,8 +247,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
             e.Property(x => x.PoNumber).HasMaxLength(64);
             e.Property(x => x.AssigneeId).HasMaxLength(128);
             e.Property(x => x.InspectorType).HasMaxLength(32);
+            e.Property(x => x.SupervisingDepartment).HasMaxLength(32);
             e.Property(x => x.DiscountReason).HasMaxLength(2000);
             e.Property(x => x.BillingStatus).HasMaxLength(32);
+            e.Property(x => x.PreSuspensionStatus).HasMaxLength(32);
+            e.Property(x => x.SuspensionReason).HasMaxLength(2000);
             e.Property(x => x.ExclusionReason).HasMaxLength(2000);
             e.Property(x => x.ReturnTo).HasMaxLength(32);
             e.Property(x => x.DisbursementVoucher).HasMaxLength(128);
@@ -253,7 +260,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
             e.HasIndex(x => x.AccruedAtUtc);
             e.HasIndex(x => x.PoNumber);
             e.HasIndex(x => x.AssigneeId);
+            e.HasIndex(x => x.SupervisingDepartment);
             e.HasIndex(x => x.BillingStatus);
+            // Indexed to answer "what did this table price?" — the question a rate change raises.
+            e.HasIndex(x => x.PricingTableId);
             e.HasIndex(x => x.ExcludedFromBatch);
             e.HasIndex(x => x.DisbursementBatchId);
             e.HasIndex(x => x.EngineeringBillingStatementId);
@@ -434,6 +444,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
             e.HasIndex(x => x.CreatedAtUtc);
             e.HasIndex(x => x.Status);
             e.HasIndex(x => x.FeeGenerated);
+            e.HasIndex(x => x.RevenueEntitlementAtUtc);
             e.HasIndex(x => x.OperationsTaskId);
             e.HasMany(x => x.Assignments)
                 .WithOne(x => x.Envelope!)
@@ -536,6 +547,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
             e.HasIndex(x => x.OperationsTaskId).IsUnique();
             e.HasIndex(x => x.CreditAssigneeId);
             e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.PricingTableId);
         });
 
         builder.Entity<InternalDelegationLetterSet>(e =>
@@ -627,11 +639,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
         builder.Entity<PartyFeePricingTable>(e =>
         {
             e.ToTable("PartyFeePricingTables", DatabaseSchemas.Financial);
+            e.UseOptimisticConcurrency();
             e.HasKey(x => x.Id);
             e.Property(x => x.Name).HasMaxLength(128).IsRequired();
             e.Property(x => x.Category).HasMaxLength(32).IsRequired();
             e.Property(x => x.GovernmentReviewFeeSar).HasPrecision(12, 2);
-            e.Property(x => x.KeyReceiptFeeSar).HasPrecision(12, 2);
             e.Property(x => x.FieldInspectorIndividualFeeSar).HasPrecision(12, 2);
             e.Property(x => x.FieldInspectorOrganizationFeeSar).HasPrecision(12, 2);
             e.HasIndex(x => x.Category)
@@ -650,6 +662,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
         builder.Entity<PartyFeePricingTier>(e =>
         {
             e.ToTable("PartyFeePricingTiers", DatabaseSchemas.Financial);
+            e.UseOptimisticConcurrency();
             e.HasKey(x => x.Id);
             e.Property(x => x.MaxAreaM2).HasPrecision(12, 2);
             e.Property(x => x.FeeSar).HasPrecision(12, 2);
@@ -659,6 +672,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
         builder.Entity<PartyFeePricingAssignment>(e =>
         {
             e.ToTable("PartyFeePricingAssignments", DatabaseSchemas.Financial);
+            e.UseOptimisticConcurrency();
             e.HasKey(x => x.Id);
             e.Property(x => x.Category).HasMaxLength(32).IsRequired();
             e.Property(x => x.AssigneeId).HasMaxLength(128).IsRequired();
@@ -700,6 +714,29 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
                 .IsUnique()
                 .HasFilter("\"SourceEvent\" IS NOT NULL AND \"ReadAtUtc\" IS NULL")
                 .HasDatabaseName(DatabaseIndexNames.UserNotificationUnreadSourceEvent);
+        });
+
+        builder.Entity<PushSubscription>(e =>
+        {
+            e.ToTable("PushSubscriptions", DatabaseSchemas.Messaging);
+            e.Property(x => x.UserId).HasMaxLength(450);
+            e.Property(x => x.Endpoint).HasMaxLength(1024);
+            e.Property(x => x.P256dh).HasMaxLength(256);
+            e.Property(x => x.Auth).HasMaxLength(64);
+            e.Property(x => x.UserAgent).HasMaxLength(512);
+            e.Property(x => x.DeviceLabel).HasMaxLength(128);
+            e.Property(x => x.DisabledReason).HasMaxLength(128);
+            e.HasIndex(x => x.Endpoint)
+                .IsUnique()
+                .HasDatabaseName(DatabaseIndexNames.PushSubscriptionEndpoint);
+            e.HasIndex(x => new { x.UserId, x.DisabledAtUtc });
+        });
+
+        builder.Entity<PushPreference>(e =>
+        {
+            e.ToTable("PushPreferences", DatabaseSchemas.Messaging);
+            e.HasKey(x => x.UserId);
+            e.Property(x => x.UserId).HasMaxLength(450);
         });
     }
 }

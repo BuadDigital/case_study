@@ -1,0 +1,32 @@
+257|.dcard-kpi{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:15px 18px;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .1s;}
+258|.dcard-kpi:hover{border-color:var(--border-2);box-shadow:0 4px 14px rgba(15,52,96,.09);}
+259|.dcard-kpi:active{transform:translateY(1px);}
+457|<div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>لوحة التحكم</span></div>
+516|<span>لوحة التحكم</span>
+648|<div id="view-dashboard" class="view" hidden></div>
+1011|setHeader('عقارات ' + o.po, crumb(['لوحة التحكم','دراسة الحالة','أوامر العمل','عقارات']));
+1803|function renderDashboard(){
+1853|(newCount?'<a href="#" onclick="markDashSeen();return false" style="margin-inline-start:auto;font-size:12px;font-weight:700">تحديد كمقروء</a>':'<span style="margin-inline-start:auto;font-size:12px;color:#3f8f5f;font-weight:700">لا جديد</span>')+
+1862|return '<div class="dcard-kpi" onclick="'+onclick+'">'+
+1879|kcard(activeOrders.length,'أوامر قيد العمل',(atRisk? atRisk+' قاربت/تجاوزت المهلة':'كلها ضمن المهلة'), 'goPoList()', ringCap(atRiskPct, atRisk?'#d9694f':'#3f8f5f','قاربت المهلة'), '')+
+1956|document.getElementById('view-dashboard').innerHTML =
+1963|setHeader('لوحة التحكم', crumb(['الرئيسية','لوحة التحكم']));
+1964|navActive('لوحة التحكم');
+1976|setHeader('مؤشرات الأداء', crumb(['لوحة التحكم','مؤشرات الأداء']));
+2000|setHeader('التقارير المالية', crumb(['لوحة التحكم','التقارير المالية']));
+2007|setHeader(label, crumb(['لوحة التحكم', label]));
+2038|setHeader(label, crumb(['لوحة التحكم', label]));
+2147|setHeader('جميع المعاملات', crumb(['لوحة التحكم','جميع المعاملات']));
+2304|setHeader('الرفع المساحي', crumb(['لوحة التحكم','الرفع المساحي']));
+2431|setHeader('فوترة الأتعاب', crumb(['لوحة التحكم','فوترة الأتعاب']));
+2558|setHeader('المكتب الهندسي — الرفع المساحي', crumb(['لوحة التحكم','الرفع المساحي','مساحة العمل']));
+2785|setHeader('تقييم العقار', crumb(['لوحة التحكم','تقييم العقار']));
+2906|setHeader('المقيم العقاري — نافذة التقييم', crumb(['لوحة التحكم','تقييم العقار','نافذة التقييم']));
+2973|setHeader('أوامر العمل (PO)', crumb(['لوحة التحكم','دراسة الحالة','أوامر العمل']));
+3186|setHeader('المهام', crumb(['لوحة التحكم','المهام'])); navActive('المهام'); showView('tasks');
+3593|setHeader(t.title, crumb(['لوحة التحكم','المهام',t.id])); navActive('المهام'); showView('taskDetail');
+3803|window.goPoList=goPoList; window.renderTasks=renderTasks; window.renderAllTransactions=renderAllTransactions; window.renderGeneric=renderGeneric; window.renderDashboard=renderDashboard;
+3804|function markDashSeen(){ try{ localStorage.setItem('dashSeenTs', String(taskLive())); }catch(e){} renderDashboard(); }
+3805|window.markDashSeen=markDashSeen;
+3880|else if (label === 'لوحة التحكم') renderDashboard();
+4134|setHeader('محفظة المفاتيح', crumb(['لوحة التحكم','دراسة الحالة','محفظة المفاتيح']));

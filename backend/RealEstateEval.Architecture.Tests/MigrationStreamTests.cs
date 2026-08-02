@@ -91,23 +91,44 @@ public class MigrationStreamTests
     }
 
     /// <summary>
-    /// Plan Phase 1, work item 5: the legacy stream is frozen at the cutover. A later legacy
-    /// migration would change a table whose write path has already moved, and the two streams
-    /// would then disagree about who last shaped that schema.
+    /// Plan Phase 1, work item 5, as the catalog states it: the legacy stream is frozen for the
+    /// schemas that have been extracted. A schema still on the legacy context may keep changing
+    /// there — that is where its write path lives — but a legacy migration that reshaped an
+    /// extracted schema would leave the two streams disagreeing about who shaped it last.
     /// </summary>
     [Fact]
-    public void LegacyStreamIsFrozenAtTheCutover()
+    public void LegacyMigrationsAfterTheCutoverLeaveExtractedSchemasAlone()
     {
-        var latest = Directory
-            .EnumerateFiles(LegacyStream, "*.cs")
-            .Select(Path.GetFileNameWithoutExtension)
-            .Where(name => name is not null && TimestampedMigration.IsMatch(name))
-            .Select(name => name!.Replace(".Designer", "", StringComparison.Ordinal))
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(name => name, StringComparer.Ordinal)
-            .LastOrDefault();
+        var schemaLiteral = new Regex(@"(?:old)?[Ss]chema:\s*""(\w+)""", RegexOptions.Compiled);
+        var extracted = Catalog.ExtractedContexts
+            .SelectMany(context => context.Schemas)
+            .ToHashSet(StringComparer.Ordinal);
+        var failures = new List<string>();
 
-        Assert.Equal(BoundedContextMigrations.LegacyCutover, latest);
+        foreach (var file in Directory.EnumerateFiles(LegacyStream, "*.cs"))
+        {
+            var name = Path.GetFileNameWithoutExtension(file);
+            if (name is null
+                || !TimestampedMigration.IsMatch(name)
+                || name.EndsWith(".Designer", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (string.CompareOrdinal(name, BoundedContextMigrations.LegacyCutover) <= 0) continue;
+
+            foreach (Match match in schemaLiteral.Matches(File.ReadAllText(file)))
+            {
+                if (extracted.Contains(match.Groups[1].Value))
+                    failures.Add($"{name} shapes {match.Groups[1].Value}");
+            }
+        }
+
+        Assert.True(
+            failures.Count == 0,
+            "Legacy migrations added after the cutover reshape an extracted context's schema: "
+            + string.Join(", ", failures.Distinct(StringComparer.Ordinal))
+            + ". That schema is shaped by its owner's stream now (ADR 0003).");
     }
 
     [Fact]

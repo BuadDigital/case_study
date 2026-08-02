@@ -67,18 +67,18 @@ public sealed class CourtsService : ICourtsService
         "دائرة التنفيذ الخامسة والثلاثون",
     ];
 
-    private static readonly JsonSerializerOptions AuditJsonOpts = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
-
     private readonly PlatformDbContext _db;
     private readonly ApiResponseCache _cache;
+    private readonly IAuditLogWriter _audit;
 
-    public CourtsService(PlatformDbContext db, ApiResponseCache cache)
+    public CourtsService(
+        PlatformDbContext db,
+        ApiResponseCache cache,
+        IAuditLogWriter audit)
     {
         _db = db;
         _cache = cache;
+        _audit = audit;
     }
 
     public async Task EnsureSeededAsync(CancellationToken cancellationToken = default)
@@ -294,7 +294,7 @@ public sealed class CourtsService : ICourtsService
             CourtAuditEntityTypes.Court,
             entity.Id,
             actorId,
-            new Dictionary<string, object?>
+            new Dictionary<string, AuditValueChange>
             {
                 ["name"] = Diff(null, entity.Name),
                 ["region"] = Diff(null, entity.Region),
@@ -339,7 +339,7 @@ public sealed class CourtsService : ICourtsService
         entity.UpdatedBy = actorId;
         entity.UpdatedAtUtc = DateTime.UtcNow;
 
-        var changes = new Dictionary<string, object?>();
+        var changes = new Dictionary<string, AuditValueChange>();
         if (!string.Equals(beforeName, entity.Name, StringComparison.Ordinal))
             changes["name"] = Diff(beforeName, entity.Name);
         if (!string.Equals(beforeRegion, entity.Region, StringComparison.Ordinal))
@@ -384,7 +384,7 @@ public sealed class CourtsService : ICourtsService
             CourtAuditEntityTypes.Court,
             entity.Id,
             actorId,
-            new Dictionary<string, object?> { ["isActive"] = Diff(before, isActive) });
+            new Dictionary<string, AuditValueChange> { ["isActive"] = Diff(before, isActive) });
         await _db.SaveChangesAsync(cancellationToken);
         await _cache.RemoveAsync(CacheKeys.CourtsCatalog, cancellationToken);
         return (ToDto(entity, entity.Circuits.Count), null);
@@ -422,7 +422,7 @@ public sealed class CourtsService : ICourtsService
             CourtAuditEntityTypes.Circuit,
             entity.Id,
             actorId,
-            new Dictionary<string, object?>
+            new Dictionary<string, AuditValueChange>
             {
                 ["courtId"] = Diff(null, entity.CourtId),
                 ["circuitNo"] = Diff(null, entity.CircuitNo),
@@ -466,7 +466,7 @@ public sealed class CourtsService : ICourtsService
         entity.UpdatedBy = actorId;
         entity.UpdatedAtUtc = DateTime.UtcNow;
 
-        var changes = new Dictionary<string, object?>();
+        var changes = new Dictionary<string, AuditValueChange>();
         if (!string.Equals(beforeNo, entity.CircuitNo, StringComparison.Ordinal))
             changes["circuitNo"] = Diff(beforeNo, entity.CircuitNo);
         if (!string.Equals(beforeName, entity.CircuitName, StringComparison.Ordinal))
@@ -512,7 +512,7 @@ public sealed class CourtsService : ICourtsService
             CourtAuditEntityTypes.Circuit,
             entity.Id,
             actorId,
-            new Dictionary<string, object?> { ["isActive"] = Diff(before, isActive) });
+            new Dictionary<string, AuditValueChange> { ["isActive"] = Diff(before, isActive) });
         await _db.SaveChangesAsync(cancellationToken);
         await _cache.RemoveAsync(CacheKeys.CourtsCatalog, cancellationToken);
         return (ToCircuitDto(entity), null);
@@ -626,20 +626,16 @@ public sealed class CourtsService : ICourtsService
         string entityType,
         Guid entityId,
         string actorId,
-        Dictionary<string, object?> changes)
+        IReadOnlyDictionary<string, AuditValueChange> changes)
     {
-        _db.CourtAuditLogs.Add(new CourtAuditLog
-        {
-            Id = Guid.NewGuid(),
-            Action = action,
-            EntityType = entityType,
-            EntityId = entityId,
-            ActorId = actorId,
-            ChangesJson = JsonSerializer.Serialize(changes, AuditJsonOpts),
-            TimestampUtc = DateTime.UtcNow,
-        });
+        _db.AuditLogs.Add(_audit.CreateFromChanges(
+            actorId,
+            action,
+            entityType,
+            entityId.ToString(),
+            changes));
     }
 
-    private static object Diff(object? before, object? after) =>
-        new { before, after };
+    private static AuditValueChange Diff(object? before, object? after) =>
+        new(before, after);
 }

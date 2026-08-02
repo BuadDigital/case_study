@@ -35,7 +35,6 @@ public sealed class PartyFeePricingDto
     public List<PartyFeePricingTierDto> AreaTiers { get; set; } = [];
 
     public decimal GovernmentReviewFeeSar { get; set; }
-    public decimal KeyReceiptFeeSar { get; set; }
     public decimal FieldInspectorIndividualFeeSar { get; set; }
     public decimal FieldInspectorOrganizationFeeSar { get; set; }
     public DateTime? UpdatedAtUtc { get; set; }

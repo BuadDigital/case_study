@@ -3,6 +3,7 @@
  */
 import { parseFieldErrorsFromResponse } from "./field-errors";
 import { getApiBase } from "./index";
+import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
 export type FailuresApiConfig = WorkOrdersApiConfig;

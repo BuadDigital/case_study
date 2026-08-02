@@ -2,6 +2,7 @@ import {
   downloadAttachmentBlob,
   uploadAttachment,
 } from "@platform/api-client";
+import { uploadAttachmentWithOfflineFallback } from "@platform/app-shared/offline/offline-write";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 import type {
   InspectorPhotoAttachment,
@@ -206,18 +207,42 @@ export async function uploadInspectorPhotoFromFile(
   }
 
   const config = prototypeModulesApiConfig();
-  if (config) {
-    const upload = await uploadAttachment(config, {
+  const bytes = await uploadFile.arrayBuffer();
+  try {
+    const uploaded = await uploadAttachmentWithOfflineFallback({
       scope: SCOPE,
       scopeKey: `${taskId}:${photoRef}`,
       fileName: uploadFile.name,
       contentType: attachment.mimeType,
-      contentBase64: await fileToBase64(uploadFile),
+      bytes,
+      onlineUpload: async () => {
+        if (!config) {
+          throw new Error("تعذّر رفع الصورة — تحقق من الاتصال وحاول مجدداً.");
+        }
+        const upload = await uploadAttachment(config, {
+          scope: SCOPE,
+          scopeKey: `${taskId}:${photoRef}`,
+          fileName: uploadFile.name,
+          contentType: attachment.mimeType,
+          contentBase64: await fileToBase64(uploadFile),
+        });
+        if (!upload.ok) {
+          throw new Error(
+            "تعذّر رفع الصورة — تحقق من الاتصال وحاول مجدداً.",
+          );
+        }
+        return upload.data.id;
+      },
     });
-    if (!upload.ok) {
-      return { ok: false, error: "تعذّر رفع الصورة — تحقق من الاتصال وحاول مجدداً." };
-    }
-    attachment.attachmentId = upload.data.id;
+    attachment.attachmentId = uploaded.attachmentId;
+  } catch (err) {
+    return {
+      ok: false,
+      error:
+        err instanceof Error
+          ? err.message
+          : "تعذّر رفع الصورة — تحقق من الاتصال وحاول مجدداً.",
+    };
   }
 
   return { ok: true, attachment };

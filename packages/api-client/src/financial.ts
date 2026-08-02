@@ -1,4 +1,5 @@
 import { getApiBase } from "./index";
+import { repositoryFetch as fetch } from "./write-repository";
 import type { PrototypeModulesApiConfig, PrototypeModulesResult } from "./prototype-modules";
 
 export type FinancialRevenueRowDto = {
@@ -59,7 +60,6 @@ export type PartyFeePricingDto = {
   assignedAssigneeIds?: string[];
   areaTiers: PartyFeePricingTierDto[];
   governmentReviewFeeSar: number;
-  keyReceiptFeeSar: number;
   fieldInspectorIndividualFeeSar: number;
   fieldInspectorOrganizationFeeSar: number;
   updatedAtUtc?: string | null;
@@ -167,6 +167,26 @@ export async function savePartyFeePricing(
       `${baseUrl(config)}/api/financial/v1/party-fee-pricing/${id}`,
       {
         method: "PUT",
+        headers: headers(config.token),
+        body: JSON.stringify(body),
+      },
+    );
+    return readResult<PartyFeePricingDto>(res);
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export async function revisePartyFeePricing(
+  config: PrototypeModulesApiConfig,
+  id: string,
+  body: PartyFeePricingDto,
+): Promise<PrototypeModulesResult<PartyFeePricingDto>> {
+  try {
+    const res = await fetch(
+      `${baseUrl(config)}/api/financial/v1/party-fee-pricing/${id}/revision`,
+      {
+        method: "POST",
         headers: headers(config.token),
         body: JSON.stringify(body),
       },

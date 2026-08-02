@@ -51,6 +51,7 @@ function mapEnvelope(dto: KeyEnvelopeDto): KeyEnvelopeRow {
     status: dto.status,
     feeGenerated: dto.feeGenerated,
     feeAmountSar: dto.feeAmountSar,
+    revenueEntitlementAtUtc: dto.revenueEntitlementAtUtc ?? null,
     createdByName: dto.createdByName,
     createdAtUtc: dto.createdAtUtc,
     operationsTaskId: dto.operationsTaskId ?? null,

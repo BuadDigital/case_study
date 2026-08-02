@@ -3,6 +3,7 @@
  */
 import { normalizeFieldErrors } from "./field-errors";
 import { getApiBase } from "./index";
+import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
 async function readError(res: Response): Promise<string> {
@@ -48,7 +49,8 @@ export type InspectorFeeBillingStatus =
   | "disb-req"
   | "disbursed"
   | "returned"
-  | "inquiry";
+  | "inquiry"
+  | "suspended";
 
 export type InspectorFeeWorkStatus = "in_progress" | "done" | "cancelled";
 
@@ -63,7 +65,9 @@ export type InspectorFeeAction =
   | "create-disbursement-request"
   | "disburse"
   | "return-to-supervisor"
-  | "inquiry-to-office";
+  | "inquiry-to-office"
+  | "suspend"
+  | "lift-suspension";
 
 export type InspectorFeeRowDto = {
   workflowTaskId: string;
@@ -72,6 +76,7 @@ export type InspectorFeeRowDto = {
   poNumber: string;
   assigneeId: string | null;
   taskKind: string;
+  supervisingDepartment: "case_study" | "valuation" | "finance_dept" | "external";
   inspectorType:
     | "متعاون فرد"
     | "متعاون شركة"
@@ -97,6 +102,7 @@ export type InspectorFeeRowDto = {
   accruedAtUtc: string | null;
   workSubmittedAtUtc: string | null;
   poReceivedAtUtc: string | null;
+  suspensionReason: string | null;
   isEditable: boolean;
   canSubmitToSupervisor: boolean;
   canApproveToFinance: boolean;
@@ -104,6 +110,8 @@ export type InspectorFeeRowDto = {
   canOfficeApproveDiscount: boolean;
   canOfficeDispute: boolean;
   canResolveDispute: boolean;
+  canSuspend: boolean;
+  canLiftSuspension: boolean;
 };
 
 export type InspectorFeesSummaryDto = {
@@ -112,6 +120,7 @@ export type InspectorFeesSummaryDto = {
   atFinanceSar: number;
   disbReqSar: number;
   disbursedSar: number;
+  suspendedSar: number;
   totalDiscountsSar: number;
   rows: InspectorFeeRowDto[];
 };
@@ -190,6 +199,9 @@ function normalizeRow(raw: Record<string, unknown>): InspectorFeeRowDto {
     poNumber: String(raw.poNumber ?? raw.PoNumber ?? ""),
     assigneeId: (raw.assigneeId ?? raw.AssigneeId ?? null) as string | null,
     taskKind: String(raw.taskKind ?? raw.TaskKind ?? ""),
+    supervisingDepartment: (raw.supervisingDepartment ??
+      raw.SupervisingDepartment ??
+      "case_study") as InspectorFeeRowDto["supervisingDepartment"],
     inspectorType: String(raw.inspectorType ?? raw.InspectorType ?? "موظف"),
     agreedFeeSar: Number(raw.agreedFeeSar ?? raw.AgreedFeeSar ?? 0),
     supervisorDiscountSar: Number(
@@ -253,6 +265,12 @@ function normalizeRow(raw: Record<string, unknown>): InspectorFeeRowDto {
     canResolveDispute: Boolean(
       raw.canResolveDispute ?? raw.CanResolveDispute ?? false,
     ),
+    suspensionReason:
+      (raw.suspensionReason ?? raw.SuspensionReason ?? null) as string | null,
+    canSuspend: Boolean(raw.canSuspend ?? raw.CanSuspend ?? false),
+    canLiftSuspension: Boolean(
+      raw.canLiftSuspension ?? raw.CanLiftSuspension ?? false,
+    ),
   };
 }
 
@@ -264,6 +282,7 @@ function normalizeSummary(raw: Record<string, unknown>): InspectorFeesSummaryDto
     atFinanceSar: Number(raw.atFinanceSar ?? raw.AtFinanceSar ?? 0),
     disbReqSar: Number(raw.disbReqSar ?? raw.DisbReqSar ?? 0),
     disbursedSar: Number(raw.disbursedSar ?? raw.DisbursedSar ?? 0),
+    suspendedSar: Number(raw.suspendedSar ?? raw.SuspendedSar ?? 0),
     totalDiscountsSar: Number(
       raw.totalDiscountsSar ?? raw.TotalDiscountsSar ?? 0,
     ),
@@ -502,6 +521,8 @@ export function inspectorFeeStatusLabel(
       return "مُعاد للتعديل";
     case "inquiry":
       return "استفسار مفتوح";
+    case "suspended":
+      return "موقوف";
     default:
       return "—";
   }
@@ -529,6 +550,8 @@ export function inspectorFeeStatusTone(
     case "returned":
     case "inquiry":
       return "danger";
+    case "suspended":
+      return "warning";
     default:
       return "default";
   }

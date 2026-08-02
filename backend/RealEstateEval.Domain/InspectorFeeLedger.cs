@@ -14,14 +14,30 @@ public class InspectorFeeLedger
     public string? AssigneeId { get; set; }
     /// <summary>متعاون فرد | متعاون شركة | موظف (أو متعاون قديم)</summary>
     public string InspectorType { get; set; } = "موظف";
+    /// <summary>The transaction department whose supervisor owns discount and dispute decisions.</summary>
+    public string SupervisingDepartment { get; set; } = SupervisingDepartments.CaseStudy;
     public decimal AgreedFeeSar { get; set; }
+    /// <summary>
+    /// The <c>PartyFeePricingTable</c> the agreed fee was read from, stamped alongside the amount.
+    /// Null when nothing priced it: an employee's fee is entered by hand. Deliberately not a foreign
+    /// key — pricing lives in another context, and the id has to keep naming its source even in rows
+    /// whose table has since been removed.
+    /// </summary>
+    public Guid? PricingTableId { get; set; }
     public decimal SupervisorDiscountSar { get; set; }
     public string? DiscountReason { get; set; }
     /// <summary>
     /// draft | office-review | disputed | sup-review | at-finance | deferred |
-    /// in-statement | disb-req | disbursed | returned | inquiry
+    /// in-statement | disb-req | disbursed | returned | inquiry | suspended
     /// </summary>
     public string BillingStatus { get; set; } = InspectorFeeBillingStatus.Draft;
+    /// <summary>
+    /// The status the line was withheld from, so lifting a suspension restores it exactly instead of
+    /// promoting a draft straight to finance. Set only while <see cref="BillingStatus"/> is suspended.
+    /// </summary>
+    public string? PreSuspensionStatus { get; set; }
+    /// <summary>Why the supervisor withheld the line. Required to suspend.</summary>
+    public string? SuspensionReason { get; set; }
     public bool ExcludedFromBatch { get; set; }
     public string? ExclusionReason { get; set; }
     /// <summary>supervisor | office — set when status is returned or inquiry.</summary>

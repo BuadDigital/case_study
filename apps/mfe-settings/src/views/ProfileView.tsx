@@ -5,6 +5,7 @@ import { getAuthSession } from "@platform/auth-client";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { Note, Spinner } from "@platform/design-system";
 import { UserProfileContent } from "../components/UserProfileContent";
+import { PushNotificationSettings } from "../components/PushNotificationSettings";
 import { fetchCurrentStaffProfile } from "../lib/users-api";
 
 export function ProfileView() {
@@ -66,7 +67,10 @@ export function ProfileView() {
         ) : error ? (
           <Note tone="danger">{error}</Note>
         ) : user ? (
-          <UserProfileContent user={user} />
+          <>
+            <UserProfileContent user={user} />
+            <PushNotificationSettings />
+          </>
         ) : (
           <Note tone="warn">لا توجد بيانات للعرض.</Note>
         )}

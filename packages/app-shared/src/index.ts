@@ -3,6 +3,17 @@ export { Can, useCapability } from "./components/Can";
 export { useAuth } from "./hooks/useAuth";
 export { ensureFreshAuthSession } from "./auth/ensure-fresh-session";
 export {
+  currentOfflineUserId,
+  evaluateOfflineLease,
+  isBrowserOffline,
+  isOfflineCapableRole,
+  loadQueuedDraftPayload,
+  saveDraftWithOfflineFallback,
+  submitWithOfflineFallback,
+  syncOfflineQueue,
+  uploadAttachmentWithOfflineFallback,
+} from "./offline/offline-write";
+export {
   useAuthSession,
   useValidAuthSession,
 } from "./auth/use-auth-session";
@@ -28,7 +39,6 @@ export {
   shouldShowNotificationToast,
 } from "./notifications/role-notification-policy";
 export { useSyncedNotifications } from "./notifications/useSyncedNotifications";
-export { appendAuditLogEntry, listAuditLogEntries } from "./audit/audit-log-store";
 export { exportRowsToCsv } from "./export/export-csv";
 export * from "./domain/form/field-errors";
 export * from "./prototype/constants";
