@@ -18,7 +18,6 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
         PropertyNameCaseInsensitive = true,
     };
 
-    private const decimal DefaultKeyReceiptFeeSar = 350m;
     private readonly ApplicationDbContext _db;
     private readonly IPropertyAccessHoldService _holds;
     private readonly IKeyEnvelopePeopleResolver _people;
