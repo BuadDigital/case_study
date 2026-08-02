@@ -282,7 +282,7 @@
 | ج٢ | `supervising_department` على البند + تخويل الخصم والحسم بمشرف ذلك القسم — **مُنجزة** |
 | ج٣ | `suspended` كحالة مستقلة عن `ExcludedFromBatch` + استثناؤها من الكشف + بطاقة وبطاقة فلتر — **مُنجزة**: حالة `suspended` بإجراءي `suspend`/`lift-suspension` لمشرف القسم، و`PreSuspensionStatus` يعيد البند لحيث أُوقِف، وخارج الكشف والصرف والمجاميع المالية، وقسم «الموقوفة» في شاشة المشرف |
 | ج٤ | `discount_flags`: وسم الأخصائي ← اعتماد المشرف |
-| ج٥ | مسار الموظف: خصم ⇒ جاهز مباشرة بإبلاغ، وحظر `disputed` عليه بنياناً |
+| ج٥ | مسار الموظف: خصم ⇒ جاهز مباشرة بإبلاغ، وحظر `disputed` عليه بنياناً — **مُنجزة**: خصم المشرف ⇒ `at-finance` + إشعار، وحظر `office-dispute`/`resolve-dispute` على نوع موظف |
 | ج٦ | حوافز الموظف: جدول `flat` يديره المشرف + `incentive_suspensions` — **مُنجزة**: `PricingKind`/`ManagedBy`/`FlatAmountSar`، استحقاق من الجدول المُسند عند `HasCompensation`، و`IncentiveSuspensions` يوقف البنود عبر حالة ج٣ `suspended` |
 | ج٧ | المراجع الحكومي بنمطين + حقل مبلغ الزيارة عند **إنشاء** مهمة `court_visit` (٣ ملفات) |
 | ج٨ | بند لكل صك: فهرس فريد على `(transaction, deed, user)` + تفكيك مهام مستوى الـ PO |
