@@ -330,6 +330,10 @@ export {
   activatePartyFeePricing,
   setPartyFeePricingAssignments,
   deletePartyFeePricing,
+  listDiscountFlags,
+  createDiscountFlag,
+  approveDiscountFlag,
+  rejectDiscountFlag,
   financialApiEnabled,
   type FinancialCostRowDto,
   type FinancialRevenueRowDto,
@@ -340,6 +344,9 @@ export {
   type PartyFeePricingCategory,
   type CreatePartyFeePricingTableRequest,
   type SetPartyFeePricingAssignmentsRequest,
+  type DiscountFlagDto,
+  type CreateDiscountFlagRequest,
+  type ResolveDiscountFlagRequest,
 } from "./financial";
 
 export {
