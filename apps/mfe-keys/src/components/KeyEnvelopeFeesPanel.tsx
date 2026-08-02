@@ -242,10 +242,17 @@ export function KeyEnvelopeFeesPanel({
                   const priced = !!row.feeAmountSar;
                   return (
                     <li key={`m-${row.envelopeId}`}>
-                      <button
-                        type="button"
+                      <div
+                        role="button"
+                        tabIndex={0}
                         className="flex w-full cursor-pointer flex-col gap-2.5 rounded-[12px] border border-border bg-surface px-3.5 py-3 text-start shadow-card transition-colors active:bg-row-hover"
                         onClick={() => onOpenEnvelope(row.envelopeId)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            onOpenEnvelope(row.envelopeId);
+                          }
+                        }}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
@@ -303,7 +310,7 @@ export function KeyEnvelopeFeesPanel({
                             </button>
                           ) : null}
                         </div>
-                      </button>
+                      </div>
                     </li>
                   );
                 })}
