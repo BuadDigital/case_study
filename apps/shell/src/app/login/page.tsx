@@ -494,9 +494,12 @@ export default function LoginPage() {
                   >
                     {isEmailMode ? "البريد الإلكتروني" : "رقم الجوال"}
                   </label>
-                  <div className="relative flex items-center">
+                  <div className="relative flex items-center" dir="ltr">
                     {!isEmailMode ? (
-                      <span className="pointer-events-none absolute inset-y-0 start-0 flex items-center gap-1.5 border-e border-[#ddd8cc] px-[13px] text-sm font-bold tracking-[0.02em] text-text-2">
+                      <span
+                        dir="ltr"
+                        className="pointer-events-none absolute inset-y-0 left-0 flex items-center border-r border-[#ddd8cc] px-[13px] text-sm font-bold tracking-[0.02em] text-text-2"
+                      >
                         +966
                       </span>
                     ) : null}
@@ -516,7 +519,7 @@ export default function LoginPage() {
                       className={cn(
                         fieldInput,
                         "text-left",
-                        !isEmailMode && "ps-[72px]",
+                        !isEmailMode && "pl-[72px]",
                         mobileBad && fieldInputBad,
                       )}
                     />
