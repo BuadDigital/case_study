@@ -7,6 +7,21 @@ namespace RealEstateEval.Domain;
 /// </summary>
 public class InspectorFeeLedger
 {
+    /// <summary>Independent ledger identity (ج٨). Accrual still keys lookups by <see cref="WorkflowTaskId"/>.</summary>
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    /// <summary>Work-order id for the transaction. Unique with <see cref="DeedId"/> and <see cref="UserId"/>.</summary>
+    public Guid TransactionId { get; set; }
+
+    /// <summary>
+    /// Deed/property id. Until PO-level tasks are split, a task without <see cref="PropertyId"/>
+    /// uses <see cref="WorkflowTaskId"/> as a stand-in so the unique triple still holds.
+    /// </summary>
+    public Guid DeedId { get; set; }
+
+    /// <summary>Fee owner — same value as <see cref="AssigneeId"/> when present.</summary>
+    public string UserId { get; set; } = "";
+
     public Guid WorkflowTaskId { get; set; }
     public string PoNumber { get; set; } = "";
     public Guid? PropertyId { get; set; }

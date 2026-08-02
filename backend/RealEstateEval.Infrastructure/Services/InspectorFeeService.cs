@@ -47,6 +47,7 @@ public class InspectorFeeService : IInspectorFeeService
         var existingSet = existing.ToHashSet();
 
         var now = DateTime.UtcNow;
+        var pendingTriples = new HashSet<(Guid TransactionId, Guid DeedId, string UserId)>();
         foreach (var task in feeTasks)
         {
             if (existingSet.Contains(task.Id)) continue;
@@ -76,6 +77,17 @@ public class InspectorFeeService : IInspectorFeeService
             if (!agreedFee.IsResolved) continue;
 
             var po = task.PoNumber.Trim();
+            var identity = await ResolveLedgerIdentityAsync(task, cancellationToken);
+            // ج٨: same (transaction, deed, user) must not open a second line — even via another task.
+            var tripleKey = (identity.TransactionId, identity.DeedId, identity.UserId);
+            if (!pendingTriples.Add(tripleKey)) continue;
+            var tripleExists = await _db.InspectorFeeLedgers.AnyAsync(
+                x => x.TransactionId == identity.TransactionId
+                    && x.DeedId == identity.DeedId
+                    && x.UserId == identity.UserId,
+                cancellationToken);
+            if (tripleExists) continue;
+
             var billingStatus = InspectorFeeBillingStatus.Draft;
             string? preSuspension = null;
             string? suspensionReason = null;
@@ -98,6 +110,10 @@ public class InspectorFeeService : IInspectorFeeService
 
             _db.InspectorFeeLedgers.Add(new InspectorFeeLedger
             {
+                Id = Guid.NewGuid(),
+                TransactionId = identity.TransactionId,
+                DeedId = identity.DeedId,
+                UserId = identity.UserId,
                 WorkflowTaskId = task.Id,
                 PoNumber = po,
                 PropertyId = task.PropertyId,
@@ -147,22 +163,17 @@ public class InspectorFeeService : IInspectorFeeService
         if (task.Status != WorkflowTaskStatus.Completed)
             return (null, "مهمة الرفع المساحي غير مكتملة.");
 
-        var ledger = await _db.InspectorFeeLedgers
-            .FirstOrDefaultAsync(x => x.WorkflowTaskId == workflowTaskId, cancellationToken);
+        var identity = await ResolveLedgerIdentityAsync(task, cancellationToken);
+        var ledger = await _db.InspectorFeeLedgers.FirstOrDefaultAsync(x => x.WorkflowTaskId == workflowTaskId, cancellationToken);
+        ledger ??= await _db.InspectorFeeLedgers.FirstOrDefaultAsync(x => x.TransactionId == identity.TransactionId&& x.DeedId == identity.DeedId&& x.UserId == identity.UserId,cancellationToken);
 
         // Idempotent: already accrued — do not create a second fee on re-accept after correction.
         if (ledger is not null && ledger.AccruedAtUtc is not null && ledger.AgreedFeeSar > 0m)
-            return (await GetByWorkflowTaskIdAsync(workflowTaskId, cancellationToken), null);
+            return (await GetByWorkflowTaskIdAsync(ledger.WorkflowTaskId, cancellationToken), null);
 
-        var partyType = ledger?.InspectorType
-            ?? await ResolvePartyTypeAsync(task, cancellationToken);
+        var partyType = ledger?.InspectorType?? await ResolvePartyTypeAsync(task, cancellationToken);
         var areaM2 = await ResolvePropertyAreaM2Async(task, cancellationToken);
-        var resolvedFee = await _pricing.ResolveDefaultFeeAsync(
-            task.Kind,
-            partyType,
-            areaM2,
-            ledger?.AssigneeId ?? task.AssigneeId,
-            cancellationToken);
+        var resolvedFee = await _pricing.ResolveDefaultFeeAsync(task.Kind,partyType,areaM2,ledger?.AssigneeId ?? task.AssigneeId,cancellationToken);
 
         if (!resolvedFee.IsResolved)
             return (null, PricingErrors.FeeUnresolved);
@@ -174,6 +185,10 @@ public class InspectorFeeService : IInspectorFeeService
         {
             ledger = new InspectorFeeLedger
             {
+                Id = Guid.NewGuid(),
+                TransactionId = identity.TransactionId,
+                DeedId = identity.DeedId,
+                UserId = identity.UserId,
                 WorkflowTaskId = task.Id,
                 PoNumber = task.PoNumber.Trim(),
                 PropertyId = task.PropertyId,
@@ -200,6 +215,9 @@ public class InspectorFeeService : IInspectorFeeService
         }
         else
         {
+            ledger.TransactionId = identity.TransactionId;
+            ledger.DeedId = identity.DeedId;
+            ledger.UserId = identity.UserId;
             ledger.AgreedFeeSar = agreedFee;
             ledger.PricingTableId = resolvedFee.PricingTableId;
             ledger.InspectorType = partyType;
@@ -282,8 +300,7 @@ public class InspectorFeeService : IInspectorFeeService
         // nothing rather than every queue.
         if (supervisingDepartment is not null)
         {
-            var normalizedDepartment =
-                SupervisingDepartments.NormalizeProfileValue(supervisingDepartment);
+            var normalizedDepartment = SupervisingDepartments.NormalizeProfileValue(supervisingDepartment);
             query = normalizedDepartment is null
                 ? query.Where(_ => false)
                 : query.Where(x => x.SupervisingDepartment == normalizedDepartment);
@@ -1138,6 +1155,38 @@ public class InspectorFeeService : IInspectorFeeService
     /// <summary>
     /// Decision 3: task property → sole property in PO → max area among PO properties.
     /// </summary>
+    /// <summary>
+    /// ج٨ identity: one line per (transaction, deed, user). Until PO tasks are split per deed,
+    /// a missing property uses the workflow task id as the deed stand-in.
+    /// </summary>
+    private async Task<(Guid TransactionId, Guid DeedId, string UserId)> ResolveLedgerIdentityAsync(
+        WorkflowTask task,
+        CancellationToken cancellationToken)
+    {
+        var po = task.PoNumber.Trim();
+        var workOrderId = string.IsNullOrEmpty(po)
+            ? null
+            : await _db.WorkOrders.AsNoTracking()
+                .Where(w => w.PoNumber == po)
+                .Select(w => (Guid?)w.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+
+        // Orphan PO strings still need a stable transaction key for the unique index.
+        var transactionId = workOrderId ?? StableGuidFromKey($"tx:{po}");
+        var deedId = task.PropertyId ?? task.Id;
+        var userId = task.AssigneeId?.Trim() ?? "";
+        return (transactionId, deedId, userId);
+    }
+
+    private static Guid StableGuidFromKey(string key)
+    {
+        var hash = System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(key));
+        Span<byte> bytes = stackalloc byte[16];
+        hash.AsSpan(0, 16).CopyTo(bytes);
+        return new Guid(bytes);
+    }
+
     private async Task<decimal?> ResolvePropertyAreaM2Async(
         WorkflowTask task,
         CancellationToken cancellationToken)
