@@ -72,6 +72,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
     public DbSet<PartyFeePricingTable> PartyFeePricingTables => Set<PartyFeePricingTable>();
     public DbSet<PartyFeePricingTier> PartyFeePricingTiers => Set<PartyFeePricingTier>();
     public DbSet<PartyFeePricingAssignment> PartyFeePricingAssignments => Set<PartyFeePricingAssignment>();
+    public DbSet<IncentiveSuspension> IncentiveSuspensions => Set<IncentiveSuspension>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<ProcessedIntegrationEvent> ProcessedIntegrationEvents =>
         Set<ProcessedIntegrationEvent>();
@@ -643,20 +644,30 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
             e.HasKey(x => x.Id);
             e.Property(x => x.Name).HasMaxLength(128).IsRequired();
             e.Property(x => x.Category).HasMaxLength(32).IsRequired();
+            e.Property(x => x.PricingKind).HasMaxLength(32).IsRequired();
+            e.Property(x => x.ManagedBy).HasMaxLength(32).IsRequired();
             e.Property(x => x.GovernmentReviewFeeSar).HasPrecision(12, 2);
             e.Property(x => x.FieldInspectorIndividualFeeSar).HasPrecision(12, 2);
             e.Property(x => x.FieldInspectorOrganizationFeeSar).HasPrecision(12, 2);
-            e.HasIndex(x => x.Category)
-                .IsUnique()
-                .HasFilter("\"IsActive\" = true");
-            e.HasMany(x => x.AreaTiers)
-                .WithOne(x => x.Table)
-                .HasForeignKey(x => x.TableId)
-                .OnDelete(DeleteBehavior.Cascade);
-            e.HasMany(x => x.Assignments)
-                .WithOne(x => x.Table)
-                .HasForeignKey(x => x.TableId)
-                .OnDelete(DeleteBehavior.Cascade);
+            e.Property(x => x.FlatAmountSar).HasPrecision(12, 2);
+            e.HasIndex(x => x.Category).IsUnique().HasFilter("\"IsActive\" = true");
+            e.HasIndex(x => x.PricingKind);
+            e.HasMany(x => x.AreaTiers).WithOne(x => x.Table).HasForeignKey(x => x.TableId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Assignments).WithOne(x => x.Table).HasForeignKey(x => x.TableId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<IncentiveSuspension>(e =>
+        {
+            e.ToTable("IncentiveSuspensions", DatabaseSchemas.Financial);
+            e.HasKey(x => x.Id);
+            e.Property(x => x.UserId).HasMaxLength(450).IsRequired();
+            e.Property(x => x.AssigneeId).HasMaxLength(128).IsRequired();
+            e.Property(x => x.TransactionKey).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Reason).HasMaxLength(2000).IsRequired();
+            e.Property(x => x.CreatedByUserId).HasMaxLength(450).IsRequired();
+            e.Property(x => x.LiftedByUserId).HasMaxLength(450);
+            e.HasIndex(x => new { x.AssigneeId, x.TransactionKey });
+            e.HasIndex(x => new { x.AssigneeId, x.TransactionKey }).IsUnique().HasFilter("\"LiftedAtUtc\" IS NULL").HasDatabaseName("IX_IncentiveSuspensions_ActiveAssigneeTransaction");
         });
 
         builder.Entity<PartyFeePricingTier>(e =>

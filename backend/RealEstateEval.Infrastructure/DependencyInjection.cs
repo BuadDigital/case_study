@@ -251,6 +251,7 @@ public static class DependencyInjection
         services.AddScoped<IFieldInspectionWorkspaceService, FieldInspectionWorkspaceService>();
         services.AddScoped<IInspectorFeeService, InspectorFeeService>();
         services.AddScoped<IPartyFeePricingService, PartyFeePricingService>();
+        services.AddScoped<IIncentiveSuspensionService, IncentiveSuspensionService>();
         services.AddScoped<IPoEnfazBillingService, PoEnfazBillingService>();
         services.AddScoped<IEngineeringBillingStatementService, EngineeringBillingStatementService>();
         services.AddScoped<IFieldInspectionAttachmentVerifier, FieldInspectionAttachmentVerifier>();
@@ -310,6 +311,7 @@ public static class DependencyInjection
         services.AddNotificationInfrastructure(configuration, environment);
         services.AddScoped<IInspectorFeeService, InspectorFeeService>();
         services.AddScoped<IPartyFeePricingService, PartyFeePricingService>();
+        services.AddScoped<IIncentiveSuspensionService, IncentiveSuspensionService>();
         services.AddScoped<IPoEnfazBillingService, PoEnfazBillingService>();
         services.AddScoped<IEngineeringBillingStatementService, EngineeringBillingStatementService>();
         services.AddScoped<IPropertyTimelineService, PropertyTimelineService>();
@@ -333,6 +335,7 @@ public static class DependencyInjection
     {
         services.AddScoped<IFinancialReportService, FinancialReportService>();
         services.AddScoped<IPartyFeePricingService, PartyFeePricingService>();
+        services.AddScoped<IIncentiveSuspensionService, IncentiveSuspensionService>();
         return services;
     }
 

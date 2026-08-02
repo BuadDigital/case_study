@@ -10,6 +10,12 @@ public class PartyFeePricingTable
     /// <see cref="RealEstateEval.Application.PartyFeePricingCategories"/>
     public string Category { get; set; } = "";
 
+    /// <summary>tiered | party-rates | flat — see <c>PartyFeePricingKinds</c>.</summary>
+    public string PricingKind { get; set; } = "party-rates";
+
+    /// <summary>system-admin | supervisor — who may edit the rates.</summary>
+    public string ManagedBy { get; set; } = "system-admin";
+
     /// <summary>Category default used when the assignee has no explicit assignment.</summary>
     public bool IsActive { get; set; }
 
@@ -22,6 +28,9 @@ public class PartyFeePricingTable
 
     public decimal FieldInspectorIndividualFeeSar { get; set; }
     public decimal FieldInspectorOrganizationFeeSar { get; set; }
+
+    /// <summary>Single incentive amount when <see cref="PricingKind"/> is flat.</summary>
+    public decimal FlatAmountSar { get; set; }
 
     public DateTime UpdatedAtUtc { get; set; }
 

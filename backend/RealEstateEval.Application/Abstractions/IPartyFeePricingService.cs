@@ -55,17 +55,13 @@ public interface IPartyFeePricingService
     /// Replaces assignees for this table. Assignees are removed from other tables
     /// in the same category. Empty list clears all assignments on this table.
     /// </summary>
-    Task<PartyFeePricingDto> SetAssignmentsAsync(
-        Guid tableId,
-        IReadOnlyList<string> assigneeIds,
-        CancellationToken cancellationToken = default,
-        string actorId = "system");
+    Task<PartyFeePricingDto> SetAssignmentsAsync(Guid tableId,IReadOnlyList<string> assigneeIds,CancellationToken cancellationToken = default,string actorId = "system");
 
     /// <summary>
     /// Resolves the default agreed fee for a new ledger, with the table that produced it.
     /// Uses the assignee's assigned table when present; otherwise the category default.
     /// Engineering survey is unresolved when area is missing.
-    /// Employees (field inspector) are unresolved (manual entry).
+    /// Employees resolve only from a flat incentive table (usually via assignment).
     /// </summary>
     Task<ResolvedPartyFee> ResolveDefaultFeeAsync(
         WorkflowTaskKind taskKind,
