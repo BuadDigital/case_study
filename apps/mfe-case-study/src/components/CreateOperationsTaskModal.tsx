@@ -2,11 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Note, Spinner, cn } from "@platform/design-system";
-import type {
-  CreateOperationsTaskRequest,
-  OperationsTaskLetterRowDto,
+import {
+  fetchPartyFeePricingById,
+  fetchPartyFeePricingTables,
+  type CreateOperationsTaskRequest,
+  type OperationsTaskLetterRowDto,
 } from "@platform/api-client";
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
+import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 import { AppModal } from "./ui/AppModal";
 import {
   getFieldInspectors,
@@ -240,6 +243,7 @@ export function CreateOperationsTaskModal({
   const [selectedDeeds, setSelectedDeeds] = useState<string[]>([]);
   const [assigneeId, setAssigneeId] = useState("");
   const [assigneeName, setAssigneeName] = useState("");
+  const [visitFeeAmountSar, setVisitFeeAmountSar] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [dueTime, setDueTime] = useState("12:00");
   const [dueChip, setDueChip] = useState<"today" | "tomorrow" | "after" | null>(
@@ -252,6 +256,20 @@ export function CreateOperationsTaskModal({
     () => assigneesForType(type, staffUsers),
     [type, staffUsers],
   );
+
+  const selectedAssigneeUser = useMemo(
+    () =>
+      staffUsers.find(
+        (u) => u.distributionAssigneeId?.trim() === assigneeId.trim(),
+      ),
+    [staffUsers, assigneeId],
+  );
+
+  /** Cooperator reviewers need a create-time visit fee; employees do not (ج٧). */
+  const needsVisitFee =
+    type === "court_visit" &&
+    Boolean(assigneeId) &&
+    selectedAssigneeUser?.type !== "internal";
 
   const poOptions = useMemo(() => {
     if (type === "court_visit") {
@@ -332,6 +350,34 @@ export function CreateOperationsTaskModal({
     setAssigneeName(first.name);
   }, [assignees, assigneeId]);
 
+  useEffect(() => {
+    if (!needsVisitFee) {
+      setVisitFeeAmountSar("");
+      return;
+    }
+
+    let cancelled = false;
+    const config = prototypeModulesApiConfig();
+    if (!config) return;
+
+    void (async () => {
+      const tables = await fetchPartyFeePricingTables(config, "government-review");
+      if (!tables.ok || cancelled) return;
+      const active = tables.data.find((t) => t.isActive) ?? tables.data[0];
+      if (!active) return;
+      const detail = await fetchPartyFeePricingById(config, active.id);
+      if (!detail.ok || cancelled) return;
+      const amount = detail.data.governmentReviewFeeSar;
+      if (typeof amount === "number" && amount > 0) {
+        setVisitFeeAmountSar(String(amount));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [needsVisitFee, assigneeId]);
+
   const toggleDeed = (value: string) => {
     setSelectedDeeds((prev) =>
       prev.includes(value) ? prev.filter((d) => d !== value) : [...prev, value],
@@ -353,6 +399,17 @@ export function CreateOperationsTaskModal({
     if (!assigneeId.trim()) {
       setError("المنفّذ مطلوب");
       return;
+    }
+
+    let parsedVisitFee: number | undefined;
+    if (needsVisitFee) {
+      const raw = visitFeeAmountSar.trim();
+      const amount = Number(raw.replace(/,/g, ""));
+      if (!raw || !Number.isFinite(amount) || amount <= 0) {
+        setError("مبلغ أتعاب الزيارة مطلوب للمتعاون");
+        return;
+      }
+      parsedVisitFee = amount;
     }
 
     let deedsPayload: string[] | undefined;
@@ -429,6 +486,7 @@ export function CreateOperationsTaskModal({
       priority,
       dueAtUtc: dueAt.toISOString(),
       letterRows,
+      visitFeeAmountSar: parsedVisitFee,
     };
 
     setBusy(true);
@@ -539,6 +597,22 @@ export function CreateOperationsTaskModal({
               </span>
             ) : null}
           </div>
+
+          {needsVisitFee ? (
+            <div className={opsFld}>
+              <label className={opsTfLblInFld}>أتعاب الزيارة (ر.س) *</label>
+              <input
+                className={opsFldControl}
+                type="number"
+                min={0}
+                step={1}
+                inputMode="decimal"
+                value={visitFeeAmountSar}
+                onChange={(e) => setVisitFeeAmountSar(e.target.value)}
+                placeholder="المبلغ الافتراضي من جدول التسعير قابل للتعديل"
+              />
+            </div>
+          ) : null}
 
           <div className={opsFldFull}>
             <label className={opsTfLblInFld}>الوصف</label>

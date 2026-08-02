@@ -1,15 +1,44 @@
+using RealEstateEval.Domain;
+
 namespace RealEstateEval.Application.Rules;
 
 /// <summary>
-/// Government-review party-task fees (legacy workflow) and ops court-visit pricing:
-/// classification is always «متعاون فرد».
-/// The visit fee comes only from the active <c>PartyFeePricingTable.GovernmentReviewFeeSar</c>
-/// (أتعاب الزيارة); key-receipt uses <c>KeyReceiptFeeSar</c> separately. Neither has a fallback —
-/// an unpriced table must stop the charge rather than default to one.
-/// Legacy <c>government-review</c> workflow tasks still create <c>InspectorFeeLedger</c> rows for CDO testing;
-/// the new ops path stamps <c>CourtVisitFeeCharge</c> on court_visit complete instead.
+/// Government-review party-task fees and ops court-visit pricing.
+/// Reviewers are either employees (no visit fee — incentives via ج٦) or individual
+/// cooperators (specialist sets the visit amount at create; stamped on complete).
 /// </summary>
 public static class GovernmentReviewFeeRules
 {
+    /// <summary>Cooperator individual — the party type priced by <c>GovernmentReviewFeeSar</c>.</summary>
     public const string PartyType = InspectorFeeRules.TypeCooperatorIndividual;
+
+    public static string ResolveReviewerType(
+        ContractType? contractType,
+        ProcProviderKind? providerKind,
+        string? employmentType,
+        string? assigneeId)
+    {
+        if (contractType is not null || providerKind is not null || !string.IsNullOrWhiteSpace(employmentType))
+        {
+            if (contractType == ContractType.ServiceProvider
+                || providerKind == ProcProviderKind.Organization)
+            {
+                return InspectorFeeRules.TypeCooperatorOrganization;
+            }
+
+            if (contractType == ContractType.Freelance
+                || providerKind == ProcProviderKind.Individual
+                || employmentType?.Contains("متعاون", StringComparison.Ordinal) == true)
+            {
+                return InspectorFeeRules.TypeCooperatorIndividual;
+            }
+
+            return InspectorFeeRules.TypeEmployee;
+        }
+
+        return InspectorFeeRules.ResolveInspectorType(assigneeId);
+    }
+
+    public static bool RequiresVisitFee(string? reviewerType) =>
+        InspectorFeeRules.IsCooperator(reviewerType);
 }

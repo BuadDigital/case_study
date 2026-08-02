@@ -110,6 +110,8 @@ export type CreateOperationsTaskRequest = {
   priority?: string;
   dueAtUtc?: string;
   letterRows?: OperationsTaskLetterRowDto[];
+  /** Cooperator court_visit only — ignored / rejected for employee reviewers. */
+  visitFeeAmountSar?: number | null;
 };
 
 export type PatchOperationsTaskRequest = {

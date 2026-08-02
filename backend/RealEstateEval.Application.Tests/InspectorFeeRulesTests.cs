@@ -126,9 +126,32 @@ public class InspectorFeeRulesTests
     }
 
     [Fact]
-    public void Government_review_is_always_an_individual_cooperator()
+    public void Government_review_table_party_type_is_individual_cooperator()
     {
         Assert.Equal(InspectorFeeRules.TypeCooperatorIndividual, GovernmentReviewFeeRules.PartyType);
+    }
+
+    [Fact]
+    public void Government_reviewer_type_follows_the_staff_contract()
+    {
+        Assert.Equal(
+            InspectorFeeRules.TypeEmployee,
+            GovernmentReviewFeeRules.ResolveReviewerType(
+                ContractType.Internal,
+                providerKind: null,
+                employmentType: null,
+                "gov-1"));
+        Assert.Equal(
+            InspectorFeeRules.TypeCooperatorIndividual,
+            GovernmentReviewFeeRules.ResolveReviewerType(
+                ContractType.Freelance,
+                providerKind: null,
+                employmentType: null,
+                "gov-2"));
+        Assert.True(GovernmentReviewFeeRules.RequiresVisitFee(
+            InspectorFeeRules.TypeCooperatorIndividual));
+        Assert.False(GovernmentReviewFeeRules.RequiresVisitFee(
+            InspectorFeeRules.TypeEmployee));
     }
 
     /// <summary>

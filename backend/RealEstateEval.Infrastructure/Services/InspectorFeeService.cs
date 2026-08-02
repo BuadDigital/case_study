@@ -1292,12 +1292,9 @@ public class InspectorFeeService : IInspectorFeeService
         CancellationToken cancellationToken)
     {
         // Product rules: engineering office is always an external entity;
-        // government cooperator classification is always «متعاون فرد».
+        // government reviewers follow employee vs cooperator from the staff profile (ج٧).
         if (task.Kind == WorkflowTaskKind.EngineeringSurvey)
             return EngineeringSurveyFeeRules.OfficePartyType;
-
-        if (task.Kind == WorkflowTaskKind.GovernmentReview)
-            return GovernmentReviewFeeRules.PartyType;
 
         if (string.IsNullOrWhiteSpace(task.AssigneeId))
             return InspectorFeeRules.TypeEmployee;
@@ -1307,6 +1304,15 @@ public class InspectorFeeService : IInspectorFeeService
             .Include(p => p.HrEmployee)
             .Include(p => p.ProcProvider)
             .FirstOrDefaultAsync(p => p.DistributionAssigneeId == aid, cancellationToken);
+
+        if (task.Kind == WorkflowTaskKind.GovernmentReview)
+        {
+            return GovernmentReviewFeeRules.ResolveReviewerType(
+                profile?.ContractType,
+                profile?.ProcProvider?.ProviderKind,
+                profile?.HrEmployee?.EmploymentType,
+                aid);
+        }
 
         if (profile is not null)
         {

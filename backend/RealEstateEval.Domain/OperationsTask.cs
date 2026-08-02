@@ -42,6 +42,13 @@ public class OperationsTask
     public string? RemindersJson { get; private set; }
     /// <summary>JSON court-visit close outcome (kind, statement, contacts, …).</summary>
     public string? CourtVisitResultJson { get; private set; }
+    /// <summary>
+    /// Agreed visit fee for a cooperator court_visit, set at create. Null for employees
+    /// (no visit fee) and for non-court tasks.
+    /// </summary>
+    public decimal? AgreedVisitFeeSar { get; private set; }
+    /// <summary>Pricing table that supplied the create-time default, when applicable.</summary>
+    public Guid? VisitFeePricingTableId { get; private set; }
     /// <summary>Required when status becomes paused.</summary>
     public string? PauseReason { get; private set; }
     /// <summary>UTC when the task was last paused.</summary>
@@ -81,7 +88,9 @@ public class OperationsTask
         string? createdByName = null,
         string? reference = null,
         string? letterRowsJson = null,
-        string? commentsJson = null) => new()
+        string? commentsJson = null,
+        decimal? agreedVisitFeeSar = null,
+        Guid? visitFeePricingTableId = null) => new()
         {
             Id = id,
             DisplayId = displayId,
@@ -103,6 +112,8 @@ public class OperationsTask
             Reference = reference,
             LetterRowsJson = letterRowsJson,
             CommentsJson = commentsJson,
+            AgreedVisitFeeSar = agreedVisitFeeSar,
+            VisitFeePricingTableId = visitFeePricingTableId,
         };
 
     /// <summary>
