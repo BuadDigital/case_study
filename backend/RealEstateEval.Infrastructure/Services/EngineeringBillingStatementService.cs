@@ -14,7 +14,14 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
     private const int MaxListRows = 500;
     private const string RefDept = "FN";
     private const string RefType = "CS";
-    private const WorkflowTaskKind EngSurveyKind = WorkflowTaskKind.EngineeringSurvey;
+
+    /// <summary>ج٩ — one statement path for all party fee kinds that accrue on InspectorFeeLedger.</summary>
+    private static readonly HashSet<WorkflowTaskKind> StatementKinds =
+    [
+        WorkflowTaskKind.FieldInspection,
+        WorkflowTaskKind.GovernmentReview,
+        WorkflowTaskKind.EngineeringSurvey,
+    ];
 
     private readonly ApplicationDbContext _db;
     private readonly INotificationService _notifications;
@@ -40,7 +47,7 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
         var ledgers = await (
             from ledger in _db.InspectorFeeLedgers.AsNoTracking()
             join task in _db.WorkflowTasks.AsNoTracking() on ledger.WorkflowTaskId equals task.Id
-            where task.Kind == EngSurveyKind
+            where StatementKinds.Contains(task.Kind)
                 && !ledger.ExcludedFromBatch
                 && (ledger.BillingStatus == InspectorFeeBillingStatus.AtFinance
                     || ledger.BillingStatus == InspectorFeeBillingStatus.Deferred)
@@ -140,18 +147,29 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
             };
         }
 
-        var engTaskIds = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t => taskIds.Contains(t.Id) && t.Kind == EngSurveyKind)
-            .Select(t => t.Id)
+        var taskKinds = await _db.WorkflowTasks.AsNoTracking()
+            .Where(t => taskIds.Contains(t.Id))
+            .Select(t => new { t.Id, t.Kind })
             .ToListAsync(cancellationToken);
 
-        if (engTaskIds.Count != taskIds.Count)
+        if (taskKinds.Count != taskIds.Count
+            || taskKinds.Any(t => !StatementKinds.Contains(t.Kind)))
         {
             return new CreateEngBillingStatementResult
             {
-                Error = "كشف الفوترة للمكتب الهندسي يقبل بنود الرفع المساحي فقط.",
+                Error = "كشف الفوترة يقبل بنود المعاينة والمراجع والرفع المساحي فقط.",
             };
         }
+
+        if (taskKinds.Select(t => t.Kind).Distinct().Count() != 1)
+        {
+            return new CreateEngBillingStatementResult
+            {
+                Error = "يجب أن تكون كل بنود الكشف من نفس نوع المهمة.",
+            };
+        }
+
+        var statementKind = taskKinds[0].Kind;
 
         var assignees = ledgers
             .Select(l => l.AssigneeId?.Trim() ?? "")
@@ -163,7 +181,7 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
         {
             return new CreateEngBillingStatementResult
             {
-                Error = "يجب أن تكون كل بنود الكشف لنفس المكتب الهندسي.",
+                Error = "يجب أن تكون كل بنود الكشف لنفس الطرف.",
             };
         }
 
@@ -264,19 +282,20 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
             var unselectedIds = unselected.Select(l => l.WorkflowTaskId).ToList();
             if (unselectedIds.Count > 0)
             {
-                var engUnselected = (await _db.WorkflowTasks.AsNoTracking()
-                    .Where(t => unselectedIds.Contains(t.Id) && t.Kind == EngSurveyKind)
+                // Defer only same-kind leftovers for this assignee (ج٩).
+                var sameKindUnselected = (await _db.WorkflowTasks.AsNoTracking()
+                    .Where(t => unselectedIds.Contains(t.Id) && t.Kind == statementKind)
                     .Select(t => t.Id)
                     .ToListAsync(cancellationToken)).ToHashSet();
 
                 var propertyIds = unselected
-                    .Where(l => engUnselected.Contains(l.WorkflowTaskId) && l.PropertyId.HasValue)
+                    .Where(l => sameKindUnselected.Contains(l.WorkflowTaskId) && l.PropertyId.HasValue)
                     .Select(l => l.PropertyId!.Value)
                     .Distinct()
                     .ToList();
                 var labels = await LoadPropertyLabelsAsync(propertyIds, cancellationToken);
 
-                foreach (var ledger in unselected.Where(l => engUnselected.Contains(l.WorkflowTaskId)))
+                foreach (var ledger in unselected.Where(l => sameKindUnselected.Contains(l.WorkflowTaskId)))
                 {
                     ledger.BillingStatus = InspectorFeeBillingStatus.Deferred;
                     ledger.UpdatedAtUtc = now;
@@ -450,8 +469,8 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
             .Where(l => taskIds.Contains(l.WorkflowTaskId))
             .ToListAsync(cancellationToken);
 
-        var engIds = (await _db.WorkflowTasks.AsNoTracking()
-            .Where(t => taskIds.Contains(t.Id) && t.Kind == EngSurveyKind)
+        var statementIds = (await _db.WorkflowTasks.AsNoTracking()
+            .Where(t => taskIds.Contains(t.Id) && StatementKinds.Contains(t.Kind))
             .Select(t => t.Id)
             .ToListAsync(cancellationToken)).ToHashSet();
 
@@ -476,12 +495,12 @@ public class EngineeringBillingStatementService : IEngineeringBillingStatementSe
                 continue;
             }
 
-            if (!engIds.Contains(taskId))
+            if (!statementIds.Contains(taskId))
             {
                 failed.Add(new InspectorFeeTransitionErrorDto
                 {
                     WorkflowTaskId = taskId.ToString(),
-                    Error = "الترحيل لمسار المكتب الهندسي فقط.",
+                    Error = "الترحيل لمسار فوترة الأطراف فقط.",
                 });
                 continue;
             }
