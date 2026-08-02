@@ -419,7 +419,7 @@ export function FinanceEngBillingStatements() {
           </div>
         )}
         <QueueTableHint className="mt-3">
-          كشف الفوترة مسار المكتب الهندسي فقط — منفصل عن صرف أتعاب المعاينين.
+          كشف فوترة الأطراف (معاينة · مراجعة · رفع مساحي) — مسار موحّد بدل طلب الصرف القديم.
         </QueueTableHint>
       </section>
 

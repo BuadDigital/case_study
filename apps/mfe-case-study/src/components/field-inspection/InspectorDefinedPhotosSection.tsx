@@ -233,7 +233,7 @@ export function InspectorDefinedPhotosSection({
         draft.taskId,
         ref,
         file,
-        { stampText: inspectorPhotoStampText(workingDraft) },
+        { draft: workingDraft },
       );
       if (!result.ok) {
         showToast(result.error, "error");
@@ -304,7 +304,7 @@ export function InspectorDefinedPhotosSection({
         draft.taskId,
         ref,
         file,
-        { stampText: inspectorPhotoStampText(workingDraft) },
+        { draft: workingDraft },
       );
       if (!result.ok) {
         showToast(result.error, "error");

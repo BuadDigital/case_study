@@ -11,21 +11,36 @@ namespace RealEstateEval.Infrastructure.Services;
 public class InspectorFeeService : IInspectorFeeService
 {
     private const int MaxSummaryRows = 2000;
+    private const string FeeBillingTransitionAction = "FEE_BILLING_TRANSITION";
+    private const string FeeLedgerEntityType = "inspector_fee_ledger";
+
     private readonly ApplicationDbContext _db;
     private readonly INotificationService _notifications;
     private readonly NotificationRecipientResolver _recipients;
     private readonly IPartyFeePricingService _pricing;
+    private readonly IAuditLogWriter _audit;
 
     public InspectorFeeService(
         ApplicationDbContext db,
         INotificationService notifications,
         NotificationRecipientResolver recipients,
         IPartyFeePricingService pricing)
+        : this(db, notifications, recipients, pricing, new AuditLogWriter())
+    {
+    }
+
+    public InspectorFeeService(
+        ApplicationDbContext db,
+        INotificationService notifications,
+        NotificationRecipientResolver recipients,
+        IPartyFeePricingService pricing,
+        IAuditLogWriter audit)
     {
         _db = db;
         _notifications = notifications;
         _recipients = recipients;
         _pricing = pricing;
+        _audit = audit;
     }
 
     public async Task EnsureLedgersForTasksAsync(
@@ -698,109 +713,24 @@ public class InspectorFeeService : IInspectorFeeService
         };
     }
 
-    public async Task<CreateDisbursementBatchResult> CreateDisbursementBatchAsync(
+    public Task<CreateDisbursementBatchResult> CreateDisbursementBatchAsync(
         CreateDisbursementBatchRequest request,
         string actorUserId,
         string? actorAssigneeId,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(actorAssigneeId))
+        // ج٩ / ق٦: new disbursement batches are retired — use party billing statements.
+        return Task.FromResult(new CreateDisbursementBatchResult
         {
-            return new CreateDisbursementBatchResult
-            {
-                Failed =
-                [
-                    new InspectorFeeTransitionErrorDto
-                    {
-                        WorkflowTaskId = "",
-                        Error = "لا يمكن إنشاء أمر صرف بدون هوية الطرف.",
-                    },
-                ],
-            };
-        }
-
-        var batchId = Guid.NewGuid();
-        var now = DateTime.UtcNow;
-        var succeeded = new List<InspectorFeeRowDto>();
-        var failed = new List<InspectorFeeTransitionErrorDto>();
-        decimal total = 0m;
-
-        foreach (var rawId in request.WorkflowTaskIds)
-        {
-            if (!Guid.TryParse(rawId.Trim(), out var taskId))
-            {
-                failed.Add(new InspectorFeeTransitionErrorDto
+            Failed =
+            [
+                new InspectorFeeTransitionErrorDto
                 {
-                    WorkflowTaskId = rawId,
-                    Error = "معرّف مهمة غير صالح.",
-                });
-                continue;
-            }
-
-            var ledger = await _db.InspectorFeeLedgers
-                .FirstOrDefaultAsync(x => x.WorkflowTaskId == taskId, cancellationToken);
-            if (ledger is null)
-            {
-                failed.Add(new InspectorFeeTransitionErrorDto
-                {
-                    WorkflowTaskId = rawId,
-                    Error = "سجل الأتعاب غير موجود.",
-                });
-                continue;
-            }
-
-            var error = await ApplyTransitionAsync(
-                ledger,
-                new InspectorFeeTransitionRequest
-                {
-                    Action = InspectorFeeActions.CreateDisbursementRequest,
+                    WorkflowTaskId = "",
+                    Error = "إنشاء طلب صرف متوقف — البنود الجاهزة تُفوتر عبر كشف الأطراف.",
                 },
-                actorUserId,
-                actorAssigneeId,
-                isOperationsManager: false,
-                isFinancialOfficer: false,
-                cancellationToken,
-                disbursementBatchId: batchId);
-
-            if (error is not null)
-            {
-                failed.Add(new InspectorFeeTransitionErrorDto
-                {
-                    WorkflowTaskId = rawId,
-                    Error = error,
-                });
-                continue;
-            }
-
-            total += InspectorFeeRules.NetFee(ledger.AgreedFeeSar, ledger.SupervisorDiscountSar);
-            var row = await GetByWorkflowTaskIdAsync(taskId, cancellationToken);
-            if (row is not null) succeeded.Add(row);
-        }
-
-        if (succeeded.Count == 0)
-        {
-            return new CreateDisbursementBatchResult { Failed = failed };
-        }
-
-        _db.DisbursementBatches.Add(new DisbursementBatch
-        {
-            Id = batchId,
-            AssigneeId = actorAssigneeId.Trim(),
-            CreatedByUserId = actorUserId,
-            TotalNetSar = total,
-            CreatedAtUtc = now,
+            ],
         });
-
-        await _db.SaveChangesAsync(cancellationToken);
-
-        await NotifyFinanceDisbursementBatchCreatedAsync(succeeded.Count, cancellationToken);
-
-        return new CreateDisbursementBatchResult
-        {
-            DisbursementBatchId = batchId.ToString(),
-            Rows = succeeded,
-            Failed = failed,
-        };
     }
 
     public async Task DeleteForWorkflowTaskIdsAsync(
@@ -827,7 +757,6 @@ public class InspectorFeeService : IInspectorFeeService
         bool isOperationsManager,
         bool isFinancialOfficer,
         CancellationToken cancellationToken,
-        Guid? disbursementBatchId = null,
         string? actorDepartment = null,
         bool canManageAllDepartments = false)
     {
@@ -853,26 +782,21 @@ public class InspectorFeeService : IInspectorFeeService
             return "هذا البند يتبع قسماً آخر — الإجراء متاح لمشرف قسم المعاملة فقط.";
         }
 
-        if (action is InspectorFeeActions.SubmitToSupervisor
-            or InspectorFeeActions.CreateDisbursementRequest)
+        // ج٩ / ق٦: DisbursementBatch creation is retired for every task kind.
+        if (action == InspectorFeeActions.CreateDisbursementRequest)
+        {
+            return "إنشاء طلب صرف متوقف — البنود الجاهزة تُفوتر عبر كشف الأطراف.";
+        }
+
+        if (action == InspectorFeeActions.SubmitToSupervisor)
         {
             var taskKind = await _db.WorkflowTasks.AsNoTracking()
                 .Where(t => t.Id == ledger.WorkflowTaskId)
                 .Select(t => t.Kind)
                 .FirstOrDefaultAsync(cancellationToken);
-            if (taskKind == WorkflowTaskKind.EngineeringSurvey
-                && action == InspectorFeeActions.SubmitToSupervisor)
+            if (taskKind == WorkflowTaskKind.EngineeringSurvey)
             {
                 return "مسار المكتب الهندسي لا يدعم رفع الأتعاب للمشرف — استخدم موافقة الحسم أو الاعتراض من الكشف المبدئي.";
-            }
-
-            // ج٩: new work goes through billing statements, not DisbursementBatch.
-            if (action == InspectorFeeActions.CreateDisbursementRequest
-                && taskKind is WorkflowTaskKind.EngineeringSurvey
-                    or WorkflowTaskKind.FieldInspection
-                    or WorkflowTaskKind.GovernmentReview)
-            {
-                return "إنشاء طلب صرف متوقف — البنود الجاهزة تُفوتر عبر كشف الأطراف.";
             }
         }
 
@@ -1010,20 +934,6 @@ public class InspectorFeeService : IInspectorFeeService
                 ledger.DisbursementBatchId = null;
         }
 
-        if (action == InspectorFeeActions.CreateDisbursementRequest)
-        {
-            if (ledger.ExcludedFromBatch)
-                return "لا يمكن تضمين عقار مستبعد في أمر الصرف.";
-
-            if (!string.Equals(ledger.AssigneeId?.Trim(), actorAssigneeId?.Trim(), StringComparison.Ordinal))
-                return "لا يمكن تضمين أتعاب طرف آخر في أمر الصرف.";
-
-            if (!disbursementBatchId.HasValue)
-                return "معرّف أمر الصرف مطلوب.";
-
-            ledger.DisbursementBatchId = disbursementBatchId;
-        }
-
         if (action == InspectorFeeActions.Disburse)
         {
             var voucher = string.IsNullOrWhiteSpace(request.DisbursementVoucher)
@@ -1031,6 +941,8 @@ public class InspectorFeeService : IInspectorFeeService
                 : request.DisbursementVoucher.Trim();
             ledger.DisbursementVoucher = voucher;
         }
+
+        var before = SnapshotLedger(ledger, fromStatus);
 
         ledger.BillingStatus = nextStatus;
         ledger.ReturnTo = nextReturnTo;
@@ -1047,8 +959,28 @@ public class InspectorFeeService : IInspectorFeeService
             CreatedAtUtc = DateTime.UtcNow,
         });
 
+        _db.AuditLogs.Add(_audit.Create(
+            string.IsNullOrWhiteSpace(actorUserId) ? "system" : actorUserId,
+            FeeBillingTransitionAction,
+            FeeLedgerEntityType,
+            ledger.Id.ToString(),
+            before,
+            SnapshotLedger(ledger, nextStatus)));
+
         return null;
     }
+
+    private static object SnapshotLedger(InspectorFeeLedger ledger, string billingStatus) => new
+    {
+        workflowTaskId = ledger.WorkflowTaskId,
+        billingStatus,
+        returnTo = ledger.ReturnTo,
+        agreedFeeSar = ledger.AgreedFeeSar,
+        supervisorDiscountSar = ledger.SupervisorDiscountSar,
+        netFeeSar = InspectorFeeRules.NetFee(ledger.AgreedFeeSar, ledger.SupervisorDiscountSar),
+        statementId = ledger.EngineeringBillingStatementId,
+        disbursementBatchId = ledger.DisbursementBatchId,
+    };
 
     private static bool RequiresDepartmentSupervisor(string action) =>
         action is InspectorFeeActions.ApproveToFinance
@@ -1421,30 +1353,6 @@ public class InspectorFeeService : IInspectorFeeService
                 Href = "/party-fees",
                 Category = "financial",
                 SourceEvent = $"fee-discount-notified:{ledger.WorkflowTaskId:N}",
-            },
-            cancellationToken);
-    }
-
-    private async Task NotifyFinanceDisbursementBatchCreatedAsync(
-        int propertyCount,
-        CancellationToken cancellationToken)
-    {
-        var recipientIds = await _recipients.ResolveUserIdsWithPrototypeRoleAsync(
-            "financial-officer",
-            cancellationToken);
-
-        if (recipientIds.Count == 0) return;
-
-        await _notifications.CreateForUsersAsync(
-            recipientIds,
-            new CreateUserNotificationRequest
-            {
-                Title = "أمر صرف جديد",
-                Body = $"بانتظار صرف {propertyCount} عقار.",
-                Tone = "info",
-                Href = "/financial",
-                Category = "financial",
-                SourceEvent = $"disbursement-batch:{DateTime.UtcNow:yyyyMMddHHmmss}",
             },
             cancellationToken);
     }

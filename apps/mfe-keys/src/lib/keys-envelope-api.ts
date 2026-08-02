@@ -24,6 +24,7 @@ import {
   resolveApiError,
   type MutationResult,
 } from "@platform/app-shared/prototype/work-orders-api-config";
+import { processEvidencePhoto } from "@platform/app-shared/media/process-evidence-photo";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 import type {
   KeyAssignmentMatchStatus,
@@ -142,6 +143,9 @@ async function fileToBase64(file: File): Promise<string> {
   return btoa(binary);
 }
 
+const MAX_IMAGE_INPUT_BYTES = 20 * 1024 * 1024;
+const MAX_PROCESSED_IMAGE_BYTES = 1024 * 1024;
+
 export async function uploadEnvelopeAttachment(
   kind:
     | "receipt"
@@ -169,12 +173,51 @@ export async function uploadEnvelopeAttachment(
               ? "property-enabling-letter"
               : "property-eviction-notice";
 
+  let uploadFile = file;
+  let photoMetadata:
+    | {
+        latitude: number | null;
+        longitude: number | null;
+        capturedAtUtc: string | null;
+      }
+    | undefined;
+
+  if (kind === "photo") {
+    if (file.size > MAX_IMAGE_INPUT_BYTES) {
+      return {
+        ok: false,
+        error: "الحجم الأقصى للصورة قبل المعالجة 20 ميجابايت.",
+      };
+    }
+    try {
+      const processed = await processEvidencePhoto(file);
+      uploadFile = processed.file;
+      photoMetadata = {
+        latitude: processed.exif.latitude ?? null,
+        longitude: processed.exif.longitude ?? null,
+        capturedAtUtc: processed.exif.capturedAt ?? null,
+      };
+    } catch {
+      return {
+        ok: false,
+        error: "تعذّر معالجة الصورة قبل الرفع. حاول بصيغة JPG.",
+      };
+    }
+    if (uploadFile.size > MAX_PROCESSED_IMAGE_BYTES) {
+      return {
+        ok: false,
+        error: "تعذّر ضغط الصورة إلى أقل من 1 ميجابايت.",
+      };
+    }
+  }
+
   const upload = await uploadAttachment(config, {
     scope,
     scopeKey: scopeKey.trim() || "draft",
-    fileName: file.name,
-    contentType: file.type || "application/octet-stream",
-    contentBase64: await fileToBase64(file),
+    fileName: uploadFile.name,
+    contentType: uploadFile.type || "application/octet-stream",
+    contentBase64: await fileToBase64(uploadFile),
+    photoMetadata,
   });
 
   if (!upload.ok) {

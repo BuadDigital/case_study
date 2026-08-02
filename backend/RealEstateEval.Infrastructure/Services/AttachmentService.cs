@@ -105,9 +105,29 @@ public sealed class AttachmentService : IAttachmentService
             CreatedAtUtc = DateTime.UtcNow,
         };
         _db.FileAttachments.Add(row);
+
+        if (request.PhotoMetadata is not null
+            && IsEvidencePhotoScope(row.Scope))
+        {
+            _db.PhotoMetadata.Add(new PhotoMetadata
+            {
+                Id = Guid.NewGuid(),
+                PhotoId = id,
+                Latitude = request.PhotoMetadata.Latitude,
+                Longitude = request.PhotoMetadata.Longitude,
+                CapturedAtUtc = request.PhotoMetadata.CapturedAtUtc,
+                CreatedAtUtc = DateTime.UtcNow,
+            });
+        }
+
         await _db.SaveChangesAsync(cancellationToken);
         return (ToMeta(row), null);
     }
+
+    private static bool IsEvidencePhotoScope(string scope) =>
+        scope is "field-inspection-photo"
+            or "key-envelope-photo"
+            or "government-keys-proof";
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {

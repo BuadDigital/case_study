@@ -394,15 +394,20 @@ export function nextInspectorPhotoId(draft: InspectorWorkspaceDraft): number {
   return max + 1;
 }
 
-export function inspectorPhotoStampText(draft: InspectorWorkspaceDraft): string {
+/** @deprecated Prefer buildEvidenceStampLines after EXIF extract (هـ). Kept for call sites. */
+export function inspectorPhotoStampText(
+  draft: InspectorWorkspaceDraft,
+  deedNumber?: string | null,
+): string {
+  const deed = deedNumber?.trim() || draft.propertyDisplayId.trim();
   const when = [draft.inspectionDate, draft.inspectionTime]
     .filter(Boolean)
     .join(" ");
   const coords =
     draft.mapLatitude.trim() && draft.mapLongitude.trim()
-      ? ` · ${draft.mapLatitude.trim()}, ${draft.mapLongitude.trim()}`
+      ? `${draft.mapLatitude.trim()}, ${draft.mapLongitude.trim()}`
       : "";
-  return `${when}${coords}`.trim();
+  return [deed ? `صك ${deed}` : "", coords, when].filter(Boolean).join("\n");
 }
 
 export function computeInspectorPhotoCoverage(draft: InspectorWorkspaceDraft): {

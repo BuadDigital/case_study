@@ -169,21 +169,15 @@ public class InspectorFeesController : ControllerBase
     }
 
     [HttpPost("disbursement-batch")]
-    public async Task<ActionResult<CreateDisbursementBatchResult>> CreateDisbursementBatch(
-        [FromBody] CreateDisbursementBatchRequest request,
-        CancellationToken ct)
+    public ActionResult CreateDisbursementBatch([FromBody] CreateDisbursementBatchRequest? request)
     {
-        var ctx = await BuildActorContextAsync(ct);
-        if (ctx.UserId is null) return Unauthorized();
-        if (string.IsNullOrWhiteSpace(ctx.AssigneeId))
-            return Forbid();
-
-        var result = await _fees.CreateDisbursementBatchAsync(
-            request,
-            ctx.UserId,
-            ctx.AssigneeId,
-            ct);
-        return Ok(result);
+        // ج٩ / ق٦: path retired — party fees bill through statements.
+        return StatusCode(
+            StatusCodes.Status410Gone,
+            new
+            {
+                error = "إنشاء طلب صرف متوقف — البنود الجاهزة تُفوتر عبر كشف الأطراف.",
+            });
     }
 
     private static bool IsAuthorizedForAction(string action, ActorContext ctx)

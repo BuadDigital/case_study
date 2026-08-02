@@ -853,7 +853,10 @@ export function FieldInspectionWorkBody({
                                     draft.taskId,
                                     photoRef,
                                     file,
-                                    { stampText: photoStamp },
+                                    {
+                                      draft: liveDraft,
+                                      deedNumber: property?.deedNumber,
+                                    },
                                   );
                                 if (!result.ok) {
                                   showToast(result.error, "error");
@@ -992,7 +995,10 @@ export function FieldInspectionWorkBody({
                               draft.taskId,
                               photoRef,
                               file,
-                              { stampText: photoStamp },
+                              {
+                                draft: liveDraft,
+                                deedNumber: property?.deedNumber,
+                              },
                             );
                             if (!result.ok) {
                               showToast(result.error, "error");
@@ -1208,7 +1214,10 @@ export function FieldInspectionWorkBody({
                               draft.taskId,
                               photoRef,
                               file,
-                              { stampText: photoStamp },
+                              {
+                                draft: liveDraft,
+                                deedNumber: property?.deedNumber,
+                              },
                             );
                             if (!result.ok) {
                               showToast(result.error, "error");
@@ -1532,7 +1541,10 @@ export function FieldInspectionWorkBody({
                         draft.taskId,
                         obsPhotoRef,
                         file,
-                        { stampText: photoStamp },
+                        {
+                          draft: liveDraft,
+                          deedNumber: property?.deedNumber,
+                        },
                       );
                       if (!result.ok) {
                         showToast(result.error, "error");

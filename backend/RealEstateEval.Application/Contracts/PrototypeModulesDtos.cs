@@ -160,6 +160,16 @@ public class UploadAttachmentRequest
     public string ContentType { get; init; } = "application/octet-stream";
     [Required]
     public string ContentBase64 { get; init; } = "";
+
+    /// <summary>Optional EXIF extracted on-device before compression (هـ).</summary>
+    public PhotoMetadataInput? PhotoMetadata { get; init; }
+}
+
+public class PhotoMetadataInput
+{
+    public double? Latitude { get; init; }
+    public double? Longitude { get; init; }
+    public DateTime? CapturedAtUtc { get; init; }
 }
 
 public class SuspendedTransactionDto
