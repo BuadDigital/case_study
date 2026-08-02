@@ -819,12 +819,20 @@ export type FileAttachmentMetaDto = {
   createdAtUtc: string;
 };
 
+export type PhotoMetadataInput = {
+  latitude?: number | null;
+  longitude?: number | null;
+  capturedAtUtc?: string | null;
+};
+
 export type UploadAttachmentRequest = {
   scope: string;
   scopeKey: string;
   fileName: string;
   contentType?: string;
   contentBase64: string;
+  /** EXIF extracted on-device before compression (هـ). */
+  photoMetadata?: PhotoMetadataInput | null;
 };
 
 export async function listAttachments(

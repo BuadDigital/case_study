@@ -6,11 +6,15 @@ import {
 import { uploadAttachmentWithOfflineFallback } from "@platform/app-shared/offline/offline-write";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 import type { GovernmentReviewKeysProofFile } from "./government-review-work-data";
+import { processEvidencePhoto } from "./process-evidence-photo";
 
 export const GOVERNMENT_REVIEW_KEYS_PROOF_ACCEPT =
-  "image/*,application/pdf";
+  "image/*,.heic,.heif,application/pdf";
 
 export const GOVERNMENT_REVIEW_KEYS_PROOF_MAX_BYTES = 8 * 1024 * 1024;
+/** Pre-process ceiling for camera/HEIC originals before compression (هـ). */
+const MAX_IMAGE_INPUT_BYTES = 20 * 1024 * 1024;
+const MAX_PROCESSED_IMAGE_BYTES = 1024 * 1024;
 
 export const GOVERNMENT_REVIEW_KEYS_PROOF_SCOPE = "government-keys-proof";
 
@@ -41,6 +45,20 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
+function isPdf(file: File): boolean {
+  return (
+    file.type.toLowerCase() === "application/pdf" ||
+    file.name.toLowerCase().endsWith(".pdf")
+  );
+}
+
+function isImageLike(file: File): boolean {
+  return (
+    file.type.startsWith("image/") ||
+    /\.(heic|heif|jpe?g|png|webp|gif)$/i.test(file.name)
+  );
+}
+
 export function createGovernmentReviewKeysProofId(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
     return crypto.randomUUID();
@@ -50,7 +68,7 @@ export function createGovernmentReviewKeysProofId(): string {
 
 export function isGovernmentReviewKeysProofMime(mimeType: string): boolean {
   const m = mimeType.toLowerCase();
-  return m.startsWith("image/") || m === "application/pdf";
+  return m.startsWith("image/") || m === "application/pdf" || m === "";
 }
 
 export function governmentReviewKeysProofScopeKey(
@@ -62,30 +80,62 @@ export function governmentReviewKeysProofScopeKey(
 
 /**
  * Upload keys-proof to `/api/attachments` and keep a local preview dataUrl.
- * Payload persistence should store metadata + attachmentId only (no dataUrl).
+ * Images: EXIF → HEIC→JPEG → compress ≤1MB (هـ). PDFs: pass-through, no compression.
  */
 export async function fileToGovernmentReviewKeysProof(
   file: File,
   taskId: string,
 ): Promise<GovernmentReviewKeysProofFile> {
-  if (!isGovernmentReviewKeysProofMime(file.type)) {
+  const looksSupported = isPdf(file) || isImageLike(file);
+  if (!looksSupported) {
     throw new Error("نوع الملف غير مدعوم — ارفع صورة أو PDF");
   }
-  if (file.size > GOVERNMENT_REVIEW_KEYS_PROOF_MAX_BYTES) {
-    throw new Error("حجم الملف يتجاوز 8 ميجابايت");
+
+  let uploadFile = file;
+  let photoMetadata:
+    | {
+        latitude: number | null;
+        longitude: number | null;
+        capturedAtUtc: string | null;
+      }
+    | undefined;
+
+  if (isPdf(file)) {
+    if (file.size > GOVERNMENT_REVIEW_KEYS_PROOF_MAX_BYTES) {
+      throw new Error("حجم الملف يتجاوز 8 ميجابايت");
+    }
+  } else {
+    if (file.size > MAX_IMAGE_INPUT_BYTES) {
+      throw new Error("الحجم الأقصى للصورة قبل المعالجة 20 ميجابايت");
+    }
+    try {
+      const processed = await processEvidencePhoto(file);
+      uploadFile = processed.file;
+      photoMetadata = {
+        latitude: processed.exif.latitude ?? null,
+        longitude: processed.exif.longitude ?? null,
+        capturedAtUtc: processed.exif.capturedAt ?? null,
+      };
+    } catch (err) {
+      console.warn("Keys-proof image processing failed", err);
+      throw new Error("تعذّر معالجة الصورة قبل الرفع. حاول بصيغة JPG.");
+    }
+    if (uploadFile.size > MAX_PROCESSED_IMAGE_BYTES) {
+      throw new Error("تعذّر ضغط الصورة إلى أقل من 1 ميجابايت.");
+    }
   }
 
   const id = createGovernmentReviewKeysProofId();
-  const mimeType = file.type || "application/octet-stream";
-  const dataUrl = await readAsDataUrl(file);
+  const mimeType = uploadFile.type || "application/octet-stream";
+  const dataUrl = await readAsDataUrl(uploadFile);
   const config = prototypeModulesApiConfig();
-  const bytes = await file.arrayBuffer();
+  const bytes = await uploadFile.arrayBuffer();
   const scopeKey = governmentReviewKeysProofScopeKey(taskId, id);
 
   const uploaded = await uploadAttachmentWithOfflineFallback({
     scope: GOVERNMENT_REVIEW_KEYS_PROOF_SCOPE,
     scopeKey,
-    fileName: file.name,
+    fileName: uploadFile.name,
     contentType: mimeType,
     bytes,
     onlineUpload: async () => {
@@ -97,9 +147,10 @@ export async function fileToGovernmentReviewKeysProof(
       const upload = await uploadAttachment(config, {
         scope: GOVERNMENT_REVIEW_KEYS_PROOF_SCOPE,
         scopeKey,
-        fileName: file.name,
+        fileName: uploadFile.name,
         contentType: mimeType,
-        contentBase64: await fileToBase64(file),
+        contentBase64: await fileToBase64(uploadFile),
+        photoMetadata,
       });
       if (!upload.ok) {
         throw new Error(
@@ -112,11 +163,11 @@ export async function fileToGovernmentReviewKeysProof(
 
   return {
     id,
-    fileName: file.name,
+    fileName: uploadFile.name,
     mimeType,
     dataUrl,
     attachmentId: uploaded.attachmentId,
-    sizeBytes: file.size,
+    sizeBytes: uploadFile.size,
   };
 }
 

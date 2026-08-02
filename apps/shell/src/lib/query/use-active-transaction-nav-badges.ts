@@ -138,7 +138,6 @@ export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>>
         : feeRows.filter(
             (r) =>
               r.canSubmitToSupervisor ||
-              r.canCreateDisbursementRequest ||
               ((r.billingStatus === "returned" ||
                 r.billingStatus === "inquiry") &&
                 r.returnTo === "office"),

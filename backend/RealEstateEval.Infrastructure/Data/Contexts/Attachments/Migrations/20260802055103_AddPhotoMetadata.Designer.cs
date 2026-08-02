@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RealEstateEval.Infrastructure.Data.Contexts;
@@ -11,9 +12,11 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 namespace RealEstateEval.Infrastructure.Data.Contexts.Attachments.Migrations
 {
     [DbContext(typeof(AttachmentsDbContext))]
-    partial class AttachmentsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260802055103_AddPhotoMetadata")]
+    partial class AddPhotoMetadata
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

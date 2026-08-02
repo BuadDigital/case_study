@@ -15,7 +15,7 @@ function readAsDataUrl(file: File): Promise<string> {
   });
 }
 
-/** Burns date/time/GPS stamp into the image pixels before upload. */
+/** Burns a multi-line documentation strip into JPEG pixels after compression (هـ). */
 export async function burnInspectorPhotoStamp(
   file: File,
   stamp: string,
@@ -33,21 +33,33 @@ export async function burnInspectorPhotoStamp(
   if (!ctx) return file;
 
   ctx.drawImage(img, 0, 0);
-  const barHeight = Math.max(28, Math.floor(canvas.height * 0.07));
+  const lines = stamp
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const lineCount = Math.max(1, lines.length);
+  const barHeight = Math.max(28 * lineCount, Math.floor(canvas.height * 0.09));
   const y = canvas.height - barHeight;
   ctx.fillStyle = "rgba(0, 0, 0, 0.58)";
   ctx.fillRect(0, y, canvas.width, barHeight);
   ctx.fillStyle = "#ffffff";
-  ctx.font = `600 ${Math.max(11, Math.floor(barHeight * 0.42))}px Tahoma, Arial, sans-serif`;
+  const fontSize = Math.max(11, Math.floor(barHeight / (lineCount + 1.2)));
+  ctx.font = `600 ${fontSize}px Tahoma, Arial, sans-serif`;
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
-  ctx.fillText(stamp.trim(), canvas.width - 10, y + barHeight / 2);
+  const lineGap = barHeight / (lineCount + 1);
+  lines.forEach((line, i) => {
+    ctx.fillText(line, canvas.width - 10, y + lineGap * (i + 1));
+  });
 
-  const mime = file.type.startsWith("image/") ? file.type : "image/jpeg";
   const blob = await new Promise<Blob | null>((resolve) => {
-    canvas.toBlob((b) => resolve(b), mime, 0.92);
+    canvas.toBlob((b) => resolve(b), "image/jpeg", 0.85);
   });
   if (!blob) return file;
 
-  return new File([blob], file.name, { type: mime, lastModified: Date.now() });
+  const baseName = file.name.replace(/\.[^.]+$/, "") || "photo";
+  return new File([blob], `${baseName}.jpg`, {
+    type: "image/jpeg",
+    lastModified: Date.now(),
+  });
 }

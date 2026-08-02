@@ -18,7 +18,6 @@ import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import { InspectorFeesBillingTable } from "../field-inspection/InspectorFeesBillingTable";
 import { PartyFeeWorkflowTable } from "./PartyFeeWorkflowTable";
 import { EngOfficeFeesBillingTable, engFeeUiStatus } from "./EngOfficeFeesBillingTable";
-import { PartyDisbursementRequest } from "./PartyDisbursementRequest";
 import { PartyReturnedQueue } from "./PartyReturnedQueue";
 import { SupervisorEnfazTracking } from "./SupervisorEnfazTracking";
 import { CourtVisitFeesPanel } from "./CourtVisitFeesPanel";
@@ -41,7 +40,6 @@ type PartyFeesTab =
   | "statements"
   | "visit-fees"
   | "key-fees"
-  | "disburse"
   | "returned"
   | "financial"
   | "browse"
@@ -257,8 +255,11 @@ export function PartyFeesWorkspace({
               أتعاب استلام المفاتيح
             </Tab>
           ) : null}
-          <Tab active={tab === "disburse"} onClick={() => setTab("disburse")}>
-            طلب صرف
+          <Tab
+            active={tab === "statements"}
+            onClick={() => setTab("statements")}
+          >
+            كشوف الفوترة
           </Tab>
           <Tab active={tab === "returned"} onClick={() => setTab("returned")}>
             المُعاد لي
@@ -390,7 +391,7 @@ export function PartyFeesWorkspace({
             </section>
             <section>
               <h3 className="mb-2 text-[13px] font-semibold text-text">
-                كشوف فوترة المكتب الهندسي
+                كشوف فوترة الأطراف
               </h3>
               <EngOfficeBillingStatementsPanel issuedOrLaterOnly />
             </section>
@@ -401,12 +402,6 @@ export function PartyFeesWorkspace({
           <EngOfficeBillingStatementsPanel
             assigneeId={isSupervisor ? undefined : assigneeId}
             issuedOrLaterOnly
-          />
-        ) : null}
-
-        {tab === "disburse" && !isSupervisor ? (
-          <PartyDisbursementRequest
-            rows={rows.filter((r) => r.canCreateDisbursementRequest)}
           />
         ) : null}
 

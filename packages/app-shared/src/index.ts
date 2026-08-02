@@ -14,6 +14,14 @@ export {
   uploadAttachmentWithOfflineFallback,
 } from "./offline/offline-write";
 export {
+  buildEvidenceStampLines,
+  compressEvidenceImage,
+  extractEvidenceExif,
+  processEvidencePhoto,
+  type EvidencePhotoExif,
+  type ProcessedEvidencePhoto,
+} from "./media/process-evidence-photo";
+export {
   useAuthSession,
   useValidAuthSession,
 } from "./auth/use-auth-session";

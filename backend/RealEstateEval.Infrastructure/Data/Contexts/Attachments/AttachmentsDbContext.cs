@@ -12,6 +12,7 @@ public sealed class AttachmentsDbContext(DbContextOptions<AttachmentsDbContext> 
     : DbContext(options)
 {
     public DbSet<FileAttachment> FileAttachments => Set<FileAttachment>();
+    public DbSet<PhotoMetadata> PhotoMetadata => Set<PhotoMetadata>();
 
     protected override void OnModelCreating(ModelBuilder builder) =>
         builder.ApplyAttachmentsModel();

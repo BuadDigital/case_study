@@ -163,7 +163,7 @@ export function GovernmentReviewKeysProofUpload({
             ref={cameraRef}
             id="gov-keys-proof-upload"
             type="file"
-            accept="image/*"
+            accept="image/*,.heic,.heif"
             capture="environment"
             multiple
             disabled={disabled}
