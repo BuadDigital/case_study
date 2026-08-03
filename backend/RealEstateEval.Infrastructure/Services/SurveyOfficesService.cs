@@ -3,16 +3,16 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Caching;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class SurveyOfficesService : ISurveyOfficesService
 {
     private const int MaxListRows = 500;
-    private readonly ApplicationDbContext _db;
+    private readonly OperationsDbContext _db;
     private readonly ApiResponseCache _cache;
-    public SurveyOfficesService(ApplicationDbContext db, ApiResponseCache cache)
+    public SurveyOfficesService(OperationsDbContext db, ApiResponseCache cache)
     {
         _db = db;
         _cache = cache;

@@ -47,22 +47,29 @@ public static class DependencyInjection
     public static IServiceCollection AddAttachmentsPersistence(
         this IServiceCollection services,
         IConfiguration configuration,
-        string connectionString) =>
-        services.AddBoundedContextPersistence<AttachmentsDbContext>(configuration, connectionString);
+        string connectionString)
+    {
+        // Block body (not expression-bodied): architecture fan-out scans method braces.
+        return services.AddBoundedContextPersistence<AttachmentsDbContext>(configuration, connectionString);
+    }
 
     /// <summary>Platform catalog write context (ADR 0003, plan Phase 1).</summary>
     public static IServiceCollection AddPlatformPersistence(
         this IServiceCollection services,
         IConfiguration configuration,
-        string connectionString) =>
-        services.AddBoundedContextPersistence<PlatformDbContext>(configuration, connectionString);
+        string connectionString)
+    {
+        return services.AddBoundedContextPersistence<PlatformDbContext>(configuration, connectionString);
+    }
 
     /// <summary>Valuation write context, including its own outbox rows (ADR 0003, D5).</summary>
     public static IServiceCollection AddValuationPersistence(
         this IServiceCollection services,
         IConfiguration configuration,
-        string connectionString) =>
-        services.AddBoundedContextPersistence<ValuationDbContext>(configuration, connectionString);
+        string connectionString)
+    {
+        return services.AddBoundedContextPersistence<ValuationDbContext>(configuration, connectionString);
+    }
 
     /// <summary>
     /// Registers one bounded-context pool against the same physical database as the legacy
@@ -124,8 +131,28 @@ public static class DependencyInjection
     public static IServiceCollection AddIdentityPersistence(
         this IServiceCollection services,
         IConfiguration configuration,
-        string connectionString) =>
-        services.AddBoundedContextPersistence<IdentityDbContext>(configuration, connectionString);
+        string connectionString)
+    {
+        return services.AddBoundedContextPersistence<IdentityDbContext>(configuration, connectionString);
+    }
+
+    /// <summary>Failures write context (ADR 0003, plan Phase 1 extraction step 3).</summary>
+    public static IServiceCollection AddFailuresPersistence(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString)
+    {
+        return services.AddBoundedContextPersistence<FailuresDbContext>(configuration, connectionString);
+    }
+
+    /// <summary>Operations write context (ADR 0003, plan Phase 1 extraction step 3).</summary>
+    public static IServiceCollection AddOperationsPersistence(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString)
+    {
+        return services.AddBoundedContextPersistence<OperationsDbContext>(configuration, connectionString);
+    }
 
     /// <summary>
     /// ASP.NET Identity stores and Identity write/permission services. Callers must register
@@ -241,15 +268,17 @@ public static class DependencyInjection
     /// <summary>Work orders, workflow tasks, and case-study / party forms.</summary>
     public static IServiceCollection AddCaseStudyCoreInfrastructure(this IServiceCollection services)
     {
+        services.AddScoped<IWorkOrderLoader, WorkOrderLoader>();
+        services.AddScoped<IWorkOrderQuery, WorkOrderQueryService>();
+        services.AddScoped<IWorkOrderPropertyCommands, WorkOrderPropertyCommands>();
         services.AddScoped<IWorkOrderService, WorkOrderService>();
-        services.AddScoped<IWorkflowTaskService, WorkflowTaskService>();
-        services.AddScoped<IWorkflowTaskVisibilityFilter, WorkflowTaskVisibilityFilter>();
+        services.AddWorkflowTaskCollaborators();
         services.AddScoped<IWorkOrderVisibilityFilter, WorkOrderVisibilityFilter>();
         services.AddScoped<ICaseStudyFormService, CaseStudyFormService>();
         services.AddScoped<ICaseStudyValuationDispatchService, CaseStudyValuationDispatchService>();
         services.AddScoped<IPartyTaskSubmissionService, PartyTaskSubmissionService>();
         services.AddScoped<IFieldInspectionWorkspaceService, FieldInspectionWorkspaceService>();
-        services.AddScoped<IInspectorFeeService, InspectorFeeService>();
+        services.AddInspectorFeeCollaborators();
         services.AddScoped<IPartyFeePricingService, PartyFeePricingService>();
         services.AddScoped<IIncentiveSuspensionService, IncentiveSuspensionService>();
         services.AddScoped<IDiscountFlagService, DiscountFlagService>();
@@ -265,10 +294,25 @@ public static class DependencyInjection
         return services;
     }
 
+    /// <summary>Inspector-fee façade + ledger/transition/summary collaborators.</summary>
+    public static IServiceCollection AddInspectorFeeCollaborators(this IServiceCollection services)
+    {
+        services.AddScoped<IInspectorFeeLedgerResolver, InspectorFeeLedgerResolver>();
+        services.AddScoped<IInspectorFeeLedgerWriter, InspectorFeeLedgerWriter>();
+        services.AddScoped<IInspectorFeeTransitionApplier, InspectorFeeTransitionApplier>();
+        services.AddScoped<IInspectorFeeSummaryQuery, InspectorFeeSummaryQuery>();
+        services.AddScoped<IInspectorFeeService, InspectorFeeService>();
+        return services;
+    }
+
     /// <summary>PO intake drafts, delegation letters, suspended-transaction reads.</summary>
     public static IServiceCollection AddCaseStudyAuxiliaryInfrastructure(this IServiceCollection services)
     {
         services.AddScoped<IPoIntakeDraftService, PoIntakeDraftService>();
+        services.AddScoped<OperationsTaskNotifier>();
+        services.AddScoped<OperationsTaskVisitFeeHelper>();
+        services.AddScoped<IOperationsTaskQuery, OperationsTaskQueryService>();
+        services.AddScoped<IOperationsTaskCommands, OperationsTaskCommands>();
         services.AddScoped<IOperationsTaskService, OperationsTaskService>();
         services.AddHostedService<OperationsTaskReminderHostedService>();
         services.AddScoped<ISuspendedTransactionsService, SuspendedTransactionsService>();
@@ -307,19 +351,34 @@ public static class DependencyInjection
     public static IServiceCollection AddFailuresInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration,
+        string connectionString,
         IHostEnvironment environment)
     {
+        services.AddFailuresPersistence(configuration, connectionString);
         services.AddNotificationInfrastructure(configuration, environment);
-        services.AddScoped<IInspectorFeeService, InspectorFeeService>();
+        services.AddInspectorFeeCollaborators();
         services.AddScoped<IPartyFeePricingService, PartyFeePricingService>();
         services.AddScoped<IIncentiveSuspensionService, IncentiveSuspensionService>();
         services.AddScoped<IDiscountFlagService, DiscountFlagService>();
         services.AddScoped<IPoEnfazBillingService, PoEnfazBillingService>();
         services.AddScoped<IPartyBillingStatementService, PartyBillingStatementService>();
         services.AddScoped<IPropertyTimelineService, PropertyTimelineService>();
-        services.AddScoped<IWorkflowTaskService, WorkflowTaskService>();
+        services.AddWorkflowTaskCollaborators();
         services.AddScoped<IFailureService, FailureService>();
         services.AddScoped<IFailureTypesCatalogService, FailureTypesCatalogService>();
+        return services;
+    }
+
+    /// <summary>Workflow task façade + query / distribution / lifecycle collaborators.</summary>
+    public static IServiceCollection AddWorkflowTaskCollaborators(this IServiceCollection services)
+    {
+        services.AddScoped<IWorkflowTaskVisibilityFilter, WorkflowTaskVisibilityFilter>();
+        services.AddScoped<IWorkflowTaskQuery, WorkflowTaskQueryService>();
+        services.AddScoped<IWorkflowTaskSlotSynchronizer, WorkflowTaskSlotSynchronizer>();
+        services.AddScoped<IWorkflowTaskDistributionCommands, WorkflowTaskDistributionCommands>();
+        services.AddScoped<WorkflowTaskCascadeCleanup>();
+        services.AddScoped<IWorkflowTaskLifecycleCommands, WorkflowTaskLifecycleCommands>();
+        services.AddScoped<IWorkflowTaskService, WorkflowTaskService>();
         return services;
     }
 
@@ -342,6 +401,27 @@ public static class DependencyInjection
         return services;
     }
 
+    public static IServiceCollection AddOperationsInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString)
+    {
+        services.AddOperationsPersistence(configuration, connectionString);
+        // PropertyAccessHoldService writes PropertyFailures plus Case Study tasks.
+        services.AddFailuresPersistence(configuration, connectionString);
+        services.AddScoped<ISurveyOfficesService, SurveyOfficesService>();
+        services.AddScoped<IPropertyKeysService, PropertyKeysService>();
+        services.AddScoped<IPropertyKeyGateResolver, PropertyKeyGateResolver>();
+        services.AddScoped<IPropertyAccessHoldService, PropertyAccessHoldService>();
+        services.AddScoped<IKeyEnvelopePeopleResolver, KeyEnvelopePeopleResolver>();
+        services.AddScoped<IKeyEnvelopesService, KeyEnvelopesService>();
+        return services;
+    }
+
+    /// <summary>
+    /// Operations services when the caller's host already registered
+    /// <see cref="AddOperationsPersistence"/> (or InMemory tests).
+    /// </summary>
     public static IServiceCollection AddOperationsInfrastructure(this IServiceCollection services)
     {
         services.AddScoped<ISurveyOfficesService, SurveyOfficesService>();

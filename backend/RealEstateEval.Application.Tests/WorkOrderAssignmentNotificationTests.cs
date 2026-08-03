@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
@@ -16,7 +17,8 @@ public sealed class WorkOrderAssignmentNotificationTests
     [Fact]
     public async Task ResolveUserIdForEmail_matches_normalized_identity_email()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         SeedUser(db, "user-feras", "feras@ejadah.dev");
         await db.SaveChangesAsync();
 
@@ -32,10 +34,11 @@ public sealed class WorkOrderAssignmentNotificationTests
     [Fact]
     public async Task CreateAsync_queues_assignment_notification_for_mapped_specialist()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         SeedUser(db, "user-feras", "feras@ejadah.dev");
         await db.SaveChangesAsync();
-        var service = CreateService(db);
+        var service = CreateService(bundle);
 
         var (result, errors) = await service.CreateAsync(
             ValidCreate("PO-ASSIGN-1", "feras@ejadah.dev"),
@@ -57,8 +60,9 @@ public sealed class WorkOrderAssignmentNotificationTests
     [Fact]
     public async Task CreateAsync_skips_notification_when_email_unmapped()
     {
-        await using var db = CreateDb();
-        var service = CreateService(db);
+        var bundle = CreateDb();
+        var db = bundle.App;
+        var service = CreateService(bundle);
 
         var (result, errors) = await service.CreateAsync(
             ValidCreate("PO-UNMAPPED", "ghost@ejadah.dev"),
@@ -72,11 +76,12 @@ public sealed class WorkOrderAssignmentNotificationTests
     [Fact]
     public async Task UpdateHeaderAsync_notifies_only_when_specialist_email_changes()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         SeedUser(db, "user-a", "a@ejadah.dev");
         SeedUser(db, "user-b", "b@ejadah.dev");
         await db.SaveChangesAsync();
-        var service = CreateService(db);
+        var service = CreateService(bundle);
 
         var (created, createErrors) = await service.CreateAsync(
             ValidCreate("PO-REASSIGN", "a@ejadah.dev"),
@@ -109,8 +114,9 @@ public sealed class WorkOrderAssignmentNotificationTests
     [Fact]
     public async Task UpdateHeaderAsync_preserves_the_deadline_stamped_at_receipt()
     {
-        await using var db = CreateDb();
-        var service = CreateService(db);
+        var bundle = CreateDb();
+        var db = bundle.App;
+        var service = CreateService(bundle);
         var (created, createErrors) = await service.CreateAsync(
             ValidCreate("PO-FIXED-DUE", "owner@ejadah.dev"),
             CancellationToken.None);
@@ -185,8 +191,9 @@ public sealed class WorkOrderAssignmentNotificationTests
         return envelope.Payload;
     }
 
-    private static WorkOrderService CreateService(ApplicationDbContext db)
+    private static WorkOrderService CreateService(TestBoundedContexts.Bundle bundle)
     {
+        var db = bundle.App;
         var timeline = new PropertyTimelineService(db);
         var notifications = new PlatformNotificationRequestService(
             db,
@@ -194,20 +201,15 @@ public sealed class WorkOrderAssignmentNotificationTests
                 db,
                 NullLogger<OutboxIntegrationEventPublisher>.Instance));
         var recipients = new NotificationRecipientResolver(db);
-        var failures = new FailureService(
-            db,
+        var failures = TestBoundedContexts.CreateFailureService(
+            bundle,
             TestInspectorFeeServiceFactory.CreateWorkflow(db),
             timeline,
             notifications,
             recipients);
-        return new WorkOrderService(db, timeline, failures, notifications, recipients);
+        return TestWorkOrderServiceFactory.Create(bundle, notifications, recipients, timeline, failures);
     }
 
-    private static ApplicationDbContext CreateDb()
-    {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"wo-assign-notify-{Guid.NewGuid():N}")
-            .Options;
-        return new ApplicationDbContext(options);
-    }
+    private static TestBoundedContexts.Bundle CreateDb() =>
+        TestBoundedContexts.Create($"wo-assign-notify-{Guid.NewGuid():N}");
 }

@@ -8,155 +8,58 @@ using RealEstateEval.Infrastructure.Notifications;
 
 namespace RealEstateEval.Infrastructure.Services;
 
+/// <summary>
+/// Facade for inspector-fee use cases. Heavy write/query/transition work lives in collaborators.
+/// </summary>
 public class InspectorFeeService : IInspectorFeeService
 {
-    private const int MaxSummaryRows = 2000;
-    private const string FeeBillingTransitionAction = "FEE_BILLING_TRANSITION";
-    private const string FeeLedgerEntityType = "inspector_fee_ledger";
-
     private readonly ApplicationDbContext _db;
     private readonly INotificationService _notifications;
     private readonly NotificationRecipientResolver _recipients;
     private readonly IPartyFeePricingService _pricing;
-    private readonly IAuditLogWriter _audit;
-
-    public InspectorFeeService(
-        ApplicationDbContext db,
-        INotificationService notifications,
-        NotificationRecipientResolver recipients,
-        IPartyFeePricingService pricing)
-        : this(db, notifications, recipients, pricing, new AuditLogWriter())
-    {
-    }
+    private readonly IInspectorFeeLedgerResolver _resolver;
+    private readonly IInspectorFeeLedgerWriter _writer;
+    private readonly IInspectorFeeSummaryQuery _summary;
+    private readonly IInspectorFeeTransitionApplier _transitions;
 
     public InspectorFeeService(
         ApplicationDbContext db,
         INotificationService notifications,
         NotificationRecipientResolver recipients,
         IPartyFeePricingService pricing,
-        IAuditLogWriter audit)
+        IInspectorFeeLedgerResolver resolver,
+        IInspectorFeeLedgerWriter writer,
+        IInspectorFeeSummaryQuery summary,
+        IInspectorFeeTransitionApplier transitions)
     {
         _db = db;
         _notifications = notifications;
         _recipients = recipients;
         _pricing = pricing;
-        _audit = audit;
+        _resolver = resolver;
+        _writer = writer;
+        _summary = summary;
+        _transitions = transitions;
     }
 
-    public async Task EnsureLedgersForTasksAsync(
+    public Task EnsureLedgersForTasksAsync(
         IEnumerable<WorkflowTask> tasks,
+        CancellationToken cancellationToken = default) =>
+        _writer.EnsureLedgersForTasksAsync(tasks, cancellationToken);
+
+    public async Task EnsureLedgersForPropertyAsync(
+        Guid propertyId,
         CancellationToken cancellationToken = default)
     {
-        // Engineering-survey fees accrue only on specialist acceptance — not here.
-        var feeTasks = tasks
-            .Where(t => t.Kind is WorkflowTaskKind.FieldInspection
-                or WorkflowTaskKind.GovernmentReview)
-            .ToList();
+        var feeTasks = await _db.WorkflowTasks.AsNoTracking()
+            .Where(t =>
+                t.PropertyId == propertyId
+                && (t.Kind == WorkflowTaskKind.FieldInspection
+                    || t.Kind == WorkflowTaskKind.GovernmentReview))
+            .ToListAsync(cancellationToken);
         if (feeTasks.Count == 0) return;
 
-        var now = DateTime.UtcNow;
-        var pendingTriples = new HashSet<(Guid TransactionId, Guid DeedId, string UserId)>();
-        foreach (var task in feeTasks)
-        {
-            var partyType = await ResolvePartyTypeAsync(task, cancellationToken);
-            var isEmployee = InspectorFeeRules.IsEmployee(partyType);
-
-            // Employee incentives require an active compensation flag and a resolved flat table.
-            // Opening a zero draft for every employee was the hand-entry path ج٦ replaces.
-            if (isEmployee)
-            {
-                var hasCompensation = await AssigneeHasCompensationAsync(
-                    task.AssigneeId,
-                    cancellationToken);
-                if (!hasCompensation) continue;
-            }
-
-            var po = task.PoNumber.Trim();
-            var deeds = await ResolveDeedTargetsAsync(task, cancellationToken);
-            var ordinal = 0;
-            foreach (var deed in deeds)
-            {
-                ordinal++;
-                var areaM2 = await ResolvePropertyAreaM2Async(task, cancellationToken, deed.PropertyId);
-                var agreedFee = await _pricing.ResolveDefaultFeeAsync(
-                    task.Kind,
-                    partyType,
-                    areaM2,
-                    task.AssigneeId,
-                    cancellationToken);
-
-                // Unresolved means no rate yet — inventing zero here is exactly what we are removing.
-                if (!agreedFee.IsResolved) continue;
-
-                var identity = await ResolveLedgerIdentityAsync(
-                    task,
-                    cancellationToken,
-                    deed.DeedId);
-                // ج٨: same (transaction, deed, user) must not open a second line — even via another task.
-                var tripleKey = (identity.TransactionId, identity.DeedId, identity.UserId);
-                if (!pendingTriples.Add(tripleKey)) continue;
-                var tripleExists = await _db.InspectorFeeLedgers.AnyAsync(
-                    x => x.TransactionId == identity.TransactionId
-                        && x.DeedId == identity.DeedId
-                        && x.UserId == identity.UserId,
-                    cancellationToken);
-                if (tripleExists) continue;
-
-                var billingStatus = InspectorFeeBillingStatus.Draft;
-                string? preSuspension = null;
-                string? suspensionReason = null;
-                if (isEmployee && !string.IsNullOrWhiteSpace(task.AssigneeId))
-                {
-                    var withhold = await _db.IncentiveSuspensions.AsNoTracking()
-                        .Where(x =>
-                            x.AssigneeId == task.AssigneeId.Trim()
-                            && x.TransactionKey == po
-                            && x.LiftedAtUtc == null)
-                        .Select(x => x.Reason)
-                        .FirstOrDefaultAsync(cancellationToken);
-                    if (withhold is not null)
-                    {
-                        billingStatus = InspectorFeeBillingStatus.Suspended;
-                        preSuspension = InspectorFeeBillingStatus.Draft;
-                        suspensionReason = withhold;
-                    }
-                }
-
-                _db.InspectorFeeLedgers.Add(new InspectorFeeLedger
-                {
-                    Id = Guid.NewGuid(),
-                    TransactionId = identity.TransactionId,
-                    DeedId = identity.DeedId,
-                    UserId = identity.UserId,
-                    WorkflowTaskId = task.Id,
-                    PoNumber = po,
-                    PropertyId = deed.PropertyId,
-                    PropertyOrdinal = deed.PropertyId == task.PropertyId
-                        ? task.PropertyOrdinal
-                        : ordinal,
-                    AssigneeId = task.AssigneeId,
-                    InspectorType = partyType,
-                    SupervisingDepartment = SupervisingDepartments.ForTaskKind(task.Kind),
-                    AgreedFeeSar = agreedFee.FeeSar!.Value,
-                    PricingTableId = agreedFee.PricingTableId,
-                    SupervisorDiscountSar = 0m,
-                    DiscountReason = null,
-                    BillingStatus = billingStatus,
-                    PreSuspensionStatus = preSuspension,
-                    SuspensionReason = suspensionReason,
-                    ExcludedFromBatch = false,
-                    ExclusionReason = null,
-                    ReturnTo = null,
-                    DisbursementBatchId = null,
-                    DisbursementVoucher = null,
-                    AccruedAtUtc = now,
-                    CreatedAtUtc = now,
-                    UpdatedAtUtc = now,
-                });
-            }
-        }
-
-        await _db.SaveChangesAsync(cancellationToken);
+        await _writer.EnsureLedgersForTasksAsync(feeTasks, cancellationToken);
     }
 
     public async Task<(InspectorFeeRowDto? Row, string? Error)> AccrueEngineeringSurveyFeeAsync(
@@ -180,7 +83,7 @@ public class InspectorFeeService : IInspectorFeeService
         if (task.Status != WorkflowTaskStatus.Completed)
             return (null, "مهمة الرفع المساحي غير مكتملة.");
 
-        var deeds = await ResolveDeedTargetsAsync(task, cancellationToken);
+        var deeds = await _resolver.ResolveDeedTargetsAsync(task, cancellationToken);
         var existingForTask = await _db.InspectorFeeLedgers
             .Where(x => x.WorkflowTaskId == workflowTaskId)
             .ToListAsync(cancellationToken);
@@ -194,14 +97,15 @@ public class InspectorFeeService : IInspectorFeeService
         }
 
         var partyType = existingForTask.FirstOrDefault()?.InspectorType
-            ?? await ResolvePartyTypeAsync(task, cancellationToken);
+            ?? await _resolver.ResolvePartyTypeAsync(task, cancellationToken);
         var now = DateTime.UtcNow;
         InspectorFeeLedger? lastLedger = null;
         var ordinal = 0;
         foreach (var deed in deeds)
         {
             ordinal++;
-            var areaM2 = await ResolvePropertyAreaM2Async(task, cancellationToken, deed.PropertyId);
+            var areaM2 = await _resolver.ResolvePropertyAreaM2Async(
+                task, cancellationToken, deed.PropertyId);
             var resolvedFee = await _pricing.ResolveDefaultFeeAsync(
                 task.Kind,
                 partyType,
@@ -213,7 +117,8 @@ public class InspectorFeeService : IInspectorFeeService
                 return (null, PricingErrors.FeeUnresolved);
 
             var agreedFee = resolvedFee.FeeSar!.Value;
-            var identity = await ResolveLedgerIdentityAsync(task, cancellationToken, deed.DeedId);
+            var identity = await _resolver.ResolveLedgerIdentityAsync(
+                task, cancellationToken, deed.DeedId);
             var ledger = existingForTask.FirstOrDefault(l => l.DeedId == identity.DeedId)
                 ?? await _db.InspectorFeeLedgers.FirstOrDefaultAsync(
                     x => x.TransactionId == identity.TransactionId
@@ -311,22 +216,7 @@ public class InspectorFeeService : IInspectorFeeService
         return (await GetByWorkflowTaskIdAsync(workflowTaskId, cancellationToken), null);
     }
 
-    public async Task EnsureLedgersForPropertyAsync(
-        Guid propertyId,
-        CancellationToken cancellationToken = default)
-    {
-        var feeTasks = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t =>
-                t.PropertyId == propertyId
-                && (t.Kind == WorkflowTaskKind.FieldInspection
-                    || t.Kind == WorkflowTaskKind.GovernmentReview))
-            .ToListAsync(cancellationToken);
-        if (feeTasks.Count == 0) return;
-
-        await EnsureLedgersForTasksAsync(feeTasks, cancellationToken);
-    }
-
-    public async Task<InspectorFeesSummaryDto> GetSummaryAsync(
+    public Task<InspectorFeesSummaryDto> GetSummaryAsync(
         string? assigneeId,
         string? workflowTaskId,
         bool submittedOnly,
@@ -335,175 +225,22 @@ public class InspectorFeeService : IInspectorFeeService
         string? returnTo = null,
         bool hideDisputed = false,
         CancellationToken cancellationToken = default,
-        string? supervisingDepartment = null)
-    {
-        await BackfillMissingLedgersAsync(cancellationToken);
-        await SyncLedgerSnapshotsFromTasksAsync(cancellationToken);
-
-        var query = _db.InspectorFeeLedgers.AsNoTracking();
-
-        // Applied to the query itself, before any row cap or projection, so a disputed line cannot
-        // reach finance through the list, the totals, or the queue counts derived from them.
-        if (hideDisputed)
-        {
-            query = query.Where(x =>
-                x.BillingStatus != InspectorFeeBillingStatus.Disputed);
-        }
-
-        // A non-null supervisingDepartment means the caller is department-scoped. Fail closed when
-        // the value is missing/unknown (e.g. Unassigned) so a supervisor without a department sees
-        // nothing rather than every queue.
-        if (supervisingDepartment is not null)
-        {
-            var normalizedDepartment = SupervisingDepartments.NormalizeProfileValue(supervisingDepartment);
-            query = normalizedDepartment is null
-                ? query.Where(_ => false)
-                : query.Where(x => x.SupervisingDepartment == normalizedDepartment);
-        }
-
-        if (!string.IsNullOrWhiteSpace(workflowTaskId) &&
-            Guid.TryParse(workflowTaskId.Trim(), out var taskGuid))
-        {
-            query = query.Where(x => x.WorkflowTaskId == taskGuid);
-        }
-        else if (!string.IsNullOrWhiteSpace(assigneeId))
-        {
-            var aid = assigneeId.Trim();
-            query = query.Where(x => x.AssigneeId == aid);
-        }
-
-        if (!string.IsNullOrWhiteSpace(billingStatus))
-        {
-            var status = billingStatus.Trim();
-            query = query.Where(x => x.BillingStatus == status);
-        }
-
-        if (!string.IsNullOrWhiteSpace(returnTo))
-        {
-            var target = returnTo.Trim();
-            query = query.Where(x => x.ReturnTo == target);
-        }
-
-        var ledgers = await query
-            .OrderByDescending(x => x.CreatedAtUtc)
-            .Take(MaxSummaryRows)
-            .ToListAsync(cancellationToken);
-        if (ledgers.Count == 0) return InspectorFeeRowMapper.EmptySummary();
-
-        ledgers = await FilterLedgersWithCompletedCaseStudyAsync(ledgers, cancellationToken);
-        if (ledgers.Count == 0) return InspectorFeeRowMapper.EmptySummary();
-
-        var taskIds = ledgers.Select(x => x.WorkflowTaskId).ToList();
-        var tasks = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t => taskIds.Contains(t.Id))
-            .ToDictionaryAsync(t => t.Id, cancellationToken);
-
-        // An unrecognised filter value must match nothing rather than everything.
-        if (!string.IsNullOrWhiteSpace(taskKind))
-        {
-            var kindMatched = WorkflowTaskKindValues.TryParse(taskKind, out var kind);
-            ledgers = kindMatched
-                ? ledgers
-                    .Where(l => tasks.TryGetValue(l.WorkflowTaskId, out var t) && t.Kind == kind)
-                    .ToList()
-                : [];
-            if (ledgers.Count == 0) return InspectorFeeRowMapper.EmptySummary();
-            taskIds = ledgers.Select(x => x.WorkflowTaskId).ToList();
-        }
-
-        var workspaces = await _db.FieldInspectionWorkspaces.AsNoTracking()
-            .Where(w => taskIds.Contains(w.WorkflowTaskId))
-            .ToDictionaryAsync(w => w.WorkflowTaskId, cancellationToken);
-
-        var submissions = await _db.PartyTaskSubmissions.AsNoTracking()
-            .Where(s => taskIds.Contains(s.WorkflowTaskId))
-            .ToDictionaryAsync(s => s.WorkflowTaskId, cancellationToken);
-
-        var propertyLabels = await BuildPropertyLabelsAsync(ledgers, cancellationToken);
-
-        var transitions = await _db.InspectorFeeTransitions.AsNoTracking()
-            .Where(t => taskIds.Contains(t.WorkflowTaskId))
-            .OrderByDescending(t => t.CreatedAtUtc)
-            .ToListAsync(cancellationToken);
-        var lastReasonByTask = transitions
-            .GroupBy(t => t.WorkflowTaskId)
-            .ToDictionary(g => g.Key, g => g.First().Reason);
-
-        var poNumbers = ledgers.Select(l => l.PoNumber.Trim()).Distinct().ToList();
-        var poReceivedByNumber = await _db.WorkOrders.AsNoTracking()
-            .Where(w => poNumbers.Contains(w.PoNumber))
-            .ToDictionaryAsync(
-                w => w.PoNumber.Trim(),
-                w => (DateTime?)w.ReceivedFromEnfathAt.ToDateTime(TimeOnly.MinValue),
-                StringComparer.Ordinal,
-                cancellationToken);
-
-        var rows = new List<InspectorFeeRowDto>();
-        foreach (var ledger in ledgers.OrderByDescending(x => x.CreatedAtUtc).ThenByDescending(x => x.UpdatedAtUtc).ThenBy(x => x.PoNumber, StringComparer.Ordinal))
-        {
-            if (submittedOnly && !InspectorFeeWorkStatusRules.IsWorkSubmitted(ledger.WorkflowTaskId, tasks, workspaces, submissions))
-                continue;
-
-            if (!tasks.TryGetValue(ledger.WorkflowTaskId, out var task))
-                continue;
-
-            poReceivedByNumber.TryGetValue(ledger.PoNumber.Trim(), out var poReceived);
-            lastReasonByTask.TryGetValue(ledger.WorkflowTaskId, out var lastReason);
-
-            rows.Add(InspectorFeeRowMapper.ToRowDto(
-                ledger,
-                task,
-                propertyLabels.GetValueOrDefault(ledger.WorkflowTaskId, "—"),
-                InspectorFeeWorkStatusRules.IsWorkSubmitted(ledger.WorkflowTaskId, tasks, workspaces, submissions),
-                InspectorFeeWorkStatusRules.ResolveWorkSubmittedAtUtc(task, workspaces, submissions),
-                poReceived,
-                lastReason));
-        }
-
-        return InspectorFeeRowMapper.Summarize(rows);
-    }
-
-    public async Task<InspectorFeeRowDto?> GetByWorkflowTaskIdAsync(
-        Guid workflowTaskId,
-        CancellationToken cancellationToken = default)
-    {
-        await BackfillMissingLedgersAsync(cancellationToken);
-        await SyncLedgerSnapshotsFromTasksAsync(cancellationToken);
-
-        var ledger = await _db.InspectorFeeLedgers.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.WorkflowTaskId == workflowTaskId, cancellationToken);
-        if (ledger is null) return null;
-
-        var visible = await FilterLedgersWithCompletedCaseStudyAsync([ledger], cancellationToken);
-        if (visible.Count == 0) return null;
-
-        var task = await _db.WorkflowTasks.AsNoTracking()
-            .FirstOrDefaultAsync(t => t.Id == workflowTaskId, cancellationToken);
-        if (task is null) return null;
-
-        var workspaces = await _db.FieldInspectionWorkspaces.AsNoTracking()
-            .Where(w => w.WorkflowTaskId == workflowTaskId)
-            .ToDictionaryAsync(w => w.WorkflowTaskId, cancellationToken);
-        var submissions = await _db.PartyTaskSubmissions.AsNoTracking()
-            .Where(s => s.WorkflowTaskId == workflowTaskId)
-            .ToDictionaryAsync(s => s.WorkflowTaskId, cancellationToken);
-
-        var labels = await BuildPropertyLabelsAsync([ledger], cancellationToken);
-        var workSubmitted = InspectorFeeWorkStatusRules.IsWorkSubmitted(
+        string? supervisingDepartment = null) =>
+        _summary.GetSummaryAsync(
+            assigneeId,
             workflowTaskId,
-            new Dictionary<Guid, WorkflowTask> { [workflowTaskId] = task },
-            workspaces,
-            submissions);
+            submittedOnly,
+            taskKind,
+            billingStatus,
+            returnTo,
+            hideDisputed,
+            cancellationToken,
+            supervisingDepartment);
 
-        return InspectorFeeRowMapper.ToRowDto(
-            ledger,
-            task,
-            labels.GetValueOrDefault(workflowTaskId, "—"),
-            workSubmitted,
-            InspectorFeeWorkStatusRules.ResolveWorkSubmittedAtUtc(task, workspaces, submissions),
-            null,
-            null);
-    }
+    public Task<InspectorFeeRowDto?> GetByWorkflowTaskIdAsync(
+        Guid workflowTaskId,
+        CancellationToken cancellationToken = default) =>
+        _summary.GetByWorkflowTaskIdAsync(workflowTaskId, cancellationToken);
 
     public async Task<InspectorFeeRowDto?> PatchAsync(
         Guid workflowTaskId,
@@ -651,7 +388,7 @@ public class InspectorFeeService : IInspectorFeeService
         if (ledger is null)
             return (null, "سجل الأتعاب غير موجود.");
 
-        var error = await ApplyTransitionAsync(
+        var error = await _transitions.ApplyAsync(
             ledger,
             request,
             actorUserId,
@@ -706,7 +443,7 @@ public class InspectorFeeService : IInspectorFeeService
                 continue;
             }
 
-            var error = await ApplyTransitionAsync(
+            var error = await _transitions.ApplyAsync(
                 ledger,
                 new InspectorFeeTransitionRequest
                 {
@@ -789,610 +526,10 @@ public class InspectorFeeService : IInspectorFeeService
             .ExecuteDeleteAsync(cancellationToken);
     }
 
-    private async Task<string?> ApplyTransitionAsync(
-        InspectorFeeLedger ledger,
-        InspectorFeeTransitionRequest request,
-        string actorUserId,
-        string? actorAssigneeId,
-        bool isOperationsManager,
-        bool isFinancialOfficer,
-        CancellationToken cancellationToken,
-        string? actorDepartment = null,
-        bool canManageAllDepartments = false)
-    {
-        var action = request.Action.Trim().ToLowerInvariant();
-        var fromStatus = ledger.BillingStatus;
-
-        if (InspectorFeeRules.IsEmployee(ledger.InspectorType)
-            && action is InspectorFeeActions.OfficeApproveDiscount
-                or InspectorFeeActions.OfficeDispute
-                or InspectorFeeActions.ResolveDispute)
-        {
-            return "مسار الموظف لا يدعم خلاف التسعير — الخصم يُبلَّغ ويصبح جاهزاً مباشرة.";
-        }
-
-        if (!InspectorFeeTransitionAuthorization.CanPerformAction(action, ledger, actorAssigneeId, isOperationsManager, isFinancialOfficer))
-            return "غير مصرّح بتنفيذ هذا الإجراء.";
-        if (RequiresDepartmentSupervisor(action)
-            && !SupervisingDepartments.CanManage(
-                ledger.SupervisingDepartment,
-                actorDepartment,
-                canManageAllDepartments))
-        {
-            return "هذا البند يتبع قسماً آخر — الإجراء متاح لمشرف قسم المعاملة فقط.";
-        }
-
-        // ج٩ / ق٦: DisbursementBatch creation is retired for every task kind.
-        if (action == InspectorFeeActions.CreateDisbursementRequest)
-        {
-            return "إنشاء طلب صرف متوقف — البنود الجاهزة تُفوتر عبر كشف الأطراف.";
-        }
-
-        if (action == InspectorFeeActions.SubmitToSupervisor)
-        {
-            var taskKind = await _db.WorkflowTasks.AsNoTracking()
-                .Where(t => t.Id == ledger.WorkflowTaskId)
-                .Select(t => t.Kind)
-                .FirstOrDefaultAsync(cancellationToken);
-            if (taskKind == WorkflowTaskKind.EngineeringSurvey)
-            {
-                return "مسار المكتب الهندسي لا يدعم رفع الأتعاب للمشرف — استخدم موافقة الحسم أو الاعتراض من الكشف المبدئي.";
-            }
-        }
-
-        if (!InspectorFeeBillingRules.TryResolveTransition(
-                fromStatus,
-                action,
-                out var nextStatus,
-                out var nextReturnTo,
-                out var transitionError,
-                ledger.PreSuspensionStatus))
-        {
-            return transitionError;
-        }
-
-        if (action == InspectorFeeActions.Suspend)
-        {
-            if (string.IsNullOrWhiteSpace(request.Reason))
-                return "سبب الإيقاف مطلوب.";
-
-            ledger.PreSuspensionStatus = fromStatus;
-            ledger.SuspensionReason = request.Reason.Trim();
-        }
-
-        if (action == InspectorFeeActions.LiftSuspension)
-        {
-            ledger.PreSuspensionStatus = null;
-            ledger.SuspensionReason = null;
-        }
-
-        if (action == InspectorFeeActions.SubmitToSupervisor)
-        {
-            if (ledger.ExcludedFromBatch)
-                return "لا يمكن رفع عقار مستبعد.";
-
-            if (!InspectorFeeRules.HasBillableAgreedFee(ledger.AgreedFeeSar))
-                return "يجب إدخال مبلغ الأتعاب المتفق عليه قبل الرفع.";
-
-            if (!InspectorFeeBillingRules.ValidateDiscount(
-                    ledger.SupervisorDiscountSar,
-                    ledger.DiscountReason,
-                    out var discountError))
-            {
-                return discountError;
-            }
-
-            if (!await IsLedgerWorkSubmittedAsync(ledger.WorkflowTaskId, cancellationToken))
-                return "لا يمكن رفع الأتعاب قبل إتمام عمل الطرف.";
-
-            if (fromStatus == InspectorFeeBillingStatus.Returned
-                && ledger.ReturnTo != InspectorFeeReturnTo.Office)
-            {
-                return "هذه المعاملة ليست مُعادة للمكتب.";
-            }
-
-            if (fromStatus == InspectorFeeBillingStatus.Inquiry
-                && ledger.ReturnTo != InspectorFeeReturnTo.Office)
-            {
-                return "هذا الاستفسار لا يخص المكتب.";
-            }
-        }
-
-        if (action == InspectorFeeActions.ApproveToFinance)
-        {
-            if (ledger.ExcludedFromBatch)
-                return "لا يمكن اعتماد عقار مستبعد.";
-
-            if (!InspectorFeeRules.HasBillableAgreedFee(ledger.AgreedFeeSar))
-                return "يجب إدخال مبلغ الأتعاب المتفق عليه قبل الاعتماد.";
-
-            if (!InspectorFeeBillingRules.ValidateDiscount(
-                    ledger.SupervisorDiscountSar,
-                    ledger.DiscountReason,
-                    out var discountError))
-            {
-                return discountError;
-            }
-
-            if (!await IsLedgerWorkSubmittedAsync(ledger.WorkflowTaskId, cancellationToken))
-                return "لا يمكن اعتماد الأتعاب قبل إتمام عمل الطرف.";
-        }
-
-        if (action is InspectorFeeActions.OfficeApproveDiscount
-            or InspectorFeeActions.OfficeDispute)
-        {
-            if (ledger.ExcludedFromBatch)
-                return "لا يمكن معالجة عقار مستبعد.";
-
-            if (ledger.SupervisorDiscountSar <= 0m)
-                return "لا يوجد حسم يحتاج موافقة المكتب.";
-
-            if (action == InspectorFeeActions.OfficeDispute
-                && string.IsNullOrWhiteSpace(request.Reason))
-            {
-                return "سبب الاعتراض مطلوب.";
-            }
-        }
-
-        if (action == InspectorFeeActions.ResolveDispute)
-        {
-            if (ledger.ExcludedFromBatch)
-                return "لا يمكن حسم خلاف لعقار مستبعد.";
-
-            if (!InspectorFeeRules.HasBillableAgreedFee(ledger.AgreedFeeSar))
-                return "يجب إدخال مبلغ الأتعاب المتفق عليه قبل الحسم.";
-
-            if (!InspectorFeeBillingRules.ValidateDiscount(
-                    ledger.SupervisorDiscountSar,
-                    ledger.DiscountReason,
-                    out var resolveDiscountError))
-            {
-                return resolveDiscountError;
-            }
-        }
-
-        if (action == InspectorFeeActions.ResendToFinance)
-        {
-            if (ledger.ReturnTo != InspectorFeeReturnTo.Supervisor)
-                return "لا يمكن إعادة الإرسال إلا للمعاملات المُعادة للمشرف.";
-        }
-
-        if (action == InspectorFeeActions.ReturnToOffice)
-        {
-            if (ledger.ReturnTo != InspectorFeeReturnTo.Supervisor)
-                return "لا يمكن إرجاع المعاملة للمكتب إلا من قائمة المُعاد للمشرف.";
-        }
-
-        if (action is InspectorFeeActions.ReturnToSupervisor or InspectorFeeActions.InquiryToOffice)
-        {
-            if (string.IsNullOrWhiteSpace(request.Reason))
-                return action == InspectorFeeActions.InquiryToOffice
-                    ? "سبب الاستفسار مطلوب."
-                    : "سبب الإرجاع مطلوب.";
-
-            if (action == InspectorFeeActions.ReturnToSupervisor && ledger.DisbursementBatchId.HasValue)
-                ledger.DisbursementBatchId = null;
-        }
-
-        if (action == InspectorFeeActions.Disburse)
-        {
-            var voucher = string.IsNullOrWhiteSpace(request.DisbursementVoucher)
-                ? $"SND-{DateTime.UtcNow:yyyyMMddHHmmss}"
-                : request.DisbursementVoucher.Trim();
-            ledger.DisbursementVoucher = voucher;
-        }
-
-        var before = SnapshotLedger(ledger, fromStatus);
-
-        ledger.BillingStatus = nextStatus;
-        ledger.ReturnTo = nextReturnTo;
-        ledger.UpdatedAtUtc = DateTime.UtcNow;
-
-        _db.InspectorFeeTransitions.Add(new InspectorFeeTransition
-        {
-            Id = Guid.NewGuid(),
-            WorkflowTaskId = ledger.WorkflowTaskId,
-            FromStatus = fromStatus,
-            ToStatus = nextStatus,
-            Reason = string.IsNullOrWhiteSpace(request.Reason) ? null : request.Reason.Trim(),
-            ActorUserId = actorUserId,
-            CreatedAtUtc = DateTime.UtcNow,
-        });
-
-        _db.AuditLogs.Add(_audit.Create(
-            string.IsNullOrWhiteSpace(actorUserId) ? "system" : actorUserId,
-            FeeBillingTransitionAction,
-            FeeLedgerEntityType,
-            ledger.Id.ToString(),
-            before,
-            SnapshotLedger(ledger, nextStatus)));
-
-        return null;
-    }
-
-    private static object SnapshotLedger(InspectorFeeLedger ledger, string billingStatus) => new
-    {
-        workflowTaskId = ledger.WorkflowTaskId,
-        billingStatus,
-        returnTo = ledger.ReturnTo,
-        agreedFeeSar = ledger.AgreedFeeSar,
-        supervisorDiscountSar = ledger.SupervisorDiscountSar,
-        netFeeSar = InspectorFeeRules.NetFee(ledger.AgreedFeeSar, ledger.SupervisorDiscountSar),
-        statementId = ledger.PartyBillingStatementId,
-        disbursementBatchId = ledger.DisbursementBatchId,
-    };
-
-    private static bool RequiresDepartmentSupervisor(string action) =>
-        action is InspectorFeeActions.ApproveToFinance
-            or InspectorFeeActions.ResendToFinance
-            or InspectorFeeActions.ReturnToOffice
-            or InspectorFeeActions.ResolveDispute
-            or InspectorFeeActions.Suspend
-            or InspectorFeeActions.LiftSuspension;
-
-    private async Task<bool> IsLedgerWorkSubmittedAsync(
+    public Task<IReadOnlyList<InspectorFeeAuditEntryDto>> ListTransitionsAsync(
         Guid workflowTaskId,
-        CancellationToken cancellationToken)
-    {
-        var task = await _db.WorkflowTasks.AsNoTracking()
-            .FirstOrDefaultAsync(t => t.Id == workflowTaskId, cancellationToken);
-        if (task is null) return false;
-
-        var workspaces = await _db.FieldInspectionWorkspaces.AsNoTracking()
-            .Where(w => w.WorkflowTaskId == workflowTaskId)
-            .ToDictionaryAsync(w => w.WorkflowTaskId, cancellationToken);
-        var submissions = await _db.PartyTaskSubmissions.AsNoTracking()
-            .Where(s => s.WorkflowTaskId == workflowTaskId)
-            .ToDictionaryAsync(s => s.WorkflowTaskId, cancellationToken);
-
-        return InspectorFeeWorkStatusRules.IsWorkSubmitted(
-            workflowTaskId,
-            new Dictionary<Guid, WorkflowTask> { [workflowTaskId] = task },
-            workspaces,
-            submissions);
-    }
-
-    private async Task SyncLedgerSnapshotsFromTasksAsync(CancellationToken cancellationToken)
-    {
-        var ledgers = await _db.InspectorFeeLedgers.ToListAsync(cancellationToken);
-        if (ledgers.Count == 0) return;
-
-        var taskIds = ledgers.Select(l => l.WorkflowTaskId).Distinct().ToList();
-        var tasks = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t => taskIds.Contains(t.Id))
-            .ToDictionaryAsync(t => t.Id, cancellationToken);
-
-        var anyChanged = false;
-        var now = DateTime.UtcNow;
-        foreach (var ledger in ledgers)
-        {
-            if (!tasks.TryGetValue(ledger.WorkflowTaskId, out var task))
-                continue;
-
-            var rowChanged = false;
-
-            if (task.PropertyId is Guid propertyId && ledger.PropertyId != propertyId)
-            {
-                ledger.PropertyId = propertyId;
-                rowChanged = true;
-            }
-
-            if (ledger.PropertyOrdinal != task.PropertyOrdinal)
-            {
-                ledger.PropertyOrdinal = task.PropertyOrdinal;
-                rowChanged = true;
-            }
-
-            var taskAssignee = task.AssigneeId?.Trim();
-            var ledgerAssignee = ledger.AssigneeId?.Trim();
-            if (!string.Equals(taskAssignee, ledgerAssignee, StringComparison.Ordinal))
-            {
-                ledger.AssigneeId = string.IsNullOrEmpty(taskAssignee) ? null : taskAssignee;
-                rowChanged = true;
-            }
-
-            if (!rowChanged) continue;
-
-            ledger.UpdatedAtUtc = now;
-            anyChanged = true;
-        }
-
-        if (anyChanged)
-            await _db.SaveChangesAsync(cancellationToken);
-    }
-
-    private async Task BackfillMissingLedgersAsync(CancellationToken cancellationToken)
-    {
-        // Engineering-survey ledgers are created only via AccrueEngineeringSurveyFeeAsync.
-        var feeTasks = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t =>
-                t.Kind == WorkflowTaskKind.FieldInspection
-                || t.Kind == WorkflowTaskKind.GovernmentReview)
-            .ToListAsync(cancellationToken);
-        if (feeTasks.Count == 0) return;
-
-        var readyPropertyIds = await GetCompletedCaseStudyPropertyIdsAsync(
-            feeTasks.Select(t => t.PropertyId),
-            cancellationToken);
-
-        // Property-linked tasks need completed case-study; PO-level tasks (null PropertyId) are
-        // expanded per deed inside EnsureLedgersForTasksAsync.
-        feeTasks = feeTasks
-            .Where(t =>
-                t.PropertyId is null
-                || (t.PropertyId is Guid pid && readyPropertyIds.Contains(pid)))
-            .ToList();
-        if (feeTasks.Count == 0) return;
-
-        await EnsureLedgersForTasksAsync(feeTasks, cancellationToken);
-    }
-
-    private readonly record struct DeedTarget(Guid DeedId, Guid? PropertyId);
-
-    /// <summary>
-    /// Property-linked task → one deed. PO-level task → one deed per work-order property.
-    /// Orphan task with no properties → legacy stand-in (task id).
-    /// </summary>
-    private async Task<IReadOnlyList<DeedTarget>> ResolveDeedTargetsAsync(
-        WorkflowTask task,
-        CancellationToken cancellationToken)
-    {
-        if (task.PropertyId is Guid linked)
-            return [new DeedTarget(linked, linked)];
-
-        var po = task.PoNumber.Trim();
-        if (string.IsNullOrEmpty(po))
-            return [new DeedTarget(task.Id, null)];
-
-        var workOrderId = await _db.WorkOrders.AsNoTracking()
-            .Where(w => w.PoNumber == po)
-            .Select(w => (Guid?)w.Id)
-            .FirstOrDefaultAsync(cancellationToken);
-        if (workOrderId is null)
-            return [new DeedTarget(task.Id, null)];
-
-        var propertyIds = await _db.WorkOrderProperties.AsNoTracking()
-            .Where(p => p.WorkOrderId == workOrderId.Value)
-            .OrderBy(p => p.Id)
-            .Select(p => p.Id)
-            .ToListAsync(cancellationToken);
-        if (propertyIds.Count == 0)
-            return [new DeedTarget(task.Id, null)];
-
-        return propertyIds.Select(id => new DeedTarget(id, id)).ToList();
-    }
-
-    /// <summary>ج٨ identity: one line per (transaction, deed, user).</summary>
-    private async Task<(Guid TransactionId, Guid DeedId, string UserId)> ResolveLedgerIdentityAsync(
-        WorkflowTask task,
-        CancellationToken cancellationToken,
-        Guid? deedIdOverride = null)
-    {
-        var po = task.PoNumber.Trim();
-        var workOrderId = string.IsNullOrEmpty(po)
-            ? null
-            : await _db.WorkOrders.AsNoTracking()
-                .Where(w => w.PoNumber == po)
-                .Select(w => (Guid?)w.Id)
-                .FirstOrDefaultAsync(cancellationToken);
-
-        // Orphan PO strings still need a stable transaction key for the unique index.
-        var transactionId = workOrderId ?? StableGuidFromKey($"tx:{po}");
-        var deedId = deedIdOverride ?? task.PropertyId ?? task.Id;
-        var userId = task.AssigneeId?.Trim() ?? "";
-        return (transactionId, deedId, userId);
-    }
-
-    private static Guid StableGuidFromKey(string key)
-    {
-        var hash = System.Security.Cryptography.SHA256.HashData(
-            System.Text.Encoding.UTF8.GetBytes(key));
-        Span<byte> bytes = stackalloc byte[16];
-        hash.AsSpan(0, 16).CopyTo(bytes);
-        return new Guid(bytes);
-    }
-
-    private async Task<decimal?> ResolvePropertyAreaM2Async(
-        WorkflowTask task,
-        CancellationToken cancellationToken,
-        Guid? propertyIdOverride = null)
-    {
-        var propertyId = propertyIdOverride ?? task.PropertyId;
-        if (propertyId is Guid linkedId)
-        {
-            var linked = await _db.WorkOrderProperties.AsNoTracking()
-                .Where(p => p.Id == linkedId)
-                .Select(p => p.Area)
-                .FirstOrDefaultAsync(cancellationToken);
-            if (EngineeringSurveyFeeRules.TryParseAreaM2(linked, out var linkedArea))
-                return linkedArea;
-            return null;
-        }
-
-        // Legacy fallback for unsplit rows only — prefer per-deed ResolveDeedTargetsAsync.
-        var po = task.PoNumber.Trim();
-        if (string.IsNullOrEmpty(po)) return null;
-
-        var workOrderId = await _db.WorkOrders.AsNoTracking()
-            .Where(w => w.PoNumber == po)
-            .Select(w => (Guid?)w.Id)
-            .FirstOrDefaultAsync(cancellationToken);
-        if (workOrderId is null) return null;
-
-        var areas = await _db.WorkOrderProperties.AsNoTracking()
-            .Where(p => p.WorkOrderId == workOrderId.Value)
-            .Select(p => p.Area)
-            .ToListAsync(cancellationToken);
-        if (areas.Count == 0) return null;
-
-        var parsed = areas
-            .Select(a => EngineeringSurveyFeeRules.TryParseAreaM2(a, out var m2) ? m2 : (decimal?)null)
-            .Where(m => m is > 0m)
-            .Select(m => m!.Value)
-            .ToList();
-        if (parsed.Count == 0) return null;
-        if (parsed.Count == 1) return parsed[0];
-        return parsed.Max();
-    }
-
-    private async Task<List<InspectorFeeLedger>> FilterLedgersWithCompletedCaseStudyAsync(
-        List<InspectorFeeLedger> ledgers,
-        CancellationToken cancellationToken)
-    {
-        if (ledgers.Count == 0) return ledgers;
-
-        var taskIds = ledgers.Select(l => l.WorkflowTaskId).Distinct().ToList();
-        var engSurveyIds = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t => taskIds.Contains(t.Id) && t.Kind == WorkflowTaskKind.EngineeringSurvey)
-            .Select(t => t.Id)
-            .ToListAsync(cancellationToken);
-        var engSet = engSurveyIds.ToHashSet();
-
-        // Engineering-survey: visible after specialist acceptance (AccruedAtUtc).
-        // Other party fees: still gated on completed case-study for the property.
-        var nonEng = ledgers.Where(l => !engSet.Contains(l.WorkflowTaskId)).ToList();
-        var engVisible = ledgers
-            .Where(l => engSet.Contains(l.WorkflowTaskId) && l.AccruedAtUtc is not null)
-            .ToList();
-
-        if (nonEng.Count == 0) return engVisible;
-
-        var readyPropertyIds = await GetCompletedCaseStudyPropertyIdsAsync(
-            nonEng.Select(l => l.PropertyId),
-            cancellationToken);
-        var nonEngVisible = nonEng
-            .Where(l => l.PropertyId is Guid pid && readyPropertyIds.Contains(pid))
-            .ToList();
-
-        return engVisible.Concat(nonEngVisible).ToList();
-    }
-
-    private async Task<HashSet<Guid>> GetCompletedCaseStudyPropertyIdsAsync(
-        IEnumerable<Guid?> propertyIds,
-        CancellationToken cancellationToken)
-    {
-        var ids = propertyIds
-            .Where(id => id.HasValue)
-            .Select(id => id!.Value)
-            .Distinct()
-            .ToList();
-        if (ids.Count == 0) return [];
-
-        var ready = await _db.WorkflowTasks.AsNoTracking()
-            .Where(t =>
-                t.Kind == WorkflowTaskKind.CaseStudyProperty
-                && t.PropertyId != null
-                && ids.Contains(t.PropertyId.Value)
-                && t.Status == WorkflowTaskStatus.Completed)
-            .Select(t => t.PropertyId!.Value)
-            .Distinct()
-            .ToListAsync(cancellationToken);
-        return ready.ToHashSet();
-    }
-
-    private async Task<Dictionary<Guid, string>> BuildPropertyLabelsAsync(
-        IReadOnlyList<InspectorFeeLedger> ledgers,
-        CancellationToken cancellationToken)
-    {
-        var propertyIds = ledgers
-            .Where(x => x.PropertyId.HasValue)
-            .Select(x => x.PropertyId!.Value)
-            .Distinct()
-            .ToList();
-
-        var properties = propertyIds.Count == 0
-            ? []
-            : await _db.WorkOrderProperties.AsNoTracking()
-                .Where(p => propertyIds.Contains(p.Id))
-                .ToDictionaryAsync(p => p.Id, cancellationToken);
-
-        var result = new Dictionary<Guid, string>();
-        foreach (var ledger in ledgers)
-        {
-            var slot = ledger.PropertyOrdinal > 0
-                ? ledger.PropertyOrdinal.ToString()
-                : "—";
-
-            if (ledger.PropertyId.HasValue &&
-                properties.TryGetValue(ledger.PropertyId.Value, out var property))
-            {
-                slot = string.IsNullOrWhiteSpace(property.RequestNumber)
-                    ? slot
-                    : property.RequestNumber.Trim();
-                var district = property.District.Trim();
-                result[ledger.WorkflowTaskId] = string.IsNullOrEmpty(district)
-                    ? slot
-                    : $"{slot} — {district}";
-            }
-            else
-            {
-                result[ledger.WorkflowTaskId] = slot;
-            }
-        }
-
-        return result;
-    }
-
-    private async Task<bool> AssigneeHasCompensationAsync(
-        string? assigneeId,
-        CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(assigneeId)) return false;
-        var aid = assigneeId.Trim();
-        return await _db.UserProfiles.AsNoTracking()
-            .AnyAsync(
-                p => p.DistributionAssigneeId == aid && p.HasCompensation,
-                cancellationToken);
-    }
-
-    private async Task<string> ResolvePartyTypeAsync(
-        WorkflowTask task,
-        CancellationToken cancellationToken)
-    {
-        // Product rules: engineering office is always an external entity;
-        // government reviewers follow employee vs cooperator from the staff profile (ج٧).
-        if (task.Kind == WorkflowTaskKind.EngineeringSurvey)
-            return EngineeringSurveyFeeRules.OfficePartyType;
-
-        if (string.IsNullOrWhiteSpace(task.AssigneeId))
-            return InspectorFeeRules.TypeEmployee;
-
-        var aid = task.AssigneeId.Trim();
-        var profile = await _db.UserProfiles.AsNoTracking()
-            .Include(p => p.HrEmployee)
-            .Include(p => p.ProcProvider)
-            .FirstOrDefaultAsync(p => p.DistributionAssigneeId == aid, cancellationToken);
-
-        if (task.Kind == WorkflowTaskKind.GovernmentReview)
-        {
-            return GovernmentReviewFeeRules.ResolveReviewerType(
-                profile?.ContractType,
-                profile?.ProcProvider?.ProviderKind,
-                profile?.HrEmployee?.EmploymentType,
-                aid);
-        }
-
-        if (profile is not null)
-        {
-            if (profile.ContractType == ContractType.ServiceProvider
-                || profile.ProcProvider?.ProviderKind == ProcProviderKind.Organization)
-            {
-                return InspectorFeeRules.TypeCooperatorOrganization;
-            }
-
-            if (profile.ContractType == ContractType.Freelance
-                || profile.ProcProvider?.ProviderKind == ProcProviderKind.Individual
-                || profile.HrEmployee?.EmploymentType?.Contains("متعاون", StringComparison.Ordinal) == true)
-            {
-                return InspectorFeeRules.TypeCooperatorIndividual;
-            }
-
-            return InspectorFeeRules.TypeEmployee;
-        }
-
-        return InspectorFeeRules.ResolveInspectorType(aid);
-    }
-
+        CancellationToken cancellationToken = default) =>
+        _summary.ListTransitionsAsync(workflowTaskId, cancellationToken);
 
     private async Task NotifyEmployeeDiscountAppliedAsync(
         InspectorFeeLedger ledger,
@@ -1461,47 +598,5 @@ public class InspectorFeeService : IInspectorFeeService
         }
 
         await _notifications.CreateManyAsync(notifications, cancellationToken);
-    }
-
-    public async Task<IReadOnlyList<InspectorFeeAuditEntryDto>> ListTransitionsAsync(
-        Guid workflowTaskId,
-        CancellationToken cancellationToken = default)
-    {
-        var transitions = await _db.InspectorFeeTransitions.AsNoTracking()
-            .Where(t => t.WorkflowTaskId == workflowTaskId)
-            .OrderByDescending(t => t.CreatedAtUtc)
-            .ToListAsync(cancellationToken);
-
-        if (transitions.Count == 0)
-            return [];
-
-        var actorIds = transitions
-            .Select(t => t.ActorUserId)
-            .Where(id => !string.IsNullOrWhiteSpace(id))
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-
-        var actorNames = actorIds.Count == 0
-            ? new Dictionary<string, string>(StringComparer.Ordinal)
-            : await _db.Users.AsNoTracking()
-                .Where(u => actorIds.Contains(u.Id))
-                .ToDictionaryAsync(
-                    u => u.Id,
-                    u => string.IsNullOrWhiteSpace(u.DisplayName) ? u.UserName ?? u.Id : u.DisplayName,
-                    StringComparer.Ordinal,
-                    cancellationToken);
-
-        return transitions.Select(t => new InspectorFeeAuditEntryDto
-        {
-            Id = t.Id.ToString(),
-            FromStatus = t.FromStatus,
-            FromStatusLabel = InspectorFeeBillingRules.StatusLabel(t.FromStatus),
-            ToStatus = t.ToStatus,
-            ToStatusLabel = InspectorFeeBillingRules.StatusLabel(t.ToStatus),
-            Reason = t.Reason,
-            ActorUserId = t.ActorUserId,
-            ActorLabel = actorNames.GetValueOrDefault(t.ActorUserId),
-            CreatedAtUtc = t.CreatedAtUtc,
-        }).ToList();
     }
 }

@@ -93,6 +93,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
             .ApplyAttachmentsModel()
             .ApplyPlatformModel(ownsMigrations: false)
             .ApplyValuationModel()
+            .ApplyFailuresModel(ownsMigrations: false)
+            .ApplyOperationsModel(ownsMigrations: false)
             .ApplyAuditModel(ownsMigrations: false)
             .ApplyOutboxModel()
             .ApplyInboxModel();
@@ -362,29 +364,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
             e.HasIndex(x => x.CreatedAtUtc);
         });
 
-        builder.Entity<PropertyFailure>(e =>
-        {
-            e.ToTable("PropertyFailures", DatabaseSchemas.Failures);
-            e.UseOptimisticConcurrency();
-            e.Property(x => x.PoNumber).HasMaxLength(64);
-            e.Property(x => x.PropertyId).HasMaxLength(128);
-            e.Property(x => x.DeedNumber).HasMaxLength(128);
-            e.Property(x => x.Title).HasMaxLength(512);
-            e.Property(x => x.ProblemTypeId).HasMaxLength(64);
-            e.Property(x => x.Severity).HasMaxLength(32);
-            e.Property(x => x.RaisedByRole).HasMaxLength(128);
-            e.Property(x => x.InternalNote).HasMaxLength(4000);
-            e.Property(x => x.FinalNote).HasMaxLength(4000);
-            e.Property(x => x.ResolutionReason).HasMaxLength(4000);
-            e.Property(x => x.ContinueInstructions).HasMaxLength(4000);
-            e.Property(x => x.Status).HasMaxLength(32);
-            e.Property(x => x.Specialist).HasMaxLength(256);
-            e.Property(x => x.SuspendedByUserId).HasMaxLength(450);
-            e.HasIndex(x => x.PoNumber);
-            e.HasIndex(x => new { x.PoNumber, x.PropertyId });
-            e.HasIndex(x => x.Status);
-        });
-
         builder.Entity<CaseStudyForm>(e =>
         {
             e.ToTable("CaseStudyForms", DatabaseSchemas.CaseStudy);
@@ -413,127 +392,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
             e.Property(x => x.InfathClosingNotes).HasMaxLength(4000);
             e.Property(x => x.PoNumber).HasMaxLength(64);
             e.HasIndex(x => new { x.TaskId, x.IsPartyForm }).IsUnique();
-        });
-
-        builder.Entity<FailureTypesCatalogConfig>(e =>
-        {
-            e.ToTable("FailureTypesCatalogConfigs", DatabaseSchemas.Failures);
-            e.Property(x => x.CatalogJson).HasColumnType("jsonb");
-        });
-
-        builder.Entity<SurveyOffice>(e =>
-        {
-            e.ToTable("SurveyOffices", DatabaseSchemas.Operations);
-            e.Property(x => x.Name).HasMaxLength(256);
-            e.Property(x => x.AvgDaysLabel).HasMaxLength(64);
-            e.Property(x => x.ContractLabel).HasMaxLength(128);
-            e.HasIndex(x => x.SortOrder);
-        });
-
-        builder.Entity<PropertyKeyRecord>(e =>
-        {
-            e.ToTable("PropertyKeyRecords", DatabaseSchemas.Operations);
-            e.UseOptimisticConcurrency();
-            e.Property(x => x.PropertyId).HasMaxLength(128);
-            e.Property(x => x.PoNumber).HasMaxLength(64);
-            e.Property(x => x.Area).HasMaxLength(128);
-            e.Property(x => x.PropertyType).HasMaxLength(128);
-            e.Property(x => x.Specialist).HasMaxLength(256);
-            e.Property(x => x.WorkflowStatus).HasMaxLength(32);
-            e.HasIndex(x => new { x.PoNumber, x.PropertyId }).IsUnique();
-        });
-
-        builder.Entity<KeyEnvelope>(e =>
-        {
-            e.ToTable("KeyEnvelopes", DatabaseSchemas.Operations);
-            e.UseOptimisticConcurrency();
-            e.Property(x => x.RequestNumber).HasMaxLength(128);
-            e.Property(x => x.Court).HasMaxLength(256);
-            e.Property(x => x.Circuit).HasMaxLength(150);
-            e.Property(x => x.ContactPhones).HasMaxLength(1000);
-            e.Property(x => x.Notes).HasMaxLength(4000);
-            e.Property(x => x.ReceiveScenario).HasMaxLength(32);
-            e.Property(x => x.Status).HasMaxLength(32);
-            e.Property(x => x.FeeAmountSar).HasPrecision(12, 2);
-            e.Property(x => x.CreatedByUserId).HasMaxLength(450);
-            e.Property(x => x.CreatedByName).HasMaxLength(256);
-            e.HasIndex(x => x.RequestNumber);
-            e.HasIndex(x => x.CreatedAtUtc);
-            e.HasIndex(x => x.Status);
-            e.HasIndex(x => x.FeeGenerated);
-            e.HasIndex(x => x.RevenueEntitlementAtUtc);
-            e.HasIndex(x => x.OperationsTaskId);
-            e.HasMany(x => x.Assignments)
-                .WithOne(x => x.Envelope!)
-                .HasForeignKey(x => x.EnvelopeId)
-                .OnDelete(DeleteBehavior.Cascade);
-            e.HasMany(x => x.Handoffs)
-                .WithOne(x => x.Envelope!)
-                .HasForeignKey(x => x.EnvelopeId)
-                .OnDelete(DeleteBehavior.Cascade);
-            e.HasMany(x => x.Timeline)
-                .WithOne(x => x.Envelope!)
-                .HasForeignKey(x => x.EnvelopeId)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        builder.Entity<KeyEnvelopeAssignment>(e =>
-        {
-            e.ToTable("KeyEnvelopeAssignments", DatabaseSchemas.Operations);
-            e.UseOptimisticConcurrency();
-            e.Property(x => x.DeedNumber).HasMaxLength(128);
-            e.Property(x => x.Status).HasMaxLength(32);
-            e.Property(x => x.Notes).HasMaxLength(2000);
-            e.Property(x => x.ConfirmedByUserId).HasMaxLength(450);
-            e.Property(x => x.ConfirmedByName).HasMaxLength(256);
-            e.HasIndex(x => x.EnvelopeId);
-            e.HasIndex(x => new { x.EnvelopeId, x.DeedNumber });
-        });
-
-        builder.Entity<KeyEnvelopeHandoff>(e =>
-        {
-            e.ToTable("KeyEnvelopeHandoffs", DatabaseSchemas.Operations);
-            e.UseOptimisticConcurrency();
-            e.Property(x => x.Kind).HasMaxLength(32);
-            e.Property(x => x.FromParty).HasMaxLength(256);
-            e.Property(x => x.ToParty).HasMaxLength(256);
-            e.Property(x => x.ToUserId).HasMaxLength(450);
-            e.Property(x => x.LetterNumber).HasMaxLength(128);
-            e.Property(x => x.Notes).HasMaxLength(2000);
-            e.Property(x => x.Status).HasMaxLength(32);
-            e.Property(x => x.ConfirmedByUserId).HasMaxLength(450);
-            e.Property(x => x.ConfirmedByName).HasMaxLength(256);
-            e.Property(x => x.CreatedByUserId).HasMaxLength(450);
-            e.Property(x => x.CreatedByName).HasMaxLength(256);
-            e.HasIndex(x => x.EnvelopeId);
-            e.HasIndex(x => x.Status);
-        });
-
-        builder.Entity<KeyEnvelopeTimelineEntry>(e =>
-        {
-            e.ToTable("KeyEnvelopeTimelineEntries", DatabaseSchemas.Operations);
-            e.Property(x => x.EventType).HasMaxLength(64);
-            e.Property(x => x.Summary).HasMaxLength(1000);
-            e.Property(x => x.ActorUserId).HasMaxLength(450);
-            e.Property(x => x.ActorName).HasMaxLength(256);
-            e.HasIndex(x => new { x.EnvelopeId, x.CreatedAtUtc });
-        });
-
-        builder.Entity<PropertyCourtAccess>(e =>
-        {
-            e.ToTable("PropertyCourtAccesses", DatabaseSchemas.Operations);
-            e.UseOptimisticConcurrency();
-            e.Property(x => x.PoNumber).HasMaxLength(64);
-            e.Property(x => x.DeedNumber).HasMaxLength(128);
-            e.Property(x => x.RequestNumber).HasMaxLength(128);
-            e.Property(x => x.StudyHoldStatus).HasMaxLength(32);
-            e.Property(x => x.ContactPhones).HasMaxLength(1000);
-            e.Property(x => x.Notes).HasMaxLength(4000);
-            e.Property(x => x.UpdatedByUserId).HasMaxLength(450);
-            e.Property(x => x.UpdatedByName).HasMaxLength(256);
-            e.HasIndex(x => x.PropertyId).IsUnique();
-            e.HasIndex(x => x.RequestNumber);
-            e.HasIndex(x => x.StudyHoldStatus);
         });
 
         builder.Entity<KeyReceiptFeeCharge>(e =>
@@ -573,62 +431,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
             e.Property(x => x.ScopeKey).HasMaxLength(128);
             e.Property(x => x.LettersJson).HasColumnType("jsonb");
             e.HasIndex(x => x.ScopeKey).IsUnique();
-        });
-
-        builder.Entity<OperationsTask>(e =>
-        {
-            e.ToTable("OperationsTasks", DatabaseSchemas.CaseStudy);
-            e.UseOptimisticConcurrency();
-            e.Property(x => x.DisplayId).HasMaxLength(32);
-            e.Property(x => x.Type)
-                .HasConversion(DomainEnumConverters.OperationsTaskType)
-                .HasMaxLength(32);
-            e.Property(x => x.Title).HasMaxLength(500);
-            e.Property(x => x.Description).HasMaxLength(4000);
-            e.Property(x => x.Scope)
-                .HasConversion(DomainEnumConverters.OperationsTaskScope)
-                .HasMaxLength(32);
-            e.Property(x => x.DeedsJson).HasColumnType("jsonb");
-            e.Property(x => x.PoNumber).HasMaxLength(64);
-            e.Property(x => x.AssigneeId).HasMaxLength(128);
-            e.Property(x => x.AssigneeName).HasMaxLength(256);
-            e.Property(x => x.CreatedBy).HasMaxLength(128);
-            e.Property(x => x.CreatedByName).HasMaxLength(256);
-            e.Property(x => x.Status)
-                .HasConversion(DomainEnumConverters.OperationsTaskStatus)
-                .HasMaxLength(32);
-            e.Property(x => x.PrevStatus)
-                .HasConversion(DomainEnumConverters.OperationsTaskStatus)
-                .HasMaxLength(32);
-            e.Property(x => x.Priority)
-                .HasConversion(DomainEnumConverters.OperationsTaskPriority)
-                .HasMaxLength(16);
-            e.Property(x => x.Reference).HasMaxLength(64);
-            e.Property(x => x.LetterRowsJson).HasColumnType("jsonb");
-            e.Property(x => x.CommentsJson).HasColumnType("jsonb");
-            e.Property(x => x.RemindersJson).HasColumnType("jsonb");
-            e.Property(x => x.CourtVisitResultJson).HasColumnType("jsonb");
-            e.Property(x => x.AgreedVisitFeeSar).HasPrecision(12, 2);
-            e.Property(x => x.PauseReason).HasMaxLength(2000);
-            e.Property(x => x.CancelReason).HasMaxLength(2000);
-            e.Property(x => x.OriginalAssigneeId).HasMaxLength(128);
-            e.Property(x => x.OriginalAssigneeName).HasMaxLength(256);
-            e.Property(x => x.CreditAssigneeId).HasMaxLength(128);
-            e.Property(x => x.CreditAssigneeName).HasMaxLength(256);
-            e.HasIndex(x => x.DisplayId).IsUnique();
-            e.HasIndex(x => x.AssigneeId);
-            e.HasIndex(x => x.Status);
-            e.HasIndex(x => x.DueAtUtc);
-            // Non-manager list visibility ORs on the creator and on the PO numbers the
-            // caller works, so both need to be seekable independently of AssigneeId.
-            e.HasIndex(x => x.CreatedBy);
-            e.HasIndex(x => x.PoNumber);
-        });
-
-        builder.Entity<OperationsTaskSequence>(e =>
-        {
-            e.ToTable("OperationsTaskSequences", DatabaseSchemas.CaseStudy);
-            e.HasIndex(x => x.Year).IsUnique();
         });
 
         builder.Entity<DocumentReferenceCounter>(e =>

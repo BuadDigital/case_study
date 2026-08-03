@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
@@ -16,10 +17,11 @@ public sealed class AssignmentNotificationRegressionTests
     [Fact]
     public async Task OperationsTask_CreateAsync_queues_assignee_notification()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         SeedAssigneeProfile(db, "user-reviewer", "gov-1");
         await db.SaveChangesAsync();
-        var service = CreateOpsService(db);
+        var service = CreateOpsService(bundle);
 
         var (task, error) = await service.CreateAsync(
             new CreateOperationsTaskRequest
@@ -49,11 +51,12 @@ public sealed class AssignmentNotificationRegressionTests
     [Fact]
     public async Task OperationsTask_ReassignAsync_queues_new_assignee_notification()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         SeedAssigneeProfile(db, "user-a", "a-1");
         SeedAssigneeProfile(db, "user-b", "b-1");
         await db.SaveChangesAsync();
-        var service = CreateOpsService(db);
+        var service = CreateOpsService(bundle);
 
         var (created, _) = await service.CreateAsync(
             new CreateOperationsTaskRequest
@@ -94,7 +97,8 @@ public sealed class AssignmentNotificationRegressionTests
     [Fact]
     public async Task ConfirmDistribution_government_review_queues_outbox_with_operations_tasks_href()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         var propertyId = Guid.NewGuid();
         var workOrderId = Guid.NewGuid();
         var parentId = Guid.NewGuid();
@@ -205,14 +209,19 @@ public sealed class AssignmentNotificationRegressionTests
         return envelope.Payload;
     }
 
-    private static OperationsTaskService CreateOpsService(ApplicationDbContext db)
+    private static OperationsTaskService CreateOpsService(TestBoundedContexts.Bundle bundle)
     {
+        var db = bundle.App;
         var notifications = new PlatformNotificationRequestService(
             db,
             new OutboxIntegrationEventPublisher(
                 db,
                 NullLogger<OutboxIntegrationEventPublisher>.Instance));
-        return new OperationsTaskService(db, notifications, new PartyFeePricingService(db));
+        return OperationsTaskService.Create(
+            bundle.Ops,
+            db,
+            notifications,
+            new PartyFeePricingService(db));
     }
 
     private static WorkflowTaskService CreateWorkflowService(ApplicationDbContext db)
@@ -223,12 +232,12 @@ public sealed class AssignmentNotificationRegressionTests
                 db,
                 NullLogger<OutboxIntegrationEventPublisher>.Instance));
         var recipients = new NotificationRecipientResolver(db);
-        var fees = new InspectorFeeService(
+        var fees = TestInspectorFeeServiceFactory.Compose(
             db,
             notifications,
             recipients,
             new PartyFeePricingService(db));
-        return new WorkflowTaskService(
+        return TestInspectorFeeServiceFactory.ComposeWorkflow(
             db,
             fees,
             notifications,
@@ -236,13 +245,6 @@ public sealed class AssignmentNotificationRegressionTests
             new PropertyTimelineService(db));
     }
 
-    private static ApplicationDbContext CreateDb()
-    {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"assign-notify-regression-{Guid.NewGuid():N}")
-            .ConfigureWarnings(w =>
-                w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
-        return new ApplicationDbContext(options);
-    }
+    private static TestBoundedContexts.Bundle CreateDb() =>
+        TestBoundedContexts.Create($"assign-notify-regression-{Guid.NewGuid():N}");
 }

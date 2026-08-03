@@ -4,6 +4,7 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
 
 namespace RealEstateEval.Infrastructure.Services;
@@ -15,6 +16,7 @@ public class FailureService : IFailureService
 
     private static readonly HashSet<string> ActiveStatuses = PropertyFailureStatus.Active;
 
+    private readonly FailuresDbContext _failures;
     private readonly ApplicationDbContext _db;
     private readonly IWorkflowTaskService _tasks;
     private readonly IPropertyTimelineService _timeline;
@@ -22,12 +24,14 @@ public class FailureService : IFailureService
     private readonly NotificationRecipientResolver _recipients;
 
     public FailureService(
+        FailuresDbContext failures,
         ApplicationDbContext db,
         IWorkflowTaskService tasks,
         IPropertyTimelineService timeline,
         INotificationService notifications,
         NotificationRecipientResolver recipients)
     {
+        _failures = failures;
         _db = db;
         _tasks = tasks;
         _timeline = timeline;
@@ -39,7 +43,7 @@ public class FailureService : IFailureService
         PermissionsDto? actor = null,
         CancellationToken cancellationToken = default)
     {
-        IQueryable<PropertyFailure> query = _db.PropertyFailures
+        IQueryable<PropertyFailure> query = _failures.PropertyFailures
             .AsNoTracking()
             .OrderByDescending(f => f.UpdatedAtUtc);
 
@@ -163,7 +167,8 @@ public class FailureService : IFailureService
             UpdatedAtUtc = now,
         };
 
-        _db.PropertyFailures.Add(entity);
+        _failures.PropertyFailures.Add(entity);
+        await _failures.SaveChangesAsync(cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
 
         if (Guid.TryParse(entity.PropertyId, out var propertyId))
@@ -259,12 +264,13 @@ public class FailureService : IFailureService
         Guid id,
         CancellationToken cancellationToken = default)
     {
-        var entity = await _db.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
+        var entity = await _failures.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
         if (entity is null) return null;
         if (entity.Status != PropertyFailureStatus.Internal || entity.Severity != "suspected") return null;
 
         entity.Severity = "internal";
         entity.UpdatedAtUtc = DateTime.UtcNow;
+        await _failures.SaveChangesAsync(cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
         await ApplyInternalSideEffectsAsync(entity, cancellationToken);
         return await ToDtoAsync(entity, cancellationToken);
@@ -274,12 +280,13 @@ public class FailureService : IFailureService
         Guid id,
         CancellationToken cancellationToken = default)
     {
-        var entity = await _db.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
+        var entity = await _failures.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
         if (entity is null) return null;
         if (entity.Status is not (PropertyFailureStatus.Internal or PropertyFailureStatus.Returned)) return null;
 
         entity.Status = PropertyFailureStatus.Review;
         entity.UpdatedAtUtc = DateTime.UtcNow;
+        await _failures.SaveChangesAsync(cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
         await EscalateTaskObstructionAsync(
             entity,
@@ -295,7 +302,7 @@ public class FailureService : IFailureService
         string actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var entity = await _db.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
+        var entity = await _failures.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
         if (entity is null || entity.Status != PropertyFailureStatus.Review) return null;
 
         var now = DateTime.UtcNow;
@@ -306,6 +313,7 @@ public class FailureService : IFailureService
             ? null
             : actorUserId.Trim();
         entity.UpdatedAtUtc = now;
+        await _failures.SaveChangesAsync(cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
 
         if (Guid.TryParse(entity.PropertyId, out var propertyId))
@@ -329,13 +337,14 @@ public class FailureService : IFailureService
         ResolveFailureRequest request,
         CancellationToken cancellationToken = default)
     {
-        var entity = await _db.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
+        var entity = await _failures.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
         if (entity is null || !IsActiveStatus(entity.Status) || entity.Status == PropertyFailureStatus.Approved) return null;
 
         entity.Status = PropertyFailureStatus.Resolved;
         entity.ResolutionReason = request.ResolutionReason.Trim();
         entity.ContinueInstructions = request.ContinueInstructions.Trim();
         entity.UpdatedAtUtc = DateTime.UtcNow;
+        await _failures.SaveChangesAsync(cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
 
         await SetPropertyDeedStatusAsync(entity, "فعال", cancellationToken);
@@ -348,12 +357,13 @@ public class FailureService : IFailureService
         string finalNote,
         CancellationToken cancellationToken = default)
     {
-        var entity = await _db.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
+        var entity = await _failures.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
         if (entity is null || entity.Status != PropertyFailureStatus.Review) return null;
 
         entity.Status = PropertyFailureStatus.Approved;
         entity.FinalNote = finalNote.Trim();
         entity.UpdatedAtUtc = DateTime.UtcNow;
+        await _failures.SaveChangesAsync(cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
 
         await SetPropertyDeedStatusAsync(entity, "موقوف", cancellationToken);
@@ -367,12 +377,13 @@ public class FailureService : IFailureService
         string finalNote,
         CancellationToken cancellationToken = default)
     {
-        var entity = await _db.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
+        var entity = await _failures.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
         if (entity is null || entity.Status != PropertyFailureStatus.Review) return null;
 
         entity.Status = PropertyFailureStatus.Returned;
         entity.FinalNote = finalNote.Trim();
         entity.UpdatedAtUtc = DateTime.UtcNow;
+        await _failures.SaveChangesAsync(cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
 
         await SetPropertyDeedStatusAsync(entity, "فعال", cancellationToken);
@@ -383,7 +394,7 @@ public class FailureService : IFailureService
     public async Task DeleteForPoAsync(string poNumber, CancellationToken cancellationToken = default)
     {
         var n = poNumber.Trim();
-        await _db.PropertyFailures
+        await _failures.PropertyFailures
             .Where(f => f.PoNumber == n)
             .ExecuteDeleteAsync(cancellationToken);
     }
@@ -532,6 +543,7 @@ public class FailureService : IFailureService
         if (prop is null) return;
 
         prop.DeedStatus = deedStatus;
+        await _failures.SaveChangesAsync(cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
     }
 
@@ -542,7 +554,7 @@ public class FailureService : IFailureService
     {
         var po = poNumber.Trim();
         var prop = propertyId.Trim();
-        return await _db.PropertyFailures
+        return await _failures.PropertyFailures
             .AsNoTracking()
             .Where(f =>
                 f.PoNumber == po &&

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
@@ -11,7 +12,8 @@ public class KeyEnvelopesServiceTests
     [Fact]
     public async Task CreateAsync_links_properties_and_marks_entitlement_for_court_scenario()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         var requestNumber = "REQ-ENV-100";
         var receiptId = await AddAttachmentAsync(db, "receipt.pdf");
         var photoId = await AddAttachmentAsync(db, "envelope.jpg");
@@ -22,7 +24,7 @@ public class KeyEnvelopesServiceTests
         db.WorkOrderProperties.Add(property);
         await db.SaveChangesAsync();
 
-        var service = CreateService(db);
+        var service = CreateService(bundle);
         var (envelope, error) = await service.CreateAsync(
             new CreateKeyEnvelopeRequest
             {
@@ -60,8 +62,9 @@ public class KeyEnvelopesServiceTests
     [Fact]
     public async Task CreateAsync_rejects_missing_attachments_for_court()
     {
-        await using var db = CreateDb();
-        var service = CreateService(db);
+        var bundle = CreateDb();
+        var db = bundle.App;
+        var service = CreateService(bundle);
 
         var (envelope, error) = await service.CreateAsync(
             new CreateKeyEnvelopeRequest
@@ -85,8 +88,9 @@ public class KeyEnvelopesServiceTests
     [Fact]
     public async Task CreateAsync_missing_scenario_requires_phones_and_earns_nothing()
     {
-        await using var db = CreateDb();
-        var service = CreateService(db);
+        var bundle = CreateDb();
+        var db = bundle.App;
+        var service = CreateService(bundle);
 
         var (bad, badError) = await service.CreateAsync(
             new CreateKeyEnvelopeRequest
@@ -122,8 +126,9 @@ public class KeyEnvelopesServiceTests
     [Fact]
     public async Task Internal_handoff_requires_assessor_confirm_before_status_change()
     {
-        await using var db = CreateDb();
-        var service = CreateService(db);
+        var bundle = CreateDb();
+        var db = bundle.App;
+        var service = CreateService(bundle);
         var envelope = await CreateCourtEnvelopeAsync(db, service);
 
         var (afterHandoff, error) = await service.CreateHandoffAsync(
@@ -152,8 +157,9 @@ public class KeyEnvelopesServiceTests
     [Fact]
     public async Task ConfirmAssignment_sets_matched()
     {
-        await using var db = CreateDb();
-        var service = CreateService(db);
+        var bundle = CreateDb();
+        var db = bundle.App;
+        var service = CreateService(bundle);
         var envelope = await CreateCourtEnvelopeAsync(db, service);
         var assignmentId = envelope.Assignments[0].Id;
 
@@ -172,7 +178,8 @@ public class KeyEnvelopesServiceTests
     [Fact]
     public async Task ListLinkedPropertiesAsync_ignores_removed_properties()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         var requestNumber = "REQ-ENV-200";
         var workOrder = NewWorkOrder("PO-ENV-2");
         db.WorkOrders.Add(workOrder);
@@ -192,7 +199,7 @@ public class KeyEnvelopesServiceTests
             });
         await db.SaveChangesAsync();
 
-        var service = CreateService(db);
+        var service = CreateService(bundle);
         var linked = await service.ListLinkedPropertiesAsync(requestNumber);
 
         Assert.Single(linked);
@@ -202,7 +209,8 @@ public class KeyEnvelopesServiceTests
     [Fact]
     public async Task UpsertCourtAccess_eviction_suspends_study()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         var workOrder = NewWorkOrder("PO-ACC-1");
         var property = NewProperty(workOrder.Id, "DEED-ACC", "REQ-ACC");
         db.WorkOrders.Add(workOrder);
@@ -211,7 +219,7 @@ public class KeyEnvelopesServiceTests
         var attachmentId = await AddAttachmentAsync(db, "eviction.pdf");
         await db.SaveChangesAsync();
 
-        var service = CreateService(db);
+        var service = CreateService(bundle);
         var (access, error) = await service.UpsertCourtAccessAsync(
             new UpsertPropertyCourtAccessRequest
             {
@@ -237,7 +245,8 @@ public class KeyEnvelopesServiceTests
     [Fact]
     public async Task UpsertCourtAccess_clear_eviction_releases_hold()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         var workOrder = NewWorkOrder("PO-ACC-2");
         var property = NewProperty(workOrder.Id, "DEED-ACC-2", "REQ-ACC-2");
         db.WorkOrders.Add(workOrder);
@@ -246,7 +255,7 @@ public class KeyEnvelopesServiceTests
         var attachmentId = await AddAttachmentAsync(db, "eviction2.pdf");
         await db.SaveChangesAsync();
 
-        var service = CreateService(db);
+        var service = CreateService(bundle);
         var (suspended, suspendError) = await service.UpsertCourtAccessAsync(
             new UpsertPropertyCourtAccessRequest
             {
@@ -287,8 +296,9 @@ public class KeyEnvelopesServiceTests
     [Fact]
     public async Task GateResolver_prefers_envelope_handoff_for_key_available()
     {
-        await using var db = CreateDb();
-        var service = CreateService(db);
+        var bundle = CreateDb();
+        var db = bundle.App;
+        var service = CreateService(bundle);
         var workOrder = NewWorkOrder("PO-GATE-1");
         var property = NewProperty(workOrder.Id, "DEED-GATE", "REQ-GATE");
         db.WorkOrders.Add(workOrder);
@@ -339,7 +349,7 @@ public class KeyEnvelopesServiceTests
             "insp-1",
             "معاين");
 
-        var gate = await new PropertyKeyGateResolver(db).ResolveAsync(
+        var gate = await new PropertyKeyGateResolver(bundle.Ops, db).ResolveAsync(
             property.Id,
             workOrder.PoNumber,
             property.DeedNumber,
@@ -354,8 +364,9 @@ public class KeyEnvelopesServiceTests
     [Fact]
     public async Task DeleteAsync_removes_envelope_children_and_fee_charge()
     {
-        await using var db = CreateDb();
-        var service = CreateService(db);
+        var bundle = CreateDb();
+        var db = bundle.App;
+        var service = CreateService(bundle);
         var envelope = await CreateCourtEnvelopeAsync(db, service);
         await AddHistoricalChargeAsync(db, envelope.Id, envelope.RequestNumber, 275m);
 
@@ -372,8 +383,9 @@ public class KeyEnvelopesServiceTests
     [Fact]
     public async Task PropertyKeys_projection_marks_done_when_assignment_matched()
     {
-        await using var db = CreateDb();
-        var service = CreateService(db);
+        var bundle = CreateDb();
+        var db = bundle.App;
+        var service = CreateService(bundle);
         var workOrder = NewWorkOrder("PO-PROJ-1");
         var property = NewProperty(workOrder.Id, "DEED-PROJ", "REQ-PROJ");
         db.WorkOrders.Add(workOrder);
@@ -413,7 +425,7 @@ public class KeyEnvelopesServiceTests
             "insp",
             "معاين");
 
-        var keys = new PropertyKeysService(db);
+        var keys = new PropertyKeysService(bundle.Ops, db);
         var rows = await keys.ListAsync(null);
         var row = Assert.Single(
             rows,
@@ -430,7 +442,8 @@ public class KeyEnvelopesServiceTests
     [Fact]
     public async Task CreateAsync_court_envelope_marks_entitlement_without_any_amount()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         db.PartyFeePricingTables.Add(new PartyFeePricingTable
         {
             Id = Guid.NewGuid(),
@@ -442,7 +455,7 @@ public class KeyEnvelopesServiceTests
         });
         await db.SaveChangesAsync();
 
-        var envelope = await CreateCourtEnvelopeAsync(db, CreateService(db));
+        var envelope = await CreateCourtEnvelopeAsync(db, CreateService(bundle));
 
         Assert.NotNull(envelope.RevenueEntitlementAtUtc);
         Assert.False(envelope.FeeGenerated);
@@ -461,8 +474,9 @@ public class KeyEnvelopesServiceTests
     [Fact]
     public async Task The_fee_report_shows_entitlements_beside_the_historical_charges()
     {
-        await using var db = CreateDb();
-        var service = CreateService(db);
+        var bundle = CreateDb();
+        var db = bundle.App;
+        var service = CreateService(bundle);
         var entitlement = await CreateCourtEnvelopeAsync(db, service);
         var historical = await CreateCourtEnvelopeAsync(db, service);
         await AddHistoricalChargeAsync(db, historical.Id, historical.RequestNumber, 275m);
@@ -481,8 +495,9 @@ public class KeyEnvelopesServiceTests
     [Fact]
     public async Task Confirming_collection_on_an_entitlement_explains_it_carries_no_amount()
     {
-        await using var db = CreateDb();
-        var service = CreateService(db);
+        var bundle = CreateDb();
+        var db = bundle.App;
+        var service = CreateService(bundle);
         var envelope = await CreateCourtEnvelopeAsync(db, service);
 
         var (row, error) = await service.MarkFeeCollectedAsync(envelope.Id, null);
@@ -494,8 +509,9 @@ public class KeyEnvelopesServiceTests
     [Fact]
     public async Task Confirming_collection_still_works_on_a_historical_charge()
     {
-        await using var db = CreateDb();
-        var service = CreateService(db);
+        var bundle = CreateDb();
+        var db = bundle.App;
+        var service = CreateService(bundle);
         var envelope = await CreateCourtEnvelopeAsync(db, service);
         await AddHistoricalChargeAsync(db, envelope.Id, envelope.RequestNumber, 275m);
 
@@ -506,8 +522,8 @@ public class KeyEnvelopesServiceTests
         Assert.Equal("INV-9", row.InvoiceReference);
     }
 
-    private static KeyEnvelopesService CreateService(ApplicationDbContext db) =>
-        new(db, new PropertyAccessHoldService(db), new KeyEnvelopePeopleResolver(db));
+    private static KeyEnvelopesService CreateService(TestBoundedContexts.Bundle bundle) =>
+        TestBoundedContexts.CreateKeyEnvelopesService(bundle);
 
     /// <summary>
     /// A charge from before key-receipt revenue left the pricing table. Nothing creates these any
@@ -619,11 +635,6 @@ public class KeyEnvelopesServiceTests
         return id;
     }
 
-    private static ApplicationDbContext CreateDb()
-    {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"key-envelopes-{Guid.NewGuid():N}")
-            .Options;
-        return new ApplicationDbContext(options);
-    }
+    private static TestBoundedContexts.Bundle CreateDb() =>
+        TestBoundedContexts.Create($"key-envelopes-{Guid.NewGuid():N}");
 }

@@ -1,359 +1,88 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Notifications;
-using System.Text.Json;
 
 namespace RealEstateEval.Infrastructure.Services;
 
+/// <summary>
+/// Work-order façade: header lifecycle + create. Reads and property mutates live on collaborators.
+/// </summary>
 public class WorkOrderService : IWorkOrderService
 {
-    private const WorkflowTaskKind CaseStudyPropertyKind = WorkflowTaskKind.CaseStudyProperty;
-    private const int MaxDetailRows = 500;
-
     private readonly ApplicationDbContext _db;
     private readonly IPropertyTimelineService _timeline;
-    private readonly IFailureService _failures;
     private readonly INotificationService _notifications;
     private readonly NotificationRecipientResolver _recipients;
-    private readonly IWorkOrderVisibilityFilter _visibility;
-    private readonly DatabaseOptions _dbOptions;
+    private readonly IWorkOrderLoader _loader;
+    private readonly IWorkOrderQuery _query;
+    private readonly IWorkOrderPropertyCommands _properties;
     private readonly IOrganizationSettingsService? _organizationSettings;
 
     public WorkOrderService(
         ApplicationDbContext db,
         IPropertyTimelineService timeline,
-        IFailureService failures,
         INotificationService notifications,
         NotificationRecipientResolver recipients,
-        IWorkOrderVisibilityFilter? visibility = null,
-        IOptions<DatabaseOptions>? dbOptions = null,
+        IWorkOrderLoader loader,
+        IWorkOrderQuery query,
+        IWorkOrderPropertyCommands properties,
         IOrganizationSettingsService? organizationSettings = null)
     {
         _db = db;
         _timeline = timeline;
-        _failures = failures;
         _notifications = notifications;
         _recipients = recipients;
-        _visibility = visibility ?? new WorkOrderVisibilityFilter(db);
-        _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
+        _loader = loader;
+        _query = query;
+        _properties = properties;
         _organizationSettings = organizationSettings;
     }
 
-    public async Task<IReadOnlyList<WorkOrderListItemDto>> ListAsync(
+    public Task<IReadOnlyList<WorkOrderListItemDto>> ListAsync(
         PermissionsDto? actor = null,
-        CancellationToken cancellationToken = default)
-    {
-        var (_, take, _, _) = NpgsqlConfiguration.ResolveListPaging(null, null, _dbOptions);
-        return await BuildListItemsAsync(null, take, actor, cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        _query.ListAsync(actor, cancellationToken);
 
-    public async Task<PagedResultDto<WorkOrderListItemDto>> ListPagedAsync(
+    public Task<PagedResultDto<WorkOrderListItemDto>> ListPagedAsync(
         int? page,
         int? pageSize,
         PermissionsDto? actor = null,
-        CancellationToken cancellationToken = default)
-    {
-        var (skip, take, resolvedPage, _) = NpgsqlConfiguration.ResolveListPaging(
-            page,
-            pageSize,
-            _dbOptions);
-        var visiblePos = await _visibility.ResolveVisiblePoNumbersAsync(actor, cancellationToken);
-        var totalQuery = _db.WorkOrders.AsNoTracking();
-        if (visiblePos is not null)
-            totalQuery = totalQuery.Where(w => visiblePos.Contains(w.PoNumber));
-        var total = await totalQuery.CountAsync(cancellationToken);
-        var items = await BuildListItemsAsync(skip, take, actor, cancellationToken);
+        CancellationToken cancellationToken = default) =>
+        _query.ListPagedAsync(page, pageSize, actor, cancellationToken);
 
-        return new PagedResultDto<WorkOrderListItemDto>
-        {
-            Items = items,
-            TotalCount = total,
-            Page = resolvedPage,
-            PageSize = take,
-        };
-    }
-
-    private async Task<IReadOnlyList<WorkOrderListItemDto>> BuildListItemsAsync(
-        int? skip,
-        int? take,
-        PermissionsDto? actor,
-        CancellationToken cancellationToken)
-    {
-        IQueryable<WorkOrder> query = _db.WorkOrders
-            .AsNoTracking()
-            .OrderByDescending(w => w.CreatedAtUtc);
-
-        var visiblePos = await _visibility.ResolveVisiblePoNumbersAsync(actor, cancellationToken);
-        if (visiblePos is not null)
-        {
-            if (visiblePos.Count == 0)
-                return [];
-            query = query.Where(w => visiblePos.Contains(w.PoNumber));
-        }
-
-        if (skip is > 0)
-            query = query.Skip(skip.Value);
-        if (take is > 0)
-            query = query.Take(take.Value);
-
-        var orders = await query
-            .Include(w => w.Properties)
-            .ToListAsync(cancellationToken);
-        if (orders.Count == 0)
-            return [];
-
-        var poNumbers = orders.Select(w => w.PoNumber.Trim()).Distinct().ToList();
-        var propertyIds = orders.SelectMany(w => w.Properties.Select(p => p.Id)).ToList();
-
-        var caseStudyTasks = propertyIds.Count == 0
-            ? []
-            : await _db.WorkflowTasks
-                .AsNoTracking()
-                .Where(t => poNumbers.Contains(t.PoNumber)
-                    && t.Kind == CaseStudyPropertyKind
-                    && t.PropertyId != null
-                    && propertyIds.Contains(t.PropertyId.Value))
-                .ToListAsync(cancellationToken);
-
-        var studiedByProperty = caseStudyTasks
-            .Where(t => t.PropertyId.HasValue)
-            .GroupBy(t => t.PropertyId!.Value)
-            .ToDictionary(
-                g => g.Key,
-                g => g.Any(t =>
-                    t.Status == WorkflowTaskStatus.Completed
-                    || t.Phase == WorkflowTaskPhase.Done));
-
-        var billedPos = poNumbers.Count == 0
-            ? new HashSet<string>(StringComparer.Ordinal)
-            : (await _db.PoEnfazInvoices.AsNoTracking()
-                .Where(i => poNumbers.Contains(i.PoNumber))
-                .Select(i => i.PoNumber)
-                .ToListAsync(cancellationToken))
-                .Select(p => p.Trim())
-                .ToHashSet(StringComparer.Ordinal);
-
-        var specialistNames = await PersonLabelResolver.ResolveManyAsync(
-            _db,
-            orders.Select(w => w.AssignmentSpecialist),
-            cancellationToken);
-
-        return orders
-            .Select(w =>
-            {
-                var item = WorkOrderMapper.ToListItem(
-                    w,
-                    studiedByProperty,
-                    billedPos.Contains(w.PoNumber.Trim()));
-                item.AssignmentSpecialist = PersonLabelResolver.ApplyResolved(
-                    item.AssignmentSpecialist,
-                    specialistNames);
-                return item;
-            })
-            .ToList();
-    }
-
-    public async Task<IReadOnlyList<WorkOrderDto>> ListDetailsAsync(
+    public Task<IReadOnlyList<WorkOrderDto>> ListDetailsAsync(
         PermissionsDto? actor = null,
-        CancellationToken cancellationToken = default)
-    {
-        IQueryable<WorkOrder> query = _db.WorkOrders
-            .AsNoTracking()
-            .Include(w => w.Properties)
-            .ThenInclude(p => p.Contacts)
-            .OrderByDescending(w => w.CreatedAtUtc);
+        CancellationToken cancellationToken = default) =>
+        _query.ListDetailsAsync(actor, cancellationToken);
 
-        var visiblePos = await _visibility.ResolveVisiblePoNumbersAsync(actor, cancellationToken);
-        if (visiblePos is not null)
-        {
-            if (visiblePos.Count == 0)
-                return [];
-            query = query.Where(w => visiblePos.Contains(w.PoNumber));
-        }
-
-        var list = await query.Take(MaxDetailRows).ToListAsync(cancellationToken);
-        return await WithResolvedSpecialistsAsync(
-            list.Select(WorkOrderMapper.ToDto).ToList(),
-            cancellationToken);
-    }
-
-    private async Task<WorkOrderDto> WithResolvedSpecialistAsync(
-        WorkOrderDto dto,
-        CancellationToken cancellationToken)
-    {
-        dto.AssignmentSpecialist = await PersonLabelResolver.ResolveAsync(
-            _db,
-            dto.AssignmentSpecialist,
-            cancellationToken);
-        return dto;
-    }
-
-    private async Task<IReadOnlyList<WorkOrderDto>> WithResolvedSpecialistsAsync(
-        IReadOnlyList<WorkOrderDto> rows,
-        CancellationToken cancellationToken)
-    {
-        var names = await PersonLabelResolver.ResolveManyAsync(
-            _db,
-            rows.Select(r => r.AssignmentSpecialist),
-            cancellationToken);
-        foreach (var row in rows)
-        {
-            row.AssignmentSpecialist = PersonLabelResolver.ApplyResolved(
-                row.AssignmentSpecialist,
-                names);
-        }
-
-        return rows;
-    }
-
-    public async Task<IReadOnlyList<PropertyListItemDto>> ListPropertyListItemsAsync(
+    public Task<IReadOnlyList<PropertyListItemDto>> ListPropertyListItemsAsync(
         PermissionsDto? actor = null,
-        CancellationToken cancellationToken = default)
-    {
-        IQueryable<WorkOrder> query = _db.WorkOrders
-            .AsNoTracking()
-            .Include(w => w.Properties)
-            .ThenInclude(p => p.Contacts)
-            .OrderByDescending(w => w.CreatedAtUtc);
+        CancellationToken cancellationToken = default) =>
+        _query.ListPropertyListItemsAsync(actor, cancellationToken);
 
-        var visiblePos = await _visibility.ResolveVisiblePoNumbersAsync(actor, cancellationToken);
-        if (visiblePos is not null)
-        {
-            if (visiblePos.Count == 0)
-                return [];
-            query = query.Where(w => visiblePos.Contains(w.PoNumber));
-        }
-
-        var list = await query.Take(MaxDetailRows).ToListAsync(cancellationToken);
-
-        var approvedFailures = await _db.PropertyFailures
-            .AsNoTracking()
-            .Where(f => f.Status == PropertyFailureStatus.Approved)
-            .Select(f => new { f.PoNumber, f.PropertyId })
-            .ToListAsync(cancellationToken);
-
-        var failureKeys = approvedFailures
-            .Select(f => $"{f.PoNumber.Trim()}|{f.PropertyId.Trim()}")
-            .ToHashSet(StringComparer.Ordinal);
-
-        var propertyIds = list.SelectMany(w => w.Properties.Select(p => p.Id)).ToList();
-        var poNumbers = list.Select(w => w.PoNumber.Trim()).Distinct().ToList();
-        var tasks = propertyIds.Count == 0
-            ? []
-            : await _db.WorkflowTasks
-                .AsNoTracking()
-                .Where(t => poNumbers.Contains(t.PoNumber)
-                    && t.PropertyId != null
-                    && propertyIds.Contains(t.PropertyId.Value))
-                .ToListAsync(cancellationToken);
-
-        var tasksByProperty = tasks
-            .Where(t => t.PropertyId.HasValue)
-            .GroupBy(t => t.PropertyId!.Value)
-            .ToDictionary(
-                g => g.Key,
-                g => (IReadOnlyList<WorkflowTask>)g.ToList());
-
-        return await WithResolvedPropertySpecialistsAsync(
-            PropertyListRowBuilder.Build(list, failureKeys, tasksByProperty),
-            cancellationToken);
-    }
-
-    private async Task<IReadOnlyList<PropertyListItemDto>> WithResolvedPropertySpecialistsAsync(
-        IReadOnlyList<PropertyListItemDto> rows,
-        CancellationToken cancellationToken)
-    {
-        var names = await PersonLabelResolver.ResolveManyAsync(
-            _db,
-            rows.Select(r => r.Row.Specialist),
-            cancellationToken);
-        foreach (var row in rows)
-            row.Row.Specialist = PersonLabelResolver.ApplyResolved(row.Row.Specialist, names);
-        return rows;
-    }
-
-    public async Task<WorkOrderDto?> GetByPoNumberAsync(
+    public Task<WorkOrderDto?> GetByPoNumberAsync(
         string poNumber,
         PermissionsDto? actor = null,
-        CancellationToken cancellationToken = default)
-    {
-        if (!await _visibility.CanReadPoAsync(NormalizePo(poNumber), actor, cancellationToken))
-            return null;
+        CancellationToken cancellationToken = default) =>
+        _query.GetByPoNumberAsync(poNumber, actor, cancellationToken);
 
-        var entity = await LoadWorkOrderTrackedAsync(poNumber, cancellationToken, asNoTracking: true);
-        return entity is null
-            ? null
-            : await WithResolvedSpecialistAsync(WorkOrderMapper.ToDto(entity), cancellationToken);
-    }
-
-    /// <summary>
-    /// Null means unrestricted (case staff). Empty set means the actor can see nothing.
-    /// </summary>
     public Task<bool> ExistsAsync(string poNumber, CancellationToken cancellationToken) =>
-        _db.WorkOrders.AnyAsync(
-            w => w.PoNumber == NormalizePo(poNumber),
-            cancellationToken);
+        _query.ExistsAsync(poNumber, cancellationToken);
 
-    public async Task<PriorDeedRegistrationDto?> FindPriorDeedAsync(
+    public Task<PriorDeedRegistrationDto?> FindPriorDeedAsync(
         string deedNumber,
         string? excludePoNumber,
         CancellationToken cancellationToken,
-        Guid? excludePropertyId = null)
-    {
-        var n = deedNumber.Trim();
-        if (n.Length == 0) return null;
+        Guid? excludePropertyId = null) =>
+        _query.FindPriorDeedAsync(deedNumber, excludePoNumber, cancellationToken, excludePropertyId);
 
-        var exclude = string.IsNullOrWhiteSpace(excludePoNumber)
-            ? null
-            : NormalizePo(excludePoNumber);
-
-        var hit = await _db.WorkOrderProperties
-            .AsNoTracking()
-            .Include(p => p.WorkOrder)
-            .Include(p => p.Contacts)
-            .Where(p =>
-                !p.IsRemoved &&
-                p.IdentifierType == PropertyIdentifierType.Deed &&
-                p.DeedNumber == n &&
-                (excludePropertyId == null || p.Id != excludePropertyId.Value) &&
-                (exclude == null || p.WorkOrder!.PoNumber != exclude))
-            .OrderByDescending(p => p.WorkOrder!.CreatedAtUtc)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        return hit is null || hit.WorkOrder is null
-            ? null
-            : WorkOrderMapper.ToPriorDeedDto(hit, hit.WorkOrder.PoNumber);
-    }
-
-    public async Task<IReadOnlyList<PendingBoursePropertyDto>> ListPendingBourseAsync(
-        CancellationToken cancellationToken)
-    {
-        // Only properties whose case-study task is currently in the bourse phase.
-        // After revert to enfath, BourseDataCompleted stays false — without the phase
-        // check the row would incorrectly remain on استعلام البورصة.
-        var list = await _db.WorkOrderProperties
-            .AsNoTracking()
-            .Include(p => p.WorkOrder)
-            .Where(p => !p.IsRemoved && !p.BourseDataCompleted && p.WorkOrder != null)
-            .Where(p => _db.WorkflowTasks.Any(t =>
-                t.PropertyId == p.Id
-                && t.Kind == CaseStudyPropertyKind
-                && t.ParentTaskId == null
-                && t.Phase == WorkflowTaskPhase.Bourse))
-            .OrderByDescending(p => p.WorkOrder!.CreatedAtUtc)
-            .ThenByDescending(p => p.WorkOrder!.ReceivedFromEnfathAt)
-            .ThenBy(p => p.WorkOrder!.PoNumber)
-            .ThenBy(p => p.DeedNumber)
-            .Take(MaxDetailRows)
-            .ToListAsync(cancellationToken);
-
-        return list.Select(WorkOrderMapper.ToPendingBourse).ToList();
-    }
+    public Task<IReadOnlyList<PendingBoursePropertyDto>> ListPendingBourseAsync(
+        CancellationToken cancellationToken) =>
+        _query.ListPendingBourseAsync(cancellationToken);
 
     public async Task<(WorkOrderDto? Result, Dictionary<string, string>? Errors)> CreateAsync(
         CreateWorkOrderRequest request,
@@ -362,7 +91,7 @@ public class WorkOrderService : IWorkOrderService
         var headerErrors = WorkOrderValidator.ValidateHeader(request);
         if (headerErrors.Count > 0) return (null, headerErrors);
 
-        var po = NormalizePo(request.PoNumber);
+        var po = IWorkOrderLoader.NormalizePo(request.PoNumber);
         if (await ExistsAsync(po, cancellationToken))
             return (null, new Dictionary<string, string> { ["poNumber"] = "رقم PO مسجّل مسبقاً" });
 
@@ -401,11 +130,11 @@ public class WorkOrderService : IWorkOrderService
             PromulgationDate = promulgation,
             ReceivedFromEnfathAt = promulgation,
             ReceivedFromEnfathTime = request.ReceivedFromEnfathTime?.Trim(),
-            AssignmentSpecialist = NormalizeOptionalText(request.AssignmentSpecialist),
-            AssignmentSpecialistEmail = NormalizeOptionalText(request.AssignmentSpecialistEmail),
+            AssignmentSpecialist = IWorkOrderLoader.NormalizeOptionalText(request.AssignmentSpecialist),
+            AssignmentSpecialistEmail = IWorkOrderLoader.NormalizeOptionalText(request.AssignmentSpecialistEmail),
             ExpectedPropertyCount = request.ExpectedPropertyCount,
-            PropertiesRegion = NormalizeOptionalText(request.PropertiesRegion),
-            WorkOrderDescription = NormalizeOptionalText(request.WorkOrderDescription),
+            PropertiesRegion = IWorkOrderLoader.NormalizeOptionalText(request.PropertiesRegion),
+            WorkOrderDescription = IWorkOrderLoader.NormalizeOptionalText(request.WorkOrderDescription),
             DueDateAt = BusinessDueDateCalculator.Compute(
                 promulgation,
                 request.ReceivedFromEnfathTime,
@@ -416,7 +145,7 @@ public class WorkOrderService : IWorkOrderService
         foreach (var propDto in request.Properties)
         {
             propDto.Id = null;
-            workOrder.Properties.Add(MapPropertyEnfath(propDto, workOrder.Id, forInsert: true));
+            workOrder.Properties.Add(_properties.MapPropertyEnfath(propDto, workOrder.Id, forInsert: true));
         }
 
         _db.WorkOrders.Add(workOrder);
@@ -453,10 +182,10 @@ public class WorkOrderService : IWorkOrderService
             newEmail: workOrder.AssignmentSpecialistEmail,
             cancellationToken);
 
-        var loaded = await LoadWorkOrderTrackedAsync(po, cancellationToken, asNoTracking: true);
+        var loaded = await _loader.LoadAsync(po, cancellationToken, asNoTracking: true);
         return (loaded is null
             ? null
-            : await WithResolvedSpecialistAsync(WorkOrderMapper.ToDto(loaded), cancellationToken), null);
+            : await _query.WithResolvedSpecialistAsync(WorkOrderMapper.ToDto(loaded), cancellationToken), null);
     }
 
     public async Task<(WorkOrderDto? Result, Dictionary<string, string>? Errors)> UpdateHeaderAsync(
@@ -464,7 +193,7 @@ public class WorkOrderService : IWorkOrderService
         UpdateWorkOrderHeaderRequest request,
         CancellationToken cancellationToken)
     {
-        var entity = await LoadWorkOrderTrackedAsync(poNumber, cancellationToken);
+        var entity = await _loader.LoadAsync(poNumber, cancellationToken);
         if (entity is null) return (null, new Dictionary<string, string> { ["_"] = "أمر العمل غير موجود" });
 
         var errors = WorkOrderValidator.ValidateUpdateHeader(request);
@@ -491,11 +220,11 @@ public class WorkOrderService : IWorkOrderService
         entity.PromulgationDate = promulgation;
         entity.ReceivedFromEnfathAt = promulgation;
         entity.ReceivedFromEnfathTime = request.ReceivedFromEnfathTime?.Trim();
-        entity.AssignmentSpecialist = NormalizeOptionalText(request.AssignmentSpecialist);
-        entity.AssignmentSpecialistEmail = NormalizeOptionalText(request.AssignmentSpecialistEmail);
+        entity.AssignmentSpecialist = IWorkOrderLoader.NormalizeOptionalText(request.AssignmentSpecialist);
+        entity.AssignmentSpecialistEmail = IWorkOrderLoader.NormalizeOptionalText(request.AssignmentSpecialistEmail);
         entity.ExpectedPropertyCount = request.ExpectedPropertyCount;
-        entity.PropertiesRegion = NormalizeOptionalText(request.PropertiesRegion);
-        entity.WorkOrderDescription = NormalizeOptionalText(request.WorkOrderDescription);
+        entity.PropertiesRegion = IWorkOrderLoader.NormalizeOptionalText(request.PropertiesRegion);
+        entity.WorkOrderDescription = IWorkOrderLoader.NormalizeOptionalText(request.WorkOrderDescription);
         // DueDateAt is the SLA snapshot taken when Enfath first hands us the work order. Editing
         // header facts later must not move the deadline of work that is already in progress.
 
@@ -505,17 +234,17 @@ public class WorkOrderService : IWorkOrderService
             previousSpecialistEmail,
             entity.AssignmentSpecialistEmail,
             cancellationToken);
-        return (await WithResolvedSpecialistAsync(WorkOrderMapper.ToDto(entity), cancellationToken), null);
+        return (await _query.WithResolvedSpecialistAsync(WorkOrderMapper.ToDto(entity), cancellationToken), null);
     }
 
     public async Task<(bool Ok, string? Error)> DeleteAsync(
         string poNumber,
         CancellationToken cancellationToken)
     {
-        var entity = await LoadWorkOrderTrackedAsync(poNumber, cancellationToken);
+        var entity = await _loader.LoadAsync(poNumber, cancellationToken);
         if (entity is null) return (false, "أمر العمل غير موجود");
 
-        var n = NormalizePo(poNumber);
+        var n = IWorkOrderLoader.NormalizePo(poNumber);
         var tasks = await _db.WorkflowTasks
             .Where(t => t.PoNumber == n)
             .ToListAsync(cancellationToken);
@@ -584,13 +313,47 @@ public class WorkOrderService : IWorkOrderService
             "أمر العمل متوقف مسبقاً",
             cancellationToken);
 
+    public Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> AddPropertyAsync(
+        string poNumber,
+        WorkOrderPropertyDto property,
+        CancellationToken cancellationToken) =>
+        _properties.AddPropertyAsync(poNumber, property, cancellationToken);
+
+    public Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdatePropertyAsync(
+        string poNumber,
+        Guid propertyId,
+        WorkOrderPropertyDto property,
+        CancellationToken cancellationToken) =>
+        _properties.UpdatePropertyAsync(poNumber, propertyId, property, cancellationToken);
+
+    public Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdateLocationMapUrlAsync(
+        string poNumber,
+        Guid propertyId,
+        string? locationMapUrl,
+        CancellationToken cancellationToken) =>
+        _properties.UpdateLocationMapUrlAsync(poNumber, propertyId, locationMapUrl, cancellationToken);
+
+    public Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> CompleteBourseDataAsync(
+        string poNumber,
+        Guid propertyId,
+        UpdatePropertyBourseRequest request,
+        CancellationToken cancellationToken) =>
+        _properties.CompleteBourseDataAsync(poNumber, propertyId, request, cancellationToken);
+
+    public Task<(bool Ok, string? Error)> DeletePropertyAsync(
+        string poNumber,
+        Guid propertyId,
+        string reason,
+        CancellationToken cancellationToken) =>
+        _properties.DeletePropertyAsync(poNumber, propertyId, reason, cancellationToken);
+
     private async Task<(bool Ok, string? Error)> SetLifecycleStatusAsync(
         string poNumber,
         string lifecycleStatus,
         string alreadyAppliedMessage,
         CancellationToken cancellationToken)
     {
-        var entity = await LoadWorkOrderTrackedAsync(poNumber, cancellationToken);
+        var entity = await _loader.LoadAsync(poNumber, cancellationToken);
         if (entity is null) return (false, "أمر العمل غير موجود");
 
         if (string.Equals(entity.LifecycleStatus, lifecycleStatus, StringComparison.Ordinal))
@@ -606,301 +369,6 @@ public class WorkOrderService : IWorkOrderService
         await _db.SaveChangesAsync(cancellationToken);
         return (true, null);
     }
-
-    public async Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> AddPropertyAsync(
-        string poNumber,
-        WorkOrderPropertyDto property,
-        CancellationToken cancellationToken)
-    {
-        var entity = await LoadWorkOrderTrackedAsync(poNumber, cancellationToken);
-        if (entity is null) return (null, new Dictionary<string, string> { ["_"] = "أمر العمل غير موجود" });
-
-        var errors = WorkOrderValidator.ValidatePropertyEnfath(
-            property,
-            entity.AssignmentType,
-            entity.PoNumber,
-            null,
-            (deed, _) => entity.Properties.Any(p =>
-                !p.IsRemoved && p.DeedNumber.Trim() == deed.Trim()));
-        if (errors.Count > 0) return (null, errors);
-
-        // Never trust client ids on insert — draft ids make EF emit UPDATE and fail with 0 rows.
-        property.Id = null;
-
-        var mapped = MapPropertyEnfath(property, entity.Id, forInsert: true);
-        _db.WorkOrderProperties.Add(mapped);
-        await _db.SaveChangesAsync(cancellationToken);
-        return (WorkOrderMapper.ToPropertyDto(mapped), null);
-    }
-
-    public async Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdatePropertyAsync(
-        string poNumber,
-        Guid propertyId,
-        WorkOrderPropertyDto property,
-        CancellationToken cancellationToken)
-    {
-        var entity = await LoadWorkOrderTrackedAsync(poNumber, cancellationToken);
-        if (entity is null) return (null, new Dictionary<string, string> { ["_"] = "أمر العمل غير موجود" });
-
-        var existing = entity.Properties.FirstOrDefault(p => p.Id == propertyId);
-        if (existing is null) return (null, new Dictionary<string, string> { ["_"] = "العقار غير موجود" });
-        if (existing.IsRemoved)
-            return (null, new Dictionary<string, string> { ["_"] = "لا يمكن تعديل عقار محذوف" });
-
-        var previousLocationMapUrl = existing.LocationMapUrl;
-
-        if (property.BourseDataCompleted)
-        {
-            var enfathErrors = WorkOrderValidator.ValidatePropertyEnfath(
-                property,
-                entity.AssignmentType,
-                entity.PoNumber,
-                propertyId,
-                (deed, excludeId) =>
-                    entity.Properties.Any(p =>
-                        !p.IsRemoved &&
-                        p.DeedNumber.Trim() == deed.Trim() && p.Id != excludeId));
-            var bourseErrors = WorkOrderValidator.ValidatePropertyBourse(new UpdatePropertyBourseRequest
-            {
-                City = property.City,
-                Region = property.Region,
-                RegionId = property.RegionId,
-                CityId = property.CityId,
-                District = property.District,
-                Classification = property.Classification,
-                PropertyType = property.PropertyType,
-                Area = property.Area,
-                DeedStatus = property.DeedStatus,
-                RestrictionsPresent = property.RestrictionsPresent,
-                RestrictionType = property.RestrictionType,
-                RestrictionOtherReason = property.RestrictionOtherReason,
-                BoundariesAvailability = property.BoundariesAvailability,
-                BoundariesExternalDocName = property.BoundariesExternalDocName,
-            });
-            var errors = enfathErrors.Concat(bourseErrors)
-                .GroupBy(kv => kv.Key)
-                .ToDictionary(g => g.Key, g => g.First().Value);
-            if (errors.Count > 0) return (null, errors);
-            ApplyPropertyEnfath(existing, property);
-            ApplyPropertyBourse(existing, property);
-            existing.BourseDataCompleted = true;
-            existing.BourseCompletedAtUtc = DateTime.UtcNow;
-        }
-        else
-        {
-            var errors = WorkOrderValidator.ValidatePropertyEnfath(
-                property,
-                entity.AssignmentType,
-                entity.PoNumber,
-                propertyId,
-                (deed, excludeId) =>
-                    entity.Properties.Any(p =>
-                        !p.IsRemoved &&
-                        p.DeedNumber.Trim() == deed.Trim() && p.Id != excludeId));
-            if (errors.Count > 0) return (null, errors);
-            ApplyPropertyEnfath(existing, property);
-        }
-
-        // Never mix contact DELETE/INSERT with property UPDATE in one SaveChanges —
-        // EF/Npgsql rewrites collection replaces into DELETE+UPDATE and throws
-        // DbUpdateConcurrencyException (0 rows). Detach contacts, save scalars, then
-        // rewrite contacts with ExecuteDelete + insert.
-        DetachTrackedContacts(existing);
-
-        try
-        {
-            await _db.SaveChangesAsync(cancellationToken);
-            await RewritePropertyContactsAsync(existing.Id, property.Contacts, cancellationToken);
-        }
-        catch (DbUpdateConcurrencyException ex)
-        {
-            var kinds = string.Join(", ",
-                ex.Entries.Select(e => e.Metadata.ClrType.Name + ":" + e.State));
-            return (null, new Dictionary<string, string>
-            {
-                ["_"] = string.IsNullOrEmpty(kinds)
-                    ? "تعذّر حفظ العقار — أعد تحميل الصفحة وحاول مرة أخرى"
-                    : $"تعذّر حفظ العقار ({kinds}) — أعد تحميل الصفحة وحاول مرة أخرى",
-            });
-        }
-        await ApplyDocumentarySideEffectsAfterPropertySaveAsync(
-            entity,
-            existing,
-            previousLocationMapUrl,
-            cancellationToken);
-
-        var saved = await _db.WorkOrderProperties
-            .AsNoTracking()
-            .Include(p => p.Contacts)
-            .FirstAsync(p => p.Id == propertyId, cancellationToken);
-        return (WorkOrderMapper.ToPropertyDto(saved), null);
-    }
-
-    public async Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdateLocationMapUrlAsync(
-        string poNumber,
-        Guid propertyId,
-        string? locationMapUrl,
-        CancellationToken cancellationToken)
-    {
-        var entity = await LoadWorkOrderTrackedAsync(poNumber, cancellationToken);
-        if (entity is null) return (null, new Dictionary<string, string> { ["_"] = "أمر العمل غير موجود" });
-
-        var existing = entity.Properties.FirstOrDefault(p => p.Id == propertyId);
-        if (existing is null) return (null, new Dictionary<string, string> { ["_"] = "العقار غير موجود" });
-        if (existing.IsRemoved)
-            return (null, new Dictionary<string, string> { ["_"] = "لا يمكن تعديل عقار محذوف" });
-
-        var trimmed = locationMapUrl?.Trim() ?? "";
-        if (!string.IsNullOrEmpty(trimmed) && !DocumentaryWorkflowRules.HasLocationMapUrl(trimmed))
-        {
-            return (null, new Dictionary<string, string>
-            {
-                ["locationMapUrl"] = "رابط الموقع يجب أن يبدأ بـ http:// أو https://",
-            });
-        }
-
-        var previousLocationMapUrl = existing.LocationMapUrl;
-        existing.LocationMapUrl = string.IsNullOrEmpty(trimmed) ? null : trimmed;
-
-        await _db.SaveChangesAsync(cancellationToken);
-        await ApplyDocumentarySideEffectsAfterPropertySaveAsync(
-            entity,
-            existing,
-            previousLocationMapUrl,
-            cancellationToken);
-        return (WorkOrderMapper.ToPropertyDto(existing), null);
-    }
-
-    public async Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> CompleteBourseDataAsync(
-        string poNumber,
-        Guid propertyId,
-        UpdatePropertyBourseRequest request,
-        CancellationToken cancellationToken)
-    {
-        var entity = await LoadWorkOrderTrackedAsync(poNumber, cancellationToken);
-        if (entity is null) return (null, new Dictionary<string, string> { ["_"] = "أمر العمل غير موجود" });
-
-        var existing = entity.Properties.FirstOrDefault(p => p.Id == propertyId);
-        if (existing is null) return (null, new Dictionary<string, string> { ["_"] = "العقار غير موجود" });
-        if (existing.IsRemoved)
-            return (null, new Dictionary<string, string> { ["_"] = "لا يمكن تعديل عقار محذوف" });
-
-        var errors = WorkOrderValidator.ValidatePropertyBourse(request);
-        if (errors.Count > 0) return (null, errors);
-
-        existing.City = request.City.Trim();
-        existing.Region = request.Region?.Trim();
-        existing.RegionId = request.RegionId;
-        existing.CityId = request.CityId;
-        existing.District = request.District.Trim();
-        existing.Classification = request.Classification.Trim();
-        existing.PropertyType = request.PropertyType.Trim();
-        existing.Area = request.Area?.Trim();
-        existing.DeedStatus = request.DeedStatus?.Trim();
-        existing.RestrictionsPresent = request.RestrictionsPresent?.Trim();
-        existing.RestrictionType = NormalizeRestrictionType(request.RestrictionsPresent, request.RestrictionType);
-        existing.RestrictionOtherReason = NormalizeRestrictionOtherReason(
-            request.RestrictionsPresent,
-            request.RestrictionType,
-            request.RestrictionOtherReason);
-        existing.BoundariesAvailability = request.BoundariesAvailability?.Trim();
-        existing.BoundariesExternalDocName = request.BoundariesExternalDocName?.Trim();
-        existing.NorthBoundary = NormalizeOptionalText(request.NorthBoundary);
-        existing.NorthBoundaryLengthM = NormalizeOptionalText(request.NorthBoundaryLengthM);
-        existing.SouthBoundary = NormalizeOptionalText(request.SouthBoundary);
-        existing.SouthBoundaryLengthM = NormalizeOptionalText(request.SouthBoundaryLengthM);
-        existing.EastBoundary = NormalizeOptionalText(request.EastBoundary);
-        existing.EastBoundaryLengthM = NormalizeOptionalText(request.EastBoundaryLengthM);
-        existing.WestBoundary = NormalizeOptionalText(request.WestBoundary);
-        existing.WestBoundaryLengthM = NormalizeOptionalText(request.WestBoundaryLengthM);
-        existing.BourseDataCompleted = true;
-        var bourseNow = DateTime.UtcNow;
-        existing.BourseCompletedAtUtc = bourseNow;
-
-        await _db.SaveChangesAsync(cancellationToken);
-
-        if (DocumentaryWorkflowRules.BoundariesUnavailable(existing.BoundariesAvailability))
-        {
-            var specialist = await PersonLabelResolver.ResolveAsync(
-                _db,
-                entity.AssignmentSpecialist ?? DocumentaryWorkflowRules.SystemRaiserRole,
-                cancellationToken);
-            await _failures.EnsureSystemInternalFailureAsync(
-                NormalizePo(poNumber),
-                propertyId.ToString(),
-                existing.DeedNumber,
-                "unknown-boundaries",
-                "عدم معرفة حدود العقار",
-                "توفر الحدود = غير متوفرة حسب استعلام البورصة.",
-                specialist,
-                cancellationToken);
-        }
-
-        var location = string.Join(
-            " · ",
-            new[] { existing.City, existing.District }
-                .Where(s => !string.IsNullOrWhiteSpace(s))
-                .Select(s => s.Trim()));
-        await _timeline.RecordAsync(
-            NormalizePo(poNumber),
-            propertyId,
-            "property-bourse",
-            "بيانات البورصة للعقار",
-            string.IsNullOrEmpty(location) ? null : location,
-            "done",
-            bourseNow,
-            cancellationToken);
-
-        return (WorkOrderMapper.ToPropertyDto(existing), null);
-    }
-
-    public async Task<(bool Ok, string? Error)> DeletePropertyAsync(
-        string poNumber,
-        Guid propertyId,
-        string reason,
-        CancellationToken cancellationToken)
-    {
-        var trimmedReason = (reason ?? "").Trim();
-        if (trimmedReason.Length == 0)
-            return (false, "سبب الحذف مطلوب");
-        if (trimmedReason.Length > 500)
-            return (false, "سبب الحذف طويل جداً");
-
-        var entity = await LoadWorkOrderTrackedAsync(poNumber, cancellationToken);
-        if (entity is null) return (false, "أمر العمل غير موجود");
-
-        var prop = entity.Properties.FirstOrDefault(p => p.Id == propertyId);
-        if (prop is null) return (false, "العقار غير موجود");
-        if (prop.IsRemoved) return (false, "العقار محذوف مسبقاً");
-
-        prop.IsRemoved = true;
-        prop.RemovalReason = trimmedReason;
-        prop.RemovedAtUtc = DateTime.UtcNow;
-        entity.ExpectedPropertyCount = Math.Max(1, entity.ExpectedPropertyCount - 1);
-
-        await _db.SaveChangesAsync(cancellationToken);
-        return (true, null);
-    }
-
-    private async Task<WorkOrder?> LoadWorkOrderTrackedAsync(
-        string poNumber,
-        CancellationToken cancellationToken,
-        bool asNoTracking = false)
-    {
-        var po = NormalizePo(poNumber);
-        IQueryable<WorkOrder> q = _db.WorkOrders
-            .Include(w => w.Properties)
-            .ThenInclude(p => p.Contacts);
-
-        if (asNoTracking) q = q.AsNoTracking();
-
-        return await q.FirstOrDefaultAsync(w => w.PoNumber == po, cancellationToken);
-    }
-
-    private static string NormalizePo(string poNumber) => poNumber.Trim();
-
-    private static string? NormalizeOptionalText(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private async Task NotifySpecialistAssignedIfChangedAsync(
         string poNumber,
@@ -933,278 +401,6 @@ public class WorkOrderService : IWorkOrderService
                 SourceEvent = $"work-order-assigned:{po}:{userId}",
             },
             cancellationToken);
-    }
-
-    private static string? NormalizeRestrictionType(string? present, string? type)
-    {
-        if (!string.Equals(present?.Trim(), "yes", StringComparison.OrdinalIgnoreCase))
-            return null;
-        if (string.IsNullOrWhiteSpace(type)) return null;
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        var parts = new List<string>();
-        foreach (var raw in type.Split([',', '،'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-        {
-            var v = raw.ToLowerInvariant();
-            if (v is not ("mortgaged" or "seized" or "suspended" or "other")) continue;
-            if (!seen.Add(v)) continue;
-            parts.Add(v);
-        }
-        return parts.Count == 0 ? null : string.Join(",", parts);
-    }
-
-    private static string? NormalizeRestrictionOtherReason(
-        string? present,
-        string? type,
-        string? reason)
-    {
-        if (!string.Equals(present?.Trim(), "yes", StringComparison.OrdinalIgnoreCase))
-            return null;
-        var types = (type ?? "")
-            .Split([',', '،'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(t => t.ToLowerInvariant());
-        if (!types.Contains("other"))
-            return null;
-        return NormalizeOptionalText(reason);
-    }
-
-    private WorkOrderProperty MapPropertyEnfath(
-        WorkOrderPropertyDto dto,
-        Guid workOrderId,
-        bool forInsert)
-    {
-        var entity = new WorkOrderProperty
-        {
-            Id = forInsert ? Guid.NewGuid() : (dto.Id ?? Guid.NewGuid()),
-            WorkOrderId = workOrderId,
-            BourseDataCompleted = false,
-        };
-        ApplyPropertyEnfath(entity, dto);
-        ReplacePropertyContacts(entity, dto.Contacts, clearExisting: false);
-        return entity;
-    }
-
-    private static void ApplyPropertyEnfath(
-        WorkOrderProperty entity,
-        WorkOrderPropertyDto dto)
-    {
-        PropertyIdentifierTypeLabels.TryParseApiValue(dto.IdentifierType, out var idType);
-        entity.IdentifierType = idType;
-
-        if (idType == PropertyIdentifierType.BourseInquiry &&
-            string.IsNullOrWhiteSpace(dto.DeedNumber))
-        {
-            entity.DeedNumber = $"INQ-{entity.Id.ToString("N")[..8].ToUpperInvariant()}";
-        }
-        else
-        {
-            entity.DeedNumber = dto.DeedNumber.Trim();
-        }
-
-        entity.RequestNumber = dto.RequestNumber?.Trim();
-        entity.HasRequestNumber = dto.HasRequestNumber;
-        entity.AssignmentMandateNumber = dto.AssignmentMandateNumber?.Trim();
-        entity.AssignmentMandateDate = dto.AssignmentMandateDate?.Trim();
-        entity.DeedDate = dto.DeedDate?.Trim();
-        entity.RealEstateRegNumber = dto.RealEstateRegNumber?.Trim();
-        entity.RealEstateRegDate = dto.RealEstateRegDate?.Trim();
-        entity.OwnerName = dto.OwnerName?.Trim();
-        entity.AssignmentDocFileName = WorkOrderMapper.SerializeFileNameList(dto.AssignmentDocFileNames);
-        entity.DelegationLetterFileName = WorkOrderMapper.SerializeFileNameList(dto.DelegationLetterFileNames);
-        entity.OtherDocumentFileNames = WorkOrderMapper.SerializeFileNameList(dto.OtherDocumentFileNames);
-        entity.RealEstateRegFileName = dto.RealEstateRegFileName?.Trim();
-        entity.CourtId = dto.CourtId;
-        entity.CircuitId = dto.CircuitId;
-        entity.RegionId = dto.RegionId;
-        entity.CityId = dto.CityId;
-        entity.Court = dto.Court?.Trim();
-        entity.Circuit = dto.Circuit?.Trim();
-        entity.Region = dto.Region?.Trim();
-        entity.District = dto.District?.Trim() ?? "";
-        entity.Classification = dto.Classification?.Trim() ?? "";
-        entity.PropertyType = dto.PropertyType?.Trim() ?? "";
-        entity.DeedStatus = dto.DeedStatus?.Trim();
-        entity.Area = dto.Area?.Trim();
-        entity.PlanNumber = NormalizeOptionalText(dto.PlanNumber);
-        entity.PlotNumber = NormalizeOptionalText(dto.PlotNumber);
-        entity.LocationMapUrl = NormalizeOptionalText(dto.LocationMapUrl);
-    }
-
-    private void DetachTrackedContacts(WorkOrderProperty entity)
-    {
-        foreach (var contact in entity.Contacts.ToList())
-            _db.Entry(contact).State = EntityState.Detached;
-        entity.Contacts.Clear();
-    }
-
-    private async Task RewritePropertyContactsAsync(
-        Guid propertyId,
-        IEnumerable<PropertyContactDto> contacts,
-        CancellationToken cancellationToken)
-    {
-        await _db.PropertyContacts
-            .Where(c => c.PropertyId == propertyId)
-            .ExecuteDeleteAsync(cancellationToken);
-
-        foreach (var entry in _db.ChangeTracker.Entries<PropertyContact>()
-                     .Where(e => e.Entity.PropertyId == propertyId)
-                     .ToList())
-        {
-            entry.State = EntityState.Detached;
-        }
-
-        var order = 0;
-        var rows = contacts
-            .Where(c => !string.IsNullOrWhiteSpace(c.Phone) || !string.IsNullOrWhiteSpace(c.Role))
-            .Select(c => new PropertyContact
-            {
-                Id = Guid.NewGuid(),
-                PropertyId = propertyId,
-                Name = (c.Name ?? "").Trim(),
-                Role = (c.Role ?? "").Trim(),
-                Phone = (c.Phone ?? "").Trim(),
-                SortOrder = order++,
-            })
-            .ToList();
-
-        if (rows.Count == 0) return;
-
-        _db.PropertyContacts.AddRange(rows);
-        await _db.SaveChangesAsync(cancellationToken);
-    }
-
-    private static void ReplacePropertyContacts(
-        WorkOrderProperty entity,
-        IEnumerable<PropertyContactDto> contacts,
-        bool clearExisting)
-    {
-        if (clearExisting)
-            entity.Contacts.Clear();
-
-        var order = 0;
-        foreach (var c in contacts.Where(c =>
-                     !string.IsNullOrWhiteSpace(c.Phone) || !string.IsNullOrWhiteSpace(c.Role)))
-        {
-            entity.Contacts.Add(new PropertyContact
-            {
-                Id = Guid.NewGuid(),
-                PropertyId = entity.Id,
-                Name = c.Name.Trim(),
-                Role = c.Role.Trim(),
-                Phone = c.Phone.Trim(),
-                SortOrder = order++,
-            });
-        }
-    }
-
-    private static void ApplyPropertyBourse(WorkOrderProperty entity, WorkOrderPropertyDto dto)
-    {
-        entity.City = dto.City.Trim();
-        entity.Region = dto.Region?.Trim();
-        entity.RegionId = dto.RegionId;
-        entity.CityId = dto.CityId;
-        entity.District = dto.District.Trim();
-        entity.Classification = dto.Classification.Trim();
-        entity.PropertyType = dto.PropertyType.Trim();
-        entity.Area = dto.Area?.Trim();
-        entity.DeedStatus = dto.DeedStatus?.Trim();
-        entity.RestrictionsPresent = dto.RestrictionsPresent?.Trim();
-        entity.RestrictionType = NormalizeRestrictionType(dto.RestrictionsPresent, dto.RestrictionType);
-        entity.RestrictionOtherReason = NormalizeRestrictionOtherReason(
-            dto.RestrictionsPresent,
-            dto.RestrictionType,
-            dto.RestrictionOtherReason);
-        entity.BoundariesAvailability = dto.BoundariesAvailability?.Trim();
-        entity.BoundariesExternalDocName = dto.BoundariesExternalDocName?.Trim();
-        entity.NorthBoundary = NormalizeOptionalText(dto.NorthBoundary);
-        entity.NorthBoundaryLengthM = NormalizeOptionalText(dto.NorthBoundaryLengthM);
-        entity.SouthBoundary = NormalizeOptionalText(dto.SouthBoundary);
-        entity.SouthBoundaryLengthM = NormalizeOptionalText(dto.SouthBoundaryLengthM);
-        entity.EastBoundary = NormalizeOptionalText(dto.EastBoundary);
-        entity.EastBoundaryLengthM = NormalizeOptionalText(dto.EastBoundaryLengthM);
-        entity.WestBoundary = NormalizeOptionalText(dto.WestBoundary);
-        entity.WestBoundaryLengthM = NormalizeOptionalText(dto.WestBoundaryLengthM);
-    }
-
-    private async Task ApplyDocumentarySideEffectsAfterPropertySaveAsync(
-        WorkOrder workOrder,
-        WorkOrderProperty property,
-        string? previousLocationMapUrl,
-        CancellationToken cancellationToken)
-    {
-        var specialist = await PersonLabelResolver.ResolveAsync(
-            _db,
-            workOrder.AssignmentSpecialist ?? DocumentaryWorkflowRules.SystemRaiserRole,
-            cancellationToken);
-        var propertyId = property.Id.ToString();
-
-        if (DocumentaryWorkflowRules.BoundariesUnavailable(property.BoundariesAvailability)
-            && property.BourseDataCompleted)
-        {
-            await _failures.EnsureSystemInternalFailureAsync(
-                workOrder.PoNumber,
-                propertyId,
-                property.DeedNumber,
-                "unknown-boundaries",
-                "عدم معرفة حدود العقار",
-                "توفر الحدود = غير متوفرة حسب استعلام البورصة.",
-                specialist,
-                cancellationToken);
-        }
-
-        var hadUrl = DocumentaryWorkflowRules.HasLocationMapUrl(previousLocationMapUrl);
-        var hasUrl = DocumentaryWorkflowRules.HasLocationMapUrl(property.LocationMapUrl);
-        var informal = DocumentaryWorkflowRules.IsInformalSettlement(
-            property.PlanNumber,
-            property.PlotNumber);
-
-        if (informal && hadUrl && !hasUrl)
-        {
-            await _failures.EnsureSystemInternalFailureAsync(
-                workOrder.PoNumber,
-                propertyId,
-                property.DeedNumber,
-                "unknown-location",
-                "عدم معرفة موقع العقار",
-                "تم مسح رابط موقع الخريطة لعقار في منطقة عشوائية.",
-                specialist,
-                cancellationToken);
-        }
-
-        if (hasUrl)
-        {
-            await ResolveSystemLocationFailuresAsync(
-                workOrder.PoNumber,
-                propertyId,
-                cancellationToken);
-        }
-    }
-
-    private async Task ResolveSystemLocationFailuresAsync(
-        string poNumber,
-        string propertyId,
-        CancellationToken cancellationToken)
-    {
-        var active = await _db.PropertyFailures
-            .Where(f =>
-                f.PoNumber == poNumber
-                && f.PropertyId == propertyId
-                && f.ProblemTypeId == "unknown-location"
-                && f.RaisedByRole == DocumentaryWorkflowRules.SystemRaiserRole
-                && PropertyFailureStatus.Active.Contains(f.Status))
-            .Select(f => f.Id)
-            .ToListAsync(cancellationToken);
-
-        foreach (var id in active)
-        {
-            await _failures.ResolveAsync(
-                id,
-                new ResolveFailureRequest
-                {
-                    ResolutionReason = "تم تزويد رابط موقع الخريطة.",
-                    ContinueInstructions = "يمكن استئناف العمل على العقار.",
-                },
-                cancellationToken);
-        }
     }
 
     private async Task<int> ResolveBusinessDaysAsync(

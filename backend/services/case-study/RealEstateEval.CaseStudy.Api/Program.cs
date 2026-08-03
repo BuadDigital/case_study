@@ -24,6 +24,8 @@ builder.Services.AddHttpContextAccessor();
 var connectionString = ServiceCollectionExtensions.RequireConnectionString( builder.Configuration, ServiceDatabaseNames.CaseStudy);
 builder.Services.AddPersistence(builder.Configuration, connectionString);
 builder.Services.AddPlatformPersistence(builder.Configuration, connectionString);
+builder.Services.AddFailuresPersistence(builder.Configuration, connectionString);
+builder.Services.AddOperationsPersistence(builder.Configuration, connectionString);
 builder.Services.AddScoped<IOrganizationSettingsService, OrganizationSettingsService>();
 builder.Services.AddClaimsPermissionService();
 builder.Services.AddCaseStudyInfrastructure(builder.Configuration, builder.Environment);

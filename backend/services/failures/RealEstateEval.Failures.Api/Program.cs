@@ -21,7 +21,7 @@ var connectionString = ServiceCollectionExtensions.RequireConnectionString(
     ServiceDatabaseNames.Failures);
 builder.Services.AddPersistence(builder.Configuration, connectionString);
 builder.Services.AddClaimsPermissionService();
-builder.Services.AddFailuresInfrastructure(builder.Configuration, builder.Environment);
+builder.Services.AddFailuresInfrastructure(builder.Configuration, connectionString, builder.Environment);
 builder.Services.AddRealEstateEvalJwt(builder.Configuration, builder.Environment);
 builder.Services.AddRealEstateEvalCors(builder.Configuration, builder.Environment);
 builder.Services.AddRealEstateEvalRateLimiting(builder.Configuration, builder.Environment);
