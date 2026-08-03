@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -10,9 +11,10 @@ public class WorkOrderReadAuthorizationTests
     [Fact]
     public async Task List_returns_only_pos_with_assigned_tasks_for_party()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         Seed(db);
-        var service = CreateService(db);
+        var service = CreateService(bundle);
 
         var rows = await service.ListAsync(new PermissionsDto
         {
@@ -29,9 +31,10 @@ public class WorkOrderReadAuthorizationTests
     [Fact]
     public async Task Get_hides_unassigned_po_from_party()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         Seed(db);
-        var service = CreateService(db);
+        var service = CreateService(bundle);
 
         var dto = await service.GetByPoNumberAsync(
             "PO-OTHER",
@@ -49,9 +52,10 @@ public class WorkOrderReadAuthorizationTests
     [Fact]
     public async Task List_returns_all_for_case_staff()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         Seed(db);
-        var service = CreateService(db);
+        var service = CreateService(bundle);
 
         var rows = await service.ListAsync(new PermissionsDto
         {
@@ -91,30 +95,21 @@ public class WorkOrderReadAuthorizationTests
         db.SaveChanges();
     }
 
-    private static ApplicationDbContext CreateDb()
-    {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"wo-read-auth-{Guid.NewGuid():N}")
-            .Options;
-        return new ApplicationDbContext(options);
-    }
+    private static TestBoundedContexts.Bundle CreateDb() =>
+        TestBoundedContexts.Create($"wo-read-auth-{Guid.NewGuid():N}");
 
     private static RealEstateEval.Infrastructure.Services.WorkOrderService CreateService(
-        ApplicationDbContext db)
+        TestBoundedContexts.Bundle bundle)
     {
+        var db = bundle.App;
         var timeline = new RealEstateEval.Infrastructure.Services.PropertyTimelineService(db);
         var (notifications, recipients) = TestInspectorFeeServiceFactory.CreateNotificationDeps(db);
-        var failures = new RealEstateEval.Infrastructure.Services.FailureService(
-            db,
+        var failures = TestBoundedContexts.CreateFailureService(
+            bundle,
             TestInspectorFeeServiceFactory.CreateWorkflow(db),
             timeline,
             notifications,
             recipients);
-        return new RealEstateEval.Infrastructure.Services.WorkOrderService(
-            db,
-            timeline,
-            failures,
-            notifications,
-            recipients);
+        return TestWorkOrderServiceFactory.Create(bundle, notifications, recipients, timeline, failures);
     }
 }

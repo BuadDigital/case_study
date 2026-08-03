@@ -28,6 +28,10 @@ internal static class BoundedContextFacts
                 Build<ValuationDbContext>(options => new ValuationDbContext(options)),
             [nameof(IdentityDbContext)] = () =>
                 Build<IdentityDbContext>(options => new IdentityDbContext(options)),
+            [nameof(FailuresDbContext)] = () =>
+                Build<FailuresDbContext>(options => new FailuresDbContext(options)),
+            [nameof(OperationsDbContext)] = () =>
+                Build<OperationsDbContext>(options => new OperationsDbContext(options)),
         };
 
     /// <summary>Context name to the tables it maps, as <c>schema.table</c>.</summary>

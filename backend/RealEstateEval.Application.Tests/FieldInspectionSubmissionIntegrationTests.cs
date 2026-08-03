@@ -5,6 +5,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
@@ -25,8 +26,9 @@ public class FieldInspectionSubmissionIntegrationTests
     [Fact]
     public async Task SaveDraft_syncs_field_inspection_workspace_row()
     {
-        await using var db = CreateDb();
-        var service = CreateService(db);
+        var bundle = CreateDb();
+        var db = bundle.App;
+        var service = CreateService(db, bundle.Failures, bundle.Ops);
         SeedInspectionTask(db);
         SeedPhotoAttachments(db);
 
@@ -51,8 +53,9 @@ public class FieldInspectionSubmissionIntegrationTests
     [Fact]
     public async Task Submit_syncs_workspace_completes_task_and_marks_submission_submitted()
     {
-        await using var db = CreateDb();
-        var service = CreateService(db);
+        var bundle = CreateDb();
+        var db = bundle.App;
+        var service = CreateService(db, bundle.Failures, bundle.Ops);
         SeedInspectionTask(db);
         SeedPhotoAttachments(db);
 
@@ -86,8 +89,9 @@ public class FieldInspectionSubmissionIntegrationTests
     [Fact]
     public async Task Submit_rejects_when_attachment_rows_are_missing()
     {
-        await using var db = CreateDb();
-        var service = CreateService(db);
+        var bundle = CreateDb();
+        var db = bundle.App;
+        var service = CreateService(db, bundle.Failures, bundle.Ops);
         SeedInspectionTask(db);
 
         var payload = ParsePayload(MinimalValidPayload());
@@ -111,8 +115,9 @@ public class FieldInspectionSubmissionIntegrationTests
     [Fact]
     public async Task Reopen_submitted_inspection_reopens_task_and_workspace()
     {
-        await using var db = CreateDb();
-        var service = CreateService(db);
+        var bundle = CreateDb();
+        var db = bundle.App;
+        var service = CreateService(db, bundle.Failures, bundle.Ops);
         SeedInspectionTask(db);
         SeedPhotoAttachments(db);
 
@@ -142,8 +147,9 @@ public class FieldInspectionSubmissionIntegrationTests
     [Fact]
     public async Task Reopen_requires_return_note_for_field_inspection()
     {
-        await using var db = CreateDb();
-        var service = CreateService(db);
+        var bundle = CreateDb();
+        var db = bundle.App;
+        var service = CreateService(db, bundle.Failures, bundle.Ops);
         SeedInspectionTask(db);
         SeedPhotoAttachments(db);
 
@@ -161,18 +167,13 @@ public class FieldInspectionSubmissionIntegrationTests
         Assert.True(errors!.ContainsKey("returnNote"));
     }
 
-    private static ApplicationDbContext CreateDb()
-    {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"field-inspection-{Guid.NewGuid():N}")
-            .Options;
-        return new ApplicationDbContext(options);
-    }
+    private static TestBoundedContexts.Bundle CreateDb() =>
+        TestBoundedContexts.Create($"field-inspection-{Guid.NewGuid():N}");
 
-    private static PartyTaskSubmissionService CreateService(ApplicationDbContext db)
+    private static PartyTaskSubmissionService CreateService(ApplicationDbContext db, FailuresDbContext failures, OperationsDbContext ops)
     {
         var timeline = new PropertyTimelineService(db);
-        var holds = new PropertyAccessHoldService(db);
+        var holds = new PropertyAccessHoldService(db, failures);
         var (notifications, recipients) = TestInspectorFeeServiceFactory.CreateNotificationDeps(db);
         return new(
             db,
@@ -181,8 +182,8 @@ public class FieldInspectionSubmissionIntegrationTests
             timeline,
             new NullHttpContextAccessor(),
             new NullPermissionService(),
-            new PropertyKeyGateResolver(db),
-            new KeyEnvelopesService(db, holds, new KeyEnvelopePeopleResolver(db)),
+            new PropertyKeyGateResolver(ops, db),
+            new KeyEnvelopesService(ops, db, holds, new KeyEnvelopePeopleResolver(db)),
             TestInspectorFeeServiceFactory.Create(db),
             notifications,
             recipients);

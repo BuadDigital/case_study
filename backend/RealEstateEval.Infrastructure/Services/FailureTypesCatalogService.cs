@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -17,9 +17,9 @@ public sealed class FailureTypesCatalogService : IFailureTypesCatalogService
         PropertyNameCaseInsensitive = true,
     };
 
-    private readonly ApplicationDbContext _db;
+    private readonly FailuresDbContext _db;
 
-    public FailureTypesCatalogService(ApplicationDbContext db) => _db = db;
+    public FailureTypesCatalogService(FailuresDbContext db) => _db = db;
 
     public async Task<FailureTypesCatalogDto> GetAsync(CancellationToken cancellationToken = default)
     {

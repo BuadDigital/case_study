@@ -5,6 +5,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Services;
 
@@ -38,10 +39,11 @@ public class PartyTaskSubmissionReadAuthorizationTests
     [Fact]
     public async Task Get_returns_submission_for_assigned_party()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         Seed(db);
 
-        var dto = await CreateService(db).GetAsync(OwnedTaskId, Owner);
+        var dto = await CreateService(db, bundle.Failures, bundle.Ops).GetAsync(OwnedTaskId, Owner);
 
         Assert.NotNull(dto);
     }
@@ -49,10 +51,11 @@ public class PartyTaskSubmissionReadAuthorizationTests
     [Fact]
     public async Task Get_hides_submission_from_other_party()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         Seed(db);
 
-        var dto = await CreateService(db).GetAsync(ForeignTaskId, Owner);
+        var dto = await CreateService(db, bundle.Failures, bundle.Ops).GetAsync(ForeignTaskId, Owner);
 
         Assert.Null(dto);
     }
@@ -60,10 +63,11 @@ public class PartyTaskSubmissionReadAuthorizationTests
     [Fact]
     public async Task Get_returns_any_submission_for_case_staff()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         Seed(db);
 
-        var dto = await CreateService(db).GetAsync(ForeignTaskId, CaseStaff);
+        var dto = await CreateService(db, bundle.Failures, bundle.Ops).GetAsync(ForeignTaskId, CaseStaff);
 
         Assert.NotNull(dto);
     }
@@ -71,10 +75,11 @@ public class PartyTaskSubmissionReadAuthorizationTests
     [Fact]
     public async Task List_drops_tasks_the_party_cannot_read()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         Seed(db);
 
-        var rows = await CreateService(db).ListForTasksAsync(
+        var rows = await CreateService(db, bundle.Failures, bundle.Ops).ListForTasksAsync(
             [OwnedTaskId, ForeignTaskId],
             Owner);
 
@@ -85,10 +90,11 @@ public class PartyTaskSubmissionReadAuthorizationTests
     [Fact]
     public async Task List_returns_all_tasks_for_case_staff()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         Seed(db);
 
-        var rows = await CreateService(db).ListForTasksAsync(
+        var rows = await CreateService(db, bundle.Failures, bundle.Ops).ListForTasksAsync(
             [OwnedTaskId, ForeignTaskId],
             CaseStaff);
 
@@ -133,17 +139,12 @@ public class PartyTaskSubmissionReadAuthorizationTests
         });
     }
 
-    private static ApplicationDbContext CreateDb()
-    {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"party-read-auth-{Guid.NewGuid():N}")
-            .Options;
-        return new ApplicationDbContext(options);
-    }
+    private static TestBoundedContexts.Bundle CreateDb() =>
+        TestBoundedContexts.Create($"party-read-{Guid.NewGuid():N}");
 
-    private static PartyTaskSubmissionService CreateService(ApplicationDbContext db)
+    private static PartyTaskSubmissionService CreateService(ApplicationDbContext db, FailuresDbContext failures, OperationsDbContext ops)
     {
-        var holds = new PropertyAccessHoldService(db);
+        var holds = new PropertyAccessHoldService(db, failures);
         var (notifications, recipients) = TestInspectorFeeServiceFactory.CreateNotificationDeps(db);
         return new(
             db,
@@ -152,8 +153,8 @@ public class PartyTaskSubmissionReadAuthorizationTests
             new PropertyTimelineService(db),
             new NullHttpContextAccessor(),
             new NullPermissionService(),
-            new PropertyKeyGateResolver(db),
-            new KeyEnvelopesService(db, holds, new KeyEnvelopePeopleResolver(db)),
+            new PropertyKeyGateResolver(ops, db),
+            new KeyEnvelopesService(ops, db, holds, new KeyEnvelopePeopleResolver(db)),
             TestInspectorFeeServiceFactory.Create(db),
             notifications,
             recipients);

@@ -14,9 +14,10 @@ public class FailureSuspendAttributionTests
     [Fact]
     public async Task Suspend_persists_actor_and_timestamp()
     {
-        await using var db = CreateDb();
-        SeedReviewFailure(db);
-        var service = CreateFailureService(db);
+        var bundle = CreateDb();
+        var db = bundle.App;
+        SeedReviewFailure(bundle);
+        var service = CreateFailureService(bundle);
 
         var before = DateTime.UtcNow;
         var dto = await service.SuspendAsync(FailureId, "تعليق للتحقق", SupervisorUserId);
@@ -24,7 +25,7 @@ public class FailureSuspendAttributionTests
 
         Assert.NotNull(dto);
 
-        var entity = await db.PropertyFailures.AsNoTracking()
+        var entity = await bundle.Failures.PropertyFailures.AsNoTracking()
             .SingleAsync(f => f.Id == FailureId);
         Assert.Equal(PropertyFailureStatus.Suspended, entity.Status);
         Assert.Equal(SupervisorUserId, entity.SuspendedByUserId);
@@ -35,7 +36,8 @@ public class FailureSuspendAttributionTests
     [Fact]
     public async Task Suspended_list_resolves_suspender_display_name_not_raiser()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         var suspendedAt = DateTime.UtcNow.AddHours(-2);
         db.Users.Add(new ApplicationUser
         {
@@ -43,7 +45,7 @@ public class FailureSuspendAttributionTests
             UserName = "supervisor",
             DisplayName = "مشرف الاختبار",
         });
-        db.PropertyFailures.Add(new PropertyFailure
+        bundle.Failures.PropertyFailures.Add(new PropertyFailure
         {
             Id = FailureId,
             PoNumber = "PO-900",
@@ -63,6 +65,7 @@ public class FailureSuspendAttributionTests
             UpdatedAtUtc = suspendedAt,
         });
         await db.SaveChangesAsync();
+        await bundle.Failures.SaveChangesAsync();
 
         var list = await new SuspendedTransactionsService(db).ListAsync();
 
@@ -76,9 +79,10 @@ public class FailureSuspendAttributionTests
     [Fact]
     public async Task Suspended_list_leaves_SuspendedBy_blank_when_actor_unknown()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         var suspendedAt = DateTime.UtcNow.AddHours(-1);
-        db.PropertyFailures.Add(new PropertyFailure
+        bundle.Failures.PropertyFailures.Add(new PropertyFailure
         {
             Id = FailureId,
             PoNumber = "PO-901",
@@ -98,6 +102,7 @@ public class FailureSuspendAttributionTests
             UpdatedAtUtc = suspendedAt,
         });
         await db.SaveChangesAsync();
+        await bundle.Failures.SaveChangesAsync();
 
         var list = await new SuspendedTransactionsService(db).ListAsync();
 
@@ -106,10 +111,10 @@ public class FailureSuspendAttributionTests
         Assert.Equal(suspendedAt, row.SuspendedAt);
     }
 
-    private static void SeedReviewFailure(ApplicationDbContext db)
+    private static void SeedReviewFailure(TestBoundedContexts.Bundle bundle)
     {
         var now = DateTime.UtcNow;
-        db.PropertyFailures.Add(new PropertyFailure
+        bundle.Failures.PropertyFailures.Add(new PropertyFailure
         {
             Id = FailureId,
             PoNumber = "PO-900",
@@ -126,22 +131,18 @@ public class FailureSuspendAttributionTests
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         });
-        db.SaveChanges();
+        bundle.Failures.SaveChanges();
     }
 
-    private static ApplicationDbContext CreateDb()
-    {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"failure-suspend-{Guid.NewGuid():N}")
-            .Options;
-        return new ApplicationDbContext(options);
-    }
+    private static TestBoundedContexts.Bundle CreateDb() =>
+        TestBoundedContexts.Create($"failure-suspend-{Guid.NewGuid():N}");
 
-    private static FailureService CreateFailureService(ApplicationDbContext db) =>
+    private static FailureService CreateFailureService(TestBoundedContexts.Bundle bundle) =>
         new(
-            db,
+            bundle.Failures,
+            bundle.App,
             null!,
-            new PropertyTimelineService(db),
+            new PropertyTimelineService(bundle.App),
             null!,
             null!);
 }

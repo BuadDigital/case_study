@@ -3,28 +3,34 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 /// <summary>
-/// Creates suspension/failure rows via shared DbContext so Operations host
-/// does not need CaseStudy FailureService wiring.
+/// Creates suspension/failure rows without wiring Case Study's full FailureService: case-study
+/// tables on the legacy context, <c>PropertyFailures</c> on <see cref="FailuresDbContext"/>.
 /// </summary>
 public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
 {
     private const string EvictionProblemTypeId = "access-denied";
     private const string KeyUnmatchedProblemTypeId = "key-wont-open";
 
-    private readonly ApplicationDbContext _db;
+    private readonly ApplicationDbContext _cs;
+    private readonly FailuresDbContext _failures;
 
-    public PropertyAccessHoldService(ApplicationDbContext db) => _db = db;
+    public PropertyAccessHoldService(ApplicationDbContext cs, FailuresDbContext failures)
+    {
+        _cs = cs;
+        _failures = failures;
+    }
 
     public async Task EnsureEvictionHoldAsync(
         Guid propertyId,
         string actorName,
         CancellationToken cancellationToken = default)
     {
-        var property = await _db.WorkOrderProperties
+        var property = await _cs.WorkOrderProperties
             .Include(p => p.WorkOrder)
             .FirstOrDefaultAsync(p => p.Id == propertyId && !p.IsRemoved, cancellationToken);
         if (property is null) return;
@@ -33,7 +39,7 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
         var propertyKey = property.Id.ToString();
         var now = DateTime.UtcNow;
 
-        var existing = await _db.PropertyFailures
+        var existing = await _failures.PropertyFailures
             .Where(f =>
                 f.PoNumber == po
                 && f.PropertyId == propertyKey
@@ -50,14 +56,14 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
                 existing.Title = "محظر إخلاء — تعليق الدراسة";
                 existing.FinalNote = "عُلّقت الدراسة تلقائياً بسبب تسجيل محظر إخلاء.";
                 existing.UpdatedAtUtc = now;
-                await _db.SaveChangesAsync(cancellationToken);
+                await _failures.SaveChangesAsync(cancellationToken);
             }
 
             await BlockCaseStudyTaskAsync(po, propertyKey, existing.Title, cancellationToken);
             return;
         }
 
-        _db.PropertyFailures.Add(new PropertyFailure
+        _failures.PropertyFailures.Add(new PropertyFailure
         {
             Id = Guid.NewGuid(),
             PoNumber = po,
@@ -71,7 +77,7 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
             FinalNote = "عُلّقت الدراسة تلقائياً بسبب تسجيل محظر إخلاء.",
             Status = PropertyFailureStatus.Suspended,
             Specialist = await PersonLabelResolver.ResolveAsync(
-                _db,
+                _cs,
                 string.IsNullOrWhiteSpace(actorName)
                     ? DocumentaryWorkflowRules.SystemRaiserRole
                     : actorName,
@@ -79,7 +85,7 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         });
-        await _db.SaveChangesAsync(cancellationToken);
+        await _failures.SaveChangesAsync(cancellationToken);
         await BlockCaseStudyTaskAsync(po, propertyKey, "محظر إخلاء — تعليق الدراسة", cancellationToken);
     }
 
@@ -88,7 +94,7 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
         string actorName,
         CancellationToken cancellationToken = default)
     {
-        var property = await _db.WorkOrderProperties
+        var property = await _cs.WorkOrderProperties
             .Include(p => p.WorkOrder)
             .FirstOrDefaultAsync(p => p.Id == propertyId && !p.IsRemoved, cancellationToken);
         if (property is null) return;
@@ -97,7 +103,7 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
         var propertyKey = property.Id.ToString();
         var now = DateTime.UtcNow;
 
-        var active = await _db.PropertyFailures
+        var active = await _failures.PropertyFailures
             .Where(f =>
                 f.PoNumber == po
                 && f.PropertyId == propertyKey
@@ -127,7 +133,7 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
             failure.UpdatedAtUtc = now;
         }
 
-        await _db.SaveChangesAsync(cancellationToken);
+        await _failures.SaveChangesAsync(cancellationToken);
         await UnblockCaseStudyTaskAsync(po, propertyKey, cancellationToken);
     }
 
@@ -137,14 +143,14 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
         string actorName,
         CancellationToken cancellationToken = default)
     {
-        var property = await _db.WorkOrderProperties
+        var property = await _cs.WorkOrderProperties
             .Include(p => p.WorkOrder)
             .FirstOrDefaultAsync(p => p.Id == propertyId && !p.IsRemoved, cancellationToken);
         if (property is null) return;
 
         var po = property.WorkOrder?.PoNumber?.Trim() ?? "";
         var propertyKey = property.Id.ToString();
-        var active = await _db.PropertyFailures
+        var active = await _failures.PropertyFailures
             .AnyAsync(
                 f =>
                     f.PoNumber == po
@@ -154,7 +160,7 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
         if (active) return;
 
         var now = DateTime.UtcNow;
-        _db.PropertyFailures.Add(new PropertyFailure
+        _failures.PropertyFailures.Add(new PropertyFailure
         {
             Id = Guid.NewGuid(),
             PoNumber = po,
@@ -167,7 +173,7 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
             InternalNote = "تأكيد ميداني: المفتاح غير مطابق للصك.",
             Status = PropertyFailureStatus.Internal,
             Specialist = await PersonLabelResolver.ResolveAsync(
-                _db,
+                _cs,
                 string.IsNullOrWhiteSpace(actorName)
                     ? DocumentaryWorkflowRules.SystemRaiserRole
                     : actorName,
@@ -175,7 +181,7 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         });
-        await _db.SaveChangesAsync(cancellationToken);
+        await _failures.SaveChangesAsync(cancellationToken);
         await BlockCaseStudyTaskAsync(po, propertyKey, "مفتاح العقار غير مطابق", cancellationToken);
     }
 
@@ -187,7 +193,7 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
     {
         if (!Guid.TryParse(propertyIdText, out var propertyId)) return;
 
-        var task = await _db.WorkflowTasks
+        var task = await _cs.WorkflowTasks
             .FirstOrDefaultAsync(
                 t =>
                     t.Kind == WorkflowTaskKind.CaseStudyProperty
@@ -199,7 +205,7 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
         if (task is null) return;
 
         task.Block(reason, DateTime.UtcNow);
-        await _db.SaveChangesAsync(cancellationToken);
+        await _cs.SaveChangesAsync(cancellationToken);
     }
 
     private async Task UnblockCaseStudyTaskAsync(
@@ -209,7 +215,7 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
     {
         if (!Guid.TryParse(propertyIdText, out var propertyId)) return;
 
-        var task = await _db.WorkflowTasks
+        var task = await _cs.WorkflowTasks
             .FirstOrDefaultAsync(
                 t =>
                     t.Kind == WorkflowTaskKind.CaseStudyProperty
@@ -222,6 +228,6 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
 
         // The property is linked here, so a row with no remembered phase resumes at bourse.
         task.Unblock(DateTime.UtcNow, WorkflowTaskPhase.Bourse);
-        await _db.SaveChangesAsync(cancellationToken);
+        await _cs.SaveChangesAsync(cancellationToken);
     }
 }

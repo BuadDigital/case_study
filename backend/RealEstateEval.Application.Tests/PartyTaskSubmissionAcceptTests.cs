@@ -4,6 +4,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
@@ -16,9 +17,10 @@ public class PartyTaskSubmissionAcceptTests
     [Fact]
     public async Task Accept_sets_AcceptedAtUtc_and_exposes_it_on_the_dto()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         SeedAcceptedableSurvey(db);
-        var service = CreateService(db);
+        var service = CreateService(db, bundle.Failures, bundle.Ops);
 
         var (result, errors) = await service.AcceptAsync(
             TaskId,
@@ -41,9 +43,10 @@ public class PartyTaskSubmissionAcceptTests
     [Fact]
     public async Task Accept_keeps_the_first_acceptance_timestamp_on_re_accept()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         SeedAcceptedableSurvey(db);
-        var service = CreateService(db);
+        var service = CreateService(db, bundle.Failures, bundle.Ops);
 
         var actor = new PartySubmissionActor
         {
@@ -62,9 +65,10 @@ public class PartyTaskSubmissionAcceptTests
     [Fact]
     public async Task Get_returns_null_AcceptedAtUtc_before_acceptance()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         SeedAcceptedableSurvey(db);
-        var service = CreateService(db);
+        var service = CreateService(db, bundle.Failures, bundle.Ops);
 
         var dto = await service.GetAsync(TaskId);
 
@@ -115,18 +119,13 @@ public class PartyTaskSubmissionAcceptTests
         db.SaveChanges();
     }
 
-    private static ApplicationDbContext CreateDb()
-    {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"party-accept-{Guid.NewGuid():N}")
-            .Options;
-        return new ApplicationDbContext(options);
-    }
+    private static TestBoundedContexts.Bundle CreateDb() =>
+        TestBoundedContexts.Create($"party-accept-{Guid.NewGuid():N}");
 
-    private static PartyTaskSubmissionService CreateService(ApplicationDbContext db)
+    private static PartyTaskSubmissionService CreateService(ApplicationDbContext db, FailuresDbContext failures, OperationsDbContext ops)
     {
         var timeline = new PropertyTimelineService(db);
-        var holds = new PropertyAccessHoldService(db);
+        var holds = new PropertyAccessHoldService(db, failures);
         var (notifications, recipients) = TestInspectorFeeServiceFactory.CreateNotificationDeps(db);
         return new(
             db,
@@ -135,8 +134,8 @@ public class PartyTaskSubmissionAcceptTests
             timeline,
             new NullHttpContextAccessor(),
             new NullPermissionService(),
-            new PropertyKeyGateResolver(db),
-            new KeyEnvelopesService(db, holds, new KeyEnvelopePeopleResolver(db)),
+            new PropertyKeyGateResolver(ops, db),
+            new KeyEnvelopesService(ops, db, holds, new KeyEnvelopePeopleResolver(db)),
             TestInspectorFeeServiceFactory.Create(db),
             notifications,
             recipients);

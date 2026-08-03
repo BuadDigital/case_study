@@ -59,3 +59,17 @@ public sealed class IdentityDbContextDesignTimeFactory
     protected override IdentityDbContext Create(DbContextOptions<IdentityDbContext> options) =>
         new(options);
 }
+
+public sealed class FailuresDbContextDesignTimeFactory
+    : BoundedContextDesignTimeFactory<FailuresDbContext>
+{
+    protected override FailuresDbContext Create(DbContextOptions<FailuresDbContext> options) =>
+        new(options);
+}
+
+public sealed class OperationsDbContextDesignTimeFactory
+    : BoundedContextDesignTimeFactory<OperationsDbContext>
+{
+    protected override OperationsDbContext Create(DbContextOptions<OperationsDbContext> options) =>
+        new(options);
+}

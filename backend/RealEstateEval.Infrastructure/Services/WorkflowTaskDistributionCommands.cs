@@ -1,0 +1,475 @@
+using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
+using RealEstateEval.Domain;
+using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Notifications;
+
+namespace RealEstateEval.Infrastructure.Services;
+
+public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistributionCommands
+{
+    private const WorkflowTaskKind CaseStudyPropertyKind = WorkflowTaskKind.CaseStudyProperty;
+
+    private static readonly HashSet<string> SectionSupervisorOrAboveRoles = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "section-supervisor",
+        "general-manager",
+        "cdo",
+    };
+
+    private readonly ApplicationDbContext _db;
+    private readonly INotificationService _notifications;
+    private readonly NotificationRecipientResolver _recipients;
+    private readonly IPropertyTimelineService _timeline;
+
+    public WorkflowTaskDistributionCommands(
+        ApplicationDbContext db,
+        INotificationService notifications,
+        NotificationRecipientResolver recipients,
+        IPropertyTimelineService timeline)
+    {
+        _db = db;
+        _notifications = notifications;
+        _recipients = recipients;
+        _timeline = timeline;
+    }
+
+    public async Task<WorkflowTaskDto?> PatchDistributionAsync(
+        Guid id,
+        TaskDistributionDraftDto distribution,
+        CancellationToken cancellationToken = default)
+    {
+        var entity = await _db.WorkflowTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        if (entity is null) return null;
+
+        var normalized = WorkflowTaskPhaseRules.NormalizeDistribution(distribution);
+        entity.SetDistribution(
+            WorkflowTaskMapper.SerializeDistribution(normalized),
+            DateTime.UtcNow);
+        await _db.SaveChangesAsync(cancellationToken);
+        return WorkflowTaskMapper.ToDto(entity);
+    }
+
+    public async Task<(ConfirmTaskDistributionResponseDto? Result, IReadOnlyDictionary<string, string>? Errors)>
+        ConfirmDistributionAsync(
+            Guid id,
+            ConfirmTaskDistributionRequest request,
+            CancellationToken cancellationToken = default)
+    {
+        var parent = await _db.WorkflowTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        if (parent is null)
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "المهمة غير موجودة",
+            });
+        }
+
+        if (parent.Phase != WorkflowTaskPhase.Distribution)
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "المعاملة ليست في مرحلة التوزيع حالياً",
+            });
+        }
+
+        if (parent.PropertyId is null)
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "لا يوجد عقار مرتبط بمهمة التوزيع",
+            });
+        }
+
+        var confirmProperty = await _db.WorkOrderProperties
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == parent.PropertyId.Value, cancellationToken);
+        if (confirmProperty is null || confirmProperty.IsRemoved)
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "لا يمكن توزيع معاملة لعقار محذوف أو غير موجود",
+            });
+        }
+
+        var propertyIdText = parent.PropertyId.Value.ToString();
+        var hasBlockingFailure = await _db.PropertyFailures.AnyAsync(
+            f => f.PoNumber == parent.PoNumber
+                && f.PropertyId == propertyIdText
+                && f.Status != PropertyFailureStatus.Resolved
+                && f.Status != PropertyFailureStatus.Suspended,
+            cancellationToken);
+        if (hasBlockingFailure)
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "لا يمكن توزيع المعاملة ما دام عليها تعذر نشط",
+            });
+        }
+
+        var distribution = WorkflowTaskPhaseRules.NormalizeDistribution(request.Distribution);
+
+        if (distribution.GovernmentAuditor)
+        {
+            var property = await _db.WorkOrderProperties.AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == parent.PropertyId.Value, cancellationToken);
+            var govBlock = DocumentaryWorkflowRules.GovernmentReviewAssignmentBlockReason(
+                property?.DeedNumber ?? request.DeedNumber,
+                property?.RequestNumber,
+                property?.City,
+                property?.District,
+                property?.Circuit,
+                parent.PoNumber,
+                property?.AssignmentMandateNumber,
+                property?.AssignmentMandateDate);
+            if (govBlock is not null)
+            {
+                return (null, new Dictionary<string, string> { ["_"] = govBlock });
+            }
+        }
+
+        var now = DateTime.UtcNow;
+        var deed = request.DeedNumber.Trim();
+        var children = new List<WorkflowTask>();
+
+        var names = request.AssigneeNames ?? new Dictionary<string, string>();
+
+        if (distribution.GovernmentAuditor)
+        {
+            children.Add(WorkflowTaskPhaseRules.SpawnChild(
+                parent,
+                WorkflowTaskKind.GovernmentReview,
+                "government-reviewer",
+                WorkflowTaskPhaseRules.ResolveName(
+                    names,
+                    WorkflowTaskKind.GovernmentReview,
+                    "مراجع حكومي"),
+                distribution.GovernmentAuditorId,
+                deed,
+                now));
+        }
+
+        if (distribution.ValuationDepartment)
+        {
+            children.Add(WorkflowTaskPhaseRules.SpawnChild(
+                parent,
+                WorkflowTaskKind.ValuationCoordination,
+                "valuation-coordinator",
+                WorkflowTaskPhaseRules.ResolveName(
+                    names,
+                    WorkflowTaskKind.ValuationCoordination,
+                    "منسق التقييم"),
+                distribution.OperationsCoordinatorId,
+                deed,
+                now));
+            children.Add(WorkflowTaskPhaseRules.SpawnChild(
+                parent,
+                WorkflowTaskKind.FieldInspection,
+                "field-inspector",
+                WorkflowTaskPhaseRules.ResolveName(
+                    names,
+                    WorkflowTaskKind.FieldInspection,
+                    "معاين ميداني"),
+                distribution.InspectorId,
+                deed,
+                now));
+            children.Add(WorkflowTaskPhaseRules.SpawnChild(
+                parent,
+                WorkflowTaskKind.PropertyAppraisal,
+                "real-estate-appraiser",
+                WorkflowTaskPhaseRules.ResolveName(
+                    names,
+                    WorkflowTaskKind.PropertyAppraisal,
+                    "مقيم عقاري"),
+                distribution.ValuatorId,
+                deed,
+                now));
+        }
+
+        if (distribution.EngineeringOffice)
+        {
+            children.Add(WorkflowTaskPhaseRules.SpawnChild(
+                parent,
+                WorkflowTaskKind.EngineeringSurvey,
+                "engineering-office",
+                WorkflowTaskPhaseRules.ResolveName(
+                    names,
+                    WorkflowTaskKind.EngineeringSurvey,
+                    "مكتب هندسي"),
+                distribution.EngineeringOfficeId,
+                deed,
+                now));
+        }
+
+        parent.ConfirmDistribution(
+            $"دراسة حالة — {(string.IsNullOrEmpty(deed) ? parent.PoNumber : deed)}",
+            WorkflowTaskMapper.SerializeDistribution(distribution),
+            now);
+
+        _db.WorkflowTasks.AddRange(children);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        if (parent.PropertyId is Guid propertyId)
+        {
+            var timelineEvents = new List<PropertyTimelineRecordRequest>
+            {
+                new(
+                    parent.PoNumber,
+                    propertyId,
+                    $"task:{parent.Id}:distribution",
+                    "توزيع المعاملة",
+                    null,
+                    "active",
+                    now),
+                new(
+                    parent.PoNumber,
+                    propertyId,
+                    $"task:{parent.Id}:case-study",
+                    "دراسة حالة العقار",
+                    parent.AssigneeName,
+                    "active",
+                    now),
+            };
+            timelineEvents.AddRange(children.Select(child => new PropertyTimelineRecordRequest(
+                parent.PoNumber,
+                propertyId,
+                $"party:{child.Id}:assigned",
+                WorkflowTaskPhaseRules.PartyAssignedTitle(child.Kind),
+                child.AssigneeName,
+                "active",
+                child.CreatedAtUtc)));
+            await _timeline.RecordManyAsync(timelineEvents, cancellationToken);
+        }
+
+        await NotifyDistributionAssignedAsync(parent, children, deed, cancellationToken);
+
+        return (new ConfirmTaskDistributionResponseDto
+        {
+            Parent = WorkflowTaskMapper.ToDto(parent),
+            Children = children.Select(WorkflowTaskMapper.ToDto).ToList(),
+        }, null);
+    }
+
+    public async Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> RedistributePartiesAsync(
+        Guid id,
+        RedistributePartiesRequest request,
+        string actorRole,
+        string? actorName,
+        CancellationToken cancellationToken = default)
+    {
+        if (!SectionSupervisorOrAboveRoles.Contains((actorRole ?? "").Trim()))
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "إعادة إسناد الأطراف صلاحية مشرف القسم فأعلى",
+            });
+        }
+
+        var parent = await _db.WorkflowTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        if (parent is null) return (null, null);
+
+        if (parent.Kind != CaseStudyPropertyKind)
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "يمكن إعادة إسناد الأطراف لمعاملات دراسة الحالة فقط",
+            });
+        }
+
+        if (parent.Phase != WorkflowTaskPhase.CaseStudy)
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "إعادة إسناد الأطراف متاحة فقط بعد تأكيد التوزيع (مرحلة دراسة الحالة)",
+            });
+        }
+
+        var reason = (request.Reason ?? "").Trim();
+        if (reason.Length == 0)
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["reason"] = "سبب إعادة الإسناد مطلوب",
+            });
+        }
+
+        if (reason.Length > 500)
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["reason"] = "السبب طويل جداً",
+            });
+        }
+
+        var distribution = WorkflowTaskPhaseRules.NormalizeDistribution(request.Distribution);
+        var names = request.AssigneeNames ?? new Dictionary<string, string>();
+
+        var children = await _db.WorkflowTasks
+            .Where(t => t.ParentTaskId == parent.Id)
+            .ToListAsync(cancellationToken);
+
+        var mappings =
+            new (bool Enabled, WorkflowTaskKind Kind, string Role, string AssigneeId, string Fallback)[]
+        {
+            (distribution.GovernmentAuditor, WorkflowTaskKind.GovernmentReview, "government-reviewer",
+                distribution.GovernmentAuditorId, "مراجع حكومي"),
+            (distribution.ValuationDepartment, WorkflowTaskKind.ValuationCoordination, "valuation-coordinator",
+                distribution.OperationsCoordinatorId, "منسق التقييم"),
+            (distribution.ValuationDepartment, WorkflowTaskKind.FieldInspection, "field-inspector",
+                distribution.InspectorId, "معاين ميداني"),
+            (distribution.ValuationDepartment, WorkflowTaskKind.PropertyAppraisal, "real-estate-appraiser",
+                distribution.ValuatorId, "مقيم عقاري"),
+            (distribution.EngineeringOffice, WorkflowTaskKind.EngineeringSurvey, "engineering-office",
+                distribution.EngineeringOfficeId, "مكتب هندسي"),
+        };
+
+        var now = DateTime.UtcNow;
+        var changed = new List<WorkflowTask>();
+        var timelineEvents = new List<PropertyTimelineRecordRequest>();
+
+        foreach (var mapping in mappings)
+        {
+            if (!mapping.Enabled) continue;
+
+            var child = children.FirstOrDefault(c => c.Kind == mapping.Kind);
+            if (child is null || child.Status != WorkflowTaskStatus.Open) continue;
+
+            var newAssigneeId = string.IsNullOrWhiteSpace(mapping.AssigneeId)
+                ? null
+                : mapping.AssigneeId.Trim();
+            if (string.Equals(child.AssigneeId, newAssigneeId, StringComparison.Ordinal)) continue;
+
+            var newName = WorkflowTaskPhaseRules.ResolveName(names, mapping.Kind, mapping.Fallback);
+            child.Assign(newAssigneeId, newName, mapping.Role, now);
+            changed.Add(child);
+
+            if (parent.PropertyId is Guid propertyId)
+            {
+                var detail = string.IsNullOrWhiteSpace(actorName)
+                    ? $"{newName} — {reason}"
+                    : $"{actorName}: {newName} — {reason}";
+                timelineEvents.Add(new PropertyTimelineRecordRequest(
+                    parent.PoNumber,
+                    propertyId,
+                    $"party:{child.Id}:redistributed:{now.Ticks}",
+                    $"إعادة إسناد — {WorkflowTaskPhaseRules.PartyAssignedTitle(child.Kind)}",
+                    detail,
+                    "active",
+                    now));
+            }
+        }
+
+        parent.SetDistribution(WorkflowTaskMapper.SerializeDistribution(distribution), now);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        if (timelineEvents.Count > 0)
+            await _timeline.RecordManyAsync(timelineEvents, cancellationToken);
+
+        if (changed.Count > 0)
+        {
+            var deed = "";
+            if (parent.PropertyId is Guid deedPropertyId)
+            {
+                var prop = await _db.WorkOrderProperties.AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.Id == deedPropertyId, cancellationToken);
+                deed = prop?.DeedNumber?.Trim() ?? "";
+            }
+            await NotifyDistributionAssignedAsync(parent, changed, deed, cancellationToken);
+        }
+
+        return (WorkflowTaskMapper.ToDto(parent), null);
+    }
+
+    private async Task NotifyDistributionAssignedAsync(
+        WorkflowTask parent,
+        IReadOnlyCollection<WorkflowTask> children,
+        string deed,
+        CancellationToken cancellationToken)
+    {
+        var assignmentsByUser = new Dictionary<string, List<WorkflowTask>>(StringComparer.Ordinal);
+        var assigneeIds = children
+            .Select(child => child.AssigneeId?.Trim())
+            .Where(assigneeId => !string.IsNullOrWhiteSpace(assigneeId))
+            .Cast<string>()
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        var usersByAssignee = await _recipients.ResolveUserIdsForDistributionAssigneesAsync(
+            assigneeIds,
+            cancellationToken);
+
+        foreach (var child in children)
+        {
+            var assigneeId = child.AssigneeId?.Trim();
+            if (string.IsNullOrWhiteSpace(assigneeId)) continue;
+            if (!usersByAssignee.TryGetValue(assigneeId, out var userId)) continue;
+
+            if (!assignmentsByUser.TryGetValue(userId, out var list))
+            {
+                list = [];
+                assignmentsByUser[userId] = list;
+            }
+
+            list.Add(child);
+        }
+
+        var refLabel = string.IsNullOrWhiteSpace(deed) ? parent.PoNumber : deed.Trim();
+        var requestsByUser =
+            new Dictionary<string, CreateUserNotificationRequest>(StringComparer.Ordinal);
+        foreach (var entry in assignmentsByUser)
+        {
+            var userId = entry.Key;
+            var assignedTasks = entry.Value;
+            if (assignedTasks.Count == 0) continue;
+
+            var single = assignedTasks.Count == 1 ? assignedTasks[0] : null;
+            var href = single is not null
+                ? TaskHref(single.Kind, single.Id)
+                : "/active-primary-data";
+            var body = single is not null
+                ? $"أُسندت إليك مهمة جديدة: {TaskNotificationLabel(single.Kind)} على {refLabel}."
+                : $"أُسندت إليك {assignedTasks.Count} مهام جديدة على {refLabel}.";
+
+            requestsByUser[userId] = new CreateUserNotificationRequest
+            {
+                Title = "معاملة جديدة بانتظارك",
+                Body = body,
+                Tone = "info",
+                Href = href,
+                Category = "workflow",
+                EntityType = "task",
+                EntityId = single?.Id.ToString() ?? parent.Id.ToString(),
+                SourceEvent = single is not null
+                    ? $"distribution-assigned:{single.Id}"
+                    : $"distribution-assigned-batch:{parent.Id}:{userId}",
+            };
+        }
+
+        await _notifications.CreateForUsersAsync(requestsByUser, cancellationToken);
+    }
+
+    private static string TaskNotificationLabel(WorkflowTaskKind kind) => kind switch
+    {
+        WorkflowTaskKind.FieldInspection => "معاينة العقار",
+        WorkflowTaskKind.EngineeringSurvey => "الرفع المساحي",
+        WorkflowTaskKind.PropertyAppraisal => "تقييم العقار",
+        WorkflowTaskKind.GovernmentReview => "المراجعة الحكومية",
+        WorkflowTaskKind.ValuationCoordination => "استلام التقييم",
+        _ => "مهمة جديدة",
+    };
+
+    private static string TaskHref(WorkflowTaskKind kind, Guid taskId)
+    {
+        var id = Uri.EscapeDataString(taskId.ToString());
+        return kind switch
+        {
+            WorkflowTaskKind.EngineeringSurvey => $"/active-survey/{id}",
+            WorkflowTaskKind.FieldInspection => $"/property-inspection/{id}",
+            WorkflowTaskKind.PropertyAppraisal => $"/property-appraisal/{id}",
+            WorkflowTaskKind.GovernmentReview => "/operations-tasks",
+            WorkflowTaskKind.ValuationCoordination => $"/valuation-coordination/{id}",
+            _ => "/active-primary-data",
+        };
+    }
+}
