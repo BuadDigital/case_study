@@ -3,14 +3,20 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
 {
+    private readonly OperationsDbContext _ops;
     private readonly ApplicationDbContext _db;
 
-    public PropertyKeyGateResolver(ApplicationDbContext db) => _db = db;
+    public PropertyKeyGateResolver(OperationsDbContext ops, ApplicationDbContext db)
+    {
+        _ops = ops;
+        _db = db;
+    }
 
     public async Task<PropertyKeyGateDto> ResolveAsync(
         Guid? propertyId,
@@ -54,7 +60,7 @@ public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
         PropertyCourtAccess? access = null;
         if (resolvedPropertyId is Guid accessPid)
         {
-            access = await _db.PropertyCourtAccesses.AsNoTracking()
+            access = await _ops.PropertyCourtAccesses.AsNoTracking()
                 .FirstOrDefaultAsync(a => a.PropertyId == accessPid, cancellationToken);
         }
 
@@ -77,7 +83,7 @@ public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
         KeyEnvelope? envelope = null;
         if (resolvedRequest.Length > 0)
         {
-            envelope = await _db.KeyEnvelopes.AsNoTracking()
+            envelope = await _ops.KeyEnvelopes.AsNoTracking()
                 .Include(e => e.Assignments)
                 .Include(e => e.Handoffs)
                 .Where(e => e.RequestNumber == resolvedRequest)
@@ -87,7 +93,7 @@ public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
 
         if (envelope is null && resolvedDeed.Length > 0)
         {
-            var assignment = await _db.KeyEnvelopeAssignments.AsNoTracking()
+            var assignment = await _ops.KeyEnvelopeAssignments.AsNoTracking()
                 .Include(a => a.Envelope)
                 .Where(a =>
                     a.DeedNumber == resolvedDeed
@@ -97,7 +103,7 @@ public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
             envelope = assignment?.Envelope;
             if (envelope is not null)
             {
-                envelope = await _db.KeyEnvelopes.AsNoTracking()
+                envelope = await _ops.KeyEnvelopes.AsNoTracking()
                     .Include(e => e.Assignments)
                     .Include(e => e.Handoffs)
                     .FirstOrDefaultAsync(e => e.Id == envelope.Id, cancellationToken);

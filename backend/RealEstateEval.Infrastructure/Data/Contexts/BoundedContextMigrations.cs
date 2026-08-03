@@ -21,6 +21,8 @@ public static class BoundedContextMigrations
         typeof(PlatformDbContext),
         typeof(ValuationDbContext),
         typeof(IdentityDbContext),
+        typeof(FailuresDbContext),
+        typeof(OperationsDbContext),
     ];
 
     public static IReadOnlyDictionary<Type, string> HistorySchemaByContext { get; } =
@@ -30,6 +32,8 @@ public static class BoundedContextMigrations
             [typeof(PlatformDbContext)] = DatabaseSchemas.Platform,
             [typeof(ValuationDbContext)] = DatabaseSchemas.Valuation,
             [typeof(IdentityDbContext)] = DatabaseSchemas.Identity,
+            [typeof(FailuresDbContext)] = DatabaseSchemas.Failures,
+            [typeof(OperationsDbContext)] = DatabaseSchemas.Operations,
         };
 
     public static string HistorySchemaFor<TContext>()

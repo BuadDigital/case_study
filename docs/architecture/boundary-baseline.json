@@ -123,7 +123,8 @@
       "failures",
       "financial",
       "identity",
-      "messaging"
+      "messaging",
+      "operations"
     ],
     "financial": [
       "audit",
@@ -185,6 +186,9 @@
     "backend/RealEstateEval.Infrastructure/Services/AttachmentService.cs": [
       "attachments"
     ],
+    "backend/RealEstateEval.Infrastructure/Services/AuditLogQueryService.cs": [
+      "audit"
+    ],
     "backend/RealEstateEval.Infrastructure/Services/AuthSessionService.cs": [
       "identity"
     ],
@@ -210,8 +214,7 @@
       "audit",
       "platform"
     ],
-    "backend/RealEstateEval.Infrastructure/Services/EngineeringBillingStatementService.cs": [
-      "attachments",
+    "backend/RealEstateEval.Infrastructure/Services/DiscountFlagService.cs": [
       "case_study",
       "financial"
     ],
@@ -240,9 +243,29 @@
       "financial",
       "identity"
     ],
-    "backend/RealEstateEval.Infrastructure/Services/InspectorFeeService.cs": [
+    "backend/RealEstateEval.Infrastructure/Services/IncentiveSuspensionService.cs": [
+      "case_study",
+      "financial",
+      "identity"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/InspectorFeeLedgerResolver.cs": [
       "case_study",
       "identity"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/InspectorFeeLedgerWriter.cs": [
+      "case_study",
+      "financial"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/InspectorFeeService.cs": [
+      "case_study"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/InspectorFeeSummaryQuery.cs": [
+      "case_study",
+      "identity"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/InspectorFeeTransitionApplier.cs": [
+      "audit",
+      "case_study"
     ],
     "backend/RealEstateEval.Infrastructure/Services/KeyEnvelopePeopleResolver.cs": [
       "identity"
@@ -256,11 +279,29 @@
     "backend/RealEstateEval.Infrastructure/Services/NotificationService.cs": [
       "messaging"
     ],
-    "backend/RealEstateEval.Infrastructure/Services/OperationsTaskService.cs": [
+    "backend/RealEstateEval.Infrastructure/Services/OperationsTaskCommands.cs": [
+      "case_study"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/OperationsTaskNotifier.cs": [
+      "case_study",
+      "identity"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/OperationsTaskQueryService.cs": [
       "case_study",
       "financial",
-      "identity",
       "operations"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/OperationsTaskVisitFeeHelper.cs": [
+      "financial",
+      "identity"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/OrganizationSettingsService.cs": [
+      "audit"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/PartyBillingStatementService.cs": [
+      "attachments",
+      "case_study",
+      "financial"
     ],
     "backend/RealEstateEval.Infrastructure/Services/PartyFeePricingService.cs": [
       "audit",
@@ -279,8 +320,10 @@
       "identity"
     ],
     "backend/RealEstateEval.Infrastructure/Services/PoEnfazBillingService.cs": [
+      "audit",
       "case_study",
-      "financial"
+      "financial",
+      "operations"
     ],
     "backend/RealEstateEval.Infrastructure/Services/PoIntakeDraftService.cs": [
       "case_study"
@@ -300,6 +343,9 @@
     "backend/RealEstateEval.Infrastructure/Services/PropertyTimelineService.cs": [
       "case_study",
       "failures"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/PushSubscriptionService.cs": [
+      "messaging"
     ],
     "backend/RealEstateEval.Infrastructure/Services/RegionsService.cs": [
       "platform"
@@ -327,22 +373,50 @@
     "backend/RealEstateEval.Infrastructure/Services/ValuationRequestService.cs": [
       "valuation"
     ],
-    "backend/RealEstateEval.Infrastructure/Services/WorkOrderService.cs": [
+    "backend/RealEstateEval.Infrastructure/Services/WebPushDeliveryHandler.cs": [
+      "messaging"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/WorkOrderLoader.cs": [
+      "case_study"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/WorkOrderPropertyCommands.cs": [
+      "case_study",
+      "failures"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/WorkOrderQueryService.cs": [
       "case_study",
       "failures",
       "financial"
     ],
+    "backend/RealEstateEval.Infrastructure/Services/WorkOrderService.cs": [
+      "case_study"
+    ],
     "backend/RealEstateEval.Infrastructure/Services/WorkOrderVisibilityFilter.cs": [
       "case_study"
     ],
-    "backend/RealEstateEval.Infrastructure/Services/WorkflowTaskService.cs": [
+    "backend/RealEstateEval.Infrastructure/Services/WorkflowTaskCascadeCleanup.cs": [
+      "case_study"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/WorkflowTaskDistributionCommands.cs": [
       "case_study",
       "failures"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/WorkflowTaskLifecycleCommands.cs": [
+      "case_study"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/WorkflowTaskQueryService.cs": [
+      "case_study"
+    ],
+    "backend/RealEstateEval.Infrastructure/Services/WorkflowTaskSlotSynchronizer.cs": [
+      "case_study"
     ]
   },
   "serviceRegistrationFanOut": {
     "AttachmentService": [
       "attachments"
+    ],
+    "AuditLogQueryService": [
+      "platform"
     ],
     "AuthSessionService": [
       "case-study",
@@ -367,9 +441,10 @@
     "CourtsService": [
       "platform"
     ],
-    "EngineeringBillingStatementService": [
+    "DiscountFlagService": [
       "case-study",
-      "failures"
+      "failures",
+      "financial"
     ],
     "EvaluatorRecallsService": [
       "valuation"
@@ -393,7 +468,28 @@
     "FinancialReportService": [
       "financial"
     ],
+    "IncentiveSuspensionService": [
+      "case-study",
+      "failures",
+      "financial"
+    ],
+    "InspectorFeeLedgerResolver": [
+      "case-study",
+      "failures"
+    ],
+    "InspectorFeeLedgerWriter": [
+      "case-study",
+      "failures"
+    ],
     "InspectorFeeService": [
+      "case-study",
+      "failures"
+    ],
+    "InspectorFeeSummaryQuery": [
+      "case-study",
+      "failures"
+    ],
+    "InspectorFeeTransitionApplier": [
       "case-study",
       "failures"
     ],
@@ -417,8 +513,20 @@
     "NotificationService": [
       "platform"
     ],
-    "OperationsTaskService": [
+    "OperationsTaskCommands": [
       "case-study"
+    ],
+    "OperationsTaskNotifier": [
+      "case-study"
+    ],
+    "OperationsTaskQueryService": [
+      "case-study"
+    ],
+    "OperationsTaskVisitFeeHelper": [
+      "case-study"
+    ],
+    "OrganizationSettingsService": [
+      "platform"
     ],
     "OutboxDispatcherHostedService": [
       "case-study"
@@ -428,6 +536,10 @@
       "failures",
       "platform",
       "valuation"
+    ],
+    "PartyBillingStatementService": [
+      "case-study",
+      "failures"
     ],
     "PartyFeePricingService": [
       "case-study",
@@ -463,6 +575,9 @@
       "case-study",
       "failures"
     ],
+    "PushSubscriptionService": [
+      "platform"
+    ],
     "RegionsService": [
       "platform"
     ],
@@ -490,13 +605,41 @@
       "case-study",
       "valuation"
     ],
+    "WebPushDeliveryHandler": [
+      "platform"
+    ],
+    "WorkOrderLoader": [
+      "case-study"
+    ],
+    "WorkOrderPropertyCommands": [
+      "case-study"
+    ],
+    "WorkOrderQueryService": [
+      "case-study"
+    ],
     "WorkOrderService": [
       "case-study"
     ],
     "WorkOrderVisibilityFilter": [
       "case-study"
     ],
-    "WorkflowTaskService": [
+    "WorkflowTaskCascadeCleanup": [
+      "case-study",
+      "failures"
+    ],
+    "WorkflowTaskDistributionCommands": [
+      "case-study",
+      "failures"
+    ],
+    "WorkflowTaskLifecycleCommands": [
+      "case-study",
+      "failures"
+    ],
+    "WorkflowTaskQueryService": [
+      "case-study",
+      "failures"
+    ],
+    "WorkflowTaskSlotSynchronizer": [
       "case-study",
       "failures"
     ]

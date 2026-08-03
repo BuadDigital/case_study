@@ -140,6 +140,8 @@ public class BoundedContextBoundaryTests
             "RegionsService",
             "FieldDictionaryService",
             "CaseStudyInfoRolesConfigService",
+            "FailureTypesCatalogService",
+            "SurveyOfficesService",
             "ValuationRequestService",
             "EvaluatorRecallsService",
             "AuthSessionService",

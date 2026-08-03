@@ -10,30 +10,59 @@ internal static class TestInspectorFeeServiceFactory
 {
     public static InspectorFeeService Create(ApplicationDbContext db)
     {
-        return new InspectorFeeService(
-            db,
-            new NullNotificationService(),
-            new NotificationRecipientResolver(db),
-            new PartyFeePricingService(db));
+        var pricing = new PartyFeePricingService(db);
+        return Compose(db, new NullNotificationService(), new NotificationRecipientResolver(db), pricing);
     }
 
     public static WorkflowTaskService CreateWorkflow(ApplicationDbContext db)
     {
         var notifications = new NullNotificationService();
         var recipients = new NotificationRecipientResolver(db);
-        var fees = new InspectorFeeService(
-            db,
-            notifications,
-            recipients,
-            new PartyFeePricingService(db));
+        var fees = Compose(db, notifications, recipients, new PartyFeePricingService(db));
         var timeline = new PropertyTimelineService(db);
-        return new WorkflowTaskService(db, fees, notifications, recipients, timeline);
+        return ComposeWorkflow(db, fees, notifications, recipients, timeline);
+    }
+
+    public static WorkflowTaskService ComposeWorkflow(
+        ApplicationDbContext db,
+        IInspectorFeeService fees,
+        INotificationService notifications,
+        NotificationRecipientResolver recipients,
+        IPropertyTimelineService timeline)
+    {
+        var query = new WorkflowTaskQueryService(db);
+        var slots = new WorkflowTaskSlotSynchronizer(db, query);
+        var distribution = new WorkflowTaskDistributionCommands(db, notifications, recipients, timeline);
+        var cascade = new WorkflowTaskCascadeCleanup(db, fees);
+        var lifecycle = new WorkflowTaskLifecycleCommands(db, fees, timeline, cascade, slots);
+        return new WorkflowTaskService(query, slots, distribution, lifecycle);
     }
 
     public static (INotificationService Notifications, NotificationRecipientResolver Recipients)
         CreateNotificationDeps(ApplicationDbContext db)
     {
         return (new NullNotificationService(), new NotificationRecipientResolver(db));
+    }
+
+    public static InspectorFeeService Compose(
+        ApplicationDbContext db,
+        INotificationService notifications,
+        NotificationRecipientResolver recipients,
+        IPartyFeePricingService pricing)
+    {
+        var resolver = new InspectorFeeLedgerResolver(db);
+        var writer = new InspectorFeeLedgerWriter(db, pricing, resolver);
+        var summary = new InspectorFeeSummaryQuery(db, writer);
+        var transitions = new InspectorFeeTransitionApplier(db);
+        return new InspectorFeeService(
+            db,
+            notifications,
+            recipients,
+            pricing,
+            resolver,
+            writer,
+            summary,
+            transitions);
     }
 
     private sealed class NullNotificationService : INotificationService
@@ -73,5 +102,4 @@ internal static class TestInspectorFeeServiceFactory
         public Task ClearForUserAsync(string userId, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
     }
-
 }

@@ -80,6 +80,10 @@ public class DatabaseMigrationTests
             UseStream<ValuationDbContext>(options, connectionString));
         services.AddDbContext<IdentityDbContext>(options =>
             UseStream<IdentityDbContext>(options, connectionString));
+        services.AddDbContext<FailuresDbContext>(options =>
+            UseStream<FailuresDbContext>(options, connectionString));
+        services.AddDbContext<OperationsDbContext>(options =>
+            UseStream<OperationsDbContext>(options, connectionString));
         services.AddIdentityApplicationServices();
         services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
 

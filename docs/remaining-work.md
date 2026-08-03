@@ -26,7 +26,7 @@ Source of truth: [`architecture-split-plan.md`](architecture-split-plan.md).
 | --- | --- | --- | --- |
 | A1 | Phase 1 step 1 — Attachments, Platform catalogs, Valuation contexts | **done** | Empty baselines; write path on owned contexts |
 | A2 | Phase 1 step 2 — Identity context + claims permissions on other APIs | **done** | `IdentityDbContext`; `AddClaimsPermissionService` |
-| A3 | Phase 1 step 3 — Failures + Operations contexts; replace Case Study / Identity / Financial reads | **todo** | Next extraction slice |
+| A3 | Phase 1 step 3 — Failures + Operations contexts; replace Case Study / Identity / Financial reads | **done** | `FailuresDbContext` / `OperationsDbContext` + empty baselines; writers dual with legacy for financial/case-study cross-writes; pure services on own context |
 | A4 | Phase 1 step 4 — Financial + Case Study contexts | **todo** | Largest / most entangled; after contracts/projections |
 | A5 | Phase 1 step 5 — Messaging (per-producer outbox / per-consumer inbox shape) | **todo** | Valuation already maps its own outbox (D5) |
 | A6 | Phase 1 exit — every API stops registering legacy `AddPersistence` write path | **todo** | Cannot close until A3–A5 done |
@@ -45,7 +45,7 @@ Source of truth: [`architecture-split-plan.md`](architecture-split-plan.md).
 | --- | --- | --- | --- |
 | B1 | Stringly-typed statuses/kinds on hot paths | **partial** | Workflow / operations / valuation enums landed; more entities still use magic strings |
 | B2 | Anemic domain (public setters, thin aggregates) | **partial** | Some factories/private setters on WorkflowTask, OperationsTask, ValuationRequest; large surface remains |
-| B3 | God services (~1k+ line Infrastructure services) | **partial** | Rules + collaborators extracted from six largest; InspectorFee / Workflow / WorkOrder still ~1k |
+| B3 | God services (~1k+ line Infrastructure services) | **done** | InspectorFee / WorkOrder / WorkflowTask / OperationsTask façades + collaborators |
 | B4 | Domain depends on ASP.NET Identity | **done** | Types moved to Infrastructure; Domain has zero package refs |
 | B5 | CQRS / MediatR | **deferred** | Intentional; introduce one vertical slice only after Identity + Phase 1 stabilize |
 | B6 | Full FluentValidation adoption | **partial** | Auth, activation, attachments, work-order writes wired; not every DTO |
@@ -130,7 +130,7 @@ Source of truth: [`architecture-split-plan.md`](architecture-split-plan.md).
 
 ## G. Suggested order on the next device
 
-1. **Continue Phase 1** — A3 (Failures + Operations), then A4, then A5 → close A6.  
+1. **Continue Phase 1** — A4 (Financial + Case Study), then A5 (Messaging) → close A6.  
 2. **Keep A7 / ops gates visible** — do not invent a production restore; mark progress when available.  
 3. **Parallel low-risk slices** when not touching the same files as A3–A5:  
    - F6 controller-body tests  

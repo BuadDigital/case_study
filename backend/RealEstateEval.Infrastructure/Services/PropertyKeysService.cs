@@ -4,15 +4,21 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class PropertyKeysService : IPropertyKeysService
 {
     private const int MaxListRows = 500;
+    private readonly OperationsDbContext _ops;
     private readonly ApplicationDbContext _db;
 
-    public PropertyKeysService(ApplicationDbContext db) => _db = db;
+    public PropertyKeysService(OperationsDbContext ops, ApplicationDbContext db)
+    {
+        _ops = ops;
+        _db = db;
+    }
 
     public async Task<IReadOnlyList<PropertyKeyRecordDto>> ListAsync(
         bool? hasKey,
@@ -20,7 +26,7 @@ public sealed class PropertyKeysService : IPropertyKeysService
     {
         await SyncFromEnvelopesAndLegacyAsync(cancellationToken);
 
-        var query = _db.PropertyKeyRecords.AsNoTracking().AsQueryable();
+        var query = _ops.PropertyKeyRecords.AsNoTracking().AsQueryable();
         if (hasKey is true)
             query = query.Where(x => x.HasKey);
         else if (hasKey is false)
@@ -48,7 +54,7 @@ public sealed class PropertyKeysService : IPropertyKeysService
         Guid id,
         CancellationToken cancellationToken = default)
     {
-        var row = await _db.PropertyKeyRecords.AsNoTracking()
+        var row = await _ops.PropertyKeyRecords.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         return row is null ? null : ToDto(row, []);
     }
@@ -58,7 +64,7 @@ public sealed class PropertyKeysService : IPropertyKeysService
         UpdatePropertyKeyRequest request,
         CancellationToken cancellationToken = default)
     {
-        var row = await _db.PropertyKeyRecords.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        var row = await _ops.PropertyKeyRecords.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (row is null) return null;
 
         // Prefer envelope handoff confirmation when a linked envelope exists.
@@ -88,6 +94,7 @@ public sealed class PropertyKeysService : IPropertyKeysService
         if (!string.IsNullOrWhiteSpace(request.Status))
             row.WorkflowStatus = request.Status.Trim();
         row.UpdatedAtUtc = DateTime.UtcNow;
+        await _ops.SaveChangesAsync(cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
         return ToDto(row, []);
     }
@@ -109,7 +116,7 @@ public sealed class PropertyKeysService : IPropertyKeysService
         var requestNumber = property?.RequestNumber?.Trim() ?? "";
         if (requestNumber.Length == 0) return null;
 
-        return await _db.KeyEnvelopes
+        return await _ops.KeyEnvelopes
             .Include(e => e.Handoffs)
             .Where(e => e.RequestNumber == requestNumber)
             .OrderByDescending(e => e.CreatedAtUtc)
@@ -119,11 +126,11 @@ public sealed class PropertyKeysService : IPropertyKeysService
     private async Task SyncFromEnvelopesAndLegacyAsync(CancellationToken cancellationToken)
     {
         var now = DateTime.UtcNow;
-        var existingRows = await _db.PropertyKeyRecords.ToListAsync(cancellationToken);
+        var existingRows = await _ops.PropertyKeyRecords.ToListAsync(cancellationToken);
         var matchedRowIds = new HashSet<Guid>();
 
         // 1) Project from envelopes + linked properties / assignments
-        var envelopes = await _db.KeyEnvelopes.AsNoTracking()
+        var envelopes = await _ops.KeyEnvelopes.AsNoTracking()
             .Include(e => e.Assignments)
             .Include(e => e.Handoffs)
             .Where(e => e.ReceiveScenario != KeyReceiveScenarios.Missing
@@ -146,7 +153,7 @@ public sealed class PropertyKeysService : IPropertyKeysService
                     && requestNumbers.Contains(p.RequestNumber))
                 .ToListAsync(cancellationToken);
 
-        var enabledNoKey = await _db.PropertyCourtAccesses.AsNoTracking()
+        var enabledNoKey = await _ops.PropertyCourtAccesses.AsNoTracking()
             .Where(a => a.StudyHoldStatus == PropertyCourtAccessStatuses.EnabledNoKey)
             .Select(a => a.PropertyId)
             .ToListAsync(cancellationToken);
@@ -214,9 +221,10 @@ public sealed class PropertyKeysService : IPropertyKeysService
         foreach (var row in existingRows.ToList())
         {
             if (!matchedRowIds.Contains(row.Id))
-                _db.PropertyKeyRecords.Remove(row);
+                _ops.PropertyKeyRecords.Remove(row);
         }
 
+        await _ops.SaveChangesAsync(cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
     }
 
@@ -308,7 +316,7 @@ public sealed class PropertyKeysService : IPropertyKeysService
                 WorkflowStatus = workflowStatus,
                 UpdatedAtUtc = now,
             };
-            _db.PropertyKeyRecords.Add(created);
+            _ops.PropertyKeyRecords.Add(created);
             existingRows.Add(created);
             matchedRowIds.Add(created.Id);
             return;

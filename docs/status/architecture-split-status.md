@@ -3,13 +3,13 @@
 Honest running status of [`docs/architecture-split-plan.md`](../architecture-split-plan.md).
 Update this file with every slice; do not summarise a partial slice as a finished phase.
 
-## Where the split is (2026-07-30)
+## Where the split is (2026-08-03)
 
 | Phase | State | Evidence |
 | --- | --- | --- |
 | 0 — freeze and measure | Ownership gate **closed**. All 60 table rows are `approved`; D1–D5 have recorded outcomes and rationale; D6 is `accepted-with-residual-risk`, not answered. Owner nomination, the production-consumer inventory, and production metrics are still outstanding and now gate Phase 3/4. | [`table-ownership.json`](../architecture/table-ownership.json), [`table-ownership-catalog.md`](../architecture/table-ownership-catalog.md) |
-| 1 — split EF contexts | **In progress — extraction steps 1–2 of 5 complete.** Attachments, Platform catalogs, Valuation, and Identity have their own contexts, empty baseline migrations, model snapshots, and migrations-history schemas, over the one existing database. | `backend/RealEstateEval.Infrastructure/Data/Contexts` |
-| 2–5 | Not started (Failures/Operations, Financial/Case Study, Messaging). | — |
+| 1 — split EF contexts | **In progress — extraction steps 1–3 of 5 complete.** Attachments, Platform, Valuation, Identity, Failures, and Operations have their own contexts and migration streams. Financial / Case Study and Messaging remain. | `backend/RealEstateEval.Infrastructure/Data/Contexts` |
+| 2–5 | Steps 4–5 not started (Financial/Case Study, Messaging). | — |
 
 Phase 1's own exit criteria are **not** met, and cannot be until step 5: every API still calls
 `AddPersistence`, and `ApplicationDbContext` still holds the write path for the unextracted
@@ -48,14 +48,22 @@ Rollback for Identity: re-point Identity stores at `ApplicationDbContext` and re
 `AddIdentityInfrastructure` on other APIs; tables are untouched and the Identity stream is an
 empty baseline.
 
-## Verification (2026-07-30, step 2)
+## What extraction step 3 changed
+
+- `FailuresDbContext` / `OperationsDbContext` + empty baseline migration streams (`failures` /
+  `operations` history schemas). Ops tasks still live physically in `case_study`; ownership is
+  Operations. Idempotent follow-up: key-envelope revenue entitlement on Operations.
+- Writers use own context (or dual App + owned for financial / case-study cross-writes).
+- Hosts: Failures / Operations APIs; Case Study registers both; Operations also registers Failures
+  for access holds.
+
+## Verification (2026-08-03, step 3)
 
 | Check | Result |
 | --- | --- |
-| Full solution build | **Passed** (0 errors). |
-| `RealEstateEval.Architecture.Tests` | **Passed** — 39/39 (baseline regenerated). |
-| `RealEstateEval.Application.Tests` | **Passed** — 384/384. |
-| `RealEstateEval.Api.IntegrationTests` | **Passed** — 150/150. |
+| Full solution build | **Passed** (0 errors) for tested projects. |
+| `RealEstateEval.Architecture.Tests` | **Passed** — 39/39. |
+| `RealEstateEval.Application.Tests` | **Passed** — 536/536. |
 | ADR 0006 against a restored production-like database | **Not done** — still a residual gate. |
 
 ## Gates before the next extraction step

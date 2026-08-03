@@ -5,6 +5,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
@@ -17,9 +18,10 @@ public class PartyTaskSubmissionAuthorizationTests
     [Fact]
     public async Task SaveDraft_forbids_unassigned_party()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         SeedTask(db, assigneeId: "dist-owner");
-        var service = CreateService(db);
+        var service = CreateService(db, bundle.Failures, bundle.Ops);
 
         var payload = JsonDocument.Parse("""{"status":"draft","visitStatus":""}""").RootElement;
         var (result, errors) = await service.SaveDraftAsync(
@@ -41,9 +43,10 @@ public class PartyTaskSubmissionAuthorizationTests
     [Fact]
     public async Task SaveDraft_allows_matching_assignee()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         SeedTask(db, assigneeId: "dist-owner");
-        var service = CreateService(db);
+        var service = CreateService(db, bundle.Failures, bundle.Ops);
 
         var payload = JsonDocument.Parse("""{"status":"draft","visitStatus":""}""").RootElement;
         var (result, errors) = await service.SaveDraftAsync(
@@ -65,9 +68,10 @@ public class PartyTaskSubmissionAuthorizationTests
     [Fact]
     public async Task Accept_forbids_party_role()
     {
-        await using var db = CreateDb();
+        var bundle = CreateDb();
+        var db = bundle.App;
         SeedAcceptedableSurvey(db);
-        var service = CreateService(db);
+        var service = CreateService(db, bundle.Failures, bundle.Ops);
 
         var (result, errors) = await service.AcceptAsync(
             TaskId,
@@ -141,18 +145,13 @@ public class PartyTaskSubmissionAuthorizationTests
         db.SaveChanges();
     }
 
-    private static ApplicationDbContext CreateDb()
-    {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"party-auth-{Guid.NewGuid():N}")
-            .Options;
-        return new ApplicationDbContext(options);
-    }
+    private static TestBoundedContexts.Bundle CreateDb() =>
+        TestBoundedContexts.Create($"party-auth-{Guid.NewGuid():N}");
 
-    private static PartyTaskSubmissionService CreateService(ApplicationDbContext db)
+    private static PartyTaskSubmissionService CreateService(ApplicationDbContext db, FailuresDbContext failures, OperationsDbContext ops)
     {
         var timeline = new PropertyTimelineService(db);
-        var holds = new PropertyAccessHoldService(db);
+        var holds = new PropertyAccessHoldService(db, failures);
         var (notifications, recipients) = TestInspectorFeeServiceFactory.CreateNotificationDeps(db);
         return new(
             db,
@@ -161,8 +160,8 @@ public class PartyTaskSubmissionAuthorizationTests
             timeline,
             new NullHttpContextAccessor(),
             new NullPermissionService(),
-            new PropertyKeyGateResolver(db),
-            new KeyEnvelopesService(db, holds, new KeyEnvelopePeopleResolver(db)),
+            new PropertyKeyGateResolver(ops, db),
+            new KeyEnvelopesService(ops, db, holds, new KeyEnvelopePeopleResolver(db)),
             TestInspectorFeeServiceFactory.Create(db),
             notifications,
             recipients);

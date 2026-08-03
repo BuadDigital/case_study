@@ -34,6 +34,8 @@ services.AddDbContext<AttachmentsDbContext>(options => UseStream<AttachmentsDbCo
 services.AddDbContext<PlatformDbContext>(options => UseStream<PlatformDbContext>(options));
 services.AddDbContext<ValuationDbContext>(options => UseStream<ValuationDbContext>(options));
 services.AddDbContext<IdentityDbContext>(options => UseStream<IdentityDbContext>(options));
+services.AddDbContext<FailuresDbContext>(options => UseStream<FailuresDbContext>(options));
+services.AddDbContext<OperationsDbContext>(options => UseStream<OperationsDbContext>(options));
 
 await using var provider = services.BuildServiceProvider();
 await using var scope = provider.CreateAsyncScope();

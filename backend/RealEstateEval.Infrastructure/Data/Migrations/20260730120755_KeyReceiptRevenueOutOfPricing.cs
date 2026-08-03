@@ -5,7 +5,11 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace RealEstateEval.Infrastructure.Data.Migrations
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// Financial pricing cleanup only. The KeyEnvelopes column lives on the Operations stream
+    /// (ADR 0003) as of extraction step 3; do not reshape <c>operations</c> from the legacy
+    /// stream after the cutover.
+    /// </summary>
     public partial class KeyReceiptRevenueOutOfPricing : Migration
     {
         /// <inheritdoc />
@@ -15,34 +19,11 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                 name: "KeyReceiptFeeSar",
                 schema: "financial",
                 table: "PartyFeePricingTables");
-
-            migrationBuilder.AddColumn<DateTime>(
-                name: "RevenueEntitlementAtUtc",
-                schema: "operations",
-                table: "KeyEnvelopes",
-                type: "timestamp with time zone",
-                nullable: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_KeyEnvelopes_RevenueEntitlementAtUtc",
-                schema: "operations",
-                table: "KeyEnvelopes",
-                column: "RevenueEntitlementAtUtc");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "IX_KeyEnvelopes_RevenueEntitlementAtUtc",
-                schema: "operations",
-                table: "KeyEnvelopes");
-
-            migrationBuilder.DropColumn(
-                name: "RevenueEntitlementAtUtc",
-                schema: "operations",
-                table: "KeyEnvelopes");
-
             migrationBuilder.AddColumn<decimal>(
                 name: "KeyReceiptFeeSar",
                 schema: "financial",

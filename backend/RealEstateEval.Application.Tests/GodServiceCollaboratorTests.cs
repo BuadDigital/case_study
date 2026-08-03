@@ -108,6 +108,20 @@ public class GodServiceCollaboratorTests
     }
 
     [Fact]
+    public void Inspector_fee_stable_transaction_key_is_deterministic()
+    {
+        var a = RealEstateEval.Infrastructure.Services.InspectorFeeLedgerResolver
+            .StableGuidFromKey("tx:PO-orphan");
+        var b = RealEstateEval.Infrastructure.Services.InspectorFeeLedgerResolver
+            .StableGuidFromKey("tx:PO-orphan");
+        var c = RealEstateEval.Infrastructure.Services.InspectorFeeLedgerResolver
+            .StableGuidFromKey("tx:PO-other");
+
+        Assert.Equal(a, b);
+        Assert.NotEqual(a, c);
+    }
+
+    [Fact]
     public void Key_envelope_handoff_status_and_scenario()
     {
         var entity = new KeyEnvelope

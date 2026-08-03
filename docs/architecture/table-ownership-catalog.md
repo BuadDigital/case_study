@@ -101,8 +101,9 @@ Judgment calls made while approving, beyond the catalog's proposed owners:
 | Table | Owner | Context | Transaction group |
 | --- | --- | --- | --- |
 | `CourtCatalogEntries`, `Courts`, `CourtCircuits`, `CourtAuditLogs` | platform | `PlatformDbContext` | `platform.courts` |
-| `Regions`, `Cities` | platform | `PlatformDbContext` | `platform.geo` |
-| `FieldDictionaryConfigs`, `CaseStudyInfoRolesConfigs` | platform | `PlatformDbContext` | `platform.config` |
+| `Regions`, `Cities`, `Districts` | platform | `PlatformDbContext` | `platform.geo` |
+| `FieldDictionaryConfigs`, `CaseStudyInfoRolesConfigs`, `OrganizationSettings` | platform | `PlatformDbContext` | `platform.config` |
+| `FieldSyncStatuses` | platform | `PlatformDbContext` | `platform.field-sync` |
 
 ### `failures`, `operations`, `valuation`, `attachments`
 
@@ -114,16 +115,17 @@ Judgment calls made while approving, beyond the catalog's proposed owners:
 | `PropertyKeyRecords`, `KeyEnvelopes`, `KeyEnvelopeAssignments`, `KeyEnvelopeHandoffs`, `KeyEnvelopeTimelineEntries`, `PropertyCourtAccesses` | operations | `ApplicationDbContext` | `operations.keys` |
 | `ValuationRequests` | valuation | `ValuationDbContext` | `valuation.requests` |
 | `EvaluatorRecallRecords` | valuation | `ValuationDbContext` | `valuation.recalls` |
-| `FileAttachments` | attachments | `AttachmentsDbContext` | `attachments.files` |
+| `FileAttachments`, `PhotoMetadata` | attachments | `AttachmentsDbContext` | `attachments.files` |
 
 ### `financial`
 
 | Table | Owner | Context | Transaction group |
 | --- | --- | --- | --- |
 | `PoEnfazInvoices`, `PoEnfazRevenueLines` | financial | `ApplicationDbContext` | `financial.enfaz-invoicing` |
-| `EngineeringBillingStatements`, `EngineeringBillingStatementLines` | financial | `ApplicationDbContext` | `financial.engineering-billing` |
+| `PartyBillingStatements`, `PartyBillingStatementLines` | financial | `ApplicationDbContext` | `financial.party-billing` |
 | `KeyReceiptFeeCharges`, `CourtVisitFeeCharges` (D2) | financial | `ApplicationDbContext` | `financial.charges` |
 | `PartyFeePricingTables`, `PartyFeePricingTiers`, `PartyFeePricingAssignments` | financial | `ApplicationDbContext` | `financial.pricing` |
+| `DiscountFlags`, `IncentiveSuspensions` | financial | `ApplicationDbContext` | `financial.pricing` |
 | `FinancialReportConfigs` | financial | `ApplicationDbContext` | `financial.reporting-config` |
 
 ### `messaging`
