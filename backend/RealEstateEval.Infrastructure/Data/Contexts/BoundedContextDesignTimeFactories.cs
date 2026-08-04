@@ -73,3 +73,24 @@ public sealed class OperationsDbContextDesignTimeFactory
     protected override OperationsDbContext Create(DbContextOptions<OperationsDbContext> options) =>
         new(options);
 }
+
+public sealed class FinancialDbContextDesignTimeFactory
+    : BoundedContextDesignTimeFactory<FinancialDbContext>
+{
+    protected override FinancialDbContext Create(DbContextOptions<FinancialDbContext> options) =>
+        new(options);
+}
+
+public sealed class CaseStudyDbContextDesignTimeFactory
+    : BoundedContextDesignTimeFactory<CaseStudyDbContext>
+{
+    protected override CaseStudyDbContext Create(DbContextOptions<CaseStudyDbContext> options) =>
+        new(options);
+}
+
+public sealed class MessagingDbContextDesignTimeFactory
+    : BoundedContextDesignTimeFactory<MessagingDbContext>
+{
+    protected override MessagingDbContext Create(DbContextOptions<MessagingDbContext> options) =>
+        new(options);
+}

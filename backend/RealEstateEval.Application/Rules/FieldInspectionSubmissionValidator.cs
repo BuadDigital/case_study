@@ -20,18 +20,10 @@ public static class FieldInspectionSubmissionValidator
         "21.543300,39.172800",
     };
 
-    private static readonly (string Id, bool Required, bool AnnexOnly)[] DefinedPhotoSlots =
-    [
-        ("front", true, false),
-        ("sides", true, false),
-        ("water", true, false),
-        ("elec", true, false),
-        ("inside", true, false),
-        ("floor", false, false),
-        ("annexup", true, true),
-        ("annexdn", true, true),
-    ];
-
+    /// <summary>
+    /// Desktop table «صورة» + mobile proof: closed-list fields always when valued;
+    /// yes/no fields only when «نعم» (Case Study.html PHOTO_ON_YES + desktop table).
+    /// </summary>
     private static readonly (string Key, string Label)[] FeaturePhotoFields =
     [
         ("assetSubject", "الأصل محل التقييم"),
@@ -157,13 +149,12 @@ public static class FieldInspectionSubmissionValidator
         if (wellCount > 0 && !HasComponentPhotoAttachment(root, "well"))
             issues.Add("يجب إرفاق صورة البئر");
 
-        var showAnnex = ReadString(root, "hasAnnex") == "نعم";
-        var (requiredTotal, requiredDone, pendingApproval) = ComputeDefinedPhotoCoverage(root, showAnnex);
+        var (requiredTotal, requiredDone, pendingApproval) = ComputeDefinedPhotoCoverage(root);
 
-        if (requiredDone < requiredTotal)
+        if (requiredTotal > 0 && requiredDone < requiredTotal)
         {
             issues.Add(
-                "أكمل صور العقار الموثّقة المطلوبة (رفع صورة معتمدة أو تفعيل «لا يوجد»)");
+                "وثّق بالصورة كل خدمة/مرفق اخترته في «الخدمات والمرافق المحيطة»");
         }
 
         if (pendingApproval > 0)
@@ -182,9 +173,33 @@ public static class FieldInspectionSubmissionValidator
     private static bool HasPhotosWithoutServerAttachment(JsonElement root) =>
         FieldInspectionPayloadAttachments.HasPhotosWithoutServerAttachment(root);
 
+    private static List<string> ListServiceAmenitySlotIds(JsonElement root)
+    {
+        var slots = new List<string>();
+
+        void Append(string arrayName, string kind)
+        {
+            if (!root.TryGetProperty(arrayName, out var arr) || arr.ValueKind != JsonValueKind.Array)
+                return;
+
+            foreach (var item in arr.EnumerateArray())
+            {
+                var label = item.ValueKind == JsonValueKind.String
+                    ? item.GetString()?.Trim()
+                    : null;
+                if (string.IsNullOrWhiteSpace(label))
+                    continue;
+                slots.Add($"{kind}:{label}");
+            }
+        }
+
+        Append("services", "service");
+        Append("amenities", "amenity");
+        return slots;
+    }
+
     private static (int RequiredTotal, int RequiredDone, int PendingApproval) ComputeDefinedPhotoCoverage(
-        JsonElement root,
-        bool showAnnex)
+        JsonElement root)
     {
         var requiredTotal = 0;
         var requiredDone = 0;
@@ -194,21 +209,24 @@ public static class FieldInspectionSubmissionValidator
         if (definedPhotos.ValueKind != JsonValueKind.Object)
             definedPhotos = default;
 
-        foreach (var slot in DefinedPhotoSlots)
+        foreach (var slotId in ListServiceAmenitySlotIds(root))
         {
-            if (!slot.Required || (slot.AnnexOnly && !showAnnex))
-                continue;
-
             requiredTotal++;
-            if (IsDefinedSlotComplete(definedPhotos, slot.Id))
+            if (IsDefinedSlotComplete(definedPhotos, slotId))
                 requiredDone++;
         }
 
         if (definedPhotos.ValueKind == JsonValueKind.Object)
         {
-            foreach (var slotProp in definedPhotos.EnumerateObject())
+            foreach (var slotId in ListServiceAmenitySlotIds(root))
             {
-                if (!slotProp.Value.TryGetProperty("photos", out var photos) ||
+                if (!definedPhotos.TryGetProperty(slotId, out var slot) ||
+                    slot.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                if (!slot.TryGetProperty("photos", out var photos) ||
                     photos.ValueKind != JsonValueKind.Array)
                 {
                     continue;
@@ -219,17 +237,6 @@ public static class FieldInspectionSubmissionValidator
                     if (!GetBool(photo, "approved"))
                         pendingApproval++;
                 }
-            }
-        }
-
-        if (root.TryGetProperty("freePhotos", out var freePhotos) &&
-            freePhotos.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var photo in freePhotos.EnumerateArray())
-            {
-                var category = ReadString(photo, "category");
-                if (!string.IsNullOrWhiteSpace(category) && !GetBool(photo, "approved"))
-                    pendingApproval++;
             }
         }
 

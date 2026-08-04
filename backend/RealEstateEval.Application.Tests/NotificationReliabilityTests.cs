@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
@@ -59,7 +60,7 @@ public sealed class NotificationReliabilityTests
     [Fact]
     public async Task Non_owner_write_queues_platform_request_without_writing_inbox()
     {
-        await using var db = CreateDb();
+        await using var db = CreateAppDb();
         var service = new PlatformNotificationRequestService(
             db,
             new OutboxIntegrationEventPublisher(
@@ -92,10 +93,13 @@ public sealed class NotificationReliabilityTests
     [Fact]
     public async Task Platform_request_handler_persists_each_recipient_and_queues_realtime_events()
     {
-        await using var db = CreateDb();
+        var name = $"notification-handler-{Guid.NewGuid():N}";
+        var root = new Microsoft.EntityFrameworkCore.Storage.InMemoryDatabaseRoot();
+        await using var messaging = TestMessagingContexts.CreateMessaging(name, root: root);
+        await using var app = TestMessagingContexts.CreateApp(name, root);
         var handler = new NotificationIntegrationEventHandler(
-            new NotificationRecipientResolver(db),
-            CreateService(db),
+            TestInspectorFeeServiceFactory.CreateRecipients(app),
+            CreateService(messaging),
             NullLogger<NotificationIntegrationEventHandler>.Instance);
         var payload = new NotificationUsersRequestedPayload(
             ["user-1", "user-2"],
@@ -117,13 +121,13 @@ public sealed class NotificationReliabilityTests
 
         await handler.HandleEnvelopeAsync(json);
 
-        Assert.Equal(2, await db.UserNotifications.CountAsync());
-        Assert.Equal(2, await db.OutboxMessages.CountAsync());
+        Assert.Equal(2, await messaging.UserNotifications.CountAsync());
+        Assert.Equal(2, await messaging.OutboxMessages.CountAsync());
         Assert.All(
-            await db.UserNotifications.ToListAsync(),
+            await messaging.UserNotifications.ToListAsync(),
             row => Assert.Equal(NotificationContract.Tones.Warn, row.Tone));
         Assert.All(
-            await db.OutboxMessages.ToListAsync(),
+            await messaging.OutboxMessages.ToListAsync(),
             row => Assert.Equal(IntegrationEventTypes.NotificationUserCreated, row.EventType));
     }
 
@@ -169,12 +173,8 @@ public sealed class NotificationReliabilityTests
         Assert.False(secondReader.TryRead(out _));
     }
 
-    private static NotificationService CreateService(ApplicationDbContext db) =>
-        new(
-            db,
-            new OutboxIntegrationEventPublisher(
-                db,
-                NullLogger<OutboxIntegrationEventPublisher>.Instance));
+    private static NotificationService CreateService(MessagingDbContext db) =>
+        TestMessagingContexts.CreateNotificationService(db);
 
     private static UserNotification Seed(string userId) =>
         new()
@@ -185,10 +185,13 @@ public sealed class NotificationReliabilityTests
             CreatedAtUtc = DateTime.UtcNow,
         };
 
-    private static ApplicationDbContext CreateDb()
+    private static MessagingDbContext CreateDb() =>
+        TestMessagingContexts.CreateMessaging();
+
+    private static ApplicationDbContext CreateAppDb()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"notification-reliability-{Guid.NewGuid():N}")
+            .UseInMemoryDatabase($"notification-reliability-app-{Guid.NewGuid():N}")
             .Options;
         return new ApplicationDbContext(options);
     }

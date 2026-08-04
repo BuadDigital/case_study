@@ -1,23 +1,21 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 /// <summary>
 /// Phase-1 bridge for the one Case Study value the Valuation context still needs.
 /// <para>
-/// The read stays on the legacy context because Case Study has not been extracted yet, but it
-/// is now behind an owner interface, outside the Valuation transaction, and read-only.
-/// Owner: Case Study. Removal criterion: replaced by a Case Study owner API or a
-/// Valuation-local projection when Phase 3 removes cross-boundary database access.
+/// Read-only against <see cref="CaseStudyDbContext"/> (not the legacy god context). Owner: Case
+/// Study. Removal criterion: Case Study owner API or a Valuation-local projection (Phase 3).
 /// </para>
 /// </summary>
 public sealed class CaseStudyPropertyPoNumberLookup : IPropertyPoNumberLookup
 {
-    private readonly ApplicationDbContext _db;
+    private readonly CaseStudyDbContext _db;
 
-    public CaseStudyPropertyPoNumberLookup(ApplicationDbContext db) => _db = db;
+    public CaseStudyPropertyPoNumberLookup(CaseStudyDbContext db) => _db = db;
 
     public async Task<string> ResolveForPropertyAsync(
         string propertyId,

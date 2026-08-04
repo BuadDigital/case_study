@@ -34,6 +34,8 @@ export type WorkflowTaskDto = {
   assignmentType?: string;
   createdAt: string;
   updatedAt: string;
+  /** Engineering-survey: sibling field-inspection completed (server). */
+  fieldInspectionCompleted?: boolean | null;
 };
 
 export type ConfirmTaskDistributionResponseDto = {

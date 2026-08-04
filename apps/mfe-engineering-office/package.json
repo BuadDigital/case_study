@@ -19,7 +19,9 @@
     "@platform/api-client": "*",
     "@platform/app-shared": "*",
     "@platform/types": "*",
-    "@tanstack/react-query": "^5.100.11"
+    "@tanstack/react-query": "^5.100.11",
+    "pdfjs-dist": "^6.1.200",
+    "tesseract.js": "^6.0.1"
   },
   "peerDependencies": {
     "next": ">=16",

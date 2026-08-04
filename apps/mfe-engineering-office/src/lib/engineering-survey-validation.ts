@@ -9,7 +9,9 @@ export type EngineeringSurveyFieldErrors = Partial<
     | "site_letter"
     | "site_confirmed"
     | "checklist"
-    | "on_site_area",
+    | "deed_matches_nature"
+    | "on_site_area"
+    | "nature_on_site_area",
     string
   >
 >;
@@ -28,10 +30,26 @@ export function validateEngineeringSurveySubmission(
     errors.longitude = "أدخل خط الطول بصيغة رقمية صحيحة";
   }
 
-  // HTML renderEngSurvey does not require on-site area; only validate format when filled.
+  if (submission.deedMatchesNature !== "yes" && submission.deedMatchesNature !== "no") {
+    errors.deed_matches_nature = "حدد هل الصك مطابق للطبيعة";
+  }
+
   const onSite = submission.onSiteAreaSqm.replace(/,/g, "").trim();
   if (onSite && (Number.isNaN(Number(onSite)) || Number(onSite) < 0)) {
-    errors.on_site_area = "المساحة على الطبيعة يجب أن تكون رقماً صحيحاً (≥ 0).";
+    errors.on_site_area = "المساحة الإجمالية (حسب الصك) يجب أن تكون رقماً صحيحاً (≥ 0).";
+  }
+
+  if (submission.deedMatchesNature === "no") {
+    const natureArea = (submission.natureOnSiteAreaSqm ?? "")
+      .replace(/,/g, "")
+      .trim();
+    if (
+      natureArea &&
+      (Number.isNaN(Number(natureArea)) || Number(natureArea) < 0)
+    ) {
+      errors.nature_on_site_area =
+        "المساحة الإجمالية (حسب الطبيعة) يجب أن تكون رقماً صحيحاً (≥ 0).";
+    }
   }
 
   if (!submission.surveyReportFileName.trim()) {
@@ -59,7 +77,9 @@ export function firstEngineeringSurveyError(
   return (
     errors.latitude ??
     errors.longitude ??
+    errors.deed_matches_nature ??
     errors.on_site_area ??
+    errors.nature_on_site_area ??
     errors.survey_report ??
     errors.site_letter ??
     errors.site_confirmed ??

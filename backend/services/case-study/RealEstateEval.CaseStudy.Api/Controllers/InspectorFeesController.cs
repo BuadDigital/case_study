@@ -6,6 +6,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Authorization;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
@@ -207,8 +208,9 @@ public class InspectorFeesController : ControllerBase
 
     private async Task<ActorContext> BuildActorContextAsync(CancellationToken ct)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        string? userId = ActorClaims.Id(User);
+        if (userId is "unknown" or "")
+            userId = null;
         var isOperationsManager = User.HasClaim(
             PlatformCapabilities.ClaimType,
             PlatformCapabilities.ManageOperations);

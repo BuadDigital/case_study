@@ -53,9 +53,8 @@ public class AttachmentsController : ControllerBase
         [FromBody] UploadAttachmentRequest request,
         CancellationToken ct)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub)
-            ?? "";
+        var userId = ActorClaims.Id(User);
+        if (userId is "unknown") userId = "";
 
         var (meta, error) = await _attachments.UploadAsync(request, userId, ct);
         if (error is not null)

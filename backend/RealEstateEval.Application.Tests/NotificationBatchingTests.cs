@@ -5,6 +5,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
@@ -17,12 +18,8 @@ public sealed class NotificationBatchingTests
     public async Task CreateForUsersAsync_uses_one_save_for_all_recipients_and_outbox_rows()
     {
         var saveCounter = new SaveCounterInterceptor();
-        await using var db = CreateDb(saveCounter);
-        var service = new NotificationService(
-            db,
-            new OutboxIntegrationEventPublisher(
-                db,
-                NullLogger<OutboxIntegrationEventPublisher>.Instance));
+        await using var db = CreateMessagingDb(saveCounter);
+        var service = TestMessagingContexts.CreateNotificationService(db);
         var userIds = Enumerable.Range(1, 25).Select(i => $"user-{i}").ToList();
 
         var count = await service.CreateForUsersAsync(
@@ -39,12 +36,8 @@ public sealed class NotificationBatchingTests
     public async Task CreateForUsersAsync_deduplicates_every_user_in_one_save()
     {
         var saveCounter = new SaveCounterInterceptor();
-        await using var db = CreateDb(saveCounter);
-        var service = new NotificationService(
-            db,
-            new OutboxIntegrationEventPublisher(
-                db,
-                NullLogger<OutboxIntegrationEventPublisher>.Instance));
+        await using var db = CreateMessagingDb(saveCounter);
+        var service = TestMessagingContexts.CreateNotificationService(db);
         string[] userIds = ["user-1", "user-2", "user-3"];
 
         await service.CreateForUsersAsync(userIds, CreateRequest("same-event"));
@@ -88,7 +81,7 @@ public sealed class NotificationBatchingTests
         });
         await db.SaveChangesAsync();
 
-        var result = await new NotificationRecipientResolver(db)
+        var result = await TestInspectorFeeServiceFactory.CreateRecipients(db)
             .ResolveUserIdsWithPrototypeRoleAsync("government-reviewer");
 
         Assert.Equal(expected.Order(), result.Order());
@@ -106,7 +99,7 @@ public sealed class NotificationBatchingTests
         }));
         await db.SaveChangesAsync();
 
-        var result = await new NotificationRecipientResolver(db)
+        var result = await TestInspectorFeeServiceFactory.CreateRecipients(db)
             .ResolveUserIdsForDistributionAssigneesAsync(
                 Enumerable.Range(1, 20).Select(i => $"assignee-{i}").ToList());
 
@@ -125,13 +118,15 @@ public sealed class NotificationBatchingTests
             Category = "workflow",
         };
 
-    private static ApplicationDbContext CreateDb(SaveCounterInterceptor? saveCounter = null)
+    private static MessagingDbContext CreateMessagingDb(SaveCounterInterceptor? saveCounter = null) =>
+        TestMessagingContexts.CreateMessaging(interceptor: saveCounter);
+
+    private static ApplicationDbContext CreateDb()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"notifications-{Guid.NewGuid():N}");
-        if (saveCounter is not null)
-            options.AddInterceptors(saveCounter);
-        return new ApplicationDbContext(options.Options);
+            .UseInMemoryDatabase($"notifications-app-{Guid.NewGuid():N}")
+            .Options;
+        return new ApplicationDbContext(options);
     }
 
     private sealed class SaveCounterInterceptor : SaveChangesInterceptor

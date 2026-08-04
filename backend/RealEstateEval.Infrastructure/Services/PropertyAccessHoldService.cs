@@ -2,27 +2,32 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 /// <summary>
 /// Creates suspension/failure rows without wiring Case Study's full FailureService: case-study
-/// tables on the legacy context, <c>PropertyFailures</c> on <see cref="FailuresDbContext"/>.
+/// tables on <see cref="CaseStudyDbContext"/>, <c>PropertyFailures</c> on
+/// <see cref="FailuresDbContext"/>. Identity labels resolve person names.
 /// </summary>
 public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
 {
     private const string EvictionProblemTypeId = "access-denied";
     private const string KeyUnmatchedProblemTypeId = "key-wont-open";
 
-    private readonly ApplicationDbContext _cs;
+    private readonly CaseStudyDbContext _cs;
     private readonly FailuresDbContext _failures;
+    private readonly IdentityDbContext _identity;
 
-    public PropertyAccessHoldService(ApplicationDbContext cs, FailuresDbContext failures)
+    public PropertyAccessHoldService(
+        CaseStudyDbContext cs,
+        FailuresDbContext failures,
+        IdentityDbContext identity)
     {
         _cs = cs;
         _failures = failures;
+        _identity = identity;
     }
 
     public async Task EnsureEvictionHoldAsync(
@@ -51,11 +56,14 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
         {
             if (existing.Status != PropertyFailureStatus.Suspended)
             {
-                existing.Status = PropertyFailureStatus.Suspended;
-                existing.ProblemTypeId = EvictionProblemTypeId;
-                existing.Title = "محظر إخلاء — تعليق الدراسة";
-                existing.FinalNote = "عُلّقت الدراسة تلقائياً بسبب تسجيل محظر إخلاء.";
-                existing.UpdatedAtUtc = now;
+                existing.TryForceSuspend(
+                    "عُلّقت الدراسة تلقائياً بسبب تسجيل محظر إخلاء.",
+                    now);
+                existing.RefreshOpenHold(
+                    EvictionProblemTypeId,
+                    "محظر إخلاء — تعليق الدراسة",
+                    "عُلّقت الدراسة تلقائياً بسبب تسجيل محظر إخلاء.",
+                    now);
                 await _failures.SaveChangesAsync(cancellationToken);
             }
 
@@ -63,28 +71,28 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
             return;
         }
 
-        _failures.PropertyFailures.Add(new PropertyFailure
-        {
-            Id = Guid.NewGuid(),
-            PoNumber = po,
-            PropertyId = propertyKey,
-            DeedNumber = property.DeedNumber,
-            Title = "محظر إخلاء — تعليق الدراسة",
-            ProblemTypeId = EvictionProblemTypeId,
-            Severity = "internal",
-            RaisedByRole = DocumentaryWorkflowRules.SystemRaiserRole,
-            InternalNote = "تسجيل محظر إخلاء من وحدة الظروف/مسار الدخول.",
-            FinalNote = "عُلّقت الدراسة تلقائياً بسبب تسجيل محظر إخلاء.",
-            Status = PropertyFailureStatus.Suspended,
-            Specialist = await PersonLabelResolver.ResolveAsync(
-                _cs,
-                string.IsNullOrWhiteSpace(actorName)
-                    ? DocumentaryWorkflowRules.SystemRaiserRole
-                    : actorName,
-                cancellationToken),
-            CreatedAtUtc = now,
-            UpdatedAtUtc = now,
-        });
+        var specialist = await PersonLabelResolver.ResolveAsync(
+            _identity,
+            string.IsNullOrWhiteSpace(actorName)
+                ? DocumentaryWorkflowRules.SystemRaiserRole
+                : actorName,
+            cancellationToken);
+        _failures.PropertyFailures.Add(PropertyFailure.Reconstitute(
+            Guid.NewGuid(),
+            po,
+            propertyKey,
+            property.DeedNumber,
+            "محظر إخلاء — تعليق الدراسة",
+            EvictionProblemTypeId,
+            "internal",
+            DocumentaryWorkflowRules.SystemRaiserRole,
+            "تسجيل محظر إخلاء من وحدة الظروف/مسار الدخول.",
+            "عُلّقت الدراسة تلقائياً بسبب تسجيل محظر إخلاء.",
+            PropertyFailureStatus.Suspended,
+            specialist,
+            now,
+            now,
+            suspendedAtUtc: now));
         await _failures.SaveChangesAsync(cancellationToken);
         await BlockCaseStudyTaskAsync(po, propertyKey, "محظر إخلاء — تعليق الدراسة", cancellationToken);
     }
@@ -124,13 +132,11 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
 
         foreach (var failure in active)
         {
-            failure.Status = PropertyFailureStatus.Resolved;
-            failure.ResolutionReason = "رفع محظر الإخلاء من وحدة الظروف";
-            failure.ContinueInstructions = "أُزيل محظر الإخلاء — استئناف مسار الدراسة.";
-            failure.FinalNote = string.IsNullOrWhiteSpace(failure.FinalNote)
-                ? $"رُفع التعليق بواسطة {actor}."
-                : failure.FinalNote;
-            failure.UpdatedAtUtc = now;
+            failure.TrySystemResolve(
+                "رفع محظر الإخلاء من وحدة الظروف",
+                "أُزيل محظر الإخلاء — استئناف مسار الدراسة.",
+                now,
+                finalNoteIfEmpty: $"رُفع التعليق بواسطة {actor}.");
         }
 
         await _failures.SaveChangesAsync(cancellationToken);
@@ -160,27 +166,24 @@ public sealed class PropertyAccessHoldService : IPropertyAccessHoldService
         if (active) return;
 
         var now = DateTime.UtcNow;
-        _failures.PropertyFailures.Add(new PropertyFailure
-        {
-            Id = Guid.NewGuid(),
-            PoNumber = po,
-            PropertyId = propertyKey,
-            DeedNumber = string.IsNullOrWhiteSpace(deedNumber) ? property.DeedNumber : deedNumber,
-            Title = "مفتاح العقار غير مطابق",
-            ProblemTypeId = KeyUnmatchedProblemTypeId,
-            Severity = "internal",
-            RaisedByRole = DocumentaryWorkflowRules.SystemRaiserRole,
-            InternalNote = "تأكيد ميداني: المفتاح غير مطابق للصك.",
-            Status = PropertyFailureStatus.Internal,
-            Specialist = await PersonLabelResolver.ResolveAsync(
-                _cs,
-                string.IsNullOrWhiteSpace(actorName)
-                    ? DocumentaryWorkflowRules.SystemRaiserRole
-                    : actorName,
-                cancellationToken),
-            CreatedAtUtc = now,
-            UpdatedAtUtc = now,
-        });
+        var specialist = await PersonLabelResolver.ResolveAsync(
+            _identity,
+            string.IsNullOrWhiteSpace(actorName)
+                ? DocumentaryWorkflowRules.SystemRaiserRole
+                : actorName,
+            cancellationToken);
+        _failures.PropertyFailures.Add(PropertyFailure.Create(
+            Guid.NewGuid(),
+            po,
+            propertyKey,
+            string.IsNullOrWhiteSpace(deedNumber) ? property.DeedNumber : deedNumber,
+            "مفتاح العقار غير مطابق",
+            KeyUnmatchedProblemTypeId,
+            "internal",
+            DocumentaryWorkflowRules.SystemRaiserRole,
+            "تأكيد ميداني: المفتاح غير مطابق للصك.",
+            specialist,
+            now));
         await _failures.SaveChangesAsync(cancellationToken);
         await BlockCaseStudyTaskAsync(po, propertyKey, "مفتاح العقار غير مطابق", cancellationToken);
     }

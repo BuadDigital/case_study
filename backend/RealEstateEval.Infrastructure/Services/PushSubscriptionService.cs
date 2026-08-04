@@ -3,18 +3,18 @@ using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class PushSubscriptionService : IPushSubscriptionService
 {
-    private readonly ApplicationDbContext _db;
+    private readonly MessagingDbContext _db;
     private readonly WebPushOptions _options;
 
     public PushSubscriptionService(
-        ApplicationDbContext db,
+        MessagingDbContext db,
         IOptions<WebPushOptions> options)
     {
         _db = db;
@@ -144,7 +144,7 @@ public sealed class PushSubscriptionService : IPushSubscriptionService
 
     /// <summary>Prune soft-disabled subscriptions older than 30 days.</summary>
     public static async Task PruneDisabledAsync(
-        ApplicationDbContext db,
+        MessagingDbContext db,
         CancellationToken cancellationToken = default)
     {
         var cutoff = DateTime.UtcNow.AddDays(-30);

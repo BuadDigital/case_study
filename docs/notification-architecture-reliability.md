@@ -18,7 +18,11 @@ still point to the shared database in the current deployment. Notification reque
 Failures and Case Study are therefore written to the same `messaging.OutboxMessages` table.
 The **single Case Study `OutboxDispatcherHostedService`** drains that shared table using
 leases and `FOR UPDATE SKIP LOCKED`. Failures intentionally must not register a competing
-dispatcher while this topology remains shared.
+dispatcher while this topology remains shared. Dispatch resolves an `IOutboxContext` via
+`OutboxDispatcherOptions.ContextType` (defaults to residual `ApplicationDbContext` mapping
+the shared `messaging.OutboxMessages` table). When a producer cuts over to its own database
+(A10), register a second dispatcher with that service's context type — do not point two
+processes at the same rows without leases coordinated end-to-end.
 
 Before any service receives a separate database, it needs its own outbox dispatcher and
 broker credentials as part of that service's database cutover. Moving a connection string
@@ -59,3 +63,7 @@ Product must define all of the following before implementation:
 Once defined, add an explicit dispute deadline field (or a negotiation entity), a single
 scheduled producer, idempotent source-event keys, and persistence/replay tests. Deriving an
 arbitrary deadline from `UpdatedAtUtc` would invent policy and is deliberately avoided.
+
+**Implementation freeze (2026-08-03):** no stub event types, no-op producers, or schema columns
+will land until product signs the six bullets above. Tracking status remains **blocked** in
+`docs/remaining-work.md` (E6).

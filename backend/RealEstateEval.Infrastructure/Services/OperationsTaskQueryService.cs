@@ -14,11 +14,16 @@ public sealed class OperationsTaskQueryService : IOperationsTaskQuery
 
     private readonly OperationsDbContext _ops;
     private readonly ApplicationDbContext _db;
+    private readonly IUserLabelLookup _labels;
 
-    public OperationsTaskQueryService(OperationsDbContext ops, ApplicationDbContext db)
+    public OperationsTaskQueryService(
+        OperationsDbContext ops,
+        ApplicationDbContext db,
+        IUserLabelLookup? labels = null)
     {
         _ops = ops;
         _db = db;
+        _labels = labels ?? new UserLabelLookup(db);
     }
 
     public async Task<IReadOnlyList<OperationsTaskDto>> ListAsync(
@@ -144,8 +149,7 @@ public sealed class OperationsTaskQueryService : IOperationsTaskQuery
         if (rows.Count == 0)
             return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        return await PersonLabelResolver.ResolveManyAsync(
-            _db,
+        return await _labels.ResolveManyAsync(
             rows.SelectMany(r => new[]
             {
                 r.CreatedBy,

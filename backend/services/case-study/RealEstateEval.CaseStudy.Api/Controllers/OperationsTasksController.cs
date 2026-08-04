@@ -12,6 +12,7 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 
 [ApiController]
 [Route("api/operations-tasks")]
+[Route("api/operations-tasks/v1")]
 [Authorize]
 public class OperationsTasksController : ControllerBase
 {
@@ -70,7 +71,7 @@ public class OperationsTasksController : ControllerBase
             ActorId(),
             ActorName(),
             ct);
-        if (error is not null) return BadRequest(new { error });
+        if (error is not null) return this.BadRequestProblem(error);
         return Ok(result);
     }
 
@@ -88,8 +89,8 @@ public class OperationsTasksController : ControllerBase
             await ActorPrototypeRoleAsync(ct),
             ActorId(),
             ct);
-        if (error is not null) return BadRequest(new { error });
-        if (result is null) return NotFound();
+        if (error is not null) return this.BadRequestProblem(error);
+        if (result is null) return this.NotFoundProblem("المهمة غير موجودة.");
         return Ok(result);
     }
 
@@ -106,8 +107,8 @@ public class OperationsTasksController : ControllerBase
             await ActorPrototypeRoleAsync(ct),
             ActorName(),
             ct);
-        if (error is not null) return BadRequest(new { error });
-        if (result is null) return NotFound();
+        if (error is not null) return this.BadRequestProblem(error);
+        if (result is null) return this.NotFoundProblem("المهمة غير موجودة.");
         return Ok(result);
     }
 
@@ -125,8 +126,8 @@ public class OperationsTasksController : ControllerBase
             ActorName(),
             await ActorPrototypeRoleAsync(ct),
             ct);
-        if (error is not null) return BadRequest(new { error });
-        if (result is null) return NotFound();
+        if (error is not null) return this.BadRequestProblem(error);
+        if (result is null) return this.NotFoundProblem("المهمة غير موجودة.");
         return Ok(result);
     }
 
@@ -142,8 +143,8 @@ public class OperationsTasksController : ControllerBase
             ActorName(),
             await ActorPrototypeRoleAsync(ct),
             ct);
-        if (error is not null) return BadRequest(new { error });
-        if (result is null) return NotFound();
+        if (error is not null) return this.BadRequestProblem(error);
+        if (result is null) return this.NotFoundProblem("المهمة غير موجودة.");
         return Ok(result);
     }
 

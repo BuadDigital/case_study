@@ -17,7 +17,7 @@ public static class InspectorFeeWorkStatusRules
         if (!tasks.TryGetValue(workflowTaskId, out var task))
             return false;
 
-        return ResolveWorkStatus(task, workspaces, submissions) == "done";
+        return ResolveWorkStatus(task, workspaces, submissions) == InspectorFeeWorkStatuses.Done;
     }
 
     public static string ResolveWorkStatus(
@@ -26,26 +26,26 @@ public static class InspectorFeeWorkStatusRules
         IReadOnlyDictionary<Guid, PartyTaskSubmission> submissions)
     {
         if (task.Status == WorkflowTaskStatus.Cancelled)
-            return "cancelled";
+            return InspectorFeeWorkStatuses.Cancelled;
 
         if (task.Status == WorkflowTaskStatus.Completed)
-            return "done";
+            return InspectorFeeWorkStatuses.Done;
 
         if (task.Kind == WorkflowTaskKind.FieldInspection &&
             workspaces.TryGetValue(task.Id, out var workspace) &&
             workspace.Status == PartyTaskSubmissionStatus.Submitted)
         {
-            return "done";
+            return InspectorFeeWorkStatuses.Done;
         }
 
         if (task.Kind is WorkflowTaskKind.EngineeringSurvey or WorkflowTaskKind.GovernmentReview &&
             submissions.TryGetValue(task.Id, out var submission) &&
             submission.Status == PartyTaskSubmissionStatus.Submitted)
         {
-            return "done";
+            return InspectorFeeWorkStatuses.Done;
         }
 
-        return "in_progress";
+        return InspectorFeeWorkStatuses.InProgress;
     }
 
     public static DateTime? ResolveWorkSubmittedAtUtc(

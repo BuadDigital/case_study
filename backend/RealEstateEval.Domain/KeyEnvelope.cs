@@ -46,6 +46,103 @@ public class KeyEnvelope
     public List<KeyEnvelopeAssignment> Assignments { get; set; } = [];
     public List<KeyEnvelopeHandoff> Handoffs { get; set; } = [];
     public List<KeyEnvelopeTimelineEntry> Timeline { get; set; } = [];
+
+    public static KeyEnvelope Create(
+        Guid id,
+        string requestNumber,
+        string court,
+        string circuit,
+        int keysCountLabeled,
+        int keysCountActual,
+        string receiveScenario,
+        string createdByUserId,
+        string createdByName,
+        DateTime nowUtc,
+        Guid? receiptAttachmentId = null,
+        Guid? photoAttachmentId = null,
+        Guid? thirdPartyLetterAttachmentId = null,
+        string? contactPhones = null,
+        string? notes = null,
+        Guid? operationsTaskId = null) =>
+        new()
+        {
+            Id = id,
+            RequestNumber = requestNumber,
+            Court = court,
+            Circuit = circuit,
+            KeysCountLabeled = Math.Max(0, keysCountLabeled),
+            KeysCountActual = Math.Max(0, keysCountActual),
+            ReceiptAttachmentId = receiptAttachmentId,
+            PhotoAttachmentId = photoAttachmentId,
+            ThirdPartyLetterAttachmentId = thirdPartyLetterAttachmentId,
+            ContactPhones = contactPhones,
+            Notes = notes,
+            ReceiveScenario = receiveScenario,
+            Status = KeyEnvelopeStatuses.Reviewer,
+            CreatedByUserId = createdByUserId,
+            CreatedByName = createdByName,
+            CreatedAtUtc = nowUtc,
+            UpdatedAtUtc = nowUtc,
+            OperationsTaskId = operationsTaskId,
+        };
+
+    public void Touch(DateTime nowUtc) => UpdatedAtUtc = nowUtc;
+
+    public void MarkCourtRevenueEntitlement(DateTime nowUtc)
+    {
+        RevenueEntitlementAtUtc = nowUtc;
+        UpdatedAtUtc = nowUtc;
+    }
+
+    /// <summary>Map a handoff kind onto the envelope custody status (status machine edge).</summary>
+    public void ApplyHandoffKind(string kind)
+    {
+        Status = kind switch
+        {
+            KeyHandoffKinds.Internal => KeyEnvelopeStatuses.Assessor,
+            KeyHandoffKinds.External => KeyEnvelopeStatuses.External,
+            KeyHandoffKinds.ReceiveBack => KeyEnvelopeStatuses.Reviewer,
+            KeyHandoffKinds.ReturnCourt => KeyEnvelopeStatuses.Returned,
+            _ => Status,
+        };
+    }
+
+    public KeyEnvelopeAssignment AddPendingAssignment(
+        Guid assignmentId,
+        string deedNumber,
+        Guid? propertyId,
+        string? notes,
+        DateTime nowUtc)
+    {
+        var row = new KeyEnvelopeAssignment
+        {
+            Id = assignmentId,
+            EnvelopeId = Id,
+            DeedNumber = deedNumber,
+            PropertyId = propertyId,
+            Status = KeyAssignmentStatuses.Pending,
+            Notes = notes,
+        };
+        Assignments.Add(row);
+        UpdatedAtUtc = nowUtc;
+        return row;
+    }
+
+    public void ConfirmAssignmentField(
+        KeyEnvelopeAssignment assignment,
+        string status,
+        string? notes,
+        string actorUserId,
+        string actorDisplayName,
+        DateTime nowUtc)
+    {
+        assignment.Status = status;
+        assignment.Notes = notes ?? assignment.Notes;
+        assignment.ConfirmedByUserId = actorUserId;
+        assignment.ConfirmedByName = actorDisplayName;
+        assignment.ConfirmedAtUtc = nowUtc;
+        UpdatedAtUtc = nowUtc;
+    }
 }
 
 public static class KeyEnvelopeStatuses

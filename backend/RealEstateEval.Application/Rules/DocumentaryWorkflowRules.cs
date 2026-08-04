@@ -18,8 +18,7 @@ public static class DocumentaryWorkflowRules
     }
 
     /// <summary>
-    /// Unlock informal settlement via map URL: specialist or field inspector
-    /// (plus supervisor / CDO). Engineering office waits — no write.
+    /// Roles allowed to set location map URL on property (initial data / specialist path).
     /// </summary>
     public static bool RoleCanSetLocationMapUrl(string? prototypeRole)
     {
@@ -39,12 +38,6 @@ public static class DocumentaryWorkflowRules
         && Uri.TryCreate(locationMapUrl.Trim(), UriKind.Absolute, out var uri)
         && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
 
-    public static bool InformalAccessUnlocked(string? planNumber, string? plotNumber, string? locationMapUrl)
-    {
-        if (!IsInformalSettlement(planNumber, plotNumber)) return true;
-        return HasLocationMapUrl(locationMapUrl);
-    }
-
     public static bool HasAnyPartyPhone(IEnumerable<PropertyContact>? contacts)
     {
         if (contacts is null) return false;
@@ -61,43 +54,33 @@ public static class DocumentaryWorkflowRules
     /// <summary>
     /// Survey may be worked only after sibling inspection is completed,
     /// and while there is no active property failure (unless bypass).
+    /// Informal map-URL gating was removed: assignments are filtered upstream.
     /// </summary>
     public static string? SurveyWorkBlockReason(
         bool bypass,
         bool inspectionCompleted,
-        bool hasActiveFailure,
-        bool informalUnlocked)
+        bool hasActiveFailure)
     {
         if (bypass) return null;
         if (hasActiveFailure)
             return "الرفع المساحي مجمّد بسبب تعذر نشط على العقار.";
         if (!inspectionCompleted)
             return "لا يمكن بدء الرفع المساحي قبل اكتمال المعاينة الميدانية.";
-        if (!informalUnlocked)
-            return "العقار في منطقة عشوائية — يلزم رابط موقع (خريطة) من الأخصائي أو المعاين.";
         return null;
     }
 
+    /// <summary>
+    /// Field-inspection submit no longer requires a key in hand.
+    /// Key envelopes / court access remain informational and for other workflows.
+    /// Always returns null (kept for call-site compatibility until cleaned up).
+    /// </summary>
     public static string? InspectorSubmitKeyBlockReason(
         bool bypass,
         bool vacantLand,
         bool keyAvailable)
     {
-        if (bypass || vacantLand) return null;
-        if (!keyAvailable)
-            return "لا يمكن إتمام المعاينة بدون استلام المفتاح (ما عدا الأرض الفضاء). سجّل تعذراً مع ملاحظة.";
+        _ = (bypass, vacantLand, keyAvailable);
         return null;
-    }
-
-    public static string? InformalAccessBlockReason(
-        bool bypass,
-        string? planNumber,
-        string? plotNumber,
-        string? locationMapUrl)
-    {
-        if (bypass) return null;
-        if (InformalAccessUnlocked(planNumber, plotNumber, locationMapUrl)) return null;
-        return "العقار في منطقة عشوائية — يلزم رابط موقع (خريطة) قبل الوصول.";
     }
 
     public static string? DeclarationPhoneBlockReason(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Button, FormRow, InlineLoadingSkeleton, Input, Label, Note, Select, Textarea, cn, formControlClassName, useToast } from "@platform/design-system";
 import { RegField, RegTextarea} from "@platform/app-shared/registration/FormFields";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
@@ -29,18 +29,10 @@ import {
   type PoPropertyIntake,
 } from "../../lib/prototype/po-intake-data";
 import {
-  informalAccessGate,
-  inspectorKeySubmitGate,
   declarationPhoneGate,
   hasAnyPartyPhone,
-  isInformalSettlement,
-  roleBypassesDocumentaryGates,
-  roleCanSetLocationMapUrl,
 } from "../../lib/prototype/documentary-workflow-gates";
-import { updatePropertyLocationMapUrlInPo } from "../../lib/prototype/po-intake-storage";
 import { usePoRecordQuery } from "../../query/case-study-queries";
-import { useQueryClient } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import {
   INSPECTOR_AMENITY_OPTIONS,
   INSPECTOR_FEATURE_FIELDS,
@@ -85,6 +77,89 @@ const TABLE_TD = "border border-border px-2.5 py-1.5 align-middle text-[12px]";
 
 const EDIT_CONTROL_CLASS =
   "w-full appearance-none rounded-lg border border-border-md bg-surface px-[11px] py-[7px] text-[12.5px] text-text font-inherit";
+
+/**
+ * Desktop feature «صورة» cell — always a real file picker on computer
+ * (not camera-only). Empty: «إرفاق صورة»; attached: HTML-style «مرفقة» + replace.
+ */
+function DesktopFeaturePhotoCell({
+  needsPhoto,
+  hasPhoto,
+  disabled,
+  onUpload,
+}: {
+  needsPhoto: boolean;
+  hasPhoto: boolean;
+  disabled?: boolean;
+  onUpload: (file: File) => boolean | void | Promise<boolean | void>;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { runWithUploadToast } = useToast();
+
+  if (!needsPhoto) {
+    return <span className="text-text-3">—</span>;
+  }
+
+  const openFilePicker = () => {
+    if (disabled) return;
+    inputRef.current?.click();
+  };
+
+  return (
+    <span className="inline-flex flex-col items-center justify-center gap-1">
+      {hasPhoto ? (
+        <button
+          type="button"
+          disabled={disabled}
+          title="استبدال الصورة من الجهاز"
+          className="inline-flex items-center gap-1 border-0 bg-transparent p-0 font-inherit text-[10.5px] text-[#1f6f6f] hover:underline disabled:cursor-default disabled:no-underline"
+          onClick={openFilePicker}
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden
+          >
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+          مرفقة
+        </button>
+      ) : (
+        <button
+          type="button"
+          disabled={disabled}
+          className={cn(
+            "inline-flex items-center justify-center gap-1 rounded-md border border-dashed border-border-md bg-surface px-2.5 py-1.5",
+            "font-inherit text-[10.5px] font-semibold text-text-2",
+            "hover:border-primary hover:text-primary",
+            "disabled:cursor-not-allowed disabled:opacity-60",
+          )}
+          onClick={openFilePicker}
+        >
+          <i className="ti ti-upload text-[13px]" aria-hidden />
+          إرفاق صورة
+        </button>
+      )}
+      {/* Desktop: no capture attribute — opens local file dialog on PC. */}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*,.heic,.heif,image/jpeg,image/png,image/webp"
+        disabled={disabled}
+        className="sr-only"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (file) void runWithUploadToast(() => onUpload(file));
+        }}
+      />
+    </span>
+  );
+}
 
 /** Case Study.html `insBadge`. */
 function InsBadge({
@@ -248,8 +323,8 @@ function InspectorCard({
   }
 
   return (
-    <section className="mb-3 rounded-[12px] border border-border bg-surface px-4 py-3.5 shadow-none">
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+    <section className="mb-3 rounded-lg border border-border bg-surface px-4 py-3.5 shadow-none">
+      <div className="mb-3 flex items-center gap-2">
         <h4 className="m-0 text-[13px] font-bold text-heading">{title}</h4>
         <span className="flex-1" />
         {badge}
@@ -282,13 +357,10 @@ export function FieldInspectionWorkBody({
   const mobile = layout === "mobile";
   const { role } = usePrototype();
   const { showToast } = useToast();
-  const queryClient = useQueryClient();
   const propertyId = task.propertyId ?? "";
   const { data: record } = usePoRecordQuery(task.poNumber);
   const property = record?.properties.find((p) => p.id === propertyId);
   const keyAvailability = useInspectorKeyAvailability(task);
-  const [mapUrlDraft, setMapUrlDraft] = useState("");
-  const [savingMapUrl, setSavingMapUrl] = useState(false);
 
   const [draft, setDraft] = useState<InspectorWorkspaceDraft | null>(null);
   const [fieldErrors, setFieldErrors] = useState<InspectorWorkspaceFieldErrors>(
@@ -316,22 +388,10 @@ export function FieldInspectionWorkBody({
     };
   }, [task.id, task.poNumber, task.propertyOrdinal, propertyId, property]);
 
-  useEffect(() => {
-    setMapUrlDraft(property?.locationMapUrl ?? "");
-  }, [property?.locationMapUrl, propertyId]);
-
   const locked =
     task.status === "completed" ||
     (draft ? isInspectorWorkspaceLocked(draft.status) : false);
-  const informalGate = informalAccessGate({
-    role,
-    planNumber: property?.planNumber,
-    plotNumber: property?.plotNumber,
-    locationMapUrl: property?.locationMapUrl,
-  });
-  const informalBlocksAccess =
-    !informalGate.ready && !roleBypassesDocumentaryGates(role);
-  const workLocked = locked || informalBlocksAccess;
+  const workLocked = locked;
   const boundariesUnavailable = property
     ? boundariesMarkedUnavailable(property.boundariesAvailability)
     : false;
@@ -375,24 +435,6 @@ export function FieldInspectionWorkBody({
 
   const submit = useCallback(async (): Promise<boolean> => {
     if (!draft || locked) return false;
-
-    if (informalBlocksAccess && !informalGate.ready) {
-      setFormError(informalGate.reason);
-      showToast(informalGate.reason, "error");
-      return false;
-    }
-
-    const keyGate = inspectorKeySubmitGate({
-      role,
-      vacantLand: draft.vacantLand,
-      keyAvailable: keyAvailability.keyAvailable,
-    });
-    if (!keyGate.ready) {
-      setFormError(keyGate.reason);
-      showToast(keyGate.reason, "error");
-      onRegisterFailure?.();
-      return false;
-    }
 
     const hasPhone = hasAnyPartyPhone(property?.contacts);
     const phoneGate = declarationPhoneGate({
@@ -453,36 +495,7 @@ export function FieldInspectionWorkBody({
     property,
     keyAvailability.keyAvailable,
     boundariesUnavailable,
-    onRegisterFailure,
-    informalBlocksAccess,
-    informalGate.ready ? undefined : informalGate.reason,
   ]);
-
-  async function saveLocationMapUrl() {
-    if (!property || locked || savingMapUrl) return;
-    if (!roleCanSetLocationMapUrl(role)) {
-      showToast("لا صلاحية لحفظ رابط الموقع لهذا الدور.", "error");
-      return;
-    }
-    setSavingMapUrl(true);
-    try {
-      const result = await updatePropertyLocationMapUrlInPo(
-        task.poNumber,
-        property.id,
-        mapUrlDraft.trim(),
-      );
-      if (!result.ok) {
-        showToast(result.error || "تعذّر حفظ رابط الموقع", "error");
-        return;
-      }
-      await queryClient.invalidateQueries({
-        queryKey: prototypeKeys.poRecord(task.poNumber),
-      });
-      showToast("تم حفظ رابط موقع الخريطة", "success");
-    } finally {
-      setSavingMapUrl(false);
-    }
-  }
 
   useEffect(() => {
     if (!hostRef.current) return;
@@ -665,50 +678,6 @@ export function FieldInspectionWorkBody({
         </Note>
       ) : null}
 
-      {informalBlocksAccess && !informalGate.ready ? (
-        <Note tone="warn" className={cn("mb-4", mobile && "mx-4 mt-3")}>
-          <strong>الوصول مقفول — منطقة عشوائية.</strong>{" "}
-          {informalGate.reason} احفظ رابط الخريطة أدناه لفتح نموذج المعاينة.
-        </Note>
-      ) : null}
-
-      {property &&
-      isInformalSettlement(property.planNumber, property.plotNumber) &&
-      roleCanSetLocationMapUrl(role) ? (
-        <div
-          className={cn(
-            "mb-4 rounded-lg border border-border bg-surface-2 p-3",
-            mobile && "mx-4",
-          )}
-        >
-          <Label className="text-[11px] font-semibold text-text-2">
-            رابط موقع الخريطة (عشوائي)
-          </Label>
-          <p className="mt-1 text-[10px] text-text-3">
-            العقار بدون رقم مخطط وقطعة — أدخل رابط خريطة لفتح الوصول.
-          </p>
-          <Input
-            className="mt-2"
-            dir="ltr"
-            value={mapUrlDraft}
-            disabled={locked}
-            placeholder="https://maps.google.com/..."
-            onChange={(e) => setMapUrlDraft(e.target.value)}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="mt-2"
-            loading={savingMapUrl}
-            disabled={locked || savingMapUrl}
-            onClick={() => void saveLocationMapUrl()}
-          >
-            حفظ رابط الموقع
-          </Button>
-        </div>
-      ) : null}
-
       {draft.status === "reopened" && draft.returnNote?.trim() ? (
         <Note tone="warn" className={cn("mb-4", mobile && "mx-4 mt-3")}>
           <strong>{inspectorWorkspaceStatusLabel("reopened")}</strong> —{" "}
@@ -855,6 +824,11 @@ export function FieldInspectionWorkBody({
         >
           {/* Desktop: table */}
           <div className={cn("overflow-x-auto", mobile && "hidden")}>
+            <p className="mb-2 text-[11px] leading-relaxed text-text-3">
+              عمود «صورة» لإثبات قيمة الحقل عند الحاجة (مثل «نعم» أو نوع الأصل).{" "}
+              <strong className="font-semibold text-text-2">صور أنواع العقار</strong>{" "}
+              (لكل خدمة/مرفق اخترته) تُرفع من قسم «توثيق الخدمات والمرافق» أدناه.
+            </p>
             <table className="w-full min-w-[640px] border-collapse">
               <thead>
                 <tr>
@@ -902,7 +876,10 @@ export function FieldInspectionWorkBody({
                               clearInspectorPhotoDataUrl(draft.taskId, photoRef);
                             }
                           }}
-                          className={cn(formControlClassName, "text-xs")}
+                          className={cn(
+                            formControlClassName,
+                            "w-full appearance-none rounded-md border border-border-md bg-surface px-[9px] py-[5px] text-[12px] text-text font-inherit",
+                          )}
                         >
                           <option value="">— اختر —</option>
                           {field.options.map((opt) => (
@@ -912,66 +889,34 @@ export function FieldInspectionWorkBody({
                           ))}
                         </Select>
                       </td>
-                      <td className={cn(TABLE_TD, "text-center")}>
-                        {inspectorFeatureRequiresPhoto(field, value) ? (
-                          attachment?.fileName ? (
-                            <InspectorStampedPhotoThumb
-                              compact
-                              stamp={photoStamp}
-                              taskId={draft.taskId}
-                              photoRef={photoRef}
-                              attachment={attachment}
-                              onClear={
-                                locked
-                                  ? undefined
-                                  : () => {
-                                      clearInspectorPhotoDataUrl(
-                                        draft.taskId,
-                                        photoRef,
-                                      );
-                                      persist({
-                                        featurePhotoAttachments: {
-                                          ...draft.featurePhotoAttachments,
-                                          [field.key]: null,
-                                        },
-                                      });
-                                    }
-                              }
-                            />
-                          ) : (
-                            <InspectorPhotoFilePicker
-                              label="إرفاق صورة"
-                              disabled={locked}
-                              className="w-auto"
-                              onFilesSelected={async (files) => {
-                                const file = files[0];
-                                if (!file) return false;
-                                const result =
-                                  await uploadInspectorPhotoFromFile(
-                                    draft.taskId,
-                                    photoRef,
-                                    file,
-                                    {
-                                      draft: liveDraft,
-                                      deedNumber: property?.deedNumber,
-                                    },
-                                  );
-                                if (!result.ok) {
-                                  showToast(result.error, "error");
-                                  return false;
-                                }
-                                persist({
-                                  featurePhotoAttachments: {
-                                    ...draft.featurePhotoAttachments,
-                                    [field.key]: result.attachment,
-                                  },
-                                });
-                              }}
-                            />
-                          )
-                        ) : (
-                          <span className="text-xs text-text-3">—</span>
-                        )}
+                      <td className={cn(TABLE_TD, "text-center text-text-3")}>
+                        <DesktopFeaturePhotoCell
+                          needsPhoto={inspectorFeatureRequiresPhoto(field, value)}
+                          hasPhoto={Boolean(attachment?.fileName)}
+                          disabled={locked}
+                          onUpload={async (file) => {
+                            const result = await uploadInspectorPhotoFromFile(
+                              draft.taskId,
+                              photoRef,
+                              file,
+                              {
+                                draft: liveDraft,
+                                deedNumber: property?.deedNumber,
+                              },
+                            );
+                            if (!result.ok) {
+                              showToast(result.error, "error");
+                              return false;
+                            }
+                            persist({
+                              featurePhotoAttachments: {
+                                ...draft.featurePhotoAttachments,
+                                [field.key]: result.attachment,
+                              },
+                            });
+                            return true;
+                          }}
+                        />
                       </td>
                     </tr>
                   );
@@ -1737,7 +1682,7 @@ export function FieldInspectionWorkBody({
 
         <div id="ins-defined-photos">
           <InspectorCard
-            title={mobile ? "صور العقار" : "صور العقار الموثّقة"}
+            title={mobile ? "توثيق الخدمات" : "توثيق الخدمات والمرافق"}
             icon="ti-photo"
             layout={cardLayout}
             step={mobile ? 9 : undefined}
@@ -1753,6 +1698,7 @@ export function FieldInspectionWorkBody({
               disabled={locked}
               onPatch={(patch) => persist(patch)}
               bare
+              layout={mobile ? "mobile" : "desktop"}
             />
           </InspectorCard>
           {fieldErrors.definedPhotos ? (
@@ -2121,12 +2067,12 @@ export function FieldInspectionWorkBody({
               checked={draft.vacantLand}
               onChange={(e) => persist({ vacantLand: e.target.checked })}
             />
-            <span>هل الموقع أرض فضاء؟ (يُستثنى من شرط استلام المفتاح)</span>
+            <span>هل الموقع أرض فضاء؟</span>
           </label>
           {!draft.vacantLand && !keyAvailability.keyAvailable ? (
-            <Note tone="warn" className="mt-3">
-              المفتاح غير مُسلَّم بعد. لا يمكن إتمام المعاينة — إن كان المفتاح
-              خطأ أو غير متوفر سجّل تعذراً مع ملاحظة توضيحية.
+            <Note tone="info" className="mt-3">
+              المفتاح غير مُسلَّم بعد (معلومة من ظرف المفاتيح) — يمكنك إتمام
+              المعاينة. إن كان الدخول متعذراً بسبب المفتاح سجّل تعذراً.
               {onRegisterFailure ? (
                 <div className="mt-2">
                   <Button

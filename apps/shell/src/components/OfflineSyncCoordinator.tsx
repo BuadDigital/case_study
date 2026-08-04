@@ -384,24 +384,28 @@ export function OfflineSyncCoordinator() {
     if (!capable || !isAuthenticated || !user?.id) return;
 
     const refreshPending = () => {
-      void listOutboxItems(user.id).then((items) => {
-        const active = items.filter(
-          (item) =>
-            item.status === "pending" ||
-            item.status === "uploading" ||
-            item.status === "failed",
-        );
-        setPending(active.length);
-        setPendingItems(active);
-        try {
-          sessionStorage.setItem(
-            "ejada_offline_pending_count",
-            String(active.length),
+      void listOutboxItems(user.id)
+        .then((items) => {
+          const active = items.filter(
+            (item) =>
+              item.status === "pending" ||
+              item.status === "uploading" ||
+              item.status === "failed",
           );
-        } catch {
-          /* ignore */
-        }
-      });
+          setPending(active.length);
+          setPendingItems(active);
+          try {
+            sessionStorage.setItem(
+              "ejada_offline_pending_count",
+              String(active.length),
+            );
+          } catch {
+            /* ignore */
+          }
+        })
+        .catch(() => {
+          /* IDB closing during HMR/logout — next event will refresh */
+        });
     };
 
     refreshPending();
@@ -474,12 +478,16 @@ export function OfflineSyncCoordinator() {
   useEffect(() => {
     if (!capable || !isAuthenticated || !online || !user?.id) return;
     const report = () => {
-      void listOutboxItems(user.id).then((items) => {
-        void reportFieldSyncHeartbeat(items, {
-          displayName: displayName ?? user.displayName,
-          roleId: role,
+      void listOutboxItems(user.id)
+        .then((items) => {
+          void reportFieldSyncHeartbeat(items, {
+            displayName: displayName ?? user.displayName,
+            roleId: role,
+          });
+        })
+        .catch(() => {
+          /* ignore transient IDB close */
         });
-      });
     };
     report();
     const timer = window.setInterval(report, 60_000);

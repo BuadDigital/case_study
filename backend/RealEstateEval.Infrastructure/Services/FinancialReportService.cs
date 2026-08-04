@@ -5,21 +5,34 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Caching;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
+/// <summary>
+/// Financial summary. Owned fee/config tables live on <see cref="FinancialDbContext"/>;
+/// completed case-study property filters use <see cref="CaseStudyDbContext"/> reads;
+/// assignee display names use <see cref="IdentityDbContext"/> (residual until Phase 3).
+/// </summary>
 public sealed class FinancialReportService : IFinancialReportService
 {
     private static readonly Guid SingletonId = Guid.Parse("f1a2b3c4-d5e6-7890-abcd-ef1234567890");
     private static readonly CultureInfo ArCulture = CultureInfo.GetCultureInfo("ar-SA");
 
-    private readonly ApplicationDbContext _db;
+    private readonly FinancialDbContext _fin;
+    private readonly CaseStudyDbContext _caseStudy;
+    private readonly IdentityDbContext _identity;
     private readonly ApiResponseCache _cache;
 
-    public FinancialReportService(ApplicationDbContext db, ApiResponseCache cache)
+    public FinancialReportService(
+        FinancialDbContext fin,
+        CaseStudyDbContext caseStudy,
+        IdentityDbContext identity,
+        ApiResponseCache cache)
     {
-        _db = db;
+        _fin = fin;
+        _caseStudy = caseStudy;
+        _identity = identity;
         _cache = cache;
     }
 
@@ -37,7 +50,7 @@ public sealed class FinancialReportService : IFinancialReportService
         CancellationToken cancellationToken = default)
     {
         var payload = System.Text.Json.JsonSerializer.Serialize(request);
-        var row = await _db.FinancialReportConfigs
+        var row = await _fin.FinancialReportConfigs
             .FirstOrDefaultAsync(x => x.Id == SingletonId, cancellationToken);
         var now = DateTime.UtcNow;
 
@@ -49,7 +62,7 @@ public sealed class FinancialReportService : IFinancialReportService
                 ReportJson = payload,
                 UpdatedAtUtc = now,
             };
-            _db.FinancialReportConfigs.Add(row);
+            _fin.FinancialReportConfigs.Add(row);
         }
         else
         {
@@ -57,14 +70,14 @@ public sealed class FinancialReportService : IFinancialReportService
             row.UpdatedAtUtc = now;
         }
 
-        await _db.SaveChangesAsync(cancellationToken);
+        await _fin.SaveChangesAsync(cancellationToken);
         await _cache.RemoveAsync(CacheKeys.FinancialSummary, cancellationToken);
         return request;
     }
 
     private async Task<FinancialSummaryDto> BuildFromDatabaseAsync(CancellationToken cancellationToken)
     {
-        var completedLedgers = CompletedCaseStudyLedgers();
+        var completedLedgers = await CompletedCaseStudyLedgersAsync(cancellationToken);
         var costRows = await BuildCostRowsAsync(completedLedgers, cancellationToken);
         var revenueRows = await BuildRevenueRowsAsync(completedLedgers, cancellationToken);
 
@@ -83,13 +96,13 @@ public sealed class FinancialReportService : IFinancialReportService
                 cancellationToken) ?? 0m;
 
         // Collected Enfaz invoices only — entitlements / unissued lines do not count as revenue.
-        var invoices = await _db.PoEnfazInvoices.AsNoTracking()
+        var invoices = await _fin.PoEnfazInvoices.AsNoTracking()
             .Where(i => i.CollectedAmountSar > 0)
             .ToListAsync(cancellationToken);
         var collectedPoNumbers = invoices.Select(i => i.PoNumber).ToHashSet(StringComparer.Ordinal);
         var collectedLines = collectedPoNumbers.Count == 0
             ? []
-            : await _db.PoEnfazRevenueLines.AsNoTracking()
+            : await _fin.PoEnfazRevenueLines.AsNoTracking()
                 .Where(l => collectedPoNumbers.Contains(l.PoNumber) && l.IncludedInBilling)
                 .ToListAsync(cancellationToken);
 
@@ -117,7 +130,7 @@ public sealed class FinancialReportService : IFinancialReportService
         // Historical only. Nothing stamps key-receipt amounts any more — registering the envelope
         // marks the entitlement and finance bills إنفاذ by hand — so this line covers the charges
         // written before that change and empties out on its own.
-        var keyReceiptSummary = await _db.KeyReceiptFeeCharges.AsNoTracking()
+        var keyReceiptSummary = await _fin.KeyReceiptFeeCharges.AsNoTracking()
             .GroupBy(_ => 1)
             .Select(group => new
             {
@@ -127,7 +140,7 @@ public sealed class FinancialReportService : IFinancialReportService
                 Count = group.Count(),
             })
             .SingleOrDefaultAsync(cancellationToken);
-        var visitFeeSummary = await _db.CourtVisitFeeCharges.AsNoTracking()
+        var visitFeeSummary = await _fin.CourtVisitFeeCharges.AsNoTracking()
             .GroupBy(_ => 1)
             .Select(group => new
             {
@@ -211,9 +224,20 @@ public sealed class FinancialReportService : IFinancialReportService
         };
     }
 
-    private IQueryable<InspectorFeeLedger> CompletedCaseStudyLedgers()
+    private async Task<IQueryable<InspectorFeeLedger>> CompletedCaseStudyLedgersAsync(
+        CancellationToken cancellationToken)
     {
-        return _db.InspectorFeeLedgers.AsNoTracking()
+        // Cross-context filter: load completed case-study property ids, then filter financial ledgers.
+        var completedPropertyIds = await _caseStudy.WorkflowTasks.AsNoTracking()
+            .Where(task =>
+                task.Kind == WorkflowTaskKind.CaseStudyProperty
+                && task.Status == WorkflowTaskStatus.Completed
+                && task.PropertyId != null)
+            .Select(task => task.PropertyId!.Value)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        return _fin.InspectorFeeLedgers.AsNoTracking()
             // Disputed lines have no agreed amount yet and suspended ones are withheld, so neither is
             // a committed cost. Excluding them here keeps them out of every aggregate: costs, margin,
             // payables, and the per-PO tracked/disbursed counts.
@@ -222,10 +246,7 @@ public sealed class FinancialReportService : IFinancialReportService
                 && ledger.BillingStatus != InspectorFeeBillingStatus.Suspended)
             .Where(ledger =>
                 ledger.PropertyId != null
-                && _db.WorkflowTasks.Any(task =>
-                    task.Kind == WorkflowTaskKind.CaseStudyProperty
-                    && task.PropertyId == ledger.PropertyId
-                    && task.Status == WorkflowTaskStatus.Completed));
+                && completedPropertyIds.Contains(ledger.PropertyId.Value));
     }
 
     private async Task<Dictionary<string, string>> LoadAssigneeNamesAsync(
@@ -236,8 +257,8 @@ public sealed class FinancialReportService : IFinancialReportService
             return new Dictionary<string, string>(StringComparer.Ordinal);
 
         var profiles = await (
-            from profile in _db.UserProfiles.AsNoTracking()
-            join user in _db.Users.AsNoTracking() on profile.UserId equals user.Id
+            from profile in _identity.UserProfiles.AsNoTracking()
+            join user in _identity.Users.AsNoTracking() on profile.UserId equals user.Id
             where profile.DistributionAssigneeId != null
                 && assigneeIds.Contains(profile.DistributionAssigneeId)
             select new
@@ -262,29 +283,44 @@ public sealed class FinancialReportService : IFinancialReportService
         IQueryable<InspectorFeeLedger> completedLedgers,
         CancellationToken cancellationToken)
     {
-        var aggregates = await (
-            from ledger in completedLedgers
-            join task in _db.WorkflowTasks.AsNoTracking()
-                on ledger.WorkflowTaskId equals task.Id into taskGroup
-            from task in taskGroup.DefaultIfEmpty()
-            let assigneeId = ledger.AssigneeId == null || ledger.AssigneeId.Trim() == ""
-                ? "—"
-                : ledger.AssigneeId.Trim()
-            group ledger by new
+        // Project scalars only so InspectorFeeLedger entities are not materialized (F/D10 report tests).
+        var ledgerSlices = await completedLedgers
+            .Select(ledger => new
             {
-                AssigneeId = assigneeId!,
+                AssigneeId = ledger.AssigneeId == null || ledger.AssigneeId.Trim() == ""
+                    ? "—"
+                    : ledger.AssigneeId.Trim(),
                 ledger.InspectorType,
-                Kind = task == null ? null : (WorkflowTaskKind?)task.Kind,
-            }
-            into grouped
-            select new
+                ledger.WorkflowTaskId,
+                Net = ledger.AgreedFeeSar - ledger.SupervisorDiscountSar,
+            })
+            .ToListAsync(cancellationToken);
+
+        var taskIds = ledgerSlices.Select(row => row.WorkflowTaskId).Distinct().ToList();
+        var kindByTask = taskIds.Count == 0
+            ? new Dictionary<Guid, WorkflowTaskKind>()
+            : await _caseStudy.WorkflowTasks.AsNoTracking()
+                .Where(task => taskIds.Contains(task.Id))
+                .ToDictionaryAsync(task => task.Id, task => task.Kind, cancellationToken);
+
+        var aggregates = ledgerSlices
+            .GroupBy(row => new
+            {
+                row.AssigneeId,
+                row.InspectorType,
+                Kind = kindByTask.TryGetValue(row.WorkflowTaskId, out var kind)
+                    ? (WorkflowTaskKind?)kind
+                    : null,
+            })
+            .Select(grouped => new
             {
                 grouped.Key.AssigneeId,
                 grouped.Key.InspectorType,
                 grouped.Key.Kind,
-                Total = grouped.Sum(l => l.AgreedFeeSar - l.SupervisorDiscountSar),
+                Total = grouped.Sum(row => row.Net),
                 Count = grouped.Count(),
-            }).ToListAsync(cancellationToken);
+            })
+            .ToList();
 
         var assigneeIds = aggregates
             .Select(row => row.AssigneeId)
@@ -327,7 +363,7 @@ public sealed class FinancialReportService : IFinancialReportService
         IQueryable<InspectorFeeLedger> completedLedgers,
         CancellationToken cancellationToken)
     {
-        var orders = await _db.WorkOrders.AsNoTracking()
+        var orders = await _caseStudy.WorkOrders.AsNoTracking()
             .OrderByDescending(w => w.CreatedAtUtc)
             .ThenBy(w => w.PoNumber)
             .Select(w => new
@@ -340,7 +376,7 @@ public sealed class FinancialReportService : IFinancialReportService
         if (orders.Count == 0)
             return [];
 
-        var enfazByPo = await _db.PoEnfazRevenueLines.AsNoTracking()
+        var enfazByPo = await _fin.PoEnfazRevenueLines.AsNoTracking()
             .GroupBy(x => x.PoNumber)
             .Select(g => new
             {
@@ -353,7 +389,7 @@ public sealed class FinancialReportService : IFinancialReportService
             })
             .ToDictionaryAsync(x => x.PoNumber.Trim(), x => x, StringComparer.Ordinal, cancellationToken);
 
-        var invoicesByPo = await _db.PoEnfazInvoices.AsNoTracking()
+        var invoicesByPo = await _fin.PoEnfazInvoices.AsNoTracking()
             .ToDictionaryAsync(
                 x => x.PoNumber.Trim(),
                 x => x,

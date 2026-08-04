@@ -7,17 +7,8 @@ namespace RealEstateEval.Application.Rules;
 /// </summary>
 public static class KeyEnvelopeLifecycleRules
 {
-    public static void ApplyHandoffStatus(KeyEnvelope entity, string kind)
-    {
-        entity.Status = kind switch
-        {
-            KeyHandoffKinds.Internal => KeyEnvelopeStatuses.Assessor,
-            KeyHandoffKinds.External => KeyEnvelopeStatuses.External,
-            KeyHandoffKinds.ReceiveBack => KeyEnvelopeStatuses.Reviewer,
-            KeyHandoffKinds.ReturnCourt => KeyEnvelopeStatuses.Returned,
-            _ => entity.Status,
-        };
-    }
+    public static void ApplyHandoffStatus(KeyEnvelope entity, string kind) =>
+        entity.ApplyHandoffKind(kind);
 
     public static string NormalizeScenario(string? value)
     {

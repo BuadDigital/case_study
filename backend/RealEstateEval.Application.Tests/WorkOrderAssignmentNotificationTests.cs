@@ -22,7 +22,7 @@ public sealed class WorkOrderAssignmentNotificationTests
         SeedUser(db, "user-feras", "feras@ejadah.dev");
         await db.SaveChangesAsync();
 
-        var resolver = new NotificationRecipientResolver(db);
+        var resolver = TestInspectorFeeServiceFactory.CreateRecipients(db);
 
         Assert.Equal(
             "user-feras",
@@ -194,19 +194,18 @@ public sealed class WorkOrderAssignmentNotificationTests
     private static WorkOrderService CreateService(TestBoundedContexts.Bundle bundle)
     {
         var db = bundle.App;
-        var timeline = new PropertyTimelineService(db);
+        var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db);
         var notifications = new PlatformNotificationRequestService(
             db,
             new OutboxIntegrationEventPublisher(
                 db,
                 NullLogger<OutboxIntegrationEventPublisher>.Instance));
-        var recipients = new NotificationRecipientResolver(db);
+        var recipients = TestInspectorFeeServiceFactory.CreateRecipients(db);
         var failures = TestBoundedContexts.CreateFailureService(
             bundle,
-            TestInspectorFeeServiceFactory.CreateWorkflow(db),
-            timeline,
-            notifications,
-            recipients);
+            timeline: timeline,
+            notifications: notifications,
+            recipients: recipients);
         return TestWorkOrderServiceFactory.Create(bundle, notifications, recipients, timeline, failures);
     }
 

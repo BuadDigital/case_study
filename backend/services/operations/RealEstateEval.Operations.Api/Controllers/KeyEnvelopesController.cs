@@ -1,5 +1,4 @@
 using System;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
@@ -11,6 +10,7 @@ namespace RealEstateEval.Operations.Api.Controllers;
 
 [ApiController]
 [Route("api/key-envelopes")]
+[Route("api/key-envelopes/v1")]
 [Authorize(Policy = CapabilityPolicyNames.ReadKeyData)]
 public class KeyEnvelopesController : ControllerBase
 {
@@ -28,6 +28,11 @@ public class KeyEnvelopesController : ControllerBase
     private string ActorId() => ActorClaims.Id(User);
 
     private string ActorName() => ActorClaims.DisplayName(User);
+
+    private ObjectResult ProblemForServiceError(string error) =>
+        error.Contains("غير موجود", StringComparison.Ordinal)
+            ? this.NotFoundProblem(error)
+            : this.BadRequestProblem(error);
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<KeyEnvelopeDto>>> List(CancellationToken ct)
@@ -54,8 +59,7 @@ public class KeyEnvelopesController : ControllerBase
             body?.InvoiceReference,
             ct);
         if (error is not null)
-            return error.Contains("غير موجود") ? NotFound(new { message = error })
-                : BadRequest(new { message = error });
+            return ProblemForServiceError(error);
         return Ok(row);
     }
 
@@ -80,7 +84,7 @@ public class KeyEnvelopesController : ControllerBase
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(requestNumber))
-            return BadRequest(new { message = "requestNumber مطلوب" });
+            return this.BadRequestProblem("requestNumber مطلوب");
         return Ok(await _envelopes.ListLinkedPropertiesAsync(requestNumber, ct));
     }
 
@@ -88,13 +92,13 @@ public class KeyEnvelopesController : ControllerBase
     public async Task<ActionResult<KeyEnvelopeDto>> Get(Guid id, CancellationToken ct)
     {
         var row = await _envelopes.GetAsync(id, ct);
-        return row is null ? NotFound() : Ok(row);
+        return row is null ? this.NotFoundProblem("الظرف غير موجود.") : Ok(row);
     }
 
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = CapabilityPolicyNames.SubmitPartyWork)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
-        => await _envelopes.DeleteAsync(id, ct) ? NoContent() : NotFound();
+        => await _envelopes.DeleteAsync(id, ct) ? NoContent() : this.NotFoundProblem("الظرف غير موجود.");
 
     [HttpPost]
     [Authorize(Policy = CapabilityPolicyNames.SubmitPartyWork)]
@@ -107,7 +111,7 @@ public class KeyEnvelopesController : ControllerBase
             ActorId(),
             ActorName(),
             ct);
-        if (error is not null) return BadRequest(new { message = error });
+        if (error is not null) return this.BadRequestProblem(error);
         return CreatedAtAction(nameof(Get), new { id = envelope!.Id }, envelope);
     }
 
@@ -121,8 +125,7 @@ public class KeyEnvelopesController : ControllerBase
         var (envelope, error) = await _envelopes.AddAssignmentAsync(
             id, request, ActorId(), ActorName(), ct);
         if (error is not null)
-            return error.Contains("غير موجود") ? NotFound(new { message = error })
-                : BadRequest(new { message = error });
+            return ProblemForServiceError(error);
         return Ok(envelope);
     }
 
@@ -137,8 +140,7 @@ public class KeyEnvelopesController : ControllerBase
         var (envelope, error) = await _envelopes.ConfirmAssignmentAsync(
             id, assignmentId, request, ActorId(), ActorName(), ct);
         if (error is not null)
-            return error.Contains("غير موجود") ? NotFound(new { message = error })
-                : BadRequest(new { message = error });
+            return ProblemForServiceError(error);
         return Ok(envelope);
     }
 
@@ -152,8 +154,7 @@ public class KeyEnvelopesController : ControllerBase
         var (envelope, error) = await _envelopes.CreateHandoffAsync(
             id, request, ActorId(), ActorName(), ct);
         if (error is not null)
-            return error.Contains("غير موجود") ? NotFound(new { message = error })
-                : BadRequest(new { message = error });
+            return ProblemForServiceError(error);
         return Ok(envelope);
     }
 
@@ -167,8 +168,7 @@ public class KeyEnvelopesController : ControllerBase
         var (envelope, error) = await _envelopes.ConfirmHandoffAsync(
             id, handoffId, ActorId(), ActorName(), ct);
         if (error is not null)
-            return error.Contains("غير موجود") ? NotFound(new { message = error })
-                : BadRequest(new { message = error });
+            return ProblemForServiceError(error);
         return Ok(envelope);
     }
 
@@ -181,8 +181,7 @@ public class KeyEnvelopesController : ControllerBase
         var (access, error) = await _envelopes.UpsertCourtAccessAsync(
             request, ActorId(), ActorName(), ct);
         if (error is not null)
-            return error.Contains("غير موجود") ? NotFound(new { message = error })
-                : BadRequest(new { message = error });
+            return ProblemForServiceError(error);
         return Ok(access);
     }
 }

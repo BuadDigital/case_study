@@ -158,13 +158,13 @@ public class CaseStudyPartyFormLockTests
     private static CaseStudyFormService CreateFormService(TestDatabases.ContextSet contexts)
     {
         var db = contexts.Legacy;
-        var timeline = new PropertyTimelineService(db);
+        var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db);
         var valuation = new ValuationRequestService(
             contexts.Valuation,
             new ValuationOutboxPublisher(
                 contexts.Valuation,
                 NullLogger<ValuationOutboxPublisher>.Instance),
-            new CaseStudyPropertyPoNumberLookup(db));
+            new CaseStudyPropertyPoNumberLookup(contexts.CaseStudy));
         var dispatch = new CaseStudyValuationDispatchService(
             db,
             valuation,

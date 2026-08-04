@@ -102,14 +102,13 @@ public class WorkOrderReadAuthorizationTests
         TestBoundedContexts.Bundle bundle)
     {
         var db = bundle.App;
-        var timeline = new RealEstateEval.Infrastructure.Services.PropertyTimelineService(db);
+        var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db, bundle.Failures);
         var (notifications, recipients) = TestInspectorFeeServiceFactory.CreateNotificationDeps(db);
         var failures = TestBoundedContexts.CreateFailureService(
             bundle,
-            TestInspectorFeeServiceFactory.CreateWorkflow(db),
-            timeline,
-            notifications,
-            recipients);
+            timeline: timeline,
+            notifications: notifications,
+            recipients: recipients);
         return TestWorkOrderServiceFactory.Create(bundle, notifications, recipients, timeline, failures);
     }
 }

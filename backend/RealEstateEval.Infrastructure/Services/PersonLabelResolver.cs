@@ -1,7 +1,9 @@
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Rules;
+using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -43,26 +45,50 @@ public static class PersonLabelResolver
         return true;
     }
 
-    public static async Task<string> ResolveAsync(
+    public static Task<string> ResolveAsync(
         ApplicationDbContext db,
         string? raw,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        ResolveFromUsersAsync(db.Users.AsNoTracking(), raw, cancellationToken);
+
+    public static Task<string> ResolveAsync(
+        IdentityDbContext db,
+        string? raw,
+        CancellationToken cancellationToken = default) =>
+        ResolveFromUsersAsync(db.Users.AsNoTracking(), raw, cancellationToken);
+
+    public static Task<IReadOnlyDictionary<string, string>> ResolveManyAsync(
+        ApplicationDbContext db,
+        IEnumerable<string?> raws,
+        CancellationToken cancellationToken = default) =>
+        ResolveManyFromUsersAsync(db.Users.AsNoTracking(), raws, cancellationToken);
+
+    public static Task<IReadOnlyDictionary<string, string>> ResolveManyAsync(
+        IdentityDbContext db,
+        IEnumerable<string?> raws,
+        CancellationToken cancellationToken = default) =>
+        ResolveManyFromUsersAsync(db.Users.AsNoTracking(), raws, cancellationToken);
+
+    private static async Task<string> ResolveFromUsersAsync(
+        IQueryable<ApplicationUser> users,
+        string? raw,
+        CancellationToken cancellationToken)
     {
         var normalized = NormalizeSystemLabel(raw);
         if (normalized.Length == 0) return "";
         if (!LooksLikeUserId(normalized)) return normalized;
 
-        var name = await db.Users.AsNoTracking()
+        var name = await users
             .Where(u => u.Id == normalized)
             .Select(u => u.DisplayName)
             .FirstOrDefaultAsync(cancellationToken);
         return string.IsNullOrWhiteSpace(name) ? normalized : name.Trim();
     }
 
-    public static async Task<IReadOnlyDictionary<string, string>> ResolveManyAsync(
-        ApplicationDbContext db,
+    private static async Task<IReadOnlyDictionary<string, string>> ResolveManyFromUsersAsync(
+        IQueryable<ApplicationUser> users,
         IEnumerable<string?> raws,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var raw in raws)
@@ -74,7 +100,7 @@ public static class PersonLabelResolver
         if (ids.Count == 0)
             return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        var names = await db.Users.AsNoTracking()
+        var names = await users
             .Where(u => ids.Contains(u.Id))
             .Select(u => new { u.Id, u.DisplayName })
             .ToListAsync(cancellationToken);

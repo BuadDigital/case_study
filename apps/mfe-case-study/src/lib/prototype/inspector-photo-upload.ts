@@ -8,7 +8,7 @@ import type {
   InspectorPhotoAttachment,
   InspectorWorkspaceDraft,
 } from "./inspector-workspace-data";
-import { INSPECTOR_DEFINED_PHOTOS } from "./inspector-workspace-data";
+import { listServiceAmenityPhotoSlots } from "./inspector-workspace-data";
 import { burnInspectorPhotoStamp } from "./inspector-photo-stamp";
 import {
   buildEvidenceStampLines,
@@ -115,7 +115,7 @@ export async function prefetchInspectorWorkspacePhotos(
 
   const jobs: Promise<unknown>[] = [];
 
-  for (const def of INSPECTOR_DEFINED_PHOTOS) {
+  for (const def of listServiceAmenityPhotoSlots(draft)) {
     const slot = draft.definedPhotos[def.id];
     if (!slot || slot.none) continue;
     for (const photo of slot.photos) {

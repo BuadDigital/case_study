@@ -168,6 +168,52 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, operations.StatusCode);
     }
 
+    [DockerFact]
+    public async Task Case_study_work_order_list_and_ops_create_validation_execute()
+    {
+        using var factory = Factory<CaseStudyMarker>("CaseStudy");
+        using var client = factory.CreateClient();
+
+        using var listRequest = AuthorizedGet("/api/work-orders?page=1&pageSize=20");
+        var list = await client.SendAsync(listRequest);
+        Assert.Equal(HttpStatusCode.OK, list.StatusCode);
+
+        using var createRequest = AuthorizedPost("/api/operations-tasks", new CreateOperationsTaskRequest());
+        var create = await client.SendAsync(createRequest);
+        Assert.Equal(HttpStatusCode.BadRequest, create.StatusCode);
+        Assert.Equal("application/problem+json", create.Content.Headers.ContentType?.MediaType);
+    }
+
+    [DockerFact]
+    public async Task Operations_create_key_envelope_validation_executes()
+    {
+        using var factory = Factory<OperationsMarker>("Operations");
+        using var client = factory.CreateClient();
+
+        using var createRequest = AuthorizedPost("/api/key-envelopes", new CreateKeyEnvelopeRequest
+        {
+            RequestNumber = "",
+            Court = "",
+            Circuit = "",
+            ReceiveScenario = "not-a-scenario",
+        });
+        var create = await client.SendAsync(createRequest);
+        Assert.Equal(HttpStatusCode.BadRequest, create.StatusCode);
+        Assert.Equal("application/problem+json", create.Content.Headers.ContentType?.MediaType);
+    }
+
+    [DockerFact]
+    public async Task Failures_create_validation_executes()
+    {
+        using var factory = Factory<FailuresMarker>("Failures");
+        using var client = factory.CreateClient();
+
+        using var createRequest = AuthorizedPost("/api/failures", new CreateFailureRequest());
+        var create = await client.SendAsync(createRequest);
+        Assert.Equal(HttpStatusCode.BadRequest, create.StatusCode);
+        Assert.Equal("application/problem+json", create.Content.Headers.ContentType?.MediaType);
+    }
+
     private RealDatabaseApiFactory<TMarker> Factory<TMarker>(string serviceName)
         where TMarker : class =>
         new(_connectionString, serviceName);

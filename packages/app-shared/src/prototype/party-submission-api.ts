@@ -154,9 +154,16 @@ export async function persistPartySubmissionPayload(
       payload,
       onlineSave: async () => {
         const result = await savePartyTaskSubmission(config, taskId, payload);
-        const mapped = mutationFromApiResult(result, "تعذّر حفظ مسودة المهمة");
-        if (!mapped.ok) throw new Error(mapped.error);
-        setCachedPartySubmission(mapped.data, taskId);
+        if (!result.ok) {
+          const err = new Error(
+            resolveApiError(result.kind, result.errors, "تعذّر حفظ مسودة المهمة"),
+          ) as Error & { offlineQueueable?: boolean };
+          if (result.kind !== "network" && result.kind !== "server") {
+            err.offlineQueueable = false;
+          }
+          throw err;
+        }
+        setCachedPartySubmission(result.data, taskId);
       },
     });
     if (queued.queued) {
@@ -217,9 +224,16 @@ export async function submitPartySubmission(
       payload: cached?.payload ?? {},
       onlineSubmit: async () => {
         const result = await submitPartyTaskSubmission(config, taskId);
-        const mapped = mutationFromApiResult(result, "تعذّر إرسال مهمة الطرف");
-        if (!mapped.ok) throw new Error(mapped.error);
-        setCachedPartySubmission(mapped.data, taskId);
+        if (!result.ok) {
+          const err = new Error(
+            resolveApiError(result.kind, result.errors, "تعذّر إرسال مهمة الطرف"),
+          ) as Error & { offlineQueueable?: boolean };
+          if (result.kind !== "network" && result.kind !== "server") {
+            err.offlineQueueable = false;
+          }
+          throw err;
+        }
+        setCachedPartySubmission(result.data, taskId);
       },
     });
     if (queued.queued) {

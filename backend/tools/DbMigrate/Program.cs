@@ -36,6 +36,9 @@ services.AddDbContext<ValuationDbContext>(options => UseStream<ValuationDbContex
 services.AddDbContext<IdentityDbContext>(options => UseStream<IdentityDbContext>(options));
 services.AddDbContext<FailuresDbContext>(options => UseStream<FailuresDbContext>(options));
 services.AddDbContext<OperationsDbContext>(options => UseStream<OperationsDbContext>(options));
+services.AddDbContext<FinancialDbContext>(options => UseStream<FinancialDbContext>(options));
+services.AddDbContext<CaseStudyDbContext>(options => UseStream<CaseStudyDbContext>(options));
+services.AddDbContext<MessagingDbContext>(options => UseStream<MessagingDbContext>(options));
 
 await using var provider = services.BuildServiceProvider();
 await using var scope = provider.CreateAsyncScope();

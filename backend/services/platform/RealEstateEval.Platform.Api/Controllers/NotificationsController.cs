@@ -6,11 +6,13 @@ using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Notifications;
+using RealEstateEval.Shared.Web;
 
 namespace RealEstateEval.Platform.Api.Controllers;
 
 [ApiController]
 [Route("api/notifications")]
+[Route("api/notifications/v1")]
 [Authorize]
 public sealed class NotificationsController : ControllerBase
 {
@@ -146,7 +148,9 @@ public sealed class NotificationsController : ControllerBase
         return NoContent();
     }
 
-    private string? CurrentUserId() =>
-        User.FindFirstValue(ClaimTypes.NameIdentifier)
-        ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+    private string? CurrentUserId()
+    {
+        var id = ActorClaims.Id(User);
+        return id is "unknown" or "" ? null : id;
+    }
 }

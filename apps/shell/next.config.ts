@@ -78,10 +78,12 @@ const nextConfig: NextConfig = {
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob:",
+              "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://tile.openstreetmap.org",
               "font-src 'self' data:",
               "connect-src 'self' https: http: ws: wss:",
               "worker-src 'self' blob:",
+              /* Field inspection / survey maps embed OSM (Case Study.html). */
+              "frame-src 'self' https://www.openstreetmap.org https://openstreetmap.org",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

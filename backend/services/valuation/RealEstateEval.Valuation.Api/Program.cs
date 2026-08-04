@@ -1,4 +1,5 @@
 using RealEstateEval.Infrastructure;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Web;
 using RealEstateEval.Shared.Web;
 
@@ -19,10 +20,9 @@ builder.Services.AddResponseCompression(options => options.EnableForHttps = true
 var connectionString = ServiceCollectionExtensions.RequireConnectionString(
     builder.Configuration,
     ServiceDatabaseNames.Valuation);
-builder.Services.AddPersistence(builder.Configuration, connectionString);
+builder.Services.AddHostSharedInfrastructure(builder.Configuration);
 builder.Services.AddClaimsPermissionService();
 builder.Services.AddValuationInfrastructure(builder.Configuration, connectionString);
-builder.Services.AddIntegrationEventPublishing(builder.Configuration, builder.Environment);
 builder.Services.AddRealEstateEvalJwt(builder.Configuration, builder.Environment);
 builder.Services.AddRealEstateEvalCors(builder.Configuration, builder.Environment);
 builder.Services.AddRealEstateEvalRateLimiting(builder.Configuration, builder.Environment);
@@ -33,7 +33,7 @@ var app = builder.Build();
 app.UseRealEstateEvalServicePipeline();
 app.UseRealEstateEvalOpenApi("Valuation API");
 app.MapServiceHealth("valuation");
-app.MapDatabaseReady("valuation");
+app.MapDatabaseReady<ValuationDbContext>("valuation");
 app.MapControllers();
 
 app.Run();

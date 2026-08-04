@@ -16,8 +16,11 @@ public static class InspectorFeeRowMapper
         string? lastTransitionReason)
     {
         var discount = Math.Max(0m, ledger.SupervisorDiscountSar);
-        var workStatus = workSubmitted ? "done" : (
-            task.Status == WorkflowTaskStatus.Cancelled ? "cancelled" : "in_progress");
+        var workStatus = workSubmitted
+            ? InspectorFeeWorkStatuses.Done
+            : (task.Status == WorkflowTaskStatus.Cancelled
+                ? InspectorFeeWorkStatuses.Cancelled
+                : InspectorFeeWorkStatuses.InProgress);
 
         return new InspectorFeeRowDto
         {
@@ -54,7 +57,7 @@ public static class InspectorFeeRowMapper
             WorkSubmittedAtUtc = workSubmittedAtUtc,
             PoReceivedAtUtc = poReceivedAtUtc,
             IsEditable = InspectorFeeBillingRules.IsEditableStatus(ledger.BillingStatus),
-            CanSubmitToSupervisor = workStatus == "done"
+            CanSubmitToSupervisor = workStatus == InspectorFeeWorkStatuses.Done
                 && !ledger.ExcludedFromBatch
                 && ledger.BillingStatus is InspectorFeeBillingStatus.Draft
                     or InspectorFeeBillingStatus.Returned
@@ -64,24 +67,24 @@ public static class InspectorFeeRowMapper
                 && (ledger.BillingStatus != InspectorFeeBillingStatus.Inquiry
                     || ledger.ReturnTo == InspectorFeeReturnTo.Office)
                 && task.Kind != WorkflowTaskKind.EngineeringSurvey,
-            CanApproveToFinance = workStatus == "done"
+            CanApproveToFinance = workStatus == InspectorFeeWorkStatuses.Done
                 && !ledger.ExcludedFromBatch
                 && ledger.BillingStatus == InspectorFeeBillingStatus.SupReview,
             // ج٩: all party fee kinds use billing statements; legacy disb-req rows stay on finance disburse.
             CanCreateDisbursementRequest = false,
-            CanOfficeApproveDiscount = workStatus == "done"
+            CanOfficeApproveDiscount = workStatus == InspectorFeeWorkStatuses.Done
                 && !ledger.ExcludedFromBatch
                 && !InspectorFeeRules.IsEmployee(ledger.InspectorType)
                 && task.Kind == WorkflowTaskKind.EngineeringSurvey
                 && ledger.BillingStatus == InspectorFeeBillingStatus.OfficeReview
                 && discount > 0m,
-            CanOfficeDispute = workStatus == "done"
+            CanOfficeDispute = workStatus == InspectorFeeWorkStatuses.Done
                 && !ledger.ExcludedFromBatch
                 && !InspectorFeeRules.IsEmployee(ledger.InspectorType)
                 && task.Kind == WorkflowTaskKind.EngineeringSurvey
                 && ledger.BillingStatus == InspectorFeeBillingStatus.OfficeReview
                 && discount > 0m,
-            CanResolveDispute = workStatus == "done"
+            CanResolveDispute = workStatus == InspectorFeeWorkStatuses.Done
                 && !ledger.ExcludedFromBatch
                 && !InspectorFeeRules.IsEmployee(ledger.InspectorType)
                 && task.Kind == WorkflowTaskKind.EngineeringSurvey

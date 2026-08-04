@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Services;
 
@@ -77,18 +78,9 @@ public class NotificationDedupeRuleTests
         SourceEvent = sourceEvent,
     };
 
-    private static NotificationService CreateService(ApplicationDbContext db) =>
-        new(
-            db,
-            new OutboxIntegrationEventPublisher(
-                db,
-                NullLogger<OutboxIntegrationEventPublisher>.Instance));
+    private static NotificationService CreateService(MessagingDbContext db) =>
+        TestMessagingContexts.CreateNotificationService(db);
 
-    private static ApplicationDbContext CreateDb()
-    {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"notification-dedupe-{Guid.NewGuid():N}")
-            .Options;
-        return new ApplicationDbContext(options);
-    }
+    private static MessagingDbContext CreateDb() =>
+        TestMessagingContexts.CreateMessaging();
 }

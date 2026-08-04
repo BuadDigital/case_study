@@ -6,7 +6,6 @@ import {
   encryptBytes,
   encryptJson,
   isWebCryptoAvailable,
-  OfflineCryptoUnavailableError,
   type EncryptedPayload,
 } from "./crypto";
 import {
@@ -20,6 +19,21 @@ import {
   type OfflineOutboxItem,
   type OfflinePrefetchRecord,
 } from "./types";
+
+/**
+ * On insecure contexts (http://LAN-IP, not localhost) Web Crypto subtle is
+ * unavailable. We still persist outbox/drafts as **plaintext** JSON so field
+ * devices can work over local network; data is still browser-scoped only.
+ */
+export function usesPlainOfflineStorage(): boolean {
+  return !isWebCryptoAvailable();
+}
+
+const PLAIN_ENCODING = "plain";
+const te = new TextEncoder();
+const td = new TextDecoder();
+/** Zero-length IV used with meta.encoding = plain. */
+const PLAIN_IV = new ArrayBuffer(0);
 
 type EncryptedRow = {
   id: string;
@@ -62,6 +76,7 @@ interface OfflineDb extends DBSchema {
 }
 
 let dbPromise: Promise<IDBPDatabase<OfflineDb>> | null = null;
+let openGeneration = 0;
 const keyCache = new Map<string, CryptoKey>();
 
 function channel(): BroadcastChannel | null {
@@ -82,8 +97,28 @@ export function broadcastOffline(type: string, detail?: unknown): void {
   }
 }
 
+/** Connection closed/closing while a transaction was started (HMR, logout, versionchange). */
+function isDbConnectionError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const name = "name" in error ? String((error as { name?: unknown }).name) : "";
+  const message =
+    "message" in error ? String((error as { message?: unknown }).message) : "";
+  return (
+    name === "InvalidStateError" ||
+    /connection is closing|database connection is closing|has been closed|closing/i.test(
+      message,
+    )
+  );
+}
+
+function resetDbCache(): void {
+  openGeneration += 1;
+  dbPromise = null;
+}
+
 async function getDb(): Promise<IDBPDatabase<OfflineDb>> {
   if (!dbPromise) {
+    const generation = openGeneration;
     dbPromise = openDB<OfflineDb>(OFFLINE_DB_NAME, OFFLINE_DB_VERSION, {
       upgrade(db) {
         if (!db.objectStoreNames.contains("keys")) {
@@ -111,30 +146,104 @@ async function getDb(): Promise<IDBPDatabase<OfflineDb>> {
           db.createObjectStore("meta", { keyPath: "key" });
         }
       },
+      /** Another connection wants a version change — release promptly. */
       blocking() {
-        dbPromise = null;
+        void forceCloseOfflineDb();
       },
+      /** Unexpected close (browser eviction / parallel close). */
+      terminated() {
+        if (generation === openGeneration) {
+          resetDbCache();
+        }
+      },
+    }).then((db) => {
+      if (generation !== openGeneration) {
+        try {
+          db.close();
+        } catch {
+          /* ignore */
+        }
+        throw new DOMException(
+          "The database connection is closing.",
+          "InvalidStateError",
+        );
+      }
+      return db;
+    }).catch((error) => {
+      if (generation === openGeneration) {
+        dbPromise = null;
+      }
+      throw error;
     });
   }
   return dbPromise;
 }
 
+/**
+ * Run an IndexedDB op with reopen+retry when the handle was closed mid-flight
+ * (common during Next HMR, multi-tab upgrades, logout).
+ */
+async function withDb<T>(
+  op: (db: IDBPDatabase<OfflineDb>) => Promise<T>,
+  retries = 3,
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < retries; attempt += 1) {
+    try {
+      const db = await getDb();
+      return await op(db);
+    } catch (error) {
+      lastError = error;
+      if (!isDbConnectionError(error) || attempt === retries - 1) {
+        throw error;
+      }
+      resetDbCache();
+    }
+  }
+  throw lastError;
+}
+
+function isPlainRow(row: EncryptedRow): boolean {
+  return row.meta?.encoding === PLAIN_ENCODING;
+}
+
+function encodePlainJson(value: unknown): {
+  iv: ArrayBuffer;
+  ciphertext: ArrayBuffer;
+} {
+  const bytes = te.encode(JSON.stringify(value));
+  return {
+    iv: PLAIN_IV,
+    ciphertext: bytes.buffer.slice(
+      bytes.byteOffset,
+      bytes.byteOffset + bytes.byteLength,
+    ) as ArrayBuffer,
+  };
+}
+
+function decodePlainJson<T>(row: EncryptedRow): T {
+  return JSON.parse(td.decode(new Uint8Array(row.ciphertext))) as T;
+}
+
 export async function ensureOfflineKey(userId: string): Promise<CryptoKey> {
   if (!isWebCryptoAvailable()) {
-    throw new OfflineCryptoUnavailableError();
+    throw new Error(
+      "Offline crypto key is unavailable on this origin (use localhost/HTTPS or plaintext storage).",
+    );
   }
   const cached = keyCache.get(userId);
   if (cached) return cached;
-  const db = await getDb();
-  const existing = await db.get("keys", userId);
-  if (existing?.key) {
-    keyCache.set(userId, existing.key);
-    return existing.key;
-  }
-  const key = await createUserCryptoKey();
-  await db.put("keys", { userId, key });
-  keyCache.set(userId, key);
-  return key;
+  return withDb(async (db) => {
+    const existing = await db.get("keys", userId);
+    if (existing?.key) {
+      keyCache.set(userId, existing.key);
+      return existing.key;
+    }
+    const key = await createUserCryptoKey();
+    await db.put("keys", { userId, key });
+    keyCache.set(userId, key);
+    return key;
+  });
 }
 
 async function putEncrypted<T>(
@@ -144,20 +253,33 @@ async function putEncrypted<T>(
   value: T,
   meta?: EncryptedRow["meta"],
 ): Promise<void> {
-  if (!isWebCryptoAvailable()) {
-    throw new OfflineCryptoUnavailableError();
+  if (usesPlainOfflineStorage()) {
+    const enc = encodePlainJson(value);
+    await withDb((db) =>
+      db.put(store, {
+        id,
+        userId,
+        iv: enc.iv,
+        ciphertext: enc.ciphertext,
+        updatedAtUtc: new Date().toISOString(),
+        meta: { ...meta, encoding: PLAIN_ENCODING },
+      }),
+    );
+    return;
   }
+
   const key = await ensureOfflineKey(userId);
   const enc = await encryptJson(key, value);
-  const db = await getDb();
-  await db.put(store, {
-    id,
-    userId,
-    iv: enc.iv,
-    ciphertext: enc.ciphertext,
-    updatedAtUtc: new Date().toISOString(),
-    meta,
-  });
+  await withDb((db) =>
+    db.put(store, {
+      id,
+      userId,
+      iv: enc.iv,
+      ciphertext: enc.ciphertext,
+      updatedAtUtc: new Date().toISOString(),
+      meta,
+    }),
+  );
 }
 
 async function getEncrypted<T>(
@@ -165,30 +287,49 @@ async function getEncrypted<T>(
   userId: string,
   id: string,
 ): Promise<T | null> {
-  if (!isWebCryptoAvailable()) return null;
-  const db = await getDb();
-  const row = await db.get(store, id);
+  const row = await withDb((db) => db.get(store, id));
   if (!row || row.userId !== userId) return null;
-  const key = await ensureOfflineKey(userId);
-  return decryptJson<T>(key, {
-    iv: row.iv,
-    ciphertext: row.ciphertext,
-  });
+
+  if (isPlainRow(row)) {
+    try {
+      return decodePlainJson<T>(row);
+    } catch {
+      return null;
+    }
+  }
+
+  if (!isWebCryptoAvailable()) return null;
+  try {
+    const key = await ensureOfflineKey(userId);
+    return await decryptJson<T>(key, {
+      iv: row.iv,
+      ciphertext: row.ciphertext,
+    });
+  } catch {
+    return null;
+  }
 }
 
 async function listEncrypted<T>(
   store: "drafts" | "blobs" | "outbox" | "prefetch",
   userId: string,
 ): Promise<T[]> {
-  if (!isWebCryptoAvailable()) return [];
-  const db = await getDb();
-  const rows = await db.getAllFromIndex(store, "by-user", userId);
-  const key = await ensureOfflineKey(userId);
+  const rows = await withDb((db) =>
+    db.getAllFromIndex(store, "by-user", userId),
+  );
   const out: T[] = [];
+  let cryptoKey: CryptoKey | null = null;
+
   for (const row of rows) {
     try {
+      if (isPlainRow(row)) {
+        out.push(decodePlainJson<T>(row));
+        continue;
+      }
+      if (!isWebCryptoAvailable()) continue;
+      if (!cryptoKey) cryptoKey = await ensureOfflineKey(userId);
       out.push(
-        await decryptJson<T>(key, {
+        await decryptJson<T>(cryptoKey, {
           iv: row.iv,
           ciphertext: row.ciphertext,
         }),
@@ -225,9 +366,32 @@ export async function listOfflineDrafts(
 export async function saveOfflineBlob(
   blob: OfflineBlobRecord,
 ): Promise<void> {
-  if (!isWebCryptoAvailable()) {
-    throw new OfflineCryptoUnavailableError();
+  if (usesPlainOfflineStorage()) {
+    const metaPayload = {
+      ...blob,
+      bytes: undefined as unknown as ArrayBuffer,
+    };
+    const enc = encodePlainJson(metaPayload);
+    await withDb((db) =>
+      db.put("blobs", {
+        id: blob.id,
+        userId: blob.userId,
+        iv: enc.iv,
+        ciphertext: enc.ciphertext,
+        updatedAtUtc: new Date().toISOString(),
+        meta: {
+          scope: blob.scope,
+          scopeKey: blob.scopeKey,
+          fileName: blob.fileName,
+          sizeBytes: blob.sizeBytes,
+          encoding: PLAIN_ENCODING,
+          bytesPlain: arrayBufferToBase64(blob.bytes),
+        },
+      }),
+    );
+    return;
   }
+
   const key = await ensureOfflineKey(blob.userId);
   const enc = await encryptBytes(key, blob.bytes);
   const metaPayload = {
@@ -235,22 +399,23 @@ export async function saveOfflineBlob(
     bytes: undefined as unknown as ArrayBuffer,
   };
   const metaEnc = await encryptJson(key, metaPayload);
-  const db = await getDb();
-  await db.put("blobs", {
-    id: blob.id,
-    userId: blob.userId,
-    iv: metaEnc.iv,
-    ciphertext: metaEnc.ciphertext,
-    updatedAtUtc: new Date().toISOString(),
-    meta: {
-      scope: blob.scope,
-      scopeKey: blob.scopeKey,
-      fileName: blob.fileName,
-      sizeBytes: blob.sizeBytes,
-      bytesIv: arrayBufferToBase64(enc.iv),
-      bytesCipher: arrayBufferToBase64(enc.ciphertext),
-    },
-  });
+  await withDb((db) =>
+    db.put("blobs", {
+      id: blob.id,
+      userId: blob.userId,
+      iv: metaEnc.iv,
+      ciphertext: metaEnc.ciphertext,
+      updatedAtUtc: new Date().toISOString(),
+      meta: {
+        scope: blob.scope,
+        scopeKey: blob.scopeKey,
+        fileName: blob.fileName,
+        sizeBytes: blob.sizeBytes,
+        bytesIv: arrayBufferToBase64(enc.iv),
+        bytesCipher: arrayBufferToBase64(enc.ciphertext),
+      },
+    }),
+  );
 }
 
 function arrayBufferToBase64(buf: ArrayBuffer): string {
@@ -275,29 +440,47 @@ export async function getOfflineBlob(
   userId: string,
   id: string,
 ): Promise<OfflineBlobRecord | null> {
-  if (!isWebCryptoAvailable()) return null;
-  const db = await getDb();
-  const row = await db.get("blobs", id);
+  const row = await withDb((db) => db.get("blobs", id));
   if (!row || row.userId !== userId) return null;
-  const key = await ensureOfflineKey(userId);
-  const meta = await decryptJson<Omit<OfflineBlobRecord, "bytes"> & {
-    bytes?: undefined;
-  }>(key, { iv: row.iv, ciphertext: row.ciphertext });
-  const bytesIv = String(row.meta?.bytesIv ?? "");
-  const bytesCipher = String(row.meta?.bytesCipher ?? "");
-  if (!bytesIv || !bytesCipher) return null;
-  const bytes = await decryptBytes(key, {
-    iv: base64ToArrayBuffer(bytesIv),
-    ciphertext: base64ToArrayBuffer(bytesCipher),
-  });
-  return { ...meta, bytes };
+
+  if (isPlainRow(row) || row.meta?.encoding === PLAIN_ENCODING) {
+    try {
+      const meta = decodePlainJson<
+        Omit<OfflineBlobRecord, "bytes"> & { bytes?: undefined }
+      >(row);
+      const bytesPlain = String(row.meta?.bytesPlain ?? "");
+      if (!bytesPlain) return null;
+      return { ...meta, bytes: base64ToArrayBuffer(bytesPlain) };
+    } catch {
+      return null;
+    }
+  }
+
+  if (!isWebCryptoAvailable()) return null;
+  try {
+    const key = await ensureOfflineKey(userId);
+    const meta = await decryptJson<
+      Omit<OfflineBlobRecord, "bytes"> & { bytes?: undefined }
+    >(key, { iv: row.iv, ciphertext: row.ciphertext });
+    const bytesIv = String(row.meta?.bytesIv ?? "");
+    const bytesCipher = String(row.meta?.bytesCipher ?? "");
+    if (!bytesIv || !bytesCipher) return null;
+    const bytes = await decryptBytes(key, {
+      iv: base64ToArrayBuffer(bytesIv),
+      ciphertext: base64ToArrayBuffer(bytesCipher),
+    });
+    return { ...meta, bytes };
+  } catch {
+    return null;
+  }
 }
 
 export async function listOfflineBlobs(
   userId: string,
 ): Promise<OfflineBlobRecord[]> {
-  const db = await getDb();
-  const rows = await db.getAllFromIndex("blobs", "by-user", userId);
+  const rows = await withDb((db) =>
+    db.getAllFromIndex("blobs", "by-user", userId),
+  );
   const out: OfflineBlobRecord[] = [];
   for (const row of rows) {
     const blob = await getOfflineBlob(userId, row.id);
@@ -342,11 +525,12 @@ export async function deleteOutboxItem(
   userId: string,
   id: string,
 ): Promise<void> {
-  const db = await getDb();
-  const row = await db.get("outbox", id);
-  if (row && row.userId === userId) {
-    await db.delete("outbox", id);
-  }
+  await withDb(async (db) => {
+    const row = await db.get("outbox", id);
+    if (row && row.userId === userId) {
+      await db.delete("outbox", id);
+    }
+  });
   await publishPendingCount(userId);
 }
 
@@ -374,8 +558,6 @@ export async function publishPendingCount(userId: string): Promise<number> {
 export async function savePrefetch(
   record: OfflinePrefetchRecord,
 ): Promise<void> {
-  // Soft-skip on insecure contexts (LAN http://192.168.x.x) — prefetch is best-effort.
-  if (!isWebCryptoAvailable()) return;
   await putEncrypted("prefetch", record.userId, record.id, record, {
     kind: record.kind,
   });
@@ -395,13 +577,13 @@ export async function listPrefetch(
 }
 
 export async function setMeta(key: string, value: unknown): Promise<void> {
-  const db = await getDb();
-  await db.put("meta", { key, valueJson: JSON.stringify(value) });
+  await withDb((db) =>
+    db.put("meta", { key, valueJson: JSON.stringify(value) }),
+  );
 }
 
 export async function getMeta<T>(key: string): Promise<T | null> {
-  const db = await getDb();
-  const row = await db.get("meta", key);
+  const row = await withDb((db) => db.get("meta", key));
   if (!row) return null;
   try {
     return JSON.parse(row.valueJson) as T;
@@ -455,25 +637,35 @@ export async function purgeOfflineData(
   userId: string,
   reason: string,
 ): Promise<void> {
-  const db = await getDb();
-  const tx = db.transaction(
-    ["keys", "drafts", "blobs", "outbox", "prefetch", "meta"],
-    "readwrite",
-  );
-  const drafts = await tx.objectStore("drafts").index("by-user").getAllKeys(userId);
-  for (const id of drafts) await tx.objectStore("drafts").delete(id);
-  const blobs = await tx.objectStore("blobs").index("by-user").getAllKeys(userId);
-  for (const id of blobs) await tx.objectStore("blobs").delete(id);
-  const outbox = await tx.objectStore("outbox").index("by-user").getAllKeys(userId);
-  for (const id of outbox) await tx.objectStore("outbox").delete(id);
-  const prefetch = await tx
-    .objectStore("prefetch")
-    .index("by-user")
-    .getAllKeys(userId);
-  for (const id of prefetch) await tx.objectStore("prefetch").delete(id);
-  await tx.objectStore("keys").delete(userId);
-  await tx.objectStore("meta").delete(`lease:${userId}`);
-  await tx.done;
+  await withDb(async (db) => {
+    const tx = db.transaction(
+      ["keys", "drafts", "blobs", "outbox", "prefetch", "meta"],
+      "readwrite",
+    );
+    const drafts = await tx
+      .objectStore("drafts")
+      .index("by-user")
+      .getAllKeys(userId);
+    for (const id of drafts) await tx.objectStore("drafts").delete(id);
+    const blobs = await tx
+      .objectStore("blobs")
+      .index("by-user")
+      .getAllKeys(userId);
+    for (const id of blobs) await tx.objectStore("blobs").delete(id);
+    const outbox = await tx
+      .objectStore("outbox")
+      .index("by-user")
+      .getAllKeys(userId);
+    for (const id of outbox) await tx.objectStore("outbox").delete(id);
+    const prefetch = await tx
+      .objectStore("prefetch")
+      .index("by-user")
+      .getAllKeys(userId);
+    for (const id of prefetch) await tx.objectStore("prefetch").delete(id);
+    await tx.objectStore("keys").delete(userId);
+    await tx.objectStore("meta").delete(`lease:${userId}`);
+    await tx.done;
+  });
   keyCache.delete(userId);
   try {
     sessionStorage.setItem("ejada_offline_pending_count", "0");
@@ -484,13 +676,22 @@ export async function purgeOfflineData(
   broadcastOffline("ejada-offline-pending-changed", { count: 0, userId });
 }
 
+async function forceCloseOfflineDb(): Promise<void> {
+  const pending = dbPromise;
+  resetDbCache();
+  keyCache.clear();
+  if (!pending) return;
+  try {
+    const db = await pending;
+    db.close();
+  } catch {
+    /* open failed or already closed */
+  }
+}
+
 /** Close DB handle so other tabs can delete/upgrade. */
 export async function closeOfflineDb(): Promise<void> {
-  if (!dbPromise) return;
-  const db = await dbPromise;
-  db.close();
-  dbPromise = null;
-  keyCache.clear();
+  await forceCloseOfflineDb();
 }
 
 export type { EncryptedPayload };

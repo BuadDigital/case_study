@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
@@ -12,12 +11,12 @@ public sealed class PropertyKeysService : IPropertyKeysService
 {
     private const int MaxListRows = 500;
     private readonly OperationsDbContext _ops;
-    private readonly ApplicationDbContext _db;
+    private readonly CaseStudyDbContext _caseStudy;
 
-    public PropertyKeysService(OperationsDbContext ops, ApplicationDbContext db)
+    public PropertyKeysService(OperationsDbContext ops, CaseStudyDbContext caseStudy)
     {
         _ops = ops;
-        _db = db;
+        _caseStudy = caseStudy;
     }
 
     public async Task<IReadOnlyList<PropertyKeyRecordDto>> ListAsync(
@@ -42,7 +41,7 @@ public sealed class PropertyKeysService : IPropertyKeysService
         var poNumbers = rows.Select(r => r.PoNumber.Trim()).Distinct().ToList();
         var properties = poNumbers.Count == 0
             ? []
-            : await _db.WorkOrderProperties.AsNoTracking()
+            : await _caseStudy.WorkOrderProperties.AsNoTracking()
                 .Include(p => p.WorkOrder)
                 .Where(p => p.WorkOrder != null && poNumbers.Contains(p.WorkOrder!.PoNumber))
                 .ToListAsync(cancellationToken);
@@ -95,7 +94,7 @@ public sealed class PropertyKeysService : IPropertyKeysService
             row.WorkflowStatus = request.Status.Trim();
         row.UpdatedAtUtc = DateTime.UtcNow;
         await _ops.SaveChangesAsync(cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
+        await _caseStudy.SaveChangesAsync(cancellationToken);
         return ToDto(row, []);
     }
 
@@ -105,7 +104,7 @@ public sealed class PropertyKeysService : IPropertyKeysService
     {
         var po = row.PoNumber.Trim();
         var deed = row.PropertyId.Trim();
-        var property = await _db.WorkOrderProperties.AsNoTracking()
+        var property = await _caseStudy.WorkOrderProperties.AsNoTracking()
             .Include(p => p.WorkOrder)
             .FirstOrDefaultAsync(
                 p => !p.IsRemoved
@@ -145,7 +144,7 @@ public sealed class PropertyKeysService : IPropertyKeysService
 
         var linkedProperties = requestNumbers.Count == 0
             ? []
-            : await _db.WorkOrderProperties.AsNoTracking()
+            : await _caseStudy.WorkOrderProperties.AsNoTracking()
                 .Include(p => p.WorkOrder)
                 .Where(p =>
                     !p.IsRemoved
@@ -225,7 +224,7 @@ public sealed class PropertyKeysService : IPropertyKeysService
         }
 
         await _ops.SaveChangesAsync(cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
+        await _caseStudy.SaveChangesAsync(cancellationToken);
     }
 
     private async Task MergeLegacyGovReviewAsync(
@@ -234,18 +233,18 @@ public sealed class PropertyKeysService : IPropertyKeysService
         DateTime now,
         CancellationToken cancellationToken)
     {
-        var govTasks = await _db.WorkflowTasks.AsNoTracking()
+        var govTasks = await _caseStudy.WorkflowTasks.AsNoTracking()
             .Where(t => t.Kind == WorkflowTaskKind.GovernmentReview && t.PropertyId != null)
             .ToListAsync(cancellationToken);
         if (govTasks.Count == 0) return;
 
         var taskIds = govTasks.Select(t => t.Id).ToList();
-        var submissions = await _db.PartyTaskSubmissions.AsNoTracking()
+        var submissions = await _caseStudy.PartyTaskSubmissions.AsNoTracking()
             .Where(s => s.Kind == "government-review" && taskIds.Contains(s.WorkflowTaskId))
             .ToListAsync(cancellationToken);
 
         var poNumbers = govTasks.Select(t => t.PoNumber.Trim()).Distinct().ToList();
-        var properties = await _db.WorkOrderProperties.AsNoTracking()
+        var properties = await _caseStudy.WorkOrderProperties.AsNoTracking()
             .Include(p => p.WorkOrder)
             .Where(p => p.WorkOrder != null && poNumbers.Contains(p.WorkOrder!.PoNumber))
             .ToListAsync(cancellationToken);

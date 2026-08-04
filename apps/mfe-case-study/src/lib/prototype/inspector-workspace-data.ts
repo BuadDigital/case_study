@@ -64,6 +64,14 @@ export type InspectorFeatureField = {
   shared?: boolean;
 };
 
+/**
+ * Feature fields with photo-proof column (desktop table «صورة» / mobile capture).
+ *
+ * - Yes/no rows (`photoOnYes` + options include «نعم»): proof only when value is «نعم»
+ *   — matches Case Study.html `PHOTO_ON_YES`.
+ * - Closed-list rows with `photoOnYes`: proof whenever a value is chosen
+ *   — matches desktop HTML table column for origin / facade / usage / build state.
+ */
 export const INSPECTOR_FEATURE_FIELDS: InspectorFeatureField[] = [
   {
     key: "assetSubject",
@@ -184,6 +192,58 @@ export const INSPECTOR_OBSERVATION_CATEGORIES = [
   "أخرى",
 ] as const;
 
+/** Slot stored in `definedPhotos` keyed by `service:…` / `amenity:…`. */
+export type ServiceAmenityPhotoKind = "service" | "amenity";
+
+export type ServiceAmenityPhotoSlotDef = {
+  id: string;
+  kind: ServiceAmenityPhotoKind;
+  label: string;
+};
+
+export function serviceAmenityPhotoSlotId(
+  kind: ServiceAmenityPhotoKind,
+  label: string,
+): string {
+  return `${kind}:${label}`;
+}
+
+/** Visible slots = currently selected services + amenities (mirror of chips). */
+export function listServiceAmenityPhotoSlots(draft: {
+  services: string[];
+  amenities: string[];
+}): ServiceAmenityPhotoSlotDef[] {
+  const out: ServiceAmenityPhotoSlotDef[] = [];
+  for (const label of draft.services) {
+    const trimmed = label.trim();
+    if (!trimmed) continue;
+    out.push({
+      id: serviceAmenityPhotoSlotId("service", trimmed),
+      kind: "service",
+      label: trimmed,
+    });
+  }
+  for (const label of draft.amenities) {
+    const trimmed = label.trim();
+    if (!trimmed) continue;
+    out.push({
+      id: serviceAmenityPhotoSlotId("amenity", trimmed),
+      kind: "amenity",
+      label: trimmed,
+    });
+  }
+  return out;
+}
+
+export function isServiceAmenityPhotoSlotComplete(
+  slot: InspectorDefinedPhotoSlot | undefined,
+): boolean {
+  if (!slot) return false;
+  if (slot.none) return true;
+  return slot.photos.some((photo) => photo.approved && photo.fileName.trim());
+}
+
+/** @deprecated Legacy fixed slot shape — photos now come from services/amenities. */
 export type InspectorDefinedPhotoDef = {
   id: string;
   name: string;
@@ -192,28 +252,8 @@ export type InspectorDefinedPhotoDef = {
   annexOnly?: boolean;
 };
 
-export const INSPECTOR_DEFINED_PHOTOS: InspectorDefinedPhotoDef[] = [
-  { id: "front", name: "الواجهة الأمامية", icon: "ti-building", required: true },
-  { id: "sides", name: "الجهات الأخرى", icon: "ti-box-multiple", required: true },
-  { id: "water", name: "عداد المياه", icon: "ti-droplet", required: true },
-  { id: "elec", name: "عداد الكهرباء", icon: "ti-bolt", required: true },
-  { id: "inside", name: "من الداخل", icon: "ti-home", required: true },
-  { id: "floor", name: "الأرضيات", icon: "ti-grid-dots", required: false },
-  {
-    id: "annexup",
-    name: "ملحق علوي",
-    icon: "ti-stairs-up",
-    required: true,
-    annexOnly: true,
-  },
-  {
-    id: "annexdn",
-    name: "ملحق سفلي",
-    icon: "ti-stairs-down",
-    required: true,
-    annexOnly: true,
-  },
-];
+/** Empty: photo slots attach only to selected services/amenities. */
+export const INSPECTOR_DEFINED_PHOTOS: InspectorDefinedPhotoDef[] = [];
 
 export type InspectorFreePhotoCategory = {
   key: string;
@@ -221,15 +261,11 @@ export type InspectorFreePhotoCategory = {
   icon: string;
 };
 
+/** Categories for residual free-photo tagging. */
 export const INSPECTOR_FREE_PHOTO_CATEGORIES: InspectorFreePhotoCategory[] = [
-  { key: "main", label: "رئيسية", icon: "ti-home" },
-  { key: "front", label: "الواجهة", icon: "ti-building" },
-  { key: "water", label: "عداد الماء", icon: "ti-droplet" },
-  { key: "elec", label: "عداد الكهرباء", icon: "ti-bolt" },
-  { key: "inside", label: "من الداخل", icon: "ti-door" },
-  { key: "floor", label: "الأرضيات", icon: "ti-grid-dots" },
-  { key: "annexu", label: "ملحق علوي", icon: "ti-stairs-up" },
-  { key: "annexd", label: "ملحق سفلي", icon: "ti-stairs-down" },
+  { key: "service", label: "خدمة", icon: "ti-plug" },
+  { key: "amenity", label: "مرفق", icon: "ti-map-pin" },
+  { key: "other", label: "أخرى", icon: "ti-photo" },
 ];
 
 export type InspectorComponentPhotoKey = "showroom" | "well";
@@ -288,6 +324,10 @@ export type InspectorWorkspaceDraft = {
   propertyDescription: string;
   districtProsCons: string;
   assetNotes: string;
+  /**
+   * Photo slots for services/amenities: keys `service:كهرباء`, `amenity:مساجد`.
+   * Slot appears only when the chip is selected.
+   */
   definedPhotos: Record<string, InspectorDefinedPhotoSlot>;
   freePhotos: InspectorFreePhoto[];
   observations: InspectorObservation[];
@@ -299,11 +339,7 @@ export type InspectorWorkspaceDraft = {
 };
 
 function emptyDefinedPhotos(): Record<string, InspectorDefinedPhotoSlot> {
-  const out: Record<string, InspectorDefinedPhotoSlot> = {};
-  for (const slot of INSPECTOR_DEFINED_PHOTOS) {
-    out[slot.id] = { none: false, photos: [] };
-  }
-  return out;
+  return {};
 }
 
 function emptyBoundaryMatches(): Record<
@@ -422,32 +458,31 @@ export function computeInspectorPhotoCoverage(draft: InspectorWorkspaceDraft): {
   requiredDone: number;
   pendingApproval: number;
 } {
-  const showAnnex = draft.hasAnnex === "نعم";
-  const required = INSPECTOR_DEFINED_PHOTOS.filter(
-    (def) => def.required && (!def.annexOnly || showAnnex),
-  );
-  const requiredDone = required.filter((def) => {
-    const slot = draft.definedPhotos[def.id];
-    if (!slot) return false;
-    if (slot.none) return true;
-    return slot.photos.some((photo) => photo.approved);
-  }).length;
+  const slots = listServiceAmenityPhotoSlots(draft);
+  const requiredTotal = slots.length;
+  const requiredDone = slots.filter((def) =>
+    isServiceAmenityPhotoSlotComplete(draft.definedPhotos[def.id]),
+  ).length;
 
   let pendingApproval = 0;
-  for (const slot of Object.values(draft.definedPhotos)) {
+  for (const def of slots) {
+    const slot = draft.definedPhotos[def.id];
+    if (!slot) continue;
     pendingApproval += slot.photos.filter((photo) => !photo.approved).length;
   }
-  for (const photo of draft.freePhotos) {
-    if (photo.category && !photo.approved) pendingApproval++;
-  }
 
-  return { requiredTotal: required.length, requiredDone, pendingApproval };
+  return { requiredTotal, requiredDone, pendingApproval };
 }
 
 export function inspectorPhotoCoverageLabel(draft: InspectorWorkspaceDraft): string {
   const { requiredTotal, requiredDone, pendingApproval } =
     computeInspectorPhotoCoverage(draft);
-  let label = `${requiredDone}/${requiredTotal} مكتمل`;
+
+  if (requiredTotal === 0) {
+    return "اختر خدمات/مرافق أولاً";
+  }
+
+  let label = `${requiredDone}/${requiredTotal} موثّق`;
   if (pendingApproval > 0) {
     label += ` · ${pendingApproval} بانتظار الاعتماد`;
   }
@@ -500,9 +535,9 @@ export function listInspectorPhotoValidationIssues(
 
   const { requiredTotal, requiredDone, pendingApproval } =
     computeInspectorPhotoCoverage(draft);
-  if (requiredDone < requiredTotal) {
+  if (requiredTotal > 0 && requiredDone < requiredTotal) {
     issues.push(
-      "أكمل صور العقار الموثّقة المطلوبة (رفع صورة معتمدة أو تفعيل «لا يوجد»)",
+      "وثّق بالصورة كل خدمة/مرفق اخترته في «الخدمات والمرافق المحيطة»",
     );
   }
   if (pendingApproval > 0) {
@@ -512,6 +547,13 @@ export function listInspectorPhotoValidationIssues(
   const untagged = draft.freePhotos.filter((photo) => !photo.category).length;
   if (untagged > 0) {
     issues.push(`${untagged} صورة إضافية بحاجة لتعريف`);
+  }
+
+  const hasLocalOnly = Object.values(draft.definedPhotos).some((slot) =>
+    slot.photos.some((p) => p.fileName && !p.attachmentId),
+  );
+  if (hasLocalOnly) {
+    issues.push("يجب رفع الصور إلى الخادم قبل الإرسال");
   }
 
   return issues;
