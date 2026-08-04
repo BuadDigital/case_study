@@ -59,6 +59,12 @@ public sealed class OutboxIntegrationEventPublisher(
     ILogger<OutboxIntegrationEventPublisher> logger)
     : OutboxIntegrationEventPublisher<ApplicationDbContext>(db, logger);
 
+/// <summary>Outbox writer for Platform messaging writes (notifications + same-UoW events).</summary>
+public sealed class MessagingOutboxPublisher(
+    MessagingDbContext db,
+    ILogger<MessagingOutboxPublisher> logger)
+    : OutboxIntegrationEventPublisher<MessagingDbContext>(db, logger);
+
 /// <summary>Outbox writer owned by the Valuation context (D5).</summary>
 public sealed class ValuationOutboxPublisher(
     ValuationDbContext db,

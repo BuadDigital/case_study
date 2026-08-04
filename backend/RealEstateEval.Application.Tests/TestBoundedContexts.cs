@@ -74,45 +74,62 @@ internal static class TestBoundedContexts
 
     public static FailureService CreateFailureService(
         Bundle bundle,
-        IWorkflowTaskService? tasks = null,
+        IWorkflowTaskShellPatcher? tasks = null,
         IPropertyTimelineService? timeline = null,
         INotificationService? notifications = null,
-        NotificationRecipientResolver? recipients = null)
+        NotificationRecipientResolver? recipients = null,
+        IUserLabelLookup? labels = null)
     {
-        timeline ??= new PropertyTimelineService(bundle.App);
+        var app = bundle.App;
+        var cs = TestInspectorFeeServiceFactory.ShareCaseStudy(app);
+        var identity = TestInspectorFeeServiceFactory.ShareIdentity(app);
+        timeline ??= new PropertyTimelineService(cs, bundle.Failures);
         notifications ??= new NullNotificationService();
-        recipients ??= new NotificationRecipientResolver(bundle.App);
-        tasks ??= TestInspectorFeeServiceFactory.CreateWorkflow(bundle.App);
+        recipients ??= new NotificationRecipientResolver(cs, identity);
+        tasks ??= new WorkflowTaskShellPatcher(cs);
+        labels ??= new UserLabelLookup(identity);
         return new FailureService(
             bundle.Failures,
-            bundle.App,
+            cs,
             tasks,
             timeline,
             notifications,
-            recipients);
+            recipients,
+            labels);
     }
 
     public static FailureService CreateFailureService(
         ApplicationDbContext app,
         FailuresDbContext failures,
-        IWorkflowTaskService? tasks = null,
+        IWorkflowTaskShellPatcher? tasks = null,
         IPropertyTimelineService? timeline = null,
         INotificationService? notifications = null,
-        NotificationRecipientResolver? recipients = null)
+        NotificationRecipientResolver? recipients = null,
+        IUserLabelLookup? labels = null)
     {
-        timeline ??= new PropertyTimelineService(app);
+        var cs = TestInspectorFeeServiceFactory.ShareCaseStudy(app);
+        var identity = TestInspectorFeeServiceFactory.ShareIdentity(app);
+        timeline ??= new PropertyTimelineService(cs, failures);
         notifications ??= new NullNotificationService();
-        recipients ??= new NotificationRecipientResolver(app);
-        tasks ??= TestInspectorFeeServiceFactory.CreateWorkflow(app);
-        return new FailureService(failures, app, tasks, timeline, notifications, recipients);
+        recipients ??= new NotificationRecipientResolver(cs, identity);
+        tasks ??= new WorkflowTaskShellPatcher(cs);
+        labels ??= new UserLabelLookup(identity);
+        return new FailureService(failures, cs, tasks, timeline, notifications, recipients, labels);
     }
 
-    public static KeyEnvelopesService CreateKeyEnvelopesService(Bundle bundle) =>
+    public static PropertyAccessHoldService CreateAccessHolds(
+        ApplicationDbContext app,
+        FailuresDbContext failures) =>
         new(
-            bundle.Ops,
-            bundle.App,
-            new PropertyAccessHoldService(bundle.App, bundle.Failures),
-            new KeyEnvelopePeopleResolver(bundle.App));
+            TestInspectorFeeServiceFactory.ShareCaseStudy(app),
+            failures,
+            TestInspectorFeeServiceFactory.ShareIdentity(app));
+
+    public static KeyEnvelopesService CreateKeyEnvelopesService(Bundle bundle)
+    {
+        var app = bundle.App;
+        return CreateKeyEnvelopesService(app, bundle.Failures, bundle.Ops);
+    }
 
     public static KeyEnvelopesService CreateKeyEnvelopesService(
         ApplicationDbContext app,
@@ -120,15 +137,20 @@ internal static class TestBoundedContexts
         OperationsDbContext ops) =>
         new(
             ops,
-            app,
-            new PropertyAccessHoldService(app, failures),
-            new KeyEnvelopePeopleResolver(app));
+            TestInspectorFeeServiceFactory.ShareCaseStudy(app),
+            TestInspectorFeeServiceFactory.ShareFinancial(app),
+            TestInspectorFeeServiceFactory.ShareAttachments(app),
+            CreateAccessHolds(app, failures),
+            new KeyEnvelopePeopleResolver(TestInspectorFeeServiceFactory.ShareIdentity(app)));
+
+    public static PropertyKeyGateResolver CreateKeyGate(ApplicationDbContext app, OperationsDbContext ops) =>
+        new(ops, TestInspectorFeeServiceFactory.ShareCaseStudy(app));
 
     public static PropertyKeyGateResolver CreateKeyGate(Bundle bundle) =>
-        new(bundle.Ops, bundle.App);
+        CreateKeyGate(bundle.App, bundle.Ops);
 
     public static PropertyKeysService CreatePropertyKeys(Bundle bundle) =>
-        new(bundle.Ops, bundle.App);
+        new(bundle.Ops, TestInspectorFeeServiceFactory.ShareCaseStudy(bundle.App));
 
     public static OperationsTaskService CreateOperationsTasks(
         Bundle bundle,
@@ -138,7 +160,8 @@ internal static class TestBoundedContexts
             bundle.Ops,
             bundle.App,
             notifications ?? new NullNotificationService(),
-            pricing ?? new PartyFeePricingService(bundle.App));
+            pricing ?? new PartyFeePricingService(
+                TestInspectorFeeServiceFactory.ShareFinancial(bundle.App)));
 
     private sealed class NullNotificationService : INotificationService
     {

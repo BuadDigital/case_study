@@ -9,6 +9,7 @@ namespace RealEstateEval.Failures.Api.Controllers;
 
 [ApiController]
 [Route("api/failures")]
+[Route("api/failures/v1")]
 [Authorize]
 public class FailuresController : ControllerBase
 {

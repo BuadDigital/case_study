@@ -20,18 +20,24 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
     };
 
     private readonly OperationsDbContext _ops;
-    private readonly ApplicationDbContext _db;
+    private readonly CaseStudyDbContext _caseStudy;
+    private readonly FinancialDbContext _financial;
+    private readonly AttachmentsDbContext _attachments;
     private readonly IPropertyAccessHoldService _holds;
     private readonly IKeyEnvelopePeopleResolver _people;
 
     public KeyEnvelopesService(
         OperationsDbContext ops,
-        ApplicationDbContext db,
+        CaseStudyDbContext caseStudy,
+        FinancialDbContext financial,
+        AttachmentsDbContext attachments,
         IPropertyAccessHoldService holds,
         IKeyEnvelopePeopleResolver people)
     {
         _ops = ops;
-        _db = db;
+        _caseStudy = caseStudy;
+        _financial = financial;
+        _attachments = attachments;
         _holds = holds;
         _people = people;
     }
@@ -66,7 +72,7 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
     public async Task<IReadOnlyList<KeyEnvelopeFeeReportRowDto>> ListFeeReportAsync(
         CancellationToken cancellationToken = default)
     {
-        var charges = await _db.KeyReceiptFeeCharges.AsNoTracking()
+        var charges = await _financial.KeyReceiptFeeCharges.AsNoTracking()
             .OrderByDescending(c => c.CreatedAtUtc)
             .Take(MaxListRows)
             .ToListAsync(cancellationToken);
@@ -95,14 +101,14 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
         var entitlementIds = entitlements.Select(e => e.Id).ToList();
         var enfazKeyLines = entitlementIds.Count == 0
             ? []
-            : await _db.PoEnfazRevenueLines.AsNoTracking()
+            : await _financial.PoEnfazRevenueLines.AsNoTracking()
                 .Where(l => l.KeyEntitlementEnvelopeId != null
                     && entitlementIds.Contains(l.KeyEntitlementEnvelopeId.Value)
                     && l.KeyFeeSar > 0)
                 .ToListAsync(cancellationToken);
         var enfazInvoiceByPo = enfazKeyLines.Count == 0
             ? new Dictionary<string, PoEnfazInvoice>(StringComparer.Ordinal)
-            : await _db.PoEnfazInvoices.AsNoTracking()
+            : await _financial.PoEnfazInvoices.AsNoTracking()
                 .Where(i => enfazKeyLines.Select(l => l.PoNumber).Contains(i.PoNumber))
                 .ToDictionaryAsync(i => i.PoNumber.Trim(), StringComparer.Ordinal, cancellationToken);
         var enfazByEnvelope = enfazKeyLines
@@ -183,15 +189,15 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
         // The fee charge is intentionally independent of the envelope FK,
         // so remove it explicitly. Assignments, handoffs, and timeline entries
         // are deleted through the envelope cascade configuration.
-        var charges = await _db.KeyReceiptFeeCharges
+        var charges = await _financial.KeyReceiptFeeCharges
             .Where(c => c.EnvelopeId == id)
             .ToListAsync(cancellationToken);
         if (charges.Count > 0)
-            _db.KeyReceiptFeeCharges.RemoveRange(charges);
+            _financial.KeyReceiptFeeCharges.RemoveRange(charges);
 
         _ops.KeyEnvelopes.Remove(envelope);
         await _ops.SaveChangesAsync(cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
+        await _financial.SaveChangesAsync(cancellationToken);
         return true;
     }
 
@@ -200,7 +206,7 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
         string? invoiceReference,
         CancellationToken cancellationToken = default)
     {
-        var charge = await _db.KeyReceiptFeeCharges
+        var charge = await _financial.KeyReceiptFeeCharges
             .FirstOrDefaultAsync(c => c.EnvelopeId == envelopeId, cancellationToken);
         if (charge is null)
         {
@@ -223,7 +229,7 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
             charge.InvoiceReference = invoiceReference.Trim();
 
         await _ops.SaveChangesAsync(cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
+        await _financial.SaveChangesAsync(cancellationToken);
 
         var report = await ListFeeReportAsync(cancellationToken);
         var row = report.FirstOrDefault(r => r.EnvelopeId == envelopeId);
@@ -296,41 +302,34 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
         }
 
         var now = DateTime.UtcNow;
-        var entity = new KeyEnvelope
-        {
-            Id = Guid.NewGuid(),
-            RequestNumber = requestNumber,
-            Court = court,
-            Circuit = circuit,
-            KeysCountLabeled = Math.Max(0, request.KeysCountLabeled),
-            KeysCountActual = Math.Max(0, request.KeysCountActual),
-            ReceiptAttachmentId = EmptyToNull(request.ReceiptAttachmentId),
-            PhotoAttachmentId = EmptyToNull(request.PhotoAttachmentId),
-            ThirdPartyLetterAttachmentId = EmptyToNull(request.ThirdPartyLetterAttachmentId),
-            ContactPhones = NullIfBlank(request.ContactPhones),
-            Notes = NullIfBlank(request.Notes),
-            ReceiveScenario = scenario,
-            Status = KeyEnvelopeStatuses.Reviewer,
-            CreatedByUserId = actorUserId,
-            CreatedByName = actorDisplayName.Trim(),
-            CreatedAtUtc = now,
-            UpdatedAtUtc = now,
-            OperationsTaskId = operationsTaskId,
-        };
+        var entity = KeyEnvelope.Create(
+            Guid.NewGuid(),
+            requestNumber,
+            court,
+            circuit,
+            request.KeysCountLabeled,
+            request.KeysCountActual,
+            scenario,
+            actorUserId,
+            actorDisplayName.Trim(),
+            now,
+            EmptyToNull(request.ReceiptAttachmentId),
+            EmptyToNull(request.PhotoAttachmentId),
+            EmptyToNull(request.ThirdPartyLetterAttachmentId),
+            NullIfBlank(request.ContactPhones),
+            NullIfBlank(request.Notes),
+            operationsTaskId);
 
         foreach (var item in request.Assignments ?? [])
         {
             var deed = item.DeedNumber.Trim();
             if (deed.Length == 0) continue;
-            entity.Assignments.Add(new KeyEnvelopeAssignment
-            {
-                Id = Guid.NewGuid(),
-                EnvelopeId = entity.Id,
-                DeedNumber = deed,
-                PropertyId = item.PropertyId,
-                Status = KeyAssignmentStatuses.Pending,
-                Notes = NullIfBlank(item.Notes),
-            });
+            entity.AddPendingAssignment(
+                Guid.NewGuid(),
+                deed,
+                item.PropertyId,
+                NullIfBlank(item.Notes),
+                now);
         }
 
         AddTimelineOnCreate(
@@ -346,7 +345,7 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
             // Receipt revenue is billed to إنفاذ by finance, not owed to a party at a configured rate,
             // so registration marks the entitlement and stops there. Stamping an amount from the
             // pricing table produced a figure nobody had agreed to bill.
-            entity.RevenueEntitlementAtUtc = now;
+            entity.MarkCourtRevenueEntitlement(now);
             AddTimelineOnCreate(
                 entity,
                 KeyEnvelopeTimelineEvents.RevenueEntitlement,
@@ -379,16 +378,12 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
         if (exists) return (null, "الصك مُسند مسبقاً في هذا الظرف");
 
         var now = DateTime.UtcNow;
-        entity.Assignments.Add(new KeyEnvelopeAssignment
-        {
-            Id = Guid.NewGuid(),
-            EnvelopeId = entity.Id,
-            DeedNumber = deed,
-            PropertyId = request.PropertyId,
-            Status = KeyAssignmentStatuses.Pending,
-            Notes = NullIfBlank(request.Notes),
-        });
-        entity.UpdatedAtUtc = now;
+        entity.AddPendingAssignment(
+            Guid.NewGuid(),
+            deed,
+            request.PropertyId,
+            NullIfBlank(request.Notes),
+            now);
         AddTimeline(
             entity.Id,
             KeyEnvelopeTimelineEvents.AssignmentAdded,
@@ -426,12 +421,13 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
         var now = DateTime.UtcNow;
         var deedNumber = assignment.DeedNumber;
         var unmatchedPropertyId = assignment.PropertyId;
-        assignment.Status = status;
-        assignment.Notes = NullIfBlank(request.Notes) ?? assignment.Notes;
-        assignment.ConfirmedByUserId = actorUserId;
-        assignment.ConfirmedByName = actorDisplayName.Trim();
-        assignment.ConfirmedAtUtc = now;
-        entity.UpdatedAtUtc = now;
+        entity.ConfirmAssignmentField(
+            assignment,
+            status,
+            NullIfBlank(request.Notes),
+            actorUserId,
+            actorDisplayName.Trim(),
+            now);
         AddTimeline(
             entity.Id,
             KeyEnvelopeTimelineEvents.AssignmentConfirmed,
@@ -525,7 +521,7 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
         }
 
         _ops.KeyEnvelopeHandoffs.Add(handoff);
-        entity.UpdatedAtUtc = now;
+        entity.Touch(now);
         AddTimeline(
             entity.Id,
             KeyEnvelopeTimelineEvents.HandoffCreated,
@@ -565,7 +561,7 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
         handoff.ConfirmedByName = actorDisplayName.Trim();
         handoff.ConfirmedAtUtc = now;
         KeyEnvelopeLifecycleRules.ApplyHandoffStatus(entity, handoff.Kind);
-        entity.UpdatedAtUtc = now;
+        entity.Touch(now);
         AddTimeline(
             entity.Id,
             KeyEnvelopeTimelineEvents.HandoffConfirmed,
@@ -606,7 +602,7 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
         string actorDisplayName,
         CancellationToken cancellationToken = default)
     {
-        var property = await _db.WorkOrderProperties
+        var property = await _caseStudy.WorkOrderProperties
             .Include(p => p.WorkOrder)
             .FirstOrDefaultAsync(p => p.Id == request.PropertyId && !p.IsRemoved, cancellationToken);
         if (property is null) return (null, "العقار غير موجود");
@@ -711,7 +707,7 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
     private async Task SaveAndDetachAsync(CancellationToken cancellationToken)
     {
         await _ops.SaveChangesAsync(cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
+        await _financial.SaveChangesAsync(cancellationToken);
         _ops.ChangeTracker.Clear();
     }
 
@@ -810,7 +806,7 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
             return new Dictionary<string, IReadOnlyList<KeyEnvelopeLinkedPropertyDto>>(
                 StringComparer.Ordinal);
 
-        var rows = await _db.WorkOrderProperties.AsNoTracking()
+        var rows = await _caseStudy.WorkOrderProperties.AsNoTracking()
             .Include(p => p.WorkOrder)
             .Where(p =>
                 !p.IsRemoved &&
@@ -842,7 +838,7 @@ public sealed class KeyEnvelopesService : IKeyEnvelopesService
     private async Task<bool> AttachmentExistsAsync(
         Guid id,
         CancellationToken cancellationToken) =>
-        await _db.FileAttachments.AsNoTracking()
+        await _attachments.FileAttachments.AsNoTracking()
             .AnyAsync(a => a.Id == id, cancellationToken);
 
     private async Task<string?> ValidateCourtVisitTaskLinkAsync(

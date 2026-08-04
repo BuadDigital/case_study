@@ -1,12 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Caching;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
@@ -17,12 +18,13 @@ public class FinancialReportServiceTests
     public async Task GetSummaryAsync_aggregates_in_database_without_materializing_entities()
     {
         var materialization = new EntityMaterializationCounter();
-        await using var db = CreateDb(materialization);
-        await SeedAsync(db);
-        db.ChangeTracker.Clear();
+        await using var store = CreateStore(materialization);
+        await SeedAsync(store);
+        store.Fin.ChangeTracker.Clear();
+        store.CaseStudy.ChangeTracker.Clear();
         materialization.Reset();
 
-        var summary = await CreateService(db).GetSummaryAsync();
+        var summary = await CreateService(store).GetSummaryAsync();
 
         var revenue = Assert.Single(summary.RevenueRows, row => row.Po == "PO-100");
         Assert.Equal(1, revenue.Billed);
@@ -48,7 +50,7 @@ public class FinancialReportServiceTests
         Assert.Equal(0, materialization.Count<PoEnfazRevenueLine>());
         Assert.Equal(0, materialization.Count<KeyReceiptFeeCharge>());
         Assert.Equal(0, materialization.Count<CourtVisitFeeCharge>());
-        Assert.Empty(db.ChangeTracker.Entries());
+        Assert.Empty(store.Fin.ChangeTracker.Entries());
     }
 
     /// <summary>
@@ -58,25 +60,26 @@ public class FinancialReportServiceTests
     [Fact]
     public async Task Disputed_lines_stay_out_of_the_cost_aggregates()
     {
-        await using var db = CreateDb(new EntityMaterializationCounter());
-        await SeedAsync(db);
-        db.ChangeTracker.Clear();
-        var before = await CreateService(db).GetSummaryAsync();
+        await using var store = CreateStore(new EntityMaterializationCounter());
+        await SeedAsync(store);
+        store.Fin.ChangeTracker.Clear();
+        store.CaseStudy.ChangeTracker.Clear();
+        var before = await CreateService(store).GetSummaryAsync();
 
         var disputedTaskId = Guid.NewGuid();
-        var completedPropertyId = await db.WorkflowTasks
+        var completedPropertyId = await store.CaseStudy.WorkflowTasks
             .Where(task => task.Kind == WorkflowTaskKind.CaseStudyProperty)
             .Select(task => task.PropertyId)
             .FirstAsync();
         var now = DateTime.UtcNow;
-        db.WorkflowTasks.Add(WorkflowTask.Create(
+        store.CaseStudy.WorkflowTasks.Add(WorkflowTask.Create(
             WorkflowTaskKind.FieldInspection,
             "PO-100",
             now,
             status: WorkflowTaskStatus.Completed,
             id: disputedTaskId,
             propertyId: completedPropertyId));
-        db.InspectorFeeLedgers.Add(new InspectorFeeLedger
+        store.Fin.InspectorFeeLedgers.Add(new InspectorFeeLedger
         {
             WorkflowTaskId = disputedTaskId,
             PoNumber = "PO-100",
@@ -88,10 +91,12 @@ public class FinancialReportServiceTests
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         });
-        await db.SaveChangesAsync();
-        db.ChangeTracker.Clear();
+        await store.CaseStudy.SaveChangesAsync();
+        await store.Fin.SaveChangesAsync();
+        store.Fin.ChangeTracker.Clear();
+        store.CaseStudy.ChangeTracker.Clear();
 
-        var after = await CreateService(db).GetSummaryAsync();
+        var after = await CreateService(store).GetSummaryAsync();
 
         Assert.DoesNotContain(after.CostRows, row => row.Name == "inspector-disputed");
         Assert.Equal(before.ExternalCostsTotal, after.ExternalCostsTotal);
@@ -99,25 +104,38 @@ public class FinancialReportServiceTests
         Assert.Equal(before.PendingPayablesTotal, after.PendingPayablesTotal);
     }
 
-    private static FinancialReportService CreateService(ApplicationDbContext db)
+    private static FinancialReportService CreateService(Store store)
     {
         var cache = new ApiResponseCache(
             new NullDistributedCache(),
             Options.Create(new RedisCacheOptions { Enabled = false }),
             NullLogger<ApiResponseCache>.Instance);
-        return new FinancialReportService(db, cache);
+        return new FinancialReportService(store.Fin, store.CaseStudy, store.Identity, cache);
     }
 
-    private static ApplicationDbContext CreateDb(EntityMaterializationCounter materialization)
+    private static Store CreateStore(EntityMaterializationCounter materialization)
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"financial-summary-{Guid.NewGuid():N}")
-            .AddInterceptors(materialization)
-            .Options;
-        return new ApplicationDbContext(options);
+        var name = $"financial-summary-{Guid.NewGuid():N}";
+        var root = new InMemoryDatabaseRoot();
+        return new Store(
+            new FinancialDbContext(
+                new DbContextOptionsBuilder<FinancialDbContext>()
+                    .UseInMemoryDatabase(name, root)
+                    .AddInterceptors(materialization)
+                    .Options),
+            new CaseStudyDbContext(
+                new DbContextOptionsBuilder<CaseStudyDbContext>()
+                    .UseInMemoryDatabase(name, root)
+                    .AddInterceptors(materialization)
+                    .Options),
+            new IdentityDbContext(
+                new DbContextOptionsBuilder<IdentityDbContext>()
+                    .UseInMemoryDatabase(name, root)
+                    .AddInterceptors(materialization)
+                    .Options));
     }
 
-    private static async Task SeedAsync(ApplicationDbContext db)
+    private static async Task SeedAsync(Store store)
     {
         var workOrderId = Guid.NewGuid();
         var completedPropertyId = Guid.NewGuid();
@@ -126,7 +144,7 @@ public class FinancialReportServiceTests
         var excludedFeeTaskId = Guid.NewGuid();
         var now = DateTime.UtcNow;
 
-        db.WorkOrders.Add(new WorkOrder
+        store.CaseStudy.WorkOrders.Add(new WorkOrder
         {
             Id = workOrderId,
             PoNumber = "PO-100",
@@ -156,7 +174,7 @@ public class FinancialReportServiceTests
                 },
             ],
         });
-        db.WorkflowTasks.AddRange(
+        store.CaseStudy.WorkflowTasks.AddRange(
             WorkflowTask.Create(
                 WorkflowTaskKind.CaseStudyProperty,
                 "PO-100",
@@ -177,7 +195,7 @@ public class FinancialReportServiceTests
                 status: WorkflowTaskStatus.Completed,
                 id: excludedFeeTaskId,
                 propertyId: incompletePropertyId));
-        db.InspectorFeeLedgers.AddRange(
+        store.Fin.InspectorFeeLedgers.AddRange(
             new InspectorFeeLedger
             {
                 WorkflowTaskId = feeTaskId,
@@ -203,7 +221,7 @@ public class FinancialReportServiceTests
                 CreatedAtUtc = now,
                 UpdatedAtUtc = now,
             });
-        db.PoEnfazRevenueLines.Add(new PoEnfazRevenueLine
+        store.Fin.PoEnfazRevenueLines.Add(new PoEnfazRevenueLine
         {
             Id = Guid.NewGuid(),
             PoNumber = "PO-100",
@@ -213,13 +231,13 @@ public class FinancialReportServiceTests
             IncludedInBilling = true,
             UpdatedAtUtc = now,
         });
-        db.PoEnfazInvoices.Add(new PoEnfazInvoice
+        store.Fin.PoEnfazInvoices.Add(new PoEnfazInvoice
         {
             PoNumber = "PO-100",
             InvoiceNumber = "INV-100",
             IssuedAtUtc = now,
         });
-        db.KeyReceiptFeeCharges.Add(new KeyReceiptFeeCharge
+        store.Fin.KeyReceiptFeeCharges.Add(new KeyReceiptFeeCharge
         {
             Id = Guid.NewGuid(),
             EnvelopeId = Guid.NewGuid(),
@@ -229,7 +247,7 @@ public class FinancialReportServiceTests
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         });
-        db.CourtVisitFeeCharges.Add(new CourtVisitFeeCharge
+        store.Fin.CourtVisitFeeCharges.Add(new CourtVisitFeeCharge
         {
             Id = Guid.NewGuid(),
             OperationsTaskId = Guid.NewGuid(),
@@ -240,7 +258,25 @@ public class FinancialReportServiceTests
             UpdatedAtUtc = now,
         });
 
-        await db.SaveChangesAsync();
+        await store.CaseStudy.SaveChangesAsync();
+        await store.Fin.SaveChangesAsync();
+    }
+
+    private sealed class Store(
+        FinancialDbContext fin,
+        CaseStudyDbContext caseStudy,
+        IdentityDbContext identity) : IAsyncDisposable
+    {
+        public FinancialDbContext Fin { get; } = fin;
+        public CaseStudyDbContext CaseStudy { get; } = caseStudy;
+        public IdentityDbContext Identity { get; } = identity;
+
+        public async ValueTask DisposeAsync()
+        {
+            await Fin.DisposeAsync();
+            await CaseStudy.DisposeAsync();
+            await Identity.DisposeAsync();
+        }
     }
 
     private sealed class EntityMaterializationCounter : IMaterializationInterceptor

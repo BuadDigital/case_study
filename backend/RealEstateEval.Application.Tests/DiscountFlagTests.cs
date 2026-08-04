@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
@@ -15,10 +16,10 @@ public class DiscountFlagTests
     [Fact]
     public async Task Approving_a_flag_applies_the_discount_to_the_ledger()
     {
-        await using var db = CreateDb();
-        var taskId = SeedLedger(db);
-        await db.SaveChangesAsync();
-        var service = new DiscountFlagService(db);
+        await using var store = CreateStore();
+        var taskId = SeedLedger(store);
+        await store.SaveAsync();
+        var service = new DiscountFlagService(store.Fin, store.CaseStudy);
 
         var (created, createError) = await service.CreateAsync(
             new CreateDiscountFlagRequest
@@ -41,7 +42,7 @@ public class DiscountFlagTests
 
         Assert.Null(approveError);
         Assert.Equal(DiscountFlagStatuses.Approved, approved!.Status);
-        var ledger = await db.InspectorFeeLedgers.AsNoTracking()
+        var ledger = await store.Fin.InspectorFeeLedgers.AsNoTracking()
             .SingleAsync(l => l.WorkflowTaskId == taskId);
         Assert.Equal(75m, ledger.SupervisorDiscountSar);
         Assert.Equal("تأخير معاينة", ledger.DiscountReason);
@@ -51,11 +52,11 @@ public class DiscountFlagTests
     [Fact]
     public async Task A_flag_does_not_change_money_until_approved()
     {
-        await using var db = CreateDb();
-        var taskId = SeedLedger(db);
-        await db.SaveChangesAsync();
+        await using var store = CreateStore();
+        var taskId = SeedLedger(store);
+        await store.SaveAsync();
 
-        await new DiscountFlagService(db).CreateAsync(
+        await new DiscountFlagService(store.Fin, store.CaseStudy).CreateAsync(
             new CreateDiscountFlagRequest
             {
                 TransactionKey = "PO-FLAG",
@@ -66,7 +67,7 @@ public class DiscountFlagTests
             },
             "specialist-1");
 
-        var ledger = await db.InspectorFeeLedgers.AsNoTracking()
+        var ledger = await store.Fin.InspectorFeeLedgers.AsNoTracking()
             .SingleAsync(l => l.WorkflowTaskId == taskId);
         Assert.Equal(0m, ledger.SupervisorDiscountSar);
         Assert.Equal(InspectorFeeBillingStatus.Draft, ledger.BillingStatus);
@@ -75,10 +76,10 @@ public class DiscountFlagTests
     [Fact]
     public async Task Only_the_transaction_department_supervisor_can_approve()
     {
-        await using var db = CreateDb();
-        var taskId = SeedLedger(db);
-        await db.SaveChangesAsync();
-        var service = new DiscountFlagService(db);
+        await using var store = CreateStore();
+        var taskId = SeedLedger(store);
+        await store.SaveAsync();
+        var service = new DiscountFlagService(store.Fin, store.CaseStudy);
 
         var (created, _) = await service.CreateAsync(
             new CreateDiscountFlagRequest
@@ -100,18 +101,18 @@ public class DiscountFlagTests
 
         Assert.Null(row);
         Assert.Contains("قسماً آخر", error);
-        var ledger = await db.InspectorFeeLedgers.AsNoTracking()
+        var ledger = await store.Fin.InspectorFeeLedgers.AsNoTracking()
             .SingleAsync(l => l.WorkflowTaskId == taskId);
         Assert.Equal(0m, ledger.SupervisorDiscountSar);
-        Assert.Equal(DiscountFlagStatuses.Pending, (await db.DiscountFlags.AsNoTracking()
+        Assert.Equal(DiscountFlagStatuses.Pending, (await store.Fin.DiscountFlags.AsNoTracking()
             .SingleAsync(f => f.Id == Guid.Parse(created.Id))).Status);
     }
 
-    private static Guid SeedLedger(ApplicationDbContext db)
+    private static Guid SeedLedger(Store store)
     {
         var taskId = Guid.NewGuid();
         var now = DateTime.UtcNow;
-        db.WorkflowTasks.Add(WorkflowTask.Create(
+        store.CaseStudy.WorkflowTasks.Add(WorkflowTask.Create(
             WorkflowTaskKind.FieldInspection,
             "PO-FLAG",
             now,
@@ -120,7 +121,7 @@ public class DiscountFlagTests
             assigneeId: "insp-1",
             id: taskId,
             status: WorkflowTaskStatus.Completed));
-        db.InspectorFeeLedgers.Add(new InspectorFeeLedger
+        store.Fin.InspectorFeeLedgers.Add(new InspectorFeeLedger
         {
             WorkflowTaskId = taskId,
             PoNumber = "PO-FLAG",
@@ -136,8 +137,36 @@ public class DiscountFlagTests
         return taskId;
     }
 
-    private static ApplicationDbContext CreateDb() =>
-        new(new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"discount-flag-{Guid.NewGuid():N}")
-            .Options);
+    private static Store CreateStore()
+    {
+        var name = $"discount-flag-{Guid.NewGuid():N}";
+        var root = new InMemoryDatabaseRoot();
+        return new Store(
+            new FinancialDbContext(
+                new DbContextOptionsBuilder<FinancialDbContext>()
+                    .UseInMemoryDatabase(name, root)
+                    .Options),
+            new CaseStudyDbContext(
+                new DbContextOptionsBuilder<CaseStudyDbContext>()
+                    .UseInMemoryDatabase(name, root)
+                    .Options));
+    }
+
+    private sealed class Store(FinancialDbContext fin, CaseStudyDbContext caseStudy) : IAsyncDisposable
+    {
+        public FinancialDbContext Fin { get; } = fin;
+        public CaseStudyDbContext CaseStudy { get; } = caseStudy;
+
+        public async Task SaveAsync()
+        {
+            await CaseStudy.SaveChangesAsync();
+            await Fin.SaveChangesAsync();
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            await Fin.DisposeAsync();
+            await CaseStudy.DisposeAsync();
+        }
+    }
 }

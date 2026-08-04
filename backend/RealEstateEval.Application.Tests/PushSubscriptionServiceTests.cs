@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Contracts;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
 using Microsoft.Extensions.Options;
@@ -10,15 +10,15 @@ namespace RealEstateEval.Application.Tests;
 
 public class PushSubscriptionServiceTests
 {
-    private static ApplicationDbContext CreateDb()
+    private static MessagingDbContext CreateDb()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+        var options = new DbContextOptionsBuilder<MessagingDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
             .Options;
-        return new ApplicationDbContext(options);
+        return new MessagingDbContext(options);
     }
 
-    private static PushSubscriptionService CreateService(ApplicationDbContext db) =>
+    private static PushSubscriptionService CreateService(MessagingDbContext db) =>
         new(
             db,
             Options.Create(new WebPushOptions

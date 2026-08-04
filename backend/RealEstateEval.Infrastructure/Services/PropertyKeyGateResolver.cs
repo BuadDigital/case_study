@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
@@ -10,12 +9,12 @@ namespace RealEstateEval.Infrastructure.Services;
 public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
 {
     private readonly OperationsDbContext _ops;
-    private readonly ApplicationDbContext _db;
+    private readonly CaseStudyDbContext _caseStudy;
 
-    public PropertyKeyGateResolver(OperationsDbContext ops, ApplicationDbContext db)
+    public PropertyKeyGateResolver(OperationsDbContext ops, CaseStudyDbContext caseStudy)
     {
         _ops = ops;
-        _db = db;
+        _caseStudy = caseStudy;
     }
 
     public async Task<PropertyKeyGateDto> ResolveAsync(
@@ -28,7 +27,7 @@ public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
         WorkOrderProperty? property = null;
         if (propertyId is Guid pid)
         {
-            property = await _db.WorkOrderProperties.AsNoTracking()
+            property = await _caseStudy.WorkOrderProperties.AsNoTracking()
                 .Include(p => p.WorkOrder)
                 .FirstOrDefaultAsync(p => p.Id == pid && !p.IsRemoved, cancellationToken);
         }
@@ -36,7 +35,7 @@ public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
         {
             var po = poNumber.Trim();
             var deed = deedNumber.Trim();
-            property = await _db.WorkOrderProperties.AsNoTracking()
+            property = await _caseStudy.WorkOrderProperties.AsNoTracking()
                 .Include(p => p.WorkOrder)
                 .FirstOrDefaultAsync(
                     p => !p.IsRemoved
@@ -166,7 +165,7 @@ public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
         // Legacy fallback: government-review submission keysStatus
         if (resolvedPropertyId is Guid legacyPid && resolvedPo.Length > 0)
         {
-            var govTask = await _db.WorkflowTasks.AsNoTracking()
+            var govTask = await _caseStudy.WorkflowTasks.AsNoTracking()
                 .Where(t =>
                     t.Kind == WorkflowTaskKind.GovernmentReview
                     && t.PropertyId == legacyPid
@@ -176,7 +175,7 @@ public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
 
             if (govTask is not null)
             {
-                var submission = await _db.PartyTaskSubmissions.AsNoTracking()
+                var submission = await _caseStudy.PartyTaskSubmissions.AsNoTracking()
                     .FirstOrDefaultAsync(
                         s => s.Kind == "government-review" && s.WorkflowTaskId == govTask.Id,
                         cancellationToken);

@@ -1,4 +1,5 @@
 using RealEstateEval.Infrastructure;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Web;
 using RealEstateEval.Platform.Api.Integration;
 using RealEstateEval.Shared.Web;
@@ -9,6 +10,7 @@ builder.AddRealEstateEvalObservability("platform");
 
 builder.Services
     .AddControllers()
+    .AddRealEstateEvalValidation()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy =
@@ -20,9 +22,14 @@ builder.Services
 builder.Services.AddResponseCompression(options => options.EnableForHttps = true);
 
 var connectionString = ServiceCollectionExtensions.RequireConnectionString(builder.Configuration,ServiceDatabaseNames.Platform);
-builder.Services.AddPersistence(builder.Configuration, connectionString);
+builder.Services.AddHostSharedInfrastructure(builder.Configuration);
 builder.Services.AddClaimsPermissionService();
 builder.Services.AddPlatformInfrastructure(builder.Configuration, connectionString);
+builder.Services.AddMessagingPersistence(builder.Configuration, connectionString);
+// Residual cross-boundary reads for NotificationRecipientResolver (workflow assignee → user id).
+// Phase 3 replaces with owner-API / projection.
+builder.Services.AddCaseStudyPersistence(builder.Configuration, connectionString);
+builder.Services.AddIdentityPersistence(builder.Configuration, connectionString);
 builder.Services.AddPlatformNotificationInfrastructure(builder.Configuration, builder.Environment);
 builder.Services.AddNotificationIntegrationHandlers();
 builder.Services.AddIntegrationEventInbox();
@@ -39,7 +46,12 @@ var app = builder.Build();
 app.UseRealEstateEvalServicePipeline();
 app.UseRealEstateEvalOpenApi("Platform API");
 app.MapServiceHealth("platform");
-app.MapDatabaseReady("platform");
+app.MapDatabaseReady(
+    "platform",
+    typeof(PlatformDbContext),
+    typeof(MessagingDbContext),
+    typeof(CaseStudyDbContext),
+    typeof(IdentityDbContext));
 app.MapControllers();
 
 app.Run();

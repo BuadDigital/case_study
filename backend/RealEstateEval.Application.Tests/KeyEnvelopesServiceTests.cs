@@ -349,7 +349,7 @@ public class KeyEnvelopesServiceTests
             "insp-1",
             "معاين");
 
-        var gate = await new PropertyKeyGateResolver(bundle.Ops, db).ResolveAsync(
+        var gate = await TestBoundedContexts.CreateKeyGate(bundle).ResolveAsync(
             property.Id,
             workOrder.PoNumber,
             property.DeedNumber,
@@ -425,7 +425,7 @@ public class KeyEnvelopesServiceTests
             "insp",
             "معاين");
 
-        var keys = new PropertyKeysService(bundle.Ops, db);
+        var keys = TestBoundedContexts.CreatePropertyKeys(bundle);
         var rows = await keys.ListAsync(null);
         var row = Assert.Single(
             rows,

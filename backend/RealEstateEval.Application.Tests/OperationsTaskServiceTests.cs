@@ -903,7 +903,7 @@ public class OperationsTaskServiceTests
     }
 
     private static OperationsTaskService CreateService(OperationsDbContext ops, ApplicationDbContext db) =>
-        OperationsTaskService.Create(ops, db, new NullNotificationService(), new PartyFeePricingService(db));
+        OperationsTaskService.Create(ops, db, new NullNotificationService(), new PartyFeePricingService(TestInspectorFeeServiceFactory.ShareFinancial(db)));
 
     /// <summary>
     /// Visit fees have no built-in rate any more, so a test that expects a charge has to put one in

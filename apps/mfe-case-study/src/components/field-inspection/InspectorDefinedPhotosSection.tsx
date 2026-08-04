@@ -16,15 +16,17 @@ import {
   useToast,
 } from "@platform/design-system";
 import {
-  INSPECTOR_DEFINED_PHOTOS,
   INSPECTOR_FREE_PHOTO_CATEGORIES,
   inspectorPhotoCoverageLabel,
   inspectorPhotoStampText,
+  listServiceAmenityPhotoSlots,
   nextInspectorPhotoId,
+  isServiceAmenityPhotoSlotComplete,
   type InspectorDefinedPhotoSlot,
   type InspectorFreePhoto,
   type InspectorSlotPhoto,
   type InspectorWorkspaceDraft,
+  type ServiceAmenityPhotoSlotDef,
 } from "../../lib/prototype/inspector-workspace-data";
 import {
   clearInspectorPhotoDataUrl,
@@ -146,12 +148,15 @@ export function InspectorDefinedPhotosSection({
   disabled,
   onPatch,
   bare = false,
+  layout = "desktop",
 }: {
   draft: InspectorWorkspaceDraft;
   disabled?: boolean;
   onPatch: (patch: Patch) => void;
   /** Skip outer card chrome when nested in a parent section. */
   bare?: boolean;
+  /** `desktop` = Case Study.html c9 tiles (100px); `mobile` = square photoTile grid. */
+  layout?: "desktop" | "mobile";
 }) {
   const { showToast } = useToast();
   const [previewRef, setPreviewRef] = useState<PreviewRef | null>(null);
@@ -160,16 +165,20 @@ export function InspectorDefinedPhotosSection({
 
   const stamp = inspectorPhotoStampText(draft);
   const coverageLabel = inspectorPhotoCoverageLabel(draft);
-  const showAnnex = draft.hasAnnex === "نعم";
   const untaggedFree = draft.freePhotos.filter((photo) => !photo.category);
 
   const visibleSlots = useMemo(
-    () =>
-      INSPECTOR_DEFINED_PHOTOS.filter(
-        (def) => !def.annexOnly || showAnnex,
-      ),
-    [showAnnex],
+    () => listServiceAmenityPhotoSlots(draft),
+    [draft.services, draft.amenities],
   );
+
+  function slotIcon(def: ServiceAmenityPhotoSlotDef): string {
+    return def.kind === "service" ? "ti-plug" : "ti-map-pin";
+  }
+
+  function slotKindBadge(def: ServiceAmenityPhotoSlotDef): string {
+    return def.kind === "service" ? "خدمة" : "مرفق";
+  }
 
   const previewPhoto = useMemo(() => {
     if (!previewRef) return null;
@@ -394,7 +403,7 @@ export function InspectorDefinedPhotosSection({
   return (
     <>
       <RegistrationFormCard
-        title={bare ? undefined : "صور العقار الموثّقة"}
+        title={bare ? undefined : "توثيق الخدمات والمرافق"}
         headerRight={
           bare ? undefined : (
             <div className="flex items-center gap-2">
@@ -404,45 +413,103 @@ export function InspectorDefinedPhotosSection({
           )
         }
       >
+        {bare && layout === "desktop" ? (
+          <p className="mb-3 text-[11px] leading-relaxed text-text-3">
+            لكل خدمة/مرفق اخترته في القسم أعلاه: ارفع صورة توثيقية (كاميرا أو
+            ملف). بدون اختيار لا تظهر خانات.
+          </p>
+        ) : null}
+        {bare && layout === "mobile" ? (
+          <p className="mb-2.5 text-[11px] leading-relaxed text-text-3">
+            وثّق كل خدمة/مرفق اخترته. اضغط الخانة للتصوير أو اختيار ملف.
+          </p>
+        ) : null}
         {bare ? null : (
           <p className="mb-3.5 text-[11px] leading-relaxed text-text-3">
-            ارفع الصور من جهازك (كاميرا أو معرض). لكل خانة: ارفع صورتها أو فعّل
-            «لا يوجد». الصور الإضافية تُعرّف بنوعها بنقرة.
+            الخانات تعكس اختيارك من «الخدمات» و«المرافق». ارفع صورة لكل عنصر، أو
+            «غير متوفر» إن تعذّر التوثيق في الموقع.
           </p>
         )}
 
-        {bare ? (
-          <div className="grid grid-cols-3 gap-2.5">
-            {visibleSlots.map((def) => {
-              const slot = draft.definedPhotos[def.id] ?? {
-                none: false,
-                photos: [],
-              };
-              const done =
-                slot.none || slot.photos.some((photo) => photo.approved);
-              return (
-                <MobilePhotoTile
-                  key={def.id}
-                  label={def.name}
-                  done={done}
-                  none={slot.none}
-                  disabled={Boolean(disabled || uploading)}
-                  onUpload={(files) => uploadSlotPhotos(def.id, files)}
-                  onToggleNone={() => toggleSlotNone(def.id, !slot.none)}
-                  onOpenDone={
-                    slot.photos[0]
-                      ? () =>
-                          setPreviewRef({
-                            kind: "slot",
-                            slotId: def.id,
-                            photoId: slot.photos[0]!.id,
-                          })
-                      : undefined
-                  }
-                />
-              );
-            })}
+        {visibleSlots.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border bg-surface-2 px-3.5 py-5 text-center text-[12px] text-text-3">
+            اختر خدمة أو مرفقاً من «الخدمات والمرافق المحيطة» أولاً — تظهر
+            هنا خانة صورة لكل اختيار.
           </div>
+        ) : bare ? (
+          layout === "mobile" ? (
+            <div className="grid grid-cols-3 gap-2.5">
+              {visibleSlots.map((def) => {
+                const slot = draft.definedPhotos[def.id] ?? {
+                  none: false,
+                  photos: [],
+                };
+                const done = isServiceAmenityPhotoSlotComplete(slot);
+                return (
+                  <MobilePhotoTile
+                    key={def.id}
+                    label={def.label}
+                    required
+                    done={done}
+                    none={slot.none}
+                    disabled={Boolean(disabled || uploading)}
+                    onUpload={(files) => uploadSlotPhotos(def.id, files)}
+                    onToggleNone={() => toggleSlotNone(def.id, !slot.none)}
+                    onOpenDone={
+                      slot.photos[0]
+                        ? () =>
+                            setPreviewRef({
+                              kind: "slot",
+                              slotId: def.id,
+                              photoId: slot.photos[0]!.id,
+                            })
+                        : undefined
+                    }
+                  />
+                );
+              })}
+            </div>
+          ) : (
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2">
+              {visibleSlots.map((def) => {
+                const slot = draft.definedPhotos[def.id] ?? {
+                  none: false,
+                  photos: [],
+                };
+                const first = slot.photos[0];
+                const done = isServiceAmenityPhotoSlotComplete(slot);
+                return (
+                  <DesktopHtmlPhotoTile
+                    key={def.id}
+                    label={def.label}
+                    required
+                    done={done}
+                    none={slot.none}
+                    taskId={draft.taskId}
+                    photoRef={
+                      first
+                        ? slotPhotoRef(def.id, first.id)
+                        : undefined
+                    }
+                    photo={first}
+                    disabled={Boolean(disabled || uploading)}
+                    onUpload={(files) => uploadSlotPhotos(def.id, files)}
+                    onToggleNone={() => toggleSlotNone(def.id, !slot.none)}
+                    onOpen={
+                      first
+                        ? () =>
+                            setPreviewRef({
+                              kind: "slot",
+                              slotId: def.id,
+                              photoId: first.id,
+                            })
+                        : undefined
+                    }
+                  />
+                );
+              })}
+            </div>
+          )
         ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {visibleSlots.map((def) => {
@@ -450,27 +517,25 @@ export function InspectorDefinedPhotosSection({
               none: false,
               photos: [],
             };
-            const incompleteRequired =
-              def.required && !slot.none && !slot.photos.some((p) => p.approved);
+            const incomplete =
+              !isServiceAmenityPhotoSlotComplete(slot);
 
             return (
               <div
                 key={def.id}
                 className={cn(
                   "rounded-lg border bg-surface-2 p-3.5",
-                  incompleteRequired
+                  incomplete
                     ? "border-[#F5CBA7]"
                     : "border-border",
                 )}
               >
                 <div className="mb-2.5 flex items-center justify-between gap-2">
                   <span className="flex items-center gap-1.5 text-xs font-semibold text-text">
-                    <i className={`ti ${def.icon} text-primary-light text-base`} aria-hidden />
-                    {def.name}
+                    <i className={`ti ${slotIcon(def)} text-primary-light text-base`} aria-hidden />
+                    {def.label}
                   </span>
-                  <Badge tone={def.required ? "danger" : "default"}>
-                    {def.required ? "مطلوب" : "اختياري"}
-                  </Badge>
+                  <Badge tone="danger">{slotKindBadge(def)}</Badge>
                 </div>
 
                 {slot.none ? (
@@ -487,7 +552,7 @@ export function InspectorDefinedPhotosSection({
                         photoRef={slotPhotoRef(def.id, photo.id)}
                         photo={photo}
                         stamp={stamp}
-                        icon={def.icon}
+                        icon={slotIcon(def)}
                         onClick={() =>
                           setPreviewRef({
                             kind: "slot",
@@ -525,7 +590,7 @@ export function InspectorDefinedPhotosSection({
                   <InspectorToggleSwitch
                     checked={slot.none}
                     disabled={disabled}
-                    ariaLabel={`لا يوجد — ${def.name}`}
+                    ariaLabel={`لا يوجد — ${def.label}`}
                     onChange={(none) => toggleSlotNone(def.id, none)}
                   />
                 </div>
@@ -535,7 +600,13 @@ export function InspectorDefinedPhotosSection({
         </div>
         )}
 
-        <div className={cn("mb-2.5 mt-5 flex flex-wrap items-center justify-between gap-2", bare && "mt-4")}>
+        <div
+          className={cn(
+            "mb-2.5 mt-5 flex flex-wrap items-center justify-between gap-2",
+            bare && "mt-4",
+            bare && layout === "desktop" && "hidden",
+          )}
+        >
           {bare ? null : (
             <div className="flex items-center gap-1.5 text-xs font-semibold text-text">
               <i className="ti ti-photo-plus text-primary" aria-hidden />
@@ -556,13 +627,14 @@ export function InspectorDefinedPhotosSection({
           />
         </div>
 
-        {untaggedFree.length > 0 ? (
+        {untaggedFree.length > 0 && !(bare && layout === "desktop") ? (
           <div className="mb-2.5 flex items-center gap-1.5 rounded-lg border border-orange bg-orange-bg px-3 py-2 text-[11px] font-semibold text-orange">
             <i className="ti ti-alert-triangle" aria-hidden />
             {untaggedFree.length} صورة بحاجة لتعريف — اضغط عليها لتحديد نوعها
           </div>
         ) : null}
 
+        {!(bare && layout === "desktop") ? (
         <div className="flex flex-wrap gap-2">
           {draft.freePhotos.map((photo) => {
             if (!photo.category) {
@@ -617,6 +689,7 @@ export function InspectorDefinedPhotosSection({
             );
           })}
         </div>
+        ) : null}
       </RegistrationFormCard>
 
       {pickerPhotoId !== null ? (
@@ -737,9 +810,10 @@ export function InspectorDefinedPhotosSection({
   );
 }
 
-/** Case Study.html `photoTile` — square 3-col capture cell. */
+/** Mobile square photo cell. */
 function MobilePhotoTile({
   label,
+  required = true,
   done,
   none,
   disabled,
@@ -748,6 +822,7 @@ function MobilePhotoTile({
   onOpenDone,
 }: {
   label: string;
+  required?: boolean;
   done: boolean;
   none: boolean;
   disabled?: boolean;
@@ -793,8 +868,11 @@ function MobilePhotoTile({
           </svg>
         )}
         <span className="text-center text-[11px] leading-tight text-text-2">
-          {none ? `لا يوجد · ${label}` : label}
+          {none ? `غير متوفر · ${label}` : label}
         </span>
+        {!required && !none ? (
+          <span className="text-[9px] font-semibold text-text-3">اختياري</span>
+        ) : null}
         {done ? (
           <span className="absolute start-1.5 top-1.5 grid size-4 place-items-center rounded-full bg-[#1f9d6f] text-white">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" aria-hidden>
@@ -806,16 +884,171 @@ function MobilePhotoTile({
       <button
         type="button"
         disabled={disabled}
-        className="text-center text-[10px] font-semibold text-text-3"
+        className="text-center text-[10px] font-medium text-text-3 underline-offset-2 hover:underline"
         onClick={onToggleNone}
       >
-        {none ? "إلغاء «لا يوجد»" : "لا يوجد"}
+        {none ? "إلغاء «غير متوفر»" : "غير متوفر هنا"}
       </button>
       <input
         ref={inputRef}
         type="file"
         accept="image/*,.heic,.heif"
         capture="environment"
+        disabled={disabled}
+        className="sr-only"
+        onChange={(e) => {
+          const files = Array.from(e.target.files ?? []);
+          e.target.value = "";
+          if (files.length > 0) {
+            void runWithUploadToast(() => onUpload(files));
+          }
+        }}
+      />
+    </div>
+  );
+}
+
+/**
+ * Desktop c9 tile: clear upload CTA; «غير متوفر» secondary.
+ */
+function DesktopHtmlPhotoTile({
+  label,
+  required = true,
+  done,
+  none,
+  taskId,
+  photoRef,
+  photo,
+  disabled,
+  onUpload,
+  onToggleNone,
+  onOpen,
+}: {
+  label: string;
+  required?: boolean;
+  done: boolean;
+  none: boolean;
+  taskId: string;
+  photoRef?: string;
+  photo?: InspectorSlotPhoto;
+  disabled?: boolean;
+  onUpload: (files: File[]) => boolean | void | Promise<boolean | void>;
+  onToggleNone: () => void;
+  onOpen?: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { runWithUploadToast } = useToast();
+  const [dataUrl, setDataUrl] = useState(
+    () =>
+      photoRef ? getInspectorPhotoDataUrl(taskId, photoRef) : undefined,
+  );
+
+  useEffect(() => {
+    if (!photoRef || !photo) {
+      setDataUrl(undefined);
+      return;
+    }
+    const cached = getInspectorPhotoDataUrl(taskId, photoRef);
+    if (cached) {
+      setDataUrl(cached);
+      return;
+    }
+    let cancelled = false;
+    void prefetchInspectorPhoto(taskId, photoRef, photo).then((url) => {
+      if (!cancelled && url) setDataUrl(url);
+    }).catch(() => {
+      if (!cancelled) setDataUrl(undefined);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [taskId, photoRef, photo]);
+
+  return (
+    <div className="flex flex-col gap-0.5">
+      <button
+        type="button"
+        disabled={disabled}
+        title={none ? "اضغط لإلغاء «غير متوفر»" : done ? "معاينة" : "رفع صورة"}
+        className={cn(
+          "relative grid h-[108px] w-full place-items-center overflow-hidden rounded-lg border font-inherit",
+          none
+            ? "border-dashed border-border bg-surface-2"
+            : done
+              ? "border-solid border-border bg-surface-2"
+              : "border-dashed border-[var(--gold-d,#a4906f)] bg-[color-mix(in_srgb,var(--gold)_6%,transparent)]",
+          !disabled && "cursor-pointer",
+        )}
+        style={
+          dataUrl && !none
+            ? {
+                backgroundImage: `url(${dataUrl})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }
+            : undefined
+        }
+        onClick={() => {
+          if (none) {
+            onToggleNone();
+            return;
+          }
+          if (done && onOpen) {
+            onOpen();
+            return;
+          }
+          inputRef.current?.click();
+        }}
+      >
+        {!dataUrl || none ? (
+          none ? (
+            <span className="flex flex-col items-center gap-0.5 pb-4 text-center">
+              <span className="text-[11px] font-semibold text-text-3">غير متوفر</span>
+              <span className="text-[9px] text-text-3">اضغط للإلغاء</span>
+            </span>
+          ) : done ? (
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--text-3)"
+              strokeWidth="1.5"
+              aria-hidden
+            >
+              <rect x="3" y="4" width="18" height="16" rx="2" />
+              <circle cx="8.5" cy="9.5" r="1.5" />
+              <path d="m4 17 5-5 4 4 3-2 4 4" />
+            </svg>
+          ) : (
+            <span className="flex flex-col items-center gap-1 px-1.5 pb-5 text-center">
+              <i className="ti ti-camera-plus text-xl text-[var(--gold-d,#a4906f)]" aria-hidden />
+              <span className="text-[11px] font-bold text-[var(--gold-d,#a4906f)]">
+                ارفع صورة
+              </span>
+            </span>
+          )
+        ) : null}
+        <span className="absolute inset-x-0 bottom-0 bg-[rgba(16,43,78,0.78)] px-1.5 py-[3px] text-center text-[9.5px] text-white">
+          {label}
+          {!required ? (
+            <span className="ms-1 opacity-80">· اختياري</span>
+          ) : null}
+        </span>
+      </button>
+      <button
+        type="button"
+        disabled={disabled}
+        className="py-0.5 text-center text-[10px] font-medium text-text-3 underline-offset-2 hover:text-text-2 hover:underline"
+        onClick={onToggleNone}
+      >
+        {none ? "إلغاء «غير متوفر»" : "غير متوفر هنا"}
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*,.heic,.heif,image/jpeg,image/png,image/webp"
+        multiple
         disabled={disabled}
         className="sr-only"
         onChange={(e) => {

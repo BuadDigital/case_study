@@ -5,9 +5,17 @@
   "approvedOn": "2026-07-30",
   "phase": "phase-1",
   "ownershipStatus": "approved",
-  "statusValues": ["proposed", "pending-decision", "approved"],
-  "ownershipModels": ["single-owner", "per-producer", "per-consumer"],
-  "legacyMigrationCutover": "20260730092246_AddPushSubscriptions",
+  "statusValues": [
+    "proposed",
+    "pending-decision",
+    "approved"
+  ],
+  "ownershipModels": [
+    "single-owner",
+    "per-producer",
+    "per-consumer"
+  ],
+  "legacyMigrationCutover": "20260802093148_SyncLocationCatalogModelOnLegacy",
   "schemas": [
     "identity",
     "case_study",
@@ -34,7 +42,9 @@
       "state": "extracted",
       "extractedOn": "2026-07-30",
       "owner": "attachments",
-      "schemas": ["attachments"],
+      "schemas": [
+        "attachments"
+      ],
       "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Attachments/Migrations",
       "migrationsHistorySchema": "attachments",
       "note": "Phase 1 extraction order, step 1."
@@ -44,17 +54,23 @@
       "state": "extracted",
       "extractedOn": "2026-07-30",
       "owner": "platform",
-      "schemas": ["platform", "audit"],
+      "schemas": [
+        "platform",
+        "audit"
+      ],
       "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Platform/Migrations",
       "migrationsHistorySchema": "platform",
-      "note": "Platform catalogs and configuration, plus the shared audit schema whose single table this stream creates and shapes (D7); the ledger's rows are owned per producer. messaging.UserNotifications is Platform-owned (D3) but stays on the legacy context until the messaging slice (extraction order, step 5)."
+      "note": "Platform catalogs and configuration, plus the shared audit schema (D7). Notification tables moved to MessagingDbContext (extraction step 5 / D3)."
     },
     {
       "name": "ValuationDbContext",
       "state": "extracted",
       "extractedOn": "2026-07-30",
       "owner": "valuation",
-      "schemas": ["valuation", "messaging"],
+      "schemas": [
+        "valuation",
+        "messaging"
+      ],
       "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Valuation/Migrations",
       "migrationsHistorySchema": "valuation",
       "note": "Maps messaging.OutboxMessages so a valuation write and the event it publishes stay in one SaveChanges (D5, per-producer outbox). It owns only the rows it writes."
@@ -64,7 +80,9 @@
       "state": "extracted",
       "extractedOn": "2026-07-30",
       "owner": "identity",
-      "schemas": ["identity"],
+      "schemas": [
+        "identity"
+      ],
       "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Identity/Migrations",
       "migrationsHistorySchema": "identity",
       "note": "Phase 1 extraction order, step 2. ASP.NET Identity stores and session/profile tables. Non-Identity APIs resolve permissions from JWT claims and no longer register Identity stores."
@@ -74,7 +92,9 @@
       "state": "extracted",
       "extractedOn": "2026-08-03",
       "owner": "failures",
-      "schemas": ["failures"],
+      "schemas": [
+        "failures"
+      ],
       "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Failures/Migrations",
       "migrationsHistorySchema": "failures",
       "note": "Phase 1 extraction order, step 3. Transitional Case Study reads of PropertyFailures still use ApplicationDbContext; write path is FailuresDbContext."
@@ -84,17 +104,58 @@
       "state": "extracted",
       "extractedOn": "2026-08-03",
       "owner": "operations",
-      "schemas": ["operations"],
+      "schemas": [
+        "operations"
+      ],
       "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Operations/Migrations",
       "migrationsHistorySchema": "operations",
       "note": "Phase 1 extraction order, step 3. Operations schema tables plus write path for OperationsTasks/Sequences (D2) still physically in case_study — case_study is not listed here so the legacy stream can keep shaping other case_study tables. History lives in operations.__EFMigrationsHistory."
+    },
+    {
+      "name": "FinancialDbContext",
+      "state": "extracted",
+      "extractedOn": "2026-08-03",
+      "owner": "financial",
+      "schemas": [
+        "financial"
+      ],
+      "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Financial/Migrations",
+      "migrationsHistorySchema": "financial",
+      "note": "Phase 1 extraction order, step 4. financial schema plus D1 inspector-fee tables still physically in case_study — case_study is not listed here so Operations/Case Study ownership of other case_study tables stays clear. History in financial.__EFMigrationsHistory."
+    },
+    {
+      "name": "CaseStudyDbContext",
+      "state": "extracted",
+      "extractedOn": "2026-08-03",
+      "owner": "case-study",
+      "schemas": [
+        "case_study"
+      ],
+      "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/CaseStudy/Migrations",
+      "migrationsHistorySchema": "case_study",
+      "note": "Phase 1 extraction order, step 4. Case Study–owned case_study tables only (not D1 inspector fees, not D2 operations tasks)."
+    },
+    {
+      "name": "MessagingDbContext",
+      "state": "extracted",
+      "extractedOn": "2026-08-03",
+      "owner": "platform",
+      "schemas": [
+        "messaging"
+      ],
+      "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Messaging/Migrations",
+      "migrationsHistorySchema": "messaging",
+      "note": "Phase 1 extraction order, step 5. Platform-owned notifications/push (D3) and migration stream for messaging tables. Outbox/inbox also mapped so Platform writes share one SaveChanges; Case Study dispatcher still claims via ApplicationDbContext; Valuation remains a per-producer outbox writer (D5)."
     }
   ],
   "decisions": [
     {
       "id": "D1",
       "question": "Who owns inspector-fee ledgers, fee transitions, and disbursement batches?",
-      "candidates": ["case-study", "financial"],
+      "candidates": [
+        "case-study",
+        "financial"
+      ],
       "input": "product + finance",
       "status": "approved",
       "decidedOn": "2026-07-30",
@@ -105,7 +166,10 @@
     {
       "id": "D2",
       "question": "Who owns operations tasks, their sequences, and court-visit fee charge creation?",
-      "candidates": ["operations", "case-study"],
+      "candidates": [
+        "operations",
+        "case-study"
+      ],
       "input": "product + operations",
       "status": "approved",
       "decidedOn": "2026-07-30",
@@ -116,7 +180,9 @@
     {
       "id": "D3",
       "question": "Who owns the notification inbox rows and how are recipients resolved?",
-      "candidates": ["platform"],
+      "candidates": [
+        "platform"
+      ],
       "input": "product",
       "status": "approved",
       "decidedOn": "2026-07-30",
@@ -127,7 +193,11 @@
     {
       "id": "D4",
       "question": "Who owns document-reference counters?",
-      "candidates": ["case-study", "financial", "platform"],
+      "candidates": [
+        "case-study",
+        "financial",
+        "platform"
+      ],
       "input": "product",
       "status": "approved",
       "decidedOn": "2026-07-30",
@@ -138,7 +208,9 @@
     {
       "id": "D5",
       "question": "What is the service-local shape of the messaging outbox/inbox once producers and consumers are separated?",
-      "candidates": ["per-producer outbox + per-consumer inbox"],
+      "candidates": [
+        "per-producer outbox + per-consumer inbox"
+      ],
       "input": "platform engineering",
       "status": "approved",
       "decidedOn": "2026-07-30",
@@ -160,7 +232,11 @@
     {
       "id": "D7",
       "question": "Where does the shared audit ledger live, and who may write it?",
-      "candidates": ["platform-owned table", "dedicated audit schema, per-producer rows", "one audit table per context"],
+      "candidates": [
+        "platform-owned table",
+        "dedicated audit schema, per-producer rows",
+        "one audit table per context"
+      ],
       "input": "platform engineering + security",
       "status": "approved",
       "decidedOn": "2026-07-30",
@@ -170,83 +246,1046 @@
     }
   ],
   "tables": [
-    { "table": "Users", "schema": "identity", "dbSet": "Users", "entity": "ApplicationUser", "owner": "identity", "status": "approved", "ownershipModel": "single-owner", "contexts": ["IdentityDbContext"], "transactionGroup": "identity.account", "decision": null, "note": "Inherited ASP.NET Identity store. Write path is IdentityDbContext; non-Identity APIs use JWT claims." },
-    { "table": "Roles", "schema": "identity", "dbSet": "Roles", "entity": "IdentityRole", "owner": "identity", "status": "approved", "ownershipModel": "single-owner", "contexts": ["IdentityDbContext"], "transactionGroup": "identity.account", "decision": null, "note": "Inherited ASP.NET Identity store." },
-    { "table": "UserRoles", "schema": "identity", "dbSet": "UserRoles", "entity": "IdentityUserRole<string>", "owner": "identity", "status": "approved", "ownershipModel": "single-owner", "contexts": ["IdentityDbContext"], "transactionGroup": "identity.account", "decision": null, "note": "Inherited ASP.NET Identity store." },
-    { "table": "UserClaims", "schema": "identity", "dbSet": "UserClaims", "entity": "IdentityUserClaim<string>", "owner": "identity", "status": "approved", "ownershipModel": "single-owner", "contexts": ["IdentityDbContext"], "transactionGroup": "identity.account", "decision": null, "note": "Inherited ASP.NET Identity store." },
-    { "table": "RoleClaims", "schema": "identity", "dbSet": "RoleClaims", "entity": "IdentityRoleClaim<string>", "owner": "identity", "status": "approved", "ownershipModel": "single-owner", "contexts": ["IdentityDbContext"], "transactionGroup": "identity.account", "decision": null, "note": "Inherited ASP.NET Identity store." },
-    { "table": "UserLogins", "schema": "identity", "dbSet": "UserLogins", "entity": "IdentityUserLogin<string>", "owner": "identity", "status": "approved", "ownershipModel": "single-owner", "contexts": ["IdentityDbContext"], "transactionGroup": "identity.account", "decision": null, "note": "Inherited ASP.NET Identity store." },
-    { "table": "UserTokens", "schema": "identity", "dbSet": "UserTokens", "entity": "IdentityUserToken<string>", "owner": "identity", "status": "approved", "ownershipModel": "single-owner", "contexts": ["IdentityDbContext"], "transactionGroup": "identity.account", "decision": null, "note": "Inherited ASP.NET Identity store." },
-    { "table": "UserProfiles", "schema": "identity", "dbSet": "UserProfiles", "entity": "UserProfile", "owner": "identity", "status": "approved", "ownershipModel": "single-owner", "contexts": ["IdentityDbContext"], "transactionGroup": "identity.account", "decision": null, "note": "Write path is IdentityDbContext. Transitional reads remain on ApplicationDbContext until Phase 3." },
-    { "table": "RefreshTokens", "schema": "identity", "dbSet": "RefreshTokens", "entity": "RefreshToken", "owner": "identity", "status": "approved", "ownershipModel": "single-owner", "contexts": ["IdentityDbContext"], "transactionGroup": "identity.session", "decision": null, "note": "Written by AuthSessionService on the Identity host only." },
-    { "table": "HrEmployeeProfiles", "schema": "identity", "dbSet": "HrEmployeeProfiles", "entity": "HrEmployeeProfile", "owner": "identity", "status": "approved", "ownershipModel": "single-owner", "contexts": ["IdentityDbContext"], "transactionGroup": "identity.account", "decision": null, "note": "Written by registration and the demo seeder." },
-    { "table": "ProcServiceProviderProfiles", "schema": "identity", "dbSet": "ProcServiceProviderProfiles", "entity": "ProcServiceProviderProfile", "owner": "identity", "status": "approved", "ownershipModel": "single-owner", "contexts": ["IdentityDbContext"], "transactionGroup": "identity.account", "decision": null, "note": "Written by registration and the demo seeder." },
-
-    { "table": "WorkOrders", "schema": "case_study", "dbSet": "WorkOrders", "entity": "WorkOrder", "owner": "case-study", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "case-study.work-order", "decision": null, "note": "Read by failures, financial reporting, and inspector-fee code." },
-    { "table": "WorkOrderProperties", "schema": "case_study", "dbSet": "WorkOrderProperties", "entity": "WorkOrderProperty", "owner": "case-study", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "case-study.work-order", "decision": null, "note": "Read by failures, operations key services, valuation dispatch, and billing." },
-    { "table": "PropertyContacts", "schema": "case_study", "dbSet": "PropertyContacts", "entity": "PropertyContact", "owner": "case-study", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "case-study.work-order", "decision": null, "note": null },
-    { "table": "PropertyTimelineEntries", "schema": "case_study", "dbSet": "PropertyTimelineEntries", "entity": "PropertyTimelineEntry", "owner": "case-study", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "case-study.work-order", "decision": null, "note": "PropertyTimelineService is registered by case-study and failures, so two processes write it today." },
-    { "table": "WorkflowTasks", "schema": "case_study", "dbSet": "WorkflowTasks", "entity": "WorkflowTask", "owner": "case-study", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "case-study.workflow", "decision": null, "note": "Highest-fan-in table: read or written by failures, operations, financial reporting, inspector fees, notifications, and the valuation event handler." },
-    { "table": "CaseStudyForms", "schema": "case_study", "dbSet": "CaseStudyForms", "entity": "CaseStudyForm", "owner": "case-study", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "case-study.workflow", "decision": null, "note": null },
-    { "table": "PartyTaskSubmissions", "schema": "case_study", "dbSet": "PartyTaskSubmissions", "entity": "PartyTaskSubmission", "owner": "case-study", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "case-study.workflow", "decision": null, "note": "Read by operations key gating and inspector fees." },
-    { "table": "FieldInspectionWorkspaces", "schema": "case_study", "dbSet": "FieldInspectionWorkspaces", "entity": "FieldInspectionWorkspace", "owner": "case-study", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "case-study.workflow", "decision": null, "note": null },
-    { "table": "InternalDelegationLetterSets", "schema": "case_study", "dbSet": "InternalDelegationLetterSets", "entity": "InternalDelegationLetterSet", "owner": "case-study", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "case-study.documents", "decision": null, "note": null },
-    { "table": "PoIntakeDrafts", "schema": "case_study", "dbSet": "PoIntakeDrafts", "entity": "PoIntakeDraft", "owner": "case-study", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "case-study.documents", "decision": null, "note": null },
-    { "table": "DocumentReferenceCounters", "schema": "case_study", "dbSet": "DocumentReferenceCounters", "entity": "DocumentReferenceCounter", "owner": "case-study", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "case-study.documents", "decision": "D4", "note": "Consumed by engineering billing document numbering in the financial schema; Financial calls a Case Study command for a number in Phase 3." },
-    { "table": "InspectorFeeLedgers", "schema": "case_study", "dbSet": "InspectorFeeLedgers", "entity": "InspectorFeeLedger", "owner": "financial", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "inspector-fees.ledger", "decision": "D1", "note": "Owned by financial, still physically in the case_study schema; relocation is Phase 4." },
-    { "table": "InspectorFeeTransitions", "schema": "case_study", "dbSet": "InspectorFeeTransitions", "entity": "InspectorFeeTransition", "owner": "financial", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "inspector-fees.ledger", "decision": "D1", "note": "Audit trail written in the same transaction as the ledger." },
-    { "table": "DisbursementBatches", "schema": "case_study", "dbSet": "DisbursementBatches", "entity": "DisbursementBatch", "owner": "financial", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "inspector-fees.disbursement", "decision": "D1", "note": null },
-    { "table": "OperationsTasks", "schema": "case_study", "dbSet": "OperationsTasks", "entity": "OperationsTask", "owner": "operations", "status": "approved", "ownershipModel": "single-owner", "contexts": ["OperationsDbContext"], "transactionGroup": "operations.tasks", "decision": "D2", "note": "Owned by operations, still physically in case_study until Phase 4. Written via OperationsDbContext; financial CourtVisitFeeCharges still on ApplicationDbContext in the same business transaction." },
-    { "table": "OperationsTaskSequences", "schema": "case_study", "dbSet": "OperationsTaskSequences", "entity": "OperationsTaskSequence", "owner": "operations", "status": "approved", "ownershipModel": "single-owner", "contexts": ["OperationsDbContext"], "transactionGroup": "operations.tasks", "decision": "D2", "note": "Reference-number sequence written in the task transaction." },
-
-    { "table": "CourtCatalogEntries", "schema": "platform", "dbSet": "CourtCatalogEntries", "entity": "CourtCatalogEntry", "owner": "platform", "status": "approved", "ownershipModel": "single-owner", "contexts": ["PlatformDbContext"], "transactionGroup": "platform.courts", "decision": null, "note": "Legacy catalog rows read once by the Courts seeding path." },
-    { "table": "Courts", "schema": "platform", "dbSet": "Courts", "entity": "Court", "owner": "platform", "status": "approved", "ownershipModel": "single-owner", "contexts": ["PlatformDbContext"], "transactionGroup": "platform.courts", "decision": null, "note": "Reference data; other contexts should consume a cacheable API or versioned snapshot." },
-    { "table": "CourtCircuits", "schema": "platform", "dbSet": "CourtCircuits", "entity": "CourtCircuit", "owner": "platform", "status": "approved", "ownershipModel": "single-owner", "contexts": ["PlatformDbContext"], "transactionGroup": "platform.courts", "decision": null, "note": null },
-    { "table": "CourtAuditLogs", "schema": "platform", "dbSet": "CourtAuditLogs", "entity": "CourtAuditLog", "owner": "platform", "status": "approved", "ownershipModel": "single-owner", "contexts": ["PlatformDbContext"], "transactionGroup": "platform.courts", "decision": null, "note": null },
-    { "table": "Regions", "schema": "platform", "dbSet": "Regions", "entity": "Region", "owner": "platform", "status": "approved", "ownershipModel": "single-owner", "contexts": ["PlatformDbContext"], "transactionGroup": "platform.geo", "decision": null, "note": "Reference data." },
-    { "table": "Cities", "schema": "platform", "dbSet": "Cities", "entity": "City", "owner": "platform", "status": "approved", "ownershipModel": "single-owner", "contexts": ["PlatformDbContext"], "transactionGroup": "platform.geo", "decision": null, "note": "Reference data." },
-    { "table": "Districts", "schema": "platform", "dbSet": "Districts", "entity": "District", "owner": "platform", "status": "approved", "ownershipModel": "single-owner", "contexts": ["PlatformDbContext"], "transactionGroup": "platform.geo", "decision": null, "note": "Child of Cities; write path on PlatformDbContext. Legacy maps ExcludeFromMigrations for cross-boundary reads." },
-    { "table": "FieldDictionaryConfigs", "schema": "platform", "dbSet": "FieldDictionaryConfigs", "entity": "FieldDictionaryConfig", "owner": "platform", "status": "approved", "ownershipModel": "single-owner", "contexts": ["PlatformDbContext"], "transactionGroup": "platform.config", "decision": null, "note": null },
-    { "table": "CaseStudyInfoRolesConfigs", "schema": "platform", "dbSet": "CaseStudyInfoRolesConfigs", "entity": "CaseStudyInfoRolesConfig", "owner": "platform", "status": "approved", "ownershipModel": "single-owner", "contexts": ["PlatformDbContext"], "transactionGroup": "platform.config", "decision": null, "note": "Configuration consumed by case-study forms." },
-    { "table": "OrganizationSettings", "schema": "platform", "dbSet": "OrganizationSettings", "entity": "OrganizationSettings", "owner": "platform", "status": "approved", "ownershipModel": "single-owner", "contexts": ["PlatformDbContext"], "transactionGroup": "platform.config", "decision": null, "note": "Singleton org settings written by OrganizationSettingsService on PlatformDbContext." },
-    { "table": "FieldSyncStatuses", "schema": "platform", "dbSet": "FieldSyncStatuses", "entity": "FieldSyncStatus", "owner": "platform", "status": "approved", "ownershipModel": "single-owner", "contexts": ["PlatformDbContext"], "transactionGroup": "platform.field-sync", "decision": null, "note": "Field client sync watermarks; written by FieldSyncStatusService on PlatformDbContext." },
-
-    { "table": "PropertyFailures", "schema": "failures", "dbSet": "PropertyFailures", "entity": "PropertyFailure", "owner": "failures", "status": "approved", "ownershipModel": "single-owner", "contexts": ["FailuresDbContext"], "transactionGroup": "failures.lifecycle", "decision": null, "note": "Write path on FailuresDbContext. FailureService is still registered by case-study and failures; Case Study/legacy reads use ApplicationDbContext until Phase 3." },
-    { "table": "FailureTypesCatalogConfigs", "schema": "failures", "dbSet": "FailureTypesCatalogConfigs", "entity": "FailureTypesCatalogConfig", "owner": "failures", "status": "approved", "ownershipModel": "single-owner", "contexts": ["FailuresDbContext"], "transactionGroup": "failures.catalog", "decision": null, "note": null },
-
-    { "table": "SurveyOffices", "schema": "operations", "dbSet": "SurveyOffices", "entity": "SurveyOffice", "owner": "operations", "status": "approved", "ownershipModel": "single-owner", "contexts": ["OperationsDbContext"], "transactionGroup": "operations.reference", "decision": null, "note": null },
-    { "table": "PropertyKeyRecords", "schema": "operations", "dbSet": "PropertyKeyRecords", "entity": "PropertyKeyRecord", "owner": "operations", "status": "approved", "ownershipModel": "single-owner", "contexts": ["OperationsDbContext"], "transactionGroup": "operations.keys", "decision": null, "note": null },
-    { "table": "KeyEnvelopes", "schema": "operations", "dbSet": "KeyEnvelopes", "entity": "KeyEnvelope", "owner": "operations", "status": "approved", "ownershipModel": "single-owner", "contexts": ["OperationsDbContext"], "transactionGroup": "operations.keys", "decision": null, "note": "KeyEnvelopesService is registered by case-study and operations; KeyReceiptFeeCharges stay financial on ApplicationDbContext." },
-    { "table": "KeyEnvelopeAssignments", "schema": "operations", "dbSet": "KeyEnvelopeAssignments", "entity": "KeyEnvelopeAssignment", "owner": "operations", "status": "approved", "ownershipModel": "single-owner", "contexts": ["OperationsDbContext"], "transactionGroup": "operations.keys", "decision": null, "note": null },
-    { "table": "KeyEnvelopeHandoffs", "schema": "operations", "dbSet": "KeyEnvelopeHandoffs", "entity": "KeyEnvelopeHandoff", "owner": "operations", "status": "approved", "ownershipModel": "single-owner", "contexts": ["OperationsDbContext"], "transactionGroup": "operations.keys", "decision": null, "note": null },
-    { "table": "KeyEnvelopeTimelineEntries", "schema": "operations", "dbSet": "KeyEnvelopeTimelineEntries", "entity": "KeyEnvelopeTimelineEntry", "owner": "operations", "status": "approved", "ownershipModel": "single-owner", "contexts": ["OperationsDbContext"], "transactionGroup": "operations.keys", "decision": null, "note": null },
-    { "table": "PropertyCourtAccesses", "schema": "operations", "dbSet": "PropertyCourtAccesses", "entity": "PropertyCourtAccess", "owner": "operations", "status": "approved", "ownershipModel": "single-owner", "contexts": ["OperationsDbContext"], "transactionGroup": "operations.keys", "decision": null, "note": "Read by case-study key gating via legacy mapping." },
-
-    { "table": "ValuationRequests", "schema": "valuation", "dbSet": "ValuationRequests", "entity": "ValuationRequest", "owner": "valuation", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ValuationDbContext"], "transactionGroup": "valuation.requests", "decision": null, "note": "Written only through ValuationRequestService on ValuationDbContext. Case Study still hosts that service for its dispatch adapter; process ownership is Phase 3." },
-    { "table": "EvaluatorRecallRecords", "schema": "valuation", "dbSet": "EvaluatorRecallRecords", "entity": "EvaluatorRecallRecord", "owner": "valuation", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ValuationDbContext"], "transactionGroup": "valuation.recalls", "decision": null, "note": null },
-
-    { "table": "FileAttachments", "schema": "attachments", "dbSet": "FileAttachments", "entity": "FileAttachment", "owner": "attachments", "status": "approved", "ownershipModel": "single-owner", "contexts": ["AttachmentsDbContext"], "transactionGroup": "attachments.files", "decision": null, "note": "Existence checks are still performed directly by engineering billing, party submissions, key envelopes, and the field-inspection verifier through the legacy context's read-only mapping; plan Phase 3 replaces these with the Attachments API." },
-    { "table": "PhotoMetadata", "schema": "attachments", "dbSet": "PhotoMetadata", "entity": "PhotoMetadata", "owner": "attachments", "status": "approved", "ownershipModel": "single-owner", "contexts": ["AttachmentsDbContext"], "transactionGroup": "attachments.files", "decision": null, "note": "Shaped by Attachments stream (AddPhotoMetadata). Legacy maps via AttachmentsModel for field-inspection reads until Phase 3 Attachments API." },
-
-    { "table": "PoEnfazInvoices", "schema": "financial", "dbSet": "PoEnfazInvoices", "entity": "PoEnfazInvoice", "owner": "financial", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "financial.enfaz-invoicing", "decision": null, "note": "Read by case-study work-order listing; written by PoEnfazBillingService, which case-study and failures register." },
-    { "table": "PoEnfazRevenueLines", "schema": "financial", "dbSet": "PoEnfazRevenueLines", "entity": "PoEnfazRevenueLine", "owner": "financial", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "financial.enfaz-invoicing", "decision": null, "note": null },
-    { "table": "PartyBillingStatements", "schema": "financial", "dbSet": "PartyBillingStatements", "entity": "PartyBillingStatement", "owner": "financial", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "financial.party-billing", "decision": null, "note": "Renamed from EngineeringBillingStatements. Written by PartyBillingStatementService, registered by case-study and failures; the same transaction still touches case_study and attachments." },
-    { "table": "PartyBillingStatementLines", "schema": "financial", "dbSet": "PartyBillingStatementLines", "entity": "PartyBillingStatementLine", "owner": "financial", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "financial.party-billing", "decision": null, "note": null },
-    { "table": "KeyReceiptFeeCharges", "schema": "financial", "dbSet": "KeyReceiptFeeCharges", "entity": "KeyReceiptFeeCharge", "owner": "financial", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "financial.charges", "decision": null, "note": "Created inside the operations key-envelope transaction today." },
-    { "table": "CourtVisitFeeCharges", "schema": "financial", "dbSet": "CourtVisitFeeCharges", "entity": "CourtVisitFeeCharge", "owner": "financial", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "financial.charges", "decision": "D2", "note": "Created inside the operations-task transaction today; plan Phase 3 moves creation behind Financial commands/events." },
-    { "table": "PartyFeePricingTables", "schema": "financial", "dbSet": "PartyFeePricingTables", "entity": "PartyFeePricingTable", "owner": "financial", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "financial.pricing", "decision": null, "note": "Pricing lookups are read by case-study, failures, and operations code." },
-    { "table": "PartyFeePricingTiers", "schema": "financial", "dbSet": "PartyFeePricingTiers", "entity": "PartyFeePricingTier", "owner": "financial", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "financial.pricing", "decision": null, "note": null },
-    { "table": "PartyFeePricingAssignments", "schema": "financial", "dbSet": "PartyFeePricingAssignments", "entity": "PartyFeePricingAssignment", "owner": "financial", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "financial.pricing", "decision": null, "note": null },
-    { "table": "IncentiveSuspensions", "schema": "financial", "dbSet": "IncentiveSuspensions", "entity": "IncentiveSuspension", "owner": "financial", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "financial.pricing", "decision": null, "note": "Party fee incentive hold windows; written by IncentiveSuspensionService." },
-    { "table": "DiscountFlags", "schema": "financial", "dbSet": "DiscountFlags", "entity": "DiscountFlag", "owner": "financial", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "financial.pricing", "decision": null, "note": "Per-ledger discount markers; written by DiscountFlagService." },
-    { "table": "FinancialReportConfigs", "schema": "financial", "dbSet": "FinancialReportConfigs", "entity": "FinancialReportConfig", "owner": "financial", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "financial.reporting-config", "decision": null, "note": null },
-
-    { "table": "OutboxMessages", "schema": "messaging", "dbSet": "OutboxMessages", "entity": "OutboxMessage", "owner": "per-producer", "status": "approved", "ownershipModel": "per-producer", "contexts": ["ApplicationDbContext", "ValuationDbContext"], "transactionGroup": "messaging.outbox", "decision": "D5", "note": "Each producing context owns the rows it inserts (D5). Claimed and dispatched only by the Case Study dispatcher until the messaging slice." },
-    { "table": "ProcessedIntegrationEvents", "schema": "messaging", "dbSet": "ProcessedIntegrationEvents", "entity": "ProcessedIntegrationEvent", "owner": "per-consumer", "status": "approved", "ownershipModel": "per-consumer", "contexts": ["ApplicationDbContext"], "transactionGroup": "messaging.inbox", "decision": "D5", "note": "Deduplication keyed by (Consumer, EventId); each consumer owns the rows carrying its own Consumer value." },
-    { "table": "UserNotifications", "schema": "messaging", "dbSet": "UserNotifications", "entity": "UserNotification", "owner": "platform", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "notifications.inbox", "decision": "D3", "note": "Platform-owned (D3). Moves to a Platform-owned messaging context in extraction step 5; other services already request notifications through the outbox adapter instead of writing rows." },
-    { "table": "PushSubscriptions", "schema": "messaging", "dbSet": "PushSubscriptions", "entity": "PushSubscription", "owner": "platform", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "notifications.push", "decision": "D3", "note": "Web-push endpoints for the notification inbox; same owner as UserNotifications (D3)." },
-    { "table": "PushPreferences", "schema": "messaging", "dbSet": "PushPreferences", "entity": "PushPreference", "owner": "platform", "status": "approved", "ownershipModel": "single-owner", "contexts": ["ApplicationDbContext"], "transactionGroup": "notifications.push", "decision": "D3", "note": "Per-user opt-out consulted before a push is delivered." },
-
-    { "table": "AuditLogs", "schema": "audit", "dbSet": "AuditLogs", "entity": "AuditLog", "owner": "per-producer", "status": "approved", "ownershipModel": "per-producer", "contexts": ["ApplicationDbContext", "PlatformDbContext", "IdentityDbContext"], "transactionGroup": "audit.log", "decision": "D7", "note": "Append-only ledger. Each producer owns the rows it inserts and appends them in the same transaction as the change they describe (D7); a database trigger rejects UPDATE and DELETE. PlatformDbContext creates and shapes the table, every other context maps it excluded from migrations." }
+    {
+      "table": "Users",
+      "schema": "identity",
+      "dbSet": "Users",
+      "entity": "ApplicationUser",
+      "owner": "identity",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "IdentityDbContext"
+      ],
+      "transactionGroup": "identity.account",
+      "decision": null,
+      "note": "Inherited ASP.NET Identity store. Write path is IdentityDbContext; non-Identity APIs use JWT claims."
+    },
+    {
+      "table": "Roles",
+      "schema": "identity",
+      "dbSet": "Roles",
+      "entity": "IdentityRole",
+      "owner": "identity",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "IdentityDbContext"
+      ],
+      "transactionGroup": "identity.account",
+      "decision": null,
+      "note": "Inherited ASP.NET Identity store."
+    },
+    {
+      "table": "UserRoles",
+      "schema": "identity",
+      "dbSet": "UserRoles",
+      "entity": "IdentityUserRole<string>",
+      "owner": "identity",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "IdentityDbContext"
+      ],
+      "transactionGroup": "identity.account",
+      "decision": null,
+      "note": "Inherited ASP.NET Identity store."
+    },
+    {
+      "table": "UserClaims",
+      "schema": "identity",
+      "dbSet": "UserClaims",
+      "entity": "IdentityUserClaim<string>",
+      "owner": "identity",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "IdentityDbContext"
+      ],
+      "transactionGroup": "identity.account",
+      "decision": null,
+      "note": "Inherited ASP.NET Identity store."
+    },
+    {
+      "table": "RoleClaims",
+      "schema": "identity",
+      "dbSet": "RoleClaims",
+      "entity": "IdentityRoleClaim<string>",
+      "owner": "identity",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "IdentityDbContext"
+      ],
+      "transactionGroup": "identity.account",
+      "decision": null,
+      "note": "Inherited ASP.NET Identity store."
+    },
+    {
+      "table": "UserLogins",
+      "schema": "identity",
+      "dbSet": "UserLogins",
+      "entity": "IdentityUserLogin<string>",
+      "owner": "identity",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "IdentityDbContext"
+      ],
+      "transactionGroup": "identity.account",
+      "decision": null,
+      "note": "Inherited ASP.NET Identity store."
+    },
+    {
+      "table": "UserTokens",
+      "schema": "identity",
+      "dbSet": "UserTokens",
+      "entity": "IdentityUserToken<string>",
+      "owner": "identity",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "IdentityDbContext"
+      ],
+      "transactionGroup": "identity.account",
+      "decision": null,
+      "note": "Inherited ASP.NET Identity store."
+    },
+    {
+      "table": "UserProfiles",
+      "schema": "identity",
+      "dbSet": "UserProfiles",
+      "entity": "UserProfile",
+      "owner": "identity",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "IdentityDbContext"
+      ],
+      "transactionGroup": "identity.account",
+      "decision": null,
+      "note": "Write path is IdentityDbContext. Transitional reads remain on ApplicationDbContext until Phase 3."
+    },
+    {
+      "table": "RefreshTokens",
+      "schema": "identity",
+      "dbSet": "RefreshTokens",
+      "entity": "RefreshToken",
+      "owner": "identity",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "IdentityDbContext"
+      ],
+      "transactionGroup": "identity.session",
+      "decision": null,
+      "note": "Written by AuthSessionService on the Identity host only."
+    },
+    {
+      "table": "HrEmployeeProfiles",
+      "schema": "identity",
+      "dbSet": "HrEmployeeProfiles",
+      "entity": "HrEmployeeProfile",
+      "owner": "identity",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "IdentityDbContext"
+      ],
+      "transactionGroup": "identity.account",
+      "decision": null,
+      "note": "Written by registration and the demo seeder."
+    },
+    {
+      "table": "ProcServiceProviderProfiles",
+      "schema": "identity",
+      "dbSet": "ProcServiceProviderProfiles",
+      "entity": "ProcServiceProviderProfile",
+      "owner": "identity",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "IdentityDbContext"
+      ],
+      "transactionGroup": "identity.account",
+      "decision": null,
+      "note": "Written by registration and the demo seeder."
+    },
+    {
+      "table": "WorkOrders",
+      "schema": "case_study",
+      "dbSet": "WorkOrders",
+      "entity": "WorkOrder",
+      "owner": "case-study",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "CaseStudyDbContext"
+      ],
+      "transactionGroup": "case-study.work-order",
+      "decision": null,
+      "note": "Read by failures, financial reporting, and inspector-fee code. Write path CaseStudyDbContext (A4)."
+    },
+    {
+      "table": "WorkOrderProperties",
+      "schema": "case_study",
+      "dbSet": "WorkOrderProperties",
+      "entity": "WorkOrderProperty",
+      "owner": "case-study",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "CaseStudyDbContext"
+      ],
+      "transactionGroup": "case-study.work-order",
+      "decision": null,
+      "note": "Read by failures, operations key services, valuation dispatch, and billing. Write path CaseStudyDbContext (A4)."
+    },
+    {
+      "table": "PropertyContacts",
+      "schema": "case_study",
+      "dbSet": "PropertyContacts",
+      "entity": "PropertyContact",
+      "owner": "case-study",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "CaseStudyDbContext"
+      ],
+      "transactionGroup": "case-study.work-order",
+      "decision": null,
+      "note": "Write path CaseStudyDbContext (A4)."
+    },
+    {
+      "table": "PropertyTimelineEntries",
+      "schema": "case_study",
+      "dbSet": "PropertyTimelineEntries",
+      "entity": "PropertyTimelineEntry",
+      "owner": "case-study",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "CaseStudyDbContext"
+      ],
+      "transactionGroup": "case-study.work-order",
+      "decision": null,
+      "note": "PropertyTimelineService is registered by case-study and failures, so two processes write it today. Write path CaseStudyDbContext (A4)."
+    },
+    {
+      "table": "WorkflowTasks",
+      "schema": "case_study",
+      "dbSet": "WorkflowTasks",
+      "entity": "WorkflowTask",
+      "owner": "case-study",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "CaseStudyDbContext"
+      ],
+      "transactionGroup": "case-study.workflow",
+      "decision": null,
+      "note": "Highest-fan-in table: read or written by failures, operations, financial reporting, inspector fees, notifications, and the valuation event handler. Write path CaseStudyDbContext (A4)."
+    },
+    {
+      "table": "CaseStudyForms",
+      "schema": "case_study",
+      "dbSet": "CaseStudyForms",
+      "entity": "CaseStudyForm",
+      "owner": "case-study",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "CaseStudyDbContext"
+      ],
+      "transactionGroup": "case-study.workflow",
+      "decision": null,
+      "note": "Write path CaseStudyDbContext (A4)."
+    },
+    {
+      "table": "PartyTaskSubmissions",
+      "schema": "case_study",
+      "dbSet": "PartyTaskSubmissions",
+      "entity": "PartyTaskSubmission",
+      "owner": "case-study",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "CaseStudyDbContext"
+      ],
+      "transactionGroup": "case-study.workflow",
+      "decision": null,
+      "note": "Read by operations key gating and inspector fees. Write path CaseStudyDbContext (A4)."
+    },
+    {
+      "table": "FieldInspectionWorkspaces",
+      "schema": "case_study",
+      "dbSet": "FieldInspectionWorkspaces",
+      "entity": "FieldInspectionWorkspace",
+      "owner": "case-study",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "CaseStudyDbContext"
+      ],
+      "transactionGroup": "case-study.workflow",
+      "decision": null,
+      "note": "Write path CaseStudyDbContext (A4)."
+    },
+    {
+      "table": "InternalDelegationLetterSets",
+      "schema": "case_study",
+      "dbSet": "InternalDelegationLetterSets",
+      "entity": "InternalDelegationLetterSet",
+      "owner": "case-study",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "CaseStudyDbContext"
+      ],
+      "transactionGroup": "case-study.documents",
+      "decision": null,
+      "note": "Write path CaseStudyDbContext (A4)."
+    },
+    {
+      "table": "PoIntakeDrafts",
+      "schema": "case_study",
+      "dbSet": "PoIntakeDrafts",
+      "entity": "PoIntakeDraft",
+      "owner": "case-study",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "CaseStudyDbContext"
+      ],
+      "transactionGroup": "case-study.documents",
+      "decision": null,
+      "note": "Write path CaseStudyDbContext (A4)."
+    },
+    {
+      "table": "DocumentReferenceCounters",
+      "schema": "case_study",
+      "dbSet": "DocumentReferenceCounters",
+      "entity": "DocumentReferenceCounter",
+      "owner": "case-study",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "CaseStudyDbContext"
+      ],
+      "transactionGroup": "case-study.documents",
+      "decision": "D4",
+      "note": "Consumed by engineering billing document numbering in the financial schema; Financial calls a Case Study command for a number in Phase 3. Write path CaseStudyDbContext (A4)."
+    },
+    {
+      "table": "InspectorFeeLedgers",
+      "schema": "case_study",
+      "dbSet": "InspectorFeeLedgers",
+      "entity": "InspectorFeeLedger",
+      "owner": "financial",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "FinancialDbContext"
+      ],
+      "transactionGroup": "inspector-fees.ledger",
+      "decision": "D1",
+      "note": "Owned by financial, still physically in the case_study schema; relocation is Phase 4. Write path FinancialDbContext (A4)."
+    },
+    {
+      "table": "InspectorFeeTransitions",
+      "schema": "case_study",
+      "dbSet": "InspectorFeeTransitions",
+      "entity": "InspectorFeeTransition",
+      "owner": "financial",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "FinancialDbContext"
+      ],
+      "transactionGroup": "inspector-fees.ledger",
+      "decision": "D1",
+      "note": "Audit trail written in the same transaction as the ledger. Write path FinancialDbContext (A4)."
+    },
+    {
+      "table": "DisbursementBatches",
+      "schema": "case_study",
+      "dbSet": "DisbursementBatches",
+      "entity": "DisbursementBatch",
+      "owner": "financial",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "FinancialDbContext"
+      ],
+      "transactionGroup": "inspector-fees.disbursement",
+      "decision": "D1",
+      "note": "Write path FinancialDbContext (A4)."
+    },
+    {
+      "table": "OperationsTasks",
+      "schema": "case_study",
+      "dbSet": "OperationsTasks",
+      "entity": "OperationsTask",
+      "owner": "operations",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "OperationsDbContext"
+      ],
+      "transactionGroup": "operations.tasks",
+      "decision": "D2",
+      "note": "Owned by operations, still physically in case_study until Phase 4. Written via OperationsDbContext; financial CourtVisitFeeCharges still on ApplicationDbContext in the same business transaction."
+    },
+    {
+      "table": "OperationsTaskSequences",
+      "schema": "case_study",
+      "dbSet": "OperationsTaskSequences",
+      "entity": "OperationsTaskSequence",
+      "owner": "operations",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "OperationsDbContext"
+      ],
+      "transactionGroup": "operations.tasks",
+      "decision": "D2",
+      "note": "Reference-number sequence written in the task transaction."
+    },
+    {
+      "table": "CourtCatalogEntries",
+      "schema": "platform",
+      "dbSet": "CourtCatalogEntries",
+      "entity": "CourtCatalogEntry",
+      "owner": "platform",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "PlatformDbContext"
+      ],
+      "transactionGroup": "platform.courts",
+      "decision": null,
+      "note": "Legacy catalog rows read once by the Courts seeding path."
+    },
+    {
+      "table": "Courts",
+      "schema": "platform",
+      "dbSet": "Courts",
+      "entity": "Court",
+      "owner": "platform",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "PlatformDbContext"
+      ],
+      "transactionGroup": "platform.courts",
+      "decision": null,
+      "note": "Reference data; other contexts should consume a cacheable API or versioned snapshot."
+    },
+    {
+      "table": "CourtCircuits",
+      "schema": "platform",
+      "dbSet": "CourtCircuits",
+      "entity": "CourtCircuit",
+      "owner": "platform",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "PlatformDbContext"
+      ],
+      "transactionGroup": "platform.courts",
+      "decision": null,
+      "note": null
+    },
+    {
+      "table": "CourtAuditLogs",
+      "schema": "platform",
+      "dbSet": "CourtAuditLogs",
+      "entity": "CourtAuditLog",
+      "owner": "platform",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "PlatformDbContext"
+      ],
+      "transactionGroup": "platform.courts",
+      "decision": null,
+      "note": null
+    },
+    {
+      "table": "Regions",
+      "schema": "platform",
+      "dbSet": "Regions",
+      "entity": "Region",
+      "owner": "platform",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "PlatformDbContext"
+      ],
+      "transactionGroup": "platform.geo",
+      "decision": null,
+      "note": "Reference data."
+    },
+    {
+      "table": "Cities",
+      "schema": "platform",
+      "dbSet": "Cities",
+      "entity": "City",
+      "owner": "platform",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "PlatformDbContext"
+      ],
+      "transactionGroup": "platform.geo",
+      "decision": null,
+      "note": "Reference data."
+    },
+    {
+      "table": "Districts",
+      "schema": "platform",
+      "dbSet": "Districts",
+      "entity": "District",
+      "owner": "platform",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "PlatformDbContext"
+      ],
+      "transactionGroup": "platform.geo",
+      "decision": null,
+      "note": "Child of Cities; write path on PlatformDbContext. Legacy maps ExcludeFromMigrations for cross-boundary reads."
+    },
+    {
+      "table": "FieldDictionaryConfigs",
+      "schema": "platform",
+      "dbSet": "FieldDictionaryConfigs",
+      "entity": "FieldDictionaryConfig",
+      "owner": "platform",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "PlatformDbContext"
+      ],
+      "transactionGroup": "platform.config",
+      "decision": null,
+      "note": null
+    },
+    {
+      "table": "CaseStudyInfoRolesConfigs",
+      "schema": "platform",
+      "dbSet": "CaseStudyInfoRolesConfigs",
+      "entity": "CaseStudyInfoRolesConfig",
+      "owner": "platform",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "PlatformDbContext"
+      ],
+      "transactionGroup": "platform.config",
+      "decision": null,
+      "note": "Configuration consumed by case-study forms."
+    },
+    {
+      "table": "OrganizationSettings",
+      "schema": "platform",
+      "dbSet": "OrganizationSettings",
+      "entity": "OrganizationSettings",
+      "owner": "platform",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "PlatformDbContext"
+      ],
+      "transactionGroup": "platform.config",
+      "decision": null,
+      "note": "Singleton org settings written by OrganizationSettingsService on PlatformDbContext."
+    },
+    {
+      "table": "FieldSyncStatuses",
+      "schema": "platform",
+      "dbSet": "FieldSyncStatuses",
+      "entity": "FieldSyncStatus",
+      "owner": "platform",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "PlatformDbContext"
+      ],
+      "transactionGroup": "platform.field-sync",
+      "decision": null,
+      "note": "Field client sync watermarks; written by FieldSyncStatusService on PlatformDbContext."
+    },
+    {
+      "table": "PropertyFailures",
+      "schema": "failures",
+      "dbSet": "PropertyFailures",
+      "entity": "PropertyFailure",
+      "owner": "failures",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "FailuresDbContext"
+      ],
+      "transactionGroup": "failures.lifecycle",
+      "decision": null,
+      "note": "Write path on FailuresDbContext. FailureService is still registered by case-study and failures; Case Study/legacy reads use ApplicationDbContext until Phase 3."
+    },
+    {
+      "table": "FailureTypesCatalogConfigs",
+      "schema": "failures",
+      "dbSet": "FailureTypesCatalogConfigs",
+      "entity": "FailureTypesCatalogConfig",
+      "owner": "failures",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "FailuresDbContext"
+      ],
+      "transactionGroup": "failures.catalog",
+      "decision": null,
+      "note": null
+    },
+    {
+      "table": "SurveyOffices",
+      "schema": "operations",
+      "dbSet": "SurveyOffices",
+      "entity": "SurveyOffice",
+      "owner": "operations",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "OperationsDbContext"
+      ],
+      "transactionGroup": "operations.reference",
+      "decision": null,
+      "note": null
+    },
+    {
+      "table": "PropertyKeyRecords",
+      "schema": "operations",
+      "dbSet": "PropertyKeyRecords",
+      "entity": "PropertyKeyRecord",
+      "owner": "operations",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "OperationsDbContext"
+      ],
+      "transactionGroup": "operations.keys",
+      "decision": null,
+      "note": null
+    },
+    {
+      "table": "KeyEnvelopes",
+      "schema": "operations",
+      "dbSet": "KeyEnvelopes",
+      "entity": "KeyEnvelope",
+      "owner": "operations",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "OperationsDbContext"
+      ],
+      "transactionGroup": "operations.keys",
+      "decision": null,
+      "note": "KeyEnvelopesService is registered by case-study and operations; KeyReceiptFeeCharges stay financial on ApplicationDbContext."
+    },
+    {
+      "table": "KeyEnvelopeAssignments",
+      "schema": "operations",
+      "dbSet": "KeyEnvelopeAssignments",
+      "entity": "KeyEnvelopeAssignment",
+      "owner": "operations",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "OperationsDbContext"
+      ],
+      "transactionGroup": "operations.keys",
+      "decision": null,
+      "note": null
+    },
+    {
+      "table": "KeyEnvelopeHandoffs",
+      "schema": "operations",
+      "dbSet": "KeyEnvelopeHandoffs",
+      "entity": "KeyEnvelopeHandoff",
+      "owner": "operations",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "OperationsDbContext"
+      ],
+      "transactionGroup": "operations.keys",
+      "decision": null,
+      "note": null
+    },
+    {
+      "table": "KeyEnvelopeTimelineEntries",
+      "schema": "operations",
+      "dbSet": "KeyEnvelopeTimelineEntries",
+      "entity": "KeyEnvelopeTimelineEntry",
+      "owner": "operations",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "OperationsDbContext"
+      ],
+      "transactionGroup": "operations.keys",
+      "decision": null,
+      "note": null
+    },
+    {
+      "table": "PropertyCourtAccesses",
+      "schema": "operations",
+      "dbSet": "PropertyCourtAccesses",
+      "entity": "PropertyCourtAccess",
+      "owner": "operations",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "OperationsDbContext"
+      ],
+      "transactionGroup": "operations.keys",
+      "decision": null,
+      "note": "Read by case-study key gating via legacy mapping."
+    },
+    {
+      "table": "ValuationRequests",
+      "schema": "valuation",
+      "dbSet": "ValuationRequests",
+      "entity": "ValuationRequest",
+      "owner": "valuation",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "ValuationDbContext"
+      ],
+      "transactionGroup": "valuation.requests",
+      "decision": null,
+      "note": "Written only through ValuationRequestService on ValuationDbContext. Case Study still hosts that service for its dispatch adapter; process ownership is Phase 3."
+    },
+    {
+      "table": "EvaluatorRecallRecords",
+      "schema": "valuation",
+      "dbSet": "EvaluatorRecallRecords",
+      "entity": "EvaluatorRecallRecord",
+      "owner": "valuation",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "ValuationDbContext"
+      ],
+      "transactionGroup": "valuation.recalls",
+      "decision": null,
+      "note": null
+    },
+    {
+      "table": "FileAttachments",
+      "schema": "attachments",
+      "dbSet": "FileAttachments",
+      "entity": "FileAttachment",
+      "owner": "attachments",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "AttachmentsDbContext"
+      ],
+      "transactionGroup": "attachments.files",
+      "decision": null,
+      "note": "Existence checks are still performed directly by engineering billing, party submissions, key envelopes, and the field-inspection verifier through the legacy context's read-only mapping; plan Phase 3 replaces these with the Attachments API."
+    },
+    {
+      "table": "PhotoMetadata",
+      "schema": "attachments",
+      "dbSet": "PhotoMetadata",
+      "entity": "PhotoMetadata",
+      "owner": "attachments",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "AttachmentsDbContext"
+      ],
+      "transactionGroup": "attachments.files",
+      "decision": null,
+      "note": "Shaped by Attachments stream (AddPhotoMetadata). Legacy maps via AttachmentsModel for field-inspection reads until Phase 3 Attachments API."
+    },
+    {
+      "table": "PoEnfazInvoices",
+      "schema": "financial",
+      "dbSet": "PoEnfazInvoices",
+      "entity": "PoEnfazInvoice",
+      "owner": "financial",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "FinancialDbContext"
+      ],
+      "transactionGroup": "financial.enfaz-invoicing",
+      "decision": null,
+      "note": "Read by case-study work-order listing; written by PoEnfazBillingService, which case-study and failures register. Write path FinancialDbContext (A4)."
+    },
+    {
+      "table": "PoEnfazRevenueLines",
+      "schema": "financial",
+      "dbSet": "PoEnfazRevenueLines",
+      "entity": "PoEnfazRevenueLine",
+      "owner": "financial",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "FinancialDbContext"
+      ],
+      "transactionGroup": "financial.enfaz-invoicing",
+      "decision": null,
+      "note": "Write path FinancialDbContext (A4)."
+    },
+    {
+      "table": "PartyBillingStatements",
+      "schema": "financial",
+      "dbSet": "PartyBillingStatements",
+      "entity": "PartyBillingStatement",
+      "owner": "financial",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "FinancialDbContext"
+      ],
+      "transactionGroup": "financial.party-billing",
+      "decision": null,
+      "note": "Renamed from EngineeringBillingStatements. Written by PartyBillingStatementService, registered by case-study and failures; the same transaction still touches case_study and attachments. Write path FinancialDbContext (A4)."
+    },
+    {
+      "table": "PartyBillingStatementLines",
+      "schema": "financial",
+      "dbSet": "PartyBillingStatementLines",
+      "entity": "PartyBillingStatementLine",
+      "owner": "financial",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "FinancialDbContext"
+      ],
+      "transactionGroup": "financial.party-billing",
+      "decision": null,
+      "note": "Write path FinancialDbContext (A4)."
+    },
+    {
+      "table": "KeyReceiptFeeCharges",
+      "schema": "financial",
+      "dbSet": "KeyReceiptFeeCharges",
+      "entity": "KeyReceiptFeeCharge",
+      "owner": "financial",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "FinancialDbContext"
+      ],
+      "transactionGroup": "financial.charges",
+      "decision": null,
+      "note": "Created inside the operations key-envelope transaction today. Write path FinancialDbContext (A4)."
+    },
+    {
+      "table": "CourtVisitFeeCharges",
+      "schema": "financial",
+      "dbSet": "CourtVisitFeeCharges",
+      "entity": "CourtVisitFeeCharge",
+      "owner": "financial",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "FinancialDbContext"
+      ],
+      "transactionGroup": "financial.charges",
+      "decision": "D2",
+      "note": "Created inside the operations-task transaction today; plan Phase 3 moves creation behind Financial commands/events. Write path FinancialDbContext (A4)."
+    },
+    {
+      "table": "PartyFeePricingTables",
+      "schema": "financial",
+      "dbSet": "PartyFeePricingTables",
+      "entity": "PartyFeePricingTable",
+      "owner": "financial",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "FinancialDbContext"
+      ],
+      "transactionGroup": "financial.pricing",
+      "decision": null,
+      "note": "Pricing lookups are read by case-study, failures, and operations code. Write path FinancialDbContext (A4)."
+    },
+    {
+      "table": "PartyFeePricingTiers",
+      "schema": "financial",
+      "dbSet": "PartyFeePricingTiers",
+      "entity": "PartyFeePricingTier",
+      "owner": "financial",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "FinancialDbContext"
+      ],
+      "transactionGroup": "financial.pricing",
+      "decision": null,
+      "note": "Write path FinancialDbContext (A4)."
+    },
+    {
+      "table": "PartyFeePricingAssignments",
+      "schema": "financial",
+      "dbSet": "PartyFeePricingAssignments",
+      "entity": "PartyFeePricingAssignment",
+      "owner": "financial",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "FinancialDbContext"
+      ],
+      "transactionGroup": "financial.pricing",
+      "decision": null,
+      "note": "Write path FinancialDbContext (A4)."
+    },
+    {
+      "table": "IncentiveSuspensions",
+      "schema": "financial",
+      "dbSet": "IncentiveSuspensions",
+      "entity": "IncentiveSuspension",
+      "owner": "financial",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "FinancialDbContext"
+      ],
+      "transactionGroup": "financial.pricing",
+      "decision": null,
+      "note": "Party fee incentive hold windows; written by IncentiveSuspensionService. Write path FinancialDbContext (A4)."
+    },
+    {
+      "table": "DiscountFlags",
+      "schema": "financial",
+      "dbSet": "DiscountFlags",
+      "entity": "DiscountFlag",
+      "owner": "financial",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "FinancialDbContext"
+      ],
+      "transactionGroup": "financial.pricing",
+      "decision": null,
+      "note": "Per-ledger discount markers; written by DiscountFlagService. Write path FinancialDbContext (A4)."
+    },
+    {
+      "table": "FinancialReportConfigs",
+      "schema": "financial",
+      "dbSet": "FinancialReportConfigs",
+      "entity": "FinancialReportConfig",
+      "owner": "financial",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "FinancialDbContext"
+      ],
+      "transactionGroup": "financial.reporting-config",
+      "decision": null,
+      "note": "Write path FinancialDbContext (A4)."
+    },
+    {
+      "table": "OutboxMessages",
+      "schema": "messaging",
+      "dbSet": "OutboxMessages",
+      "entity": "OutboxMessage",
+      "owner": "per-producer",
+      "status": "approved",
+      "ownershipModel": "per-producer",
+      "contexts": [
+        "ApplicationDbContext",
+        "ValuationDbContext",
+        "MessagingDbContext"
+      ],
+      "transactionGroup": "messaging.outbox",
+      "decision": "D5",
+      "note": "Each producing context owns the rows it inserts (D5). Platform uses MessagingDbContext; Case Study residual uses ApplicationDbContext; Valuation uses ValuationDbContext. Dispatcher claims via ApplicationDbContext until a dedicated claim host."
+    },
+    {
+      "table": "ProcessedIntegrationEvents",
+      "schema": "messaging",
+      "dbSet": "ProcessedIntegrationEvents",
+      "entity": "ProcessedIntegrationEvent",
+      "owner": "per-consumer",
+      "status": "approved",
+      "ownershipModel": "per-consumer",
+      "contexts": [
+        "ApplicationDbContext",
+        "MessagingDbContext"
+      ],
+      "transactionGroup": "messaging.inbox",
+      "decision": "D5",
+      "note": "Per-consumer (D5). Platform prefers MessagingDbContext when registered; Case Study residual uses ApplicationDbContext."
+    },
+    {
+      "table": "UserNotifications",
+      "schema": "messaging",
+      "dbSet": "UserNotifications",
+      "entity": "UserNotification",
+      "owner": "platform",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "MessagingDbContext"
+      ],
+      "transactionGroup": "notifications.inbox",
+      "decision": "D3",
+      "note": "Platform-owned (D3). Moves to a Platform-owned messaging context in extraction step 5; other services already request notifications through the outbox adapter instead of writing rows. Write path MessagingDbContext (A5)."
+    },
+    {
+      "table": "PushSubscriptions",
+      "schema": "messaging",
+      "dbSet": "PushSubscriptions",
+      "entity": "PushSubscription",
+      "owner": "platform",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "MessagingDbContext"
+      ],
+      "transactionGroup": "notifications.push",
+      "decision": "D3",
+      "note": "Web-push endpoints for the notification inbox; same owner as UserNotifications (D3). Write path MessagingDbContext (A5)."
+    },
+    {
+      "table": "PushPreferences",
+      "schema": "messaging",
+      "dbSet": "PushPreferences",
+      "entity": "PushPreference",
+      "owner": "platform",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "MessagingDbContext"
+      ],
+      "transactionGroup": "notifications.push",
+      "decision": "D3",
+      "note": "Per-user opt-out consulted before a push is delivered. Write path MessagingDbContext (A5)."
+    },
+    {
+      "table": "AuditLogs",
+      "schema": "audit",
+      "dbSet": "AuditLogs",
+      "entity": "AuditLog",
+      "owner": "per-producer",
+      "status": "approved",
+      "ownershipModel": "per-producer",
+      "contexts": [
+        "ApplicationDbContext",
+        "PlatformDbContext",
+        "IdentityDbContext",
+        "FinancialDbContext"
+      ],
+      "transactionGroup": "audit.log",
+      "decision": "D7",
+      "note": "Append-only ledger. Each producer owns the rows it inserts and appends them in the same transaction as the change they describe (D7); a database trigger rejects UPDATE and DELETE. PlatformDbContext creates and shapes the table, every other context maps it excluded from migrations."
+    }
   ]
 }

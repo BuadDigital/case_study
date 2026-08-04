@@ -124,8 +124,7 @@ public class PartyTaskSubmissionAcceptTests
 
     private static PartyTaskSubmissionService CreateService(ApplicationDbContext db, FailuresDbContext failures, OperationsDbContext ops)
     {
-        var timeline = new PropertyTimelineService(db);
-        var holds = new PropertyAccessHoldService(db, failures);
+        var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db);
         var (notifications, recipients) = TestInspectorFeeServiceFactory.CreateNotificationDeps(db);
         return new(
             db,
@@ -134,8 +133,7 @@ public class PartyTaskSubmissionAcceptTests
             timeline,
             new NullHttpContextAccessor(),
             new NullPermissionService(),
-            new PropertyKeyGateResolver(ops, db),
-            new KeyEnvelopesService(ops, db, holds, new KeyEnvelopePeopleResolver(db)),
+            TestBoundedContexts.CreateKeyEnvelopesService(db, failures, ops),
             TestInspectorFeeServiceFactory.Create(db),
             notifications,
             recipients);

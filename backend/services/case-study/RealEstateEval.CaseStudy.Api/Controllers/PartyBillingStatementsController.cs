@@ -125,9 +125,11 @@ public class PartyBillingStatementsController : ControllerBase
         return Ok(await _statements.DeferLinesAsync(request, userId, ct));
     }
 
-    private string? CurrentUserId() =>
-        User.FindFirstValue(ClaimTypes.NameIdentifier)
-        ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+    private string? CurrentUserId()
+    {
+        var id = ActorClaims.Id(User);
+        return id is "unknown" or "" ? null : id;
+    }
 
     private async Task<ActorContext> BuildActorContextAsync(CancellationToken ct)
     {

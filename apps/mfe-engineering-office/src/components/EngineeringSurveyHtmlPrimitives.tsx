@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useRef, useState } from "react";
 import { StatusPill, type StatusPillStyle, cn } from "@platform/design-system";
 
 /** Case Study.html `ENG_BOX` */
@@ -167,27 +168,91 @@ export function EngUploadBox({
   onClear: () => void;
   error?: string;
 }) {
+  const [dragOver, setDragOver] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function isPdfFile(file: File): boolean {
+    const type = (file.type || "").toLowerCase();
+    if (type === "application/pdf") return true;
+    return file.name.toLowerCase().endsWith(".pdf");
+  }
+
+  function pickFromList(files: FileList | File[] | null | undefined) {
+    const file = files?.[0];
+    if (!file || !isPdfFile(file)) return;
+    onPick(file);
+  }
+
   return (
     <div>
       {!disabled ? (
-        <div className="rounded-[10px] border-2 border-dashed border-border-md bg-surface-2 p-[18px] text-center">
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label={`${title} — اختر ملفاً أو اسحبه هنا`}
+          className={cn(
+            "cursor-pointer rounded-[10px] border-2 border-dashed p-[18px] text-center transition-[border-color,background]",
+            dragOver
+              ? "border-gold-d bg-[color-mix(in_srgb,var(--gold)_12%,transparent)]"
+              : "border-border-md bg-surface-2",
+          )}
+          onClick={() => inputRef.current?.click()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              inputRef.current?.click();
+            }
+          }}
+          onDragEnter={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setDragOver(true);
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setDragOver(true);
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // Avoid flicker when leaving into a child element.
+            if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+            setDragOver(false);
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setDragOver(false);
+            pickFromList(e.dataTransfer.files);
+          }}
+        >
           <div className="mb-[3px] text-xs font-bold text-text-2">{title}</div>
-          <div className="mb-2.5 text-[11px] text-text-3">{hint}</div>
-          <label
+          <div className="mb-2.5 text-[11px] text-text-3">
+            {dragOver
+              ? "أفلِت ملف PDF هنا"
+              : `${hint} · أو اسحب الملف وأفلِته هنا`}
+          </div>
+          <span
             className={cn(
               engPrimaryBtnClassName,
-              "!px-4 !py-1.5 !text-[11.5px]",
+              "!pointer-events-none !px-4 !py-1.5 !text-[11.5px]",
             )}
           >
             اختيار ملف
-            <input
-              type="file"
-              accept=".pdf,application/pdf"
-              className="hidden"
-              disabled={disabled}
-              onChange={(e) => onPick(e.target.files?.[0] ?? null)}
-            />
-          </label>
+          </span>
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".pdf,application/pdf"
+            className="hidden"
+            disabled={disabled}
+            onChange={(e) => {
+              pickFromList(e.target.files);
+              e.target.value = "";
+            }}
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       ) : null}
       {fileName ? (

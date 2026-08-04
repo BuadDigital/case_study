@@ -59,15 +59,50 @@ public class WorkflowTaskReadAuthorizationTests
             PrototypeRole = "case-specialist",
         });
 
-        Assert.Equal(3, rows.Count);
+        Assert.Equal(4, rows.Count);
     }
 
     private static void Seed(ApplicationDbContext db)
     {
+        var parentId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        var propertyId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+        var now = DateTime.UtcNow;
+
         db.WorkflowTasks.AddRange(
-            Task("party-assignee", "field-inspector"),
-            Task("other-assignee", "field-inspector"),
-            Task("office-assignee", "engineering-office"));
+            WorkflowTask.Create(
+                WorkflowTaskKind.CaseStudyProperty,
+                "PO-parent",
+                now,
+                title: "parent",
+                phase: WorkflowTaskPhase.Done,
+                assigneeRole: "case-specialist",
+                assigneeName: "specialist",
+                assigneeId: "specialist-1",
+                id: parentId,
+                propertyId: propertyId),
+            WorkflowTask.Create(
+                WorkflowTaskKind.FieldInspection,
+                "PO-parent",
+                now,
+                title: "inspection",
+                phase: WorkflowTaskPhase.Done,
+                assigneeRole: "field-inspector",
+                assigneeName: "inspector",
+                assigneeId: "party-assignee",
+                parentTaskId: parentId,
+                propertyId: propertyId),
+            WorkflowTask.Create(
+                WorkflowTaskKind.EngineeringSurvey,
+                "PO-parent",
+                now,
+                title: "survey",
+                phase: WorkflowTaskPhase.Done,
+                assigneeRole: "engineering-office",
+                assigneeName: "office",
+                assigneeId: "office-assignee",
+                parentTaskId: parentId,
+                propertyId: propertyId),
+            Task("other-assignee", "field-inspector"));
         db.SaveChanges();
     }
 
@@ -83,6 +118,65 @@ public class WorkflowTaskReadAuthorizationTests
             assigneeRole: role,
             assigneeName: assigneeId,
             assigneeId: assigneeId);
+
+    [Fact]
+    public async Task List_marks_engineering_survey_when_sibling_inspection_completed()
+    {
+        await using var db = CreateDb();
+        var parentId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
+        var propertyId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
+        var now = DateTime.UtcNow;
+        var inspection = WorkflowTask.Create(
+            WorkflowTaskKind.FieldInspection,
+            "PO-done",
+            now,
+            title: "fi",
+            phase: WorkflowTaskPhase.Done,
+            assigneeRole: "field-inspector",
+            assigneeName: "fi",
+            assigneeId: "fi-1",
+            parentTaskId: parentId,
+            propertyId: propertyId);
+        inspection.Complete(now);
+        db.WorkflowTasks.AddRange(
+            WorkflowTask.Create(
+                WorkflowTaskKind.CaseStudyProperty,
+                "PO-done",
+                now,
+                title: "parent",
+                phase: WorkflowTaskPhase.Done,
+                assigneeRole: "case-specialist",
+                assigneeName: "cs",
+                assigneeId: "cs-1",
+                id: parentId,
+                propertyId: propertyId),
+            inspection,
+            WorkflowTask.Create(
+                WorkflowTaskKind.EngineeringSurvey,
+                "PO-done",
+                now,
+                title: "survey",
+                phase: WorkflowTaskPhase.Done,
+                assigneeRole: "engineering-office",
+                assigneeName: "office",
+                assigneeId: "office-1",
+                parentTaskId: parentId,
+                propertyId: propertyId));
+        await db.SaveChangesAsync();
+
+        var service = TestInspectorFeeServiceFactory.CreateWorkflow(db);
+        var rows = await service.ListAsync(new PermissionsDto
+        {
+            UserId = "office-user",
+            PrototypeRole = "engineering-office",
+            DistributionAssigneeId = "office-1",
+        });
+
+        Assert.Single(rows);
+        Assert.Equal("engineering-survey", rows[0].Kind);
+        Assert.True(rows[0].FieldInspectionCompleted);
+    }
+
 
     private static ApplicationDbContext CreateDb()
     {

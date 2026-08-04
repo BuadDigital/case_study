@@ -6,24 +6,11 @@ namespace RealEstateEval.Application.Rules;
 
 public static class FieldInspectionWorkspaceProjector
 {
-    private static readonly (string Id, bool Required, bool AnnexOnly)[] DefinedPhotoSlots =
-    [
-        ("front", true, false),
-        ("sides", true, false),
-        ("water", true, false),
-        ("elec", true, false),
-        ("inside", true, false),
-        ("floor", false, false),
-        ("annexup", true, true),
-        ("annexdn", true, true),
-    ];
-
     public static FieldInspectionWorkspace Project(
         PartyTaskSubmission submission,
         JsonElement root)
     {
-        var showAnnex = ReadString(root, "hasAnnex") == "نعم";
-        var (requiredTotal, requiredDone, pendingApproval) = ComputePhotoCoverage(root, showAnnex);
+        var (requiredTotal, requiredDone, pendingApproval) = ComputePhotoCoverage(root);
         var observationCount = CountObservations(root);
         var attachmentCount = FieldInspectionPayloadAttachments.Collect(root).Count;
 
@@ -58,9 +45,33 @@ public static class FieldInspectionWorkspaceProjector
         };
     }
 
+    private static List<string> ListServiceAmenitySlotIds(JsonElement root)
+    {
+        var slots = new List<string>();
+
+        void Append(string arrayName, string kind)
+        {
+            if (!root.TryGetProperty(arrayName, out var arr) || arr.ValueKind != JsonValueKind.Array)
+                return;
+
+            foreach (var item in arr.EnumerateArray())
+            {
+                var label = item.ValueKind == JsonValueKind.String
+                    ? item.GetString()?.Trim()
+                    : null;
+                if (string.IsNullOrWhiteSpace(label))
+                    continue;
+                slots.Add($"{kind}:{label}");
+            }
+        }
+
+        Append("services", "service");
+        Append("amenities", "amenity");
+        return slots;
+    }
+
     private static (int RequiredTotal, int RequiredDone, int PendingApproval) ComputePhotoCoverage(
-        JsonElement root,
-        bool showAnnex)
+        JsonElement root)
     {
         var requiredTotal = 0;
         var requiredDone = 0;
@@ -70,21 +81,25 @@ public static class FieldInspectionWorkspaceProjector
         if (definedPhotos.ValueKind != JsonValueKind.Object)
             definedPhotos = default;
 
-        foreach (var slot in DefinedPhotoSlots)
+        var slotIds = ListServiceAmenitySlotIds(root);
+        foreach (var slotId in slotIds)
         {
-            if (!slot.Required || (slot.AnnexOnly && !showAnnex))
-                continue;
-
             requiredTotal++;
-            if (IsDefinedSlotComplete(definedPhotos, slot.Id))
+            if (IsDefinedSlotComplete(definedPhotos, slotId))
                 requiredDone++;
         }
 
         if (definedPhotos.ValueKind == JsonValueKind.Object)
         {
-            foreach (var slotProp in definedPhotos.EnumerateObject())
+            foreach (var slotId in slotIds)
             {
-                if (!slotProp.Value.TryGetProperty("photos", out var photos) ||
+                if (!definedPhotos.TryGetProperty(slotId, out var slot) ||
+                    slot.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                if (!slot.TryGetProperty("photos", out var photos) ||
                     photos.ValueKind != JsonValueKind.Array)
                 {
                     continue;
@@ -95,16 +110,6 @@ public static class FieldInspectionWorkspaceProjector
                     if (!GetBool(photo, "approved"))
                         pendingApproval++;
                 }
-            }
-        }
-
-        if (root.TryGetProperty("freePhotos", out var freePhotos) &&
-            freePhotos.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var photo in freePhotos.EnumerateArray())
-            {
-                if (!string.IsNullOrWhiteSpace(ReadString(photo, "category")) && !GetBool(photo, "approved"))
-                    pendingApproval++;
             }
         }
 

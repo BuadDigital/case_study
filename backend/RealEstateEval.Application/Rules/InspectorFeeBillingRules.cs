@@ -222,8 +222,8 @@ public static class InspectorFeeBillingRules
 
     public static string WorkStatusLabel(string workStatus) => workStatus switch
     {
-        "done" => "مكتملة",
-        "cancelled" => "ملغاة",
+        InspectorFeeWorkStatuses.Done => "مكتملة",
+        InspectorFeeWorkStatuses.Cancelled => "ملغاة",
         _ => "قيد التنفيذ",
     };
 }

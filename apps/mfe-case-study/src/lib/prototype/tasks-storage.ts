@@ -155,6 +155,8 @@ export type WorkflowTask = {
   assignmentType?: PoIntakeRecord["assignmentType"];
   createdAt: string;
   updatedAt: string;
+  /** Server flag on engineering-survey: sibling field-inspection completed. */
+  fieldInspectionCompleted?: boolean;
 };
 
 export function notifyTasksChanged(): void {
@@ -186,6 +188,10 @@ function dtoToTask(dto: WorkflowTaskDto): WorkflowTask {
     assignmentType: dto.assignmentType as AssignmentType | undefined,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt,
+    fieldInspectionCompleted:
+      typeof dto.fieldInspectionCompleted === "boolean"
+        ? dto.fieldInspectionCompleted
+        : undefined,
   };
 }
 

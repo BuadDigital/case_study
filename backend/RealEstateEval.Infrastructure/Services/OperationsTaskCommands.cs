@@ -16,19 +16,22 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
     private readonly IOperationsTaskQuery _query;
     private readonly OperationsTaskNotifier _notifier;
     private readonly OperationsTaskVisitFeeHelper _visitFees;
+    private readonly TimeProvider _time;
 
     public OperationsTaskCommands(
         OperationsDbContext ops,
         ApplicationDbContext db,
         IOperationsTaskQuery query,
         OperationsTaskNotifier notifier,
-        OperationsTaskVisitFeeHelper visitFees)
+        OperationsTaskVisitFeeHelper visitFees,
+        TimeProvider? time = null)
     {
         _ops = ops;
         _db = db;
         _query = query;
         _notifier = notifier;
         _visitFees = visitFees;
+        _time = time ?? TimeProvider.System;
     }
 
     public async Task<(OperationsTaskDto? Result, string? Error)> CreateAsync(
@@ -69,7 +72,7 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
         if (validationError is not null)
             return (null, validationError);
 
-        var now = DateTime.UtcNow;
+        var now = _time.GetUtcNow().UtcDateTime;
         var dueAt = request.DueAtUtc ?? OperationsTaskLifecycleRules.DefaultDueAt(priority, now);
 
         var letterRows = request.LetterRows?.ToList() ?? [];
@@ -180,7 +183,7 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
             return (null, "تعديل تفاصيل المهمة للمشرف فقط");
         }
 
-        var now = DateTime.UtcNow;
+        var now = _time.GetUtcNow().UtcDateTime;
         var comments = OperationsTaskSerialization.DeserializeComments(entity.CommentsJson).ToList();
         var changed = false;
         var becameCompleted = false;
@@ -354,7 +357,7 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
         if (newAssigneeId.Length == 0)
             return (null, "المنفّذ مطلوب");
 
-        var now = DateTime.UtcNow;
+        var now = _time.GetUtcNow().UtcDateTime;
         var oldName = string.IsNullOrWhiteSpace(entity.AssigneeName) ? entity.AssigneeId : entity.AssigneeName.Trim();
         var newName = string.IsNullOrWhiteSpace(request.AssigneeName)
             ? newAssigneeId
@@ -411,7 +414,7 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
                 || t.Status == OperationsTaskStatus.InProgress)
             .ToListAsync(cancellationToken);
 
-        var now = DateTime.UtcNow;
+        var now = _time.GetUtcNow().UtcDateTime;
         var successes = 0;
 
         foreach (var entity in active)
@@ -434,7 +437,7 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
             .Where(t => t.Status == OperationsTaskStatus.Paused && t.PausedAtUtc != null)
             .ToListAsync(cancellationToken);
 
-        var now = DateTime.UtcNow;
+        var now = _time.GetUtcNow().UtcDateTime;
         var successes = 0;
 
         foreach (var entity in paused)
@@ -510,7 +513,7 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
         comments.Add(new OperationsTaskCommentDto
         {
             Who = who,
-            At = DateTime.UtcNow.ToString("O"),
+            At = _time.GetUtcNow().UtcDateTime.ToString("O"),
             Text = text.Length == 0
                 ? ""
                 : actorName is { Length: > 0 } ? $"{actorName}: {text}" : text,
@@ -520,7 +523,7 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
 
         entity.ReplaceComments(
             JsonSerializer.Serialize(comments, OperationsTaskSerialization.JsonOpts),
-            DateTime.UtcNow);
+            _time.GetUtcNow().UtcDateTime);
         await _ops.SaveChangesAsync(cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
         return (await _query.MapAsync(entity, cancellationToken), null);
@@ -534,7 +537,7 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
         if (!entity.Status.IsActive())
             return (null, "التذكير متاح للمهام المنشأة أو قيد التنفيذ فقط");
 
-        var now = DateTime.UtcNow;
+        var now = _time.GetUtcNow().UtcDateTime;
         var reminders = OperationsTaskSerialization.DeserializeReminders(entity.RemindersJson).ToList();
         reminders.Add(new OperationsTaskReminderDto
         {

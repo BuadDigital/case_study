@@ -526,7 +526,8 @@ Maintenance/reset `ExecuteDelete` operations deliberately bypass row-level concu
 
 ## Redis caching
 
-`docker compose … redis` (port `6379`). Registered via `AddRedisCaching` in `AddPersistence`.
+`docker compose … redis` (port `6379`). Registered via `AddRedisCaching` in
+`AddHostSharedInfrastructure` / residual `AddPersistence`.
 
 
 | Key                            | Endpoint                          | TTL                          |

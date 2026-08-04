@@ -25,6 +25,57 @@ export function isOfflineCapableRole(role: string | null | undefined): boolean {
   return role === "field-inspector" || role === "government-reviewer";
 }
 
+/**
+ * Only network / server outages should fall back to the outbox.
+ * Validation / auth / forbidden must surface to the user immediately.
+ * Outbox works on insecure LAN origins via plaintext storage fallback.
+ */
+function isTransientConnectivityFailure(err: unknown): boolean {
+  if (err instanceof TypeError) return true;
+  if (!(err instanceof Error)) return false;
+
+  if (
+    "errors" in err &&
+    (err as { errors?: unknown }).errors &&
+    typeof (err as { errors?: unknown }).errors === "object"
+  ) {
+    return false;
+  }
+
+  if (
+    "offlineQueueable" in err &&
+    (err as { offlineQueueable?: boolean }).offlineQueueable === false
+  ) {
+    return false;
+  }
+
+  const message = err.message.toLowerCase();
+  return (
+    message.includes("failed to fetch") ||
+    message.includes("networkerror") ||
+    message.includes("load failed") ||
+    message.includes("network request failed") ||
+    message.includes("تعذّر الاتصال بالخادم") ||
+    message.includes("حدث خطأ في الخادم")
+  );
+}
+
+async function queueDraftOrRethrow(
+  err: unknown,
+  queue: () => Promise<void>,
+): Promise<{ queued: true }> {
+  if (!isTransientConnectivityFailure(err)) {
+    throw err;
+  }
+  try {
+    await queue();
+    return { queued: true };
+  } catch {
+    // Prefer the original online failure (validation, server message, …).
+    throw err;
+  }
+}
+
 export async function saveDraftWithOfflineFallback(input: {
   taskId: string;
   kind: OfflineDraftRecord["kind"];
@@ -52,14 +103,15 @@ export async function saveDraftWithOfflineFallback(input: {
     await input.onlineSave();
     return { queued: false };
   } catch (err) {
-    await persistDraftLocally({
-      userId,
-      taskId: input.taskId,
-      kind: input.kind,
-      payload: input.payload,
+    return queueDraftOrRethrow(err, async () => {
+      await persistDraftLocally({
+        userId,
+        taskId: input.taskId,
+        kind: input.kind,
+        payload: input.payload,
+      });
+      await beginOfflineLease(userId);
     });
-    await beginOfflineLease(userId);
-    return { queued: true };
   }
 }
 
@@ -90,16 +142,17 @@ export async function submitWithOfflineFallback(input: {
   try {
     await input.onlineSubmit();
     return { queued: false };
-  } catch {
-    await persistDraftLocally({
-      userId,
-      taskId: input.taskId,
-      kind: input.kind,
-      payload: input.payload,
+  } catch (err) {
+    return queueDraftOrRethrow(err, async () => {
+      await persistDraftLocally({
+        userId,
+        taskId: input.taskId,
+        kind: input.kind,
+        payload: input.payload,
+      });
+      await enqueueSubmitLocally({ userId, taskId: input.taskId });
+      await beginOfflineLease(userId);
     });
-    await enqueueSubmitLocally({ userId, taskId: input.taskId });
-    await beginOfflineLease(userId);
-    return { queued: true };
   }
 }
 
@@ -133,17 +186,24 @@ export async function uploadAttachmentWithOfflineFallback(input: {
   try {
     const attachmentId = await input.onlineUpload();
     return { attachmentId, queued: false };
-  } catch {
-    const { localAttachmentId } = await persistAttachmentLocally({
-      userId,
-      scope: input.scope,
-      scopeKey: input.scopeKey,
-      fileName: input.fileName,
-      contentType: input.contentType,
-      bytes: input.bytes,
-    });
-    await beginOfflineLease(userId);
-    return { attachmentId: localAttachmentId, queued: true };
+  } catch (err) {
+    if (!isTransientConnectivityFailure(err)) {
+      throw err;
+    }
+    try {
+      const { localAttachmentId } = await persistAttachmentLocally({
+        userId,
+        scope: input.scope,
+        scopeKey: input.scopeKey,
+        fileName: input.fileName,
+        contentType: input.contentType,
+        bytes: input.bytes,
+      });
+      await beginOfflineLease(userId);
+      return { attachmentId: localAttachmentId, queued: true };
+    } catch {
+      throw err;
+    }
   }
 }
 

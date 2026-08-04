@@ -1,4 +1,5 @@
 using RealEstateEval.Infrastructure;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Web;
 using RealEstateEval.Shared.Web;
 
@@ -20,7 +21,7 @@ builder.Services.AddResponseCompression(options => options.EnableForHttps = true
 var connectionString = ServiceCollectionExtensions.RequireConnectionString(
     builder.Configuration,
     ServiceDatabaseNames.Attachments);
-builder.Services.AddPersistence(builder.Configuration, connectionString);
+builder.Services.AddHostSharedInfrastructure(builder.Configuration);
 builder.Services.AddClaimsPermissionService();
 builder.Services.AddBlobStorage(builder.Configuration);
 builder.Services.AddAttachmentsInfrastructure(builder.Configuration, connectionString);
@@ -34,7 +35,7 @@ var app = builder.Build();
 app.UseRealEstateEvalServicePipeline();
 app.UseRealEstateEvalOpenApi("Attachments API");
 app.MapServiceHealth("attachments");
-app.MapDatabaseReady("attachments");
+app.MapDatabaseReady<AttachmentsDbContext>("attachments");
 app.MapControllers();
 
 app.Run();

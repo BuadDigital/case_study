@@ -26,15 +26,18 @@ internal static class TestDatabases
             Attachments = Create<AttachmentsDbContext>(options => new AttachmentsDbContext(options));
             Platform = Create<PlatformDbContext>(options => new PlatformDbContext(options));
             Valuation = Create<ValuationDbContext>(options => new ValuationDbContext(options));
+            CaseStudy = Create<CaseStudyDbContext>(options => new CaseStudyDbContext(options));
         }
 
         public ApplicationDbContext Legacy { get; }
         public AttachmentsDbContext Attachments { get; }
         public PlatformDbContext Platform { get; }
         public ValuationDbContext Valuation { get; }
+        public CaseStudyDbContext CaseStudy { get; }
 
         public async ValueTask DisposeAsync()
         {
+            await CaseStudy.DisposeAsync();
             await Valuation.DisposeAsync();
             await Platform.DisposeAsync();
             await Attachments.DisposeAsync();
@@ -57,4 +60,6 @@ internal static class TestDatabases
     public static PlatformDbContext Platform(string prefix) => Create(prefix).Platform;
 
     public static ValuationDbContext Valuation(string prefix) => Create(prefix).Valuation;
+
+    public static CaseStudyDbContext CaseStudy(string prefix) => Create(prefix).CaseStudy;
 }

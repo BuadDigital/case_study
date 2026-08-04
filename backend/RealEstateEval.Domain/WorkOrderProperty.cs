@@ -66,7 +66,7 @@ public class WorkOrderProperty
     public string? PlanNumber { get; set; }
     /// <summary>رقم القطعة — بيانات أولية.</summary>
     public string? PlotNumber { get; set; }
-    /// <summary>رابط خريطة الموقع — مطلوب لفتح العشوائيات.</summary>
+    /// <summary>رابط خريطة الموقع — يُدخَل مع البيانات الأولية (عشوائي بدون مخطط/قطعة).</summary>
     public string? LocationMapUrl { get; set; }
 
     /// <summary>حذف ناعم من طوابير المعاملات — يبقى ظاهراً في قائمة عقارات أمر العمل.</summary>

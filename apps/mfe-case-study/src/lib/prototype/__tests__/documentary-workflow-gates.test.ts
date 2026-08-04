@@ -3,8 +3,6 @@ import type { RoleId } from "@platform/types";
 import {
   governmentReviewAssignmentBlockReason,
   governmentReviewSubmitFieldErrors,
-  informalAccessGate,
-  informalAccessUnlocked,
   inspectorKeySubmitGate,
   isInformalSettlement,
   roleBypassesDocumentaryGates,
@@ -41,13 +39,9 @@ const NON_BYPASS_PARTY: RoleId[] = [
 ];
 
 describe("documentary workflow gates — role matrix", () => {
-  it("treats missing plan+plot as informal", () => {
+  it("treats missing plan+plot as informal (classification only)", () => {
     expect(isInformalSettlement("", "")).toBe(true);
     expect(isInformalSettlement("1", "")).toBe(false);
-    expect(informalAccessUnlocked("", "", "https://maps.google.com/?q=1")).toBe(
-      true,
-    );
-    expect(informalAccessUnlocked("", "", "")).toBe(false);
   });
 
   it.each(BYPASS_ROLES)("%s bypasses documentary gates", (role) => {
@@ -80,8 +74,6 @@ describe("documentary workflow gates — role matrix", () => {
       surveyTask: survey,
       tasks: [survey, inspection],
       hasActiveFailure: false,
-      planNumber: "1",
-      plotNumber: "2",
     });
     expect(gate.ready).toBe(false);
   });
@@ -98,23 +90,72 @@ describe("documentary workflow gates — role matrix", () => {
       surveyTask: survey,
       tasks: [survey, inspection],
       hasActiveFailure: true,
-      planNumber: "1",
-      plotNumber: "2",
     });
     expect(gate.ready).toBe(true);
   });
 
-  it("GM does not bypass informal lock", () => {
-    const gate = informalAccessGate({
-      role: "general-manager",
-      planNumber: "",
-      plotNumber: "",
-      locationMapUrl: "",
+  it("survey work no longer gates on informal map URL", () => {
+    const survey = baseTask({});
+    const inspection = baseTask({
+      id: "i1",
+      kind: "field-inspection",
+      status: "completed",
+    });
+    const gate = surveyWorkGate({
+      role: "engineering-office",
+      surveyTask: survey,
+      tasks: [survey, inspection],
+      hasActiveFailure: false,
+    });
+    expect(gate.ready).toBe(true);
+  });
+
+  it("uses server fieldInspectionCompleted when EO cannot see sibling task", () => {
+    const survey = baseTask({});
+    const unlocked = surveyWorkGate({
+      role: "engineering-office",
+      surveyTask: survey,
+      tasks: [survey],
+      hasActiveFailure: false,
+      fieldInspectionCompleted: true,
+    });
+    expect(unlocked.ready).toBe(true);
+
+    const locked = surveyWorkGate({
+      role: "engineering-office",
+      surveyTask: survey,
+      tasks: [survey],
+      hasActiveFailure: false,
+      fieldInspectionCompleted: false,
+    });
+    expect(locked.ready).toBe(false);
+  });
+
+  it("server flag overrides stale sibling list", () => {
+    const survey = baseTask({});
+    const inspection = baseTask({
+      id: "i1",
+      kind: "field-inspection",
+      status: "completed",
+    });
+    const gate = surveyWorkGate({
+      role: "engineering-office",
+      surveyTask: survey,
+      tasks: [survey, inspection],
+      hasActiveFailure: false,
+      fieldInspectionCompleted: false,
     });
     expect(gate.ready).toBe(false);
   });
 
-  it("inspector key gate allows vacant land and not_required path via keyAvailable", () => {
+  it("inspector key gate no longer blocks field-inspection submit", () => {
+    expect(
+      inspectorKeySubmitGate({
+        role: "field-inspector",
+        vacantLand: false,
+        keyAvailable: false,
+      }).ready,
+    ).toBe(true);
     expect(
       inspectorKeySubmitGate({
         role: "field-inspector",
@@ -122,20 +163,6 @@ describe("documentary workflow gates — role matrix", () => {
         keyAvailable: false,
       }).ready,
     ).toBe(true);
-    expect(
-      inspectorKeySubmitGate({
-        role: "field-inspector",
-        vacantLand: false,
-        keyAvailable: true,
-      }).ready,
-    ).toBe(true);
-    expect(
-      inspectorKeySubmitGate({
-        role: "field-inspector",
-        vacantLand: false,
-        keyAvailable: false,
-      }).ready,
-    ).toBe(false);
   });
 
   it("gov reviewer submit requires documentary fields; supervisor skips", () => {

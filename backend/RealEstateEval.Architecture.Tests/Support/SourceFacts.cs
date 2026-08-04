@@ -11,8 +11,11 @@ namespace RealEstateEval.Architecture.Tests.Support;
 /// </summary>
 internal static class SourceFacts
 {
+    // Field aliases for ApplicationDbContext and extracted bounded-context fields after A6
+    // cutovers (`_ops`, `_caseStudy`, `_financial`, …). Extending here keeps schema fan-out
+    // detection accurate without forcing every service back onto `_db`.
     private static readonly Regex ContextMemberAccess = new(
-        @"\b(?:_db|db|_context|context|dbContext|_dbContext)\.(\w+)\b",
+        @"\b(?:_db|db|_context|context|dbContext|_dbContext|_ops|_cs|_fin|_caseStudy|_financial|_identity|_attachments|_failures|_platform|_valuation|_messaging)\.(\w+)\b",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex GenericSetAccess = new(

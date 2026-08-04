@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Button,
   InlineLoadingSkeleton,
@@ -29,14 +29,27 @@ import {
   INSPECTOR_FEATURE_FIELDS,
   INSPECTOR_SERVICE_OPTIONS,
   INSPECTOR_AMENITY_OPTIONS,
-  INSPECTOR_DEFINED_PHOTOS,
   INSPECTOR_OBSERVATION_CATEGORIES,
+  inspectorFeatureRequiresPhoto,
   inspectorPhotoCoverageLabel,
+  inspectorPhotoStampText,
   isInspectorWorkspaceLocked,
+  isServiceAmenityPhotoSlotComplete,
+  listServiceAmenityPhotoSlots,
   newObservationId,
+  parseInspectorCount,
   type InspectorBoundaryKey,
+  type InspectorComponentPhotoKey,
+  type InspectorPhotoAttachment,
   type InspectorWorkspaceDraft,
 } from "../../lib/prototype/inspector-workspace-data";
+import {
+  clearInspectorPhotoDataUrl,
+  uploadInspectorPhotoFromFile,
+} from "../../lib/prototype/inspector-photo-upload";
+import { InspectorDefinedPhotosSection } from "../field-inspection/InspectorDefinedPhotosSection";
+import { InspectorPhotoFilePicker } from "../field-inspection/InspectorPhotoFilePicker";
+import { InspectorStampedPhotoThumb } from "../field-inspection/InspectorStampedPhotoThumb";
 import { photoLocationFlagLabel } from "@platform/app-shared/media/photo-location";
 import {
   firstInspectorWorkspaceError,
@@ -363,6 +376,206 @@ function PhotoTile({
   );
 }
 
+/** Desktop file-picker cell for feature-table «صورة» (PC friendly). */
+function EditableFeaturePhotoCell({
+  needsPhoto,
+  hasPhoto,
+  disabled,
+  onUpload,
+}: {
+  needsPhoto: boolean;
+  hasPhoto: boolean;
+  disabled?: boolean;
+  onUpload: (file: File) => boolean | void | Promise<boolean | void>;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { runWithUploadToast } = useToast();
+
+  if (!needsPhoto) {
+    return <span className="text-text-3">—</span>;
+  }
+
+  return (
+    <span className="inline-flex flex-col items-center gap-1">
+      {hasPhoto ? (
+        <button
+          type="button"
+          disabled={disabled}
+          title="استبدال من الجهاز"
+          className="inline-flex items-center gap-1 border-0 bg-transparent p-0 font-inherit text-[10.5px] text-[#1f6f6f] hover:underline disabled:cursor-default"
+          onClick={() => inputRef.current?.click()}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+          مرفقة
+        </button>
+      ) : (
+        <button
+          type="button"
+          disabled={disabled}
+          className={cn(
+            "inline-flex items-center gap-1 rounded-md border border-dashed border-border-md bg-surface px-2.5 py-1.5",
+            "font-inherit text-[10.5px] font-semibold text-text-2 hover:border-primary hover:text-primary",
+            "disabled:cursor-not-allowed disabled:opacity-60",
+          )}
+          onClick={() => inputRef.current?.click()}
+        >
+          <i className="ti ti-upload text-[13px]" aria-hidden />
+          إرفاق صورة
+        </button>
+      )}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*,.heic,.heif,image/jpeg,image/png,image/webp"
+        disabled={disabled}
+        className="sr-only"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (file) void runWithUploadToast(() => onUpload(file));
+        }}
+      />
+    </span>
+  );
+}
+
+/** Count field that requires a documentary photo when count > 0 (showroom / well). */
+function ComponentCountWithPhotoField({
+  label,
+  countValue,
+  photoKey,
+  photoLabel,
+  attachment,
+  taskId,
+  stamp,
+  deedNumber,
+  draft,
+  editMode,
+  disabled,
+  onPatch,
+}: {
+  label: string;
+  countValue: string;
+  photoKey: InspectorComponentPhotoKey;
+  photoLabel: string;
+  attachment: InspectorPhotoAttachment | null | undefined;
+  taskId: string;
+  stamp: string;
+  deedNumber?: string | null;
+  draft: InspectorWorkspaceDraft;
+  editMode: boolean;
+  disabled?: boolean;
+  onPatch: (patch: Parameters<typeof updateInspectorWorkspace>[1]) => void;
+}) {
+  const { showToast } = useToast();
+  const count = parseInspectorCount(countValue);
+  const photoRef = `component:${photoKey}`;
+  const needsPhoto = count > 0;
+
+  if (!editMode) {
+    return (
+      <div className="min-w-0">
+        <InsField label={label} value={countValue} ltr />
+        {needsPhoto ? (
+          <div className="mt-1.5 text-[11px] text-text-2">
+            {attachment?.fileName ? (
+              <span className="inline-flex items-center gap-1 text-[#1f6f6f]">
+                <i className="ti ti-circle-check" aria-hidden />
+                صورة {photoKey === "showroom" ? "المعرض" : "البئر"} مرفقة
+              </span>
+            ) : (
+              <span className="text-danger-text">صورة مطلوبة وغير مرفقة</span>
+            )}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-w-0">
+      <InsEditField
+        label={label}
+        value={countValue}
+        ltr
+        type="number"
+        onChange={(v) => {
+          const nextCount = parseInspectorCount(v);
+          const countKey =
+            photoKey === "showroom" ? "showroomCount" : "wellCount";
+          if (nextCount === 0) {
+            clearInspectorPhotoDataUrl(taskId, photoRef);
+            onPatch({
+              [countKey]: v,
+              componentPhotoAttachments: {
+                ...draft.componentPhotoAttachments,
+                [photoKey]: null,
+              },
+            });
+            return;
+          }
+          onPatch({ [countKey]: v });
+        }}
+      />
+      {needsPhoto ? (
+        <div className="mt-1.5">
+          {attachment?.fileName ? (
+            <InspectorStampedPhotoThumb
+              compact
+              stamp={stamp}
+              taskId={taskId}
+              photoRef={photoRef}
+              attachment={attachment}
+              onClear={
+                disabled
+                  ? undefined
+                  : () => {
+                      clearInspectorPhotoDataUrl(taskId, photoRef);
+                      onPatch({
+                        componentPhotoAttachments: {
+                          ...draft.componentPhotoAttachments,
+                          [photoKey]: null,
+                        },
+                      });
+                    }
+              }
+            />
+          ) : (
+            <InspectorPhotoFilePicker
+              label={photoLabel}
+              disabled={disabled}
+              className="w-auto"
+              onFilesSelected={async (files) => {
+                const file = files[0];
+                if (!file) return false;
+                const result = await uploadInspectorPhotoFromFile(
+                  taskId,
+                  photoRef,
+                  file,
+                  { draft, deedNumber },
+                );
+                if (!result.ok) {
+                  showToast(result.error, "error");
+                  return false;
+                }
+                onPatch({
+                  componentPhotoAttachments: {
+                    ...draft.componentPhotoAttachments,
+                    [photoKey]: result.attachment,
+                  },
+                });
+                return true;
+              }}
+            />
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /**
  * Case Study.html `pdInspectionHtml` — inspector report with view + in-tab
  * edit (`ed`) modes. View mode is the read-only 10-card summary; edit mode
@@ -580,10 +793,7 @@ export function PropertyDetailInspectionTab({
 
   if (loading) return <InlineLoadingSkeleton />;
 
-  const showAnnexPhotos = draft?.hasAnnex === "نعم";
-  const photoDefs = INSPECTOR_DEFINED_PHOTOS.filter(
-    (def) => !def.annexOnly || showAnnexPhotos,
-  );
+  const photoSlots = draft ? listServiceAmenityPhotoSlots(draft) : [];
   const canReturn =
     !editMode && Boolean(inspectionTask) && draft?.status === "submitted";
 
@@ -792,6 +1002,9 @@ export function PropertyDetailInspectionTab({
           </InsCard>
 
           <InsCard title="نموذج التحقق الميداني — خصائص العقار">
+            <p className="mb-2 text-[11px] leading-relaxed text-text-3">
+              عمود «صورة» لإثبات قيمة الحقل عند الحاجة. صور الخدمات/المرافق تُرفع من قسم «توثيق الخدمات والمرافق» أدناه.
+            </p>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[520px] border-collapse text-[12px]">
                 <thead>
@@ -812,8 +1025,12 @@ export function PropertyDetailInspectionTab({
                 <tbody>
                   {INSPECTOR_FEATURE_FIELDS.map((field, index) => {
                     const rawVal = draft.featureValues[field.key]?.trim() ?? "";
-                    const hasPhoto = Boolean(
-                      draft.featurePhotoAttachments[field.key]?.fileName,
+                    const attachment = draft.featurePhotoAttachments[field.key];
+                    const hasPhoto = Boolean(attachment?.fileName);
+                    const photoRef = `feature:${field.key}`;
+                    const needsPhoto = inspectorFeatureRequiresPhoto(
+                      field,
+                      rawVal,
                     );
                     return (
                       <tr key={field.key}>
@@ -833,14 +1050,32 @@ export function PropertyDetailInspectionTab({
                             <select
                               className={cn(EDIT_CONTROL_CLASS, "text-center")}
                               value={rawVal}
-                              onChange={(e) =>
+                              onChange={(e) => {
+                                const next = e.target.value;
                                 patchDraft({
                                   featureValues: {
                                     ...draft.featureValues,
-                                    [field.key]: e.target.value,
+                                    [field.key]: next,
                                   },
-                                })
-                              }
+                                  featurePhotoAttachments: {
+                                    ...draft.featurePhotoAttachments,
+                                    [field.key]: inspectorFeatureRequiresPhoto(
+                                      field,
+                                      next,
+                                    )
+                                      ? draft.featurePhotoAttachments[field.key]
+                                      : null,
+                                  },
+                                });
+                                if (
+                                  !inspectorFeatureRequiresPhoto(field, next)
+                                ) {
+                                  clearInspectorPhotoDataUrl(
+                                    draft.taskId,
+                                    photoRef,
+                                  );
+                                }
+                              }}
                             >
                               <option value="">— اختر —</option>
                               {field.options.map((opt) => (
@@ -854,7 +1089,35 @@ export function PropertyDetailInspectionTab({
                           )}
                         </td>
                         <td className="border border-border px-2 py-1.5 text-center text-text-3">
-                          {hasPhoto ? (
+                          {showEditFields ? (
+                            <EditableFeaturePhotoCell
+                              needsPhoto={needsPhoto}
+                              hasPhoto={hasPhoto}
+                              onUpload={async (file) => {
+                                const result =
+                                  await uploadInspectorPhotoFromFile(
+                                    draft.taskId,
+                                    photoRef,
+                                    file,
+                                    {
+                                      draft,
+                                      deedNumber: property.deedNumber,
+                                    },
+                                  );
+                                if (!result.ok) {
+                                  showToast(result.error, "error");
+                                  return false;
+                                }
+                                patchDraft({
+                                  featurePhotoAttachments: {
+                                    ...draft.featurePhotoAttachments,
+                                    [field.key]: result.attachment,
+                                  },
+                                });
+                                return true;
+                              }}
+                            />
+                          ) : hasPhoto ? (
                             <span className="inline-flex items-center gap-1 text-[10.5px] text-[#1f6f6f]">
                               <svg
                                 width="12"
@@ -990,17 +1253,33 @@ export function PropertyDetailInspectionTab({
                     ltr
                     onChange={(v) => patchDraft({ bathroomCount: v })}
                   />
-                  <InsEditField
+                  <ComponentCountWithPhotoField
                     label="المعارض"
-                    value={draft.showroomCount}
-                    ltr
-                    onChange={(v) => patchDraft({ showroomCount: v })}
+                    countValue={draft.showroomCount}
+                    photoKey="showroom"
+                    photoLabel="إرفاق صورة للمعرض التجاري"
+                    attachment={draft.componentPhotoAttachments.showroom}
+                    taskId={draft.taskId}
+                    stamp={inspectorPhotoStampText(draft, property.deedNumber)}
+                    deedNumber={property.deedNumber}
+                    draft={draft}
+                    editMode
+                    disabled={locked}
+                    onPatch={patchDraft}
                   />
-                  <InsEditField
+                  <ComponentCountWithPhotoField
                     label="الآبار"
-                    value={draft.wellCount}
-                    ltr
-                    onChange={(v) => patchDraft({ wellCount: v })}
+                    countValue={draft.wellCount}
+                    photoKey="well"
+                    photoLabel="إرفاق صورة البئر"
+                    attachment={draft.componentPhotoAttachments.well}
+                    taskId={draft.taskId}
+                    stamp={inspectorPhotoStampText(draft, property.deedNumber)}
+                    deedNumber={property.deedNumber}
+                    draft={draft}
+                    editMode
+                    disabled={locked}
+                    onPatch={patchDraft}
                   />
                   <InsEditField
                     label="الأبراج"
@@ -1029,8 +1308,32 @@ export function PropertyDetailInspectionTab({
                     value={draft.bathroomCount}
                     ltr
                   />
-                  <InsField label="المعارض" value={draft.showroomCount} ltr />
-                  <InsField label="الآبار" value={draft.wellCount} ltr />
+                  <ComponentCountWithPhotoField
+                    label="المعارض"
+                    countValue={draft.showroomCount}
+                    photoKey="showroom"
+                    photoLabel="إرفاق صورة للمعرض التجاري"
+                    attachment={draft.componentPhotoAttachments.showroom}
+                    taskId={draft.taskId}
+                    stamp={inspectorPhotoStampText(draft, property.deedNumber)}
+                    deedNumber={property.deedNumber}
+                    draft={draft}
+                    editMode={false}
+                    onPatch={patchDraft}
+                  />
+                  <ComponentCountWithPhotoField
+                    label="الآبار"
+                    countValue={draft.wellCount}
+                    photoKey="well"
+                    photoLabel="إرفاق صورة البئر"
+                    attachment={draft.componentPhotoAttachments.well}
+                    taskId={draft.taskId}
+                    stamp={inspectorPhotoStampText(draft, property.deedNumber)}
+                    deedNumber={property.deedNumber}
+                    draft={draft}
+                    editMode={false}
+                    onPatch={patchDraft}
+                  />
                   <InsField label="الأبراج" value={draft.towerCount} ltr />
                   <InsField label="هل يوجد ملحق؟" value={draft.hasAnnex} />
                 </>
@@ -1038,8 +1341,8 @@ export function PropertyDetailInspectionTab({
               <InsField
                 label="ملحق علوي (عدد)"
                 value={
-                  draft.definedPhotos.annexup?.photos.length
-                    ? String(draft.definedPhotos.annexup.photos.length)
+                  draft.annexTotal.trim()
+                    ? draft.annexTotal
                     : draft.hasAnnex === "نعم"
                       ? "—"
                       : ""
@@ -1049,11 +1352,7 @@ export function PropertyDetailInspectionTab({
               <InsField
                 label="ملحق أرضي (عدد)"
                 value={
-                  draft.definedPhotos.annexdn?.photos.length
-                    ? String(draft.definedPhotos.annexdn.photos.length)
-                    : draft.hasAnnex === "نعم"
-                      ? "—"
-                      : ""
+                  draft.hasAnnex === "نعم" ? "—" : ""
                 }
                 ltr
               />
@@ -1342,35 +1641,47 @@ export function PropertyDetailInspectionTab({
           </InsCard>
 
           <InsCard
-            title="صور العقار الموثّقة"
+            title="توثيق الخدمات والمرافق"
             badge={
               <DetailBadge tone="teal">
                 {inspectorPhotoCoverageLabel(draft)}
               </DetailBadge>
             }
           >
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2">
-              {photoDefs.map((def) => {
-                const slot = draft.definedPhotos[def.id];
-                const filled = Boolean(
-                  slot && !slot.none && slot.photos.length > 0,
-                );
-                const worst = slot?.photos?.find(
-                  (p) =>
-                    p.locationFlag === "outside_property" ||
-                    p.locationFlag === "location_unavailable",
-                ) ?? slot?.photos?.[0];
-                return (
-                  <PhotoTile
-                    key={def.id}
-                    label={def.name}
-                    filled={filled}
-                    locationFlag={worst?.locationFlag}
-                    distanceM={worst?.distanceM}
-                  />
-                );
-              })}
-            </div>
+            {showEditFields ? (
+              <InspectorDefinedPhotosSection
+                draft={draft}
+                bare
+                layout="desktop"
+                onPatch={(patch) => patchDraft(patch)}
+              />
+            ) : photoSlots.length === 0 ? (
+              <p className="m-0 text-[12px] text-text-3">
+                لم تُختر خدمات أو مرافق للتوثيق.
+              </p>
+            ) : (
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2">
+                {photoSlots.map((def) => {
+                  const slot = draft.definedPhotos[def.id];
+                  const filled = isServiceAmenityPhotoSlotComplete(slot);
+                  const worst =
+                    slot?.photos?.find(
+                      (p) =>
+                        p.locationFlag === "outside_property" ||
+                        p.locationFlag === "location_unavailable",
+                    ) ?? slot?.photos?.[0];
+                  return (
+                    <PhotoTile
+                      key={def.id}
+                      label={def.label}
+                      filled={filled && !slot?.none}
+                      locationFlag={worst?.locationFlag}
+                      distanceM={worst?.distanceM}
+                    />
+                  );
+                })}
+              </div>
+            )}
           </InsCard>
 
           <InsCard
@@ -1390,20 +1701,53 @@ export function PropertyDetailInspectionTab({
                     key={obs.id}
                     className="flex items-stretch gap-2.5 rounded-lg border border-border bg-surface-2 p-[9px]"
                   >
-                    <div className="grid w-[74px] shrink-0 place-items-center rounded-md border border-border bg-surface">
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="var(--text-3, #8a8d96)"
-                        strokeWidth="1.5"
-                        aria-hidden
-                      >
-                        <rect x="3" y="4" width="18" height="16" rx="2" />
-                        <circle cx="8.5" cy="9.5" r="1.5" />
-                        <path d="m4 17 5-5 4 4 3-2 4 4" />
-                      </svg>
+                    <div className="grid w-[74px] shrink-0 place-items-center overflow-hidden rounded-md border border-border bg-surface">
+                      {showEditFields ? (
+                        <InspectorPhotoFilePicker
+                          label={obs.photo?.fileName ? "استبدال" : "صورة"}
+                          className="h-full min-h-[74px] w-full [&_button]:h-full [&_button]:min-h-[74px] [&_button]:border-0 [&_button]:bg-transparent [&_button]:px-1 [&_button]:py-1 [&_button]:text-[10px]"
+                          onFilesSelected={async (files) => {
+                            const file = files[0];
+                            if (!file) return false;
+                            const obsPhotoRef = `observation:${obs.id}`;
+                            const result = await uploadInspectorPhotoFromFile(
+                              draft.taskId,
+                              obsPhotoRef,
+                              file,
+                              {
+                                draft,
+                                deedNumber: property.deedNumber,
+                              },
+                            );
+                            if (!result.ok) {
+                              showToast(result.error, "error");
+                              return false;
+                            }
+                            patchDraft({
+                              observations: draft.observations.map((o) =>
+                                o.id === obs.id
+                                  ? { ...o, photo: result.attachment }
+                                  : o,
+                              ),
+                            });
+                            return true;
+                          }}
+                        />
+                      ) : (
+                        <svg
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="var(--text-3, #8a8d96)"
+                          strokeWidth="1.5"
+                          aria-hidden
+                        >
+                          <rect x="3" y="4" width="18" height="16" rx="2" />
+                          <circle cx="8.5" cy="9.5" r="1.5" />
+                          <path d="m4 17 5-5 4 4 3-2 4 4" />
+                        </svg>
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
                       {showEditFields ? (

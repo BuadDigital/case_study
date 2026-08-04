@@ -6,7 +6,7 @@ using Lib.Net.Http.WebPush.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Shared.Contracts;
 using PushSub = RealEstateEval.Domain.PushSubscription;
@@ -21,13 +21,13 @@ public sealed class WebPushDeliveryHandler
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
-    private readonly ApplicationDbContext _db;
+    private readonly MessagingDbContext _db;
     private readonly WebPushOptions _options;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<WebPushDeliveryHandler> _logger;
 
     public WebPushDeliveryHandler(
-        ApplicationDbContext db,
+        MessagingDbContext db,
         IOptions<WebPushOptions> options,
         IHttpClientFactory httpClientFactory,
         ILogger<WebPushDeliveryHandler> logger)

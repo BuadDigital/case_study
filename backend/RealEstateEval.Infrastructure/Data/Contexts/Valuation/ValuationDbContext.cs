@@ -22,5 +22,5 @@ public sealed class ValuationDbContext(DbContextOptions<ValuationDbContext> opti
     protected override void OnModelCreating(ModelBuilder builder) =>
         builder
             .ApplyValuationModel()
-            .ApplyOutboxModel();
+            .ApplyOutboxModel(ownsMigrations: false);
 }

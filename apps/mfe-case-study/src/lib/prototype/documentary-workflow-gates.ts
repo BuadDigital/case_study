@@ -8,7 +8,7 @@ export function roleBypassesDocumentaryGates(role: RoleId): boolean {
   return isSuperAdmin(role) || role === "section-supervisor";
 }
 
-/** Unlock informal via map URL — specialist or inspector (+ supervisor/CDO). EO waits. */
+/** Roles allowed to set location map URL (specialist / inspector / bypass). */
 export function roleCanSetLocationMapUrl(role: RoleId): boolean {
   return (
     isSuperAdmin(role) ||
@@ -35,15 +35,6 @@ export function hasLocationMapUrl(url: string | null | undefined): boolean {
   } catch {
     return false;
   }
-}
-
-export function informalAccessUnlocked(
-  planNumber: string | null | undefined,
-  plotNumber: string | null | undefined,
-  locationMapUrl: string | null | undefined,
-): boolean {
-  if (!isInformalSettlement(planNumber, plotNumber)) return true;
-  return hasLocationMapUrl(locationMapUrl);
 }
 
 export function hasAnyPartyPhone(
@@ -79,9 +70,11 @@ export function surveyWorkGate(input: {
   surveyTask: WorkflowTask;
   tasks: WorkflowTask[];
   hasActiveFailure: boolean;
-  planNumber?: string | null;
-  plotNumber?: string | null;
-  locationMapUrl?: string | null;
+  /**
+   * Authoritative flag from server (engineering-survey submission DTO).
+   * Prefer this over scanning `tasks` — EO lists hide sibling inspection tasks.
+   */
+  fieldInspectionCompleted?: boolean | null;
 }): DocumentaryGateState {
   if (roleBypassesDocumentaryGates(input.role)) return { ready: true };
   if (input.hasActiveFailure) {
@@ -90,65 +83,27 @@ export function surveyWorkGate(input: {
       reason: "الرفع المساحي مجمّد بسبب تعذر نشط على العقار.",
     };
   }
-  const inspection = findSiblingInspectionTask(input.surveyTask, input.tasks);
-  if (!inspection || inspection.status !== "completed") {
+  const inspectionCompleted =
+    typeof input.fieldInspectionCompleted === "boolean"
+      ? input.fieldInspectionCompleted
+      : findSiblingInspectionTask(input.surveyTask, input.tasks)?.status ===
+        "completed";
+  if (!inspectionCompleted) {
     return {
       ready: false,
       reason: "لا يمكن بدء الرفع المساحي قبل اكتمال المعاينة الميدانية.",
     };
   }
-  if (
-    !informalAccessUnlocked(
-      input.planNumber,
-      input.plotNumber,
-      input.locationMapUrl,
-    )
-  ) {
-    return {
-      ready: false,
-      reason:
-        "العقار في منطقة عشوائية — يلزم رابط موقع (خريطة) من الأخصائي أو المعاين.",
-    };
-  }
   return { ready: true };
 }
 
-export function informalAccessGate(input: {
-  role: RoleId;
-  planNumber?: string | null;
-  plotNumber?: string | null;
-  locationMapUrl?: string | null;
-}): DocumentaryGateState {
-  if (roleBypassesDocumentaryGates(input.role)) return { ready: true };
-  if (
-    informalAccessUnlocked(
-      input.planNumber,
-      input.plotNumber,
-      input.locationMapUrl,
-    )
-  ) {
-    return { ready: true };
-  }
-  return {
-    ready: false,
-    reason: "العقار في منطقة عشوائية — يلزم رابط موقع (خريطة) قبل الوصول.",
-  };
-}
-
-export function inspectorKeySubmitGate(input: {
+/** Field inspection may submit without a key; envelopes stay informational. */
+export function inspectorKeySubmitGate(_input: {
   role: RoleId;
   vacantLand: boolean;
   keyAvailable: boolean;
 }): DocumentaryGateState {
-  if (roleBypassesDocumentaryGates(input.role) || input.vacantLand) {
-    return { ready: true };
-  }
-  if (input.keyAvailable) return { ready: true };
-  return {
-    ready: false,
-    reason:
-      "لا يمكن إتمام المعاينة بدون استلام المفتاح (ما عدا الأرض الفضاء). سجّل تعذراً مع ملاحظة.",
-  };
+  return { ready: true };
 }
 
 export function declarationPhoneGate(input: {

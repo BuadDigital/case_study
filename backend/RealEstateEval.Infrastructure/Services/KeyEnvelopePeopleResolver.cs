@@ -1,15 +1,15 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class KeyEnvelopePeopleResolver : IKeyEnvelopePeopleResolver
 {
-    private readonly ApplicationDbContext _db;
+    private readonly IdentityDbContext _db;
 
-    public KeyEnvelopePeopleResolver(ApplicationDbContext db)
+    public KeyEnvelopePeopleResolver(IdentityDbContext db)
     {
         _db = db;
     }

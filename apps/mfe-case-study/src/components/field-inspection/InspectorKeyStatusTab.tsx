@@ -203,7 +203,7 @@ export function InspectorKeyStatusTab({
           (local.keysStatus || keysStatus) as GovernmentReviewKeysStatus,
         );
   const available = local.keyAvailable || keyAvailable;
-  const blocksCompletion = !vacantLand && !available;
+  const keyNotOnHand = !vacantLand && !available;
   const status = local.assignmentStatus || assignmentStatus;
 
   const refreshGate = async () => {
@@ -327,11 +327,10 @@ export function InspectorKeyStatusTab({
         </Note>
       ) : null}
 
-      {blocksCompletion ? (
-        <Note tone="warn" className="mt-4">
-          بدون استلام المفتاح لا يمكن إتمام المعاينة (ما عدا الأرض الفضاء أو
-          المفاتيح «غير مطلوبة» أو تمكين بلا مفتاح). إذا المفتاح غير متوفر أو لا
-          يفتح: سجّل تعذراً مع ملاحظة.
+      {keyNotOnHand ? (
+        <Note tone="info" className="mt-4">
+          المفتاح غير متاح حالياً (ظرف المفاتيح / تمكين) — هذا لا يمنع إتمام
+          المعاينة. إذا الدخول متعذر بسبب المفتاح: سجّل تعذراً مع ملاحظة.
           {onRegisterKeyFailure ? (
             <div className="mt-3">
               <Button

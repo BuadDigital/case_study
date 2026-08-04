@@ -4,7 +4,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -20,15 +20,15 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
     public static readonly Guid DefaultInspectorTableId =
         Guid.Parse("c3d4e5f6-a7b8-9012-cdef-123456789012");
 
-    private readonly ApplicationDbContext _db;
+    private readonly FinancialDbContext _db;
     private readonly IAuditLogWriter _audit;
 
-    public PartyFeePricingService(ApplicationDbContext db)
+    public PartyFeePricingService(FinancialDbContext db)
         : this(db, new AuditLogWriter())
     {
     }
 
-    public PartyFeePricingService(ApplicationDbContext db, IAuditLogWriter audit)
+    public PartyFeePricingService(FinancialDbContext db, IAuditLogWriter audit)
     {
         _db = db;
         _audit = audit;

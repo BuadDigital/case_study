@@ -1,4 +1,5 @@
 using RealEstateEval.Infrastructure;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Web;
 using RealEstateEval.Shared.Web;
 
@@ -6,10 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddRealEstateEvalObservability("identity");
 
-builder.Services
-    .AddControllers()
-    .AddRealEstateEvalValidation()
-    .AddJsonOptions(options =>
+builder.Services.AddControllers().AddRealEstateEvalValidation().AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy =
             System.Text.Json.JsonNamingPolicy.CamelCase;
@@ -19,10 +17,8 @@ builder.Services
 
 builder.Services.AddResponseCompression(options => options.EnableForHttps = true);
 
-var connectionString = ServiceCollectionExtensions.RequireConnectionString(
-    builder.Configuration,
-    ServiceDatabaseNames.Identity);
-builder.Services.AddPersistence(builder.Configuration, connectionString);
+var connectionString = ServiceCollectionExtensions.RequireConnectionString(builder.Configuration,ServiceDatabaseNames.Identity);
+builder.Services.AddHostSharedInfrastructure(builder.Configuration);
 builder.Services.AddIdentityInfrastructure(builder.Configuration, connectionString);
 builder.Services.AddRealEstateEvalJwt(builder.Configuration, builder.Environment);
 builder.Services.AddRealEstateEvalCors(builder.Configuration, builder.Environment);
@@ -34,9 +30,8 @@ var app = builder.Build();
 app.UseRealEstateEvalServicePipeline();
 app.UseRealEstateEvalOpenApi("Identity API");
 app.MapServiceHealth("identity");
-app.MapDatabaseReady("identity");
+app.MapDatabaseReady<IdentityDbContext>("identity");
 app.MapControllers();
-
 app.Run();
 
 public partial class Program;

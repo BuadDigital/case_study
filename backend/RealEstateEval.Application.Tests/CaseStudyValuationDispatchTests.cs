@@ -111,7 +111,7 @@ public class CaseStudyValuationDispatchTests
     private static CaseStudyFormService CreateFormService(TestDatabases.ContextSet contexts)
     {
         var db = contexts.Legacy;
-        var timeline = new PropertyTimelineService(db);
+        var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db);
 
         // The dispatch adapter runs in the Case Study process but writes valuation rows and
         // their outbox event through the Valuation context, in one SaveChanges.
@@ -120,7 +120,7 @@ public class CaseStudyValuationDispatchTests
             new ValuationOutboxPublisher(
                 contexts.Valuation,
                 NullLogger<ValuationOutboxPublisher>.Instance),
-            new CaseStudyPropertyPoNumberLookup(db));
+            new CaseStudyPropertyPoNumberLookup(contexts.CaseStudy));
 
         var dispatch = new CaseStudyValuationDispatchService(
             db,

@@ -61,6 +61,55 @@ function dtoToSubmission(
         ? payload.transactionNote
         : "",
     checklist,
+    deedMatchesNature:
+      payload.deedMatchesNature === "yes" || payload.deedMatchesNature === true
+        ? "yes"
+        : payload.deedMatchesNature === "no" ||
+            payload.deedMatchesNature === false
+          ? "no"
+          : null,
+    natureOnSiteAreaSqm:
+      typeof payload.natureOnSiteAreaSqm === "string"
+        ? payload.natureOnSiteAreaSqm
+        : "",
+    natureNorthBoundary:
+      typeof payload.natureNorthBoundary === "string"
+        ? payload.natureNorthBoundary
+        : "",
+    natureNorthBoundaryLengthM:
+      typeof payload.natureNorthBoundaryLengthM === "string"
+        ? payload.natureNorthBoundaryLengthM
+        : "",
+    natureSouthBoundary:
+      typeof payload.natureSouthBoundary === "string"
+        ? payload.natureSouthBoundary
+        : "",
+    natureSouthBoundaryLengthM:
+      typeof payload.natureSouthBoundaryLengthM === "string"
+        ? payload.natureSouthBoundaryLengthM
+        : "",
+    natureEastBoundary:
+      typeof payload.natureEastBoundary === "string"
+        ? payload.natureEastBoundary
+        : "",
+    natureEastBoundaryLengthM:
+      typeof payload.natureEastBoundaryLengthM === "string"
+        ? payload.natureEastBoundaryLengthM
+        : "",
+    natureWestBoundary:
+      typeof payload.natureWestBoundary === "string"
+        ? payload.natureWestBoundary
+        : "",
+    natureWestBoundaryLengthM:
+      typeof payload.natureWestBoundaryLengthM === "string"
+        ? payload.natureWestBoundaryLengthM
+        : "",
+    fieldInspectionCompleted:
+      typeof dto.fieldInspectionCompleted === "boolean"
+        ? dto.fieldInspectionCompleted
+        : typeof payload.fieldInspectionCompleted === "boolean"
+          ? payload.fieldInspectionCompleted
+          : undefined,
   };
 }
 
@@ -169,6 +218,7 @@ export async function updateEngineeringSurveyDraft(
       | "declarationPhoneSatisfied"
       | "checklist"
       | "returnNote"
+      | "deedMatchesNature"
       | "onSiteAreaSqm"
       | "northBoundary"
       | "northBoundaryLengthM"
@@ -178,6 +228,15 @@ export async function updateEngineeringSurveyDraft(
       | "eastBoundaryLengthM"
       | "westBoundary"
       | "westBoundaryLengthM"
+      | "natureOnSiteAreaSqm"
+      | "natureNorthBoundary"
+      | "natureNorthBoundaryLengthM"
+      | "natureSouthBoundary"
+      | "natureSouthBoundaryLengthM"
+      | "natureEastBoundary"
+      | "natureEastBoundaryLengthM"
+      | "natureWestBoundary"
+      | "natureWestBoundaryLengthM"
       | "surveyNotes"
       | "transactionNote"
     >

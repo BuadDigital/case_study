@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
@@ -133,8 +133,8 @@ public class PartyFeePricingAuditTests
                 .ToList(),
         };
 
-    private static ApplicationDbContext CreateDb() =>
-        new(new DbContextOptionsBuilder<ApplicationDbContext>()
+    private static FinancialDbContext CreateDb() =>
+        new(new DbContextOptionsBuilder<FinancialDbContext>()
             .UseInMemoryDatabase($"party-fee-pricing-audit-{Guid.NewGuid():N}")
             .Options);
 }

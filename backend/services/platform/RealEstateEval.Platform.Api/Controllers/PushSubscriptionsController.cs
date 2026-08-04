@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web;
 
 namespace RealEstateEval.Platform.Api.Controllers;
 
@@ -78,7 +79,9 @@ public sealed class PushSubscriptionsController : ControllerBase
         return Ok(await _push.SetPreferenceAsync(userId, request.PushEnabled, ct));
     }
 
-    private string? CurrentUserId() =>
-        User.FindFirstValue(ClaimTypes.NameIdentifier)
-        ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+    private string? CurrentUserId()
+    {
+        var id = ActorClaims.Id(User);
+        return id is "unknown" or "" ? null : id;
+    }
 }

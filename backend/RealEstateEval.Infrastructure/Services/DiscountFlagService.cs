@@ -3,17 +3,19 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class DiscountFlagService : IDiscountFlagService
 {
-    private readonly ApplicationDbContext _db;
+    private readonly FinancialDbContext _db;
+    private readonly CaseStudyDbContext _caseStudy;
 
-    public DiscountFlagService(ApplicationDbContext db)
+    public DiscountFlagService(FinancialDbContext db, CaseStudyDbContext caseStudy)
     {
         _db = db;
+        _caseStudy = caseStudy;
     }
 
     public async Task<IReadOnlyList<DiscountFlagDto>> ListAsync(
@@ -139,7 +141,7 @@ public sealed class DiscountFlagService : IDiscountFlagService
             ledger.BillingStatus = InspectorFeeBillingStatus.AtFinance;
         else
         {
-            var taskKind = await _db.WorkflowTasks.AsNoTracking()
+            var taskKind = await _caseStudy.WorkflowTasks.AsNoTracking()
                 .Where(t => t.Id == ledger.WorkflowTaskId)
                 .Select(t => (WorkflowTaskKind?)t.Kind)
                 .FirstOrDefaultAsync(cancellationToken);

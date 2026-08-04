@@ -84,6 +84,12 @@ public class DatabaseMigrationTests
             UseStream<FailuresDbContext>(options, connectionString));
         services.AddDbContext<OperationsDbContext>(options =>
             UseStream<OperationsDbContext>(options, connectionString));
+        services.AddDbContext<FinancialDbContext>(options =>
+            UseStream<FinancialDbContext>(options, connectionString));
+        services.AddDbContext<CaseStudyDbContext>(options =>
+            UseStream<CaseStudyDbContext>(options, connectionString));
+        services.AddDbContext<MessagingDbContext>(options =>
+            UseStream<MessagingDbContext>(options, connectionString));
         services.AddIdentityApplicationServices();
         services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
 
