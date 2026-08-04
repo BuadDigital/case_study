@@ -1,11 +1,30 @@
 /**
  * Extract deed / nature **وصف الحد + أطوال الحدود** from a survey sketch PDF.
  *
- * - أطوال: PDF text layer / spatial edge numbers (pdf.js) — ours only
- * - وصف الحد: only when Arabic is extractable PDF text; Osoul vector calligraphy → manual
- * Never fills: المساحة الإجمالية. Never property/بورصة mix-in.
- * No external OCR APIs.
+ * ## Canonical source (ALWAYS these croquis tables — not the plot drawing edges only)
+ * Left dual tables on Osoul-style croquis:
+ *   - بموجب الصك   (red CAD ink)  → form «حسب الصك»
+ *   - بموجب الطبيعة (blue CAD ink) → form «حسب الطبيعة»
+ * Each table rows: شمال → جنوب → شرق → غرب
+ *   columns: وصف الحد | الطول/م
+ * Bottom «المساحة»: never auto-fill form total area (manual / policy).
+ *
+ * Pipeline (local only, no third-party OCR APIs):
+ * - Isolate pure red/blue ink of the dual-table strip
+ * - أطوال: PDF text / spatial numbers when present; table-linked when available
+ * - وصف الحد: PDF text if present; train-index match on table ink; else table previews
+ * Never property/بورصة mix-in.
  */
+
+/** Normed crop of left dual جدول الصك/الطبيعة on first croquis page (x,y,w,h of page). */
+export const CROQUIS_DUAL_TABLE_CROP = {
+  x: 0.0,
+  y: 0.26,
+  w: 0.32,
+  h: 0.58,
+  /** Quarter-turns CCW after crop so rows read N→S→E→W top→bottom. */
+  rotateQuarterCcw: 3 as const,
+} as const;
 
 export type SketchBoundarySide = {
   description: string;
@@ -29,6 +48,11 @@ export type SurveySketchExtractResult = {
   nature: SketchBoundaryBlock | null;
   filledCount: number;
   usedSpatialLengths?: boolean;
+  /** Pure-ink crop of croquis tables (صك/طبيعة) for on-screen copy when Arabic is not text. */
+  croquisTablePreviews?: {
+    deedJpegDataUrl?: string;
+    natureJpegDataUrl?: string;
+  };
 };
 
 /** Form patch — وصف الحد + أطوال (never total area). */
@@ -188,8 +212,7 @@ function formatDescription(raw: string): string {
     .replace(/\bسرق\b/gi, "شرق")
     // OCR: "رقم 94 س" / "رقم.دس" style fragments after "قطعة"
     .replace(/رقم\s*[.\-–ـ]?\s*(\d{1,6})\s*[.\-–ـ]?\s*س/gi, "رقم $1-س");
-  // قطعة رقم 94-س / 94 ـس / ٩٤-س (digits already westernized by normalize)
-  // Require dash (or end) for suffix so "225 قطعة" next-row junk is not a suffix
+  // قطعة رقم 94-س / 94 ـس / ٩٤-س
   const plot = s.match(
     /قطعه?\s*رقم\s*(\d{1,6})(?:\s*[\\-–ـ.]+\s*([ا-يA-Za-zسص]{1,3}))?/i,
   );
@@ -198,28 +221,89 @@ function formatDescription(raw: string): string {
     const letter = suf.slice(0, 1);
     return letter ? `قطعة رقم ${plot[1]}-${letter}` : `قطعة رقم ${plot[1]}`;
   }
-  // Loose OCR: "رقم 94-س" without قطعة word
   const plotLoose = s.match(/(?:رقم|نقم)\s*(\d{1,6})\s*[-–ـ.]+\s*(س)/i);
   if (plotLoose) return `قطعة رقم ${plotLoose[1]}-${plotLoose[2]}`;
   const pathWalk = s.match(
     /ممر\s*(?:مشاه?ة?|مشاء)?\s*عرض\s*([\d.]+)\s*م?/i,
   );
   if (pathWalk) return `ممر مشاة عرض ${pathWalk[1]} م`;
-  const street = s.match(/شارع\s*عرض\s*([\d.]+)\s*م?/i);
+  // شارع عرض 20 / شارع بعرض 20 / شارع محدث بعرض 6 / شارع ثابت… بعرض 20
+  const street =
+    s.match(/شارع\s*(?:محدث\s*)?عرض\s*([\d.]+)\s*م?/i) ||
+    s.match(/شارع\s*(?:محدث\s*)?بعرض\s*([\d.]+)\s*م?/i) ||
+    s.match(
+      /شارع\s+[^\n\d]{1,45}?(?:بعرض|عرض)\s*([\d.]+)\s*م?/i,
+    ) ||
+    s.match(/(?:شارع|شاع|زع|شايع)\s*(?:محدث\s*)?(?:بعرض|عرض)\s*([\d.]+)\s*م?/i);
   if (street) return `شارع عرض ${street[1]} م`;
-  // OCR: "زع عرض 20 م" / "شاع عرض 20"
-  const streetLoose = s.match(/(?:شارع|شاع|زع)\s*عرض\s*([\d.]+)\s*م?/i);
-  if (streetLoose) return `شارع عرض ${streetLoose[1]} م`;
+  // ملك فلان (حدود الجيران)
+  const owner = s.match(
+    /ملك\s+[^\d\n]{2,40?}(?=\s*(?:ملك|قطعة|شارع|ممر|جار|$))/i,
+  );
+  if (owner) {
+    return cleanDescription(owner[0]).slice(0, 80);
+  }
+  if (/^ملك\s+/i.test(s) && s.length >= 6 && s.length <= 80) {
+    return s.slice(0, 80);
+  }
+  // الجزء المفرز…
+  if (/الجزء\s*المفرز/i.test(s)) {
+    const m = s.match(/الجزء\s*المفرز[^\n|,/]{0,55}/i);
+    return cleanDescription(m?.[0] ?? "الجزء المفرز").slice(0, 80);
+  }
+  // مسيل / السبل
+  if (/مسيل/i.test(s)) {
+    return "مسيل السيل";
+  }
+  if (/السبل|سبل\s*السالك/i.test(s)) {
+    return "السبل السالك";
+  }
+  // سكة نافذة / سكة … — keep readable short form
+  if (/سك[ةه]\s*نافذ/i.test(s)) {
+    return "سكة نافذة";
+  }
+  if (/^السك[ةه]$/i.test(s.trim()) || /^السك[ةه]\b/i.test(s)) {
+    return "السكة";
+  }
+  if (/سك[ةه]/i.test(s) && s.length >= 6) {
+    return s
+      .replace(/عرضعا/gi, "عرضها")
+      .replace(/الخرب/gi, "الغرب")
+      .replace(/\s*[\d.,]+\s*م[²2].*$/i, "")
+      .replace(/\s*\/.*$/, "")
+      .trim()
+      .slice(0, 60);
+  }
+  if (/مواقف\s*سيارات/i.test(s)) return "مواقف سيارات";
+  if (/^جار$/i.test(s.trim()) || /^جار\b/i.test(s)) return "جار";
+  if (/ارض\s*فضا[ءد]/i.test(s) || /ارض\s*فضاء/i.test(s)) {
+    // Prefer short labels used on croquis tables
+    if (/ملك\s*الغير/i.test(s)) return "ارض فضاء ملك الغير";
+    if (/ثم\s*طريق/i.test(s)) return "ارض فضاء ثم طريق";
+    const m = s.match(/ارض\s*فضا[ءد](?:\s+(?:المنسوبه|المنسوبة)[^\d|,/]{0,30})?/i);
+    let t = cleanDescription(m?.[0] ?? "ارض فضاء").slice(0, 80);
+    t = t.replace(/\s+[\d.,]+\s*م.*$/i, "").trim();
+    return t || "ارض فضاء";
+  }
   return s;
 }
 
-/** Only trustworthy croquis description shapes — never free-form OCR garbage. */
+/** Trustworthy croquis description shapes (plots, streets, paths, neighbors). */
 export function isPlausibleBoundaryDescription(desc: string): boolean {
   const n = normalizeSketchText(desc);
-  if (!n || n.length < 4) return false;
+  if (!n || n.length < 3) return false;
   if (/قطعه?\s*رقم\s*\d{1,6}/i.test(n)) return true;
-  if (/شارع\s*عرض\s*[\d.]+/i.test(n)) return true;
+  if (/شارع\s*(?:محدث\s*)?(?:بعرض|عرض)\s*[\d.]+/i.test(n)) return true;
+  if (/(?:شارع|شاع|زع)\s*(?:محدث\s*)?(?:بعرض|عرض)\s*[\d.]+/i.test(n))
+    return true;
   if (/ممر\s*(?:مشاه?ة?|مشاء)?\s*عرض\s*[\d.]+/i.test(n)) return true;
+  if (/^ملك\s+.{2,}/i.test(n)) return true;
+  if (/سك[ةه]/i.test(n) && n.length >= 6) return true;
+  if (/مواقف\s*سيارات/i.test(n)) return true;
+  if (/^جار$/i.test(n.trim()) || /^جار\s/i.test(n)) return true;
+  if (/ارض\s*فضا[ءد]/i.test(n) || /ارض\s*فضاء/i.test(n)) return true;
+  if (/الجزء\s*المفرز/i.test(n)) return true;
+  if (/مسيل|السبل|سبل\s*السالك/i.test(n)) return true;
   return false;
 }
 
@@ -234,6 +318,8 @@ function repairOcrArabicSoup(text: string): string {
     .replace(/قطعه?\s*رقه/gi, "قطعة رقم")
     .replace(/قطعه?\s*رقم/gi, "قطعة رقم")
     .replace(/(?:زع|شاع|شايع)\s*عرض/gi, "شارع عرض")
+    .replace(/شارع\s*بعرض/gi, "شارع عرض")
+    .replace(/شارع\s*محدث\s*بعرض/gi, "شارع عرض")
     .replace(/ممر\s*مشاء/gi, "ممر مشاة")
     .replace(/ممر\s*مشاه(?!ة)/gi, "ممر مشاة")
     .replace(/الطسسسول|الطو[لn]/gi, "الطول")
@@ -321,28 +407,164 @@ export function mineBoundaryDescriptionsFromOcr(
     }
   }
 
-  // Table-shaped dump: four unique plot/street tokens later in page (N→S→E→W)
-  if (descriptionCount(block) < 3) {
-    const ordered: string[] = [];
-    const re = new RegExp(
-      `${DESC_TOKEN}|(?:رقم\\s*[\\d٠-٩]{1,6}\\s*[\\-–ـ.]+\\s*س)|(?:(?:شارع|شاع|زع|شايع)\\s*عرض\\s*[\\d.٠-٩]+\\s*م?)|(?:ممر\\s*(?:مشاه?ة?|مشاء)?\\s*عرض\\s*[\\d.٠-٩]+\\s*م?)`,
-      "gi",
-    );
-    for (const m of flat.matchAll(re)) {
-      const f = formatDescription(m[0]);
-      if (!isPlausibleBoundaryDescription(f)) continue;
-      if (!ordered.includes(f)) ordered.push(f);
-      if (ordered.length >= 4) break;
-    }
+  // Table-shaped dump: four description tokens later in page (N→S→E→W)
+  // Prefer ordered rows over noisy direction-window hits ("مما يلي الشرق" is not a table side).
+  {
+    const ordered = collectOrderedBoundaryDescriptions(flat);
     if (ordered.length >= 3) {
+      const forceOrdered =
+        ordered.length >= 4 || descriptionCount(block) < 3;
       for (let i = 0; i < ordered.length && i < 4; i++) {
         const dir = DIR_ORDER[i]!;
-        if (!block[dir].description) block[dir].description = ordered[i]!;
+        if (forceOrdered || !block[dir].description) {
+          block[dir].description = ordered[i]!;
+        }
+      }
+    }
+  }
+
+  // Edge lengths interleaved with table rows (OCR when no text layer)
+  if (lengthCount(block) < 3) {
+    const lens = parseEdgeLengthsFromCroquisOcr(soup);
+    if (lens.length >= 3) {
+      for (let i = 0; i < lens.length && i < 4; i++) {
+        const dir = DIR_ORDER[i]!;
+        if (!block[dir].lengthM) block[dir].lengthM = lens[i]!;
       }
     }
   }
 
   return block;
+}
+
+/** Harvest plot/street/path/neighbor phrases in document order. */
+function collectOrderedBoundaryDescriptions(flat: string): string[] {
+  const hits: Array<{ i: number; end: number; t: string }> = [];
+  const patterns: RegExp[] = [
+    new RegExp(DESC_TOKEN, "gi"),
+    /رقم\s*[\d٠-٩]{1,6}\s*[\\-–ـ.]+\s*س/gi,
+    /شارع\s+[^\n\d]{1,45}?(?:بعرض|عرض)\s*[\d.٠-٩]+\s*م?/gi,
+    /(?:شارع|شاع|زع|شايع)\s*(?:محدث\s*)?(?:بعرض|عرض)\s*[\d.٠-٩]+\s*م?/gi,
+    /ممر\s*(?:مشاه?ة?|مشاء)?\s*عرض\s*[\d.٠-٩]+\s*م?/gi,
+    /ارض\s*فضا[ءد](?:\s+(?:المنسوبه|المنسوبة|ملك|ثم)[^\d|,/]{0,30})?/gi,
+    /سك[ةه]\s*نافذ[ةه]?/gi,
+    /الجزء\s*المفرز(?:\s+(?:الخاص|ب)[^\d|,/]{0,30})?/gi,
+    /مسيل\s*السيل/gi,
+    /السبل\s*السالك/gi,
+    /ارض\s*فضاء(?:\s+(?:ملك|ثم)[^\d|,/]{0,25})?/gi,
+  ];
+  for (const re of patterns) {
+    for (const m of flat.matchAll(re)) {
+      if (m.index == null) continue;
+      const raw = m[0];
+      const f = formatDescription(raw);
+      if (!isPlausibleBoundaryDescription(f)) continue;
+      hits.push({ i: m.index, end: m.index + raw.length, t: f });
+    }
+  }
+  // Longer match first at same start, then left-to-right
+  hits.sort((a, b) => a.i - b.i || b.end - a.end - (a.end - a.i));
+
+  const ordered: string[] = [];
+  let cursor = 0;
+  for (const h of hits) {
+    if (h.i < cursor) continue; // overlap with accepted span
+    // "ملك …" glued after a plot id is owner noise, not its own side
+    if (
+      /^ملك\s/i.test(h.t) &&
+      ordered.length > 0 &&
+      /قطعة\s*رقم/i.test(ordered[ordered.length - 1]!)
+    ) {
+      cursor = Math.max(cursor, h.end);
+      continue;
+    }
+    const allowDup = /شارع|ممر|سك[ةه]|ارض\s*فضا/i.test(h.t);
+    if (!allowDup && ordered.includes(h.t)) {
+      cursor = Math.max(cursor, h.end);
+      continue;
+    }
+    // Avoid back-to-back identical street/path unless separated in source
+    if (
+      allowDup &&
+      ordered.length > 0 &&
+      ordered[ordered.length - 1] === h.t &&
+      h.i - cursor < 3
+    ) {
+      continue;
+    }
+    ordered.push(h.t);
+    cursor = h.end;
+    if (ordered.length >= 4) break;
+  }
+  return ordered;
+}
+
+/**
+ * Pick four boundary meters from croquis OCR (table column style).
+ * Prefers number-only lines (N→S→E→W column), skips plot IDs / street widths / area.
+ */
+export function parseEdgeLengthsFromCroquisOcr(rawText: string): string[] {
+  if (!rawText.trim()) return [];
+  const soup = repairOcrArabicSoup(rawText);
+  const lines = soup.split(/\n+/).map((l) => normalizeSketchText(l));
+  const pure: string[] = [];
+  const mixed: string[] = [];
+
+  const toLen = (token: string): string => {
+    const west = token.replace(/,/g, ".").replace(/[^\d.]/g, "");
+    if (!west || west.split(".").length > 2) return "";
+    const v = Number.parseFloat(west);
+    if (!Number.isFinite(v) || v < 3 || v > 99) return "";
+    const rounded = Math.round(v * 100) / 100;
+    if (Math.abs(rounded - Math.round(rounded)) < 1e-9) {
+      return String(Math.round(rounded));
+    }
+    return String(rounded);
+  };
+
+    for (const n of lines) {
+    if (!n) continue;
+    if (/يتحمل|المكتب|المسئول|المسؤول|صحت ما ورد/i.test(n)) continue;
+    if (/م[²2]|مساح|حسابي/i.test(n)) continue;
+
+    // Compound edge: 5,6 + 16 (broken survey mark) → sum when both look like meters
+    const compound = n.match(
+      /^\s*([0-9]{1,2}(?:[.,][0-9]{1,2})?)\s*\+\s*([0-9]{1,2}(?:[.,][0-9]{1,2})?)\s*$/,
+    );
+    if (compound) {
+      const a = Number.parseFloat(compound[1]!.replace(",", "."));
+      const b = Number.parseFloat(compound[2]!.replace(",", "."));
+      const sum = Math.round((a + b) * 100) / 100;
+      if (sum >= 3 && sum <= 99) {
+        pure.push(String(sum));
+        continue;
+      }
+    }
+
+    const onlyNum = n.match(
+      /^\s*([0-9]{1,3}(?:[.,][0-9]{1,3})?)\s*(?:م)?\s*$/,
+    );
+    if (onlyNum?.[1]) {
+      const L = toLen(onlyNum[1]);
+      if (L) pure.push(L);
+      continue;
+    }
+
+    // Skip dense descriptive lines for mixed harvest except trailing/leading length
+    for (const m of n.matchAll(/([0-9]{1,3}(?:[.,][0-9]{1,3})?)/g)) {
+      const raw = m[1]!;
+      const idx = m.index ?? 0;
+      const before = n.slice(Math.max(0, idx - 14), idx);
+      if (/رقم\s*$/i.test(before) || /قطعه?\s*$/i.test(before)) continue;
+      if (/(?:عرض|بعرض)\s*$/i.test(before)) continue;
+      if (/\+\s*$/.test(before)) continue; // 5,6 + 16 style fragments
+      const L = toLen(raw);
+      if (L) mixed.push(L);
+    }
+  }
+
+  const pick = pure.length >= 3 ? pure : pure.concat(mixed);
+  return pick.slice(0, 4);
 }
 
 
@@ -433,7 +655,7 @@ function descriptionCount(b: SketchBoundaryBlock): number {
 
 /** Plot/street/path anchors — optional plot suffix must start with dash (ـس) so next row is not eaten. */
 const DESC_TOKEN =
-  "(?:قطعه?\\s*(?:رقم|دقم|رقه)\\s*[\\d٠-٩]{1,6}(?![\\d٠-٩])(?:\\s*[\\-–ـ.]+\\s*[ا-يA-Za-zسص]{1,3})?|شارع\\s*عرض\\s*[\\d.٠-٩]+\\s*م?|ممر\\s*(?:مشاه?ة?|مشاء)?\\s*عرض\\s*[\\d.٠-٩]+\\s*م?)";
+  "(?:قطعه?\\s*(?:رقم|دقم|رقه)\\s*[\\d٠-٩]{1,6}(?![\\d٠-٩])(?:\\s*[\\-–ـ.]+\\s*[ا-يA-Za-zسص]{1,3})?|شارع\\s+(?:[^\\n\\d]{1,40}?)?(?:محدث\\s*)?(?:بعرض|عرض)\\s*[\\d.٠-٩]+\\s*م?|(?:شاع|زع|شايع)\\s*(?:بعرض|عرض)\\s*[\\d.٠-٩]+\\s*م?|ممر\\s*(?:مشاه?ة?|مشاء)?\\s*عرض\\s*[\\d.٠-٩]+\\s*م?|ملك\\s+[^\\d\\n]{2,40}|سك[ةه]\\s*نافذ[ةه]?|مواقف\\s*سيارات|ارض\\s*فضا[ءد](?:\\s+[^\\d|,/]{1,30})?|الجزء\\s*المفرز(?:\\s+[^\\d|,/]{1,30})?|مسيل\\s*السيل|السبل\\s*السالك|جار)";
 /**
  * Edge meters: decimals preferred; whole meters 2–3 digits (20, 25).
  */
@@ -1957,10 +2179,218 @@ function itemsFromPdfContent(
   return out;
 }
 
+/** Canvas crop by fractions of the page. */
+function cropCanvas(
+  source: HTMLCanvasElement,
+  fx: number,
+  fy: number,
+  fw: number,
+  fh: number,
+): HTMLCanvasElement {
+  const x = Math.max(0, Math.floor(fx * source.width));
+  const y = Math.max(0, Math.floor(fy * source.height));
+  const w = Math.max(8, Math.floor(fw * source.width));
+  const h = Math.max(8, Math.floor(fh * source.height));
+  const c = document.createElement("canvas");
+  c.width = Math.min(w, source.width - x);
+  c.height = Math.min(h, source.height - y);
+  const ctx = c.getContext("2d");
+  if (ctx) {
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(source, x, y, c.width, c.height, 0, 0, c.width, c.height);
+  }
+  return c;
+}
+
+function rotateCanvasQuarter(
+  source: HTMLCanvasElement,
+  quarterTurns: 1 | 2 | 3,
+): HTMLCanvasElement {
+  const rad = (quarterTurns * Math.PI) / 2;
+  const swap = quarterTurns % 2 === 1;
+  const out = document.createElement("canvas");
+  out.width = swap ? source.height : source.width;
+  out.height = swap ? source.width : source.height;
+  const ctx = out.getContext("2d");
+  if (!ctx) return out;
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, out.width, out.height);
+  ctx.translate(out.width / 2, out.height / 2);
+  ctx.rotate(rad);
+  ctx.drawImage(source, -source.width / 2, -source.height / 2);
+  return out;
+}
+
 /**
- * Extract + parse a survey sketch PDF (pdf.js text layer only — no external OCR):
- * - أطوال: text / spatial numbers
- * - وصف الحد: only when present as real text; Osoul ink tables → manual
+ * Keep pure red (صك) or blue (طبيعة) CAD ink on white — Osoul dual boundary tables.
+ * Used for on-screen croquis table previews (no external API).
+ */
+function isolatePureCadInk(
+  source: HTMLCanvasElement,
+  mode: "blue" | "red",
+): HTMLCanvasElement {
+  const out = document.createElement("canvas");
+  out.width = source.width;
+  out.height = source.height;
+  const ctx = out.getContext("2d");
+  const sctx = source.getContext("2d");
+  if (!ctx || !sctx) return source;
+  const img = sctx.getImageData(0, 0, source.width, source.height);
+  const d = img.data;
+  let ink = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i]!;
+    const g = d[i + 1]!;
+    const b = d[i + 2]!;
+    const isBlue =
+      (b > 180 && r < 60 && g < 60) ||
+      (b > 140 && b >= r + 45 && b >= g + 40);
+    const isRed =
+      (r > 180 && g < 60 && b < 60) ||
+      (r > 140 && r >= g + 45 && r >= b + 40);
+    const keep = mode === "blue" ? isBlue : isRed;
+    if (keep) {
+      d[i] = d[i + 1] = d[i + 2] = 0;
+      ink += 1;
+    } else {
+      d[i] = d[i + 1] = d[i + 2] = 255;
+    }
+    d[i + 3] = 255;
+  }
+  if (ink < 400) {
+    const again = sctx.getImageData(0, 0, source.width, source.height);
+    const a = again.data;
+    for (let i = 0; i < a.length; i += 4) {
+      const r = a[i]!;
+      const g = a[i + 1]!;
+      const b = a[i + 2]!;
+      const isBlue = b > 100 && b >= r + 18 && b >= g + 10;
+      const isRed = r > 100 && r >= g + 20 && r >= b + 20;
+      const keep = mode === "blue" ? isBlue : isRed;
+      if (keep) {
+        a[i] = a[i + 1] = a[i + 2] = 0;
+      } else {
+        a[i] = a[i + 1] = a[i + 2] = 255;
+      }
+      a[i + 3] = 255;
+    }
+    ctx.putImageData(again, 0, 0);
+  } else {
+    ctx.putImageData(img, 0, 0);
+  }
+  return out;
+}
+
+function prepareInkTableStrip(
+  pageCanvas: HTMLCanvasElement,
+  mode: "red" | "blue",
+): HTMLCanvasElement {
+  // ALWAYS the dual croquis tables (بموجب الصك / الطبيعة) — not full page / plot only
+  const { x, y, w, h, rotateQuarterCcw } = CROQUIS_DUAL_TABLE_CROP;
+  const strip = cropCanvas(pageCanvas, x, y, w, h);
+  const oriented = rotateCanvasQuarter(strip, rotateQuarterCcw);
+  return isolatePureCadInk(oriented, mode);
+}
+
+function canvasToJpegDataUrl(
+  source: HTMLCanvasElement,
+  quality = 0.85,
+): string {
+  try {
+    return source.toDataURL("image/jpeg", quality);
+  } catch {
+    return "";
+  }
+}
+
+function countNearBlackPixels(source: HTMLCanvasElement): number {
+  const sctx = source.getContext("2d");
+  if (!sctx) return 0;
+  const img = sctx.getImageData(0, 0, source.width, source.height);
+  const d = img.data;
+  let n = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i]! < 40 && d[i + 1]! < 40 && d[i + 2]! < 40) n += 1;
+  }
+  return n;
+}
+
+/**
+ * Build pure-ink croquis table JPEGs (صك red / طبيعة blue) for UI copy aid.
+ * Offline-only: pdf.js + canvas ink isolation. No external APIs.
+ * Also returns fingerprint train-index match when the croquis is known.
+ */
+export async function buildCroquisTablePreviews(
+  file: File,
+): Promise<{
+  deedJpegDataUrl?: string;
+  natureJpegDataUrl?: string;
+  trainMatch?: import("./osoul-local-train-match").OsoulTrainMatch | null;
+}> {
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return {};
+  }
+  try {
+    const { matchOsoulTrainIndex } = await import("./osoul-local-train-match");
+    const pdfjs = await loadPdfJs();
+    const data = new Uint8Array(await file.arrayBuffer());
+    const pdf = await pdfjs.getDocument({ data }).promise;
+    try {
+      const page = await pdf.getPage(1);
+      const viewport = page.getViewport({ scale: 2.4 });
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.ceil(viewport.width);
+      canvas.height = Math.ceil(viewport.height);
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) {
+        page.cleanup();
+        await pdf.cleanup();
+        return {};
+      }
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({
+        canvas,
+        canvasContext: ctx,
+        viewport,
+      }).promise;
+
+      const out: {
+        deedJpegDataUrl?: string;
+        natureJpegDataUrl?: string;
+        trainMatch?: import("./osoul-local-train-match").OsoulTrainMatch | null;
+      } = {};
+      const deed = prepareInkTableStrip(canvas, "red");
+      if (countNearBlackPixels(deed) >= 80) {
+        const url = canvasToJpegDataUrl(deed);
+        if (url) out.deedJpegDataUrl = url;
+        out.trainMatch = matchOsoulTrainIndex(deed);
+      }
+      const nature = prepareInkTableStrip(canvas, "blue");
+      if (countNearBlackPixels(nature) >= 80) {
+        const url = canvasToJpegDataUrl(nature);
+        if (url) out.natureJpegDataUrl = url;
+        if (!out.trainMatch) {
+          out.trainMatch = matchOsoulTrainIndex(nature);
+        }
+      }
+      page.cleanup();
+      return out;
+    } finally {
+      await pdf.cleanup();
+    }
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Extract for engineering-office survey upload.
+ * **Only the dual croquis tables matter** (بموجب الصك / بموجب الطبيعة):
+ * rows شمال→جنوب→شرق→غرب · columns وصف الحد + الطول/م.
+ * المساحة at table bottom is never auto-filled.
+ * Local only — no third-party OCR APIs.
  */
 export async function extractSurveySketchFromPdf(
   file: File,
@@ -2002,81 +2432,102 @@ export async function extractSurveySketchFromPdf(
     await pdf.cleanup();
 
     const joinedText = textParts.join("\n\n");
-    let result = parseSurveySketchText(joinedText);
-    let tableSource = joinedText;
+    let result = finalizeExtractResult(
+      emptyBlock(),
+      emptyBlock(),
+      joinedText,
+      false,
+    );
+    // Drop inventing from non-table prose; only structured/spatial as backup for table lengths.
 
-    // Re-bind lengths when some PDF text exists
-    {
-      const source = tableSource || result.rawText || joinedText;
-      const { deedText, natureText } = splitDeedNatureSections(source);
-      let deed = result.deed;
-      let nature = result.nature;
-
-      const rebind = (
-        block: SketchBoundaryBlock,
-        section: string,
-      ): SketchBoundaryBlock => {
-        let b = block;
-        const bodies = extractBodiesAfterLengthColumnHeader(section);
-        if (bodies.length > 0) {
-          b = fillMissingLengthsFromTableContext(b, bodies.join("\n"), true);
-        }
-        if (lengthCount(b) < 3) {
-          b = fillMissingLengthsFromTableContext(b, section, true);
-        }
-        if (lengthCount(b) < 3) {
-          b = fillMissingLengthsFromTableContext(b, source, true);
-        }
-        if (lengthCount(b) < 3) {
-          b = zipLengthColumnDecimals(b, section);
-        }
-        if (lengthCount(b) < 3) {
-          b = zipLengthColumnDecimals(b, source);
-        }
-        return b;
-      };
-
-      deed = rebind(deed, deedText || source);
-      if (nature) {
-        nature = rebind(nature, natureText || source);
-      }
-      result = finalizeExtractResult(
-        deed,
-        nature,
-        result.rawText || joinedText,
-        false,
+    // ── 1) PRIMARY: dual croquis tables (صك red / طبيعة blue) ──────────────
+    let hasTableInk = false;
+    try {
+      const previews = await buildCroquisTablePreviews(file);
+      hasTableInk = Boolean(
+        previews.deedJpegDataUrl || previews.natureJpegDataUrl,
       );
+      if (previews.trainMatch) {
+        const m = previews.trainMatch;
+        const fillSide = (
+          d: DirKey,
+          desc: string,
+          len: string,
+        ): SketchBoundarySide => ({
+          description:
+            desc && isPlausibleBoundaryDescription(desc) ? desc : "",
+          lengthM: (len ?? "").trim(),
+        });
+        const deed: SketchBoundaryBlock = {
+          areaSqm: "",
+          north: fillSide("north", m.descriptions.north, m.lengths.north),
+          south: fillSide("south", m.descriptions.south, m.lengths.south),
+          east: fillSide("east", m.descriptions.east, m.lengths.east),
+          west: fillSide("west", m.descriptions.west, m.lengths.west),
+        };
+        // Same table pair typically matches; seed nature from deed until blue-only index exists
+        const nature: SketchBoundaryBlock = {
+          areaSqm: "",
+          north: { ...deed.north },
+          south: { ...deed.south },
+          east: { ...deed.east },
+          west: { ...deed.west },
+        };
+        result = finalizeExtractResult(deed, nature, joinedText, false);
+        result = {
+          ...result,
+          warning:
+            descriptionCount(deed) >= 3
+              ? `تم التعبئة من جدولي الكروكي (صك/طبيعة) عبر مكتبة التدريب · ثقة ${(m.score * 100).toFixed(0)}٪. راجع — المساحة يدوية.`
+              : result.warning,
+        };
+      }
+      if (hasTableInk) {
+        result = {
+          ...result,
+          croquisTablePreviews: {
+            deedJpegDataUrl: previews.deedJpegDataUrl,
+            natureJpegDataUrl: previews.natureJpegDataUrl,
+          },
+        };
+      }
+    } catch {
+      /* dual-table path optional */
     }
 
-    // Spatial edge lengths (when layer is numbers-only) — keep prior descriptions.
-    {
+    // ── 2) BACKUP lengths only: PDF numbers that equal table column (edge labels) ─
+    // Never for descriptions outside dual tables.
+    if (lengthCount(result.deed) < 3) {
       const spatial = parseLengthsFromPositions(allPos);
       if (spatial) {
-        let filledSpatial = 0;
         const deed = {
-          areaSqm: result.deed.areaSqm,
+          areaSqm: "",
           north: { ...result.deed.north },
           south: { ...result.deed.south },
           east: { ...result.deed.east },
           west: { ...result.deed.west },
         };
+        let filled = 0;
         for (const d of DIR_ORDER) {
-          const onlyNumbersLayer =
-            descriptionCount(result.deed) === 0 && allPos.length >= 4;
-          if (
-            spatial.deed[d].lengthM &&
-            (!deed[d].lengthM || onlyNumbersLayer)
-          ) {
-            if (deed[d].lengthM !== spatial.deed[d].lengthM) {
-              filledSpatial += 1;
-            }
+          if (!deed[d].lengthM && spatial.deed[d].lengthM) {
             deed[d] = { ...deed[d], lengthM: spatial.deed[d].lengthM };
+            filled += 1;
           }
         }
-        if (filledSpatial > 0 || lengthCount(deed) >= 3) {
+        if (filled > 0) {
+          const nature =
+            result.nature && lengthCount(result.nature) >= 1
+              ? result.nature
+              : {
+                  areaSqm: "",
+                  north: { ...deed.north },
+                  south: { ...deed.south },
+                  east: { ...deed.east },
+                  west: { ...deed.west },
+                };
           result = finalizeExtractResult(
             deed,
-            result.nature,
+            nature,
             result.rawText || joinedText || spatial.raw,
             true,
           );
@@ -2084,84 +2535,75 @@ export async function extractSurveySketchFromPdf(
       }
     }
 
-    // وصف الحد: text layer only. No external OCR APIs.
-    // Osoul Print-to-PDF keeps Arabic as vectors → engineer fills descriptions manually.
-
-    // Nature without its own sides: seed وصف + أطوال from deed.
+    // Seed nature empty sides from deed after table/backup
     if (
-      (!result.nature || lengthCount(result.nature) < 1) &&
-      (lengthCount(result.deed) >= 3 || descriptionCount(result.deed) >= 1)
+      result.nature &&
+      (lengthCount(result.deed) >= 1 || descriptionCount(result.deed) >= 1)
     ) {
-      const natureSeed: SketchBoundaryBlock = {
+      const nature: SketchBoundaryBlock = {
         areaSqm: "",
         north: {
-          description: result.deed.north.description,
-          lengthM: result.deed.north.lengthM,
+          description:
+            result.nature.north.description || result.deed.north.description,
+          lengthM: result.nature.north.lengthM || result.deed.north.lengthM,
         },
         south: {
-          description: result.deed.south.description,
-          lengthM: result.deed.south.lengthM,
+          description:
+            result.nature.south.description || result.deed.south.description,
+          lengthM: result.nature.south.lengthM || result.deed.south.lengthM,
         },
         east: {
-          description: result.deed.east.description,
-          lengthM: result.deed.east.lengthM,
+          description:
+            result.nature.east.description || result.deed.east.description,
+          lengthM: result.nature.east.lengthM || result.deed.east.lengthM,
         },
         west: {
-          description: result.deed.west.description,
-          lengthM: result.deed.west.lengthM,
+          description:
+            result.nature.west.description || result.deed.west.description,
+          lengthM: result.nature.west.lengthM || result.deed.west.lengthM,
         },
       };
       result = finalizeExtractResult(
         result.deed,
-        natureSeed,
-        result.rawText || tableSource || joinedText,
+        nature,
+        result.rawText || joinedText,
         Boolean(result.usedSpatialLengths),
       );
     }
 
-    // Status messages
-    if (
-      lengthCount(result.deed) >= 3 &&
-      descriptionCount(result.deed) >= 3
-    ) {
+    // ── Status: always framed around dual croquis tables ─────────────────────
+    const dC = descriptionCount(result.deed);
+    const lC = lengthCount(result.deed);
+    if (dC >= 3 && lC >= 3) {
       result = {
         ...result,
         warning:
-          "تُعبّأت الأطوال وأوصاف الحد من التقرير. راجعها قبل الإرسال — المساحة الإجمالية يدوياً.",
+          result.warning ??
+          "عُبّئت الحدود والأطوال من جدولي الصك/الطبيعة. راجع قبل الإرسال — المساحة يدوية.",
       };
-    } else if (
-      lengthCount(result.deed) >= 3 &&
-      descriptionCount(result.deed) >= 1
-    ) {
+    } else if (dC >= 3 && lC < 3) {
       result = {
         ...result,
         warning:
-          "تُعبّأت الأطوال وجزء من أوصاف الحد. أكمل الناقص من جدول الكروكي — المساحة الإجمالية يدوياً.",
+          "عُبّئت أوصاف الحد من جدول الكروكي. أكمل الأطوال من عمود الطول في الجدولين — المساحة يدوية.",
       };
-    } else if (
-      lengthCount(result.deed) >= 3 &&
-      descriptionCount(result.deed) < 1
-    ) {
+    } else if (lC >= 3 && dC < 1) {
       result = {
         ...result,
         warning:
-          "تُعبّأت الأطوال من أرقام الرسم. أوصاف الحد من جدول الكروكي يدوياً (شمال/جنوب/شرق/غرب) — المساحة الإجمالية يدوياً.",
-        };
-    } else if (lengthCount(result.deed) === 0 && allPos.length === 0) {
-      result = {
-        ...result,
-        warning:
-          "لا توجد أرقام أطوال قابلة للقراءة في طبقة النص لهذا التقرير — عبّئ الأطوال والأوصاف يدوياً من الكروكي.",
+          "عُبّئت الأطوال. انسخ «وصف الحد» من معاينة جدولي الصك/الطبيعة أدناه (شمال→جنوب→شرق→غرب) — المساحة يدوية.",
       };
-    } else if (
-      lengthCount(result.deed) >= 1 &&
-      descriptionCount(result.deed) >= 1 &&
-      descriptionCount(result.deed) < 4
-    ) {
+    } else if (hasTableInk) {
       result = {
         ...result,
         warning:
-          "تعبئة جزئية لأوصاف/أطوال من التقرير. أكمل الناقص من جدول الكروكي — المساحة الإجمالية يدوياً.",
+          "جدولا الكروكي (صك/طبيعة) ظاهران للمعاينة — انسخ وصف الحد والأطوال للحقول. المساحة يدوية.",
+      };
+    } else {
+      result = {
+        ...result,
+        warning:
+          "تعذّر عزل جدولي الصك/الطبيعة من هذا الملف — عبّئ الحدود من التقرير يدوياً. المساحة يدوية.",
       };
     }
 

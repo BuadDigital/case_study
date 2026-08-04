@@ -1,6 +1,17 @@
 "use client";
 
-import { cn, useToast } from "@platform/design-system";
+import {
+  Input,
+  Table,
+  TBody,
+  Td,
+  Textarea,
+  Th,
+  THead,
+  Tr,
+  cn,
+  useToast,
+} from "@platform/design-system";
 import type { EvaluatorChecklistAnswers } from "../../lib/evaluator/evaluator-window-data";
 import {
   EVALUATOR_CONDITIONAL_QUESTIONS,
@@ -9,6 +20,57 @@ import {
 import { engBoxClassName, EngSection } from "./EvaluatorHtmlPrimitives";
 
 type ChecklistKey = keyof EvaluatorChecklistAnswers;
+
+function YesNoToggle({
+  name,
+  value,
+  disabled,
+  onChange,
+}: {
+  name: string;
+  value: boolean | null;
+  disabled?: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label="نعم أو لا"
+      className="inline-flex rounded-[var(--radius-DEFAULT)] border border-border-md bg-surface-2 p-0.5"
+    >
+      {(
+        [
+          [true, "نعم"],
+          [false, "لا"],
+        ] as const
+      ).map(([v, label]) => {
+        const on = value === v;
+        return (
+          <button
+            key={String(v)}
+            type="button"
+            role="radio"
+            name={name}
+            aria-checked={on}
+            disabled={disabled}
+            onClick={() => onChange(v)}
+            className={cn(
+              "min-w-[44px] rounded-[calc(var(--radius-DEFAULT)-2px)] border border-transparent px-2.5 py-1.5 text-[12px] font-semibold transition-colors",
+              "disabled:cursor-not-allowed disabled:opacity-55",
+              on
+                ? v
+                  ? "border-[color-mix(in_srgb,#3f8f5f_35%,transparent)] bg-[color-mix(in_srgb,#3f8f5f_14%,transparent)] text-[#2f7a4d]"
+                  : "border-[color-mix(in_srgb,#d9694f_35%,transparent)] bg-[color-mix(in_srgb,#d9694f_12%,transparent)] text-[#a5432e]"
+                : "bg-transparent text-text-2 hover:bg-surface hover:text-heading",
+            )}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export function EvaluatorChecklistTab({
   checklist,
@@ -28,169 +90,161 @@ export function EvaluatorChecklistTab({
     ...EVALUATOR_CONDITIONAL_QUESTIONS,
   ];
 
-  function yn(id: ChecklistKey, val: boolean | null) {
-    return (
-      <div className="flex justify-center gap-3">
-        {(
-          [
-            [true, "نعم"],
-            [false, "لا"],
-          ] as const
-        ).map(([v, label]) => (
-          <label
-            key={String(v)}
-            className="inline-flex cursor-pointer items-center gap-1 text-[11.5px]"
-          >
-            <input
-              type="radio"
-              name={`valq_${String(id)}`}
-              disabled={disabled}
-              checked={val === v}
-              onChange={() =>
-                onChange({ [id]: v } as Partial<EvaluatorChecklistAnswers>)
-              }
-              className="accent-[var(--gold-d,#8c7857)]"
-            />
-            {label}
-          </label>
-        ))}
-      </div>
-    );
-  }
-
   return (
     <div>
       <EngSection>قائمة فحص المقيم — {rows.length} بنداً</EngSection>
       {error ? (
-        <p className="mb-2 m-0 text-[11px] text-[#a5432e]">{error}</p>
+        <p className="mb-2 m-0 text-[12px] text-danger-text" role="alert">
+          {error}
+        </p>
       ) : null}
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-[11.5px]">
-          <thead>
-            <tr>
-              {["#", "البند", "نعم / لا"].map((h, i) => (
-                <th
-                  key={h}
-                  className={cn(
-                    "bg-surface-2 px-3 py-2 text-[11px] font-semibold text-text-2",
-                    i === 0 ? "w-[34px] text-center" : "text-start",
-                    i === 2 && "w-[110px]",
-                  )}
-                >
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
+
+      <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-card">
+        <Table wrapClassName="rounded-[var(--radius-lg)]">
+          <THead>
+            <Tr hoverable={false}>
+              <Th className="w-12 text-center">#</Th>
+              <Th>البند</Th>
+              <Th className="w-[132px] text-center">نعم / لا</Th>
+            </Tr>
+          </THead>
+          <TBody>
             {rows.map((q, idx) => {
               const val = checklist[q.id] as boolean | null;
+              const rowError = fieldErrors?.[q.id];
+
               const extra =
                 q.id === "q_shared_deed" && checklist.q_shared_deed === true ? (
-                  <div className="mt-2 grid gap-2 rounded-lg border border-border bg-surface-2 px-3 py-2.5">
-                    <div className="flex flex-wrap items-center gap-3.5">
-                      <span className="text-[11.5px] font-bold text-text-2">
-                        نطاق الملكية *
+                  <div
+                    className={cn(
+                      engBoxClassName,
+                      "mt-3 space-y-3 border-[color-mix(in_srgb,var(--gold)_28%,transparent)] bg-[color-mix(in_srgb,var(--gold)_6%,transparent)]",
+                    )}
+                  >
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="text-[12px] font-bold text-heading">
+                        نطاق الملكية <span className="text-danger-text">*</span>
                       </span>
-                      {(
-                        [
-                          ["full", "كامل المساحة"],
-                          ["part", "جزء محدد"],
-                        ] as const
-                      ).map(([v, label]) => (
-                        <label
-                          key={v}
-                          className="inline-flex cursor-pointer items-center gap-1 text-[11.5px]"
-                        >
-                          <input
-                            type="radio"
-                            name="valq_scope"
-                            disabled={disabled}
-                            checked={checklist.shared_deed_scope === v}
-                            onChange={() => onChange({ shared_deed_scope: v })}
-                            className="accent-[var(--gold-d,#8c7857)]"
-                          />
-                          {label}
-                        </label>
-                      ))}
+                      <div
+                        role="radiogroup"
+                        aria-label="نطاق الملكية"
+                        className="inline-flex flex-wrap gap-1.5"
+                      >
+                        {(
+                          [
+                            ["full", "كامل المساحة"],
+                            ["part", "جزء محدد"],
+                          ] as const
+                        ).map(([v, label]) => {
+                          const on = checklist.shared_deed_scope === v;
+                          return (
+                            <button
+                              key={v}
+                              type="button"
+                              role="radio"
+                              aria-checked={on}
+                              disabled={disabled}
+                              onClick={() => onChange({ shared_deed_scope: v })}
+                              className={cn(
+                                "rounded-[var(--radius-DEFAULT)] border px-3 py-1.5 text-[12px] font-semibold transition-colors",
+                                "disabled:cursor-not-allowed disabled:opacity-55",
+                                on
+                                  ? "border-gold bg-gold-soft text-gold-d"
+                                  : "border-border-md bg-surface text-text-2 hover:border-gold hover:text-gold-d",
+                              )}
+                            >
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                     {checklist.shared_deed_scope === "part" ? (
-                      <div className="max-w-[260px]">
-                        <label className="mb-1 block text-[11px] font-medium text-text-2">
-                          نسبة الملكية * (مثال: 3/8 أو 37.5%)
+                      <div className="max-w-[280px]">
+                        <label
+                          htmlFor="val-shared-deed-pct"
+                          className="mb-1.5 block text-[12px] font-semibold text-text-2"
+                        >
+                          نسبة الملكية <span className="text-danger-text">*</span>
+                          <span className="ms-1 font-normal text-text-3">
+                            (مثال: 3/8 أو 37.5%)
+                          </span>
                         </label>
-                        <input
+                        <Input
+                          id="val-shared-deed-pct"
                           dir="ltr"
                           disabled={disabled}
+                          hasError={Boolean(fieldErrors?.shared_deed_percentage)}
                           value={checklist.shared_deed_percentage}
                           onChange={(e) =>
                             onChange({ shared_deed_percentage: e.target.value })
                           }
-                          className="w-full rounded-[10px] border border-border bg-surface px-3 py-2 text-[13px] text-text outline-none"
                         />
                         {fieldErrors?.shared_deed_percentage ? (
-                          <p className="mt-1 m-0 text-[11px] text-[#a5432e]">
+                          <p className="mt-1 m-0 text-xs text-danger-text">
                             {fieldErrors.shared_deed_percentage}
                           </p>
                         ) : null}
                       </div>
                     ) : null}
                     {fieldErrors?.shared_deed_scope ? (
-                      <p className="m-0 text-[11px] text-[#a5432e]">
+                      <p className="m-0 text-xs text-danger-text">
                         {fieldErrors.shared_deed_scope}
                       </p>
                     ) : null}
                   </div>
                 ) : q.id === "q_lease_exists" &&
                   checklist.q_lease_exists === true ? (
-                  <div className="mt-2 flex flex-wrap items-center gap-3.5 rounded-lg border border-border bg-surface-2 px-3 py-2.5">
-                    <span className="text-[11.5px] font-bold text-text-2">
-                      هل عقد الإيجار ساري المفعول؟ *
+                  <div
+                    className={cn(
+                      engBoxClassName,
+                      "mt-3 flex flex-wrap items-center gap-3 border-[color-mix(in_srgb,var(--gold)_28%,transparent)] bg-[color-mix(in_srgb,var(--gold)_6%,transparent)]",
+                    )}
+                  >
+                    <span className="text-[12px] font-bold text-heading">
+                      هل عقد الإيجار ساري المفعول؟{" "}
+                      <span className="text-danger-text">*</span>
                     </span>
-                    {(
-                      [
-                        [true, "نعم"],
-                        [false, "لا"],
-                      ] as const
-                    ).map(([v, label]) => (
-                      <label
-                        key={String(v)}
-                        className="inline-flex cursor-pointer items-center gap-1 text-[11.5px]"
-                      >
-                        <input
-                          type="radio"
-                          name="valq_lease"
-                          disabled={disabled}
-                          checked={checklist.q_lease_active === v}
-                          onChange={() => onChange({ q_lease_active: v })}
-                          className="accent-[var(--gold-d,#8c7857)]"
-                        />
-                        {label}
-                      </label>
-                    ))}
+                    <YesNoToggle
+                      name="valq_lease"
+                      value={checklist.q_lease_active}
+                      disabled={disabled}
+                      onChange={(v) => onChange({ q_lease_active: v })}
+                    />
                     {fieldErrors?.q_lease_active ? (
-                      <p className="m-0 w-full text-[11px] text-[#a5432e]">
+                      <p className="m-0 w-full text-xs text-danger-text">
                         {fieldErrors.q_lease_active}
                       </p>
                     ) : null}
                   </div>
                 ) : q.id === "q_technical_notes_exists" &&
                   checklist.q_technical_notes_exists === true ? (
-                  <div className="mt-2 rounded-lg border border-border bg-surface-2 px-3 py-2.5">
-                    <label className="mb-1 block text-[11px] font-medium text-text-2">
-                      وصف الملاحظات الفنية *
+                  <div
+                    className={cn(
+                      engBoxClassName,
+                      "mt-3 border-[color-mix(in_srgb,var(--gold)_28%,transparent)] bg-[color-mix(in_srgb,var(--gold)_6%,transparent)]",
+                    )}
+                  >
+                    <label
+                      htmlFor="val-technical-notes"
+                      className="mb-1.5 block text-[12px] font-semibold text-text-2"
+                    >
+                      وصف الملاحظات الفنية{" "}
+                      <span className="text-danger-text">*</span>
                     </label>
-                    <textarea
+                    <Textarea
+                      id="val-technical-notes"
                       rows={2}
                       disabled={disabled}
+                      hasError={Boolean(fieldErrors?.technical_notes_text)}
                       value={checklist.technical_notes_text}
                       onChange={(e) =>
                         onChange({ technical_notes_text: e.target.value })
                       }
-                      className="w-full resize-y rounded-[10px] border border-border bg-surface px-3 py-2 text-[13px] text-text outline-none"
+                      className="bg-surface"
                     />
                     {fieldErrors?.technical_notes_text ? (
-                      <p className="mt-1 m-0 text-[11px] text-[#a5432e]">
+                      <p className="mt-1 m-0 text-xs text-danger-text">
                         {fieldErrors.technical_notes_text}
                       </p>
                     ) : null}
@@ -198,22 +252,40 @@ export function EvaluatorChecklistTab({
                 ) : null;
 
               return (
-                <tr key={q.id}>
-                  <td className="border-b border-border px-3 py-2 text-center text-text-3">
+                <Tr key={q.id} hoverable={!disabled}>
+                  <Td className="w-12 text-center text-[12px] font-semibold text-text-3">
                     {idx + 1}
-                  </td>
-                  <td className="border-b border-border px-3 py-2 leading-relaxed text-text">
-                    {q.label}
+                  </Td>
+                  <Td className="leading-relaxed">
+                    <div className="text-[13px] font-medium text-heading">
+                      {q.label}
+                    </div>
+                    {rowError ? (
+                      <p className="mt-1 m-0 text-xs text-danger-text">
+                        {rowError}
+                      </p>
+                    ) : null}
                     {extra}
-                  </td>
-                  <td className="w-[110px] border-b border-border px-3 py-2">
-                    {yn(q.id, val)}
-                  </td>
-                </tr>
+                  </Td>
+                  <Td className="w-[132px] text-center">
+                    <div className="flex justify-center">
+                      <YesNoToggle
+                        name={`valq_${String(q.id)}`}
+                        value={val}
+                        disabled={disabled}
+                        onChange={(v) =>
+                          onChange({
+                            [q.id]: v,
+                          } as Partial<EvaluatorChecklistAnswers>)
+                        }
+                      />
+                    </div>
+                  </Td>
+                </Tr>
               );
             })}
-          </tbody>
-        </table>
+          </TBody>
+        </Table>
       </div>
     </div>
   );
@@ -231,10 +303,12 @@ export function EvaluatorCopyField({
     <div className={`${engBoxClassName} relative`}>
       <div className="mb-[3px] text-[10.5px] text-text-3">{label}</div>
       <div className="flex items-center justify-between gap-2">
-        <div className="text-[12.5px] font-semibold text-text">{value || "—"}</div>
+        <div className="text-[12.5px] font-semibold text-text">
+          {value || "—"}
+        </div>
         <button
           type="button"
-          className="inline-flex shrink-0 border-none bg-transparent p-0.5 text-text-3 hover:text-gold-d"
+          className="inline-flex shrink-0 rounded-[var(--radius-sm)] border-none bg-transparent p-1 text-text-3 transition-colors hover:bg-surface hover:text-gold-d"
           title={`نسخ ${label}`}
           onClick={() => {
             void navigator.clipboard.writeText(value).then(

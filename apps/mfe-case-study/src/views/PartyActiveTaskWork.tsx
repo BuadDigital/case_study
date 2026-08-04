@@ -170,30 +170,40 @@ export function PartyActiveTaskWork({
   const router = useRouter();
   const { showToast } = useToast();
 
-  const exit = () => {
+  const exit = useCallback(() => {
     if (hostRef.current?.onClose) {
       hostRef.current.onClose();
       return;
     }
+    // Party queues under المعاملات النشطة:
+    // active-inspection → معاينة العقار
+    // property-appraisal → تقييم العقار
+    // active-survey → الرفع المساحي
     router.push(partyTaskPath(def.pageId));
-  };
+  }, [def.pageId, hostRef, router]);
 
-  const refresh = () => {
+  const refresh = useCallback(() => {
     hostRef.current?.onRefresh?.();
-  };
+  }, [hostRef]);
 
+  /**
+   * After successful party submit → queue for that role
+   * (معاينة العقار / تقييم العقار / الرفع المساحي).
+   */
   const completePartyTaskSubmit = useCallback(
-    (toastMessage: string = def.completeMessage, options?: { showToast?: boolean }) => {
+    (
+      toastMessage: string = def.completeMessage,
+      options?: { showToast?: boolean },
+    ) => {
       if (options?.showToast !== false) {
         showToast(toastMessage, "success");
       }
       setSubmitSuccess(true);
       refresh();
-      if (layout === "panel") {
-        window.setTimeout(() => exit(), 1800);
-      }
+      // Let the success toast paint, then leave the workspace for the role queue.
+      window.setTimeout(() => exit(), 900);
     },
-    [def.completeMessage, layout, showToast],
+    [def.completeMessage, exit, refresh, showToast],
   );
 
   const { data: record, isPending: recordLoading } = usePoRecordQuery(
@@ -218,11 +228,17 @@ export function PartyActiveTaskWork({
   const governmentHostRef = useRef<GovernmentReviewWorkHostRef>({});
   const coordinationHostRef = useRef<ValuationCoordinationWorkHostRef>({});
   const fieldInspectionHostRef = useRef<FieldInspectionWorkHostRef>({});
-  evaluatorHostRef.current.onSubmitted = refresh;
+
+  // Form UIs often already toast; avoid double toast for those paths.
+  evaluatorHostRef.current.onSubmitted = () =>
+    completePartyTaskSubmit(def.completeMessage, { showToast: false });
   evaluatorHostRef.current.onSavingChange = setSaving;
-  surveyHostRef.current.onSubmitted = () => completePartyTaskSubmit(def.completeMessage, { showToast: false });
+  // Engineering survey form does not toast on success — show completeMessage here.
+  surveyHostRef.current.onSubmitted = () =>
+    completePartyTaskSubmit(def.completeMessage, { showToast: true });
   surveyHostRef.current.onSavingChange = setSaving;
-  governmentHostRef.current.onSubmitted = () => completePartyTaskSubmit(def.completeMessage, { showToast: false });
+  governmentHostRef.current.onSubmitted = () =>
+    completePartyTaskSubmit(def.completeMessage, { showToast: false });
   governmentHostRef.current.onPendingSaved = () => {
     refresh();
     exit();
@@ -230,9 +246,11 @@ export function PartyActiveTaskWork({
   governmentHostRef.current.onSavingChange = setSaving;
   governmentHostRef.current.onVisitStatusChange = () =>
     setGovernmentFooterTick((n) => n + 1);
-  coordinationHostRef.current.onSubmitted = () => completePartyTaskSubmit(def.completeMessage, { showToast: false });
+  coordinationHostRef.current.onSubmitted = () =>
+    completePartyTaskSubmit(def.completeMessage, { showToast: false });
   coordinationHostRef.current.onSavingChange = setSaving;
-  fieldInspectionHostRef.current.onSubmitted = () => completePartyTaskSubmit(def.completeMessage, { showToast: false });
+  fieldInspectionHostRef.current.onSubmitted = () =>
+    completePartyTaskSubmit(def.completeMessage, { showToast: false });
   fieldInspectionHostRef.current.onSavingChange = setSaving;
 
   const governmentLocked = useMemo(

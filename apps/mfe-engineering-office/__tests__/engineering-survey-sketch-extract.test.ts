@@ -360,6 +360,67 @@ describe("Arabic وصف الحد text mining (PDF text layer)", () => {
     expect(b.south.description).toMatch(/ممر مشاة عرض 10/);
   });
 
+  it("mines sakka / land / owner table rows (training hard cases)", async () => {
+    const { mineBoundaryDescriptionsFromOcr } = await import(
+      "../src/lib/engineering-survey-sketch-extract"
+    );
+    const b = mineBoundaryDescriptionsFromOcr(`
+٢٧,٣٠
+ارض فضاد المنسوبة لبكر برناوى
+٢٦,٥٠
+سكة نافذة عرضها مما يلى الشرق ٦٠,مم
+١٧,٥٠
+سكة نافذة عرضعا مما يلى الشمال ١٣,٥٠م
+١٨,٤٠
+الجزء المفرز الخاص بمحمد نظمى
+`);
+    expect(b.north.description).toMatch(/ارض/);
+    expect(b.south.description).toBe("سكة نافذة");
+    expect(b.east.description).toBe("سكة نافذة");
+    expect(b.west.description).toMatch(/جزء/);
+    expect(b.north.lengthM).toBe("27.3");
+    expect(b.west.lengthM).toBe("18.4");
+  });
+
+  it("mines owner names and named streets", async () => {
+    const { mineBoundaryDescriptionsFromOcr } = await import(
+      "../src/lib/engineering-survey-sketch-extract"
+    );
+    const b = mineBoundaryDescriptionsFromOcr(`
+٢٢,٥
+شارع محدث بعرض ٦م
+٢٢,٧
+ملك مصطفى عزوز
+١٧
+ملك يوسف كاتب
+١٤
+ملك عبد الوهاب البنا
+`);
+    expect(b.north.description).toMatch(/شارع عرض 6/);
+    expect(b.south.description).toMatch(/ملك/);
+    expect(b.east.description).toMatch(/ملك/);
+    expect(b.west.description).toMatch(/ملك/);
+    expect(b.north.lengthM).toBe("22.5");
+  });
+
+  it("parses pure-number length column from croquis OCR", async () => {
+    const { parseEdgeLengthsFromCroquisOcr } = await import(
+      "../src/lib/engineering-survey-sketch-extract"
+    );
+    const lens = parseEdgeLengthsFromCroquisOcr(`
+٢٤,٢٥
+قطعة رقم ٢٢٥
+٢٤,٥٠
+قطعة رقم ٢٢٩
+٢٥,٠٠
+شارع عرض ١٥ م
+٢٤,٩٥
+قطعة رقم ٢٣٦
+٦٠٩,٠٠م٢
+`);
+    expect(lens).toEqual(["24.25", "24.5", "25", "24.95"]);
+  });
+
   it("rejects free-form garbage as description", async () => {
     const { isPlausibleBoundaryDescription } = await import(
       "../src/lib/engineering-survey-sketch-extract"

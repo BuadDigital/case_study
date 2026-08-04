@@ -11,7 +11,10 @@ import { cn } from "@platform/design-system";
 type ValueEstimationSectionProps = {
   landValue: string;
   buildingValue: string;
-  /** Case Study.html `price` — editable إجمالي قيمة العقار. */
+  /**
+   * Case Study.html `price` — إجمالي قيمة العقار.
+   * Auto-filled as land + buildings; still editable for overrides.
+   */
   propertyTotal: string;
   forcedSaleDiscountPct: string;
   disabled?: boolean;

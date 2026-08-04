@@ -240,6 +240,10 @@ export function EngineeringSurveyWorkPanel({
   const [sketchExtractNote, setSketchExtractNote] = useState<string | null>(
     null,
   );
+  const [sketchTablePreviews, setSketchTablePreviews] = useState<{
+    deedJpegDataUrl?: string;
+    natureJpegDataUrl?: string;
+  } | null>(null);
   const [sketchExtracting, setSketchExtracting] = useState(false);
   /** Last croquis parse — used when user chooses مطابقة = لا */
   const [lastSketchExtract, setLastSketchExtract] =
@@ -661,6 +665,7 @@ export function EngineeringSurveyWorkPanel({
           // Croquis PDF only — no property/بورصة mix-in
           const extracted = await extractSurveySketchFromPdf(file);
           setLastSketchExtract(extracted);
+          setSketchTablePreviews(extracted.croquisTablePreviews ?? null);
           const currentFields = localFields ?? localFieldsFromDraft(draft);
           // overwrite=true: re-upload must replace previous wrong spatial lengths
           const { patch, appliedCount } = sketchExtractToEmptyFieldsPatch(
@@ -718,11 +723,11 @@ export function EngineeringSurveyWorkPanel({
           if (descFilled === 0 && lengthFilled > 0) {
             msg =
               extracted.warning ??
-              "تُعبّأت الأطوال من أرقام الرسم. أوصاف الحد انسخها يدوياً من جدول الكروكي (شمال/جنوب/شرق/غرب).";
+              "عُبّئت الأطوال. أكمل «وصف الحد» من معاينة جدولي الصك/الطبيعة.";
           } else if (lengthFilled === 0 && descFilled === 0) {
             msg =
               extracted.warning ??
-              "لم تُقرأ أطوال/أوصاف من طبقة النص في هذا الـ PDF — عبّئ الحقول يدوياً من الكروكي.";
+              "انسخ الحدود والأطوال من جدولي الصك/الطبيعة في المعاينة (شمال→جنوب→شرق→غرب).";
           }
 
           setSketchExtractNote(msg);
@@ -871,8 +876,8 @@ export function EngineeringSurveyWorkPanel({
       <EngSection>التقرير المساحي</EngSection>
       {!formDisabled ? (
         <EngInfo>
-          ℹ بعد الرفع: تُعبَّأ الأطوال من أرقام الرسم عند توفرها؛ «وصف الحد» من جدول الكروكي يدوياً —
-          وقد يستغرق ثوانٍ. راجع القيم دائماً.
+          ℹ عند الرفع: نعبّي **فقط** من جدولي الكروكي «بموجب الصك» و«بموجب الطبيعة»
+          (وصف الحد + الطول · شمال→جنوب→شرق→غرب). المساحة يدوية دائماً.
         </EngInfo>
       ) : null}
       <EngUploadBox
@@ -897,6 +902,43 @@ export function EngineeringSurveyWorkPanel({
       ) : null}
       {sketchExtractNote && !sketchExtracting ? (
         <EngInfo variant="amber">{sketchExtractNote}</EngInfo>
+      ) : null}
+      {sketchTablePreviews &&
+      (sketchTablePreviews.deedJpegDataUrl ||
+        sketchTablePreviews.natureJpegDataUrl) &&
+      !sketchExtracting ? (
+        <div className="mb-3 space-y-2 rounded-[10px] border border-[color-mix(in_srgb,var(--line)_80%,transparent)] bg-[color-mix(in_srgb,var(--surface)_60%,transparent)] p-3">
+          <p className="text-[12px] font-semibold text-text-2">
+            المصدر: جدولا الكروكي (صك / طبيعة) — انسخ «وصف الحد» و«الطول» للحقول
+            (شمال → جنوب → شرق → غرب). لا تُنسَخ المساحة تلقائياً.
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {sketchTablePreviews.deedJpegDataUrl ? (
+              <figure className="m-0">
+                <figcaption className="mb-1 text-[11px] font-semibold text-text-3">
+                  بموجب الصك (أحمر)
+                </figcaption>
+                <img
+                  src={sketchTablePreviews.deedJpegDataUrl}
+                  alt="جدول الحدود بموجب الصك"
+                  className="max-h-64 w-full rounded border border-[color-mix(in_srgb,var(--line)_50%,transparent)] object-contain bg-white"
+                />
+              </figure>
+            ) : null}
+            {sketchTablePreviews.natureJpegDataUrl ? (
+              <figure className="m-0">
+                <figcaption className="mb-1 text-[11px] font-semibold text-text-3">
+                  بموجب الطبيعة (أزرق)
+                </figcaption>
+                <img
+                  src={sketchTablePreviews.natureJpegDataUrl}
+                  alt="جدول الحدود بموجب الطبيعة"
+                  className="max-h-64 w-full rounded border border-[color-mix(in_srgb,var(--line)_50%,transparent)] object-contain bg-white"
+                />
+              </figure>
+            ) : null}
+          </div>
+        </div>
       ) : null}
 
       <EngSection>الحدود والأطوال (حسب الصك)</EngSection>

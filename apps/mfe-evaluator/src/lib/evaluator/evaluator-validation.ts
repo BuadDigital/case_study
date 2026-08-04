@@ -66,6 +66,13 @@ export function validateEvaluatorSubmission(input: {
       "مطلوب إدخال إجمالي قيمة العقار — رقم موجب أكبر من صفر.";
   }
 
+  const assetConfirmed = Boolean(input.assetDataConfirmed);
+  const varianceNotes = (input.assetDataVarianceNotes ?? "").trim();
+  if (!assetConfirmed && !varianceNotes) {
+    errors.asset_data_confirmed =
+      "أكّد مراجعة بيانات الأصل، أو دوّن ملاحظات التباين إن وُجدت.";
+  }
+
   return errors;
 }
 

@@ -54,6 +54,7 @@ import {
   appraiserNeedsSurvey,
   appraiserSurveyDone,
 } from "../../lib/evaluator/evaluator-readiness";
+import { computePropertyTotal } from "../../lib/evaluator/value-estimation";
 import {
   EngField,
   EngInfo,
@@ -166,6 +167,8 @@ export function EvaluatorWindow({
         appraiserPhone: string;
         reportIssueDate: string;
         checklist: EvaluatorChecklistAnswers;
+        assetDataConfirmed: boolean;
+        assetDataVarianceNotes: string;
       }>,
       reportMetadata?: EvaluatorReportMetadata,
       planImageMetadata?: EvaluatorPlanImageMetadata,
@@ -201,12 +204,34 @@ export function EvaluatorWindow({
       poNumber: task.poNumber,
     }).then((loaded) => {
       if (!cancelled) {
-        setDraft(loaded);
-        if (loaded.reportFileName) {
-          setReportName(loaded.reportFileName);
+        const summed = computePropertyTotal(
+          loaded.landValue,
+          loaded.buildingValue,
+        );
+        const currentTotal = Number.parseFloat(
+          (loaded.evaluatorPrice || "0").replace(/,/g, ""),
+        );
+        const reconciled =
+          summed > 0 &&
+          (!Number.isFinite(currentTotal) || currentTotal === 0)
+            ? {
+                ...loaded,
+                evaluatorPrice: String(summed),
+              }
+            : loaded;
+        setDraft(reconciled);
+        if (reconciled !== loaded) {
+          void updateEvaluatorDraft(task.id, {
+            evaluatorPrice: reconciled.evaluatorPrice,
+          }).catch(() => {
+            /* best-effort; UI already shows the sum */
+          });
         }
-        if (loaded.planImageFileName) {
-          setPlanName(loaded.planImageFileName);
+        if (reconciled.reportFileName) {
+          setReportName(reconciled.reportFileName);
+        }
+        if (reconciled.planImageFileName) {
+          setPlanName(reconciled.planImageFileName);
         }
         setDraftLoading(false);
       }
@@ -237,6 +262,8 @@ export function EvaluatorWindow({
       landValue: draft.landValue,
       buildingValue: draft.buildingValue,
       forcedSaleDiscountPct: draft.forcedSaleDiscountPct,
+      assetDataConfirmed: draft.assetDataConfirmed,
+      assetDataVarianceNotes: draft.assetDataVarianceNotes,
     });
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
@@ -263,6 +290,8 @@ export function EvaluatorWindow({
           buildingValue: draft.buildingValue,
           forcedSaleDiscountPct: draft.forcedSaleDiscountPct,
           evaluatorPrice: draft.evaluatorPrice,
+          assetDataConfirmed: draft.assetDataConfirmed,
+          assetDataVarianceNotes: draft.assetDataVarianceNotes,
         });
         if (updated) setDraft(updated);
       } catch (err: unknown) {
@@ -301,6 +330,8 @@ export function EvaluatorWindow({
     draft.landValue,
     draft.buildingValue,
     draft.forcedSaleDiscountPct,
+    draft.assetDataConfirmed,
+    draft.assetDataVarianceNotes,
     hostRef,
     showToast,
   ]);
@@ -687,20 +718,40 @@ export function EvaluatorWindow({
                 totalError={fieldErrors.evaluator_price}
                 discountError={fieldErrors.forced_sale_discount}
                 onLandChange={(landValue) => {
-                  setDraft((prev) => ({ ...prev, landValue }));
-                  scheduleAutosave({ landValue });
+                  const evaluatorPrice = String(
+                    computePropertyTotal(landValue, draft.buildingValue),
+                  );
+                  setDraft((prev) => ({
+                    ...prev,
+                    landValue,
+                    evaluatorPrice: String(
+                      computePropertyTotal(landValue, prev.buildingValue),
+                    ),
+                  }));
+                  scheduleAutosave({ landValue, evaluatorPrice });
                   setFieldErrors((prev) => {
                     const next = { ...prev };
                     delete next.land_value;
+                    delete next.evaluator_price;
                     return next;
                   });
                 }}
                 onBuildingChange={(buildingValue) => {
-                  setDraft((prev) => ({ ...prev, buildingValue }));
-                  scheduleAutosave({ buildingValue });
+                  const evaluatorPrice = String(
+                    computePropertyTotal(draft.landValue, buildingValue),
+                  );
+                  setDraft((prev) => ({
+                    ...prev,
+                    buildingValue,
+                    evaluatorPrice: String(
+                      computePropertyTotal(prev.landValue, buildingValue),
+                    ),
+                  }));
+                  scheduleAutosave({ buildingValue, evaluatorPrice });
                   setFieldErrors((prev) => {
                     const next = { ...prev };
                     delete next.building_value;
+                    delete next.evaluator_price;
                     return next;
                   });
                 }}
@@ -723,6 +774,78 @@ export function EvaluatorWindow({
                   });
                 }}
               />
+
+              <EngSection>مراجعة بيانات الأصل</EngSection>
+              <div className="flex flex-col gap-3 rounded-[10px] border border-border bg-surface-2/60 p-3">
+                <p className="text-[12px] leading-relaxed text-text-2">
+                  راجع بيانات الأصل من المعاينة / الرفع المساحي / دراسة الحالة.
+                  أكّد مطابقتها، أو دوّن ملاحظات التباين إن وُجدت اختلافات.
+                </p>
+                <label
+                  className={cn(
+                    "flex cursor-pointer items-start gap-2.5 text-[13px] font-medium text-text",
+                    formDisabled && "cursor-not-allowed opacity-65",
+                  )}
+                >
+                  <input
+                    id="asset-data-confirmed"
+                    type="checkbox"
+                    className="mt-0.5 size-4 shrink-0 accent-primary"
+                    disabled={formDisabled}
+                    checked={draft.assetDataConfirmed}
+                    onChange={(e) => {
+                      const assetDataConfirmed = e.target.checked;
+                      setDraft((prev) => ({
+                        ...prev,
+                        assetDataConfirmed,
+                      }));
+                      scheduleAutosave({ assetDataConfirmed });
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.asset_data_confirmed;
+                        return next;
+                      });
+                    }}
+                  />
+                  <span>
+                    أؤكّد مراجعة بيانات الأصل وأنها مطابقة لما وُثِّق من
+                    الأطراف
+                    <span className="text-[#a5432e]"> *</span>
+                  </span>
+                </label>
+                <InfathTextAreaField
+                  id="asset-data-variance-notes"
+                  label="ملاحظات التباين (إن وُجدت)"
+                  autoComplete="off"
+                  disabled={formDisabled}
+                  placeholder="مثال: فرق في مساحة البناء مقارنة بالمعاينة الميدانية…"
+                  rows={2}
+                  value={draft.assetDataVarianceNotes}
+                  onChange={(e) => {
+                    const assetDataVarianceNotes = e.target.value;
+                    setDraft((prev) => ({
+                      ...prev,
+                      assetDataVarianceNotes,
+                    }));
+                    scheduleAutosave({ assetDataVarianceNotes });
+                    setFieldErrors((prev) => {
+                      const next = { ...prev };
+                      if (
+                        draft.assetDataConfirmed ||
+                        assetDataVarianceNotes.trim()
+                      ) {
+                        delete next.asset_data_confirmed;
+                      }
+                      return next;
+                    });
+                  }}
+                />
+                {fieldErrors.asset_data_confirmed ? (
+                  <span className="text-[11px] text-danger-text">
+                    {fieldErrors.asset_data_confirmed}
+                  </span>
+                ) : null}
+              </div>
 
               <EngSection>ملاحظات</EngSection>
               <InfathTextAreaField
