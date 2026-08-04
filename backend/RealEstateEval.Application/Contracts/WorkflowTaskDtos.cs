@@ -36,8 +36,8 @@ public class WorkflowTaskDto
     public string UpdatedAt { get; set; } = "";
 
     /// <summary>
-    /// Engineering-survey: sibling field-inspection workflow task is completed.
-    /// Populated on list/read so EO unlock works without seeing the inspection task row.
+    /// Engineering-survey / property-appraisal: sibling field-inspection workflow task is completed.
+    /// Populated on list so EO and appraiser unlock work without seeing the inspection task row.
     /// </summary>
     public bool? FieldInspectionCompleted { get; set; }
 }

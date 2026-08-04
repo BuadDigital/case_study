@@ -23,8 +23,8 @@ public class PartyTaskSubmissionDto
     public string UpdatedAtUtc { get; set; } = "";
 
     /// <summary>
-    /// Engineering-survey only: sibling field-inspection is completed (authoritative for EO unlock).
-    /// Also exposed on WorkflowTaskDto list items. Null for other submission kinds.
+    /// Engineering-survey / property-appraisal: sibling field-inspection is completed
+    /// (authoritative for EO/appraiser unlock). Also on WorkflowTaskDto list items.
     /// </summary>
     public bool? FieldInspectionCompleted { get; set; }
 }
