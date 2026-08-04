@@ -278,7 +278,7 @@ describe("spatial edge lengths from croquis drawing numbers", () => {
   });
 });
 
-describe("Arabic وصف الحد OCR mining", () => {
+describe("Arabic وصف الحد text mining (PDF text layer)", () => {
   it("mines dir+plot/street descriptions from clean Arabic", async () => {
     const { mineBoundaryDescriptionsFromOcr, isPlausibleBoundaryDescription } =
       await import("../src/lib/engineering-survey-sketch-extract");
@@ -311,7 +311,7 @@ describe("Arabic وصف الحد OCR mining", () => {
     expect(b.west.description).toMatch(/91/);
   });
 
-  it("mines ordered 4-line cloud OCR (OCR.space croquis dump)", async () => {
+  it("mines ordered 4-line table dump (no direction labels)", async () => {
     const { mineBoundaryDescriptionsFromOcr } = await import(
       "../src/lib/engineering-survey-sketch-extract"
     );
@@ -331,7 +331,7 @@ describe("Arabic وصف الحد OCR mining", () => {
     expect(b.west.description).toBe("قطعة رقم 91-س");
   });
 
-  it("mines ordered 4-line cloud OCR without -س suffix (960-style)", async () => {
+  it("mines ordered 4 plot/street rows without -س suffix", async () => {
     const { mineBoundaryDescriptionsFromOcr } = await import(
       "../src/lib/engineering-survey-sketch-extract"
     );
