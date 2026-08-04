@@ -25,7 +25,7 @@ export type PartyTaskSubmissionDto = {
   reopenedByUserId?: string;
   reopenedByName?: string;
   updatedAtUtc: string;
-  /** Engineering-survey: sibling field-inspection completed (server authority). */
+  /** Engineering-survey / property-appraisal: sibling field-inspection completed (server). */
   fieldInspectionCompleted?: boolean | null;
 };
 

@@ -19,10 +19,23 @@ export function findSiblingInspectionTask(
   );
 }
 
+/**
+ * Prefer server `fieldInspectionCompleted` — party appraiser lists hide sibling
+ * inspection tasks (same pattern as EO surveyWorkGate).
+ */
 export function inspectionGateForAppraisal(
   appraisalTask: WorkflowTask,
   tasks: WorkflowTask[],
 ): InspectionGateState {
+  if (typeof appraisalTask.fieldInspectionCompleted === "boolean") {
+    return appraisalTask.fieldInspectionCompleted
+      ? { ready: true }
+      : {
+          ready: false,
+          reason: "لا يمكن إدخال التقييم قبل اكتمال المعاينة الميدانية.",
+        };
+  }
+
   const inspection = findSiblingInspectionTask(appraisalTask, tasks);
   if (!inspection) {
     return {

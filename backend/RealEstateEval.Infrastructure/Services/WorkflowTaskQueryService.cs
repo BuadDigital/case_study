@@ -79,28 +79,31 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
     }
 
     /// <summary>
-    /// Marks engineering-survey DTOs with whether their sibling field-inspection is completed.
+    /// Marks engineering-survey and property-appraisal DTOs with whether their sibling
+    /// field-inspection is completed. Populated so EO/appraiser unlock works without
+    /// seeing the inspection task row (party visibility hides it).
     /// Query is scoped to parent+property pairs present in the page (no full-table scan).
     /// </summary>
     internal async Task EnrichFieldInspectionCompletedAsync(
         IReadOnlyList<WorkflowTaskDto> dtos,
         CancellationToken cancellationToken)
     {
-        var surveys = dtos
+        var targets = dtos
             .Where(d =>
-                d.Kind == WorkflowTaskKindValues.EngineeringSurvey
+                (d.Kind == WorkflowTaskKindValues.EngineeringSurvey
+                    || d.Kind == WorkflowTaskKindValues.PropertyAppraisal)
                 && !string.IsNullOrWhiteSpace(d.ParentTaskId)
                 && !string.IsNullOrWhiteSpace(d.PropertyId))
             .ToList();
-        if (surveys.Count == 0) return;
+        if (targets.Count == 0) return;
 
         var parentIds = new HashSet<Guid>();
         var propertyIds = new HashSet<Guid>();
-        foreach (var survey in surveys)
+        foreach (var target in targets)
         {
-            if (Guid.TryParse(survey.ParentTaskId, out var parentId))
+            if (Guid.TryParse(target.ParentTaskId, out var parentId))
                 parentIds.Add(parentId);
-            if (Guid.TryParse(survey.PropertyId, out var propertyId))
+            if (Guid.TryParse(target.PropertyId, out var propertyId))
                 propertyIds.Add(propertyId);
         }
 
@@ -121,10 +124,10 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
             .Select(k => (Parent: k.ParentId.ToString(), Prop: k.PropertyId.ToString()))
             .ToHashSet();
 
-        foreach (var survey in surveys)
+        foreach (var target in targets)
         {
-            survey.FieldInspectionCompleted = completed.Contains(
-                (survey.ParentTaskId!, survey.PropertyId!));
+            target.FieldInspectionCompleted = completed.Contains(
+                (target.ParentTaskId!, target.PropertyId!));
         }
     }
 }
