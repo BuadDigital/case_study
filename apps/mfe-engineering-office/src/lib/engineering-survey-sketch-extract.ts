@@ -1,10 +1,8 @@
 /**
  * Extract deed / nature boundary fields from a survey sketch PDF (client-side).
  *
- * Strategies (best → fallback):
- * 1) Text layer with labeled tables (بموجب الصك / الطبيعة + وصف الحد)
- * 2) Spatial edge-length numbers only (no descriptions)
- * 3) Empty fields filled from property intake (بورصة) hints
+ * Sources: croquis PDF text layer + OCR of tables only.
+ * Never mixes property/بورصة master data into boundaries or area.
  */
 
 export type SketchBoundarySide = {
@@ -69,16 +67,9 @@ export type SketchPdfTextItem = {
   width?: number;
 };
 
+/** @deprecated Unused — extract is croquis-only. Kept empty for API stability. */
 export type SketchPropertyBoundaryHints = {
   areaSqm?: string;
-  northBoundary?: string;
-  northBoundaryLengthM?: string;
-  southBoundary?: string;
-  southBoundaryLengthM?: string;
-  eastBoundary?: string;
-  eastBoundaryLengthM?: string;
-  westBoundary?: string;
-  westBoundaryLengthM?: string;
 };
 
 type DirKey = "north" | "south" | "east" | "west";
@@ -150,7 +141,10 @@ export function normalizeSketchText(input: string): string {
 }
 
 function cleanLength(raw: string): string {
-  const n = raw.replace(/,/g, "").replace(/\s/g, "").trim();
+  const n = normalizeSketchText(raw)
+    .replace(/,/g, "")
+    .replace(/\s/g, "")
+    .trim();
   if (!n || !/^\d+(\.\d+)?$/.test(n)) return "";
   return n;
 }
@@ -171,15 +165,18 @@ function cleanDescription(raw: string): string {
 function formatDescription(raw: string): string {
   let s = cleanDescription(raw);
   if (!s) return "";
-  // Normalize common croquis phrases
-  s = s
-    .replace(/قطعه\s*رقم/gi, "قطعة رقم")
+  s = normalizeSketchText(s)
     .replace(/قطعه\s*رقم/gi, "قطعة رقم")
     .replace(/قطعه/gi, "قطعة")
     .replace(/شارع\s*عرض/gi, "شارع عرض");
-  // "قطعة رقم 225" keep arabic digits if wanted - keep latin after normalize
-  const plot = s.match(/قطعه?\s*رقم\s*(\d+)/i);
-  if (plot) return `قطعة رقم ${plot[1]}`;
+  // قطعة رقم 94-س (suffix may not be digits)
+  const plot = s.match(
+    /قطعه?\s*رقم\s*(\d+)(?:\s*([\-–ـ]\s*[^\d\s]+))?/i,
+  );
+  if (plot) {
+    const suf = (plot[2] ?? "").replace(/\s+/g, "");
+    return suf ? `قطعة رقم ${plot[1]}${suf}` : `قطعة رقم ${plot[1]}`;
+  }
   const street = s.match(/شارع\s*عرض\s*([\d.]+)\s*م?/i);
   if (street) return `شارع عرض ${street[1]} م`;
   return s;
@@ -331,10 +328,14 @@ function isTableQuality(r: SurveySketchExtractResult): boolean {
   return paired >= 3 || nPaired >= 3;
 }
 
+/** Plot/street description (plot id complete — do not leave trailing digits for length). */
 const DESC_TOKEN =
-  "(?:قطعه?\\s*رقم\\s*\\d+|شارع\\s*عرض\\s*[\\d.]+\\s*م?)";
-/** Edge meters in croquis tables are always decimals (24.25) — never bare parcel ids. */
-const EDGE_LEN_TOKEN = "([\\d]+[.,]\\d{1,3})";
+  "(?:قطعه?\\s*رقم\\s*[\\d٠-٩]{1,6}(?![\\d٠-٩])(?:\\s*[\\-–ـ]\\s*[^\\d\\s،,.;:]+)?|شارع\\s*عرض\\s*[\\d.٠-٩]+\\s*م?)";
+/**
+ * Edge meters: decimals preferred; whole meters 2–3 digits only after id completed.
+ */
+const EDGE_LEN_TOKEN =
+  "([\\d٠-٩]+[.,][\\d٠-٩]{1,3}|[\\d٠-٩]{2,3}(?![\\d٠-٩.,]))";
 
 /**
  * Croquis table column header "الطول/م" (and OCR variants).
@@ -1305,65 +1306,14 @@ function finalizeExtractResult(
 }
 
 /**
- * Fill empty description/area from property intake (بورصة) — never overwrites croquis.
- * Orientation-aware croquis edge lengths are kept when intake only supplies orصاف.
+ * No-op retained for tests/callers: property intake must never alter croquis extract.
  */
 export function mergePropertyBoundaryHints(
   result: SurveySketchExtractResult,
-  hints?: SketchPropertyBoundaryHints | null,
+  _hints?: SketchPropertyBoundaryHints | null,
 ): SurveySketchExtractResult {
-  if (!hints) return result;
-  const deed = {
-    areaSqm: result.deed.areaSqm,
-    north: { ...result.deed.north },
-    south: { ...result.deed.south },
-    east: { ...result.deed.east },
-    west: { ...result.deed.west },
-  };
-
-  if (!deed.areaSqm.trim() && hints.areaSqm?.trim()) {
-    deed.areaSqm = hints.areaSqm.trim().replace(/[^\d.,]/g, "");
-  }
-  const descMap: Array<[DirKey, string | undefined]> = [
-    ["north", hints.northBoundary],
-    ["south", hints.southBoundary],
-    ["east", hints.eastBoundary],
-    ["west", hints.westBoundary],
-  ];
-  for (const [dir, v] of descMap) {
-    if (!deed[dir].description && v?.trim()) {
-      deed[dir].description = v.trim();
-    }
-  }
-
-  // Keep croquis edge lengths (orientation-aware spatial) even when بورصة
-  // fills descriptions — clearing them left "وصف صح + طول فاضي".
-  // Still prefer table/OCR lengths already on the block (never overwrite).
-
-  // Last resort: fill still-empty lengths from property intake (only empty slots).
-  const lenMap: Array<[DirKey, string | undefined]> = [
-    ["north", hints.northBoundaryLengthM],
-    ["south", hints.southBoundaryLengthM],
-    ["east", hints.eastBoundaryLengthM],
-    ["west", hints.westBoundaryLengthM],
-  ];
-  for (const [dir, v] of lenMap) {
-    if (!deed[dir].lengthM && v?.trim()) {
-      deed[dir].lengthM = cleanLength(v) || "";
-    }
-  }
-
-  const filledCount =
-    blockFilledCount(deed) +
-    (result.nature ? blockFilledCount(result.nature) : 0);
-
-  return {
-    ...result,
-    deed,
-    usedSpatialLengths: result.usedSpatialLengths,
-    hasData: filledCount > 0,
-    filledCount,
-  };
+  void _hints;
+  return result;
 }
 
 /**
@@ -1407,6 +1357,23 @@ export function sketchExtractToEmptyFieldsPatch(
     return next.trim();
   };
 
+  /**
+   * Descriptions must come from croquis OCR/table only.
+   * On re-upload overwrite: clear stale بورصة text when croquis has no description.
+   */
+  const takeDescription = (
+    curr: string | undefined,
+    next: string | undefined,
+  ): string | undefined => {
+    const n = (next ?? "").trim();
+    if (n) {
+      if (!overwrite && (curr ?? "").trim()) return undefined;
+      return n;
+    }
+    if (overwrite && (curr ?? "").trim()) return "";
+    return undefined;
+  };
+
   /** On re-upload, replace when extract has a value. Do not blank the field if extract length is empty. */
   const takeLength = (
     curr: string | undefined,
@@ -1427,14 +1394,14 @@ export function sketchExtractToEmptyFieldsPatch(
     value: SurveySketchApplyPatch[K],
   ) => {
     if (value === undefined || value === null) return;
-    // Allow empty string to clear stale lengths on overwrite
-    if (value === "" && !String(key).includes("Length")) return;
+    // Empty string only to clear stale boundary descriptions (not lengths with croquis empty)
+    if (value === "" && !/Boundary$/.test(String(key))) return;
     (patch as Record<string, unknown>)[key] = value;
     appliedCount += 1;
   };
 
   set("onSiteAreaSqm", take(current.onSiteAreaSqm, d.areaSqm));
-  set("northBoundary", take(current.northBoundary, d.north.description));
+  set("northBoundary", takeDescription(current.northBoundary, d.north.description));
   set(
     "northBoundaryLengthM",
     takeLength(
@@ -1443,7 +1410,7 @@ export function sketchExtractToEmptyFieldsPatch(
       Boolean(d.north.description),
     ),
   );
-  set("southBoundary", take(current.southBoundary, d.south.description));
+  set("southBoundary", takeDescription(current.southBoundary, d.south.description));
   set(
     "southBoundaryLengthM",
     takeLength(
@@ -1452,7 +1419,7 @@ export function sketchExtractToEmptyFieldsPatch(
       Boolean(d.south.description),
     ),
   );
-  set("eastBoundary", take(current.eastBoundary, d.east.description));
+  set("eastBoundary", takeDescription(current.eastBoundary, d.east.description));
   set(
     "eastBoundaryLengthM",
     takeLength(
@@ -1461,7 +1428,7 @@ export function sketchExtractToEmptyFieldsPatch(
       Boolean(d.east.description),
     ),
   );
-  set("westBoundary", take(current.westBoundary, d.west.description));
+  set("westBoundary", takeDescription(current.westBoundary, d.west.description));
   set(
     "westBoundaryLengthM",
     takeLength(
@@ -1476,7 +1443,7 @@ export function sketchExtractToEmptyFieldsPatch(
     set("natureOnSiteAreaSqm", take(current.natureOnSiteAreaSqm, n.areaSqm));
     set(
       "natureNorthBoundary",
-      take(current.natureNorthBoundary, n.north.description),
+      takeDescription(current.natureNorthBoundary, n.north.description),
     );
     set(
       "natureNorthBoundaryLengthM",
@@ -1488,7 +1455,7 @@ export function sketchExtractToEmptyFieldsPatch(
     );
     set(
       "natureSouthBoundary",
-      take(current.natureSouthBoundary, n.south.description),
+      takeDescription(current.natureSouthBoundary, n.south.description),
     );
     set(
       "natureSouthBoundaryLengthM",
@@ -1500,7 +1467,7 @@ export function sketchExtractToEmptyFieldsPatch(
     );
     set(
       "natureEastBoundary",
-      take(current.natureEastBoundary, n.east.description),
+      takeDescription(current.natureEastBoundary, n.east.description),
     );
     set(
       "natureEastBoundaryLengthM",
@@ -1512,7 +1479,7 @@ export function sketchExtractToEmptyFieldsPatch(
     );
     set(
       "natureWestBoundary",
-      take(current.natureWestBoundary, n.west.description),
+      takeDescription(current.natureWestBoundary, n.west.description),
     );
     set(
       "natureWestBoundaryLengthM",
@@ -1538,81 +1505,36 @@ export function sketchExtractToEmptyFieldsPatch(
 }
 
 /**
- * Nature (حسب الطبيعة) fields from croquis extract.
- * Prefers the nature table when present; otherwise seeds orصاف/أطوال
- * from the deed block (common when red/blue edges share lengths).
- * Never copies deed area onto nature — areas often differ (609 vs 606.49).
+ * Nature (حسب الطبيعة) fields from croquis extract only.
+ * Prefers nature table; else seeds orصاف/أطوال/estimate from deed croquis block.
+ * Never takes form / property master values.
  */
 export function sketchNatureFieldsFromExtract(
   result: SurveySketchExtractResult,
-  deedFormFallback?: {
-    onSiteAreaSqm?: string;
-    northBoundary?: string;
-    northBoundaryLengthM?: string;
-    southBoundary?: string;
-    southBoundaryLengthM?: string;
-    eastBoundary?: string;
-    eastBoundaryLengthM?: string;
-    westBoundary?: string;
-    westBoundaryLengthM?: string;
-  } | null,
 ): SurveySketchApplyPatch {
   const n = result.nature;
   const d = result.deed;
   const side = (
     fromNature: SketchBoundarySide | undefined,
     fromDeed: SketchBoundarySide,
-    formDesc?: string,
-    formLen?: string,
   ): SketchBoundarySide => ({
     description:
-      fromNature?.description?.trim() ||
-      fromDeed.description?.trim() ||
-      formDesc?.trim() ||
-      "",
+      fromNature?.description?.trim() || fromDeed.description?.trim() || "",
     lengthM:
-      fromNature?.lengthM?.trim() ||
-      fromDeed.lengthM?.trim() ||
-      cleanLength(formLen ?? "") ||
-      "",
+      fromNature?.lengthM?.trim() || fromDeed.lengthM?.trim() || "",
   });
 
-  const north = side(
-    n?.north,
-    d.north,
-    deedFormFallback?.northBoundary,
-    deedFormFallback?.northBoundaryLengthM,
-  );
-  const south = side(
-    n?.south,
-    d.south,
-    deedFormFallback?.southBoundary,
-    deedFormFallback?.southBoundaryLengthM,
-  );
-  const east = side(
-    n?.east,
-    d.east,
-    deedFormFallback?.eastBoundary,
-    deedFormFallback?.eastBoundaryLengthM,
-  );
-  const west = side(
-    n?.west,
-    d.west,
-    deedFormFallback?.westBoundary,
-    deedFormFallback?.westBoundaryLengthM,
-  );
+  const north = side(n?.north, d.north);
+  const south = side(n?.south, d.south);
+  const east = side(n?.east, d.east);
+  const west = side(n?.west, d.west);
 
-  // Prefer nature table / حسابي / OCR / geometric estimate vs صك (609 → 606.xx)
   const areaSqm =
-    resolveNatureAreaSqm(result, deedFormFallback?.onSiteAreaSqm, {
-      northBoundaryLengthM:
-        deedFormFallback?.northBoundaryLengthM || north.lengthM,
-      southBoundaryLengthM:
-        deedFormFallback?.southBoundaryLengthM || south.lengthM,
-      eastBoundaryLengthM:
-        deedFormFallback?.eastBoundaryLengthM || east.lengthM,
-      westBoundaryLengthM:
-        deedFormFallback?.westBoundaryLengthM || west.lengthM,
+    resolveNatureAreaSqm(result, undefined, {
+      northBoundaryLengthM: north.lengthM,
+      southBoundaryLengthM: south.lengthM,
+      eastBoundaryLengthM: east.lengthM,
+      westBoundaryLengthM: west.lengthM,
     }) || "";
 
   return {
@@ -2267,8 +2189,9 @@ function itemsFromPdfContent(
 }
 
 /**
- * Render PDF pages and OCR Arabic+English tables (وصف الحد + مساحات).
- * Also runs a digit-focused pass on the lower half (جداول المساحة).
+ * Render PDF pages and OCR Arabic croquis tables (وصف الحد + مساحات).
+ * Full page + left/right table strips. Hard binarize only for the digits pass —
+ * it flattens calligraphic table text otherwise.
  */
 export async function ocrSurveySketchPdf(file: File): Promise<string> {
   if (typeof window === "undefined" || typeof document === "undefined") {
@@ -2283,11 +2206,69 @@ export async function ocrSurveySketchPdf(file: File): Promise<string> {
 
     const { createWorker } = await import("tesseract.js");
     const worker = await createWorker("ara+eng");
+    await worker.setParameters({
+      tessedit_pageseg_mode: "6",
+      preserve_interword_spaces: "1",
+    });
+
+    const binarizeDigits = (
+      cctx: CanvasRenderingContext2D,
+      w: number,
+      h: number,
+    ) => {
+      const img = cctx.getImageData(0, 0, w, h);
+      const d = img.data;
+      for (let p = 0; p < d.length; p += 4) {
+        const g = 0.3 * d[p]! + 0.59 * d[p + 1]! + 0.11 * d[p + 2]!;
+        const v = g < 165 ? 0 : 255;
+        d[p] = d[p + 1] = d[p + 2] = v;
+      }
+      cctx.putImageData(img, 0, 0);
+    };
+
+    const recognizeCrop = async (
+      canvas: HTMLCanvasElement,
+      sx: number,
+      sy: number,
+      sw: number,
+      sh: number,
+      label: string,
+      digitsOnly = false,
+    ) => {
+      if (sw < 20 || sh < 20) return;
+      const crop = document.createElement("canvas");
+      crop.width = sw;
+      crop.height = sh;
+      const cctx = crop.getContext("2d");
+      if (!cctx) return;
+      cctx.fillStyle = "#fff";
+      cctx.fillRect(0, 0, sw, sh);
+      cctx.drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
+      if (digitsOnly) {
+        binarizeDigits(cctx, sw, sh);
+        await worker.setParameters({
+          tessedit_char_whitelist: "0123456789.,٠١٢٣٤٥٦٧٨٩ ",
+        });
+      } else {
+        await worker.setParameters({ tessedit_char_whitelist: "" });
+      }
+      const {
+        data: { text },
+      } = await worker.recognize(crop);
+      await worker.setParameters({ tessedit_char_whitelist: "" });
+      if (text?.trim()) {
+        parts.push(
+          digitsOnly
+            ? `AREA_DIGITS\n${text.trim()}`
+            : `${label}\n${text.trim()}`,
+        );
+      }
+    };
 
     try {
       for (let i = 1; i <= pageCount; i++) {
         const page = await pdf.getPage(i);
-        const viewport = page.getViewport({ scale: 2.4 });
+        const viewport = page.getViewport({ scale: 3.2 });
         const canvas = document.createElement("canvas");
         canvas.width = Math.ceil(viewport.width);
         canvas.height = Math.ceil(viewport.height);
@@ -2307,53 +2288,29 @@ export async function ocrSurveySketchPdf(file: File): Promise<string> {
         } = await worker.recognize(canvas);
         if (text?.trim()) parts.push(text.trim());
 
-        // Digit/area pass on lower portion (بموجب الطبيعة/الصك area rows)
         try {
-          const y0 = Math.floor(canvas.height * 0.52);
+          const y0 = Math.floor(canvas.height * 0.35);
           const h = canvas.height - y0;
-          if (h > 40) {
-            const crop = document.createElement("canvas");
-            crop.width = canvas.width;
-            crop.height = h;
-            const cctx = crop.getContext("2d");
-            if (cctx) {
-              cctx.fillStyle = "#fff";
-              cctx.fillRect(0, 0, crop.width, crop.height);
-              cctx.drawImage(
-                canvas,
-                0,
-                y0,
-                canvas.width,
-                h,
-                0,
-                0,
-                crop.width,
-                h,
-              );
-              // Boost contrast for purple/red table ink
-              const img = cctx.getImageData(0, 0, crop.width, crop.height);
-              const d = img.data;
-              for (let p = 0; p < d.length; p += 4) {
-                const g =
-                  0.3 * d[p]! + 0.59 * d[p + 1]! + 0.11 * d[p + 2]!;
-                const v = g < 160 ? 0 : 255;
-                d[p] = d[p + 1] = d[p + 2] = v;
-              }
-              cctx.putImageData(img, 0, 0);
-              await worker.setParameters({
-                tessedit_char_whitelist: "0123456789., ",
-              });
-              const {
-                data: { text: digits },
-              } = await worker.recognize(crop);
-              await worker.setParameters({ tessedit_char_whitelist: "" });
-              if (digits?.trim()) {
-                parts.push(`AREA_DIGITS\n${digits.trim()}`);
-              }
-            }
-          }
+          const mid = Math.floor(canvas.width / 2);
+          await recognizeCrop(
+            canvas,
+            mid,
+            y0,
+            canvas.width - mid,
+            h,
+            "TABLE_DEED بموجب الصك",
+          );
+          await recognizeCrop(
+            canvas,
+            0,
+            y0,
+            mid,
+            h,
+            "TABLE_NATURE بموجب الطبيعه",
+          );
+          await recognizeCrop(canvas, 0, y0, canvas.width, h, "AREA", true);
         } catch {
-          // Digits pass is best-effort
+          // Table crops best-effort
         }
 
         page.cleanup();
@@ -2370,17 +2327,10 @@ export async function ocrSurveySketchPdf(file: File): Promise<string> {
 }
 
 /**
- * Extract + parse a survey sketch PDF File.
- *
- * Priority:
- * 1) Labeled text / OCR under «الطول/م» (وصف + طول per side).
- * 2) Orientation-aware edge lengths from PDF text matrices (even if orصاف
- *    already came from OCR/بورصة) to fill missing طول fields only.
- * 3) Property-intake: empty descriptions (+ area); lengths only for still-empty slots.
+ * Extract + parse a survey sketch PDF File (croquis only — no property mix-ins).
  */
 export async function extractSurveySketchFromPdf(
   file: File,
-  propertyHints?: SketchPropertyBoundaryHints | null,
 ): Promise<SurveySketchExtractResult> {
   if (typeof window === "undefined") {
     return {
@@ -2424,10 +2374,11 @@ export async function extractSurveySketchFromPdf(
     // for croquis tables even when graphics-only.
     let tableSource = joinedText;
 
-    // Always OCR when lengths not fully paired — table is often image-only.
-    // Also OCR when we have zero paired rows (descriptions alone don't count).
+    // Always OCR when croquis table text is missing (graphics-only PDFs have
+    // edge lengths only — descriptions live in image tables).
     const needsOcr =
       !isTableQuality(result) ||
+      descriptionCount(result.deed) < 3 ||
       DIR_ORDER.filter(
         (d) => result.deed[d].description && result.deed[d].lengthM,
       ).length < 3;
@@ -2437,8 +2388,6 @@ export async function extractSurveySketchFromPdf(
       if (ocrText.trim()) {
         tableSource = [joinedText, ocrText].filter(Boolean).join("\n\n");
         const fromOcr = parseSurveySketchText(ocrText);
-        // Merge best sides — never discard OCR lengths because desc count alone
-        // looked "enough" on a weaker base result.
         result = {
           ...fromOcr,
           deed: mergePreferPairedSides(result.deed, fromOcr.deed),
@@ -2458,13 +2407,18 @@ export async function extractSurveySketchFromPdf(
         if (result.nature && isBlockEmpty(result.nature)) {
           result = { ...result, nature: null };
         }
-        // Re-finalize counts / match flag after merge
         result = finalizeExtractResult(
           result.deed,
           result.nature,
           tableSource,
           false,
         );
+      } else if (descriptionCount(result.deed) < 1) {
+        result = {
+          ...result,
+          warning:
+            "طُبّقت الأطوال من الرسم إن وُجدت. جداول الأوصاف صورة ولم يقرأها OCR — أدخل الأوصاف يدوياً.",
+        };
       }
     }
 
@@ -2574,15 +2528,15 @@ export async function extractSurveySketchFromPdf(
       if (est) result = { ...result, estimatedNatureAreaSqm: est };
     }
 
-    // When nature table was not parsed but croquis has a distinct second area
-    // (e.g. 606.49 حسابي / طبيعة vs 609 صك) — seed nature for form «لا».
+    // When nature table was not parsed — seed nature block from croquis deed
+    // sides + secondary croquis area (not property master).
     {
       const edges = DIR_ORDER.map((d) => result.deed[d].lengthM).filter(Boolean);
       const secArea =
-        resolveNatureAreaSqm(result, propertyHints?.areaSqm) ||
+        resolveNatureAreaSqm(result) ||
         extractSecondaryNatureArea(
           result.rawText || tableSource || joinedText,
-          result.deed.areaSqm || propertyHints?.areaSqm || "",
+          result.deed.areaSqm || "",
           edges,
         ) ||
         result.estimatedNatureAreaSqm ||
@@ -2592,7 +2546,7 @@ export async function extractSurveySketchFromPdf(
         (!result.nature || isBlockEmpty(result.nature) || !result.nature.areaSqm) &&
         (hasAnyDescription(result.deed) || lengthCount(result.deed) > 0)
       ) {
-        if (secArea || lengthCount(result.deed) >= 3) {
+        if (secArea || lengthCount(result.deed) >= 3 || hasAnyDescription(result.deed)) {
           const natureSeed: SketchBoundaryBlock = {
             areaSqm: secArea || result.nature?.areaSqm || "",
             north: { ...(result.nature?.north ?? result.deed.north) },
@@ -2609,8 +2563,7 @@ export async function extractSurveySketchFromPdf(
           }
           const meta = {
             edgeAngleBetweenRad: result.edgeAngleBetweenRad,
-            estimatedNatureAreaSqm:
-              result.estimatedNatureAreaSqm || secArea || undefined,
+            estimatedNatureAreaSqm: result.estimatedNatureAreaSqm,
           };
           result = finalizeExtractResult(
             result.deed,
@@ -2638,21 +2591,16 @@ export async function extractSurveySketchFromPdf(
         result = { ...result, ...meta };
       }
 
-      // Ensure deed area when only صك area known from hints/OCR candidates
+      // Deed area only from croquis OCR/labeled candidates (never property)
       if (!result.deed.areaSqm.trim()) {
-        const cands = collectPlausibleAreaCandidates(
-          result.rawText || tableSource || joinedText,
-          edges,
-          "",
-        );
-        if (cands.length >= 1) {
-          const sorted = [...cands].sort((a, b) => Number(b) - Number(a));
+        const labeled = extractArea(result.rawText || tableSource || joinedText);
+        if (labeled) {
           const meta = {
             edgeAngleBetweenRad: result.edgeAngleBetweenRad,
             estimatedNatureAreaSqm: result.estimatedNatureAreaSqm,
           };
           result = finalizeExtractResult(
-            { ...result.deed, areaSqm: sorted[0]! },
+            { ...result.deed, areaSqm: labeled },
             result.nature,
             result.rawText || joinedText,
             Boolean(result.usedSpatialLengths),
@@ -2662,8 +2610,7 @@ export async function extractSurveySketchFromPdf(
       }
     }
 
-    // Property intake last: fill empty descriptions/area; never replace table lengths.
-    return mergePropertyBoundaryHints(result, propertyHints);
+    return result;
   } catch (err) {
     return {
       rawText: "",
