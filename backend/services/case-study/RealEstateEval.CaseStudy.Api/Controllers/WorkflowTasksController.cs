@@ -10,6 +10,7 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 
 [ApiController]
 [Route("api/workflow-tasks")]
+[Route("api/workflow-tasks/v1")]
 [Authorize]
 public class WorkflowTasksController : ControllerBase
 {
@@ -72,7 +73,7 @@ public class WorkflowTasksController : ControllerBase
             request,
             cancellationToken);
         if (errors is not null)
-            return BadRequest(new { errors });
+            return this.FieldErrorsProblem(errors);
         return Ok(result);
     }
 
@@ -109,7 +110,7 @@ public class WorkflowTasksController : ControllerBase
     {
         var (result, errors) = await _tasks.RevertPhaseAsync(id, request, cancellationToken);
         if (errors is not null)
-            return BadRequest(new { errors });
+            return this.FieldErrorsProblem(errors);
         if (result is null) return NotFound();
         return Ok(result);
     }
@@ -181,8 +182,8 @@ public class WorkflowTasksController : ControllerBase
             await ActorPrototypeRoleAsync(cancellationToken),
             ActorName(),
             cancellationToken);
-        if (errors is not null) return BadRequest(new { errors });
-        if (result is null) return NotFound();
+        if (errors is not null) return this.FieldErrorsProblem(errors);
+        if (result is null) return this.NotFoundProblem("المهمة غير موجودة.");
         return Ok(result);
     }
 
@@ -199,8 +200,8 @@ public class WorkflowTasksController : ControllerBase
             await ActorPrototypeRoleAsync(cancellationToken),
             ActorName(),
             cancellationToken);
-        if (errors is not null) return BadRequest(new { errors });
-        if (result is null) return NotFound();
+        if (errors is not null) return this.FieldErrorsProblem(errors);
+        if (result is null) return this.NotFoundProblem("المهمة غير موجودة.");
         return Ok(result);
     }
 

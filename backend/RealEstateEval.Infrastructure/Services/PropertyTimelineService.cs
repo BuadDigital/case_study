@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -10,9 +10,14 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
 {
     private const int MaxTimelineRows = 500;
 
-    private readonly ApplicationDbContext _db;
+    private readonly CaseStudyDbContext _caseStudy;
+    private readonly FailuresDbContext _failures;
 
-    public PropertyTimelineService(ApplicationDbContext db) => _db = db;
+    public PropertyTimelineService(CaseStudyDbContext caseStudy, FailuresDbContext failures)
+    {
+        _caseStudy = caseStudy;
+        _failures = failures;
+    }
 
     public async Task<IReadOnlyList<PropertyTimelineEventDto>> GetForPropertyAsync(
         string poNumber,
@@ -20,7 +25,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
         CancellationToken cancellationToken = default)
     {
         var po = poNumber.Trim();
-        var existing = await _db.PropertyTimelineEntries
+        var existing = await _caseStudy.PropertyTimelineEntries
             .AsNoTracking()
             .Where(e => e.PoNumber == po && e.PropertyId == propertyId)
             .OrderByDescending(e => e.OccurredAtUtc)
@@ -33,8 +38,8 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
             var bootstrapped = await BootstrapAsync(po, propertyId, cancellationToken);
             if (bootstrapped.Count > 0)
             {
-                _db.PropertyTimelineEntries.AddRange(bootstrapped);
-                await _db.SaveChangesAsync(cancellationToken);
+                _caseStudy.PropertyTimelineEntries.AddRange(bootstrapped);
+                await _caseStudy.SaveChangesAsync(cancellationToken);
                 existing = bootstrapped;
             }
         }
@@ -52,7 +57,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
         Guid propertyId,
         CancellationToken cancellationToken)
     {
-        var tasks = await _db.WorkflowTasks
+        var tasks = await _caseStudy.WorkflowTasks
             .AsNoTracking()
             .Where(t => t.PoNumber == poNumber && t.PropertyId == propertyId)
             .ToListAsync(cancellationToken);
@@ -119,13 +124,13 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
         var key = eventKey.Trim();
         if (string.IsNullOrEmpty(po) || string.IsNullOrEmpty(key)) return;
 
-        var exists = await _db.PropertyTimelineEntries.AnyAsync(
+        var exists = await _caseStudy.PropertyTimelineEntries.AnyAsync(
             e => e.PoNumber == po && e.PropertyId == propertyId && e.EventKey == key,
             cancellationToken);
         if (exists) return;
 
         var now = DateTime.UtcNow;
-        _db.PropertyTimelineEntries.Add(new PropertyTimelineEntry
+        _caseStudy.PropertyTimelineEntries.Add(new PropertyTimelineEntry
         {
             Id = Guid.NewGuid(),
             PoNumber = po,
@@ -137,7 +142,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
             OccurredAtUtc = occurredAtUtc,
             RecordedAtUtc = now,
         });
-        await _db.SaveChangesAsync(cancellationToken);
+        await _caseStudy.SaveChangesAsync(cancellationToken);
     }
 
     public async Task RecordManyAsync(
@@ -163,7 +168,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
 
         var poNumbers = normalized.Select(e => e.Po).Distinct().ToList();
         var propertyIds = normalized.Select(e => e.PropertyId).Distinct().ToList();
-        var existingKeys = await _db.PropertyTimelineEntries
+        var existingKeys = await _caseStudy.PropertyTimelineEntries
             .AsNoTracking()
             .Where(e => poNumbers.Contains(e.PoNumber) && propertyIds.Contains(e.PropertyId))
             .Select(e => new { e.PoNumber, e.PropertyId, e.EventKey })
@@ -178,7 +183,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
             if (existing.Contains((entry.Po, entry.PropertyId, entry.Key)))
                 continue;
 
-            _db.PropertyTimelineEntries.Add(new PropertyTimelineEntry
+            _caseStudy.PropertyTimelineEntries.Add(new PropertyTimelineEntry
             {
                 Id = Guid.NewGuid(),
                 PoNumber = entry.Po,
@@ -193,7 +198,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
             existing.Add((entry.Po, entry.PropertyId, entry.Key));
         }
 
-        await _db.SaveChangesAsync(cancellationToken);
+        await _caseStudy.SaveChangesAsync(cancellationToken);
     }
 
     private async Task<List<PropertyTimelineEntry>> BootstrapAsync(
@@ -204,7 +209,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
         var events = new List<PropertyTimelineEntry>();
         var recordedAt = DateTime.UtcNow;
 
-        var order = await _db.WorkOrders
+        var order = await _caseStudy.WorkOrders
             .AsNoTracking()
             .Include(w => w.Properties)
             .FirstOrDefaultAsync(w => w.PoNumber == poNumber, cancellationToken);
@@ -237,7 +242,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
             DateOnlyToUtc(order.DueDateAt),
             recordedAt);
 
-        var tasks = await _db.WorkflowTasks
+        var tasks = await _caseStudy.WorkflowTasks
             .AsNoTracking()
             .Where(t => t.PoNumber == poNumber && t.PropertyId == propertyId)
             .OrderBy(t => t.CreatedAtUtc)
@@ -359,7 +364,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
             var childIds = children.Select(c => c.Id).ToList();
             if (childIds.Count > 0)
             {
-                var submissions = await _db.PartyTaskSubmissions
+                var submissions = await _caseStudy.PartyTaskSubmissions
                     .AsNoTracking()
                     .Where(s => childIds.Contains(s.WorkflowTaskId))
                     .ToListAsync(cancellationToken);
@@ -386,11 +391,13 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                 }
             }
 
-            var caseStudyForm = await _db.CaseStudyForms
+            var caseStudyForm = await _caseStudy.CaseStudyForms
                 .AsNoTracking()
                 .FirstOrDefaultAsync(f => f.TaskId == parent.Id && !f.IsPartyForm, cancellationToken);
             if (caseStudyForm is not null &&
-                caseStudyForm.Status is "submitted" or "completed" or "done")
+                caseStudyForm.Status is CaseStudyFormStatuses.Submitted
+                    or CaseStudyFormStatuses.Completed
+                    or CaseStudyFormStatuses.Done)
             {
                 var formAt = caseStudyForm.SavedAtUtc ?? caseStudyForm.UpdatedAtUtc;
                 AddEvent(
@@ -407,7 +414,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
         }
 
         var propertyKey = propertyId.ToString();
-        var failures = await _db.PropertyFailures
+        var failures = await _failures.PropertyFailures
             .AsNoTracking()
             .Where(f => f.PoNumber == poNumber && f.PropertyId == propertyKey)
             .OrderBy(f => f.CreatedAtUtc)

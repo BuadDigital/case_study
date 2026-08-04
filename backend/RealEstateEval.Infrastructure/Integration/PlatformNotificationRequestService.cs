@@ -1,21 +1,43 @@
-using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Shared.Contracts;
 
 namespace RealEstateEval.Infrastructure.Integration;
 
 /// <summary>
 /// Transitional command-side adapter for services that do not own the notification inbox.
-/// It writes requests to the shared transactional outbox; Platform persists the inbox rows.
-/// The shared database and its single Case Study outbox dispatcher remain explicit until
-/// service databases are physically separated.
+/// Writes requests to a producer outbox (Messaging preferred; residual App until full cutover);
+/// Platform persists inbox rows.
 /// </summary>
-public sealed class PlatformNotificationRequestService(
-    ApplicationDbContext db,
-    IIntegrationEventPublisher events) : INotificationService
+public sealed class PlatformNotificationRequestService : INotificationService
 {
+    private readonly IOutboxContext _outbox;
+    private readonly IIntegrationEventPublisher _events;
+
+    public PlatformNotificationRequestService(
+        MessagingDbContext db,
+        IIntegrationEventPublisher events)
+        : this((IOutboxContext)db, events)
+    {
+    }
+
+    public PlatformNotificationRequestService(
+        ApplicationDbContext db,
+        IIntegrationEventPublisher events)
+        : this((IOutboxContext)db, events)
+    {
+    }
+
+    private PlatformNotificationRequestService(
+        IOutboxContext outbox,
+        IIntegrationEventPublisher events)
+    {
+        _outbox = outbox;
+        _events = events;
+    }
+
     public Task<IReadOnlyList<UserNotificationDto>> ListForUserAsync(
         string userId,
         CancellationToken cancellationToken = default) =>
@@ -27,7 +49,7 @@ public sealed class PlatformNotificationRequestService(
         CancellationToken cancellationToken = default)
     {
         await QueueAsync([userId], request, cancellationToken);
-        await db.SaveChangesAsync(cancellationToken);
+        await _outbox.SaveChangesAsync(cancellationToken);
         return ToProvisionalDto(request);
     }
 
@@ -40,7 +62,7 @@ public sealed class PlatformNotificationRequestService(
         if (recipients.Count == 0) return 0;
 
         await QueueAsync(recipients, request, cancellationToken);
-        await db.SaveChangesAsync(cancellationToken);
+        await _outbox.SaveChangesAsync(cancellationToken);
         return recipients.Count;
     }
 
@@ -68,7 +90,7 @@ public sealed class PlatformNotificationRequestService(
         foreach (var item in normalized)
             await QueueAsync([item.UserId.Trim()], item.Request, cancellationToken);
 
-        await db.SaveChangesAsync(cancellationToken);
+        await _outbox.SaveChangesAsync(cancellationToken);
         return normalized.Count;
     }
 
@@ -98,7 +120,7 @@ public sealed class PlatformNotificationRequestService(
         IReadOnlyList<string> userIds,
         CreateUserNotificationRequest request,
         CancellationToken cancellationToken) =>
-        events.PublishAsync(
+        _events.PublishAsync(
             IntegrationEventTypes.NotificationUsersRequested,
             new NotificationUsersRequestedPayload(
                 userIds,

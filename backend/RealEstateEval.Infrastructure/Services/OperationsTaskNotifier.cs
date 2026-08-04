@@ -13,13 +13,18 @@ public sealed class OperationsTaskNotifier
     private readonly OperationsDbContext _ops;
     private readonly ApplicationDbContext _db;
     private readonly INotificationService _notifications;
+    private readonly IUserLabelLookup _labels;
 
-    public OperationsTaskNotifier(OperationsDbContext ops,
-        ApplicationDbContext db, INotificationService notifications)
+    public OperationsTaskNotifier(
+        OperationsDbContext ops,
+        ApplicationDbContext db,
+        INotificationService notifications,
+        IUserLabelLookup? labels = null)
     {
         _ops = ops;
         _db = db;
         _notifications = notifications;
+        _labels = labels ?? new UserLabelLookup(db);
     }
 
     public async Task NotifyAssigneeAsync(OperationsTask entity, CancellationToken cancellationToken)
@@ -227,7 +232,7 @@ public sealed class OperationsTaskNotifier
         if (PersonLabelResolver.LooksLikePersonName(claimName))
             return claimName!.Trim();
 
-        var fromDb = await PersonLabelResolver.ResolveAsync(_db, userId, cancellationToken);
+        var fromDb = await _labels.ResolveAsync(userId, cancellationToken);
         return PersonLabelResolver.LooksLikePersonName(fromDb) ? fromDb : "";
     }
 

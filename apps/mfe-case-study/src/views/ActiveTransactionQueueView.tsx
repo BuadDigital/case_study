@@ -1806,11 +1806,11 @@ export function ActiveTransactionQueueView({
                                   </span>
                                 )}
                               </Td>
-                              <Td
-                                dir="ltr"
-                                className="text-[12.5px] text-text-2"
-                              >
-                                {assignedLabel}
+                              <Td className="whitespace-nowrap text-[12.5px] text-text-2">
+                                {/* Keep YYYY/MM/DD order without flipping cell start edge in RTL */}
+                                <span dir="ltr" className="inline-block tabular-nums">
+                                  {assignedLabel}
+                                </span>
                               </Td>
                               <Td>
                                 <div className="flex flex-col items-start gap-1">
@@ -2025,11 +2025,10 @@ export function ActiveTransactionQueueView({
                               >
                                 <PoNumber value={task.poNumber} link />
                               </Td>
-                              <Td
-                                dir="ltr"
-                                className="text-center text-[12.5px] text-text-2"
-                              >
-                                {assignedLabel}
+                              <Td className="whitespace-nowrap text-center text-[12.5px] text-text-2">
+                                <span dir="ltr" className="inline-block tabular-nums">
+                                  {assignedLabel}
+                                </span>
                               </Td>
                               <Td className="overflow-visible text-center">
                                 <HoverPortalCard

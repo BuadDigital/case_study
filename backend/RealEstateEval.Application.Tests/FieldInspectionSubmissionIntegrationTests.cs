@@ -14,14 +14,10 @@ public class FieldInspectionSubmissionIntegrationTests
 {
     private static readonly Guid TaskId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
     private static readonly Guid PropertyId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
-    private static readonly Guid FrontPhotoAttachmentId =
+    private static readonly Guid ServicePhotoAttachmentId =
         Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1");
-    private static readonly Guid WaterPhotoAttachmentId =
+    private static readonly Guid AmenityPhotoAttachmentId =
         Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2");
-    private static readonly Guid ElecPhotoAttachmentId =
-        Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3");
-    private static readonly Guid InsidePhotoAttachmentId =
-        Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4");
 
     [Fact]
     public async Task SaveDraft_syncs_field_inspection_workspace_row()
@@ -46,8 +42,8 @@ public class FieldInspectionSubmissionIntegrationTests
             .SingleAsync(w => w.WorkflowTaskId == TaskId);
 
         Assert.Equal(PartyTaskSubmissionStatus.Draft, workspace.Status);
-        Assert.Equal(4, workspace.AttachmentCount);
-        Assert.Equal(5, workspace.RequiredPhotoSlots);
+        Assert.Equal(2, workspace.AttachmentCount);
+        Assert.Equal(2, workspace.RequiredPhotoSlots);
     }
 
     [Fact]
@@ -172,8 +168,7 @@ public class FieldInspectionSubmissionIntegrationTests
 
     private static PartyTaskSubmissionService CreateService(ApplicationDbContext db, FailuresDbContext failures, OperationsDbContext ops)
     {
-        var timeline = new PropertyTimelineService(db);
-        var holds = new PropertyAccessHoldService(db, failures);
+        var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db);
         var (notifications, recipients) = TestInspectorFeeServiceFactory.CreateNotificationDeps(db);
         return new(
             db,
@@ -182,8 +177,7 @@ public class FieldInspectionSubmissionIntegrationTests
             timeline,
             new NullHttpContextAccessor(),
             new NullPermissionService(),
-            new PropertyKeyGateResolver(ops, db),
-            new KeyEnvelopesService(ops, db, holds, new KeyEnvelopePeopleResolver(db)),
+            TestBoundedContexts.CreateKeyEnvelopesService(db, failures, ops),
             TestInspectorFeeServiceFactory.Create(db),
             notifications,
             recipients);
@@ -220,10 +214,8 @@ public class FieldInspectionSubmissionIntegrationTests
         var now = DateTime.UtcNow;
         var rows = new (Guid Id, string PhotoRef)[]
         {
-            (FrontPhotoAttachmentId, "slot:front:1"),
-            (WaterPhotoAttachmentId, "slot:water:2"),
-            (ElecPhotoAttachmentId, "slot:elec:3"),
-            (InsidePhotoAttachmentId, "slot:inside:4"),
+            (ServicePhotoAttachmentId, "slot:service:كهرباء:1"),
+            (AmenityPhotoAttachmentId, "slot:amenity:مساجد:2"),
         };
 
         foreach (var (id, photoRef) in rows)
@@ -268,59 +260,33 @@ public class FieldInspectionSubmissionIntegrationTests
           "componentPhotoAttachments": { "showroom": null, "well": null },
           "observations": [],
           "freePhotos": [],
+          "services": ["كهرباء"],
+          "amenities": ["مساجد"],
           "definedPhotos": {
-            "front": {
+            "service:كهرباء": {
               "none": false,
               "photos": [
                 {
                   "id": 1,
                   "approved": true,
-                  "fileName": "front.jpg",
+                  "fileName": "electricity.jpg",
                   "mimeType": "image/jpeg",
-                  "attachmentId": "{{FrontPhotoAttachmentId}}"
+                  "attachmentId": "{{ServicePhotoAttachmentId}}"
                 }
               ]
             },
-            "sides": { "none": true, "photos": [] },
-            "water": {
+            "amenity:مساجد": {
               "none": false,
               "photos": [
                 {
                   "id": 2,
                   "approved": true,
-                  "fileName": "water.jpg",
+                  "fileName": "mosque.jpg",
                   "mimeType": "image/jpeg",
-                  "attachmentId": "{{WaterPhotoAttachmentId}}"
+                  "attachmentId": "{{AmenityPhotoAttachmentId}}"
                 }
               ]
-            },
-            "elec": {
-              "none": false,
-              "photos": [
-                {
-                  "id": 3,
-                  "approved": true,
-                  "fileName": "elec.jpg",
-                  "mimeType": "image/jpeg",
-                  "attachmentId": "{{ElecPhotoAttachmentId}}"
-                }
-              ]
-            },
-            "inside": {
-              "none": false,
-              "photos": [
-                {
-                  "id": 4,
-                  "approved": true,
-                  "fileName": "inside.jpg",
-                  "mimeType": "image/jpeg",
-                  "attachmentId": "{{InsidePhotoAttachmentId}}"
-                }
-              ]
-            },
-            "floor": { "none": false, "photos": [] },
-            "annexup": { "none": false, "photos": [] },
-            "annexdn": { "none": false, "photos": [] }
+            }
           }
         }
         """;

@@ -2,17 +2,19 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class IncentiveSuspensionService : IIncentiveSuspensionService
 {
-    private readonly ApplicationDbContext _db;
+    private readonly FinancialDbContext _db;
+    private readonly IdentityDbContext _identity;
 
-    public IncentiveSuspensionService(ApplicationDbContext db)
+    public IncentiveSuspensionService(FinancialDbContext db, IdentityDbContext identity)
     {
         _db = db;
+        _identity = identity;
     }
 
     public async Task<IReadOnlyList<IncentiveSuspensionDto>> ListAsync(
@@ -69,7 +71,7 @@ public sealed class IncentiveSuspensionService : IIncentiveSuspensionService
         if (string.IsNullOrEmpty(reason))
             return (null, "سبب إيقاف الحوافز مطلوب.");
 
-        var profile = await _db.UserProfiles.AsNoTracking()
+        var profile = await _identity.UserProfiles.AsNoTracking()
             .FirstOrDefaultAsync(p => p.DistributionAssigneeId == assigneeId, cancellationToken);
         if (profile is null)
             return (null, "الطرف غير موجود.");

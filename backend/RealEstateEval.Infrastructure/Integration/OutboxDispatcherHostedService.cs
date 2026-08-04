@@ -3,8 +3,20 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using RealEstateEval.Domain;
+using RealEstateEval.Infrastructure.Data;
 
 namespace RealEstateEval.Infrastructure.Integration;
+
+/// <summary>
+/// Which <see cref="IOutboxContext"/> the single shared dispatcher drains. Residual default is
+/// the legacy app context (same physical <c>messaging.OutboxMessages</c> table as other producers).
+/// Physical multi-dispatcher cutover (E7/A10) rebinds this type only.
+/// </summary>
+public sealed class OutboxDispatcherOptions
+{
+    public Type ContextType { get; set; } = typeof(ApplicationDbContext);
+}
 
 public sealed class OutboxDispatcherHostedService : BackgroundService
 {
@@ -23,16 +35,19 @@ public sealed class OutboxDispatcherHostedService : BackgroundService
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly RabbitMqOptions _options;
+    private readonly OutboxDispatcherOptions _dispatcherOptions;
     private readonly ILogger<OutboxDispatcherHostedService> _logger;
     private int _emptyBackoffIndex;
 
     public OutboxDispatcherHostedService(
         IServiceScopeFactory scopeFactory,
         IOptions<RabbitMqOptions> options,
+        IOptions<OutboxDispatcherOptions> dispatcherOptions,
         ILogger<OutboxDispatcherHostedService> logger)
     {
         _scopeFactory = scopeFactory;
         _options = options.Value;
+        _dispatcherOptions = dispatcherOptions.Value;
         _logger = logger;
     }
 
@@ -77,11 +92,11 @@ public sealed class OutboxDispatcherHostedService : BackgroundService
     private async Task<int> DispatchBatchAsync(CancellationToken stoppingToken)
     {
         using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<Data.ApplicationDbContext>();
+        var outbox = ResolveOutbox(scope.ServiceProvider);
         var rabbit = scope.ServiceProvider.GetRequiredService<RabbitMqMessagePublisher>();
 
         var owner = $"{Environment.MachineName}:{Guid.NewGuid():N}";
-        var claimed = await ClaimBatchAsync(db, owner, stoppingToken);
+        var claimed = await ClaimBatchAsync(outbox, owner, stoppingToken);
         if (claimed.Count == 0)
             return 0;
 
@@ -135,7 +150,7 @@ public sealed class OutboxDispatcherHostedService : BackgroundService
             }
         }
 
-        await db.SaveChangesAsync(stoppingToken);
+        await outbox.SaveChangesAsync(stoppingToken);
 
         if (undelivered > 0)
         {
@@ -150,21 +165,36 @@ public sealed class OutboxDispatcherHostedService : BackgroundService
         return delivered;
     }
 
+    private IOutboxContext ResolveOutbox(IServiceProvider services)
+    {
+        var type = _dispatcherOptions.ContextType;
+        if (!typeof(IOutboxContext).IsAssignableFrom(type))
+        {
+            throw new InvalidOperationException(
+                $"OutboxDispatcherOptions.ContextType must implement IOutboxContext (got {type.Name}).");
+        }
+
+        return (IOutboxContext)services.GetRequiredService(type);
+    }
+
     /// <summary>
     /// Takes a lease on a batch of pending rows. On PostgreSQL the candidate select uses
     /// FOR UPDATE SKIP LOCKED so concurrent dispatchers claim disjoint rows instead of
     /// publishing the same event twice.
     /// </summary>
-    private async Task<List<Domain.OutboxMessage>> ClaimBatchAsync(
-        Data.ApplicationDbContext db,
+    private async Task<List<OutboxMessage>> ClaimBatchAsync(
+        IOutboxContext outbox,
         string owner,
         CancellationToken stoppingToken)
     {
         var now = DateTime.UtcNow;
         var lease = now.Add(LeaseDuration);
 
+        if (outbox is not DbContext db)
+            return await ClaimWithoutLockingAsync(outbox, owner, now, lease, stoppingToken);
+
         if (!db.Database.IsRelational())
-            return await ClaimWithoutLockingAsync(db, owner, now, lease, stoppingToken);
+            return await ClaimWithoutLockingAsync(outbox, owner, now, lease, stoppingToken);
 
         const string sql = """
             UPDATE messaging."OutboxMessages"
@@ -188,7 +218,7 @@ public sealed class OutboxDispatcherHostedService : BackgroundService
         if (affected == 0)
             return [];
 
-        return await db.OutboxMessages
+        return await outbox.OutboxMessages
             .Where(m => m.LockedBy == owner && m.ProcessedAtUtc == null)
             .OrderBy(m => m.CreatedAtUtc)
             .ToListAsync(stoppingToken);
@@ -197,14 +227,14 @@ public sealed class OutboxDispatcherHostedService : BackgroundService
     /// <summary>
     /// Fallback for non-relational providers used in tests, where row locking is unavailable.
     /// </summary>
-    private static async Task<List<Domain.OutboxMessage>> ClaimWithoutLockingAsync(
-        Data.ApplicationDbContext db,
+    private static async Task<List<OutboxMessage>> ClaimWithoutLockingAsync(
+        IOutboxContext outbox,
         string owner,
         DateTime now,
         DateTime lease,
         CancellationToken stoppingToken)
     {
-        var pending = await db.OutboxMessages
+        var pending = await outbox.OutboxMessages
             .Where(m => m.ProcessedAtUtc == null
                 && m.DeadLetteredAtUtc == null
                 && (m.LockedUntilUtc == null || m.LockedUntilUtc < now))

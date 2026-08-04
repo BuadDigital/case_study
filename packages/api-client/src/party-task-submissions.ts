@@ -25,6 +25,8 @@ export type PartyTaskSubmissionDto = {
   reopenedByUserId?: string;
   reopenedByName?: string;
   updatedAtUtc: string;
+  /** Engineering-survey: sibling field-inspection completed (server authority). */
+  fieldInspectionCompleted?: boolean | null;
 };
 
 export type SavePartyTaskSubmissionRequest = {
@@ -92,6 +94,11 @@ function normalizeSubmissionDto(raw: unknown): PartyTaskSubmissionDto {
       | string
       | undefined,
     updatedAtUtc: String(row.updatedAtUtc ?? row.UpdatedAtUtc ?? ""),
+    fieldInspectionCompleted: (() => {
+      const raw = row.fieldInspectionCompleted ?? row.FieldInspectionCompleted;
+      if (raw === true || raw === false) return raw;
+      return undefined;
+    })(),
   };
 }
 

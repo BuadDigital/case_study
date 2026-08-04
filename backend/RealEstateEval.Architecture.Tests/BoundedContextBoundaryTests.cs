@@ -142,6 +142,8 @@ public class BoundedContextBoundaryTests
             "CaseStudyInfoRolesConfigService",
             "FailureTypesCatalogService",
             "SurveyOfficesService",
+            "NotificationService",
+            "PushSubscriptionService",
             "ValuationRequestService",
             "EvaluatorRecallsService",
             "AuthSessionService",

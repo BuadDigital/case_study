@@ -34,6 +34,12 @@ public class WorkflowTaskDto
     public string? AssignmentType { get; set; }
     public string CreatedAt { get; set; } = "";
     public string UpdatedAt { get; set; } = "";
+
+    /// <summary>
+    /// Engineering-survey: sibling field-inspection workflow task is completed.
+    /// Populated on list/read so EO unlock works without seeing the inspection task row.
+    /// </summary>
+    public bool? FieldInspectionCompleted { get; set; }
 }
 
 public class PatchWorkflowTaskDistributionRequest

@@ -34,7 +34,6 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
     private readonly IPropertyTimelineService _timeline;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IPermissionService _permissions;
-    private readonly IPropertyKeyGateResolver _keyGates;
     private readonly IKeyEnvelopesService _keyEnvelopes;
     private readonly IInspectorFeeService _inspectorFees;
     private readonly INotificationService _notifications;
@@ -47,7 +46,6 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         IPropertyTimelineService timeline,
         IHttpContextAccessor httpContextAccessor,
         IPermissionService permissions,
-        IPropertyKeyGateResolver keyGates,
         IKeyEnvelopesService keyEnvelopes,
         IInspectorFeeService inspectorFees,
         INotificationService notifications,
@@ -59,7 +57,6 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         _timeline = timeline;
         _httpContextAccessor = httpContextAccessor;
         _permissions = permissions;
-        _keyGates = keyGates;
         _keyEnvelopes = keyEnvelopes;
         _inspectorFees = inspectorFees;
         _notifications = notifications;
@@ -77,7 +74,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         var entity = await _db.PartyTaskSubmissions
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.WorkflowTaskId == taskId, cancellationToken);
-        return entity is null ? null : ToDto(entity);
+        return entity is null ? null : await ToDtoAsync(entity, cancellationToken);
     }
 
     public async Task<IReadOnlyList<PartyTaskSubmissionDto>> ListForTasksAsync(
@@ -101,7 +98,10 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             .Where(s => ids.Contains(s.WorkflowTaskId))
             .ToListAsync(cancellationToken);
 
-        return entities.Select(ToDto).ToList();
+        var result = new List<PartyTaskSubmissionDto>(entities.Count);
+        foreach (var entity in entities)
+            result.Add(await ToDtoAsync(entity, cancellationToken));
+        return result;
     }
 
     private async Task<bool> CanReadTaskAsync(
@@ -218,7 +218,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (task.Kind == WorkflowTaskKind.GovernmentReview)
             await BridgeGovernmentReviewToEnvelopeAsync(task, payloadJson, cancellationToken);
 
-        return (ToDto(entity), null);
+        return (await ToDtoAsync(entity, cancellationToken), null);
     }
 
     public async Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> SubmitAsync(
@@ -252,7 +252,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             return (null, new Dictionary<string, string> { ["_"] = "لا يوجد مسودة للإرسال" });
 
         if (entity.Status is PartyTaskSubmissionStatus.Submitted)
-            return (ToDto(entity), null);
+            return (await ToDtoAsync(entity, cancellationToken), null);
 
         var validationErrors = await ValidateForSubmitAsync(entity, cancellationToken);
         if (validationErrors.Count > 0)
@@ -312,7 +312,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 cancellationToken);
         }
 
-        return (ToDto(entity), null);
+        return (await ToDtoAsync(entity, cancellationToken), null);
     }
 
     public async Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> ReopenAsync(
@@ -404,7 +404,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 sourceEvent: $"engineering-survey-returned:{taskId}",
                 cancellationToken);
 
-        return (ToDto(entity), null);
+        return (await ToDtoAsync(entity, cancellationToken), null);
     }
 
     public async Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> AcceptAsync(
@@ -487,7 +487,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 sourceEvent: $"engineering-survey-accepted:{taskId}",
                 cancellationToken);
 
-        return (ToDto(entity), null);
+        return (await ToDtoAsync(entity, cancellationToken), null);
     }
 
     private async Task NotifyEngineeringSurveyAssigneeAsync(
@@ -699,33 +699,16 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         {
             case "engineering-survey":
             {
-                var inspectionCompleted = false;
-                if (entity.PropertyId is Guid pid)
-                {
-                    var surveyTask = await _db.WorkflowTasks.AsNoTracking()
-                        .FirstOrDefaultAsync(t => t.Id == entity.WorkflowTaskId, cancellationToken);
-                    if (surveyTask?.ParentTaskId is Guid parentId)
-                    {
-                        inspectionCompleted = await _db.WorkflowTasks.AsNoTracking().AnyAsync(
-                            t => t.ParentTaskId == parentId
-                                && t.PropertyId == pid
-                                && t.Kind == WorkflowTaskKind.FieldInspection
-                                && t.Status == WorkflowTaskStatus.Completed,
-                            cancellationToken);
-                    }
-                }
-
-                var informalOk = property is null
-                    || DocumentaryWorkflowRules.InformalAccessUnlocked(
-                        property.PlanNumber,
-                        property.PlotNumber,
-                        property.LocationMapUrl);
+                var inspectionCompleted = entity.PropertyId is Guid pid
+                    && await IsSiblingFieldInspectionCompletedAsync(
+                        entity.WorkflowTaskId,
+                        pid,
+                        cancellationToken);
 
                 var surveyBlock = DocumentaryWorkflowRules.SurveyWorkBlockReason(
                     bypass,
                     inspectionCompleted,
-                    hasActiveFailure,
-                    informalOk);
+                    hasActiveFailure);
                 if (surveyBlock is not null)
                     errors["_documentary"] = surveyBlock;
 
@@ -746,38 +729,8 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
             case "field-inspection":
             {
-                if (property is not null)
-                {
-                    var informalBlock = DocumentaryWorkflowRules.InformalAccessBlockReason(
-                        bypass,
-                        property.PlanNumber,
-                        property.PlotNumber,
-                        property.LocationMapUrl);
-                    if (informalBlock is not null)
-                        errors["_documentary"] = informalBlock;
-                }
-
-                var vacantLand = PartyTaskSubmissionPayloadRules.GetBool(root, "vacantLand")
-                    || string.Equals(PartyTaskSubmissionPayloadRules.GetString(root, "vacantLand"), "yes", StringComparison.OrdinalIgnoreCase);
-                var gate = await _keyGates.ResolveAsync(
-                    entity.PropertyId,
-                    entity.PoNumber,
-                    property?.DeedNumber,
-                    property?.RequestNumber,
-                    cancellationToken);
-                var keyAvailable = gate.KeyAvailable
-                    || PartyTaskSubmissionPayloadRules.GetBool(root, "keyAvailable")
-                    || string.Equals(PartyTaskSubmissionPayloadRules.GetString(root, "keyHandedToInspector"), "yes", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(PartyTaskSubmissionPayloadRules.GetString(root, "keysStatus"), "received", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(PartyTaskSubmissionPayloadRules.GetString(root, "keysStatus"), "not_required", StringComparison.OrdinalIgnoreCase);
-
-                var keyBlock = DocumentaryWorkflowRules.InspectorSubmitKeyBlockReason(
-                    bypass,
-                    vacantLand,
-                    keyAvailable);
-                if (keyBlock is not null)
-                    errors["keyAvailable"] = keyBlock;
-
+                // Informal map-URL access gate removed — tasks are not assigned without initial data.
+                // Key envelopes remain tracked (payload keyAvailable) but do not block submit.
                 var hasPhone = property is not null
                     && DocumentaryWorkflowRules.HasAnyPartyPhone(property.Contacts);
                 var phoneWasPresent = PartyTaskSubmissionPayloadRules.GetBool(root, "declarationPhoneSatisfied");
@@ -936,6 +889,46 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         var createdAtUtc = existing.CreatedAtUtc;
         _db.Entry(existing).CurrentValues.SetValues(projected);
         existing.CreatedAtUtc = createdAtUtc;
+    }
+
+    private async Task<bool> IsSiblingFieldInspectionCompletedAsync(
+        Guid surveyTaskId,
+        Guid propertyId,
+        CancellationToken cancellationToken)
+    {
+        var parentId = await _db.WorkflowTasks.AsNoTracking()
+            .Where(t => t.Id == surveyTaskId)
+            .Select(t => t.ParentTaskId)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (parentId is not Guid parentTaskId)
+            return false;
+
+        return await _db.WorkflowTasks.AsNoTracking().AnyAsync(
+            t => t.ParentTaskId == parentTaskId
+                && t.PropertyId == propertyId
+                && t.Kind == WorkflowTaskKind.FieldInspection
+                && t.Status == WorkflowTaskStatus.Completed,
+            cancellationToken);
+    }
+
+    private async Task<PartyTaskSubmissionDto> ToDtoAsync(
+        PartyTaskSubmission entity,
+        CancellationToken cancellationToken)
+    {
+        var dto = ToDto(entity);
+        if (entity.Kind == "engineering-survey" && entity.PropertyId is Guid propertyId)
+        {
+            dto.FieldInspectionCompleted = await IsSiblingFieldInspectionCompletedAsync(
+                entity.WorkflowTaskId,
+                propertyId,
+                cancellationToken);
+        }
+        else if (entity.Kind == "engineering-survey")
+        {
+            dto.FieldInspectionCompleted = false;
+        }
+
+        return dto;
     }
 
     private static PartyTaskSubmissionDto ToDto(PartyTaskSubmission entity)

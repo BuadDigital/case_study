@@ -1,4 +1,5 @@
 using RealEstateEval.Infrastructure;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Web;
 using RealEstateEval.Shared.Web;
 
@@ -8,6 +9,7 @@ builder.AddRealEstateEvalObservability("financial");
 
 builder.Services
     .AddControllers()
+    .AddRealEstateEvalValidation()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(
@@ -19,9 +21,9 @@ builder.Services.AddResponseCompression(options => options.EnableForHttps = true
 var connectionString = ServiceCollectionExtensions.RequireConnectionString(
     builder.Configuration,
     ServiceDatabaseNames.Financial);
-builder.Services.AddPersistence(builder.Configuration, connectionString);
+builder.Services.AddHostSharedInfrastructure(builder.Configuration);
 builder.Services.AddClaimsPermissionService();
-builder.Services.AddFinancialInfrastructure();
+builder.Services.AddFinancialInfrastructure(builder.Configuration, connectionString);
 builder.Services.AddRealEstateEvalJwt(builder.Configuration, builder.Environment);
 builder.Services.AddRealEstateEvalCors(builder.Configuration, builder.Environment);
 builder.Services.AddRealEstateEvalRateLimiting(builder.Configuration, builder.Environment);
@@ -32,7 +34,11 @@ var app = builder.Build();
 app.UseRealEstateEvalServicePipeline();
 app.UseRealEstateEvalOpenApi("Financial API");
 app.MapServiceHealth("financial");
-app.MapDatabaseReady("financial");
+app.MapDatabaseReady(
+    "financial",
+    typeof(FinancialDbContext),
+    typeof(CaseStudyDbContext),
+    typeof(IdentityDbContext));
 app.MapControllers();
 
 app.Run();

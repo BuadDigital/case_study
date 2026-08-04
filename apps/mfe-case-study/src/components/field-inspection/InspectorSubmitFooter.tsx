@@ -60,7 +60,7 @@ export function InspectorSubmitFooter({
     >
       <p className="mb-3 flex items-start gap-1.5 text-[11px] leading-relaxed text-text-3 max-lg:text-[12px]">
         <i className="ti ti-info-circle mt-0.5 shrink-0 text-sm" aria-hidden />
-        يجب التقاط الموقع (GPS)، وإكمال صور العقار الموثّقة، وإرفاق صورة لكل
+        يجب التقاط الموقع (GPS)، وتوثيق صور الخدمات/المرافق المختارة، وإرفاق صورة لكل
         ملاحظة، والتأشير على إقرار المعاينة قبل الإرسال.
       </p>
       <div className="flex flex-wrap items-center justify-end gap-2 max-lg:grid max-lg:grid-cols-2 max-lg:gap-2">

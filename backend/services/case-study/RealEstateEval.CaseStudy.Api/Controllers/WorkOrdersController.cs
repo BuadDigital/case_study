@@ -10,6 +10,7 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 
 [ApiController]
 [Route("api/work-orders")]
+[Route("api/work-orders/v1")]
 [Authorize]
 public class WorkOrdersController : ControllerBase
 {
@@ -259,7 +260,7 @@ public class WorkOrdersController : ControllerBase
     }
 
     /// <summary>
-    /// Narrow write for informal unlock — specialist / inspector / supervisor / CDO.
+    /// Narrow write for location map URL — specialist / inspector / supervisor / CDO.
     /// Does not require manage-work-orders (inspectors only have submit-party-work).
     /// </summary>
     [HttpPut("{poNumber}/properties/{propertyId:guid}/location-map-url")]

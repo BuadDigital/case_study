@@ -68,8 +68,6 @@ import {
 } from "@platform/design-system";
 import { FailureRaisePanel } from "@failures/mfe";
 import { failureRaiserRoleForParty } from "@failures/mfe/lib/failure-party-roles";
-import { usePartyTaskRecallEligibility } from "../hooks/use-party-task-recall-eligibility";
-import { PartyTaskRecallOverlay } from "../components/party-tasks/PartyTaskRecallOverlay";
 
 const PARTY_FAILURE_RAISE_KINDS = new Set([
   "field-inspection",
@@ -206,7 +204,6 @@ export function PartyActiveTaskWork({
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [governmentFooterTick, setGovernmentFooterTick] = useState(0);
   const [workTab, setWorkTab] = useState<"task" | "case-study">("task");
-  const recallEligible = usePartyTaskRecallEligibility(task);
 
   const isAppraisal = def.kind === "property-appraisal";
   const isEngineeringSurvey = def.kind === "engineering-survey";
@@ -221,8 +218,6 @@ export function PartyActiveTaskWork({
   const governmentHostRef = useRef<GovernmentReviewWorkHostRef>({});
   const coordinationHostRef = useRef<ValuationCoordinationWorkHostRef>({});
   const fieldInspectionHostRef = useRef<FieldInspectionWorkHostRef>({});
-  const governmentFailureRef = useRef<HTMLDivElement>(null);
-  const fieldInspectionFailureRef = useRef<HTMLDivElement>(null);
   evaluatorHostRef.current.onSubmitted = refresh;
   evaluatorHostRef.current.onSavingChange = setSaving;
   surveyHostRef.current.onSubmitted = () => completePartyTaskSubmit(def.completeMessage, { showToast: false });
@@ -264,32 +259,6 @@ export function PartyActiveTaskWork({
     () => isFieldInspectionLocked(task.id, fieldInspectionWorkspace, task.status),
     [task.id, fieldInspectionWorkspace, task.status],
   );
-
-  const focusGovernmentFailure = useCallback(() => {
-    governmentFailureRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
-  }, []);
-
-  const focusGovernmentNotes = useCallback(() => {
-    governmentHostRef.current?.focusReviewNotes?.();
-  }, []);
-
-  const focusFieldInspectionFailure = useCallback(() => {
-    fieldInspectionFailureRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
-  }, []);
-
-  const focusFieldInspectionNotes = useCallback(() => {
-    fieldInspectionHostRef.current?.focusNotes?.();
-  }, []);
-
-  const focusCoordinationNotes = useCallback(() => {
-    coordinationHostRef.current?.focusCoordinationNotes?.();
-  }, []);
 
   const { deedLabel, location } = useMemo(() => {
     const property = record?.properties.find((p) => p.id === task.propertyId);
@@ -606,58 +575,48 @@ export function PartyActiveTaskWork({
     return (
       <>
         <div className="hidden min-h-0 w-full flex-1 flex-col lg:flex">
-          <PartyTaskRecallOverlay
-            task={task}
-            deedNumber={deedLabel}
-            show
-            isSubmitted={recallEligible}
-            onAddObstruction={focusFieldInspectionFailure}
-            onAddNote={focusFieldInspectionNotes}
-            notSubmittedMessage="لا يمكن طلب الاسترجاع قبل إرسال المعاينة للأخصائي"
+          <TaskWorkChrome
+            layout={layout}
+            title={`${def.workTitle} — ${deedLabel}`}
+            subtitle={`${def.assigneeSubtitle} · ${formatPoDisplay(task.poNumber)} · ${location}`}
+            deedBadge={deedLabel}
+            saving={saving}
+            onClose={exit}
+            onSave={exit}
+            saveLabel={inspectionReadOnly ? "رجوع" : def.saveLabel}
+            showFooter={false}
           >
-            <TaskWorkChrome
-              layout={layout}
-              title={`${def.workTitle} — ${deedLabel}`}
-              subtitle={`${def.assigneeSubtitle} · ${formatPoDisplay(task.poNumber)} · ${location}`}
-              deedBadge={deedLabel}
-              saving={saving}
-              onClose={exit}
-              onSave={exit}
-              saveLabel={inspectionReadOnly ? "رجوع" : def.saveLabel}
-              showFooter={false}
-            >
-              {/* Case Study.html pdInspectionHtml — same surface as property-detail edit */}
-              <div className="mx-auto max-w-[920px]">
-                {surveyProperty ? (
-                  <PropertyDetailInspectionTab
-                    property={surveyProperty}
-                    inspectionTask={task}
-                    inspectionCard={inspectorCard}
-                    editMode={!inspectionReadOnly}
-                    lockEditMode={!inspectionReadOnly}
-                    onEditModeChange={(edit) => {
-                      if (!edit) exit();
-                    }}
-                    onSubmitted={() =>
-                      completePartyTaskSubmit(def.completeMessage, {
-                        showToast: false,
-                      })
-                    }
-                  />
-                ) : (
-                  <InlineLoadingSkeleton className={LOADING_TEXT} />
-                )}
-                <div ref={fieldInspectionFailureRef}>
-                  <PartyTaskFailureRaise
-                    def={def}
-                    task={task}
-                    deedNumber={deedLabel}
-                    onSubmitted={refresh}
-                  />
-                </div>
+            {/* Case Study.html pdInspectionHtml — same surface as property-detail edit */}
+            <div className="mx-auto max-w-[920px]">
+              {surveyProperty ? (
+                <PropertyDetailInspectionTab
+                  property={surveyProperty}
+                  inspectionTask={task}
+                  inspectionCard={inspectorCard}
+                  editMode={!inspectionReadOnly}
+                  lockEditMode={!inspectionReadOnly}
+                  onEditModeChange={(edit) => {
+                    if (!edit) exit();
+                  }}
+                  onSubmitted={() =>
+                    completePartyTaskSubmit(def.completeMessage, {
+                      showToast: false,
+                    })
+                  }
+                />
+              ) : (
+                <InlineLoadingSkeleton className={LOADING_TEXT} />
+              )}
+              <div>
+                <PartyTaskFailureRaise
+                  def={def}
+                  task={task}
+                  deedNumber={deedLabel}
+                  onSubmitted={refresh}
+                />
               </div>
-            </TaskWorkChrome>
-          </PartyTaskRecallOverlay>
+            </div>
+          </TaskWorkChrome>
         </div>
         <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden lg:hidden">
           <FieldInspectionMobileShell
@@ -744,7 +703,7 @@ export function PartyActiveTaskWork({
                     hostRef={coordinationHostRef}
                   />
                 )}
-                <div ref={isGovernmentReview ? governmentFailureRef : undefined}>
+                <div>
                   <PartyTaskFailureRaise
                     def={def}
                     task={task}
@@ -796,37 +755,6 @@ export function PartyActiveTaskWork({
         )}
       </TaskWorkChrome>
     );
-
-    if (isGovernmentReview) {
-      return (
-        <PartyTaskRecallOverlay
-          task={task}
-          deedNumber={deedLabel}
-          show
-          isSubmitted={recallEligible}
-          onAddObstruction={focusGovernmentFailure}
-          onAddNote={focusGovernmentNotes}
-          notSubmittedMessage="لا يمكن طلب الاسترجاع قبل إرسال المراجعة للأخصائي"
-        >
-          {structuredWork}
-        </PartyTaskRecallOverlay>
-      );
-    }
-
-    if (isValuationCoordination) {
-      return (
-        <PartyTaskRecallOverlay
-          task={task}
-          deedNumber={deedLabel}
-          show
-          isSubmitted={recallEligible}
-          onAddNote={focusCoordinationNotes}
-          notSubmittedMessage="لا يمكن طلب الاسترجاع قبل إرسال تنسيق التقييم للأخصائي"
-        >
-          {structuredWork}
-        </PartyTaskRecallOverlay>
-      );
-    }
 
     return structuredWork;
   }

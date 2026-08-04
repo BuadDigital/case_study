@@ -300,9 +300,20 @@ export function EngineeringSurveyAdvisoryPanel({
           </span>
         </div>
       ) : null}
+      {submission.deedMatchesNature === "yes" ||
+      submission.deedMatchesNature === "no" ? (
+        <div className={infoRowClass}>
+          <span className="shrink-0 text-text-3">هل الصك مطابق للطبيعة؟</span>
+          <span className="text-left font-medium text-text">
+            {submission.deedMatchesNature === "yes" ? "نعم" : "لا"}
+          </span>
+        </div>
+      ) : null}
       {submission.onSiteAreaSqm.trim() ? (
         <div className={infoRowClass}>
-          <span className="shrink-0 text-text-3">المساحة على الطبيعة</span>
+          <span className="shrink-0 text-text-3">
+            المساحة الإجمالية (حسب الصك)
+          </span>
           <span className="text-left font-medium text-text tabular-nums">
             {submission.onSiteAreaSqm.trim()} م²
           </span>
@@ -317,8 +328,8 @@ export function EngineeringSurveyAdvisoryPanel({
         ] as const
       ).map(([dir, bound, len]) =>
         bound.trim() || len.trim() ? (
-          <div key={dir} className={infoRowClass}>
-            <span className="shrink-0 text-text-3">الحد {dir}</span>
+          <div key={`deed-${dir}`} className={infoRowClass}>
+            <span className="shrink-0 text-text-3">الحد {dir} (حسب الصك)</span>
             <span className="text-left font-medium text-text">
               {[bound.trim() || null, len.trim() ? `${len.trim()} م` : null]
                 .filter(Boolean)
@@ -327,6 +338,56 @@ export function EngineeringSurveyAdvisoryPanel({
           </div>
         ) : null,
       )}
+      {submission.deedMatchesNature === "no" &&
+      (submission.natureOnSiteAreaSqm ?? "").trim() ? (
+        <div className={infoRowClass}>
+          <span className="shrink-0 text-text-3">
+            المساحة الإجمالية (حسب الطبيعة)
+          </span>
+          <span className="text-left font-medium text-text tabular-nums">
+            {(submission.natureOnSiteAreaSqm ?? "").trim()} م²
+          </span>
+        </div>
+      ) : null}
+      {submission.deedMatchesNature === "no"
+        ? (
+            [
+              [
+                "شمال",
+                submission.natureNorthBoundary ?? "",
+                submission.natureNorthBoundaryLengthM ?? "",
+              ],
+              [
+                "جنوب",
+                submission.natureSouthBoundary ?? "",
+                submission.natureSouthBoundaryLengthM ?? "",
+              ],
+              [
+                "شرق",
+                submission.natureEastBoundary ?? "",
+                submission.natureEastBoundaryLengthM ?? "",
+              ],
+              [
+                "غرب",
+                submission.natureWestBoundary ?? "",
+                submission.natureWestBoundaryLengthM ?? "",
+              ],
+            ] as const
+          ).map(([dir, bound, len]) =>
+            bound.trim() || len.trim() ? (
+              <div key={`nature-${dir}`} className={infoRowClass}>
+                <span className="shrink-0 text-text-3">
+                  الحد {dir} (حسب الطبيعة)
+                </span>
+                <span className="text-left font-medium text-text">
+                  {[bound.trim() || null, len.trim() ? `${len.trim()} م` : null]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
+              </div>
+            ) : null,
+          )
+        : null}
       {submission.surveyReportFileName.trim() ? (
         <div className={infoRowClass}>
           <span className="shrink-0 text-text-3">تقرير الرفع المساحي</span>

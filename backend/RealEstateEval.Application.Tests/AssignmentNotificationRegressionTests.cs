@@ -221,7 +221,7 @@ public sealed class AssignmentNotificationRegressionTests
             bundle.Ops,
             db,
             notifications,
-            new PartyFeePricingService(db));
+            new PartyFeePricingService(TestInspectorFeeServiceFactory.ShareFinancial(db)));
     }
 
     private static WorkflowTaskService CreateWorkflowService(ApplicationDbContext db)
@@ -231,18 +231,18 @@ public sealed class AssignmentNotificationRegressionTests
             new OutboxIntegrationEventPublisher(
                 db,
                 NullLogger<OutboxIntegrationEventPublisher>.Instance));
-        var recipients = new NotificationRecipientResolver(db);
+        var recipients = TestInspectorFeeServiceFactory.CreateRecipients(db);
         var fees = TestInspectorFeeServiceFactory.Compose(
             db,
             notifications,
             recipients,
-            new PartyFeePricingService(db));
+            new PartyFeePricingService(TestInspectorFeeServiceFactory.ShareFinancial(db)));
         return TestInspectorFeeServiceFactory.ComposeWorkflow(
             db,
             fees,
             notifications,
             recipients,
-            new PropertyTimelineService(db));
+            TestInspectorFeeServiceFactory.CreateTimeline(db));
     }
 
     private static TestBoundedContexts.Bundle CreateDb() =>

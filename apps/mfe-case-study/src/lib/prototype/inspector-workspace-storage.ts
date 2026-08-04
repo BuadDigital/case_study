@@ -23,7 +23,6 @@ import {
 } from "./inspector-enfath-prefill";
 import {
   createInspectorWorkspaceDraft,
-  INSPECTOR_DEFINED_PHOTOS,
   type InspectorBoundaryKey,
   type InspectorBoundaryMatch,
   type InspectorDefinedPhotoSlot,
@@ -113,19 +112,14 @@ function readSlotPhoto(value: unknown): InspectorSlotPhoto | null {
 function readDefinedPhotos(
   value: unknown,
 ): Record<string, InspectorDefinedPhotoSlot> {
-  const base = createInspectorWorkspaceDraft({
-    taskId: "",
-    propertyId: "",
-    poNumber: "",
-  }).definedPhotos;
+  const base: Record<string, InspectorDefinedPhotoSlot> = {};
   if (!value || typeof value !== "object") return base;
   const record = value as Record<string, unknown>;
-  for (const def of INSPECTOR_DEFINED_PHOTOS) {
-    const row = record[def.id];
+  for (const [slotId, row] of Object.entries(record)) {
     if (!row || typeof row !== "object") continue;
     const obj = row as Record<string, unknown>;
     const photosRaw = Array.isArray(obj.photos) ? obj.photos : [];
-    base[def.id] = {
+    base[slotId] = {
       none: readBool(obj.none),
       photos: photosRaw
         .map((p) => readSlotPhoto(p))
@@ -562,9 +556,16 @@ export async function saveInspectorWorkspaceDraft(
         payload,
       );
       if (!result.ok) {
-        throw new Error(
+        const err = new Error(
           resolveApiError(result.kind, result.errors, "تعذّر حفظ مسودة المعاينة"),
-        );
+        ) as Error & { offlineQueueable?: boolean; errors?: Record<string, string> };
+        if (result.kind !== "network" && result.kind !== "server") {
+          err.offlineQueueable = false;
+        }
+        if (result.errors) {
+          err.errors = result.errors as Record<string, string>;
+        }
+        throw err;
       }
       const next = payloadToDraft(result.data, draft);
       writeCache(next);
@@ -651,8 +652,12 @@ export async function submitInspectorWorkspace(
           const message = resolveApiError(result.kind, result.errors);
           const err = new Error(message) as Error & {
             errors?: Record<string, string>;
+            offlineQueueable?: boolean;
           };
           err.errors = result.errors;
+          if (result.kind !== "network" && result.kind !== "server") {
+            err.offlineQueueable = false;
+          }
           throw err;
         }
         const draft = payloadToDraft(result.data, saved);

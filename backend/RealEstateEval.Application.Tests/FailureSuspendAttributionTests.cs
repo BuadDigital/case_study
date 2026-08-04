@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
@@ -15,7 +14,6 @@ public class FailureSuspendAttributionTests
     public async Task Suspend_persists_actor_and_timestamp()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
         SeedReviewFailure(bundle);
         var service = CreateFailureService(bundle);
 
@@ -45,25 +43,23 @@ public class FailureSuspendAttributionTests
             UserName = "supervisor",
             DisplayName = "مشرف الاختبار",
         });
-        bundle.Failures.PropertyFailures.Add(new PropertyFailure
-        {
-            Id = FailureId,
-            PoNumber = "PO-900",
-            PropertyId = PropertyId.ToString(),
-            DeedNumber = "D-1",
-            Title = "تعذر",
-            ProblemTypeId = "access",
-            Severity = "internal",
-            RaisedByRole = "مفتش ميداني",
-            InternalNote = "ملاحظة",
-            FinalNote = "ملاحظة المشرف",
-            Status = PropertyFailureStatus.Suspended,
-            Specialist = "specialist",
-            SuspendedAtUtc = suspendedAt,
-            SuspendedByUserId = SupervisorUserId,
-            CreatedAtUtc = suspendedAt.AddDays(-1),
-            UpdatedAtUtc = suspendedAt,
-        });
+        bundle.Failures.PropertyFailures.Add(PropertyFailure.Reconstitute(
+            FailureId,
+            "PO-900",
+            PropertyId.ToString(),
+            "D-1",
+            "تعذر",
+            "access",
+            "internal",
+            "مفتش ميداني",
+            "ملاحظة",
+            "ملاحظة المشرف",
+            PropertyFailureStatus.Suspended,
+            "specialist",
+            suspendedAt.AddDays(-1),
+            suspendedAt,
+            suspendedAt,
+            SupervisorUserId));
         await db.SaveChangesAsync();
         await bundle.Failures.SaveChangesAsync();
 
@@ -82,25 +78,23 @@ public class FailureSuspendAttributionTests
         var bundle = CreateDb();
         var db = bundle.App;
         var suspendedAt = DateTime.UtcNow.AddHours(-1);
-        bundle.Failures.PropertyFailures.Add(new PropertyFailure
-        {
-            Id = FailureId,
-            PoNumber = "PO-901",
-            PropertyId = PropertyId.ToString(),
-            DeedNumber = "D-2",
-            Title = "تعذر تاريخي",
-            ProblemTypeId = "access",
-            Severity = "internal",
-            RaisedByRole = "مفتش ميداني",
-            InternalNote = "ملاحظة",
-            FinalNote = "",
-            Status = PropertyFailureStatus.Suspended,
-            Specialist = "specialist",
-            SuspendedAtUtc = suspendedAt,
-            SuspendedByUserId = null,
-            CreatedAtUtc = suspendedAt.AddDays(-1),
-            UpdatedAtUtc = suspendedAt,
-        });
+        bundle.Failures.PropertyFailures.Add(PropertyFailure.Reconstitute(
+            FailureId,
+            "PO-901",
+            PropertyId.ToString(),
+            "D-2",
+            "تعذر تاريخي",
+            "access",
+            "internal",
+            "مفتش ميداني",
+            "ملاحظة",
+            "",
+            PropertyFailureStatus.Suspended,
+            "specialist",
+            suspendedAt.AddDays(-1),
+            suspendedAt,
+            suspendedAt,
+            null));
         await db.SaveChangesAsync();
         await bundle.Failures.SaveChangesAsync();
 
@@ -114,23 +108,21 @@ public class FailureSuspendAttributionTests
     private static void SeedReviewFailure(TestBoundedContexts.Bundle bundle)
     {
         var now = DateTime.UtcNow;
-        bundle.Failures.PropertyFailures.Add(new PropertyFailure
-        {
-            Id = FailureId,
-            PoNumber = "PO-900",
-            PropertyId = PropertyId.ToString(),
-            DeedNumber = "D-1",
-            Title = "تعذر",
-            ProblemTypeId = "access",
-            Severity = "internal",
-            RaisedByRole = "مفتش ميداني",
-            InternalNote = "ملاحظة",
-            FinalNote = "",
-            Status = PropertyFailureStatus.Review,
-            Specialist = "specialist",
-            CreatedAtUtc = now,
-            UpdatedAtUtc = now,
-        });
+        bundle.Failures.PropertyFailures.Add(PropertyFailure.Reconstitute(
+            FailureId,
+            "PO-900",
+            PropertyId.ToString(),
+            "D-1",
+            "تعذر",
+            "access",
+            "internal",
+            "مفتش ميداني",
+            "ملاحظة",
+            "",
+            PropertyFailureStatus.Review,
+            "specialist",
+            now,
+            now));
         bundle.Failures.SaveChanges();
     }
 
@@ -138,11 +130,5 @@ public class FailureSuspendAttributionTests
         TestBoundedContexts.Create($"failure-suspend-{Guid.NewGuid():N}");
 
     private static FailureService CreateFailureService(TestBoundedContexts.Bundle bundle) =>
-        new(
-            bundle.Failures,
-            bundle.App,
-            null!,
-            new PropertyTimelineService(bundle.App),
-            null!,
-            null!);
+        TestBoundedContexts.CreateFailureService(bundle);
 }

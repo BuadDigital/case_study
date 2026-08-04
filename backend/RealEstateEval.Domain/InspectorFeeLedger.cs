@@ -41,7 +41,9 @@ public class InspectorFeeLedger
     public Guid? PricingTableId { get; set; }
     public decimal SupervisorDiscountSar { get; set; }
     public string? DiscountReason { get; set; }
-    /// <summary>Snapshot of max(0, Agreed − Discount). Stamped on every save.</summary>
+    /// <summary>
+/// Snapshot of max(0, Agreed − Discount). Stamped on every save.
+/// </summary>
     public decimal NetFeeSar { get; set; }
     /// <summary>Amount paid out. Set to <see cref="NetFeeSar"/> when status becomes disbursed.</summary>
     public decimal PaidAmountSar { get; set; }
@@ -72,4 +74,18 @@ public class InspectorFeeLedger
     public DateTime? AccruedAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
+
+    /// <summary>
+    /// Apply a billing-status edge resolved by <c>InspectorFeeBillingRules</c>.
+    /// Auth and preconditions stay in the transition applier.
+    /// </summary>
+    public void ApplyBillingStatus(string nextStatus, string? nextReturnTo, DateTime nowUtc)
+    {
+        BillingStatus = nextStatus;
+        ReturnTo = nextReturnTo;
+        UpdatedAtUtc = nowUtc;
+        NetFeeSar = Math.Max(0m, AgreedFeeSar - SupervisorDiscountSar);
+        if (nextStatus == InspectorFeeBillingStatus.Disbursed)
+            PaidAmountSar = NetFeeSar;
+    }
 }

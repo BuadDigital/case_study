@@ -3,7 +3,6 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
 
@@ -17,26 +16,29 @@ public class FailureService : IFailureService
     private static readonly HashSet<string> ActiveStatuses = PropertyFailureStatus.Active;
 
     private readonly FailuresDbContext _failures;
-    private readonly ApplicationDbContext _db;
-    private readonly IWorkflowTaskService _tasks;
+    private readonly CaseStudyDbContext _caseStudy;
+    private readonly IWorkflowTaskShellPatcher _tasks;
     private readonly IPropertyTimelineService _timeline;
     private readonly INotificationService _notifications;
     private readonly NotificationRecipientResolver _recipients;
+    private readonly IUserLabelLookup _labels;
 
     public FailureService(
         FailuresDbContext failures,
-        ApplicationDbContext db,
-        IWorkflowTaskService tasks,
+        CaseStudyDbContext caseStudy,
+        IWorkflowTaskShellPatcher tasks,
         IPropertyTimelineService timeline,
         INotificationService notifications,
-        NotificationRecipientResolver recipients)
+        NotificationRecipientResolver recipients,
+        IUserLabelLookup labels)
     {
         _failures = failures;
-        _db = db;
+        _caseStudy = caseStudy;
         _tasks = tasks;
         _timeline = timeline;
         _notifications = notifications;
         _recipients = recipients;
+        _labels = labels;
     }
 
     public async Task<IReadOnlyList<FailureRecordDto>> ListAsync(
@@ -56,8 +58,7 @@ public class FailureService : IFailureService
         }
 
         var list = await query.Take(MaxListRows).ToListAsync(cancellationToken);
-        var names = await PersonLabelResolver.ResolveManyAsync(
-            _db,
+        var names = await _labels.ResolveManyAsync(
             list.Select(f => f.Specialist),
             cancellationToken);
         return list.Select(f => ToDto(f, names)).ToList();
@@ -95,7 +96,7 @@ public class FailureService : IFailureService
         if (assigneeId.Length == 0 && userId.Length == 0)
             return new HashSet<string>(StringComparer.Ordinal);
 
-        var query = _db.WorkflowTasks.AsNoTracking().AsQueryable();
+        var query = _caseStudy.WorkflowTasks.AsNoTracking().AsQueryable();
         if (assigneeId.Length > 0 && userId.Length > 0)
             query = query.Where(t => t.AssigneeId == assigneeId || t.AssigneeId == userId);
         else if (assigneeId.Length > 0)
@@ -134,7 +135,7 @@ public class FailureService : IFailureService
 
         if (Guid.TryParse(request.PropertyId.Trim(), out var createPropertyId))
         {
-            var prop = await _db.WorkOrderProperties.AsNoTracking()
+            var prop = await _caseStudy.WorkOrderProperties.AsNoTracking()
                 .FirstOrDefaultAsync(p => p.Id == createPropertyId, cancellationToken);
             if (prop is null)
                 return (null, new Dictionary<string, string> { ["propertyId"] = "العقار غير موجود" });
@@ -144,32 +145,24 @@ public class FailureService : IFailureService
 
         var now = DateTime.UtcNow;
         var title = ResolveTitle(request);
-        var entity = new PropertyFailure
-        {
-            Id = Guid.NewGuid(),
-            PoNumber = request.PoNumber.Trim(),
-            PropertyId = request.PropertyId.Trim(),
-            DeedNumber = request.DeedNumber.Trim(),
-            Title = title,
-            ProblemTypeId = request.ProblemTypeId.Trim(),
-            Severity = NormalizeSeverity(request.Severity),
-            RaisedByRole = PersonLabelResolver.NormalizeSystemLabel(
+        var entity = PropertyFailure.Create(
+            Guid.NewGuid(),
+            request.PoNumber,
+            request.PropertyId,
+            request.DeedNumber,
+            title,
+            request.ProblemTypeId,
+            NormalizeSeverity(request.Severity),
+            PersonLabelResolver.NormalizeSystemLabel(
                 string.IsNullOrWhiteSpace(request.RaisedByRole)
                     ? "الأخصائي"
                     : request.RaisedByRole.Trim()),
-            InternalNote = request.InternalNote?.Trim() ?? "",
-            Status = PropertyFailureStatus.Internal,
-            Specialist = await PersonLabelResolver.ResolveAsync(
-                _db,
-                request.Specialist,
-                cancellationToken),
-            CreatedAtUtc = now,
-            UpdatedAtUtc = now,
-        };
+            request.InternalNote?.Trim() ?? "",
+            await _labels.ResolveAsync(request.Specialist, cancellationToken),
+            now);
 
         _failures.PropertyFailures.Add(entity);
         await _failures.SaveChangesAsync(cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
 
         if (Guid.TryParse(entity.PropertyId, out var propertyId))
         {
@@ -234,8 +227,7 @@ public class FailureService : IFailureService
             return await ToDtoAsync(active, cancellationToken);
         }
 
-        var resolvedSpecialist = await PersonLabelResolver.ResolveAsync(
-            _db,
+        var resolvedSpecialist = await _labels.ResolveAsync(
             specialist,
             cancellationToken);
         if (string.IsNullOrWhiteSpace(resolvedSpecialist)
@@ -266,12 +258,9 @@ public class FailureService : IFailureService
     {
         var entity = await _failures.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
         if (entity is null) return null;
-        if (entity.Status != PropertyFailureStatus.Internal || entity.Severity != "suspected") return null;
+        if (!entity.TryUpgradeToInternal(DateTime.UtcNow)) return null;
 
-        entity.Severity = "internal";
-        entity.UpdatedAtUtc = DateTime.UtcNow;
         await _failures.SaveChangesAsync(cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
         await ApplyInternalSideEffectsAsync(entity, cancellationToken);
         return await ToDtoAsync(entity, cancellationToken);
     }
@@ -282,12 +271,9 @@ public class FailureService : IFailureService
     {
         var entity = await _failures.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
         if (entity is null) return null;
-        if (entity.Status is not (PropertyFailureStatus.Internal or PropertyFailureStatus.Returned)) return null;
+        if (!entity.TrySubmitForReview(DateTime.UtcNow)) return null;
 
-        entity.Status = PropertyFailureStatus.Review;
-        entity.UpdatedAtUtc = DateTime.UtcNow;
         await _failures.SaveChangesAsync(cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
         await EscalateTaskObstructionAsync(
             entity,
             entity.Title.Trim().Length > 0 ? entity.Title : entity.InternalNote,
@@ -303,18 +289,10 @@ public class FailureService : IFailureService
         CancellationToken cancellationToken = default)
     {
         var entity = await _failures.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
-        if (entity is null || entity.Status != PropertyFailureStatus.Review) return null;
+        if (entity is null) return null;
+        if (!entity.TrySuspend(note, actorUserId, DateTime.UtcNow)) return null;
 
-        var now = DateTime.UtcNow;
-        entity.Status = PropertyFailureStatus.Suspended;
-        entity.FinalNote = note.Trim();
-        entity.SuspendedAtUtc = now;
-        entity.SuspendedByUserId = string.IsNullOrWhiteSpace(actorUserId)
-            ? null
-            : actorUserId.Trim();
-        entity.UpdatedAtUtc = now;
         await _failures.SaveChangesAsync(cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
 
         if (Guid.TryParse(entity.PropertyId, out var propertyId))
         {
@@ -325,7 +303,7 @@ public class FailureService : IFailureService
                 "تعليق المعاملة",
                 entity.FinalNote,
                 "warn",
-                entity.SuspendedAtUtc.Value,
+                entity.SuspendedAtUtc!.Value,
                 cancellationToken);
         }
 
@@ -338,14 +316,14 @@ public class FailureService : IFailureService
         CancellationToken cancellationToken = default)
     {
         var entity = await _failures.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
-        if (entity is null || !IsActiveStatus(entity.Status) || entity.Status == PropertyFailureStatus.Approved) return null;
+        if (entity is null) return null;
+        if (!entity.TryResolve(
+                request.ResolutionReason,
+                request.ContinueInstructions,
+                DateTime.UtcNow))
+            return null;
 
-        entity.Status = PropertyFailureStatus.Resolved;
-        entity.ResolutionReason = request.ResolutionReason.Trim();
-        entity.ContinueInstructions = request.ContinueInstructions.Trim();
-        entity.UpdatedAtUtc = DateTime.UtcNow;
         await _failures.SaveChangesAsync(cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
 
         await SetPropertyDeedStatusAsync(entity, "فعال", cancellationToken);
         await ResolveTaskObstructionAsync(entity, cancellationToken);
@@ -358,13 +336,10 @@ public class FailureService : IFailureService
         CancellationToken cancellationToken = default)
     {
         var entity = await _failures.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
-        if (entity is null || entity.Status != PropertyFailureStatus.Review) return null;
+        if (entity is null) return null;
+        if (!entity.TryApprove(finalNote, DateTime.UtcNow)) return null;
 
-        entity.Status = PropertyFailureStatus.Approved;
-        entity.FinalNote = finalNote.Trim();
-        entity.UpdatedAtUtc = DateTime.UtcNow;
         await _failures.SaveChangesAsync(cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
 
         await SetPropertyDeedStatusAsync(entity, "موقوف", cancellationToken);
         await BlockPropertyTasksForApprovedFailureAsync(entity, cancellationToken);
@@ -378,13 +353,10 @@ public class FailureService : IFailureService
         CancellationToken cancellationToken = default)
     {
         var entity = await _failures.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
-        if (entity is null || entity.Status != PropertyFailureStatus.Review) return null;
+        if (entity is null) return null;
+        if (!entity.TryReturn(finalNote, DateTime.UtcNow)) return null;
 
-        entity.Status = PropertyFailureStatus.Returned;
-        entity.FinalNote = finalNote.Trim();
-        entity.UpdatedAtUtc = DateTime.UtcNow;
         await _failures.SaveChangesAsync(cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
 
         await SetPropertyDeedStatusAsync(entity, "فعال", cancellationToken);
         await ResolveTaskObstructionAsync(entity, cancellationToken);
@@ -471,7 +443,7 @@ public class FailureService : IFailureService
             ? failure.FinalNote.Trim()
             : (failure.Title.Trim().Length > 0 ? failure.Title.Trim() : "تعذر معتمد");
 
-        var tasks = await _db.WorkflowTasks
+        var tasks = await _caseStudy.WorkflowTasks
             .Where(t =>
                 t.PoNumber == po &&
                 t.PropertyId == propertyGuid &&
@@ -500,7 +472,7 @@ public class FailureService : IFailureService
         var propertyGuid = await ResolvePropertyGuidAsync(po, propertyId.Trim(), cancellationToken);
         if (!propertyGuid.HasValue) return null;
 
-        return await _db.WorkflowTasks.FirstOrDefaultAsync(
+        return await _caseStudy.WorkflowTasks.FirstOrDefaultAsync(
             t =>
                 t.PoNumber == po &&
                 t.Kind == CaseStudyPropertyKind &&
@@ -516,7 +488,7 @@ public class FailureService : IFailureService
     {
         if (Guid.TryParse(propertyId, out var guid)) return guid;
 
-        var order = await _db.WorkOrders
+        var order = await _caseStudy.WorkOrders
             .Include(w => w.Properties)
             .FirstOrDefaultAsync(w => w.PoNumber == poNumber.Trim(), cancellationToken);
         var prop = order?.Properties.FirstOrDefault(p =>
@@ -529,7 +501,7 @@ public class FailureService : IFailureService
         string deedStatus,
         CancellationToken cancellationToken)
     {
-        var order = await _db.WorkOrders
+        var order = await _caseStudy.WorkOrders
             .Include(w => w.Properties)
             .FirstOrDefaultAsync(w => w.PoNumber == failure.PoNumber.Trim(), cancellationToken);
         if (order is null) return;
@@ -543,8 +515,7 @@ public class FailureService : IFailureService
         if (prop is null) return;
 
         prop.DeedStatus = deedStatus;
-        await _failures.SaveChangesAsync(cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
+        await _caseStudy.SaveChangesAsync(cancellationToken);
     }
 
     private async Task<PropertyFailure?> FindActiveForPropertyAsync(
@@ -660,8 +631,7 @@ public class FailureService : IFailureService
         PropertyFailure entity,
         CancellationToken cancellationToken)
     {
-        var names = await PersonLabelResolver.ResolveManyAsync(
-            _db,
+        var names = await _labels.ResolveManyAsync(
             [entity.Specialist],
             cancellationToken);
         return ToDto(entity, names);

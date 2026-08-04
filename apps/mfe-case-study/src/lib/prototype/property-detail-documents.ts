@@ -11,7 +11,7 @@ import {
 } from "./assignment-doc-attachments";
 import type { PoPropertyIntake } from "./po-intake-data";
 import {
-  INSPECTOR_DEFINED_PHOTOS,
+  listServiceAmenityPhotoSlots,
   type InspectorWorkspaceDraft,
 } from "./inspector-workspace-data";
 import { getInspectorPhotoDataUrl } from "./inspector-photo-upload";
@@ -226,7 +226,7 @@ export function collectFieldInspectionDocumentsFromSubmission(
   const source = "المعاين الميداني";
   const taskId = submission.taskId;
 
-  for (const def of INSPECTOR_DEFINED_PHOTOS) {
+  for (const def of listServiceAmenityPhotoSlots(submission)) {
     const slot = submission.definedPhotos[def.id];
     if (!slot || slot.none) continue;
     slot.photos
@@ -236,9 +236,13 @@ export function collectFieldInspectionDocumentsFromSubmission(
       )
       .forEach((photo, i) => {
         const photoRef = `slot:${def.id}:${photo.id}`;
+        const kindLabel = def.kind === "service" ? "خدمة" : "مرفق";
         pushEntry(docs, {
           id: `inspection-photo-${def.id}-${photo.id}`,
-          name: slot.photos.length > 1 ? `${def.name} ${i + 1}` : def.name,
+          name:
+            slot.photos.length > 1
+              ? `${kindLabel}: ${def.label} ${i + 1}`
+              : `${kindLabel}: ${def.label}`,
           fileName: photo.fileName,
           source,
           kind: fileKind(photo.fileName, photo.mimeType),

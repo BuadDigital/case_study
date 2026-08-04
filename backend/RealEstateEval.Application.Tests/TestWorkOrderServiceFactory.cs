@@ -6,7 +6,6 @@ using RealEstateEval.Infrastructure.Services;
 using Microsoft.Extensions.Options;
 
 namespace RealEstateEval.Application.Tests;
-
 internal static class TestWorkOrderServiceFactory
 {
     public static WorkOrderService Create(
@@ -19,9 +18,9 @@ internal static class TestWorkOrderServiceFactory
         IOptions<DatabaseOptions>? dbOptions = null,
         FailuresDbContext? failuresDb = null)
     {
-        timeline ??= new PropertyTimelineService(db);
+        timeline ??= TestInspectorFeeServiceFactory.CreateTimeline(db, failuresDb ?? TestInspectorFeeServiceFactory.ShareFailures(db));
         notifications ??= new NullNotificationService();
-        recipients ??= new NotificationRecipientResolver(db);
+        recipients ??= TestInspectorFeeServiceFactory.CreateRecipients(db);
         if (failures is null)
         {
             // Prefer a shared-root Failures context from the test fixture.
@@ -31,7 +30,6 @@ internal static class TestWorkOrderServiceFactory
             failures = TestBoundedContexts.CreateFailureService(
                 db,
                 failuresDb,
-                tasks: TestInspectorFeeServiceFactory.CreateWorkflow(db),
                 timeline: timeline,
                 notifications: notifications,
                 recipients: recipients);

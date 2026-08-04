@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
+using RealEstateEval.Infrastructure.Data;
 
 namespace RealEstateEval.Infrastructure.Data.Contexts;
 
@@ -9,14 +10,18 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 /// write and the event it raises land in one <c>SaveChanges</c>, and every context that
 /// consumes maps <c>ProcessedIntegrationEvents</c> and owns the rows carrying its own
 /// consumer name. These are the only tables allowed in more than one context.
+/// <para>
+/// Platform-owned notification / push tables (D3) are mapped here and by the legacy context
+/// for transitional dual write until Phase 3.
+/// </para>
 /// </summary>
 internal static class MessagingModel
 {
-    public static ModelBuilder ApplyOutboxModel(this ModelBuilder builder)
+    public static ModelBuilder ApplyOutboxModel(this ModelBuilder builder, bool ownsMigrations = true)
     {
         builder.Entity<OutboxMessage>(e =>
         {
-            e.ToTable("OutboxMessages", DatabaseSchemas.Messaging);
+            MapTable(e, "OutboxMessages", DatabaseSchemas.Messaging, ownsMigrations);
             e.Property(x => x.EventType).HasMaxLength(128);
             e.Property(x => x.PayloadJson).HasColumnType("jsonb");
             e.Property(x => x.Error).HasMaxLength(2000);
@@ -33,11 +38,11 @@ internal static class MessagingModel
         return builder;
     }
 
-    public static ModelBuilder ApplyInboxModel(this ModelBuilder builder)
+    public static ModelBuilder ApplyInboxModel(this ModelBuilder builder, bool ownsMigrations = true)
     {
         builder.Entity<ProcessedIntegrationEvent>(e =>
         {
-            e.ToTable("ProcessedIntegrationEvents", DatabaseSchemas.Messaging);
+            MapTable(e, "ProcessedIntegrationEvents", DatabaseSchemas.Messaging, ownsMigrations);
             // Composite key is the dedupe guarantee: the insert fails if the same consumer
             // already handled the event, which is how redelivery is detected.
             e.HasKey(x => new { x.Consumer, x.EventId });
@@ -47,5 +52,85 @@ internal static class MessagingModel
         });
 
         return builder;
+    }
+
+    /// <summary>
+    /// Platform-owned in-app notification inbox and web-push rows (D3). Migration ownership is
+    /// <see cref="MessagingDbContext"/>; legacy maps ExcludeFromMigrations for dual/transitional paths.
+    /// </summary>
+    public static ModelBuilder ApplyNotificationModel(
+        this ModelBuilder builder,
+        bool ownsMigrations = true)
+    {
+        builder.Entity<UserNotification>(e =>
+        {
+            MapTable(e, "UserNotifications", DatabaseSchemas.Messaging, ownsMigrations);
+            e.Property(x => x.UserId).HasMaxLength(450);
+            e.Property(x => x.Title).HasMaxLength(256);
+            e.Property(x => x.Body).HasMaxLength(2000);
+            e.Property(x => x.Href).HasMaxLength(512);
+            e.Property(x => x.Tone).HasMaxLength(16);
+            e.Property(x => x.Category).HasMaxLength(32);
+            e.Property(x => x.EntityType).HasMaxLength(32);
+            e.Property(x => x.EntityId).HasMaxLength(128);
+            e.Property(x => x.Actor).HasMaxLength(256);
+            e.Property(x => x.SourceEvent).HasMaxLength(256);
+            e.HasIndex(x => new { x.UserId, x.CreatedAtUtc });
+            e.HasIndex(x => new { x.UserId, x.ReadAtUtc });
+            // Dedupe rule: a user never holds two unread notifications for the same source
+            // event. Enforced here so concurrent deliveries of one event collide in the
+            // database instead of both passing a check-then-insert probe.
+            e.HasIndex(x => new { x.UserId, x.SourceEvent })
+                .IsUnique()
+                .HasFilter("\"SourceEvent\" IS NOT NULL AND \"ReadAtUtc\" IS NULL")
+                .HasDatabaseName(DatabaseIndexNames.UserNotificationUnreadSourceEvent);
+        });
+
+        builder.Entity<PushSubscription>(e =>
+        {
+            MapTable(e, "PushSubscriptions", DatabaseSchemas.Messaging, ownsMigrations);
+            e.Property(x => x.UserId).HasMaxLength(450);
+            e.Property(x => x.Endpoint).HasMaxLength(1024);
+            e.Property(x => x.P256dh).HasMaxLength(256);
+            e.Property(x => x.Auth).HasMaxLength(64);
+            e.Property(x => x.UserAgent).HasMaxLength(512);
+            e.Property(x => x.DeviceLabel).HasMaxLength(128);
+            e.Property(x => x.DisabledReason).HasMaxLength(128);
+            e.HasIndex(x => x.Endpoint)
+                .IsUnique()
+                .HasDatabaseName(DatabaseIndexNames.PushSubscriptionEndpoint);
+            e.HasIndex(x => new { x.UserId, x.DisabledAtUtc });
+        });
+
+        builder.Entity<PushPreference>(e =>
+        {
+            MapTable(e, "PushPreferences", DatabaseSchemas.Messaging, ownsMigrations);
+            e.HasKey(x => x.UserId);
+            e.Property(x => x.UserId).HasMaxLength(450);
+        });
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Full messaging model for <see cref="MessagingDbContext"/> (migration owner + Platform write path).
+    /// </summary>
+    public static ModelBuilder ApplyMessagingModel(this ModelBuilder builder, bool ownsMigrations = true) =>
+        builder
+            .ApplyOutboxModel(ownsMigrations)
+            .ApplyInboxModel(ownsMigrations)
+            .ApplyNotificationModel(ownsMigrations);
+
+    private static void MapTable<TEntity>(
+        Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<TEntity> e,
+        string table,
+        string schema,
+        bool ownsMigrations)
+        where TEntity : class
+    {
+        if (ownsMigrations)
+            e.ToTable(table, schema);
+        else
+            e.ToTable(table, schema, t => t.ExcludeFromMigrations());
     }
 }

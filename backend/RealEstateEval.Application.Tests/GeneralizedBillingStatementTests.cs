@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
@@ -116,7 +116,7 @@ public class GeneralizedBillingStatementTests
         new(
             db,
             new NullNotificationService(),
-            new NotificationRecipientResolver(db),
+            TestInspectorFeeServiceFactory.CreateRecipients(db),
             NullLogger<PartyBillingStatementService>.Instance);
 
     private static ApplicationDbContext CreateDb() =>

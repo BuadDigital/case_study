@@ -1,8 +1,8 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web;
 
 namespace RealEstateEval.Platform.Api.Controllers;
 
@@ -45,15 +45,15 @@ public class RegionsController : ControllerBase
         [FromBody] SuggestLocationRequest request,
         CancellationToken cancellationToken)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
-        if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
+        var userId = ActorIdOrUnauthorized();
+        if (userId is null) return Unauthorized();
         try
         {
             return Ok(await _regions.SuggestAsync(request, userId, cancellationToken));
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return this.BadRequestProblem(ex.Message);
         }
     }
 
@@ -70,8 +70,8 @@ public class RegionsController : ControllerBase
         [FromBody] ReviewLocationRequest request,
         CancellationToken cancellationToken)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
-        if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
+        var userId = ActorIdOrUnauthorized();
+        if (userId is null) return Unauthorized();
         try
         {
             await _regions.ReviewCityAsync(id, request, userId, cancellationToken);
@@ -79,7 +79,7 @@ public class RegionsController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return this.BadRequestProblem(ex.Message);
         }
     }
 
@@ -90,8 +90,8 @@ public class RegionsController : ControllerBase
         [FromBody] ReviewLocationRequest request,
         CancellationToken cancellationToken)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
-        if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
+        var userId = ActorIdOrUnauthorized();
+        if (userId is null) return Unauthorized();
         try
         {
             await _regions.ReviewDistrictAsync(id, request, userId, cancellationToken);
@@ -99,7 +99,13 @@ public class RegionsController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return this.BadRequestProblem(ex.Message);
         }
+    }
+
+    private string? ActorIdOrUnauthorized()
+    {
+        var id = ActorClaims.Id(User);
+        return id is "unknown" or "" ? null : id;
     }
 }

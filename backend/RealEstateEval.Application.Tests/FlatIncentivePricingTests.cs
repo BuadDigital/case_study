@@ -3,7 +3,7 @@ using RealEstateEval.Application;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
@@ -17,8 +17,8 @@ public class FlatIncentivePricingTests
     [Fact]
     public async Task An_assigned_flat_table_prices_an_employee_at_accrual()
     {
-        await using var db = CreateDb();
-        await SeedFlatAssignmentAsync(db, amount: 350m, hasCompensation: true);
+        await using var store = new TestInspectorFeeServiceFactory.Store("flat-incentive");
+        await SeedFlatAssignmentAsync(store, amount: 350m, hasCompensation: true);
         var taskId = Guid.NewGuid();
         var now = DateTime.UtcNow;
         var task = WorkflowTask.Create(
@@ -30,12 +30,12 @@ public class FlatIncentivePricingTests
             assigneeId: "insp-emp-1",
             id: taskId,
             status: WorkflowTaskStatus.Completed);
-        db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        store.App.WorkflowTasks.Add(task);
+        await store.App.SaveChangesAsync();
 
-        await TestInspectorFeeServiceFactory.Create(db).EnsureLedgersForTasksAsync([task]);
+        await store.Fees().EnsureLedgersForTasksAsync([task]);
 
-        var ledger = await db.InspectorFeeLedgers.AsNoTracking()
+        var ledger = await store.App.InspectorFeeLedgers.AsNoTracking()
             .SingleAsync(l => l.WorkflowTaskId == taskId);
         Assert.Equal(350m, ledger.AgreedFeeSar);
         Assert.NotNull(ledger.PricingTableId);
@@ -45,8 +45,8 @@ public class FlatIncentivePricingTests
     [Fact]
     public async Task Without_compensation_no_employee_ledger_is_opened()
     {
-        await using var db = CreateDb();
-        await SeedFlatAssignmentAsync(db, amount: 350m, hasCompensation: false);
+        await using var store = new TestInspectorFeeServiceFactory.Store("flat-incentive");
+        await SeedFlatAssignmentAsync(store, amount: 350m, hasCompensation: false);
         var taskId = Guid.NewGuid();
         var now = DateTime.UtcNow;
         var task = WorkflowTask.Create(
@@ -58,20 +58,20 @@ public class FlatIncentivePricingTests
             assigneeId: "insp-emp-1",
             id: taskId,
             status: WorkflowTaskStatus.Completed);
-        db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        store.App.WorkflowTasks.Add(task);
+        await store.App.SaveChangesAsync();
 
-        await TestInspectorFeeServiceFactory.Create(db).EnsureLedgersForTasksAsync([task]);
+        await store.Fees().EnsureLedgersForTasksAsync([task]);
 
-        Assert.False(await db.InspectorFeeLedgers.AnyAsync(l => l.WorkflowTaskId == taskId));
+        Assert.False(await store.App.InspectorFeeLedgers.AnyAsync(l => l.WorkflowTaskId == taskId));
     }
 
     [Fact]
     public async Task An_active_incentive_suspension_accrues_the_line_as_suspended()
     {
-        await using var db = CreateDb();
-        await SeedFlatAssignmentAsync(db, amount: 350m, hasCompensation: true);
-        db.IncentiveSuspensions.Add(new IncentiveSuspension
+        await using var store = new TestInspectorFeeServiceFactory.Store("flat-incentive");
+        await SeedFlatAssignmentAsync(store, amount: 350m, hasCompensation: true);
+        store.Fin.IncentiveSuspensions.Add(new IncentiveSuspension
         {
             Id = Guid.NewGuid(),
             UserId = "user-emp-1",
@@ -81,6 +81,7 @@ public class FlatIncentivePricingTests
             CreatedByUserId = "supervisor-1",
             CreatedAtUtc = DateTime.UtcNow,
         });
+        await store.Fin.SaveChangesAsync();
         var taskId = Guid.NewGuid();
         var now = DateTime.UtcNow;
         var task = WorkflowTask.Create(
@@ -92,12 +93,12 @@ public class FlatIncentivePricingTests
             assigneeId: "insp-emp-1",
             id: taskId,
             status: WorkflowTaskStatus.Completed);
-        db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        store.App.WorkflowTasks.Add(task);
+        await store.App.SaveChangesAsync();
 
-        await TestInspectorFeeServiceFactory.Create(db).EnsureLedgersForTasksAsync([task]);
+        await store.Fees().EnsureLedgersForTasksAsync([task]);
 
-        var ledger = await db.InspectorFeeLedgers.AsNoTracking()
+        var ledger = await store.App.InspectorFeeLedgers.AsNoTracking()
             .SingleAsync(l => l.WorkflowTaskId == taskId);
         Assert.Equal(350m, ledger.AgreedFeeSar);
         Assert.Equal(InspectorFeeBillingStatus.Suspended, ledger.BillingStatus);
@@ -108,11 +109,11 @@ public class FlatIncentivePricingTests
     [Fact]
     public async Task Creating_an_incentive_suspension_suspends_existing_suspendable_lines()
     {
-        await using var db = CreateDb();
-        await SeedFlatAssignmentAsync(db, amount: 200m, hasCompensation: true);
+        await using var store = new TestInspectorFeeServiceFactory.Store("flat-incentive");
+        await SeedFlatAssignmentAsync(store, amount: 200m, hasCompensation: true);
         var taskId = Guid.NewGuid();
         var now = DateTime.UtcNow;
-        db.WorkflowTasks.Add(WorkflowTask.Create(
+        store.App.WorkflowTasks.Add(WorkflowTask.Create(
             WorkflowTaskKind.FieldInspection,
             "PO-FLAT",
             now,
@@ -121,7 +122,7 @@ public class FlatIncentivePricingTests
             assigneeId: "insp-emp-1",
             id: taskId,
             status: WorkflowTaskStatus.Completed));
-        db.InspectorFeeLedgers.Add(new InspectorFeeLedger
+        store.App.InspectorFeeLedgers.Add(new InspectorFeeLedger
         {
             WorkflowTaskId = taskId,
             PoNumber = "PO-FLAT",
@@ -133,9 +134,9 @@ public class FlatIncentivePricingTests
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         });
-        await db.SaveChangesAsync();
+        await store.App.SaveChangesAsync();
 
-        var (row, error) = await new IncentiveSuspensionService(db).CreateAsync(
+        var (row, error) = await store.IncentiveSuspensions().CreateAsync(
             new CreateIncentiveSuspensionRequest
             {
                 AssigneeId = "insp-emp-1",
@@ -146,7 +147,7 @@ public class FlatIncentivePricingTests
 
         Assert.Null(error);
         Assert.NotNull(row);
-        var ledger = await db.InspectorFeeLedgers.AsNoTracking()
+        var ledger = await store.App.InspectorFeeLedgers.AsNoTracking()
             .SingleAsync(l => l.WorkflowTaskId == taskId);
         Assert.Equal(InspectorFeeBillingStatus.Suspended, ledger.BillingStatus);
         Assert.Equal(InspectorFeeBillingStatus.AtFinance, ledger.PreSuspensionStatus);
@@ -175,12 +176,12 @@ public class FlatIncentivePricingTests
     }
 
     private static async Task SeedFlatAssignmentAsync(
-        ApplicationDbContext db,
+        TestInspectorFeeServiceFactory.Store store,
         decimal amount,
         bool hasCompensation)
     {
         var tableId = Guid.NewGuid();
-        db.PartyFeePricingTables.Add(new PartyFeePricingTable
+        store.Fin.PartyFeePricingTables.Add(new PartyFeePricingTable
         {
             Id = tableId,
             Category = PartyFeePricingCategories.FieldInspector,
@@ -192,7 +193,7 @@ public class FlatIncentivePricingTests
             UpdatedAtUtc = DateTime.UtcNow,
         });
         // Category default stays party-rates so cooperators keep a fallback.
-        db.PartyFeePricingTables.Add(new PartyFeePricingTable
+        store.Fin.PartyFeePricingTables.Add(new PartyFeePricingTable
         {
             Id = Guid.NewGuid(),
             Category = PartyFeePricingCategories.FieldInspector,
@@ -203,7 +204,7 @@ public class FlatIncentivePricingTests
             FieldInspectorIndividualFeeSar = 500m,
             UpdatedAtUtc = DateTime.UtcNow,
         });
-        db.PartyFeePricingAssignments.Add(new PartyFeePricingAssignment
+        store.Fin.PartyFeePricingAssignments.Add(new PartyFeePricingAssignment
         {
             Id = Guid.NewGuid(),
             TableId = tableId,
@@ -211,7 +212,7 @@ public class FlatIncentivePricingTests
             AssigneeId = "insp-emp-1",
             UpdatedAtUtc = DateTime.UtcNow,
         });
-        db.Users.Add(new ApplicationUser
+        store.Identity.Users.Add(new ApplicationUser
         {
             Id = "user-emp-1",
             UserName = "emp1",
@@ -220,7 +221,7 @@ public class FlatIncentivePricingTests
             NormalizedEmail = "EMP1@TEST.LOCAL",
             DisplayName = "معاين",
         });
-        db.UserProfiles.Add(new UserProfile
+        store.Identity.UserProfiles.Add(new UserProfile
         {
             UserId = "user-emp-1",
             DistributionAssigneeId = "insp-emp-1",
@@ -228,11 +229,7 @@ public class FlatIncentivePricingTests
             HasCompensation = hasCompensation,
             ContractType = ContractType.Internal,
         });
-        await db.SaveChangesAsync();
+        await store.Fin.SaveChangesAsync();
+        await store.Identity.SaveChangesAsync();
     }
-
-    private static ApplicationDbContext CreateDb() =>
-        new(new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"flat-incentive-{Guid.NewGuid():N}")
-            .Options);
 }

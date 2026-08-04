@@ -34,29 +34,22 @@ type LoginResponse = {
 
 type Step = "creds" | "otp" | "done";
 
-const fieldInput =
-  "w-full rounded-[11px] border border-[#ddd8cc] bg-surface-2 px-[15px] py-[13px] text-[15px] text-text outline-none transition-[border-color,box-shadow,background] duration-150 placeholder:tracking-[0.02em] placeholder:text-text-3 focus:border-gold focus:bg-surface focus:shadow-[0_0_0_4px_color-mix(in_srgb,var(--gold)_16%,transparent)]";
+const fieldInput = "w-full rounded-[11px] border border-[#ddd8cc] bg-surface-2 px-[15px] py-[13px] text-[15px] text-text outline-none transition-[border-color,box-shadow,background] duration-150 placeholder:tracking-[0.02em] placeholder:text-text-3 focus:border-gold focus:bg-surface focus:shadow-[0_0_0_4px_color-mix(in_srgb,var(--gold)_16%,transparent)]";
 
-const fieldInputBad =
-  "border-danger shadow-[0_0_0_4px_color-mix(in_srgb,var(--red)_12%,transparent)] focus:border-danger focus:shadow-[0_0_0_4px_color-mix(in_srgb,var(--red)_12%,transparent)]";
+const fieldInputBad = "border-danger shadow-[0_0_0_4px_color-mix(in_srgb,var(--red)_12%,transparent)] focus:border-danger focus:shadow-[0_0_0_4px_color-mix(in_srgb,var(--red)_12%,transparent)]";
 
 const stepAnim = "animate-[login-rise_0.35s_ease]";
 const popAnim = "animate-[login-pop_0.4s_cubic-bezier(0.2,1.3,0.5,1)]";
 
-const primaryBtn =
-  "flex w-full cursor-pointer items-center justify-center gap-[9px] rounded-[11px] border-0 bg-ink py-3.5 text-[15.5px] font-bold text-white shadow-[0_12px_26px_-14px_rgba(16,43,78,.7)] transition-[background,transform,box-shadow] duration-150 hover:enabled:-translate-y-px hover:enabled:bg-navy-3 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none disabled:hover:translate-y-0";
+const primaryBtn = "flex w-full cursor-pointer items-center justify-center gap-[9px] rounded-[11px] border-0 bg-ink py-3.5 text-[15.5px] font-bold text-white shadow-[0_12px_26px_-14px_rgba(16,43,78,.7)] transition-[background,transform,box-shadow] duration-150 hover:enabled:-translate-y-px hover:enabled:bg-navy-3 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none disabled:hover:translate-y-0";
 
-const ghostBtn =
-  "flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-[11px] border border-[#ddd8cc] bg-surface py-[13px] text-[14.5px] font-bold text-heading transition-[border-color,background,transform] duration-150 hover:-translate-y-px hover:border-gold hover:bg-surface-2";
+const ghostBtn = "flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-[11px] border border-[#ddd8cc] bg-surface py-[13px] text-[14.5px] font-bold text-heading transition-[border-color,background,transform] duration-150 hover:-translate-y-px hover:border-gold hover:bg-surface-2";
 
-const linkSm =
-  "cursor-pointer border-0 bg-transparent p-0 text-[13px] font-bold text-gold-d hover:text-ink disabled:cursor-not-allowed disabled:opacity-45";
+const linkSm = "cursor-pointer border-0 bg-transparent p-0 text-[13px] font-bold text-gold-d hover:text-ink disabled:cursor-not-allowed disabled:opacity-45";
 
-const stepTag =
-  "mb-4 inline-flex items-center gap-[7px] rounded-full bg-gold-soft px-3 py-[5px] text-xs font-bold text-gold-d";
+const stepTag = "mb-4 inline-flex items-center gap-[7px] rounded-full bg-gold-soft px-3 py-[5px] text-xs font-bold text-gold-d";
 
-const footNote =
-  "mt-6 flex items-center justify-center gap-2 text-center text-xs leading-relaxed text-text-3";
+const footNote = "mt-6 flex items-center justify-center gap-2 text-center text-xs leading-relaxed text-text-3";
 
 async function resolvePostLoginPath(token: string): Promise<string> {
   try {
@@ -125,8 +118,7 @@ export default function LoginPage() {
   const { showToast } = useToast();
   const [step, setStep] = useState<Step>("creds");
   const [identifier, setIdentifier] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [password, setPassword] = useState("");  const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [otpError, setOtpError] = useState<string | null>(null);

@@ -6,9 +6,13 @@ import { Spinner, cn, useToast } from "@platform/design-system";
 const UPLOAD_BTN =
   "inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border-md bg-surface px-2.5 py-2 text-[11px] text-text-2 hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60 max-lg:min-h-12 max-lg:rounded-xl max-lg:text-[13px] max-lg:font-semibold";
 
-function useCoarsePointer(): boolean {
+/** Prefer real file dialog on mouse/trackpad; dual buttons only on touch devices. */
+function useTouchDevice(): boolean {
   if (typeof window === "undefined") return false;
-  return window.matchMedia("(pointer: coarse)").matches;
+  return (
+    window.matchMedia("(pointer: coarse)").matches &&
+    ("ontouchstart" in window || navigator.maxTouchPoints > 0)
+  );
 }
 
 export function InspectorPhotoFilePicker({
@@ -28,7 +32,7 @@ export function InspectorPhotoFilePicker({
 }) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
-  const isMobile = useCoarsePointer();
+  const isTouch = useTouchDevice();
   const { runWithUploadToast } = useToast();
   const blocked = Boolean(disabled || loading);
 
@@ -40,7 +44,7 @@ export function InspectorPhotoFilePicker({
     }
   };
 
-  if (isMobile) {
+  if (isTouch) {
     return (
       <div className={cn("flex flex-col gap-1.5", className)}>
         <button
@@ -68,7 +72,7 @@ export function InspectorPhotoFilePicker({
         <input
           ref={cameraRef}
           type="file"
-          accept="image/*,.heic,.heif"
+          accept="image/*,.heic,.heif,image/jpeg,image/png,image/webp"
           capture="environment"
           multiple={multiple}
           disabled={blocked}
@@ -78,7 +82,7 @@ export function InspectorPhotoFilePicker({
         <input
           ref={galleryRef}
           type="file"
-          accept="image/*,.heic,.heif"
+          accept="image/*,.heic,.heif,image/jpeg,image/png,image/webp"
           multiple={multiple}
           disabled={blocked}
           className="sr-only"
@@ -88,7 +92,7 @@ export function InspectorPhotoFilePicker({
     );
   }
 
-  const inputRef = galleryRef;
+  /* Computer / laptop: one control → native file picker (no camera-only). */
   return (
     <>
       <button
@@ -97,15 +101,15 @@ export function InspectorPhotoFilePicker({
         disabled={blocked}
         aria-busy={loading || undefined}
         data-no-action-toast=""
-        onClick={() => inputRef.current?.click()}
+        onClick={() => galleryRef.current?.click()}
       >
         {loading ? <Spinner /> : <i className="ti ti-upload" aria-hidden />}
         {loading ? "جاري الرفع…" : label}
       </button>
       <input
-        ref={inputRef}
+        ref={galleryRef}
         type="file"
-        accept="image/*,.heic,.heif"
+        accept="image/*,.heic,.heif,image/jpeg,image/png,image/webp"
         multiple={multiple}
         disabled={blocked}
         className="sr-only"

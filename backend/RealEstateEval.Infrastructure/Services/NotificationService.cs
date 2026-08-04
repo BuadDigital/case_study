@@ -3,6 +3,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Shared.Contracts;
 
 namespace RealEstateEval.Infrastructure.Services;
@@ -11,11 +12,11 @@ public sealed class NotificationService : INotificationService
 {
     private const int MaxItemsPerUser = 50;
 
-    private readonly ApplicationDbContext _db;
+    private readonly MessagingDbContext _db;
     private readonly IIntegrationEventPublisher _events;
 
     public NotificationService(
-        ApplicationDbContext db,
+        MessagingDbContext db,
         IIntegrationEventPublisher events)
     {
         _db = db;

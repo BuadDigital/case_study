@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createInspectorWorkspaceDraft,
   listInspectorPhotoValidationIssues,
+  serviceAmenityPhotoSlotId,
 } from "../inspector-workspace-data";
 import { validateInspectorWorkspace } from "../inspector-workspace-validation";
 
@@ -13,20 +14,34 @@ function completeDraft() {
   });
   draft.inspectionConfirmed = true;
   draft.hasAnnex = "لا";
-  for (const id of ["front", "sides", "water", "elec", "inside"]) {
-    draft.definedPhotos[id] = {
-      none: false,
-      photos: [
-        {
-          id: 1,
-          approved: true,
-          fileName: `${id}.jpg`,
-          mimeType: "image/jpeg",
-          attachmentId: `att-${id}`,
-        },
-      ],
-    };
-  }
+  draft.services = ["كهرباء"];
+  draft.amenities = ["مساجد"];
+  const serviceSlot = serviceAmenityPhotoSlotId("service", "كهرباء");
+  const amenitySlot = serviceAmenityPhotoSlotId("amenity", "مساجد");
+  draft.definedPhotos[serviceSlot] = {
+    none: false,
+    photos: [
+      {
+        id: 1,
+        approved: true,
+        fileName: "electricity.jpg",
+        mimeType: "image/jpeg",
+        attachmentId: "att-service",
+      },
+    ],
+  };
+  draft.definedPhotos[amenitySlot] = {
+    none: false,
+    photos: [
+      {
+        id: 2,
+        approved: true,
+        fileName: "mosque.jpg",
+        mimeType: "image/jpeg",
+        attachmentId: "att-amenity",
+      },
+    ],
+  };
   return draft;
 }
 
@@ -63,5 +78,16 @@ describe("Field inspection frontend/backend rule parity", () => {
     const errors = validateInspectorWorkspace(draft);
     expect(errors.componentPhotos).toBe("يجب إرفاق صورة المعرض");
     expect(errors.featurePhotos).toBeUndefined();
+  });
+
+  it("requires a photo when a service chip is selected", () => {
+    const draft = completeDraft();
+    draft.services = ["كهرباء", "مياه"];
+    // only first service has a photo in completeDraft shape — clear water slot
+
+    const issues = listInspectorPhotoValidationIssues(draft);
+    expect(issues.some((i) => i.includes("خدمة") || i.includes("مرفق"))).toBe(
+      true,
+    );
   });
 });

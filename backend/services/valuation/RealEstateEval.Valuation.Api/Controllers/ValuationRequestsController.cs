@@ -8,6 +8,7 @@ namespace RealEstateEval.Valuation.Api.Controllers;
 
 [ApiController]
 [Route("api/valuation-requests")]
+[Route("api/valuation-requests/v1")]
 [Authorize]
 public class ValuationRequestsController : ControllerBase
 {

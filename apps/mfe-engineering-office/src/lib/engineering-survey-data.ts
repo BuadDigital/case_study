@@ -43,7 +43,13 @@ export type EngineeringSurveySubmission = {
   declarationPhoneSatisfied: boolean;
   checklist: EngineeringSurveyChecklistRow[];
   returnNote?: string;
-  /** حقول الرفع لإنفاذ — المكتب الهندسي */
+  /**
+   * هل الصك مطابق للطبيعة؟
+   * نعم → تُعتمد حدود وأطوال حسب الصك فقط
+   * لا → تُفتح حقول إضافية «حسب الطبيعة»
+   */
+  deedMatchesNature: "yes" | "no" | null;
+  /** الحدود والأطوال حسب الصك (دائماً) */
   onSiteAreaSqm: string;
   northBoundary: string;
   northBoundaryLengthM: string;
@@ -53,6 +59,16 @@ export type EngineeringSurveySubmission = {
   eastBoundaryLengthM: string;
   westBoundary: string;
   westBoundaryLengthM: string;
+  /** الحدود والأطوال حسب الطبيعة (عند deedMatchesNature = no) */
+  natureOnSiteAreaSqm: string;
+  natureNorthBoundary: string;
+  natureNorthBoundaryLengthM: string;
+  natureSouthBoundary: string;
+  natureSouthBoundaryLengthM: string;
+  natureEastBoundary: string;
+  natureEastBoundaryLengthM: string;
+  natureWestBoundary: string;
+  natureWestBoundaryLengthM: string;
   /** ملاحظات الرفع المساحي داخل تبويب الرفع (HTML `d.notes`). */
   surveyNotes: string;
   /** ملاحظة على المعاملة في تبويب الملاحظة (HTML `d.note`). */
@@ -61,6 +77,11 @@ export type EngineeringSurveySubmission = {
   submittedAtUtc?: string;
   /** Set once a specialist accepts the outputs; drives the fee-accrued panel state. */
   acceptedAtUtc?: string;
+  /**
+   * From party-task-submission API (server). Sibling field-inspection completed.
+   * Undefined until DTO is loaded from the network.
+   */
+  fieldInspectionCompleted?: boolean;
 };
 
 export function emptyChecklistRows(): EngineeringSurveyChecklistRow[] {
@@ -131,6 +152,7 @@ export function createEngineeringSurveyDraft(input: {
     siteConfirmed: false,
     declarationPhoneSatisfied: false,
     checklist: emptyChecklistRows(),
+    deedMatchesNature: null,
     onSiteAreaSqm: "",
     northBoundary: "",
     northBoundaryLengthM: "",
@@ -140,6 +162,15 @@ export function createEngineeringSurveyDraft(input: {
     eastBoundaryLengthM: "",
     westBoundary: "",
     westBoundaryLengthM: "",
+    natureOnSiteAreaSqm: "",
+    natureNorthBoundary: "",
+    natureNorthBoundaryLengthM: "",
+    natureSouthBoundary: "",
+    natureSouthBoundaryLengthM: "",
+    natureEastBoundary: "",
+    natureEastBoundaryLengthM: "",
+    natureWestBoundary: "",
+    natureWestBoundaryLengthM: "",
     surveyNotes: "",
     transactionNote: "",
     updatedAtUtc: now,

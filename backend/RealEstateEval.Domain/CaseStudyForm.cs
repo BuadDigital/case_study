@@ -7,7 +7,7 @@ public class CaseStudyForm
     public bool IsPartyForm { get; set; }
     public Guid? PropertyId { get; set; }
     public string? PoNumber { get; set; }
-    public string Status { get; set; } = "new";
+    public string Status { get; set; } = CaseStudyFormStatuses.New;
     public int CurrentStep { get; set; }
     public string RequestNumber { get; set; } = "";
     public string RequestDate { get; set; } = "";

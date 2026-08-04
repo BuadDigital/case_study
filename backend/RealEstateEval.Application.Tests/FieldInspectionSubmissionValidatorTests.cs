@@ -83,24 +83,28 @@ public class FieldInspectionSubmissionValidatorTests
     }
 
     [Fact]
-    public void Validate_requires_annex_slots_when_has_annex_yes()
+    public void Validate_requires_service_slot_photo_when_service_selected()
     {
         var json = MinimalValidPayload().Replace(
-            "\"hasAnnex\": \"لا\"",
-            "\"hasAnnex\": \"نعم\"");
+            """
+            "services": ["كهرباء"]
+            """,
+            """
+            "services": ["كهرباء", "مياه"]
+            """);
 
         using var doc = JsonDocument.Parse(json);
         var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
 
         Assert.Contains("definedPhotos", errors.Keys);
-        Assert.Contains("الموثّقة", errors["definedPhotos"]);
+        Assert.Contains("خدمة", errors["definedPhotos"]);
     }
 
     [Fact]
     public void Validate_rejects_photos_not_uploaded_to_server()
     {
         var json = MinimalValidPayload().Replace(
-            $"\"attachmentId\": \"{FrontPhotoAttachmentId}\"",
+            $"\"attachmentId\": \"{ServicePhotoAttachmentId}\"",
             "\"attachmentId\": null",
             StringComparison.Ordinal);
 
@@ -110,14 +114,10 @@ public class FieldInspectionSubmissionValidatorTests
         Assert.Equal("يجب رفع الصور إلى الخادم قبل الإرسال", errors["definedPhotos"]);
     }
 
-    private static readonly Guid FrontPhotoAttachmentId =
+    private static readonly Guid ServicePhotoAttachmentId =
         Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1");
-    private static readonly Guid WaterPhotoAttachmentId =
+    private static readonly Guid AmenityPhotoAttachmentId =
         Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2");
-    private static readonly Guid ElecPhotoAttachmentId =
-        Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3");
-    private static readonly Guid InsidePhotoAttachmentId =
-        Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4");
 
     private static string MinimalValidPayload() =>
         $$"""
@@ -135,59 +135,33 @@ public class FieldInspectionSubmissionValidatorTests
           "componentPhotoAttachments": { "showroom": null, "well": null },
           "observations": [],
           "freePhotos": [],
+          "services": ["كهرباء"],
+          "amenities": ["مساجد"],
           "definedPhotos": {
-            "front": {
+            "service:كهرباء": {
               "none": false,
               "photos": [
                 {
                   "id": 1,
                   "approved": true,
-                  "fileName": "front.jpg",
+                  "fileName": "electricity.jpg",
                   "mimeType": "image/jpeg",
-                  "attachmentId": "{{FrontPhotoAttachmentId}}"
+                  "attachmentId": "{{ServicePhotoAttachmentId}}"
                 }
               ]
             },
-            "sides": { "none": true, "photos": [] },
-            "water": {
+            "amenity:مساجد": {
               "none": false,
               "photos": [
                 {
                   "id": 2,
                   "approved": true,
-                  "fileName": "water.jpg",
+                  "fileName": "mosque.jpg",
                   "mimeType": "image/jpeg",
-                  "attachmentId": "{{WaterPhotoAttachmentId}}"
+                  "attachmentId": "{{AmenityPhotoAttachmentId}}"
                 }
               ]
-            },
-            "elec": {
-              "none": false,
-              "photos": [
-                {
-                  "id": 3,
-                  "approved": true,
-                  "fileName": "elec.jpg",
-                  "mimeType": "image/jpeg",
-                  "attachmentId": "{{ElecPhotoAttachmentId}}"
-                }
-              ]
-            },
-            "inside": {
-              "none": false,
-              "photos": [
-                {
-                  "id": 4,
-                  "approved": true,
-                  "fileName": "inside.jpg",
-                  "mimeType": "image/jpeg",
-                  "attachmentId": "{{InsidePhotoAttachmentId}}"
-                }
-              ]
-            },
-            "floor": { "none": false, "photos": [] },
-            "annexup": { "none": false, "photos": [] },
-            "annexdn": { "none": false, "photos": [] }
+            }
           }
         }
         """;

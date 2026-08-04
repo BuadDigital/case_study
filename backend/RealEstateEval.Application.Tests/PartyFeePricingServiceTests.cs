@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
@@ -657,8 +657,8 @@ public class PartyFeePricingServiceTests
         });
     }
 
-    private static ApplicationDbContext CreateDb() =>
-        new(new DbContextOptionsBuilder<ApplicationDbContext>()
+    private static FinancialDbContext CreateDb() =>
+        new(new DbContextOptionsBuilder<FinancialDbContext>()
             .UseInMemoryDatabase($"party-fee-pricing-{Guid.NewGuid():N}")
             .Options);
 }

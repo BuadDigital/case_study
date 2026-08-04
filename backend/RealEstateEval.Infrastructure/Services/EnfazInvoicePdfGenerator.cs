@@ -3,6 +3,7 @@ using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -17,7 +18,7 @@ public static class EnfazInvoicePdfGenerator
         EnsureLicense();
 
         var billable = billing.Lines
-            .Where(l => l.WorkStatus == "done" && l.IncludedInBilling)
+            .Where(l => l.WorkStatus == InspectorFeeWorkStatuses.Done && l.IncludedInBilling)
             .OrderBy(l => l.PropertyLabel, StringComparer.Ordinal)
             .ToList();
 

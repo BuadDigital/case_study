@@ -1,4 +1,5 @@
 using System.Text.Json;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.Application.Rules;
 
@@ -24,7 +25,7 @@ public static class GovernmentReviewSubmissionValidator
 
         if (!CanFinalize(visitStatus, keysStatus, keyHanded))
         {
-            if (!string.Equals(visitStatus, "completed", StringComparison.Ordinal))
+            if (!string.Equals(visitStatus, GovernmentReviewVisitStatuses.Completed, StringComparison.Ordinal))
             {
                 errors["visitStatus"] =
                     "لا يمكن إتمام المراجعة قبل تأكيد «تمت الزيارة» — احفظ كمسودة بالانتظار";
@@ -47,7 +48,7 @@ public static class GovernmentReviewSubmissionValidator
 
     private static bool CanFinalize(string visitStatus, string keysStatus, string keyHanded)
     {
-        if (!string.Equals(visitStatus, "completed", StringComparison.Ordinal))
+        if (!string.Equals(visitStatus, GovernmentReviewVisitStatuses.Completed, StringComparison.Ordinal))
             return false;
         if (string.Equals(keysStatus, "not_required", StringComparison.Ordinal))
             return true;
@@ -60,13 +61,13 @@ public static class GovernmentReviewSubmissionValidator
         string keysStatus,
         Dictionary<string, string> errors)
     {
-        if (string.Equals(visitStatus, "completed", StringComparison.Ordinal)
+        if (string.Equals(visitStatus, GovernmentReviewVisitStatuses.Completed, StringComparison.Ordinal)
             && string.IsNullOrWhiteSpace(ReadString(root, "visitDate")))
         {
             errors["visitDate"] = "أدخل تاريخ الزيارة";
         }
 
-        if (string.Equals(visitStatus, "blocked", StringComparison.Ordinal)
+        if (string.Equals(visitStatus, GovernmentReviewVisitStatuses.Blocked, StringComparison.Ordinal)
             && string.IsNullOrWhiteSpace(ReadString(root, "accessBlockReason")))
         {
             errors["accessBlockReason"] = "اذكر سبب تعذر الوصول";

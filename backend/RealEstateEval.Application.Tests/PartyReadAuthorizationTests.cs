@@ -144,17 +144,15 @@ public class PartyTaskSubmissionReadAuthorizationTests
 
     private static PartyTaskSubmissionService CreateService(ApplicationDbContext db, FailuresDbContext failures, OperationsDbContext ops)
     {
-        var holds = new PropertyAccessHoldService(db, failures);
         var (notifications, recipients) = TestInspectorFeeServiceFactory.CreateNotificationDeps(db);
         return new(
             db,
             TestInspectorFeeServiceFactory.CreateWorkflow(db),
             new FieldInspectionAttachmentVerifier(db),
-            new PropertyTimelineService(db),
+            TestInspectorFeeServiceFactory.CreateTimeline(db),
             new NullHttpContextAccessor(),
             new NullPermissionService(),
-            new PropertyKeyGateResolver(ops, db),
-            new KeyEnvelopesService(ops, db, holds, new KeyEnvelopePeopleResolver(db)),
+            TestBoundedContexts.CreateKeyEnvelopesService(db, failures, ops),
             TestInspectorFeeServiceFactory.Create(db),
             notifications,
             recipients);
@@ -323,13 +321,13 @@ public class CaseStudyFormReadAuthorizationTests
     private static CaseStudyFormService CreateFormService(TestDatabases.ContextSet contexts)
     {
         var db = contexts.Legacy;
-        var timeline = new PropertyTimelineService(db);
+        var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db);
         var valuation = new ValuationRequestService(
             contexts.Valuation,
             new ValuationOutboxPublisher(
                 contexts.Valuation,
                 NullLogger<ValuationOutboxPublisher>.Instance),
-            new CaseStudyPropertyPoNumberLookup(db));
+            new CaseStudyPropertyPoNumberLookup(contexts.CaseStudy));
         var dispatch = new CaseStudyValuationDispatchService(
             db,
             valuation,

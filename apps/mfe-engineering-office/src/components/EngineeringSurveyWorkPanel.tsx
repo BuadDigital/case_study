@@ -52,6 +52,15 @@ import {
 } from "../lib/engineering-survey-validation";
 import { finalizeEngineeringSurveySubmission } from "../lib/finalize-engineering-survey-submission";
 import type { EngineeringSurveyWindowHostRefObject } from "../lib/engineering-survey-window-host";
+import {
+  extractSurveySketchFromPdf,
+  sketchExtractToEmptyFieldsPatch,
+  sketchNatureFieldsFromExtract,
+  sketchNatureFieldsFromDeedForm,
+  applyNatureSketchPatch,
+  estimateAreaSqmFromBoundaryLengths,
+  type SurveySketchExtractResult,
+} from "../lib/engineering-survey-sketch-extract";
 import { EngineeringSurveyChecklist } from "./EngineeringSurveyChecklist";
 import { EngineeringSurveyMap } from "./EngineeringSurveyMap";
 import { EngineeringSurveyPropertySummary } from "./EngineeringSurveyPropertySummary";
@@ -59,9 +68,6 @@ import {
   applyChecklistToCaseStudyAnswers,
   caseStudyAnswersChanged,
 } from "../lib/engineering-survey-checklist-sync";
-import { QuickActionsFab } from "./QuickActionsFab";
-import { usePartyTaskRecallRequest } from "@case-study/mfe/hooks/use-party-task-recall-request";
-import { usePartyTaskRecallEligibility } from "@case-study/mfe/hooks/use-party-task-recall-eligibility";
 import { isEngineeringSurveyTransactionActive } from "../lib/engineering-survey-transaction-active";
 import {
   EngField,
@@ -93,6 +99,15 @@ type LocalTextFields = {
   eastBoundaryLengthM: string;
   westBoundary: string;
   westBoundaryLengthM: string;
+  natureOnSiteAreaSqm: string;
+  natureNorthBoundary: string;
+  natureNorthBoundaryLengthM: string;
+  natureSouthBoundary: string;
+  natureSouthBoundaryLengthM: string;
+  natureEastBoundary: string;
+  natureEastBoundaryLengthM: string;
+  natureWestBoundary: string;
+  natureWestBoundaryLengthM: string;
   surveyNotes: string;
 };
 
@@ -111,9 +126,52 @@ function localFieldsFromDraft(
     eastBoundaryLengthM: draft.eastBoundaryLengthM,
     westBoundary: draft.westBoundary,
     westBoundaryLengthM: draft.westBoundaryLengthM,
+    natureOnSiteAreaSqm: draft.natureOnSiteAreaSqm ?? "",
+    natureNorthBoundary: draft.natureNorthBoundary ?? "",
+    natureNorthBoundaryLengthM: draft.natureNorthBoundaryLengthM ?? "",
+    natureSouthBoundary: draft.natureSouthBoundary ?? "",
+    natureSouthBoundaryLengthM: draft.natureSouthBoundaryLengthM ?? "",
+    natureEastBoundary: draft.natureEastBoundary ?? "",
+    natureEastBoundaryLengthM: draft.natureEastBoundaryLengthM ?? "",
+    natureWestBoundary: draft.natureWestBoundary ?? "",
+    natureWestBoundaryLengthM: draft.natureWestBoundaryLengthM ?? "",
     surveyNotes: draft.surveyNotes,
   };
 }
+
+const BOUNDARY_ROWS = [
+  ["northBoundary", "northBoundaryLengthM", "الحد الشمالي", "طول الحد الشمالي (م)"],
+  ["southBoundary", "southBoundaryLengthM", "الحد الجنوبي", "طول الحد الجنوبي (م)"],
+  ["eastBoundary", "eastBoundaryLengthM", "الحد الشرقي", "طول الحد الشرقي (م)"],
+  ["westBoundary", "westBoundaryLengthM", "الحد الغربي", "طول الحد الغربي (م)"],
+] as const;
+
+const NATURE_BOUNDARY_ROWS = [
+  [
+    "natureNorthBoundary",
+    "natureNorthBoundaryLengthM",
+    "الحد الشمالي",
+    "طول الحد الشمالي (م)",
+  ],
+  [
+    "natureSouthBoundary",
+    "natureSouthBoundaryLengthM",
+    "الحد الجنوبي",
+    "طول الحد الجنوبي (م)",
+  ],
+  [
+    "natureEastBoundary",
+    "natureEastBoundaryLengthM",
+    "الحد الشرقي",
+    "طول الحد الشرقي (م)",
+  ],
+  [
+    "natureWestBoundary",
+    "natureWestBoundaryLengthM",
+    "الحد الغربي",
+    "طول الحد الغربي (م)",
+  ],
+] as const;
 
 export function EngineeringSurveyWorkPanel({
   def,
@@ -171,29 +229,6 @@ export function EngineeringSurveyWorkPanel({
     });
   }, [deedNumber, failures, propertyId, task.poNumber]);
 
-  const documentaryGate = useMemo(
-    () =>
-      surveyWorkGate({
-        role,
-        surveyTask: task,
-        tasks: workflowTasks,
-        hasActiveFailure: Boolean(blockingFailure) || activeFailureCount > 0,
-        planNumber: property?.planNumber,
-        plotNumber: property?.plotNumber,
-        locationMapUrl: property?.locationMapUrl,
-      }),
-    [
-      activeFailureCount,
-      blockingFailure,
-      property?.locationMapUrl,
-      property?.planNumber,
-      property?.plotNumber,
-      role,
-      task,
-      workflowTasks,
-    ],
-  );
-
   const [draft, setDraft] = useState<EngineeringSurveySubmission | null>(null);
   const [localFields, setLocalFields] = useState<LocalTextFields | null>(null);
   const [workTab, setWorkTab] = useState<WorkTab>("survey");
@@ -201,13 +236,45 @@ export function EngineeringSurveyWorkPanel({
     {},
   );
   const [formError, setFormError] = useState<string | null>(null);
-  const [failureRaiseOpen, setFailureRaiseOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
   const [savingLocal, setSavingLocal] = useState(false);
+  const [sketchExtractNote, setSketchExtractNote] = useState<string | null>(
+    null,
+  );
+  const [sketchExtracting, setSketchExtracting] = useState(false);
+  /** Last croquis parse — used when user chooses مطابقة = لا */
+  const [lastSketchExtract, setLastSketchExtract] =
+    useState<SurveySketchExtractResult | null>(null);
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingPatchRef = useRef<Parameters<
     typeof updateEngineeringSurveyDraft
   >[1]>({});
+
+  const liveSurveyTask = useMemo(
+    () => workflowTasks.find((t) => t.id === task.id) ?? task,
+    [task, workflowTasks],
+  );
+
+  const documentaryGate = useMemo(
+    () =>
+      surveyWorkGate({
+        role,
+        surveyTask: liveSurveyTask,
+        tasks: workflowTasks,
+        hasActiveFailure: Boolean(blockingFailure) || activeFailureCount > 0,
+        fieldInspectionCompleted:
+          draft?.fieldInspectionCompleted ??
+          liveSurveyTask.fieldInspectionCompleted,
+      }),
+    [
+      activeFailureCount,
+      blockingFailure,
+      draft?.fieldInspectionCompleted,
+      liveSurveyTask,
+      role,
+      workflowTasks,
+    ],
+  );
 
   useEffect(() => {
     if (!propertyId) return;
@@ -246,12 +313,43 @@ export function EngineeringSurveyWorkPanel({
     };
   }, [task.id, task.poNumber, propertyId, forceReadOnly, viewOnly]);
 
+  // Refresh inspection-completed flag without discarding in-progress form edits.
+  useEffect(() => {
+    if (!task.id) return;
+    let cancelled = false;
+    const refreshGate = () => {
+      void fetchEngineeringSurveySubmission(task.id).then((fresh) => {
+        if (cancelled || !fresh) return;
+        if (typeof fresh.fieldInspectionCompleted !== "boolean") return;
+        setDraft((prev) => {
+          if (!prev) return prev;
+          if (prev.fieldInspectionCompleted === fresh.fieldInspectionCompleted) {
+            return prev;
+          }
+          return {
+            ...prev,
+            fieldInspectionCompleted: fresh.fieldInspectionCompleted,
+          };
+        });
+      });
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refreshGate();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", refreshGate);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", refreshGate);
+    };
+  }, [task.id]);
+
   const locked =
     (draft ? isEngineeringSurveyFormLocked(draft.status) : false) ||
     forceReadOnly ||
     task.status === "completed";
   const formDisabled = locked || viewOnly || !documentaryGate.ready;
-  const recallEligible = usePartyTaskRecallEligibility(task);
   const transactionActive = useMemo(
     () => isEngineeringSurveyTransactionActive(task.status, draft?.status),
     [draft?.status, task.status],
@@ -259,24 +357,10 @@ export function EngineeringSurveyWorkPanel({
   const notesEditable = !locked && !viewOnly && documentaryGate.ready;
   const savedNote = draft?.transactionNote?.trim() ?? "";
 
-  useEffect(() => {
-    if (workTab !== "failures") setFailureRaiseOpen(false);
-  }, [workTab]);
-
-  const openFailuresTab = useCallback(() => {
-    setWorkTab("failures");
-    setFailureRaiseOpen(true);
-    showToast("سجّل وصف التعذر في النموذج أدناه", "info");
-  }, [showToast]);
-
-  const openNotesTab = useCallback(() => {
-    setWorkTab("notes");
-  }, []);
-
   const handleStartSurvey = useCallback(() => {
     if (!transactionActive) {
       showToast(
-        "تم إرسال الرفع المساحي لهذا العقار. استخدم «طلب استرجاع المعاملة» لإعادة فتح العمل.",
+        "تم إرسال الرفع المساحي لهذا العقار. استخدم «طلب استرجاع المعاملة» من قائمة الإجراءات لإعادة فتح العمل.",
         "info",
       );
       return;
@@ -309,30 +393,6 @@ export function EngineeringSurveyWorkPanel({
     transactionActive,
     viewOnly,
   ]);
-
-  const handleAddObstruction = useCallback(() => {
-    if (!transactionActive) {
-      showToast("لا يمكن تسجيل تعذر بعد إرسال المعاملة.", "info");
-      return;
-    }
-    openFailuresTab();
-  }, [openFailuresTab, showToast, transactionActive]);
-
-  const handleAddNote = useCallback(() => {
-    if (!transactionActive) {
-      showToast("لا يمكن إضافة ملاحظة بعد إرسال المعاملة.", "info");
-      return;
-    }
-    openNotesTab();
-  }, [openNotesTab, showToast, transactionActive]);
-
-  const handleRequestRecall = usePartyTaskRecallRequest({
-    taskId: task.id,
-    poNumber: task.poNumber,
-    propertyId,
-    isSubmitted: recallEligible,
-    notSubmittedMessage: "لا يمكن طلب الاسترجاع قبل إرسال الرفع المساحي",
-  });
 
   const syncCaseStudyFromChecklist = useCallback(
     async (checklist: EngineeringSurveySubmission["checklist"]) => {
@@ -424,12 +484,18 @@ export function EngineeringSurveyWorkPanel({
       schedulePersist({ [key]: value } as Parameters<
         typeof updateEngineeringSurveyDraft
       >[1]);
-      if (key === "latitude" || key === "longitude" || key === "onSiteAreaSqm") {
+      if (
+        key === "latitude" ||
+        key === "longitude" ||
+        key === "onSiteAreaSqm" ||
+        key === "natureOnSiteAreaSqm"
+      ) {
         setFieldErrors((prev) => {
           const next = { ...prev };
           if (key === "latitude") delete next.latitude;
           if (key === "longitude") delete next.longitude;
           if (key === "onSiteAreaSqm") delete next.on_site_area;
+          if (key === "natureOnSiteAreaSqm") delete next.nature_on_site_area;
           return next;
         });
       }
@@ -564,25 +630,114 @@ export function EngineeringSurveyWorkPanel({
     if (!file || formDisabled || !draft) return;
     const docField =
       field === "surveyReportFileName" ? "surveyReport" : "siteLetter";
+    const isSurveyReport = field === "surveyReportFileName";
+
     void runWithUploadToast(async () => {
-      const result = await cacheEngineeringSurveyFile(
-        draft.taskId,
-        docField,
-        file,
-      );
-      if (!result.ok) {
-        setFormError(result.error);
-        throw new Error(result.error);
+      if (isSurveyReport) {
+        setSketchExtracting(true);
+        setSketchExtractNote(null);
       }
-      const next = loadEngineeringSurveySubmission(draft.taskId);
-      if (next) setDraft(next);
-      setFieldErrors((prev) => {
-        const nextErrors = { ...prev };
-        delete nextErrors[
-          field === "surveyReportFileName" ? "survey_report" : "site_letter"
-        ];
-        return nextErrors;
-      });
+      try {
+        const result = await cacheEngineeringSurveyFile(
+          draft.taskId,
+          docField,
+          file,
+        );
+        if (!result.ok) {
+          setFormError(result.error);
+          throw new Error(result.error);
+        }
+        const next = loadEngineeringSurveySubmission(draft.taskId);
+        if (next) setDraft(next);
+        setFieldErrors((prev) => {
+          const nextErrors = { ...prev };
+          delete nextErrors[isSurveyReport ? "survey_report" : "site_letter"];
+          return nextErrors;
+        });
+
+        if (!isSurveyReport) return;
+
+        const extracted = await extractSurveySketchFromPdf(file, {
+          areaSqm: property?.area,
+          northBoundary: property?.northBoundary,
+          northBoundaryLengthM: property?.northBoundaryLengthM,
+          southBoundary: property?.southBoundary,
+          southBoundaryLengthM: property?.southBoundaryLengthM,
+          eastBoundary: property?.eastBoundary,
+          eastBoundaryLengthM: property?.eastBoundaryLengthM,
+          westBoundary: property?.westBoundary,
+          westBoundaryLengthM: property?.westBoundaryLengthM,
+        });
+        setLastSketchExtract(extracted);
+        const currentFields = localFields ?? localFieldsFromDraft(draft);
+        // overwrite=true: re-upload must replace previous wrong spatial lengths
+        const { patch, appliedCount } = sketchExtractToEmptyFieldsPatch(
+          extracted,
+          {
+            ...currentFields,
+            deedMatchesNature: draft.deedMatchesNature,
+          },
+          true,
+        );
+
+        if (appliedCount > 0) {
+          const { deedMatchesNature, ...textPatch } = patch;
+          if (Object.keys(textPatch).length > 0) {
+            setLocalFields((prev) =>
+              prev ? { ...prev, ...textPatch } : prev,
+            );
+            schedulePersist(textPatch);
+          }
+          if (deedMatchesNature != null) {
+            const saved = await updateEngineeringSurveyDraft(draft.taskId, {
+              deedMatchesNature,
+            });
+            if (saved) setDraft(saved);
+          }
+          setFieldErrors((prev) => {
+            const nextErrors = { ...prev };
+            delete nextErrors.on_site_area;
+            delete nextErrors.nature_on_site_area;
+            delete nextErrors.deed_matches_nature;
+            return nextErrors;
+          });
+          const lengthFilled = [
+            extracted.deed.north.lengthM,
+            extracted.deed.south.lengthM,
+            extracted.deed.east.lengthM,
+            extracted.deed.west.lengthM,
+          ].filter(Boolean).length;
+          const baseMsg =
+            extracted.warning ??
+            `تم تعبئة ${appliedCount} حقلاً من التقرير — راجع قبل الإرسال.`;
+          const msg =
+            lengthFilled === 0
+              ? `${baseMsg} (لم تُقرأ الأطوال من عمود الطول/م — راجعها يدوياً)`
+              : baseMsg;
+          setSketchExtractNote(msg);
+          showToast(
+            lengthFilled === 0
+              ? "تعبئة جزئية: الأوصاف بدون أطوال — راجع يدوياً"
+              : `تعبئة تلقائية: ${appliedCount} حقل`,
+            lengthFilled === 0 ? "info" : "success",
+          );
+        } else {
+          const msg =
+            extracted.warning ??
+            "لم تُستخرج بيانات حدود من التقرير. عبّئ الحقول يدوياً.";
+          setSketchExtractNote(msg);
+          showToast(msg, "info");
+        }
+      } catch (err) {
+        if (isSurveyReport) {
+          setSketchExtractNote(
+            "تعذّر الاستخراج التلقائي من التقرير. عبّئ الحدود يدوياً.",
+          );
+        }
+        throw err;
+      } finally {
+        if (isSurveyReport) setSketchExtracting(false);
+      }
     });
   }
 
@@ -597,6 +752,7 @@ export function EngineeringSurveyWorkPanel({
       }
       const next = loadEngineeringSurveySubmission(draft.taskId);
       if (next) setDraft(next);
+      if (field === "surveyReportFileName") setSketchExtractNote(null);
     });
   }
 
@@ -696,11 +852,42 @@ export function EngineeringSurveyWorkPanel({
         onCoordsChange={handleCoordsChange}
       />
 
-      <EngSection>الحدود والأطوال (إنفاذ)</EngSection>
+      <EngSection>التقرير المساحي</EngSection>
+      {!formDisabled ? (
+        <EngInfo>
+          ℹ بعد الرفع: يُقرأ جدول «وصف الحد» والأطوال (حسب الصك/الطبيعة) —
+          وقد يستغرق ثوانٍ. راجع القيم دائماً.
+        </EngInfo>
+      ) : null}
+      <EngUploadBox
+        title="رفع التقرير المساحي"
+        hint="PDF — الحجم الأقصى 20 ميجابايت"
+        fileName={draft.surveyReportFileName}
+        disabled={formDisabled || sketchExtracting}
+        error={fieldErrors.survey_report}
+        onPick={(file) => onFilePick("surveyReportFileName", file)}
+        onClear={() => onFileClear("surveyReportFileName")}
+      />
+      {sketchExtracting ? (
+        <div
+          className="mt-2 mb-3 flex items-center gap-2.5 rounded-[10px] border border-[color-mix(in_srgb,var(--gold)_28%,transparent)] bg-[color-mix(in_srgb,var(--gold)_8%,transparent)] px-3.5 py-3 text-[12.5px] font-semibold text-text-2"
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <Spinner className="size-4 border-gold-d border-e-transparent text-gold-d" />
+          <span>جارٍ قراءة التقرير وتعبئة الحدود والأطوال…</span>
+        </div>
+      ) : null}
+      {sketchExtractNote && !sketchExtracting ? (
+        <EngInfo variant="amber">{sketchExtractNote}</EngInfo>
+      ) : null}
+
+      <EngSection>الحدود والأطوال (حسب الصك)</EngSection>
       <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         <div>
           <label className={engLabelClassName} htmlFor="eng-on-site-area">
-            المساحة على الطبيعة (م²)
+            المساحة الإجمالية
           </label>
           <input
             id="eng-on-site-area"
@@ -721,34 +908,7 @@ export function EngineeringSurveyWorkPanel({
         </div>
       </div>
 
-      {(
-        [
-          [
-            "northBoundary",
-            "northBoundaryLengthM",
-            "الحد الشمالي",
-            "طول الحد الشمالي التقريبي (م)",
-          ],
-          [
-            "southBoundary",
-            "southBoundaryLengthM",
-            "الحد الجنوبي",
-            "طول الحد الجنوبي التقريبي (م)",
-          ],
-          [
-            "eastBoundary",
-            "eastBoundaryLengthM",
-            "الحد الشرقي",
-            "طول الحد الشرقي التقريبي (م)",
-          ],
-          [
-            "westBoundary",
-            "westBoundaryLengthM",
-            "الحد الغربي",
-            "طول الحد الغربي التقريبي (م)",
-          ],
-        ] as const
-      ).map(([boundKey, lenKey, boundLabel, lenLabel]) => (
+      {BOUNDARY_ROWS.map(([boundKey, lenKey, boundLabel, lenLabel]) => (
         <div
           key={boundKey}
           className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2"
@@ -781,6 +941,214 @@ export function EngineeringSurveyWorkPanel({
         </div>
       ))}
 
+      <EngSection>مطابقة الصك للطبيعة</EngSection>
+      <div className="mb-3">
+        <p className={cn(engLabelClassName, "mb-2")}>هل الصك مطابق للطبيعة؟</p>
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              { value: "yes" as const, label: "نعم" },
+              { value: "no" as const, label: "لا" },
+            ] as const
+          ).map((opt) => {
+            const selected = draft.deedMatchesNature === opt.value;
+            return (
+              <label
+                key={opt.value}
+                className={cn(
+                  "inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-[12.5px] font-semibold transition-colors",
+                  selected
+                    ? "border-ink bg-ink text-white"
+                    : "border-border bg-surface-2 text-text-2 hover:border-border-md",
+                  formDisabled && "pointer-events-none opacity-70",
+                )}
+              >
+                <input
+                  type="checkbox"
+                  className="sr-only"
+                  disabled={formDisabled}
+                  checked={selected}
+                  onChange={() => {
+                    const next =
+                      draft.deedMatchesNature === opt.value ? null : opt.value;
+                    void updateEngineeringSurveyDraft(task.id, {
+                      deedMatchesNature: next,
+                    }).then((saved) => {
+                      if (saved) setDraft(saved);
+                    });
+                    setFieldErrors((prev) => {
+                      if (!prev.deed_matches_nature) return prev;
+                      const { deed_matches_nature: _, ...rest } = prev;
+                      return rest;
+                    });
+
+                    // عند «لا»: عبّئ حقول الطبيعة من آخر استخراج كروكي / من الصك
+                    if (next === "no" && localFields) {
+                      const fromExtract = lastSketchExtract
+                        ? sketchNatureFieldsFromExtract(lastSketchExtract, {
+                            onSiteAreaSqm: localFields.onSiteAreaSqm,
+                            northBoundary: localFields.northBoundary,
+                            northBoundaryLengthM:
+                              localFields.northBoundaryLengthM,
+                            southBoundary: localFields.southBoundary,
+                            southBoundaryLengthM:
+                              localFields.southBoundaryLengthM,
+                            eastBoundary: localFields.eastBoundary,
+                            eastBoundaryLengthM:
+                              localFields.eastBoundaryLengthM,
+                            westBoundary: localFields.westBoundary,
+                            westBoundaryLengthM:
+                              localFields.westBoundaryLengthM,
+                          })
+                        : sketchNatureFieldsFromDeedForm(localFields);
+
+                      // مساحة الطبيعة: إن ما انقرت من الجدول (صورة فقط) — قدّرها من 4 أطوال + زاوية الرسم
+                      if (!(fromExtract.natureOnSiteAreaSqm ?? "").trim()) {
+                        const est =
+                          lastSketchExtract?.estimatedNatureAreaSqm ||
+                          estimateAreaSqmFromBoundaryLengths(
+                            localFields.northBoundaryLengthM ||
+                              lastSketchExtract?.deed.north.lengthM ||
+                              "",
+                            localFields.southBoundaryLengthM ||
+                              lastSketchExtract?.deed.south.lengthM ||
+                              "",
+                            localFields.eastBoundaryLengthM ||
+                              lastSketchExtract?.deed.east.lengthM ||
+                              "",
+                            localFields.westBoundaryLengthM ||
+                              lastSketchExtract?.deed.west.lengthM ||
+                              "",
+                            lastSketchExtract?.edgeAngleBetweenRad,
+                          );
+                        if (est) fromExtract.natureOnSiteAreaSqm = est;
+                      }
+
+                      const { patch: naturePatch, appliedCount: natureN } =
+                        applyNatureSketchPatch(fromExtract, localFields, false);
+                      if (natureN > 0) {
+                        setLocalFields((prev) =>
+                          prev ? { ...prev, ...naturePatch } : prev,
+                        );
+                        schedulePersist(naturePatch);
+                        const areaNote = naturePatch.natureOnSiteAreaSqm
+                          ? ` · المساحة ${naturePatch.natureOnSiteAreaSqm} م²`
+                          : "";
+                        setSketchExtractNote(
+                          lastSketchExtract?.nature?.areaSqm
+                            ? `تم تعبئة ${natureN} حقلاً حسب الطبيعة من التقرير${areaNote} — راجع قبل الإرسال.`
+                            : `تم تعبئة ${natureN} حقلاً حسب الطبيعة${areaNote} — راجع المساحة (قد تكون تقديرية من الأطوال).`,
+                        );
+                        showToast(
+                          naturePatch.natureOnSiteAreaSqm
+                            ? `طبيعة: ${natureN} حقل · مساحة ${naturePatch.natureOnSiteAreaSqm}`
+                            : `تعبئة حدود الطبيعة: ${natureN} حقل`,
+                          "success",
+                        );
+                      }
+                    }
+                  }}
+                />
+                <span
+                  className={cn(
+                    "flex h-4 w-4 items-center justify-center rounded border text-[10px]",
+                    selected
+                      ? "border-white bg-white text-ink"
+                      : "border-border-md bg-surface",
+                  )}
+                  aria-hidden
+                >
+                  {selected ? "✓" : ""}
+                </span>
+                {opt.label}
+              </label>
+            );
+          })}
+        </div>
+        {fieldErrors.deed_matches_nature ? (
+          <p className="mt-1.5 text-[11px] text-[#a5432e]">
+            {fieldErrors.deed_matches_nature}
+          </p>
+        ) : (
+          <p className="mt-1.5 text-[11px] text-text-3">
+            نعم: تُعتمد الحدود حسب الصك أعلاه · لا: تُفتح حقول الطبيعة وتُعبَّأ
+            تلقائياً من الكروكي عند الإمكان
+          </p>
+        )}
+      </div>
+
+      {draft.deedMatchesNature === "no" ? (
+        <>
+          <EngSection>الحدود والأطوال (حسب الطبيعة)</EngSection>
+          <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            <div>
+              <label
+                className={engLabelClassName}
+                htmlFor="eng-nature-on-site-area"
+              >
+                المساحة الإجمالية
+              </label>
+              <input
+                id="eng-nature-on-site-area"
+                inputMode="decimal"
+                className={cn(
+                  engInputClassName,
+                  fieldErrors.nature_on_site_area && "!border-[#c0553d]",
+                )}
+                disabled={formDisabled}
+                value={localFields.natureOnSiteAreaSqm}
+                onChange={(e) =>
+                  patchLocalField("natureOnSiteAreaSqm", e.target.value)
+                }
+              />
+              {fieldErrors.nature_on_site_area ? (
+                <p className="mt-1 text-[11px] text-[#a5432e]">
+                  {fieldErrors.nature_on_site_area}
+                </p>
+              ) : null}
+            </div>
+          </div>
+
+          {NATURE_BOUNDARY_ROWS.map(
+            ([boundKey, lenKey, boundLabel, lenLabel]) => (
+              <div
+                key={boundKey}
+                className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2"
+              >
+                <div>
+                  <label
+                    className={engLabelClassName}
+                    htmlFor={`eng-${boundKey}`}
+                  >
+                    {boundLabel}
+                  </label>
+                  <input
+                    id={`eng-${boundKey}`}
+                    className={engInputClassName}
+                    disabled={formDisabled}
+                    value={localFields[boundKey]}
+                    onChange={(e) => patchLocalField(boundKey, e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className={engLabelClassName} htmlFor={`eng-${lenKey}`}>
+                    {lenLabel}
+                  </label>
+                  <input
+                    id={`eng-${lenKey}`}
+                    inputMode="decimal"
+                    className={engInputClassName}
+                    disabled={formDisabled}
+                    value={localFields[lenKey]}
+                    onChange={(e) => patchLocalField(lenKey, e.target.value)}
+                  />
+                </div>
+              </div>
+            ),
+          )}
+        </>
+      ) : null}
+
       <div className="mb-1">
         <label className={engLabelClassName} htmlFor="eng-survey-notes">
           ملاحظات الرفع المساحي
@@ -794,17 +1162,6 @@ export function EngineeringSurveyWorkPanel({
           onChange={(e) => patchLocalField("surveyNotes", e.target.value)}
         />
       </div>
-
-      <EngSection>التقرير المساحي</EngSection>
-      <EngUploadBox
-        title="رفع التقرير المساحي"
-        hint="PDF — الحجم الأقصى 20 ميجابايت"
-        fileName={draft.surveyReportFileName}
-        disabled={formDisabled}
-        error={fieldErrors.survey_report}
-        onPick={(file) => onFilePick("surveyReportFileName", file)}
-        onClear={() => onFileClear("surveyReportFileName")}
-      />
 
       <EngSection>خطاب إقرار صحة الموقع</EngSection>
       <EngUploadBox
@@ -1067,7 +1424,7 @@ export function EngineeringSurveyWorkPanel({
                 specialist={task.assigneeName || def.assigneeSubtitle}
                 raisedByRole={failureRaiserRoleForParty(def)}
                 onSubmitted={onFailureSubmitted}
-                autoOpenRaise={failureRaiseOpen}
+                autoOpenRaise={false}
                 raiseDisabled={formDisabled}
                 raiseDisabledReason={
                   viewOnly
@@ -1079,23 +1436,6 @@ export function EngineeringSurveyWorkPanel({
           </div>
         </div>
       </div>
-
-      <QuickActionsFab
-        placement="bottom-start"
-        deedNumber={deedNumber}
-        startSurveyDimmed={
-          !transactionActive ||
-          Boolean(blockingFailure) ||
-          !documentaryGate.ready ||
-          locked
-        }
-        workActionsDimmed={!transactionActive || locked}
-        recallDimmed={transactionActive || !recallEligible}
-        onStartSurvey={handleStartSurvey}
-        onAddObstruction={handleAddObstruction}
-        onAddNote={handleAddNote}
-        onRequestRecall={handleRequestRecall}
-      />
     </>
   );
 }

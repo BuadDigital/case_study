@@ -155,7 +155,7 @@ public class Phase1ContextSplitTests
         });
         await contexts.Legacy.SaveChangesAsync();
 
-        var lookup = new CaseStudyPropertyPoNumberLookup(contexts.Legacy);
+        var lookup = new CaseStudyPropertyPoNumberLookup(contexts.CaseStudy);
 
         Assert.Equal("PO-4242", await lookup.ResolveForPropertyAsync(propertyId.ToString()));
         Assert.Equal("", await lookup.ResolveForPropertyAsync(Guid.NewGuid().ToString()));

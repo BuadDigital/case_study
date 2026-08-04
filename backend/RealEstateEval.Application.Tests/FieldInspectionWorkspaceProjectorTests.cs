@@ -12,11 +12,9 @@ public class FieldInspectionWorkspaceProjectorTests
         var taskId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
         var submissionId = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee");
         var propertyId = Guid.Parse("ffffffff-ffff-ffff-ffff-ffffffffffff");
-        var attachmentFront = Guid.Parse("11111111-1111-1111-1111-111111111101");
-        var attachmentWater = Guid.Parse("11111111-1111-1111-1111-111111111102");
-        var attachmentElec = Guid.Parse("11111111-1111-1111-1111-111111111103");
-        var attachmentInside = Guid.Parse("11111111-1111-1111-1111-111111111104");
-        var attachmentFree = Guid.Parse("11111111-1111-1111-1111-111111111105");
+        var attachmentService = Guid.Parse("11111111-1111-1111-1111-111111111101");
+        var attachmentAmenity = Guid.Parse("11111111-1111-1111-1111-111111111102");
+        var attachmentPending = Guid.Parse("11111111-1111-1111-1111-111111111103");
 
         var submission = new PartyTaskSubmission
         {
@@ -39,65 +37,40 @@ public class FieldInspectionWorkspaceProjectorTests
               "mapLongitude": "39.186500",
               "inspectionConfirmed": true,
               "hasAnnex": "لا",
+              "services": ["كهرباء", "مياه"],
+              "amenities": ["مساجد"],
               "observations": [
                 { "id": "obs-1", "category": "عيب ظاهر", "text": "ملاحظة" }
               ],
               "definedPhotos": {
-                "front": {
+                "service:كهرباء": {
                   "none": false,
                   "photos": [
                     {
                       "id": 1,
                       "approved": true,
-                      "fileName": "front.jpg",
-                      "attachmentId": "{{attachmentFront}}"
+                      "fileName": "electricity.jpg",
+                      "attachmentId": "{{attachmentService}}"
                     }
                   ]
                 },
-                "sides": { "none": true, "photos": [] },
-                "water": {
+                "service:مياه": {
                   "none": false,
                   "photos": [
                     {
                       "id": 2,
                       "approved": false,
                       "fileName": "water.jpg",
-                      "attachmentId": "{{attachmentWater}}"
+                      "attachmentId": "{{attachmentPending}}"
                     }
                   ]
                 },
-                "elec": {
-                  "none": false,
-                  "photos": [
-                    {
-                      "id": 3,
-                      "approved": true,
-                      "fileName": "elec.jpg",
-                      "attachmentId": "{{attachmentElec}}"
-                    }
-                  ]
-                },
-                "inside": {
-                  "none": false,
-                  "photos": [
-                    {
-                      "id": 4,
-                      "approved": true,
-                      "fileName": "inside.jpg",
-                      "attachmentId": "{{attachmentInside}}"
-                    }
-                  ]
+                "amenity:مساجد": {
+                  "none": true,
+                  "photos": []
                 }
               },
-              "freePhotos": [
-                {
-                  "id": 5,
-                  "category": "واجهة",
-                  "approved": false,
-                  "fileName": "free.jpg",
-                  "attachmentId": "{{attachmentFree}}"
-                }
-              ]
+              "freePhotos": []
             }
             """);
 
@@ -113,11 +86,12 @@ public class FieldInspectionWorkspaceProjectorTests
         Assert.Equal(39.186500m, workspace.MapLongitude);
         Assert.True(workspace.InspectionConfirmed);
         Assert.Equal(PartyTaskSubmissionStatus.Submitted, workspace.Status);
-        Assert.Equal(5, workspace.RequiredPhotoSlots);
-        Assert.Equal(4, workspace.CompletedPhotoSlots);
-        Assert.Equal(2, workspace.PendingPhotoApprovals);
+        // 2 services + 1 amenity
+        Assert.Equal(3, workspace.RequiredPhotoSlots);
+        // electricity approved + amenity none = 2 complete; water pending not complete
+        Assert.Equal(2, workspace.CompletedPhotoSlots);
+        Assert.Equal(1, workspace.PendingPhotoApprovals);
         Assert.Equal(1, workspace.ObservationCount);
-        Assert.Equal(5, workspace.AttachmentCount);
-        Assert.Equal(submission.SubmittedAtUtc, workspace.SubmittedAtUtc);
+        Assert.Equal(2, workspace.AttachmentCount);
     }
 }

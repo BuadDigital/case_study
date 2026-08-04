@@ -183,4 +183,39 @@ public class BoundaryRequestValidatorTests
         Assert.Contains(result.Errors, error => error.PropertyName == "promulgationDate");
         Assert.Contains(result.Errors, error => error.PropertyName == "expectedPropertyCount");
     }
+
+    [Fact]
+    public void Create_operations_task_rejects_blank_required_fields()
+    {
+        var result = new CreateOperationsTaskRequestValidator()
+            .Validate(new CreateOperationsTaskRequest());
+
+        Assert.Contains(result.Errors, e => e.PropertyName == "type");
+        Assert.Contains(result.Errors, e => e.PropertyName == "title");
+        Assert.Contains(result.Errors, e => e.PropertyName == "assigneeId");
+    }
+
+    [Fact]
+    public void Create_key_envelope_rejects_unknown_scenario()
+    {
+        var result = new CreateKeyEnvelopeRequestValidator().Validate(new CreateKeyEnvelopeRequest
+        {
+            RequestNumber = "R-1",
+            Court = "Court",
+            Circuit = "C1",
+            ReceiveScenario = "unknown",
+        });
+
+        Assert.Contains(result.Errors, e => e.PropertyName == "receiveScenario");
+    }
+
+    [Fact]
+    public void Create_failure_rejects_blank_core_fields()
+    {
+        var result = new CreateFailureRequestValidator().Validate(new CreateFailureRequest());
+
+        Assert.Contains(result.Errors, e => e.PropertyName == "poNumber");
+        Assert.Contains(result.Errors, e => e.PropertyName == "propertyId");
+        Assert.Contains(result.Errors, e => e.PropertyName == "problemTypeId");
+    }
 }
