@@ -58,7 +58,6 @@ import {
   sketchNatureFieldsFromExtract,
   sketchNatureFieldsFromDeedForm,
   applyNatureSketchPatch,
-  estimateAreaSqmFromBoundaryLengths,
   type SurveySketchExtractResult,
 } from "../lib/engineering-survey-sketch-extract";
 import { EngineeringSurveyChecklist } from "./EngineeringSurveyChecklist";
@@ -698,29 +697,21 @@ export function EngineeringSurveyWorkPanel({
             extracted.deed.east.lengthM,
             extracted.deed.west.lengthM,
           ].filter(Boolean).length;
-          const descFilled = [
-            extracted.deed.north.description,
-            extracted.deed.south.description,
-            extracted.deed.east.description,
-            extracted.deed.west.description,
-          ].filter((x) => (x ?? "").trim()).length;
           const baseMsg =
             extracted.warning ??
-            `تم تعبئة ${appliedCount} حقلاً من التقرير — راجع قبل الإرسال.`;
+            `تم تعبئة ${appliedCount} حقلاً رقمياً من التقرير — راجع قبل الإرسال.`;
           let msg = baseMsg;
-          if (lengthFilled > 0 && descFilled === 0) {
-            msg = `${baseMsg} · الأطوال من الرسم · الأوصاف (جدول صورة) لم تُقرأ تلقائياً — اكتبها من الكروكي يدوياً.`;
+          if (lengthFilled > 0) {
+            msg = `${baseMsg} · أطوال الحدود فقط · المساحة والأوصاف يدوياً.`;
           } else if (lengthFilled === 0) {
             msg = `${baseMsg} (لم تُقرأ الأطوال — راجعها يدوياً)`;
           }
           setSketchExtractNote(msg);
           showToast(
-            lengthFilled > 0 && descFilled === 0
-              ? `أطوال: ${lengthFilled} · الأوصاف يدوياً من جدول الكروكي`
-              : lengthFilled === 0
-                ? "تعبئة جزئية — راجع يدوياً"
-                : `تعبئة تلقائية: ${appliedCount} حقل`,
-            lengthFilled === 0 || descFilled === 0 ? "info" : "success",
+            lengthFilled > 0
+              ? `أطوال الحدود: ${lengthFilled} جهات · المساحة يدوياً`
+              : "تعبئة جزئية — راجع يدوياً",
+            lengthFilled === 0 ? "info" : "success",
           );
         } else {
           const msg =
@@ -983,36 +974,11 @@ export function EngineeringSurveyWorkPanel({
                       return rest;
                     });
 
-                    // عند «لا»: عبّئ حقول الطبيعة من استخراج الكروكي فقط
+                    // عند «لا»: عبّئ أطوال الطبيعة فقط (بدون مساحة إجمالية)
                     if (next === "no" && localFields) {
                       const fromExtract = lastSketchExtract
                         ? sketchNatureFieldsFromExtract(lastSketchExtract)
                         : sketchNatureFieldsFromDeedForm(localFields);
-
-                      // مساحة الطبيعة من الكروكي estimate فقط إن ما في جدول
-                      if (
-                        lastSketchExtract &&
-                        !(fromExtract.natureOnSiteAreaSqm ?? "").trim()
-                      ) {
-                        const est =
-                          lastSketchExtract.estimatedNatureAreaSqm ||
-                          estimateAreaSqmFromBoundaryLengths(
-                            lastSketchExtract.deed.north.lengthM ||
-                              localFields.northBoundaryLengthM ||
-                              "",
-                            lastSketchExtract.deed.south.lengthM ||
-                              localFields.southBoundaryLengthM ||
-                              "",
-                            lastSketchExtract.deed.east.lengthM ||
-                              localFields.eastBoundaryLengthM ||
-                              "",
-                            lastSketchExtract.deed.west.lengthM ||
-                              localFields.westBoundaryLengthM ||
-                              "",
-                            lastSketchExtract.edgeAngleBetweenRad,
-                          );
-                        if (est) fromExtract.natureOnSiteAreaSqm = est;
-                      }
 
                       const { patch: naturePatch, appliedCount: natureN } =
                         applyNatureSketchPatch(fromExtract, localFields, true);
@@ -1021,18 +987,11 @@ export function EngineeringSurveyWorkPanel({
                           prev ? { ...prev, ...naturePatch } : prev,
                         );
                         schedulePersist(naturePatch);
-                        const areaNote = naturePatch.natureOnSiteAreaSqm
-                          ? ` · المساحة ${naturePatch.natureOnSiteAreaSqm} م²`
-                          : "";
                         setSketchExtractNote(
-                          lastSketchExtract?.nature?.areaSqm
-                            ? `تم تعبئة ${natureN} حقلاً حسب الطبيعة من التقرير${areaNote} — راجع قبل الإرسال.`
-                            : `تم تعبئة ${natureN} حقلاً حسب الطبيعة${areaNote} — راجع المساحة (قد تكون تقديرية من الأطوال).`,
+                          `تم تعبئة ${natureN} طولاً حسب الطبيعة — المساحة الإجمالية يدوياً.`,
                         );
                         showToast(
-                          naturePatch.natureOnSiteAreaSqm
-                            ? `طبيعة: ${natureN} حقل · مساحة ${naturePatch.natureOnSiteAreaSqm}`
-                            : `تعبئة حدود الطبيعة: ${natureN} حقل`,
+                          `طبيعة: ${natureN} طول · المساحة يدوياً`,
                           "success",
                         );
                       }
