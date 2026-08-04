@@ -1,9 +1,69 @@
 "use client";
 
-import { cn } from "@platform/design-system";
+import {
+  Table,
+  TBody,
+  Td,
+  Textarea,
+  Th,
+  THead,
+  Tr,
+  cn,
+} from "@platform/design-system";
 import { ENGINEERING_SURVEY_CHECKLIST_ITEMS } from "../lib/engineering-survey-data";
 import type { EngineeringSurveyChecklistRow } from "../lib/engineering-survey-data";
 import { patchChecklistRow } from "../lib/engineering-survey-submission-storage";
+
+function YesNoToggle({
+  name,
+  value,
+  disabled,
+  onChange,
+}: {
+  name: string;
+  value: "yes" | "no" | null;
+  disabled?: boolean;
+  onChange: (next: "yes" | "no") => void;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label="نعم أو لا"
+      className="inline-flex rounded-[var(--radius-DEFAULT)] border border-border-md bg-surface-2 p-0.5"
+    >
+      {(
+        [
+          ["yes", "نعم"],
+          ["no", "لا"],
+        ] as const
+      ).map(([v, label]) => {
+        const on = value === v;
+        return (
+          <button
+            key={v}
+            type="button"
+            role="radio"
+            name={name}
+            aria-checked={on}
+            disabled={disabled}
+            onClick={() => onChange(v)}
+            className={cn(
+              "min-w-[44px] rounded-[calc(var(--radius-DEFAULT)-2px)] border border-transparent px-2.5 py-1.5 text-[12px] font-semibold transition-colors",
+              "disabled:cursor-not-allowed disabled:opacity-55",
+              on
+                ? v === "yes"
+                  ? "border-[color-mix(in_srgb,#3f8f5f_35%,transparent)] bg-[color-mix(in_srgb,#3f8f5f_14%,transparent)] text-[#2f7a4d]"
+                  : "border-[color-mix(in_srgb,#d9694f_35%,transparent)] bg-[color-mix(in_srgb,#d9694f_12%,transparent)] text-[#a5432e]"
+                : "bg-transparent text-text-2 hover:bg-surface hover:text-heading",
+            )}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export function EngineeringSurveyChecklist({
   rows,
@@ -15,80 +75,61 @@ export function EngineeringSurveyChecklist({
   onChange: (rows: EngineeringSurveyChecklistRow[]) => void;
 }) {
   return (
-    <div className="overflow-visible">
-      <table className="w-full border-collapse text-[11.5px]">
-        <thead>
-          <tr>
-            <th className="w-[34px] bg-surface-2 px-3 py-2 text-center text-[11px] font-semibold text-text-2">
-              #
-            </th>
-            <th className="bg-surface-2 px-3 py-2 text-start text-[11px] font-semibold text-text-2">
-              البند
-            </th>
-            <th className="w-[110px] bg-surface-2 px-3 py-2 text-start text-[11px] font-semibold text-text-2">
-              نعم / لا
-            </th>
-            <th className="w-[190px] bg-surface-2 px-3 py-2 text-start text-[11px] font-semibold text-text-2">
-              ملاحظة
-            </th>
-          </tr>
-        </thead>
-        <tbody>
+    <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-card">
+      <Table wrapClassName="rounded-[var(--radius-lg)]">
+        <THead>
+          <Tr hoverable={false}>
+            <Th className="w-12 text-center">#</Th>
+            <Th>البند</Th>
+            <Th className="w-[132px] text-center">نعم / لا</Th>
+            <Th className="min-w-[160px]">ملاحظة</Th>
+          </Tr>
+        </THead>
+        <TBody>
           {ENGINEERING_SURVEY_CHECKLIST_ITEMS.map((label, index) => {
             const row = rows[index] ?? { answer: null, note: "" };
             return (
-              <tr key={label}>
-                <td className="border-b border-border px-3 py-2 text-center align-middle text-text-3">
+              <Tr key={label} hoverable={!disabled}>
+                <Td className="w-12 text-center text-[12px] font-semibold text-text-3">
                   {index + 1}
-                </td>
-                <td className="border-b border-border px-3 py-2 align-middle leading-[1.6] text-text">
+                </Td>
+                <Td className="text-[13px] font-medium leading-relaxed text-heading">
                   {label}
-                </td>
-                <td className="border-b border-border px-3 py-2 align-middle">
-                  <div className="flex justify-center gap-3">
-                    {(["yes", "no"] as const).map((value) => (
-                      <label
-                        key={value}
-                        className="inline-flex cursor-pointer items-center gap-1 text-[11.5px]"
-                      >
-                        <input
-                          type="radio"
-                          name={`eng-q-${index}`}
-                          checked={row.answer === value}
-                          disabled={disabled}
-                          className="accent-[var(--gold-d)]"
-                          onChange={() =>
-                            onChange(
-                              patchChecklistRow(rows, index, { answer: value }),
-                            )
-                          }
-                        />
-                        {value === "yes" ? "نعم" : "لا"}
-                      </label>
-                    ))}
+                </Td>
+                <Td className="w-[132px] text-center">
+                  <div className="flex justify-center">
+                    <YesNoToggle
+                      name={`eng-q-${index}`}
+                      value={row.answer}
+                      disabled={disabled}
+                      onChange={(value) =>
+                        onChange(
+                          patchChecklistRow(rows, index, { answer: value }),
+                        )
+                      }
+                    />
                   </div>
-                </td>
-                <td className="border-b border-border px-3 py-2 align-middle">
-                  <textarea
-                    className={cn(
-                      "min-h-[34px] w-full resize-y rounded-[9px] border border-border-md bg-surface-2 px-3 py-2 font-[inherit] text-[11.5px] outline-none",
-                      "focus:border-gold-d focus:bg-surface",
-                    )}
+                </Td>
+                <Td>
+                  <Textarea
                     rows={1}
                     disabled={disabled}
                     value={row.note}
                     onChange={(e) =>
                       onChange(
-                        patchChecklistRow(rows, index, { note: e.target.value }),
+                        patchChecklistRow(rows, index, {
+                          note: e.target.value,
+                        }),
                       )
                     }
+                    className="min-h-[38px] text-[12.5px]"
                   />
-                </td>
-              </tr>
+                </Td>
+              </Tr>
             );
           })}
-        </tbody>
-      </table>
+        </TBody>
+      </Table>
     </div>
   );
 }

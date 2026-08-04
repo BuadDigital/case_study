@@ -60,3 +60,6 @@ backend/**/*.user
 data/blobs/
 
 backend/_build_check/
+
+# Local croquis training crops (pure-ink). Do not commit large binaries.
+datasets/osoul-croquis/
