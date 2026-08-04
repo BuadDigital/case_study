@@ -25,10 +25,17 @@ export function findSiblingSurveyTask(
   );
 }
 
+/**
+ * Prefer server `fieldInspectionCompleted` — party appraiser lists hide sibling
+ * inspection tasks (same pattern as EO surveyWorkGate).
+ */
 export function appraiserInspectionDone(
   appraisalTask: WorkflowTask,
   tasks: WorkflowTask[],
 ): boolean {
+  if (typeof appraisalTask.fieldInspectionCompleted === "boolean") {
+    return appraisalTask.fieldInspectionCompleted;
+  }
   const inspection = findSiblingInspectionTask(appraisalTask, tasks);
   return inspection?.status === "completed";
 }

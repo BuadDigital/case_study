@@ -155,7 +155,7 @@ export type WorkflowTask = {
   assignmentType?: PoIntakeRecord["assignmentType"];
   createdAt: string;
   updatedAt: string;
-  /** Server flag on engineering-survey: sibling field-inspection completed. */
+  /** Server flag on engineering-survey / property-appraisal: sibling field-inspection completed. */
   fieldInspectionCompleted?: boolean;
 };
 

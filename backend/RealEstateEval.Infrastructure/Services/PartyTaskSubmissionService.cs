@@ -916,14 +916,16 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         CancellationToken cancellationToken)
     {
         var dto = ToDto(entity);
-        if (entity.Kind == "engineering-survey" && entity.PropertyId is Guid propertyId)
+        var needsInspectionFlag =
+            entity.Kind is "engineering-survey" or "property-appraisal";
+        if (needsInspectionFlag && entity.PropertyId is Guid propertyId)
         {
             dto.FieldInspectionCompleted = await IsSiblingFieldInspectionCompletedAsync(
                 entity.WorkflowTaskId,
                 propertyId,
                 cancellationToken);
         }
-        else if (entity.Kind == "engineering-survey")
+        else if (needsInspectionFlag)
         {
             dto.FieldInspectionCompleted = false;
         }
