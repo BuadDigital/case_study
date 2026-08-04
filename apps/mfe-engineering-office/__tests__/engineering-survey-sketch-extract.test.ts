@@ -210,7 +210,7 @@ describe("parseSurveySketchText — croquis tables", () => {
     `);
     r.deed.areaSqm = "609";
     r.rawText = `${r.rawText}\nAREA_DIGITS\n609.00 606.49 24.25 25.00`;
-    const n = sketchNatureFieldsFromExtract(r, { onSiteAreaSqm: "609" });
+    const n = sketchNatureFieldsFromExtract(r);
     expect(n.natureOnSiteAreaSqm).toBe("606.49");
   });
 
@@ -237,7 +237,7 @@ describe("parseSurveySketchText — croquis tables", () => {
       usedSpatialLengths: true,
       estimatedNatureAreaSqm: spatial.estimatedNatureAreaSqm,
       edgeAngleBetweenRad: spatial.edgeAngleBetweenRad,
-    }, { onSiteAreaSqm: "609" });
+    });
     expect(Number(n.natureOnSiteAreaSqm)).toBeGreaterThan(600);
     expect(Number(n.natureOnSiteAreaSqm)).toBeLessThan(608);
   });
@@ -307,13 +307,14 @@ describe("parseLengthsFromPositions", () => {
 });
 
 describe("mergePropertyBoundaryHints", () => {
-  it("fills empty descriptions from intake without overwriting croquis", () => {
+  it("never mutates extract from property / بورصة hints", () => {
     const spatial = parseLengthsFromPositions(croquisLengthOnlyItems)!;
     const base = {
       rawText: spatial.raw,
       hasData: true,
       deed: {
         ...spatial.deed,
+        areaSqm: "",
         north: { description: "قطعة رقم 225", lengthM: "24.25" },
         south: { ...spatial.deed.south, description: "" },
       },
@@ -323,17 +324,17 @@ describe("mergePropertyBoundaryHints", () => {
       usedSpatialLengths: false,
     };
     const merged = mergePropertyBoundaryHints(base, {
-      southBoundary: "من البورصة",
-      northBoundary: "تجاهل — موجود",
-    });
+      areaSqm: "615",
+      // legacy extra fields ignored by no-op merge
+    } as { areaSqm: string });
+    expect(merged.deed.areaSqm).toBe("");
     expect(merged.deed.north.description).toBe("قطعة رقم 225");
-    expect(merged.deed.south.description).toBe("من البورصة");
+    expect(merged.deed.south.description).toBe("");
+    expect(merged.deed.north.lengthM).toBe("24.25");
   });
 
-  it("keeps orientation-aware spatial lengths when بورصة fills descriptions", () => {
+  it("keeps spatial lengths unchanged when hints present", () => {
     const spatial = parseLengthsFromPositions(croquisLengthOnlyItems)!;
-    expect(spatial.deed.north.lengthM).toBe("24.25");
-    expect(spatial.deed.west.lengthM).toBe("24.95");
     const base = {
       rawText: spatial.raw,
       hasData: true,
@@ -343,16 +344,44 @@ describe("mergePropertyBoundaryHints", () => {
       filledCount: 4,
       usedSpatialLengths: true as const,
     };
-    const merged = mergePropertyBoundaryHints(base, {
-      northBoundary: "قطعة رقم 225",
-      southBoundary: "قطعة رقم 229",
-      eastBoundary: "شارع عرض 15 م",
-      westBoundary: "قطعة رقم 226",
-    });
-    expect(merged.deed.north.description).toMatch(/225/);
+    const merged = mergePropertyBoundaryHints(base, { areaSqm: "999" });
     expect(merged.deed.north.lengthM).toBe("24.25");
     expect(merged.deed.south.lengthM).toBe("24.50");
     expect(merged.deed.east.lengthM).toBe("25.00");
     expect(merged.deed.west.lengthM).toBe("24.95");
+    expect(merged.deed.north.description).toBe("");
+  });
+
+  it("clears stale descriptions on overwrite when croquis has none", () => {
+    const r = parseSurveySketchText(
+      "24.25 24.50 25.00 24.95 شمال جنوب شرق غرب",
+    );
+    const { patch } = sketchExtractToEmptyFieldsPatch(
+      {
+        ...r,
+        hasData: true,
+        deed: {
+          areaSqm: "",
+          north: { description: "", lengthM: "25.00" },
+          south: { description: "", lengthM: "25.00" },
+          east: { description: "", lengthM: "20.00" },
+          west: { description: "", lengthM: "20.00" },
+        },
+        filledCount: 4,
+      },
+      {
+        northBoundary: "قطعة رقم 1054",
+        southBoundary: "قطعة رقم 1058",
+        eastBoundary: "قطعة رقم 1055",
+        westBoundary: "شارع عرض 15م",
+        northBoundaryLengthM: "25.00",
+      },
+      true,
+    );
+    expect(patch.northBoundary).toBe("");
+    expect(patch.southBoundary).toBe("");
+    expect(patch.eastBoundary).toBe("");
+    expect(patch.westBoundary).toBe("");
+    expect(patch.northBoundaryLengthM).toBe("25.00");
   });
 });

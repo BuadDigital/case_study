@@ -657,17 +657,8 @@ export function EngineeringSurveyWorkPanel({
 
         if (!isSurveyReport) return;
 
-        const extracted = await extractSurveySketchFromPdf(file, {
-          areaSqm: property?.area,
-          northBoundary: property?.northBoundary,
-          northBoundaryLengthM: property?.northBoundaryLengthM,
-          southBoundary: property?.southBoundary,
-          southBoundaryLengthM: property?.southBoundaryLengthM,
-          eastBoundary: property?.eastBoundary,
-          eastBoundaryLengthM: property?.eastBoundaryLengthM,
-          westBoundary: property?.westBoundary,
-          westBoundaryLengthM: property?.westBoundaryLengthM,
-        });
+        // Croquis PDF only — no property/بورصة mix-in
+        const extracted = await extractSurveySketchFromPdf(file);
         setLastSketchExtract(extracted);
         const currentFields = localFields ?? localFieldsFromDraft(draft);
         // overwrite=true: re-upload must replace previous wrong spatial lengths
@@ -707,19 +698,29 @@ export function EngineeringSurveyWorkPanel({
             extracted.deed.east.lengthM,
             extracted.deed.west.lengthM,
           ].filter(Boolean).length;
+          const descFilled = [
+            extracted.deed.north.description,
+            extracted.deed.south.description,
+            extracted.deed.east.description,
+            extracted.deed.west.description,
+          ].filter((x) => (x ?? "").trim()).length;
           const baseMsg =
             extracted.warning ??
             `تم تعبئة ${appliedCount} حقلاً من التقرير — راجع قبل الإرسال.`;
-          const msg =
-            lengthFilled === 0
-              ? `${baseMsg} (لم تُقرأ الأطوال من عمود الطول/م — راجعها يدوياً)`
-              : baseMsg;
+          let msg = baseMsg;
+          if (lengthFilled > 0 && descFilled === 0) {
+            msg = `${baseMsg} · الأطوال من الرسم · الأوصاف (جدول صورة) لم تُقرأ تلقائياً — اكتبها من الكروكي يدوياً.`;
+          } else if (lengthFilled === 0) {
+            msg = `${baseMsg} (لم تُقرأ الأطوال — راجعها يدوياً)`;
+          }
           setSketchExtractNote(msg);
           showToast(
-            lengthFilled === 0
-              ? "تعبئة جزئية: الأوصاف بدون أطوال — راجع يدوياً"
-              : `تعبئة تلقائية: ${appliedCount} حقل`,
-            lengthFilled === 0 ? "info" : "success",
+            lengthFilled > 0 && descFilled === 0
+              ? `أطوال: ${lengthFilled} · الأوصاف يدوياً من جدول الكروكي`
+              : lengthFilled === 0
+                ? "تعبئة جزئية — راجع يدوياً"
+                : `تعبئة تلقائية: ${appliedCount} حقل`,
+            lengthFilled === 0 || descFilled === 0 ? "info" : "success",
           );
         } else {
           const msg =
@@ -982,50 +983,39 @@ export function EngineeringSurveyWorkPanel({
                       return rest;
                     });
 
-                    // عند «لا»: عبّئ حقول الطبيعة من آخر استخراج كروكي / من الصك
+                    // عند «لا»: عبّئ حقول الطبيعة من استخراج الكروكي فقط
                     if (next === "no" && localFields) {
                       const fromExtract = lastSketchExtract
-                        ? sketchNatureFieldsFromExtract(lastSketchExtract, {
-                            onSiteAreaSqm: localFields.onSiteAreaSqm,
-                            northBoundary: localFields.northBoundary,
-                            northBoundaryLengthM:
-                              localFields.northBoundaryLengthM,
-                            southBoundary: localFields.southBoundary,
-                            southBoundaryLengthM:
-                              localFields.southBoundaryLengthM,
-                            eastBoundary: localFields.eastBoundary,
-                            eastBoundaryLengthM:
-                              localFields.eastBoundaryLengthM,
-                            westBoundary: localFields.westBoundary,
-                            westBoundaryLengthM:
-                              localFields.westBoundaryLengthM,
-                          })
+                        ? sketchNatureFieldsFromExtract(lastSketchExtract)
                         : sketchNatureFieldsFromDeedForm(localFields);
 
-                      // مساحة الطبيعة: إن ما انقرت من الجدول (صورة فقط) — قدّرها من 4 أطوال + زاوية الرسم
-                      if (!(fromExtract.natureOnSiteAreaSqm ?? "").trim()) {
+                      // مساحة الطبيعة من الكروكي estimate فقط إن ما في جدول
+                      if (
+                        lastSketchExtract &&
+                        !(fromExtract.natureOnSiteAreaSqm ?? "").trim()
+                      ) {
                         const est =
-                          lastSketchExtract?.estimatedNatureAreaSqm ||
+                          lastSketchExtract.estimatedNatureAreaSqm ||
                           estimateAreaSqmFromBoundaryLengths(
-                            localFields.northBoundaryLengthM ||
-                              lastSketchExtract?.deed.north.lengthM ||
+                            lastSketchExtract.deed.north.lengthM ||
+                              localFields.northBoundaryLengthM ||
                               "",
-                            localFields.southBoundaryLengthM ||
-                              lastSketchExtract?.deed.south.lengthM ||
+                            lastSketchExtract.deed.south.lengthM ||
+                              localFields.southBoundaryLengthM ||
                               "",
-                            localFields.eastBoundaryLengthM ||
-                              lastSketchExtract?.deed.east.lengthM ||
+                            lastSketchExtract.deed.east.lengthM ||
+                              localFields.eastBoundaryLengthM ||
                               "",
-                            localFields.westBoundaryLengthM ||
-                              lastSketchExtract?.deed.west.lengthM ||
+                            lastSketchExtract.deed.west.lengthM ||
+                              localFields.westBoundaryLengthM ||
                               "",
-                            lastSketchExtract?.edgeAngleBetweenRad,
+                            lastSketchExtract.edgeAngleBetweenRad,
                           );
                         if (est) fromExtract.natureOnSiteAreaSqm = est;
                       }
 
                       const { patch: naturePatch, appliedCount: natureN } =
-                        applyNatureSketchPatch(fromExtract, localFields, false);
+                        applyNatureSketchPatch(fromExtract, localFields, true);
                       if (natureN > 0) {
                         setLocalFields((prev) =>
                           prev ? { ...prev, ...naturePatch } : prev,
