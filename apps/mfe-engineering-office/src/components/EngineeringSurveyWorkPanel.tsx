@@ -672,12 +672,27 @@ export function EngineeringSurveyWorkPanel({
             true,
           );
 
+          const lengthFilled = [
+            extracted.deed.north.lengthM,
+            extracted.deed.south.lengthM,
+            extracted.deed.east.lengthM,
+            extracted.deed.west.lengthM,
+          ].filter(Boolean).length;
+          const descFilled = [
+            extracted.deed.north.description,
+            extracted.deed.south.description,
+            extracted.deed.east.description,
+            extracted.deed.west.description,
+          ].filter((x) => (x ?? "").trim()).length;
+
           if (appliedCount > 0) {
             const { deedMatchesNature, ...textPatch } = patch;
             if (Object.keys(textPatch).length > 0) {
-              setLocalFields((prev) =>
-                prev ? { ...prev, ...textPatch } : prev,
-              );
+              // Always merge into form state — never no-op when prev is still null
+              setLocalFields((prev) => ({
+                ...(prev ?? localFieldsFromDraft(draft)),
+                ...textPatch,
+              }));
               schedulePersist(textPatch);
             }
             if (deedMatchesNature != null) {
@@ -693,49 +708,40 @@ export function EngineeringSurveyWorkPanel({
               delete nextErrors.deed_matches_nature;
               return nextErrors;
             });
-            const lengthFilled = [
-              extracted.deed.north.lengthM,
-              extracted.deed.south.lengthM,
-              extracted.deed.east.lengthM,
-              extracted.deed.west.lengthM,
-            ].filter(Boolean).length;
-            const descFilled = [
-              extracted.deed.north.description,
-              extracted.deed.south.description,
-              extracted.deed.east.description,
-              extracted.deed.west.description,
-            ].filter((x) => (x ?? "").trim()).length;
-            let msg =
-              extracted.warning ??
-              `تم تعبئة ${appliedCount} حقلاً من التقرير — راجع قبل الإرسال.`;
-            // Keep a single clear line — avoid stacking the same advice twice.
-            if (!extracted.warning) {
-              if (lengthFilled === 0 && descFilled === 0) {
-                msg = "لم تُقرأ الحدود من التقرير — عبّئها يدوياً.";
-              } else if (descFilled === 0 && lengthFilled > 0) {
-                msg =
-                  "تُعبّأت الأطوال من أرقام الرسم. أوصاف الحد (شمال/جنوب/شرق/غرب) انسخها يدوياً من جدول الكروكي.";
-              } else if (lengthFilled > 0 || descFilled > 0) {
-                msg = `${msg} المساحة الإجمالية يدوياً.`;
-              }
-            }
-            setSketchExtractNote(msg);
-            showToast(
-              lengthFilled > 0 || descFilled > 0
-                ? `حدود: ${descFilled} وصف · ${lengthFilled} طول · المساحة يدوياً`
-                : "تم رفع التقرير — راجع الحدود يدوياً",
-              lengthFilled === 0 && descFilled === 0 ? "info" : "success",
-            );
-          } else {
-            const msg =
-              extracted.warning ??
-              "تم رفع التقرير. لم تُستخرج بيانات حدود تلقائياً — عبّئها يدوياً.";
-            setSketchExtractNote(msg);
-            showToast(msg, "info");
           }
-        } catch {
+
+          let msg =
+            extracted.warning ??
+            (appliedCount > 0
+              ? `تم تعبئة ${appliedCount} حقلاً من التقرير — راجع قبل الإرسال.`
+              : "تم رفع التقرير. لم تُستخرج بيانات حدود تلقائياً — عبّئها يدوياً.");
+          if (descFilled === 0 && lengthFilled > 0) {
+            msg =
+              extracted.warning ??
+              "تُعبّأت الأطوال من أرقام الرسم. أوصاف الحد انسخها يدوياً من جدول الكروكي (شمال/جنوب/شرق/غرب).";
+          } else if (lengthFilled === 0 && descFilled === 0) {
+            msg =
+              extracted.warning ??
+              "لم تُقرأ أطوال/أوصاف من طبقة النص في هذا الـ PDF — عبّئ الحقول يدوياً من الكروكي.";
+          }
+
+          setSketchExtractNote(msg);
+          showToast(
+            lengthFilled > 0 || descFilled > 0
+              ? `حدود: ${descFilled} وصف · ${lengthFilled} طول · المساحة يدوياً`
+              : msg.length > 80
+                ? "تم رفع التقرير — الأطوال/الأوصاف يدوياً من الكروكي"
+                : msg,
+            lengthFilled === 0 && descFilled === 0 ? "info" : "success",
+          );
+        } catch (extractErr) {
+          console.error("[survey-sketch-extract]", extractErr);
+          const detail =
+            extractErr instanceof Error
+              ? extractErr.message
+              : "تعذّر الاستخراج التلقائي";
           setSketchExtractNote(
-            "تم رفع التقرير. تعذّر الاستخراج التلقائي للحدود — عبّئها يدوياً.",
+            `تم رفع التقرير. ${detail} — عبّئ الأطوال والأوصاف يدوياً من الكروكي.`,
           );
           showToast("تم رفع التقرير — راجع الحدود يدوياً", "info");
         }
@@ -865,7 +871,7 @@ export function EngineeringSurveyWorkPanel({
       <EngSection>التقرير المساحي</EngSection>
       {!formDisabled ? (
         <EngInfo>
-          ℹ بعد الرفع: يُقرأ جدول «وصف الحد» والأطوال (حسب الصك/الطبيعة) —
+          ℹ بعد الرفع: تُعبَّأ الأطوال من أرقام الرسم عند توفرها؛ «وصف الحد» من جدول الكروكي يدوياً —
           وقد يستغرق ثوانٍ. راجع القيم دائماً.
         </EngInfo>
       ) : null}

@@ -1,8 +1,10 @@
 /**
  * Extract deed / nature **وصف الحد + أطوال الحدود** from a survey sketch PDF.
  *
- * Fills boundary description + length fields (شمال/جنوب/شرق/غرب) from PDF text only.
- * Never fills: المساحة الإجمالية (صك/طبيعة). Never property/بورصة mix-in.
+ * - أطوال: PDF text layer / spatial edge numbers (pdf.js) — ours only
+ * - وصف الحد: only when Arabic is extractable PDF text; Osoul vector calligraphy → manual
+ * Never fills: المساحة الإجمالية. Never property/بورصة mix-in.
+ * No external OCR APIs.
  */
 
 export type SketchBoundarySide = {
@@ -111,7 +113,23 @@ let workerReady = false;
 async function loadPdfJs() {
   const pdfjs = await import("pdfjs-dist");
   if (!workerReady && typeof window !== "undefined") {
-    pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+    // Prefer app static copy; fall back to package worker URL if missing/blocked.
+    const candidates = [
+      "/pdf.worker.min.mjs",
+      // Bundler-resolved absolute URL when webpack/turbopack can emit the asset
+      (() => {
+        try {
+          return new URL(
+            "pdfjs-dist/build/pdf.worker.min.mjs",
+            import.meta.url,
+          ).toString();
+        } catch {
+          return "";
+        }
+      })(),
+    ].filter(Boolean);
+    pdfjs.GlobalWorkerOptions.workerSrc =
+      candidates[0] ?? "/pdf.worker.min.mjs";
     workerReady = true;
   }
   return pdfjs;
@@ -1358,7 +1376,7 @@ function finalizeExtractResult(
         : "تعذّر قراءة حدود من التقرير. عبّئ الحقول يدوياً.";
   } else if (usedSpatialLengths && descriptionCount(deedOut) < 1) {
     warning =
-      "تم تعبئة أطوال الحدود من أرقام الرسم. أوصاف الحد (إن وُجدت في النص) والمساحة الإجمالية يدوياً.";
+      "تُعبّأت الأطوال من أرقام الرسم. أوصاف الحد من جدول الكروكي يدوياً — المساحة الإجمالية يدوياً.";
   } else {
     warning =
       "تم تعبئة أوصاف/أطوال الحدود من التقرير. المساحة الإجمالية يدوياً — راجع قبل الإرسال.";
@@ -1939,332 +1957,10 @@ function itemsFromPdfContent(
   return out;
 }
 
-/** Canvas helpers for croquis table crops (vector Arabic ink). */
-function cropCanvas(
-  source: HTMLCanvasElement,
-  fx: number,
-  fy: number,
-  fw: number,
-  fh: number,
-): HTMLCanvasElement {
-  const x = Math.max(0, Math.floor(fx * source.width));
-  const y = Math.max(0, Math.floor(fy * source.height));
-  const w = Math.max(8, Math.floor(fw * source.width));
-  const h = Math.max(8, Math.floor(fh * source.height));
-  const c = document.createElement("canvas");
-  c.width = Math.min(w, source.width - x);
-  c.height = Math.min(h, source.height - y);
-  const ctx = c.getContext("2d");
-  if (ctx) {
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(0, 0, c.width, c.height);
-    ctx.drawImage(source, x, y, c.width, c.height, 0, 0, c.width, c.height);
-  }
-  return c;
-}
-
-function rotateCanvasQuarter(
-  source: HTMLCanvasElement,
-  quarterTurns: 1 | 2 | 3,
-): HTMLCanvasElement {
-  const rad = (quarterTurns * Math.PI) / 2;
-  const swap = quarterTurns % 2 === 1;
-  const out = document.createElement("canvas");
-  out.width = swap ? source.height : source.width;
-  out.height = swap ? source.width : source.height;
-  const ctx = out.getContext("2d");
-  if (!ctx) return out;
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(0, 0, out.width, out.height);
-  ctx.translate(out.width / 2, out.height / 2);
-  ctx.rotate(rad);
-  ctx.drawImage(source, -source.width / 2, -source.height / 2);
-  return out;
-}
-
 /**
- * Keep pure red (صك) or pure blue (طبيعة) CAD ink; drop grids/checklists.
- * Osoul Print-to-PDF draws وصف الحد as R=1,0,0 / B=0,0,1 vectors.
- */
-function isolatePureCadInk(
-  source: HTMLCanvasElement,
-  mode: "blue" | "red",
-): HTMLCanvasElement {
-  const out = document.createElement("canvas");
-  out.width = source.width;
-  out.height = source.height;
-  const ctx = out.getContext("2d");
-  const sctx = source.getContext("2d");
-  if (!ctx || !sctx) return source;
-  const img = sctx.getImageData(0, 0, source.width, source.height);
-  const d = img.data;
-  let ink = 0;
-  for (let i = 0; i < d.length; i += 4) {
-    const r = d[i]!;
-    const g = d[i + 1]!;
-    const b = d[i + 2]!;
-    const isBlue =
-      (b > 180 && r < 60 && g < 60) ||
-      (b > 140 && b >= r + 45 && b >= g + 40);
-    const isRed =
-      (r > 180 && g < 60 && b < 60) ||
-      (r > 140 && r >= g + 45 && r >= b + 40);
-    const keep = mode === "blue" ? isBlue : isRed;
-    if (keep) {
-      d[i] = d[i + 1] = d[i + 2] = 0;
-      ink += 1;
-    } else {
-      d[i] = d[i + 1] = d[i + 2] = 255;
-    }
-    d[i + 3] = 255;
-  }
-  // Too little pure ink → also keep saturated near-blue/red (anti-alias)
-  if (ink < 400) {
-    const again = sctx.getImageData(0, 0, source.width, source.height);
-    const a = again.data;
-    for (let i = 0; i < a.length; i += 4) {
-      const r = a[i]!;
-      const g = a[i + 1]!;
-      const b = a[i + 2]!;
-      const isBlue = b > 100 && b >= r + 18 && b >= g + 10;
-      const isRed = r > 100 && r >= g + 20 && r >= b + 20;
-      const keep = mode === "blue" ? isBlue : isRed;
-      if (keep) {
-        a[i] = a[i + 1] = a[i + 2] = 0;
-      } else {
-        a[i] = a[i + 1] = a[i + 2] = 255;
-      }
-      a[i + 3] = 255;
-    }
-    ctx.putImageData(again, 0, 0);
-  } else {
-    ctx.putImageData(img, 0, 0);
-  }
-  return out;
-}
-
-function shrinkCanvasForOcr(
-  source: HTMLCanvasElement,
-  maxEdge = 1400,
-): HTMLCanvasElement {
-  const edge = Math.max(source.width, source.height);
-  if (edge <= maxEdge) return source;
-  const scale = maxEdge / edge;
-  const out = document.createElement("canvas");
-  out.width = Math.max(8, Math.round(source.width * scale));
-  out.height = Math.max(8, Math.round(source.height * scale));
-  const ctx = out.getContext("2d");
-  if (!ctx) return source;
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(0, 0, out.width, out.height);
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(source, 0, 0, out.width, out.height);
-  return out;
-}
-
-function canvasToJpegBlob(
-  source: HTMLCanvasElement,
-  quality = 0.9,
-): Promise<Blob | null> {
-  return new Promise((resolve) => {
-    source.toBlob((b) => resolve(b), "image/jpeg", quality);
-  });
-}
-
-/**
- * Cloud OCR (OCR.space engine 2) — reliable on pure red/blue croquis ink.
- * Tesseract local repeatedly fails on Osoul calligraphy; this path is what
- * fills وصف الحد on official Print-to-PDF croquis when online.
- *
- * Free demo key (`helloworld`) is rate-limited (~few / min). Prefer a real
- * NEXT_PUBLIC_OCR_SPACE_API_KEY for daily use.
- */
-export async function ocrImageBlobArabic(blob: Blob): Promise<string> {
-  if (typeof fetch === "undefined") return "";
-  if (typeof navigator !== "undefined" && navigator.onLine === false) {
-    return "";
-  }
-  try {
-    // Next.js only inlines exact `process.env.NEXT_PUBLIC_*` access (not process.env?).
-    const key =
-      (typeof process !== "undefined"
-        ? process.env.NEXT_PUBLIC_OCR_SPACE_API_KEY
-        : undefined
-      )?.trim() || "helloworld";
-    const form = new FormData();
-    form.append("file", blob, "sketch.jpg");
-    form.append("language", "auto");
-    form.append("OCREngine", "2");
-    form.append("scale", "true");
-    form.append("detectOrientation", "true");
-    form.append("isOverlayRequired", "false");
-    const res = await fetch("https://api.ocr.space/parse/image", {
-      method: "POST",
-      headers: { apikey: key },
-      body: form,
-    });
-    // 429 = free-tier throttle — empty so lengths still apply
-    if (!res.ok) return "";
-    const data = (await res.json()) as {
-      IsErroredOnProcessing?: boolean;
-      ErrorMessage?: string | string[];
-      ParsedResults?: Array<{ ParsedText?: string }>;
-    };
-    if (data.IsErroredOnProcessing) return "";
-    const text = (data.ParsedResults ?? [])
-      .map((p) => p.ParsedText ?? "")
-      .join("\n")
-      .trim();
-    return text ? repairOcrArabicSoup(text) : "";
-  } catch {
-    return "";
-  }
-}
-
-function countNearBlackPixels(source: HTMLCanvasElement): number {
-  const sctx = source.getContext("2d");
-  if (!sctx) return 0;
-  const img = sctx.getImageData(0, 0, source.width, source.height);
-  const d = img.data;
-  let n = 0;
-  for (let i = 0; i < d.length; i += 4) {
-    if (d[i]! < 40 && d[i + 1]! < 40 && d[i + 2]! < 40) n += 1;
-  }
-  return n;
-}
-
-async function recognizeCanvasCloud(
-  source: HTMLCanvasElement,
-): Promise<string> {
-  if (countNearBlackPixels(source) < 80) return "";
-  const small = shrinkCanvasForOcr(source, 1200);
-  const blob = await canvasToJpegBlob(small, 0.88);
-  if (!blob || blob.size < 200) return "";
-  if (blob.size > 900_000) {
-    const tinier = shrinkCanvasForOcr(source, 900);
-    const b2 = await canvasToJpegBlob(tinier, 0.72);
-    if (!b2) return "";
-    return ocrImageBlobArabic(b2);
-  }
-  return ocrImageBlobArabic(blob);
-}
-
-/**
- * Prepare one pure-ink table strip for cloud OCR.
- * Osoul form: vertical dual tables of «وصف الحد» on the left (red=صك, blue=طبيعة).
- * Works across the common 841×1190 Print-to-PDF croquis family — not one PDF only.
- */
-function prepareInkTableStrip(
-  pageCanvas: HTMLCanvasElement,
-  mode: "red" | "blue",
-): HTMLCanvasElement {
-  // Wider left column covers slight layout drift between offices
-  const strip = cropCanvas(pageCanvas, 0.0, 0.26, 0.32, 0.58);
-  const oriented = rotateCanvasQuarter(strip, 3);
-  return isolatePureCadInk(oriented, mode);
-}
-
-/**
- * Targeted OCR for Arabic «وصف الحد» on official croquis (vector calligraphy).
- * Pure red/blue ink isolation + cloud OCR (local Tesseract cannot read this font).
- *
- * Budget: at most **2** cloud OCR requests per PDF (deed, then nature if needed)
- * so free API keys survive multi-file uploads.
- */
-export async function ocrSurveySketchPdf(file: File): Promise<string> {
-  if (typeof window === "undefined" || typeof document === "undefined") {
-    return "";
-  }
-  try {
-    const pdfjs = await loadPdfJs();
-    const data = new Uint8Array(await file.arrayBuffer());
-    const pdf = await pdfjs.getDocument({ data }).promise;
-    const parts: string[] = [];
-
-    try {
-      const page = await pdf.getPage(1);
-      // Slightly lower DPI — still enough for pure-ink OCR, less memory
-      const viewport = page.getViewport({ scale: 2.6 });
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.ceil(viewport.width);
-      canvas.height = Math.ceil(viewport.height);
-      const ctx = canvas.getContext("2d", { willReadFrequently: true });
-      if (!ctx) {
-        page.cleanup();
-        await pdf.cleanup();
-        return "";
-      }
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      await page.render({
-        canvas,
-        canvasContext: ctx,
-        viewport,
-      }).promise;
-
-      // 1) Deed (red) first — primary form fields «حسب الصك»
-      const deedInked = prepareInkTableStrip(canvas, "red");
-      const deedText = await recognizeCanvasCloud(deedInked);
-      if (deedText.trim()) {
-        parts.push(`بموجب الصك\n${deedText.trim()}`);
-      }
-
-      // 2) Nature (blue) only when deed desc is weak (extra rate-limit cost)
-      const deedMined = mineBoundaryDescriptionsFromOcr(deedText || "");
-      if (descriptionCount(deedMined) < 3) {
-        const natureInked = prepareInkTableStrip(canvas, "blue");
-        const natureText = await recognizeCanvasCloud(natureInked);
-        if (natureText.trim()) {
-          parts.push(`بموجب الطبيعة\n${natureText.trim()}`);
-        }
-      } else {
-        // Same croquis usually mirrors nature = deed; seed header for parsers
-        parts.push(`بموجب الطبيعة\n${deedText.trim()}`);
-      }
-
-      page.cleanup();
-    } finally {
-      await pdf.cleanup();
-    }
-
-    return parts.join("\n\n");
-  } catch {
-    return "";
-  }
-}
-
-function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
-  return new Promise((resolve) => {
-    let done = false;
-    const t = window.setTimeout(() => {
-      if (!done) {
-        done = true;
-        resolve(fallback);
-      }
-    }, ms);
-    p.then(
-      (v) => {
-        if (!done) {
-          done = true;
-          window.clearTimeout(t);
-          resolve(v);
-        }
-      },
-      () => {
-        if (!done) {
-          done = true;
-          window.clearTimeout(t);
-          resolve(fallback);
-        }
-      },
-    );
-  });
-}
-
-/**
- * Extract + parse a survey sketch PDF: أطوال from text/spatial + وصف الحد Arabic
- * from text layer when present, else targeted OCR of croquis tables/plot.
+ * Extract + parse a survey sketch PDF (pdf.js text layer only — no external OCR):
+ * - أطوال: text / spatial numbers
+ * - وصف الحد: only when present as real text; Osoul ink tables → manual
  */
 export async function extractSurveySketchFromPdf(
   file: File,
@@ -2388,103 +2084,8 @@ export async function extractSurveySketchFromPdf(
       }
     }
 
-    // Arabic وصف الحد: text layer first; if missing → pure ink + cloud OCR
-    if (descriptionCount(result.deed) < 3) {
-      try {
-        const ocrText = await withTimeout(
-          ocrSurveySketchPdf(file),
-          70_000,
-          "",
-        );
-        if (ocrText.trim()) {
-          tableSource = [joinedText, ocrText].filter(Boolean).join("\n\n");
-          const { deedText: ocrDeed, natureText: ocrNature } =
-            splitDeedNatureSections(ocrText);
-          const minedAll = mineBoundaryDescriptionsFromOcr(ocrText);
-          const minedDeed = mineBoundaryDescriptionsFromOcr(
-            ocrDeed || ocrText,
-          );
-          const minedNature = ocrNature
-            ? mineBoundaryDescriptionsFromOcr(ocrNature)
-            : emptyBlock();
-          const fromText = parseSurveySketchText(ocrText);
-
-          const deed = {
-            areaSqm: result.deed.areaSqm,
-            north: { ...result.deed.north },
-            south: { ...result.deed.south },
-            east: { ...result.deed.east },
-            west: { ...result.deed.west },
-          };
-          const natureBase = result.nature
-            ? {
-                areaSqm: result.nature.areaSqm,
-                north: { ...result.nature.north },
-                south: { ...result.nature.south },
-                east: { ...result.nature.east },
-                west: { ...result.nature.west },
-              }
-            : emptyBlock();
-
-          for (const d of DIR_ORDER) {
-            const descCandidates = [
-              fromText.deed[d].description,
-              minedDeed[d].description,
-              minedAll[d].description,
-              fromText.nature?.[d].description,
-            ];
-            if (!deed[d].description) {
-              for (const c of descCandidates) {
-                if (c && isPlausibleBoundaryDescription(c)) {
-                  deed[d] = { ...deed[d], description: c };
-                  break;
-                }
-              }
-            }
-            if (!deed[d].lengthM) {
-              const len =
-                fromText.deed[d].lengthM ||
-                minedDeed[d].lengthM ||
-                minedAll[d].lengthM ||
-                "";
-              if (len) deed[d] = { ...deed[d], lengthM: len };
-            }
-            if (!natureBase[d].description) {
-              const nd =
-                fromText.nature?.[d].description ||
-                minedNature[d].description ||
-                minedAll[d].description ||
-                deed[d].description;
-              if (nd && isPlausibleBoundaryDescription(nd)) {
-                natureBase[d] = { ...natureBase[d], description: nd };
-              }
-            }
-            if (!natureBase[d].lengthM) {
-              natureBase[d] = {
-                ...natureBase[d],
-                lengthM:
-                  fromText.nature?.[d].lengthM ||
-                  minedNature[d].lengthM ||
-                  deed[d].lengthM ||
-                  "",
-              };
-            }
-          }
-
-          const natureOut = isBlockEmpty(natureBase)
-            ? result.nature
-            : natureBase;
-          result = finalizeExtractResult(
-            deed,
-            natureOut,
-            tableSource,
-            Boolean(result.usedSpatialLengths),
-          );
-        }
-      } catch {
-        /* OCR optional — keep lengths */
-      }
-    }
+    // وصف الحد: text layer only. No external OCR APIs.
+    // Osoul Print-to-PDF keeps Arabic as vectors → engineer fills descriptions manually.
 
     // Nature without its own sides: seed وصف + أطوال from deed.
     if (
@@ -2544,8 +2145,8 @@ export async function extractSurveySketchFromPdf(
       result = {
         ...result,
         warning:
-          "تُعبّأت الأطوال من أرقام الرسم. تعذّر قراءة أوصاف الحد العربية تلقائياً — انسخها يدوياً من جدول الكروكي (شمال/جنوب/شرق/غرب).",
-      };
+          "تُعبّأت الأطوال من أرقام الرسم. أوصاف الحد من جدول الكروكي يدوياً (شمال/جنوب/شرق/غرب) — المساحة الإجمالية يدوياً.",
+        };
     } else if (lengthCount(result.deed) === 0 && allPos.length === 0) {
       result = {
         ...result,
@@ -2566,6 +2167,7 @@ export async function extractSurveySketchFromPdf(
 
     return result;
   } catch (err) {
+    console.error("[extractSurveySketchFromPdf]", err);
     return {
       rawText: "",
       hasData: false,
