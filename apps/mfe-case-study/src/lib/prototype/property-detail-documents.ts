@@ -47,6 +47,15 @@ function pushEntry(
   list.push(entry);
 }
 
+/** Real file only — exclude name-only rows that render as empty placeholders. */
+export function isPropertyDetailDocumentAvailable(
+  entry: PropertyDetailDocumentEntry,
+): boolean {
+  return Boolean(
+    entry.dataUrl || entry.attachmentId || entry.engineeringTaskId,
+  );
+}
+
 export function collectIntakeDocuments(input: {
   property: PoPropertyIntake;
   showDecree: boolean;
@@ -206,6 +215,7 @@ export function collectAppraisalDocuments(
       source: "المقيّم العقاري",
       kind: "pdf",
       dataUrl: cached.dataUrl,
+      attachmentId: cached.attachmentId,
     },
   ];
 }
@@ -377,6 +387,7 @@ export function collectPropertyDetailDocumentSections(input: {
   }
 
   for (const doc of all) {
+    if (!isPropertyDetailDocumentAvailable(doc)) continue;
     const sectionId = sectionIdForSource(doc.source);
     const bucket = bySectionId.get(sectionId);
     if (bucket) bucket.push(doc);
@@ -386,7 +397,7 @@ export function collectPropertyDetailDocumentSections(input: {
     id: def.id,
     title: def.title,
     documents: bySectionId.get(def.id) ?? [],
-  }));
+  })).filter((section) => section.documents.length > 0);
 }
 
 export function countPropertyDetailDocuments(

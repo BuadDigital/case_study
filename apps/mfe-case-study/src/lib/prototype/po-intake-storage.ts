@@ -341,6 +341,13 @@ export async function poRecordExists(poNumber: string): Promise<boolean> {
   return result.ok ? result.data : false;
 }
 
+function isGuidPropertyId(value: string | undefined | null): value is string {
+  const v = value?.trim() ?? "";
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    v,
+  );
+}
+
 export async function findPriorDeedFull(
   deedNumber: string,
   excludePo?: string,
@@ -348,13 +355,27 @@ export async function findPriorDeedFull(
 ): Promise<import("@platform/api-client").PriorDeedRegistrationDto | null> {
   const config = workOrdersApiConfig();
   if (!config) return null;
+  const deed = deedNumber.trim();
+  if (!deed) return null;
+  // Only forward real GUIDs — bad excludePropertyId causes 400 on the API.
+  const safeExcludePropertyId = isGuidPropertyId(excludePropertyId)
+    ? excludePropertyId.trim()
+    : undefined;
   const result = await findPriorDeed(
     config,
-    deedNumber,
+    deed,
     excludePo,
-    excludePropertyId,
+    safeExcludePropertyId,
   );
-  if (!result.ok || !result.data) return null;
+  if (!result.ok) {
+    if (result.kind === "auth") {
+      throw new Error("يجب تسجيل الدخول للبحث عن المعاملة السابقة");
+    }
+    if (result.kind === "network") {
+      throw new Error("تعذّر الاتصال — تحقق من تشغيل الـ API");
+    }
+    throw new Error("تعذّر البحث عن المعاملة السابقة لنفس رقم الصك");
+  }
   return result.data;
 }
 
