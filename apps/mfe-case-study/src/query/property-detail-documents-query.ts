@@ -5,9 +5,16 @@ import {
   prefetchEngineeringSurveyDocuments,
   ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
 } from "@engineering-office/mfe";
-import { fetchEvaluatorSubmission } from "@evaluator/mfe";
+import {
+  fetchEvaluatorSubmission,
+  prefetchEvaluatorReport,
+} from "@evaluator/mfe";
 import { useEffect, useState } from "react";
 import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-evaluator-events";
+import {
+  prefetchPropertyDocAttachments,
+  subscribeAssignmentDocCache,
+} from "../lib/prototype/assignment-doc-attachments";
 import { prefetchInspectorWorkspacePhotos } from "../lib/prototype/inspector-photo-upload";
 import {
   fetchInspectorWorkspace,
@@ -65,13 +72,16 @@ export function usePropertyDetailDocuments(input: {
     refresh();
 
     void Promise.all([
+      prefetchPropertyDocAttachments(poNumber, property.id),
       surveyTaskId
         ? fetchEngineeringSurveySubmission(surveyTaskId).then(async () => {
             await prefetchEngineeringSurveyDocuments(surveyTaskId);
           })
         : Promise.resolve(null),
       appraisalTaskId
-        ? fetchEvaluatorSubmission(appraisalTaskId)
+        ? fetchEvaluatorSubmission(appraisalTaskId).then(async () => {
+            await prefetchEvaluatorReport(appraisalTaskId);
+          })
         : Promise.resolve(null),
       inspectionTaskId
         ? fetchInspectorWorkspace(inspectionTaskId).then(async (workspace) => {
@@ -81,6 +91,7 @@ export function usePropertyDetailDocuments(input: {
         : Promise.resolve(null),
     ]).then(refresh);
 
+    const unsubDocs = subscribeAssignmentDocCache(refresh);
     window.addEventListener(
       ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
       refresh,
@@ -90,6 +101,7 @@ export function usePropertyDetailDocuments(input: {
 
     return () => {
       cancelled = true;
+      unsubDocs();
       window.removeEventListener(
         ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
         refresh,
