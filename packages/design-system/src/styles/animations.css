@@ -1,4 +1,4 @@
-/* Enterprise-minimal motion — opacity and color only, no layout shift */
+/* Enterprise-minimal motion — prefer opacity/color; queue open feedback allows tiny transform */
 
 @keyframes ui-fade-in {
   from {
@@ -44,6 +44,54 @@
   }
 }
 
+/* Queue open: soft press on the row */
+@keyframes ui-queue-row-press {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(0.992);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Spinner appear next to deed */
+@keyframes ui-queue-spinner-in {
+  from {
+    opacity: 0;
+    transform: scale(0.72);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Soft pulse on loading deed */
+@keyframes ui-queue-deed-pulse {
+  0%,
+  100% {
+    opacity: 0.88;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Work panel / rail open */
+@keyframes ui-queue-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @layer utilities {
   /* Modals: backdrop only — card appears instantly (no scale/bounce) */
   .ui-animate-modal-overlay {
@@ -73,11 +121,42 @@
     background: inherit;
     animation: ui-pulse-ring 1.6s ease-out infinite;
   }
+
+  /* Row: soft press while opening — no decorative gold borders */
+  .ui-queue-row-opening {
+    position: relative;
+    z-index: 0;
+    animation: ui-queue-row-press 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    transition: background-color 180ms ease;
+  }
+
+  .ui-queue-spinner-in {
+    display: inline-flex;
+    animation: ui-queue-spinner-in 150ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .ui-queue-deed-loading {
+    animation: ui-queue-deed-pulse 900ms ease-in-out infinite;
+  }
+
+  .ui-queue-panel-in {
+    animation: ui-queue-panel-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* Mobile card open: press only — no gold border/ring */
+  .ui-queue-card-opening {
+    animation: ui-queue-row-press 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .ui-animate-modal-overlay,
-  .ui-animate-fade-in {
+  .ui-animate-fade-in,
+  .ui-queue-row-opening,
+  .ui-queue-spinner-in,
+  .ui-queue-deed-loading,
+  .ui-queue-panel-in,
+  .ui-queue-card-opening {
     animation: none !important;
   }
 

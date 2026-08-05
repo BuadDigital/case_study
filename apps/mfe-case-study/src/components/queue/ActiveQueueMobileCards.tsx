@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import {
   StatusPill,
+  Spinner,
   cn,
   queueLegacyStatusStyle,
   type StatusPillStyle,
@@ -35,6 +36,8 @@ export type ActiveQueueMobileCardItem = {
   tone?: ActiveQueueMobileCardTone;
   moreItems: RowMoreMenuItem[];
   onOpen: () => void;
+  /** Show open-loading affordance on the title. */
+  loading?: boolean;
   /** Optional leading control (e.g. ops checkbox). */
   leading?: ReactNode;
   /** Extra block under the status pill (assignee / due / etc.). */
@@ -235,12 +238,14 @@ export function ActiveQueueMobileCards({
             <div
               role="button"
               tabIndex={0}
+              aria-busy={item.loading || undefined}
               className={cn(
                 queueMobileCardShellClassName,
                 queueMobileCardToneBorder[tone],
                 Boolean(item.expandedPanel) &&
                   item.expanded &&
                   "rounded-b-none border-b-0",
+                item.loading && "ui-queue-card-opening pointer-events-none",
               )}
               onClick={item.onOpen}
               onKeyDown={(e) => {
@@ -277,8 +282,22 @@ export function ActiveQueueMobileCards({
               ) : null}
 
               <div className="relative z-[1] min-w-0 flex-1 overflow-hidden">
-                <div className="truncate text-[13.5px] font-semibold leading-snug tracking-tight text-heading">
-                  {item.title}
+                <div
+                  className={cn(
+                    "flex items-center gap-1.5 truncate text-[13.5px] font-semibold leading-snug tracking-tight text-heading",
+                    item.loading && "ui-queue-deed-loading",
+                  )}
+                >
+                  {item.loading ? (
+                    <span
+                      role="status"
+                      aria-label="جاري الفتح"
+                      className="ui-queue-spinner-in"
+                    >
+                      <Spinner className="size-3 shrink-0 text-primary" />
+                    </span>
+                  ) : null}
+                  <span className="truncate">{item.title}</span>
                 </div>
                 {meta.length > 0 ? (
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-text-3">

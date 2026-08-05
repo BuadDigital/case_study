@@ -31,7 +31,7 @@ export const statCardFlushClassName =
 
 /** Interactive queue / PO table rows (active transactions, bourse, government review). */
 export const queueTableRowClassName =
-  "cursor-pointer transition-colors hover:bg-[color-mix(in_srgb,var(--info-bg)_40%,var(--surface))]";
+  "cursor-pointer transition-[background-color,box-shadow,transform,opacity] duration-150 ease-out hover:bg-[color-mix(in_srgb,var(--info-bg)_40%,var(--surface))] active:scale-[0.997]";
 
 export const queueTableRowActiveClassName =
   "bg-[color-mix(in_srgb,var(--warning-bg)_45%,var(--surface))]";

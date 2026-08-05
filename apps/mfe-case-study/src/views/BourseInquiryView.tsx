@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import {
   Button,
   Card,
@@ -71,6 +71,7 @@ import { buildBourseQueueRowMoreItems } from "../lib/prototype/active-queue-row-
 import { caseStudyTaskForProperty } from "../lib/prototype/tasks-storage";
 import { useRouter } from "next/navigation";
 import { poPropertyPath } from "../lib/po-routes";
+import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
 
 const ROW = queueTableRowClassName;
 const ROW_ACTIVE = queueTableRowActiveClassName;
@@ -102,6 +103,20 @@ export function BourseInquiryView() {
   const [obstructionReasonError, setObstructionReasonError] = useState<
     string | undefined
   >();
+  const [, startOpenItem] = useTransition();
+  const [openingItemKey, setOpeningItemKey] = useState<string | null>(null);
+
+  const itemKey = useCallback(
+    (item: Pick<PendingBoursePropertyDto, "poNumber" | "propertyId">) =>
+      `${item.poNumber.trim()}|${item.propertyId.trim()}`,
+    [],
+  );
+
+  const isItemOpening = useCallback(
+    (item: Pick<PendingBoursePropertyDto, "poNumber" | "propertyId">) =>
+      openingItemKey === itemKey(item),
+    [openingItemKey, itemKey],
+  );
 
   const refresh = useCallback(async () => {
     await Promise.all([
@@ -132,24 +147,46 @@ export function BourseInquiryView() {
   );
 
   async function openItem(item: PendingBoursePropertyDto) {
-    setSelected(item);
-    setFormError(null);
-    setFieldErrors({});
-    setDeedVitality(null);
-    setObstructionReason("");
-    setObstructionReasonError(undefined);
-    const hit = await findPropertyInRecord(item.poNumber, item.propertyId);
-    if (hit) {
-      setProperty({ ...hit.property, id: item.propertyId });
-    } else {
-      setProperty({
-        ...emptyProperty(),
-        id: item.propertyId,
-        deedNumber: item.deedNumber,
-        ownerName: item.ownerName ?? "",
-        requestNumber: item.requestNumber ?? "",
-      });
+    const key = itemKey(item);
+    // Toggle close if re-selecting the open row.
+    if (
+      selected &&
+      selected.poNumber === item.poNumber &&
+      selected.propertyId === item.propertyId
+    ) {
+      setOpeningItemKey(null);
+      closeForm();
+      return;
     }
+    setOpeningItemKey(key);
+    startOpenItem(() => {
+      void (async () => {
+        try {
+          setSelected(item);
+          setFormError(null);
+          setFieldErrors({});
+          setDeedVitality(null);
+          setObstructionReason("");
+          setObstructionReasonError(undefined);
+          const hit = await findPropertyInRecord(item.poNumber, item.propertyId);
+          if (hit) {
+            setProperty({ ...hit.property, id: item.propertyId });
+          } else {
+            setProperty({
+              ...emptyProperty(),
+              id: item.propertyId,
+              deedNumber: item.deedNumber,
+              ownerName: item.ownerName ?? "",
+              requestNumber: item.requestNumber ?? "",
+            });
+          }
+        } finally {
+          window.setTimeout(() => {
+            setOpeningItemKey((cur) => (cur === key ? null : cur));
+          }, 280);
+        }
+      })();
+    });
   }
 
   function closeForm() {
@@ -295,9 +332,18 @@ export function BourseInquiryView() {
         tone: "pending" as const,
         moreItems,
         onOpen: () => void openItem(item),
+        loading: isItemOpening(item),
       };
     });
-  }, [items, workflowTasks, router, refresh, showToast, role]);
+  }, [
+    items,
+    workflowTasks,
+    router,
+    refresh,
+    showToast,
+    role,
+    isItemOpening,
+  ]);
 
   const queuePanel = (
         <OperationalPanel
@@ -381,16 +427,21 @@ export function BourseInquiryView() {
                         <Tr
                           key={`${item.poNumber}-${item.propertyId}`}
                           hoverable={false}
-                          className={cn(ROW, active && ROW_ACTIVE)}
+                          className={cn(
+                            "group/atq-row",
+                            ROW,
+                            active && ROW_ACTIVE,
+                            isItemOpening(item) &&
+                              "ui-queue-row-opening pointer-events-none",
+                          )}
                           onClick={() => void openItem(item)}
                         >
                           <Td>
-                            <span
-                              dir="ltr"
-                              className="inline-block text-[12px] font-medium text-primary"
-                            >
-                              {deedLabel}
-                            </span>
+                            <InteractiveDeedCell
+                              label={deedLabel}
+                              loading={isItemOpening(item)}
+                              labelClassName="text-[12px] font-medium"
+                            />
                           </Td>
                           <Td className="text-text-2">
                             {item.deedDate?.trim()
@@ -439,6 +490,10 @@ export function BourseInquiryView() {
   const sidePanel = hasRail ? (
         selected ? (
           <OperationalPanel className="flex h-full min-h-0 min-w-0 flex-1 flex-col !overflow-hidden">
+            <div
+              key={`${selected.poNumber}-${selected.propertyId}`}
+              className="ui-queue-panel-in flex h-full min-h-0 min-w-0 flex-1 flex-col"
+            >
             <Card className="flex h-full min-h-0 flex-col overflow-hidden rounded-none border-none bg-transparent shadow-none">
             <CardBody className="flex min-h-0 flex-1 flex-col overflow-hidden px-0 pb-0 pt-3">
               <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3">
@@ -490,6 +545,7 @@ export function BourseInquiryView() {
               </div>
             </CardBody>
           </Card>
+            </div>
           </OperationalPanel>
         ) : (
           <OperationalPanel className="flex h-full min-h-0 min-w-0 flex-1 flex-col items-center justify-center !overflow-hidden">

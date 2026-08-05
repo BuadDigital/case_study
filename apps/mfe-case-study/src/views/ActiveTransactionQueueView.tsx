@@ -1,8 +1,15 @@
 "use client";
 
 import type { MutableRefObject, ReactNode } from "react";
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import "./active-queue-group-by-po.css";
 import {
@@ -37,6 +44,7 @@ import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import { RemainingTimeCell } from "@case-study/mfe/components/ui/RemainingTimeCell";
 import { RowMoreMenu } from "@case-study/mfe/components/ui/RowMoreMenu";
 import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
+import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
 import { PartyAssigneeCell } from "../components/ui/PartyAssigneeCell";
 import { HoverPortalCard } from "../components/ui/HoverPortalCard";
 import { buildActiveQueueRowMoreItems } from "../lib/prototype/active-queue-row-menu";
@@ -68,6 +76,7 @@ import {
   resolveSlaTimerRatio,
   type RemainingTimeState,
 } from "../lib/prototype/my-task-row";
+import { INSPECTION_TABLE_TYPE } from "../lib/prototype/queue-table-type";
 import type { PoIntakeRecord } from "../lib/prototype/po-intake-data";
 import {
   formatPoDisplay,
@@ -277,6 +286,8 @@ export function ActiveTransactionQueueView({
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const selectedId = searchParams.get("task");
+  const [isOpeningTask, startOpenTask] = useTransition();
+  const [openingTaskId, setOpeningTaskId] = useState<string | null>(null);
   const { role, viewerEmail, distributionAssigneeId } = usePrototype();
   const { data: staffResult } = useStaffUsersQuery();
   const { data: infoRolesData } = useCaseStudyInfoRolesQuery();
@@ -537,21 +548,58 @@ export function ActiveTransactionQueueView({
       if (task && config.canOpenTask && !config.canOpenTask(task)) return;
 
       const fullPath = task ? resolveTaskFullPagePath(task) : undefined;
-      if (fullPath) {
-        router.push(fullPath);
-        return;
-      }
-      if (useFullPage) {
-        openTask(taskId, task);
-        return;
-      }
-      if (selectedId === taskId) {
+      // Closing the open row should not flash a loading state.
+      if (!fullPath && !useFullPage && selectedId === taskId) {
+        setOpeningTaskId(null);
         closePanel();
         return;
       }
-      openTask(taskId);
+
+      setOpeningTaskId(taskId);
+      startOpenTask(() => {
+        if (fullPath) {
+          router.push(fullPath);
+          return;
+        }
+        if (useFullPage) {
+          openTask(taskId, task);
+          return;
+        }
+        openTask(taskId);
+      });
     },
-    [useFullPage, selectedId, closePanel, openTask, listed, config, resolveTaskFullPagePath, router],
+    [
+      useFullPage,
+      selectedId,
+      closePanel,
+      openTask,
+      listed,
+      config,
+      resolveTaskFullPagePath,
+      router,
+    ],
+  );
+
+  useEffect(() => {
+    if (selectedId && selectedId === openingTaskId) {
+      // Keep spinner visible briefly so the open feels intentional.
+      const t = window.setTimeout(() => setOpeningTaskId(null), 280);
+      return () => window.clearTimeout(t);
+    }
+  }, [selectedId, openingTaskId]);
+
+  useEffect(() => {
+    if (isOpeningTask || !openingTaskId) return;
+    // Full-page navigation or transition end: clear after a short dwell.
+    const t = window.setTimeout(() => {
+      setOpeningTaskId((id) => (id === openingTaskId ? null : id));
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [isOpeningTask, openingTaskId]);
+
+  const isTaskOpening = useCallback(
+    (taskId: string) => openingTaskId === taskId,
+    [openingTaskId],
   );
 
   const resolveRowMoreItems = useCallback(
@@ -1109,9 +1157,12 @@ export function ActiveTransactionQueueView({
   const handleDistributionRowClick = useCallback(
     (task: WorkflowTask, propertyId: string | undefined) => {
       if (showPartyColumns && propertyId) {
-        router.push(
-          poPropertyDetailPath(task.poNumber, propertyId, "basic"),
-        );
+        setOpeningTaskId(task.id);
+        startOpenTask(() => {
+          router.push(
+            poPropertyDetailPath(task.poNumber, propertyId, "basic"),
+          );
+        });
         return;
       }
       handleRowClick(task.id);
@@ -1146,6 +1197,7 @@ export function ActiveTransactionQueueView({
           tone: done ? "done" : "pending",
           moreItems: resolveRowMoreItems(meta.task, meta.propertyId),
           onOpen: () => handleRowClick(meta.task.id),
+          loading: isTaskOpening(meta.task.id),
         };
       });
     }
@@ -1178,6 +1230,7 @@ export function ActiveTransactionQueueView({
           tone: "new",
           moreItems: resolveRowMoreItems(task, property?.id),
           onOpen: () => handleDistributionRowClick(task, property?.id),
+          loading: isTaskOpening(task.id),
         };
       });
     }
@@ -1227,6 +1280,7 @@ export function ActiveTransactionQueueView({
           : undefined,
         moreItems: resolveRowMoreItems(task, property?.id),
         onOpen: () => handleRowClick(task.id),
+        loading: isTaskOpening(task.id),
       };
     });
   }, [
@@ -1241,6 +1295,7 @@ export function ActiveTransactionQueueView({
     resolveTaskBadge,
     handleRowClick,
     handleDistributionRowClick,
+    isTaskOpening,
   ]);
 
   const hasRail =
@@ -1283,6 +1338,7 @@ export function ActiveTransactionQueueView({
                     onOpen={handleRowClick}
                     resolveBadge={resolveTaskBadge}
                     resolveMoreItems={resolveRowMoreItems}
+                    isOpening={isTaskOpening}
                   />
                 </div>
               ) : (
@@ -1427,20 +1483,23 @@ export function ActiveTransactionQueueView({
                                         key={meta.task.id}
                                         hoverable={false}
                                         className={cn(
+                                          "group/atq-row",
                                           ROW,
                                           active && ROW_ACTIVE,
+                                          isTaskOpening(meta.task.id) &&
+                                            "ui-queue-row-opening pointer-events-none",
                                         )}
                                         onClick={() =>
                                           handleRowClick(meta.task.id)
                                         }
                                       >
                                         <Td className="whitespace-nowrap">
-                                          <span
-                                            dir="ltr"
-                                            className="inline-block text-[12.5px] font-bold text-primary"
-                                          >
-                                            {meta.deedCell}
-                                          </span>
+                                          <InteractiveDeedCell
+                                            label={meta.deedCell}
+                                            loading={isTaskOpening(
+                                              meta.task.id,
+                                            )}
+                                          />
                                         </Td>
                                         <Td>
                                           <PoNumber
@@ -1487,16 +1546,20 @@ export function ActiveTransactionQueueView({
                             <Tr
                               key={meta.task.id}
                               hoverable={false}
-                              className={cn(ROW, active && ROW_ACTIVE)}
+                              className={cn(
+                                "group/atq-row",
+                                ROW,
+                                active && ROW_ACTIVE,
+                                isTaskOpening(meta.task.id) &&
+                                  "ui-queue-row-opening pointer-events-none",
+                              )}
                               onClick={() => handleRowClick(meta.task.id)}
                             >
                               <Td className="whitespace-nowrap">
-                                <span
-                                  dir="ltr"
-                                  className="inline-block text-[12.5px] font-bold text-primary"
-                                >
-                                  {meta.deedCell}
-                                </span>
+                                <InteractiveDeedCell
+                                  label={meta.deedCell}
+                                  loading={isTaskOpening(meta.task.id)}
+                                />
                               </Td>
                               <Td>
                                 <PoNumber
@@ -1580,55 +1643,91 @@ export function ActiveTransactionQueueView({
                           <Tr
                             key={task.id}
                             hoverable={false}
-                            className={cn(ROW, active && ROW_ACTIVE)}
+                            className={cn(
+                              "group/atq-row",
+                              ROW,
+                              active && ROW_ACTIVE,
+                              isTaskOpening(task.id) &&
+                                "ui-queue-row-opening pointer-events-none",
+                            )}
                             onClick={() =>
                               handleDistributionRowClick(task, property?.id)
                             }
                           >
-                            <Td>
+                            <Td className="whitespace-nowrap">
                               <span className="inline-flex min-w-0 items-center justify-end gap-2">
                                 <span
-                                  className="inline-flex h-[22px] min-w-[22px] shrink-0 items-center justify-center rounded-md bg-surface-3 text-[10px] font-semibold text-text-3"
+                                  className={cn(
+                                    "inline-flex h-[22px] min-w-[22px] shrink-0 items-center justify-center rounded-md bg-surface-3 tabular-nums",
+                                    INSPECTION_TABLE_TYPE.ordinal,
+                                  )}
                                   aria-hidden
                                 >
                                   {index + 1}
                                 </span>
                                 {property?.id ? (
-                                  <Link
-                                    href={poPropertyDetailPath(
-                                      task.poNumber,
-                                      property.id,
-                                      "basic",
-                                    )}
-                                    dir="ltr"
-                                    className="relative z-[1] inline-block text-[13px] font-medium text-primary no-underline hover:underline"
-                                    onClick={(e) => e.stopPropagation()}
+                                  <button
+                                    type="button"
+                                    className="relative z-[1] inline-flex max-w-full cursor-pointer border-0 bg-transparent p-0 font-inherit text-start"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpeningTaskId(task.id);
+                                      startOpenTask(() => {
+                                        router.push(
+                                          poPropertyDetailPath(
+                                            task.poNumber,
+                                            property.id,
+                                            "basic",
+                                          ),
+                                        );
+                                      });
+                                    }}
                                   >
-                                    {row.deedLabel}
-                                  </Link>
+                                    <InteractiveDeedCell
+                                      label={row.deedLabel}
+                                      loading={isTaskOpening(task.id)}
+                                      labelClassName={INSPECTION_TABLE_TYPE.deed}
+                                    />
+                                  </button>
                                 ) : (
-                                  <span
-                                    dir="ltr"
-                                    className="inline-block text-[13px] font-medium text-primary"
-                                  >
-                                    {row.deedLabel}
-                                  </span>
+                                  <InteractiveDeedCell
+                                    label={row.deedLabel}
+                                    loading={isTaskOpening(task.id)}
+                                    labelClassName={INSPECTION_TABLE_TYPE.deed}
+                                  />
                                 )}
                               </span>
                             </Td>
-                            <Td className="text-text-2">
-                              <PoNumber value={task.poNumber} link />
+                            <Td className={INSPECTION_TABLE_TYPE.body}>
+                              <PoNumber
+                                value={task.poNumber}
+                                link
+                                className={INSPECTION_TABLE_TYPE.po}
+                              />
                             </Td>
-                            <Td className="text-text-2">{row.city}</Td>
-                            <Td className="text-text-2">{row.district}</Td>
-                            <Td className="text-text-2">{row.propertyType}</Td>
-                            <Td className="text-text-2">{row.classification}</Td>
-                            <Td className="text-text-2">{row.area}</Td>
+                            <Td className={INSPECTION_TABLE_TYPE.body}>
+                              {row.city}
+                            </Td>
+                            <Td className={INSPECTION_TABLE_TYPE.body}>
+                              {row.district}
+                            </Td>
+                            <Td className={INSPECTION_TABLE_TYPE.body}>
+                              {row.propertyType}
+                            </Td>
+                            <Td className={INSPECTION_TABLE_TYPE.body}>
+                              {row.classification}
+                            </Td>
+                            <Td className={INSPECTION_TABLE_TYPE.body}>
+                              {row.area}
+                            </Td>
                             {showPartyColumns
                               ? parties.map((party) => (
                                   <Td
                                     key={party.trackId}
-                                    className="w-[7.5rem] min-w-[7.5rem] overflow-hidden text-text-2"
+                                    className={cn(
+                                      "w-[7.5rem] min-w-[7.5rem] overflow-hidden",
+                                      INSPECTION_TABLE_TYPE.body,
+                                    )}
                                   >
                                     <PartyAssigneeCell party={party} />
                                   </Td>
@@ -1735,32 +1834,37 @@ export function ActiveTransactionQueueView({
                               key={task.id}
                               hoverable={false}
                               className={cn(
+                                "group/atq-row",
                                 ROW,
                                 active && ROW_ACTIVE,
                                 missingPhone && "opacity-55",
+                                isTaskOpening(task.id) &&
+                                  "ui-queue-row-opening pointer-events-none",
                               )}
                               onClick={() => handleRowClick(task.id)}
                             >
                               <Td className="whitespace-nowrap">
-                                <span className="inline-flex flex-col gap-0.5">
-                                  <span
-                                    dir="ltr"
-                                    className="inline-flex items-center justify-end gap-1.5 text-end text-[13.5px] font-bold text-gold-d"
-                                  >
-                                    {row.propertySlot}
-                                    {isNewFresh ? (
+                                <InteractiveDeedCell
+                                  label={row.propertySlot}
+                                  loading={isTaskOpening(task.id)}
+                                  tone="gold"
+                                  labelClassName="text-[13.5px] justify-end"
+                                  trailing={
+                                    isNewFresh ? (
                                       <span
                                         className="ui-status-dot-live size-2 shrink-0 rounded-full bg-[#2f7de1]"
                                         aria-hidden
                                       />
-                                    ) : null}
-                                  </span>
-                                  {propertyType ? (
-                                    <span className="text-[11.5px] text-text-3">
-                                      {propertyType}
-                                    </span>
-                                  ) : null}
-                                </span>
+                                    ) : null
+                                  }
+                                  subtitle={
+                                    propertyType ? (
+                                      <span className="text-[11.5px] font-normal text-text-3 no-underline">
+                                        {propertyType}
+                                      </span>
+                                    ) : null
+                                  }
+                                />
                               </Td>
                               <Td className="text-[13px] text-text-2">
                                 {cityDistrict || "—"}
@@ -1988,33 +2092,38 @@ export function ActiveTransactionQueueView({
                               key={task.id}
                               hoverable={false}
                               className={cn(
+                                "group/atq-row",
                                 ROW,
                                 active && ROW_ACTIVE,
                                 !inspected && "opacity-55",
+                                isTaskOpening(task.id) &&
+                                  "ui-queue-row-opening pointer-events-none",
                               )}
                               onClick={() => handleRowClick(task.id)}
                             >
                               <Td className="whitespace-nowrap">
-                                <span className="inline-flex flex-col gap-0.5">
-                                  <span
-                                    dir="ltr"
-                                    className="inline-flex items-center justify-end gap-1.5 text-end text-[13.5px] font-bold text-gold-d"
-                                  >
-                                    {row.propertySlot}
-                                    {isFreshDraft ? (
+                                <InteractiveDeedCell
+                                  label={row.propertySlot}
+                                  loading={isTaskOpening(task.id)}
+                                  tone="gold"
+                                  labelClassName="text-[13.5px] justify-end"
+                                  trailing={
+                                    isFreshDraft ? (
                                       <span
                                         className="ui-status-dot-live size-2 shrink-0 rounded-full bg-[#2f7de1]"
                                         title="معاملة جديدة — لم يُتخذ عليها إجراء"
                                         aria-hidden
                                       />
-                                    ) : null}
-                                  </span>
-                                  {propertyType ? (
-                                    <span className="text-[11.5px] text-text-3">
-                                      {propertyType}
-                                    </span>
-                                  ) : null}
-                                </span>
+                                    ) : null
+                                  }
+                                  subtitle={
+                                    propertyType ? (
+                                      <span className="text-[11.5px] font-normal text-text-3 no-underline">
+                                        {propertyType}
+                                      </span>
+                                    ) : null
+                                  }
+                                />
                               </Td>
                               <Td className="text-center text-[13px] text-text-2">
                                 {cityDistrict || "—"}
@@ -2177,21 +2286,22 @@ export function ActiveTransactionQueueView({
                           <Tr
                             key={task.id}
                             hoverable={false}
-                            className={cn(ROW, active && ROW_ACTIVE)}
+                            className={cn(
+                              "group/atq-row",
+                              ROW,
+                              active && ROW_ACTIVE,
+                              isTaskOpening(task.id) &&
+                                "ui-queue-row-opening pointer-events-none",
+                            )}
                             onClick={() => handleRowClick(task.id)}
                           >
                             <Td className="whitespace-nowrap">
-                              <span
-                                className={cn(
-                                  "inline-block text-[12.5px] font-bold",
-                                  isStudyLabel
-                                    ? "text-gold-d"
-                                    : "text-primary",
-                                )}
-                                dir={isStudyLabel ? "rtl" : "ltr"}
-                              >
-                                {row.propertySlot}
-                              </span>
+                              <InteractiveDeedCell
+                                label={row.propertySlot}
+                                loading={isTaskOpening(task.id)}
+                                tone={isStudyLabel ? "gold" : "primary"}
+                                rtl={isStudyLabel}
+                              />
                             </Td>
                             <Td className="text-text-2">
                               <PoNumber
@@ -2248,13 +2358,18 @@ export function ActiveTransactionQueueView({
             : "pointer-events-none max-lg:hidden lg:invisible lg:opacity-0",
         )}
       >
-        {panelOpen && selectedTask
-          ? renderPanel({
+        {panelOpen && selectedTask ? (
+          <div
+            key={selectedTask.id}
+            className="ui-queue-panel-in flex min-h-0 min-w-0 flex-1 flex-col"
+          >
+            {renderPanel({
               task: selectedTask,
               onRefresh: refreshWork,
               onClose: closePanel,
-            })
-          : null}
+            })}
+          </div>
+        ) : null}
       </OperationalPanel>
     ) : null;
 

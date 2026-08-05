@@ -173,7 +173,14 @@ const CASE_STUDY_PARTY_DEFS = [
   { trackId: "survey", shortLabel: "المكتب الهندسي", partyId: "eng" },
 ] as const;
 
-/** Party columns for دراسة حالة العقارات queue table. */
+/**
+ * Party columns for دراسة حالة العقارات queue table.
+ *
+ * Progress priority:
+ * 1. Task completed → 100% (workflow truth beats form-fill ratio)
+ * 2. Otherwise form fill % when provided (case-study answers)
+ * 3. Else coarse track % (0 / 50 / 100 from task state)
+ */
 export function buildCaseStudyPartyAssignees(
   parent: WorkflowTask,
   allTasks: WorkflowTask[],
@@ -184,21 +191,30 @@ export function buildCaseStudyPartyAssignees(
 
   return CASE_STUDY_PARTY_DEFS.map((def) => {
     const track = tracks.find((t) => t.id === def.trackId);
+    const state = track?.state ?? "new";
     const enabled =
       def.trackId === "inspection" || def.trackId === "appraisal"
         ? distribution.valuationDepartment
         : distribution.engineeringOffice;
+
+    const formPct =
+      progressByParty === undefined
+        ? undefined
+        : (progressByParty[def.partyId] ?? 0);
+    const progressPct =
+      state === "done"
+        ? 100
+        : formPct !== undefined
+          ? formPct
+          : (track?.progressPct ?? 0);
 
     return {
       trackId: def.trackId,
       shortLabel: def.shortLabel,
       enabled,
       name: track?.assigneeName ?? "—",
-      state: track?.state ?? "new",
-      progressPct:
-        progressByParty === undefined
-          ? (track?.progressPct ?? 0)
-          : (progressByParty[def.partyId] ?? 0),
+      state,
+      progressPct,
     };
   });
 }
