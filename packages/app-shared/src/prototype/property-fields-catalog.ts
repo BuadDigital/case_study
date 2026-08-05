@@ -436,7 +436,6 @@ const workflowMetaFields: PropertyFieldCatalogEntry[] = [
   { key: "inspectionSubmissionStatus", label: "حالة المعاينة" },
   { key: "appraisalSubmissionStatus", label: "حالة التقييم" },
   { key: "governmentReviewStatus", label: "حالة المراجعة الحكومية" },
-  { key: "coordinationReceiptStatus", label: "حالة الاستلام (تنسيق التقييم)" },
 ];
 
 const partyPanelDerivedFields: PropertyFieldCatalogEntry[] = [
@@ -456,15 +455,8 @@ const partyPanelDerivedFields: PropertyFieldCatalogEntry[] = [
   { key: "partyKeysLocation", label: "المفاتيح / موقع الحفظ" },
   { key: "partyAccessBlockFollowUp", label: "سبب التعذر / المتابعة" },
   { key: "partyValuationDepartment", label: "قسم التقييم (مفعّل)" },
-  { key: "partyCoordinatorName", label: "المنسق المعيّن" },
-  { key: "partyFieldInspector", label: "المعاين الميداني (تنسيق)" },
-  { key: "partyAppraiser", label: "المقيم العقاري (تنسيق)" },
-  { key: "partyCoordinationPriority", label: "الأولوية (تنسيق التقييم)" },
-  { key: "partyCoordinationNotes", label: "ملاحظات التنسيق" },
-  { key: "partyInspectorInstructions", label: "تعليمات للمعاين" },
-  { key: "partyAppraiserInstructions", label: "تعليمات للمقيم" },
-  { key: "partyReceiptDate", label: "تاريخ الاستلام (تنسيق)" },
-  { key: "partyConfirmationDate", label: "تاريخ التأكيد (تنسيق)" },
+  { key: "partyFieldInspector", label: "المعاين الميداني" },
+  { key: "partyAppraiser", label: "المقيم العقاري" },
 ];
 
 const propertyDocumentsFields: PropertyFieldCatalogEntry[] = [
@@ -481,17 +473,6 @@ const propertyDocumentsFields: PropertyFieldCatalogEntry[] = [
   { key: "docPhotoEntrance", label: "صورة المدخل (مستند)" },
   { key: "docPhotoInterior", label: "صورة الداخل (مستند)" },
   { key: "docPhotoSurroundings", label: "صورة المحيط (مستند)" },
-];
-
-const valuationCoordinationFields: PropertyFieldCatalogEntry[] = [
-  { key: "receiptConfirmed", label: "تأكيد الاستلام" },
-  { key: "receiptDate", label: "تاريخ الاستلام" },
-  { key: "inspectorName", label: "المعاين الميداني" },
-  { key: "appraiserName", label: "المقيم العقاري" },
-  { key: "priority", label: "الأولوية" },
-  { key: "coordinationNotes", label: "ملاحظات التنسيق" },
-  { key: "inspectorInstructions", label: "تعليمات للمعاين" },
-  { key: "appraiserInstructions", label: "تعليمات للمقيم" },
 ];
 
 const keysTabFields: PropertyFieldCatalogEntry[] = [
@@ -715,12 +696,6 @@ export const PROPERTY_FIELDS_CATALOG: PropertyFieldCatalogGroup[] = [
     sourceRole: "أخصائي",
     screen: "دراسة الحالة — مفاتيح التخزين",
     fields: specialistFormKeyFields,
-  },
-  {
-    id: "valuation-coordination",
-    sourceRole: "منسق تقييم",
-    screen: "تنسيق التقييم",
-    fields: valuationCoordinationFields,
   },
   {
     id: "failures",

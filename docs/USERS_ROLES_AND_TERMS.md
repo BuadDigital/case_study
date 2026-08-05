@@ -51,7 +51,6 @@ typed with a different dash or spacing yields an account with zero access.
 | `مشرف قسم دراسة الحالة` | `section-supervisor` |
 | `أخصائي دراسة حالة` | `case-specialist` |
 | `مراجع حكومي` | `government-reviewer` |
-| `منسق عمليات التقييم` | `valuation-coordinator` |
 | `مقيم عقاري` | `real-estate-appraiser` |
 | `معاين ميداني` | `field-inspector` |
 | `موظف الشؤون المالية` | `financial-officer` |
@@ -76,7 +75,6 @@ exist in a real deployment.
 | `abdulrahman@ejadah.dev` | `abdulrahman` | `user1234` | عبدالرحمن النفيعي | مشرف قسم دراسة الحالة | `section-supervisor` |
 | `osama@ejadah.dev` | `osama` | `user1234` | أسامة الصالحي | أخصائي دراسة حالة | `case-specialist` |
 | `feras@ejadah.dev` | `feras` | `user1234` | فراس كمرين | مراجع حكومي | `government-reviewer` |
-| `valuation@ejadah.dev` | `mohammed` | `user1234` | محمد دياب | منسق عمليات التقييم | `valuation-coordinator` |
 | `abdullah.kathiri@ejadah.dev` | `abdullah` | `user1234` | عبدالله الكثيري | مقيم عقاري | `real-estate-appraiser` |
 | `ahmed@ejadah.dev` | `ahmed` | `user1234` | أحمد سعيد | معاين ميداني | `field-inspector` |
 | `abdullah.abdulmane@ejadah.dev` | `abdullah_m` | `user1234` | عبدالله عبدالمانع | معاين ميداني | `field-inspector` |
@@ -93,7 +91,6 @@ exist in a real deployment.
 | `abdulrahman` | إدارة التقييم العقاري | قسم دراسة الحالة | مشرف | دوام كامل | Internal | `HR`, `Supervisor` | — | — |
 | `osama` | إدارة التقييم العقاري | قسم دراسة الحالة | محرر | دوام كامل | Internal | `HR`, `Editor` | — | — |
 | `feras` | إدارة التقييم العقاري | قسم دراسة الحالة | محرر | دوام كامل | Internal | `HR`, `Editor` | `gov-firas` | — |
-| `mohammed` | إدارة التقييم العقاري | قسم تقييم الأفراد | مشرف | دوام كامل | Internal | `HR`, `Supervisor` | `vc-mohammed-diab` | — |
 | `abdullah` | إدارة التقييم العقاري | قسم تقييم الأفراد | محرر | دوام كامل | Internal | `HR`, `Editor` | `val-abdullah` | — |
 | `ahmed` | إدارة التقييم العقاري | قسم تقييم الأفراد | محرر | متعاون | Freelance | `HR`, `Editor` | `fi-ahmed` | `FI-002` |
 | `abdullah_m` | إدارة التقييم العقاري | قسم تقييم الأفراد | محرر | دوام كامل | Internal | `HR`, `Editor` | `fi-abdullah-abdulmane` | `FI-001` |
@@ -117,7 +114,7 @@ Source: `backend/RealEstateEval.Infrastructure/Data/DataSeeder.cs:188-544` and `
 
 ## 3. Role reference
 
-Ten prototype roles exist. For each: the Arabic label users see, the pages granted, the
+Nine prototype roles exist. For each: the Arabic label users see, the pages granted, the
 capabilities granted, and the page the user lands on after login.
 
 Pages and capabilities are granted by the server catalog
@@ -162,12 +159,6 @@ and `keys` without `all-transactions`/`active-case-study` lands on `operations-t
   `manage-attachments`.
 - **Landing:** `po` — أوامر العمل.
 - Owns property editing and accept/reopen of party submissions.
-
-### `valuation-coordinator` — منسق عمليات التقييم
-
-- **Pages:** `all-transactions`, `valuation-coordination`, `system-screen-catalog`.
-- **Capabilities:** `submit-party-work`, `manage-attachments`.
-- **Landing:** `all-transactions` — جميع المعاملات.
 
 ### `real-estate-appraiser` — مقيم عقاري
 
@@ -282,7 +273,6 @@ the screen catalog.
 | `bourse-inquiry` | استعلام بورصة |
 | `active-distribution` | توزيع المعاملات |
 | `active-case-study` | دراسة حالة العقارات |
-| `valuation-coordination` | استلام التقييم |
 | `property-appraisal` | تقييم العقار |
 | `active-survey` | الرفع المساحي |
 | `party-fees` | الأتعاب والصرف (فوترة الأتعاب) |
@@ -319,7 +309,6 @@ owning role and one work screen.
 | `field-inspection` | معاينة العقار | `field-inspector` | نموذج المعاينة الميدانية |
 | `engineering-survey` | الرفع المساحي | `engineering-office` | مهمة الرفع المساحي |
 | `government-review` | المراجعة الحكومية | `government-reviewer` | زيارة المحكمة وجمع المفاتيح |
-| `valuation-coordination` | استلام التقييم | `valuation-coordinator` | مهمة الاستلام |
 | `property-appraisal` | تقييم العقار | `real-estate-appraiser` | شاشة التقييم |
 
 Related terms:

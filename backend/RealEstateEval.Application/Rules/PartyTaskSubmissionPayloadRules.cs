@@ -45,11 +45,6 @@ public static class PartyTaskSubmissionPayloadRules
                         errors[key] = message;
                     break;
 
-                case "valuation-coordination":
-                    if (!GetBool(root, "receiptConfirmed"))
-                        errors["receiptConfirmed"] = "يجب تأكيد الاستلام";
-                    break;
-
                 case "field-inspection":
                     foreach (var (key, message) in FieldInspectionSubmissionValidator.Validate(root))
                         errors[key] = message;

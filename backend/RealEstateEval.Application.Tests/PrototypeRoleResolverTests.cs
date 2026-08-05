@@ -11,7 +11,6 @@ public class PrototypeRoleResolverTests
     [InlineData("section-supervisor")]
     [InlineData("case-specialist")]
     [InlineData("government-reviewer")]
-    [InlineData("valuation-coordinator")]
     [InlineData("real-estate-appraiser")]
     [InlineData("field-inspector")]
     [InlineData("financial-officer")]

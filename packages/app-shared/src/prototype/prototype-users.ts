@@ -13,7 +13,6 @@ export const PROTOTYPE_LOGIN_USERS: PrototypeLoginUser[] = [
   { username: "abdulrahman", label: "عبدالرحمن النفيعي — مشرف قسم دراسة الحالة" },
   { username: "osama", label: "أسامة الصالحي — أخصائي دراسة حالة" },
   { username: "feras", label: "فراس كمرين — مراجع حكومي" },
-  { username: "mohammed", label: "محمد دياب — منسق عمليات التقييم" },
   { username: "abdullah", label: "عبدالله الكثيري — مقيم عقاري" },
   { username: "ahmed", label: "أحمد سعيد — معاين ميداني (متعاون)" },
   { username: "abdullah_m", label: "عبدالله عبدالمانع — معاين ميداني" },

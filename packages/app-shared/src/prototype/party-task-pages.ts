@@ -42,26 +42,6 @@ const PARTY_TASK_PAGES_MAP = {
     assigneeSubtitle: "مراجع حكومي",
     icon: "M3 21h18M6 21V7l6-4 6 4M12 3v18",
   },
-  "valuation-coordination": {
-    pageId: "valuation-coordination",
-    kind: "valuation-coordination",
-    roleId: "valuation-coordinator",
-    pageTitle: "استلام التقييم",
-    emptyLine: "لا توجد معاملات بانتظار استلام منسق التقييم.",
-    emptyHint:
-      "تظهر هنا بعد تأكيد التوزيع عند تفعيل قسم التقييم العقاري واختيار المنسق.",
-    tableHint:
-      "اضغط الصف لفتح مهمة الاستلام — اضغط نفس الصف مرة أخرى للإغلاق.",
-    breadcrumbTitle: "استلام التقييم",
-    workTitle: "استلام التقييم",
-    workIntro:
-      "استلم المعاملة من دراسة الحالة ونسّق إسناد المعاين والمقيم.",
-    saveLabel: "تأكيد الاستلام",
-    completeTitle: "تم التسليم",
-    completeMessage: "تم تسليم المعامله للمقيم العقاري",
-    assigneeSubtitle: "منسق عمليات التقييم",
-    icon: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 8 0 4 4 0 0 0-8 0z",
-  },
   /** Official queue under المعاملات النشطة (field-inspector). */
   "active-inspection": {
     pageId: "active-inspection",
@@ -168,12 +148,11 @@ export function filterTasksForPartyKind(
   return tasks.filter((t) => t.kind === kind);
 }
 
-/** Distributed party workflow roles (معاين، مكتب هندسي، مقيم، منسق). */
+/** Distributed party workflow roles (معاين، مكتب هندسي، مقيم، مراجع). */
 export const PARTY_WORKFLOW_ROLE_IDS: RoleId[] = [
   "field-inspector",
   "engineering-office",
   "real-estate-appraiser",
-  "valuation-coordinator",
   "government-reviewer",
 ];
 

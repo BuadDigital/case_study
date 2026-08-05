@@ -18,7 +18,6 @@ import {
 import {
   getEngineeringOffices,
   getFieldInspectors,
-  getValuationCoordinators,
   getValuators,
 } from "../../lib/prototype/distribution-parties";
 import {
@@ -72,10 +71,6 @@ export function RedistributePartiesModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, task?.id]);
 
-  const valuationCoordinators = useMemo(
-    () => getValuationCoordinators(staffUsers),
-    [staffUsers],
-  );
   const fieldInspectors = useMemo(
     () => getFieldInspectors(staffUsers),
     [staffUsers],
@@ -135,15 +130,7 @@ export function RedistributePartiesModal({
           ) : (
             <div className="flex flex-col gap-3">
               {distribution.valuationDepartment ? (
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-                  <RegSelect
-                    id="redist_val_coordinator"
-                    label="منسق عمليات التقييم"
-                    options={toOptions(valuationCoordinators)}
-                    value={distribution.operationsCoordinatorId}
-                    placeholder="اختر المنسق…"
-                    onChange={(v) => patch({ operationsCoordinatorId: v })}
-                  />
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                   <RegSelect
                     id="redist_val_inspector"
                     label="المعاين الميداني"

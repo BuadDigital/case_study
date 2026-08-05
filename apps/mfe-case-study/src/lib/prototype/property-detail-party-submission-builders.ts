@@ -21,7 +21,6 @@ import {
 import type { InspectorWorkspaceSnapshot } from "./inspector-workspace-storage";
 import type { PropertyDetailPartyRoleKey } from "./property-detail-parties";
 import {
-  migrateDistribution,
   type WorkflowTask,
   type WorkflowTaskKind,
   type WorkflowTaskStatus,
@@ -46,7 +45,6 @@ import type {
   GovernmentReviewSubmissionSnapshot,
   PartyAnswerRow,
   PropertyDetailPartySubmission,
-  ValuationCoordinationSubmissionSnapshot,
 } from "./property-detail-party-submission-types";
 
 /** Must match `ENGINEERING_SURVEY_CHECKLIST_ITEMS` in engineering-survey-data (no circular import). */
@@ -73,7 +71,6 @@ const ROLE_CHILD_KIND: Partial<
   survey: "engineering-survey",
   appraisal: "property-appraisal",
   government: "government-review",
-  coordinator: "valuation-coordination",
 };
 
 export function formStatusLabel(status: CaseStudyFormStatus): string {
@@ -957,140 +954,6 @@ export function buildFromGovernmentReview(
     fields,
     answers: [],
     remarks,
-  };
-}
-
-export function buildFromValuationCoordination(
-  submission: ValuationCoordinationSubmissionSnapshot,
-  childTask?: WorkflowTask | null,
-): PropertyDetailPartySubmission {
-  const fields: PropertyDetailPartySubmission["fields"] = [
-    {
-      label: "حالة الاستلام",
-      value: submission.status === "submitted" ? "مُستلَم" : "قيد التنسيق",
-    },
-  ];
-
-  if (submission.receiptDate.trim()) {
-    fields.push({
-      label: "تاريخ الاستلام",
-      value: formatDateAr(submission.receiptDate),
-      ltr: true,
-    });
-  }
-  if (submission.inspectorName.trim()) {
-    fields.push({
-      label: "المعاين الميداني",
-      value: submission.inspectorName.trim(),
-    });
-  }
-  if (submission.appraiserName.trim()) {
-    fields.push({
-      label: "المقيم العقاري",
-      value: submission.appraiserName.trim(),
-    });
-  }
-  fields.push({
-    label: "الأولوية",
-    value: submission.priority === "urgent" ? "عاجلة" : "عادية",
-  });
-  if (submission.submittedAtUtc) {
-    fields.push({
-      label: "تاريخ التأكيد",
-      value: formatDateAr(submission.submittedAtUtc.slice(0, 10)),
-      ltr: true,
-    });
-  }
-  if (childTask) {
-    fields.push({
-      label: "حالة المهمة",
-      value: workflowStatusLabel(childTask.status),
-    });
-  }
-
-  const remarks: PropertyDetailPartySubmission["remarks"] = [];
-  if (submission.coordinationNotes.trim()) {
-    remarks.push({
-      label: "ملاحظات التنسيق",
-      value: submission.coordinationNotes.trim(),
-    });
-  }
-  if (submission.inspectorInstructions.trim()) {
-    remarks.push({
-      label: "تعليمات للمعاين",
-      value: submission.inspectorInstructions.trim(),
-    });
-  }
-  if (submission.appraiserInstructions.trim()) {
-    remarks.push({
-      label: "تعليمات للمقيم",
-      value: submission.appraiserInstructions.trim(),
-    });
-  }
-
-  const hasData =
-    submission.status !== "draft" ||
-    submission.receiptConfirmed ||
-    remarks.length > 0;
-
-  return {
-    roleKey: "coordinator",
-    hasData,
-    emptyReason: hasData ? undefined : "لم يُقدَّم بعد",
-    statusLabel: submission.status === "submitted" ? "مُستلَم" : "مسودة",
-    taskStatusLabel: childTask
-      ? workflowStatusLabel(childTask.status)
-      : undefined,
-    submittedAtUtc: submission.submittedAtUtc,
-    fields,
-    answers: [],
-    remarks,
-  };
-}
-
-export function buildCoordinatorSubmission(
-  parentTask: WorkflowTask | null,
-  allTasks: WorkflowTask[],
-  coordinatorName: string,
-): PropertyDetailPartySubmission {
-  const distribution = migrateDistribution(parentTask?.distribution);
-  const child = childForRole(parentTask, allTasks, "coordinator");
-
-  const fields: PropertyDetailPartySubmission["fields"] = [
-    {
-      label: "قسم التقييم",
-      value: distribution.valuationDepartment ? "مفعّل" : "غير مفعّل",
-    },
-  ];
-
-  if (coordinatorName.trim()) {
-    fields.push({ label: "المنسق المعيّن", value: coordinatorName.trim() });
-  }
-  if (child) {
-    fields.push({
-      label: "حالة الاستلام",
-      value: workflowStatusLabel(child.status),
-    });
-    fields.push({
-      label: "تاريخ التحديث",
-      value: formatDateAr(child.updatedAt.slice(0, 10)),
-      ltr: true,
-    });
-  }
-
-  const hasData =
-    distribution.valuationDepartment && Boolean(coordinatorName.trim());
-
-  return {
-    roleKey: "coordinator",
-    hasData,
-    emptyReason: hasData ? undefined : "لم يُقدَّم بعد",
-    taskStatusLabel: child ? workflowStatusLabel(child.status) : undefined,
-    submittedAtUtc:
-      child?.status === "completed" ? child.updatedAt || null : null,
-    fields,
-    answers: [],
-    remarks: [],
   };
 }
 

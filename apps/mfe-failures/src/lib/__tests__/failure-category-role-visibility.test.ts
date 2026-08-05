@@ -12,7 +12,6 @@ const ALL_CATEGORY_IDS = FAILURE_TYPE_CATEGORIES.map((c) => c.id);
 const DEED_OWNERSHIP_ONLY: RoleId[] = [
   "government-reviewer",
   "real-estate-appraiser",
-  "valuation-coordinator",
   "general-manager",
   "financial-officer",
 ];

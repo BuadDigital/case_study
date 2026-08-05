@@ -84,11 +84,7 @@ function SearchIcon() {
 }
 
 function isValuationMgr(role: RoleId) {
-  return (
-    isSuperAdmin(role) ||
-    role === "general-manager" ||
-    role === "valuation-coordinator"
-  );
+  return isSuperAdmin(role) || role === "general-manager";
 }
 
 type StatusFilter = "all" | "progress" | "done" | "fail";
@@ -262,7 +258,7 @@ export function ValuationRequestsView() {
         ]}
       />
       <Note tone="info">
-        هذه الطلبات واردة من قسم دراسة الحالة — يتولى منسق التقييم توزيعها على المقيمين المؤهلين
+        هذه الطلبات واردة من قسم دراسة الحالة — تُعرض هنا لمتابعة مسار التقييم
       </Note>
       <SubpagePanel>
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3.5 sm:px-5">

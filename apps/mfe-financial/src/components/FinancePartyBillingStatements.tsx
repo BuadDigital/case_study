@@ -7,75 +7,108 @@ import {
   loadPartyBillingReadyLines,
   loadPartyBillingStatements,
   openPartyBillingAttachment,
+  runCancelPartyBillingStatement,
   runClosePartyBillingStatement,
   runCreatePartyBillingStatement,
-  runDeferPartyBillingLines,
   runIssuePartyBillingStatement,
+  runMatchVendorInvoice,
+  runRejectVendorInvoice,
   uploadPartyBillingTransferReceipt,
 } from "@platform/app-shared/prototype/party-billing-statements-api";
 import { resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
-import {
-  Badge,
-  Button,
-  EmptyState,
-  Input,
-  Note,
-  PageToolbar,
-  QueueTableHint,
-  Table,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr,
-  cn,
-  queueTableWrapClassName,
-  useToast,
-} from "@platform/design-system";
-import {
-  partyBillingStatementStatusTone,
-  inspectorFeeStatusTone,
-  type PartyBillingReadyLineDto,
-  type PartyBillingStatementDto,
-  type InspectorFeeBillingStatus,
+import { Input, cn, useToast } from "@platform/design-system";
+import type {
+  PartyBillingReadyLineDto,
+  PartyBillingStatementDto,
 } from "@platform/api-client";
 import { pushNotification } from "@platform/app-shared";
+import {
+  applyCostTax,
+  daysSinceIsoCost,
+  lineRefMain,
+  lineRefSub,
+  statementDisplayTotal,
+} from "../lib/finance-cost-parties";
+import {
+  finActionsRow,
+  finCard,
+  finCardPad,
+  finCheck,
+  finEmpty,
+  finEmptyS,
+  finEmptyT,
+  finFld,
+  finFormGrid,
+  finGhost,
+  finGridDues,
+  finGridStmtLines,
+  finGridStmts,
+  finGroupHead,
+  finMuted,
+  finNote,
+  finPanelTitle,
+  finPrimary,
+  finRow,
+  finRowActive,
+  finRowClickable,
+  finScroll,
+  finScrollY,
+  finSearch,
+  finSearchIcon,
+  finSearchInput,
+  finSectionTitle,
+  finStatusFor,
+  finStatusTeal,
+  finTd,
+  finTh,
+  finThead,
+  finWorkFlush,
+  finWorkHead,
+  finWorkTitle,
+} from "../lib/finance-tw";
 
 function formatSar(n: number) {
-  return `${n.toLocaleString("ar-SA", { maximumFractionDigits: 2 })} ر.س`;
+  return `${n.toLocaleString("en-US", { maximumFractionDigits: 2 })} ر.س`;
 }
 
-function groupReadyByAssignee(lines: PartyBillingReadyLineDto[]) {
-  const map = new Map<string, PartyBillingReadyLineDto[]>();
-  for (const line of lines) {
-    const key = line.assigneeId?.trim() || "—";
-    const list = map.get(key) ?? [];
-    list.push(line);
-    map.set(key, list);
-  }
-  return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0], "ar"));
-}
+export type PartyBillingMode = "all" | "dues" | "statements" | "paid";
 
-export function FinancePartyBillingStatements() {
+export function FinancePartyBillingStatements({
+  mode = "all",
+  assigneeId = null,
+  focusStatementId = null,
+  onFocusStatement,
+  onCreatedStatement,
+}: {
+  mode?: PartyBillingMode;
+  /** حصر المستحقات/المسيرات بمستحق واحد (حساب المستحق). */
+  assigneeId?: string | null;
+  focusStatementId?: string | null;
+  onFocusStatement?: (id: string | null) => void;
+  onCreatedStatement?: () => void;
+} = {}) {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [deferUnselected, setDeferUnselected] = useState(true);
   const [busy, setBusy] = useState(false);
   const [selectedStatementId, setSelectedStatementId] = useState<string | null>(
-    null,
+    focusStatementId,
   );
-  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [duesSearch, setDuesSearch] = useState("");
+  const [disbursementVoucher, setDisbursementVoucher] = useState("");
+  const [transferReference, setTransferReference] = useState("");
   const [receiptRef, setReceiptRef] = useState("");
   const [receiptAttachmentId, setReceiptAttachmentId] = useState<string | null>(
     null,
   );
   const [receiptFileName, setReceiptFileName] = useState<string | null>(null);
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [cancelReason, setCancelReason] = useState("");
   const [paidAt, setPaidAt] = useState(() =>
     new Date().toISOString().slice(0, 10),
   );
@@ -90,14 +123,64 @@ export function FinancePartyBillingStatements() {
     queryFn: () => loadPartyBillingStatements(),
   });
 
-  const readyLines = readyQuery.data ?? [];
-  const statements = statementsQuery.data ?? [];
-  const groups = useMemo(() => groupReadyByAssignee(readyLines), [readyLines]);
+  const readyLinesAll = readyQuery.data ?? [];
+  const allStatementsRaw = statementsQuery.data ?? [];
+
+  const readyLines = useMemo(() => {
+    if (!assigneeId?.trim()) return readyLinesAll;
+    const key = assigneeId.trim();
+    return readyLinesAll.filter((l) => (l.assigneeId?.trim() || "—") === key);
+  }, [readyLinesAll, assigneeId]);
+
+  const allStatements = useMemo(() => {
+    if (!assigneeId?.trim()) return allStatementsRaw;
+    const key = assigneeId.trim();
+    return allStatementsRaw.filter((s) => s.assigneeId === key);
+  }, [allStatementsRaw, assigneeId]);
+
+  const statements = useMemo(() => {
+    if (mode === "paid")
+      return allStatements.filter((s) => s.status === "closed");
+    if (mode === "statements")
+      return allStatements.filter(
+        (s) =>
+          s.status === "draft" ||
+          s.status === "issued" ||
+          s.status === "invoice_received" ||
+          s.status === "cancelled",
+      );
+    if (mode === "dues") return [];
+    return allStatements;
+  }, [allStatements, mode]);
+
+  const filteredDues = useMemo(() => {
+    const needle = duesSearch.trim().toLowerCase();
+    let list = readyLines;
+    if (needle) {
+      list = list.filter((l) => {
+        const hay =
+          `${l.propertyLabel} ${l.poNumber} ${l.workflowTaskId}`.toLowerCase();
+        return hay.includes(needle);
+      });
+    }
+    return [...list].sort((a, b) => {
+      const aa = daysSinceIsoCost(a.accruedAtUtc ?? a.updatedAtUtc) ?? -1;
+      const bb = daysSinceIsoCost(b.accruedAtUtc ?? b.updatedAtUtc) ?? -1;
+      if (aa >= 0 && bb >= 0 && aa !== bb) return bb - aa;
+      return (a.propertyLabel || "").localeCompare(b.propertyLabel || "", "ar");
+    });
+  }, [readyLines, duesSearch]);
 
   const selectedStatement = useMemo(
-    () => statements.find((s) => s.id === selectedStatementId) ?? null,
-    [statements, selectedStatementId],
+    () =>
+      allStatements.find(
+        (s) => s.id === (focusStatementId ?? selectedStatementId),
+      ) ?? null,
+    [allStatements, focusStatementId, selectedStatementId],
   );
+
+  const showDues = mode === "all" || mode === "dues";
+  const showStatements = mode === "all" || mode === "statements" || mode === "paid";
 
   const selectedTotal = useMemo(() => {
     let total = 0;
@@ -119,15 +202,19 @@ export function FinancePartyBillingStatements() {
   };
 
   const resetCloseForm = () => {
-    setInvoiceNumber("");
+    setDisbursementVoucher("");
+    setTransferReference("");
     setReceiptRef("");
     setReceiptAttachmentId(null);
     setReceiptFileName(null);
+    setRejectReason("");
+    setCancelReason("");
     setPaidAt(new Date().toISOString().slice(0, 10));
   };
 
   const selectStatement = (id: string) => {
     setSelectedStatementId(id);
+    onFocusStatement?.(id);
     resetCloseForm();
   };
 
@@ -153,14 +240,14 @@ export function FinancePartyBillingStatements() {
 
   const createStatement = async () => {
     if (selected.size === 0) {
-      showToast("اختر بنوداً لإنشاء كشف الفوترة", "error");
+      showToast("اختر بنوداً لإنشاء المسير / أمر الصرف", "error");
       return;
     }
     setBusy(true);
     try {
       const result = await runCreatePartyBillingStatement({
         workflowTaskIds: [...selected],
-        deferUnselectedForAssignee: deferUnselected,
+        deferUnselectedForAssignee: false,
       });
       if (!result.ok) {
         showToast(result.error, "error");
@@ -171,32 +258,71 @@ export function FinancePartyBillingStatements() {
       resetCloseForm();
       showToast(
         result.deferredCount > 0
-          ? `أُنشئ الكشف ${result.statement.referenceNumber} ورُحِّل ${result.deferredCount} بند`
-          : `أُنشئ الكشف ${result.statement.referenceNumber}`,
+          ? `أُنشئ المسير ${result.statement.referenceNumber} ورُحِّل ${result.deferredCount} بند`
+          : `أُنشئ المسير ${result.statement.referenceNumber}`,
         "success",
       );
+      onFocusStatement?.(result.statement.id);
+      onCreatedStatement?.();
       await invalidate();
     } finally {
       setBusy(false);
     }
   };
 
-  const deferSelected = async () => {
-    if (selected.size === 0) {
-      showToast("اختر بنوداً للترحيل", "error");
+  const matchInvoice = async (statement: PartyBillingStatementDto) => {
+    setBusy(true);
+    try {
+      const result = await runMatchVendorInvoice(statement.id);
+      if (!result.ok) {
+        showToast(result.error, "error");
+        return;
+      }
+      showToast(`طُوبقت فاتورة ${result.statement.vendorInvoiceNumber}`, "success");
+      await invalidate();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const rejectInvoice = async (statement: PartyBillingStatementDto) => {
+    if (rejectReason.trim().length < 3) {
+      showToast("سبب الإعادة للتصحيح إلزامي", "error");
       return;
     }
     setBusy(true);
     try {
-      const result = await runDeferPartyBillingLines({
-        workflowTaskIds: [...selected],
+      const result = await runRejectVendorInvoice(statement.id, {
+        reason: rejectReason.trim(),
       });
       if (!result.ok) {
         showToast(result.error, "error");
         return;
       }
-      setSelected(new Set());
-      showToast(`تم ترحيل ${result.deferredCount} بند`, "success");
+      setRejectReason("");
+      showToast("أُعيدت الفاتورة للتصحيح وأُرشفت", "success");
+      await invalidate();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const cancelStatement = async (statement: PartyBillingStatementDto) => {
+    if (cancelReason.trim().length < 3) {
+      showToast("سبب الإلغاء إلزامي", "error");
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = await runCancelPartyBillingStatement(statement.id, {
+        reason: cancelReason.trim(),
+      });
+      if (!result.ok) {
+        showToast(result.error, "error");
+        return;
+      }
+      setCancelReason("");
+      showToast(`أُلغي ${result.statement.referenceNumber} — عادت البنود مستحقات`, "success");
       await invalidate();
     } finally {
       setBusy(false);
@@ -211,14 +337,21 @@ export function FinancePartyBillingStatements() {
         showToast(result.error, "error");
         return;
       }
-      pushNotification({
-        title: "أُرسل كشف الفوترة",
-        body: `${result.statement.referenceNumber} مرسل للمكتب والمشرف.`,
-        tone: "info",
-        category: "financial",
-        href: "/financial",
-      });
-      showToast(`أُرسل الكشف ${result.statement.referenceNumber}`, "success");
+      if (statement.payeeType === "vendor") {
+        pushNotification({
+          title: "أُرسل مسير الصرف",
+          body: `${result.statement.referenceNumber} مرسل للمكتب.`,
+          tone: "info",
+          category: "financial",
+          href: `/financial?area=costs&section=statements`,
+        });
+        showToast(`أُرسل المسير ${result.statement.referenceNumber} للمكتب`, "success");
+      } else {
+        showToast(
+          `صدر أمر الصرف ${result.statement.referenceNumber}`,
+          "success",
+        );
+      }
       await invalidate();
     } finally {
       setBusy(false);
@@ -249,12 +382,16 @@ export function FinancePartyBillingStatements() {
   };
 
   const closeStatement = async (statement: PartyBillingStatementDto) => {
-    if (!invoiceNumber.trim()) {
-      showToast("رقم الفاتورة مطلوب", "error");
+    if (!disbursementVoucher.trim()) {
+      showToast("رقم سند الصرف مطلوب", "error");
       return;
     }
-    if (!receiptAttachmentId && !receiptRef.trim()) {
-      showToast("أرفق إيصال التحويل أو أدخل مرجعه", "error");
+    if (!transferReference.trim()) {
+      showToast("مرجع التحويل مطلوب", "error");
+      return;
+    }
+    if (!receiptAttachmentId) {
+      showToast("إيصال التحويل (مرفق) مطلوب", "error");
       return;
     }
     setBusy(true);
@@ -263,8 +400,9 @@ export function FinancePartyBillingStatements() {
         ? new Date(`${paidAt}T12:00:00`).toISOString()
         : undefined;
       const result = await runClosePartyBillingStatement(statement.id, {
-        externalInvoiceNumber: invoiceNumber.trim(),
-        transferReceiptAttachmentId: receiptAttachmentId ?? undefined,
+        disbursementVoucher: disbursementVoucher.trim(),
+        transferReference: transferReference.trim(),
+        transferReceiptAttachmentId: receiptAttachmentId,
         transferReceiptRef: receiptRef.trim() || undefined,
         paidAtUtc,
       });
@@ -273,7 +411,7 @@ export function FinancePartyBillingStatements() {
         return;
       }
       resetCloseForm();
-      showToast(`أُقفل الكشف ${result.statement.referenceNumber}`, "success");
+      showToast(`أُقفل ${result.statement.referenceNumber} كمدفوع`, "success");
       await invalidate();
     } finally {
       setBusy(false);
@@ -290,388 +428,868 @@ export function FinancePartyBillingStatements() {
 
   return (
     <div className="flex flex-col gap-5">
-      <section>
-        <PageToolbar className="mb-3 border-0 bg-primary/5">
-          <Note tone="info" className="m-0 flex-1">
-            اختر من البنود الجاهزة للفوترة لإنشاء كشف شهري (FN-CS). غير المختار
-            يمكن ترحيله تلقائياً للدورة القادمة.
-          </Note>
-        </PageToolbar>
-
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            loading={busy}
-            disabled={selected.size === 0}
-            showActionToast={false}
-            onClick={() => void createStatement()}
-          >
-            إنشاء كشف فوترة
-            {selected.size > 0
-              ? ` (${selected.size} — ${formatSar(selectedTotal)})`
-              : ""}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            loading={busy}
-            disabled={selected.size === 0}
-            showActionToast={false}
-            onClick={() => void deferSelected()}
-          >
-            ترحيل المحدد
-          </Button>
-          <label className="ms-2 flex items-center gap-2 text-[12px] text-text-2">
-            <input
-              type="checkbox"
-              checked={deferUnselected}
-              onChange={(e) => setDeferUnselected(e.target.checked)}
-            />
-            ترحيل غير المختار لنفس المكتب عند الإنشاء
-          </label>
-        </div>
-
-        {readyQuery.isPending ? (
-          <EmptyState line="جاري التحميل…" />
-        ) : readyLines.length === 0 ? (
-          <EmptyState
-            line="لا بنود جاهزة أو مرحَّلة للفوترة."
-            hint="تظهر هنا بنود الرفع المساحي بحالة جاهز للفوترة أو جاهز — مرحَّل."
-          />
-        ) : (
-          <div className="flex flex-col gap-4">
-            {groups.map(([assigneeId, lines]) => {
-              const allSelected = lines.every((l) =>
-                selected.has(l.workflowTaskId),
-              );
-              return (
-                <div key={assigneeId}>
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <h3 className="text-[13px] font-semibold text-text">
-                      {resolvePartyName(assigneeId, staffUsers)}
-                      <span className="ms-2 font-normal text-text-2">
-                        ({lines.length} بند —{" "}
-                        {formatSar(
-                          lines.reduce((s, l) => s + l.netFeeSar, 0),
-                        )}
-                        )
-                      </span>
-                    </h3>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => selectGroup(lines, !allSelected)}
-                    >
-                      {allSelected ? "إلغاء تحديد المكتب" : "تحديد كل المكتب"}
-                    </Button>
-                  </div>
-                  <div
-                    className={cn(
-                      queueTableWrapClassName,
-                      "rounded-[var(--radius-lg)] border border-border bg-surface",
-                    )}
-                  >
-                    <Table>
-                      <THead>
-                        <Tr hoverable={false}>
-                          <Th className="w-10"> </Th>
-                          <Th>العقار</Th>
-                          <Th>PO</Th>
-                          <Th>الصافي</Th>
-                          <Th>الحالة</Th>
-                        </Tr>
-                      </THead>
-                      <TBody>
-                        {lines.map((line) => (
-                          <Tr key={line.workflowTaskId}>
-                            <Td>
-                              <input
-                                type="checkbox"
-                                checked={selected.has(line.workflowTaskId)}
-                                onChange={() => toggle(line.workflowTaskId)}
-                              />
-                            </Td>
-                            <Td className="font-medium">
-                              {line.propertyLabel}
-                            </Td>
-                            <Td className="text-primary-light">
-                              {line.poNumber}
-                            </Td>
-                            <Td>{formatSar(line.netFeeSar)}</Td>
-                            <Td>
-                              <Badge
-                                tone={inspectorFeeStatusTone(
-                                  line.billingStatus as InspectorFeeBillingStatus,
-                                )}
-                              >
-                                {line.billingStatusLabel}
-                              </Badge>
-                            </Td>
-                          </Tr>
-                        ))}
-                      </TBody>
-                    </Table>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-        <QueueTableHint className="mt-3">
-          كشف فوترة الأطراف (معاينة · مراجعة · رفع مساحي) — مسار موحّد بدل طلب الصرف القديم.
-        </QueueTableHint>
-      </section>
-
-      <section>
-        <h3 className="mb-2 text-[13px] font-semibold text-text">
-          كشوف الفوترة
-        </h3>
-        {statementsQuery.isPending ? (
-          <EmptyState line="جاري التحميل…" />
-        ) : statements.length === 0 ? (
-          <EmptyState line="لا كشوف فوترة بعد." />
-        ) : (
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-            <div
-              className={cn(
-                queueTableWrapClassName,
-                "rounded-[var(--radius-lg)] border border-border bg-surface",
-              )}
-            >
-              <Table>
-                <THead>
-                  <Tr hoverable={false}>
-                    <Th>المرجع</Th>
-                    <Th>المكتب</Th>
-                    <Th>الإجمالي</Th>
-                    <Th>الحالة</Th>
-                  </Tr>
-                </THead>
-                <TBody>
-                  {statements.map((s) => (
-                    <Tr
-                      key={s.id}
-                      className={cn(
-                        "cursor-pointer",
-                        selectedStatementId === s.id && "bg-primary/5",
-                      )}
-                      onClick={() => selectStatement(s.id)}
-                    >
-                      <Td className="font-medium text-primary-light">
-                        {s.referenceNumber}
-                      </Td>
-                      <Td>{resolvePartyName(s.assigneeId, staffUsers)}</Td>
-                      <Td>{formatSar(s.totalNetSar)}</Td>
-                      <Td>
-                        <Badge tone={partyBillingStatementStatusTone(s.status)}>
-                          {s.statusLabel}
-                        </Badge>
-                      </Td>
-                    </Tr>
-                  ))}
-                </TBody>
-              </Table>
+      {showDues ? (
+        <section>
+          <div className="mb-2.5 flex flex-wrap items-center gap-2.5">
+            <div className={cn(finSearch, "ms-0 max-w-none min-w-[200px] flex-1")}>
+              <svg
+                className={finSearchIcon}
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden
+              >
+                <circle
+                  cx="11"
+                  cy="11"
+                  r="7"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                />
+                <path
+                  d="M20 20l-3.5-3.5"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <input
+                className={finSearchInput}
+                placeholder="بحث: رقم الصك · المنطقة · رقم الطلب"
+                value={duesSearch}
+                onChange={(e) => setDuesSearch(e.target.value)}
+                aria-label="بحث المستحقات"
+              />
             </div>
+            <button
+              type="button"
+              className={cn(
+                finGhost,
+                "h-auto px-3.5 py-2 text-xs",
+                filteredDues.length === 0 && "pointer-events-none opacity-50",
+              )}
+              onClick={() => {
+                const ids = filteredDues.filter((l) => l.netFeeSar > 0);
+                const allOn =
+                  ids.length > 0 &&
+                  ids.every((l) => selected.has(l.workflowTaskId));
+                selectGroup(ids, !allOn);
+              }}
+            >
+              {filteredDues.length > 0 &&
+              filteredDues
+                .filter((l) => l.netFeeSar > 0)
+                .every((l) => selected.has(l.workflowTaskId))
+                ? "إلغاء التحديد"
+                : `تحديد الكل (${filteredDues.filter((l) => l.netFeeSar > 0).length})`}
+            </button>
+            <button
+              type="button"
+              className={cn(
+                finPrimary,
+                "px-4 py-2 text-[12.5px]",
+                selected.size === 0 && "pointer-events-none opacity-50",
+              )}
+              disabled={busy || selected.size === 0}
+              onClick={() => void createStatement()}
+            >
+              تجهيز{" "}
+              {readyLines[0]?.payeeType === "individual" ? "أمر صرف" : "مسير صرف"}
+              {selected.size > 0
+                ? ` (${selected.size} — ${formatSar(
+                    applyCostTax(
+                      selectedTotal,
+                      readyLines[0]?.payeeType === "individual"
+                        ? "individual"
+                        : "vendor",
+                    ),
+                  )})`
+                : ""}
+            </button>
+            <span className="text-[11px] whitespace-nowrap text-text-3">
+              {filteredDues.length} مستحق ·{" "}
+              <b
+                className={
+                  filteredDues.some((l) => l.netFeeSar > 0)
+                    ? "text-heading"
+                    : "text-[#8a5e14]"
+                }
+              >
+                {filteredDues.filter((l) => l.netFeeSar > 0).length}
+              </b>{" "}
+              جاهز للصرف
+            </span>
+          </div>
 
-            <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-3">
-              {!selectedStatement ? (
-                <EmptyState line="اختر كشفاً لعرض التفاصيل والإجراءات." />
-              ) : (
-                <div className="flex flex-col gap-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
+          {readyQuery.isPending ? (
+            <div className={finCard}>
+              <div className={finEmpty}>
+                <div className={finEmptyT}>جاري التحميل…</div>
+              </div>
+            </div>
+          ) : filteredDues.length === 0 ? (
+            <div className={finCard}>
+              <div className={finEmpty}>
+                <div className={finEmptyT}>
+                  {duesSearch.trim()
+                    ? "لا بنود مطابقة للبحث"
+                    : "لا مستحقات قائمة — كل البنود مُدرجة في مستندات صرف"}
+                </div>
+                <div className={finEmptyS}>
+                  تظهر هنا بنود المعاينة والمراجعة والرفع المساحي بحالة جاهز أو
+                  مرحَّل.
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className={finCard}>
+              <div
+                className={cn(finScroll, "max-h-[calc(100vh-290px)] overflow-auto")}
+              >
+                <div className={cn(finThead, finGridDues, "sticky top-0 z-[3]")}>
+                  <div className={finTh} />
+                  <div className={finTh}>المعاملة</div>
+                  <div className={cn(finTh, "!justify-center")}>سعر الجدول</div>
+                  <div className={cn(finTh, "!justify-center")}>تعديل التسعير</div>
+                  <div className={cn(finTh, "!justify-center")}>الصافي</div>
+                </div>
+                {filteredDues.map((line) => {
+                  const on = selected.has(line.workflowTaskId);
+                  const age = daysSinceIsoCost(
+                    line.accruedAtUtc ?? line.updatedAtUtc,
+                  );
+                  const ded = line.supervisorDiscountSar || 0;
+                  const list = line.agreedFeeSar || line.netFeeSar;
+                  const selectable = line.netFeeSar > 0;
+                  return (
+                    <div
+                      key={line.workflowTaskId}
+                      role={selectable ? "button" : undefined}
+                      tabIndex={selectable ? 0 : undefined}
+                      className={cn(
+                        finRow,
+                        finGridDues,
+                        selectable && "cursor-pointer",
+                        !selectable && "opacity-70",
+                        on &&
+                          "bg-[color-mix(in_srgb,var(--ink)_5%,transparent)]",
+                      )}
+                      onClick={() => selectable && toggle(line.workflowTaskId)}
+                      onKeyDown={(e) => {
+                        if (!selectable) return;
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          toggle(line.workflowTaskId);
+                        }
+                      }}
+                    >
+                      <div className={finTd}>
+                        {selectable ? (
+                          <input
+                            type="checkbox"
+                            className={finCheck}
+                            checked={on}
+                            onChange={() => toggle(line.workflowTaskId)}
+                            onClick={(e) => e.stopPropagation()}
+                            aria-label="تحديد البند"
+                          />
+                        ) : (
+                          <span
+                            className="inline-block h-[17px] w-[17px] rounded-[5px] border-2 border-dashed border-border-md"
+                            title="صافي صفر"
+                          />
+                        )}
+                      </div>
+                      <div className={finTd}>
+                        <div className="flex min-w-0 flex-col items-end gap-0.5 text-end">
+                          <span
+                            className="text-[12.5px] font-bold text-gold-d"
+                            dir="ltr"
+                          >
+                            {lineRefMain(line)}
+                          </span>
+                          <span className="text-[11px] text-text-3">
+                            {lineRefSub(line)}
+                            {selectable && age != null ? (
+                              <>
+                                {" · "}
+                                <span
+                                  className={
+                                    age > 30
+                                      ? "font-semibold text-[#a5432e]"
+                                      : "font-semibold text-text-3"
+                                  }
+                                >
+                                  منذ {age} يوماً
+                                </span>
+                              </>
+                            ) : null}
+                            {!selectable ? (
+                              <span className="font-bold text-[#8a5e14]">
+                                {" "}
+                                · صافي صفر — يُقفل بتسوية
+                              </span>
+                            ) : null}
+                          </span>
+                        </div>
+                      </div>
+                      <div className={finTd}>
+                        <span className="text-[12.5px] text-text-2">
+                          {formatSar(list)}
+                        </span>
+                      </div>
+                      <div className={finTd}>
+                        {ded > 0 ? (
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className="text-xs font-bold text-[#c0553d]">
+                              −{formatSar(ded)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-text-3">—</span>
+                        )}
+                      </div>
+                      <div className={finTd}>
+                        <span className="text-[13px] font-bold text-heading">
+                          {formatSar(line.netFeeSar)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </section>
+      ) : null}
+
+      {showStatements ? (
+        <section>
+          {mode === "all" ? (
+            <div className={cn(finGroupHead, "mt-2")}>
+              <h3 className={finSectionTitle}>مسيرات وأوامر الصرف</h3>
+            </div>
+          ) : null}
+          {statementsQuery.isPending ? (
+            <div className={finCard}>
+              <div className={finEmpty}>
+                <div className={finEmptyT}>جاري التحميل…</div>
+              </div>
+            </div>
+          ) : statements.length === 0 && !selectedStatement ? (
+            <div className={finCard}>
+              <div className={finEmpty}>
+                <div className={finEmptyT}>
+                  {mode === "paid"
+                    ? "لا مستندات مدفوعة بعد."
+                    : "لا مسيرات أو أوامر صرف قيد الإجراء."}
+                </div>
+              </div>
+            </div>
+          ) : selectedStatement && mode !== "all" ? (
+            <div className={finWorkFlush}>
+              <div className="flex flex-col gap-3">
+                <div className={finWorkHead}>
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <button
+                      type="button"
+                      className={cn(finGhost, "h-auto px-2.5 py-1.5 text-[11.5px]")}
+                      onClick={() => {
+                        setSelectedStatementId(null);
+                        onFocusStatement?.(null);
+                      }}
+                    >
+                      ‹ إغلاق
+                    </button>
                     <div>
-                      <div className="text-[14px] font-semibold">
+                      <div className={finWorkTitle} dir="ltr">
                         {selectedStatement.referenceNumber}
                       </div>
-                      <div className="text-[12px] text-text-2">
-                        {resolvePartyName(
-                          selectedStatement.assigneeId,
-                          staffUsers,
+                      <div className={cn(finMuted, "mt-1")}>
+                        {formatSar(
+                          statementDisplayTotal(selectedStatement),
                         )}{" "}
-                        — {formatSar(selectedStatement.totalNetSar)} —{" "}
-                        {selectedStatement.lines.length} بند
+                        · {selectedStatement.lines.length} معاملة
                       </div>
                     </div>
-                    <Badge
-                      tone={partyBillingStatementStatusTone(
-                        selectedStatement.status,
-                      )}
-                    >
-                      {selectedStatement.statusLabel}
-                    </Badge>
                   </div>
+                  <span className={finStatusFor(selectedStatement.status)}>
+                    {selectedStatement.statusLabel}
+                  </span>
+                </div>
 
-                  <div
-                    className={cn(
-                      queueTableWrapClassName,
-                      "max-h-56 overflow-auto rounded border border-border",
-                    )}
+                <div className={finCard}>
+                  <div className="border-b border-border bg-surface-2 px-3.5 py-2.5 text-xs font-bold text-heading">
+                    معاملات{" "}
+                    {selectedStatement.payeeType === "individual"
+                      ? "أمر الصرف"
+                      : "مسير الصرف"}
+                  </div>
+                  <div className={finScrollY}>
+                    <div>
+                      <div className={cn(finThead, finGridStmtLines)}>
+                        <div className={finTh}>المرجع</div>
+                        <div className={finTh}>البيان</div>
+                        <div className={cn(finTh, "!justify-center")}>المبلغ</div>
+                      </div>
+                      {selectedStatement.lines.map((line) => (
+                        <div
+                          key={line.id}
+                          className={cn(finRow, finGridStmtLines)}
+                        >
+                          <div className={finTd}>
+                            <span
+                              className="text-[12.5px] font-bold text-gold-d"
+                              dir="ltr"
+                            >
+                              {line.propertyLabel || line.poNumber || "—"}
+                            </span>
+                          </div>
+                          <div className={finTd}>
+                            <span className="text-[11.5px] text-text-2">
+                              {line.poNumber ? `أمر عمل ${line.poNumber}` : "—"}
+                            </span>
+                          </div>
+                          <div className={finTd}>
+                            <span className="text-[12.5px] font-bold text-heading">
+                              {formatSar(line.netFeeSar)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {selectedStatement.payeeType === "vendor" &&
+                selectedStatement.totalNetSar > 0 ? (
+                  <div className="overflow-hidden rounded-[10px] border border-border">
+                    {[
+                      ["صافي الأتعاب", selectedStatement.totalNetSar, false],
+                      [
+                        "ضريبة القيمة المضافة (15%)",
+                        Math.round(selectedStatement.totalNetSar * 0.15 * 100) /
+                          100,
+                        false,
+                      ],
+                      [
+                        "الإجمالي — تُطابقه فاتورة المورّد",
+                        statementDisplayTotal(selectedStatement),
+                        true,
+                      ],
+                    ].map(([label, val, bold]) => (
+                      <div
+                        key={String(label)}
+                        className={cn(
+                          "flex items-center justify-between px-3.5 py-2",
+                          bold && "border-t border-border bg-surface-2",
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            bold
+                              ? "text-[12.5px] font-extrabold text-heading"
+                              : "text-xs font-medium text-text-2",
+                          )}
+                        >
+                          {label as string}
+                        </span>
+                        <span className="text-[12.5px] font-bold text-heading" dir="ltr">
+                          {formatSar(val as number)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                <div className={cn(finActionsRow, "mb-0")}>
+                  <span
+                    className={
+                      selectedStatement.payeeType === "individual"
+                        ? finStatusTeal
+                        : finStatusFor("default")
+                    }
                   >
-                    <Table>
-                      <THead>
-                        <Tr hoverable={false}>
-                          <Th>العقار</Th>
-                          <Th>PO</Th>
-                          <Th>الصافي</Th>
-                          <Th>الحالة</Th>
-                        </Tr>
-                      </THead>
-                      <TBody>
-                        {selectedStatement.lines.map((line) => (
-                          <Tr key={line.id} hoverable={false}>
-                            <Td>{line.propertyLabel}</Td>
-                            <Td>{line.poNumber}</Td>
-                            <Td>{formatSar(line.netFeeSar)}</Td>
-                            <Td>
-                              <Badge
-                                tone={inspectorFeeStatusTone(
-                                  line.billingStatus as InspectorFeeBillingStatus,
-                                )}
-                              >
-                                {line.billingStatusLabel}
-                              </Badge>
-                            </Td>
-                          </Tr>
-                        ))}
-                      </TBody>
-                    </Table>
-                  </div>
+                    {selectedStatement.payeeTypeLabel}
+                  </span>
+                </div>
 
-                  {selectedStatement.status === "draft" ? (
-                    <Button
+                {selectedStatement.status === "draft" ? (
+                  <div className="flex flex-col gap-2">
+                    <button
                       type="button"
-                      loading={busy}
-                      showActionToast={false}
+                      className={cn(finPrimary, "w-full justify-center py-3")}
+                      disabled={busy}
                       onClick={() => void issueStatement(selectedStatement)}
                     >
-                      إرسال للمكتب
-                    </Button>
-                  ) : null}
-
-                  {selectedStatement.status === "issued" ? (
-                    <div className="flex flex-col gap-2 rounded border border-border bg-bg p-3">
-                      <div className="text-[12px] font-semibold text-text">
-                        توثيق الصرف (من البرنامج المحاسبي)
-                      </div>
-                      <label className="text-[12px] text-text-2">
-                        رقم الفاتورة *
-                        <Input
-                          className="mt-1"
-                          value={invoiceNumber}
-                          onChange={(e) => setInvoiceNumber(e.target.value)}
-                          placeholder="رقم الفاتورة الخارجية"
-                        />
-                      </label>
-                      <label className="text-[12px] text-text-2">
-                        إيصال التحويل (ملف)
-                        <Input
-                          className="mt-1"
-                          type="file"
-                          accept="image/*,application/pdf"
-                          disabled={busy || uploadingReceipt}
-                          onChange={(e) => {
-                            void handleReceiptFile(
-                              selectedStatement,
-                              e.target.files?.[0],
-                            );
-                            e.target.value = "";
-                          }}
-                        />
-                      </label>
-                      {uploadingReceipt ? (
-                        <span className="text-[11px] text-text-3">
-                          جاري رفع الإيصال…
-                        </span>
-                      ) : receiptAttachmentId && receiptFileName ? (
-                        <div className="flex flex-wrap items-center gap-2 text-[11px] text-text-2">
-                          <span>مرفق: {receiptFileName}</span>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => void viewReceipt(receiptAttachmentId)}
-                          >
-                            معاينة
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              setReceiptAttachmentId(null);
-                              setReceiptFileName(null);
-                            }}
-                          >
-                            إزالة
-                          </Button>
-                        </div>
-                      ) : null}
-                      <label className="text-[12px] text-text-2">
-                        مرجع إيصال التحويل
-                        <Input
-                          className="mt-1"
-                          value={receiptRef}
-                          onChange={(e) => setReceiptRef(e.target.value)}
-                          placeholder="رقم الإيصال / التحويل (إن لم يُرفع ملف)"
-                        />
-                      </label>
-                      <p className="m-0 text-[11px] text-text-3">
-                        يلزم مرفق الإيصال أو المرجع النصي (أحدهما كافٍ).
+                      {selectedStatement.payeeType === "vendor"
+                        ? "تحويل المسير للمكتب لإصدار الفاتورة"
+                        : "اعتماد وإصدار أمر الصرف"}
+                    </button>
+                    {selectedStatement.payeeType === "vendor" ? (
+                      <p className="m-0 text-center text-[10.5px] leading-[1.7] text-text-3">
+                        يُرسل مسير الصرف للمورّد ليُصدر فاتورة ضريبية مطابقة
+                        لقيمته وبنوده.
                       </p>
-                      <label className="text-[12px] text-text-2">
-                        تاريخ الصرف
+                    ) : null}
+                    <div className="mt-3 border-t border-dashed border-border-md pt-3">
+                      <div className={finFld}>
+                        <label className="text-xs font-semibold text-text-2">
+                          إلغاء المستند
+                        </label>
                         <Input
-                          className="mt-1"
-                          type="date"
-                          value={paidAt}
-                          onChange={(e) => setPaidAt(e.target.value)}
+                          value={cancelReason}
+                          onChange={(e) => setCancelReason(e.target.value)}
+                          placeholder="سبب الإلغاء"
                         />
-                      </label>
-                      <Button
+                      </div>
+                      <button
                         type="button"
-                        loading={busy || uploadingReceipt}
-                        showActionToast={false}
-                        onClick={() => void closeStatement(selectedStatement)}
+                        className={cn(
+                          finGhost,
+                          "mt-2 w-full justify-center text-[#a5432e]",
+                        )}
+                        disabled={busy}
+                        onClick={() => void cancelStatement(selectedStatement)}
                       >
-                        إقفال الكشف كمفُوتر / مدفوع
-                      </Button>
+                        إلغاء المستند وإرجاع بنوده مفتوحة
+                      </button>
                     </div>
-                  ) : null}
+                  </div>
+                ) : null}
 
-                  {selectedStatement.status === "closed" ? (
-                    <div className="flex flex-col gap-2">
-                      <Note tone="success" className="m-0">
-                        مصروف — فاتورة {selectedStatement.externalInvoiceNumber}
-                        {selectedStatement.transferReceiptRef
-                          ? ` — إيصال ${selectedStatement.transferReceiptRef}`
-                          : ""}
-                        {selectedStatement.paidAtUtc
-                          ? ` — ${new Date(selectedStatement.paidAtUtc).toLocaleDateString("ar-SA")}`
-                          : ""}
-                      </Note>
-                      {selectedStatement.transferReceiptAttachmentId ? (
-                        <Button
+                {selectedStatement.status === "issued" &&
+                selectedStatement.payeeType === "vendor" ? (
+                  <div className="rounded-[11px] border border-border bg-surface-2 px-[15px] py-3.5">
+                    <div className="flex gap-2.5">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#6b4bb3"
+                        strokeWidth="1.9"
+                        className="mt-0.5 shrink-0"
+                        aria-hidden
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M12 6v6l4 2" strokeLinecap="round" />
+                      </svg>
+                      <div>
+                        <div className="text-[12.5px] font-bold text-heading">
+                          بانتظار رفع المورّد لفاتورته
+                        </div>
+                        <div className="mt-1 text-[11px] leading-[1.7] text-text-2">
+                          أُرسل مسير الصرف للمورّد؛ يُصدر فاتورته من برنامجه
+                          المحاسبي ويرفعها على المسير من بوابته.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                {selectedStatement.status === "invoice_received" ? (
+                  <div className={finCardPad}>
+                    <div className={finPanelTitle}>
+                      مطابقة فاتورة المورّد{" "}
+                      <span className="text-[11px] font-medium text-text-3">
+                        — وردت من بوابة المورّد
+                      </span>
+                    </div>
+                    <div className="mt-2.5 overflow-hidden rounded-[9px] border border-border bg-surface">
+                      {[
+                        ["رقم الفاتورة", selectedStatement.vendorInvoiceNumber || "—"],
+                        [
+                          "تاريخ الفاتورة",
+                          selectedStatement.vendorInvoiceDate || "—",
+                        ],
+                      ].map(([k, v]) => (
+                        <div
+                          key={k}
+                          className="flex items-center justify-between border-b border-border px-3 py-2"
+                        >
+                          <span className="text-[11.5px] text-text-2">{k}</span>
+                          <span
+                            className="text-xs font-bold text-heading"
+                            dir="ltr"
+                          >
+                            {v}
+                          </span>
+                        </div>
+                      ))}
+                      <div className="flex items-center justify-between bg-surface-2 px-3 py-2.5">
+                        <span className="text-[11.5px] font-bold text-heading">
+                          القيمة — مطابقة للمسير
+                        </span>
+                        <span className="text-[13.5px] font-extrabold text-heading">
+                          {formatSar(statementDisplayTotal(selectedStatement))}
+                        </span>
+                      </div>
+                    </div>
+                    {selectedStatement.vendorInvoiceAttachmentId ? (
+                      <button
+                        type="button"
+                        className={cn(finGhost, "mt-2.5")}
+                        onClick={() =>
+                          void viewReceipt(
+                            selectedStatement.vendorInvoiceAttachmentId!,
+                          )
+                        }
+                      >
+                        عرض PDF الفاتورة
+                      </button>
+                    ) : null}
+                    {selectedStatement.vendorInvoiceMatched ? (
+                      <p className={cn(finNote, "mt-2.5 mb-0")}>
+                        طُوبقت الفاتورة — جاهز لتوثيق الصرف.
+                      </p>
+                    ) : (
+                      <div className={cn(finActionsRow, "mt-2.5 mb-0")}>
+                        <button
                           type="button"
-                          size="sm"
-                          variant="outline"
+                          className={finPrimary}
+                          disabled={busy}
+                          onClick={() => void matchInvoice(selectedStatement)}
+                        >
+                          قيد الفاتورة وإصدار أمر الصرف
+                        </button>
+                      </div>
+                    )}
+                    {!selectedStatement.vendorInvoiceMatched ? (
+                      <>
+                        <div className={cn(finFld, "mt-2.5")}>
+                          <label className="text-xs font-semibold text-text-2">
+                            سبب الإعادة للمورّد
+                          </label>
+                          <Input
+                            value={rejectReason}
+                            onChange={(e) => setRejectReason(e.target.value)}
+                            placeholder="خلل في المستند أو بياناته"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          className={cn(
+                            finGhost,
+                            "mt-2 w-full justify-center border-[#c0553d] text-[#a5432e]",
+                          )}
+                          disabled={busy}
+                          onClick={() => void rejectInvoice(selectedStatement)}
+                        >
+                          إعادة للمورّد للتصحيح
+                        </button>
+                      </>
+                    ) : null}
+                    {selectedStatement.rejectedInvoices?.length ? (
+                      <div className={cn(finMuted, "mt-2 text-[11px]")}>
+                        فواتير أُعيدت:{" "}
+                        {selectedStatement.rejectedInvoices.length}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {(selectedStatement.payeeType === "individual" &&
+                  selectedStatement.status === "issued") ||
+                (selectedStatement.payeeType === "vendor" &&
+                  selectedStatement.status === "invoice_received" &&
+                  selectedStatement.vendorInvoiceMatched) ? (
+                  <div className={finCardPad}>
+                    <div className={finPanelTitle}>
+                      توثيق الصرف{" "}
+                      <span className="text-[11px] font-medium text-text-3">
+                        — من البرنامج المحاسبي الخارجي
+                      </span>
+                    </div>
+                    <div className={finFormGrid}>
+                      <div className={finFld}>
+                        <label className="text-xs font-semibold text-text-2">
+                          رقم سند الصرف / الفاتورة{" "}
+                          <span className="text-[#c0553d]">*</span>
+                        </label>
+                        <Input
+                          value={disbursementVoucher}
+                          onChange={(e) =>
+                            setDisbursementVoucher(e.target.value)
+                          }
+                          placeholder="من البرنامج المحاسبي"
+                          dir="ltr"
+                        />
+                      </div>
+                      <div className={finFld}>
+                        <label className="text-xs font-semibold text-text-2">
+                          مرجع التحويل <span className="text-[#c0553d]">*</span>
+                        </label>
+                        <Input
+                          value={transferReference}
+                          onChange={(e) =>
+                            setTransferReference(e.target.value)
+                          }
+                          placeholder="رقم التحويل البنكي"
+                          dir="ltr"
+                        />
+                      </div>
+                    </div>
+                    <div className={cn(finFld, "mt-3")}>
+                      <label className="text-xs font-semibold text-text-2">
+                        تاريخ الصرف
+                      </label>
+                      <Input
+                        type="date"
+                        value={paidAt}
+                        onChange={(e) => setPaidAt(e.target.value)}
+                      />
+                    </div>
+                    <div className={cn(finFld, "mt-3")}>
+                      <label className="text-xs font-semibold text-text-2">
+                        إيصال التحويل{" "}
+                        <span className="text-[#c0553d]">*</span>
+                      </label>
+                      <Input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        disabled={busy || uploadingReceipt}
+                        onChange={(e) => {
+                          void handleReceiptFile(
+                            selectedStatement,
+                            e.target.files?.[0],
+                          );
+                          e.target.value = "";
+                        }}
+                      />
+                    </div>
+                    {uploadingReceipt ? (
+                      <span className={finMuted}>جاري رفع الإيصال…</span>
+                    ) : receiptAttachmentId && receiptFileName ? (
+                      <div className={cn(finActionsRow, "mt-2 mb-0")}>
+                        <span className={finMuted}>
+                          مرفق: {receiptFileName}
+                        </span>
+                        <button
+                          type="button"
+                          className={finGhost}
+                          onClick={() => void viewReceipt(receiptAttachmentId)}
+                        >
+                          معاينة
+                        </button>
+                      </div>
+                    ) : null}
+                    <div className={cn(finFld, "mt-3")}>
+                      <label className="text-xs font-semibold text-text-2">
+                        ملاحظة إيصال (اختياري)
+                      </label>
+                      <Input
+                        value={receiptRef}
+                        onChange={(e) => setReceiptRef(e.target.value)}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className={cn(
+                        finPrimary,
+                        "mt-3.5 w-full justify-center py-2.5",
+                      )}
+                      disabled={busy || uploadingReceipt}
+                      onClick={() => void closeStatement(selectedStatement)}
+                    >
+                      إقفال أمر الصرف كمدفوع
+                    </button>
+                    <div className="mt-3 border-t border-dashed border-border-md pt-3">
+                      <div className={finFld}>
+                        <Input
+                          value={cancelReason}
+                          onChange={(e) => setCancelReason(e.target.value)}
+                          placeholder="سبب الإلغاء"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className={cn(
+                          finGhost,
+                          "mt-2 w-full justify-center text-[#a5432e]",
+                        )}
+                        disabled={busy}
+                        onClick={() => void cancelStatement(selectedStatement)}
+                      >
+                        إلغاء المستند وإرجاع بنوده مفتوحة
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {selectedStatement.status === "closed" ? (
+                  <div className="rounded-[11px] border border-[#a9dfbf] bg-[color-mix(in_srgb,#3f8f5f_10%,transparent)] px-[15px] py-3.5 text-[12.5px] leading-[1.9] text-[#2f7a4d]">
+                    <div className="mb-1 font-extrabold">✓ مدفوع</div>
+                    سند صرف{" "}
+                    <b dir="ltr">
+                      {selectedStatement.disbursementVoucher ??
+                        selectedStatement.externalInvoiceNumber}
+                    </b>
+                    {selectedStatement.transferReference
+                      ? ` · مرجع تحويل ${selectedStatement.transferReference}`
+                      : ""}
+                    {selectedStatement.paidAtUtc
+                      ? ` · ${new Date(selectedStatement.paidAtUtc).toLocaleDateString("en-GB")}`
+                      : ""}
+                    {selectedStatement.transferReceiptAttachmentId ? (
+                      <div className="mt-2">
+                        <button
+                          type="button"
+                          className={finGhost}
                           onClick={() =>
                             void viewReceipt(
                               selectedStatement.transferReceiptAttachmentId!,
                             )
                           }
                         >
-                          عرض / تنزيل إيصال التحويل
-                        </Button>
-                      ) : null}
+                          عرض إيصال التحويل
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {selectedStatement.status === "cancelled" ? (
+                  <div className="rounded-[11px] border border-border-md bg-surface-2 px-[15px] py-3.5 text-[12.5px] leading-[1.9] text-text-2">
+                    <div className="mb-1 font-extrabold text-heading">
+                      مستند ملغى
                     </div>
-                  ) : null}
-                </div>
-              )}
+                    أُلغي قبل الصرف وأُرجعت بنوده مفتوحة.{" "}
+                    {selectedStatement.cancelReason}
+                  </div>
+                ) : null}
+              </div>
             </div>
-          </div>
-        )}
-      </section>
+          ) : (
+            <div
+              className={
+                mode === "all"
+                  ? "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]"
+                  : undefined
+              }
+            >
+              <div className={finCard}>
+                <div className={finScroll}>
+                  <div>
+                    <div className={cn(finThead, finGridStmts)}>
+                      <div className={finTh}>المرجع</div>
+                      <div className={cn(finTh, "!justify-center")}>
+                        التاريخ
+                      </div>
+                      <div className={cn(finTh, "!justify-center")}>
+                        المعاملات
+                      </div>
+                      <div className={cn(finTh, "!justify-center")}>
+                        الإجمالي
+                      </div>
+                      <div className={cn(finTh, "!justify-center")}>
+                        الحالة
+                      </div>
+                    </div>
+                    {statements.map((s) => {
+                      const active =
+                        (focusStatementId ?? selectedStatementId) === s.id;
+                      const dateIso =
+                        s.closedAtUtc ??
+                        s.issuedAtUtc ??
+                        s.createdAtUtc;
+                      return (
+                        <div
+                          key={s.id}
+                          className={cn(
+                            finRow,
+                            finGridStmts,
+                            finRowClickable,
+                            active && finRowActive,
+                          )}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => selectStatement(s.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              selectStatement(s.id);
+                            }
+                          }}
+                        >
+                          <div className={finTd}>
+                            <span
+                              className="text-[12.5px] font-bold text-gold-d"
+                              dir="ltr"
+                            >
+                              {s.referenceNumber}
+                            </span>
+                          </div>
+                          <div className={finTd}>
+                            <span className="text-[11.5px] text-text-2" dir="ltr">
+                              {dateIso
+                                ? new Date(dateIso).toLocaleDateString("en-GB")
+                                : "—"}
+                            </span>
+                          </div>
+                          <div className={finTd}>
+                            <span className="text-xs text-text-2">
+                              {s.lines.length} معاملة
+                            </span>
+                          </div>
+                          <div className={finTd}>
+                            <span className="text-[12.5px] font-bold text-heading">
+                              {formatSar(statementDisplayTotal(s))}
+                            </span>
+                          </div>
+                          <div className={finTd}>
+                            <span className={finStatusFor(s.status)}>
+                              {s.statusLabel}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {mode === "all" ? (
+                <div className={finWorkFlush}>
+                  {!selectedStatement ? (
+                    <div className={cn(finEmpty, "py-7")}>
+                      <div className={finEmptyT}>
+                        اختر كشفاً لعرض التفاصيل والإجراءات.
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      <div className={finWorkHead}>
+                        <div>
+                          <div className={finWorkTitle}>
+                            {selectedStatement.referenceNumber}
+                          </div>
+                          <div className={cn(finMuted, "mt-1")}>
+                            {resolvePartyName(
+                              selectedStatement.assigneeId,
+                              staffUsers,
+                            )}{" "}
+                            — {formatSar(statementDisplayTotal(selectedStatement))}
+                          </div>
+                        </div>
+                        <span className={finStatusFor(selectedStatement.status)}>
+                          {selectedStatement.statusLabel}
+                        </span>
+                      </div>
+                      <p className={finMuted}>
+                        افتح تبويب «مسيرات وأوامر صرف» داخل حساب المستحق للتفاصيل
+                        الكاملة.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          )}
+        </section>
+      ) : null}
     </div>
   );
 }
+

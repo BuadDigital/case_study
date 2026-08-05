@@ -568,7 +568,7 @@ export function FinancePartyFeePricing() {
             )}
           </ul>
           <p className="mt-2 m-0 text-[11px] leading-relaxed text-text-3">
-            أسند الجدول للأطراف المطلوبة. بدون إسناد: المكاتب الهندسية بلا
+            أسند الجدول للمستحقين المطلوبين. بدون إسناد: المكاتب الهندسية بلا
             تسعيرة، وباقي الفئات تستخدم الجدول الافتراضي.
           </p>
         </aside>
@@ -670,7 +670,7 @@ export function FinancePartyFeePricing() {
 
                 {(draft.assignedCount ?? 0) > 0 ? (
                   <Note tone="info">
-                    هذا الجدول مرتبط بأطراف، لذلك لا يتغير تاريخيًا. عند الحفظ
+                    هذا الجدول مرتبط بمستحقين، لذلك لا يتغير تاريخيًا. عند الحفظ
                     ستُنشأ نسخة جديدة وتُنقل الإسنادات إليها في عملية ذرّية.
                   </Note>
                 ) : null}
@@ -938,7 +938,7 @@ export function FinancePartyFeePricing() {
                   إسناد «{draft.name}»
                 </ModalTitle>
                 <p className="m-0 mt-1 text-[12px] text-text-3">
-                  اختر {activeCategory?.partyLabel ?? "الأطراف"} لهذا الجدول
+                  اختر {activeCategory?.partyLabel ?? "المستحقين"} لهذا الجدول
                 </p>
               </div>
               <ModalClose onClick={() => setAssignOpen(false)} />
@@ -946,7 +946,7 @@ export function FinancePartyFeePricing() {
             <ModalBody className="max-h-[50vh] space-y-1 overflow-y-auto">
               {categoryParties.length === 0 ? (
                 <Note tone="warn">
-                  لا يوجد أطراف متاحون لهذه الفئة (تحقق من معرّف التوزيع).
+                  لا يوجد مستحقون متاحون لهذه الفئة (تحقق من معرّف التوزيع).
                 </Note>
               ) : (
                 categoryParties.map((party) => {

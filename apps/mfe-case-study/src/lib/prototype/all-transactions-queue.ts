@@ -19,7 +19,6 @@ export function allTransactionsPhaseLabel(task: WorkflowTask): string {
   if (task.kind === "government-review") return "المراجعة الحكومية";
   if (task.kind === "field-inspection") return "معاينة العقار";
   if (task.kind === "property-appraisal") return "تقييم العقار";
-  if (task.kind === "valuation-coordination") return "استلام التقييم";
   if (task.kind === "engineering-survey") return "الرفع المساحي";
   if (task.phase === "enfath") return "البيانات الأولية";
   if (task.phase === "bourse") return "البورصة";

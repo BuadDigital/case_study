@@ -115,16 +115,6 @@ export function operationsTaskPath(taskId: string): string {
   return `/operations-tasks?task=${encodeURIComponent(taskId)}`;
 }
 
-/** Full-page workspace for منسق التقييم (استلام التقييم). */
-export function valuationCoordinationWorkspacePath(taskId: string): string {
-  return `/valuation-coordination/${encodeURIComponent(taskId)}`;
-}
-
-export function isValuationCoordinationWorkspacePath(pathname: string): boolean {
-  const parts = pathname.split("/").filter(Boolean);
-  return parts[0] === "valuation-coordination" && parts.length >= 2;
-}
-
 export function isPartyTaskWorkPath(pathname: string): boolean {
   const page = pathname.split("/").filter(Boolean)[0] ?? "";
   return isPartyTaskPage(page as PageId);
@@ -164,8 +154,6 @@ export function partyTaskWorkspacePath(task: WorkflowTask): string | undefined {
       return activeSurveyWorkspacePath(task.id);
     case "property-appraisal":
       return propertyAppraisalWorkspacePath(task.id);
-    case "valuation-coordination":
-      return valuationCoordinationWorkspacePath(task.id);
     case "government-review":
       // Reviewer/CDO hub is operations-tasks; party form remains at
       // governmentReviewWorkspacePath for GovernmentReviewView only.

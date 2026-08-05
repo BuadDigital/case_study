@@ -61,8 +61,6 @@ export function pageIdFromPathname(pathname: string): PageId | null {
       return "property-inspection";
     case "government-review":
       return "government-review";
-    case "valuation-coordination":
-      return "valuation-coordination";
     case "login":
       return null;
     case "audit-log":
@@ -111,7 +109,6 @@ const PROPERTY_DETAIL_WITHOUT_PO_LIST: readonly PageId[] = [
   "active-inspection",
   "property-appraisal",
   "active-survey",
-  "valuation-coordination",
   /** المعاين يعمل من تفاصيل العقار أو طابور المعاينة الرسمية. */
   "all-transactions",
   "favorites",

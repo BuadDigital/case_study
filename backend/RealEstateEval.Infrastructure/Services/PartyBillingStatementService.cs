@@ -66,7 +66,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
 
         var labels = await LoadPropertyLabelsAsync(propertyIds, cancellationToken);
 
-        return ledgers.Select(x => ToReadyDto(x.ledger, labels)).ToList();
+        return ledgers.Select(x => ToReadyDto(x.ledger, labels, x.task.Kind)).ToList();
     }
 
     public async Task<IReadOnlyList<PartyBillingStatementDto>> ListStatementsAsync(
@@ -87,6 +87,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         {
             query = query.Where(s =>
                 s.Status == PartyBillingStatementStatus.Issued
+                || s.Status == PartyBillingStatementStatus.InvoiceReceived
                 || s.Status == PartyBillingStatementStatus.Closed);
         }
 
@@ -283,10 +284,11 @@ public class PartyBillingStatementService : IPartyBillingStatementService
             if (unselectedIds.Count > 0)
             {
                 // Defer only same-kind leftovers for this assignee (ج٩).
-                var sameKindUnselected = (await _db.WorkflowTasks.AsNoTracking()
+                var sameKindTasks = await _db.WorkflowTasks.AsNoTracking()
                     .Where(t => unselectedIds.Contains(t.Id) && t.Kind == statementKind)
-                    .Select(t => t.Id)
-                    .ToListAsync(cancellationToken)).ToHashSet();
+                    .Select(t => new { t.Id, t.Kind })
+                    .ToListAsync(cancellationToken);
+                var sameKindUnselected = sameKindTasks.Select(t => t.Id).ToHashSet();
 
                 var propertyIds = unselected
                     .Where(l => sameKindUnselected.Contains(l.WorkflowTaskId) && l.PropertyId.HasValue)
@@ -309,7 +311,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
                         ActorUserId = actorUserId,
                         CreatedAtUtc = now,
                     });
-                    deferredDtos.Add(ToReadyDto(ledger, labels));
+                    deferredDtos.Add(ToReadyDto(ledger, labels, statementKind));
                 }
             }
         }
@@ -319,6 +321,8 @@ public class PartyBillingStatementService : IPartyBillingStatementService
             Id = statementId,
             ReferenceNumber = reference,
             AssigneeId = assigneeId,
+            PayeeType = PartyBillingPayeeType.FromTaskKind(statementKind),
+            TaskKind = statementKind.ToDbValue(),
             Status = PartyBillingStatementStatus.Draft,
             TotalNetSar = total,
             CreatedByUserId = actorUserId,
@@ -345,15 +349,15 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         var statement = await _db.PartyBillingStatements
             .FirstOrDefaultAsync(s => s.Id == statementId, cancellationToken);
         if (statement is null)
-            return (null, "كشف الفوترة غير موجود.");
+            return (null, "مسير الصرف غير موجود.");
 
         if (statement.Status != PartyBillingStatementStatus.Draft)
-            return (null, "لا يمكن إرسال إلا كشوف المسودة.");
+            return (null, "لا يمكن إرسال إلا المسيرات/الأوامر في حالة المسودة.");
 
         var lineCount = await _db.PartyBillingStatementLines
             .CountAsync(l => l.StatementId == statementId, cancellationToken);
         if (lineCount == 0)
-            return (null, "لا يمكن إرسال كشف بلا بنود.");
+            return (null, "لا يمكن إرسال مستند بلا بنود.");
 
         var now = DateTime.UtcNow;
         statement.Status = PartyBillingStatementStatus.Issued;
@@ -361,7 +365,8 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         statement.IssuedByUserId = actorUserId;
 
         await _db.SaveChangesAsync(cancellationToken);
-        await NotifyStatementIssuedAsync(statement, lineCount, cancellationToken);
+        if (statement.PayeeType == PartyBillingPayeeType.Vendor)
+            await NotifyStatementIssuedAsync(statement, lineCount, cancellationToken);
 
         var dto = await GetStatementAsync(statementId, cancellationToken);
         return (dto, null);
@@ -376,36 +381,57 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         var statement = await _db.PartyBillingStatements
             .FirstOrDefaultAsync(s => s.Id == statementId, cancellationToken);
         if (statement is null)
-            return (null, "كشف الفوترة غير موجود.");
+            return (null, "مسير الصرف غير موجود.");
 
-        if (statement.Status != PartyBillingStatementStatus.Issued)
-            return (null, "لا يمكن إقفال إلا كشف صادر مرسل للمكتب.");
-
-        var invoice = (request.ExternalInvoiceNumber ?? "").Trim();
-        if (invoice.Length == 0)
-            return (null, "رقم الفاتورة من البرنامج المحاسبي مطلوب.");
-
-        Guid? receiptId = null;
-        if (!string.IsNullOrWhiteSpace(request.TransferReceiptAttachmentId)
-            && Guid.TryParse(request.TransferReceiptAttachmentId, out var parsedReceipt))
+        var isVendor = statement.PayeeType == PartyBillingPayeeType.Vendor;
+        if (isVendor)
         {
-            receiptId = parsedReceipt;
+            if (statement.Status != PartyBillingStatementStatus.InvoiceReceived)
+                return (null, "لا يُصرف للمورّد إلا بعد ورود الفاتورة ومطابقتها.");
+            if (statement.VendorInvoiceMatchedAtUtc is null)
+                return (null, "أقر مطابقة الفاتورة قبل توثيق الصرف.");
         }
+        else
+        {
+            if (statement.Status != PartyBillingStatementStatus.Issued
+                && statement.Status != PartyBillingStatementStatus.Draft)
+                return (null, "لا يُصرف للفرد إلا من أمر صرف صادر أو مُعد.");
+            // Individual: promote draft to issued implicitly so path is أمر صرف صادر → مدفوع
+            if (statement.Status == PartyBillingStatementStatus.Draft)
+            {
+                statement.Status = PartyBillingStatementStatus.Issued;
+                statement.IssuedAtUtc = DateTime.UtcNow;
+                statement.IssuedByUserId = actorUserId;
+            }
+        }
+
+        var voucher = (request.DisbursementVoucher ?? request.ExternalInvoiceNumber ?? "").Trim();
+        if (voucher.Length == 0)
+            return (null, "رقم سند الصرف مطلوب.");
+
+        var transferRef = (request.TransferReference ?? "").Trim();
+        if (transferRef.Length == 0)
+            return (null, "مرجع التحويل مطلوب.");
+
+        if (!Guid.TryParse(request.TransferReceiptAttachmentId, out var receiptId))
+            return (null, "إيصال التحويل (مرفق) مطلوب.");
+
+        var receiptExists = await _db.FileAttachments.AsNoTracking()
+            .AnyAsync(a => a.Id == receiptId, cancellationToken);
+        if (!receiptExists)
+            return (null, "مرفق إيصال التحويل غير موجود.");
+
+        var voucherTaken = await _db.PartyBillingStatements.AsNoTracking().AnyAsync(
+            s => s.Id != statementId
+                && s.DisbursementVoucher != null
+                && s.DisbursementVoucher == voucher,
+            cancellationToken);
+        if (voucherTaken)
+            return (null, "رقم سند الصرف مُستخدم مسبقاً — لا صرف مزدوج.");
 
         var receiptRef = string.IsNullOrWhiteSpace(request.TransferReceiptRef)
             ? null
             : request.TransferReceiptRef.Trim();
-
-        if (receiptId is null && string.IsNullOrWhiteSpace(receiptRef))
-            return (null, "إيصال التحويل مطلوب (مرفق أو مرجع).");
-
-        if (receiptId.HasValue)
-        {
-            var exists = await _db.FileAttachments.AsNoTracking()
-                .AnyAsync(a => a.Id == receiptId.Value, cancellationToken);
-            if (!exists)
-                return (null, "مرفق إيصال التحويل غير موجود.");
-        }
 
         var lines = await _db.PartyBillingStatementLines
             .Where(l => l.StatementId == statementId)
@@ -421,9 +447,13 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         statement.Status = PartyBillingStatementStatus.Closed;
         statement.ClosedAtUtc = now;
         statement.ClosedByUserId = actorUserId;
-        statement.ExternalInvoiceNumber = invoice;
+        statement.DisbursementVoucher = voucher;
+        statement.TransferReference = transferRef;
         statement.TransferReceiptAttachmentId = receiptId;
         statement.TransferReceiptRef = receiptRef;
+        statement.ExternalInvoiceNumber = isVendor
+            ? (statement.VendorInvoiceNumber ?? voucher)
+            : voucher;
         statement.PaidAtUtc = paidAt;
         if (!string.IsNullOrWhiteSpace(request.Notes))
             statement.Notes = request.Notes.Trim();
@@ -432,7 +462,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         {
             var fromStatus = ledger.BillingStatus;
             ledger.BillingStatus = InspectorFeeBillingStatus.Disbursed;
-            ledger.DisbursementVoucher = invoice;
+            ledger.DisbursementVoucher = voucher;
             ledger.UpdatedAtUtc = now;
             _db.InspectorFeeTransitions.Add(new InspectorFeeTransition
             {
@@ -440,7 +470,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
                 WorkflowTaskId = ledger.WorkflowTaskId,
                 FromStatus = fromStatus,
                 ToStatus = InspectorFeeBillingStatus.Disbursed,
-                Reason = $"صرف موثَّق — فاتورة {invoice}",
+                Reason = $"صرف موثَّق — سند {voucher}",
                 ActorUserId = actorUserId,
                 CreatedAtUtc = now,
             });
@@ -471,8 +501,10 @@ public class PartyBillingStatementService : IPartyBillingStatementService
 
         var statementIds = (await _db.WorkflowTasks.AsNoTracking()
             .Where(t => taskIds.Contains(t.Id) && StatementKinds.Contains(t.Kind))
-            .Select(t => t.Id)
-            .ToListAsync(cancellationToken)).ToHashSet();
+            .Select(t => new { t.Id, t.Kind })
+            .ToListAsync(cancellationToken));
+        var kindByTask = statementIds.ToDictionary(t => t.Id, t => t.Kind);
+        var statementTaskIdSet = kindByTask.Keys.ToHashSet();
 
         var propertyIds = ledgers
             .Where(l => l.PropertyId.HasValue)
@@ -495,12 +527,12 @@ public class PartyBillingStatementService : IPartyBillingStatementService
                 continue;
             }
 
-            if (!statementIds.Contains(taskId))
+            if (!statementTaskIdSet.Contains(taskId))
             {
                 failed.Add(new InspectorFeeTransitionErrorDto
                 {
                     WorkflowTaskId = taskId.ToString(),
-                    Error = "الترحيل لمسار فوترة الأطراف فقط.",
+                    Error = "الترحيل لمسار صرف المستحقين فقط.",
                 });
                 continue;
             }
@@ -510,7 +542,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
                 failed.Add(new InspectorFeeTransitionErrorDto
                 {
                     WorkflowTaskId = taskId.ToString(),
-                    Error = "لا يمكن ترحيل إلا البنود الجاهزة للفوترة.",
+                    Error = "لا يمكن ترحيل إلا البنود الجاهزة للصرف.",
                 });
                 continue;
             }
@@ -527,13 +559,272 @@ public class PartyBillingStatementService : IPartyBillingStatementService
                 ActorUserId = actorUserId,
                 CreatedAtUtc = now,
             });
-            succeeded.Add(ToReadyDto(ledger, labels));
+            succeeded.Add(ToReadyDto(ledger, labels, kindByTask.GetValueOrDefault(taskId)));
         }
 
         if (succeeded.Count > 0)
             await _db.SaveChangesAsync(cancellationToken);
 
         return new DeferPartyBillingLinesResult { Deferred = succeeded, Failed = failed };
+    }
+
+    public async Task<CreateMonthPartyBillingStatementsResult> CreateMonthVendorStatementsAsync(
+        string actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var ready = await ListReadyLinesAsync(cancellationToken: cancellationToken);
+        var vendorReady = ready
+            .Where(l => l.PayeeType == PartyBillingPayeeType.Vendor && l.AssigneeId is not null)
+            .GroupBy(l => l.AssigneeId!, StringComparer.Ordinal)
+            .ToList();
+
+        if (vendorReady.Count == 0)
+        {
+            return new CreateMonthPartyBillingStatementsResult
+            {
+                Error = "لا بنود مورّد جاهزة لإنشاء مسيرات.",
+            };
+        }
+
+        var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var created = new List<PartyBillingStatementDto>();
+        var linesIncluded = 0;
+
+        foreach (var group in vendorReady)
+        {
+            var hasOpen = await _db.PartyBillingStatements.AsNoTracking().AnyAsync(
+                s => s.AssigneeId == group.Key
+                    && s.PayeeType == PartyBillingPayeeType.Vendor
+                    && s.CreatedAtUtc >= monthStart
+                    && (s.Status == PartyBillingStatementStatus.Draft
+                        || s.Status == PartyBillingStatementStatus.Issued
+                        || s.Status == PartyBillingStatementStatus.InvoiceReceived),
+                cancellationToken);
+            if (hasOpen) continue;
+
+            var result = await CreateStatementAsync(
+                new CreatePartyBillingStatementRequest
+                {
+                    WorkflowTaskIds = group.Select(l => l.WorkflowTaskId).ToList(),
+                    DeferUnselectedForAssignee = false,
+                    Notes = $"مسير آلي — {monthStart:yyyy-MM}",
+                },
+                actorUserId,
+                cancellationToken);
+
+            if (result.Error is not null || result.Statement is null)
+            {
+                _logger.LogWarning(
+                    "Month vendor statement skipped for assignee {AssigneeId}: {Error}",
+                    group.Key,
+                    result.Error);
+                continue;
+            }
+
+            created.Add(result.Statement);
+            linesIncluded += result.Statement.Lines.Count;
+        }
+
+        return new CreateMonthPartyBillingStatementsResult
+        {
+            Created = created,
+            AssigneesCovered = created.Count,
+            LinesIncluded = linesIncluded,
+            Error = created.Count == 0
+                ? "لم يُنشأ أي مسير — قد تكون المسيرات مفتوحة مسبقاً لنفس الشهر."
+                : null,
+        };
+    }
+
+    public async Task<(PartyBillingStatementDto? Statement, string? Error)> SubmitVendorInvoiceAsync(
+        Guid statementId,
+        SubmitVendorInvoiceRequest request,
+        string actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var statement = await _db.PartyBillingStatements
+            .FirstOrDefaultAsync(s => s.Id == statementId, cancellationToken);
+        if (statement is null)
+            return (null, "مسير الصرف غير موجود.");
+        if (statement.PayeeType != PartyBillingPayeeType.Vendor)
+            return (null, "رفع الفاتورة للمورّدين فقط.");
+        if (statement.Status != PartyBillingStatementStatus.Issued)
+            return (null, "لا تُرفع فاتورة إلا على مسير أُرسل للمكتب.");
+
+        var invoiceNo = (request.InvoiceNumber ?? "").Trim();
+        if (invoiceNo.Length == 0)
+            return (null, "رقم الفاتورة مطلوب.");
+        if (!Guid.TryParse(request.AttachmentId, out var attachmentId))
+            return (null, "مرفق PDF الفاتورة مطلوب.");
+
+        var exists = await _db.FileAttachments.AsNoTracking()
+            .AnyAsync(a => a.Id == attachmentId, cancellationToken);
+        if (!exists)
+            return (null, "مرفق الفاتورة غير موجود.");
+
+        var now = DateTime.UtcNow;
+        statement.Status = PartyBillingStatementStatus.InvoiceReceived;
+        statement.VendorInvoiceNumber = invoiceNo;
+        statement.VendorInvoiceDate = request.InvoiceDate?.ToUniversalTime() ?? now.Date;
+        statement.VendorInvoiceAttachmentId = attachmentId;
+        statement.VendorInvoiceSubmittedAtUtc = now;
+        statement.VendorInvoiceSubmittedByUserId = actorUserId;
+        statement.VendorInvoiceMatchedAtUtc = null;
+        statement.VendorInvoiceMatchedByUserId = null;
+        statement.ExternalInvoiceNumber = invoiceNo;
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        var supervisors = await _recipients.ResolveUserIdsWithPrototypeRoleAsync(
+            "financial-officer",
+            cancellationToken);
+        if (supervisors.Count == 0)
+        {
+            supervisors = await _recipients.ResolveUserIdsWithPrototypeRoleAsync(
+                "section-supervisor",
+                cancellationToken);
+        }
+        if (supervisors.Count > 0)
+        {
+            await _notifications.CreateForUsersAsync(
+                supervisors,
+                new CreateUserNotificationRequest
+                {
+                    Title = "فاتورة مورّد واردة",
+                    Body = $"{statement.ReferenceNumber} — فاتورة {invoiceNo} بمبلغ مقفل {statement.TotalNetSar:0.##} ر.س",
+                    Category = "financial",
+                    Tone = "info",
+                    Href = $"/financial?area=costs&section=statements&statement={statement.Id}",
+                },
+                cancellationToken);
+        }
+
+        return (await GetStatementAsync(statementId, cancellationToken), null);
+    }
+
+    public async Task<(PartyBillingStatementDto? Statement, string? Error)> MatchVendorInvoiceAsync(
+        Guid statementId,
+        string actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var statement = await _db.PartyBillingStatements
+            .FirstOrDefaultAsync(s => s.Id == statementId, cancellationToken);
+        if (statement is null)
+            return (null, "مسير الصرف غير موجود.");
+        if (statement.PayeeType != PartyBillingPayeeType.Vendor)
+            return (null, "المطابقة للمورّدين فقط.");
+        if (statement.Status != PartyBillingStatementStatus.InvoiceReceived)
+            return (null, "لا مطابقة إلا بعد ورود فاتورة.");
+        if (string.IsNullOrWhiteSpace(statement.VendorInvoiceNumber)
+            || statement.VendorInvoiceAttachmentId is null)
+            return (null, "بيانات الفاتورة ناقصة.");
+
+        statement.VendorInvoiceMatchedAtUtc = DateTime.UtcNow;
+        statement.VendorInvoiceMatchedByUserId = actorUserId;
+        await _db.SaveChangesAsync(cancellationToken);
+        return (await GetStatementAsync(statementId, cancellationToken), null);
+    }
+
+    public async Task<(PartyBillingStatementDto? Statement, string? Error)> RejectVendorInvoiceAsync(
+        Guid statementId,
+        RejectVendorInvoiceRequest request,
+        string actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var statement = await _db.PartyBillingStatements
+            .FirstOrDefaultAsync(s => s.Id == statementId, cancellationToken);
+        if (statement is null)
+            return (null, "مسير الصرف غير موجود.");
+        if (statement.PayeeType != PartyBillingPayeeType.Vendor)
+            return (null, "إعادة الفاتورة للمورّدين فقط.");
+        if (statement.Status != PartyBillingStatementStatus.InvoiceReceived)
+            return (null, "لا إعادة إلا لفاتورة واردة.");
+
+        var reason = (request.Reason ?? "").Trim();
+        if (reason.Length < 3)
+            return (null, "سبب الإعادة للتصحيح إلزامي.");
+
+        var rejected = ParseRejected(statement.RejectedInvoicesJson);
+        rejected.Add(new PartyBillingRejectedInvoiceDto
+        {
+            InvoiceNumber = statement.VendorInvoiceNumber ?? "",
+            InvoiceDate = statement.VendorInvoiceDate,
+            AttachmentId = statement.VendorInvoiceAttachmentId?.ToString(),
+            Reason = reason,
+            RejectedByUserId = actorUserId,
+            RejectedAtUtc = DateTime.UtcNow,
+        });
+
+        statement.RejectedInvoicesJson = SerializeRejected(rejected);
+        statement.VendorInvoiceNumber = null;
+        statement.VendorInvoiceDate = null;
+        statement.VendorInvoiceAttachmentId = null;
+        statement.VendorInvoiceSubmittedAtUtc = null;
+        statement.VendorInvoiceSubmittedByUserId = null;
+        statement.VendorInvoiceMatchedAtUtc = null;
+        statement.VendorInvoiceMatchedByUserId = null;
+        statement.ExternalInvoiceNumber = null;
+        statement.Status = PartyBillingStatementStatus.Issued;
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return (await GetStatementAsync(statementId, cancellationToken), null);
+    }
+
+    public async Task<(PartyBillingStatementDto? Statement, string? Error)> CancelStatementAsync(
+        Guid statementId,
+        CancelPartyBillingStatementRequest request,
+        string actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var statement = await _db.PartyBillingStatements
+            .FirstOrDefaultAsync(s => s.Id == statementId, cancellationToken);
+        if (statement is null)
+            return (null, "مسير الصرف غير موجود.");
+        if (statement.Status is PartyBillingStatementStatus.Closed or PartyBillingStatementStatus.Cancelled)
+            return (null, "لا يمكن إلغاء مستند مغلق أو ملغى.");
+        if (statement.Status == PartyBillingStatementStatus.InvoiceReceived
+            && statement.VendorInvoiceMatchedAtUtc is not null)
+            return (null, "لا يُلغى مسير بعد مطابقة فاتورة — استخدم الإعادة أو أكمل الصرف.");
+
+        var reason = (request.Reason ?? "").Trim();
+        if (reason.Length < 3)
+            return (null, "سبب الإلغاء إلزامي.");
+
+        var lines = await _db.PartyBillingStatementLines
+            .Where(l => l.StatementId == statementId)
+            .ToListAsync(cancellationToken);
+        var taskIds = lines.Select(l => l.WorkflowTaskId).ToList();
+        var ledgers = await _db.InspectorFeeLedgers
+            .Where(l => taskIds.Contains(l.WorkflowTaskId))
+            .ToListAsync(cancellationToken);
+
+        var now = DateTime.UtcNow;
+        statement.Status = PartyBillingStatementStatus.Cancelled;
+        statement.CancelledAtUtc = now;
+        statement.CancelledByUserId = actorUserId;
+        statement.CancelReason = reason;
+
+        foreach (var ledger in ledgers)
+        {
+            var from = ledger.BillingStatus;
+            ledger.BillingStatus = InspectorFeeBillingStatus.AtFinance;
+            ledger.PartyBillingStatementId = null;
+            ledger.UpdatedAtUtc = now;
+            _db.InspectorFeeTransitions.Add(new InspectorFeeTransition
+            {
+                Id = Guid.NewGuid(),
+                WorkflowTaskId = ledger.WorkflowTaskId,
+                FromStatus = from,
+                ToStatus = InspectorFeeBillingStatus.AtFinance,
+                Reason = $"إلغاء {statement.ReferenceNumber}: {reason}",
+                ActorUserId = actorUserId,
+                CreatedAtUtc = now,
+            });
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+        return (await GetStatementAsync(statementId, cancellationToken), null);
     }
 
     private async Task<IReadOnlyList<PartyBillingStatementDto>> MapStatementsAsync(
@@ -564,6 +855,11 @@ public class PartyBillingStatementService : IPartyBillingStatementService
                 Id = s.Id.ToString(),
                 ReferenceNumber = s.ReferenceNumber,
                 AssigneeId = s.AssigneeId,
+                PayeeType = string.IsNullOrWhiteSpace(s.PayeeType)
+                    ? PartyBillingPayeeType.Vendor
+                    : s.PayeeType,
+                PayeeTypeLabel = PartyBillingPayeeType.Label(s.PayeeType),
+                TaskKind = s.TaskKind,
                 Status = s.Status,
                 StatusLabel = PartyBillingStatementStatus.Label(s.Status),
                 TotalNetSar = s.TotalNetSar,
@@ -574,8 +870,19 @@ public class PartyBillingStatementService : IPartyBillingStatementService
                 ExternalInvoiceNumber = s.ExternalInvoiceNumber,
                 TransferReceiptAttachmentId = s.TransferReceiptAttachmentId?.ToString(),
                 TransferReceiptRef = s.TransferReceiptRef,
+                TransferReference = s.TransferReference,
+                DisbursementVoucher = s.DisbursementVoucher,
                 PaidAtUtc = s.PaidAtUtc,
                 Notes = s.Notes,
+                VendorInvoiceNumber = s.VendorInvoiceNumber,
+                VendorInvoiceDate = s.VendorInvoiceDate,
+                VendorInvoiceAttachmentId = s.VendorInvoiceAttachmentId?.ToString(),
+                VendorInvoiceSubmittedAtUtc = s.VendorInvoiceSubmittedAtUtc,
+                VendorInvoiceMatched = s.VendorInvoiceMatchedAtUtc.HasValue,
+                VendorInvoiceMatchedAtUtc = s.VendorInvoiceMatchedAtUtc,
+                RejectedInvoices = ParseRejected(s.RejectedInvoicesJson),
+                CancelledAtUtc = s.CancelledAtUtc,
+                CancelReason = s.CancelReason,
                 Lines = stmtLines.Select(line =>
                 {
                     ledgers.TryGetValue(line.WorkflowTaskId, out var ledger);
@@ -628,9 +935,12 @@ public class PartyBillingStatementService : IPartyBillingStatementService
 
     private static PartyBillingReadyLineDto ToReadyDto(
         InspectorFeeLedger ledger,
-        IReadOnlyDictionary<Guid, string> labels)
+        IReadOnlyDictionary<Guid, string> labels,
+        WorkflowTaskKind? kind)
     {
         var discount = Math.Max(0m, ledger.SupervisorDiscountSar);
+        var resolved = kind ?? WorkflowTaskKind.EngineeringSurvey;
+        var payeeType = PartyBillingPayeeType.FromTaskKind(resolved);
         return new PartyBillingReadyLineDto
         {
             WorkflowTaskId = ledger.WorkflowTaskId.ToString(),
@@ -640,6 +950,9 @@ public class PartyBillingStatementService : IPartyBillingStatementService
                 : ledger.PropertyOrdinal.ToString(),
             PoNumber = ledger.PoNumber,
             AssigneeId = ledger.AssigneeId,
+            TaskKind = resolved.ToDbValue(),
+            PayeeType = payeeType,
+            PayeeTypeLabel = PartyBillingPayeeType.Label(payeeType),
             AgreedFeeSar = ledger.AgreedFeeSar,
             SupervisorDiscountSar = discount,
             NetFeeSar = InspectorFeeRules.NetFee(ledger.AgreedFeeSar, discount),
@@ -648,6 +961,26 @@ public class PartyBillingStatementService : IPartyBillingStatementService
             AccruedAtUtc = ledger.AccruedAtUtc,
             UpdatedAtUtc = ledger.UpdatedAtUtc,
         };
+    }
+
+    private static List<PartyBillingRejectedInvoiceDto> ParseRejected(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return [];
+        try
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<List<PartyBillingRejectedInvoiceDto>>(json)
+                ?? [];
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return [];
+        }
+    }
+
+    private static string? SerializeRejected(IReadOnlyList<PartyBillingRejectedInvoiceDto> items)
+    {
+        if (items.Count == 0) return null;
+        return System.Text.Json.JsonSerializer.Serialize(items);
     }
 
     private static List<Guid> ParseTaskIds(IReadOnlyList<string> raw) =>

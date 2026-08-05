@@ -14,9 +14,6 @@ export const FIELD_INSPECTION_SUBMITTED_EVENT = "field-inspection-submitted";
 
 export const GOVERNMENT_REVIEW_SUBMITTED_EVENT = "government-review-submitted";
 
-export const VALUATION_COORDINATION_SUBMITTED_EVENT =
-  "valuation-coordination-submitted";
-
 export function dispatchWorkflowSubmitted(eventName: string): void {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new Event(eventName));

@@ -15,10 +15,6 @@ import {
   type GovernmentReviewWorkHostRef,
 } from "../components/government-review/GovernmentReviewWorkBody";
 import { TaskWorkChrome } from "../components/primary-data/TaskWorkChrome";
-import {
-  ValuationCoordinationWorkBody,
-  type ValuationCoordinationWorkHostRef,
-} from "../components/valuation-coordination/ValuationCoordinationWorkBody";
 import { FieldInspectionMobileShell } from "../components/field-inspection/FieldInspectionMobileShell";
 import {
   type FieldInspectionWorkHostRef,
@@ -29,7 +25,6 @@ import type { PropertyDetailPartyCard } from "../lib/prototype/property-detail-p
 import { useFieldInspectionWorkspacesQuery } from "../query/field-inspection-workspaces-queries";
 import { isFieldInspectionLocked } from "../lib/prototype/field-inspection-work-queue";
 import { isGovernmentReviewLocked } from "../lib/prototype/government-review-work-queue";
-import { isValuationCoordinationLocked } from "../lib/prototype/valuation-coordination-work-queue";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import { partyTaskPath } from "../lib/my-task-routes";
 import {
@@ -219,14 +214,11 @@ export function PartyActiveTaskWork({
   const isEngineeringSurvey = def.kind === "engineering-survey";
   const isFieldInspection = def.kind === "field-inspection";
   const isGovernmentReview = def.kind === "government-review";
-  const isValuationCoordination = def.kind === "valuation-coordination";
-  const usesStructuredWorkForm =
-    isGovernmentReview || isValuationCoordination;
+  const usesStructuredWorkForm = isGovernmentReview;
 
   const evaluatorHostRef = useRef<PartyEvaluatorWorkHostRef>({});
   const surveyHostRef = useRef<PartyEngineeringSurveyWorkHostRef>({});
   const governmentHostRef = useRef<GovernmentReviewWorkHostRef>({});
-  const coordinationHostRef = useRef<ValuationCoordinationWorkHostRef>({});
   const fieldInspectionHostRef = useRef<FieldInspectionWorkHostRef>({});
 
   // Form UIs often already toast; avoid double toast for those paths.
@@ -246,9 +238,6 @@ export function PartyActiveTaskWork({
   governmentHostRef.current.onSavingChange = setSaving;
   governmentHostRef.current.onVisitStatusChange = () =>
     setGovernmentFooterTick((n) => n + 1);
-  coordinationHostRef.current.onSubmitted = () =>
-    completePartyTaskSubmit(def.completeMessage, { showToast: false });
-  coordinationHostRef.current.onSavingChange = setSaving;
   fieldInspectionHostRef.current.onSubmitted = () =>
     completePartyTaskSubmit(def.completeMessage, { showToast: false });
   fieldInspectionHostRef.current.onSavingChange = setSaving;
@@ -256,11 +245,6 @@ export function PartyActiveTaskWork({
   const governmentLocked = useMemo(
     () => isGovernmentReviewLocked(task.id, task.status),
     [task.id, task.status],
-  );
-
-  const coordinationLocked = useMemo(
-    () => isValuationCoordinationLocked(task.id),
-    [task.id],
   );
 
   const isFieldInspectionPage = def.kind === "field-inspection";
@@ -320,10 +304,6 @@ export function PartyActiveTaskWork({
 
   async function submitGovernmentReview() {
     await submitStructuredWork(governmentLocked, governmentHostRef);
-  }
-
-  async function submitValuationCoordination() {
-    await submitStructuredWork(coordinationLocked, coordinationHostRef);
   }
 
   async function submitWork() {
@@ -485,7 +465,6 @@ export function PartyActiveTaskWork({
   if (
     task.status === "completed" &&
     !isGovernmentReview &&
-    !isValuationCoordination &&
     !isAppraisal &&
     !isFieldInspection
   ) {
@@ -653,36 +632,12 @@ export function PartyActiveTaskWork({
   }
 
   if (usesStructuredWorkForm) {
-    const locked = isGovernmentReview ? governmentLocked : coordinationLocked;
-    const onSave = isGovernmentReview
-      ? submitGovernmentReview
-      : submitValuationCoordination;
+    const locked = governmentLocked;
     void governmentFooterTick;
-    const governmentSaveLabel = isGovernmentReview
-      ? (governmentHostRef.current.getFooterSaveLabel?.() ?? def.saveLabel)
-      : def.saveLabel;
+    const governmentSaveLabel =
+      governmentHostRef.current.getFooterSaveLabel?.() ?? def.saveLabel;
 
-    if (submitSuccess && !isGovernmentReview && !isValuationCoordination) {
-      return (
-        <TaskWorkChrome
-          layout={layout}
-          title={`${def.workTitle} — ${deedLabel}`}
-          subtitle={`${def.assigneeSubtitle} · ${formatPoDisplay(task.poNumber)} · ${location}`}
-          deedBadge={deedLabel}
-          onClose={exit}
-          onSave={exit}
-          saveLabel="رجوع للقائمة"
-          showFooter
-        >
-          <TaskCompletionSuccess
-            title="تم الإرسال"
-            message={def.completeMessage}
-          />
-        </TaskWorkChrome>
-      );
-    }
-
-    const structuredWork = (
+    return (
       <TaskWorkChrome
         layout={layout}
         title={`${def.workTitle} — ${deedLabel}`}
@@ -690,91 +645,50 @@ export function PartyActiveTaskWork({
         deedBadge={deedLabel}
         saving={saving}
         onClose={exit}
-        onSave={onSave}
-        saveLabel={locked ? "رجوع" : isGovernmentReview ? governmentSaveLabel : def.saveLabel}
+        onSave={submitGovernmentReview}
+        saveLabel={locked ? "رجوع" : governmentSaveLabel}
         showFooter
       >
-        {isGovernmentReview || isValuationCoordination ? (
-          <>
-            <div className="grid min-w-0 gap-4 xl:grid-cols-2">
-              <section className="min-w-0 rounded-xl border border-border bg-surface p-[18px_20px] shadow-card">
-                <div className="mb-3.5 border-b border-border pb-2.5">
-                  <h3 className="m-0 text-[13px] font-bold text-heading">
-                    {isGovernmentReview ? "المراجعة الحكومية" : def.workTitle}
-                  </h3>
-                  {def.workIntro ? (
-                    <p className="m-0 mt-1 text-[11.5px] leading-relaxed text-text-3">
-                      {def.workIntro}
-                    </p>
-                  ) : null}
-                </div>
-                {isGovernmentReview ? (
-                  <GovernmentReviewWorkBody
-                    def={def}
-                    task={task}
-                    hostRef={governmentHostRef}
-                  />
-                ) : (
-                  <ValuationCoordinationWorkBody
-                    def={def}
-                    task={task}
-                    hostRef={coordinationHostRef}
-                  />
-                )}
-                <div>
-                  <PartyTaskFailureRaise
-                    def={def}
-                    task={task}
-                    deedNumber={deedLabel}
-                    onSubmitted={refresh}
-                  />
-                </div>
-              </section>
-
-              <section className="min-w-0 rounded-xl border border-border bg-surface p-[18px_20px] shadow-card">
-                <h3 className="m-0 mb-2.5 border-b border-border pb-2.5 text-[13px] font-bold text-heading">
-                  نموذج الدراسة
-                </h3>
-                <PartyCaseStudyFormTab
-                  def={def}
-                  childTask={task}
-                  forceReadOnly={locked}
-                />
-              </section>
+        <div className="grid min-w-0 gap-4 xl:grid-cols-2">
+          <section className="min-w-0 rounded-xl border border-border bg-surface p-[18px_20px] shadow-card">
+            <div className="mb-3.5 border-b border-border pb-2.5">
+              <h3 className="m-0 text-[13px] font-bold text-heading">
+                المراجعة الحكومية
+              </h3>
+              {def.workIntro ? (
+                <p className="m-0 mt-1 text-[11.5px] leading-relaxed text-text-3">
+                  {def.workIntro}
+                </p>
+              ) : null}
             </div>
-          </>
-        ) : (
-          <>
-            <PartyWorkTabs
-              workTab={workTab}
-              workTitle={def.workTitle}
-              onSelect={setWorkTab}
+            <GovernmentReviewWorkBody
+              def={def}
+              task={task}
+              hostRef={governmentHostRef}
             />
+            <div>
+              <PartyTaskFailureRaise
+                def={def}
+                task={task}
+                deedNumber={deedLabel}
+                onSubmitted={refresh}
+              />
+            </div>
+          </section>
 
-            {workTab === "task" ? (
-              <>
-                <Note tone="info">{def.workIntro}</Note>
-                <ValuationCoordinationWorkBody
-                  def={def}
-                  task={task}
-                  hostRef={coordinationHostRef}
-                />
-                <PartyTaskFailureRaise
-                  def={def}
-                  task={task}
-                  deedNumber={deedLabel}
-                  onSubmitted={refresh}
-                />
-              </>
-            ) : (
-              <PartyCaseStudyFormTab def={def} childTask={task} />
-            )}
-          </>
-        )}
+          <section className="min-w-0 rounded-xl border border-border bg-surface p-[18px_20px] shadow-card">
+            <h3 className="m-0 mb-2.5 border-b border-border pb-2.5 text-[13px] font-bold text-heading">
+              نموذج الدراسة
+            </h3>
+            <PartyCaseStudyFormTab
+              def={def}
+              childTask={task}
+              forceReadOnly={locked}
+            />
+          </section>
+        </div>
       </TaskWorkChrome>
     );
-
-    return structuredWork;
   }
 
   return (

@@ -7,7 +7,6 @@ import { Card, Note, cn } from "@platform/design-system";
 import {
   getEngineeringOffices,
   getFieldInspectors,
-  getValuationCoordinators,
   getValuators,
   type DistributionAssignee,
 } from "../../lib/prototype/distribution-parties";
@@ -82,10 +81,6 @@ export function DistributionPartiesForm({
   const { data: staffResult } = useDistributionAssigneesQuery();
   const staffUsers = staffResult?.users ?? [];
   const loadError = staffResult?.loadError ?? null;
-  const valuationCoordinators = useMemo(
-    () => getValuationCoordinators(staffUsers),
-    [staffUsers],
-  );
   const fieldInspectors = useMemo(
     () => getFieldInspectors(staffUsers),
     [staffUsers],
@@ -111,25 +106,12 @@ export function DistributionPartiesForm({
         onEnabledChange={(checked) =>
           onPatch({
             valuationDepartment: checked,
-            operationsCoordinatorId: checked
-              ? distribution.operationsCoordinatorId
-              : "",
             inspectorId: checked ? distribution.inspectorId : "",
             valuatorId: checked ? distribution.valuatorId : "",
           })
         }
       >
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-          <RegSelect
-            id="dist_val_coordinator"
-            label="منسق عمليات التقييم"
-            required={distribution.valuationDepartment}
-            disabled={readOnly || !distribution.valuationDepartment}
-            options={toOptions(valuationCoordinators)}
-            value={distribution.operationsCoordinatorId}
-            placeholder="اختر المنسق…"
-            onChange={(v) => onPatch({ operationsCoordinatorId: v })}
-          />
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           <RegSelect
             id="dist_val_inspector"
             label="المعاين الميداني"

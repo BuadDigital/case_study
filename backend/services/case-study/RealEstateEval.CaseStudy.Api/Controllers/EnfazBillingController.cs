@@ -104,4 +104,58 @@ public class EnfazBillingController : ControllerBase
         CancellationToken ct) =>
         Ok(await _billing.GetPropertyRevenueAsync(poNumber, propertyId, ct)
             ?? new PropertyEnfazRevenueDto());
+
+    [HttpGet("{poNumber}/followups")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadFinancialData)]
+    public async Task<ActionResult<IReadOnlyList<EnfazFollowupDto>>> ListFollowups(
+        string poNumber,
+        CancellationToken ct) =>
+        Ok(await _billing.ListFollowupsAsync(poNumber, ct));
+
+    [HttpPost("{poNumber}/followups")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
+    public async Task<ActionResult<EnfazFollowupDto>> AddFollowup(
+        string poNumber,
+        [FromBody] AddEnfazFollowupRequest request,
+        CancellationToken ct)
+    {
+        var (dto, error) = await _billing.AddFollowupAsync(
+            poNumber,
+            request,
+            ActorClaims.Id(User),
+            ct);
+        if (error is not null)
+            return this.BadRequestProblem(error);
+        return dto is null ? this.BadRequestProblem("تعذر حفظ المتابعة.") : Ok(dto);
+    }
+
+    [HttpPost("{poNumber}/finance-flag")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
+    public async Task<IActionResult> SetFinanceFlag(
+        string poNumber,
+        [FromBody] SetEnfazFinanceFlagRequest request,
+        CancellationToken ct)
+    {
+        var (ok, error) = await _billing.SetFinanceFlagAsync(
+            poNumber,
+            request,
+            ActorClaims.Id(User),
+            ct);
+        if (!ok)
+            return this.BadRequestProblem(error ?? "تعذر تعيين العلامة.");
+        return NoContent();
+    }
+
+    [HttpDelete("{poNumber}/finance-flag")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
+    public async Task<IActionResult> ClearFinanceFlag(
+        string poNumber,
+        [FromQuery] string? propertyId,
+        CancellationToken ct)
+    {
+        var (ok, error) = await _billing.ClearFinanceFlagAsync(poNumber, propertyId, ct);
+        if (!ok)
+            return this.BadRequestProblem(error ?? "تعذر مسح العلامة.");
+        return NoContent();
+    }
 }

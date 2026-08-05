@@ -2,7 +2,7 @@
 
 **Last updated:** 17 June 2026 (full microservices split + permissions API; prototype role switcher removed)
 
-**Repo:** [BuadDigital/case_srudy](https://github.com/BuadDigital/case_srudy) · branch `main` · pushed `266be9b`  
+**Repo:** [BuadDigital/case_srudy](https://github.com/BuadDigital/case_srudy) · branch `main` · pushed `266be9b` 
 **Audience:** Project manager and developers — single handoff document.
 
 ---
@@ -10,10 +10,10 @@
 ## Executive summary
 
 
-| Layer             | What is real today                                                                                                               | What is prototype-only                                                              |
+| Layer | What is real today | What is prototype-only |
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| **PostgreSQL**    | Users, profiles (HR/Proc/CRM), work orders, properties, contacts, courts catalog, **workflow tasks**, **case study forms**, **info-role matrix**, **party submissions**, **PropertyFailures**, **field dictionary**, **failure-types catalog**, **PO intake drafts**, **delegation letters**, **evaluator recalls**, **property keys**, **survey offices**, **valuation requests**, **financial report config**, **custom assigned screens**, **file attachments** (metadata + blob path), **outbox messages** — schemas split per domain (`identity`, `case_study`, `platform`, …) | Some MFE screens still read **browser cache** for PDF bytes while attachments API is rolling out |
-| **ASP.NET API**   | **YARP gateway** (:5160) → **9 domain services** (Identity :5161 … Attachments :5169); monolith `RealEstateEval.Api` **deleted**; Reporting **BFF** calls upstream via HTTP; **Redis** on hot reads; **RabbitMQ** outbox for `valuation.request.created` | True **physical DB-per-service** (dev still one Postgres DB + shared `ApplicationDbContext`) |
+| **PostgreSQL** | Users, profiles (HR/Proc/CRM), work orders, properties, contacts, courts catalog, **workflow tasks**, **case study forms**, **info-role matrix**, **party submissions**, **PropertyFailures**, **field dictionary**, **failure-types catalog**, **PO intake drafts**, **delegation letters**, **evaluator recalls**, **property keys**, **survey offices**, **valuation requests**, **financial report config**, **custom assigned screens**, **file attachments** (metadata + blob path), **outbox messages** — schemas split per domain (`identity`, `case_study`, `platform`, …) | Some MFE screens still read **browser cache** for PDF bytes while attachments API is rolling out |
+| **ASP.NET API** | **YARP gateway** (:5160) → **9 domain services** (Identity :5161 … Attachments :5169); monolith `RealEstateEval.Api` **deleted**; Reporting **BFF** calls upstream via HTTP; **Redis** on hot reads; **RabbitMQ** outbox for `valuation.request.created` | True **physical DB-per-service** (dev still one Postgres DB + shared `ApplicationDbContext`) |
 | **Next.js shell** | Host + layout; MFEs via `[page]/page.tsx`; **nav + route access from `GET /api/permissions`** (`PageAccessGate`, `hasCapability()`); username login; dashboard/KPI/financial/survey/keys/valuation wired to APIs | **`po-roles.ts`** and some action buttons still use client `role` checks; **الرفع على إنفاذ** assistant deferred |
 
 
@@ -102,11 +102,11 @@ Work **not done** after commit `266be9b`. Grouped by priority for PM and dev han
 Three separate concepts; **do not merge** in UI labels or data models.
 
 
-| Concept                          | Who                                                                      | Uses the system?                                  | Where in product                                                                           |
+| Concept | Who | Uses the system? | Where in product |
 | -------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| **أطراف التنفيذ / أطراف القضية** | Parties in the **court enforcement case** (محكوم له/عليه، مالك، وكيل، …) | **No** — external; recorded as **case data** only | PO/property contacts, documents requested *from* them (see deferred §16)                   |
-| **منفّذو العمل (إسناد داخلي)**   | Ejadah staff/vendors who **do the work** on a transaction                | **Yes**                                           | توزيع المعاملات → child tasks; e.g. **المحكمة → مراجع حكومي**، **المعاينة → معاين ميداني** |
-| **أدوار المستخدمين (صلاحيات)**   | Login accounts — **which screens** each person sees                      | **Yes**                                           | JWT + **`GET /api/permissions`** (`pages`, `capabilities`)                                 |
+| **أطراف التنفيذ / أطراف القضية** | Parties in the **court enforcement case** (محكوم له/عليه، مالك، وكيل، …) | **No** — external; recorded as **case data** only | PO/property contacts, documents requested *from* them (see deferred §16) |
+| **منفّذو العمل (إسناد داخلي)** | Ejadah staff/vendors who **do the work** on a transaction | **Yes** | توزيع المعاملات → child tasks; e.g. **المحكمة → مراجع حكومي**، **المعاينة → معاين ميداني** |
+| **أدوار المستخدمين (صلاحيات)** | Login accounts — **which screens** each person sees | **Yes** | JWT + **`GET /api/permissions`** (`pages`, `capabilities`) |
 
 
 **Removed (8 Jun 2026):** `/workflow-users` page (mislabelled «أطراف التنفيذ»). Internal assignees now come from `distribution-party-accounts.ts` + seeded users — **not** court parties (see deferred §16).
@@ -114,11 +114,11 @@ Three separate concepts; **do not merge** in UI labels or data models.
 **Internal execution mapping (confirmed):**
 
 
-| Work               | Internal role                                                          |
+| Work | Internal role |
 | ------------------ | ---------------------------------------------------------------------- |
-| زيارة المحكمة      | مراجع حكومي (`government-reviewer`)                                    |
-| المعاينة الميدانية | معاين ميداني (`field-inspector`)                                       |
-| التقييم            | مقيم عقاري (`real-estate-appraiser`) — via valuation dept distribution |
+| زيارة المحكمة | مراجع حكومي (`government-reviewer`) |
+| المعاينة الميدانية | معاين ميداني (`field-inspector`) |
+| التقييم | مقيم عقاري (`real-estate-appraiser`) — via valuation dept distribution |
 
 
 ---
@@ -128,36 +128,36 @@ Three separate concepts; **do not merge** in UI labels or data models.
 ```
 property_study/
 ├── apps/
-│   ├── shell/               # Next.js 16 host (@platform/shell) — login, layout, party-task host routes
-│   ├── mfe-case-study/      # @case-study/mfe — PO, active transactions, property detail, party queues
-│   ├── mfe-engineering-office/  # @engineering-office/mfe — الرفع المساحي (map, checklist, submit/reopen)
-│   ├── mfe-evaluator/       # @evaluator/mfe — تقييم العقار
-│   ├── mfe-dashboard/       # @dashboard/mfe — لوحة التحكم (PO stats API + mock VR rows)
-│   ├── mfe-failures/        # @failures/mfe — إدارة التعذرات (API + repository port; localStorage fallback)
-│   ├── mfe-settings/        # @settings/mfe — الإعدادات + جميع حقول النظام
-│   ├── mfe-survey/          # @survey/mfe — mock survey offices
-│   ├── mfe-keys/            # @keys/mfe — mock keys
-│   ├── mfe-financial/       # @financial/mfe — mock financial
-│   ├── mfe-kpi/             # @kpi/mfe — mock KPI
-│   ├── mfe-valuation/       # @valuation/mfe — mock valuation requests list
-│   └── plan/                # Frontend planning notes (FRONTEND.md)
+│ ├── shell/ # Next.js 16 host (@platform/shell) — login, layout, party-task host routes
+│ ├── mfe-case-study/ # @case-study/mfe — PO, active transactions, property detail, party queues
+│ ├── mfe-engineering-office/ # @engineering-office/mfe — الرفع المساحي (map, checklist, submit/reopen)
+│ ├── mfe-evaluator/ # @evaluator/mfe — تقييم العقار
+│ ├── mfe-dashboard/ # @dashboard/mfe — لوحة التحكم (PO stats API + mock VR rows)
+│ ├── mfe-failures/ # @failures/mfe — إدارة التعذرات (API + repository port; localStorage fallback)
+│ ├── mfe-settings/ # @settings/mfe — الإعدادات + جميع حقول النظام
+│ ├── mfe-survey/ # @survey/mfe — mock survey offices
+│ ├── mfe-keys/ # @keys/mfe — mock keys
+│ ├── mfe-financial/ # @financial/mfe — mock financial
+│ ├── mfe-kpi/ # @kpi/mfe — mock KPI
+│ ├── mfe-valuation/ # @valuation/mfe — mock valuation requests list
+│ └── plan/ # Frontend planning notes (FRONTEND.md)
 ├── backend/
-│   ├── gateway/             # YARP API gateway (:5160)
-│   ├── services/            # Identity, Case Study, Operations, Reporting, Financial, Valuation, Failures, Platform, Attachments
-│   ├── shared/              # RealEstateEval.Shared.{Contracts,Web}
-│   ├── RealEstateEval.{Domain,Application,Infrastructure}/
-│   ├── scripts/dev-api.mjs  # npm run dev:api — all services + gateway
-│   └── README.md            # Gateway route table, ports, migrations
+│ ├── gateway/ # YARP API gateway (:5160)
+│ ├── services/ # Identity, Case Study, Operations, Reporting, Financial, Valuation, Failures, Platform, Attachments
+│ ├── shared/ # RealEstateEval.Shared.{Contracts,Web}
+│ ├── RealEstateEval.{Domain,Application,Infrastructure}/
+│ ├── scripts/dev-api.mjs # npm run dev:api — all services + gateway
+│ └── README.md # Gateway route table, ports, migrations
 ├── packages/
-│   ├── app-shared/          # PrototypeContext, registration, party-submission-api cache, work-orders-read
-│   ├── api-client/          # auth, users, work-orders, courts, workflow-tasks, case-study-forms, party-task-submissions, …
-│   ├── auth-client/         # JWT session + AppAuthGate
-│   ├── design-system/       # prototype.css, registration.css, StatusBadge
-│   └── types/               # PageId, RoleId, user/org DTO types, CASE_STUDY_READY_NAV
-├── infra/                   # docker-compose (Postgres + observability stack)
-├── docs/                    # This file + DATABASE_OVERVIEW + PM review + credentials
-├── requirements/            # HTML prototypes (reference)
-└── package.json             # npm workspaces root scripts
+│ ├── app-shared/ # PrototypeContext, registration, party-submission-api cache, work-orders-read
+│ ├── api-client/ # auth, users, work-orders, courts, workflow-tasks, case-study-forms, party-task-submissions, …
+│ ├── auth-client/ # JWT session + AppAuthGate
+│ ├── design-system/ # prototype.css, registration.css, StatusBadge
+│ └── types/ # PageId, RoleId, user/org DTO types, CASE_STUDY_READY_NAV
+├── infra/ # docker-compose (Postgres + observability stack)
+├── docs/ # This file + DATABASE_OVERVIEW + PM review + credentials
+├── requirements/ # HTML prototypes (reference)
+└── package.json # npm workspaces root scripts
 ```
 
 **Frontend F3 (9 Jun 2026):** API-ready flows live in `@case-study/mfe`; shell hosts routes and layout; `npm run dev` / `npm run build` remain one app. Module Federation (F5) deferred until independent deploy is needed.
@@ -212,14 +212,14 @@ property_study/
 | `/property-appraisal/[taskId]` | المقيم العقاري |
 | `/property-inspection/[taskId]` | المعاين الميداني |
 | `/government-review/[taskId]` | المراجع الحكومي |
-| `/valuation-coordination/[taskId]` | منسق التقييم |
+| `` | منسق التقييم |
 
 **Backend — party task submissions API**
 
 - Entity **`PartyTaskSubmissions`** + migration `20260614074003_AddPartyTaskSubmissions`.
 - **`PartyTaskSubmissionsController`** — `GET/PUT /api/party-task-submissions/{taskId}`, `POST …/submit`, `POST …/reopen` (reopen: **engineering-survey** + **property-appraisal** only).
 - **`PartyTaskSubmissionService`** — validates payload per kind; on submit marks workflow task **completed**.
-- Supported kinds: `engineering-survey`, `property-appraisal`, `government-review`, `valuation-coordination`, `field-inspection`.
+- Supported kinds: `engineering-survey`, `property-appraisal`, `government-review`, ``, `field-inspection`.
 - Frontend: `packages/api-client/src/party-task-submissions.ts`; shared cache `packages/app-shared/src/prototype/party-submission-api.ts`.
 
 **All five party work flows off localStorage (primary path = API)**
@@ -229,7 +229,7 @@ property_study/
 | Engineering survey | `@engineering-office/mfe` → `engineering-survey-submission-storage.ts` |
 | Property appraisal | `@evaluator/mfe` → `evaluator-submission-storage.ts` |
 | Government review | `government-review-work-storage.ts` (delegation letters on **API**; verify no localStorage fallback left) |
-| Valuation coordination | `valuation-coordination-work-storage.ts` |
+| Valuation coordination | `` |
 | Field inspection | `field-inspection-submission-storage.ts` (+ local cache fallback) |
 
 **Property detail page (`PoPropertyDetailPage`) — UX**
@@ -381,11 +381,11 @@ property_study/
 
 ```bash
 docker compose -f infra/docker-compose.yml up -d postgres
-npm install            # once, at repo root
-npm run dev:api        # gateway :5160 + 9 domain services (see backend/README.md)
-npm run dev            # Next.js http://localhost:3000 (LAN)
+npm install # once, at repo root
+npm run dev:api # gateway :5160 + 9 domain services (see backend/README.md)
+npm run dev # Next.js http://localhost:3000 (LAN)
 # or: npm run dev:local
-npm run dev:stop       # free ports 3000 + 5160
+npm run dev:stop # free ports 3000 + 5160
 ```
 
 **Postgres (Docker):** `localhost:5432`, database `realestate_eval_dev`, user `postgres`, password `Admin` (see `infra/docker-compose.yml` and `appsettings.Development.json`).
@@ -405,12 +405,12 @@ npm run dev:stop       # free ports 3000 + 5160
 ### Real login (JWT)
 
 
-| Endpoint                        | Description                                      |
+| Endpoint | Description |
 | ------------------------------- | ------------------------------------------------ |
-| `POST /api/auth/login`          | Email + password → JWT                           |
-| `POST /api/auth/login-username` | Username only → JWT (prototype dev login)        |
-| `GET /api/auth/me`              | Current user (`?includePermissions=true` optional) |
-| `GET /api/permissions`          | **Nav pages + capabilities + prototypeRole** for current user |
+| `POST /api/auth/login` | Email + password → JWT |
+| `POST /api/auth/login-username` | Username only → JWT (prototype dev login) |
+| `GET /api/auth/me` | Current user (`?includePermissions=true` optional) |
+| `GET /api/permissions` | **Nav pages + capabilities + prototypeRole** for current user |
 
 
 UI: `apps/shell/src/app/login/page.tsx` → stores session via `@platform/auth-client` → `fetchPermissions` → `PrototypeProvider` loads nav.
@@ -418,10 +418,10 @@ UI: `apps/shell/src/app/login/page.tsx` → stores session via `@platform/auth-c
 ### How access control works today
 
 
-| Layer                         | Purpose                                                                                                                                     |
+| Layer | Purpose |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Identity roles (API JWT)**  | `CDO`, `HrAdmin`, `ProcAdmin`, `CrmAdmin`, `HR`, `PROC`, `CRM`, … — control **API authorization** (e.g. user list scope, controller policies) |
-| **Permissions API (UI nav)**  | `GET /api/permissions` → `pages[]` (sidebar), `capabilities[]` (`hasCapability()`, `isSuperAdmin`), `prototypeRole` (display label in `ROLES`) |
+| **Identity roles (API JWT)** | `CDO`, `HrAdmin`, `ProcAdmin`, `CrmAdmin`, `HR`, `PROC`, `CRM`, … — control **API authorization** (e.g. user list scope, controller policies) |
+| **Permissions API (UI nav)** | `GET /api/permissions` → `pages[]` (sidebar), `capabilities[]` (`hasCapability()`, `isSuperAdmin`), `prototypeRole` (display label in `ROLES`) |
 
 
 **No sidebar role switcher.** Nav and route gate come from the server after login. `ROLES` in `constants.ts` remains for **display names** and legacy helpers; **page list** is API-driven via `rolePages` in `PrototypeContext`.
@@ -429,13 +429,13 @@ UI: `apps/shell/src/app/login/page.tsx` → stores session via `@platform/auth-c
 ### API seed accounts (PostgreSQL)
 
 
-| Email                 | Password    | Identity role | Typical permissions role |
+| Email | Password | Identity role | Typical permissions role |
 | --------------------- | ----------- | ------------- | ------------------------ |
-| `admin@local.dev`     | `Admin123!` | Admin         | general-manager          |
-| `s.salhy@gmail.com`   | `sliman123` | CDO           | cdo                      |
-| `a.alamin@gmail.com`  | `ali123`    | HrAdmin       | hr-admin                 |
-| `a.alqadri@gmail.com` | `ahmad123`  | ProcAdmin     | proc-admin               |
-| `g.abdo@gmail.com`    | `gamal123`  | CrmAdmin      | crm-admin                |
+| `admin@local.dev` | `Admin123!` | Admin | general-manager |
+| `s.salhy@gmail.com` | `sliman123` | CDO | cdo |
+| `a.alamin@gmail.com` | `ali123` | HrAdmin | hr-admin |
+| `a.alqadri@gmail.com` | `ahmad123` | ProcAdmin | proc-admin |
+| `g.abdo@gmail.com` | `gamal123` | CrmAdmin | crm-admin |
 
 
 **Username login:** seeded HR employees use `UserName` (e.g. `salam`, `osama`, `abdullah`) — see `DataSeeder.cs`.
@@ -451,21 +451,21 @@ Seeder: `backend/RealEstateEval.Infrastructure/Data/DataSeeder.cs` (runs on Case
 ### 3.1 Tables
 
 
-| Table                | Contents                                                                                    |
+| Table | Contents |
 | -------------------- | ------------------------------------------------------------------------------------------- |
-| **Identity**         | `Users`, `Roles`, `UserRoles`, `UserClaims`, `RoleClaims`, `UserLogins`, `UserTokens`       |
-| **Users domain**     | `UserProfiles` (+ `HrEmployeeProfiles`, `ProcServiceProviderProfiles`, `CrmClientProfiles`) |
-| **Case study**       | `WorkOrders`, `WorkOrderProperties`, `PropertyContacts`, `CourtCatalogEntries`              |
-| **Workflow**         | `WorkflowTasks` — phases, distribution JSON, obstruction fields, parent/child links         |
-| **Case study forms** | `CaseStudyForms` — specialist + party drafts per task (answers JSON, step, status)          |
-| **Info roles**       | `CaseStudyInfoRolesConfigs` — singleton matrix JSON (parties × 37 questions)                |
-| **Party submissions**| `PartyTaskSubmissions` — per child workflow task: kind, status, payload JSON, return note   |
-| **Failures**         | `PropertyFailures` — تعذر records per PO/property (status workflow, notes, specialist)      |
-| **Platform config**  | `FieldDictionaryConfigs`, `FailureTypesCatalogConfigs`, `FinancialReportConfigs`, `CaseStudyInfoRolesConfigs`, `CustomAssignedScreens` (+ user links) |
-| **Operations**       | `SurveyOffices`, `PropertyKeyRecords`                                                       |
-| **Valuation**        | `ValuationRequests`, `EvaluatorRecallRecords`                                               |
-| **Case study extras**| `PoIntakeDrafts`, `InternalDelegationLetterSets`, `FileAttachments` (blob metadata)         |
-| **Messaging**        | `OutboxMessages`                                                                            |
+| **Identity** | `Users`, `Roles`, `UserRoles`, `UserClaims`, `RoleClaims`, `UserLogins`, `UserTokens` |
+| **Users domain** | `UserProfiles` (+ `HrEmployeeProfiles`, `ProcServiceProviderProfiles`, `CrmClientProfiles`) |
+| **Case study** | `WorkOrders`, `WorkOrderProperties`, `PropertyContacts`, `CourtCatalogEntries` |
+| **Workflow** | `WorkflowTasks` — phases, distribution JSON, obstruction fields, parent/child links |
+| **Case study forms** | `CaseStudyForms` — specialist + party drafts per task (answers JSON, step, status) |
+| **Info roles** | `CaseStudyInfoRolesConfigs` — singleton matrix JSON (parties × 37 questions) |
+| **Party submissions**| `PartyTaskSubmissions` — per child workflow task: kind, status, payload JSON, return note |
+| **Failures** | `PropertyFailures` — تعذر records per PO/property (status workflow, notes, specialist) |
+| **Platform config** | `FieldDictionaryConfigs`, `FailureTypesCatalogConfigs`, `FinancialReportConfigs`, `CaseStudyInfoRolesConfigs`, `CustomAssignedScreens` (+ user links) |
+| **Operations** | `SurveyOffices`, `PropertyKeyRecords` |
+| **Valuation** | `ValuationRequests`, `EvaluatorRecallRecords` |
+| **Case study extras**| `PoIntakeDrafts`, `InternalDelegationLetterSets`, `FileAttachments` (blob metadata) |
+| **Messaging** | `OutboxMessages` |
 
 
 ### 3.2 Work order schema (current model)
@@ -482,37 +482,37 @@ Seeder: `backend/RealEstateEval.Infrastructure/Data/DataSeeder.cs` (runs on Case
 
 `**CaseStudyForms`:** `TaskId`, `IsParty`, form JSON blob (answers, steps, remarks, signatures).
 
-`**PartyTaskSubmissions`:** `WorkflowTaskId` (unique), `Kind`, `Status` (`draft` / `submitted` / `reopened`), `PayloadJson`, `ReturnNote`, `PropertyId`, `PoNumber`, timestamps. Kinds: `engineering-survey`, `property-appraisal`, `government-review`, `valuation-coordination`, `field-inspection`.
+`**PartyTaskSubmissions`:** `WorkflowTaskId` (unique), `Kind`, `Status` (`draft` / `submitted` / `reopened`), `PayloadJson`, `ReturnNote`, `PropertyId`, `PoNumber`, timestamps. Kinds: `engineering-survey`, `property-appraisal`, `government-review`, ``, `field-inspection`.
 
 ### 3.3 Migration history (apply in order)
 
 
-| Migration                                          | Summary                                                                    |
+| Migration | Summary |
 | -------------------------------------------------- | -------------------------------------------------------------------------- |
-| `20260514092140_InitialIdentity`                   | ASP.NET Identity                                                           |
-| `20260518071658_AddUserProfiles`                   | User profiles + HR/Proc/CRM tables                                         |
-| `20260518073656_RenameIdentityTables`              | Table names Users/Roles/…                                                  |
-| `20260519111340_AddCaseStudyWorkOrders`            | PO + properties + contacts + courts                                        |
-| `20260521060600_AddPropertyContactRole`            | Contact `Role` column                                                      |
-| `20260521141637_PoWorkflowRefactor`                | `PromulgationDate`, specialist email, property boundary/restriction fields |
-| `20260521143044_AddExpectedPropertyCount`          | Expected property count on PO                                              |
-| `20260601193436_DropUnusedPropertyBoundaryFields`  | Removed legacy boundary text columns                                       |
-| `20260601193623_DropUnusedAuditFields`             | Removed unused audit columns                                               |
-| `20260607072126_AddWorkflowTasksAndCaseStudyForms` | **Workflow tasks + case study forms**                                      |
-| `20260608071207_MakeAssignmentSpecialistOptional`  | Optional assignment specialist on PO                                       |
-| `20260608095833_SyncPendingModelChanges`           | Model sync                                                                 |
-| `20260608105222_RestoreOptionalAssignmentSpecialist` | Restore optional specialist                                            |
-| `20260609095419_AddCaseStudyInfoRolesConfig`       | **Info-role matrix** (`CaseStudyInfoRolesConfigs`, JSONB)                  |
-| `20260614074003_AddPartyTaskSubmissions`           | **Party work submissions** (`PartyTaskSubmissions`)                          |
-| `20260614121625_AddPropertyFailures`             | **Property failures** (`PropertyFailures`)                                   |
-| `20260617095004_AddCustomAssignedScreens`        | Custom assigned screens + user assignments                                   |
-| `20260617105922_AddPrototypeModuleApis`          | Field dictionary, failure-types catalog configs                                |
-| `20260617121518_AddDelegationLettersAndEvaluatorRecalls` | Delegation letters + evaluator recalls                             |
-| `20260617122641_AddPoIntakeDrafts`               | PO intake draft persistence                                                  |
-| `20260617132416_AddFinancialReportConfig`        | Financial report config                                                      |
-| `20260617141707_AddOutboxMessages`               | Outbox for integration events                                                |
-| `20260617142259_AddAttachmentBlobStorage`        | File attachment blob metadata                                                |
-| `20260617145650_SplitDatabaseSchemas`            | Per-domain PostgreSQL schemas                                                |
+| `20260514092140_InitialIdentity` | ASP.NET Identity |
+| `20260518071658_AddUserProfiles` | User profiles + HR/Proc/CRM tables |
+| `20260518073656_RenameIdentityTables` | Table names Users/Roles/… |
+| `20260519111340_AddCaseStudyWorkOrders` | PO + properties + contacts + courts |
+| `20260521060600_AddPropertyContactRole` | Contact `Role` column |
+| `20260521141637_PoWorkflowRefactor` | `PromulgationDate`, specialist email, property boundary/restriction fields |
+| `20260521143044_AddExpectedPropertyCount` | Expected property count on PO |
+| `20260601193436_DropUnusedPropertyBoundaryFields` | Removed legacy boundary text columns |
+| `20260601193623_DropUnusedAuditFields` | Removed unused audit columns |
+| `20260607072126_AddWorkflowTasksAndCaseStudyForms` | **Workflow tasks + case study forms** |
+| `20260608071207_MakeAssignmentSpecialistOptional` | Optional assignment specialist on PO |
+| `20260608095833_SyncPendingModelChanges` | Model sync |
+| `20260608105222_RestoreOptionalAssignmentSpecialist` | Restore optional specialist |
+| `20260609095419_AddCaseStudyInfoRolesConfig` | **Info-role matrix** (`CaseStudyInfoRolesConfigs`, JSONB) |
+| `20260614074003_AddPartyTaskSubmissions` | **Party work submissions** (`PartyTaskSubmissions`) |
+| `20260614121625_AddPropertyFailures` | **Property failures** (`PropertyFailures`) |
+| `20260617095004_AddCustomAssignedScreens` | Custom assigned screens + user assignments |
+| `20260617105922_AddPrototypeModuleApis` | Field dictionary, failure-types catalog configs |
+| `20260617121518_AddDelegationLettersAndEvaluatorRecalls` | Delegation letters + evaluator recalls |
+| `20260617122641_AddPoIntakeDrafts` | PO intake draft persistence |
+| `20260617132416_AddFinancialReportConfig` | Financial report config |
+| `20260617141707_AddOutboxMessages` | Outbox for integration events |
+| `20260617142259_AddAttachmentBlobStorage` | File attachment blob metadata |
+| `20260617145650_SplitDatabaseSchemas` | Per-domain PostgreSQL schemas |
 
 
 ### 3.4 Not stored in database (or still browser-primary)
@@ -536,31 +536,31 @@ Migrations apply on **Case Study** service startup. Controllers are split by ser
 ### 4.0 Permissions — `PermissionsController` (Identity service)
 
 
-| Method | Route                | Notes                                      |
+| Method | Route | Notes |
 | ------ | -------------------- | ------------------------------------------ |
-| GET    | `/api/permissions`   | `pages`, `capabilities`, `prototypeRole` for current JWT |
+| GET | `/api/permissions` | `pages`, `capabilities`, `prototypeRole` for current JWT |
 
 ### 4.1 Auth — `AuthController` (Identity service)
 
 
-| Method | Route                    |
+| Method | Route |
 | ------ | ------------------------ |
-| POST   | `/api/auth/login`        |
-| POST   | `/api/auth/login-username` |
-| GET    | `/api/auth/me`           |
+| POST | `/api/auth/login` |
+| POST | `/api/auth/login-username` |
+| GET | `/api/auth/me` |
 
 
 ### 4.2 Users — `UsersController` (policy `CanManageUsers` = authenticated)
 
 
-| Method | Route                     | Notes                                                        |
+| Method | Route | Notes |
 | ------ | ------------------------- | ------------------------------------------------------------ |
-| GET    | `/api/users`              | Scoped: CDO all; HrAdmin HR; ProcAdmin Proc; CrmAdmin CRM    |
-| GET    | `/api/users/organization` | CDO org overview                                             |
-| POST   | `/api/users/hr`           | HrAdmin or CDO                                               |
-| POST   | `/api/users/proc`         | ProcAdmin or CDO                                             |
-| POST   | `/api/users/crm`          | CrmAdmin or CDO                                              |
-| DELETE | `/api/users/registered`   | **Development only** — wipe registered users, keep org seeds |
+| GET | `/api/users` | Scoped: CDO all; HrAdmin HR; ProcAdmin Proc; CrmAdmin CRM |
+| GET | `/api/users/organization` | CDO org overview |
+| POST | `/api/users/hr` | HrAdmin or CDO |
+| POST | `/api/users/proc` | ProcAdmin or CDO |
+| POST | `/api/users/crm` | CrmAdmin or CDO |
+| DELETE | `/api/users/registered` | **Development only** — wipe registered users, keep org seeds |
 
 
 **Services:** `UserRegistrationService`, `RegistrationMapper`, `RegistrationValidator` · Password min **6** chars.
@@ -570,20 +570,20 @@ Migrations apply on **Case Study** service startup. Controllers are split by ser
 ### 4.3 Work orders — `WorkOrdersController`
 
 
-| Method | Route                                                        |
+| Method | Route |
 | ------ | ------------------------------------------------------------ |
-| GET    | `/api/work-orders`                                           |
-| GET    | `/api/work-orders/exists?poNumber=`                          |
-| GET    | `/api/work-orders/properties/pending-bourse`                 |
-| GET    | `/api/work-orders/deeds/prior?deedNumber=&excludePo=`        |
-| GET    | `/api/work-orders/{poNumber}`                                |
-| POST   | `/api/work-orders`                                           |
-| PUT    | `/api/work-orders/{poNumber}`                                |
-| DELETE | `/api/work-orders/{poNumber}`                                |
-| POST   | `/api/work-orders/{poNumber}/properties`                     |
-| PUT    | `/api/work-orders/{poNumber}/properties/{propertyId}/bourse` |
-| PUT    | `/api/work-orders/{poNumber}/properties/{propertyId}`        |
-| DELETE | `/api/work-orders/{poNumber}/properties/{propertyId}`        |
+| GET | `/api/work-orders` |
+| GET | `/api/work-orders/exists?poNumber=` |
+| GET | `/api/work-orders/properties/pending-bourse` |
+| GET | `/api/work-orders/deeds/prior?deedNumber=&excludePo=` |
+| GET | `/api/work-orders/{poNumber}` |
+| POST | `/api/work-orders` |
+| PUT | `/api/work-orders/{poNumber}` |
+| DELETE | `/api/work-orders/{poNumber}` |
+| POST | `/api/work-orders/{poNumber}/properties` |
+| PUT | `/api/work-orders/{poNumber}/properties/{propertyId}/bourse` |
+| PUT | `/api/work-orders/{poNumber}/properties/{propertyId}` |
+| DELETE | `/api/work-orders/{poNumber}/properties/{propertyId}` |
 
 
 **Business rules (`WorkOrderValidator`, `BusinessDueDateCalculator`):**
@@ -600,27 +600,27 @@ Migrations apply on **Case Study** service startup. Controllers are split by ser
 ### 4.4 Courts — `CourtsController`
 
 
-| Method | Route         |
+| Method | Route |
 | ------ | ------------- |
-| GET    | `/api/courts` |
-| PUT    | `/api/courts` |
+| GET | `/api/courts` |
+| PUT | `/api/courts` |
 
 
 ### 4.5 Workflow tasks — `WorkflowTasksController`
 
 
-| Method | Route                                                          | Notes                                      |
+| Method | Route | Notes |
 | ------ | -------------------------------------------------------------- | ------------------------------------------ |
-| GET    | `/api/workflow-tasks`                                          | List all tasks                             |
-| GET    | `/api/workflow-tasks/{id}`                                     | Single task                                |
-| POST   | `/api/workflow-tasks/sync`                                     | Rebuild from work orders                   |
-| PATCH  | `/api/workflow-tasks/{id}/distribution`                        | Save distribution draft                    |
-| POST   | `/api/workflow-tasks/{id}/confirm-distribution`                | Confirm + spawn party child tasks          |
-| POST   | `/api/workflow-tasks/{id}/advance-after-enfath`                | After primary data save                    |
-| POST   | `/api/workflow-tasks/{id}/advance-after-bourse`                | After bourse completion                    |
-| PATCH  | `/api/workflow-tasks/{id}`                                     | General patch (phase, status, obstruction) |
-| DELETE | `/api/workflow-tasks/by-po/{poNumber}`                         | Cascade delete for PO                      |
-| DELETE | `/api/workflow-tasks/by-po/{poNumber}/properties/{propertyId}` | Delete property tasks                      |
+| GET | `/api/workflow-tasks` | List all tasks |
+| GET | `/api/workflow-tasks/{id}` | Single task |
+| POST | `/api/workflow-tasks/sync` | Rebuild from work orders |
+| PATCH | `/api/workflow-tasks/{id}/distribution` | Save distribution draft |
+| POST | `/api/workflow-tasks/{id}/confirm-distribution` | Confirm + spawn party child tasks |
+| POST | `/api/workflow-tasks/{id}/advance-after-enfath` | After primary data save |
+| POST | `/api/workflow-tasks/{id}/advance-after-bourse` | After bourse completion |
+| PATCH | `/api/workflow-tasks/{id}` | General patch (phase, status, obstruction) |
+| DELETE | `/api/workflow-tasks/by-po/{poNumber}` | Cascade delete for PO |
+| DELETE | `/api/workflow-tasks/by-po/{poNumber}/properties/{propertyId}` | Delete property tasks |
 
 
 **Service:** `WorkflowTaskService.cs` · **Frontend:** `packages/api-client/src/workflow-tasks.ts`, `tasks-storage.ts`.
@@ -628,12 +628,12 @@ Migrations apply on **Case Study** service startup. Controllers are split by ser
 ### 4.6 Case study forms — `CaseStudyFormsController`
 
 
-| Method | Route                                  | Notes                 |
+| Method | Route | Notes |
 | ------ | -------------------------------------- | --------------------- |
-| GET    | `/api/case-study-forms/{taskId}`       | Specialist form draft |
-| PUT    | `/api/case-study-forms/{taskId}`       | Save specialist draft |
-| GET    | `/api/case-study-forms/party/{taskId}` | Party form draft      |
-| PUT    | `/api/case-study-forms/party/{taskId}` | Save party draft      |
+| GET | `/api/case-study-forms/{taskId}` | Specialist form draft |
+| PUT | `/api/case-study-forms/{taskId}` | Save specialist draft |
+| GET | `/api/case-study-forms/party/{taskId}` | Party form draft |
+| PUT | `/api/case-study-forms/party/{taskId}` | Save party draft |
 
 
 **Service:** `CaseStudyFormService.cs` · **Frontend:** `packages/api-client/src/case-study-forms.ts`, `case-study-form-storage.ts` (MFE).
@@ -641,24 +641,24 @@ Migrations apply on **Case Study** service startup. Controllers are split by ser
 ### 4.7 Case study info roles — `CaseStudyInfoRolesController`
 
 
-| Method | Route                          | Notes                                      |
+| Method | Route | Notes |
 | ------ | ------------------------------ | ------------------------------------------ |
-| GET    | `/api/case-study-info-roles`   | Singleton matrix (parties × questions)     |
-| PUT    | `/api/case-study-info-roles`   | Save matrix + notes                        |
+| GET | `/api/case-study-info-roles` | Singleton matrix (parties × questions) |
+| PUT | `/api/case-study-info-roles` | Save matrix + notes |
 
 
-**Storage:** `CaseStudyInfoRolesConfigs` table (`MatrixJson`, `NotesJson` JSONB).  
+**Storage:** `CaseStudyInfoRolesConfigs` table (`MatrixJson`, `NotesJson` JSONB). 
 **Frontend:** `packages/api-client/src/case-study-info-roles.ts`, `apps/mfe-settings/src/lib/prototype/case-study-info-roles-storage.ts`.
 
 ### 4.8 Party task submissions — `PartyTaskSubmissionsController`
 
 
-| Method | Route                                           | Notes                          |
+| Method | Route | Notes |
 | ------ | ----------------------------------------------- | ------------------------------ |
-| GET    | `/api/party-task-submissions/{taskId}`          | Load submission for child task |
-| PUT    | `/api/party-task-submissions/{taskId}`          | Save draft payload             |
-| POST   | `/api/party-task-submissions/{taskId}/submit`   | Validate + submit; completes workflow task |
-| POST   | `/api/party-task-submissions/{taskId}/reopen`   | Engineering + appraiser only   |
+| GET | `/api/party-task-submissions/{taskId}` | Load submission for child task |
+| PUT | `/api/party-task-submissions/{taskId}` | Save draft payload |
+| POST | `/api/party-task-submissions/{taskId}/submit` | Validate + submit; completes workflow task |
+| POST | `/api/party-task-submissions/{taskId}/reopen` | Engineering + appraiser only |
 
 
 **Service:** `PartyTaskSubmissionService.cs` · **Frontend:** `packages/api-client/src/party-task-submissions.ts`, `packages/app-shared/src/prototype/party-submission-api.ts`, per-MFE storage modules.
@@ -674,22 +674,22 @@ Migrations apply on **Case Study** service startup. Controllers are split by ser
 ### 5.1 Top-level routes
 
 
-| URL                                    | Screen                        | Data source                                  |
+| URL | Screen | Data source |
 | -------------------------------------- | ----------------------------- | -------------------------------------------- |
-| `/login`                               | Login                         | API JWT                                      |
-| `/welcome`                             | Redirect                      | `next.config` → `/dashboard`                 |
-| `/dashboard`                           | Dashboard                     | PO + property stats API; team table mock     |
-| `/[page]`                              | Dynamic pages                 | See table below                              |
-| `/po`                                  | PO list                       | API                                          |
-| `/po/intake`                           | PO header intake              | API                                          |
-| `/po/{poNumber}/edit`                  | PO header edit                | API                                          |
-| `/po/{poNumber}/property`              | Properties under PO           | API (`PoPropertiesPage`)                     |
-| `/po/{poNumber}/property/new`          | Add property                  | API                                          |
-| `/po/{poNumber}/property/{id}`         | Property detail               | API                                          |
-| `/po/{poNumber}/property/{id}/edit`    | Edit property                 | API                                          |
-| `/po/{poNumber}/property/{id}/failure` | Report failure                | API + localStorage fallback                  |
-| `/my-tasks/{taskId}`                   | Redirect                      | `next.config` → `/active-primary-data?task=` |
-| `/case-study/{taskId}`                 | Case study workspace (أخصائي) | PO API + **API tasks** + **API form**        |
+| `/login` | Login | API JWT |
+| `/welcome` | Redirect | `next.config` → `/dashboard` |
+| `/dashboard` | Dashboard | PO + property stats API; team table mock |
+| `/[page]` | Dynamic pages | See table below |
+| `/po` | PO list | API |
+| `/po/intake` | PO header intake | API |
+| `/po/{poNumber}/edit` | PO header edit | API |
+| `/po/{poNumber}/property` | Properties under PO | API (`PoPropertiesPage`) |
+| `/po/{poNumber}/property/new` | Add property | API |
+| `/po/{poNumber}/property/{id}` | Property detail | API |
+| `/po/{poNumber}/property/{id}/edit` | Edit property | API |
+| `/po/{poNumber}/property/{id}/failure` | Report failure | API + localStorage fallback |
+| `/my-tasks/{taskId}` | Redirect | `next.config` → `/active-primary-data?task=` |
+| `/case-study/{taskId}` | Case study workspace (أخصائي) | PO API + **API tasks** + **API form** |
 
 
 **Redirects:** `/properties` → `/po`; `/my-tasks` → `/active-primary-data`; `/assignment` → `/dashboard`.
@@ -697,20 +697,20 @@ Migrations apply on **Case Study** service startup. Controllers are split by ser
 ### 5.2 Dynamic pages (`apps/shell/src/app/(app)/[page]/page.tsx`)
 
 
-| `PageId`                                                                                                    | Component                | API                         | Nav note                            |
+| `PageId` | Component | API | Nav note |
 | ----------------------------------------------------------------------------------------------------------- | ------------------------ | --------------------------- | ----------------------------------- |
-| `dashboard`                                                                                                 | `DashboardView`          | Partial                     | —                                   |
-| `active-primary-data`                                                                                       | `MyTasksView` (**MFE**)  | PO + **workflow tasks** API | المعاملات النشطة                    |
-| `bourse-inquiry`                                                                                            | `BourseInquiryView` (**MFE**) | PO + tasks API         | المعاملات النشطة                    |
-| `active-distribution`                                                                                       | `ActiveDistributionView` (**MFE**) | PO + tasks API    | المعاملات النشطة                    |
-| `active-case-study`                                                                                         | `ActiveCaseStudyView`    | PO + tasks API              | المعاملات النشطة                    |
-| `case-study-info-roles`                                                                                     | `CaseStudyInfoRolesView` | **API**                     | جميع حقول النظام                    |
-| `property-inspection`, `government-review`, `valuation-coordination`, `property-appraisal`, `active-survey` | `PartyActiveTaskView`    | PO + tasks + form API       | المعاملات النشطة                    |
-| `failures`                                                                                                  | `FailuresView`           | **API** (migrating)         | Live page                           |
-| `users`                                                                                                     | `UsersView`              | API                         | الإعدادات                           |
-| `courts`                                                                                                    | `CourtsView`             | API                         | جميع حقول النظام (placeholder flag) |
-| `system-tools`                                                                                              | `SystemToolsView`        | Catalog only                | جميع حقول النظام                    |
-| `survey`, `keys`, `valuation-requests`, `field-form`, `financial`, `kpi`                        | Various `*View`          | **Mocks**                   | Red placeholder in nav              |
+| `dashboard` | `DashboardView` | Partial | — |
+| `active-primary-data` | `MyTasksView` (**MFE**) | PO + **workflow tasks** API | المعاملات النشطة |
+| `bourse-inquiry` | `BourseInquiryView` (**MFE**) | PO + tasks API | المعاملات النشطة |
+| `active-distribution` | `ActiveDistributionView` (**MFE**) | PO + tasks API | المعاملات النشطة |
+| `active-case-study` | `ActiveCaseStudyView` | PO + tasks API | المعاملات النشطة |
+| `case-study-info-roles` | `CaseStudyInfoRolesView` | **API** | جميع حقول النظام |
+| `property-inspection`, `government-review`, ``, `property-appraisal`, `active-survey` | `PartyActiveTaskView` | PO + tasks + form API | المعاملات النشطة |
+| `failures` | `FailuresView` | **API** (migrating) | Live page |
+| `users` | `UsersView` | API | الإعدادات |
+| `courts` | `CourtsView` | API | جميع حقول النظام (placeholder flag) |
+| `system-tools` | `SystemToolsView` | Catalog only | جميع حقول النظام |
+| `survey`, `keys`, `valuation-requests`, `field-form`, `financial`, `kpi` | Various `*View` | **Mocks** | Red placeholder in nav |
 
 
 ### 5.3 Sidebar — المعاملات النشطة
@@ -718,13 +718,13 @@ Migrations apply on **Case Study** service startup. Controllers are split by ser
 Under **أوامر العمل (PO)** (`@platform/app-shared/prototype/active-transactions`):
 
 
-| Item                                                                              | Route                  | Status                                     |
+| Item | Route | Status |
 | --------------------------------------------------------------------------------- | ---------------------- | ------------------------------------------ |
-| البيانات الأولية                                                                  | `/active-primary-data` | Done                                       |
-| استعلام بورصة                                                                     | `/bourse-inquiry`      | Done (+ حالة الصك / تعذر flow)             |
-| توزيع المعاملات                                                                   | `/active-distribution` | Done                                       |
-| دراسة حالة العقارات                                                               | `/active-case-study`   | Done (queue; opens `/case-study/{taskId}`) |
-| معاينة العقار / المراجعة الحكومية / استلام التقييم / تقييم العقار / الرفع المساحي | Party `PageId`s        | Done (queue + work panel; see section 8.5) |
+| البيانات الأولية | `/active-primary-data` | Done |
+| استعلام بورصة | `/bourse-inquiry` | Done (+ حالة الصك / تعذر flow) |
+| توزيع المعاملات | `/active-distribution` | Done |
+| دراسة حالة العقارات | `/active-case-study` | Done (queue; opens `/case-study/{taskId}`) |
+| معاينة العقار / المراجعة الحكومية / تقييم العقار / الرفع المساحي | Party `PageId`s | Done (queue + work panel; see section 8.5) |
 
 
 **Badges:** `use-active-transaction-nav-badges.ts` (primary open, bourse pending, distribution open, case-study open).
@@ -734,11 +734,11 @@ Under **أوامر العمل (PO)** (`@platform/app-shared/prototype/active-tra
 Pinned at bottom of sidebar (`AppShell` → `sb-nav-footer`):
 
 
-| Item                     | Route                    | Access                                            |
+| Item | Route | Access |
 | ------------------------ | ------------------------ | ------------------------------------------------- |
-| ادوات النظام             | `/system-tools`          | **All prototype roles**                           |
-| علاقة المستخدم بالمعلومة | `/case-study-info-roles` | **All prototype roles**                           |
-| المحاكم و الدوائر        | `/courts`                | **All prototype roles** (nav placeholder styling) |
+| ادوات النظام | `/system-tools` | **All prototype roles** |
+| علاقة المستخدم بالمعلومة | `/case-study-info-roles` | **All prototype roles** |
+| المحاكم و الدوائر | `/courts` | **All prototype roles** (nav placeholder styling) |
 
 
 Config: `system-fields-nav.ts` · `prototype-role-access.ts` appends `SYSTEM_FIELDS_PAGE_IDS` to every role.
@@ -746,7 +746,7 @@ Config: `system-fields-nav.ts` · `prototype-role-access.ts` appends `SYSTEM_FIE
 ### 5.3.2 Sidebar — الإعدادات (footer)
 
 
-| Item             | Route    | Access   |
+| Item | Route | Access |
 | ---------------- | -------- | -------- |
 | إدارة المستخدمين | `/users` | Per role |
 
@@ -758,13 +758,13 @@ Config: `settings-nav.ts` (system tools, courts, and info-roles **moved** to ج�
 ### 5.4 PO permissions (`po-roles.ts`)
 
 
-| Action                                               | Prototype role       |
+| Action | Prototype role |
 | ---------------------------------------------------- | -------------------- |
-| استلام PO جديد                                       | `section-supervisor` |
+| استلام PO جديد | `section-supervisor` |
 | Edit/delete PO header, courts admin, delete property | `section-supervisor` |
-| Add/edit property                                    | `case-specialist`    |
-| PO view-only (no specialist edit path)               | `general-manager`    |
-| Eye button on PO list                                | **Removed** (14 Jun 2026) — row click / PO link open detail |
+| Add/edit property | `case-specialist` |
+| PO view-only (no specialist edit path) | `general-manager` |
+| Eye button on PO list | **Removed** (14 Jun 2026) — row click / PO link open detail |
 
 
 ---
@@ -774,11 +774,11 @@ Config: `settings-nav.ts` (system tools, courts, and info-roles **moved** to ج�
 ### Frontend by prototype role
 
 
-| Role                                    | UI                                                         |
+| Role | UI |
 | --------------------------------------- | ---------------------------------------------------------- |
-| `cdo`                                   | `UsersOrganizationView` — departments + admins (read-only) |
-| `hr-admin` / `proc-admin` / `crm-admin` | Department list + `RegisterUserFlow`                       |
-| Others with `users` page                | Staff list (API scoped or full per role)                   |
+| `cdo` | `UsersOrganizationView` — departments + admins (read-only) |
+| `hr-admin` / `proc-admin` / `crm-admin` | Department list + `RegisterUserFlow` |
+| Others with `users` page | Staff list (API scoped or full per role) |
 
 
 **Registration:** `HrRegistrationFlow`, `ProcRegistrationFlow`, `CrmRegistrationFlow` via `RegisterUserFlow.tsx`.
@@ -834,8 +834,8 @@ Config: `settings-nav.ts` (system tools, courts, and info-roles **moved** to ج�
 - Queue from `GET /api/work-orders/properties/pending-bourse` (includes **تاريخ الصك** column).
 - Properties with open failure (except `returned`) are **hidden** from queue.
 - **حالة الصك** in `PoPropertyBourseForm` (`showDeedVitalityFlow`):
-  - **الصك فعال** → complete bourse fields → `completePropertyBourse` → advance task.
-  - **الصك غير فعال** → **متعذر** panel + required **سبب التعذر** → `submitBourseObstruction` → إدارة التعذرات (supervisor review).
+ - **الصك فعال** → complete bourse fields → `completePropertyBourse` → advance task.
+ - **الصك غير فعال** → **متعذر** panel + required **سبب التعذر** → `submitBourseObstruction` → إدارة التعذرات (supervisor review).
 
 ### توزيع المعاملات — `ActiveDistributionView.tsx`
 
@@ -845,16 +845,16 @@ Config: `settings-nav.ts` (system tools, courts, and info-roles **moved** to ج�
 ### Workflow tasks — `tasks-storage.ts` (**PostgreSQL via API**)
 
 
-| Phase                  | Meaning                                 |
+| Phase | Meaning |
 | ---------------------- | --------------------------------------- |
-| `enfath`               | البيانات الأولية                        |
-| `bourse`               | Awaiting/filling bourse                 |
-| `distribution`         | توزيع المعاملات                         |
-| `case-study`           | دراسة حالة العقار (after تأكيد التوزيع) |
-| `done` / `obstruction` | Terminal                                |
+| `enfath` | البيانات الأولية |
+| `bourse` | Awaiting/filling bourse |
+| `distribution` | توزيع المعاملات |
+| `case-study` | دراسة حالة العقار (after تأكيد التوزيع) |
+| `done` / `obstruction` | Terminal |
 
 
-**Task kinds:** `case-study-property` (parent per property) + child kinds after distribution (`field-inspection`, `government-review`, `property-appraisal`, `engineering-survey`, `valuation-coordination`) with `parentTaskId`.
+**Task kinds:** `case-study-property` (parent per property) + child kinds after distribution (`field-inspection`, `government-review`, `property-appraisal`, `engineering-survey`, ``) with `parentTaskId`.
 
 **Persistence:** `WorkflowTasks` table · synced from PO records via `POST /api/workflow-tasks/sync`. Confirming distribution moves linked tasks to `phase: case-study` and creates child party tasks.
 
@@ -863,13 +863,13 @@ Config: `settings-nav.ts` (system tools, courts, and info-roles **moved** to ج�
 ### Bourse obstruction — `bourse-obstruction.ts` + `@failures/mfe`
 
 
-| Step                                 | Behaviour                                                                                 |
+| Step | Behaviour |
 | ------------------------------------ | ----------------------------------------------------------------------------------------- |
-| Specialist selects **الصك غير فعال** | Bourse fields hidden; **متعذر** + reason required                                         |
-| Submit                               | `reportBourseObstructionToSupervisor` → failure record + `submitFailureForReview`         |
-| Property                             | `deedStatus` → **قيد التحقق**                                                             |
-| Task                                 | Escalated to supervisor (`obstruction` phase)                                             |
-| Supervisor                           | **إدارة التعذرات** — approve (موقوف) or return (فعال, property may re-enter bourse queue) |
+| Specialist selects **الصك غير فعال** | Bourse fields hidden; **متعذر** + reason required |
+| Submit | `reportBourseObstructionToSupervisor` → failure record + `submitFailureForReview` |
+| Property | `deedStatus` → **قيد التحقق** |
+| Task | Escalated to supervisor (`obstruction` phase) |
+| Supervisor | **إدارة التعذرات** — approve (موقوف) or return (فعال, property may re-enter bourse queue) |
 
 
 **Failures:** `PropertyFailures` + `/api/failures` primary; **remaining:** remove legacy `evalFailureRecords` reads in `@failures/mfe` and property detail.
@@ -897,15 +897,15 @@ Partial property updates use `propertyToEnfathDto` when bourse not completed —
 #### نموذج الدراسة — `CaseStudyForm.tsx`
 
 
-| Area        | Detail                                                                                                       |
+| Area | Detail |
 | ----------- | ------------------------------------------------------------------------------------------------------------ |
-| Steps       | 5 (بيانات التعميد removed; PO data still seeded)                                                             |
-| Questions   | 37 across deed / survey / comp / occ / extra (`case-study-form-data.ts`)                                     |
-| Draft       | **API** `CaseStudyForms` table (`case-study-form-storage.ts`)                                                |
-| Progress UI | Donut + `2/37` beside step tabs (full-width bottom border on row)                                            |
-| Step 5      | Extra questions + **الاعتماد والتوقيع** (system approver ثابت) + **التقرير النهائي** (HTML/PDF from answers) |
-| Report      | `case-study-report-model.ts`, `case-study-report-html.ts`, `CaseStudyReportDocument.tsx`                     |
-| Assets      | `public/case-study/emad-signature.png`, `ejadah-stamp.png`                                                   |
+| Steps | 5 (بيانات التعميد removed; PO data still seeded) |
+| Questions | 37 across deed / survey / comp / occ / extra (`case-study-form-data.ts`) |
+| Draft | **API** `CaseStudyForms` table (`case-study-form-storage.ts`) |
+| Progress UI | Donut + `2/37` beside step tabs (full-width bottom border on row) |
+| Step 5 | Extra questions + **الاعتماد والتوقيع** (system approver ثابت) + **التقرير النهائي** (HTML/PDF from answers) |
+| Report | `case-study-report-model.ts`, `case-study-report-html.ts`, `CaseStudyReportDocument.tsx` |
+| Assets | `public/case-study/emad-signature.png`, `ejadah-stamp.png` |
 
 
 **Business rules (report):** مزود الخدمة = شركة إجادة المهنية للتقييم · معتمد التقرير = عماد رشيد الرشيد (not PO assignee) · أخصائي الإسناد from PO in meta only.
@@ -915,14 +915,14 @@ Partial property updates use `propertyToEnfathDto` when bourse not completed —
 **Purpose:** Admin matrix — for each of 37 questions, assign each **party** a role: أصيل · ثانوي · معتمد · لا دور.
 
 
-| Party (`case-study-info-roles-data.ts`) | Prototype `RoleId`      |
+| Party (`case-study-info-roles-data.ts`) | Prototype `RoleId` |
 | --------------------------------------- | ----------------------- |
-| أخصائي دراسة الحالة                     | `case-specialist`       |
-| المعاين العقاري                         | `field-inspector`       |
-| المراجع الحكومي                         | `government-reviewer`   |
-| المقيم العقاري                          | `real-estate-appraiser` |
-| المكتب الهندسي                          | `engineering-office`    |
-| مشرف دراسة الحالة                       | `section-supervisor`    |
+| أخصائي دراسة الحالة | `case-specialist` |
+| المعاين العقاري | `field-inspector` |
+| المراجع الحكومي | `government-reviewer` |
+| المقيم العقاري | `real-estate-appraiser` |
+| المكتب الهندسي | `engineering-office` |
+| مشرف دراسة الحالة | `section-supervisor` |
 
 
 **Storage:** `CaseStudyInfoRolesConfigs` table + `/api/case-study-info-roles` (`case-study-info-roles-storage.ts` → API).
@@ -930,18 +930,18 @@ Partial property updates use `propertyToEnfathDto` when bourse not completed —
 **Runtime rules (implemented):**
 
 
-| Actor                                       | Form behaviour                                                                                                            |
+| Actor | Form behaviour |
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| **أخصائي** (`CaseStudyForm` default)        | All 37 questions **editable**; full report on step 5                                                                      |
+| **أخصائي** (`CaseStudyForm` default) | All 37 questions **editable**; full report on step 5 |
 | **Distributed parties** (`variant="party"`) | All 37 questions **visible**; editable only where matrix assigns أصيل/ثانوي/معتمد; else **عرض فقط** (disabled checkboxes) |
-| Party answers                               | **API** party form per `childTaskId`; display merges parent specialist draft for read-only context                        |
+| Party answers | **API** party form per `childTaskId`; display merges parent specialist draft for read-only context |
 
 
 #### Party tasks — نموذج الدراسة tab
 
 `PartyActiveTaskWork.tsx`: tabs **{workTitle}** + **نموذج الدراسة** → `PartyCaseStudyFormTab.tsx` embeds `CaseStudyForm` linked to parent `case-study-property` task.
 
-Applies to: معاينة العقار · المراجعة الحكومية · استلام التقييم · تقييم العقار · الرفع المساحي (after تأكيد التوزيع creates child tasks).
+Applies to: معاينة العقار · المراجعة الحكومية · تقييم العقار · الرفع المساحي (after تأكيد التوزيع creates child tasks).
 
 #### Property detail — `/po/[poNumber]/property/[propertyId]`
 
@@ -964,12 +964,12 @@ Each party queue row opens a dedicated full-page task (mirrors engineering patte
 **Purpose:** Living **field/screen catalog** for PO module (PM/BA/dev alignment).
 
 
-| File                         | Role                                 |
+| File | Role |
 | ---------------------------- | ------------------------------------ |
-| `SystemToolsView.tsx`        | Filterable expandable cards          |
+| `SystemToolsView.tsx` | Filterable expandable cards |
 | `system-tools-po-catalog.ts` | Screen/field definitions (PO module) |
-| `system-tools-view-model.ts` | Card builder + filters               |
-| `PO_ROLE_RULES`              | Documented permission matrix         |
+| `system-tools-view-model.ts` | Card builder + filters |
+| `PO_ROLE_RULES` | Documented permission matrix |
 
 
 **No API · no DB.** Nav item lives under **جميع حقول النظام** dropdown (see section 5.3.1).
@@ -979,25 +979,25 @@ Each party queue row opens a dedicated full-page task (mirrors engineering patte
 ## 10. Browser storage (prototype state)
 
 
-| Key / module                         | Purpose                                                   |
+| Key / module | Purpose |
 | ------------------------------------ | --------------------------------------------------------- |
-| `assignment-doc-attachments`         | Image/PDF preview cache per property (migrating to `/api/attachments`) |
+| `assignment-doc-attachments` | Image/PDF preview cache per property (migrating to `/api/attachments`) |
 | `evalFailureRecords` (`FAILURES_STORAGE_KEY`) | Legacy تعذر cache — **`/api/failures`** is primary |
-| JWT session (`auth-client`)          | API auth                                                  |
-| `capabilities` (in-memory)           | From `GET /api/permissions` via `runtime-access.ts`       |
+| JWT session (`auth-client`) | API auth |
+| `capabilities` (in-memory) | From `GET /api/permissions` via `runtime-access.ts` |
 
 
 **Moved to API (no longer localStorage-primary):**
 
 
-| Former key                             | Now                                              |
+| Former key | Now |
 | -------------------------------------- | ------------------------------------------------ |
-| `evalWorkflowTasks`                    | `WorkflowTasks` table + `/api/workflow-tasks`    |
-| `evalCaseStudyForm:{taskId}`           | `CaseStudyForms` table + `/api/case-study-forms` |
-| `evalCaseStudyFormParty:{childTaskId}` | `/api/case-study-forms/party/{taskId}`           |
-| `evalCaseStudyInfoRoles`               | `CaseStudyInfoRolesConfigs` + `/api/case-study-info-roles` |
-| `evalPrototypeRole`                    | **Removed** — `GET /api/permissions` + `PageAccessGate` |
-| `evalPoIntakeDraft`                    | `PoIntakeDrafts` + `/api/po-intake-draft`        |
+| `evalWorkflowTasks` | `WorkflowTasks` table + `/api/workflow-tasks` |
+| `evalCaseStudyForm:{taskId}` | `CaseStudyForms` table + `/api/case-study-forms` |
+| `evalCaseStudyFormParty:{childTaskId}` | `/api/case-study-forms/party/{taskId}` |
+| `evalCaseStudyInfoRoles` | `CaseStudyInfoRolesConfigs` + `/api/case-study-info-roles` |
+| `evalPrototypeRole` | **Removed** — `GET /api/permissions` + `PageAccessGate` |
+| `evalPoIntakeDraft` | `PoIntakeDrafts` + `/api/po-intake-draft` |
 | Field dictionary / failure types / financial / survey / keys / VR list | respective `/api/*` module configs |
 
 
@@ -1006,17 +1006,17 @@ Each party queue row opens a dedicated full-page task (mirrors engineering patte
 ## 11. Monorepo packages
 
 
-| Package                   | Exports                                                                                      |
+| Package | Exports |
 | ------------------------- | -------------------------------------------------------------------------------------------- |
-| `@platform/shell`         | Next.js host; exports `./prototype-auth` only                                                |
-| `@case-study/mfe`         | PO + active-transaction views, queries, prototype PO/task libs, UI widgets                   |
-| `@failures/mfe`           | إدارة التعذرات — repository port, `failures-api.ts`, `FailureReportForm`                 |
-| `@settings/mfe`           | users, courts, info-roles, system-tools views + storage                                    |
-| `@platform/app-shared`    | `PrototypeContext`, registration, nav/constants, `prototypeKeys`, `active-transactions`    |
-| `@platform/api-client`    | `auth`, `users`, `permissions`, `work-orders`, `courts`, `workflow-tasks`, `case-study-forms`, `party-task-submissions`, `failures`, `reporting`, `financial`, `prototype-modules`, `custom-assigned-screens`, … |
-| `@platform/auth-client`   | Session + `AppAuthGate`                                                                      |
-| `@platform/design-system` | CSS + `StatusBadge`                                                                          |
-| `@platform/types`         | `PageId`, `RoleId`, `CASE_STUDY_READY_NAV`, users, organization types                        |
+| `@platform/shell` | Next.js host; exports `./prototype-auth` only |
+| `@case-study/mfe` | PO + active-transaction views, queries, prototype PO/task libs, UI widgets |
+| `@failures/mfe` | إدارة التعذرات — repository port, `failures-api.ts`, `FailureReportForm` |
+| `@settings/mfe` | users, courts, info-roles, system-tools views + storage |
+| `@platform/app-shared` | `PrototypeContext`, registration, nav/constants, `prototypeKeys`, `active-transactions` |
+| `@platform/api-client` | `auth`, `users`, `permissions`, `work-orders`, `courts`, `workflow-tasks`, `case-study-forms`, `party-task-submissions`, `failures`, `reporting`, `financial`, `prototype-modules`, `custom-assigned-screens`, … |
+| `@platform/auth-client` | Session + `AppAuthGate` |
+| `@platform/design-system` | CSS + `StatusBadge` |
+| `@platform/types` | `PageId`, `RoleId`, `CASE_STUDY_READY_NAV`, users, organization types |
 
 
 ---
@@ -1024,26 +1024,26 @@ Each party queue row opens a dedicated full-page task (mirrors engineering patte
 ## 12. Screen status matrix (PM)
 
 
-| Screen                                                 | Backend     | Frontend data                        | Nav styling                         |
+| Screen | Backend | Frontend data | Nav styling |
 | ------------------------------------------------------ | ----------- | ------------------------------------ | ----------------------------------- |
-| Login / JWT                                            | Yes         | API                                  | —                                   |
-| Dashboard                                              | Yes         | Reporting BFF API                    | Normal                              |
-| PO list/detail/properties                              | Yes         | API                                  | Normal                              |
-| PO intake                                              | Yes         | API (+ optional draft)               | Normal                              |
-| البيانات الأولية                                       | Yes         | API (PO + tasks)                     | Normal + badge                      |
-| استعلام بورصة                                          | Yes         | API (+ obstruction → local failures) | Normal + badge                      |
-| توزيع المعاملات                                        | Yes         | API (PO + tasks)                     | Normal + badge                      |
-| دراسة حالة العقارات                                    | Yes         | API (PO + tasks + forms)             | Normal + badge                      |
-| Case study workspace + form + report                   | Yes (forms) | API                                  | `/case-study/[taskId]`              |
-| علاقة المستخدم بالمعلومة                               | Yes         | API                                  | جميع حقول النظام                    |
-| Party queues + نموذج الدراسة tab                       | Yes         | API                                  | المعاملات النشطة                    |
-| Party work submit (5 flows) + property detail parties  | Yes         | API (`PartyTaskSubmissions`)         | Full-page routes + PO property detail |
-| Users / org                                            | Yes         | API                                  | الإعدادات                           |
-| Courts                                                 | Yes         | API                                  | جميع حقول النظام (placeholder flag) |
-| Failures (إدارة التعذرات)                              | Yes         | API (+ legacy cache fallback)        | Normal                              |
-| Survey, keys, VR list, financial, KPI                  | Yes         | API                                  | Normal / placeholder flags          |
-| System tools                                           | No          | Static catalog                       | جميع حقول النظام                    |
-| Messages                                               | No          | Not implemented                      | —                                   |
+| Login / JWT | Yes | API | — |
+| Dashboard | Yes | Reporting BFF API | Normal |
+| PO list/detail/properties | Yes | API | Normal |
+| PO intake | Yes | API (+ optional draft) | Normal |
+| البيانات الأولية | Yes | API (PO + tasks) | Normal + badge |
+| استعلام بورصة | Yes | API (+ obstruction → local failures) | Normal + badge |
+| توزيع المعاملات | Yes | API (PO + tasks) | Normal + badge |
+| دراسة حالة العقارات | Yes | API (PO + tasks + forms) | Normal + badge |
+| Case study workspace + form + report | Yes (forms) | API | `/case-study/[taskId]` |
+| علاقة المستخدم بالمعلومة | Yes | API | جميع حقول النظام |
+| Party queues + نموذج الدراسة tab | Yes | API | المعاملات النشطة |
+| Party work submit (5 flows) + property detail parties | Yes | API (`PartyTaskSubmissions`) | Full-page routes + PO property detail |
+| Users / org | Yes | API | الإعدادات |
+| Courts | Yes | API | جميع حقول النظام (placeholder flag) |
+| Failures (إدارة التعذرات) | Yes | API (+ legacy cache fallback) | Normal |
+| Survey, keys, VR list, financial, KPI | Yes | API | Normal / placeholder flags |
+| System tools | No | Static catalog | جميع حقول النظام |
+| Messages | No | Not implemented | — |
 
 
 ### 12.1 Backend ↔ Frontend alignment (how many backends?)
@@ -1069,22 +1069,22 @@ Each party queue row opens a dedicated full-page task (mirrors engineering patte
 #### Live API domains (by controller group)
 
 
-| #   | Domain             | Service / controller            | Frontend consumers                                            |
+| # | Domain | Service / controller | Frontend consumers |
 | --- | ------------------ | ------------------------------- | ------------------------------------------------------------- |
-| 1   | Auth + permissions | Identity — `AuthController`, `PermissionsController` | `/login`, `PrototypeContext`, `PageAccessGate` |
-| 2   | Users              | Identity — `UsersController`    | `/users`, registration flows in app-shared                    |
-| 3   | Work orders        | Case Study — `WorkOrdersController` | `@case-study/mfe` PO list, intake, properties, bourse    |
-| 4   | Workflow tasks     | Case Study — `WorkflowTasksController` | MFE active queues, party tasks, distribution              |
-| 5   | Case study forms   | Case Study — `CaseStudyFormsController` | `/case-study/[taskId]`, party نموذج الدراسة tab          |
-| 6   | Party submissions  | Case Study — `PartyTaskSubmissionsController` | Five party work flows                               |
-| 7   | Reporting / KPI    | Reporting — `ReportingController` | `@dashboard/mfe`, `@kpi/mfe`                            |
-| 8   | Financial          | Financial — `FinancialController` | `@financial/mfe`                                        |
-| 9   | Survey + keys      | Operations                        | `@survey/mfe`, `@keys/mfe`                                    |
-| 10  | Valuation          | Valuation                         | `@valuation/mfe`, `@evaluator/mfe` recalls                    |
-| 11  | Failures           | Failures                          | `@failures/mfe`                                               |
-| 12  | Platform config    | Platform — courts, field dict, info-roles, custom screens | `@settings/mfe`                         |
-| 13  | Attachments        | Attachments                       | PO/party/engineering PDF upload (rolling adoption)            |
-| 14  | System maintenance | Case Study — `SystemController` | Dev reset only                                                |
+| 1 | Auth + permissions | Identity — `AuthController`, `PermissionsController` | `/login`, `PrototypeContext`, `PageAccessGate` |
+| 2 | Users | Identity — `UsersController` | `/users`, registration flows in app-shared |
+| 3 | Work orders | Case Study — `WorkOrdersController` | `@case-study/mfe` PO list, intake, properties, bourse |
+| 4 | Workflow tasks | Case Study — `WorkflowTasksController` | MFE active queues, party tasks, distribution |
+| 5 | Case study forms | Case Study — `CaseStudyFormsController` | `/case-study/[taskId]`, party نموذج الدراسة tab |
+| 6 | Party submissions | Case Study — `PartyTaskSubmissionsController` | Five party work flows |
+| 7 | Reporting / KPI | Reporting — `ReportingController` | `@dashboard/mfe`, `@kpi/mfe` |
+| 8 | Financial | Financial — `FinancialController` | `@financial/mfe` |
+| 9 | Survey + keys | Operations | `@survey/mfe`, `@keys/mfe` |
+| 10 | Valuation | Valuation | `@valuation/mfe`, `@evaluator/mfe` recalls |
+| 11 | Failures | Failures | `@failures/mfe` |
+| 12 | Platform config | Platform — courts, field dict, info-roles, custom screens | `@settings/mfe` |
+| 13 | Attachments | Attachments | PO/party/engineering PDF upload (rolling adoption) |
+| 14 | System maintenance | Case Study — `SystemController` | Dev reset only |
 
 
 **Core transaction path is aligned:** PO → البيانات الأولية → استعلام بورصة → توزيع → دراسة حالة → party tasks (save/submit in PostgreSQL) → property detail read-back.
@@ -1092,11 +1092,11 @@ Each party queue row opens a dedicated full-page task (mirrors engineering patte
 #### Frontend `PageId` coverage (27 routes in `packages/types`)
 
 
-| Status                            | Count | Pages / notes                                                                                                                                                                                                                                                    |
+| Status | Count | Pages / notes |
 | --------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Fully API-backed**              | 22+   | Core case-study path, users, courts, info-roles, failures, survey, keys, financial, KPI, valuation-requests, custom screens, field dictionary |
-| **Partial API**                   | 4     | `dashboard` (reporting BFF; some team cards mock), PO/party attachments (blob API rolling out), `users` (PATCH expanded; search TBD), property detail **تقييم العقار** tab (placeholder) |
-| **Intentionally no backend**      | 1     | `system-tools` (static field catalog) |
+| **Fully API-backed** | 22+ | Core case-study path, users, courts, info-roles, failures, survey, keys, financial, KPI, valuation-requests, custom screens, field dictionary |
+| **Partial API** | 4 | `dashboard` (reporting BFF; some team cards mock), PO/party attachments (blob API rolling out), `users` (PATCH expanded; search TBD), property detail **تقييم العقار** tab (placeholder) |
+| **Intentionally no backend** | 1 | `system-tools` (static field catalog) |
 
 
 **Rough score:** ~26/26 `PageId` routes have defined UI (API-backed or intentional static).
@@ -1104,24 +1104,24 @@ Each party queue row opens a dedicated full-page task (mirrors engineering patte
 #### New backend work still needed (by priority)
 
 
-| Phase                        | Count | Items                                                                                                                   | Blocks                                             |
+| Phase | Count | Items | Blocks |
 | ---------------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| **1 — attachment adoption**  | 1     | Finish wiring all MFEs to `/api/attachments` for PDF bytes                                                              | File previews, PO intake docs                      |
-| **2 — users & auth**         | 2     | Users search; migrate remaining `po-roles.ts` / `isSuperAdmin(role)` to `hasCapability()`                              | Action-level RBAC parity with nav                  |
-| **3 — richer screens**       | 1     | Property detail appraisal tab wiring                                                                                      | property detail                                    |
-| **4 — platform hardening**   | 2     | Physical DB-per-service; full capability catalog on all actions                                                         | Production deploy                                  |
-| **Deferred**                 | 1     | Court case parties on PO/property (§16)                                                                                 | أطراف التنفيذ                                      |
+| **1 — attachment adoption** | 1 | Finish wiring all MFEs to `/api/attachments` for PDF bytes | File previews, PO intake docs |
+| **2 — users & auth** | 2 | Users search; migrate remaining `po-roles.ts` / `isSuperAdmin(role)` to `hasCapability()` | Action-level RBAC parity with nav |
+| **3 — richer screens** | 1 | Property detail appraisal tab wiring | property detail |
+| **4 — platform hardening** | 2 | Physical DB-per-service; full capability catalog on all actions | Production deploy |
+| **Deferred** | 1 | Court case parties on PO/property (§16) | أطراف التنفيذ |
 
 
 #### Summary table (PM)
 
 
-| Question                                        | Answer                                        |
+| Question | Answer |
 | ----------------------------------------------- | --------------------------------------------- |
-| Backend deployables that exist today?           | **Gateway + 9 services**                      |
-| Frontend areas aligned with API?                | **~22 full** + **~4 partial**                 |
-| Prototype role switcher?                        | **Removed** — permissions API drives nav      |
-| Next hardening focus?                           | Attachments adoption + `hasCapability()` on actions |
+| Backend deployables that exist today? | **Gateway + 9 services** |
+| Frontend areas aligned with API? | **~22 full** + **~4 partial** |
+| Prototype role switcher? | **Removed** — permissions API drives nav |
+| Next hardening focus? | Attachments adoption + `hasCapability()` on actions |
 
 
 **Seeder path (corrected):** `backend/RealEstateEval.Infrastructure/Data/DataSeeder.cs` — seeds org admins + all sidebar `@ejadah.dev` HR personas + Jeddah survey PROC provider (`survey.jeddah@ejadah.dev`; `UserName` = email, not Arabic display name).
@@ -1131,18 +1131,18 @@ Each party queue row opens a dedicated full-page task (mirrors engineering patte
 ## 13. Other documentation in repo
 
 
-| Path                                                    | Description                                                                                                                        |
+| Path | Description |
 | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `docs/DATABASE_OVERVIEW.md` / `.html`                   | DB overview EN / AR                                                                                                                |
-| `docs/SYSTEM_BEHAVIOR_PM_REVIEW.md`                     | PM behavior review                                                                                                                 |
-| `backend/README.md`                                     | Microservices layout, gateway routes, ports                                                                                        |
-| `docs/ARCHITECTURE_MICROFRONTENDS_AND_MICROSERVICES.md` | Target architecture                                                                                                                |
-| `docs/LEARNING_FAST_APPS.md`                            | **Study guide (EN):** frontend (TanStack/CWV/Next.js), backend (EF/HybridCache), PostgreSQL (EXPLAIN, indexes, pg_stat_statements) |
-| `docs/infath_case_study_fields.md`                      | Case study field reference                                                                                                         |
-| `docs/case_study_module.md`                             | Case study module notes                                                                                                            |
-| `README.md`                                             | Full stack readme + roadmap                                                                                                        |
-| `apps/plan/FRONTEND.md`                                 | Frontend plan                                                                                                                      |
-| `backend/plan/LOCAL_INFRA.md`                           | Infra URLs                                                                                                                         |
+| `docs/DATABASE_OVERVIEW.md` / `.html` | DB overview EN / AR |
+| `docs/SYSTEM_BEHAVIOR_PM_REVIEW.md` | PM behavior review |
+| `backend/README.md` | Microservices layout, gateway routes, ports |
+| `docs/ARCHITECTURE_MICROFRONTENDS_AND_MICROSERVICES.md` | Target architecture |
+| `docs/LEARNING_FAST_APPS.md` | **Study guide (EN):** frontend (TanStack/CWV/Next.js), backend (EF/HybridCache), PostgreSQL (EXPLAIN, indexes, pg_stat_statements) |
+| `docs/infath_case_study_fields.md` | Case study field reference |
+| `docs/case_study_module.md` | Case study module notes |
+| `README.md` | Full stack readme + roadmap |
+| `apps/plan/FRONTEND.md` | Frontend plan |
+| `backend/plan/LOCAL_INFRA.md` | Infra URLs |
 
 
 ---
@@ -1156,12 +1156,12 @@ Each party queue row opens a dedicated full-page task (mirrors engineering patte
 **Reference:** `docs/ejada-registration_1.html` — applied to `/users` registration UX (8 Jun 2026):
 
 
-| Done | Item                                                                                                   |
+| Done | Item |
 | ---- | ------------------------------------------------------------------------------------------------------ |
-| ✓    | HR full 4-step wizard (employment, org tree, personal, account, review)                                |
-| ✓    | PROC individual path (unchanged logic) + org teams UI (mgmt + ops — UI only, not persisted to API yet) |
-| ✓    | CRM 4-step flow (existing, themed shell)                                                               |
-| ✓    | Side panel + ERP portal styling per source (HR / PROC / CRM)                                           |
+| ✓ | HR full 4-step wizard (employment, org tree, personal, account, review) |
+| ✓ | PROC individual path (unchanged logic) + org teams UI (mgmt + ops — UI only, not persisted to API yet) |
+| ✓ | CRM 4-step flow (existing, themed shell) |
+| ✓ | Side panel + ERP portal styling per source (HR / PROC / CRM) |
 
 
 **Still TODO:** persist PROC org teams to DB; users edit/deactivate/search/export (see § What is remaining P1).
@@ -1171,11 +1171,11 @@ Each party queue row opens a dedicated full-page task (mirrors engineering patte
 **Registration flows for:**
 
 
-| Department      | Prototype role | API identity | Current UI                        |
+| Department | Prototype role | API identity | Current UI |
 | --------------- | -------------- | ------------ | --------------------------------- |
-| الموارد البشرية | `hr-admin`     | `HrAdmin`    | `/users` → `HrRegistrationFlow`   |
-| المالية والعقود | `proc-admin`   | `ProcAdmin`  | `/users` → `ProcRegistrationFlow` |
-| علاقات العملاء  | `crm-admin`    | `CrmAdmin`   | `/users` → `CrmRegistrationFlow`  |
+| الموارد البشرية | `hr-admin` | `HrAdmin` | `/users` → `HrRegistrationFlow` |
+| المالية والعقود | `proc-admin` | `ProcAdmin` | `/users` → `ProcRegistrationFlow` |
+| علاقات العملاء | `crm-admin` | `CrmAdmin` | `/users` → `CrmRegistrationFlow` |
 
 
 **Where exactly:** sidebar group **إدارة المنظمة** → page **إدارة المستخدمين** (`/users`, `settings-nav.ts` / الإعدادات footer). CDO sees `UsersOrganizationView` (read-only org tree); department admins see staff list + registration wizard (`RegisterUserFlow` / `RegistrationPortal`).
@@ -1261,7 +1261,7 @@ Each party queue row opens a dedicated full-page task (mirrors engineering patte
 36. **F4d dashboard decoupling:** `@dashboard/mfe` reads work orders via `work-orders-read` + api-client (no import from `@case-study/mfe`).
 37. **Party submissions API (14 Jun 2026):** `PartyTaskSubmissions` table + `PartyTaskSubmissionsController`; migration `20260614074003_AddPartyTaskSubmissions`; submit completes workflow task; reopen for engineering + appraiser.
 38. **Five party flows on API:** engineering survey, property appraisal, government review, valuation coordination, field inspection — frontend storage modules call `party-submission-api.ts` (shared cache in app-shared).
-39. **Full-page party routes:** `/active-survey/[taskId]`, `/property-appraisal/[taskId]`, `/property-inspection/[taskId]`, `/government-review/[taskId]`, `/valuation-coordination/[taskId]`.
+39. **Full-page party routes:** `/active-survey/[taskId]`, `/property-appraisal/[taskId]`, `/property-inspection/[taskId]`, `/government-review/[taskId]`, ``.
 40. **Property detail — الأطراف:** party cards + `PartyRoleDetailPanel` with per-role API submissions (`property-detail-party-submissions.ts`).
 41. **Property detail — تقرير دراسة الحالة:** read-only `CaseStudyReportDocument` on same page (`PropertyDetailCaseStudyReport.tsx`); removed misleading progress bars.
 42. **Engineering survey UX:** Google Maps panel, 13-item checklist, situation topbar, specialist reopen via `EngineeringSurveyAdvisoryPanel`; Jeddah default coordinates.

@@ -18,7 +18,6 @@ import {
   partyTaskTaskPath,
   propertyAppraisalWorkspacePath,
   fieldInspectionWorkspacePath,
-  valuationCoordinationWorkspacePath,
 } from "../lib/my-task-routes";
 import type { PageId } from "@platform/types";
 import type { PoIntakeRecord } from "../lib/prototype/po-intake-data";
@@ -33,10 +32,6 @@ import {
   GOVERNMENT_REVIEW_SUBMISSION_CHANGED_EVENT,
 } from "../lib/prototype/government-review-work-storage";
 import { governmentReviewTaskStatusBadge } from "../lib/prototype/government-review-work-queue";
-import {
-  VALUATION_COORDINATION_SUBMISSION_CHANGED_EVENT,
-} from "../lib/prototype/valuation-coordination-work-storage";
-import { valuationCoordinationTaskStatusBadge } from "../lib/prototype/valuation-coordination-work-queue";
 
 function queueConfig(
   def: PartyTaskPageDef,
@@ -97,19 +92,6 @@ function queueConfig(
     };
   }
 
-  if (def.kind === "valuation-coordination") {
-    return {
-      ...base,
-      hidePageTitle: true,
-      tableHint: "اضغط الصف لفتح مهمة الاستلام في صفحة مستقلة.",
-      fullPageTaskPath: valuationCoordinationWorkspacePath,
-      statusColumnLabel: "الحالة",
-      getTaskStatusBadge: (task) =>
-        valuationCoordinationTaskStatusBadge(task.id, null, task.status),
-      refreshOnWindowEvents: [VALUATION_COORDINATION_SUBMISSION_CHANGED_EVENT],
-    };
-  }
-
   return base;
 }
 
@@ -162,12 +144,8 @@ function PartyActiveTaskViewBody({
     }
     if (def?.kind === "government-review") {
       router.replace(governmentReviewWorkspacePath(taskId));
-      return;
     }
-    if (def?.kind === "valuation-coordination") {
-      router.replace(valuationCoordinationWorkspacePath(taskId));
-    }
-  }, [def?.kind, legacyTask, router]);
+  }, [def?.kind, def?.pageId, legacyTask, router]);
 
   if (def?.kind === "engineering-survey" && legacyTask) {
     return <PanelSkeleton className="p-4" />;
@@ -182,10 +160,6 @@ function PartyActiveTaskViewBody({
   }
 
   if (def?.kind === "government-review" && legacyTask) {
-    return <PanelSkeleton className="p-4" />;
-  }
-
-  if (def?.kind === "valuation-coordination" && legacyTask) {
     return <PanelSkeleton className="p-4" />;
   }
 

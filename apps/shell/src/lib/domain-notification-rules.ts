@@ -11,7 +11,6 @@ import {
   EVALUATOR_SUBMITTED_EVENT,
   FIELD_INSPECTION_SUBMITTED_EVENT,
   GOVERNMENT_REVIEW_SUBMITTED_EVENT,
-  VALUATION_COORDINATION_SUBMITTED_EVENT,
 } from "@platform/app-shared/prototype/party-workflow-events";
 import type { PushNotificationInput } from "@platform/app-shared/notifications/notification-store";
 
@@ -148,20 +147,6 @@ export const DOMAIN_NOTIFICATION_RULES: DomainNotificationRule[] = [
     },
     auditAction: "إرسال مراجعة حكومية",
     auditEntity: "government-review",
-  },
-  {
-    event: VALUATION_COORDINATION_SUBMITTED_EVENT,
-    notification: {
-      title: "استلام تقييم",
-      body: "تم إرسال استلام التقييم.",
-      tone: "success",
-      href: "/valuation-coordination",
-      category: "workflow",
-      entityType: "task",
-      sourceEvent: VALUATION_COORDINATION_SUBMITTED_EVENT,
-    },
-    auditAction: "إرسال استلام تقييم",
-    auditEntity: "valuation-coordination",
   },
   {
     event: SUSPENDED_TRANSACTIONS_CHANGED_EVENT,

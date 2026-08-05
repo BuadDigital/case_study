@@ -16,7 +16,6 @@ export type PageId =
   | "active-inspection"
   | "government-review"
   | "operations-tasks"
-  | "valuation-coordination"
   | "property-appraisal"
   | "active-survey"
   | "survey"
@@ -40,7 +39,6 @@ export type RoleId =
   | "general-manager"
   | "section-supervisor"
   | "case-specialist"
-  | "valuation-coordinator"
   | "real-estate-appraiser"
   | "field-inspector"
   | "government-reviewer"
@@ -75,7 +73,6 @@ const ROLE_ID_SET: Record<RoleId, true> = {
   "general-manager": true,
   "section-supervisor": true,
   "case-specialist": true,
-  "valuation-coordinator": true,
   "real-estate-appraiser": true,
   "field-inspector": true,
   "government-reviewer": true,
@@ -101,7 +98,6 @@ export function isPageId(value: string): value is PageId {
     value === "active-inspection" ||
     value === "government-review" ||
     value === "operations-tasks" ||
-    value === "valuation-coordination" ||
     value === "property-appraisal" ||
     value === "active-survey" ||
     value === "survey" ||

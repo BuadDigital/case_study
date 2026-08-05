@@ -121,4 +121,25 @@ public interface IPoEnfazBillingService
     Task<byte[]?> GetInvoicePdfAsync(
         string poNumber,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<EnfazFollowupDto>> ListFollowupsAsync(
+        string poNumber,
+        CancellationToken cancellationToken = default);
+
+    Task<(EnfazFollowupDto? Followup, string? Error)> AddFollowupAsync(
+        string poNumber,
+        AddEnfazFollowupRequest request,
+        string actorUserId,
+        CancellationToken cancellationToken = default);
+
+    Task<(bool Ok, string? Error)> SetFinanceFlagAsync(
+        string poNumber,
+        SetEnfazFinanceFlagRequest request,
+        string actorUserId,
+        CancellationToken cancellationToken = default);
+
+    Task<(bool Ok, string? Error)> ClearFinanceFlagAsync(
+        string poNumber,
+        string? propertyId,
+        CancellationToken cancellationToken = default);
 }

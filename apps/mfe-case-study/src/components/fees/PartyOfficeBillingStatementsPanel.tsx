@@ -1,14 +1,17 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import {
   loadPartyBillingStatements,
   openPartyBillingAttachment,
+  runSubmitVendorInvoice,
+  uploadPartyBillingVendorInvoice,
 } from "@platform/app-shared/prototype/party-billing-statements-api";
 import {
   Button,
+  Input,
   OperationalToolbarSearch,
   PageToolbar,
   SkeletonTableRows,
@@ -47,14 +50,26 @@ function statementStatusMeta(s: PartyBillingStatementDto): {
 } {
   if (s.status === "closed") {
     return {
-      label: s.statusLabel || "مصروف",
+      label: s.statusLabel || "مدفوع",
       style: { base: "#3f8f5f", fg: "#2f7a4d" },
+    };
+  }
+  if (s.status === "invoice_received") {
+    return {
+      label: s.statusLabel || "فاتورة واردة",
+      style: { base: "#d9a441", fg: "#8a5e14" },
     };
   }
   if (s.status === "issued") {
     return {
-      label: s.statusLabel || "صادر",
-      style: { base: "#d9a441", fg: "#8a5e14" },
+      label: s.statusLabel || "أُرسل",
+      style: { base: "#22406e", fg: "#102B4E" },
+    };
+  }
+  if (s.status === "cancelled") {
+    return {
+      label: s.statusLabel || "ملغى",
+      style: { base: "#9ca3af", fg: "#6b7280" },
     };
   }
   return {
@@ -76,8 +91,14 @@ export function PartyOfficeBillingStatementsPanel({
   issuedOrLaterOnly?: boolean;
 }) {
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [openRef, setOpenRef] = useState<string | null>(null);
+  const [invoiceNo, setInvoiceNo] = useState("");
+  const [invoiceDate, setInvoiceDate] = useState(() =>
+    new Date().toISOString().slice(0, 10),
+  );
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const { data: statements = [], isPending, isFetched } = useQuery({
     queryKey: [
@@ -93,6 +114,46 @@ export function PartyOfficeBillingStatementsPanel({
         issuedOrLaterOnly,
       }),
   });
+
+  const submitInvoice = async (s: PartyBillingStatementDto, file?: File) => {
+    if (!invoiceNo.trim()) {
+      showToast("رقم الفاتورة مطلوب", "error");
+      return;
+    }
+    if (!file) {
+      showToast("ارفع PDF الفاتورة", "error");
+      return;
+    }
+    setBusyId(s.id);
+    try {
+      const upload = await uploadPartyBillingVendorInvoice(s.id, file);
+      if (!upload.ok) {
+        showToast(upload.error, "error");
+        return;
+      }
+      const result = await runSubmitVendorInvoice(s.id, {
+        invoiceNumber: invoiceNo.trim(),
+        invoiceDate: invoiceDate
+          ? new Date(`${invoiceDate}T12:00:00`).toISOString()
+          : undefined,
+        attachmentId: upload.id,
+      });
+      if (!result.ok) {
+        showToast(result.error, "error");
+        return;
+      }
+      showToast(
+        `رُفعت الفاتورة — القيمة مقفلة ${fmtSar(s.totalNetSar)}`,
+        "success",
+      );
+      setInvoiceNo("");
+      await queryClient.invalidateQueries({
+        queryKey: [...prototypeKeys.all, "party-billing"],
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -300,6 +361,71 @@ export function PartyOfficeBillingStatementsPanel({
                                 </div>
                               ))}
                             </div>
+                            {s.status === "issued" &&
+                            s.payeeType !== "individual" ? (
+                              <div
+                                className="mt-3 flex flex-col gap-2 rounded border border-border bg-surface-2 p-3"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <div className="text-[12px] font-semibold text-text">
+                                  رفع فاتورة مطابقة للمسير (القيمة مقفلة{" "}
+                                  {fmtSar(s.totalNetSar)})
+                                </div>
+                                <label className="text-[12px] text-text-2">
+                                  رقم الفاتورة *
+                                  <Input
+                                    className="mt-1"
+                                    value={invoiceNo}
+                                    onChange={(e) => setInvoiceNo(e.target.value)}
+                                    dir="ltr"
+                                  />
+                                </label>
+                                <label className="text-[12px] text-text-2">
+                                  تاريخ الفاتورة
+                                  <Input
+                                    className="mt-1"
+                                    type="date"
+                                    value={invoiceDate}
+                                    onChange={(e) =>
+                                      setInvoiceDate(e.target.value)
+                                    }
+                                  />
+                                </label>
+                                <label className="text-[12px] text-text-2">
+                                  PDF الفاتورة *
+                                  <Input
+                                    className="mt-1"
+                                    type="file"
+                                    accept="application/pdf,image/*"
+                                    disabled={busyId === s.id}
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      e.target.value = "";
+                                      void submitInvoice(s, file);
+                                    }}
+                                  />
+                                </label>
+                              </div>
+                            ) : null}
+                            {s.status === "invoice_received" ? (
+                              <div className="mt-2 text-[12px] text-text-2">
+                                فاتورة {s.vendorInvoiceNumber} تحت المراجعة من
+                                المالية
+                                {s.vendorInvoiceMatched
+                                  ? " — طُوبقت"
+                                  : " — بانتظار المطابقة"}
+                              </div>
+                            ) : null}
+                            {s.rejectedInvoices?.length ? (
+                              <div className="mt-2 text-[11px] text-danger">
+                                آخر إعادة:{" "}
+                                {
+                                  s.rejectedInvoices[
+                                    s.rejectedInvoices.length - 1
+                                  ]?.reason
+                                }
+                              </div>
+                            ) : null}
                             {s.status === "closed" &&
                             s.transferReceiptAttachmentId ? (
                               <div className="mt-2">
@@ -330,10 +456,8 @@ export function PartyOfficeBillingStatementsPanel({
       </div>
 
       <div className="border border-t-0 border-border px-4 py-[11px] text-[12px] text-text-3">
-        دورة الكشف: مسودة ← صادر ← محال للمالية ← مصروف. الفاتورة تصدر من البرنامج
-        المحاسبي خارج النظام، ويُوثَّق الصرف هنا برقم الفاتورة وإيصال التحويل
-        والتاريخ. البنود المتحفَّظ عليها تُعالَج بالتنسيق مع المشرف قبل إحالتها
-        للمالية.
+        دورة المورّد: مسير مُعد ← أُرسل ← فاتورة واردة (قيمة مقفلة على المسير) ←
+        مطابقة المالية ← صرف. لا يُدخل مبلغ الفاتورة يدوياً.
       </div>
     </div>
   );
