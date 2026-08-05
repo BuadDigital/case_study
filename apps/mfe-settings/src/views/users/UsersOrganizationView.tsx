@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { RoleId, UserStatusApi } from "@platform/types";
 import type { UpdateStaffUserRequest } from "@platform/api-client";
@@ -25,18 +25,28 @@ import {
 import {
   Badge,
   Button,
-  Input,
+  EmptyState,
+  KpiBand,
+  KpiCell,
   Note,
-  Select,
+  OperationalPanel,
+  OperationalToolbarSearch,
+  OperationalToolbarSelect,
+  PageGutter,
+  PageShell,
+  PageShellHeader,
+  PageToolbar,
   Spinner,
   Table,
   TBody,
   Td,
   TdAction,
+  Textarea,
   Th,
   ThAction,
   THead,
   Tr,
+  cn,
   useToast,
 } from "@platform/design-system";
 import { getAuthSession } from "@platform/auth-client";
@@ -180,6 +190,174 @@ function formatLastLogin(iso: string | null | undefined): string {
   } catch {
     return iso;
   }
+}
+
+function userInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "؟";
+  if (parts.length === 1) return parts[0]!.slice(0, 2);
+  return `${parts[0]!.slice(0, 1)}${parts[1]!.slice(0, 1)}`;
+}
+
+function FormSectionLabel({ children }: { children: ReactNode }) {
+  return (
+    <div className="col-span-full sm:col-span-2">
+      <p className="m-0 flex items-center gap-2 border-b border-border pb-1.5 text-[11.5px] font-bold text-heading">
+        <span className="size-1.5 shrink-0 rounded-full bg-gold" aria-hidden />
+        {children}
+      </p>
+    </div>
+  );
+}
+
+/** Icon-only row actions — matches Courts admin toolbar. */
+function UserActionButton({
+  label,
+  tone = "default",
+  loading = false,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  tone?: "default" | "danger" | "success" | "gold";
+  loading?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  const toneClass =
+    tone === "danger"
+      ? "text-danger-text hover:bg-danger-bg"
+      : tone === "success"
+        ? "text-success-text hover:bg-success-bg"
+        : tone === "gold"
+          ? "text-gold-d hover:bg-gold-soft"
+          : "text-text-2 hover:bg-surface-2 hover:text-ink";
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
+      onClick={onClick}
+      className={cn(
+        "inline-flex size-8 items-center justify-center rounded-md border border-transparent text-[14px] transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+        toneClass,
+      )}
+    >
+      {loading ? <Spinner className="size-3.5" /> : children}
+    </button>
+  );
+}
+
+function IconProfile({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <circle cx="12" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.75" />
+      <path
+        d="M5.5 19.5c1.5-3.2 3.8-4.8 6.5-4.8s5 1.6 6.5 4.8"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function IconInvite({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <rect
+        x="3.5"
+        y="5.5"
+        width="17"
+        height="13"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+      <path
+        d="M4 7.5 12 13.2 20 7.5"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconEdit({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path
+        d="M4 20h4.2L18.8 9.4a1.9 1.9 0 0 0 0-2.7l-1.5-1.5a1.9 1.9 0 0 0-2.7 0L4 15.8V20Z"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+      <path
+        d="m13.2 6.8 4 4"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function IconUnlock({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <rect
+        x="5"
+        y="11"
+        width="14"
+        height="10"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+      <path
+        d="M8 11V8a4 4 0 0 1 7.5-2"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+      <circle cx="12" cy="16" r="1.2" fill="currentColor" />
+    </svg>
+  );
+}
+
+function IconEnable({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <circle cx="12" cy="12" r="8.25" stroke="currentColor" strokeWidth="1.75" />
+      <path
+        d="m8.5 12.2 2.3 2.3 4.7-5"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconDisable({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <circle cx="12" cy="12" r="8.25" stroke="currentColor" strokeWidth="1.75" />
+      <path
+        d="M9 9 15 15M15 9 9 15"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
 }
 
 export function UsersOrganizationView() {
@@ -430,475 +608,616 @@ export function UsersOrganizationView() {
     }
   }
 
+  const statusCounts = useMemo(() => {
+    let active = 0;
+    let pending = 0;
+    let locked = 0;
+    let disabled = 0;
+    for (const user of users) {
+      if (user.status === "Active") active += 1;
+      else if (user.status === "PendingActivation") pending += 1;
+      else if (user.status === "Locked") locked += 1;
+      else if (user.status === "Disabled") disabled += 1;
+    }
+    return { active, pending, locked, disabled, total: users.length };
+  }, [users]);
+
   return (
-    /* Scroll عبر #content في الـ shell — بدون flex-1/overflow داخلي يمنع النزول */
-    <div className="bg-surface-2 px-4 pb-8 pt-5 sm:px-6 sm:pb-10 sm:pt-6" dir="rtl">
-      {!canManage ? (
-        <Note tone="info" className="mb-4">
-          عرض فقط — تحتاج صلاحية إدارة المستخدمين للإضافة.
-        </Note>
-      ) : null}
+    <PageShell variant="canvas" className="min-h-0" dir="rtl">
+      <PageShellHeader
+        title="المستخدمون"
+        meta="إنشاء الحسابات التشغيلية ومتابعة الحالة ودعوات التفعيل"
+      />
 
-      <Can capability="manage-users">
-        <section className="mb-5 overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
-          <div className="border-b border-border px-5 py-4 sm:px-6">
-            <h2 className="m-0 text-[15px] font-bold text-heading">إضافة مستخدم</h2>
-            <p className="m-0 mt-1.5 text-[12px] leading-relaxed text-text-3">
-              بيانات الحساب
-            </p>
-          </div>
+      <PageGutter className="space-y-3 pb-8 pt-1 sm:space-y-3.5">
+        {!canManage ? (
+          <Note tone="info">
+            عرض فقط — تحتاج صلاحية إدارة المستخدمين للإضافة.
+          </Note>
+        ) : null}
 
-          <form onSubmit={(e) => void onSubmit(e)}>
-            <div className="grid gap-x-5 gap-y-5 border-b border-border px-5 py-5 sm:grid-cols-2 sm:px-6 sm:py-6">
-              <RegField
-                id="staff-displayName"
-                label="الاسم"
-                required
-                value={form.displayName}
-                onChange={(v) => updateField("displayName", v)}
-                error={errors.displayName}
+        {!isPending && users.length > 0 ? (
+          <KpiBand className="mb-0">
+            <KpiCell
+              first
+              icon={<span className="text-[13px] font-bold">∑</span>}
+              iconClass="bg-surface-2 text-heading"
+              label="الإجمالي"
+              value={statusCounts.total}
+              sub="كل الحسابات"
+            />
+            <KpiCell
+              icon={<span className="text-[13px] font-bold">✓</span>}
+              iconClass="bg-success-bg text-success-text"
+              label="فعّال"
+              value={statusCounts.active}
+              sub="جاهز للعمل"
+              valueClass="text-success-text"
+            />
+            <KpiCell
+              icon={<span className="text-[13px] font-bold">…</span>}
+              iconClass="bg-warning-bg text-warning"
+              label="بانتظار التفعيل"
+              value={statusCounts.pending}
+              sub="دعوة أو كلمة مرور"
+              valueClass="text-warning"
+            />
+            <KpiCell
+              last
+              icon={<span className="text-[13px] font-bold">⏹</span>}
+              iconClass="bg-danger-bg text-danger-text"
+              label="موقوف / معطّل"
+              value={statusCounts.locked + statusCounts.disabled}
+              sub={`${statusCounts.locked} قفل · ${statusCounts.disabled} تعطيل`}
+              valueClass="text-danger-text"
+            />
+          </KpiBand>
+        ) : null}
+
+        <Can capability="manage-users">
+          <OperationalPanel>
+            <div className="relative border-b border-border px-4 py-3.5 sm:px-5">
+              <span
+                aria-hidden
+                className="absolute inset-y-0 start-0 w-[3px] bg-gold"
               />
-              <RegSelect
-                id="staff-roleId"
-                label="الدور"
-                required
-                placeholder="اختر الدور"
-                options={ROLE_OPTIONS.map((o) => ({
-                  value: o.value,
-                  label: o.label,
-                }))}
-                value={form.roleId}
-                onChange={(v) => {
-                  const roleId = v as RoleId | "";
-                  setForm((prev) => ({
-                    ...prev,
-                    roleId,
-                    department: isSectionSupervisorRole(roleId)
-                      ? prev.department
-                      : "",
-                  }));
-                  setErrors((prev) => {
-                    const next = { ...prev };
-                    delete next.roleId;
-                    delete next.department;
-                    return next;
-                  });
-                }}
-                error={errors.roleId}
-              />
-              <RegField
-                id="staff-email"
-                label="البريد الإلكتروني"
-                required
-                type="email"
-                dir="ltr"
-                value={form.email}
-                onChange={(v) => updateField("email", v)}
-                error={errors.email}
-              />
-              <RegField
-                id="staff-mobile"
-                label="رقم الجوال"
-                required
-                dir="ltr"
-                inputMode="tel"
-                placeholder="05xxxxxxxx"
-                value={form.mobile}
-                onChange={(v) => updateField("mobile", v)}
-                error={errors.mobile}
-              />
-              <RegField
-                id="staff-city"
-                label="المدينة"
-                required
-                value={form.city}
-                onChange={(v) => updateField("city", v)}
-                error={errors.city}
-              />
-              {isSectionSupervisorRole(form.roleId) ? (
-                <RegSelect
-                  id="staff-department"
-                  label="قسم الإشراف"
+              <h2 className="m-0 text-[14px] font-bold text-heading">
+                إضافة مستخدم
+              </h2>
+              <p className="m-0 mt-1 text-[12px] leading-relaxed text-text-3">
+                بيانات الحساب — اسم الدخول يُنشأ تلقائياً ويُفعَّل بدعوة لمرة واحدة
+              </p>
+            </div>
+
+            <form onSubmit={(e) => void onSubmit(e)}>
+              <div className="grid gap-x-4 gap-y-3.5 border-b border-border px-4 py-4 sm:grid-cols-2 sm:px-5 sm:py-5">
+                <FormSectionLabel>البيانات الأساسية</FormSectionLabel>
+                <RegField
+                  id="staff-displayName"
+                  label="الاسم"
                   required
-                  placeholder="اختر القسم"
-                  options={SUPERVISOR_DEPARTMENT_OPTIONS.map((o) => ({
+                  placeholder="الاسم الكامل"
+                  value={form.displayName}
+                  onChange={(v) => updateField("displayName", v)}
+                  error={errors.displayName}
+                />
+                <RegSelect
+                  id="staff-roleId"
+                  label="الدور"
+                  required
+                  placeholder="اختر الدور"
+                  options={ROLE_OPTIONS.map((o) => ({
                     value: o.value,
                     label: o.label,
                   }))}
-                  value={form.department}
-                  onChange={(v) => updateField("department", v)}
-                  error={errors.department}
+                  value={form.roleId}
+                  onChange={(v) => {
+                    const roleId = v as RoleId | "";
+                    setForm((prev) => ({
+                      ...prev,
+                      roleId,
+                      department: isSectionSupervisorRole(roleId)
+                        ? prev.department
+                        : "",
+                    }));
+                    setErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.roleId;
+                      delete next.department;
+                      return next;
+                    });
+                  }}
+                  error={errors.roleId}
                 />
-              ) : null}
-              <RegField
-                id="staff-nationalId"
-                label="رقم الهوية"
-                required
-                value={form.nationalId}
-                onChange={(v) => updateField("nationalId", v)}
-                error={errors.nationalId}
-                inputMode="numeric"
-              />
-              {form.roleId === "field-inspector" ? (
-                <RegSelect
-                  id="staff-inspectorType"
-                  label="نوع المعاين"
-                  required
-                  placeholder="اختر النوع"
-                  options={[
-                    { value: "employee", label: "موظف" },
-                    { value: "contractor", label: "متعاون" },
-                  ]}
-                  value={form.inspectorType}
-                  onChange={(v) =>
-                    updateField("inspectorType", v as FormState["inspectorType"])
-                  }
-                  error={errors.inspectorType}
-                />
-              ) : null}
-              <RegField
-                id="staff-joinedAt"
-                label="تاريخ الالتحاق"
-                type="date"
-                value={form.joinedAt}
-                onChange={(v) => updateField("joinedAt", v)}
-                hint="اختياري"
-              />
-              <RegField
-                id="staff-avatarUrl"
-                label="رابط الصورة الشخصية"
-                dir="ltr"
-                value={form.avatarUrl}
-                onChange={(v) => updateField("avatarUrl", v)}
-                error={errors.avatarUrl}
-                hint="اختياري"
-              />
-              <label className="flex items-center gap-2 text-xs font-medium text-text">
-                <input
-                  type="checkbox"
-                  checked={form.hasCompensation}
-                  onChange={(event) =>
-                    updateField("hasCompensation", event.target.checked)
-                  }
-                />
-                يستحق تعويضاً مالياً
-              </label>
-              {form.hasCompensation ? (
                 <RegField
-                  id="staff-feeValueSar"
-                  label="قيمة الأتعاب (ر.س)"
+                  id="staff-email"
+                  label="البريد الإلكتروني"
                   required
-                  type="number"
-                  value={form.feeValueSar}
-                  onChange={(v) => updateField("feeValueSar", v)}
-                  error={errors.feeValueSar}
+                  type="email"
+                  dir="ltr"
+                  placeholder="name@example.com"
+                  value={form.email}
+                  onChange={(v) => updateField("email", v)}
+                  error={errors.email}
                 />
-              ) : null}
-              <RegField
-                id="staff-iban"
-                label="الآيبان"
-                dir="ltr"
-                value={form.iban}
-                onChange={(v) => updateField("iban", v)}
-                error={errors.iban}
-                hint="اختياري"
-              />
-              {form.roleId === "engineering-office" ? (
-                <>
-                  <RegField
-                    id="staff-taxNumber"
-                    label="الرقم الضريبي"
-                    dir="ltr"
-                    value={form.taxNumber}
-                    onChange={(v) => updateField("taxNumber", v)}
-                    hint="اختياري"
+                <RegField
+                  id="staff-mobile"
+                  label="رقم الجوال"
+                  required
+                  dir="ltr"
+                  inputMode="tel"
+                  placeholder="05xxxxxxxx"
+                  value={form.mobile}
+                  onChange={(v) => updateField("mobile", v)}
+                  error={errors.mobile}
+                />
+                <RegField
+                  id="staff-city"
+                  label="المدينة"
+                  required
+                  placeholder="مثال: الرياض"
+                  value={form.city}
+                  onChange={(v) => updateField("city", v)}
+                  error={errors.city}
+                />
+                {isSectionSupervisorRole(form.roleId) ? (
+                  <RegSelect
+                    id="staff-department"
+                    label="قسم الإشراف"
+                    required
+                    placeholder="اختر القسم"
+                    options={SUPERVISOR_DEPARTMENT_OPTIONS.map((o) => ({
+                      value: o.value,
+                      label: o.label,
+                    }))}
+                    value={form.department}
+                    onChange={(v) => updateField("department", v)}
+                    error={errors.department}
                   />
-                  <RegField
-                    id="staff-commercialRegistration"
-                    label="السجل التجاري"
-                    dir="ltr"
-                    value={form.commercialRegistration}
-                    onChange={(v) => updateField("commercialRegistration", v)}
-                    hint="اختياري"
+                ) : null}
+                {form.roleId === "field-inspector" ? (
+                  <RegSelect
+                    id="staff-inspectorType"
+                    label="نوع المعاين"
+                    required
+                    placeholder="اختر النوع"
+                    options={[
+                      { value: "employee", label: "موظف" },
+                      { value: "contractor", label: "متعاون" },
+                    ]}
+                    value={form.inspectorType}
+                    onChange={(v) =>
+                      updateField(
+                        "inspectorType",
+                        v as FormState["inspectorType"],
+                      )
+                    }
+                    error={errors.inspectorType}
                   />
-                </>
-              ) : null}
-            </div>
+                ) : null}
 
-            <div className="space-y-4 px-5 py-5 sm:px-6">
-              {errors._form ? (
-                <Note tone="danger" className="text-xs">
-                  {errors._form}
-                </Note>
-              ) : null}
+                <FormSectionLabel>الهوية والالتحاق</FormSectionLabel>
+                <RegField
+                  id="staff-nationalId"
+                  label="رقم الهوية"
+                  required
+                  dir="ltr"
+                  inputMode="numeric"
+                  placeholder="1xxxxxxxxx"
+                  value={form.nationalId}
+                  onChange={(v) => updateField("nationalId", v)}
+                  error={errors.nationalId}
+                />
+                <RegField
+                  id="staff-joinedAt"
+                  label="تاريخ الالتحاق"
+                  type="date"
+                  value={form.joinedAt}
+                  onChange={(v) => updateField("joinedAt", v)}
+                  hint="اختياري"
+                />
+                <RegField
+                  id="staff-avatarUrl"
+                  label="رابط الصورة الشخصية"
+                  dir="ltr"
+                  placeholder="https://…"
+                  value={form.avatarUrl}
+                  onChange={(v) => updateField("avatarUrl", v)}
+                  error={errors.avatarUrl}
+                  hint="اختياري"
+                  className="sm:col-span-2"
+                />
 
-              {createdUser ? (
-                <div className="rounded-lg border border-success/30 bg-success-bg px-4 py-3 text-xs leading-relaxed text-success-text">
-                  <strong>تم إنشاء الحساب — بانتظار التفعيل</strong>
-                  <div className="mt-2" dir="ltr">
-                    <span className="text-text-3">username:</span>{" "}
-                    {createdUser.userName}
-                  </div>
-                  <p className="m-0 mt-2 text-[11px]" dir="rtl">
-                    لا يملك الحساب كلمة مرور. أرسل دعوة تفعيل لمرة واحدة ليختار صاحب
-                    الحساب كلمة مروره من صفحة <bdi dir="ltr">/activate</bdi>.
-                  </p>
-                  <div className="mt-2.5">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={issuingTicketFor === createdUser.id}
-                      loading={issuingTicketFor === createdUser.id}
-                      onClick={() => void onIssueActivationTicket(createdUser.id)}
-                    >
-                      إرسال دعوة التفعيل
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
-
-              {activationTicket ? (
-                <div className="rounded-lg border border-warning/40 bg-warning-bg px-4 py-3 text-xs leading-relaxed text-text">
-                  <strong>رمز التفعيل لمرة واحدة</strong>
-                  <div className="mt-2 space-y-1" dir="ltr">
-                    <div>
-                      <span className="text-text-3">username:</span>{" "}
-                      {activationTicket.userName}
-                    </div>
-                    <textarea
-                      readOnly
-                      rows={3}
-                      className="w-full resize-none rounded-md border border-border bg-surface p-2 font-mono text-[10px] text-text"
-                      value={activationTicket.token}
-                      onFocus={(e) => e.currentTarget.select()}
-                    />
-                  </div>
-                  <p className="m-0 mt-2 text-[10px] text-text-3" dir="rtl">
-                    صالح حتى{" "}
-                    {new Date(activationTicket.expiresAtUtc).toLocaleString("ar")} —
-                    يُستخدم مرة واحدة ولن يُعرض مرة أخرى. سلّمه عبر قناة آمنة.
-                  </p>
-                </div>
-              ) : null}
-
-              <div className="flex justify-end">
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="sm"
-                  disabled={saving}
-                  loading={saving}
+                <FormSectionLabel>التعويض والفوترة</FormSectionLabel>
+                <label
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-[var(--radius)] border border-border bg-surface-2/70 px-3 py-2.5 text-xs font-medium text-text sm:col-span-2",
+                    form.hasCompensation &&
+                      "border-gold/40 bg-gold-soft text-heading",
+                  )}
                 >
-                  إنشاء المستخدم
-                </Button>
+                  <input
+                    type="checkbox"
+                    className="size-3.5 accent-[var(--gold-d)]"
+                    checked={form.hasCompensation}
+                    onChange={(event) =>
+                      updateField("hasCompensation", event.target.checked)
+                    }
+                  />
+                  يستحق تعويضاً مالياً
+                </label>
+                {form.hasCompensation ? (
+                  <RegField
+                    id="staff-feeValueSar"
+                    label="قيمة الأتعاب (ر.س)"
+                    required
+                    type="number"
+                    dir="ltr"
+                    placeholder="0"
+                    value={form.feeValueSar}
+                    onChange={(v) => updateField("feeValueSar", v)}
+                    error={errors.feeValueSar}
+                  />
+                ) : null}
+                <RegField
+                  id="staff-iban"
+                  label="الآيبان"
+                  dir="ltr"
+                  placeholder="SAxxxxxxxxxxxxxxxxxxxxxx"
+                  value={form.iban}
+                  onChange={(v) => updateField("iban", v)}
+                  error={errors.iban}
+                  hint="اختياري — صيغة SA + 22 رقماً"
+                />
+                {form.roleId === "engineering-office" ? (
+                  <>
+                    <FormSectionLabel>بيانات المكتب الهندسي</FormSectionLabel>
+                    <RegField
+                      id="staff-taxNumber"
+                      label="الرقم الضريبي"
+                      dir="ltr"
+                      value={form.taxNumber}
+                      onChange={(v) => updateField("taxNumber", v)}
+                      hint="اختياري"
+                    />
+                    <RegField
+                      id="staff-commercialRegistration"
+                      label="السجل التجاري"
+                      dir="ltr"
+                      value={form.commercialRegistration}
+                      onChange={(v) =>
+                        updateField("commercialRegistration", v)
+                      }
+                      hint="اختياري"
+                    />
+                  </>
+                ) : null}
               </div>
-            </div>
-          </form>
-        </section>
-      </Can>
 
-      <section className="mb-5 overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4 sm:px-6">
-          <div className="flex items-center gap-2.5">
-            <h2 className="m-0 text-[15px] font-bold text-heading">قائمة المستخدمين</h2>
-            {!isPending ? (
-              <span className="rounded-md bg-surface-2 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-text-2">
-                {filteredUsers.length}
-                {filteredUsers.length !== users.length ? ` / ${users.length}` : ""}
-              </span>
-            ) : null}
-          </div>
-          <div className="flex w-full flex-wrap gap-2.5 sm:w-auto">
-            <div className="relative min-w-[240px] flex-1 sm:flex-none">
-              <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-text-3">
-                ⌕
-              </span>
-              <Input
-                aria-label="البحث في المستخدمين"
-                value={search}
-                placeholder="بحث بالاسم أو الإيميل أو اسم الدخول…"
-                onChange={(e) => setSearch(e.target.value)}
-                className="pe-3 ps-8 text-xs"
-              />
-            </div>
-            <Select
-              aria-label="تصفية حسب الدور"
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="w-[180px] text-xs"
-            >
-              <option value="">كل الأدوار</option>
-              {roleFilterOptions.map((role) => (
-                <option key={role} value={role}>
-                  {role}
-                </option>
-              ))}
-            </Select>
-            <Select
-              aria-label="تصفية حسب الحالة"
-              value={statusFilter}
-              onChange={(e) =>
-                setStatusFilter(e.target.value as UserStatusApi | "")
-              }
-              className="w-[150px] text-xs"
-            >
-              <option value="">كل الحالات</option>
-              <option value="Active">نشط</option>
-              <option value="PendingActivation">بانتظار التفعيل</option>
-              <option value="Locked">مقفل</option>
-              <option value="Disabled">معطّل</option>
-            </Select>
-          </div>
-        </div>
+              <div className="space-y-3 px-4 py-4 sm:px-5">
+                {errors._form ? (
+                  <Note tone="danger" className="text-xs">
+                    {errors._form}
+                  </Note>
+                ) : null}
 
-        {loadError ? (
-          <Note tone="danger" className="m-5 text-xs">
-            {loadError}
-          </Note>
-        ) : isPending && users.length === 0 ? (
-          <div className="flex justify-center py-14">
-            <Spinner />
-          </div>
-        ) : filteredUsers.length === 0 ? (
-          <p className="py-14 text-center text-xs text-text-3">
-            {users.length === 0
-              ? "لا يوجد مستخدمون بعد."
-              : "لا يوجد مستخدمون مطابقون للبحث."}
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <Table pending={isPending} className="min-w-[800px]">
-              <THead>
-                <Tr hoverable={false}>
-                  <Th>الاسم</Th>
-                  <Th>الدور</Th>
-                  <Th>الجوال</Th>
-                  {showStatusColumn ? (
-                    <Th className="w-28 text-center">الحالة</Th>
-                  ) : null}
-                  {showLastLoginColumn ? <Th>آخر دخول</Th> : null}
-                  {showActionsColumn ? <ThAction>إجراءات</ThAction> : null}
-                </Tr>
-              </THead>
-              <TBody>
-                {filteredUsers.map((user) => (
-                  <Tr key={user.id}>
-                    <Td className="py-3.5">
-                      <button
+                {createdUser ? (
+                  <div className="rounded-[var(--radius)] border border-success/25 bg-success-bg px-3.5 py-3 text-xs leading-relaxed text-success-text">
+                    <strong>تم إنشاء الحساب — بانتظار التفعيل</strong>
+                    <div className="mt-2" dir="ltr">
+                      <span className="text-text-3">username:</span>{" "}
+                      {createdUser.userName}
+                    </div>
+                    <p className="m-0 mt-2 text-[11px]" dir="rtl">
+                      لا يملك الحساب كلمة مرور. أرسل دعوة تفعيل لمرة واحدة
+                      ليختار صاحب الحساب كلمة مروره من صفحة{" "}
+                      <bdi dir="ltr">/activate</bdi>.
+                    </p>
+                    <div className="mt-2.5">
+                      <Button
                         type="button"
-                        className="cursor-pointer border-0 bg-transparent p-0 text-start text-[13px] font-semibold text-primary hover:underline"
-                        onClick={() => setProfileUser(user)}
+                        variant="outline"
+                        size="sm"
+                        disabled={issuingTicketFor === createdUser.id}
+                        loading={issuingTicketFor === createdUser.id}
+                        onClick={() =>
+                          void onIssueActivationTicket(createdUser.id)
+                        }
                       >
-                        {user.name}
-                      </button>
-                    </Td>
-                    <Td className="py-3.5">
-                      <span className="rounded-md border border-border-md bg-surface-2 px-2.5 py-[3px] text-[12px] font-medium text-text-2">
-                        {user.role}
-                      </span>
-                    </Td>
-                    <Td className="py-3.5">
-                      <span className="text-[12px] text-text-2" dir="ltr">
-                        {user.phone || "—"}
-                      </span>
-                    </Td>
+                        إرسال دعوة التفعيل
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {activationTicket ? (
+                  <div className="rounded-[var(--radius)] border border-warning/35 bg-warning-bg px-3.5 py-3 text-xs leading-relaxed text-text">
+                    <strong>رمز التفعيل لمرة واحدة</strong>
+                    <div className="mt-2 space-y-1" dir="ltr">
+                      <div>
+                        <span className="text-text-3">username:</span>{" "}
+                        {activationTicket.userName}
+                      </div>
+                      <Textarea
+                        readOnly
+                        rows={3}
+                        dir="ltr"
+                        aria-label="رمز التفعيل لمرة واحدة"
+                        className="min-h-0 resize-none bg-surface-2 font-mono text-[10.5px] leading-relaxed text-ink selection:bg-gold-soft"
+                        value={activationTicket.token}
+                        onFocus={(e) => e.currentTarget.select()}
+                      />
+                    </div>
+                    <p className="m-0 mt-2 text-[10px] text-text-3" dir="rtl">
+                      صالح حتى{" "}
+                      {new Date(activationTicket.expiresAtUtc).toLocaleString(
+                        "ar",
+                      )}{" "}
+                      — يُستخدم مرة واحدة ولن يُعرض مرة أخرى. سلّمه عبر قناة
+                      آمنة.
+                    </p>
+                  </div>
+                ) : null}
+
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3.5">
+                  <p className="m-0 text-[11px] text-text-3">
+                    بعد الإنشاء: دعوة تفعيل لمرة واحدة — ثم الدخول من صفحة التفعيل.
+                  </p>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="sm"
+                    disabled={saving}
+                    loading={saving}
+                  >
+                    إنشاء المستخدم
+                  </Button>
+                </div>
+              </div>
+            </form>
+          </OperationalPanel>
+        </Can>
+
+        <OperationalPanel>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3 sm:px-5">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <h2 className="m-0 text-[14px] font-bold text-heading">
+                قائمة المستخدمين
+              </h2>
+              {!isPending ? (
+                <span className="rounded-md bg-surface-2 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-text-2">
+                  {filteredUsers.length}
+                  {filteredUsers.length !== users.length
+                    ? ` / ${users.length}`
+                    : ""}
+                </span>
+              ) : null}
+            </div>
+          </div>
+
+          <PageToolbar className="flex-wrap items-center gap-2.5 border-b border-border bg-surface-2/60">
+            <OperationalToolbarSearch
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="بحث بالاسم أو الإيميل أو اسم الدخول…"
+              aria-label="البحث في المستخدمين"
+              className="min-w-[200px] max-w-full flex-1 sm:max-w-[320px]"
+            />
+            <div className="flex w-full flex-wrap items-center gap-2.5 sm:w-auto">
+              <OperationalToolbarSelect
+                aria-label="تصفية حسب الدور"
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="min-w-[160px] flex-1 sm:flex-none"
+                selectClassName="w-full min-w-[160px]"
+              >
+                <option value="">كل الأدوار</option>
+                {roleFilterOptions.map((roleTitle) => (
+                  <option key={roleTitle} value={roleTitle}>
+                    {roleTitle}
+                  </option>
+                ))}
+              </OperationalToolbarSelect>
+              <OperationalToolbarSelect
+                aria-label="تصفية حسب الحالة"
+                value={statusFilter}
+                onChange={(e) =>
+                  setStatusFilter(e.target.value as UserStatusApi | "")
+                }
+                className="min-w-[150px] flex-1 sm:flex-none"
+                selectClassName="w-full min-w-[150px]"
+              >
+                <option value="">كل الحالات</option>
+                <option value="Active">نشط</option>
+                <option value="PendingActivation">بانتظار التفعيل</option>
+                <option value="Locked">مقفل</option>
+                <option value="Disabled">معطّل</option>
+              </OperationalToolbarSelect>
+            </div>
+          </PageToolbar>
+
+          {loadError ? (
+            <Note tone="danger" className="m-4 text-xs">
+              {loadError}
+            </Note>
+          ) : isPending && users.length === 0 ? (
+            <div className="flex justify-center py-14">
+              <Spinner />
+            </div>
+          ) : filteredUsers.length === 0 ? (
+            <EmptyState
+              className="py-12"
+              line={
+                users.length === 0
+                  ? "لا يوجد مستخدمون بعد"
+                  : "لا يوجد مستخدمون مطابقون للبحث"
+              }
+              hint={
+                users.length === 0 && canManage
+                  ? "استخدم نموذج «إضافة مستخدم» لإنشاء أول حساب."
+                  : "جرّب تعديل الفلاتر أو نص البحث."
+              }
+            />
+          ) : (
+            <div className="overflow-x-auto">
+              <Table pending={isPending} className="min-w-[800px]">
+                <THead>
+                  <Tr hoverable={false}>
+                    <Th>الاسم</Th>
+                    <Th>الدور</Th>
+                    <Th>الجوال</Th>
                     {showStatusColumn ? (
-                      <Td className="py-3.5 text-center">
-                        <Badge tone={statusTone(user.status)} dot>
-                          {statusLabel(user.status)}
-                        </Badge>
-                      </Td>
+                      <Th className="w-28 text-center">الحالة</Th>
                     ) : null}
-                    {showLastLoginColumn ? (
-                      <Td className="py-3.5">
-                        <span className="text-[12px] text-text-2" dir="ltr">
-                          {formatLastLogin(user.lastLoginAtUtc)}
+                    {showLastLoginColumn ? <Th>آخر دخول</Th> : null}
+                    {showActionsColumn ? <ThAction>إجراءات</ThAction> : null}
+                  </Tr>
+                </THead>
+                <TBody>
+                  {filteredUsers.map((user) => (
+                    <Tr key={user.id}>
+                      <Td className="py-3">
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          {user.avatarUrl ? (
+                            <img
+                              src={user.avatarUrl}
+                              alt=""
+                              referrerPolicy="no-referrer"
+                              className="size-9 shrink-0 rounded-full border border-border object-cover"
+                            />
+                          ) : (
+                            <span
+                              aria-hidden
+                              className="grid size-9 shrink-0 place-items-center rounded-full bg-ink text-[11px] font-bold text-white"
+                            >
+                              {userInitials(user.name)}
+                            </span>
+                          )}
+                          <div className="min-w-0">
+                            <button
+                              type="button"
+                              className="cursor-pointer border-0 bg-transparent p-0 text-start text-[13px] font-semibold text-heading hover:text-gold-d hover:underline"
+                              onClick={() => setProfileUser(user)}
+                            >
+                              {user.name}
+                            </button>
+                            {user.userName ? (
+                              <div
+                                className="mt-0.5 truncate text-[11px] text-text-3"
+                                dir="ltr"
+                              >
+                                {user.userName}
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      </Td>
+                      <Td className="py-3">
+                        <span className="inline-flex max-w-[200px] truncate rounded-md border border-border bg-surface-2 px-2 py-0.5 text-[11.5px] font-medium text-text-2">
+                          {user.role}
                         </span>
                       </Td>
-                    ) : null}
-                    {showActionsColumn ? (
-                    <TdAction>
-                      <div className="flex flex-wrap items-center justify-end gap-1.5">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setProfileUser(user)}
-                        >
-                          البروفايل
-                        </Button>
-                        {canManage ? (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            disabled={issuingTicketFor === user.id}
-                            loading={issuingTicketFor === user.id}
-                            onClick={() => void onIssueActivationTicket(user.id)}
-                          >
-                            {user.status === "PendingActivation" || user.status === "Disabled"
-                              ? "إعادة دعوة"
-                              : "دعوة تفعيل"}
-                          </Button>
-                        ) : null}
-                        {canManage ? (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setEditingUser(user)}
-                          >
-                            تعديل
-                          </Button>
-                        ) : null}
-                        {canManage && user.status === "Locked" ? (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            disabled={pendingActionId === user.id}
-                            loading={pendingActionId === user.id}
-                            onClick={() => void onUnlockUser(user)}
-                          >
-                            فك القفل
-                          </Button>
-                        ) : null}
-                        {canManage && user.status === "Disabled" ? (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            disabled={pendingActionId === user.id}
-                            loading={pendingActionId === user.id}
-                            onClick={() => void onReactivateUser(user)}
-                          >
-                            تفعيل
-                          </Button>
-                        ) : canManage && canDeleteUser(user, currentUserId) ? (
-                          <Button
-                            type="button"
-                            variant="dangerOutline"
-                            size="sm"
-                            disabled={deletingId === user.id}
-                            loading={deletingId === user.id}
-                            onClick={() => void onDeleteUser(user)}
-                          >
-                            تعطيل
-                          </Button>
-                        ) : null}
-                      </div>
-                    </TdAction>
-                    ) : null}
-                  </Tr>
-                ))}
-              </TBody>
-            </Table>
-          </div>
-        )}
-      </section>
+                      <Td className="py-3">
+                        <span className="text-[12px] tabular-nums text-text-2" dir="ltr">
+                          {user.phone || "—"}
+                        </span>
+                      </Td>
+                      {showStatusColumn ? (
+                        <Td className="py-3 text-center">
+                          <Badge tone={statusTone(user.status)} dot>
+                            {statusLabel(user.status)}
+                          </Badge>
+                        </Td>
+                      ) : null}
+                      {showLastLoginColumn ? (
+                        <Td className="py-3">
+                          <span className="text-[12px] text-text-2" dir="ltr">
+                            {formatLastLogin(user.lastLoginAtUtc)}
+                          </span>
+                        </Td>
+                      ) : null}
+                      {showActionsColumn ? (
+                        <TdAction>
+                          <div className="flex items-center justify-end gap-0.5">
+                            <UserActionButton
+                              label="البروفايل"
+                              onClick={() => setProfileUser(user)}
+                            >
+                              <IconProfile className="size-4" />
+                            </UserActionButton>
+                            {canManage ? (
+                              <UserActionButton
+                                label={
+                                  user.status === "PendingActivation" ||
+                                  user.status === "Disabled"
+                                    ? "إعادة دعوة التفعيل"
+                                    : "دعوة تفعيل"
+                                }
+                                tone="gold"
+                                loading={issuingTicketFor === user.id}
+                                disabled={issuingTicketFor === user.id}
+                                onClick={() =>
+                                  void onIssueActivationTicket(user.id)
+                                }
+                              >
+                                <IconInvite className="size-4" />
+                              </UserActionButton>
+                            ) : null}
+                            {canManage ? (
+                              <UserActionButton
+                                label="تعديل"
+                                onClick={() => setEditingUser(user)}
+                              >
+                                <IconEdit className="size-4" />
+                              </UserActionButton>
+                            ) : null}
+                            {canManage && user.status === "Locked" ? (
+                              <UserActionButton
+                                label="فك القفل"
+                                tone="success"
+                                loading={pendingActionId === user.id}
+                                disabled={pendingActionId === user.id}
+                                onClick={() => void onUnlockUser(user)}
+                              >
+                                <IconUnlock className="size-4" />
+                              </UserActionButton>
+                            ) : null}
+                            {canManage && user.status === "Disabled" ? (
+                              <UserActionButton
+                                label="تفعيل"
+                                tone="success"
+                                loading={pendingActionId === user.id}
+                                disabled={pendingActionId === user.id}
+                                onClick={() => void onReactivateUser(user)}
+                              >
+                                <IconEnable className="size-4" />
+                              </UserActionButton>
+                            ) : canManage &&
+                              canDeleteUser(user, currentUserId) ? (
+                              <UserActionButton
+                                label="تعطيل"
+                                tone="danger"
+                                loading={deletingId === user.id}
+                                disabled={deletingId === user.id}
+                                onClick={() => void onDeleteUser(user)}
+                              >
+                                <IconDisable className="size-4" />
+                              </UserActionButton>
+                            ) : null}
+                          </div>
+                        </TdAction>
+                      ) : null}
+                    </Tr>
+                  ))}
+                </TBody>
+              </Table>
+            </div>
+          )}
+        </OperationalPanel>
 
-      <DevSystemResetPanel />
+        <DevSystemResetPanel />
+      </PageGutter>
 
       {profileUser ? (
         <UserProfileModal
@@ -915,6 +1234,6 @@ export function UsersOrganizationView() {
           onClose={() => setEditingUser(null)}
         />
       ) : null}
-    </div>
+    </PageShell>
   );
 }

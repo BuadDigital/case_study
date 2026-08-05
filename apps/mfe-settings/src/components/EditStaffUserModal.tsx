@@ -216,19 +216,29 @@ export function EditStaffUserModal({
         onClick={(e) => e.stopPropagation()}
       >
         <form onSubmit={(e) => void handleSubmit(e)}>
-          <ModalHeader>
-            <ModalTitle id="edit-user-title">تعديل المستخدم</ModalTitle>
-            <ModalClose onClick={onClose} />
+          <ModalHeader className="border-0 bg-ink text-white">
+            <span aria-hidden className="text-gold">
+              ✎
+            </span>
+            <ModalTitle id="edit-user-title" className="text-start text-white">
+              تعديل المستخدم
+            </ModalTitle>
+            <ModalClose
+              className="text-white/70 hover:bg-white/10 hover:text-white"
+              onClick={onClose}
+            >
+              ×
+            </ModalClose>
           </ModalHeader>
 
-          <ModalBody className="max-h-[70vh] overflow-y-auto">
+          <ModalBody className="max-h-[70vh] space-y-4 overflow-y-auto">
             {errors._form ? (
-              <Note tone="danger" className="mb-4 text-xs">
+              <Note tone="danger" className="text-xs">
                 {errors._form}
               </Note>
             ) : null}
 
-            <div className="grid gap-x-5 gap-y-5 sm:grid-cols-2">
+            <div className="grid gap-x-4 gap-y-4 sm:grid-cols-2">
               <RegField
                 id="edit-displayName"
                 label="الاسم"
@@ -350,10 +360,18 @@ export function EditStaffUserModal({
                 value={form.avatarUrl}
                 onChange={(v) => updateField("avatarUrl", v)}
                 error={errors.avatarUrl}
+                className="sm:col-span-2"
               />
-              <label className="flex items-center gap-2 text-xs font-medium text-text">
+              <label
+                className={`flex items-center gap-2.5 rounded-[var(--radius)] border border-border bg-surface-2/50 px-3 py-2.5 text-xs font-medium text-text sm:col-span-2 ${
+                  form.hasCompensation
+                    ? "border-gold/40 bg-gold-soft text-heading"
+                    : ""
+                }`}
+              >
                 <input
                   type="checkbox"
+                  className="size-3.5 accent-[var(--gold-d)]"
                   checked={form.hasCompensation}
                   onChange={(event) =>
                     updateField("hasCompensation", event.target.checked)
@@ -401,10 +419,7 @@ export function EditStaffUserModal({
             </div>
           </ModalBody>
 
-          <ModalFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              إلغاء
-            </Button>
+          <ModalFooter className="justify-start">
             <Button
               type="submit"
               variant="primary"
@@ -412,6 +427,9 @@ export function EditStaffUserModal({
               loading={saving}
             >
               حفظ التعديلات
+            </Button>
+            <Button type="button" variant="outline" onClick={onClose}>
+              إلغاء
             </Button>
           </ModalFooter>
         </form>

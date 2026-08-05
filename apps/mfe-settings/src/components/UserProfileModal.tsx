@@ -29,16 +29,29 @@ export function UserProfileModal({
         className="max-w-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <ModalHeader>
-          <ModalTitle id="user-profile-title">البروفايل</ModalTitle>
-          <ModalClose onClick={onClose} />
+        <ModalHeader className="border-0 bg-ink text-white">
+          <span aria-hidden className="text-gold">
+            ◈
+          </span>
+          <ModalTitle
+            id="user-profile-title"
+            className="text-start text-white"
+          >
+            البروفايل
+          </ModalTitle>
+          <ModalClose
+            className="text-white/70 hover:bg-white/10 hover:text-white"
+            onClick={onClose}
+          >
+            ×
+          </ModalClose>
         </ModalHeader>
 
         <ModalBody className="max-h-[70vh] overflow-y-auto">
           <UserProfileContent user={user} />
         </ModalBody>
 
-        <ModalFooter>
+        <ModalFooter className="justify-start">
           <Button type="button" variant="outline" onClick={onClose}>
             إغلاق
           </Button>

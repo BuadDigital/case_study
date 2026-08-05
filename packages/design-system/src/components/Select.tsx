@@ -23,7 +23,7 @@ export function Select({
       className={cn(
         "w-full cursor-pointer font-inherit outline-none transition-colors",
         variant === "default" &&
-          cn(formControlClassName, "cursor-pointer"),
+          cn(formControlClassName, "h-[38px] cursor-pointer py-0 leading-[38px]"),
         variant === "sidebar" &&
           "rounded-[var(--radius-DEFAULT)] border border-sidebar-border bg-sidebar px-2 py-1.5 text-[11px] text-white [color-scheme:dark] focus:border-gold/50 focus:shadow-[0_0_0_2px_color-mix(in_srgb,var(--gold)_28%,transparent)] focus:ring-0",
         hasError && formControlErrorClassName,

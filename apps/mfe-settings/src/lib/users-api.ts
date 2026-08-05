@@ -39,14 +39,28 @@ export type FetchStaffUsersResult = {
   loadError: string | null;
 };
 
-export async function fetchStaffUsers(): Promise<FetchStaffUsersResult> {
+export type FetchStaffUsersOptions = {
+  /** Prefer explicit flags — module capability cache may lag one frame after login. */
+  canManageUsers?: boolean;
+  canListDistributionAssignees?: boolean;
+};
+
+export async function fetchStaffUsers(
+  options?: FetchStaffUsersOptions,
+): Promise<FetchStaffUsersResult> {
   const config = apiConfig();
   if (!config) return { users: [], loadError: null };
 
-  const result = hasRuntimeCapability("manage-users")
+  const canManageUsers =
+    options?.canManageUsers ?? hasRuntimeCapability("manage-users");
+  const canListAssignees =
+    options?.canListDistributionAssignees ??
+    (hasRuntimeCapability("manage-work-orders") ||
+      hasRuntimeCapability("manage-operations"));
+
+  const result = canManageUsers
     ? await listUsers(config)
-    : hasRuntimeCapability("manage-work-orders") ||
-        hasRuntimeCapability("manage-operations")
+    : canListAssignees
       ? await listDistributionAssignees(config)
       : { ok: true as const, users: [] };
   if (!result.ok) {
