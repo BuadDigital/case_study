@@ -9,6 +9,7 @@ public enum WorkflowTaskKind
 {
     CaseStudyProperty = 0,
     GovernmentReview = 1,
+    /// <summary>Legacy only — no longer spawned or shown as a product role.</summary>
     ValuationCoordination = 2,
     FieldInspection = 3,
     PropertyAppraisal = 4,
@@ -50,11 +51,10 @@ public static class WorkflowTaskKindValues
     public const string PropertyAppraisal = "property-appraisal";
     public const string EngineeringSurvey = "engineering-survey";
 
-    /// <summary>Party kinds spawned as children of a case-study parent.</summary>
+    /// <summary>Party kinds that may still be spawned as children of a case-study parent.</summary>
     public static readonly IReadOnlyList<WorkflowTaskKind> PartyKinds =
     [
         WorkflowTaskKind.GovernmentReview,
-        WorkflowTaskKind.ValuationCoordination,
         WorkflowTaskKind.FieldInspection,
         WorkflowTaskKind.PropertyAppraisal,
         WorkflowTaskKind.EngineeringSurvey,

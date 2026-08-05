@@ -39,7 +39,6 @@ import {
   getEngineeringOffices,
   getFieldInspectors,
   getGovernmentAuditors,
-  getValuationCoordinators,
   getValuators,
 } from "./distribution-parties";
 
@@ -61,7 +60,6 @@ export type WorkflowTaskKind =
   | "field-inspection"
   | "government-review"
   | "engineering-survey"
-  | "valuation-coordination"
   | "property-appraisal";
 
 export type WorkflowTaskStatus = "open" | "completed" | "blocked" | "cancelled";
@@ -71,7 +69,6 @@ export type TaskDistributionDraft = {
   governmentAuditor: boolean;
   governmentAuditorId: string;
   valuationDepartment: boolean;
-  operationsCoordinatorId: string;
   inspectorId: string;
   valuatorId: string;
   engineeringOffice: boolean;
@@ -83,6 +80,7 @@ type LegacyDistribution = {
   governmentReviewer?: boolean;
   engineeringOffice?: boolean;
   fieldInspectorRecommendedVisit?: boolean;
+  operationsCoordinatorId?: string;
 };
 
 export function migrateDistribution(
@@ -94,7 +92,18 @@ export function migrateDistribution(
   if (!raw) {
     migrated = base;
   } else if ("governmentAuditor" in raw) {
-    migrated = { ...base, ...(raw as TaskDistributionDraft) };
+    const full = raw as TaskDistributionDraft & {
+      operationsCoordinatorId?: string;
+    };
+    migrated = {
+      governmentAuditor: full.governmentAuditor,
+      governmentAuditorId: full.governmentAuditorId,
+      valuationDepartment: full.valuationDepartment,
+      inspectorId: full.inspectorId,
+      valuatorId: full.valuatorId,
+      engineeringOffice: full.engineeringOffice,
+      engineeringOfficeId: full.engineeringOfficeId,
+    };
   } else {
     const legacy = raw as LegacyDistribution;
     migrated = {
@@ -105,10 +114,6 @@ export function migrateDistribution(
           ? getGovernmentAuditors(staffUsers)[0].id
           : "",
       valuationDepartment: legacy.fieldInspector ?? false,
-      operationsCoordinatorId:
-        legacy.fieldInspector && getValuationCoordinators(staffUsers)[0]
-          ? getValuationCoordinators(staffUsers)[0].id
-          : "",
       inspectorId:
         legacy.fieldInspector && getFieldInspectors(staffUsers)[0]
           ? getFieldInspectors(staffUsers)[0].id
@@ -202,7 +207,7 @@ function distributionToDto(
     governmentAuditor: distribution.governmentAuditor,
     governmentAuditorId: distribution.governmentAuditorId,
     valuationDepartment: distribution.valuationDepartment,
-    operationsCoordinatorId: distribution.operationsCoordinatorId,
+    operationsCoordinatorId: "",
     inspectorId: distribution.inspectorId,
     valuatorId: distribution.valuatorId,
     engineeringOffice: distribution.engineeringOffice,
@@ -242,13 +247,13 @@ function poCaseTasks(list: WorkflowTask[], poNumber: string): WorkflowTask[] {
   );
 }
 
-export function taskKindLabel(kind: WorkflowTaskKind): string {
+export function taskKindLabel(kind: WorkflowTaskKind | string): string {
   if (kind === "case-study-property") return "دراسة حالة — عقار";
   if (kind === "field-inspection") return "معاينة ميدانية";
   if (kind === "government-review") return "مراجعة حكومية";
-  if (kind === "valuation-coordination") return "منسق التقييم — استلام";
   if (kind === "property-appraisal") return "تقييم عقاري";
-  return "رفع مساحي — مكتب هندسي";
+  if (kind === "engineering-survey") return "رفع مساحي — مكتب هندسي";
+  return "مهمة";
 }
 
 export function taskPhaseLabel(phase: CaseStudyTaskPhase): string {
@@ -296,7 +301,6 @@ export function defaultDistribution(): TaskDistributionDraft {
     governmentAuditor: false,
     governmentAuditorId: "",
     valuationDepartment: false,
-    operationsCoordinatorId: "",
     inspectorId: "",
     valuatorId: "",
     engineeringOffice: false,
@@ -324,9 +328,6 @@ export function distributionValidationError(
     return "فعّل طرفاً واحداً على الأقل ثم اختر المسؤول من القائمة.";
   }
   if (distribution.valuationDepartment) {
-    if (!distribution.operationsCoordinatorId.trim()) {
-      return "اختر منسق عمليات التقييم.";
-    }
     if (!distribution.inspectorId.trim()) {
       return "اختر المعاين الميداني.";
     }
@@ -595,10 +596,6 @@ function buildAssigneeNames(
     );
   }
   if (distribution.valuationDepartment) {
-    names["valuation-coordination"] = assigneeLabel(
-      getValuationCoordinators(staffUsers),
-      distribution.operationsCoordinatorId,
-    );
     names["field-inspection"] = assigneeLabel(
       getFieldInspectors(staffUsers),
       distribution.inspectorId,
@@ -865,8 +862,6 @@ function partyAssigneeIdFromDistribution(
       return distribution.inspectorId.trim();
     case "property-appraisal":
       return distribution.valuatorId.trim();
-    case "valuation-coordination":
-      return distribution.operationsCoordinatorId.trim();
     case "engineering-survey":
       return distribution.engineeringOfficeId.trim();
     default:
@@ -977,7 +972,6 @@ export async function patchTaskDistribution(
     distribution.governmentAuditorId = "";
   }
   if (!distribution.valuationDepartment) {
-    distribution.operationsCoordinatorId = "";
     distribution.inspectorId = "";
     distribution.valuatorId = "";
   }

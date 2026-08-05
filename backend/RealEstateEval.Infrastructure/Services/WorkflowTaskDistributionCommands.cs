@@ -155,17 +155,6 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         {
             children.Add(WorkflowTaskPhaseRules.SpawnChild(
                 parent,
-                WorkflowTaskKind.ValuationCoordination,
-                "valuation-coordinator",
-                WorkflowTaskPhaseRules.ResolveName(
-                    names,
-                    WorkflowTaskKind.ValuationCoordination,
-                    "منسق التقييم"),
-                distribution.OperationsCoordinatorId,
-                deed,
-                now));
-            children.Add(WorkflowTaskPhaseRules.SpawnChild(
-                parent,
                 WorkflowTaskKind.FieldInspection,
                 "field-inspector",
                 WorkflowTaskPhaseRules.ResolveName(
@@ -315,8 +304,6 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         {
             (distribution.GovernmentAuditor, WorkflowTaskKind.GovernmentReview, "government-reviewer",
                 distribution.GovernmentAuditorId, "مراجع حكومي"),
-            (distribution.ValuationDepartment, WorkflowTaskKind.ValuationCoordination, "valuation-coordinator",
-                distribution.OperationsCoordinatorId, "منسق التقييم"),
             (distribution.ValuationDepartment, WorkflowTaskKind.FieldInspection, "field-inspector",
                 distribution.InspectorId, "معاين ميداني"),
             (distribution.ValuationDepartment, WorkflowTaskKind.PropertyAppraisal, "real-estate-appraiser",
@@ -455,7 +442,6 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         WorkflowTaskKind.EngineeringSurvey => "الرفع المساحي",
         WorkflowTaskKind.PropertyAppraisal => "تقييم العقار",
         WorkflowTaskKind.GovernmentReview => "المراجعة الحكومية",
-        WorkflowTaskKind.ValuationCoordination => "استلام التقييم",
         _ => "مهمة جديدة",
     };
 
@@ -468,8 +454,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
             WorkflowTaskKind.FieldInspection => $"/property-inspection/{id}",
             WorkflowTaskKind.PropertyAppraisal => $"/property-appraisal/{id}",
             WorkflowTaskKind.GovernmentReview => "/operations-tasks",
-            WorkflowTaskKind.ValuationCoordination => $"/valuation-coordination/{id}",
-            _ => "/active-primary-data",
+            _ => "/all-transactions",
         };
     }
 }

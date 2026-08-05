@@ -33,7 +33,6 @@
 | `engineering-survey` | Engineering survey | `PayloadJson` |
 | `property-appraisal` | Evaluator submission | `PayloadJson` |
 | `government-review` | Government review | `PayloadJson` |
-| `valuation-coordination` | Coordination | `PayloadJson` |
 
 ---
 
@@ -607,37 +606,20 @@ Question keys go into **`AnswersJson`**:
 
 ---
 
-### 4.14 Valuation coordination — `valuation-coordination`
-
-**Storage:** `PayloadJson` where `kind = valuation-coordination`.
-
-| Key | Label (AR) |
-|-----|------------|
-| `receiptConfirmed` | تأكيد الاستلام |
-| `receiptDate` | تاريخ الاستلام |
-| `inspectorName` | المعاين الميداني |
-| `appraiserName` | المقيم العقاري |
-| `priority` | الأولوية |
-| `coordinationNotes` | ملاحظات التنسيق |
-| `inspectorInstructions` | تعليمات للمعاين |
-| `appraiserInstructions` | تعليمات للمقيم |
-
----
-
-### 4.15 Failures — `failures`
+### 4.14 Failures — `failures`
 
 See §3.9 for DB columns. Catalog keys: `failureTitle`, `problemTypeId`, `failureSeverity`, `failureStatus`, `raisedByRole`, `internalNote`, `finalNote`, `resolutionReason`, `continueInstructions`, `failureSpecialist`, `failurePoNumber`, `failurePropertyId`, `failureDeedNumber`.
 
 ---
 
-### 4.16 Workflow meta — `workflow-meta`
+### 4.15 Workflow meta — `workflow-meta`
 
 Derived from tasks + submissions (not separate property columns):  
-`taskStatus`, `submissionStatus`, `submittedAt`, `updatedAt`, `formCurrentStep`, `answersCompleted`, `checklistCompleted`, `surveySubmissionStatus`, `inspectionSubmissionStatus`, `appraisalSubmissionStatus`, `governmentReviewStatus`, `coordinationReceiptStatus`.
+`taskStatus`, `submissionStatus`, `submittedAt`, `updatedAt`, `formCurrentStep`, `answersCompleted`, `checklistCompleted`, `surveySubmissionStatus`, `inspectionSubmissionStatus`, `appraisalSubmissionStatus`, `governmentReviewStatus`.
 
 ---
 
-### 4.17 Party panel derived — `party-panel`
+### 4.16 Party panel derived — `party-panel`
 
 UI read-models over party payloads (`partyCoords`, `partyActualArea`, …). Do not persist separately in a standalone core schema.
 

@@ -21,18 +21,31 @@ internal static class FinancialModel
             e.HasKey(x => x.Id);
             e.Property(x => x.ReferenceNumber).HasMaxLength(32);
             e.Property(x => x.AssigneeId).HasMaxLength(128);
+            e.Property(x => x.PayeeType).HasMaxLength(32);
+            e.Property(x => x.TaskKind).HasMaxLength(64);
             e.Property(x => x.Status).HasMaxLength(32);
             e.Property(x => x.CreatedByUserId).HasMaxLength(450);
             e.Property(x => x.IssuedByUserId).HasMaxLength(450);
             e.Property(x => x.ClosedByUserId).HasMaxLength(450);
             e.Property(x => x.ExternalInvoiceNumber).HasMaxLength(128);
             e.Property(x => x.TransferReceiptRef).HasMaxLength(256);
+            e.Property(x => x.TransferReference).HasMaxLength(256);
+            e.Property(x => x.DisbursementVoucher).HasMaxLength(128);
             e.Property(x => x.Notes).HasMaxLength(2000);
+            e.Property(x => x.VendorInvoiceNumber).HasMaxLength(128);
+            e.Property(x => x.VendorInvoiceSubmittedByUserId).HasMaxLength(450);
+            e.Property(x => x.VendorInvoiceMatchedByUserId).HasMaxLength(450);
+            e.Property(x => x.RejectedInvoicesJson).HasColumnType("jsonb");
+            e.Property(x => x.CancelledByUserId).HasMaxLength(450);
+            e.Property(x => x.CancelReason).HasMaxLength(1000);
             e.Property(x => x.TotalNetSar).HasPrecision(14, 2);
             e.HasIndex(x => x.ReferenceNumber).IsUnique();
             e.HasIndex(x => x.AssigneeId);
             e.HasIndex(x => x.Status);
             e.HasIndex(x => x.CreatedAtUtc);
+            e.HasIndex(x => x.DisbursementVoucher)
+                .IsUnique()
+                .HasFilter("\"DisbursementVoucher\" IS NOT NULL");
             e.HasMany(x => x.Lines)
                 .WithOne(x => x.Statement!)
                 .HasForeignKey(x => x.StatementId)
@@ -73,6 +86,30 @@ internal static class FinancialModel
             e.Property(x => x.TotalSar).HasPrecision(14, 2);
             e.Property(x => x.CollectedAmountSar).HasPrecision(14, 2);
             e.Property(x => x.AttachmentIdsJson).HasColumnType("jsonb");
+        });
+
+        builder.Entity<PoEnfazFollowup>(e =>
+        {
+            MapTable(e, "PoEnfazFollowups", DatabaseSchemas.Financial, ownsMigrations);
+            e.HasKey(x => x.Id);
+            e.Property(x => x.PoNumber).HasMaxLength(64);
+            e.Property(x => x.Channel).HasMaxLength(32);
+            e.Property(x => x.Notes).HasMaxLength(2000);
+            e.Property(x => x.CreatedByUserId).HasMaxLength(450);
+            e.HasIndex(x => x.PoNumber);
+            e.HasIndex(x => x.FollowedAtUtc);
+        });
+
+        builder.Entity<PoEnfazFinanceFlag>(e =>
+        {
+            MapTable(e, "PoEnfazFinanceFlags", DatabaseSchemas.Financial, ownsMigrations);
+            e.HasKey(x => x.Id);
+            e.Property(x => x.PoNumber).HasMaxLength(64);
+            e.Property(x => x.Flag).HasMaxLength(32);
+            e.Property(x => x.Note).HasMaxLength(1000);
+            e.Property(x => x.SetByUserId).HasMaxLength(450);
+            e.HasIndex(x => x.PoNumber);
+            e.HasIndex(x => new { x.PoNumber, x.PropertyId });
         });
 
         builder.Entity<KeyReceiptFeeCharge>(e =>

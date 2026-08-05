@@ -1,5 +1,5 @@
 /**
- * Party billing statements (كشف فوترة) — stages 6–8.
+ * Party billing statements (مسير / أمر صرف) — vendor invoice match + individual pay.
  */
 import { getApiBase } from "./index";
 import { repositoryFetch as fetch } from "./write-repository";
@@ -7,7 +7,14 @@ import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
 export type PartyBillingStatementsApiConfig = WorkOrdersApiConfig;
 
-export type PartyBillingStatementStatus = "draft" | "issued" | "closed";
+export type PartyBillingStatementStatus =
+  | "draft"
+  | "issued"
+  | "invoice_received"
+  | "closed"
+  | "cancelled";
+
+export type PartyBillingPayeeType = "vendor" | "individual";
 
 export type PartyBillingReadyLineDto = {
   workflowTaskId: string;
@@ -15,6 +22,9 @@ export type PartyBillingReadyLineDto = {
   propertyLabel: string;
   poNumber: string;
   assigneeId: string | null;
+  taskKind: string;
+  payeeType: PartyBillingPayeeType;
+  payeeTypeLabel: string;
   agreedFeeSar: number;
   supervisorDiscountSar: number;
   netFeeSar: number;
@@ -35,10 +45,22 @@ export type PartyBillingStatementLineDto = {
   billingStatusLabel: string;
 };
 
+export type PartyBillingRejectedInvoiceDto = {
+  invoiceNumber: string;
+  invoiceDate: string | null;
+  attachmentId: string | null;
+  reason: string;
+  rejectedByUserId: string;
+  rejectedAtUtc: string;
+};
+
 export type PartyBillingStatementDto = {
   id: string;
   referenceNumber: string;
   assigneeId: string;
+  payeeType: PartyBillingPayeeType;
+  payeeTypeLabel: string;
+  taskKind: string | null;
   status: PartyBillingStatementStatus;
   statusLabel: string;
   totalNetSar: number;
@@ -49,8 +71,19 @@ export type PartyBillingStatementDto = {
   externalInvoiceNumber: string | null;
   transferReceiptAttachmentId: string | null;
   transferReceiptRef: string | null;
+  transferReference: string | null;
+  disbursementVoucher: string | null;
   paidAtUtc: string | null;
   notes: string | null;
+  vendorInvoiceNumber: string | null;
+  vendorInvoiceDate: string | null;
+  vendorInvoiceAttachmentId: string | null;
+  vendorInvoiceSubmittedAtUtc: string | null;
+  vendorInvoiceMatched: boolean;
+  vendorInvoiceMatchedAtUtc: string | null;
+  rejectedInvoices: PartyBillingRejectedInvoiceDto[];
+  cancelledAtUtc: string | null;
+  cancelReason: string | null;
   lines: PartyBillingStatementLineDto[];
 };
 
@@ -66,12 +99,35 @@ export type CreatePartyBillingStatementResult = {
   error?: string | null;
 };
 
+export type CreateMonthPartyBillingStatementsResult = {
+  created: PartyBillingStatementDto[];
+  assigneesCovered: number;
+  linesIncluded: number;
+  error?: string | null;
+};
+
 export type ClosePartyBillingStatementRequest = {
-  externalInvoiceNumber: string;
-  transferReceiptAttachmentId?: string;
+  disbursementVoucher: string;
+  transferReference: string;
+  transferReceiptAttachmentId: string;
   transferReceiptRef?: string;
+  externalInvoiceNumber?: string;
   paidAtUtc?: string;
   notes?: string;
+};
+
+export type SubmitVendorInvoiceRequest = {
+  invoiceNumber: string;
+  invoiceDate?: string | null;
+  attachmentId: string;
+};
+
+export type RejectVendorInvoiceRequest = {
+  reason: string;
+};
+
+export type CancelPartyBillingStatementRequest = {
+  reason: string;
 };
 
 export type DeferPartyBillingLinesRequest = {
@@ -95,12 +151,20 @@ function asRecord(raw: unknown): Record<string, unknown> {
 }
 
 function normalizeReadyLine(raw: Record<string, unknown>): PartyBillingReadyLineDto {
+  const payeeType = String(
+    raw.payeeType ?? raw.PayeeType ?? "vendor",
+  ) as PartyBillingPayeeType;
   return {
     workflowTaskId: String(raw.workflowTaskId ?? raw.WorkflowTaskId ?? ""),
     propertyId: (raw.propertyId ?? raw.PropertyId ?? null) as string | null,
     propertyLabel: String(raw.propertyLabel ?? raw.PropertyLabel ?? ""),
     poNumber: String(raw.poNumber ?? raw.PoNumber ?? ""),
     assigneeId: (raw.assigneeId ?? raw.AssigneeId ?? null) as string | null,
+    taskKind: String(raw.taskKind ?? raw.TaskKind ?? ""),
+    payeeType,
+    payeeTypeLabel: String(
+      raw.payeeTypeLabel ?? raw.PayeeTypeLabel ?? (payeeType === "individual" ? "فرد" : "مورّد"),
+    ),
     agreedFeeSar: Number(raw.agreedFeeSar ?? raw.AgreedFeeSar ?? 0),
     supervisorDiscountSar: Number(
       raw.supervisorDiscountSar ?? raw.SupervisorDiscountSar ?? 0,
@@ -132,12 +196,38 @@ function normalizeStatementLine(
   };
 }
 
+function normalizeRejected(
+  raw: Record<string, unknown>,
+): PartyBillingRejectedInvoiceDto {
+  return {
+    invoiceNumber: String(raw.invoiceNumber ?? raw.InvoiceNumber ?? ""),
+    invoiceDate: (raw.invoiceDate ?? raw.InvoiceDate ?? null) as string | null,
+    attachmentId: (raw.attachmentId ?? raw.AttachmentId ?? null) as string | null,
+    reason: String(raw.reason ?? raw.Reason ?? ""),
+    rejectedByUserId: String(
+      raw.rejectedByUserId ?? raw.RejectedByUserId ?? "",
+    ),
+    rejectedAtUtc: String(raw.rejectedAtUtc ?? raw.RejectedAtUtc ?? ""),
+  };
+}
+
 function normalizeStatement(raw: Record<string, unknown>): PartyBillingStatementDto {
   const linesRaw = (raw.lines ?? raw.Lines ?? []) as unknown[];
+  const rejectedRaw = (raw.rejectedInvoices ?? raw.RejectedInvoices ?? []) as unknown[];
+  const payeeType = String(
+    raw.payeeType ?? raw.PayeeType ?? "vendor",
+  ) as PartyBillingPayeeType;
   return {
     id: String(raw.id ?? raw.Id ?? ""),
     referenceNumber: String(raw.referenceNumber ?? raw.ReferenceNumber ?? ""),
     assigneeId: String(raw.assigneeId ?? raw.AssigneeId ?? ""),
+    payeeType,
+    payeeTypeLabel: String(
+      raw.payeeTypeLabel ??
+        raw.PayeeTypeLabel ??
+        (payeeType === "individual" ? "فرد" : "مورّد"),
+    ),
+    taskKind: (raw.taskKind ?? raw.TaskKind ?? null) as string | null,
     status: String(raw.status ?? raw.Status ?? "draft") as PartyBillingStatementStatus,
     statusLabel: String(raw.statusLabel ?? raw.StatusLabel ?? ""),
     totalNetSar: Number(raw.totalNetSar ?? raw.TotalNetSar ?? 0),
@@ -154,8 +244,37 @@ function normalizeStatement(raw: Record<string, unknown>): PartyBillingStatement
     transferReceiptRef: (raw.transferReceiptRef ??
       raw.TransferReceiptRef ??
       null) as string | null,
+    transferReference: (raw.transferReference ??
+      raw.TransferReference ??
+      null) as string | null,
+    disbursementVoucher: (raw.disbursementVoucher ??
+      raw.DisbursementVoucher ??
+      null) as string | null,
     paidAtUtc: (raw.paidAtUtc ?? raw.PaidAtUtc ?? null) as string | null,
     notes: (raw.notes ?? raw.Notes ?? null) as string | null,
+    vendorInvoiceNumber: (raw.vendorInvoiceNumber ??
+      raw.VendorInvoiceNumber ??
+      null) as string | null,
+    vendorInvoiceDate: (raw.vendorInvoiceDate ??
+      raw.VendorInvoiceDate ??
+      null) as string | null,
+    vendorInvoiceAttachmentId: (raw.vendorInvoiceAttachmentId ??
+      raw.VendorInvoiceAttachmentId ??
+      null) as string | null,
+    vendorInvoiceSubmittedAtUtc: (raw.vendorInvoiceSubmittedAtUtc ??
+      raw.VendorInvoiceSubmittedAtUtc ??
+      null) as string | null,
+    vendorInvoiceMatched: Boolean(
+      raw.vendorInvoiceMatched ?? raw.VendorInvoiceMatched ?? false,
+    ),
+    vendorInvoiceMatchedAtUtc: (raw.vendorInvoiceMatchedAtUtc ??
+      raw.VendorInvoiceMatchedAtUtc ??
+      null) as string | null,
+    rejectedInvoices: rejectedRaw.map((r) => normalizeRejected(asRecord(r))),
+    cancelledAtUtc: (raw.cancelledAtUtc ?? raw.CancelledAtUtc ?? null) as
+      | string
+      | null,
+    cancelReason: (raw.cancelReason ?? raw.CancelReason ?? null) as string | null,
     lines: linesRaw.map((l) => normalizeStatementLine(asRecord(l))),
   };
 }
@@ -271,15 +390,55 @@ export async function createPartyBillingStatement(
   }
 }
 
-export async function issuePartyBillingStatement(
+export async function createMonthVendorStatements(
+  config: PartyBillingStatementsApiConfig,
+): Promise<ApiOk<CreateMonthPartyBillingStatementsResult> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/party-billing-statements/auto-month-vendor`,
+      { method: "POST", headers: headers(config.token) },
+    );
+    const raw = asRecord(await res.json().catch(() => ({})));
+    if (!res.ok) {
+      return httpErr(
+        res,
+        String(raw.error ?? raw.Error ?? `HTTP ${res.status}`),
+      );
+    }
+    return {
+      ok: true,
+      data: {
+        created: ((raw.created ?? raw.Created ?? []) as unknown[]).map((r) =>
+          normalizeStatement(asRecord(r)),
+        ),
+        assigneesCovered: Number(
+          raw.assigneesCovered ?? raw.AssigneesCovered ?? 0,
+        ),
+        linesIncluded: Number(raw.linesIncluded ?? raw.LinesIncluded ?? 0),
+        error: (raw.error ?? raw.Error ?? null) as string | null,
+      },
+    };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+async function postStatementAction(
   config: PartyBillingStatementsApiConfig,
   statementId: string,
+  action: string,
+  body?: unknown,
 ): Promise<ApiOk<PartyBillingStatementDto> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(
-      `${base}/api/party-billing-statements/${encodeURIComponent(statementId)}/issue`,
-      { method: "POST", headers: headers(config.token) },
+      `${base}/api/party-billing-statements/${encodeURIComponent(statementId)}/${action}`,
+      {
+        method: "POST",
+        headers: headers(config.token),
+        body: body === undefined ? undefined : JSON.stringify(body),
+      },
     );
     if (!res.ok) return httpErr(res, await readError(res));
     return { ok: true, data: normalizeStatement(asRecord(await res.json())) };
@@ -288,26 +447,50 @@ export async function issuePartyBillingStatement(
   }
 }
 
+export async function issuePartyBillingStatement(
+  config: PartyBillingStatementsApiConfig,
+  statementId: string,
+): Promise<ApiOk<PartyBillingStatementDto> | ApiErr> {
+  return postStatementAction(config, statementId, "issue");
+}
+
+export async function submitVendorInvoice(
+  config: PartyBillingStatementsApiConfig,
+  statementId: string,
+  body: SubmitVendorInvoiceRequest,
+): Promise<ApiOk<PartyBillingStatementDto> | ApiErr> {
+  return postStatementAction(config, statementId, "submit-invoice", body);
+}
+
+export async function matchVendorInvoice(
+  config: PartyBillingStatementsApiConfig,
+  statementId: string,
+): Promise<ApiOk<PartyBillingStatementDto> | ApiErr> {
+  return postStatementAction(config, statementId, "match-invoice");
+}
+
+export async function rejectVendorInvoice(
+  config: PartyBillingStatementsApiConfig,
+  statementId: string,
+  body: RejectVendorInvoiceRequest,
+): Promise<ApiOk<PartyBillingStatementDto> | ApiErr> {
+  return postStatementAction(config, statementId, "reject-invoice", body);
+}
+
+export async function cancelPartyBillingStatement(
+  config: PartyBillingStatementsApiConfig,
+  statementId: string,
+  body: CancelPartyBillingStatementRequest,
+): Promise<ApiOk<PartyBillingStatementDto> | ApiErr> {
+  return postStatementAction(config, statementId, "cancel", body);
+}
+
 export async function closePartyBillingStatement(
   config: PartyBillingStatementsApiConfig,
   statementId: string,
   body: ClosePartyBillingStatementRequest,
 ): Promise<ApiOk<PartyBillingStatementDto> | ApiErr> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(
-      `${base}/api/party-billing-statements/${encodeURIComponent(statementId)}/close`,
-      {
-        method: "POST",
-        headers: headers(config.token),
-        body: JSON.stringify(body),
-      },
-    );
-    if (!res.ok) return httpErr(res, await readError(res));
-    return { ok: true, data: normalizeStatement(asRecord(await res.json())) };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
+  return postStatementAction(config, statementId, "close", body);
 }
 
 export async function deferPartyBillingLines(
@@ -346,15 +529,19 @@ export async function deferPartyBillingLines(
 }
 
 export function partyBillingStatementStatusTone(
-  status: PartyBillingStatementStatus,
-): "default" | "warning" | "success" | "info" {
+  status: PartyBillingStatementStatus | string,
+): "default" | "warning" | "success" | "info" | "danger" {
   switch (status) {
     case "draft":
       return "default";
     case "issued":
       return "info";
+    case "invoice_received":
+      return "warning";
     case "closed":
       return "success";
+    case "cancelled":
+      return "danger";
     default:
       return "default";
   }

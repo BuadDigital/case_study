@@ -578,6 +578,17 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Financial.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("CancelledAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CancelledByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
                     b.Property<DateTime?>("ClosedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -592,6 +603,10 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Financial.Migrations
                         .IsRequired()
                         .HasMaxLength(450)
                         .HasColumnType("character varying(450)");
+
+                    b.Property<string>("DisbursementVoucher")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("ExternalInvoiceNumber")
                         .HasMaxLength(128)
@@ -611,15 +626,27 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Financial.Migrations
                     b.Property<DateTime?>("PaidAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("PayeeType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.Property<string>("ReferenceNumber")
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
+                    b.Property<string>("RejectedInvoicesJson")
+                        .HasColumnType("jsonb");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
+
+                    b.Property<string>("TaskKind")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<decimal>("TotalNetSar")
                         .HasPrecision(14, 2)
@@ -632,6 +659,34 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Financial.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<string>("TransferReference")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Guid?>("VendorInvoiceAttachmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("VendorInvoiceDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("VendorInvoiceMatchedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("VendorInvoiceMatchedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("VendorInvoiceNumber")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime?>("VendorInvoiceSubmittedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("VendorInvoiceSubmittedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
                     b.Property<uint>("Version")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -643,6 +698,10 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Financial.Migrations
                     b.HasIndex("AssigneeId");
 
                     b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("DisbursementVoucher")
+                        .IsUnique()
+                        .HasFilter("\"DisbursementVoucher\" IS NOT NULL");
 
                     b.HasIndex("ReferenceNumber")
                         .IsUnique();
@@ -858,6 +917,87 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Financial.Migrations
                     b.HasKey("PoNumber");
 
                     b.ToTable("PoEnfazInvoices", "financial");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Domain.PoEnfazFollowup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<DateTime>("FollowedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("PoNumber")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FollowedAtUtc");
+
+                    b.HasIndex("PoNumber");
+
+                    b.ToTable("PoEnfazFollowups", "financial");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Domain.PoEnfazFinanceFlag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Flag")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("PoNumber")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid?>("PropertyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("SetAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SetByUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PoNumber");
+
+                    b.HasIndex("PoNumber", "PropertyId");
+
+                    b.ToTable("PoEnfazFinanceFlags", "financial");
                 });
 
             modelBuilder.Entity("RealEstateEval.Domain.PoEnfazRevenueLine", b =>

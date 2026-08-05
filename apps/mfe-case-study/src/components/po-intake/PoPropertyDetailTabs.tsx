@@ -698,9 +698,6 @@ export function PoPropertyDetailTabs({
         }
       : null);
   const surveyCard = partyCards.find((c) => c.roleKey === "survey") ?? null;
-  const coordinatorCard = partyCards.find((c) => c.roleKey === "coordinator");
-  const coordinatorName =
-    coordinatorCard && !coordinatorCard.unassigned ? coordinatorCard.name : "";
 
   const governmentCard =
     partyCards.find((c) => c.roleKey === "government") ?? null;
@@ -708,7 +705,6 @@ export function PoPropertyDetailTabs({
   const partySubmissionsQuery = usePropertyDetailPartySubmissionsQuery({
     parentTask: task ?? null,
     allTasks: tasks,
-    coordinatorName,
     enabled: true,
   });
 

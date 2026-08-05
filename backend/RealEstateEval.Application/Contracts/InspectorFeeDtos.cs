@@ -164,17 +164,57 @@ public class EnfazTrackingRowDto
     public string PoNumber { get; set; } = "";
     public string PropertyId { get; set; } = "";
     public string PropertyLabel { get; set; } = "";
+    /// <summary>رقم الصك من عقار أمر العمل.</summary>
+    public string DeedNumber { get; set; } = "";
+    /// <summary>المدينة — للفلترة والعرض في قائمة الإيرادات.</summary>
+    public string City { get; set; } = "";
+    /// <summary>مساحة الأرض من البيانات الأولية (نص كما أُدخل).</summary>
+    public string LandArea { get; set; } = "";
+    /// <summary>تاريخ اكتمال العمل (آخر مهمة مكتملة أو بورصة).</summary>
+    public DateTime? CompletedAtUtc { get; set; }
     public string WorkStatus { get; set; } = "";
     public string WorkStatusLabel { get; set; } = "";
     public bool EnfazFilled { get; set; }
     public decimal CaseStudyFeeSar { get; set; }
     public decimal SurveyFeeSar { get; set; }
+    /// <summary>أتعاب استلام المفاتيح (شاملة الضريبة).</summary>
+    public decimal KeyFeeSar { get; set; }
     public decimal EnfazFeeSar { get; set; }
     public string? InvoiceNumber { get; set; }
     public string? InvoiceStatus { get; set; }
     public decimal CollectedAmountSar { get; set; }
     public DateTime? InvoiceIssuedAtUtc { get; set; }
     public bool IsOverdue { get; set; }
+    /// <summary>stopped | excluded | difficult — علامة مالية يدوية.</summary>
+    public string? FinanceFlag { get; set; }
+    public string? FinanceFlagNote { get; set; }
+    public int FollowupCount { get; set; }
+}
+
+public class EnfazFollowupDto
+{
+    public Guid Id { get; set; }
+    public string PoNumber { get; set; } = "";
+    public DateTime FollowedAtUtc { get; set; }
+    public string Channel { get; set; } = "";
+    public string ChannelLabel { get; set; } = "";
+    public string Notes { get; set; } = "";
+    public string CreatedByUserId { get; set; } = "";
+    public DateTime CreatedAtUtc { get; set; }
+}
+
+public class AddEnfazFollowupRequest
+{
+    public string Channel { get; set; } = "call";
+    public string Notes { get; set; } = "";
+    public DateTime? FollowedAtUtc { get; set; }
+}
+
+public class SetEnfazFinanceFlagRequest
+{
+    public string Flag { get; set; } = "stopped";
+    public string? PropertyId { get; set; }
+    public string? Note { get; set; }
 }
 
 public class EnfazReadyPoSummaryDto

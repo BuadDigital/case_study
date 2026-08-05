@@ -46,7 +46,7 @@ public static class SupervisingDepartments
     public static string? DeriveForRole(string? roleId) => roleId switch
     {
         "case-specialist" or "government-reviewer" => CaseStudy,
-        "valuation-coordinator" or "real-estate-appraiser" or "field-inspector" => Valuation,
+        "real-estate-appraiser" or "field-inspector" => Valuation,
         "financial-officer" => Finance,
         "engineering-office" => External,
         "section-supervisor" => null,

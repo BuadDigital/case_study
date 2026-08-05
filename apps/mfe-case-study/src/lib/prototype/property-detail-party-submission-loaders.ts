@@ -1,7 +1,6 @@
 import { getPartyTaskSubmission, type PartyTaskSubmissionDto } from "@platform/api-client";
 import { resolveApiError, workOrdersApiConfig } from "../work-orders-api-config";
 import { fetchGovernmentReviewSubmission } from "./government-review-work-storage";
-import { fetchValuationCoordinationSubmission } from "./valuation-coordination-work-storage";
 import type { WorkflowTask } from "./tasks-storage";
 import type {
   EngineeringSurveyChecklistRow,
@@ -9,7 +8,6 @@ import type {
   EvaluatorChecklist,
   EvaluatorSubmissionSnapshot,
   GovernmentReviewSubmissionSnapshot,
-  ValuationCoordinationSubmissionSnapshot,
 } from "./property-detail-party-submission-types";
 
 function parseEvaluatorPayload(
@@ -144,27 +142,6 @@ export async function loadGovernmentReviewSubmissionSnapshot(
     reviewNotes: submission.reviewNotes,
     propertyZoneStatus: submission.propertyZoneStatus,
     keysProofFiles: submission.keysProofFiles,
-    submittedAtUtc: submission.submittedAtUtc,
-    updatedAtUtc: submission.updatedAtUtc,
-  };
-}
-
-export async function loadValuationCoordinationSubmissionSnapshot(
-  child: WorkflowTask,
-): Promise<ValuationCoordinationSubmissionSnapshot | null> {
-  if (!child.propertyId) return null;
-  const submission = await fetchValuationCoordinationSubmission(child.id);
-  if (!submission) return null;
-  return {
-    status: submission.status,
-    receiptConfirmed: submission.receiptConfirmed,
-    receiptDate: submission.receiptDate,
-    inspectorName: submission.inspectorName,
-    appraiserName: submission.appraiserName,
-    priority: submission.priority,
-    coordinationNotes: submission.coordinationNotes,
-    inspectorInstructions: submission.inspectorInstructions,
-    appraiserInstructions: submission.appraiserInstructions,
     submittedAtUtc: submission.submittedAtUtc,
     updatedAtUtc: submission.updatedAtUtc,
   };

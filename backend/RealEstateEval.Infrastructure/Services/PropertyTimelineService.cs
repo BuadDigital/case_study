@@ -515,7 +515,6 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
         WorkflowTaskKind.EngineeringSurvey => "تعيين المكتب الهندسي",
         WorkflowTaskKind.PropertyAppraisal => "تعيين المقيّم العقاري",
         WorkflowTaskKind.GovernmentReview => "تعيين المراجع الحكومي",
-        WorkflowTaskKind.ValuationCoordination => "تعيين منسق التقييم",
         _ => "تعيين طرف",
     };
 
@@ -525,7 +524,6 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
         "engineering-survey" => "إتمام الرفع المساحي",
         "property-appraisal" => "إتمام التقييم العقاري",
         "government-review" => "إتمام المراجعة الحكومية",
-        "valuation-coordination" => "إتمام تنسيق التقييم",
         _ => "إتمام عمل الطرف",
     };
 

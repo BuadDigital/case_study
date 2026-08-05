@@ -108,6 +108,8 @@ export function PartyPropertyBrowse({
   selectedAssigneeId,
   onSelectParty,
   pending = false,
+  /** واجهة المالية: مصطلحات + تنسيق أقرب لشاشة الصرف */
+  variant = "default",
 }: {
   rows: InspectorFeeRowDto[];
   partyName: string;
@@ -117,7 +119,9 @@ export function PartyPropertyBrowse({
   selectedAssigneeId?: string;
   onSelectParty?: (assigneeId: string) => void;
   pending?: boolean;
+  variant?: "default" | "finance";
 }) {
+  const finance = variant === "finance";
   const [filter, setFilter] = useState<BrowseFilter>("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -158,16 +162,27 @@ export function PartyPropertyBrowse({
   const from = filtered.length ? safePage * PAGE_SIZE + 1 : 0;
   const to = Math.min(filtered.length, (safePage + 1) * PAGE_SIZE);
 
+  const pillBase =
+    "inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold transition-colors";
+  const pillOn = "border-ink bg-ink text-white";
+  const pillOff =
+    "border-border-md bg-surface text-text-2 hover:border-gold hover:text-heading";
+
   return (
     <div className="flex flex-col gap-3">
       {showPartyPicker && parties.length > 0 && onSelectParty ? (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-text-2">الطرف:</span>
+          <span className="text-xs text-text-2">
+            {finance ? "المستحق:" : "الجهة:"}
+          </span>
           <Button
             type="button"
             size="sm"
             variant="outline"
-            className="min-w-[240px] justify-between"
+            className={cn(
+              "min-w-[240px] justify-between",
+              finance && "rounded-lg border-border-md",
+            )}
             onClick={() => setPickerOpen(true)}
           >
             <span>
@@ -189,32 +204,70 @@ export function PartyPropertyBrowse({
               setSearch("");
               setPage(0);
             }}
+            title={finance ? "اختيار المستحق" : "اختيار الجهة"}
+            searchPlaceholder={
+              finance ? "ابحث باسم المستحق…" : "ابحث باسم الجهة..."
+            }
           />
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-2 max-lg:-mx-1 max-lg:overflow-x-auto max-lg:px-1 max-lg:pb-1 max-lg:[-webkit-overflow-scrolling:touch]">
-        {(Object.keys(FILTER_LABELS) as BrowseFilter[]).map((key) => (
-          <Button
-            key={key}
-            type="button"
-            size="sm"
-            variant={filter === key ? "primary" : "outline"}
-            className="max-lg:min-h-11 max-lg:shrink-0"
-            onClick={() => {
-              setFilter(key);
-              setPage(0);
-            }}
-          >
-            {FILTER_LABELS[key]}{" "}
-            <span className="opacity-60">{counts[key]}</span>
-          </Button>
-        ))}
+      <div
+        className={cn(
+          "flex flex-wrap gap-2 max-lg:-mx-1 max-lg:overflow-x-auto max-lg:px-1 max-lg:pb-1 max-lg:[-webkit-overflow-scrolling:touch]",
+          finance && "gap-1.5",
+        )}
+      >
+        {(Object.keys(FILTER_LABELS) as BrowseFilter[]).map((key) =>
+          finance ? (
+            <button
+              key={key}
+              type="button"
+              className={cn(pillBase, filter === key ? pillOn : pillOff)}
+              onClick={() => {
+                setFilter(key);
+                setPage(0);
+              }}
+            >
+              {FILTER_LABELS[key]}
+              <span
+                className={cn(
+                  "tabular-nums",
+                  filter === key ? "text-white/80" : "opacity-60",
+                )}
+              >
+                {counts[key]}
+              </span>
+            </button>
+          ) : (
+            <Button
+              key={key}
+              type="button"
+              size="sm"
+              variant={filter === key ? "primary" : "outline"}
+              className="max-lg:min-h-11 max-lg:shrink-0"
+              onClick={() => {
+                setFilter(key);
+                setPage(0);
+              }}
+            >
+              {FILTER_LABELS[key]}{" "}
+              <span className="opacity-60">{counts[key]}</span>
+            </Button>
+          ),
+        )}
       </div>
 
       <Input
-        className="max-w-sm text-sm max-lg:max-w-none max-lg:min-h-11"
-        placeholder="بحث بالعقار أو أمر العمل..."
+        className={cn(
+          "max-w-sm text-sm max-lg:max-w-none max-lg:min-h-11",
+          finance && "max-w-md rounded-lg border-border-md",
+        )}
+        placeholder={
+          finance
+            ? "بحث بالمرجع أو أمر العمل…"
+            : "بحث بالعقار أو أمر العمل..."
+        }
         value={search}
         onChange={(e) => {
           setSearch(e.target.value);
@@ -222,17 +275,26 @@ export function PartyPropertyBrowse({
         }}
       />
 
-      <div className="hidden lg:block">
+      <div
+        className={cn(
+          "hidden lg:block",
+          finance && "overflow-hidden rounded-xl border border-border bg-surface shadow-card",
+        )}
+      >
         <Table pending={pending}>
           <THead>
             <Tr hoverable={false}>
-              <Th>العقار</Th>
-              <Th>أمر العمل</Th>
-              <Th className="text-end">الصافي</Th>
-              <Th>حالة العمل</Th>
-              <Th>حالة الدفع</Th>
-              <Th>المستند</Th>
-              <Th>التاريخ</Th>
+              <Th className={finance ? "text-start" : undefined}>
+                {finance ? "المرجع" : "العقار"}
+              </Th>
+              <Th className={finance ? "text-center" : undefined}>أمر العمل</Th>
+              <Th className={cn("text-end", finance && "text-center")}>
+                الصافي
+              </Th>
+              <Th className={finance ? "text-center" : undefined}>حالة العمل</Th>
+              <Th className={finance ? "text-center" : undefined}>حالة الدفع</Th>
+              <Th className={finance ? "text-center" : undefined}>المستند</Th>
+              <Th className={finance ? "text-center" : undefined}>التاريخ</Th>
             </Tr>
           </THead>
           <TBody>
@@ -247,24 +309,44 @@ export function PartyPropertyBrowse({
             ) : (
               slice.map((row) => (
                 <Tr key={row.workflowTaskId} hoverable={false}>
-                  <Td className="font-medium">{row.propertyLabel}</Td>
-                  <Td className="text-primary-light">{row.poNumber}</Td>
-                  <Td className="text-end tabular-nums">
-                    {row.netFeeSar.toLocaleString("ar-SA")} ر.س
+                  <Td className="font-medium text-start">{row.propertyLabel}</Td>
+                  <Td
+                    className={cn(
+                      finance
+                        ? "text-center font-bold text-gold-d"
+                        : "text-primary-light",
+                    )}
+                    dir="ltr"
+                  >
+                    {row.poNumber}
                   </Td>
-                  <Td>
+                  <Td
+                    className={cn(
+                      "tabular-nums",
+                      finance ? "text-center font-extrabold" : "text-end",
+                    )}
+                    dir="ltr"
+                  >
+                    {row.netFeeSar.toLocaleString("en-US")} ر.س
+                  </Td>
+                  <Td className={finance ? "text-center" : undefined}>
                     <Badge tone={inspectorFeeWorkStatusTone(row.workStatus)}>
                       {row.workStatusLabel}
                     </Badge>
                   </Td>
-                  <Td>
+                  <Td className={finance ? "text-center" : undefined}>
                     <Badge tone={inspectorFeeStatusTone(row.billingStatus)}>
                       {row.billingStatusLabel ||
                         inspectorFeeStatusLabel(row.billingStatus)}
                     </Badge>
                   </Td>
-                  <Td>{documentCell(row, setAuditRow)}</Td>
-                  <Td className="text-text-2">
+                  <Td className={finance ? "text-center" : undefined}>
+                    {documentCell(row, setAuditRow)}
+                  </Td>
+                  <Td
+                    className={cn("text-text-2", finance && "text-center")}
+                    dir="ltr"
+                  >
                     {formatFeeDate(row.workSubmittedAtUtc ?? row.updatedAtUtc)}
                   </Td>
                 </Tr>
@@ -291,19 +373,31 @@ export function PartyPropertyBrowse({
             {slice.map((row) => (
               <li
                 key={`m-${row.workflowTaskId}`}
-                className="rounded-[12px] border border-border bg-surface px-3.5 py-3 shadow-card"
+                className={cn(
+                  "rounded-[12px] border border-border bg-surface px-3.5 py-3 shadow-card",
+                  finance && "rounded-xl",
+                )}
               >
                 <div className="mb-2 flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="text-[14px] font-bold text-heading">
                       {row.propertyLabel}
                     </div>
-                    <div className="mt-0.5 text-[12.5px] font-semibold text-primary-light" dir="ltr">
+                    <div
+                      className={cn(
+                        "mt-0.5 text-[12.5px] font-semibold",
+                        finance ? "text-gold-d" : "text-primary-light",
+                      )}
+                      dir="ltr"
+                    >
                       {row.poNumber}
                     </div>
                   </div>
-                  <div className="shrink-0 text-end text-[13px] font-extrabold tabular-nums text-heading">
-                    {row.netFeeSar.toLocaleString("ar-SA")} ر.س
+                  <div
+                    className="shrink-0 text-end text-[13px] font-extrabold tabular-nums text-heading"
+                    dir="ltr"
+                  >
+                    {row.netFeeSar.toLocaleString("en-US")} ر.س
                   </div>
                 </div>
                 <div className="mb-2 flex flex-wrap gap-1.5">
@@ -316,7 +410,7 @@ export function PartyPropertyBrowse({
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between gap-2 text-[12px]">
-                  <span className="text-text-3">
+                  <span className="text-text-3" dir="ltr">
                     {formatFeeDate(row.workSubmittedAtUtc ?? row.updatedAtUtc)}
                   </span>
                   <span>{documentCell(row, setAuditRow)}</span>
@@ -332,7 +426,7 @@ export function PartyPropertyBrowse({
           "flex flex-wrap items-center justify-between gap-2 text-xs text-text-2",
         )}
       >
-        <span>
+        <span dir="ltr">
           عرض {from}–{to} من {filtered.length}
         </span>
         <div className="flex gap-2">

@@ -369,93 +369,171 @@ export function FailuresView() {
     const canResolve = canSpecialistAct && f.status !== "approved";
     const draft = resolveDraft[f.id] ?? { reason: "", instructions: "" };
     const displayTitle = failureRecordTitle(f);
+    const actionBtn =
+      "h-8 min-h-8 px-2.5 text-[12px] font-semibold text-heading shadow-none max-lg:min-h-11 max-lg:px-3 max-lg:text-[13px]";
+
+    const metaRows: { label: string; value: string }[] = [];
+    if (f.internalNote?.trim()) {
+      metaRows.push({ label: "ملاحظات", value: f.internalNote.trim() });
+    }
+    if (f.finalNote?.trim()) {
+      metaRows.push({ label: "قرار المشرف", value: f.finalNote.trim() });
+    }
+    if (f.resolutionReason?.trim()) {
+      metaRows.push({ label: "سبب الحل", value: f.resolutionReason.trim() });
+    }
+    if (f.continueInstructions?.trim()) {
+      metaRows.push({
+        label: "توجيه استمرار العمل",
+        value: f.continueInstructions.trim(),
+      });
+    }
+    if (f.status === "review") {
+      metaRows.push({
+        label: "أخصائي الإسناد",
+        value: assignmentSpecialistByPo.get(f.poNumber.trim()) || "—",
+      });
+    }
 
     return (
-      <div className="space-y-3 border-t border-border bg-surface-2/40 px-4 py-3 text-[12px]">
-        <div className="font-semibold text-heading">{displayTitle}</div>
-        {f.internalNote ? (
-          <div className="text-text-2">
-            <strong>ملاحظات:</strong> {f.internalNote}
+      <div
+        className="border-t border-border bg-row-hover px-4 py-3 text-[12.5px]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="min-w-0">
+          <div className="text-[13.5px] font-bold leading-snug text-primary">
+            {displayTitle}
           </div>
-        ) : null}
-        {f.finalNote ? (
-          <div className="text-text-2">
-            <strong>قرار المشرف:</strong> {f.finalNote}
-          </div>
-        ) : null}
-        {f.resolutionReason ? (
-          <div className="text-text-2">
-            <strong>سبب الحل:</strong> {f.resolutionReason}
-            {f.continueInstructions ? (
+          {metaRows.length > 0 ? (
+            <dl className="mt-2 space-y-1.5">
+              {metaRows.map((row) => (
+                <div
+                  key={row.label}
+                  className="flex flex-wrap gap-x-1.5 gap-y-0.5 text-[12px] leading-relaxed text-text-2"
+                >
+                  <dt className="shrink-0 font-semibold text-heading">
+                    {row.label}:
+                  </dt>
+                  <dd className="m-0 min-w-0">{row.value}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
+        </div>
+
+        {f.propertyId || canSpecialistAct || canSupervisorAct ? (
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-border/80 pt-3">
+            {f.propertyId ? (
+              <Link
+                href={poPropertyPath(f.poNumber, f.propertyId)}
+                className={cn(
+                  "inline-flex items-center justify-center gap-[5px] rounded-[var(--radius-DEFAULT)] border-[0.5px] border-solid border-border-md bg-surface text-text no-underline transition-[background,border-color] duration-150 hover:border-gold hover:text-gold-d",
+                  actionBtn,
+                )}
+              >
+                عرض العقار
+              </Link>
+            ) : null}
+
+            {canSpecialistAct ? (
               <>
-                <br />
-                <strong>توجيه استمرار العمل:</strong> {f.continueInstructions}
+                {f.severity === "suspected" ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="default"
+                    className={actionBtn}
+                    loading={busyKey === `${f.id}:upgrade`}
+                    showActionToast={false}
+                    onClick={() => handleUpgrade(f.id)}
+                  >
+                    تأكيد تعذر داخلي
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="default"
+                    className={actionBtn}
+                    loading={busyKey === `${f.id}:submit`}
+                    showActionToast={false}
+                    onClick={() => handleSubmit(f.id)}
+                  >
+                    تصعيد على المشرف
+                  </Button>
+                )}
+                {canResolve ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="default"
+                    className={actionBtn}
+                    disabled={Boolean(busyKey?.startsWith(`${f.id}:`))}
+                    showActionToast={false}
+                    onClick={() => toggleResolve(f.id)}
+                  >
+                    {resolveOpen[f.id] ? "إلغاء الحل" : "تم الحل"}
+                  </Button>
+                ) : null}
               </>
             ) : null}
-          </div>
-        ) : null}
-        {f.status === "review" ? (
-          <div className="text-text-3">
-            أخصائي الإسناد:{" "}
-            {assignmentSpecialistByPo.get(f.poNumber.trim()) || "—"}
-          </div>
-        ) : null}
-        {f.propertyId ? (
-          <Link
-            href={poPropertyPath(f.poNumber, f.propertyId)}
-            className="inline-flex min-h-9 items-center justify-center rounded-[var(--radius-DEFAULT)] border border-border-md bg-surface px-2 py-1 text-[11px] text-text no-underline hover:bg-surface-2 max-lg:min-h-11 max-lg:px-3 max-lg:text-[13px]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            عرض العقار
-          </Link>
-        ) : null}
 
-        {canSpecialistAct ? (
-          <div className="flex flex-wrap gap-1.5 max-lg:[&>button]:min-h-11">
-            {f.severity === "suspected" ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="primary"
-                loading={busyKey === `${f.id}:upgrade`}
-                showActionToast={false}
-                onClick={() => handleUpgrade(f.id)}
-              >
-                تأكيد تعذر داخلي
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                size="sm"
-                variant="primary"
-                loading={busyKey === `${f.id}:submit`}
-                showActionToast={false}
-                onClick={() => handleSubmit(f.id)}
-              >
-                تصعيد على المشرف
-              </Button>
-            )}
-            {canResolve ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="success"
-                disabled={Boolean(busyKey?.startsWith(`${f.id}:`))}
-                showActionToast={false}
-                onClick={() => toggleResolve(f.id)}
-              >
-                {resolveOpen[f.id] ? "إلغاء الحل" : "تم الحل"}
-              </Button>
+            {canSupervisorAct ? (
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="default"
+                  className={actionBtn}
+                  loading={busyKey === `${f.id}:approve`}
+                  disabled={Boolean(busyKey?.startsWith(`${f.id}:`))}
+                  showActionToast={false}
+                  onClick={() => handleApprove(f.id)}
+                >
+                  اعتماد التعذر
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="default"
+                  className={actionBtn}
+                  loading={busyKey === `${f.id}:return`}
+                  disabled={Boolean(busyKey?.startsWith(`${f.id}:`))}
+                  showActionToast={false}
+                  onClick={() => handleReturn(f.id)}
+                >
+                  إعادة للأخصائي
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="default"
+                  className={actionBtn}
+                  loading={busyKey === `${f.id}:suspend`}
+                  disabled={Boolean(busyKey?.startsWith(`${f.id}:`))}
+                  showActionToast={false}
+                  onClick={() => void handleSuspend(f.id)}
+                >
+                  تعليق المعاملة
+                </Button>
+              </>
             ) : null}
           </div>
         ) : null}
 
         {canSupervisorAct ? (
-          <div>
+          <div className="mt-3 border-t border-border/80 pt-3">
+            <label
+              className="mb-1.5 block text-[11px] font-semibold text-heading"
+              htmlFor={`sup_note_${f.id}`}
+            >
+              ملاحظة الاعتماد أو الإعادة
+            </label>
             <textarea
+              id={`sup_note_${f.id}`}
               className={fieldTextareaClass}
               rows={2}
-              placeholder="ملاحظة الاعتماد أو الإعادة"
+              placeholder="اكتب الملاحظة إن لزم…"
               value={supervisorNote[f.id] ?? ""}
               onChange={(e) =>
                 setSupervisorNote((n) => ({
@@ -463,87 +541,53 @@ export function FailuresView() {
                   [f.id]: e.target.value,
                 }))
               }
-              onClick={(e) => e.stopPropagation()}
             />
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              <Button
-                type="button"
-                size="sm"
-                variant="success"
-                loading={busyKey === `${f.id}:approve`}
-                disabled={Boolean(busyKey?.startsWith(`${f.id}:`))}
-                showActionToast={false}
-                onClick={() => handleApprove(f.id)}
-              >
-                اعتماد التعذر
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="danger"
-                loading={busyKey === `${f.id}:return`}
-                disabled={Boolean(busyKey?.startsWith(`${f.id}:`))}
-                showActionToast={false}
-                onClick={() => handleReturn(f.id)}
-              >
-                إعادة للأخصائي
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="primary"
-                loading={busyKey === `${f.id}:suspend`}
-                disabled={Boolean(busyKey?.startsWith(`${f.id}:`))}
-                showActionToast={false}
-                onClick={() => void handleSuspend(f.id)}
-              >
-                تعليق المعاملة
-              </Button>
-            </div>
           </div>
         ) : null}
 
         {resolveOpen[f.id] && canResolve && !canSupervisorAct ? (
-          <div className="rounded-lg border border-border bg-surface p-3">
-            <label
-              className="mb-1 block text-[11px] font-semibold text-text-2"
-              htmlFor={`resolve_reason_${f.id}`}
-            >
-              سبب الحل *
-            </label>
-            <textarea
-              id={`resolve_reason_${f.id}`}
-              className={fieldTextareaClass}
-              rows={2}
-              value={draft.reason}
-              onChange={(e) =>
-                patchResolveDraft(f.id, { reason: e.target.value })
-              }
-              onClick={(e) => e.stopPropagation()}
-            />
-            <label
-              className="mb-1 mt-2 block text-[11px] font-semibold text-text-2"
-              htmlFor={`resolve_instructions_${f.id}`}
-            >
-              توجيه استمرار العمل *
-            </label>
-            <textarea
-              id={`resolve_instructions_${f.id}`}
-              className={fieldTextareaClass}
-              rows={2}
-              value={draft.instructions}
-              onChange={(e) =>
-                patchResolveDraft(f.id, {
-                  instructions: e.target.value,
-                })
-              }
-              onClick={(e) => e.stopPropagation()}
-            />
+          <div className="mt-3 space-y-2.5 border-t border-border/80 pt-3">
+            <div>
+              <label
+                className="mb-1.5 block text-[11px] font-semibold text-heading"
+                htmlFor={`resolve_reason_${f.id}`}
+              >
+                سبب الحل *
+              </label>
+              <textarea
+                id={`resolve_reason_${f.id}`}
+                className={fieldTextareaClass}
+                rows={2}
+                value={draft.reason}
+                onChange={(e) =>
+                  patchResolveDraft(f.id, { reason: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <label
+                className="mb-1.5 block text-[11px] font-semibold text-heading"
+                htmlFor={`resolve_instructions_${f.id}`}
+              >
+                توجيه استمرار العمل *
+              </label>
+              <textarea
+                id={`resolve_instructions_${f.id}`}
+                className={fieldTextareaClass}
+                rows={2}
+                value={draft.instructions}
+                onChange={(e) =>
+                  patchResolveDraft(f.id, {
+                    instructions: e.target.value,
+                  })
+                }
+              />
+            </div>
             <Button
               type="button"
               size="sm"
-              variant="success"
-              className="mt-2"
+              variant="default"
+              className={actionBtn}
               loading={busyKey === `${f.id}:resolve`}
               showActionToast={false}
               disabled={

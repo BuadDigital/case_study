@@ -6,7 +6,6 @@ import {
   getFieldInspectors as apiFieldInspectors,
   getGovernmentAuditors as apiGovernmentAuditors,
   getPrototypeRoleAssigneeId as apiPrototypeRoleAssigneeId,
-  getValuationCoordinators as apiValuationCoordinators,
   getValuators as apiValuators,
   partyRoleForStaffUser,
   staffUserForViewer,
@@ -37,12 +36,6 @@ export function assigneeLabel(
 
 export function getGovernmentAuditors(users: StaffUser[] = []): DistributionAssignee[] {
   return apiGovernmentAuditors(users);
-}
-
-export function getValuationCoordinators(
-  users: StaffUser[] = [],
-): DistributionAssignee[] {
-  return apiValuationCoordinators(users);
 }
 
 export function getFieldInspectors(users: StaffUser[] = []): DistributionAssignee[] {

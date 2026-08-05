@@ -18,13 +18,11 @@ export function screenCatalogRoleGroup(roleId: RoleId): string {
     return "المالية والعقود";
   if (
     roleId === "general-manager" ||
-    roleId === "valuation-coordinator" ||
     roleId === "real-estate-appraiser" ||
     roleId === "field-inspector" ||
     roleId === "engineering-office"
   ) {
     if (
-      roleId === "valuation-coordinator" ||
       roleId === "real-estate-appraiser" ||
       roleId === "field-inspector" ||
       roleId === "engineering-office"

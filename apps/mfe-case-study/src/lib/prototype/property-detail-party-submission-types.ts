@@ -105,17 +105,3 @@ export type GovernmentReviewSubmissionSnapshot = {
   submittedAtUtc: string | null;
   updatedAtUtc: string;
 };
-
-export type ValuationCoordinationSubmissionSnapshot = {
-  status: "draft" | "submitted";
-  receiptConfirmed: boolean;
-  receiptDate: string;
-  inspectorName: string;
-  appraiserName: string;
-  priority: "normal" | "urgent";
-  coordinationNotes: string;
-  inspectorInstructions: string;
-  appraiserInstructions: string;
-  submittedAtUtc: string | null;
-  updatedAtUtc: string;
-};

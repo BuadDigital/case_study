@@ -1,0 +1,51 @@
+/* Enterprise-minimal motion — opacity and color only, no layout shift */
+
+@keyframes ui-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ui-skeleton-shimmer {
+  0% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0.55;
+  }
+}
+
+@layer utilities {
+  /* Modals: backdrop only — card appears instantly (no scale/bounce) */
+  .ui-animate-modal-overlay {
+    animation: ui-fade-in 140ms ease-out both;
+  }
+
+  /* Toasts and one-off feedback — not route transitions */
+  .ui-animate-fade-in {
+    animation: ui-fade-in 160ms ease-out both;
+  }
+
+  /* Table / KPI skeleton placeholders */
+  .ui-skeleton-shimmer {
+    animation: ui-skeleton-shimmer 1.4s ease-in-out infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-animate-modal-overlay,
+  .ui-animate-fade-in {
+    animation: none !important;
+  }
+
+  .ui-skeleton-shimmer {
+    animation: none !important;
+    opacity: 0.7 !important;
+  }
+}

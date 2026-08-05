@@ -13,28 +13,29 @@ import {
   openEnfazAttachment,
 } from "@platform/app-shared/prototype/enfaz-billing-api";
 import {
-  Badge,
-  Button,
-  EmptyState,
   Input,
-  Note,
-  PageToolbar,
-  QueueTableHint,
-  Table,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr,
   cn,
-  pageToolbarClassName,
-  queueTableWrapClassName,
   useToast,
 } from "@platform/design-system";
 import {
-  inspectorFeeWorkStatusTone,
   type PoEnfazRevenueLineDto,
 } from "@platform/api-client";
+import {
+  finCard,
+  finCheck,
+  finEmpty,
+  finEmptyS,
+  finEmptyT,
+  finGhost,
+  finMuted,
+  finNote,
+  finNum,
+  finPo,
+  finPrimary,
+  finRowActive,
+  finStatusFor,
+  finWorkTitle,
+} from "../lib/finance-tw";
 
 type LineDraft = {
   caseStudyFee: string;
@@ -65,20 +66,20 @@ function invoiceStatusLabel(status: string | null | undefined): string {
   }
 }
 
-function invoiceStatusTone(
-  status: string | null | undefined,
-  overdue: boolean,
-): "success" | "warning" | "danger" | "info" {
-  if (overdue) return "danger";
-  if (status === "collected") return "success";
-  if (status === "partially_collected") return "warning";
-  return "info";
-}
-
-export function FinanceEnfazPoBilling() {
+export function FinanceEnfazPoBilling({
+  initialPo = null,
+  compact = false,
+}: {
+  /** يفتح أمر عمل محدد (من مهامي / قائمة الإيرادات). */
+  initialPo?: string | null;
+  /** يخفي قائمة أوامر العمل الجانبية عند العمل من مرحلة. */
+  compact?: boolean;
+} = {}) {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
-  const [selectedPo, setSelectedPo] = useState<string | null>(null);
+  const [selectedPo, setSelectedPo] = useState<string | null>(
+    initialPo?.trim() || null,
+  );
   const [draft, setDraft] = useState<Record<string, LineDraft>>({});
   const [collectAmount, setCollectAmount] = useState("");
   const [busy, setBusy] = useState(false);
@@ -91,8 +92,12 @@ export function FinanceEnfazPoBilling() {
   const readyPos = readySummaries.map((s) => s.poNumber);
 
   useEffect(() => {
+    if (initialPo?.trim()) {
+      setSelectedPo(initialPo.trim());
+      return;
+    }
     if (!selectedPo && readyPos.length > 0) setSelectedPo(readyPos[0]);
-  }, [readyPos, selectedPo]);
+  }, [initialPo, readyPos, selectedPo]);
 
   const { data: billing, isPending, isError, error, refetch } = useQuery({
     queryKey: [...prototypeKeys.all, "enfaz-billing", selectedPo],
@@ -120,17 +125,29 @@ export function FinanceEnfazPoBilling() {
   }, [billing]);
 
   const totals = useMemo(() => {
-    if (!billing) return { sub: 0, vat: 0, total: 0, billable: 0 };
-    let sub = 0;
+    if (!billing)
+      return { taxable: 0, key: 0, vat: 0, total: 0, billable: 0, sub: 0 };
+    let taxable = 0;
+    let key = 0;
     let billable = 0;
     for (const line of billing.lines) {
       const d = draft[line.propertyId];
       if (!d?.inc || line.workStatus !== "done") continue;
       billable += 1;
-      sub += lineTotal(d);
+      taxable += (Number(d.caseStudyFee) || 0) + (Number(d.surveyFee) || 0);
+      key += Number(d.keyFee) || 0;
     }
-    const vat = Math.round(sub * 0.15);
-    return { sub, vat, total: sub + vat, billable };
+    // ضريبة 15٪ على (تقييم+رفع) فقط — أتعاب المفاتيح شاملة الضريبة
+    const vat = Math.round(taxable * 0.15 * 100) / 100;
+    return {
+      taxable,
+      key,
+      vat,
+      total: taxable + vat + key,
+      billable,
+      /** توافق العرض القديم: مجموع قبل الضريبة الخاضع */
+      sub: taxable,
+    };
   }, [billing, draft]);
 
   const issued = Boolean(billing?.invoiceNumber);
@@ -189,11 +206,25 @@ export function FinanceEnfazPoBilling() {
   };
 
   const collect = async () => {
-    if (!selectedPo) return;
+    if (!selectedPo || !billing) return;
     const amount = Number(collectAmount);
     if (!(amount > 0)) {
       showToast("أدخل مبلغ تحصيل أكبر من صفر", "error");
       return;
+    }
+    const remaining = Math.max(
+      0,
+      (billing.totalSar || 0) - (billing.collectedAmountSar || 0),
+    );
+    if (
+      remaining > 0 &&
+      Math.abs(amount - remaining) > 0.009 &&
+      typeof window !== "undefined"
+    ) {
+      const ok = window.confirm(
+        `مبلغ التحويل (${amount.toLocaleString("en-US")} ر.س) يختلف عن المتبقي (${remaining.toLocaleString("en-US")} ر.س). المتابعة؟`,
+      );
+      if (!ok) return;
     }
     setBusy(true);
     try {
@@ -245,21 +276,27 @@ export function FinanceEnfazPoBilling() {
     const cancelled = line.workStatus === "cancelled";
     const d = draft[line.propertyId];
     return (
-      <Tr key={line.propertyId} hoverable={false} className={cancelled ? "opacity-50" : ""}>
-        <Td className="font-medium">
+      <tr
+        key={line.propertyId}
+        className={cn(
+          "border-b border-border last:border-b-0",
+          cancelled && "opacity-50",
+        )}
+      >
+        <td className="px-3 py-2.5 text-[13px] font-semibold text-heading">
           {line.propertyLabel}
           {line.hasKeyEntitlement ? (
             <span className="ms-1 text-[10px] text-text-3">· مفتاح</span>
           ) : null}
-        </Td>
-        <Td>
-          <Badge tone={inspectorFeeWorkStatusTone(line.workStatus as "done")}>
+        </td>
+        <td className="px-3 py-2.5 text-center">
+          <span className={finStatusFor(line.workStatus === "done" ? "success" : "warning")}>
             {line.workStatusLabel}
-          </Badge>
-        </Td>
-        <Td>
+          </span>
+        </td>
+        <td className="px-3 py-2.5 text-center">
           {cancelled ? (
-            <span className="text-text-3">—</span>
+            <span className={finMuted}>—</span>
           ) : (
             <Input
               type="number"
@@ -273,10 +310,10 @@ export function FinanceEnfazPoBilling() {
               aria-label={`دخل دراسة المعاملة ${line.propertyLabel}`}
             />
           )}
-        </Td>
-        <Td>
+        </td>
+        <td className="px-3 py-2.5 text-center">
           {cancelled ? (
-            <span className="text-text-3">—</span>
+            <span className={finMuted}>—</span>
           ) : (
             <Input
               type="number"
@@ -290,10 +327,10 @@ export function FinanceEnfazPoBilling() {
               aria-label={`دخل تكاليف الرفع ${line.propertyLabel}`}
             />
           )}
-        </Td>
-        <Td>
+        </td>
+        <td className="px-3 py-2.5 text-center">
           {cancelled ? (
-            <span className="text-text-3">—</span>
+            <span className={finMuted}>—</span>
           ) : line.hasKeyEntitlement ? (
             <Input
               type="number"
@@ -307,23 +344,25 @@ export function FinanceEnfazPoBilling() {
               aria-label={`أتعاب المفاتيح ${line.propertyLabel}`}
             />
           ) : (
-            <span className="text-text-3">—</span>
+            <span className={finMuted}>—</span>
           )}
-        </Td>
-        <Td className="tabular-nums text-text-2">
+        </td>
+        <td className="px-3 py-2.5 text-center">
           {cancelled ? (
-            <span className="text-text-3">—</span>
+            <span className={finMuted}>—</span>
           ) : (
-            `${lineTotal(d).toLocaleString("ar-SA")} ر.س`
+            <span className={finNum}>
+              {lineTotal(d).toLocaleString("en-US")} ر.س
+            </span>
           )}
-        </Td>
-        <Td>
+        </td>
+        <td className="px-3 py-2.5 text-center">
           {cancelled ? (
-            <span className="text-text-3">—</span>
+            <span className={finMuted}>—</span>
           ) : (
             <input
               type="checkbox"
-              className="size-4 accent-primary"
+              className={finCheck}
               checked={d?.inc ?? true}
               disabled={issued}
               onChange={(e) =>
@@ -332,150 +371,125 @@ export function FinanceEnfazPoBilling() {
               aria-label={`تضمين ${line.propertyLabel}`}
             />
           )}
-        </Td>
-      </Tr>
+        </td>
+      </tr>
     );
   };
 
-  if (readyPos.length === 0) {
+  if (!compact && readyPos.length === 0 && !initialPo) {
     return (
-      <EmptyState
-        line="لا أوامر عمل جاهزة للفوترة."
-        hint="يظهر PO هنا فقط بعد اكتمال كل معاملاته على كل الصكوك (مكتملة أو ملغاة) — بما فيها التقييم والتنسيق إن وُجدت."
-      />
+      <div className={finCard}>
+        <div className={finEmpty}>
+          <div className={finEmptyT}>لا أوامر عمل جاهزة للفوترة.</div>
+          <div className={finEmptyS}>
+            يظهر أمر العمل هنا فقط بعد اكتمال كل معاملاته (مكتملة أو ملغاة).
+          </div>
+        </div>
+      </div>
     );
   }
 
-  return (
-    <div className="flex flex-col gap-3">
-      <PageToolbar className="border-0 bg-surface-2/60">
-        <Note tone="info" className="m-0 flex-1">
-          المسار: اختر PO ← عبّئ دخل الدراسة والرفع (وأتعاب المفاتيح عند
-          الاستحقاق) ← احفظ ← أصدر الفاتورة ← سجّل التحصيل.
-        </Note>
-      </PageToolbar>
-
-      {isError ? (
-        <Note tone="warn">
-          {error instanceof Error
-            ? error.message
-            : "تعذّر تحميل بيانات الفوترة — حاول مرة أخرى"}
-          <div className="mt-2">
-            <Button type="button" size="sm" variant="outline" onClick={() => void refetch()}>
-              إعادة المحاولة
-            </Button>
-          </div>
-        </Note>
-      ) : null}
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(220px,0.9fr)_1.6fr]">
-        <div className="rounded-[var(--radius-lg)] border border-border bg-surface">
-          <div className="border-b border-border px-3 py-2.5 text-[12px] font-semibold text-text">
-            أوامر العمل الجاهزة
-            <Badge tone="warning" className="ms-2 text-[10px]">
-              {readySummaries.length}
-            </Badge>
-          </div>
-          {readySummaries.map((summary) => (
-            <button
-              key={summary.poNumber}
-              type="button"
-              className={cn(
-                "flex w-full items-center justify-between border-t border-border px-3 py-2.5 text-start text-sm transition-colors hover:bg-surface-2",
-                selectedPo === summary.poNumber &&
-                  "border-s-2 border-s-primary bg-primary/5 font-semibold",
-              )}
-              onClick={() => setSelectedPo(summary.poNumber)}
-            >
-              <span>{summary.poNumber}</span>
-              <span className="text-[11px] text-text-3">
-                {summary.doneCount} مكتملة
-                {summary.cancelledCount > 0
-                  ? ` · ${summary.cancelledCount} ملغاة`
-                  : ""}
-              </span>
-            </button>
-          ))}
-        </div>
-
+  const detailPanel = (
         <div className="min-w-0">
           {!selectedPo || isPending ? (
-            <EmptyState line="اختر أمر عمل من القائمة." />
+            <div className={finEmpty}>
+              <div className={finEmptyT}>اختر أمر عمل من القائمة.</div>
+            </div>
           ) : !billing ? (
-            <EmptyState line="تعذر تحميل بيانات الفوترة." />
+            <div className={finEmpty}>
+              <div className={finEmptyT}>تعذر تحميل بيانات الفوترة.</div>
+            </div>
           ) : (
             <div className="flex flex-col gap-3">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-[13px] font-semibold text-text">
+                <h3 className={cn(finWorkTitle, finPo)} dir="ltr">
                   {selectedPo}
                 </h3>
                 {billing.invoiceNumber ? (
-                  <Badge
-                    tone={invoiceStatusTone(
-                      billing.invoiceStatus,
-                      billing.isOverdue,
+                  <span
+                    className={finStatusFor(
+                      billing.isOverdue
+                        ? "danger"
+                        : billing.invoiceStatus === "collected"
+                          ? "success"
+                          : billing.invoiceStatus === "partially_collected"
+                            ? "warning"
+                            : "default",
                     )}
                   >
                     {invoiceStatusLabel(billing.invoiceStatus)}
                     {billing.isOverdue ? " · متأخر" : ""} ·{" "}
                     {billing.invoiceNumber}
-                  </Badge>
+                  </span>
                 ) : billing.poReadyForBilling ? (
-                  <Badge tone="info">جاهز للإصدار</Badge>
+                  <span className={finStatusFor("default")}>جاهز للإصدار</span>
                 ) : (
-                  <Badge tone="warning">يحتاج حفظ</Badge>
+                  <span className={finStatusFor("warning")}>يحتاج حفظ</span>
                 )}
               </div>
 
-              <div
-                className={cn(
-                  queueTableWrapClassName,
-                  "rounded-[var(--radius-lg)] border border-border bg-surface",
-                )}
-              >
-                <Table>
-                  <THead>
-                    <Tr hoverable={false}>
-                      <Th>المعاملة</Th>
-                      <Th>الحالة</Th>
-                      <Th>دخل الدراسة</Th>
-                      <Th>دخل الرفع</Th>
-                      <Th>مفاتيح</Th>
-                      <Th>المجموع</Th>
-                      <Th>مشمول</Th>
-                    </Tr>
-                  </THead>
-                  <TBody>{billing.lines.map(lineRow)}</TBody>
-                </Table>
+              <div className={finCard}>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[640px] border-collapse text-[13px]">
+                    <thead>
+                      <tr className="border-b-2 border-gold bg-surface-2">
+                        <th className="px-3 py-3 text-start text-xs font-bold text-heading">المعاملة</th>
+                        <th className="px-3 py-3 text-center text-xs font-bold text-heading">الحالة</th>
+                        <th className="px-3 py-3 text-center text-xs font-bold text-heading">دخل الدراسة</th>
+                        <th className="px-3 py-3 text-center text-xs font-bold text-heading">دخل الرفع</th>
+                        <th className="px-3 py-3 text-center text-xs font-bold text-heading">مفاتيح</th>
+                        <th className="px-3 py-3 text-center text-xs font-bold text-heading">المجموع</th>
+                        <th className="px-3 py-3 text-center text-xs font-bold text-heading">مشمول</th>
+                      </tr>
+                    </thead>
+                    <tbody>{billing.lines.map(lineRow)}</tbody>
+                  </table>
+                </div>
               </div>
 
-              <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-4 text-sm">
+              <div className="rounded-xl border border-border bg-surface p-4 text-sm shadow-card">
                 <div className="mb-2 text-[11px] text-text-3">
-                  {totals.billable} عقار مشمول في الفاتورة
+                  {totals.billable} معاملة مشمولة في الفاتورة
                 </div>
                 <div className="flex justify-between py-1 text-text-2">
-                  <span>المجموع قبل الضريبة</span>
-                  <span className="tabular-nums">
-                    {(issued ? billing.subtotalSar : totals.sub).toLocaleString(
-                      "ar-SA",
-                    )}{" "}
+                  <span>إجمالي الأتعاب (تقييم + رفع)</span>
+                  <span className="tabular-nums" dir="ltr">
+                    {(issued
+                      ? billing.subtotalSar
+                      : totals.taxable
+                    ).toLocaleString("en-US")}{" "}
                     ر.س
                   </span>
                 </div>
+                {issued ? (
+                  <div className="flex justify-between py-1 text-text-2">
+                    <span>أتعاب المفاتيح (ضمن الإجمالي)</span>
+                    <span className="tabular-nums text-text-3" dir="ltr">
+                      —
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex justify-between py-1 text-text-2">
+                    <span>أتعاب المفاتيح (شاملة الضريبة)</span>
+                    <span className="tabular-nums" dir="ltr">
+                      {totals.key.toLocaleString("en-US")} ر.س
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between py-1 text-text-2">
-                  <span>ضريبة 15%</span>
-                  <span className="tabular-nums">
+                  <span>ضريبة القيمة المضافة 15%</span>
+                  <span className="tabular-nums" dir="ltr">
                     {(issued ? billing.vatSar : totals.vat).toLocaleString(
-                      "ar-SA",
+                      "en-US",
                     )}{" "}
                     ر.س
                   </span>
                 </div>
-                <div className="mt-1 flex justify-between border-t border-border pt-2 font-semibold">
-                  <span>الإجمالي</span>
-                  <span className="tabular-nums">
+                <div className="mt-1 flex justify-between border-t border-border pt-2 font-semibold text-heading">
+                  <span>الإجمالي المستحق</span>
+                  <span className="tabular-nums" dir="ltr">
                     {(issued ? billing.totalSar : totals.total).toLocaleString(
-                      "ar-SA",
+                      "en-US",
                     )}{" "}
                     ر.س
                   </span>
@@ -483,8 +497,8 @@ export function FinanceEnfazPoBilling() {
                 {issued ? (
                   <div className="mt-2 flex justify-between border-t border-border pt-2 text-text-2">
                     <span>المحصّل</span>
-                    <span className="tabular-nums">
-                      {billing.collectedAmountSar.toLocaleString("ar-SA")} ر.س
+                    <span className="tabular-nums" dir="ltr">
+                      {billing.collectedAmountSar.toLocaleString("en-US")} ر.س
                     </span>
                   </div>
                 ) : null}
@@ -495,12 +509,10 @@ export function FinanceEnfazPoBilling() {
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {billing.attachmentIds.map((id, index) => (
-                        <Button
+                        <button
                           key={id}
                           type="button"
-                          size="sm"
-                          variant="outline"
-                          showActionToast={false}
+                          className={finGhost}
                           onClick={() => {
                             void openEnfazAttachment(
                               id,
@@ -513,54 +525,46 @@ export function FinanceEnfazPoBilling() {
                           }}
                         >
                           مرفق {index + 1}
-                        </Button>
+                        </button>
                       ))}
                     </div>
                   </div>
                 ) : null}
               </div>
 
-              <div
-                className={cn(
-                  pageToolbarClassName,
-                  "rounded-[var(--radius-lg)] border border-border bg-surface",
-                )}
-              >
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-surface-2 px-3.5 py-3">
                 <span className="text-xs text-text-2">
                   {fullyCollected
                     ? "الفاتورة محصّلة بالكامل."
                     : issued
                       ? "سجّل مبلغ التحصيل (جزئي أو كامل)."
-                      : totals.sub <= 0
-                        ? "عبّئ أتعاب عقار واحد على الأقل قبل الإصدار."
+                      : totals.total <= 0
+                        ? "عبّئ أتعاب معاملة واحدة على الأقل قبل الإصدار."
                         : "احفظ ثم أصدر الفاتورة."}
                 </span>
                 <div className="flex flex-wrap items-center gap-2">
                   {!issued ? (
                     <>
-                      <Button
+                      <button
                         type="button"
-                        size="sm"
-                        variant="outline"
-                        loading={busy}
-                        showActionToast={false}
+                        className={finGhost}
+                        disabled={busy}
                         onClick={() => void save()}
                       >
-                        حفظ الأتعاب
-                      </Button>
-                      <Button
+                        حفظ المطابقة
+                      </button>
+                      <button
                         type="button"
-                        size="sm"
-                        variant="primary"
-                        loading={busy}
+                        className={finPrimary}
                         disabled={
-                          !billing.poReadyForBilling || totals.sub <= 0
+                          busy ||
+                          !billing.poReadyForBilling ||
+                          totals.total <= 0
                         }
-                        showActionToast={false}
                         onClick={() => void issueInvoice()}
                       >
-                        إصدار الفاتورة
-                      </Button>
+                        تسجيل الفاتورة
+                      </button>
                     </>
                   ) : (
                     <>
@@ -574,40 +578,133 @@ export function FinanceEnfazPoBilling() {
                             onChange={(e) => setCollectAmount(e.target.value)}
                             aria-label="مبلغ التحصيل"
                           />
-                          <Button
+                          {(() => {
+                            const remaining = Math.max(
+                              0,
+                              (billing.totalSar || 0) -
+                                (billing.collectedAmountSar || 0),
+                            );
+                            const amt = Number(collectAmount) || 0;
+                            if (remaining > 0 && amt > 0 && Math.abs(amt - remaining) > 0.009) {
+                              return (
+                                <span className="text-[11px] text-[#a5432e]">
+                                  تنبيه: يختلف عن المتبقي
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
+                          <button
                             type="button"
-                            size="sm"
-                            variant="primary"
-                            loading={busy}
-                            showActionToast={false}
+                            className={finPrimary}
+                            disabled={busy}
                             onClick={() => void collect()}
                           >
                             تسجيل تحصيل
-                          </Button>
+                          </button>
                         </>
                       ) : null}
-                      <Button
+                      <button
                         type="button"
-                        size="sm"
-                        variant="outline"
-                        loading={busy}
-                        showActionToast={false}
+                        className={finGhost}
+                        disabled={busy}
                         onClick={() => void downloadPdf()}
                       >
                         تحميل PDF
-                      </Button>
+                      </button>
                     </>
                   )}
                 </div>
               </div>
 
-              <QueueTableHint className="px-0">
-                المعاملات الملغاة لا تُفوتر. أتعاب المفاتيح اختيارية عند وجود
-                استحقاق ظرف. الإيراد المحصّل يظهر في التقارير.
-              </QueueTableHint>
+              {!compact ? (
+                <p className="m-0 text-xs text-text-3">
+                  المعاملات الملغاة لا تُفوتر. أتعاب المفاتيح شاملة الضريبة
+                  عند وجود استحقاق ظرف. التحصيل على الفاتورة يقفل معاملاتها.
+                </p>
+              ) : null}
             </div>
           )}
         </div>
+  );
+
+  if (compact) {
+    return (
+      <div className="flex flex-col gap-3">
+        {isError ? (
+          <p className={cn(finNote, "mb-0")}>
+            {error instanceof Error
+              ? error.message
+              : "تعذّر تحميل بيانات الفوترة — حاول مرة أخرى"}{" "}
+            <button
+              type="button"
+              className={cn(finGhost, "ms-2")}
+              onClick={() => void refetch()}
+            >
+              إعادة المحاولة
+            </button>
+          </p>
+        ) : null}
+        {detailPanel}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className={cn(finNote, "mb-0")}>
+        المسار: اختر أمر عمل ← طابِق الأتعاب (تقييم + رفع + مفاتيح) ← احفظ ←
+        سجّل الفاتورة ← سجّل التحويل.
+      </p>
+
+      {isError ? (
+        <p className={cn(finNote, "mb-0")}>
+          {error instanceof Error
+            ? error.message
+            : "تعذّر تحميل بيانات الفوترة — حاول مرة أخرى"}{" "}
+          <button
+            type="button"
+            className={cn(finGhost, "ms-2")}
+            onClick={() => void refetch()}
+          >
+            إعادة المحاولة
+          </button>
+        </p>
+      ) : null}
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(220px,0.9fr)_1.6fr]">
+        <div className={finCard}>
+          <div className="border-b border-border px-3 py-2.5 text-[12px] font-semibold text-heading">
+            أوامر العمل الجاهزة
+            <span className={cn(finStatusFor("warning"), "ms-2")}>
+              {readySummaries.length}
+            </span>
+          </div>
+          {readySummaries.map((summary) => (
+            <button
+              key={summary.poNumber}
+              type="button"
+              className={cn(
+                "flex w-full items-center justify-between border-t border-border px-3 py-2.5 text-start text-sm transition-colors hover:bg-row-hover",
+                selectedPo === summary.poNumber && finRowActive,
+                selectedPo === summary.poNumber && "font-semibold",
+              )}
+              onClick={() => setSelectedPo(summary.poNumber)}
+            >
+              <span className={finPo} dir="ltr">
+                {summary.poNumber}
+              </span>
+              <span className="text-[11px] text-text-3">
+                {summary.doneCount} مكتملة
+                {summary.cancelledCount > 0
+                  ? ` · ${summary.cancelledCount} ملغاة`
+                  : ""}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {detailPanel}
       </div>
     </div>
   );

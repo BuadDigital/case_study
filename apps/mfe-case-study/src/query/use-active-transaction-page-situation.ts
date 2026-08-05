@@ -147,7 +147,6 @@ export function useActiveTransactionPageSituation(
       "party-task-recall-hydrated",
       "field-inspection-submission-changed",
       "government-review-submission-changed",
-      "valuation-coordination-submission-changed",
       "engineering-survey-submission-changed",
     ];
     const handler = () => setPartySubmissionGen((n) => n + 1);

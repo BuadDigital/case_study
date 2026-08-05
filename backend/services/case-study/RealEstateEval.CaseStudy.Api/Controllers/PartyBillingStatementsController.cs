@@ -97,6 +97,94 @@ public class PartyBillingStatementsController : ControllerBase
         return dto is null ? NotFound() : Ok(dto);
     }
 
+    [HttpPost("{statementId:guid}/submit-invoice")]
+    public async Task<ActionResult<PartyBillingStatementDto>> SubmitVendorInvoice(
+        Guid statementId,
+        [FromBody] SubmitVendorInvoiceRequest request,
+        CancellationToken ct)
+    {
+        var ctx = await BuildActorContextAsync(ct);
+        if (ctx.UserId is null) return Unauthorized();
+
+        var existing = await _statements.GetStatementAsync(statementId, ct);
+        if (existing is null) return NotFound();
+
+        // Finance or the assigned office may upload.
+        var isOwner = !string.IsNullOrWhiteSpace(ctx.AssigneeId)
+            && string.Equals(ctx.AssigneeId, existing.AssigneeId, StringComparison.Ordinal);
+        if (!ctx.IsFinancialOfficer && !isOwner)
+            return Forbid();
+
+        var (dto, error) = await _statements.SubmitVendorInvoiceAsync(
+            statementId, request, ctx.UserId, ct);
+        if (error is not null)
+            return this.BadRequestProblem(error);
+        return dto is null ? NotFound() : Ok(dto);
+    }
+
+    [HttpPost("{statementId:guid}/match-invoice")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
+    public async Task<ActionResult<PartyBillingStatementDto>> MatchVendorInvoice(
+        Guid statementId,
+        CancellationToken ct)
+    {
+        var userId = CurrentUserId();
+        if (userId is null) return Unauthorized();
+
+        var (dto, error) = await _statements.MatchVendorInvoiceAsync(statementId, userId, ct);
+        if (error is not null)
+            return this.BadRequestProblem(error);
+        return dto is null ? NotFound() : Ok(dto);
+    }
+
+    [HttpPost("{statementId:guid}/reject-invoice")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
+    public async Task<ActionResult<PartyBillingStatementDto>> RejectVendorInvoice(
+        Guid statementId,
+        [FromBody] RejectVendorInvoiceRequest request,
+        CancellationToken ct)
+    {
+        var userId = CurrentUserId();
+        if (userId is null) return Unauthorized();
+
+        var (dto, error) = await _statements.RejectVendorInvoiceAsync(
+            statementId, request, userId, ct);
+        if (error is not null)
+            return this.BadRequestProblem(error);
+        return dto is null ? NotFound() : Ok(dto);
+    }
+
+    [HttpPost("{statementId:guid}/cancel")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
+    public async Task<ActionResult<PartyBillingStatementDto>> Cancel(
+        Guid statementId,
+        [FromBody] CancelPartyBillingStatementRequest request,
+        CancellationToken ct)
+    {
+        var userId = CurrentUserId();
+        if (userId is null) return Unauthorized();
+
+        var (dto, error) = await _statements.CancelStatementAsync(
+            statementId, request, userId, ct);
+        if (error is not null)
+            return this.BadRequestProblem(error);
+        return dto is null ? NotFound() : Ok(dto);
+    }
+
+    [HttpPost("auto-month-vendor")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
+    public async Task<ActionResult<CreateMonthPartyBillingStatementsResult>> CreateMonthVendor(
+        CancellationToken ct)
+    {
+        var userId = CurrentUserId();
+        if (userId is null) return Unauthorized();
+
+        var result = await _statements.CreateMonthVendorStatementsAsync(userId, ct);
+        if (result.Error is not null && result.Created.Count == 0)
+            return this.BadRequestProblem(result.Error);
+        return Ok(result);
+    }
+
     [HttpPost("{statementId:guid}/close")]
     [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
     public async Task<ActionResult<PartyBillingStatementDto>> Close(

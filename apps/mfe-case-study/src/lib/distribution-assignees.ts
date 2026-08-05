@@ -17,7 +17,6 @@ const EXACT_JOB_TITLE_TO_ROLE: Record<string, RoleId> = {
   "مشرف قسم دراسة الحالة": "section-supervisor",
   "أخصائي دراسة حالة": "case-specialist",
   "مراجع حكومي": "government-reviewer",
-  "منسق عمليات التقييم": "valuation-coordinator",
   "مقيم عقاري": "real-estate-appraiser",
   "معاين ميداني": "field-inspector",
   "موظف الشؤون المالية": "financial-officer",
@@ -84,12 +83,6 @@ export function staffUserForViewer(
 
 export function getGovernmentAuditors(users: StaffUser[]): DistributionAssignee[] {
   return staffUsersForPartyRole(users, "government-reviewer");
-}
-
-export function getValuationCoordinators(
-  users: StaffUser[],
-): DistributionAssignee[] {
-  return staffUsersForPartyRole(users, "valuation-coordinator");
 }
 
 export function getFieldInspectors(users: StaffUser[]): DistributionAssignee[] {

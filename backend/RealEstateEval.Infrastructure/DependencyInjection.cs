@@ -376,6 +376,7 @@ public static class DependencyInjection
         services.AddScoped<IOperationsTaskCommands, OperationsTaskCommands>();
         services.AddScoped<IOperationsTaskService, OperationsTaskService>();
         services.AddHostedService<OperationsTaskReminderHostedService>();
+        services.AddHostedService<PartyBillingMonthVendorHostedService>();
         services.AddScoped<ISuspendedTransactionsService, SuspendedTransactionsService>();
         return services;
     }

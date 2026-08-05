@@ -10,7 +10,6 @@ import type { PoIntakeRecord } from "./po-intake-data";
 import type { WorkflowTask } from "./tasks-storage";
 import { fieldInspectionTaskStatusBadge } from "./field-inspection-work-queue";
 import { governmentReviewTaskStatusBadge } from "./government-review-work-queue";
-import { valuationCoordinationTaskStatusBadge } from "./valuation-coordination-work-queue";
 
 export type QueueTaskStatusBadge = { label: string; className: string };
 
@@ -31,13 +30,6 @@ export function resolveQueueTaskStatusBadge(
   }
   if (task.kind === "government-review") {
     return governmentReviewTaskStatusBadge(task, options.partySubmission ?? null);
-  }
-  if (task.kind === "valuation-coordination") {
-    return valuationCoordinationTaskStatusBadge(
-      task.id,
-      options.partySubmission ?? null,
-      task.status,
-    );
   }
   return options.getTaskStatusBadge?.(task) ?? null;
 }

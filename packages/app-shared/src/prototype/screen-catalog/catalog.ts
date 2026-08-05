@@ -292,13 +292,6 @@ function buildTaskWorkRoutes(): SystemScreenEntry[] {
         "مسار عمل قديم للمعاملات الجارية — القائمة تحت الشاشات (Draft) للمسؤول فقط.",
     }),
     taskWorkEntry({
-      id: "valuation-coordination-work",
-      name: "إنجاز استلام التقييم",
-      path: "/valuation-coordination/{taskId}",
-      whereToFind: "المعاملات النشطة ← استلام التقييم ← اختيار مهمة",
-      pageId: "valuation-coordination",
-    }),
-    taskWorkEntry({
       id: "property-appraisal-work",
       name: "إنجاز تقييم العقار",
       path: "/property-appraisal/{taskId}",

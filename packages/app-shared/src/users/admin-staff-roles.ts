@@ -8,7 +8,6 @@ export const ADMIN_CREATABLE_STAFF_ROLE_IDS: RoleId[] = [
   "section-supervisor",
   "case-specialist",
   "government-reviewer",
-  "valuation-coordinator",
   "real-estate-appraiser",
   "field-inspector",
   "financial-officer",

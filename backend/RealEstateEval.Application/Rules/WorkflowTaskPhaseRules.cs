@@ -50,7 +50,6 @@ public static class WorkflowTaskPhaseRules
         WorkflowTaskKind.EngineeringSurvey => "تعيين المكتب الهندسي",
         WorkflowTaskKind.PropertyAppraisal => "تعيين المقيّم العقاري",
         WorkflowTaskKind.GovernmentReview => "تعيين المراجع الحكومي",
-        WorkflowTaskKind.ValuationCoordination => "تعيين منسق التقييم",
         _ => "تعيين طرف",
     };
 
@@ -66,9 +65,9 @@ public static class WorkflowTaskPhaseRules
     public static TaskDistributionDraftDto NormalizeDistribution(TaskDistributionDraftDto dto)
     {
         if (!dto.GovernmentAuditor) dto.GovernmentAuditorId = "";
+        dto.OperationsCoordinatorId = "";
         if (!dto.ValuationDepartment)
         {
-            dto.OperationsCoordinatorId = "";
             dto.InspectorId = "";
             dto.ValuatorId = "";
         }
@@ -111,7 +110,6 @@ public static class WorkflowTaskPhaseRules
     {
         WorkflowTaskKind.FieldInspection => $"معاينة ميدانية — {refLabel}",
         WorkflowTaskKind.GovernmentReview => $"مراجعة حكومية — {refLabel}",
-        WorkflowTaskKind.ValuationCoordination => $"منسق التقييم — {refLabel}",
         WorkflowTaskKind.PropertyAppraisal => $"تقييم عقاري — {refLabel}",
         _ => $"رفع مساحي — {refLabel}",
     };

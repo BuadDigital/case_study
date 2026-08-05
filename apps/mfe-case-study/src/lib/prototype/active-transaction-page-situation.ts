@@ -136,7 +136,6 @@ export const PAGE_SITUATION_CARDS: Partial<Record<PageId, PageSituationCardDef[]
     ],
     "active-distribution": workflowCards("بانتظار التوزيع"),
     "active-case-study": workflowCards("دراسات مفتوحة"),
-    "valuation-coordination": partyCards(),
     "property-inspection": partyCards("مكتملة"),
     "active-inspection": partyCards("مكتملة"),
     "property-appraisal": appraisalCards(),
@@ -515,8 +514,6 @@ export function filterTasksForPage(
       return filterTasksForBourseInquiry(tasks, poByNumber);
     case "government-review":
       return tasks.filter((t) => t.kind === "government-review");
-    case "valuation-coordination":
-      return filterTasksForPartyKind(tasks, "valuation-coordination");
     case "property-inspection":
     case "active-inspection":
       return filterTasksForPartyKind(tasks, "field-inspection");
@@ -611,7 +608,6 @@ export function computePageSituationValues(
   }
 
   if (
-    pageId === "valuation-coordination" ||
     pageId === "property-inspection" ||
     pageId === "active-inspection"
   ) {

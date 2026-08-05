@@ -37,11 +37,6 @@ const KIND_PARTY_LABEL: Partial<
   "government-review": { partyId: "gov", name: "المراجع الحكومي", color: "#0284C7" },
   "property-appraisal": { partyId: "val", name: "المقيم العقاري", color: "#DC2626" },
   "engineering-survey": { partyId: "eng", name: "المكتب الهندسي", color: "#D97706" },
-  "valuation-coordination": {
-    partyId: null,
-    name: "منسق عمليات التقييم",
-    color: "#6366F1",
-  },
 };
 
 function roleLabel(role: CaseStudyInfoRoleType | null | undefined): string | null {
