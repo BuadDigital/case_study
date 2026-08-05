@@ -1,30 +1,9 @@
 /**
- * Extract deed / nature **وصف الحد + أطوال الحدود** from a survey sketch PDF.
- *
- * ## Canonical source (ALWAYS these croquis tables — not the plot drawing edges only)
- * Left dual tables on Osoul-style croquis:
- *   - بموجب الصك   (red CAD ink)  → form «حسب الصك»
- *   - بموجب الطبيعة (blue CAD ink) → form «حسب الطبيعة»
- * Each table rows: شمال → جنوب → شرق → غرب
- *   columns: وصف الحد | الطول/م
- * Bottom «المساحة»: never auto-fill form total area (manual / policy).
- *
- * Pipeline (local only, no third-party OCR APIs):
- * - Isolate pure red/blue ink of the dual-table strip
- * - أطوال: PDF text / spatial numbers when present; table-linked when available
- * - وصف الحد: PDF text if present; train-index match on table ink; else table previews
- * Never property/بورصة mix-in.
+ * Extract boundary **lengths only** from a survey sketch PDF (local, no external OCR).
+ * Does **not** auto-fill وصف الحد — that stays manual.
+ * Never fills: المساحة الإجمالية.
  */
 
-/** Normed crop of left dual جدول الصك/الطبيعة on first croquis page (x,y,w,h of page). */
-export const CROQUIS_DUAL_TABLE_CROP = {
-  x: 0.0,
-  y: 0.26,
-  w: 0.32,
-  h: 0.58,
-  /** Quarter-turns CCW after crop so rows read N→S→E→W top→bottom. */
-  rotateQuarterCcw: 3 as const,
-} as const;
 
 export type SketchBoundarySide = {
   description: string;
@@ -48,14 +27,9 @@ export type SurveySketchExtractResult = {
   nature: SketchBoundaryBlock | null;
   filledCount: number;
   usedSpatialLengths?: boolean;
-  /** Pure-ink crop of croquis tables (صك/طبيعة) for on-screen copy when Arabic is not text. */
-  croquisTablePreviews?: {
-    deedJpegDataUrl?: string;
-    natureJpegDataUrl?: string;
-  };
 };
 
-/** Form patch — وصف الحد + أطوال (never total area). */
+/** Form patch — أطوال الحدود only (never وصف الحد / never total area). */
 export type SurveySketchApplyPatch = {
   deedMatchesNature?: "yes" | "no" | null;
   northBoundary?: string;
@@ -1594,14 +1568,14 @@ function finalizeExtractResult(
   if (filledCount === 0) {
     warning =
       text.trim().length > 0
-        ? "وُجد نص في التقرير لكن لم تُستخرج أوصاف/أطوال الحدود بوضوح. راجع وعبّئ يدوياً."
-        : "تعذّر قراءة حدود من التقرير. عبّئ الحقول يدوياً.";
-  } else if (usedSpatialLengths && descriptionCount(deedOut) < 1) {
+        ? "وُجدت أرقام في التقرير لكن لم تُربط كأطوال حدود بوضوح. راجع وعبّئ يدوياً."
+        : "تعذّر قراءة أطوال من التقرير. عبّئ الحقول يدوياً.";
+  } else if (usedSpatialLengths) {
     warning =
-      "تُعبّأت الأطوال من أرقام الرسم. أوصاف الحد من جدول الكروكي يدوياً — المساحة الإجمالية يدوياً.";
+      "تُعبّأت الأطوال من أرقام التقرير. وصف الحد يدوياً — المساحة الإجمالية يدوياً.";
   } else {
     warning =
-      "تم تعبئة أوصاف/أطوال الحدود من التقرير. المساحة الإجمالية يدوياً — راجع قبل الإرسال.";
+      "تم تعبئة أطوال الحدود من التقرير. وصف الحد والمساحة يدوياً — راجع قبل الإرسال.";
   }
 
   return {
@@ -1617,7 +1591,7 @@ function finalizeExtractResult(
 }
 
 /**
- * Build a patch: وصف الحد + أطوال from croquis PDF only (no total area).
+ * Build a patch: **أطوال فقط** from croquis PDF (no وصف الحد, no total area).
  */
 export function sketchExtractToEmptyFieldsPatch(
   result: SurveySketchExtractResult,
@@ -1667,22 +1641,19 @@ export function sketchExtractToEmptyFieldsPatch(
     appliedCount += 1;
   };
 
-  set("northBoundary", take(current.northBoundary, d.north.description));
+  // Lengths only — never auto-fill وصف الحد
   set(
     "northBoundaryLengthM",
     take(current.northBoundaryLengthM, d.north.lengthM),
   );
-  set("southBoundary", take(current.southBoundary, d.south.description));
   set(
     "southBoundaryLengthM",
     take(current.southBoundaryLengthM, d.south.lengthM),
   );
-  set("eastBoundary", take(current.eastBoundary, d.east.description));
   set(
     "eastBoundaryLengthM",
     take(current.eastBoundaryLengthM, d.east.lengthM),
   );
-  set("westBoundary", take(current.westBoundary, d.west.description));
   set(
     "westBoundaryLengthM",
     take(current.westBoundaryLengthM, d.west.lengthM),
@@ -1691,32 +1662,16 @@ export function sketchExtractToEmptyFieldsPatch(
   if (result.nature) {
     const n = result.nature;
     set(
-      "natureNorthBoundary",
-      take(current.natureNorthBoundary, n.north.description),
-    );
-    set(
       "natureNorthBoundaryLengthM",
       take(current.natureNorthBoundaryLengthM, n.north.lengthM),
-    );
-    set(
-      "natureSouthBoundary",
-      take(current.natureSouthBoundary, n.south.description),
     );
     set(
       "natureSouthBoundaryLengthM",
       take(current.natureSouthBoundaryLengthM, n.south.lengthM),
     );
     set(
-      "natureEastBoundary",
-      take(current.natureEastBoundary, n.east.description),
-    );
-    set(
       "natureEastBoundaryLengthM",
       take(current.natureEastBoundaryLengthM, n.east.lengthM),
-    );
-    set(
-      "natureWestBoundary",
-      take(current.natureWestBoundary, n.west.description),
     );
     set(
       "natureWestBoundaryLengthM",
@@ -1738,36 +1693,23 @@ export function sketchExtractToEmptyFieldsPatch(
 }
 
 /**
- * Nature boundary fields from croquis extract (وصف + أطوال; no area).
+ * Nature **length** fields from croquis extract only (no descriptions, no area).
  */
 export function sketchNatureFieldsFromExtract(
   result: SurveySketchExtractResult,
 ): SurveySketchApplyPatch {
   const n = result.nature;
   const d = result.deed;
-  const side = (
+  const len = (
     fromNature: SketchBoundarySide | undefined,
     fromDeed: SketchBoundarySide,
-  ): SketchBoundarySide => ({
-    description:
-      fromNature?.description?.trim() || fromDeed.description?.trim() || "",
-    lengthM: fromNature?.lengthM?.trim() || fromDeed.lengthM?.trim() || "",
-  });
-
-  const north = side(n?.north, d.north);
-  const south = side(n?.south, d.south);
-  const east = side(n?.east, d.east);
-  const west = side(n?.west, d.west);
+  ): string => fromNature?.lengthM?.trim() || fromDeed.lengthM?.trim() || "";
 
   return {
-    natureNorthBoundary: north.description || undefined,
-    natureNorthBoundaryLengthM: north.lengthM || undefined,
-    natureSouthBoundary: south.description || undefined,
-    natureSouthBoundaryLengthM: south.lengthM || undefined,
-    natureEastBoundary: east.description || undefined,
-    natureEastBoundaryLengthM: east.lengthM || undefined,
-    natureWestBoundary: west.description || undefined,
-    natureWestBoundaryLengthM: west.lengthM || undefined,
+    natureNorthBoundaryLengthM: len(n?.north, d.north) || undefined,
+    natureSouthBoundaryLengthM: len(n?.south, d.south) || undefined,
+    natureEastBoundaryLengthM: len(n?.east, d.east) || undefined,
+    natureWestBoundaryLengthM: len(n?.west, d.west) || undefined,
   };
 }
 
@@ -2179,218 +2121,21 @@ function itemsFromPdfContent(
   return out;
 }
 
-/** Canvas crop by fractions of the page. */
-function cropCanvas(
-  source: HTMLCanvasElement,
-  fx: number,
-  fy: number,
-  fw: number,
-  fh: number,
-): HTMLCanvasElement {
-  const x = Math.max(0, Math.floor(fx * source.width));
-  const y = Math.max(0, Math.floor(fy * source.height));
-  const w = Math.max(8, Math.floor(fw * source.width));
-  const h = Math.max(8, Math.floor(fh * source.height));
-  const c = document.createElement("canvas");
-  c.width = Math.min(w, source.width - x);
-  c.height = Math.min(h, source.height - y);
-  const ctx = c.getContext("2d");
-  if (ctx) {
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(0, 0, c.width, c.height);
-    ctx.drawImage(source, x, y, c.width, c.height, 0, 0, c.width, c.height);
-  }
-  return c;
-}
-
-function rotateCanvasQuarter(
-  source: HTMLCanvasElement,
-  quarterTurns: 1 | 2 | 3,
-): HTMLCanvasElement {
-  const rad = (quarterTurns * Math.PI) / 2;
-  const swap = quarterTurns % 2 === 1;
-  const out = document.createElement("canvas");
-  out.width = swap ? source.height : source.width;
-  out.height = swap ? source.width : source.height;
-  const ctx = out.getContext("2d");
-  if (!ctx) return out;
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(0, 0, out.width, out.height);
-  ctx.translate(out.width / 2, out.height / 2);
-  ctx.rotate(rad);
-  ctx.drawImage(source, -source.width / 2, -source.height / 2);
-  return out;
-}
-
-/**
- * Keep pure red (صك) or blue (طبيعة) CAD ink on white — Osoul dual boundary tables.
- * Used for on-screen croquis table previews (no external API).
- */
-function isolatePureCadInk(
-  source: HTMLCanvasElement,
-  mode: "blue" | "red",
-): HTMLCanvasElement {
-  const out = document.createElement("canvas");
-  out.width = source.width;
-  out.height = source.height;
-  const ctx = out.getContext("2d");
-  const sctx = source.getContext("2d");
-  if (!ctx || !sctx) return source;
-  const img = sctx.getImageData(0, 0, source.width, source.height);
-  const d = img.data;
-  let ink = 0;
-  for (let i = 0; i < d.length; i += 4) {
-    const r = d[i]!;
-    const g = d[i + 1]!;
-    const b = d[i + 2]!;
-    const isBlue =
-      (b > 180 && r < 60 && g < 60) ||
-      (b > 140 && b >= r + 45 && b >= g + 40);
-    const isRed =
-      (r > 180 && g < 60 && b < 60) ||
-      (r > 140 && r >= g + 45 && r >= b + 40);
-    const keep = mode === "blue" ? isBlue : isRed;
-    if (keep) {
-      d[i] = d[i + 1] = d[i + 2] = 0;
-      ink += 1;
-    } else {
-      d[i] = d[i + 1] = d[i + 2] = 255;
-    }
-    d[i + 3] = 255;
-  }
-  if (ink < 400) {
-    const again = sctx.getImageData(0, 0, source.width, source.height);
-    const a = again.data;
-    for (let i = 0; i < a.length; i += 4) {
-      const r = a[i]!;
-      const g = a[i + 1]!;
-      const b = a[i + 2]!;
-      const isBlue = b > 100 && b >= r + 18 && b >= g + 10;
-      const isRed = r > 100 && r >= g + 20 && r >= b + 20;
-      const keep = mode === "blue" ? isBlue : isRed;
-      if (keep) {
-        a[i] = a[i + 1] = a[i + 2] = 0;
-      } else {
-        a[i] = a[i + 1] = a[i + 2] = 255;
-      }
-      a[i + 3] = 255;
-    }
-    ctx.putImageData(again, 0, 0);
-  } else {
-    ctx.putImageData(img, 0, 0);
-  }
-  return out;
-}
-
-function prepareInkTableStrip(
-  pageCanvas: HTMLCanvasElement,
-  mode: "red" | "blue",
-): HTMLCanvasElement {
-  // ALWAYS the dual croquis tables (بموجب الصك / الطبيعة) — not full page / plot only
-  const { x, y, w, h, rotateQuarterCcw } = CROQUIS_DUAL_TABLE_CROP;
-  const strip = cropCanvas(pageCanvas, x, y, w, h);
-  const oriented = rotateCanvasQuarter(strip, rotateQuarterCcw);
-  return isolatePureCadInk(oriented, mode);
-}
-
-function canvasToJpegDataUrl(
-  source: HTMLCanvasElement,
-  quality = 0.85,
-): string {
-  try {
-    return source.toDataURL("image/jpeg", quality);
-  } catch {
-    return "";
-  }
-}
-
-function countNearBlackPixels(source: HTMLCanvasElement): number {
-  const sctx = source.getContext("2d");
-  if (!sctx) return 0;
-  const img = sctx.getImageData(0, 0, source.width, source.height);
-  const d = img.data;
-  let n = 0;
-  for (let i = 0; i < d.length; i += 4) {
-    if (d[i]! < 40 && d[i + 1]! < 40 && d[i + 2]! < 40) n += 1;
-  }
-  return n;
-}
-
-/**
- * Build pure-ink croquis table JPEGs (صك red / طبيعة blue) for UI copy aid.
- * Offline-only: pdf.js + canvas ink isolation. No external APIs.
- * Also returns fingerprint train-index match when the croquis is known.
- */
-export async function buildCroquisTablePreviews(
-  file: File,
-): Promise<{
-  deedJpegDataUrl?: string;
-  natureJpegDataUrl?: string;
-  trainMatch?: import("./osoul-local-train-match").OsoulTrainMatch | null;
-}> {
-  if (typeof window === "undefined" || typeof document === "undefined") {
-    return {};
-  }
-  try {
-    const { matchOsoulTrainIndex } = await import("./osoul-local-train-match");
-    const pdfjs = await loadPdfJs();
-    const data = new Uint8Array(await file.arrayBuffer());
-    const pdf = await pdfjs.getDocument({ data }).promise;
-    try {
-      const page = await pdf.getPage(1);
-      const viewport = page.getViewport({ scale: 2.4 });
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.ceil(viewport.width);
-      canvas.height = Math.ceil(viewport.height);
-      const ctx = canvas.getContext("2d", { willReadFrequently: true });
-      if (!ctx) {
-        page.cleanup();
-        await pdf.cleanup();
-        return {};
-      }
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      await page.render({
-        canvas,
-        canvasContext: ctx,
-        viewport,
-      }).promise;
-
-      const out: {
-        deedJpegDataUrl?: string;
-        natureJpegDataUrl?: string;
-        trainMatch?: import("./osoul-local-train-match").OsoulTrainMatch | null;
-      } = {};
-      const deed = prepareInkTableStrip(canvas, "red");
-      if (countNearBlackPixels(deed) >= 80) {
-        const url = canvasToJpegDataUrl(deed);
-        if (url) out.deedJpegDataUrl = url;
-        out.trainMatch = matchOsoulTrainIndex(deed);
-      }
-      const nature = prepareInkTableStrip(canvas, "blue");
-      if (countNearBlackPixels(nature) >= 80) {
-        const url = canvasToJpegDataUrl(nature);
-        if (url) out.natureJpegDataUrl = url;
-        if (!out.trainMatch) {
-          out.trainMatch = matchOsoulTrainIndex(nature);
-        }
-      }
-      page.cleanup();
-      return out;
-    } finally {
-      await pdf.cleanup();
-    }
-  } catch {
-    return {};
-  }
+function stripAllDescriptions(block: SketchBoundaryBlock): SketchBoundaryBlock {
+  return {
+    areaSqm: "",
+    north: { description: "", lengthM: block.north.lengthM },
+    south: { description: "", lengthM: block.south.lengthM },
+    east: { description: "", lengthM: block.east.lengthM },
+    west: { description: "", lengthM: block.west.lengthM },
+  };
 }
 
 /**
  * Extract for engineering-office survey upload.
- * **Only the dual croquis tables matter** (بموجب الصك / بموجب الطبيعة):
- * rows شمال→جنوب→شرق→غرب · columns وصف الحد + الطول/م.
- * المساحة at table bottom is never auto-filled.
- * Local only — no third-party OCR APIs.
+ * **Lengths only** (N/S/E/W meters from PDF text / spatial edge numbers).
+ * وصف الحد is never auto-filled. المساحة never auto-filled.
+ * Local only — no third-party OCR / no description reading.
  */
 export async function extractSurveySketchFromPdf(
   file: File,
@@ -2432,102 +2177,76 @@ export async function extractSurveySketchFromPdf(
     await pdf.cleanup();
 
     const joinedText = textParts.join("\n\n");
-    let result = finalizeExtractResult(
-      emptyBlock(),
-      emptyBlock(),
-      joinedText,
-      false,
-    );
-    // Drop inventing from non-table prose; only structured/spatial as backup for table lengths.
+    // Parse may attach descriptions from any Arabic text layer — strip them (lengths only).
+    let result = parseSurveySketchText(joinedText);
+    {
+      const source = result.rawText || joinedText;
+      const { deedText, natureText } = splitDeedNatureSections(source);
+      let deed = stripAllDescriptions(result.deed);
+      let nature = result.nature
+        ? stripAllDescriptions(result.nature)
+        : null;
 
-    // ── 1) PRIMARY: dual croquis tables (صك red / طبيعة blue) ──────────────
-    let hasTableInk = false;
-    try {
-      const previews = await buildCroquisTablePreviews(file);
-      hasTableInk = Boolean(
-        previews.deedJpegDataUrl || previews.natureJpegDataUrl,
+      const rebind = (
+        block: SketchBoundaryBlock,
+        section: string,
+      ): SketchBoundaryBlock => {
+        let b = stripAllDescriptions(block);
+        const bodies = extractBodiesAfterLengthColumnHeader(section);
+        if (bodies.length > 0) {
+          b = fillMissingLengthsFromTableContext(b, bodies.join("\n"), true);
+        }
+        if (lengthCount(b) < 3) {
+          b = fillMissingLengthsFromTableContext(b, section, true);
+        }
+        if (lengthCount(b) < 3) {
+          b = fillMissingLengthsFromTableContext(b, source, true);
+        }
+        if (lengthCount(b) < 3) {
+          b = zipLengthColumnDecimals(b, section);
+        }
+        if (lengthCount(b) < 3) {
+          b = zipLengthColumnDecimals(b, source);
+        }
+        return stripAllDescriptions(b);
+      };
+
+      deed = rebind(deed, deedText || source);
+      if (nature) {
+        nature = rebind(nature, natureText || source);
+      }
+      result = finalizeExtractResult(
+        stripAllDescriptions(deed),
+        nature ? stripAllDescriptions(nature) : null,
+        result.rawText || joinedText,
+        false,
       );
-      if (previews.trainMatch) {
-        const m = previews.trainMatch;
-        const fillSide = (
-          d: DirKey,
-          desc: string,
-          len: string,
-        ): SketchBoundarySide => ({
-          description:
-            desc && isPlausibleBoundaryDescription(desc) ? desc : "",
-          lengthM: (len ?? "").trim(),
-        });
-        const deed: SketchBoundaryBlock = {
-          areaSqm: "",
-          north: fillSide("north", m.descriptions.north, m.lengths.north),
-          south: fillSide("south", m.descriptions.south, m.lengths.south),
-          east: fillSide("east", m.descriptions.east, m.lengths.east),
-          west: fillSide("west", m.descriptions.west, m.lengths.west),
-        };
-        // Same table pair typically matches; seed nature from deed until blue-only index exists
-        const nature: SketchBoundaryBlock = {
-          areaSqm: "",
-          north: { ...deed.north },
-          south: { ...deed.south },
-          east: { ...deed.east },
-          west: { ...deed.west },
-        };
-        result = finalizeExtractResult(deed, nature, joinedText, false);
-        result = {
-          ...result,
-          warning:
-            descriptionCount(deed) >= 3
-              ? `تم التعبئة من جدولي الكروكي (صك/طبيعة) عبر مكتبة التدريب · ثقة ${(m.score * 100).toFixed(0)}٪. راجع — المساحة يدوية.`
-              : result.warning,
-        };
-      }
-      if (hasTableInk) {
-        result = {
-          ...result,
-          croquisTablePreviews: {
-            deedJpegDataUrl: previews.deedJpegDataUrl,
-            natureJpegDataUrl: previews.natureJpegDataUrl,
-          },
-        };
-      }
-    } catch {
-      /* dual-table path optional */
     }
 
-    // ── 2) BACKUP lengths only: PDF numbers that equal table column (edge labels) ─
-    // Never for descriptions outside dual tables.
-    if (lengthCount(result.deed) < 3) {
+    // Spatial edge lengths (numbers-only layer / croquis edge labels)
+    {
       const spatial = parseLengthsFromPositions(allPos);
       if (spatial) {
-        const deed = {
+        const deed = stripAllDescriptions({
           areaSqm: "",
           north: { ...result.deed.north },
           south: { ...result.deed.south },
           east: { ...result.deed.east },
           west: { ...result.deed.west },
-        };
+        });
         let filled = 0;
         for (const d of DIR_ORDER) {
-          if (!deed[d].lengthM && spatial.deed[d].lengthM) {
-            deed[d] = { ...deed[d], lengthM: spatial.deed[d].lengthM };
-            filled += 1;
+          if (spatial.deed[d].lengthM) {
+            if (!deed[d].lengthM) filled += 1;
+            deed[d] = { description: "", lengthM: spatial.deed[d].lengthM };
           }
         }
-        if (filled > 0) {
-          const nature =
-            result.nature && lengthCount(result.nature) >= 1
-              ? result.nature
-              : {
-                  areaSqm: "",
-                  north: { ...deed.north },
-                  south: { ...deed.south },
-                  east: { ...deed.east },
-                  west: { ...deed.west },
-                };
+        if (filled > 0 || lengthCount(deed) >= 3) {
           result = finalizeExtractResult(
-            deed,
-            nature,
+            stripAllDescriptions(deed),
+            result.nature
+              ? stripAllDescriptions(result.nature)
+              : stripAllDescriptions(deed),
             result.rawText || joinedText || spatial.raw,
             true,
           );
@@ -2535,75 +2254,70 @@ export async function extractSurveySketchFromPdf(
       }
     }
 
-    // Seed nature empty sides from deed after table/backup
-    if (
-      result.nature &&
-      (lengthCount(result.deed) >= 1 || descriptionCount(result.deed) >= 1)
-    ) {
+    // Seed nature lengths from deed when missing (still no descriptions)
+    if (lengthCount(result.deed) >= 1) {
       const nature: SketchBoundaryBlock = {
         areaSqm: "",
         north: {
-          description:
-            result.nature.north.description || result.deed.north.description,
-          lengthM: result.nature.north.lengthM || result.deed.north.lengthM,
+          description: "",
+          lengthM:
+            result.nature?.north.lengthM || result.deed.north.lengthM || "",
         },
         south: {
-          description:
-            result.nature.south.description || result.deed.south.description,
-          lengthM: result.nature.south.lengthM || result.deed.south.lengthM,
+          description: "",
+          lengthM:
+            result.nature?.south.lengthM || result.deed.south.lengthM || "",
         },
         east: {
-          description:
-            result.nature.east.description || result.deed.east.description,
-          lengthM: result.nature.east.lengthM || result.deed.east.lengthM,
+          description: "",
+          lengthM:
+            result.nature?.east.lengthM || result.deed.east.lengthM || "",
         },
         west: {
-          description:
-            result.nature.west.description || result.deed.west.description,
-          lengthM: result.nature.west.lengthM || result.deed.west.lengthM,
+          description: "",
+          lengthM:
+            result.nature?.west.lengthM || result.deed.west.lengthM || "",
         },
       };
       result = finalizeExtractResult(
-        result.deed,
+        stripAllDescriptions(result.deed),
         nature,
         result.rawText || joinedText,
         Boolean(result.usedSpatialLengths),
       );
     }
 
-    // ── Status: always framed around dual croquis tables ─────────────────────
-    const dC = descriptionCount(result.deed);
+    // Final: never ship auto-filled descriptions
+    result = {
+      ...result,
+      deed: stripAllDescriptions(result.deed),
+      nature: result.nature
+        ? stripAllDescriptions(result.nature)
+        : result.nature,
+    };
+    result = {
+      ...result,
+      filledCount: lengthCount(result.deed) + lengthCount(result.nature ?? emptyBlock()),
+    };
+
     const lC = lengthCount(result.deed);
-    if (dC >= 3 && lC >= 3) {
+    if (lC >= 3) {
       result = {
         ...result,
         warning:
-          result.warning ??
-          "عُبّئت الحدود والأطوال من جدولي الصك/الطبيعة. راجع قبل الإرسال — المساحة يدوية.",
+          "تُعبّأت أطوال الحدود (الأرقام فقط). وصف الحد يدوياً — المساحة يدوية.",
       };
-    } else if (dC >= 3 && lC < 3) {
+    } else if (lC >= 1) {
       result = {
         ...result,
         warning:
-          "عُبّئت أوصاف الحد من جدول الكروكي. أكمل الأطوال من عمود الطول في الجدولين — المساحة يدوية.",
-      };
-    } else if (lC >= 3 && dC < 1) {
-      result = {
-        ...result,
-        warning:
-          "عُبّئت الأطوال. انسخ «وصف الحد» من معاينة جدولي الصك/الطبيعة أدناه (شمال→جنوب→شرق→غرب) — المساحة يدوية.",
-      };
-    } else if (hasTableInk) {
-      result = {
-        ...result,
-        warning:
-          "جدولا الكروكي (صك/طبيعة) ظاهران للمعاينة — انسخ وصف الحد والأطوال للحقول. المساحة يدوية.",
+          "تعبئة جزئية للأطوال. أكمل الأطوال الناقصة ووصف الحد يدوياً — المساحة يدوية.",
       };
     } else {
       result = {
         ...result,
         warning:
-          "تعذّر عزل جدولي الصك/الطبيعة من هذا الملف — عبّئ الحدود من التقرير يدوياً. المساحة يدوية.",
+          "لم تُقرأ أرقام أطوال من التقرير. عبّئ الأطوال ووصف الحد يدوياً — المساحة يدوية.",
       };
     }
 

@@ -10,72 +10,45 @@ import {
 import { openPropertyPhotosPdfPrint } from "../../lib/prototype/property-photos-pdf";
 
 /**
- * Case Study.html photos tab fixed groups (always shown, placeholders when empty).
- * `count` = placeholder tile count when no real photos match the group.
+ * Case Study.html photo groups — sections always listed; empty groups hide tiles
+ * (no decorative placeholders).
  */
 const HTML_PHOTO_GROUPS: {
   title: string;
   source: string;
-  placeholderCount: number;
   match: (photo: PropertyDetailDocumentEntry) => boolean;
 }[] = [
   {
     title: "صورة العقار الرئيسية",
     source: "المعاين",
-    placeholderCount: 1,
     match: (p) => /رئيس|main|primary/i.test(`${p.name} ${p.fileName}`),
   },
   {
     title: "صور العقار الخارجية",
     source: "المعاين",
-    placeholderCount: 4,
     match: (p) => /خارج|واجهة|front|exterior|sides?/i.test(`${p.name} ${p.fileName}`),
   },
   {
     title: "صور العقار من الداخل",
     source: "المعاين",
-    placeholderCount: 6,
     match: (p) => /داخل|interior|inside|floor|أرض/i.test(`${p.name} ${p.fileName}`),
   },
   {
     title: "صور عدادات الكهرباء",
     source: "المعاين",
-    placeholderCount: 2,
     match: (p) => /كهرب|elec|عداد/i.test(`${p.name} ${p.fileName}`),
   },
   {
     title: "صور الآبار",
     source: "المكتب الهندسي",
-    placeholderCount: 2,
     match: (p) => /بئر|آبار|well/i.test(`${p.name} ${p.fileName}`),
   },
   {
     title: "صور المشتملات",
     source: "المعاين",
-    placeholderCount: 3,
     match: (p) => /مشتمل|ملحق|annex|مرافق/i.test(`${p.name} ${p.fileName}`),
   },
 ];
-
-function PlaceholderTile() {
-  return (
-    <div className="relative grid h-[110px] place-items-center overflow-hidden rounded border border-border bg-surface-2">
-      <svg
-        width="26"
-        height="26"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="var(--text-3, #8a8d96)"
-        strokeWidth="1.5"
-        aria-hidden
-      >
-        <rect x="3" y="4" width="18" height="16" rx="2" />
-        <circle cx="8.5" cy="9.5" r="1.5" />
-        <path d="m4 17 5-5 4 4 3-2 4 4" />
-      </svg>
-    </div>
-  );
-}
 
 function PhotoTile({ photo }: { photo: PropertyDetailDocumentEntry }) {
   const canOpen = Boolean(photo.dataUrl);
@@ -131,7 +104,6 @@ function buildDisplayGroups(photos: PropertyDetailDocumentEntry[]) {
       title: def.title,
       source: def.source,
       items,
-      placeholderCount: def.placeholderCount,
     };
   });
 
@@ -141,15 +113,15 @@ function buildDisplayGroups(photos: PropertyDetailDocumentEntry[]) {
       title: "صور أخرى",
       source: leftovers[0]?.source || "—",
       items: leftovers,
-      placeholderCount: 0,
     });
   }
 
-  return groups;
+  // Only sections that actually have photos.
+  return groups.filter((g) => g.items.length > 0);
 }
 
 /**
- * Case Study.html photos tab — fixed group headers + placeholder tiles when empty.
+ * Photos tab — real attachments only (no empty-slot placeholders).
  */
 export function PropertyDetailPhotosTab({
   photos,
@@ -162,19 +134,15 @@ export function PropertyDetailPhotosTab({
   const [busy, setBusy] = useState(false);
   const groups = useMemo(() => buildDisplayGroups(photos), [photos]);
 
-  const displayTotal =
-    photos.length > 0
-      ? photos.length
-      : HTML_PHOTO_GROUPS.reduce((n, g) => n + g.placeholderCount, 0);
-
   const downloadable = photos.filter((p) => p.dataUrl);
 
   return (
     <>
       <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2.5">
         <div className="text-[11.5px] text-text-3">
-          إجمالي {displayTotal} صورة
-          {photos.length === 0 ? " (بانتظار الرفع)" : null}
+          {photos.length > 0
+            ? `إجمالي ${photos.length} صورة`
+            : "لا توجد صور مرفوعة بعد"}
         </div>
         <button
           type="button"
@@ -213,32 +181,28 @@ export function PropertyDetailPhotosTab({
         </button>
       </div>
 
-      {groups.map((group) => {
-        const tileCount =
-          group.items.length > 0
-            ? group.items.length
-            : group.placeholderCount;
-        return (
+      {groups.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border bg-surface-2 px-4 py-10 text-center text-[13px] text-text-3">
+          بانتظار رفع صور المعاينة من المعاين أو الطرف المختص.
+        </div>
+      ) : (
+        groups.map((group) => (
           <div key={`${group.source}-${group.title}`} className="mb-4">
             <div className="mb-2 flex items-center gap-2">
               <span className="text-xs font-bold text-heading">{group.title}</span>
               <span className="text-[10.5px] text-text-3">
-                {tileCount} صورة · {group.source}
+                {group.items.length} صورة · {group.source}
               </span>
               <span className="h-px flex-1 bg-border" aria-hidden />
             </div>
             <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2">
-              {group.items.length > 0
-                ? group.items.map((photo) => (
-                    <PhotoTile key={photo.id} photo={photo} />
-                  ))
-                : Array.from({ length: group.placeholderCount }, (_, i) => (
-                    <PlaceholderTile key={`${group.title}-ph-${i}`} />
-                  ))}
+              {group.items.map((photo) => (
+                <PhotoTile key={photo.id} photo={photo} />
+              ))}
             </div>
           </div>
-        );
-      })}
+        ))
+      )}
 
       <InfoBox icon="ℹ">
         الصور مرفوعة من النظام بواسطة المعاين أو الطرف المختص — هذا التبويب

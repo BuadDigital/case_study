@@ -373,19 +373,19 @@ export function PoPropertiesPage({
                         emphasize={deedOpensReview}
                       />
                     </PpTd>
-                    <PpTd muted>{location}</PpTd>
+                    <PpTd muted>
+                      <span className="truncate">{location}</span>
+                    </PpTd>
                     <PpTd>
                       {boursePending && !hasBourseDetailFields(prop) ? (
-                        <span className="text-[13px] text-text-2">—</span>
+                        <span className="text-text-2">—</span>
                       ) : (
-                        <span className="truncate text-[13px] text-text">
-                          {typeDisplay}
-                        </span>
+                        <span className="truncate">{typeDisplay}</span>
                       )}
                     </PpTd>
                     <PpTd>
                       {boursePending || !deedSt ? (
-                        <span className="text-[13px] text-text-2">—</span>
+                        <span className="text-text-2">—</span>
                       ) : (
                         <PpStatus label={deedSt} style={deedStatusStyle(deedSt)} />
                       )}

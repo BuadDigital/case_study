@@ -199,8 +199,8 @@ export function PpTh({
   return (
     <div
       className={cn(
-        "flex min-w-0 items-center overflow-hidden text-ellipsis whitespace-nowrap px-4 py-3.5 text-center text-[12px] font-bold text-heading",
-        center ? "justify-center" : "justify-center",
+        "flex min-w-0 items-center overflow-hidden text-ellipsis whitespace-nowrap px-4 py-3 text-[12px] font-bold text-heading",
+        center ? "justify-center text-center" : "justify-start text-start",
       )}
     >
       {children}
@@ -220,7 +220,7 @@ export function PpRow({
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
       className={cn(
-        "grid min-h-[58px] items-center border-b border-border transition-colors duration-100 last:border-b-0",
+        "grid min-h-[52px] items-center border-b border-border transition-colors duration-100 last:border-b-0",
         onClick &&
           "cursor-pointer hover:bg-row-hover hover:relative hover:z-[6]",
       )}
@@ -256,8 +256,8 @@ export function PpTd({
   return (
     <div
       className={cn(
-        "flex min-w-0 items-center overflow-hidden px-4 py-3.5",
-        muted && "text-[13px] text-text-2",
+        "flex min-w-0 items-center justify-start overflow-hidden px-4 py-3 text-start text-[13px] text-text",
+        muted && "text-text-2",
         className,
       )}
       onClick={onClick}
@@ -277,9 +277,9 @@ export function PpDeedCell({
   emphasize?: boolean;
 }) {
   return (
-    <span className="inline-flex min-w-0 items-center gap-2">
+    <span className="inline-flex min-w-0 max-w-full items-center gap-2">
       <span
-        className="inline-grid size-[22px] shrink-0 place-items-center rounded-md border border-border-md bg-surface-2 text-[10px] font-bold text-text-2"
+        className="inline-grid size-5 shrink-0 place-items-center rounded-md border border-border bg-surface-2 text-[10px] font-bold tabular-nums text-text-3"
         aria-hidden
       >
         {index}
@@ -287,8 +287,9 @@ export function PpDeedCell({
       <span
         dir="ltr"
         className={cn(
-          "truncate text-[12px] font-bold text-[var(--gold-d,#8c7857)]",
-          emphasize && "underline decoration-[var(--gold-d,#8c7857)] underline-offset-2",
+          "truncate text-[13px] font-bold text-heading",
+          emphasize &&
+            "text-primary underline decoration-primary underline-offset-2",
         )}
       >
         {deed}
