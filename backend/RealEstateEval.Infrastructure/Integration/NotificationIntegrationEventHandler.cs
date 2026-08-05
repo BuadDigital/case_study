@@ -125,7 +125,6 @@ public sealed class NotificationIntegrationEventHandler
             propertyId,
             [
                 WorkflowTaskKind.PropertyAppraisal,
-                WorkflowTaskKind.ValuationCoordination,
                 WorkflowTaskKind.CaseStudyProperty,
             ],
             cancellationToken);
@@ -168,7 +167,7 @@ public sealed class NotificationIntegrationEventHandler
 
         var recipientIds = await _recipients.ResolveAssigneeUserIdsForPropertyAsync(
             propertyId,
-            [WorkflowTaskKind.PropertyAppraisal, WorkflowTaskKind.ValuationCoordination],
+            [WorkflowTaskKind.PropertyAppraisal],
             cancellationToken);
 
         if (recipientIds.Count == 0)

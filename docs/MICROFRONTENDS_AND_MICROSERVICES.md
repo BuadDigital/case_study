@@ -274,7 +274,6 @@ Map prototype roles to **permissions** (implement in Identity service):
 | `section-supervisor` | read:case, approve:failure, assign:case |
 | `operations-coordinator` | write:po, write:assignment |
 | `case-specialist` | write:property, write:failure |
-| `valuation-coordinator` | write:valuation-request, assign:appraiser |
 | `real-estate-appraiser` | write:valuation-report |
 | `field-inspector` | write:field-form |
 | `court-delegate` | write:keys |

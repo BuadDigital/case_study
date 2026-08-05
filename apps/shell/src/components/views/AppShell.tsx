@@ -60,6 +60,23 @@ import { EngineeringSurveyTopbarActions } from "@engineering-office/mfe";
 import { useQuery } from "@tanstack/react-query";
 import { loadOperationsTasks } from "@case-study/mfe/lib/prototype/operations-tasks-storage";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import {
+  FINANCIAL_GROUP,
+  FINANCIAL_GROUP_ICON,
+  FINANCIAL_NAV_LEAVES,
+  FINANCIAL_TOGGLE_LABEL,
+  PARTY_PORTAL_NAV_LEAVES,
+  PARTY_PORTALS_GROUP,
+  financeLeafForArea,
+  financialHref,
+  isFinanceCoreArea,
+  isInFinancialSection,
+  isPartyPortalArea,
+  parseFinanceNavArea,
+  showFinancialNavGroup,
+  type FinanceNavArea,
+} from "@platform/app-shared/prototype/financial-nav";
+import { useFinanceNavBadges } from "@/lib/query/use-finance-nav-badges";
 import { useActiveTransactionNavBadges } from "@/lib/query/use-active-transaction-nav-badges";
 import { useFailuresNavBadge } from "@/lib/query/use-failures-nav-badge";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
@@ -404,6 +421,181 @@ function NavFlyoutPanel({
         {label}
       </div>
       <div className="flex flex-col">{children}</div>
+    </div>
+  );
+}
+
+/**
+ * Finance.html sidebar (حرفياً):
+ *   nav-group: المالية
+ *   fin-subnav leaves (مهامي · الإيرادات · التكاليف)
+ *     — في التطبيق: تحت «المالية والفوترة» لأن navActive/الـ crumbs تشير لها
+ *   nav-group: بوابات الأطراف — لتجربة الأثر
+ *   nav-item: eng · inspector
+ */
+function FinanceHtmlNav({
+  currentPage,
+  activeArea,
+  badges,
+  rail = false,
+}: {
+  currentPage: PageId;
+  activeArea: FinanceNavArea;
+  badges: Partial<Record<FinanceNavArea, number>>;
+  rail?: boolean;
+}) {
+  const inSection = isInFinancialSection(currentPage);
+  const onCore = inSection && isFinanceCoreArea(activeArea);
+  const onPortal = inSection && isPartyPortalArea(activeArea);
+  /** افتح الشجرة عند العمل في مهامي/إيراد/تكاليف فقط — لا على البوابات (مثل HTML) */
+  const [open, setOpen] = useState(onCore);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- open/close with route.
+    if (onCore) setOpen(true);
+    if (onPortal && !rail) setOpen(false);
+  }, [onCore, onPortal, rail]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (rail) setOpen(false);
+  }, [rail]);
+
+  useEffect(() => {
+    if (!open || !rail) return;
+    function onPointerDown(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [open, rail]);
+
+  const finLeaves = () =>
+    FINANCIAL_NAV_LEAVES.map((leaf) => {
+      const active = inSection && activeArea === leaf.area;
+      const count = badges[leaf.area];
+      return (
+        <Link
+          key={leaf.area}
+          href={financialHref(leaf.area)}
+          className={navItemClasses({
+            active,
+            sub: true,
+            rail,
+          })}
+          title={rail ? leaf.label : undefined}
+          prefetch
+        >
+          <NavIcon d={leaf.icon} size={rail ? 16 : 14} />
+          <span className={navLabelClasses(rail)}>{leaf.label}</span>
+          {count != null && count > 0 ? (
+            <span className={navBadgeClasses(rail)}>{count}</span>
+          ) : null}
+        </Link>
+      );
+    });
+
+  return (
+    <div className="my-0.5" ref={rootRef}>
+      {/* .nav-group: المالية */}
+      <div
+        className={cn(
+          "px-3 pb-1.5 pt-2 text-[11px] font-bold tracking-[0.04em] text-[#6f7b90]",
+          rail && "lg:hidden",
+        )}
+      >
+        {FINANCIAL_GROUP}
+      </div>
+      {rail ? (
+        <div
+          className="mx-auto my-1.5 hidden h-px w-6 bg-white/10 lg:block"
+          aria-hidden
+        />
+      ) : null}
+
+      {/* .nav-item toggle: المالية والفوترة */}
+      <button
+        type="button"
+        className={navItemClasses({
+          active: onCore,
+          toggle: true,
+          rail,
+        })}
+        title={rail ? FINANCIAL_TOGGLE_LABEL : undefined}
+        aria-expanded={open}
+        aria-controls="nav-financial-leaves"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <NavIcon d={FINANCIAL_GROUP_ICON} size={16} />
+        <span className={navLabelClasses(rail)}>{FINANCIAL_TOGGLE_LABEL}</span>
+        <NavDropdownChevron open={open} rail={rail} />
+      </button>
+
+      {open && !rail ? (
+        <div
+          id="nav-financial-leaves"
+          className="ms-3 flex flex-col border-s border-white/[0.07] py-0.5"
+          role="group"
+          aria-label={FINANCIAL_TOGGLE_LABEL}
+        >
+          {finLeaves()}
+        </div>
+      ) : null}
+      {open && rail ? (
+        <>
+          <div
+            id="nav-financial-leaves"
+            className="ms-3 flex flex-col border-s border-white/[0.07] py-0.5 lg:hidden"
+            role="group"
+            aria-label={FINANCIAL_TOGGLE_LABEL}
+          >
+            {finLeaves()}
+          </div>
+          <NavFlyoutPanel label={FINANCIAL_TOGGLE_LABEL}>
+            {finLeaves()}
+          </NavFlyoutPanel>
+        </>
+      ) : null}
+
+      {/* .nav-group: بوابات – لتجربة الأثر */}
+      <div
+        className={cn(
+          "mt-2 border-t border-white/[0.06] px-3 pb-1.5 pt-3 text-[11px] font-bold tracking-[0.04em] text-[#6f7b90]",
+          rail && "lg:mt-1.5 lg:border-0 lg:hidden lg:pt-0",
+        )}
+      >
+        {PARTY_PORTALS_GROUP}
+      </div>
+      {rail ? (
+        <div
+          className="mx-auto my-1.5 hidden h-px w-6 bg-white/10 lg:block"
+          aria-hidden
+        />
+      ) : null}
+
+      {PARTY_PORTAL_NAV_LEAVES.map((leaf) => {
+        const active = inSection && activeArea === leaf.area;
+        const count = badges[leaf.area];
+        return (
+          <Link
+            key={leaf.area}
+            href={financialHref(leaf.area)}
+            className={navItemClasses({
+              active,
+              rail,
+            })}
+            title={rail ? leaf.label : undefined}
+            prefetch
+          >
+            <NavIcon d={leaf.icon} size={16} />
+            <span className={navLabelClasses(rail)}>{leaf.label}</span>
+            {count != null && count > 0 ? (
+              <span className={navBadgeClasses(rail)}>{count}</span>
+            ) : null}
+          </Link>
+        );
+      })}
     </div>
   );
 }
@@ -924,6 +1116,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const showActiveTransactionsGroup = activeTransactionItems.length > 0;
   const activeTxBadges = useActiveTransactionNavBadges();
   const failuresNavBadge = useFailuresNavBadge();
+  const financeNavBadges = useFinanceNavBadges();
+  const showFinancialGroup = showFinancialNavGroup(rolePages);
+  const searchParams = useSearchParams();
+  const financeArea = parseFinanceNavArea(searchParams.get("area"));
   const activeTxInsertAnchor: PageId | null = rolePages.includes("all-transactions")
     ? "all-transactions"
     : rolePages.includes("po")
@@ -944,8 +1140,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     () => (page: PageId) => prefetchPrototypePage(queryClient, page),
     [queryClient],
   );
-
-  const searchParams = useSearchParams();
 
   // Parse path parts once so the workspace/taskId derivations below don't
   // each call split+filter separately.
@@ -1017,13 +1211,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const onFieldInspectionWorkspace =
     onActiveInspectionWorkspace || onPropertyInspectionWorkspace;
   const onGovernmentReviewWorkspace = pathParts[0] === "government-review" && pathParts.length >= 2;
-  const onValuationCoordinationWorkspace = pathParts[0] === "valuation-coordination" && pathParts.length >= 2;
   const caseStudyTaskId = onCaseStudyWorkspace ? (pathParts[1] ?? null) : null;
   const activeSurveyTaskId = onActiveSurveyRoute ? (pathParts[1] ?? null) : null;
   const propertyAppraisalTaskId = onPropertyAppraisalWorkspace ? (pathParts[1] ?? null) : null;
   const fieldInspectionTaskId = onFieldInspectionWorkspace ? (pathParts[1] ?? null) : null;
   const governmentReviewTaskId = onGovernmentReviewWorkspace ? (pathParts[1] ?? null) : null;
-  const valuationCoordinationTaskId = onValuationCoordinationWorkspace ? (pathParts[1] ?? null) : null;
 
   const { data: workflowTasks } = useWorkflowTasksQuery();
 
@@ -1100,7 +1292,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onPropertyAppraisalWorkspace ||
               onFieldInspectionWorkspace ||
               onGovernmentReviewWorkspace ||
-              onValuationCoordinationWorkspace ||
               isPartyTaskPage(currentPage)
               ? onCaseStudyWorkspace
                 ? caseStudyTaskId
@@ -1112,9 +1303,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       ? fieldInspectionTaskId
                       : onGovernmentReviewWorkspace
                         ? governmentReviewTaskId
-                        : onValuationCoordinationWorkspace
-                          ? valuationCoordinationTaskId
-                          : taskQuery
+                        : taskQuery
               : null,
             {
               ...(onCaseStudyWorkspace
@@ -1133,13 +1322,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       onPropertyAppraisalWorkspace,
       onFieldInspectionWorkspace,
       onGovernmentReviewWorkspace,
-      onValuationCoordinationWorkspace,
       caseStudyTaskId,
       activeSurveyTaskId,
       propertyAppraisalTaskId,
       fieldInspectionTaskId,
       governmentReviewTaskId,
-      valuationCoordinationTaskId,
       caseStudyDeedLabel,
       opsTaskDeepLink,
       opsTaskTitle,
@@ -1154,7 +1341,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     onPropertyAppraisalWorkspace ||
     onFieldInspectionWorkspace ||
     onGovernmentReviewWorkspace ||
-    onValuationCoordinationWorkspace ||
     (pathname ? isPartyTaskWorkPath(pathname) && Boolean(taskQuery) : false);
 
   const def = ROLES[role];
@@ -1234,10 +1420,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       ? slashTrailToSegments("لوحة التحكم / فوترة الأتعاب")
       : null;
 
+  const financeLeaf =
+    currentPage === "financial" ? financeLeafForArea(financeArea) : null;
+  const financialCrumb = financeLeaf
+    ? slashTrailToSegments(financeLeaf.crumb)
+    : null;
+
   const breadcrumbSegments =
     poChrome?.segments ??
     caseStudyBreadcrumb ??
     engineeringFeesCrumb ??
+    financialCrumb ??
     (myTasksChrome?.breadcrumb
       ? slashTrailToSegments(myTasksChrome.breadcrumb)
       : keysChrome?.breadcrumb
@@ -1250,6 +1443,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     poChrome?.title ??
     myTasksChrome?.title ??
     keysChrome?.title ??
+    financeLeaf?.pageTitle ??
     (currentPage === "party-fees" && isPartyFeesUnderActiveTransactions(role)
       ? "فوترة الأتعاب"
       : PAGE_TITLES[currentPage]) ??
@@ -1289,7 +1483,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         >
         <div
           className={cn(
-            "relative flex items-center justify-center border-b border-white/[0.08] px-[18px] pb-[18px] pt-5",
+            "relative flex items-center justify-center border-b border-white/[0.08] px-[18px] pb-3 pt-5",
             desktopRail && "lg:px-2 lg:pb-3 lg:pt-4",
           )}
         >
@@ -1314,7 +1508,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <nav
             id="nav"
             className={cn(
-              "min-h-0 flex-1 overflow-y-auto px-3 pb-[22px] pt-3",
+              "min-h-0 flex-1 overflow-y-auto px-3 pb-[22px] pt-1.5",
               desktopRail && "lg:px-1.5",
             )}
             aria-label="التنقل الرئيسي"
@@ -1332,6 +1526,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               rail={desktopRail}
             />
           ) : null}
+          {showFinancialGroup ? (
+            <FinanceHtmlNav
+              key="finance-html-nav"
+              currentPage={currentPage}
+              activeArea={financeArea}
+              badges={financeNavBadges}
+              rail={desktopRail}
+            />
+          ) : null}
           {navRuns.map((run, ri) => {
             const blocks: React.ReactNode[] = [];
             blocks.push(
@@ -1339,7 +1542,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 {run.label ? (
                   <div
                     className={cn(
-                      "px-3 pb-[7px] pt-[18px] text-[11px] font-bold tracking-[0.03em] text-[#6f7b90]",
+                      "px-3 pb-1.5 pt-2 text-[11px] font-bold tracking-[0.03em] text-[#6f7b90]",
                       desktopRail && "lg:hidden",
                     )}
                   >
@@ -1348,7 +1551,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 ) : null}
                 {run.label && desktopRail ? (
                   <div
-                    className="mx-auto my-2 hidden h-px w-6 bg-white/10 lg:block"
+                    className="mx-auto my-1.5 hidden h-px w-6 bg-white/10 lg:block"
                     aria-hidden
                   />
                 ) : null}
@@ -1381,7 +1584,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       <div
                         key="general-grp"
                         className={cn(
-                          "px-3 pb-[7px] pt-[18px] text-[11px] font-bold tracking-[0.03em] text-[#6f7b90]",
+                          "px-3 pb-1.5 pt-2 text-[11px] font-bold tracking-[0.03em] text-[#6f7b90]",
                           desktopRail && "lg:hidden",
                         )}
                       >
@@ -1390,7 +1593,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       desktopRail ? (
                         <div
                           key="general-grp-rail-sep"
-                          className="mx-auto my-2 hidden h-px w-6 bg-white/10 lg:block"
+                          className="mx-auto my-1.5 hidden h-px w-6 bg-white/10 lg:block"
                           aria-hidden
                         />
                       ) : null,
@@ -1465,7 +1668,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <div
                 key="general-grp-fallback"
                 className={cn(
-                  "px-3 pb-[7px] pt-[18px] text-[11px] font-bold tracking-[0.03em] text-[#6f7b90]",
+                  "px-3 pb-1.5 pt-2 text-[11px] font-bold tracking-[0.03em] text-[#6f7b90]",
                   desktopRail && "lg:hidden",
                 )}
               >
@@ -1473,7 +1676,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
               {desktopRail ? (
                 <div
-                  className="mx-auto my-2 hidden h-px w-6 bg-white/10 lg:block"
+                  className="mx-auto my-1.5 hidden h-px w-6 bg-white/10 lg:block"
                   aria-hidden
                 />
               ) : null}

@@ -27,12 +27,16 @@ export function PartyPickerModal({
   selectedAssigneeId,
   onClose,
   onSelect,
+  title = "اختيار الجهة",
+  searchPlaceholder = "ابحث باسم الجهة...",
 }: {
   open: boolean;
   parties: PartyFeeGroup[];
   selectedAssigneeId: string;
   onClose: () => void;
   onSelect: (assigneeId: string) => void;
+  title?: string;
+  searchPlaceholder?: string;
 }) {
   const [search, setSearch] = useState("");
   const [category, setCategory] =
@@ -55,7 +59,7 @@ export function PartyPickerModal({
     <ModalOverlay onClick={onClose}>
       <ModalCard wide onClick={(e) => e.stopPropagation()}>
         <ModalHeader>
-          <ModalTitle>اختيار الطرف</ModalTitle>
+          <ModalTitle>{title}</ModalTitle>
           <ModalClose onClick={onClose} aria-label="إغلاق">
             ×
           </ModalClose>
@@ -63,7 +67,7 @@ export function PartyPickerModal({
         <ModalBody className="pt-2">
           <Input
             className="mb-3 text-sm"
-            placeholder="ابحث باسم الطرف..."
+            placeholder={searchPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />

@@ -24,7 +24,6 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         WorkflowTaskKind.EngineeringSurvey,
         WorkflowTaskKind.PropertyAppraisal,
         WorkflowTaskKind.GovernmentReview,
-        WorkflowTaskKind.ValuationCoordination,
         WorkflowTaskKind.FieldInspection,
     ];
 
@@ -973,7 +972,6 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         "engineering-survey" => "إتمام الرفع المساحي",
         "property-appraisal" => "إتمام التقييم العقاري",
         "government-review" => "إتمام المراجعة الحكومية",
-        "valuation-coordination" => "إتمام تنسيق التقييم",
         _ => "إتمام عمل الطرف",
     };
 }

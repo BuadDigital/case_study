@@ -276,6 +276,19 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
             .Where(x => poNumbers.Contains(x.PoNumber))
             .ToDictionaryAsync(x => x.PoNumber.Trim(), StringComparer.Ordinal, cancellationToken);
 
+        var flags = await _db.PoEnfazFinanceFlags.AsNoTracking()
+            .Where(f => poNumbers.Contains(f.PoNumber))
+            .ToListAsync(cancellationToken);
+        var followupCounts = await _db.PoEnfazFollowups.AsNoTracking()
+            .Where(f => poNumbers.Contains(f.PoNumber))
+            .GroupBy(f => f.PoNumber)
+            .Select(g => new { PoNumber = g.Key, Count = g.Count() })
+            .ToListAsync(cancellationToken);
+        var followupCountByPo = followupCounts.ToDictionary(
+            x => x.PoNumber.Trim(),
+            x => x.Count,
+            StringComparer.Ordinal);
+
         var allPropertyIds = orders.SelectMany(o => o.Properties.Select(p => p.Id)).ToList();
         var allTasks = await _db.WorkflowTasks.AsNoTracking()
             .Where(t => poNumbers.Contains(t.PoNumber)
@@ -283,6 +296,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
                 && allPropertyIds.Contains(t.PropertyId.Value))
             .ToListAsync(cancellationToken);
         var taskStatusesByPo = BuildPropertyWorkStatusesByPo(allTasks);
+        var completedAtByProperty = BuildPropertyCompletedAtById(allTasks);
 
         var rows = new List<EnfazTrackingRowDto>();
         foreach (var order in orders)
@@ -293,6 +307,9 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
             var overdue = invoice is not null
                 && invoice.Status != PoEnfazInvoiceStatus.Collected
                 && DateTime.UtcNow - invoice.IssuedAtUtc > OverdueAfter;
+            var followupCount = followupCountByPo.GetValueOrDefault(po, 0);
+            var poFlags = flags.Where(f =>
+                string.Equals(f.PoNumber.Trim(), po, StringComparison.Ordinal)).ToList();
 
             foreach (var property in order.Properties.OrderBy(p => p.RequestNumber ?? p.DeedNumber, StringComparer.Ordinal))
             {
@@ -305,27 +322,54 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
                     label = $"{label} — {property.District.Trim()}";
 
                 var filled = enfaz is not null && enfaz.IncludedInBilling && enfaz.TotalFeeSar > 0;
+                completedAtByProperty.TryGetValue(property.Id, out var taskCompletedAt);
+                var completedAt = property.BourseCompletedAtUtc ?? taskCompletedAt;
+                if (work.Item1 != "done")
+                    completedAt = null;
+
+                var deed = (property.DeedNumber ?? string.Empty).Trim();
+                var city = (property.City ?? string.Empty).Trim();
+                var landArea = (property.Area ?? string.Empty).Trim();
+                var flag = ResolveFinanceFlag(poFlags, property.Id);
+
                 rows.Add(new EnfazTrackingRowDto
                 {
                     PoNumber = po,
                     PropertyId = property.Id.ToString(),
                     PropertyLabel = label,
+                    DeedNumber = deed,
+                    City = city,
+                    LandArea = landArea,
+                    CompletedAtUtc = completedAt,
                     WorkStatus = work.Item1,
                     WorkStatusLabel = work.Item2,
                     EnfazFilled = filled,
                     CaseStudyFeeSar = enfaz?.CaseStudyFeeSar ?? 0m,
                     SurveyFeeSar = enfaz?.SurveyFeeSar ?? 0m,
+                    KeyFeeSar = enfaz?.KeyFeeSar ?? 0m,
                     EnfazFeeSar = enfaz?.TotalFeeSar ?? 0m,
                     InvoiceNumber = invoice?.InvoiceNumber,
                     InvoiceStatus = invoice?.Status,
                     CollectedAmountSar = invoice?.CollectedAmountSar ?? 0m,
                     InvoiceIssuedAtUtc = invoice?.IssuedAtUtc,
                     IsOverdue = overdue,
+                    FinanceFlag = flag?.Flag,
+                    FinanceFlagNote = flag?.Note,
+                    FollowupCount = followupCount,
                 });
             }
         }
 
         return rows.Take(MaxTrackingRows).ToList();
+    }
+
+    private static PoEnfazFinanceFlag? ResolveFinanceFlag(
+        IReadOnlyList<PoEnfazFinanceFlag> flags,
+        Guid propertyId)
+    {
+        var exact = flags.FirstOrDefault(f => f.PropertyId == propertyId);
+        if (exact is not null) return exact;
+        return flags.FirstOrDefault(f => f.PropertyId is null);
     }
 
     public async Task<PoEnfazBillingDto?> IssueInvoiceAsync(
@@ -525,6 +569,21 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         return ComputePropertyWorkStatuses(propertyIds, tasks);
     }
 
+    private static Dictionary<Guid, DateTime?> BuildPropertyCompletedAtById(
+        IReadOnlyList<WorkflowTask> tasks)
+    {
+        var result = new Dictionary<Guid, DateTime?>();
+        foreach (var group in tasks
+                     .Where(t => t.PropertyId.HasValue
+                                 && t.Status == WorkflowTaskStatus.Completed)
+                     .GroupBy(t => t.PropertyId!.Value))
+        {
+            result[group.Key] = group.Max(t => t.UpdatedAtUtc);
+        }
+
+        return result;
+    }
+
     private static Dictionary<string, Dictionary<Guid, (string Status, string Label)>> BuildPropertyWorkStatusesByPo(
         IReadOnlyList<WorkflowTask> tasks)
     {
@@ -655,11 +714,16 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         IReadOnlyList<PoEnfazRevenueLineDto> lines,
         PoEnfazInvoice? invoice = null)
     {
-        var subtotal = lines
+        var billable = lines
             .Where(l => l.WorkStatus == "done" && l.IncludedInBilling)
-            .Sum(l => l.CaseStudyFeeSar + l.SurveyFeeSar + l.KeyFeeSar);
-        var vat = Math.Round(subtotal * VatRate, 2, MidpointRounding.AwayFromZero);
-        var total = subtotal + vat;
+            .ToList();
+        // ضريبة 15٪ على (تقييم + رفع) فقط — أتعاب المفاتيح شاملة الضريبة
+        var taxable = billable.Sum(l => l.CaseStudyFeeSar + l.SurveyFeeSar);
+        var keyFees = billable.Sum(l => l.KeyFeeSar);
+        var vat = Math.Round(taxable * VatRate, 2, MidpointRounding.AwayFromZero);
+        var total = taxable + vat + keyFees;
+        // SubtotalSar = الأتعاب الخاضعة للضريبة (تقييم+رفع) — للتوافق مع واجهة الملخص
+        var subtotal = taxable;
         var collected = invoice?.CollectedAmountSar ?? 0m;
         var status = invoice?.Status;
         var issuedAt = invoice?.IssuedAtUtc;
@@ -726,4 +790,175 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
             ? null
             : System.Text.Json.JsonSerializer.Serialize(list);
     }
+
+    public async Task<IReadOnlyList<EnfazFollowupDto>> ListFollowupsAsync(
+        string poNumber,
+        CancellationToken cancellationToken = default)
+    {
+        var po = poNumber.Trim();
+        if (string.IsNullOrEmpty(po)) return [];
+
+        var rows = await _db.PoEnfazFollowups.AsNoTracking()
+            .Where(f => f.PoNumber == po)
+            .OrderByDescending(f => f.FollowedAtUtc)
+            .ThenByDescending(f => f.CreatedAtUtc)
+            .Take(100)
+            .ToListAsync(cancellationToken);
+
+        return rows.Select(ToFollowupDto).ToList();
+    }
+
+    public async Task<(EnfazFollowupDto? Followup, string? Error)> AddFollowupAsync(
+        string poNumber,
+        AddEnfazFollowupRequest request,
+        string actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var po = poNumber.Trim();
+        var notes = (request.Notes ?? "").Trim();
+        if (string.IsNullOrEmpty(po))
+            return (null, "رقم أمر العمل مطلوب.");
+        if (string.IsNullOrEmpty(notes))
+            return (null, "ملاحظات المتابعة إلزامية.");
+
+        var channel = NormalizeChannel(request.Channel);
+        var now = DateTime.UtcNow;
+        var followedAt = request.FollowedAtUtc?.ToUniversalTime() ?? now;
+        var entity = new PoEnfazFollowup
+        {
+            Id = Guid.NewGuid(),
+            PoNumber = po,
+            FollowedAtUtc = followedAt,
+            Channel = channel,
+            Notes = notes.Length > 2000 ? notes[..2000] : notes,
+            CreatedByUserId = actorUserId ?? "",
+            CreatedAtUtc = now,
+        };
+        _db.PoEnfazFollowups.Add(entity);
+        await _db.SaveChangesAsync(cancellationToken);
+        return (ToFollowupDto(entity), null);
+    }
+
+    public async Task<(bool Ok, string? Error)> SetFinanceFlagAsync(
+        string poNumber,
+        SetEnfazFinanceFlagRequest request,
+        string actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var po = poNumber.Trim();
+        if (string.IsNullOrEmpty(po))
+            return (false, "رقم أمر العمل مطلوب.");
+
+        var flag = (request.Flag ?? "").Trim().ToLowerInvariant();
+        if (flag is not (
+            PoEnfazFinanceFlagKind.Stopped
+            or PoEnfazFinanceFlagKind.Excluded
+            or PoEnfazFinanceFlagKind.Difficult))
+            return (false, "علامة غير معروفة. استخدم stopped أو excluded أو difficult.");
+
+        Guid? propertyId = null;
+        if (!string.IsNullOrWhiteSpace(request.PropertyId)
+            && Guid.TryParse(request.PropertyId.Trim(), out var parsed))
+            propertyId = parsed;
+
+        var existing = await _db.PoEnfazFinanceFlags
+            .Where(f => f.PoNumber == po)
+            .ToListAsync(cancellationToken);
+
+        var match = existing.FirstOrDefault(f => f.PropertyId == propertyId)
+            ?? existing.FirstOrDefault(f => propertyId is null && f.PropertyId is null);
+
+        var now = DateTime.UtcNow;
+        var note = string.IsNullOrWhiteSpace(request.Note)
+            ? null
+            : request.Note.Trim();
+        if (note is { Length: > 1000 }) note = note[..1000];
+
+        if (match is null)
+        {
+            _db.PoEnfazFinanceFlags.Add(new PoEnfazFinanceFlag
+            {
+                Id = Guid.NewGuid(),
+                PoNumber = po,
+                PropertyId = propertyId,
+                Flag = flag,
+                Note = note,
+                SetByUserId = actorUserId ?? "",
+                SetAtUtc = now,
+            });
+        }
+        else
+        {
+            match.Flag = flag;
+            match.Note = note;
+            match.SetByUserId = actorUserId ?? "";
+            match.SetAtUtc = now;
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+        return (true, null);
+    }
+
+    public async Task<(bool Ok, string? Error)> ClearFinanceFlagAsync(
+        string poNumber,
+        string? propertyId,
+        CancellationToken cancellationToken = default)
+    {
+        var po = poNumber.Trim();
+        if (string.IsNullOrEmpty(po))
+            return (false, "رقم أمر العمل مطلوب.");
+
+        Guid? propGuid = null;
+        if (!string.IsNullOrWhiteSpace(propertyId)
+            && Guid.TryParse(propertyId.Trim(), out var parsed))
+            propGuid = parsed;
+
+        var q = _db.PoEnfazFinanceFlags.Where(f => f.PoNumber == po);
+        var list = await q.ToListAsync(cancellationToken);
+        var toRemove = list.Where(f =>
+            propGuid is null
+                ? f.PropertyId is null
+                : f.PropertyId == propGuid).ToList();
+
+        if (toRemove.Count == 0)
+            return (true, null);
+
+        _db.PoEnfazFinanceFlags.RemoveRange(toRemove);
+        await _db.SaveChangesAsync(cancellationToken);
+        return (true, null);
+    }
+
+    private static EnfazFollowupDto ToFollowupDto(PoEnfazFollowup f) => new()
+    {
+        Id = f.Id,
+        PoNumber = f.PoNumber,
+        FollowedAtUtc = f.FollowedAtUtc,
+        Channel = f.Channel,
+        ChannelLabel = ChannelLabel(f.Channel),
+        Notes = f.Notes,
+        CreatedByUserId = f.CreatedByUserId,
+        CreatedAtUtc = f.CreatedAtUtc,
+    };
+
+    private static string NormalizeChannel(string? raw)
+    {
+        var c = (raw ?? "").Trim().ToLowerInvariant();
+        return c switch
+        {
+            PoEnfazFollowupChannel.Email => PoEnfazFollowupChannel.Email,
+            PoEnfazFollowupChannel.Portal => PoEnfazFollowupChannel.Portal,
+            PoEnfazFollowupChannel.Visit => PoEnfazFollowupChannel.Visit,
+            PoEnfazFollowupChannel.Other => PoEnfazFollowupChannel.Other,
+            _ => PoEnfazFollowupChannel.Call,
+        };
+    }
+
+    private static string ChannelLabel(string channel) => channel switch
+    {
+        PoEnfazFollowupChannel.Email => "بريد",
+        PoEnfazFollowupChannel.Portal => "بوابة إنفاذ",
+        PoEnfazFollowupChannel.Visit => "زيارة",
+        PoEnfazFollowupChannel.Other => "أخرى",
+        _ => "اتصال",
+    };
 }

@@ -7,12 +7,19 @@ import {
   listEnfazTracking,
   listEnfazAging,
   listReadyEnfazPoSummaries,
+  listEnfazFollowups,
+  addEnfazFollowup,
+  setEnfazFinanceFlag,
+  clearEnfazFinanceFlag,
   savePoEnfazBilling,
+  type AddEnfazFollowupRequest,
   type CollectPoEnfazInvoiceRequest,
   type EnfazAgingReportDto,
+  type EnfazFollowupDto,
   type PoEnfazBillingDto,
   type PropertyEnfazRevenueDto,
   type SavePoEnfazBillingRequest,
+  type SetEnfazFinanceFlagRequest,
 } from "@platform/api-client";
 import { workOrdersApiConfig, apiErrorMessage } from "./work-orders-api-config";
 
@@ -138,4 +145,43 @@ export async function loadPropertyEnfazRevenue(
         surveyFeeSar: null,
         enfazFeeSar: null,
       };
+}
+
+export async function loadEnfazFollowups(
+  poNumber: string,
+): Promise<EnfazFollowupDto[]> {
+  const config = workOrdersApiConfig();
+  if (!config) return [];
+  const result = await listEnfazFollowups(config, poNumber);
+  return result.ok ? result.data : [];
+}
+
+export async function createEnfazFollowup(
+  poNumber: string,
+  body: AddEnfazFollowupRequest,
+): Promise<EnfazFollowupDto | null> {
+  const config = workOrdersApiConfig();
+  if (!config) return null;
+  const result = await addEnfazFollowup(config, poNumber, body);
+  return result.ok ? result.data : null;
+}
+
+export async function markEnfazFinanceFlag(
+  poNumber: string,
+  body: SetEnfazFinanceFlagRequest,
+): Promise<boolean> {
+  const config = workOrdersApiConfig();
+  if (!config) return false;
+  const result = await setEnfazFinanceFlag(config, poNumber, body);
+  return result.ok;
+}
+
+export async function unmarkEnfazFinanceFlag(
+  poNumber: string,
+  propertyId?: string | null,
+): Promise<boolean> {
+  const config = workOrdersApiConfig();
+  if (!config) return false;
+  const result = await clearEnfazFinanceFlag(config, poNumber, propertyId);
+  return result.ok;
 }

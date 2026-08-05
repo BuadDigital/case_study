@@ -8,7 +8,7 @@ public static class PlatformPermissionCatalog
         "dashboard", "active-primary-data", "active-distribution", "active-case-study",
         "po", "all-transactions", "favorites", "bourse-inquiry", "survey", "keys", "failures", "suspended-transactions",
         "valuation-requests", "property-inspection", "active-inspection", "government-review", "operations-tasks",
-        "valuation-coordination", "property-appraisal", "active-survey", "party-fees",
+        "property-appraisal", "active-survey", "party-fees",
         "system-fields-catalog", "system-screen-catalog", "financial",
         "users", "courts", "failure-types", "case-study-info-roles",
         "audit-log", "fee-pricing", "organization-settings", "field-sync-board",
@@ -65,11 +65,6 @@ public static class PlatformPermissionCatalog
             "active-case-study", "operations-tasks", "failures", "suspended-transactions",
             "system-screen-catalog",
         ],
-        ["valuation-coordinator"] =
-        [
-            "all-transactions", "favorites", "valuation-coordination",
-            "system-screen-catalog",
-        ],
         ["real-estate-appraiser"] =
         [
             "po", "all-transactions", "favorites", "operations-tasks", "property-appraisal", "failures", "suspended-transactions",
@@ -119,7 +114,6 @@ public static class PlatformPermissionCatalog
         [
             "manage-failures", "manage-work-orders", "submit-party-work", "manage-attachments",
         ],
-        ["valuation-coordinator"] = ["submit-party-work", "manage-attachments"],
         ["real-estate-appraiser"] =
         [
             "submit-valuation-report", "submit-party-work", "manage-attachments",

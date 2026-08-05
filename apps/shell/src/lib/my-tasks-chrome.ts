@@ -78,14 +78,6 @@ export function resolveMyTasksChrome(
     };
   }
 
-  if (page === "valuation-coordination" && parts[1]) {
-    decodeTaskParam(parts[1]);
-    return {
-      breadcrumb: "لوحة التحكم / استلام التقييم / مساحة العمل",
-      title: "استلام التقييم",
-    };
-  }
-
   if (page === "operations-tasks" && taskId) {
     const id = decodeTaskParam(taskId);
     const title = options?.opsTaskTitle?.trim() || id;

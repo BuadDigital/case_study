@@ -8,7 +8,6 @@ export const RELEASE_USERS = {
   cdo: "sliman",
   caseSpecialist: "osama",
   fieldInspector: "ahmed",
-  valuationCoordinator: "mohammed",
   appraiser: "abdullah",
   governmentReviewer: "feras",
   engineeringOffice: "jeddah_survey",
@@ -19,7 +18,6 @@ const RELEASE_USER_EMAILS: Record<string, string> = {
   [RELEASE_USERS.cdo]: "s.salhy@gmail.com",
   [RELEASE_USERS.caseSpecialist]: "osama@ejadah.dev",
   [RELEASE_USERS.fieldInspector]: "ahmed@ejadah.dev",
-  [RELEASE_USERS.valuationCoordinator]: "valuation@ejadah.dev",
   [RELEASE_USERS.appraiser]: "abdullah.kathiri@ejadah.dev",
   [RELEASE_USERS.governmentReviewer]: "feras@ejadah.dev",
   [RELEASE_USERS.engineeringOffice]: "survey.jeddah@ejadah.dev",
@@ -90,10 +88,6 @@ const POST_LOGIN_LANDING: Record<string, { path: string; title: string }> = {
     path: "/all-transactions",
     title: "جميع المعاملات",
   },
-  [RELEASE_USERS.valuationCoordinator]: {
-    path: "/valuation-coordination",
-    title: "استلام التقييم",
-  },
   [RELEASE_USERS.appraiser]: { path: "/po", title: "أوامر العمل" },
   [RELEASE_USERS.governmentReviewer]: {
     path: "/operations-tasks",
@@ -163,7 +157,11 @@ export async function loginViaUi(page: Page, username: string) {
   for (let i = 0; i < 6; i++) {
     await otpBoxes.nth(i).fill(String(i + 1));
   }
-  await page.getByRole("button", { name: "تأكيد الدخول" }).click();
+  // Completing 6 digits auto-confirms and navigates; keep button as fallback.
+  const confirmLogin = page.getByRole("button", { name: "تأكيد الدخول" });
+  if (await confirmLogin.isVisible().catch(() => false)) {
+    await confirmLogin.click();
+  }
 
   const landing = POST_LOGIN_LANDING[username] ?? {
     path: "/po",
@@ -213,7 +211,6 @@ export const MODULE_PAGES: { id: string; title: string }[] = [
   { id: "active-inspection", title: "معاينة العقار" },
   { id: "government-review", title: "المراجعة الحكومية" },
   { id: "operations-tasks", title: "المهام" },
-  { id: "valuation-coordination", title: "استلام التقييم" },
   { id: "property-appraisal", title: "تقييم العقار" },
   { id: "active-survey", title: "الرفع المساحي" },
   { id: "system-fields-catalog", title: "قاموس الحقول المركزي" },
@@ -246,10 +243,6 @@ export const ROLE_MODULE_PAGES: Record<string, string[]> = {
     "active-inspection",
     "party-fees",
     "failures",
-    "system-screen-catalog",
-  ],
-  [RELEASE_USERS.valuationCoordinator]: [
-    "valuation-coordination",
     "system-screen-catalog",
   ],
   [RELEASE_USERS.appraiser]: [

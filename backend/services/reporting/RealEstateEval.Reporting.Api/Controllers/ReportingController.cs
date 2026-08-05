@@ -20,9 +20,8 @@ public class ReportingController : ControllerBase
     [
         ("case-specialist", "دراسة حالة العقارات", SpecialistCapacity, 0),
         ("government-reviewer", "مراجع حكومي", 15, 1),
-        ("valuation-coordinator", "منسق التقييم", 15, 2),
-        ("field-inspector", "معاين ميداني", 12, 3),
-        ("engineering-office", "مكتب هندسي", 10, 4),
+        ("field-inspector", "معاين ميداني", 12, 2),
+        ("engineering-office", "مكتب هندسي", 10, 3),
     ];
 
     private static readonly Dictionary<string, (string RoleLabel, int MaxLoad, int SortOrder)> TeamLoadRoleMap =
@@ -171,15 +170,7 @@ public class ReportingController : ControllerBase
             .Select(MapAppraisalTaskToValuationRequest)
             .ToList();
 
-        if (appraisalRows.Count > 0) return appraisalRows;
-
-        return allTasks
-            .Where(t => t.Kind == "valuation-coordination")
-            .Where(t => !WorkflowTaskStatusValues.IsTerminalValue(t.Status))
-            .OrderByDescending(t => t.UpdatedAt)
-            .Take(6)
-            .Select(MapAppraisalTaskToValuationRequest)
-            .ToList();
+        return appraisalRows;
     }
 
     private static ValuationRequestDto MapAppraisalTaskToValuationRequest(WorkflowTaskDto task)
@@ -267,7 +258,6 @@ public class ReportingController : ControllerBase
             "case-specialist" =>
                 task.Kind == "case-study-property" && task.Phase == "case-study",
             "government-reviewer" => task.Kind == "government-review",
-            "valuation-coordinator" => task.Kind == "valuation-coordination",
             "field-inspector" => task.Kind == "field-inspection",
             "engineering-office" => task.Kind == "engineering-survey",
             _ => false,

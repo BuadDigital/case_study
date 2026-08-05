@@ -7,7 +7,6 @@ import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-evaluator-
 import { ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-engineering-survey-events";
 import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-field-inspection-events";
 import { GOVERNMENT_REVIEW_SUBMISSION_CHANGED_EVENT } from "../lib/prototype/government-review-work-storage";
-import { VALUATION_COORDINATION_SUBMISSION_CHANGED_EVENT } from "../lib/prototype/valuation-coordination-work-storage";
 import {
   loadPropertyDetailPartySubmissions,
   type PropertyDetailPartySubmissionsMap,
@@ -26,7 +25,6 @@ export function propertyDetailPartySubmissionsQueryKey(parentTaskId: string) {
 export function usePropertyDetailPartySubmissionsQuery(input: {
   parentTask: WorkflowTask | null;
   allTasks: WorkflowTask[];
-  coordinatorName: string;
   enabled?: boolean;
 }) {
   const queryClient = useQueryClient();
@@ -44,10 +42,6 @@ export function usePropertyDetailPartySubmissionsQuery(input: {
     window.addEventListener(ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT, invalidate);
     window.addEventListener(FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT, invalidate);
     window.addEventListener(GOVERNMENT_REVIEW_SUBMISSION_CHANGED_EVENT, invalidate);
-    window.addEventListener(
-      VALUATION_COORDINATION_SUBMISSION_CHANGED_EVENT,
-      invalidate,
-    );
     window.addEventListener(TASKS_CHANGED_EVENT, invalidate);
     return () => {
       window.removeEventListener(EVALUATOR_SUBMISSION_CHANGED_EVENT, invalidate);
@@ -63,10 +57,6 @@ export function usePropertyDetailPartySubmissionsQuery(input: {
         GOVERNMENT_REVIEW_SUBMISSION_CHANGED_EVENT,
         invalidate,
       );
-      window.removeEventListener(
-        VALUATION_COORDINATION_SUBMISSION_CHANGED_EVENT,
-        invalidate,
-      );
       window.removeEventListener(TASKS_CHANGED_EVENT, invalidate);
     };
   }, [enabled, parentTaskId, queryClient]);
@@ -77,7 +67,6 @@ export function usePropertyDetailPartySubmissionsQuery(input: {
       loadPropertyDetailPartySubmissions({
         parentTask: input.parentTask,
         allTasks: input.allTasks,
-        coordinatorName: input.coordinatorName,
       }),
     enabled,
     staleTime: STALE_MS,

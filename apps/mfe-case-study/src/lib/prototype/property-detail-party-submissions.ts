@@ -11,16 +11,13 @@ import {
   loadEngineeringSurveySubmissionSnapshot,
   loadEvaluatorSubmissionSnapshot,
   loadGovernmentReviewSubmissionSnapshot,
-  loadValuationCoordinationSubmissionSnapshot,
 } from "./property-detail-party-submission-loaders";
 import {
-  buildCoordinatorSubmission,
   buildFromEngineeringSurvey,
   buildFromEvaluator,
   buildFromFieldInspection,
   buildFromFormDraft,
   buildFromGovernmentReview,
-  buildFromValuationCoordination,
   childForRole,
   emptySubmission,
 } from "./property-detail-party-submission-builders";
@@ -40,7 +37,6 @@ export const PROPERTY_DETAIL_PARTY_ROLE_KEYS = [
   "survey",
   "appraisal",
   "government",
-  "coordinator",
 ] as const satisfies readonly PropertyDetailPartyRoleKey[];
 
 export type PropertyDetailPartySubmissionsMap = Record<
@@ -52,7 +48,6 @@ export type PropertyDetailPartySubmissionsMap = Record<
 export async function loadPropertyDetailPartySubmissions(input: {
   parentTask: WorkflowTask | null;
   allTasks: WorkflowTask[];
-  coordinatorName?: string;
 }): Promise<PropertyDetailPartySubmissionsMap> {
   const entries = await Promise.all(
     PROPERTY_DETAIL_PARTY_ROLE_KEYS.map(async (roleKey) => {
@@ -71,20 +66,8 @@ export async function loadPropertyDetailPartySubmission(input: {
   roleKey: PropertyDetailPartyRoleKey;
   parentTask: WorkflowTask | null;
   allTasks: WorkflowTask[];
-  coordinatorName?: string;
 }): Promise<PropertyDetailPartySubmission> {
-  const { roleKey, parentTask, allTasks, coordinatorName = "" } = input;
-
-  if (roleKey === "coordinator") {
-    const child = childForRole(parentTask, allTasks, "coordinator");
-    if (child) {
-      const submission = await loadValuationCoordinationSubmissionSnapshot(child);
-      if (submission) {
-        return buildFromValuationCoordination(submission, child);
-      }
-    }
-    return buildCoordinatorSubmission(parentTask, allTasks, coordinatorName);
-  }
+  const { roleKey, parentTask, allTasks } = input;
 
   if (!parentTask) {
     return emptySubmission(roleKey, "لم تُبدأ دراسة الحالة بعد");

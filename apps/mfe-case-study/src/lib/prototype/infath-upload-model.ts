@@ -234,7 +234,6 @@ export function buildInfathUploadModel(input: {
   const appraisal = parties?.appraisal ?? null;
   const government = parties?.government ?? null;
   const specialist = parties?.specialist ?? null;
-  const coordinator = parties?.coordinator ?? null;
 
   const deed = property.deedNumber.trim() || "—";
   const reportNumber = `INF-${record.poNumber.trim()}-${deed}`;
@@ -259,7 +258,7 @@ export function buildInfathUploadModel(input: {
     partyField(inspection, L.zoneStatus),
   );
   const linkedAssetsAnswer = partyField(specialist, L.linkedAssets);
-  const workerName = partyField(coordinator, "المقيم العقاري");
+  const workerName = partyField(appraisal, "المقيم العقاري") || partyField(appraisal, "اسم المقيّم");
   const appraisalNotes = partyRemark(appraisal, "ملاحظات المقيّم");
   const keysStatus = partyField(government, "حالة المفاتيح");
   const keysReceived =

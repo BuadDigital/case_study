@@ -66,7 +66,7 @@ Only `/survey` moves to `@survey/mfe`. The active transaction queue remains in c
 /po/*
 /active-primary-data, /bourse-inquiry, /active-distribution, /active-case-study
 /case-study/[taskId]
-Party queues: property-inspection, property-appraisal, valuation-coordination,
+  Party queues: property-inspection, property-appraisal,
               active-survey, government-review
 ```
 

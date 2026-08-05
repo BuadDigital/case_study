@@ -47,17 +47,48 @@ export type EnfazTrackingRowDto = {
   poNumber: string;
   propertyId: string;
   propertyLabel: string;
+  deedNumber: string;
+  city: string;
+  landArea: string;
+  completedAtUtc: string | null;
   workStatus: string;
   workStatusLabel: string;
   enfazFilled: boolean;
   caseStudyFeeSar: number;
   surveyFeeSar: number;
+  keyFeeSar: number;
   enfazFeeSar: number;
   invoiceNumber: string | null;
   invoiceStatus: string | null;
   collectedAmountSar: number;
   invoiceIssuedAtUtc: string | null;
   isOverdue: boolean;
+  financeFlag: string | null;
+  financeFlagNote: string | null;
+  followupCount: number;
+};
+
+export type EnfazFollowupDto = {
+  id: string;
+  poNumber: string;
+  followedAtUtc: string;
+  channel: string;
+  channelLabel: string;
+  notes: string;
+  createdByUserId: string;
+  createdAtUtc: string;
+};
+
+export type AddEnfazFollowupRequest = {
+  channel: string;
+  notes: string;
+  followedAtUtc?: string | null;
+};
+
+export type SetEnfazFinanceFlagRequest = {
+  flag: "stopped" | "excluded" | "difficult";
+  propertyId?: string | null;
+  note?: string | null;
 };
 
 export type EnfazReadyPoSummaryDto = {
@@ -213,18 +244,26 @@ function normalizeTrackingRow(
   );
   const surveyFeeSar = Number(raw.surveyFeeSar ?? raw.SurveyFeeSar ?? 0);
   const legacy = Number(raw.enfazFeeSar ?? raw.EnfazFeeSar ?? 0);
+  const keyFeeSar = Number(raw.keyFeeSar ?? raw.KeyFeeSar ?? 0);
   return {
     poNumber: String(raw.poNumber ?? raw.PoNumber ?? ""),
     propertyId: String(raw.propertyId ?? raw.PropertyId ?? ""),
     propertyLabel: String(raw.propertyLabel ?? raw.PropertyLabel ?? ""),
+    deedNumber: String(raw.deedNumber ?? raw.DeedNumber ?? ""),
+    city: String(raw.city ?? raw.City ?? ""),
+    landArea: String(raw.landArea ?? raw.LandArea ?? ""),
+    completedAtUtc: (raw.completedAtUtc ?? raw.CompletedAtUtc ?? null) as
+      | string
+      | null,
     workStatus: String(raw.workStatus ?? raw.WorkStatus ?? ""),
     workStatusLabel: String(raw.workStatusLabel ?? raw.WorkStatusLabel ?? ""),
     enfazFilled: Boolean(raw.enfazFilled ?? raw.EnfazFilled ?? false),
     caseStudyFeeSar,
     surveyFeeSar,
+    keyFeeSar,
     enfazFeeSar:
-      caseStudyFeeSar + surveyFeeSar > 0
-        ? caseStudyFeeSar + surveyFeeSar
+      caseStudyFeeSar + surveyFeeSar + keyFeeSar > 0
+        ? caseStudyFeeSar + surveyFeeSar + keyFeeSar
         : legacy,
     invoiceNumber: (raw.invoiceNumber ?? raw.InvoiceNumber ?? null) as
       | string
@@ -239,6 +278,11 @@ function normalizeTrackingRow(
       raw.InvoiceIssuedAtUtc ??
       null) as string | null,
     isOverdue: Boolean(raw.isOverdue ?? raw.IsOverdue ?? false),
+    financeFlag: (raw.financeFlag ?? raw.FinanceFlag ?? null) as string | null,
+    financeFlagNote: (raw.financeFlagNote ?? raw.FinanceFlagNote ?? null) as
+      | string
+      | null,
+    followupCount: Number(raw.followupCount ?? raw.FollowupCount ?? 0),
   };
 }
 
@@ -485,6 +529,116 @@ export async function getPropertyEnfazRevenue(
         ),
       },
     };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+function normalizeFollowup(raw: Record<string, unknown>): EnfazFollowupDto {
+  return {
+    id: String(raw.id ?? raw.Id ?? ""),
+    poNumber: String(raw.poNumber ?? raw.PoNumber ?? ""),
+    followedAtUtc: String(raw.followedAtUtc ?? raw.FollowedAtUtc ?? ""),
+    channel: String(raw.channel ?? raw.Channel ?? ""),
+    channelLabel: String(raw.channelLabel ?? raw.ChannelLabel ?? ""),
+    notes: String(raw.notes ?? raw.Notes ?? ""),
+    createdByUserId: String(raw.createdByUserId ?? raw.CreatedByUserId ?? ""),
+    createdAtUtc: String(raw.createdAtUtc ?? raw.CreatedAtUtc ?? ""),
+  };
+}
+
+export async function listEnfazFollowups(
+  config: EnfazBillingApiConfig,
+  poNumber: string,
+): Promise<ApiOk<EnfazFollowupDto[]> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/enfaz-billing/${encodeURIComponent(poNumber)}/followups`,
+      { headers: headers(config.token) },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    const raw = (await res.json()) as Record<string, unknown>[];
+    return { ok: true, data: raw.map(normalizeFollowup) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export async function addEnfazFollowup(
+  config: EnfazBillingApiConfig,
+  poNumber: string,
+  body: AddEnfazFollowupRequest,
+): Promise<ApiOk<EnfazFollowupDto> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/enfaz-billing/${encodeURIComponent(poNumber)}/followups`,
+      {
+        method: "POST",
+        headers: headers(config.token),
+        body: JSON.stringify({
+          channel: body.channel,
+          notes: body.notes,
+          followedAtUtc: body.followedAtUtc ?? null,
+        }),
+      },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    const raw = (await res.json()) as Record<string, unknown>;
+    return { ok: true, data: normalizeFollowup(raw) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export async function setEnfazFinanceFlag(
+  config: EnfazBillingApiConfig,
+  poNumber: string,
+  body: SetEnfazFinanceFlagRequest,
+): Promise<ApiOk<true> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/enfaz-billing/${encodeURIComponent(poNumber)}/finance-flag`,
+      {
+        method: "POST",
+        headers: headers(config.token),
+        body: JSON.stringify({
+          flag: body.flag,
+          propertyId: body.propertyId ?? null,
+          note: body.note ?? null,
+        }),
+      },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: true };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export async function clearEnfazFinanceFlag(
+  config: EnfazBillingApiConfig,
+  poNumber: string,
+  propertyId?: string | null,
+): Promise<ApiOk<true> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const qs =
+      propertyId?.trim() != null && propertyId.trim() !== ""
+        ? `?propertyId=${encodeURIComponent(propertyId.trim())}`
+        : "";
+    const res = await fetch(
+      `${base}/api/enfaz-billing/${encodeURIComponent(poNumber)}/finance-flag${qs}`,
+      { method: "DELETE", headers: headers(config.token) },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: true };
   } catch {
     return { ok: false, kind: "network" };
   }

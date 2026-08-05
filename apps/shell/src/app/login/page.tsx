@@ -32,14 +32,13 @@ type LoginResponse = {
   user: { id: string; email: string; displayName: string };
 };
 
-type Step = "creds" | "otp" | "done";
+type Step = "creds" | "otp";
 
 const fieldInput = "w-full rounded-[11px] border border-[#ddd8cc] bg-surface-2 px-[15px] py-[13px] text-[15px] text-text outline-none transition-[border-color,box-shadow,background] duration-150 placeholder:tracking-[0.02em] placeholder:text-text-3 focus:border-gold focus:bg-surface focus:shadow-[0_0_0_4px_color-mix(in_srgb,var(--gold)_16%,transparent)]";
 
 const fieldInputBad = "border-danger shadow-[0_0_0_4px_color-mix(in_srgb,var(--red)_12%,transparent)] focus:border-danger focus:shadow-[0_0_0_4px_color-mix(in_srgb,var(--red)_12%,transparent)]";
 
 const stepAnim = "animate-[login-rise_0.35s_ease]";
-const popAnim = "animate-[login-pop_0.4s_cubic-bezier(0.2,1.3,0.5,1)]";
 
 const primaryBtn = "flex w-full cursor-pointer items-center justify-center gap-[9px] rounded-[11px] border-0 bg-ink py-3.5 text-[15.5px] font-bold text-white shadow-[0_12px_26px_-14px_rgba(16,43,78,.7)] transition-[background,transform,box-shadow] duration-150 hover:enabled:-translate-y-px hover:enabled:bg-navy-3 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none disabled:hover:translate-y-0";
 
@@ -132,6 +131,7 @@ export default function LoginPage() {
   const [landingPath, setLandingPath] = useState("/active-primary-data");
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
   const mobileRef = useRef<HTMLInputElement | null>(null);
+  const otpConfirmingRef = useRef(false);
 
   const isEmailMode = identifier.includes("@");
   const mobileDigits = identifier.replace(/\D/g, "");
@@ -162,17 +162,6 @@ export default function LoginPage() {
     }, 1000);
     return () => window.clearInterval(id);
   }, [resendLeft]);
-
-  useEffect(() => {
-    if (step !== "done" || !pendingSession) return;
-    const path = landingPath;
-    const session = pendingSession;
-    const timer = window.setTimeout(() => {
-      setAuthSession(session);
-      router.replace(path);
-    }, 1200);
-    return () => window.clearTimeout(timer);
-  }, [step, pendingSession, landingPath, router]);
 
   function startOtpTimer() {
     setResendLeft(30);
@@ -310,6 +299,11 @@ export default function LoginPage() {
     setOtp(next);
     setOtpBad(false);
     setOtpError(null);
+    const complete = next.join("");
+    if (complete.length === 6) {
+      void onOtpConfirm(complete);
+      return;
+    }
     if (digit && index < 5) otpRefs.current[index + 1]?.focus();
   }
 
@@ -333,31 +327,32 @@ export default function LoginPage() {
     setOtp(next);
     setOtpBad(false);
     setOtpError(null);
+    if (text.length === 6) {
+      void onOtpConfirm(text);
+      return;
+    }
     otpRefs.current[Math.min(text.length, 5)]?.focus();
   }
 
-  async function onOtpConfirm() {
-    if (otpValue.length !== 6 || !pendingSession) return;
-    if (otpValue === "000000") {
+  async function onOtpConfirm(codeOverride?: string) {
+    const code = (codeOverride ?? otpValue).replace(/\D/g, "").slice(0, 6);
+    if (code.length !== 6 || !pendingSession || otpConfirmingRef.current) return;
+    if (code === "000000") {
       setOtpBad(true);
       setOtpError("الرمز غير صحيح، تأكد من الأرقام وحاول مجدداً");
       return;
     }
 
+    otpConfirmingRef.current = true;
     setLoading(true);
     try {
       setAuthSession(pendingSession);
       showToast("تم تسجيل الدخول !", "success");
-      setStep("done");
+      router.replace(landingPath);
     } finally {
+      otpConfirmingRef.current = false;
       setLoading(false);
     }
-  }
-
-  async function enterApp() {
-    if (!pendingSession) return;
-    setAuthSession(pendingSession);
-    router.replace(landingPath);
   }
 
   function onForgot() {
@@ -833,81 +828,6 @@ export default function LoginPage() {
                 </svg>
                 لم يصلك الرمز؟ تأكد من الشبكة قبل إعادة الإرسال
               </div>
-            </section>
-          ) : null}
-
-          {step === "done" ? (
-            <section key="done" className={cn(stepAnim, "px-0 py-3.5 text-center")}>
-              <div
-                className={cn(
-                  popAnim,
-                  "mx-auto mb-5 grid size-[76px] place-items-center rounded-full bg-[color-mix(in_srgb,#2f7a4d_12%,transparent)]",
-                )}
-              >
-                <svg
-                  className="size-[38px] stroke-[#2f7a4d]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  strokeWidth="2.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden
-                >
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>
-              </div>
-              <h1 className="mb-2 text-2xl font-extrabold tracking-[-0.01em] text-heading">
-                تم تسجيل الدخول
-              </h1>
-              <p className="mb-[26px] text-[15px] leading-[1.7] text-text-2">
-                مرحباً بك في نظام دراسة الحالة — يجري تحويلك إلى لوحة العمل.
-              </p>
-              <button
-                type="button"
-                className={primaryBtn}
-                onClick={() => void enterApp()}
-                data-no-action-toast
-              >
-                <span>المتابعة إلى النظام</span>
-                <svg
-                  className="size-[18px]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden
-                >
-                  <path d="M5 12h14M13 6l6 6-6 6" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                className={cn(ghostBtn, "mt-3")}
-                onClick={() => {
-                  onBiometric();
-                  void enterApp();
-                }}
-              >
-                <svg
-                  className="size-5 stroke-gold-d"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden
-                >
-                  <path d="M12 11a2 2 0 0 0-2 2c0 2 .5 3.5 1 5" />
-                  <path d="M12 7a6 6 0 0 0-6 6c0 2 .3 3 .8 4.5" />
-                  <path d="M12 3a10 10 0 0 0-10 10" />
-                  <path d="M12 7a6 6 0 0 1 6 6c0 3-.5 5-1.5 7.5" />
-                  <path d="M22 13A10 10 0 0 0 12 3" />
-                </svg>
-                تفعيل الدخول بالبصمة لهذا الجهاز
-              </button>
             </section>
           ) : null}
         </div>

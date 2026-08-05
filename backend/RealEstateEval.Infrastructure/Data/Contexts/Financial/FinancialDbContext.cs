@@ -16,6 +16,8 @@ public sealed class FinancialDbContext(DbContextOptions<FinancialDbContext> opti
         Set<PartyBillingStatementLine>();
     public DbSet<PoEnfazRevenueLine> PoEnfazRevenueLines => Set<PoEnfazRevenueLine>();
     public DbSet<PoEnfazInvoice> PoEnfazInvoices => Set<PoEnfazInvoice>();
+    public DbSet<PoEnfazFollowup> PoEnfazFollowups => Set<PoEnfazFollowup>();
+    public DbSet<PoEnfazFinanceFlag> PoEnfazFinanceFlags => Set<PoEnfazFinanceFlag>();
     public DbSet<KeyReceiptFeeCharge> KeyReceiptFeeCharges => Set<KeyReceiptFeeCharge>();
     public DbSet<CourtVisitFeeCharge> CourtVisitFeeCharges => Set<CourtVisitFeeCharge>();
     public DbSet<FinancialReportConfig> FinancialReportConfigs => Set<FinancialReportConfig>();

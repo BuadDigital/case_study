@@ -47,6 +47,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IOutboxC
     public DbSet<PartyBillingStatementLine> PartyBillingStatementLines => Set<PartyBillingStatementLine>();
     public DbSet<PoEnfazRevenueLine> PoEnfazRevenueLines => Set<PoEnfazRevenueLine>();
     public DbSet<PoEnfazInvoice> PoEnfazInvoices => Set<PoEnfazInvoice>();
+    public DbSet<PoEnfazFollowup> PoEnfazFollowups => Set<PoEnfazFollowup>();
+    public DbSet<PoEnfazFinanceFlag> PoEnfazFinanceFlags => Set<PoEnfazFinanceFlag>();
     public DbSet<PropertyFailure> PropertyFailures => Set<PropertyFailure>();
     public DbSet<PropertyTimelineEntry> PropertyTimelineEntries => Set<PropertyTimelineEntry>();
     public DbSet<FieldDictionaryConfig> FieldDictionaryConfigs => Set<FieldDictionaryConfig>();

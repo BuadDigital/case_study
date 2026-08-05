@@ -338,32 +338,6 @@ public static class DataSeeder
 
         new(
 
-            "mohammed",
-
-            "valuation@ejadah.dev",
-
-            "user1234",
-
-            "محمد دياب",
-
-            "منسق عمليات التقييم",
-
-            "دوام كامل",
-
-            "إدارة التقييم العقاري",
-
-            "قسم تقييم الأفراد",
-
-            "مشرف",
-
-            ContractType.Internal,
-
-            DepartmentRoles.Hr,
-
-            "Supervisor"),
-
-        new(
-
             "abdullah",
 
             "abdullah.kathiri@ejadah.dev",
@@ -540,7 +514,6 @@ public static class DataSeeder
         new(StringComparer.OrdinalIgnoreCase)
         {
             ["feras@ejadah.dev"] = "gov-firas",
-            ["valuation@ejadah.dev"] = "vc-mohammed-diab",
             ["abdullah.kathiri@ejadah.dev"] = "val-abdullah",
             ["ahmed@ejadah.dev"] = "fi-ahmed",
             ["abdullah.abdulmane@ejadah.dev"] = "fi-abdullah-abdulmane",
@@ -563,7 +536,6 @@ public static class DataSeeder
             ["abdulrahman"] = "+966500000003",
             ["osama"] = "+966500000004",
             ["feras"] = "+966500000005",
-            ["mohammed"] = "+966500000006",
             ["abdullah"] = "+966500000007",
             ["ahmed"] = "+966500000008",
             ["abdullah_m"] = "+966500000009",
@@ -839,7 +811,6 @@ public static class DataSeeder
             WorkflowTaskKind.GovernmentReview => distribution.GovernmentAuditorId,
             WorkflowTaskKind.FieldInspection => distribution.InspectorId,
             WorkflowTaskKind.PropertyAppraisal => distribution.ValuatorId,
-            WorkflowTaskKind.ValuationCoordination => distribution.OperationsCoordinatorId,
             WorkflowTaskKind.EngineeringSurvey => distribution.EngineeringOfficeId,
             _ => null,
         };

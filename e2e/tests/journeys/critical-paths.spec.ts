@@ -51,11 +51,7 @@ test.describe("Survey and engineering office", () => {
 });
 
 test.describe("Valuation and appraisal queues", () => {
-  test("coordinator and appraiser reach their queues", async ({ page }) => {
-    await loginAs(page, RELEASE_USERS.valuationCoordinator);
-    await page.goto("/valuation-coordination", { waitUntil: "commit" });
-    await waitForPageTitle(page, "استلام التقييم");
-
+  test("appraiser reaches appraisal queue", async ({ page }) => {
     await loginAs(page, RELEASE_USERS.appraiser);
     await page.goto("/property-appraisal", { waitUntil: "commit" });
     await waitForPageTitle(page, "تقييم العقار");

@@ -1,69 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import {
-  Badge,
-  EmptyState,
-  SkeletonTableRows,
-  Tab,
-  TabBar,
-  TabPanel,
-  Table,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr,
-  cn,
-  queueTableWrapClassName,
-} from "@platform/design-system";
+import { useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { FinancialSummaryDto } from "../lib/financial-api";
+import {
+  parseCostsSection,
+  parseFinanceArea,
+  parseRevenueStage,
+  type CostsSection,
+  type RevenueStage,
+} from "../lib/finance-nav";
+import { financeLeafForArea } from "@platform/app-shared/prototype/financial-nav";
+import { FinanceMyTasks } from "./FinanceMyTasks";
+import { FinanceRevenueView } from "./FinanceRevenueView";
+import { FinanceCostsView } from "./FinanceCostsView";
+import { FinanceEngOfficePortal } from "./FinanceEngOfficePortal";
+import { FinanceInspectorPortal } from "./FinanceInspectorPortal";
 import { useFinanceTabCounts } from "../query/finance-tab-counts";
-import { FinanceEnfazPoBilling } from "./FinanceEnfazPoBilling";
-import { FinanceEnfazAgingReport } from "./FinanceEnfazAgingReport";
-import { FinancePartyBrowse } from "./FinancePartyBrowse";
-import { FinancePartyBillingStatements } from "./FinancePartyBillingStatements";
-
-function ContractBadge({ type }: { type: string }) {
-  const tone = type === "ext" ? "default" : type === "int" ? "info" : "warning";
-  const label = type === "ext" ? "خارجي" : type === "int" ? "داخلي" : "متعاون";
-  return (
-    <Badge tone={tone} className="">
-      {label}
-    </Badge>
-  );
-}
-
-function ReportTableSection({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section>
-      <h3 className="mb-2 text-[13px] font-semibold text-text">{title}</h3>
-      <div
-        className={cn(
-          queueTableWrapClassName,
-          "rounded-[var(--radius-lg)] border border-border bg-surface",
-        )}
-      >
-        {children}
-      </div>
-    </section>
-  );
-}
-
-function tabBadge(count: number, tone: "success" | "info" | "warning" = "success") {
-  if (count <= 0) return null;
-  return (
-    <Badge tone={tone} className="ms-1.5 px-1.5 py-0 text-[10px] font-semibold">
-      {count}
-    </Badge>
-  );
-}
 
 export function FinanceWorkspace({
   summary,
@@ -72,132 +25,114 @@ export function FinanceWorkspace({
   summary: FinancialSummaryDto | null | undefined;
   ready: boolean;
 }) {
-  const [tab, setTab] = useState<
-    "party-billing" | "enfaz" | "browse" | "reports"
-  >("party-billing");
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const counts = useFinanceTabCounts();
-  const revenueRows = summary?.revenueRows ?? [];
-  const costRows = summary?.costRows ?? [];
+
+  const area = parseFinanceArea(searchParams.get("area"));
+  const stage = parseRevenueStage(searchParams.get("stage"));
+  const section = parseCostsSection(searchParams.get("section"));
+  const focusPo = searchParams.get("po");
+  const focusStatement = searchParams.get("statement");
+  const focusParty = searchParams.get("party");
+  const leaf = financeLeafForArea(area);
+
+  const replaceParams = useCallback(
+    (patch: Record<string, string | null | undefined>) => {
+      const params = new URLSearchParams(searchParams.toString());
+      for (const [key, value] of Object.entries(patch)) {
+        if (value == null || value === "") params.delete(key);
+        else params.set(key, value);
+      }
+      const q = params.toString();
+      const href = q ? `/financial?${q}` : "/financial";
+      router.push(href, { scroll: false });
+    },
+    [router, searchParams],
+  );
+
+  const setStage = (next: RevenueStage) => {
+    replaceParams({ area: "revenue", stage: next, po: null });
+  };
+
+  const setSection = (next: CostsSection) => {
+    replaceParams({
+      area: "costs",
+      section: next,
+      statement:
+        next === "statements" || next === "dues" || next === "paid"
+          ? focusStatement
+          : null,
+      party: next === "parties" ? null : focusParty,
+    });
+  };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 py-4">
-      <TabBar className="mb-0 shrink-0">
-        <Tab
-          active={tab === "party-billing"}
-          onClick={() => setTab("party-billing")}
-        >
-          فوترة الأطراف
-          {!counts.isPending ? tabBadge(counts.engReady, "info") : null}
-        </Tab>
-        <Tab active={tab === "enfaz"} onClick={() => setTab("enfaz")}>
-          فوترة إنفاذ
-          {!counts.isPending ? tabBadge(counts.enfazReady, "warning") : null}
-        </Tab>
-        <Tab active={tab === "browse"} onClick={() => setTab("browse")}>
-          استعراض الأطراف
-        </Tab>
-        <Tab active={tab === "reports"} onClick={() => setTab("reports")}>
-          التقارير
-        </Tab>
-      </TabBar>
+    <div className="flex min-h-0 flex-1 flex-col">
+      {area === "tasks" ? <FinanceMyTasks /> : null}
+      {area === "revenue" ? (
+        <FinanceRevenueView
+          stage={stage}
+          onStageChange={setStage}
+          focusPo={focusPo}
+          onFocusPo={(po, forStage) =>
+            replaceParams({
+              area: "revenue",
+              stage: forStage ?? stage,
+              po,
+            })
+          }
+        />
+      ) : null}
+      {area === "costs" ? (
+        <FinanceCostsView
+          section={section}
+          onSectionChange={setSection}
+          focusStatementId={focusStatement}
+          onFocusStatement={(id) =>
+            replaceParams({
+              area: "costs",
+              section: id
+                ? section === "paid"
+                  ? "paid"
+                  : "statements"
+                : section,
+              statement: id,
+              party: focusParty,
+            })
+          }
+          focusPartyId={focusParty}
+          onFocusParty={(id) =>
+            replaceParams({
+              area: "costs",
+              section: id ? "dues" : "parties",
+              party: id,
+              statement: null,
+            })
+          }
+          summary={summary}
+          summaryReady={ready}
+          duesCount={counts.duesReady}
+          statementsCount={counts.statementsOpen}
+          excludedCount={counts.excludedCount}
+        />
+      ) : null}
+      {area === "eng_portal" ? (
+        <FinanceEngOfficePortal focusPartyId={focusParty} />
+      ) : null}
+      {area === "inspector_portal" ? (
+        <FinanceInspectorPortal
+          focusPartyId={focusParty}
+          onFocusParty={(id) =>
+            replaceParams({
+              area: "inspector_portal",
+              party: id,
+            })
+          }
+        />
+      ) : null}
 
-      <TabPanel className="min-h-0 flex-1 overflow-y-auto px-0 py-0">
-        {tab === "party-billing" ? <FinancePartyBillingStatements /> : null}
-        {tab === "enfaz" ? <FinanceEnfazPoBilling /> : null}
-        {tab === "browse" ? <FinancePartyBrowse /> : null}
-        {tab === "reports" ? (
-          <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <ReportTableSection title="إيرادات إنفاذ">
-                {!ready ? (
-                  <Table pending>
-                    <TBody>
-                      <SkeletonTableRows rows={4} cols={6} />
-                    </TBody>
-                  </Table>
-                ) : revenueRows.length === 0 ? (
-                  <EmptyState
-                    line="لا توجد إيرادات مسجّلة بعد."
-                    hint="صدر فواتير إنفاذ من تبويب «فوترة إنفاذ»."
-                  />
-                ) : (
-                  <Table>
-                    <THead>
-                      <Tr hoverable={false}>
-                        <Th>PO</Th>
-                        <Th>مُفوتَرة</Th>
-                        <Th>مستثنيات</Th>
-                        <Th>القيمة</Th>
-                        <Th>الفاتورة</Th>
-                        <Th>الحالة</Th>
-                      </Tr>
-                    </THead>
-                    <TBody>
-                      {revenueRows.map((r) => (
-                        <Tr key={r.po} hoverable={false}>
-                          <Td className="font-medium text-primary-light">
-                            {r.po}
-                          </Td>
-                          <Td>{r.billed}</Td>
-                          <Td>{r.excluded}</Td>
-                          <Td>{r.value}</Td>
-                          <Td className="text-text-2">
-                            {r.invoiceNumber ?? "—"}
-                          </Td>
-                          <Td>
-                            <Badge
-                              tone={r.status === "done" ? "success" : "warning"}
-                            >
-                              {r.status === "done" ? "مُفوتَر" : "جزئي"}
-                            </Badge>
-                          </Td>
-                        </Tr>
-                      ))}
-                    </TBody>
-                  </Table>
-                )}
-              </ReportTableSection>
-              <ReportTableSection title="تكاليف مزودي الخدمة">
-                {!ready ? (
-                  <Table pending>
-                    <TBody>
-                      <SkeletonTableRows rows={4} cols={4} />
-                    </TBody>
-                  </Table>
-                ) : costRows.length === 0 ? (
-                  <EmptyState line="لا توجد تكاليف مسجّلة بعد." />
-                ) : (
-                  <Table>
-                    <THead>
-                      <Tr hoverable={false}>
-                        <Th>المزود</Th>
-                        <Th>النوع</Th>
-                        <Th>التكلفة</Th>
-                        <Th>الفئة</Th>
-                      </Tr>
-                    </THead>
-                    <TBody>
-                      {costRows.map((r) => (
-                        <Tr key={`${r.name}-${r.category}`} hoverable={false}>
-                          <Td className="font-medium">{r.name}</Td>
-                          <Td>
-                            <ContractBadge type={r.type} />
-                          </Td>
-                          <Td>{r.cost}</Td>
-                          <Td>{r.category}</Td>
-                        </Tr>
-                      ))}
-                    </TBody>
-                  </Table>
-                )}
-              </ReportTableSection>
-            </div>
-            <ReportTableSection title="تقادم ذمم إنفاذ (Aging)">
-              <FinanceEnfazAgingReport />
-            </ReportTableSection>
-          </div>
-        ) : null}
-      </TabPanel>
+      <span className="sr-only">{leaf.pageTitle}</span>
     </div>
   );
 }

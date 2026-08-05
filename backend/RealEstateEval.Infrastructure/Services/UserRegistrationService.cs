@@ -1041,7 +1041,6 @@ public class UserRegistrationService : IUserRegistrationService
             "section-supervisor" => "ss",
             "case-specialist" => "cs",
             "government-reviewer" => "gov",
-            "valuation-coordinator" => "vc",
             "real-estate-appraiser" => "val",
             "field-inspector" => "fi",
             "financial-officer" => "fo",
@@ -1104,13 +1103,6 @@ public class UserRegistrationService : IUserRegistrationService
                     "قسم دراسة الحالة",
                     ContractType.Internal,
                     [DepartmentRoles.Hr, "Editor"]),
-                "valuation-coordinator" => new(
-                    "مشرف",
-                    "دوام كامل",
-                    SupervisingDepartments.Valuation,
-                    "قسم تقييم الأفراد",
-                    ContractType.Internal,
-                    [DepartmentRoles.Hr, "Supervisor"]),
                 "real-estate-appraiser" => new(
                     "محرر",
                     "دوام كامل",
