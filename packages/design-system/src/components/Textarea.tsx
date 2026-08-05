@@ -14,7 +14,7 @@ export function Textarea({ className, hasError, ...props }: TextareaProps) {
     <textarea
       className={cn(
         formControlClassName,
-        "min-h-[70px] resize-y py-2 leading-relaxed",
+        "min-h-[88px] resize-y py-2.5 leading-relaxed",
         hasError && formControlErrorClassName,
         className,
       )}

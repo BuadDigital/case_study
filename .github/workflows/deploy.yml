@@ -281,7 +281,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   # ----------------------------------------------------
-  # Job 3: Deploy to Hostinger VPS
+  # Job 3: Deploy to Hetzner Cloud
   # ----------------------------------------------------
   deploy:
     runs-on: ubuntu-latest
@@ -290,23 +290,23 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Create Deploy Directory on Hostinger VPS
+      - name: Create Deploy Directory on Hetzner VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.HOSTINGER_SSH_HOST }}
-          username: ${{ secrets.HOSTINGER_SSH_USER }}
-          key: ${{ secrets.HOSTINGER_SSH_KEY }}
-          port: ${{ secrets.HOSTINGER_SSH_PORT }}
+          host: ${{ secrets.HETZNER_SSH_HOST }}
+          username: ${{ secrets.HETZNER_SSH_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          port: ${{ secrets.HETZNER_SSH_PORT }}
           script: |
             mkdir -p /app/infra
 
       - name: Transfer Compose & Config Files to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.HOSTINGER_SSH_HOST }}
-          username: ${{ secrets.HOSTINGER_SSH_USER }}
-          key: ${{ secrets.HOSTINGER_SSH_KEY }}
-          port: ${{ secrets.HOSTINGER_SSH_PORT }}
+          host: ${{ secrets.HETZNER_SSH_HOST }}
+          username: ${{ secrets.HETZNER_SSH_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          port: ${{ secrets.HETZNER_SSH_PORT }}
           source: "infra/docker-compose.prod.yml,infra/nginx.conf,infra/otel-collector,infra/prometheus,infra/grafana,infra/fluent-bit"
           target: "/app"
           strip_components: 1
@@ -314,10 +314,10 @@ jobs:
       - name: Deploy Stack via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.HOSTINGER_SSH_HOST }}
-          username: ${{ secrets.HOSTINGER_SSH_USER }}
-          key: ${{ secrets.HOSTINGER_SSH_KEY }}
-          port: ${{ secrets.HOSTINGER_SSH_PORT }}
+          host: ${{ secrets.HETZNER_SSH_HOST }}
+          username: ${{ secrets.HETZNER_SSH_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          port: ${{ secrets.HETZNER_SSH_PORT }}
           script: |
             set -eu
             cd /app

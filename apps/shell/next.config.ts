@@ -36,7 +36,7 @@ function getDevAllowedOrigins(): string[] {
 const allowedDevOrigins = getDevAllowedOrigins();
 
 const nextConfig: NextConfig = {
-  /** Produce a self-contained server.js for Docker / Hostinger deployment. */
+  /** Produce a self-contained server.js for Docker / Hetzner deployment. */
   output: "standalone",
   /** Hide the floating "N" dev badge (bottom-left) during `npm run dev`. */
   devIndicators: false,

@@ -1,4 +1,4 @@
-# Production stack for Real Estate Evaluation on Hostinger VPS.
+# Production stack for Real Estate Evaluation on Hetzner Cloud.
 # Usage: IMAGE_OWNER=your-github-username TAG=<sha> docker compose -f docker-compose.prod.yml up -d
 # Always run the migrate one-shot before (or via) deploy — apps never migrate in Production.
 

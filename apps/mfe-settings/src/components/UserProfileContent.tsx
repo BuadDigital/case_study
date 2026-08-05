@@ -54,9 +54,9 @@ function ProfileField({
   dir?: "ltr" | "rtl";
 }) {
   return (
-    <div className="rounded-lg border border-border bg-surface-2 px-3 py-2.5">
+    <div className="rounded-[var(--radius)] border border-border bg-surface-2/60 px-3 py-2.5">
       <div className="text-[11px] font-medium text-text-3">{label}</div>
-      <div className="mt-1 text-[13px] font-semibold text-text" dir={dir}>
+      <div className="mt-1 text-[13px] font-semibold text-heading" dir={dir}>
         {value || "—"}
       </div>
     </div>
@@ -158,7 +158,7 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
 
   return (
     <div className="space-y-4 max-lg:space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-3 max-lg:rounded-[12px] max-lg:bg-surface-2 max-lg:px-3.5 max-lg:py-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 rounded-[var(--radius)] border border-border bg-surface-2/40 px-3.5 py-3">
         <div className="flex min-w-0 items-center gap-3">
           {user.avatarUrl ? (
             <img
@@ -167,9 +167,16 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
               referrerPolicy="no-referrer"
               className="size-12 shrink-0 rounded-full border border-border object-cover"
             />
-          ) : null}
+          ) : (
+            <span
+              aria-hidden
+              className="grid size-12 shrink-0 place-items-center rounded-full bg-ink text-sm font-bold text-white"
+            >
+              {user.name.trim().slice(0, 2) || "؟"}
+            </span>
+          )}
           <div className="min-w-0">
-            <h2 className="m-0 text-[18px] font-extrabold text-heading max-lg:text-[17px]">
+            <h2 className="m-0 text-[17px] font-extrabold text-heading">
               {user.name}
             </h2>
             <p className="m-0 mt-1 text-[13px] text-text-3">{user.role || "—"}</p>
@@ -180,7 +187,7 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
         </Badge>
       </div>
 
-      <div className="flex flex-wrap gap-2 border-b border-border pb-2">
+      <div className="flex flex-wrap gap-2 border-b border-border pb-2.5">
         {tabs.map((item) => (
           <button
             key={item.id}
@@ -188,8 +195,8 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
             onClick={() => setTab(item.id)}
             className={`rounded-md px-3 py-1.5 text-[12px] font-semibold transition-colors ${
               tab === item.id
-                ? "bg-primary text-white"
-                : "bg-surface-2 text-text-2 hover:border-border-md"
+                ? "bg-ink text-white"
+                : "bg-surface-2 text-text-2 hover:border-border-md hover:text-heading"
             }`}
           >
             {item.label}

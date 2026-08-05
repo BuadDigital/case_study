@@ -54,9 +54,21 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
 
   const permissionsResolved = isSuccess || isError;
 
+  // Keep helpers in sync during the same render as permissions — do not wait for
+  // useEffect or queryFn may run with a stale empty capability list.
+  if (!hasSession) {
+    setRuntimeCapabilities([]);
+  } else if (permissions) {
+    setRuntimeCapabilities(permissions.capabilities);
+  }
+
   useEffect(() => {
+    if (!hasSession) {
+      setRuntimeCapabilities([]);
+      return;
+    }
     if (permissions) setRuntimeCapabilities(permissions.capabilities);
-  }, [permissions]);
+  }, [hasSession, permissions]);
 
   useEffect(() => {
     if (!hasSession) return;
