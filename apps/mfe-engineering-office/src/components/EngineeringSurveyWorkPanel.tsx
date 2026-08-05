@@ -240,12 +240,8 @@ export function EngineeringSurveyWorkPanel({
   const [sketchExtractNote, setSketchExtractNote] = useState<string | null>(
     null,
   );
-  const [sketchTablePreviews, setSketchTablePreviews] = useState<{
-    deedJpegDataUrl?: string;
-    natureJpegDataUrl?: string;
-  } | null>(null);
   const [sketchExtracting, setSketchExtracting] = useState(false);
-  /** Last croquis parse — used when user chooses مطابقة = لا */
+  /** Last croquis length parse — seed nature lengths when مطابقة = لا */
   const [lastSketchExtract, setLastSketchExtract] =
     useState<SurveySketchExtractResult | null>(null);
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -665,9 +661,8 @@ export function EngineeringSurveyWorkPanel({
           // Croquis PDF only — no property/بورصة mix-in
           const extracted = await extractSurveySketchFromPdf(file);
           setLastSketchExtract(extracted);
-          setSketchTablePreviews(extracted.croquisTablePreviews ?? null);
           const currentFields = localFields ?? localFieldsFromDraft(draft);
-          // overwrite=true: re-upload must replace previous wrong spatial lengths
+          // overwrite=true: re-upload must replace previous lengths
           const { patch, appliedCount } = sketchExtractToEmptyFieldsPatch(
             extracted,
             {
@@ -683,17 +678,10 @@ export function EngineeringSurveyWorkPanel({
             extracted.deed.east.lengthM,
             extracted.deed.west.lengthM,
           ].filter(Boolean).length;
-          const descFilled = [
-            extracted.deed.north.description,
-            extracted.deed.south.description,
-            extracted.deed.east.description,
-            extracted.deed.west.description,
-          ].filter((x) => (x ?? "").trim()).length;
 
           if (appliedCount > 0) {
             const { deedMatchesNature, ...textPatch } = patch;
             if (Object.keys(textPatch).length > 0) {
-              // Always merge into form state — never no-op when prev is still null
               setLocalFields((prev) => ({
                 ...(prev ?? localFieldsFromDraft(draft)),
                 ...textPatch,
@@ -715,29 +703,18 @@ export function EngineeringSurveyWorkPanel({
             });
           }
 
-          let msg =
+          const msg =
             extracted.warning ??
-            (appliedCount > 0
-              ? `تم تعبئة ${appliedCount} حقلاً من التقرير — راجع قبل الإرسال.`
-              : "تم رفع التقرير. لم تُستخرج بيانات حدود تلقائياً — عبّئها يدوياً.");
-          if (descFilled === 0 && lengthFilled > 0) {
-            msg =
-              extracted.warning ??
-              "عُبّئت الأطوال. أكمل «وصف الحد» من معاينة جدولي الصك/الطبيعة.";
-          } else if (lengthFilled === 0 && descFilled === 0) {
-            msg =
-              extracted.warning ??
-              "انسخ الحدود والأطوال من جدولي الصك/الطبيعة في المعاينة (شمال→جنوب→شرق→غرب).";
-          }
+            (lengthFilled > 0
+              ? `تُعبّأت ${lengthFilled} أطوال. وصف الحد يدوياً — المساحة يدوية.`
+              : "تم رفع التقرير. لم تُقرأ أرقام أطوال — عبّئ الحدود والأطوال يدوياً.");
 
           setSketchExtractNote(msg);
           showToast(
-            lengthFilled > 0 || descFilled > 0
-              ? `حدود: ${descFilled} وصف · ${lengthFilled} طول · المساحة يدوياً`
-              : msg.length > 80
-                ? "تم رفع التقرير — الأطوال/الأوصاف يدوياً من الكروكي"
-                : msg,
-            lengthFilled === 0 && descFilled === 0 ? "info" : "success",
+            lengthFilled > 0
+              ? `أطوال: ${lengthFilled}/4 · وصف الحد يدوياً · المساحة يدوياً`
+              : "تم رفع التقرير — الأطوال ووصف الحد يدوياً",
+            lengthFilled === 0 ? "info" : "success",
           );
         } catch (extractErr) {
           console.error("[survey-sketch-extract]", extractErr);
@@ -746,7 +723,7 @@ export function EngineeringSurveyWorkPanel({
               ? extractErr.message
               : "تعذّر الاستخراج التلقائي";
           setSketchExtractNote(
-            `تم رفع التقرير. ${detail} — عبّئ الأطوال والأوصاف يدوياً من الكروكي.`,
+            `تم رفع التقرير. ${detail} — عبّئ الأطوال ووصف الحد يدوياً.`,
           );
           showToast("تم رفع التقرير — راجع الحدود يدوياً", "info");
         }
@@ -876,8 +853,8 @@ export function EngineeringSurveyWorkPanel({
       <EngSection>التقرير المساحي</EngSection>
       {!formDisabled ? (
         <EngInfo>
-          ℹ عند الرفع: نعبّي **فقط** من جدولي الكروكي «بموجب الصك» و«بموجب الطبيعة»
-          (وصف الحد + الطول · شمال→جنوب→شرق→غرب). المساحة يدوية دائماً.
+          ℹ بعد الرفع: تُعبَّأ **أطوال الحدود فقط** (الأرقام) عند توفرها في التقرير.
+          «وصف الحد» والمساحة يدوية.
         </EngInfo>
       ) : null}
       <EngUploadBox
@@ -897,48 +874,11 @@ export function EngineeringSurveyWorkPanel({
           aria-busy="true"
         >
           <Spinner className="size-4 border-gold-d border-e-transparent text-gold-d" />
-          <span>جارٍ قراءة التقرير وتعبئة الحدود والأطوال…</span>
+          <span>جارٍ قراءة أطوال الحدود من التقرير…</span>
         </div>
       ) : null}
       {sketchExtractNote && !sketchExtracting ? (
         <EngInfo variant="amber">{sketchExtractNote}</EngInfo>
-      ) : null}
-      {sketchTablePreviews &&
-      (sketchTablePreviews.deedJpegDataUrl ||
-        sketchTablePreviews.natureJpegDataUrl) &&
-      !sketchExtracting ? (
-        <div className="mb-3 space-y-2 rounded-[10px] border border-[color-mix(in_srgb,var(--line)_80%,transparent)] bg-[color-mix(in_srgb,var(--surface)_60%,transparent)] p-3">
-          <p className="text-[12px] font-semibold text-text-2">
-            المصدر: جدولا الكروكي (صك / طبيعة) — انسخ «وصف الحد» و«الطول» للحقول
-            (شمال → جنوب → شرق → غرب). لا تُنسَخ المساحة تلقائياً.
-          </p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {sketchTablePreviews.deedJpegDataUrl ? (
-              <figure className="m-0">
-                <figcaption className="mb-1 text-[11px] font-semibold text-text-3">
-                  بموجب الصك (أحمر)
-                </figcaption>
-                <img
-                  src={sketchTablePreviews.deedJpegDataUrl}
-                  alt="جدول الحدود بموجب الصك"
-                  className="max-h-64 w-full rounded border border-[color-mix(in_srgb,var(--line)_50%,transparent)] object-contain bg-white"
-                />
-              </figure>
-            ) : null}
-            {sketchTablePreviews.natureJpegDataUrl ? (
-              <figure className="m-0">
-                <figcaption className="mb-1 text-[11px] font-semibold text-text-3">
-                  بموجب الطبيعة (أزرق)
-                </figcaption>
-                <img
-                  src={sketchTablePreviews.natureJpegDataUrl}
-                  alt="جدول الحدود بموجب الطبيعة"
-                  className="max-h-64 w-full rounded border border-[color-mix(in_srgb,var(--line)_50%,transparent)] object-contain bg-white"
-                />
-              </figure>
-            ) : null}
-          </div>
-        </div>
       ) : null}
 
       <EngSection>الحدود والأطوال (حسب الصك)</EngSection>

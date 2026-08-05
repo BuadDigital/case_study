@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -27,6 +27,7 @@ import { partyTaskPageDef } from "@platform/app-shared/prototype/party-task-page
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { RegisterKeyEnvelopeModal } from "@keys/mfe/components/RegisterKeyEnvelopeModal";
 import { useInvalidateKeyEnvelopes } from "@keys/mfe/query/keys-queries";
+import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
 import {
   decodeTaskParam,
   governmentReviewWorkspacePath,
@@ -161,6 +162,10 @@ export function GovernmentReviewView() {
   >({});
   const [submissionGen, setSubmissionGen] = useState(0);
   const [savingKeysTaskId, setSavingKeysTaskId] = useState<string | null>(null);
+  const [isOpeningReview, startOpenReview] = useTransition();
+  const [openingReviewTaskId, setOpeningReviewTaskId] = useState<string | null>(
+    null,
+  );
 
   const {
     data: tasks,
@@ -342,7 +347,26 @@ export function GovernmentReviewView() {
 
   const openReviewTask = useCallback(
     (taskId: string) => {
-      router.push(governmentReviewWorkspacePath(taskId));
+      setOpeningReviewTaskId(taskId);
+      startOpenReview(() => {
+        router.push(governmentReviewWorkspacePath(taskId));
+      });
+    },
+    [router],
+  );
+
+  useEffect(() => {
+    if (isOpeningReview || !openingReviewTaskId) return;
+    const t = window.setTimeout(() => setOpeningReviewTaskId(null), 400);
+    return () => window.clearTimeout(t);
+  }, [isOpeningReview, openingReviewTaskId]);
+
+  const openDeedDetail = useCallback(
+    (poNumber: string, propertyId: string, taskId: string) => {
+      setOpeningReviewTaskId(taskId);
+      startOpenReview(() => {
+        router.push(poPropertyDetailPath(poNumber, propertyId));
+      });
     },
     [router],
   );
@@ -545,21 +569,28 @@ export function GovernmentReviewView() {
             ) : (
               rowMeta.map(({ row, keysStatus, done, hasEnv }) => {
                 const propertyId = row.task.propertyId?.trim();
-                const deedHref =
-                  propertyId
-                    ? poPropertyDetailPath(row.task.poNumber, propertyId)
-                    : undefined;
                 return (
                   <GovGridRow key={row.task.id} cols={GOV_REVIEW_LIST_COLS}>
                     <GovTd>
-                      {deedHref ? (
-                        <Link
-                          href={deedHref}
-                          className="relative z-[1] text-[13.5px] font-bold text-primary underline decoration-primary underline-offset-2 hover:text-primary-mid"
-                          onClick={(e) => e.stopPropagation()}
+                      {propertyId ? (
+                        <button
+                          type="button"
+                          className="group/atq-row inline-flex max-w-full cursor-pointer border-0 bg-transparent p-0 text-start"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openDeedDetail(
+                              row.task.poNumber,
+                              propertyId,
+                              row.task.id,
+                            );
+                          }}
                         >
-                          {row.deed}
-                        </Link>
+                          <InteractiveDeedCell
+                            label={row.deed}
+                            loading={openingReviewTaskId === row.task.id}
+                            labelClassName="text-[13.5px]"
+                          />
+                        </button>
                       ) : (
                         <span className="text-[13.5px] font-bold text-heading">
                           {row.deed}
@@ -644,12 +675,20 @@ export function GovernmentReviewView() {
                             className={cn(
                               govRowGhostBtnClassName,
                               "text-[#2f7a4d] hover:text-[#2f7a4d]",
+                              openingReviewTaskId === row.task.id && "opacity-80",
                             )}
+                            disabled={openingReviewTaskId === row.task.id}
+                            aria-busy={
+                              openingReviewTaskId === row.task.id || undefined
+                            }
                             onClick={(e) => {
                               e.stopPropagation();
                               openReviewTask(row.task.id);
                             }}
                           >
+                            {openingReviewTaskId === row.task.id ? (
+                              <Spinner className="shrink-0" />
+                            ) : null}
                             إنهاء المراجعة
                           </button>
                         </>
@@ -706,12 +745,23 @@ export function GovernmentReviewView() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         {deedHref ? (
-                          <Link
-                            href={deedHref}
-                            className="text-[14px] font-bold text-heading no-underline hover:text-primary"
+                          <button
+                            type="button"
+                            className="group/atq-row inline-flex max-w-full cursor-pointer border-0 bg-transparent p-0 text-start"
+                            onClick={() =>
+                              openDeedDetail(
+                                row.task.poNumber,
+                                propertyId!,
+                                row.task.id,
+                              )
+                            }
                           >
-                            {deedLabel}
-                          </Link>
+                            <InteractiveDeedCell
+                              label={deedLabel}
+                              loading={openingReviewTaskId === row.task.id}
+                              labelClassName="text-[14px]"
+                            />
+                          </button>
                         ) : (
                           <div className="text-[14px] font-bold text-heading">
                             {deedLabel}
@@ -808,8 +858,15 @@ export function GovernmentReviewView() {
                             govPrimaryBtnClassName,
                             "min-h-11 flex-1",
                           )}
+                          disabled={openingReviewTaskId === row.task.id}
+                          aria-busy={
+                            openingReviewTaskId === row.task.id || undefined
+                          }
                           onClick={() => openReviewTask(row.task.id)}
                         >
+                          {openingReviewTaskId === row.task.id ? (
+                            <Spinner className="shrink-0" />
+                          ) : null}
                           إنهاء المراجعة
                         </button>
                       </div>

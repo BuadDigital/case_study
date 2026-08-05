@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   EmptyState,
   KpiBand,
@@ -35,6 +35,7 @@ import { PoNumber } from "../components/ui/PoNumber";
 import { RemainingTimeCell } from "../components/ui/RemainingTimeCell";
 import { RowMoreMenu } from "../components/ui/RowMoreMenu";
 import type { RowMoreMenuItem } from "../components/ui/RowMoreMenu";
+import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
 import {
   ActiveQueueMobileCards,
   type ActiveQueueMobileCardItem,
@@ -149,6 +150,21 @@ export function SuspendedTransactionsView() {
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
   const [now, setNow] = useState(() => new Date());
+  const [isOpening, startOpen] = useTransition();
+  const [openingId, setOpeningId] = useState<string | null>(null);
+
+  const openItem = (item: { id: string; poNumber: string; propertyId: string }) => {
+    setOpeningId(item.id);
+    startOpen(() => {
+      router.push(poPropertyPath(item.poNumber, item.propertyId));
+    });
+  };
+
+  useEffect(() => {
+    if (isOpening || !openingId) return;
+    const t = window.setTimeout(() => setOpeningId(null), 400);
+    return () => window.clearTimeout(t);
+  }, [isOpening, openingId]);
 
   useEffect(() => {
     const tick = setInterval(() => setNow(new Date()), 1000);
@@ -238,11 +254,11 @@ export function SuspendedTransactionsView() {
             : undefined,
         timerOverdue: overdue,
         moreItems: buildSuspendedRowMoreItems(item, router),
-        onOpen: () =>
-          router.push(poPropertyPath(item.poNumber, item.propertyId)),
+        onOpen: () => openItem(item),
+        loading: openingId === item.id,
       };
     });
-  }, [sortedItems, poByNumber, now, router]);
+  }, [sortedItems, poByNumber, now, router, openingId]);
 
   return (
     <PageShell variant="canvas" className="min-h-0 flex-1">
@@ -408,23 +424,20 @@ export function SuspendedTransactionsView() {
                           <Tr
                             key={item.id}
                             hoverable={false}
-                            className={ROW}
-                            onClick={() =>
-                              router.push(
-                                poPropertyPath(
-                                  item.poNumber,
-                                  item.propertyId,
-                                ),
-                              )
-                            }
+                            className={cn(
+                              "group/atq-row",
+                              ROW,
+                              openingId === item.id &&
+                                "ui-queue-row-opening pointer-events-none",
+                            )}
+                            onClick={() => openItem(item)}
                           >
                             <Td className="whitespace-nowrap">
-                              <span
-                                dir="ltr"
-                                className="inline-block text-[13px] font-medium text-primary"
-                              >
-                                {deedLabel(item, record)}
-                              </span>
+                              <InteractiveDeedCell
+                                label={deedLabel(item, record)}
+                                loading={openingId === item.id}
+                                labelClassName="text-[13px] font-medium"
+                              />
                             </Td>
                             <Td className="text-text-2">
                               <PoNumber value={item.poNumber} link />

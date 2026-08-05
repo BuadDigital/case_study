@@ -80,15 +80,13 @@ describe("وصف الحد + أطوال from PDF", () => {
     expect(r.nature!.north.lengthM).toBe("24.25");
   });
 
-  it("patches form northBoundary etc. from croquis", () => {
+  it("patches form lengths only from croquis (no descriptions)", () => {
     const r = parseSurveySketchText(croquisTablesText);
     const { patch } = sketchExtractToEmptyFieldsPatch(r, {}, true);
-    expect(patch.northBoundary).toMatch(/قطعة رقم 225/);
-    expect(patch.southBoundary).toMatch(/قطعة رقم 229/);
-    expect(patch.eastBoundary).toMatch(/شارع/);
-    expect(patch.westBoundary).toMatch(/قطعة رقم 226/);
+    expect(patch.northBoundary).toBeUndefined();
+    expect(patch.southBoundary).toBeUndefined();
     expect(patch.northBoundaryLengthM).toBe("24.25");
-    expect(patch.natureNorthBoundary).toMatch(/225/);
+    expect(patch.natureNorthBoundary).toBeUndefined();
     expect(patch.natureNorthBoundaryLengthM).toBe("24.25");
   });
 
@@ -143,10 +141,10 @@ describe("وصف الحد + أطوال from PDF", () => {
     expect(filled.north.lengthM).toBe("24.25");
   });
 
-  it("nature fields include descriptions", () => {
+  it("nature fields include lengths only (no descriptions)", () => {
     const r = parseSurveySketchText(croquisTablesText);
     const n = sketchNatureFieldsFromExtract(r);
-    expect(n.natureNorthBoundary).toMatch(/225/);
+    expect(n.natureNorthBoundary).toBeUndefined();
     expect(n.natureNorthBoundaryLengthM).toBe("24.25");
   });
 
@@ -185,7 +183,7 @@ describe("وصف الحد + أطوال from PDF", () => {
     expect(patch.northBoundaryLengthM).toBe("25.00");
   });
 
-  it("overwrites on re-upload", () => {
+  it("overwrites lengths on re-upload (not descriptions)", () => {
     const r = parseSurveySketchText(croquisTablesText);
     const { patch } = sketchExtractToEmptyFieldsPatch(
       r,
@@ -195,7 +193,7 @@ describe("وصف الحد + أطوال from PDF", () => {
       },
       true,
     );
-    expect(patch.northBoundary).toMatch(/225/);
+    expect(patch.northBoundary).toBeUndefined();
     expect(patch.northBoundaryLengthM).toBe("24.25");
   });
 

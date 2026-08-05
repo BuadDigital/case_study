@@ -29,6 +29,7 @@ export function InspectorMobileQueue({
   onOpen,
   resolveBadge,
   resolveMoreItems,
+  isOpening,
 }: {
   tasks: WorkflowTask[];
   poByNumber: Map<string, PoIntakeRecord>;
@@ -40,6 +41,7 @@ export function InspectorMobileQueue({
     task: WorkflowTask,
     propertyId?: string,
   ) => RowMoreMenuItem[];
+  isOpening?: (taskId: string) => boolean;
 }) {
   const items: ActiveQueueMobileCardItem[] = tasks.map((task) => {
     const record = poByNumber.get(task.poNumber.trim());
@@ -89,6 +91,7 @@ export function InspectorMobileQueue({
         : undefined,
       moreItems: resolveMoreItems(task, property?.id),
       onOpen: () => onOpen(task.id),
+      loading: isOpening?.(task.id),
     };
   });
 
