@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import {
   BOURSE_INQUIRY_IDENTIFIER_STATUS,
+  DEED_NUMBER_DIGIT_LENGTH,
   isBourseInquiryIdentifier,
   requiresAssignmentDecree,
   requiresContacts,
@@ -24,6 +25,7 @@ import {
 import { findPriorDeedFull } from "../../lib/prototype/po-intake-storage";
 import { RegField } from "@platform/app-shared/registration/FormFields";
 import type { FieldErrors } from "@platform/app-shared/registration/registration-utils";
+import type { PriorDeedRegistrationDto } from "@platform/api-client";
 import {
   Badge,
   Card,
@@ -37,6 +39,54 @@ import {
 import { PropertyFileUploadField } from "./PropertyFileUploadField";
 import { PoContactEditor } from "./PoContactEditor";
 import { CourtCircuitSelects } from "./CourtCircuitSelects";
+
+/** Fill empty enfath fields from a prior transaction with the same deed. */
+function applyPriorDeedHints(
+  property: PoPropertyIntake,
+  hit: PriorDeedRegistrationDto,
+  onPatch: <K extends keyof PoPropertyIntake>(
+    key: K,
+    value: PoPropertyIntake[K],
+  ) => void,
+): void {
+  const fillStr = (
+    key: keyof PoPropertyIntake,
+    next: string | undefined | null,
+  ) => {
+    const current = property[key];
+    if (typeof current !== "string" || current.trim()) return;
+    const value = next?.trim() ?? "";
+    if (!value) return;
+    onPatch(key, value as never);
+  };
+
+  fillStr("deedDate", hit.deedDate);
+  fillStr("ownerName", hit.ownerName);
+  fillStr("requestNumber", hit.requestNumber);
+  fillStr("assignmentMandateNumber", hit.assignmentMandateNumber);
+  fillStr("assignmentMandateDate", hit.assignmentMandateDate);
+  fillStr("court", hit.court);
+  fillStr("circuit", hit.circuit);
+  fillStr("courtId", hit.courtId);
+  fillStr("circuitId", hit.circuitId);
+  fillStr("planNumber", hit.planNumber);
+  fillStr("plotNumber", hit.plotNumber);
+  fillStr("locationMapUrl", hit.locationMapUrl);
+
+  if (
+    hit.contacts?.length &&
+    property.contacts.every((c) => !c.phone?.trim() && !c.name?.trim())
+  ) {
+    onPatch(
+      "contacts",
+      hit.contacts.map((c) => ({
+        name: c.name ?? "",
+        role: c.role ?? "",
+        phone: c.phone ?? "",
+      })),
+    );
+  }
+}
 
 type Props = {
   property: PoPropertyIntake;
@@ -111,58 +161,45 @@ export function PoPropertyEnfathForm({
 
   useEffect(() => {
     const deed = property.deedNumber.trim();
-    if (!deed) {
+    // Wait for a full deed number before looking up past POs (exact match).
+    if (deed.length < DEED_NUMBER_DIGIT_LENGTH) {
       setPriorPo(null);
       return;
     }
     let cancelled = false;
-    void findPriorDeedFull(deed, priorExcludePo, priorExcludePropertyId)
-      .then((hit) => {
-        if (cancelled) return;
-        const hitPo = hit?.poNumber?.trim() || null;
-        if (hitPo && priorExcludePo && hitPo === priorExcludePo) {
-          setPriorPo(null);
-          return;
-        }
-        setPriorPo(hitPo);
-        if (hit) {
-          if (hit.deedDate && !property.deedDate) onPatch("deedDate", hit.deedDate);
-          if (hit.ownerName && !property.ownerName) onPatch("ownerName", hit.ownerName);
-          if (hit.contacts?.length && property.contacts.every((c) => !c.phone)) {
-            onPatch(
-              "contacts",
-              hit.contacts.map((c) => ({
-                name: c.name ?? "",
-                role: c.role ?? "",
-                phone: c.phone ?? "",
-              })),
-            );
+    const timer = window.setTimeout(() => {
+      void findPriorDeedFull(deed, priorExcludePo, priorExcludePropertyId)
+        .then((hit) => {
+          if (cancelled) return;
+          const hitPo = hit?.poNumber?.trim() || null;
+          if (hitPo && priorExcludePo && hitPo === priorExcludePo) {
+            setPriorPo(null);
+            return;
           }
-        }
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        showToast(
-          err instanceof Error ? err.message : "تعذّر التحقق من الصك السابق",
-          "error",
-        );
-        setPriorPo(null);
-      });
+          setPriorPo(hitPo);
+          if (hit) applyPriorDeedHints(property, hit, onPatch);
+        })
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          showToast(
+            err instanceof Error ? err.message : "تعذّر التحقق من الصك السابق",
+            "error",
+          );
+          setPriorPo(null);
+        });
+    }, 280);
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
-  }, [
-    property.deedNumber,
-    priorExcludePo,
-    priorExcludePropertyId,
-    isBourseId,
-    property.deedDate,
-    property.ownerName,
-    property.contacts,
-    onPatch,
-  ]);
+    // Intentionally only re-query when the deed / exclusion keys change — not on every
+    // autofilled field, which would re-trigger and fight user edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
+  }, [property.deedNumber, priorExcludePo, priorExcludePropertyId, onPatch, showToast]);
 
-  const priorPoNotice = property.deedNumber.trim() ? priorPo : null;
+  const priorPoNotice = property.deedNumber.trim().length >= DEED_NUMBER_DIGIT_LENGTH
+    ? priorPo
+    : null;
   const isIdentifierOnly = fieldsMode === "identifier-only";
   const isPrimaryOnly = fieldsMode === "bourse-inquiry-primary";
   const showExtended = fieldsMode === "all" || isPrimaryOnly;
@@ -200,16 +237,11 @@ export function PoPropertyEnfathForm({
 
       {isIdentifierOnly ? null : (
       <>
-      {!isBourseId && priorPoNotice ? (
+      {priorPoNotice ? (
         <Note tone="success" className="mb-3">
-          هذا الصك مسجّل سابقاً في أمر العمل «{priorPoNotice}» — يمكن استخدام بيانات
-          الاتصال السابقة.
-        </Note>
-      ) : null}
-
-      {isBourseId && priorPoNotice ? (
-        <Note tone="success" className="mb-3">
-          هذا الصك مسجّل سابقاً في أمر العمل «{priorPoNotice}».
+          وُجدت <strong>معاملة سابقة</strong> بنفس رقم الصك في أمر العمل «
+          {priorPoNotice}» — تم تعبئة الحقول الفارغة من تلك المعاملة (تاريخ الصك،
+          التكليف، المحكمة، جهات الاتصال إن وُجدت).
         </Note>
       ) : null}
 

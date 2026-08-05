@@ -168,19 +168,24 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
     {
         var n = deedNumber.Trim();
         if (n.Length == 0) return null;
+        // Synthetic bourse-inquiry placeholders are not real deeds.
+        if (n.StartsWith("INQ-", StringComparison.OrdinalIgnoreCase)) return null;
 
         var exclude = string.IsNullOrWhiteSpace(excludePoNumber)
             ? null
             : IWorkOrderLoader.NormalizePo(excludePoNumber);
 
+        // Match by DeedNumber regardless of IdentifierType (deed + real-estate-reg
+        // paths both store the deed here). Also match real-estate registration number
+        // so paste-from-prior lookup works either way.
         var hit = await _db.WorkOrderProperties
             .AsNoTracking()
             .Include(p => p.WorkOrder)
             .Include(p => p.Contacts)
             .Where(p =>
                 !p.IsRemoved &&
-                p.IdentifierType == PropertyIdentifierType.Deed &&
-                p.DeedNumber == n &&
+                !p.DeedNumber.StartsWith("INQ-") &&
+                (p.DeedNumber == n || p.RealEstateRegNumber == n) &&
                 (excludePropertyId == null || p.Id != excludePropertyId.Value) &&
                 (exclude == null || p.WorkOrder!.PoNumber != exclude))
             .OrderByDescending(p => p.WorkOrder!.CreatedAtUtc)

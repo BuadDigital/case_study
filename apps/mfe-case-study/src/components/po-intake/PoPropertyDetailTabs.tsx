@@ -173,27 +173,13 @@ function docExtLabel(doc: PropertyDetailDocumentEntry): string {
 }
 
 function DocumentRow({ doc }: { doc: PropertyDetailDocumentEntry }) {
-  const canDownload = Boolean(
-    doc.dataUrl || doc.attachmentId || doc.engineeringTaskId,
-  );
-  const pending = !canDownload;
   const ext = docExtLabel(doc);
 
   return (
-    <div
-      className={cn(
-        "flex items-center justify-between gap-2.5 rounded border border-border bg-surface-2 px-3 py-2.5",
-        pending && "opacity-70",
-      )}
-    >
+    <div className="flex items-center justify-between gap-2.5 rounded border border-border bg-surface-2 px-3 py-2.5">
       <div className="flex min-w-0 items-center gap-2.5">
         <span
-          className={cn(
-            "inline-flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-md border border-border text-[9px] font-extrabold",
-            pending
-              ? "bg-surface text-text-3"
-              : "bg-[color-mix(in_srgb,#a4906f_14%,transparent)] text-[#8c7857]",
-          )}
+          className="inline-flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-md border border-border bg-[color-mix(in_srgb,#a4906f_14%,transparent)] text-[9px] font-extrabold text-[#8c7857]"
           aria-hidden
         >
           {ext}
@@ -204,30 +190,20 @@ function DocumentRow({ doc }: { doc: PropertyDetailDocumentEntry }) {
           </span>
           <span className="truncate text-[10.5px] text-text-3">
             {doc.source}
-            {!pending ? (
-              <>
-                {" · "}
-                <bdi dir="ltr" className={ltrValueClass}>
-                  {doc.fileName}
-                </bdi>
-              </>
-            ) : null}
+            {" · "}
+            <bdi dir="ltr" className={ltrValueClass}>
+              {doc.fileName}
+            </bdi>
           </span>
         </span>
       </div>
-      {pending ? (
-        <span className="shrink-0 text-[11px] font-bold text-text-3">
-          لم يُرفع بعد
-        </span>
-      ) : (
-        <button
-          type="button"
-          className="shrink-0 rounded-md border border-border-md bg-surface px-3 py-1 text-[11px] font-bold text-text-2 max-lg:min-h-11"
-          onClick={() => downloadPropertyDetailDocument(doc)}
-        >
-          تنزيل
-        </button>
-      )}
+      <button
+        type="button"
+        className="shrink-0 rounded-md border border-border-md bg-surface px-3 py-1 text-[11px] font-bold text-text-2 max-lg:min-h-11"
+        onClick={() => downloadPropertyDetailDocument(doc)}
+      >
+        تنزيل
+      </button>
     </div>
   );
 }
@@ -237,6 +213,12 @@ function DocumentsTab({
 }: {
   sections: PropertyDetailDocumentSection[];
 }) {
+  if (sections.length === 0) {
+    return (
+      <InfoBox icon="ℹ">لا توجد مستندات مرفوعة لهذا العقار بعد.</InfoBox>
+    );
+  }
+
   return (
     <>
       {sections.map((section) => (
@@ -248,15 +230,11 @@ function DocumentsTab({
             </span>
             <span className="h-px flex-1 bg-border" aria-hidden />
           </div>
-          {section.documents.length === 0 ? (
-            <InfoBox icon="ℹ">لا توجد مستندات في هذا القسم بعد.</InfoBox>
-          ) : (
-            <div className="grid gap-2">
-              {section.documents.map((doc) => (
-                <DocumentRow key={doc.id} doc={doc} />
-              ))}
-            </div>
-          )}
+          <div className="grid gap-2">
+            {section.documents.map((doc) => (
+              <DocumentRow key={doc.id} doc={doc} />
+            ))}
+          </div>
         </section>
       ))}
       <p className="m-0 text-[11.5px] text-text-3">

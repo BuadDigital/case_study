@@ -39,9 +39,10 @@ public static class PropertyListRowBuilder
         {
             foreach (var prop in order.Properties.Where(p => !p.IsRemoved))
             {
-                if (prop.IdentifierType != PropertyIdentifierType.Deed) continue;
-                var deed = prop.DeedNumber.Trim();
-                if (deed.Length == 0) continue;
+                var deed = prop.DeedNumber?.Trim() ?? "";
+                if (deed.Length == 0 || deed.StartsWith("INQ-", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                // Index any non-synthetic deed (deed path or reg path that also carries a deed).
                 priorByDeed[deed] = order.PoNumber;
             }
         }
