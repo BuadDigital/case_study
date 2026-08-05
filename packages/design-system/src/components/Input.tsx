@@ -14,6 +14,7 @@ export function Input({ className, hasError, ...props }: InputProps) {
     <input
       className={cn(
         formControlClassName,
+        "h-[38px] py-0 leading-[38px]",
         hasError && formControlErrorClassName,
         className,
       )}

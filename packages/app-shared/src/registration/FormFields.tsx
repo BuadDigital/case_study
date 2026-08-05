@@ -22,19 +22,19 @@ function FieldWrap({
   const hintId = hint && fieldId ? `${fieldId}-hint` : undefined;
   return (
     <div className={className}>
-      <Label htmlFor={fieldId} className="mb-1 text-[11px] font-semibold text-text-2">
+      <Label htmlFor={fieldId} className="mb-1.5 text-[12px] font-semibold text-text-2">
         {label}
         {required ? <span className="text-danger-text"> *</span> : null}
       </Label>
       {children}
       {hint ? (
-        <p className="mt-1 text-[10px] text-text-3" id={hintId}>
+        <p className="mt-1 text-[11px] text-text-3" id={hintId}>
           {hint}
         </p>
       ) : null}
       {error ? (
         <p
-          className="mt-1 text-[10px] text-danger-text"
+          className="mt-1 text-[11px] text-danger-text"
           role="alert"
           id={fieldId ? `${fieldId}-error` : undefined}
         >
@@ -104,7 +104,6 @@ export function RegField({
         maxLength={maxLength}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy || undefined}
-        className="text-xs"
       />
     </FieldWrap>
   );
@@ -164,7 +163,6 @@ export function RegTextarea({
         onChange={(e) => onChange(e.target.value)}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy || undefined}
-        className="text-xs"
       />
     </FieldWrap>
   );
@@ -203,7 +201,7 @@ export function RegSelect({
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
         aria-invalid={error ? true : undefined}
-        className="text-xs disabled:cursor-not-allowed disabled:opacity-65"
+        className="disabled:cursor-not-allowed disabled:opacity-65"
       >
         <option value="">{placeholder ?? "اختر..."}</option>
         {entries.map((o) => (

@@ -40,9 +40,21 @@ export function useCaseStudyInfoRolesQuery() {
 export function useStaffUsersQuery() {
   const { authReady, capabilities } = usePrototype();
   const userId = getAuthSession()?.user.id ?? "anonymous";
+  const canManageUsers = capabilities.includes("manage-users");
+  const canListDistributionAssignees =
+    capabilities.includes("manage-work-orders") ||
+    capabilities.includes("manage-operations");
   return useQuery({
-    queryKey: [...prototypeKeys.staffUsers(), userId, capabilities.join(",")],
-    queryFn: fetchStaffUsers,
+    queryKey: [
+      ...prototypeKeys.staffUsers(),
+      userId,
+      canManageUsers ? "manage" : canListDistributionAssignees ? "assignees" : "none",
+    ],
+    queryFn: () =>
+      fetchStaffUsers({
+        canManageUsers,
+        canListDistributionAssignees,
+      }),
     enabled: authReady,
     ...queryDefaults,
   });
