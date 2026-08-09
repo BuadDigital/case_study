@@ -39,7 +39,6 @@ import {
   getCaseSpecialists,
   getEngineeringOffices,
   getFieldInspectors,
-  getGovernmentAuditors,
   getValuators,
 } from "./distribution-parties";
 
@@ -65,9 +64,12 @@ export type WorkflowTaskKind =
 
 export type WorkflowTaskStatus = "open" | "completed" | "blocked" | "cancelled";
 
-/** Party selection on توزيع المعاملات — checkbox gates each dropdown group. */
+/** Party selection on توزيع المعاملات — checkbox gates each dropdown group.
+ *  `governmentAuditor*` are wire-compat fields only; always forced off. */
 export type TaskDistributionDraft = {
+  /** @deprecated Not used in distribution UI — government work comes from operations tasks. */
   governmentAuditor: boolean;
+  /** @deprecated Not used in distribution UI. */
   governmentAuditorId: string;
   valuationDepartment: boolean;
   inspectorId: string;
@@ -115,11 +117,9 @@ export function migrateDistribution(
     const legacy = raw as LegacyDistribution;
     migrated = {
       ...base,
-      governmentAuditor: legacy.governmentReviewer ?? false,
-      governmentAuditorId:
-        legacy.governmentReviewer && getGovernmentAuditors(staffUsers)[0]
-          ? getGovernmentAuditors(staffUsers)[0].id
-          : "",
+      // المراجع الحكومي لا يُرحَّل من التوزيع القديم — يُنشأ من مهام العمليات.
+      governmentAuditor: false,
+      governmentAuditorId: "",
       valuationDepartment: legacy.fieldInspector ?? false,
       inspectorId:
         legacy.fieldInspector && getFieldInspectors(staffUsers)[0]
@@ -609,12 +609,6 @@ function buildAssigneeNames(
   staffUsers: StaffUser[] = [],
 ): Record<string, string> {
   const names: Record<string, string> = {};
-  if (distribution.governmentAuditor) {
-    names["government-review"] = assigneeLabel(
-      getGovernmentAuditors(staffUsers),
-      distribution.governmentAuditorId,
-    );
-  }
   if (distribution.valuationDepartment) {
     names["field-inspection"] = assigneeLabel(
       getFieldInspectors(staffUsers),

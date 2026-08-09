@@ -37,9 +37,12 @@ function badgeToneFromClass(
   return "gray";
 }
 
+/**
+ * Ring fill = completion only.
+ * «قيد التنفيذ» is status, not 50% work done — empty ring until مكتمل.
+ */
 function partyRingProgress(badgeClass: string): number {
   if (badgeClass.includes("teal")) return 1;
-  if (badgeClass.includes("amber")) return 0.5;
   return 0;
 }
 

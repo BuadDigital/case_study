@@ -168,7 +168,15 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
         var isManager = OperationsTaskLifecycleRules.IsManager(actorRole);
         var actor = actorAssigneeId.Trim();
         var isAssignee = actor.Length > 0
-            && string.Equals(entity.AssigneeId, actor, StringComparison.Ordinal);
+            && string.Equals(entity.AssigneeId, actor, StringComparison.OrdinalIgnoreCase);
+        // Fallback: display name match when DistAssigneeId drifts (staff seed / create UI).
+        if (!isAssignee && !isManager && !string.IsNullOrWhiteSpace(actorName))
+        {
+            isAssignee = string.Equals(
+                (entity.AssigneeName ?? "").Trim(),
+                actorName.Trim(),
+                StringComparison.Ordinal);
+        }
 
         if (!isManager && !isAssignee)
             return (null, "هذا الإجراء للمنفّذ المكلّف أو المشرف فقط");
@@ -188,6 +196,8 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
         var changed = false;
         var becameCompleted = false;
         var becameCompletedCourtVisit = false;
+        var becameReceiptConfirmed = false;
+        var becameCancelled = false;
         var courtVisitFee = ResolvedPartyFee.Unresolved;
         OperationsTaskPriority? oldPriority = null;
         DateTime? oldDue = null;
@@ -199,7 +209,7 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
                 return (null, "الحالة غير مدعومة");
 
             var error = OperationsTaskLifecycleRules.ValidateStatusTransition(
-                entity, next, actorAssigneeId, actorRole);
+                entity, next, actorAssigneeId, actorRole, actorName);
             if (error is not null) return (null, error);
 
             var pauseReason = request.PauseReason?.Trim();
@@ -245,12 +255,19 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
                     Kind = "update",
                 });
                 changed = true;
+                if (fromStatus == OperationsTaskStatus.Created
+                    && next == OperationsTaskStatus.InProgress)
+                {
+                    becameReceiptConfirmed = true;
+                }
                 if (next == OperationsTaskStatus.Completed)
                 {
                     becameCompleted = true;
                     if (entity.IsCourtVisit)
                         becameCompletedCourtVisit = true;
                 }
+                if (next == OperationsTaskStatus.Cancelled)
+                    becameCancelled = true;
             }
         }
         else if (request.CourtVisitResult is not null && entity.IsCourtVisit)
@@ -322,6 +339,29 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
 
         await _ops.SaveChangesAsync(cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
+
+        if (becameReceiptConfirmed)
+        {
+            await _notifier.NotifyStakeholdersOnReceiptAsync(
+                entity, actorName, actorUserId, cancellationToken);
+        }
+
+        if (becameCancelled)
+        {
+            await _notifier.NotifyAssigneeOnCancelledAsync(
+                entity, actorName, actorUserId, cancellationToken);
+        }
+
+        if (oldPriority is not null || oldDue is not null)
+        {
+            await _notifier.NotifyAssigneeOnScheduleChangedAsync(
+                entity,
+                priorityChanged: oldPriority is not null,
+                dueChanged: oldDue is not null,
+                actorName,
+                actorUserId,
+                cancellationToken);
+        }
 
         if (becameCompleted)
             await _notifier.NotifyCreatorOnCompletedAsync(entity, actorUserId, actorName, cancellationToken);
@@ -526,6 +566,19 @@ public sealed class OperationsTaskCommands : IOperationsTaskCommands
             _time.GetUtcNow().UtcDateTime);
         await _ops.SaveChangesAsync(cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
+
+        var kind = request.Kind?.Trim() ?? "comment";
+        // Human thread only — system updates / reminders are not counterparty chatter.
+        if (kind is "comment" or "close" or "")
+        {
+            await _notifier.NotifyCounterpartyOnCommentAsync(
+                entity,
+                who,
+                actorName,
+                text,
+                cancellationToken);
+        }
+
         return (await _query.MapAsync(entity, cancellationToken), null);
     }
 

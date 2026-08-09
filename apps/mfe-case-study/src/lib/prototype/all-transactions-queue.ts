@@ -51,15 +51,16 @@ export function formatAllTransactionsDeedCell(deedOrSlot: string): string {
   return `صك ${v}`;
 }
 
-/** Deed label with latest stage: `صك {n} (دراسة الحالة)`. */
+/**
+ * Deed cell for all-transactions table.
+ * Phase stays in the «المرحلة» column — do not append it next to the deed
+ * (e.g. avoid `صك قيد الدراسة 1 (البيانات الأولية)`).
+ */
 export function formatAllTransactionsDeedWithPhase(
   deedOrSlot: string,
-  phaseLabel: string,
+  _phaseLabel?: string,
 ): string {
-  const deed = formatAllTransactionsDeedCell(deedOrSlot);
-  const phase = phaseLabel.trim();
-  if (!phase || deed === "—") return deed;
-  return `${deed} (${phase})`;
+  return formatAllTransactionsDeedCell(deedOrSlot);
 }
 
 export type AllTransactionsQueueRowMeta = {

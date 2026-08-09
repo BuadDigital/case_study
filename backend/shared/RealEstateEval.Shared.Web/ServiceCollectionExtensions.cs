@@ -69,6 +69,13 @@ public static class AuthorizationExtensions
                     ctx,
                     PlatformCapabilities.ManageValuationRequests,
                     PlatformCapabilities.SubmitValuationReport)));
+
+            options.AddPolicy(
+                CapabilityPolicyNames.ListDistributionAssignees,
+                policy => policy.RequireAssertion(ctx => HasAnyCapability(
+                    ctx,
+                    PlatformCapabilities.ManageWorkOrders,
+                    PlatformCapabilities.ManageOperations)));
         });
 
         return services;

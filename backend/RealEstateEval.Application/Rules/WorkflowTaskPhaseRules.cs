@@ -64,7 +64,9 @@ public static class WorkflowTaskPhaseRules
 
     public static TaskDistributionDraftDto NormalizeDistribution(TaskDistributionDraftDto dto)
     {
-        if (!dto.GovernmentAuditor) dto.GovernmentAuditorId = "";
+        // المراجع الحكومي يُسند من مهام العمليات (court_visit) وليس من توزيع المعاملات.
+        dto.GovernmentAuditor = false;
+        dto.GovernmentAuditorId = "";
         dto.OperationsCoordinatorId = "";
         if (!dto.ValuationDepartment)
         {

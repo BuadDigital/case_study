@@ -29,6 +29,7 @@ public class CapabilityPolicyRegistrationTests
                      CapabilityPolicyNames.ReadManagementReports,
                      CapabilityPolicyNames.ReadKeyData,
                      CapabilityPolicyNames.ReadValuationQueue,
+                     CapabilityPolicyNames.ListDistributionAssignees,
                  })
         {
             Assert.NotNull(await policyProvider.GetPolicyAsync(composite));

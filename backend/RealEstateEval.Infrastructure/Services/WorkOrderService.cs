@@ -80,6 +80,14 @@ public class WorkOrderService : IWorkOrderService
         Guid? excludePropertyId = null) =>
         _query.FindPriorDeedAsync(deedNumber, excludePoNumber, cancellationToken, excludePropertyId);
 
+    public Task<IReadOnlyList<PriorDeedRegistrationDto>> ListPriorDeedsAsync(
+        string deedNumber,
+        string? excludePoNumber,
+        CancellationToken cancellationToken,
+        Guid? excludePropertyId = null,
+        int take = 20) =>
+        _query.ListPriorDeedsAsync(deedNumber, excludePoNumber, cancellationToken, excludePropertyId, take);
+
     public Task<IReadOnlyList<PendingBoursePropertyDto>> ListPendingBourseAsync(
         CancellationToken cancellationToken) =>
         _query.ListPendingBourseAsync(cancellationToken);

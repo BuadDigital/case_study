@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   formatPoDisplay,
+  hasBourseDetailFields,
   isBourseInquiryIdentifier,
   type PoIntakeRecord,
   type PoPropertyIntake,
@@ -94,6 +95,11 @@ export function PoPropertyEdit({
     },
     [],
   );
+
+  const replaceProperty = useCallback((next: PoPropertyIntake) => {
+    setProperty(next);
+    setFieldErrors({});
+  }, []);
 
   if (loading) {
     return (
@@ -258,15 +264,20 @@ export function PoPropertyEdit({
           assignmentType={initialRecord.assignmentType}
           fieldErrors={fieldErrors}
           onPatch={patchProperty}
+          onReplaceProperty={replaceProperty}
           poNumber={poNumber}
           excludePoNumber={poNumber}
         />
       </RegistrationFormCard>
 
-      {property.bourseDataCompleted ? (
+      {property.bourseDataCompleted || hasBourseDetailFields(property) ? (
         <RegistrationFormCard
           title="بيانات البورصة"
-          subtitle="يمكن تعديلها هنا أو من استعلام البورصة"
+          subtitle={
+            property.bourseDataCompleted
+              ? "يمكن تعديلها هنا أو من استعلام البورصة"
+              : "مُعبَّأة من معاملة سابقة — راجع وعدّل ما تغيّر ثم احفظ (تصبح معتمدة لهذه المعاملة)"
+          }
         >
           <PoPropertyBourseForm
             property={property}

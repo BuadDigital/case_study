@@ -85,7 +85,7 @@ export function DistributionTaskWork({
     if (!deedNumber) return;
 
     let cancelled = false;
-    void findPriorDeedFull(deedNumber, task.poNumber)
+    void findPriorDeedFull(deedNumber, task.poNumber, property.id)
       .then((prior) => {
         if (!cancelled) {
           setPriorSurveyLookup({ deedNumber, exists: Boolean(prior) });
@@ -100,7 +100,7 @@ export function DistributionTaskWork({
     return () => {
       cancelled = true;
     };
-  }, [property.deedNumber, task.poNumber]);
+  }, [property.deedNumber, property.id, task.poNumber]);
 
   const hasPriorSurvey =
     priorSurveyLookup.deedNumber === property.deedNumber.trim() &&

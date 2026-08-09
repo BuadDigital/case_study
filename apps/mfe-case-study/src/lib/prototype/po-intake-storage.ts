@@ -18,7 +18,7 @@ import {
   type WorkflowTask,
 } from "./tasks-storage";
 import type { PropertyRow } from "@platform/app-shared/prototype/constants";
-import type { PendingBoursePropertyDto,UpdatePropertyBourseRequest,WorkOrderDto,WorkOrderPropertyDto} from "@platform/api-client";
+import type { PendingBoursePropertyDto,PriorDeedRegistrationDto,UpdatePropertyBourseRequest,WorkOrderDto,WorkOrderPropertyDto} from "@platform/api-client";
 import {
   addWorkOrderProperty,
   cancelWorkOrder,
@@ -28,6 +28,7 @@ import {
   deleteWorkOrder,
   deleteWorkOrderProperty,
   findPriorDeed,
+  listPriorDeeds,
   getPoIntakeDraft,
   getWorkOrder,
   listPendingBourseProperties,
@@ -38,6 +39,7 @@ import {
   updateWorkOrderPropertyLocationMapUrl,
   workOrderExists,
 } from "@platform/api-client";
+import { normalizeDeedNumber } from "./deed-number";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 import {
   loadPoListRows,
@@ -352,10 +354,10 @@ export async function findPriorDeedFull(
   deedNumber: string,
   excludePo?: string,
   excludePropertyId?: string,
-): Promise<import("@platform/api-client").PriorDeedRegistrationDto | null> {
+): Promise<PriorDeedRegistrationDto | null> {
   const config = workOrdersApiConfig();
   if (!config) return null;
-  const deed = deedNumber.trim();
+  const deed = normalizeDeedNumber(deedNumber) || deedNumber.trim();
   if (!deed) return null;
   // Only forward real GUIDs — bad excludePropertyId causes 400 on the API.
   const safeExcludePropertyId = isGuidPropertyId(excludePropertyId)
@@ -363,7 +365,7 @@ export async function findPriorDeedFull(
     : undefined;
   const result = await findPriorDeed(
     config,
-    deed,
+    deedNumber.trim() || deed,
     excludePo,
     safeExcludePropertyId,
   );
@@ -371,10 +373,49 @@ export async function findPriorDeedFull(
     if (result.kind === "auth") {
       throw new Error("يجب تسجيل الدخول للبحث عن المعاملة السابقة");
     }
+    if (result.kind === "forbidden") {
+      throw new Error("غير مصرح لك بالبحث عن تسجيل سابق لنفس الصك");
+    }
     if (result.kind === "network") {
       throw new Error("تعذّر الاتصال — تحقق من تشغيل الـ API");
     }
     throw new Error("تعذّر البحث عن المعاملة السابقة لنفس رقم الصك");
+  }
+  return result.data;
+}
+
+/** Full prior-study history for a deed (newest first). */
+export async function listPriorDeedsFull(
+  deedNumber: string,
+  excludePo?: string,
+  excludePropertyId?: string,
+  take = 20,
+): Promise<PriorDeedRegistrationDto[]> {
+  const config = workOrdersApiConfig();
+  if (!config) return [];
+  const deed = deedNumber.trim();
+  if (!deed) return [];
+  const safeExcludePropertyId = isGuidPropertyId(excludePropertyId)
+    ? excludePropertyId.trim()
+    : undefined;
+  const result = await listPriorDeeds(
+    config,
+    deed,
+    excludePo,
+    safeExcludePropertyId,
+    take,
+  );
+  if (!result.ok) {
+    if (result.kind === "auth") {
+      throw new Error("يجب تسجيل الدخول للبحث عن المعاملة السابقة");
+    }
+    if (result.kind === "forbidden") {
+      throw new Error("غير مصرح لك بالبحث عن تسجيل سابق لنفس الصك");
+    }
+    if (result.kind === "network") {
+      throw new Error("تعذّر الاتصال — تحقق من تشغيل الـ API");
+    }
+    throw new Error("تعذّر تحميل سجل الدراسات السابقة لنفس رقم الصك");
   }
   return result.data;
 }
@@ -442,9 +483,47 @@ export function buildCopyPriorTargetOptions(
   return options;
 }
 
+/**
+ * Build a full property form from the latest prior deed registration.
+ * Keeps the current property id, local file-name caches, and soft-delete flags.
+ * Does not mark bourse completed — the new transaction must confirm data.
+ */
+export function buildPropertyFromPriorDeed(
+  existing: PoPropertyIntake,
+  prior: PriorDeedRegistrationDto,
+): PoPropertyIntake {
+  const deed =
+    existing.deedNumber.trim() ||
+    (prior.deedNumber ?? "").trim() ||
+    "";
+  const filled = priorDeedToPropertyIntake(prior, deed, "bourse");
+  return {
+    ...filled,
+    id: existing.id,
+    deedNumber: deed || filled.deedNumber,
+    // Keep files already uploaded on this (new) slot — prior DTO has no attachments.
+    assignmentDocFileNames: existing.assignmentDocFileNames,
+    delegationLetterFileNames: existing.delegationLetterFileNames,
+    otherDocumentFileNames: existing.otherDocumentFileNames,
+    realEstateRegFileName: existing.realEstateRegFileName,
+    realEstateRegNumber:
+      existing.realEstateRegNumber.trim() || filled.realEstateRegNumber || "",
+    realEstateRegDate:
+      existing.realEstateRegDate.trim() || filled.realEstateRegDate || "",
+    hasRequestNumber:
+      existing.hasRequestNumber === false && !filled.requestNumber.trim()
+        ? false
+        : true,
+    bourseDataCompleted: false,
+    isRemoved: existing.isRemoved,
+    removalReason: existing.removalReason,
+    removedAtUtc: existing.removedAtUtc,
+  };
+}
+
 /** Map prior deed lookup into a new property draft for the current PO. */
 export function priorDeedToPropertyIntake(
-  prior: import("@platform/api-client").PriorDeedRegistrationDto,
+  prior: PriorDeedRegistrationDto,
   deedNumber: string,
   scope: CopyPriorScope,
 ): PoPropertyIntake {
@@ -485,9 +564,9 @@ export function priorDeedToPropertyIntake(
   return {
     ...enfath,
     city: prior.city?.trim() ?? "",
-    region: "",
-    regionId: "",
-    cityId: "",
+    region: prior.region?.trim() ?? "",
+    regionId: prior.regionId?.trim() ?? "",
+    cityId: prior.cityId?.trim() ?? "",
     district: prior.district?.trim() ?? "",
     districtId: "",
     classification: prior.classification?.trim() ?? "",

@@ -342,9 +342,19 @@ export function timelineEventLabel(eventType: string): string {
       return "توليد بند الأتعاب";
     case "fee_collected":
       return "تحصيل الأتعاب";
+    case "revenue_entitlement":
+      return "استحقاق إيراد استلام المفاتيح";
     case "status_changed":
       return "تغيير الحالة";
-    default:
-      return eventType;
+    default: {
+      // Fallback: humanize snake_case codes instead of showing English raw keys
+      const raw = eventType.trim();
+      if (!raw) return "—";
+      if (!/[a-z]/i.test(raw) || !raw.includes("_")) return raw;
+      return raw
+        .split(/[_\s]+/)
+        .filter(Boolean)
+        .join(" ");
+    }
   }
 }

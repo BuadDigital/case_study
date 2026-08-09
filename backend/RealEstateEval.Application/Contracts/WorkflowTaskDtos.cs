@@ -4,7 +4,9 @@ namespace RealEstateEval.Application.Contracts;
 
 public class TaskDistributionDraftDto
 {
+    /// <summary>Wire field only — always forced off (government work via operations tasks).</summary>
     public bool GovernmentAuditor { get; set; }
+    /// <summary>Wire field only — always cleared on normalize.</summary>
     public string GovernmentAuditorId { get; set; } = "";
     public bool ValuationDepartment { get; set; }
     public string OperationsCoordinatorId { get; set; } = "";

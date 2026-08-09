@@ -5,7 +5,6 @@ import {
   getCaseSpecialists,
   getEngineeringOffices,
   getFieldInspectors,
-  getGovernmentAuditors,
   getValuators,
 } from "./distribution-parties";
 import {
@@ -48,7 +47,7 @@ export function trackStateFromTask(
 
 function progressPctForState(state: CaseStudyTrackState): number {
   if (state === "done") return 100;
-  if (state === "progress") return 50;
+  // Open / assigned ≠ half complete without form or submission evidence.
   return 0;
 }
 
@@ -68,12 +67,6 @@ function distributionAssignee(
     return assigneeLabel(
       getEngineeringOffices(staffUsers),
       distribution.engineeringOfficeId,
-    );
-  }
-  if (trackId === "government") {
-    return assigneeLabel(
-      getGovernmentAuditors(staffUsers),
-      distribution.governmentAuditorId,
     );
   }
   if (trackId === "inspection") {
@@ -99,6 +92,11 @@ export function buildCaseStudyTracks(
   const distribution = migrateDistribution(parent.distribution);
   const children = allTasks.filter((t) => t.parentTaskId === parent.id);
 
+  // المرحلة الحكومية لا تُفعَّل من التوزيع — تظهر إذا وُجدت مهمة طرف (مثلاً من العمليات).
+  const governmentSpawned = Boolean(
+    findChild(children, "government-review"),
+  );
+
   const defs: { id: string; label: string; spawned: boolean }[] = [
     {
       id: "survey",
@@ -118,7 +116,7 @@ export function buildCaseStudyTracks(
     {
       id: "government",
       label: "المراجعة الحكومية",
-      spawned: distribution.governmentAuditor,
+      spawned: governmentSpawned,
     },
     { id: "caseStudy", label: "دراسة الحالة", spawned: true },
   ];
@@ -186,7 +184,7 @@ const CASE_STUDY_PARTY_DEFS = [
  * Progress priority:
  * 1. Task completed → 100% (workflow truth beats form-fill ratio)
  * 2. Otherwise form fill % when provided (case-study answers)
- * 3. Else coarse track % (0 / 50 / 100 from task state)
+ * 3. Else coarse track % (0 or 100 from task completed state)
  */
 export function buildCaseStudyPartyAssignees(
   parent: WorkflowTask,

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 
@@ -166,34 +167,58 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
         CancellationToken cancellationToken,
         Guid? excludePropertyId = null)
     {
-        var n = deedNumber.Trim();
-        if (n.Length == 0) return null;
-        // Synthetic bourse-inquiry placeholders are not real deeds.
-        if (n.StartsWith("INQ-", StringComparison.OrdinalIgnoreCase)) return null;
+        var list = await ListPriorDeedsAsync(
+            deedNumber,
+            excludePoNumber,
+            cancellationToken,
+            excludePropertyId,
+            take: 1);
+        return list.FirstOrDefault();
+    }
 
+    public async Task<IReadOnlyList<PriorDeedRegistrationDto>> ListPriorDeedsAsync(
+        string deedNumber,
+        string? excludePoNumber,
+        CancellationToken cancellationToken,
+        Guid? excludePropertyId = null,
+        int take = 20)
+    {
+        var candidates = DeedNumberRules.MatchCandidates(deedNumber)
+            .Where(c => !c.StartsWith("INQ-", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (candidates.Count == 0) return Array.Empty<PriorDeedRegistrationDto>();
+
+        var limit = Math.Clamp(take, 1, 50);
         var exclude = string.IsNullOrWhiteSpace(excludePoNumber)
             ? null
             : IWorkOrderLoader.NormalizePo(excludePoNumber);
 
-        // Match by DeedNumber regardless of IdentifierType (deed + real-estate-reg
-        // paths both store the deed here). Also match real-estate registration number
-        // so paste-from-prior lookup works either way.
-        var hit = await _db.WorkOrderProperties
+        var probe = await _db.WorkOrderProperties
             .AsNoTracking()
             .Include(p => p.WorkOrder)
             .Include(p => p.Contacts)
             .Where(p =>
                 !p.IsRemoved &&
                 !p.DeedNumber.StartsWith("INQ-") &&
-                (p.DeedNumber == n || p.RealEstateRegNumber == n) &&
+                (candidates.Contains(p.DeedNumber) ||
+                 (p.RealEstateRegNumber != null && candidates.Contains(p.RealEstateRegNumber))) &&
                 (excludePropertyId == null || p.Id != excludePropertyId.Value) &&
                 (exclude == null || p.WorkOrder!.PoNumber != exclude))
             .OrderByDescending(p => p.WorkOrder!.CreatedAtUtc)
-            .FirstOrDefaultAsync(cancellationToken);
+            .Take(200)
+            .ToListAsync(cancellationToken);
 
-        return hit is null || hit.WorkOrder is null
-            ? null
-            : WorkOrderMapper.ToPriorDeedDto(hit, hit.WorkOrder.PoNumber);
+        return probe
+            .Where(p =>
+                DeedNumberRules.EqualsNormalized(p.DeedNumber, deedNumber)
+                || DeedNumberRules.EqualsNormalized(p.RealEstateRegNumber, deedNumber))
+            .Where(p => p.WorkOrder is not null)
+            .GroupBy(p => p.Id)
+            .Select(g => g.First())
+            .OrderByDescending(p => p.WorkOrder!.CreatedAtUtc)
+            .Take(limit)
+            .Select(p => WorkOrderMapper.ToPriorDeedDto(p, p.WorkOrder!.PoNumber))
+            .ToList();
     }
 
     public async Task<IReadOnlyList<PendingBoursePropertyDto>> ListPendingBourseAsync(

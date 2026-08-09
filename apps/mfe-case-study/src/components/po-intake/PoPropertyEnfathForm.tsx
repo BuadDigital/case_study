@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   BOURSE_INQUIRY_IDENTIFIER_STATUS,
   DEED_NUMBER_DIGIT_LENGTH,
@@ -22,10 +22,12 @@ import {
   clearCachedPropertyDoc,
   removeCachedPropertyDoc,
 } from "../../lib/prototype/assignment-doc-attachments";
-import { findPriorDeedFull } from "../../lib/prototype/po-intake-storage";
+import {
+  buildPropertyFromPriorDeed,
+  findPriorDeedFull,
+} from "../../lib/prototype/po-intake-storage";
 import { RegField } from "@platform/app-shared/registration/FormFields";
 import type { FieldErrors } from "@platform/app-shared/registration/registration-utils";
-import type { PriorDeedRegistrationDto } from "@platform/api-client";
 import {
   Badge,
   Card,
@@ -40,54 +42,6 @@ import { PropertyFileUploadField } from "./PropertyFileUploadField";
 import { PoContactEditor } from "./PoContactEditor";
 import { CourtCircuitSelects } from "./CourtCircuitSelects";
 
-/** Fill empty enfath fields from a prior transaction with the same deed. */
-function applyPriorDeedHints(
-  property: PoPropertyIntake,
-  hit: PriorDeedRegistrationDto,
-  onPatch: <K extends keyof PoPropertyIntake>(
-    key: K,
-    value: PoPropertyIntake[K],
-  ) => void,
-): void {
-  const fillStr = (
-    key: keyof PoPropertyIntake,
-    next: string | undefined | null,
-  ) => {
-    const current = property[key];
-    if (typeof current !== "string" || current.trim()) return;
-    const value = next?.trim() ?? "";
-    if (!value) return;
-    onPatch(key, value as never);
-  };
-
-  fillStr("deedDate", hit.deedDate);
-  fillStr("ownerName", hit.ownerName);
-  fillStr("requestNumber", hit.requestNumber);
-  fillStr("assignmentMandateNumber", hit.assignmentMandateNumber);
-  fillStr("assignmentMandateDate", hit.assignmentMandateDate);
-  fillStr("court", hit.court);
-  fillStr("circuit", hit.circuit);
-  fillStr("courtId", hit.courtId);
-  fillStr("circuitId", hit.circuitId);
-  fillStr("planNumber", hit.planNumber);
-  fillStr("plotNumber", hit.plotNumber);
-  fillStr("locationMapUrl", hit.locationMapUrl);
-
-  if (
-    hit.contacts?.length &&
-    property.contacts.every((c) => !c.phone?.trim() && !c.name?.trim())
-  ) {
-    onPatch(
-      "contacts",
-      hit.contacts.map((c) => ({
-        name: c.name ?? "",
-        role: c.role ?? "",
-        phone: c.phone ?? "",
-      })),
-    );
-  }
-}
-
 type Props = {
   property: PoPropertyIntake;
   assignmentType: AssignmentType;
@@ -96,6 +50,11 @@ type Props = {
     key: K,
     value: PoPropertyIntake[K],
   ) => void;
+  /**
+   * Preferred for full prior-deed populate (atomic replace).
+   * Falls back to field-by-field onPatch when omitted.
+   */
+  onReplaceProperty?: (next: PoPropertyIntake) => void;
   poNumber?: string;
   excludePoNumber?: string;
   showStageNote?: boolean;
@@ -110,6 +69,7 @@ export function PoPropertyEnfathForm({
   assignmentType,
   fieldErrors,
   onPatch,
+  onReplaceProperty,
   poNumber,
   excludePoNumber,
   showStageNote = true,
@@ -122,6 +82,12 @@ export function PoPropertyEnfathForm({
   const priorExcludePo = excludePoNumber?.trim() || poNumber?.trim() || undefined;
   const priorExcludePropertyId = property.id?.trim() || undefined;
   const [priorPo, setPriorPo] = useState<string | null>(null);
+  const [priorFilled, setPriorFilled] = useState(false);
+  /** One full auto-fill per propertyId + deed + prior PO (don't fight user edits). */
+  const appliedPriorKeyRef = useRef<string | null>(null);
+  const propertyRef = useRef(property);
+  propertyRef.current = property;
+
   const showAssignmentDecree = requiresAssignmentDecree(assignmentType);
   const showCourt = showsCourtFields(assignmentType);
   const showRequestNumber = requiresRequestNumberField(assignmentType);
@@ -164,6 +130,7 @@ export function PoPropertyEnfathForm({
     // Wait for a full deed number before looking up past POs (exact match).
     if (deed.length < DEED_NUMBER_DIGIT_LENGTH) {
       setPriorPo(null);
+      setPriorFilled(false);
       return;
     }
     let cancelled = false;
@@ -174,10 +141,34 @@ export function PoPropertyEnfathForm({
           const hitPo = hit?.poNumber?.trim() || null;
           if (hitPo && priorExcludePo && hitPo === priorExcludePo) {
             setPriorPo(null);
+            setPriorFilled(false);
             return;
           }
           setPriorPo(hitPo);
-          if (hit) applyPriorDeedHints(property, hit, onPatch);
+          if (!hit || !hitPo) {
+            setPriorFilled(false);
+            return;
+          }
+
+          const applyKey = `${property.id}|${deed}|${hitPo}`;
+          if (appliedPriorKeyRef.current === applyKey) {
+            setPriorFilled(true);
+            return;
+          }
+
+          const next = buildPropertyFromPriorDeed(propertyRef.current, hit);
+          appliedPriorKeyRef.current = applyKey;
+          if (onReplaceProperty) {
+            onReplaceProperty(next);
+          } else {
+            // Fallback: apply every scalable field (attachments already preserved on next).
+            const keys = Object.keys(next) as (keyof PoPropertyIntake)[];
+            for (const key of keys) {
+              if (key === "id") continue;
+              onPatch(key, next[key] as never);
+            }
+          }
+          setPriorFilled(true);
         })
         .catch((err: unknown) => {
           if (cancelled) return;
@@ -186,16 +177,16 @@ export function PoPropertyEnfathForm({
             "error",
           );
           setPriorPo(null);
+          setPriorFilled(false);
         });
     }, 280);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
     };
-    // Intentionally only re-query when the deed / exclusion keys change — not on every
-    // autofilled field, which would re-trigger and fight user edits.
+    // Autofill once per deed identity — not on every field change after user edits.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
-  }, [property.deedNumber, priorExcludePo, priorExcludePropertyId, onPatch, showToast]);
+  }, [property.deedNumber, property.id, priorExcludePo, priorExcludePropertyId, onPatch, onReplaceProperty, showToast]);
 
   const priorPoNotice = property.deedNumber.trim().length >= DEED_NUMBER_DIGIT_LENGTH
     ? priorPo
@@ -239,9 +230,12 @@ export function PoPropertyEnfathForm({
       <>
       {priorPoNotice ? (
         <Note tone="success" className="mb-3">
-          وُجدت <strong>معاملة سابقة</strong> بنفس رقم الصك في أمر العمل «
-          {priorPoNotice}» — تم تعبئة الحقول الفارغة من تلك المعاملة (تاريخ الصك،
-          التكليف، المحكمة، جهات الاتصال إن وُجدت).
+          <strong>صك متكرر</strong> — وُجدت بيانات في أمر العمل «{priorPoNotice}».
+          <span className="mt-1.5 block text-[12.5px] leading-relaxed text-text-2">
+            {priorFilled
+              ? "تم تعبئة بيانات الإنفاذ والبورصة المتاحة كأساس. عدّل ما تغيّر فقط ثم احفظ — النسخة المحفوظة في هذه المعاملة هي المعتمدة؛ الدراسات السابقة تبقى للأرشيف والربط."
+              : "جاري جلب البيانات السابقة…"}
+          </span>
         </Note>
       ) : null}
 

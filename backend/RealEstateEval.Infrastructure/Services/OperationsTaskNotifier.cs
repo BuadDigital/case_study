@@ -10,6 +10,13 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class OperationsTaskNotifier
 {
+    private static readonly string[] StakeholderRoles =
+    [
+        "section-supervisor",
+        // general managers often oversee case study — keep in ops lifecycle loop
+        "general-manager",
+    ];
+
     private readonly OperationsDbContext _ops;
     private readonly ApplicationDbContext _db;
     private readonly INotificationService _notifications;
@@ -48,31 +55,143 @@ public sealed class OperationsTaskNotifier
             cancellationToken);
     }
 
+    /// <summary>
+    /// When the assignee confirms receipt (created → in_progress): creator + supervisors.
+    /// </summary>
+    public async Task NotifyStakeholdersOnReceiptAsync(
+        OperationsTask entity,
+        string? actorName,
+        string? excludeUserId,
+        CancellationToken cancellationToken)
+    {
+        var who = string.IsNullOrWhiteSpace(actorName) ? "المنفّذ" : actorName.Trim();
+        await NotifyStakeholdersAsync(
+            entity,
+            title: "تأكيد استلام المهمة",
+            body: $"أكّد {who} استلام المهمة {entity.DisplayId}: {entity.Title}.",
+            tone: "info",
+            sourceEvent: $"ops-task-receipt:{entity.Id}",
+            excludeUserId,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// When the task is completed: creator + supervisors (and general manager).
+    /// </summary>
     public async Task NotifyCreatorOnCompletedAsync(
         OperationsTask entity,
         string actorUserId,
         string? actorName,
         CancellationToken cancellationToken)
     {
-        var creatorId = entity.CreatedBy.Trim();
-        if (creatorId.Length == 0) return;
-        if (string.Equals(creatorId, actorUserId.Trim(), StringComparison.Ordinal))
-            return;
-
         var who = string.IsNullOrWhiteSpace(actorName) ? "المنفّذ" : actorName.Trim();
-        await _notifications.CreateForUserAsync(
-            creatorId,
-            new CreateUserNotificationRequest
-            {
-                Title = "اكتملت المهمة",
-                Body = $"أكمل {who} المهمة {entity.DisplayId}: {entity.Title}.",
-                Tone = "success",
-                Href = OperationsTaskHref(entity.Id),
-                Category = "workflow",
-                EntityType = "operations-task",
-                EntityId = entity.Id.ToString(),
-                SourceEvent = $"ops-task-done:{entity.Id}:{creatorId}",
-            },
+        await NotifyStakeholdersAsync(
+            entity,
+            title: "اكتملت المهمة",
+            body: $"أكمل {who} المهمة {entity.DisplayId}: {entity.Title}.",
+            tone: "success",
+            sourceEvent: $"ops-task-done:{entity.Id}",
+            excludeUserId: actorUserId,
+            cancellationToken);
+    }
+
+    /// <summary>Task cancelled by manager → notify the assignee.</summary>
+    public async Task NotifyAssigneeOnCancelledAsync(
+        OperationsTask entity,
+        string? actorName,
+        string? excludeUserId,
+        CancellationToken cancellationToken)
+    {
+        var who = string.IsNullOrWhiteSpace(actorName) ? "المسؤول" : actorName.Trim();
+        var reason = string.IsNullOrWhiteSpace(entity.CancelReason)
+            ? ""
+            : $" السبب: {entity.CancelReason.Trim()}";
+        await NotifyAssigneeOnlyAsync(
+            entity,
+            title: "أُلغيت المهمة",
+            body: $"ألغى {who} المهمة {entity.DisplayId}: {entity.Title}.{reason}",
+            tone: "warning",
+            sourceEvent: $"ops-task-cancelled:{entity.Id}",
+            excludeUserId,
+            cancellationToken);
+    }
+
+    /// <summary>Priority and/or due date changed → notify the assignee.</summary>
+    public async Task NotifyAssigneeOnScheduleChangedAsync(
+        OperationsTask entity,
+        bool priorityChanged,
+        bool dueChanged,
+        string? actorName,
+        string? excludeUserId,
+        CancellationToken cancellationToken)
+    {
+        if (!priorityChanged && !dueChanged) return;
+
+        var who = string.IsNullOrWhiteSpace(actorName) ? "المسؤول" : actorName.Trim();
+        var parts = new List<string>();
+        if (priorityChanged)
+            parts.Add($"الأولوية «{entity.Priority.ToArabicLabel()}»");
+        if (dueChanged)
+            parts.Add($"موعد الاستحقاق {OperationsTaskSerialization.FormatDueLabel(entity.DueAtUtc)}");
+
+        await NotifyAssigneeOnlyAsync(
+            entity,
+            title: "تحديث على المهمة",
+            body: $"حدّث {who} المهمة {entity.DisplayId}: {string.Join(" و ", parts)}.",
+            tone: "info",
+            sourceEvent: $"ops-task-schedule:{entity.Id}:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}",
+            excludeUserId,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// New human comment: notify the other party (assignee ↔ creator).
+    /// </summary>
+    public async Task NotifyCounterpartyOnCommentAsync(
+        OperationsTask entity,
+        string commenterSide,
+        string? actorName,
+        string? commentPreview,
+        CancellationToken cancellationToken)
+    {
+        var who = string.IsNullOrWhiteSpace(actorName) ? "المستخدم" : actorName.Trim();
+        var preview = (commentPreview ?? "").Trim();
+        if (preview.Length > 120)
+            preview = preview[..117] + "…";
+        var bodyTail = preview.Length > 0 ? $": {preview}" : ".";
+
+        var side = commenterSide.Trim().ToLowerInvariant();
+        if (side == "assignee")
+        {
+            var creatorId = entity.CreatedBy.Trim();
+            if (creatorId.Length == 0) return;
+            await _notifications.CreateForUserAsync(
+                creatorId,
+                new CreateUserNotificationRequest
+                {
+                    Title = "تحديث على المهمة",
+                    Body = $"علّق {who} على المهمة {entity.DisplayId}{bodyTail}",
+                    Tone = "info",
+                    Href = OperationsTaskHref(entity.Id),
+                    Category = "workflow",
+                    EntityType = "operations-task",
+                    EntityId = entity.Id.ToString(),
+                    SourceEvent =
+                        $"ops-task-comment:{entity.Id}:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}:creator",
+                },
+                cancellationToken);
+            return;
+        }
+
+        // creator / manager → notify assignee
+        await NotifyAssigneeOnlyAsync(
+            entity,
+            title: "تحديث على المهمة",
+            body: $"علّق {who} على المهمة {entity.DisplayId}{bodyTail}",
+            tone: "info",
+            sourceEvent:
+                $"ops-task-comment:{entity.Id}:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}:assignee",
+            excludeUserId: null,
             cancellationToken);
     }
 
@@ -234,6 +353,101 @@ public sealed class OperationsTaskNotifier
 
         var fromDb = await _labels.ResolveAsync(userId, cancellationToken);
         return PersonLabelResolver.LooksLikePersonName(fromDb) ? fromDb : "";
+    }
+
+    private async Task NotifyAssigneeOnlyAsync(
+        OperationsTask entity,
+        string title,
+        string body,
+        string tone,
+        string sourceEvent,
+        string? excludeUserId,
+        CancellationToken cancellationToken)
+    {
+        var userId = await ResolveUserIdForAssigneeAsync(entity.AssigneeId, cancellationToken);
+        if (userId is null) return;
+        var exclude = excludeUserId?.Trim() ?? "";
+        if (exclude.Length > 0
+            && string.Equals(userId, exclude, StringComparison.Ordinal))
+            return;
+
+        await _notifications.CreateForUserAsync(
+            userId,
+            new CreateUserNotificationRequest
+            {
+                Title = title,
+                Body = body,
+                Tone = tone,
+                Href = OperationsTaskHref(entity.Id),
+                Category = "workflow",
+                EntityType = "operations-task",
+                EntityId = entity.Id.ToString(),
+                SourceEvent = sourceEvent,
+            },
+            cancellationToken);
+    }
+
+    private async Task NotifyStakeholdersAsync(
+        OperationsTask entity,
+        string title,
+        string body,
+        string tone,
+        string sourceEvent,
+        string? excludeUserId,
+        CancellationToken cancellationToken)
+    {
+        var userIds = await CollectStakeholderUserIdsAsync(entity, excludeUserId, cancellationToken);
+        if (userIds.Count == 0) return;
+
+        await _notifications.CreateForUsersAsync(
+            userIds,
+            new CreateUserNotificationRequest
+            {
+                Title = title,
+                Body = body,
+                Tone = tone,
+                Href = OperationsTaskHref(entity.Id),
+                Category = "workflow",
+                EntityType = "operations-task",
+                EntityId = entity.Id.ToString(),
+                SourceEvent = sourceEvent,
+            },
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Task creator (typically specialist/supervisor) + active section supervisors / GMs.
+    /// </summary>
+    private async Task<IReadOnlyList<string>> CollectStakeholderUserIdsAsync(
+        OperationsTask entity,
+        string? excludeUserId,
+        CancellationToken cancellationToken)
+    {
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        var creatorId = entity.CreatedBy.Trim();
+        if (creatorId.Length > 0)
+            ids.Add(creatorId);
+
+        foreach (var role in StakeholderRoles)
+        {
+            var roleUsers = await _db.UserProfiles.AsNoTracking()
+                .Where(p =>
+                    p.Status == UserStatus.Active
+                    && p.RoleId == role)
+                .Select(p => p.UserId)
+                .ToListAsync(cancellationToken);
+            foreach (var id in roleUsers)
+            {
+                if (!string.IsNullOrWhiteSpace(id))
+                    ids.Add(id);
+            }
+        }
+
+        var exclude = excludeUserId?.Trim() ?? "";
+        if (exclude.Length > 0)
+            ids.Remove(exclude);
+
+        return ids.ToList();
     }
 
     private async Task<string?> ResolveUserIdForAssigneeAsync(

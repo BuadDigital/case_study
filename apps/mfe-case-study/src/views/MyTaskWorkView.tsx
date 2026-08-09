@@ -159,7 +159,7 @@ export function CaseStudyTaskWork({
         emptyProperty();
       setProperty(prop);
       if (prop.deedNumber.trim()) {
-        void findPriorDeedFull(prop.deedNumber.trim(), task.poNumber).then(
+        void findPriorDeedFull(prop.deedNumber.trim(), task.poNumber, prop.id).then(
           (prior) => setHasPriorSurvey(Boolean(prior)),
         ).catch(() => setHasPriorSurvey(false));
       } else {
@@ -188,6 +188,11 @@ export function CaseStudyTaskWork({
     },
     [],
   );
+
+  const replaceProperty = useCallback((next: PoPropertyIntake) => {
+    setProperty(next);
+    setFieldErrors({});
+  }, []);
 
   const showEngineering = engineeringOfficeAvailable(property, hasPriorSurvey);
   const requiresSurvey = classificationRequiresSurvey(property.classification);
@@ -761,6 +766,7 @@ export function CaseStudyTaskWork({
             assignmentType={assignmentType}
             fieldErrors={fieldErrors}
             onPatch={patchProperty}
+            onReplaceProperty={replaceProperty}
             poNumber={task.poNumber}
             excludePoNumber={task.poNumber}
             fieldsMode={
@@ -787,6 +793,7 @@ export function CaseStudyTaskWork({
               assignmentType={assignmentType}
               fieldErrors={fieldErrors}
               onPatch={patchProperty}
+              onReplaceProperty={replaceProperty}
               poNumber={task.poNumber}
               excludePoNumber={task.poNumber}
               fieldsMode="bourse-inquiry-primary"

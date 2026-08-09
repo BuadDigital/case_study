@@ -157,6 +157,7 @@ export type UpdatePropertyBourseRequest = {
 
 export type PriorDeedRegistrationDto = {
   poNumber: string;
+  propertyId?: string;
   deedNumber?: string;
   identifierType?: string;
   deedDate?: string;
@@ -169,7 +170,10 @@ export type PriorDeedRegistrationDto = {
   courtId?: string;
   circuitId?: string;
   contacts?: PropertyContactDto[];
+  region?: string;
+  regionId?: string;
   city?: string;
+  cityId?: string;
   district?: string;
   classification?: string;
   propertyType?: string;
@@ -192,6 +196,7 @@ export type PriorDeedRegistrationDto = {
   plotNumber?: string;
   locationMapUrl?: string;
   bourseDataCompleted?: boolean;
+  workOrderCreatedAtUtc?: string;
 };
 
 export type PropertyTimelineEventDto = {
@@ -399,9 +404,42 @@ export async function findPriorDeed(
       headers: headers(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403) return parseForbidden(res);
     if (res.status === 404) return { ok: true, data: null };
     if (!res.ok) return { ok: false, kind: "server" };
     return { ok: true, data: (await res.json()) as PriorDeedRegistrationDto };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/** All prior PO registrations for a deed (newest first). */
+export async function listPriorDeeds(
+  config: WorkOrdersApiConfig,
+  deedNumber: string,
+  excludePo?: string,
+  excludePropertyId?: string,
+  take = 20,
+): Promise<ApiOk<PriorDeedRegistrationDto[]> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  const params = new URLSearchParams({
+    deedNumber: deedNumber.trim(),
+    take: String(take),
+  });
+  if (excludePo?.trim()) params.set("excludePo", excludePo.trim());
+  if (excludePropertyId?.trim()) {
+    params.set("excludePropertyId", excludePropertyId.trim());
+  }
+  try {
+    const res = await fetch(
+      `${base}/api/work-orders/deeds/prior/history?${params}`,
+      { headers: headers(config.token) },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403) return parseForbidden(res);
+    if (!res.ok) return { ok: false, kind: "server" };
+    const data = (await res.json()) as PriorDeedRegistrationDto[];
+    return { ok: true, data: Array.isArray(data) ? data : [] };
   } catch {
     return { ok: false, kind: "network" };
   }

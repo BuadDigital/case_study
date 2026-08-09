@@ -94,6 +94,27 @@ public class WorkOrdersController : ControllerBase
         return Ok(hit);
     }
 
+    /// <summary>
+    /// All prior registrations for a deed (newest first), not only the latest.
+    /// </summary>
+    [HttpGet("deeds/prior/history")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public async Task<ActionResult<IReadOnlyList<PriorDeedRegistrationDto>>> ListPriorDeedHistory(
+        [FromQuery] string deedNumber,
+        [FromQuery] string? excludePo,
+        [FromQuery] Guid? excludePropertyId,
+        [FromQuery] int take = 20,
+        CancellationToken cancellationToken = default)
+    {
+        var hits = await _workOrders.ListPriorDeedsAsync(
+            deedNumber,
+            excludePo,
+            cancellationToken,
+            excludePropertyId,
+            take);
+        return Ok(hits);
+    }
+
     [HttpGet("{poNumber}")]
     public async Task<ActionResult<WorkOrderDto>> Get(
         string poNumber,
