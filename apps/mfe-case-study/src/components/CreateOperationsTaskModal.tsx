@@ -141,6 +141,21 @@ function buildLetterRowsForPo(record: PoIntakeRecord): OperationsTaskLetterRowDt
     }));
 }
 
+/** One-deed rows for scope=transaction (must still carry court for court_visit). */
+function buildLetterRowsForDeed(
+  records: PoIntakeRecord[],
+  poNumber: string,
+  deed: string,
+): OperationsTaskLetterRowDto[] {
+  const po = poNumber.trim();
+  const d = deed.trim();
+  if (!po || !d) return [];
+  return buildLetterRowsForDeeds(
+    records.filter((r) => r.poNumber.trim() === po),
+    [d],
+  );
+}
+
 function buildLetterRowsForDeeds(
   records: PoIntakeRecord[],
   selectedDeeds: string[],
@@ -292,9 +307,12 @@ export function CreateOperationsTaskModal({
     if (scope === "multi" && selectedDeeds.length > 0) {
       return buildLetterRowsForDeeds(poOptions, selectedDeeds);
     }
+    if (scope === "transaction" && poNumber.trim() && deed.trim()) {
+      return buildLetterRowsForDeed(poOptions, poNumber, deed);
+    }
     if (!selectedPo) return [];
     return buildLetterRowsForPo(selectedPo);
-  }, [type, scope, selectedPo, selectedDeeds, poOptions]);
+  }, [type, scope, selectedPo, selectedDeeds, poOptions, poNumber, deed]);
 
   useEffect(() => {
     if (!open) return;
@@ -446,6 +464,15 @@ export function CreateOperationsTaskModal({
       }
       poPayload = po;
       deedsPayload = [d];
+      if (type === "court_visit") {
+        letterRows = buildLetterRowsForDeed(poOptions, po, d);
+        if (letterRows.length === 0) {
+          setError(
+            "هذا الصك بلا محكمة مسجّلة — لا يمكن إنشاء صف خطاب التفويض. أكمل بيانات المحكمة في العقار ثم أعد المحاولة.",
+          );
+          return;
+        }
+      }
     } else if (scope === "multi") {
       if (selectedDeeds.length < 2) {
         setError("اختر صكّين فأكثر");

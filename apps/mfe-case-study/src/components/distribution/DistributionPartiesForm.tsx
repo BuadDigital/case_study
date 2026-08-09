@@ -11,13 +11,26 @@ import {
   getValuators,
   type DistributionAssignee,
 } from "../../lib/prototype/distribution-parties";
+import {
+  buildAssigneeOpenLoadMap,
+  openLoadForAssignee,
+  withOpenLoadLabel,
+} from "../../lib/prototype/distribution-load";
 import type { TaskDistributionDraft } from "../../lib/prototype/tasks-storage";
+import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 
-function toOptions(list: DistributionAssignee[]) {
-  return list.map((a) => ({
-    value: a.id,
-    label: a.subtitle ? `${a.name} — ${a.subtitle}` : a.name,
-  }));
+function toOptions(
+  list: DistributionAssignee[],
+  loadByAssignee: Map<string, number>,
+) {
+  return list.map((a) => {
+    const base = a.subtitle ? `${a.name} — ${a.subtitle}` : a.name;
+    const count = openLoadForAssignee(loadByAssignee, a.id);
+    return {
+      value: a.id,
+      label: withOpenLoadLabel(base, count),
+    };
+  });
 }
 
 function PartyBlock({
@@ -80,8 +93,13 @@ export function DistributionPartiesForm({
   readOnly = false,
 }: Props) {
   const { data: staffResult } = useDistributionAssigneesQuery();
+  const { data: workflowTasks = [] } = useWorkflowTasksQuery();
   const staffUsers = staffResult?.users ?? [];
   const loadError = staffResult?.loadError ?? null;
+  const loadByAssignee = useMemo(
+    () => buildAssigneeOpenLoadMap(workflowTasks),
+    [workflowTasks],
+  );
   const fieldInspectors = useMemo(
     () => getFieldInspectors(staffUsers),
     [staffUsers],
@@ -121,7 +139,7 @@ export function DistributionPartiesForm({
           label="الأخصائي"
           required={distribution.caseSpecialist}
           disabled={readOnly || !distribution.caseSpecialist}
-          options={toOptions(caseSpecialists)}
+          options={toOptions(caseSpecialists, loadByAssignee)}
           value={distribution.caseSpecialistId}
           placeholder="اختر أخصائي دراسة الحالة…"
           onChange={(v) => onPatch({ caseSpecialistId: v })}
@@ -146,7 +164,7 @@ export function DistributionPartiesForm({
             label="المعاين الميداني"
             required={distribution.valuationDepartment}
             disabled={readOnly || !distribution.valuationDepartment}
-            options={toOptions(fieldInspectors)}
+            options={toOptions(fieldInspectors, loadByAssignee)}
             value={distribution.inspectorId}
             placeholder="اختر المعاين…"
             onChange={(v) => onPatch({ inspectorId: v })}
@@ -156,7 +174,7 @@ export function DistributionPartiesForm({
             label="المقيم العقاري"
             required={distribution.valuationDepartment}
             disabled={readOnly || !distribution.valuationDepartment}
-            options={toOptions(valuators)}
+            options={toOptions(valuators, loadByAssignee)}
             value={distribution.valuatorId}
             placeholder="اختر المقيم…"
             onChange={(v) => onPatch({ valuatorId: v })}
@@ -183,7 +201,7 @@ export function DistributionPartiesForm({
             label="المكتب"
             required={distribution.engineeringOffice}
             disabled={readOnly || !distribution.engineeringOffice}
-            options={toOptions(engineeringOffices)}
+            options={toOptions(engineeringOffices, loadByAssignee)}
             value={distribution.engineeringOfficeId}
             placeholder="اختر المكتب الهندسي…"
             onChange={(v) => onPatch({ engineeringOfficeId: v })}
