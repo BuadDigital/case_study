@@ -23,10 +23,16 @@ import {
   type DistributionAssignee,
 } from "../../lib/prototype/distribution-parties";
 import {
+  buildAssigneeOpenLoadMap,
+  openLoadForAssignee,
+  withOpenLoadLabel,
+} from "../../lib/prototype/distribution-load";
+import {
   migrateDistribution,
   type TaskDistributionDraft,
   type WorkflowTask,
 } from "../../lib/prototype/tasks-storage";
+import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 
 type RedistributeRoleKey =
   | "caseSpecialist"
@@ -42,11 +48,18 @@ type RoleOption = {
   apply: (id: string) => Partial<TaskDistributionDraft>;
 };
 
-function toOptions(list: { id: string; name: string; subtitle?: string }[]) {
-  return list.map((a) => ({
-    value: a.id,
-    label: a.subtitle ? `${a.name} — ${a.subtitle}` : a.name,
-  }));
+function toOptions(
+  list: { id: string; name: string; subtitle?: string }[],
+  loadByAssignee: Map<string, number>,
+) {
+  return list.map((a) => {
+    const base = a.subtitle ? `${a.name} — ${a.subtitle}` : a.name;
+    const count = openLoadForAssignee(loadByAssignee, a.id);
+    return {
+      value: a.id,
+      label: withOpenLoadLabel(base, count),
+    };
+  });
 }
 
 /**
@@ -68,7 +81,12 @@ export function RedistributePartiesModal({
   ) => void | Promise<void>;
 }) {
   const { data: staffResult } = useDistributionAssigneesQuery();
+  const { data: workflowTasks = [] } = useWorkflowTasksQuery();
   const staffUsers = staffResult?.users ?? [];
+  const loadByAssignee = useMemo(
+    () => buildAssigneeOpenLoadMap(workflowTasks),
+    [workflowTasks],
+  );
 
   const [distribution, setDistribution] = useState<TaskDistributionDraft | null>(
     null,
@@ -216,7 +234,7 @@ export function RedistributePartiesModal({
                   id="redist_person"
                   label="المسؤول"
                   required
-                  options={toOptions(activeRole.people)}
+                  options={toOptions(activeRole.people, loadByAssignee)}
                   value={activeRole.currentId}
                   placeholder={`اختر ${activeRole.label}…`}
                   onChange={(v) => {
