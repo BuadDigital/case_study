@@ -40,5 +40,11 @@ public static class CapabilityPolicyNames
     /// <summary>Physical-key custody and fee data for operations or finance staff.</summary>
     public const string ReadKeyData = "Capability:read-key-data";
 
+    /// <summary>
+    /// Staff pickers for distribution and internal key handoffs —
+    /// case staff (work orders) or ops parties (keys/gov review).
+    /// </summary>
+    public const string ListDistributionAssignees = "Capability:list-distribution-assignees";
+
     public static string For(string capability) => $"Capability:{capability}";
 }

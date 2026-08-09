@@ -40,23 +40,33 @@ public static class OperationsTaskLifecycleRules
         OperationsTask entity,
         OperationsTaskStatus next,
         string actorAssigneeId,
-        string actorRole)
+        string actorRole,
+        string? actorName = null)
     {
         if (entity.IsTerminal)
             return "المهمة في حالة نهائية";
 
         var actor = actorAssigneeId.Trim();
         var isManager = IsManager(actorRole);
+        var isAssignee = actor.Length > 0
+            && string.Equals(entity.AssigneeId, actor, StringComparison.OrdinalIgnoreCase);
+        if (!isAssignee && !string.IsNullOrWhiteSpace(actorName))
+        {
+            isAssignee = string.Equals(
+                (entity.AssigneeName ?? "").Trim(),
+                actorName.Trim(),
+                StringComparison.Ordinal);
+        }
 
         if (next == OperationsTaskStatus.InProgress)
         {
             var confirmingReceipt = entity.Status == OperationsTaskStatus.Created;
             if (confirmingReceipt)
             {
-                if (entity.AssigneeId != actor)
+                if (!isAssignee)
                     return "هذا الإجراء للمنفّذ المكلّف فقط";
             }
-            else if (entity.AssigneeId != actor && !isManager)
+            else if (!isAssignee && !isManager)
             {
                 return "هذا الإجراء للمنفّذ المكلّف فقط";
             }
@@ -64,7 +74,7 @@ public static class OperationsTaskLifecycleRules
 
         if (next == OperationsTaskStatus.Completed)
         {
-            if (entity.AssigneeId != actor && !isManager)
+            if (!isAssignee && !isManager)
                 return "هذا الإجراء للمنفّذ المكلّف فقط";
         }
 

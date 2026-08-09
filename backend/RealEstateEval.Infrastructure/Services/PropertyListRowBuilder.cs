@@ -1,4 +1,5 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 
 namespace RealEstateEval.Infrastructure.Services;
@@ -32,18 +33,29 @@ public static class PropertyListRowBuilder
         return items;
     }
 
-    private static Dictionary<string, string> BuildPriorDeedIndex(IReadOnlyList<WorkOrder> orders)
+    /// <summary>
+    /// Maps normalized deed → PO numbers that contain it.
+    /// Used so a property cannot satisfy «prior survey» by matching itself.
+    /// </summary>
+    private static Dictionary<string, HashSet<string>> BuildPriorDeedIndex(IReadOnlyList<WorkOrder> orders)
     {
-        var priorByDeed = new Dictionary<string, string>(StringComparer.Ordinal);
+        var priorByDeed = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
         foreach (var order in orders)
         {
+            var po = order.PoNumber?.Trim() ?? "";
+            if (po.Length == 0) continue;
             foreach (var prop in order.Properties.Where(p => !p.IsRemoved))
             {
-                var deed = prop.DeedNumber?.Trim() ?? "";
+                var deed = DeedNumberRules.Normalize(prop.DeedNumber);
                 if (deed.Length == 0 || deed.StartsWith("INQ-", StringComparison.OrdinalIgnoreCase))
                     continue;
-                // Index any non-synthetic deed (deed path or reg path that also carries a deed).
-                priorByDeed[deed] = order.PoNumber;
+                if (!priorByDeed.TryGetValue(deed, out var pos))
+                {
+                    pos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    priorByDeed[deed] = pos;
+                }
+
+                pos.Add(po);
             }
         }
 
@@ -53,7 +65,7 @@ public static class PropertyListRowBuilder
     private static PropertyListItemDto BuildItem(
         WorkOrder order,
         WorkOrderProperty prop,
-        Dictionary<string, string> priorByDeed,
+        Dictionary<string, HashSet<string>> priorByDeed,
         IReadOnlySet<string> approvedFailureKeys,
         IReadOnlyDictionary<Guid, IReadOnlyList<WorkflowTask>>? tasksByProperty)
     {
@@ -91,7 +103,7 @@ public static class PropertyListRowBuilder
         var survey = boursePending
             ? "new"
             : surveyFromTasks
-                ?? (PriorSurveyWaived(prop, priorByDeed) ? "done" : "new");
+                ?? (PriorSurveyWaived(prop, order.PoNumber, priorByDeed) ? "done" : "new");
 
         var study = boursePending
             ? "progress"
@@ -188,13 +200,21 @@ public static class PropertyListRowBuilder
         return $"{poNumber}-{suffix}";
     }
 
+    /// <summary>
+    /// Survey waived when classification does not require it, or the same deed
+    /// already exists on a different work order (true prior registration).
+    /// </summary>
     private static bool PriorSurveyWaived(
         WorkOrderProperty prop,
-        Dictionary<string, string> priorByDeed)
+        string currentPoNumber,
+        Dictionary<string, HashSet<string>> priorByDeed)
     {
         if (!ClassificationRequiresSurvey(prop.Classification)) return true;
-        var deed = prop.DeedNumber.Trim();
-        return deed.Length > 0 && priorByDeed.ContainsKey(deed);
+        var deed = DeedNumberRules.Normalize(prop.DeedNumber);
+        if (deed.Length == 0) return false;
+        if (!priorByDeed.TryGetValue(deed, out var pos) || pos.Count == 0) return false;
+        var currentPo = currentPoNumber.Trim();
+        return pos.Any(po => !string.Equals(po, currentPo, StringComparison.OrdinalIgnoreCase));
     }
 
     private static bool ClassificationRequiresSurvey(string classification) =>

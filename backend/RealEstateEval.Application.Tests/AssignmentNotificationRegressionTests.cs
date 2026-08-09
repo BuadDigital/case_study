@@ -95,7 +95,144 @@ public sealed class AssignmentNotificationRegressionTests
     }
 
     [Fact]
-    public async Task ConfirmDistribution_government_review_queues_outbox_with_government_review_workspace_href()
+    public async Task OperationsTask_Receipt_and_Complete_notify_creator_and_section_supervisor()
+    {
+        var bundle = CreateDb();
+        var db = bundle.App;
+        SeedAssigneeProfile(db, "user-gov", "gov-1");
+        SeedRoleProfile(db, "user-specialist", "case-specialist");
+        SeedRoleProfile(db, "user-supervisor", "section-supervisor");
+        await db.SaveChangesAsync();
+        var service = CreateOpsService(bundle);
+
+        var (created, createError) = await service.CreateAsync(
+            new CreateOperationsTaskRequest
+            {
+                Type = "general",
+                Title = "زيارة",
+                Scope = "general",
+                AssigneeId = "gov-1",
+                AssigneeName = "فراس",
+            },
+            "user-specialist",
+            "أخصائي");
+        Assert.Null(createError);
+        Assert.NotNull(created);
+
+        var (started, startError) = await service.PatchAsync(
+            Guid.Parse(created!.Id),
+            new PatchOperationsTaskRequest { Status = "in_progress" },
+            "gov-1",
+            "فراس",
+            "government-reviewer",
+            "user-gov");
+        Assert.Null(startError);
+        Assert.NotNull(started);
+
+        var receiptRows = await db.OutboxMessages.OrderBy(r => r.CreatedAtUtc).ToListAsync();
+        var receipt = Deserialize(receiptRows[^1]);
+        Assert.Equal("تأكيد استلام المهمة", receipt.Title);
+        Assert.Equal($"ops-task-receipt:{created.Id}", receipt.SourceEvent);
+        Assert.Contains("user-specialist", receipt.UserIds);
+        Assert.Contains("user-supervisor", receipt.UserIds);
+        Assert.DoesNotContain("user-gov", receipt.UserIds);
+
+        // complete after receipt
+        var (done, doneError) = await service.PatchAsync(
+            Guid.Parse(created.Id),
+            new PatchOperationsTaskRequest { Status = "completed" },
+            "gov-1",
+            "فراس",
+            "government-reviewer",
+            "user-gov");
+        Assert.Null(doneError);
+        Assert.NotNull(done);
+
+        var complete = Deserialize(
+            (await db.OutboxMessages.OrderBy(r => r.CreatedAtUtc).ToListAsync())[^1]);
+        Assert.Equal("اكتملت المهمة", complete.Title);
+        Assert.Equal($"ops-task-done:{created.Id}", complete.SourceEvent);
+        Assert.Contains("user-specialist", complete.UserIds);
+        Assert.Contains("user-supervisor", complete.UserIds);
+        Assert.DoesNotContain("user-gov", complete.UserIds);
+    }
+
+    [Fact]
+    public async Task OperationsTask_Cancel_priority_comment_notify_counterparties()
+    {
+        var bundle = CreateDb();
+        var db = bundle.App;
+        SeedAssigneeProfile(db, "user-gov", "gov-1");
+        SeedRoleProfile(db, "user-specialist", "case-specialist");
+        await db.SaveChangesAsync();
+        var service = CreateOpsService(bundle);
+
+        var (created, _) = await service.CreateAsync(
+            new CreateOperationsTaskRequest
+            {
+                Type = "general",
+                Title = "مهمة إشعار",
+                Scope = "general",
+                AssigneeId = "gov-1",
+                AssigneeName = "فراس",
+                Priority = "medium",
+            },
+            "user-specialist",
+            "أخصائي");
+        Assert.NotNull(created);
+        var taskId = Guid.Parse(created!.Id);
+
+        // priority change → assignee
+        var (_, prioErr) = await service.PatchAsync(
+            taskId,
+            new PatchOperationsTaskRequest { Priority = "high" },
+            "user-specialist",
+            "أخصائي",
+            "case-specialist",
+            "user-specialist");
+        Assert.Null(prioErr);
+        var prioPayload = Deserialize(
+            (await db.OutboxMessages.OrderBy(r => r.CreatedAtUtc).ToListAsync())[^1]);
+        Assert.Equal("تحديث على المهمة", prioPayload.Title);
+        Assert.Equal(["user-gov"], prioPayload.UserIds);
+        Assert.StartsWith("ops-task-schedule:", prioPayload.SourceEvent);
+
+        // comment from creator → assignee
+        var (_, cmtErr) = await service.AddCommentAsync(
+            taskId,
+            new AddOperationsTaskCommentRequest { Text = "يرجى المتابعة" },
+            "user-specialist",
+            "case-specialist",
+            "أخصائي");
+        Assert.Null(cmtErr);
+        var cmtPayload = Deserialize(
+            (await db.OutboxMessages.OrderBy(r => r.CreatedAtUtc).ToListAsync())[^1]);
+        Assert.Equal("تحديث على المهمة", cmtPayload.Title);
+        Assert.Equal(["user-gov"], cmtPayload.UserIds);
+        Assert.StartsWith("ops-task-comment:", cmtPayload.SourceEvent);
+
+        // cancel → assignee
+        var (_, cancelErr) = await service.PatchAsync(
+            taskId,
+            new PatchOperationsTaskRequest
+            {
+                Status = "cancelled",
+                CancelReason = "لا حاجة",
+            },
+            "user-specialist",
+            "أخصائي",
+            "case-specialist",
+            "user-specialist");
+        Assert.Null(cancelErr);
+        var cancelPayload = Deserialize(
+            (await db.OutboxMessages.OrderBy(r => r.CreatedAtUtc).ToListAsync())[^1]);
+        Assert.Equal("أُلغيت المهمة", cancelPayload.Title);
+        Assert.Equal(["user-gov"], cancelPayload.UserIds);
+        Assert.Equal($"ops-task-cancelled:{created.Id}", cancelPayload.SourceEvent);
+    }
+
+    [Fact]
+    public async Task ConfirmDistribution_government_auditor_flag_is_ignored_and_does_not_spawn_child()
     {
         var bundle = CreateDb();
         var db = bundle.App;
@@ -155,19 +292,10 @@ public sealed class AssignmentNotificationRegressionTests
                 },
             });
 
-        Assert.Null(errors);
-        Assert.NotNull(result);
-        var child = Assert.Single(result!.Children);
-        Assert.Equal(WorkflowTaskKindValues.GovernmentReview, child.Kind);
-
-        var payload = await AssertSingleNotificationRequest(db);
-        Assert.Equal(["user-gov"], payload.UserIds);
-        Assert.Equal("معاملة جديدة بانتظارك", payload.Title);
-        Assert.Equal(NotificationContract.Categories.Workflow, payload.Category);
-        Assert.Equal(NotificationContract.EntityTypes.Task, payload.EntityType);
-        Assert.Equal(child.Id, payload.EntityId);
-        Assert.Equal($"/government-review/{Uri.EscapeDataString(child.Id)}", payload.Href);
-        Assert.Equal($"distribution-assigned:{child.Id}", payload.SourceEvent);
+        Assert.NotNull(errors);
+        Assert.Null(result);
+        Assert.Contains("طرفاً واحداً", errors!["_"]);
+        Assert.Empty(await db.OutboxMessages.ToListAsync());
     }
 
     private static void SeedAssigneeProfile(
@@ -188,6 +316,30 @@ public sealed class AssignmentNotificationRegressionTests
             UserId = userId,
             DistributionAssigneeId = distributionAssigneeId,
             JobTitle = "reviewer",
+            RoleId = "government-reviewer",
+            Status = UserStatus.Active,
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+    }
+
+    private static void SeedRoleProfile(
+        ApplicationDbContext db,
+        string userId,
+        string roleId)
+    {
+        db.Users.Add(new ApplicationUser
+        {
+            Id = userId,
+            UserName = userId,
+            Email = $"{userId}@example.test",
+            NormalizedEmail = $"{userId}@EXAMPLE.TEST",
+            DisplayName = userId,
+        });
+        db.UserProfiles.Add(new UserProfile
+        {
+            UserId = userId,
+            JobTitle = roleId,
+            RoleId = roleId,
             Status = UserStatus.Active,
             CreatedAtUtc = DateTime.UtcNow,
         });

@@ -29,6 +29,12 @@ public interface IWorkOrderService
         string? excludePoNumber,
         CancellationToken cancellationToken,
         Guid? excludePropertyId = null);
+    Task<IReadOnlyList<PriorDeedRegistrationDto>> ListPriorDeedsAsync(
+        string deedNumber,
+        string? excludePoNumber,
+        CancellationToken cancellationToken,
+        Guid? excludePropertyId = null,
+        int take = 20);
     Task<IReadOnlyList<PendingBoursePropertyDto>> ListPendingBourseAsync(
         CancellationToken cancellationToken);
     Task<(WorkOrderDto? Result, Dictionary<string, string>? Errors)> CreateAsync(

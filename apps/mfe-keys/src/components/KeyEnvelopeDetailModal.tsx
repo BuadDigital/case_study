@@ -21,6 +21,7 @@ import {
 import { useDistributionAssigneesQuery } from "@settings/mfe/query/settings-queries";
 import { displayPersonName as sharedDisplayPersonName } from "@platform/app-shared/prototype/person-display-name";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "@case-study/mfe";
+import { getFieldInspectors } from "@case-study/mfe/lib/distribution-assignees";
 import {
   confirmEnvelopeAssignment,
   confirmEnvelopeHandoff,
@@ -63,14 +64,12 @@ import {
   KeysTd,
   KeysTh,
   keysGhostBtnClassName,
+  keysPrimaryBtnClassName,
   keysPanelNoteClassName,
   keysPpHeadClassName,
   keysRemindBtnClassName,
   keysCardClassName,
 } from "./KeysHtmlPrimitives";
-
-/** Exact JobTitle — same allowlist as distribution assignees. */
-const FIELD_INSPECTOR_JOB_TITLE = "معاين ميداني";
 
 /** HTML detail dates show as DD/MM/YYYY (screenshot + sample data). */
 function formatDate(iso: string): string {
@@ -87,11 +86,11 @@ function displayPersonName(value: string | null | undefined): string {
   return sharedDisplayPersonName(value, { fallback: "—" });
 }
 
-function EnvIcon() {
+function EnvIcon({ size = 25 }: { size?: number }) {
   return (
     <svg
-      width="25"
-      height="25"
+      width={size}
+      height={size}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -236,21 +235,11 @@ export function KeyEnvelopeDetailPage({
 }) {
   const { showToast } = useToast();
   const { data: staffResult } = useDistributionAssigneesQuery();
-  const fieldInspectors = useMemo(() => {
-    const users = staffResult?.users ?? [];
-    return users
-      .filter(
-        (u) =>
-          u.status === "Active" &&
-          u.role.trim() === FIELD_INSPECTOR_JOB_TITLE &&
-          (u.id.trim() || u.distributionAssigneeId?.trim()),
-      )
-      .map((u) => ({
-        id: u.id.trim() || u.distributionAssigneeId!.trim(),
-        name: u.name,
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name, "ar"));
-  }, [staffResult?.users]);
+  const staffLoadError = staffResult?.loadError ?? null;
+  const fieldInspectors = useMemo(
+    () => getFieldInspectors(staffResult?.users ?? []),
+    [staffResult?.users],
+  );
 
   const [env, setEnv] = useState<KeyEnvelopeRow | null>(null);
   const [loading, setLoading] = useState(true);
@@ -431,12 +420,12 @@ export function KeyEnvelopeDetailPage({
                 <button
                   type="button"
                   className={cn(
-                    keysGhostBtnClassName,
-                    "w-full justify-center sm:w-auto",
+                    keysPrimaryBtnClassName,
+                    "h-[38px] w-full justify-center px-[13px] sm:w-auto",
                   )}
                   onClick={() => setHandoffOpen(true)}
                 >
-                  <HandoffIcon />
+                  <EnvIcon size={15} />
                   <span>{handoffBtnLabel}</span>
                 </button>
               ) : null}
@@ -592,6 +581,7 @@ export function KeyEnvelopeDetailPage({
         <HandoffModal
           env={env}
           inspectors={fieldInspectors}
+          staffLoadError={staffLoadError}
           busy={busy}
           onClose={() => setHandoffOpen(false)}
           onBusy={setBusy}
@@ -936,7 +926,13 @@ function CustodyPanel({
 function timelineEventColor(eventType: string): string {
   const t = eventType.toLowerCase();
   if (t.includes("handoff") || t.includes("transfer")) return "#378add";
-  if (t.includes("confirm") || t.includes("match")) return "#2f7a4d";
+  if (
+    t.includes("confirm") ||
+    t.includes("match") ||
+    t.includes("fee") ||
+    t.includes("revenue")
+  )
+    return "#2f7a4d";
   if (t.includes("mismatch") || t.includes("missing") || t.includes("evict"))
     return "#d9694f";
   return "#8a8d96";
@@ -1291,6 +1287,7 @@ function MatchResultModal({
 function HandoffModal({
   env,
   inspectors,
+  staffLoadError,
   busy,
   onClose,
   onBusy,
@@ -1298,6 +1295,7 @@ function HandoffModal({
 }: {
   env: KeyEnvelopeRow;
   inspectors: { id: string; name: string }[];
+  staffLoadError: string | null;
   busy: boolean;
   onClose: () => void;
   onBusy: (v: boolean) => void;
@@ -1465,13 +1463,23 @@ function HandoffModal({
 
           {kind === "internal" ? (
             <div>
-              <Label htmlFor="kh-user">مستخدم معرَّف في النظام *</Label>
+              <Label htmlFor="kh-user">المعاين الميداني *</Label>
+              {staffLoadError ? (
+                <div className="mt-1 rounded-[10px] border border-[color-mix(in_srgb,#d9694f_30%,transparent)] bg-[color-mix(in_srgb,#d9694f_12%,transparent)] px-3 py-2.5 text-[12.5px] font-semibold text-[#a32d2d]">
+                  {staffLoadError}
+                </div>
+              ) : null}
               <Select
                 id="kh-user"
                 value={toUserId}
                 onChange={(e) => setToUserId(e.target.value)}
+                disabled={Boolean(staffLoadError) || inspectors.length === 0}
               >
-                <option value="">— اختر المستخدم —</option>
+                <option value="">
+                  {inspectors.length === 0 && !staffLoadError
+                    ? "— لا يوجد معاينون ميدانيون نشطون —"
+                    : "— اختر المعاين —"}
+                </option>
                 {inspectors.map((i) => (
                   <option key={i.id} value={i.id}>
                     {i.name}

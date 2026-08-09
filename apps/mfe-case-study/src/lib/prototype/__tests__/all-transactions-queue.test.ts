@@ -43,10 +43,13 @@ function row(
 }
 
 describe("formatAllTransactionsDeedWithPhase", () => {
-  it("puts the phase in parentheses next to the deed", () => {
+  it("shows the deed only — phase is in the stage column", () => {
     expect(formatAllTransactionsDeedWithPhase("12345", "دراسة الحالة")).toBe(
-      "صك 12345 (دراسة الحالة)",
+      "صك 12345",
     );
+    expect(
+      formatAllTransactionsDeedWithPhase("قيد الدراسة 1", "البيانات الأولية"),
+    ).toBe("صك قيد الدراسة 1");
   });
 });
 
@@ -88,7 +91,7 @@ describe("collapseAllTransactionsToLatestPhase", () => {
     expect(collapsed).toHaveLength(1);
     expect(collapsed[0]!.task.id).toBe("3");
     expect(collapsed[0]!.phaseLabel).toBe("معاينة العقار");
-    expect(collapsed[0]!.deedCell).toBe("صك 12345 (معاينة العقار)");
+    expect(collapsed[0]!.deedCell).toBe("صك 12345");
   });
 
   it("labels fully completed property groups as مكتمل", () => {
@@ -115,7 +118,7 @@ describe("collapseAllTransactionsToLatestPhase", () => {
 
     expect(collapsed).toHaveLength(1);
     expect(collapsed[0]!.phaseLabel).toBe("مكتمل");
-    expect(collapsed[0]!.deedCell).toBe("صك 12345 (مكتمل)");
+    expect(collapsed[0]!.deedCell).toBe("صك 12345");
   });
 
   it("does not collapse different properties", () => {

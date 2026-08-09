@@ -108,7 +108,6 @@ import {
 import { ReassignOperationsTaskModal } from "../components/tasks/ReassignOperationsTaskModal";
 import {
   opsAttachBtn,
-  opsBackLink,
   opsBulk,
   opsBulkClear,
   opsBtnGhost,
@@ -998,24 +997,6 @@ function PlusIcon() {
   );
 }
 
-function BackChevron() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M19 12H5M12 19l-7-7 7-7" />
-    </svg>
-  );
-}
-
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
@@ -1127,11 +1108,12 @@ function TaskStepper({ status }: { status: string }) {
     );
   }
   const idx = taskStepperIndex(status);
+  const allDone = status === "completed";
   return (
     <div className={opsStepFlow}>
       {TASK_STEPPER_STEPS.map((step, i) => {
-        const done = idx != null && i < idx;
-        const current = idx != null && i === idx;
+        const done = allDone || (idx != null && i < idx);
+        const current = !allDone && idx != null && i === idx;
         return (
           <div key={step.id} className="contents">
             <div className={opsStep}>
@@ -1491,7 +1473,7 @@ export function OperationsTasksView() {
   const prefillDeed = searchParams.get("deed")?.trim() || undefined;
   const { showToast } = useToast();
 
-  const { role, viewerEmail } = usePrototype();
+  const { role, viewerEmail, viewerDisplayName } = usePrototype();
   const { data: staffResult } = useStaffUsersQuery();
   const { data: distResult } = useDistributionAssigneesQuery();
   const staffUsers = useMemo(() => {
@@ -2130,7 +2112,15 @@ export function OperationsTasksView() {
           onClick: () => setDetailId(task.id),
         },
       ];
-      const rowIsAssignee = task.assigneeId === reviewerAccount?.assigneeId;
+      const rowIsAssignee = (() => {
+        const taskAid = task.assigneeId?.trim() ?? "";
+        const myAid = reviewerAccount?.assigneeId?.trim() ?? "";
+        if (myAid && taskAid && myAid === taskAid) return true;
+        const myName = (reviewerAccount?.name ?? "").trim();
+        const taskName = task.assigneeName?.trim() ?? "";
+        if (myName && taskName && myName === taskName) return true;
+        return false;
+      })();
       if (task.status === "created" && rowIsAssignee) {
         items.push({
           id: "start",
@@ -2286,8 +2276,18 @@ export function OperationsTasksView() {
     });
   }, [visibleTasks, now, rowMenu, selectedIds]);
 
-  const isAssignee =
-    Boolean(detail) && detail?.assigneeId === reviewerAccount?.assigneeId;
+  const isAssignee = useMemo(() => {
+    if (!detail) return false;
+    // Executor queue is assignee-scoped — any open task row is theirs.
+    if (useIndependentQueue) return true;
+    const taskAid = detail.assigneeId?.trim() ?? "";
+    const myAid = reviewerAccount?.assigneeId?.trim() ?? "";
+    if (myAid && taskAid && myAid === taskAid) return true;
+    const myName = (reviewerAccount?.name ?? viewerDisplayName ?? "").trim();
+    const taskName = detail.assigneeName?.trim() ?? "";
+    if (myName && taskName && myName === taskName) return true;
+    return false;
+  }, [detail, reviewerAccount, viewerDisplayName, useIndependentQueue]);
 
   if (!isFetched && isFetching) {
     return <PanelSkeleton className="p-4" />;
@@ -2307,15 +2307,6 @@ export function OperationsTasksView() {
 
     return (
       <PageShell variant="canvas" className="gap-0 p-4 sm:p-6">
-        <button
-          type="button"
-          className={opsBackLink}
-          onClick={() => setDetailId(null)}
-        >
-          <BackChevron />
-          <span>المهام</span>
-        </button>
-
         {error ? <Note tone="danger">{error}</Note> : null}
 
         <div className={opsPpHead}>
@@ -2417,6 +2408,29 @@ export function OperationsTasksView() {
           <div className={tasksDescClassName("plain")}>{detail.description}</div>
         ) : null}
 
+        {detail.status === "created" && isAssignee ? (
+          <div className="mt-4 flex flex-col gap-2.5 rounded-[13px] border border-gold bg-gold-soft px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-[13px] font-bold text-heading">
+                بانتظار تأكيد الاستلام
+              </div>
+              <p className="m-0 mt-0.5 text-[12px] text-text-2">
+                أنت المنفّذ على هذه المهمة — أكّد الاستلام للانتقال إلى «قيد التنفيذ».
+              </p>
+            </div>
+            <button
+              type="button"
+              className={cn(opsBtnPrimary, "shrink-0")}
+              disabled={busy}
+              aria-busy={busy || undefined}
+              onClick={() => void runStatus(detail.id, "in_progress")}
+            >
+              {busy ? <Spinner /> : null}
+              <span>{busy ? "جاري التأكيد…" : "✓ تأكيد الاستلام"}</span>
+            </button>
+          </div>
+        ) : null}
+
         {isActiveOperationsTask(detail) ? (
           <div className={opsRemindCard}>
             <div className="flex items-center gap-3">
@@ -2470,12 +2484,28 @@ export function OperationsTasksView() {
                   </div>
                 </div>
               </div>
-              <span className="text-xs font-bold text-text-2">
-                الرقم المرجعي:{" "}
-                <span dir="ltr" className="text-gold-d">
-                  {detail.reference || "—"}
+              <div className="flex flex-wrap items-center gap-2.5">
+                <span className="text-xs font-bold text-text-2">
+                  الرقم المرجعي:{" "}
+                  <span dir="ltr" className="text-gold-d">
+                    {detail.reference || "—"}
+                  </span>
                 </span>
-              </span>
+                {detail.letterRows.length > 0 ? (
+                  <button
+                    type="button"
+                    className={cn(opsBtnGhost, "min-h-9 px-3.5 py-2 text-[12.5px]")}
+                    onClick={() =>
+                      printOperationsTaskDelegationLetter(
+                        detail,
+                        agentInfoFromStaff(reviewerStaff),
+                      )
+                    }
+                  >
+                    طباعة خطاب التفويض
+                  </button>
+                ) : null}
+              </div>
             </div>
             <div className="px-[18px] py-4">
               <LetterTable rows={detail.letterRows} />
@@ -2555,44 +2585,6 @@ export function OperationsTasksView() {
               <span>{busy ? "جاري الاستئناف…" : "استئناف المهمة"}</span>
             </button>
           ) : null}
-          {detail.type === "court_visit" && detail.letterRows.length > 0 ? (
-            <button
-              type="button"
-              className={opsBtnGhost}
-              onClick={() =>
-                printOperationsTaskDelegationLetter(
-                  detail,
-                  agentInfoFromStaff(reviewerStaff),
-                )
-              }
-            >
-              طباعة خطاب التفويض
-            </button>
-          ) : null}
-          {detail.type === "court_visit" &&
-          detail.courtVisitResult?.kind === "received" &&
-          detail.status === "completed" &&
-          !detail.linkedEnvelopeId ? (
-            <div className="mt-3.5 flex w-full basis-full flex-col gap-3 rounded-[13px] border border-gold bg-gold-soft px-3.5 py-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:px-[18px]">
-              <span className="text-[13px] font-bold text-heading">
-                استُلم ظرف مفاتيح في هذه الزيارة ولم يُسجَّل بعد — سجّله مربوطاً
-                بالمهمة.
-              </span>
-              <button
-                type="button"
-                className={cn(opsBtnPrimary, "sm:ms-auto")}
-                onClick={() => openKeysRegisterFromTask(detail)}
-              >
-                تسجيل الظرف الآن
-              </button>
-            </div>
-          ) : detail.type === "court_visit" &&
-            detail.linkedEnvelopeId &&
-            detail.status === "completed" ? (
-            <Note tone="success" className="mt-3.5 text-[12.5px]">
-              تم تسجيل الظرف مرتبطاً بهذه المهمة.
-            </Note>
-          ) : null}
           {canCreate && isActiveOperationsTask(detail) ? (
             <button
               type="button"
@@ -2612,6 +2604,25 @@ export function OperationsTasksView() {
             </button>
           ) : null}
         </div>
+
+        {detail.type === "court_visit" &&
+        detail.courtVisitResult?.kind === "received" &&
+        detail.status === "completed" &&
+        !detail.linkedEnvelopeId ? (
+          <div className="mt-4 flex w-full flex-col gap-3 rounded-[13px] border border-gold bg-gold-soft px-4 py-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:px-[18px]">
+            <span className="min-w-0 flex-1 text-[13px] font-bold leading-snug text-heading">
+              استُلم ظرف مفاتيح في هذه الزيارة ولم يُسجَّل بعد — سجّله مربوطاً
+              بالمهمة.
+            </span>
+            <button
+              type="button"
+              className={cn(opsBtnPrimary, "shrink-0 sm:ms-auto")}
+              onClick={() => openKeysRegisterFromTask(detail)}
+            >
+              تسجيل الظرف الآن
+            </button>
+          </div>
+        ) : null}
 
         <CommentThread
           task={detail}

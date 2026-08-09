@@ -72,6 +72,7 @@ export {
   deleteWorkOrder,
   deleteWorkOrderProperty,
   findPriorDeed,
+  listPriorDeeds,
   getWorkOrder,
   getPropertyTimeline,
   listPendingBourseProperties,

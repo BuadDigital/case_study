@@ -113,8 +113,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
 
         if (!distribution.ValuationDepartment &&
             !distribution.EngineeringOffice &&
-            !distribution.CaseSpecialist &&
-            !distribution.GovernmentAuditor)
+            !distribution.CaseSpecialist)
         {
             return (null, new Dictionary<string, string>
             {
@@ -130,45 +129,11 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
             });
         }
 
-        if (distribution.GovernmentAuditor)
-        {
-            var property = await _db.WorkOrderProperties.AsNoTracking()
-                .FirstOrDefaultAsync(p => p.Id == parent.PropertyId.Value, cancellationToken);
-            var govBlock = DocumentaryWorkflowRules.GovernmentReviewAssignmentBlockReason(
-                property?.DeedNumber ?? request.DeedNumber,
-                property?.RequestNumber,
-                property?.City,
-                property?.District,
-                property?.Circuit,
-                parent.PoNumber,
-                property?.AssignmentMandateNumber,
-                property?.AssignmentMandateDate);
-            if (govBlock is not null)
-            {
-                return (null, new Dictionary<string, string> { ["_"] = govBlock });
-            }
-        }
-
         var now = DateTime.UtcNow;
         var deed = request.DeedNumber.Trim();
         var children = new List<WorkflowTask>();
 
         var names = request.AssigneeNames ?? new Dictionary<string, string>();
-
-        if (distribution.GovernmentAuditor)
-        {
-            children.Add(WorkflowTaskPhaseRules.SpawnChild(
-                parent,
-                WorkflowTaskKind.GovernmentReview,
-                "government-reviewer",
-                WorkflowTaskPhaseRules.ResolveName(
-                    names,
-                    WorkflowTaskKind.GovernmentReview,
-                    "مراجع حكومي"),
-                distribution.GovernmentAuditorId,
-                deed,
-                now));
-        }
 
         if (distribution.ValuationDepartment)
         {
@@ -348,11 +313,10 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
             .Where(t => t.ParentTaskId == parent.Id)
             .ToListAsync(cancellationToken);
 
+        // لا يشمل المراجع الحكومي — يُسند عبر مهام العمليات وليس إعادة توزيع الأطراف.
         var mappings =
             new (bool Enabled, WorkflowTaskKind Kind, string Role, string AssigneeId, string Fallback)[]
         {
-            (distribution.GovernmentAuditor, WorkflowTaskKind.GovernmentReview, "government-reviewer",
-                distribution.GovernmentAuditorId, "مراجع حكومي"),
             (distribution.ValuationDepartment, WorkflowTaskKind.FieldInspection, "field-inspector",
                 distribution.InspectorId, "معاين ميداني"),
             (distribution.ValuationDepartment, WorkflowTaskKind.PropertyAppraisal, "real-estate-appraiser",

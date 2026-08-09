@@ -184,6 +184,7 @@ public static class WorkOrderMapper
         return new PriorDeedRegistrationDto
         {
             PoNumber = poNumber,
+            PropertyId = p.Id,
             DeedNumber = p.DeedNumber,
             IdentifierType = PropertyIdentifierTypeLabels.ToApiValue(p.IdentifierType),
             DeedDate = p.DeedDate,
@@ -204,7 +205,10 @@ public static class WorkOrderMapper
                     Phone = c.Phone,
                 })
                 .ToList(),
+            Region = p.Region,
+            RegionId = p.RegionId,
             City = p.City,
+            CityId = p.CityId,
             District = p.District,
             Classification = p.Classification,
             PropertyType = p.PropertyType,
@@ -227,6 +231,7 @@ public static class WorkOrderMapper
             PlotNumber = p.PlotNumber,
             LocationMapUrl = p.LocationMapUrl,
             BourseDataCompleted = p.BourseDataCompleted,
+            WorkOrderCreatedAtUtc = p.WorkOrder?.CreatedAtUtc.ToString("O"),
         };
     }
 }

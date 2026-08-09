@@ -202,6 +202,8 @@ public class WorkOrderListItemDto
 public class PriorDeedRegistrationDto
 {
     public string PoNumber { get; set; } = "";
+    /// <summary>Source property id (for deep links on prior studies).</summary>
+    public Guid PropertyId { get; set; }
     public string DeedNumber { get; set; } = "";
     public string IdentifierType { get; set; } = "deed";
     public string? DeedDate { get; set; }
@@ -214,7 +216,10 @@ public class PriorDeedRegistrationDto
     public Guid? CourtId { get; set; }
     public Guid? CircuitId { get; set; }
     public List<PropertyContactDto> Contacts { get; set; } = [];
+    public string? Region { get; set; }
+    public Guid? RegionId { get; set; }
     public string? City { get; set; }
+    public Guid? CityId { get; set; }
     public string? District { get; set; }
     public string? Classification { get; set; }
     public string? PropertyType { get; set; }
@@ -237,6 +242,8 @@ public class PriorDeedRegistrationDto
     public string? PlotNumber { get; set; }
     public string? LocationMapUrl { get; set; }
     public bool BourseDataCompleted { get; set; }
+    /// <summary>Work-order creation timestamp (UTC ISO) for prior-study ordering.</summary>
+    public string? WorkOrderCreatedAtUtc { get; set; }
 }
 
 public class UpdateLocationMapUrlRequest

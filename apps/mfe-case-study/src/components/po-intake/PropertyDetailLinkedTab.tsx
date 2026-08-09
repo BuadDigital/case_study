@@ -18,7 +18,7 @@ import {
 } from "../../lib/prototype/po-intake-data";
 import {
   findPriorDeedFull,
-  getPoRecord,
+  listPriorDeedsFull,
 } from "../../lib/prototype/po-intake-storage";
 import { loadCaseStudyFormDraft } from "../../lib/prototype/case-study-form-storage";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
@@ -30,6 +30,7 @@ import {
 } from "../../lib/prototype/operations-task-display";
 import { canManageOperationsTasks } from "../../lib/prototype/operations-task-roles";
 import { isActiveOperationsTask } from "../../lib/prototype/operations-tasks-storage";
+import { deedsMatch, normalizeDeedNumber } from "../../lib/prototype/deed-number";
 
 type LinkedSamePo = {
   kind: "same-po";
@@ -47,6 +48,8 @@ type LinkedDeclared = {
   kind: "declared";
   deedNumber: string;
   notes?: string;
+  resolvedPrior?: PriorDeedRegistrationDto | null;
+  resolvedPropertyId?: string;
 };
 
 function parseDeclaredDeeds(raw: string): string[] {
@@ -58,6 +61,18 @@ function parseDeclaredDeeds(raw: string): string[] {
         .filter(Boolean),
     ),
   ];
+}
+
+function priorPropertyId(prior: PriorDeedRegistrationDto): string | undefined {
+  const id = prior.propertyId?.trim();
+  return id || undefined;
+}
+
+function priorHref(item: LinkedPrior): string {
+  const id = item.propertyId || priorPropertyId(item.prior);
+  return id
+    ? poPropertyPath(item.prior.poNumber, id)
+    : poPropertiesPath(item.prior.poNumber);
 }
 
 export function PropertyDetailLinkedTab({
@@ -82,12 +97,18 @@ export function PropertyDetailLinkedTab({
         if (t.scope === "work_order" || t.scope === "multi") return true;
         if (t.scope === "transaction") {
           return t.deeds.some(
-            (d) => d === deedDisplay || d === deedNumber || d.includes(deedNumber),
+            (d) =>
+              deedsMatch(d, deedDisplay) ||
+              deedsMatch(d, deedNumber) ||
+              (deedNumber && d.includes(deedNumber)),
           );
         }
       }
       return t.deeds.some(
-        (d) => d === deedDisplay || d === deedNumber || (deedNumber && d.includes(deedNumber)),
+        (d) =>
+          deedsMatch(d, deedDisplay) ||
+          deedsMatch(d, deedNumber) ||
+          (deedNumber && d.includes(deedNumber)),
       );
     });
   }, [opsTasks, poNumber, deedDisplay, deedNumber]);
@@ -97,7 +118,7 @@ export function PropertyDetailLinkedTab({
   const samePoLinks = useMemo<LinkedSamePo[]>(
     () =>
       record.properties
-        .filter((p) => p.id !== property.id)
+        .filter((p) => p.id !== property.id && !p.isRemoved)
         .map((p) => ({
           kind: "same-po" as const,
           property: p,
@@ -106,20 +127,31 @@ export function PropertyDetailLinkedTab({
     [record.properties, property.id],
   );
 
-  const [prior, setPrior] = useState<LinkedPrior | null>(null);
+  const [priors, setPriors] = useState<LinkedPrior[]>([]);
   const [declared, setDeclared] = useState<LinkedDeclared[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lookupError, setLookupError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       setLoading(true);
+      setLookupError(null);
       try {
-        const [priorHit, draft] = await Promise.all([
+        const [history, draft] = await Promise.all([
           deedNumber
-            ? findPriorDeedFull(deedNumber, poNumber)
-            : Promise.resolve(null),
+            ? listPriorDeedsFull(deedNumber, poNumber, property.id).catch(
+                (err: unknown) => {
+                  // Fallback to single latest when history endpoint is unavailable.
+                  return findPriorDeedFull(
+                    deedNumber,
+                    poNumber,
+                    property.id,
+                  ).then((one) => (one ? [one] : []));
+                },
+              )
+            : Promise.resolve([] as PriorDeedRegistrationDto[]),
           caseStudyTask
             ? loadCaseStudyFormDraft(caseStudyTask.id)
             : Promise.resolve(null),
@@ -127,38 +159,67 @@ export function PropertyDetailLinkedTab({
 
         if (cancelled) return;
 
-        if (priorHit?.poNumber?.trim()) {
-          const priorPo = priorHit.poNumber.trim();
-          let propertyId: string | undefined;
-          try {
-            const priorRecord = await getPoRecord(priorPo);
-            const match = priorRecord?.properties.find(
-              (p) => p.deedNumber.trim() === deedNumber,
-            );
-            propertyId = match?.id;
-          } catch {
-            propertyId = undefined;
-          }
-          if (!cancelled) {
-            setPrior({ kind: "prior-deed", prior: priorHit, propertyId });
-          }
-        } else if (!cancelled) {
-          setPrior(null);
-        }
+        const priorRows: LinkedPrior[] = (history ?? []).map((hit) => ({
+          kind: "prior-deed" as const,
+          prior: hit,
+          propertyId: priorPropertyId(hit),
+        }));
+        setPriors(priorRows);
 
         const linkedYes = draft?.infathLinkedAssets === "yes";
         const declaredDeeds = linkedYes
           ? parseDeclaredDeeds(draft?.infathLinkedDeedNumbers ?? "")
           : [];
-        if (!cancelled) {
-          setDeclared(
-            declaredDeeds
-              .filter((d) => d !== deedNumber)
-              .map((d) => ({
+        const declaredRows: LinkedDeclared[] = await Promise.all(
+          declaredDeeds
+            .filter((d) => !deedsMatch(d, deedNumber))
+            .map(async (d) => {
+              let resolvedPrior: PriorDeedRegistrationDto | null = null;
+              try {
+                resolvedPrior = await findPriorDeedFull(d, poNumber);
+              } catch {
+                resolvedPrior = null;
+              }
+              // Also resolve siblings on the same PO.
+              const samePo =
+                resolvedPrior == null
+                  ? record.properties.find(
+                      (p) =>
+                        !p.isRemoved &&
+                        p.id !== property.id &&
+                        deedsMatch(p.deedNumber, d),
+                    )
+                  : null;
+              return {
                 kind: "declared" as const,
                 deedNumber: d,
                 notes: draft?.infathLinkedAssetsNotes?.trim() || undefined,
-              })),
+                resolvedPrior:
+                  resolvedPrior ??
+                  (samePo
+                    ? ({
+                        poNumber,
+                        propertyId: samePo.id,
+                        deedNumber: samePo.deedNumber,
+                        ownerName: samePo.ownerName,
+                        city: samePo.city,
+                        district: samePo.district,
+                      } as PriorDeedRegistrationDto)
+                    : null),
+                resolvedPropertyId:
+                  priorPropertyId(resolvedPrior ?? ({} as PriorDeedRegistrationDto)) ||
+                  samePo?.id,
+              };
+            }),
+        );
+        if (!cancelled) setDeclared(declaredRows);
+      } catch (err) {
+        if (!cancelled) {
+          setPriors([]);
+          setLookupError(
+            err instanceof Error
+              ? err.message
+              : "تعذّر تحميل الارتباطات",
           );
         }
       } finally {
@@ -170,10 +231,15 @@ export function PropertyDetailLinkedTab({
     return () => {
       cancelled = true;
     };
-  }, [deedNumber, poNumber, caseStudyTask]);
+  }, [deedNumber, poNumber, caseStudyTask, property.id, record.properties]);
 
-  const hasAny =
-    samePoLinks.length > 0 || Boolean(prior) || declared.length > 0;
+  const linkCount =
+    samePoLinks.length +
+    priors.length +
+    declared.length +
+    propertyOpsTasks.length;
+
+  const hasAny = linkCount > 0;
 
   if (loading && !hasAny) {
     return (
@@ -188,15 +254,19 @@ export function PropertyDetailLinkedTab({
     return (
       <>
         <SectionHeader>العقارات المرتبطة</SectionHeader>
-        <EmptyState
-          icon="🔗"
-          title="لا توجد عقارات مرتبطة"
-          sub="يظهر هنا: عقارات أخرى على نفس أمر العمل، أو نفس الصك في أمر عمل سابق، أو أصول مرتبطة صرّح بها الأخصائي في دراسة الحالة."
-        />
-        {record.expectedPropertyCount > record.properties.length ? (
+        {lookupError ? (
+          <InfoBox icon="⚠">{lookupError}</InfoBox>
+        ) : (
+          <EmptyState
+            icon="🔗"
+            title="لا توجد عقارات مرتبطة"
+            sub="يظهر هنا: عقارات أخرى على نفس أمر العمل، أو نفس الصك في أوامر عمل سابقة، أو أصول مرتبطة صرّح بها الأخصائي في دراسة الحالة، والمهام التشغيلية."
+          />
+        )}
+        {record.expectedPropertyCount > record.properties.filter((p) => !p.isRemoved).length ? (
           <InfoBox icon="ℹ">
             أمر العمل يتوقع {record.expectedPropertyCount} عقاراً — المسجّل
-            حالياً {record.properties.length} فقط.
+            حالياً {record.properties.filter((p) => !p.isRemoved).length} فقط.
           </InfoBox>
         ) : null}
       </>
@@ -205,15 +275,27 @@ export function PropertyDetailLinkedTab({
 
   return (
     <>
-      <SectionHeader>العقارات المرتبطة</SectionHeader>
+      <SectionHeader>
+        العقارات المرتبطة
+        <span className="ms-2 text-[11px] font-semibold text-text-3">
+          ({linkCount})
+        </span>
+      </SectionHeader>
+      {lookupError ? <InfoBox icon="⚠">{lookupError}</InfoBox> : null}
       <InfoBox icon="ℹ">
-        الارتباطات تشمل عقارات نفس أمر العمل، وتسجيلات سابقة لنفس الصك، والأصول
-        المرتبطة المصرّح بها في دراسة الحالة، والمهام التشغيلية المرتبطة.
+        الارتباطات تشمل عقارات نفس أمر العمل، وتسجيلات سابقة لنفس الصك (كل
+        الدراسات)، والأصول المرتبطة المصرّح بها في دراسة الحالة، والمهام
+        التشغيلية المرتبطة.
       </InfoBox>
 
       <div className="mt-3">
         <h4 className="mb-2 flex items-center justify-between gap-2 text-[12px] font-semibold text-text">
-          <span>المهام التشغيلية</span>
+          <span>
+            المهام التشغيلية
+            {propertyOpsTasks.length > 0
+              ? ` (${propertyOpsTasks.length})`
+              : ""}
+          </span>
           {canCreateOps ? (
             <Link
               href={createHref}
@@ -255,7 +337,7 @@ export function PropertyDetailLinkedTab({
       {samePoLinks.length > 0 ? (
         <div className="mt-3">
           <h4 className="mb-2 text-[12px] font-semibold text-text">
-            على نفس أمر العمل
+            على نفس أمر العمل ({samePoLinks.length})
           </h4>
           <ul className="m-0 flex list-none flex-col gap-2 p-0">
             {samePoLinks.map(({ property: linked, index }) => (
@@ -280,56 +362,103 @@ export function PropertyDetailLinkedTab({
         </div>
       ) : null}
 
-      {prior ? (
+      {priors.length > 0 ? (
         <div className="mt-4">
           <h4 className="mb-2 text-[12px] font-semibold text-text">
-            نفس الصك في أمر عمل سابق
+            نفس الصك في أوامر عمل سابقة ({priors.length})
           </h4>
-          <Link
-            href={
-              prior.propertyId
-                ? poPropertyPath(prior.prior.poNumber, prior.propertyId)
-                : poPropertiesPath(prior.prior.poNumber)
-            }
-            className="flex flex-col gap-1 rounded-[var(--radius-DEFAULT)] border border-border bg-surface-2 px-3.5 py-3 no-underline transition-colors hover:border-primary-light hover:bg-info-bg"
-          >
-            <span className="flex items-center gap-2">
-              <span className="text-[13px] font-semibold text-primary-light">
-                {prior.prior.poNumber}
-              </span>
-              <DetailBadge tone="amber">تسجيل سابق</DetailBadge>
-            </span>
-            <span className="text-[11px] text-text-3">
-              {[prior.prior.ownerName, prior.prior.city, prior.prior.district]
-                .filter(Boolean)
-                .join(" · ") || "—"}
-            </span>
-          </Link>
+          <ul className="m-0 flex list-none flex-col gap-2 p-0">
+            {priors.map((item) => {
+              const key = `${item.prior.poNumber}-${priorPropertyId(item.prior) ?? item.prior.deedNumber ?? ""}`;
+              return (
+                <li key={key} className="m-0">
+                  <Link
+                    href={priorHref(item)}
+                    className="flex flex-col gap-1 rounded-[var(--radius-DEFAULT)] border border-border bg-surface-2 px-3.5 py-3 no-underline transition-colors hover:border-primary-light hover:bg-info-bg"
+                  >
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className="text-[13px] font-semibold text-primary-light">
+                        {item.prior.poNumber}
+                      </span>
+                      <DetailBadge tone="amber">دراسة سابقة</DetailBadge>
+                    </span>
+                    <span className="text-[11px] text-text-3">
+                      {[
+                        item.prior.ownerName,
+                        item.prior.region,
+                        item.prior.city,
+                        item.prior.district,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ") || "—"}
+                      {item.prior.workOrderCreatedAtUtc
+                        ? ` · ${new Date(item.prior.workOrderCreatedAtUtc).toLocaleDateString("ar-SA")}`
+                        : ""}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       ) : null}
 
       {declared.length > 0 ? (
         <div className="mt-4">
           <h4 className="mb-2 text-[12px] font-semibold text-text">
-            أصول مرتبطة (من دراسة الحالة)
+            أصول مرتبطة (من دراسة الحالة) ({declared.length})
           </h4>
           <ul className="m-0 flex list-none flex-col gap-2 p-0">
-            {declared.map((item) => (
-              <li
-                key={item.deedNumber}
-                className="rounded-[var(--radius-DEFAULT)] border border-border bg-surface-2 px-3.5 py-3"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-[13px] font-semibold text-text">
-                    صك {item.deedNumber}
-                  </span>
-                  <DetailBadge tone="gray">مصرّح به</DetailBadge>
-                </div>
-                {item.notes ? (
-                  <p className="mt-1 mb-0 text-[11px] text-text-3">{item.notes}</p>
-                ) : null}
-              </li>
-            ))}
+            {declared.map((item) => {
+              const href =
+                item.resolvedPrior &&
+                (item.resolvedPropertyId || priorPropertyId(item.resolvedPrior))
+                  ? poPropertyPath(
+                      item.resolvedPrior.poNumber,
+                      item.resolvedPropertyId ||
+                        priorPropertyId(item.resolvedPrior)!,
+                    )
+                  : item.resolvedPrior
+                    ? poPropertiesPath(item.resolvedPrior.poNumber)
+                    : null;
+              const body = (
+                <>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[13px] font-semibold text-text">
+                      صك {item.deedNumber}
+                    </span>
+                    <DetailBadge tone="gray">مصرّح به</DetailBadge>
+                    {item.resolvedPrior ? (
+                      <DetailBadge tone="teal">
+                        {item.resolvedPrior.poNumber}
+                      </DetailBadge>
+                    ) : (
+                      <DetailBadge tone="amber">غير موجود في السجل</DetailBadge>
+                    )}
+                  </div>
+                  {item.notes ? (
+                    <p className="mt-1 mb-0 text-[11px] text-text-3">{item.notes}</p>
+                  ) : null}
+                </>
+              );
+              return (
+                <li
+                  key={`${normalizeDeedNumber(item.deedNumber)}-${item.deedNumber}`}
+                  className="rounded-[var(--radius-DEFAULT)] border border-border bg-surface-2 px-3.5 py-3"
+                >
+                  {href ? (
+                    <Link
+                      href={href}
+                      className="flex flex-col gap-1 no-underline text-inherit"
+                    >
+                      {body}
+                    </Link>
+                  ) : (
+                    body
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : null}

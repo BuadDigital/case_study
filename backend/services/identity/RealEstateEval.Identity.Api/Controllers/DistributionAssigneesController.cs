@@ -8,7 +8,7 @@ namespace RealEstateEval.Identity.Api.Controllers;
 
 [ApiController]
 [Route("api/users/distribution-assignees")]
-[Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+[Authorize(Policy = CapabilityPolicyNames.ListDistributionAssignees)]
 public class DistributionAssigneesController : ControllerBase
 {
     private readonly IUserRegistrationService _users;
