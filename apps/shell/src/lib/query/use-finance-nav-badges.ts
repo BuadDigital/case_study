@@ -10,9 +10,12 @@ import {
 } from "@platform/app-shared/prototype/party-billing-statements-api";
 import type { FinanceNavArea } from "@platform/app-shared/prototype/financial-nav";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { buildFinanceMyTasks } from "@financial/mfe";
+import { bucketRevenueRows } from "@financial/mfe/lib/finance-revenue-stages";
 
 /**
  * عدّادات السايدبار (قابل للإجراء فقط) — مهامي · الإيرادات · التكاليف.
+ * مهامي = طول قائمة مهامي الفعلية (buildFinanceMyTasks) وليس مجموع تقريبي.
  */
 export function useFinanceNavBadges(): Partial<Record<FinanceNavArea, number>> {
   const { hasCapability } = usePrototype();
@@ -56,17 +59,14 @@ export function useFinanceNavBadges(): Partial<Record<FinanceNavArea, number>> {
     const ready = readyQuery.data ?? [];
     const statements = statementsQuery.data ?? [];
 
-    // مراحل الإيراد القابلة للإجراء (نفس منطق bucket مُبسَّط)
-    let revenue = 0;
-    for (const row of tracking) {
-      const work = (row.workStatus ?? "").toLowerCase();
-      if (work === "cancelled" || work === "excluded") continue;
-      if (work !== "done") continue;
-      const inv = (row.invoiceStatus ?? "").toLowerCase();
-      if (inv === "collected") continue;
-      revenue += 1;
-    }
+    const buckets = bucketRevenueRows(tracking);
+    const revenue =
+      buckets.eligible.length +
+      buckets.billing_assistant.length +
+      buckets.awaiting_collection.length +
+      buckets.stopped.length;
 
+    // تكاليف: مستحقات + مسيرات/أوامر تحتاج عمل (مسودة، صادر، فاتورة واردة)
     const openStmts = statements.filter(
       (s) =>
         s.status === "draft" ||
@@ -75,8 +75,11 @@ export function useFinanceNavBadges(): Partial<Record<FinanceNavArea, number>> {
     ).length;
     const costs = ready.length + openStmts;
 
-    // مهامي ≈ مجموع الإجراءات (تقريبي؛ يُحسب أدق داخل MFE)
-    const myTasks = revenue + costs;
+    const myTasks = buildFinanceMyTasks({
+      tracking,
+      readyLines: ready,
+      statements,
+    }).length;
 
     return {
       tasks: myTasks > 0 ? myTasks : undefined,

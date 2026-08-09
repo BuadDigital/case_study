@@ -85,10 +85,13 @@ const POST_LOGIN_LANDING: Record<string, { path: string; title: string }> = {
   [RELEASE_USERS.cdo]: { path: "/dashboard", title: "لوحة التحكم" },
   [RELEASE_USERS.caseSpecialist]: { path: "/po", title: "أوامر العمل" },
   [RELEASE_USERS.fieldInspector]: {
-    path: "/favorites",
-    title: "المفضلة",
+    path: "/operations-tasks",
+    title: "المهام",
   },
-  [RELEASE_USERS.appraiser]: { path: "/po", title: "أوامر العمل" },
+  [RELEASE_USERS.appraiser]: {
+    path: "/operations-tasks",
+    title: "المهام",
+  },
   [RELEASE_USERS.governmentReviewer]: {
     path: "/operations-tasks",
     title: "المهام",
@@ -254,8 +257,13 @@ export const ROLE_MODULE_PAGES: Record<string, string[]> = {
     "system-screen-catalog",
   ],
   [RELEASE_USERS.governmentReviewer]: [
+    "government-review",
     "operations-tasks",
     "keys",
+    "po",
+    "favorites",
+    "party-fees",
+    "failures",
     "system-screen-catalog",
   ],
   [RELEASE_USERS.engineeringOffice]: [

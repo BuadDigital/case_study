@@ -95,7 +95,7 @@ public sealed class AssignmentNotificationRegressionTests
     }
 
     [Fact]
-    public async Task ConfirmDistribution_government_review_queues_outbox_with_operations_tasks_href()
+    public async Task ConfirmDistribution_government_review_queues_outbox_with_government_review_workspace_href()
     {
         var bundle = CreateDb();
         var db = bundle.App;
@@ -166,7 +166,7 @@ public sealed class AssignmentNotificationRegressionTests
         Assert.Equal(NotificationContract.Categories.Workflow, payload.Category);
         Assert.Equal(NotificationContract.EntityTypes.Task, payload.EntityType);
         Assert.Equal(child.Id, payload.EntityId);
-        Assert.Equal("/operations-tasks", payload.Href);
+        Assert.Equal($"/government-review/{Uri.EscapeDataString(child.Id)}", payload.Href);
         Assert.Equal($"distribution-assigned:{child.Id}", payload.SourceEvent);
     }
 

@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { getAuthSession } from "@platform/auth-client";
 import { prefetchPartySubmissionsForTasks, partySubmissionTaskIdsKey } from "@platform/app-shared/prototype/party-submission-api";
+import { loadPartyBillingStatements } from "@platform/app-shared/prototype/party-billing-statements-api";
+import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import type { PageId, RoleId } from "@platform/types";
 import {
@@ -100,6 +103,26 @@ export function useActiveTransactionPageSituation(
     },
   );
 
+  const engFeesStatementsEnabled =
+    isFeesPage && role === "engineering-office" && Boolean(feesAssigneeId);
+  const { data: engFeeStatements = [], isFetched: engFeeStatementsFetched } =
+    useQuery({
+      queryKey: [
+        ...prototypeKeys.all,
+        "party-billing",
+        "statements",
+        feesAssigneeId ?? "none",
+        "issued+",
+        "eng-kpi",
+      ],
+      queryFn: () =>
+        loadPartyBillingStatements({
+          assigneeId: feesAssigneeId,
+          issuedOrLaterOnly: true,
+        }),
+      enabled: engFeesStatementsEnabled,
+    });
+
   const { data: tasks, isFetched: tasksFetched } = useWorkflowTasksQuery();
   const { data: poRecords = [], isFetched: poRecordsFetched } =
     usePoRecordsQuery();
@@ -170,7 +193,8 @@ export function useActiveTransactionPageSituation(
   // (no assigneeId) — otherwise every card stays "—" forever.
   const feesReadyForSituation =
     isFeesPage
-      ? feesFetched
+      ? feesFetched &&
+        (!engFeesStatementsEnabled || engFeeStatementsFetched)
       : isSurveyPage
         ? !feesQueryEnabled || feesFetched
         : true;
@@ -187,9 +211,14 @@ export function useActiveTransactionPageSituation(
     if (!pageId || !cards) return null;
 
     if (isFeesPage) {
+      const closedStatementsPaidSar = engFeeStatements
+        .filter((s) => s.status === "closed")
+        .reduce((sum, s) => sum + (Number(s.totalNetSar) || 0), 0);
       const values = ready
         ? role === "engineering-office"
-          ? computeEngineeringFeesSituation(feesSummary?.rows ?? [])
+          ? computeEngineeringFeesSituation(feesSummary?.rows ?? [], {
+              closedStatementsPaidSar,
+            })
           : computeFeesPageSituation(feesSummary?.rows ?? [])
         : Object.fromEntries(cards.map((card) => [card.key, undefined]));
       return { cards, values, ready };
@@ -248,6 +277,7 @@ export function useActiveTransactionPageSituation(
     isSurveyPage,
     ready,
     feesSummary,
+    engFeeStatements,
     role,
     tasks,
     poRecords,

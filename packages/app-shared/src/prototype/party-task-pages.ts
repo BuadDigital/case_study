@@ -22,6 +22,7 @@ export type PartyTaskPageDef = {
 };
 
 const PARTY_TASK_PAGES_MAP = {
+  /** Official queue under المعاملات النشطة (government-reviewer). */
   "government-review": {
     pageId: "government-review",
     kind: "government-review",
@@ -168,11 +169,10 @@ export function partyTaskPageDefForKind(
 
 /**
  * Sidebar — المعاملات النشطة for distributed party roles.
- * Legacy government-review + property-inspection lists live under الشاشات اليتيمة (CDO only).
+ * Legacy property-inspection list stays under الشاشات اليتيمة (CDO only).
  */
 export const PARTY_ACTIVE_TRANSACTIONS_NAV = PARTY_TASK_PAGE_IDS.filter(
-  (pageId) =>
-    pageId !== "government-review" && pageId !== "property-inspection",
+  (pageId) => pageId !== "property-inspection",
 ).map((pageId) => {
   const def = PARTY_TASK_PAGES[pageId];
   return {

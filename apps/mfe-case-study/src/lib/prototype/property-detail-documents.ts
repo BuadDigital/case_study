@@ -11,11 +11,34 @@ import {
 } from "./assignment-doc-attachments";
 import type { PoPropertyIntake } from "./po-intake-data";
 import {
+  INSPECTOR_FEATURE_FIELDS,
   listServiceAmenityPhotoSlots,
   type InspectorWorkspaceDraft,
 } from "./inspector-workspace-data";
 import { getInspectorPhotoDataUrl } from "./inspector-photo-upload";
 import { loadInspectorWorkspace } from "./inspector-workspace-storage";
+
+const FEATURE_FIELD_LABEL_BY_KEY = Object.fromEntries(
+  INSPECTOR_FEATURE_FIELDS.map((field) => [field.key, field.label]),
+) as Record<string, string>;
+
+const COMPONENT_PHOTO_LABEL_BY_KEY: Record<string, string> = {
+  showroom: "صورة المعرض",
+  well: "صورة البئر",
+};
+
+/** Arabic label for inspector feature photo keys (never show camelCase keys in UI). */
+export function inspectorFeaturePhotoLabel(key: string): string {
+  const known = FEATURE_FIELD_LABEL_BY_KEY[key]?.trim();
+  if (known) return known;
+  return key.trim() || "حقل";
+}
+
+export function inspectorComponentPhotoLabel(key: string): string {
+  const known = COMPONENT_PHOTO_LABEL_BY_KEY[key]?.trim();
+  if (known) return known;
+  return key.trim() || "صورة مكوّن";
+}
 
 export type PropertyDetailDocumentEntry = {
   id: string;
@@ -285,7 +308,7 @@ export function collectFieldInspectionDocumentsFromSubmission(
     const photoRef = `feature:${key}`;
     pushEntry(docs, {
       id: `inspection-feature-${key}`,
-      name: `صورة توثيقية — ${key}`,
+      name: `صورة توثيقية — ${inspectorFeaturePhotoLabel(key)}`,
       fileName: attachment.fileName,
       source,
       kind: fileKind(attachment.fileName, attachment.mimeType),
@@ -300,7 +323,7 @@ export function collectFieldInspectionDocumentsFromSubmission(
     const photoRef = `component:${key}`;
     pushEntry(docs, {
       id: `inspection-component-${key}`,
-      name: key === "showroom" ? "صورة المعرض" : "صورة البئر",
+      name: inspectorComponentPhotoLabel(key),
       fileName: attachment.fileName,
       source,
       kind: fileKind(attachment.fileName, attachment.mimeType),

@@ -20,7 +20,7 @@ export const SCREEN_CATALOG_PAGE_NAMES: Partial<Record<PageId, string>> = {
   "valuation-requests": "طلبات التقييم — لوحة عامة",
   financial: "المالية والفوترة",
   "property-inspection": "معاينة العقار — شاشة يتيمة",
-  "government-review": "المراجعة الحكومية — شاشة يتيمة",
+  "government-review": "المراجعة الحكومية — مهام المراجع الحكومي",
   "property-appraisal": "تقييم العقار — قائمة المهام",
   "operations-tasks": "المهام التشغيلية — السجل والتذكير",
   users: "المستخدمون",

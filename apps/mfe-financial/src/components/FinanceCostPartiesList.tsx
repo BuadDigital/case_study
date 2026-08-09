@@ -77,7 +77,11 @@ function PayeeChip({ party }: { party: FinanceCostParty }) {
 export function FinanceCostPartiesList({
   onSelectParty,
 }: {
-  onSelectParty: (assigneeId: string) => void;
+  /** preferredSection: dues إن وُجدت بنود جاهزة، وإلا statements إن وُجدت مسيرات مفتوحة */
+  onSelectParty: (
+    assigneeId: string,
+    preferredSection?: "dues" | "statements",
+  ) => void;
 }) {
   const [q, setQ] = useState("");
   const { data: staffResult } = useStaffUsersQuery();
@@ -187,11 +191,27 @@ export function FinanceCostPartiesList({
                 className={cn(finRow, grid, finRowClickable)}
                 role="button"
                 tabIndex={0}
-                onClick={() => onSelectParty(p.assigneeId)}
+                onClick={() =>
+                  onSelectParty(
+                    p.assigneeId,
+                    p.pendingLines > 0
+                      ? "dues"
+                      : p.openStatements > 0
+                        ? "statements"
+                        : "dues",
+                  )
+                }
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    onSelectParty(p.assigneeId);
+                    onSelectParty(
+                      p.assigneeId,
+                      p.pendingLines > 0
+                        ? "dues"
+                        : p.openStatements > 0
+                          ? "statements"
+                          : "dues",
+                    );
                   }
                 }}
               >
@@ -226,7 +246,12 @@ export function FinanceCostPartiesList({
                   {p.pendingLines > 0 ? (
                     <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-[#8a5e14]">
                       <span className="h-[7px] w-[7px] rounded-full bg-[#d9a441]" />
-                      {p.pendingLines} بند
+                      {p.pendingLines} بند جاهز
+                    </span>
+                  ) : p.openStatements > 0 ? (
+                    <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-[#1f3a5f]">
+                      <span className="h-[7px] w-[7px] rounded-full bg-[#102B4E]" />
+                      {p.openStatements} مسير/أمر
                     </span>
                   ) : (
                     <span className="text-[11.5px] text-text-3">مسوّى</span>

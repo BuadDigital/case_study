@@ -209,6 +209,7 @@ export function finStatusFor(status: string): string {
     case "invoice_received":
     case "deferred":
     case "warning":
+    case "draft":
       return finStatusGold;
     case "individual":
       return finStatusTeal;

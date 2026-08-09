@@ -47,6 +47,8 @@ export type FinanceMyTask = {
   href: string;
   /** فتح الإجراء / فتح الحساب */
   openLabel: string;
+  /** ربط بمسير/أمر صرف عند فتح منبثق من مهامي */
+  statementId?: string | null;
 };
 
 function daysSince(iso: string | null | undefined): number | null {
@@ -263,43 +265,29 @@ export function buildCostMyTasks(input: {
         ageNote: formatDateNote(s.createdAtUtc),
         href: baseHref,
         openLabel: "فتح الإجراء",
+        statementId: s.id,
       });
     } else if (s.status === "invoice_received") {
+      // بعد إقرار المطابقة: يخرج من مهامي — توثيق الصرف من التكاليف فقط.
       if (s.vendorInvoiceMatched) {
-        tasks.push({
-          id: `cost-close-matched-${s.id}`,
-          kind: "cost_close_statement",
-          domain: "costs",
-          title: "توثيق الصرف ورفع إيصال التحويل",
-          reference: baseRef,
-          subject: payee,
-          amountSar: amount,
-          requirement: "سند صرف + مرجع تحويل + إيصال",
-          movesTo: "مدفوع",
-          ageDays: daysSince(s.vendorInvoiceMatchedAtUtc ?? s.vendorInvoiceSubmittedAtUtc),
-          ageNote: formatDateNote(
-            s.vendorInvoiceMatchedAtUtc ?? s.vendorInvoiceSubmittedAtUtc,
-          ),
-          href: baseHref,
-          openLabel: "فتح الإجراء",
-        });
-      } else {
-        tasks.push({
-          id: `cost-match-${s.id}`,
-          kind: "cost_match_invoice",
-          domain: "costs",
-          title: "مطابقة فاتورة المورّد وقيدها",
-          reference: baseRef,
-          subject: payee,
-          amountSar: amount,
-          requirement: `مراجعة فاتورة ${s.vendorInvoiceNumber ?? "—"} (مقفلة على المسير)`,
-          movesTo: "أمر صرف",
-          ageDays: daysSince(s.vendorInvoiceSubmittedAtUtc ?? s.issuedAtUtc),
-          ageNote: formatDateNote(s.vendorInvoiceSubmittedAtUtc ?? s.issuedAtUtc),
-          href: baseHref,
-          openLabel: "فتح الإجراء",
-        });
+        continue;
       }
+      tasks.push({
+        id: `cost-match-${s.id}`,
+        kind: "cost_match_invoice",
+        domain: "costs",
+        title: "مطابقة فاتورة المورّد وقيدها",
+        reference: baseRef,
+        subject: payee,
+        amountSar: amount,
+        requirement: `مراجعة فاتورة ${s.vendorInvoiceNumber ?? "—"} (مقفلة على المسير)`,
+        movesTo: "التكاليف · توثيق الصرف",
+        ageDays: daysSince(s.vendorInvoiceSubmittedAtUtc ?? s.issuedAtUtc),
+        ageNote: formatDateNote(s.vendorInvoiceSubmittedAtUtc ?? s.issuedAtUtc),
+        href: baseHref,
+        openLabel: "فتح الإجراء",
+        statementId: s.id,
+      });
     } else if (s.status === "issued" && s.payeeType === "individual") {
       // فرد: لا فاتورة — أمر صرف مباشر (مرجع منطق 4.2)
       tasks.push({
@@ -316,6 +304,7 @@ export function buildCostMyTasks(input: {
         ageNote: formatDateNote(s.issuedAtUtc ?? s.createdAtUtc),
         href: baseHref,
         openLabel: "فتح الإجراء",
+        statementId: s.id,
       });
     }
     // issued + vendor: بانتظار المكتب — ليس إجراء مالية (بوابة المكتب / مرجع §5)

@@ -25,7 +25,7 @@ export function pagesFromPermissions(
   if (!dashboardAllowed) {
     merged.delete("dashboard");
   }
-  // الشاشات اليتيمة (مثل مكاتب الرفع والمراجعة الحكومية القديمة) — للمسؤول فقط
+  // الشاشات اليتيمة (مثل مكاتب الرفع / معاينة قديمة) — للمسؤول فقط
   if (role !== "cdo") {
     for (const pageId of ORPHAN_SCREENS_PAGE_IDS) {
       merged.delete(pageId);
@@ -34,10 +34,6 @@ export function pagesFromPermissions(
   // «جميع المعاملات» — للمسؤول (CDO) فقط
   if (role !== "cdo") {
     merged.delete("all-transactions");
-  }
-  // المراجع الحكومي يعمل من المهام التشغيلية — لا يُدفع لقائمة المراجعة الحكومية القديمة
-  if (role === "government-reviewer") {
-    merged.delete("government-review");
   }
 
   if (merged.size === 0) merged.add(defaultLandingPage([]));

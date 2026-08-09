@@ -89,7 +89,7 @@ export function FinanceWorkspace({
           section={section}
           onSectionChange={setSection}
           focusStatementId={focusStatement}
-          onFocusStatement={(id) =>
+          onFocusStatement={(id, partyId) =>
             replaceParams({
               area: "costs",
               section: id
@@ -98,18 +98,33 @@ export function FinanceWorkspace({
                   : "statements"
                 : section,
               statement: id,
-              party: focusParty,
+              party: partyId?.trim() || focusParty,
             })
           }
           focusPartyId={focusParty}
-          onFocusParty={(id) =>
+          onFocusParty={(id, preferredSection) =>
             replaceParams({
               area: "costs",
-              section: id ? "dues" : "parties",
+              section: id
+                ? (preferredSection ?? "dues")
+                : "parties",
               party: id,
               statement: null,
             })
           }
+          onEnsureParty={(partyId) => {
+            const next = partyId.trim();
+            if (!next || focusParty === next) return;
+            replaceParams({
+              area: "costs",
+              section:
+                section === "parties" || !section
+                  ? "statements"
+                  : section,
+              party: next,
+              statement: focusStatement,
+            });
+          }}
           summary={summary}
           summaryReady={ready}
           duesCount={counts.duesReady}

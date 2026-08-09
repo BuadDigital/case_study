@@ -100,7 +100,7 @@ export function fieldInspectionWorkspacePath(
     : activeInspectionWorkspacePath(taskId);
 }
 
-/** Full-page workspace for legacy party government-review tasks (CDO / in-flight). */
+/** Full-page workspace for distributed party government-review tasks. */
 export function governmentReviewWorkspacePath(taskId: string): string {
   return `/government-review/${encodeURIComponent(taskId)}`;
 }
@@ -159,9 +159,7 @@ export function partyTaskWorkspacePath(task: WorkflowTask): string | undefined {
     case "property-appraisal":
       return propertyAppraisalWorkspacePath(task.id);
     case "government-review":
-      // Reviewer/CDO hub is operations-tasks; party form remains at
-      // governmentReviewWorkspacePath for GovernmentReviewView only.
-      return operationsTasksPath();
+      return governmentReviewWorkspacePath(task.id);
     default:
       return undefined;
   }

@@ -64,6 +64,7 @@ import { resolveSlaTimerRatio } from "../lib/prototype/my-task-row";
 import {
   canManageOperationsTasks,
   canRemindOperationsTasks,
+  operationsTasksUseAssigneeScope,
 } from "../lib/prototype/operations-task-roles";
 import { agentInfoFromStaff } from "../lib/prototype/internal-delegation-letters";
 import {
@@ -71,6 +72,7 @@ import {
   getGovernmentAuditors,
   getValuators,
   partyAccountForRole,
+  partyAccountForViewer,
   type DistributionAssignee,
 } from "../lib/prototype/distribution-parties";
 import {
@@ -1489,7 +1491,7 @@ export function OperationsTasksView() {
   const prefillDeed = searchParams.get("deed")?.trim() || undefined;
   const { showToast } = useToast();
 
-  const { role } = usePrototype();
+  const { role, viewerEmail } = usePrototype();
   const { data: staffResult } = useStaffUsersQuery();
   const { data: distResult } = useDistributionAssigneesQuery();
   const staffUsers = useMemo(() => {
@@ -1506,16 +1508,22 @@ export function OperationsTasksView() {
 
   const canCreate = canManageOperationsTasks(role);
   const canRemind = canRemindOperationsTasks(role);
+  const useIndependentQueue = operationsTasksUseAssigneeScope(role);
 
-  const reviewerAccount = useMemo(
-    () => partyAccountForRole(role, staffUsers),
-    [role, staffUsers],
+  /** Viewer account for executor queues (assignee-scoped), fallback to role prototype seed. */
+  const partyAccount = useMemo(
+    () =>
+      partyAccountForViewer(role, viewerEmail, staffUsers) ??
+      partyAccountForRole(role, staffUsers),
+    [role, viewerEmail, staffUsers],
   );
 
-  const assigneeScopeId =
-    role === "government-reviewer"
-      ? reviewerAccount?.assigneeId?.trim() || undefined
-      : undefined;
+  /** Keep local name used by court/credit UI that expects government-reviewer account. */
+  const reviewerAccount = partyAccount;
+
+  const assigneeScopeId = useIndependentQueue
+    ? partyAccount?.assigneeId?.trim() || undefined
+    : undefined;
 
   const { data: tasks = [], isFetched, refetch, isFetching } = useOperationsTasksQuery({
     live: true,
@@ -3120,7 +3128,11 @@ export function OperationsTasksView() {
         <div className="px-3 pb-3 lg:hidden max-lg:px-0">
           <ActiveQueueMobileCards
             items={mobileCardItems}
-            emptyMessage="لا توجد مهام مطابقة."
+            emptyMessage={
+              useIndependentQueue
+                ? "لا توجد مهام مسندة إليك."
+                : "لا توجد مهام مطابقة."
+            }
           />
         </div>
         <TasksSectionNote>{TASKS_LIST_FOOTER}</TasksSectionNote>

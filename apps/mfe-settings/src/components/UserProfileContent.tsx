@@ -394,10 +394,6 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
 
       {tab === "eng_statements" && showEngStatements ? (
         <section className="space-y-3">
-          <p className="m-0 rounded-[10px] border border-dashed border-border-md bg-surface-2 px-[15px] py-[11px] text-[12.5px] leading-[1.7] text-text-3">
-            مسيرات محوّلة إلى مكتبكم — ارفعوا فاتورة مطابقة لكل مسير بانتظار
-            الفاتورة. القيمة مقفلة على المسير ولا تُدخل يدوياً.
-          </p>
           <PartyOfficeBillingStatementsPanel
             assigneeId={user.distributionAssigneeId || undefined}
             issuedOrLaterOnly

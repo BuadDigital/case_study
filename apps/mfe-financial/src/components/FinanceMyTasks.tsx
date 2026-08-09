@@ -1,20 +1,24 @@
 "use client";
 
-import { useMemo, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { loadEnfazTracking } from "@platform/app-shared/prototype/enfaz-billing-api";
 import {
   loadPartyBillingReadyLines,
   loadPartyBillingStatements,
 } from "@platform/app-shared/prototype/party-billing-statements-api";
+import type { PartyBillingStatementDto } from "@platform/api-client";
 import { cn } from "@platform/design-system";
 import {
   buildFinanceMyTasks,
   buildFinanceMyTasksKpis,
   type FinanceMyTask,
 } from "../lib/finance-my-tasks";
+import { buildFinanceHref } from "../lib/finance-nav";
+import { FinanceDisbursementCloseModal } from "./FinanceDisbursementCloseModal";
+import { FinanceVendorInvoiceMatchModal } from "./FinanceVendorInvoiceMatchModal";
 
 function fmtSar(n: number) {
   return n.toLocaleString("en-US", {
@@ -98,7 +102,16 @@ function AgeBlock({
 const gridCols =
   "min-w-[980px] grid-cols-[minmax(200px,1.7fr)_minmax(118px,1fr)_minmax(100px,0.85fr)_minmax(160px,1.25fr)_minmax(120px,1fr)_88px_minmax(110px,0.9fr)]";
 
-function TaskRow({ task }: { task: FinanceMyTask }) {
+function TaskRow({
+  task,
+  onOpen,
+}: {
+  task: FinanceMyTask;
+  onOpen: (task: FinanceMyTask) => void;
+}) {
+  const opensModal =
+    task.kind === "cost_match_invoice" || task.kind === "cost_close_statement";
+
   return (
     <div
       className={cn(
@@ -106,19 +119,14 @@ function TaskRow({ task }: { task: FinanceMyTask }) {
         gridCols,
       )}
     >
-      {/* الإجراء المطلوب */}
       <div className="flex min-w-0 flex-col items-start justify-center gap-1.5 px-4 py-3.5 text-start">
         <DomainChip domain={task.domain} />
         <span className="text-[12.5px] font-bold leading-snug text-[#102B4E]">
           {task.title}
         </span>
       </div>
-      {/* المرجع */}
       <div className="flex min-w-0 flex-col items-center justify-center gap-0.5 px-3 py-3.5 text-center">
-        <span
-          className="text-[13px] font-bold text-[#8c7857]"
-          dir="ltr"
-        >
+        <span className="text-[13px] font-bold text-[#8c7857]" dir="ltr">
           {task.reference}
         </span>
         {task.subject && task.subject !== task.reference ? (
@@ -130,7 +138,6 @@ function TaskRow({ task }: { task: FinanceMyTask }) {
           </span>
         ) : null}
       </div>
-      {/* المبلغ */}
       <div className="flex items-center justify-center px-3 py-3.5">
         <span
           className="text-[14px] font-extrabold tabular-nums text-[#102B4E]"
@@ -139,39 +146,56 @@ function TaskRow({ task }: { task: FinanceMyTask }) {
           {fmtSar(task.amountSar)}
         </span>
       </div>
-      {/* ما يلزم */}
       <div className="flex items-center justify-center px-3 py-3.5 text-center">
         <span className="text-[11.5px] leading-[1.45] text-[#73767f]">
           {task.requirement}
         </span>
       </div>
-      {/* ينتقل إلى */}
       <div className="flex items-center justify-center px-3 py-3.5 text-center">
         <span className="text-[12px] font-semibold text-[#3a3f4d]">
           {task.movesTo}
         </span>
       </div>
-      {/* العمر */}
       <div className="flex items-center justify-center px-2 py-3.5">
         <AgeBlock days={task.ageDays} note={task.ageNote} />
       </div>
-      {/* انتقال */}
       <div className="flex items-center justify-center px-3 py-3.5">
-        <Link
-          href={task.href}
-          className="inline-flex items-center gap-1 text-[12px] font-bold text-[#3a3f4d] no-underline transition-colors hover:text-[#102B4E]"
-        >
-          {task.openLabel}
-          <span className="text-[14px] leading-none" aria-hidden>
-            ‹
-          </span>
-        </Link>
+        {opensModal ? (
+          <button
+            type="button"
+            className="inline-flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-[12px] font-bold text-[#3a3f4d] transition-colors hover:text-[#102B4E]"
+            onClick={() => onOpen(task)}
+          >
+            {task.openLabel}
+            <span className="text-[14px] leading-none" aria-hidden>
+              ›
+            </span>
+          </button>
+        ) : (
+          <Link
+            href={task.href}
+            className="inline-flex items-center gap-1 text-[12px] font-bold text-[#3a3f4d] no-underline transition-colors hover:text-[#102B4E]"
+          >
+            {task.openLabel}
+            <span className="text-[14px] leading-none" aria-hidden>
+              ›
+            </span>
+          </Link>
+        )}
       </div>
     </div>
   );
 }
 
 export function FinanceMyTasks() {
+  const queryClient = useQueryClient();
+  const [matchStatementId, setMatchStatementId] = useState<string | null>(
+    null,
+  );
+  const [closeStatementId, setCloseStatementId] = useState<string | null>(
+    null,
+  );
+
   const trackingQuery = useQuery({
     queryKey: [...prototypeKeys.all, "enfaz-billing", "tracking", "my-tasks"],
     queryFn: loadEnfazTracking,
@@ -193,21 +217,76 @@ export function FinanceMyTasks() {
     readyQuery.isPending ||
     statementsQuery.isPending;
 
+  const statements = statementsQuery.data ?? [];
+
   const tasks = useMemo(
     () =>
       buildFinanceMyTasks({
         tracking: trackingQuery.data ?? [],
         readyLines: readyQuery.data ?? [],
-        statements: statementsQuery.data ?? [],
+        statements,
       }),
-    [trackingQuery.data, readyQuery.data, statementsQuery.data],
+    [trackingQuery.data, readyQuery.data, statements],
   );
 
   const kpi = useMemo(() => buildFinanceMyTasksKpis(tasks), [tasks]);
 
+  const matchStatement = useMemo(
+    () =>
+      matchStatementId
+        ? (statements.find((s) => s.id === matchStatementId) ?? null)
+        : null,
+    [matchStatementId, statements],
+  );
+
+  const closeStatement = useMemo(
+    () =>
+      closeStatementId
+        ? (statements.find((s) => s.id === closeStatementId) ?? null)
+        : null,
+    [closeStatementId, statements],
+  );
+
+  const handleOpen = useCallback((task: FinanceMyTask) => {
+    if (task.kind === "cost_match_invoice" && task.statementId) {
+      setMatchStatementId(task.statementId);
+      return;
+    }
+    if (task.kind === "cost_close_statement" && task.statementId) {
+      setCloseStatementId(task.statementId);
+    }
+  }, []);
+
+  const invalidateBilling = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: [...prototypeKeys.all, "party-billing"],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [...prototypeKeys.all, "enfaz-billing"],
+      }),
+    ]);
+  }, [queryClient]);
+
+  const goToCostsAfterMatch = useCallback((s: PartyBillingStatementDto) => {
+    setMatchStatementId(null);
+    const party =
+      s.assigneeId?.trim() ||
+      statements.find((x) => x.id === s.id)?.assigneeId?.trim() ||
+      null;
+    // Full navigation — soft router.push كان يبقي الشاشة على مهامي أحياناً.
+    window.location.assign(
+      buildFinanceHref({
+        area: "costs",
+        section: "statements",
+        statement: s.id,
+        party,
+      }),
+    );
+  }, [statements]);
+
   return (
     <div>
-      {/* KPI — 4 بطاقات بأيقونات وفرعي (تصميم مهامي) */}
       <div className="mb-6 flex flex-wrap overflow-hidden rounded-xl border border-[#ece8df] bg-white shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]">
         <div className="relative min-w-[160px] flex-1 border-e border-[#ece8df] px-6 py-5 last:border-e-0 before:absolute before:inset-y-0 before:start-0 before:w-[3px] before:bg-[#a4906f] before:content-['']">
           <div className="mb-3.5 flex items-center gap-2.5">
@@ -221,10 +300,13 @@ export function FinanceMyTasks() {
               بانتظار المطابقة
             </span>
           </div>
-          <div className="text-[32px] font-extrabold leading-none text-[#102B4E]" dir="ltr">
+          <div
+            className="text-end text-[32px] font-extrabold leading-none text-[#102B4E]"
+            dir="ltr"
+          >
             {kpi.matchCount}
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[12px] text-[#a4a6ad]">
+          <div className="mt-2 flex items-center justify-end gap-1.5 text-[12px] text-[#a4a6ad]">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#a4906f]" />
             من الإيرادات
           </div>
@@ -242,10 +324,13 @@ export function FinanceMyTasks() {
               فواتير بانتظار التحصيل
             </span>
           </div>
-          <div className="text-[32px] font-extrabold leading-none text-[#102B4E]" dir="ltr">
+          <div
+            className="text-end text-[32px] font-extrabold leading-none text-[#102B4E]"
+            dir="ltr"
+          >
             {kpi.collectCount}
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[12px] text-[#a4a6ad]">
+          <div className="mt-2 flex items-center justify-end gap-1.5 text-[12px] text-[#a4a6ad]">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#a4906f]" />
             <span dir="ltr">{fmtSar(kpi.collectAmountSar)}</span>
             <span>ر.س</span>
@@ -264,10 +349,13 @@ export function FinanceMyTasks() {
               مستندات قيد الإجراء
             </span>
           </div>
-          <div className="text-[32px] font-extrabold leading-none text-[#102B4E]" dir="ltr">
+          <div
+            className="text-end text-[32px] font-extrabold leading-none text-[#102B4E]"
+            dir="ltr"
+          >
             {kpi.docsCount}
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[12px] text-[#a4a6ad]">
+          <div className="mt-2 flex items-center justify-end gap-1.5 text-[12px] text-[#a4a6ad]">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#a4906f]" />
             من التكاليف
           </div>
@@ -284,10 +372,13 @@ export function FinanceMyTasks() {
               بانتظار توثيق الصرف
             </span>
           </div>
-          <div className="text-[32px] font-extrabold leading-none text-[#102B4E]" dir="ltr">
+          <div
+            className="text-end text-[32px] font-extrabold leading-none text-[#102B4E]"
+            dir="ltr"
+          >
             {kpi.closeCount}
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[12px] text-[#a4a6ad]">
+          <div className="mt-2 flex items-center justify-end gap-1.5 text-[12px] text-[#a4a6ad]">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#a4906f]" />
             سند + مرجع + إيصال
           </div>
@@ -295,8 +386,9 @@ export function FinanceMyTasks() {
       </div>
 
       <p className="m-0 mb-3.5 rounded-[10px] border border-dashed border-[#ddd8cc] bg-[#faf8f3] px-3.5 py-3 text-[12.5px] leading-[1.65] text-[#a4a6ad]">
-        كل ما يتطلب إجراءً من المالية في مكان واحد — إيرادات وتكاليف. اضغط
-        «فتح الإجراء» للانتقال إلى موضعه بالضبط.
+        كل ما يتطلب إجراءً من المالية في مكان واحد — إيرادات وتكاليف. مطابقة
+        فاتورة المورّد تُفتح هنا؛ بعد الإقرار يخرج المسير من مهامي ويُكمل توثيق
+        الصرف من التكاليف.
       </p>
 
       {pending ? (
@@ -319,7 +411,12 @@ export function FinanceMyTasks() {
       ) : (
         <div className="overflow-hidden rounded-xl border border-[#ece8df] bg-white shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]">
           <div className="max-h-[calc(100vh-280px)] overflow-auto">
-            <div className={cn("grid sticky top-0 z-[3] border-b-2 border-[#a4906f] bg-[#faf8f3]", gridCols)}>
+            <div
+              className={cn(
+                "grid sticky top-0 z-[3] border-b-2 border-[#a4906f] bg-[#faf8f3]",
+                gridCols,
+              )}
+            >
               {[
                 "الإجراء المطلوب",
                 "المرجع",
@@ -333,7 +430,9 @@ export function FinanceMyTasks() {
                   key={h}
                   className={cn(
                     "flex min-w-0 items-center overflow-hidden px-3.5 py-[13px] text-[12px] font-bold whitespace-nowrap text-[#102B4E]",
-                    i === 0 ? "justify-start text-start" : "justify-center text-center",
+                    i === 0
+                      ? "justify-start text-start"
+                      : "justify-center text-center",
                   )}
                 >
                   {h}
@@ -341,11 +440,25 @@ export function FinanceMyTasks() {
               ))}
             </div>
             {tasks.map((task) => (
-              <TaskRow key={task.id} task={task} />
+              <TaskRow key={task.id} task={task} onOpen={handleOpen} />
             ))}
           </div>
         </div>
       )}
+
+      <FinanceVendorInvoiceMatchModal
+        open={Boolean(matchStatementId)}
+        statement={matchStatement}
+        onClose={() => setMatchStatementId(null)}
+        onDone={invalidateBilling}
+        onMatched={goToCostsAfterMatch}
+      />
+      <FinanceDisbursementCloseModal
+        open={Boolean(closeStatementId)}
+        statement={closeStatement}
+        onClose={() => setCloseStatementId(null)}
+        onDone={invalidateBilling}
+      />
     </div>
   );
 }

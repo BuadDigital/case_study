@@ -106,6 +106,19 @@ public class InspectorFeeService : IInspectorFeeService
             ordinal++;
             var areaM2 = await _resolver.ResolvePropertyAreaM2Async(
                 task, cancellationToken, deed.PropertyId);
+            // Offices enter المساحة الإجمالية on the survey form; PO Area is often still blank.
+            // Prefer that submitted area for tier pricing, and backfill the property row when empty.
+            if (areaM2 is not > 0m)
+            {
+                areaM2 = TryParseSurveyOnSiteAreaM2(submission.PayloadJson);
+                if (areaM2 is > 0m && deed.PropertyId is Guid propertyId)
+                    await BackfillPropertyAreaIfEmptyAsync(
+                        propertyId, areaM2.Value, cancellationToken);
+            }
+
+            if (areaM2 is not > 0m)
+                return (null, PricingErrors.PropertyAreaMissing);
+
             var resolvedFee = await _pricing.ResolveDefaultFeeAsync(
                 task.Kind,
                 partyType,
@@ -598,5 +611,41 @@ public class InspectorFeeService : IInspectorFeeService
         }
 
         await _notifications.CreateManyAsync(notifications, cancellationToken);
+    }
+
+    /// <summary>
+    /// Reads المساحة الإجمالية from the engineering-survey submission payload.
+    /// </summary>
+    private static decimal? TryParseSurveyOnSiteAreaM2(string payloadJson)
+    {
+        if (string.IsNullOrWhiteSpace(payloadJson)) return null;
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(payloadJson);
+            var raw = PartyTaskSubmissionPayloadRules.GetString(
+                doc.RootElement, "onSiteAreaSqm");
+            return EngineeringSurveyFeeRules.TryParseAreaM2(raw, out var area)
+                ? area
+                : null;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null;
+        }
+    }
+
+    private async Task BackfillPropertyAreaIfEmptyAsync(
+        Guid propertyId,
+        decimal areaM2,
+        CancellationToken cancellationToken)
+    {
+        var property = await _db.WorkOrderProperties
+            .FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
+        if (property is null) return;
+        if (EngineeringSurveyFeeRules.TryParseAreaM2(property.Area, out _))
+            return;
+
+        property.Area = areaM2.ToString(
+            System.Globalization.CultureInfo.InvariantCulture);
     }
 }

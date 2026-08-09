@@ -5,7 +5,6 @@ import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import { loadEnfazTracking } from "@platform/app-shared/prototype/enfaz-billing-api";
 import {
   Badge,
-  EmptyState,
   SkeletonTableRows,
   Table,
   TBody,
@@ -49,88 +48,98 @@ export function SupervisorEnfazTracking() {
 
   if (isPending) {
     return (
-      <Table pending>
-        <TBody>
-          <SkeletonTableRows rows={5} cols={5} />
-        </TBody>
-      </Table>
+      <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
+        <Table pending>
+          <TBody>
+            <SkeletonTableRows rows={3} cols={5} />
+          </TBody>
+        </Table>
+      </div>
     );
   }
 
   if (data.length === 0) {
-    return <EmptyState line="لا بيانات متابعة حالياً." />;
+    return (
+      <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
+        <div className="px-4 py-10 text-center text-[13px] text-text-3">
+          لا بيانات متابعة حالياً.
+        </div>
+      </div>
+    );
   }
 
   return (
     <>
-      <Table>
-        <THead>
-          <Tr hoverable={false}>
-            <Th>أمر العمل</Th>
-            <Th>المعاملة</Th>
-            <Th>حالة العمل</Th>
-            <Th>تعبئة الأتعاب</Th>
-            <Th>الفاتورة / التحصيل</Th>
-          </Tr>
-        </THead>
-        <TBody>
-          {data.map((row: EnfazTrackingRowDto) => (
-            <Tr
-              key={`${row.poNumber}-${row.propertyId}`}
-              hoverable={false}
-              className={row.workStatus === "cancelled" ? "opacity-55" : ""}
-            >
-              <Td className="font-medium text-primary-light">{row.poNumber}</Td>
-              <Td>{row.propertyLabel}</Td>
-              <Td>
-                <Badge
-                  tone={inspectorFeeWorkStatusTone(
-                    row.workStatus as "in_progress",
-                  )}
-                >
-                  {row.workStatusLabel}
-                </Badge>
-              </Td>
-              <Td>
-                {row.workStatus === "cancelled" ? (
-                  <Badge tone="danger">لا تُفوتر</Badge>
-                ) : row.enfazFilled ? (
-                  <Badge tone="success">
-                    مُعبّأة {row.enfazFeeSar.toLocaleString("ar-SA")} ر.س
-                  </Badge>
-                ) : (
-                  <Badge tone="warning">بانتظار التعبئة</Badge>
-                )}
-              </Td>
-              <Td>
-                {row.workStatus === "cancelled" ? (
-                  <span className="text-text-3">—</span>
-                ) : row.invoiceNumber ? (
-                  <div className="flex flex-col gap-1">
-                    <Badge
-                      tone={invoiceStatusTone(
-                        row.invoiceStatus,
-                        row.isOverdue,
-                      )}
-                    >
-                      {invoiceStatusLabel(row.invoiceStatus)}
-                      {row.isOverdue ? " · متأخر" : ""}
-                    </Badge>
-                    <span className="text-[11px] text-text-3">
-                      {row.invoiceNumber}
-                      {row.collectedAmountSar > 0
-                        ? ` · محصّل ${row.collectedAmountSar.toLocaleString("ar-SA")} ر.س`
-                        : ""}
-                    </span>
-                  </div>
-                ) : (
-                  <Badge tone="default">بلا فاتورة</Badge>
-                )}
-              </Td>
+      <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
+        <Table>
+          <THead>
+            <Tr hoverable={false}>
+              <Th>أمر العمل</Th>
+              <Th>المعاملة</Th>
+              <Th>حالة العمل</Th>
+              <Th>تعبئة الأتعاب</Th>
+              <Th>الفاتورة / التحصيل</Th>
             </Tr>
-          ))}
-        </TBody>
-      </Table>
+          </THead>
+          <TBody>
+            {data.map((row: EnfazTrackingRowDto) => (
+              <Tr
+                key={`${row.poNumber}-${row.propertyId}`}
+                hoverable={false}
+                className={row.workStatus === "cancelled" ? "opacity-55" : ""}
+              >
+                <Td className="font-medium text-primary-light">{row.poNumber}</Td>
+                <Td>{row.propertyLabel}</Td>
+                <Td>
+                  <Badge
+                    tone={inspectorFeeWorkStatusTone(
+                      row.workStatus as "in_progress",
+                    )}
+                  >
+                    {row.workStatusLabel}
+                  </Badge>
+                </Td>
+                <Td>
+                  {row.workStatus === "cancelled" ? (
+                    <Badge tone="danger">لا تُفوتر</Badge>
+                  ) : row.enfazFilled ? (
+                    <Badge tone="success">
+                      مُعبّأة {row.enfazFeeSar.toLocaleString("ar-SA")} ر.س
+                    </Badge>
+                  ) : (
+                    <Badge tone="warning">بانتظار التعبئة</Badge>
+                  )}
+                </Td>
+                <Td>
+                  {row.workStatus === "cancelled" ? (
+                    <span className="text-text-3">—</span>
+                  ) : row.invoiceNumber ? (
+                    <div className="flex flex-col gap-1">
+                      <Badge
+                        tone={invoiceStatusTone(
+                          row.invoiceStatus,
+                          row.isOverdue,
+                        )}
+                      >
+                        {invoiceStatusLabel(row.invoiceStatus)}
+                        {row.isOverdue ? " · متأخر" : ""}
+                      </Badge>
+                      <span className="text-[11px] text-text-3">
+                        {row.invoiceNumber}
+                        {row.collectedAmountSar > 0
+                          ? ` · محصّل ${row.collectedAmountSar.toLocaleString("ar-SA")} ر.س`
+                          : ""}
+                      </span>
+                    </div>
+                  ) : (
+                    <Badge tone="default">بلا فاتورة</Badge>
+                  )}
+                </Td>
+              </Tr>
+            ))}
+          </TBody>
+        </Table>
+      </div>
       <p className="mt-3 text-xs text-text-3">
         متابعة فقط — التعبئة والتحصيل من سطح المالية. المتأخر = أكثر من ٣٠ يوماً
         من الإصدار بلا تحصيل كامل.

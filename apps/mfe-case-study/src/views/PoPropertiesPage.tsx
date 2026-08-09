@@ -46,7 +46,7 @@ import {
   isPastDue,
 } from "../lib/prototype/po-intake-data";
 import { poPropertyPath, poListPath } from "../lib/po-routes";
-import { operationsTasksPath } from "../lib/my-task-routes";
+import { governmentReviewWorkspacePath } from "../lib/my-task-routes";
 import { buildCopyPriorTargetOptions } from "../lib/prototype/po-intake-storage";
 import {
   buildPoPropertiesRowMoreItems,
@@ -360,7 +360,9 @@ export function PoPropertiesPage({
                     key={prop.id}
                     onClick={() => {
                       if (deedOpensReview && govReviewTask) {
-                        router.push(operationsTasksPath());
+                        router.push(
+                          governmentReviewWorkspacePath(govReviewTask.id),
+                        );
                         return;
                       }
                       router.push(detailHref);

@@ -581,7 +581,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
             WorkflowTaskKind.EngineeringSurvey => $"/active-survey/{id}",
             WorkflowTaskKind.FieldInspection => $"/property-inspection/{id}",
             WorkflowTaskKind.PropertyAppraisal => $"/property-appraisal/{id}",
-            WorkflowTaskKind.GovernmentReview => "/operations-tasks",
+            WorkflowTaskKind.GovernmentReview => $"/government-review/{id}",
             _ => "/operations-tasks",
         };
     }

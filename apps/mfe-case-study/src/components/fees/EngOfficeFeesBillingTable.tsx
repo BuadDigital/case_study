@@ -231,7 +231,7 @@ export function EngOfficeFeesBillingTable({
 
   return (
     <div className="flex flex-col gap-0">
-      <PageToolbar className="shrink-0 flex-wrap items-center justify-between gap-2.5 max-lg:mb-2 max-lg:border-0 max-lg:bg-transparent max-lg:px-0 lg:border-b lg:border-border lg:bg-surface-2">
+      <PageToolbar className="shrink-0 flex-wrap items-center justify-between gap-2.5 border-b border-border bg-surface-2 max-lg:mb-0">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
           <OperationalToolbarSearch
             type="search"

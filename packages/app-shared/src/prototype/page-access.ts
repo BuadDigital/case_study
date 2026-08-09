@@ -22,28 +22,28 @@ export function pagePathFromId(pageId: PageId): string {
 export function defaultLandingPage(rolePages: readonly PageId[]): PageId {
   if (rolePages.includes("dashboard")) return "dashboard";
 
-  // Task hub first (same idea as المراجع الحكومي):
-  // - مدير الإدارة: has valuation-requests + ops tasks
-  // - المراجع الحكومي: ops + keys, no case-study queues
-  // - المكتب الهندسي: ops + active-survey, no PO list
+  // Party government reviewer: queue first (party form completes the workflow task).
+  if (
+    rolePages.includes("government-review") &&
+    rolePages.includes("keys") &&
+    !rolePages.includes("all-transactions") &&
+    !rolePages.includes("active-case-study")
+  ) {
+    return "government-review";
+  }
+
+  // Independent operations-task hubs:
+  // - مدير الإدارة (valuation-requests + case-study suite)
+  // - أطراف التنفيذ (معاين / مكتب / مقيم / …) — ops without case-study manager pages
   if (rolePages.includes("operations-tasks")) {
     const isGeneralManagerHub =
       rolePages.includes("valuation-requests") &&
       rolePages.includes("active-case-study");
-    const isGovernmentReviewerHub =
-      rolePages.includes("keys") &&
-      !rolePages.includes("government-review") &&
-      !rolePages.includes("all-transactions") &&
-      !rolePages.includes("active-case-study");
-    const isEngineeringOfficeHub =
-      rolePages.includes("active-survey") &&
+    const isIndependentExecutorHub =
+      !rolePages.includes("dashboard") &&
       !rolePages.includes("active-case-study") &&
-      !rolePages.includes("po");
-    if (
-      isGeneralManagerHub ||
-      isGovernmentReviewerHub ||
-      isEngineeringOfficeHub
-    ) {
+      !rolePages.includes("government-review");
+    if (isGeneralManagerHub || isIndependentExecutorHub) {
       return "operations-tasks";
     }
   }

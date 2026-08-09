@@ -112,8 +112,7 @@ export function isInActiveTransactionsSection(
   onTaskWork: boolean,
   role?: RoleId,
 ): boolean {
-  // Orphan legacy lists (e.g. government-review) keep task work routes but
-  // highlight under الشاشات اليتيمة, not المعاملات النشطة.
+  // Orphan legacy lists keep task work routes under الشاشات اليتيمة.
   if (isInOrphanScreensSection(page)) return false;
   if (page === "party-fees") {
     return isPartyFeesUnderActiveTransactions(role);

@@ -113,6 +113,7 @@ export async function loadEngineeringSurveySubmissionSnapshot(
     westBoundary: String(payload.westBoundary ?? ""),
     westBoundaryLengthM: String(payload.westBoundaryLengthM ?? ""),
     surveyNotes: String(payload.surveyNotes ?? ""),
+    transactionNote: String(payload.transactionNote ?? ""),
     updatedAtUtc:
       typeof payload.updatedAtUtc === "string"
         ? payload.updatedAtUtc
