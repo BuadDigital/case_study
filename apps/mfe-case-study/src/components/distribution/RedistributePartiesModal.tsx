@@ -16,15 +16,31 @@ import {
   Textarea,
 } from "@platform/design-system";
 import {
+  getCaseSpecialists,
   getEngineeringOffices,
   getFieldInspectors,
   getValuators,
+  type DistributionAssignee,
 } from "../../lib/prototype/distribution-parties";
 import {
   migrateDistribution,
   type TaskDistributionDraft,
   type WorkflowTask,
 } from "../../lib/prototype/tasks-storage";
+
+type RedistributeRoleKey =
+  | "caseSpecialist"
+  | "inspector"
+  | "valuator"
+  | "engineeringOffice";
+
+type RoleOption = {
+  key: RedistributeRoleKey;
+  label: string;
+  people: DistributionAssignee[];
+  currentId: string;
+  apply: (id: string) => Partial<TaskDistributionDraft>;
+};
 
 function toOptions(list: { id: string; name: string; subtitle?: string }[]) {
   return list.map((a) => ({
@@ -34,9 +50,8 @@ function toOptions(list: { id: string; name: string; subtitle?: string }[]) {
 }
 
 /**
- * Thin post-confirm modal — edits the assignee on already-spawned party child
- * tasks for a case-study parent. Does not toggle party participation on/off
- * (that would require re-opening the full distribution flow).
+ * Reassign parties via role → person cascade (one role at a time).
+ * Does not toggle party participation on/off.
  */
 export function RedistributePartiesModal({
   open,
@@ -58,27 +73,69 @@ export function RedistributePartiesModal({
   const [distribution, setDistribution] = useState<TaskDistributionDraft | null>(
     null,
   );
+  const [selectedRole, setSelectedRole] = useState<RedistributeRoleKey | "">(
+    "",
+  );
   const [reason, setReason] = useState("");
   const [reasonError, setReasonError] = useState(false);
+  const [personError, setPersonError] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!open || !task) return;
-    setDistribution(migrateDistribution(task.distribution, staffUsers));
+    const next = migrateDistribution(task.distribution, staffUsers);
+    setDistribution(next);
+    setSelectedRole("");
     setReason("");
     setReasonError(false);
+    setPersonError(false);
     setBusy(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, task?.id]);
 
-  const fieldInspectors = useMemo(
-    () => getFieldInspectors(staffUsers),
-    [staffUsers],
-  );
-  const valuators = useMemo(() => getValuators(staffUsers), [staffUsers]);
-  const engineeringOffices = useMemo(
-    () => getEngineeringOffices(staffUsers),
-    [staffUsers],
+  const roleOptions = useMemo((): RoleOption[] => {
+    if (!distribution) return [];
+    const roles: RoleOption[] = [];
+    if (distribution.caseSpecialist) {
+      roles.push({
+        key: "caseSpecialist",
+        label: "أخصائي دراسة الحالة",
+        people: getCaseSpecialists(staffUsers),
+        currentId: distribution.caseSpecialistId,
+        apply: (id) => ({ caseSpecialistId: id }),
+      });
+    }
+    if (distribution.valuationDepartment) {
+      roles.push({
+        key: "inspector",
+        label: "المعاين الميداني",
+        people: getFieldInspectors(staffUsers),
+        currentId: distribution.inspectorId,
+        apply: (id) => ({ inspectorId: id }),
+      });
+      roles.push({
+        key: "valuator",
+        label: "المقيم العقاري",
+        people: getValuators(staffUsers),
+        currentId: distribution.valuatorId,
+        apply: (id) => ({ valuatorId: id }),
+      });
+    }
+    if (distribution.engineeringOffice) {
+      roles.push({
+        key: "engineeringOffice",
+        label: "المكتب الهندسي",
+        people: getEngineeringOffices(staffUsers),
+        currentId: distribution.engineeringOfficeId,
+        apply: (id) => ({ engineeringOfficeId: id }),
+      });
+    }
+    return roles;
+  }, [distribution, staffUsers]);
+
+  const activeRole = useMemo(
+    () => roleOptions.find((r) => r.key === selectedRole) ?? null,
+    [roleOptions, selectedRole],
   );
 
   if (!open || !task || !distribution) return null;
@@ -86,13 +143,20 @@ export function RedistributePartiesModal({
   const patch = (patchValue: Partial<TaskDistributionDraft>) =>
     setDistribution((prev) => (prev ? { ...prev, ...patchValue } : prev));
 
-  const hasAnyParty =
-    distribution.valuationDepartment || distribution.engineeringOffice;
+  const hasAnyParty = roleOptions.length > 0;
 
   const submit = async () => {
     const trimmed = reason.trim();
     if (!trimmed) {
       setReasonError(true);
+      return;
+    }
+    if (!activeRole) {
+      setPersonError(true);
+      return;
+    }
+    if (!activeRole.currentId.trim()) {
+      setPersonError(true);
       return;
     }
     setBusy(true);
@@ -124,40 +188,57 @@ export function RedistributePartiesModal({
           </Note>
 
           {!hasAnyParty ? (
-            <Note tone="default" className="mb-3 border border-border bg-surface-2 text-[11px]">
+            <Note
+              tone="default"
+              className="mb-3 border border-border bg-surface-2 text-[11px]"
+            >
               لا توجد أطراف مُسندة على هذه المعاملة.
             </Note>
           ) : (
             <div className="flex flex-col gap-3">
-              {distribution.valuationDepartment ? (
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                  <RegSelect
-                    id="redist_val_inspector"
-                    label="المعاين الميداني"
-                    options={toOptions(fieldInspectors)}
-                    value={distribution.inspectorId}
-                    placeholder="اختر المعاين…"
-                    onChange={(v) => patch({ inspectorId: v })}
-                  />
-                  <RegSelect
-                    id="redist_val_appraiser"
-                    label="المقيم العقاري"
-                    options={toOptions(valuators)}
-                    value={distribution.valuatorId}
-                    placeholder="اختر المقيم…"
-                    onChange={(v) => patch({ valuatorId: v })}
-                  />
-                </div>
-              ) : null}
-              {distribution.engineeringOffice ? (
+              <RegSelect
+                id="redist_role"
+                label="الدور"
+                required
+                options={roleOptions.map((r) => ({
+                  value: r.key,
+                  label: r.label,
+                }))}
+                value={selectedRole}
+                placeholder="اختر الدور…"
+                onChange={(v) => {
+                  setSelectedRole(v as RedistributeRoleKey | "");
+                  setPersonError(false);
+                }}
+              />
+              {activeRole ? (
                 <RegSelect
-                  id="redist_engineering_office"
-                  label="المكتب الهندسي"
-                  options={toOptions(engineeringOffices)}
-                  value={distribution.engineeringOfficeId}
-                  placeholder="اختر المكتب الهندسي…"
-                  onChange={(v) => patch({ engineeringOfficeId: v })}
+                  id="redist_person"
+                  label="المسؤول"
+                  required
+                  options={toOptions(activeRole.people)}
+                  value={activeRole.currentId}
+                  placeholder={`اختر ${activeRole.label}…`}
+                  onChange={(v) => {
+                    patch(activeRole.apply(v));
+                    setPersonError(false);
+                  }}
+                  error={
+                    personError && !activeRole.currentId.trim()
+                      ? "اختر المسؤول من القائمة."
+                      : undefined
+                  }
                 />
+              ) : (
+                <Note
+                  tone="default"
+                  className="border border-border bg-surface-2 text-[11px]"
+                >
+                  اختر الدور أولاً لعرض الأشخاص المتاحين له.
+                </Note>
+              )}
+              {personError && !selectedRole ? (
+                <p className="m-0 text-xs text-danger">اختر الدور ثم المسؤول.</p>
               ) : null}
             </div>
           )}

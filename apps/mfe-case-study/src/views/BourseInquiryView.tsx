@@ -62,6 +62,8 @@ import {
   firstBourseValidationMessage,
   validatePropertyBourseFields,
 } from "../lib/domain/po-intake/property-bourse-validation";
+import { scheduleScrollToFirstPoPropertyError } from "../lib/domain/po-intake/po-field-error-targets";
+import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import type { PendingBoursePropertyDto } from "@platform/api-client";
 import { filterActionablePendingBourseItems } from "../lib/prototype/pending-bourse-queue";
 import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
@@ -215,6 +217,7 @@ export function BourseInquiryView() {
       if (obstructionError) {
         setObstructionReasonError(obstructionError);
         setFormError(obstructionError);
+        scheduleScrollToFormField("obstruction_reason");
         return;
       }
 
@@ -249,6 +252,7 @@ export function BourseInquiryView() {
     if (hasFieldErrors(errors)) {
       setFieldErrors(errors);
       setFormError(firstBourseValidationMessage(errors));
+      scheduleScrollToFirstPoPropertyError(errors, property);
       return;
     }
 

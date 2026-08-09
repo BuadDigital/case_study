@@ -5,6 +5,7 @@ import {
   getEngineeringOffices as apiEngineeringOffices,
   getFieldInspectors as apiFieldInspectors,
   getGovernmentAuditors as apiGovernmentAuditors,
+  getCaseSpecialists as apiCaseSpecialists,
   getPrototypeRoleAssigneeId as apiPrototypeRoleAssigneeId,
   getValuators as apiValuators,
   partyRoleForStaffUser,
@@ -48,6 +49,10 @@ export function getValuators(users: StaffUser[] = []): DistributionAssignee[] {
 
 export function getEngineeringOffices(users: StaffUser[] = []): DistributionAssignee[] {
   return apiEngineeringOffices(users);
+}
+
+export function getCaseSpecialists(users: StaffUser[] = []): DistributionAssignee[] {
+  return apiCaseSpecialists(users);
 }
 
 export function getPrototypeRoleAssigneeId(

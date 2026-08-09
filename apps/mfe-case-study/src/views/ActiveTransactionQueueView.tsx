@@ -71,6 +71,7 @@ import {
   buildPrimaryDataTableRow,
   compareQueueTasksOldestFirst,
   compareQueueTasksNewestFirst,
+  compareQueueTasksByUpdatedNewestFirst,
   findPropertyForTask,
   formatRemainingDuration,
   resolveSlaTimerRatio,
@@ -196,8 +197,8 @@ export type ActiveTransactionQueueConfig = {
   refreshOnWindowEvents?: string[];
   /** Stats / filters above the queue table (e.g. engineering office dashboard). */
   renderQueueHeader?: (listed: WorkflowTask[]) => ReactNode;
-  /** Default: newest PO / task first (same as البيانات الأولية). */
-  queueSort?: "oldest-first" | "newest-first";
+  /** Default: most recently updated / distributed task first. */
+  queueSort?: "oldest-first" | "newest-first" | "distributed-newest-first";
   /** When true, list open, blocked, and completed tasks (e.g. جميع المعاملات). */
   includeAllStatuses?: boolean;
 };
@@ -467,10 +468,13 @@ export function ActiveTransactionQueueView({
 
   const listed = useMemo(
     () => {
+      const sortMode = config.queueSort ?? "distributed-newest-first";
       const compare =
-        config.queueSort === "oldest-first"
+        sortMode === "oldest-first"
           ? compareQueueTasksOldestFirst
-          : compareQueueTasksNewestFirst;
+          : sortMode === "newest-first"
+            ? compareQueueTasksNewestFirst
+            : compareQueueTasksByUpdatedNewestFirst;
       const isSurveyLayout = config.tableLayout === "engineering-survey";
       const isAppraisalLayout = config.tableLayout === "property-appraisal";
       const showAllToggle = isSurveyLayout || isAppraisalLayout;

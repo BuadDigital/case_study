@@ -9,6 +9,7 @@ export const SCREEN_CATALOG_PAGE_NAMES: Partial<Record<PageId, string>> = {
   "active-primary-data": "البيانات الأولية",
   "active-distribution": "توزيع المعاملات على الأطراف",
   "active-case-study": "دراسة حالة العقارات",
+  "system-upload": "الرفع على النظام",
   "bourse-inquiry": "استعلام بورصة عقارية",
   "active-survey": "الرفع المساحي — مهام المكتب الهندسي",
   "active-inspection": "معاينة العقار — مهام المعاين الميداني",

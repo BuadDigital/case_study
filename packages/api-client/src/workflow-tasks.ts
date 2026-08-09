@@ -13,6 +13,8 @@ export type TaskDistributionDraftDto = {
   valuatorId: string;
   engineeringOffice: boolean;
   engineeringOfficeId: string;
+  caseSpecialist: boolean;
+  caseSpecialistId: string;
 };
 
 export type WorkflowTaskDto = {

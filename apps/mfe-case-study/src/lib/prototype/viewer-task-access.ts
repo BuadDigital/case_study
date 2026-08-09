@@ -15,6 +15,7 @@ const CASE_STUDY_WORKFLOW_QUEUE_PAGES: ReadonlySet<PageId> = new Set([
   "bourse-inquiry",
   "active-distribution",
   "active-case-study",
+  "system-upload",
 ]);
 
 export function isCaseStudyWorkflowOverseer(role: RoleId): boolean {

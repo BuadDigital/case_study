@@ -6,6 +6,7 @@ public static class PlatformPermissionCatalog
     public static readonly IReadOnlyList<string> AllPages =
     [
         "dashboard", "active-primary-data", "active-distribution", "active-case-study",
+        "system-upload",
         "po", "all-transactions", "favorites", "bourse-inquiry", "survey", "keys", "failures", "suspended-transactions",
         "valuation-requests", "property-inspection", "active-inspection", "government-review", "operations-tasks",
         "property-appraisal", "active-survey", "party-fees",
@@ -47,32 +48,32 @@ public static class PlatformPermissionCatalog
         ["cdo"] = AllPages.ToArray(),
         ["general-manager"] =
         [
-            "po", "all-transactions", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
-            "active-case-study", "keys", "failures", "suspended-transactions",
+            "po", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
+            "active-case-study", "system-upload", "operations-tasks", "keys", "failures", "suspended-transactions",
             "valuation-requests", "system-screen-catalog",
             "financial", "courts", "failure-types", "case-study-info-roles",
         ],
         ["section-supervisor"] =
         [
             "po", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
-            "active-case-study", "operations-tasks", "keys", "field-sync-board", "failures", "suspended-transactions", "failure-types",
+            "active-case-study", "system-upload", "operations-tasks", "keys", "field-sync-board", "failures", "suspended-transactions", "failure-types",
             "party-fees",
             "system-screen-catalog",
         ],
         ["case-specialist"] =
         [
             "po", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
-            "active-case-study", "operations-tasks", "failures", "suspended-transactions",
+            "active-case-study", "system-upload", "operations-tasks", "failures", "suspended-transactions",
             "system-screen-catalog",
         ],
         ["real-estate-appraiser"] =
         [
-            "po", "all-transactions", "favorites", "operations-tasks", "property-appraisal", "failures", "suspended-transactions",
+            "po", "favorites", "operations-tasks", "property-appraisal", "failures", "suspended-transactions",
             "system-screen-catalog",
         ],
         ["field-inspector"] =
         [
-            "all-transactions", "favorites", "operations-tasks", "active-inspection", "party-fees", "failures",
+            "favorites", "operations-tasks", "active-inspection", "party-fees", "failures",
             "system-screen-catalog",
         ],
         ["government-reviewer"] =
@@ -82,7 +83,7 @@ public static class PlatformPermissionCatalog
         ],
         ["engineering-office"] =
         [
-            "all-transactions", "favorites", "active-survey", "party-fees", "failures",
+            "operations-tasks", "favorites", "active-survey", "party-fees", "failures",
             "system-screen-catalog",
         ],
         ["financial-officer"] =

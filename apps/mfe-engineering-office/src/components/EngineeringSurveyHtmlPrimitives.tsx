@@ -152,6 +152,7 @@ export function EngTabBar({
 }
 
 export function EngUploadBox({
+  id,
   title,
   hint,
   fileName,
@@ -160,6 +161,7 @@ export function EngUploadBox({
   onClear,
   error,
 }: {
+  id?: string;
   title: string;
   hint: string;
   fileName: string;
@@ -184,7 +186,7 @@ export function EngUploadBox({
   }
 
   return (
-    <div>
+    <div id={id}>
       {!disabled ? (
         <div
           role="button"
@@ -195,6 +197,8 @@ export function EngUploadBox({
             dragOver
               ? "border-gold-d bg-[color-mix(in_srgb,var(--gold)_12%,transparent)]"
               : "border-border-md bg-surface-2",
+            error &&
+              "border-danger bg-danger-bg/40 ring-2 ring-[color-mix(in_srgb,var(--danger)_28%,transparent)]",
           )}
           onClick={() => inputRef.current?.click()}
           onKeyDown={(e) => {

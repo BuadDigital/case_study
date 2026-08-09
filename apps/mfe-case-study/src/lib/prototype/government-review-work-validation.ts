@@ -1,3 +1,9 @@
+import {
+  invalidControlClass,
+  resolveFirstErrorMessage,
+  resolveFirstErrorTarget,
+  type FormErrorTarget,
+} from "@platform/app-shared/form-ux";
 import type { GovernmentReviewSubmission } from "./government-review-work-data";
 import {
   canFinalizeGovernmentReviewWithGate,
@@ -24,6 +30,40 @@ export type GovernmentReviewFieldErrors = Partial<
     string
   >
 >;
+
+/** Document order for scroll + first error message. */
+export const GOVERNMENT_REVIEW_ERROR_TARGETS: readonly FormErrorTarget[] = [
+  { key: "visitStatus", targetId: "gov-visit-status" },
+  { key: "visitDate", targetId: "gov-visit-date" },
+  { key: "keysStatus", targetId: "gov-keys-status" },
+  { key: "keysDescription", targetId: "gov-keys" },
+  { key: "keysProofFiles", targetId: "gov-keys-proof" },
+  { key: "keyHandedToInspector", targetId: "gov-key-handed" },
+  { key: "accessBlockReason", targetId: "gov-block-reason" },
+  { key: "confirmed", targetId: "gov-confirmed" },
+  // Documentary gaps surface on a banner (not local inputs).
+  { key: "deedNumber", targetId: "gov-documentary-banner" },
+  { key: "requestNumber", targetId: "gov-documentary-banner" },
+  { key: "city", targetId: "gov-documentary-banner" },
+  { key: "district", targetId: "gov-documentary-banner" },
+  { key: "circuit", targetId: "gov-documentary-banner" },
+  { key: "poNumber", targetId: "gov-documentary-banner" },
+  { key: "assignmentMandateNumber", targetId: "gov-documentary-banner" },
+  { key: "assignmentMandateDate", targetId: "gov-documentary-banner" },
+] as const;
+
+const GOVERNMENT_REVIEW_ERROR_KEYS = GOVERNMENT_REVIEW_ERROR_TARGETS.map(
+  (t) => t.key,
+);
+
+export function firstGovernmentReviewErrorTarget(
+  errors: GovernmentReviewFieldErrors & Record<string, string>,
+): string | null {
+  return resolveFirstErrorTarget(
+    errors as Record<string, unknown>,
+    GOVERNMENT_REVIEW_ERROR_TARGETS,
+  );
+}
 
 function validateKeysAndVisitBasics(
   submission: GovernmentReviewSubmission,
@@ -178,17 +218,10 @@ export function firstGovernmentReviewError(
   errors: GovernmentReviewFieldErrors & Record<string, string>,
 ): string {
   return (
-    errors.visitStatus ??
-    errors.visitDate ??
-    errors.keysStatus ??
-    errors.keysDescription ??
-    errors.keysProofFiles ??
-    errors.keyHandedToInspector ??
-    errors.accessBlockReason ??
-    errors.confirmed ??
-    DOCUMENTARY_ERROR_KEYS.map((key) => errors[key]).find(Boolean) ??
-    Object.values(errors).find(Boolean) ??
-    "تحقق من الحقول المطلوبة"
+    resolveFirstErrorMessage(
+      errors as Record<string, unknown>,
+      GOVERNMENT_REVIEW_ERROR_KEYS,
+    ) ?? "تحقق من الحقول المطلوبة"
   );
 }
 
@@ -199,3 +232,5 @@ export function listGovernmentReviewDocumentaryErrors(
     (msg): msg is string => Boolean(msg),
   );
 }
+
+export { invalidControlClass as governmentReviewInvalidControlClass };

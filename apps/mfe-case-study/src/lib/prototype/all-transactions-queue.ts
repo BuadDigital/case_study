@@ -51,6 +51,17 @@ export function formatAllTransactionsDeedCell(deedOrSlot: string): string {
   return `صك ${v}`;
 }
 
+/** Deed label with latest stage: `صك {n} (دراسة الحالة)`. */
+export function formatAllTransactionsDeedWithPhase(
+  deedOrSlot: string,
+  phaseLabel: string,
+): string {
+  const deed = formatAllTransactionsDeedCell(deedOrSlot);
+  const phase = phaseLabel.trim();
+  if (!phase || deed === "—") return deed;
+  return `${deed} (${phase})`;
+}
+
 export type AllTransactionsQueueRowMeta = {
   task: WorkflowTask;
   deed: string;
@@ -63,28 +74,152 @@ export type AllTransactionsQueueRowMeta = {
   propertyId?: string;
 };
 
+/** Groups sibling workflow tasks that belong to the same property / slot. */
+export function allTransactionsPropertyGroupKey(
+  row: Pick<
+    AllTransactionsQueueRowMeta,
+    "poNumber" | "propertyId" | "deed" | "task"
+  >,
+): string {
+  const po = row.poNumber.trim();
+  const propertyId = row.propertyId?.trim();
+  if (propertyId) return `${po}::prop::${propertyId}`;
+  const deed = row.deed.trim() || "—";
+  return `${po}::deed::${deed}::ord::${row.task.propertyOrdinal}`;
+}
+
+/**
+ * Relative progress along the case-study pipeline (higher = farther along).
+ * Used to keep one row per property showing the latest stage reached.
+ */
+export function allTransactionsStageProgress(task: WorkflowTask): number {
+  const completed =
+    task.status === "completed" || task.phase === "done";
+
+  if (task.kind === "field-inspection") return completed ? 51 : 50.5;
+  if (task.kind === "engineering-survey") return completed ? 56 : 55.5;
+  if (task.kind === "property-appraisal") return completed ? 61 : 60.5;
+  if (task.kind === "government-review") return completed ? 71 : 70.5;
+
+  const phaseBase =
+    task.phase === "enfath"
+      ? 10
+      : task.phase === "bourse"
+        ? 20
+        : task.phase === "obstruction"
+          ? 25
+          : task.phase === "distribution"
+            ? 30
+            : task.phase === "case-study"
+              ? 40
+              : task.phase === "done"
+                ? 100
+                : 15;
+
+  // Fully finished track only when phase is done — intermediate completed rows
+  // still rank at the phase they finished so live party work can outrank them.
+  if (task.phase === "done") return 100;
+  if (completed) return phaseBase + 0.25;
+  return phaseBase;
+}
+
+function taskUpdatedMs(task: WorkflowTask): number {
+  const ms = Date.parse(task.updatedAt);
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function pickFarthestRow(
+  group: AllTransactionsQueueRowMeta[],
+): AllTransactionsQueueRowMeta {
+  let winner = group[0]!;
+  for (let i = 1; i < group.length; i++) {
+    const cand = group[i]!;
+    const progW = allTransactionsStageProgress(winner.task);
+    const progC = allTransactionsStageProgress(cand.task);
+    if (progC > progW) {
+      winner = cand;
+      continue;
+    }
+    if (progC < progW) continue;
+    if (taskUpdatedMs(cand.task) > taskUpdatedMs(winner.task)) {
+      winner = cand;
+    }
+  }
+  return winner;
+}
+
+/**
+ * One row per property: furthest pipeline stage, labeled with that stage.
+ * When live work remains, only open/blocked tasks compete so the row opens
+ * the current stage (not a finished sibling).
+ */
+export function collapseAllTransactionsToLatestPhase(
+  rows: AllTransactionsQueueRowMeta[],
+): AllTransactionsQueueRowMeta[] {
+  const groups = new Map<string, AllTransactionsQueueRowMeta[]>();
+  for (const row of rows) {
+    const key = allTransactionsPropertyGroupKey(row);
+    const list = groups.get(key);
+    if (list) list.push(row);
+    else groups.set(key, [row]);
+  }
+
+  const collapsed: AllTransactionsQueueRowMeta[] = [];
+  for (const group of groups.values()) {
+    const allDone = group.every(
+      (row) =>
+        row.task.status === "completed" || row.task.phase === "done",
+    );
+
+    const live = group.filter(
+      (row) =>
+        row.task.status === "open" || row.task.status === "blocked",
+    );
+    const pool = live.length > 0 ? live : group;
+    const winner = pickFarthestRow(pool);
+
+    const phaseLabel = allDone
+      ? "مكتمل"
+      : allTransactionsPhaseLabel(winner.task);
+
+    collapsed.push({
+      ...winner,
+      phaseLabel,
+      deedCell: formatAllTransactionsDeedWithPhase(winner.deed, phaseLabel),
+    });
+  }
+
+  // Stable visual order: newest activity first within the collapsed set.
+  collapsed.sort(
+    (a, b) => taskUpdatedMs(b.task) - taskUpdatedMs(a.task),
+  );
+  return collapsed;
+}
+
 export function buildAllTransactionsQueueRowMeta(
   tasks: WorkflowTask[],
   poByNumber: Map<string, PoIntakeRecord>,
   now: Date,
 ): AllTransactionsQueueRowMeta[] {
-  return tasks.map((task) => {
+  const rows = tasks.map((task) => {
     const record = poByNumber.get(task.poNumber.trim());
     const property = findPropertyForTask(record, task);
     const row = buildPrimaryDataTableRow(task, property, record, now);
     const deed = row.propertySlot;
+    const phaseLabel = allTransactionsPhaseLabel(task);
     return {
       task,
       deed,
-      deedCell: formatAllTransactionsDeedCell(deed),
+      deedCell: formatAllTransactionsDeedWithPhase(deed, phaseLabel),
       poNumber: task.poNumber.trim(),
       assignmentType: row.assignmentType,
       city: row.city,
       district: row.district,
-      phaseLabel: allTransactionsPhaseLabel(task),
+      phaseLabel,
       propertyId: property?.id ?? task.propertyId,
     };
   });
+  return collapseAllTransactionsToLatestPhase(rows);
 }
 
 export function filterAllTransactionsQueueRows(

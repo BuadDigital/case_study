@@ -57,10 +57,12 @@ export function PoPropertyDetailTopbarActions({
   poNumber,
   propertyId,
   variant = "shell",
+  hideOpenCaseStudy = false,
 }: {
   poNumber: string;
   propertyId: string;
   variant?: "shell" | "hero";
+  hideOpenCaseStudy?: boolean;
 }) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -187,26 +189,28 @@ export function PoPropertyDetailTopbarActions({
       )}
       aria-label="إجراءات العقار"
     >
-      {showCaseStudyLink && task ? (
-        <Link
-          href={caseStudyWorkspacePath(task.id)}
-          className={btn("primary")}
-        >
-          فتح دراسة الحالة
-        </Link>
-      ) : isHero ? (
-        <button
-          type="button"
-          className={btn("primary")}
-          onClick={() =>
-            showToast(
-              "فتح دراسة الحالة — متاح بعد إنشاء مهمة دراسة الحالة من التوزيع.",
-              "info",
-            )
-          }
-        >
-          فتح دراسة الحالة
-        </button>
+      {!hideOpenCaseStudy ? (
+        showCaseStudyLink && task ? (
+          <Link
+            href={caseStudyWorkspacePath(task.id)}
+            className={btn("primary")}
+          >
+            فتح دراسة الحالة
+          </Link>
+        ) : isHero ? (
+          <button
+            type="button"
+            className={btn("primary")}
+            onClick={() =>
+              showToast(
+                "فتح دراسة الحالة — متاح بعد إنشاء مهمة دراسة الحالة من التوزيع.",
+                "info",
+              )
+            }
+          >
+            فتح دراسة الحالة
+          </button>
+        ) : null
       ) : null}
       {showEdit ? (
         isHero ? (

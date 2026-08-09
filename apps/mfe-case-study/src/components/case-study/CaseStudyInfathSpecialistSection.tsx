@@ -1,7 +1,17 @@
 "use client";
-import { Card, CardBody, FormGroup, Input, Label, Textarea } from "@platform/design-system";
+
+import {
+  FormGroup,
+  Input,
+  Label,
+  Textarea,
+  cn,
+} from "@platform/design-system";
 import type { CaseStudyFormDraft } from "../../lib/prototype/case-study-form-storage";
-import { INFATH_FIELD_LABELS, INFATH_YES_NO_OPTIONS } from "../../lib/prototype/infath-field-labels";
+import {
+  INFATH_FIELD_LABELS,
+  INFATH_YES_NO_OPTIONS,
+} from "../../lib/prototype/infath-field-labels";
 
 export function CaseStudyInfathSpecialistSection({
   draft,
@@ -13,34 +23,50 @@ export function CaseStudyInfathSpecialistSection({
   onPatch: (patch: Partial<CaseStudyFormDraft>) => void;
 }) {
   return (
-    <Card className="mt-4">
-      <CardBody>
-        <h3 className="mb-4 text-sm font-semibold text-text">
-          بيانات الرفع لإنفاذ (أخصائي)
+    <section className="overflow-hidden rounded-[10px] border border-border">
+      <header className="border-b border-border bg-surface-2 px-4 py-2.5">
+        <h3 className="m-0 text-[12.5px] font-bold text-heading">
+          بيانات الرفع لإنفاذ
         </h3>
-        <FormGroup className="mb-4">
-          <Label className="mb-2 text-xs">{INFATH_FIELD_LABELS.linkedAssets}</Label>
-          <div className="flex flex-wrap gap-4">
-            {INFATH_YES_NO_OPTIONS.map((opt) => (
-              <label
-                key={opt.value}
-                className="inline-flex cursor-pointer items-center gap-1.5 text-sm text-text-2"
-              >
-                <input
-                  type="radio"
-                  name="infath-linked"
-                  checked={draft.infathLinkedAssets === opt.value}
-                  disabled={disabled}
-                  onChange={() => onPatch({ infathLinkedAssets: opt.value })}
-                />
-                {opt.label}
-              </label>
-            ))}
+      </header>
+
+      <div className="grid gap-3.5 px-4 py-3.5 sm:grid-cols-2">
+        <FormGroup className="sm:col-span-2">
+          <Label className="mb-2 text-[11px] font-semibold text-text-2">
+            {INFATH_FIELD_LABELS.linkedAssets}
+          </Label>
+          <div className="flex flex-wrap gap-2">
+            {INFATH_YES_NO_OPTIONS.map((opt) => {
+              const on = draft.infathLinkedAssets === opt.value;
+              return (
+                <label
+                  key={opt.value}
+                  className={cn(
+                    "inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-[12px] font-medium transition-colors",
+                    on
+                      ? "border-ink bg-ink text-white"
+                      : "border-border-md bg-surface text-text-2 hover:text-heading",
+                    disabled && "cursor-not-allowed opacity-50",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="infath-linked"
+                    className="sr-only"
+                    checked={on}
+                    disabled={disabled}
+                    onChange={() => onPatch({ infathLinkedAssets: opt.value })}
+                  />
+                  {opt.label}
+                </label>
+              );
+            })}
           </div>
         </FormGroup>
+
         {draft.infathLinkedAssets === "yes" ? (
-          <FormGroup className="mb-4">
-            <Label htmlFor="infath-linked-deeds" className="text-xs">
+          <FormGroup className="sm:col-span-2">
+            <Label htmlFor="infath-linked-deeds" className="text-[11px] text-text-2">
               {INFATH_FIELD_LABELS.linkedDeedNumbers}
             </Label>
             <Input
@@ -53,8 +79,9 @@ export function CaseStudyInfathSpecialistSection({
             />
           </FormGroup>
         ) : null}
-        <FormGroup className="mb-4">
-          <Label htmlFor="infath-linked-notes" className="text-xs">
+
+        <FormGroup>
+          <Label htmlFor="infath-linked-notes" className="text-[11px] text-text-2">
             {INFATH_FIELD_LABELS.linkedAssetsNotes}
           </Label>
           <Textarea
@@ -67,8 +94,9 @@ export function CaseStudyInfathSpecialistSection({
             }
           />
         </FormGroup>
-        <FormGroup className="mb-4">
-          <Label htmlFor="infath-other-notes" className="text-xs">
+
+        <FormGroup>
+          <Label htmlFor="infath-other-notes" className="text-[11px] text-text-2">
             {INFATH_FIELD_LABELS.otherNotes}
           </Label>
           <Textarea
@@ -79,8 +107,9 @@ export function CaseStudyInfathSpecialistSection({
             onChange={(e) => onPatch({ infathOtherNotes: e.target.value })}
           />
         </FormGroup>
-        <FormGroup>
-          <Label htmlFor="infath-closing-notes" className="text-xs">
+
+        <FormGroup className="sm:col-span-2">
+          <Label htmlFor="infath-closing-notes" className="text-[11px] text-text-2">
             {INFATH_FIELD_LABELS.closingNotes}
           </Label>
           <Textarea
@@ -91,7 +120,7 @@ export function CaseStudyInfathSpecialistSection({
             onChange={(e) => onPatch({ infathClosingNotes: e.target.value })}
           />
         </FormGroup>
-      </CardBody>
-    </Card>
+      </div>
+    </section>
   );
 }

@@ -53,24 +53,26 @@ export const FINANCIAL_NAV_LEAVES: FinanceNavLeaf[] = [
   },
 ];
 
-/** Finance.html #navEngFees · #navInspector */
-export const PARTY_PORTAL_NAV_LEAVES: FinanceNavLeaf[] = [
-  {
-    area: "eng_portal",
-    label: "المكتب الهندسي",
-    icon: "M4 4v16h16M4 20 20 4M8 20v-3M12 20v-3M16 20v-3",
-    pageTitle: "بوابة المكتب الهندسي",
-    crumb: "عام / بوابات / المكتب الهندسي",
-  },
-  {
-    area: "inspector_portal",
-    label: "المعاين",
-    icon: "M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM2.46 12C3.73 7.94 7.52 5 12 5s8.27 2.94 9.54 7c-1.27 4.06-5.06 7-9.54 7s-8.27-2.94-9.54-7z",
-    /** setHeader('بوابة المعاين', crumb(['بوابات الأطراف','المعاين'])) */
-    pageTitle: "بوابة المعاين",
-    crumb: "بوابات الأطراف / المعاين",
-  },
-];
+/** بوابات الأطراف أُزيلت من السايدبار — محتوى داخل بروفايل المكتب/المعاين */
+export const PARTY_PORTAL_NAV_LEAVES: FinanceNavLeaf[] = [];
+
+/** ورقة legacy — مسار URL `/financial?area=eng_portal` إن لزم */
+export const ENG_OFFICE_PORTAL_LEAF: FinanceNavLeaf = {
+  area: "eng_portal",
+  label: "المكتب الهندسي",
+  icon: "M4 4v16h16M4 20 20 4M8 20v-3M12 20v-3M16 20v-3",
+  pageTitle: "بوابة المكتب الهندسي",
+  crumb: "البروفايل / مسيرات الصرف",
+};
+
+/** ورقة legacy — مسار URL `/financial?area=inspector_portal` إن لزم */
+export const INSPECTOR_PORTAL_LEAF: FinanceNavLeaf = {
+  area: "inspector_portal",
+  label: "المعاين",
+  icon: "M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM2.46 12C3.73 7.94 7.52 5 12 5s8.27 2.94 9.54 7c-1.27 4.06-5.06 7-9.54 7s-8.27-2.94-9.54-7z",
+  pageTitle: "بوابة المعاين",
+  crumb: "البروفايل / المستحقات",
+};
 
 export function parseFinanceNavArea(
   raw: string | null | undefined,
@@ -90,6 +92,15 @@ export function isPartyPortalArea(area: FinanceNavArea): boolean {
   return area === "eng_portal" || area === "inspector_portal";
 }
 
+/** مسار URL legacy لمسار eng_portal */
+export function isEngOfficePortalArea(area: FinanceNavArea): boolean {
+  return area === "eng_portal";
+}
+
+export function isInspectorPortalArea(area: FinanceNavArea): boolean {
+  return area === "inspector_portal";
+}
+
 export function isFinanceCoreArea(area: FinanceNavArea): boolean {
   return area === "tasks" || area === "revenue" || area === "costs";
 }
@@ -99,10 +110,11 @@ export function financialHref(area: FinanceNavArea): string {
 }
 
 export function financeLeafForArea(area: FinanceNavArea): FinanceNavLeaf {
+  if (area === "eng_portal") return ENG_OFFICE_PORTAL_LEAF;
+  if (area === "inspector_portal") return INSPECTOR_PORTAL_LEAF;
   return (
     FINANCIAL_NAV_LEAVES.find((l) => l.area === area) ??
-    PARTY_PORTAL_NAV_LEAVES.find((l) => l.area === area) ??
-    FINANCIAL_NAV_LEAVES[0]
+    FINANCIAL_NAV_LEAVES[0]!
   );
 }
 
@@ -114,6 +126,7 @@ export function showFinancialNavGroup(rolePages: PageId[]): boolean {
   return rolePages.includes("financial");
 }
 
-export function showPartyPortalsNavGroup(rolePages: PageId[]): boolean {
-  return rolePages.includes("financial");
+/** أُلغيت مجموعة بوابات الأطراف من السايدبار */
+export function showPartyPortalsNavGroup(_rolePages: PageId[]): boolean {
+  return false;
 }

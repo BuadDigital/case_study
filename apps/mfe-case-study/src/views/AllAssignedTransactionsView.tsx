@@ -80,8 +80,8 @@ export function AllAssignedTransactionsView() {
       tableLayout: "all-transactions",
       emptyLine: "لا توجد معاملات مطابقة.",
       emptyHint: isPartyRole
-        ? "تظهر هنا جميع المعاملات المسندة إليك من توزيع المعاملات — المفتوحة والمكتملة."
-        : "تظهر هنا جميع المعاملات المسندة لك في كل المراحل — البيانات الأولية، البورصة، التوزيع، ودراسة الحالة — المفتوحة والمكتملة.",
+        ? "تظهر هنا المعاملات المسندة إليك — صف واحد لكل صك مع آخر مرحلة وصل إليها."
+        : "تظهر هنا المعاملات المسندة لك — صف واحد لكل صك مع آخر مرحلة وصل إليها (البيانات الأولية حتى الإكمال).",
       panelId: "all-assigned-transactions-panel",
       tableHint:
         "اضغط الصف لفتح المعاملة في مرحلتها الحالية — اضغط نفس الصف مرة أخرى للإغلاق.",
@@ -89,7 +89,7 @@ export function AllAssignedTransactionsView() {
       assigneeRole: isPartyRole ? role : undefined,
       getBasePath: allTransactionsPath,
       getTaskPath: allTransactionsTaskPath,
-      queueSort: "newest-first",
+      queueSort: "distributed-newest-first",
       includeAllStatuses: true,
       statusColumnLabel: "المرحلة",
       buildRowMoreItems: (ctx) =>
@@ -121,7 +121,8 @@ export function AllAssignedTransactionsView() {
                 : "b-prog";
         return { label, className };
       },
-      resolveFullPageTaskPath: isPartyRole ? partyTaskWorkspacePath : undefined,
+      // Party workspaces for latest-stage party tasks; case-study stays panel.
+      resolveFullPageTaskPath: partyTaskWorkspacePath,
       refreshOnWindowEvents: isPartyRole ? PARTY_QUEUE_REFRESH_EVENTS : undefined,
       filterListed: (mine, poByNumber) =>
         filterOpenAssignedTransactions(

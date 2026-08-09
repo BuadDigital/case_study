@@ -45,8 +45,11 @@ import {
   cacheEngineeringSurveyFile,
   clearEngineeringSurveyFile,
 } from "../lib/engineering-survey-attachments";
+import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import {
+  engineeringInvalidControlClass,
   firstEngineeringSurveyError,
+  firstEngineeringSurveyErrorTarget,
   validateEngineeringSurveySubmission,
   type EngineeringSurveyFieldErrors,
 } from "../lib/engineering-survey-validation";
@@ -563,6 +566,7 @@ export function EngineeringSurveyWorkPanel({
       const message = firstEngineeringSurveyError(errors);
       setFormError(message);
       showToast(message, "error");
+      scheduleScrollToFormField(firstEngineeringSurveyErrorTarget(errors));
       return false;
     }
 
@@ -809,7 +813,7 @@ export function EngineeringSurveyWorkPanel({
             dir="ltr"
             className={cn(
               engInputClassName,
-              fieldErrors.latitude && "!border-[#c0553d]",
+              fieldErrors.latitude && engineeringInvalidControlClass,
             )}
             disabled={formDisabled}
             value={localFields.latitude}
@@ -830,7 +834,7 @@ export function EngineeringSurveyWorkPanel({
             dir="ltr"
             className={cn(
               engInputClassName,
-              fieldErrors.longitude && "!border-[#c0553d]",
+              fieldErrors.longitude && engineeringInvalidControlClass,
             )}
             disabled={formDisabled}
             value={localFields.longitude}
@@ -858,6 +862,7 @@ export function EngineeringSurveyWorkPanel({
         </EngInfo>
       ) : null}
       <EngUploadBox
+        id="eng-survey-report"
         title="رفع التقرير المساحي"
         hint="PDF — الحجم الأقصى 20 ميجابايت"
         fileName={draft.surveyReportFileName}
@@ -892,7 +897,7 @@ export function EngineeringSurveyWorkPanel({
             inputMode="decimal"
             className={cn(
               engInputClassName,
-              fieldErrors.on_site_area && "!border-[#c0553d]",
+              fieldErrors.on_site_area && engineeringInvalidControlClass,
             )}
             disabled={formDisabled}
             value={localFields.onSiteAreaSqm}
@@ -940,7 +945,13 @@ export function EngineeringSurveyWorkPanel({
       ))}
 
       <EngSection>مطابقة الصك للطبيعة</EngSection>
-      <div className="mb-3">
+      <div
+        id="eng-deed-matches"
+        className={cn(
+          "mb-3 rounded-lg",
+          fieldErrors.deed_matches_nature && engineeringInvalidControlClass,
+        )}
+      >
         <p className={cn(engLabelClassName, "mb-2")}>هل الصك مطابق للطبيعة؟</p>
         <div className="flex flex-wrap gap-2">
           {(
@@ -1048,7 +1059,8 @@ export function EngineeringSurveyWorkPanel({
                 inputMode="decimal"
                 className={cn(
                   engInputClassName,
-                  fieldErrors.nature_on_site_area && "!border-[#c0553d]",
+                  fieldErrors.nature_on_site_area &&
+                    engineeringInvalidControlClass,
                 )}
                 disabled={formDisabled}
                 value={localFields.natureOnSiteAreaSqm}
@@ -1120,6 +1132,7 @@ export function EngineeringSurveyWorkPanel({
 
       <EngSection>خطاب إقرار صحة الموقع</EngSection>
       <EngUploadBox
+        id="eng-site-letter"
         title="رفع خطاب الإقرار"
         hint="PDF — الحجم الأقصى 10 ميجابايت"
         fileName={draft.siteLetterFileName}
@@ -1129,56 +1142,72 @@ export function EngineeringSurveyWorkPanel({
         onClear={() => onFileClear("siteLetterFileName")}
       />
 
-      {formDisabled ? (
-        <div className="mt-3 rounded-lg border border-[#fad7a0] bg-[#fef3d7] px-3 py-2.5 text-[11.5px] leading-[1.7] text-[#7a5b12]">
-          {draft.siteConfirmed
-            ? "✓ تم الإقرار بأن المكتب الهندسي تحقق ميدانياً وأن بيانات التقرير المساحي صحيحة ودقيقة."
-            : "لم يتم الإقرار بعد بصحة الموقع."}
-        </div>
-      ) : (
-        <label className="mt-3 flex cursor-pointer items-start gap-[9px] rounded-lg border border-[#fad7a0] bg-[#fef3d7] px-3 py-2.5 text-[11.5px] leading-[1.7] text-[#7a5b12]">
-          <input
-            type="checkbox"
-            className="mt-0.5 accent-[var(--gold-d)]"
-            checked={draft.siteConfirmed}
-            onChange={(e) => {
-              persist({ siteConfirmed: e.target.checked });
-              setFieldErrors((prev) => {
-                const next = { ...prev };
-                delete next.site_confirmed;
-                return next;
-              });
-            }}
-          />
-          <span>
-            أُقرّ بأن المكتب الهندسي تحقق ميدانياً وأن بيانات التقرير المساحي
-            المرفوع <strong>صحيحة ودقيقة</strong>.
-          </span>
-        </label>
-      )}
-      {fieldErrors.site_confirmed ? (
-        <p className="mt-1 text-[11px] text-[#a5432e]">
-          {fieldErrors.site_confirmed}
-        </p>
-      ) : null}
+      <div id="eng-site-confirm">
+        {formDisabled ? (
+          <div className="mt-3 rounded-lg border border-[#fad7a0] bg-[#fef3d7] px-3 py-2.5 text-[11.5px] leading-[1.7] text-[#7a5b12]">
+            {draft.siteConfirmed
+              ? "✓ تم الإقرار بأن المكتب الهندسي تحقق ميدانياً وأن بيانات التقرير المساحي صحيحة ودقيقة."
+              : "لم يتم الإقرار بعد بصحة الموقع."}
+          </div>
+        ) : (
+          <label
+            className={cn(
+              "mt-3 flex cursor-pointer items-start gap-[9px] rounded-lg border border-[#fad7a0] bg-[#fef3d7] px-3 py-2.5 text-[11.5px] leading-[1.7] text-[#7a5b12]",
+              fieldErrors.site_confirmed && engineeringInvalidControlClass,
+            )}
+          >
+            <input
+              type="checkbox"
+              className="mt-0.5 accent-[var(--gold-d)]"
+              checked={draft.siteConfirmed}
+              onChange={(e) => {
+                persist({ siteConfirmed: e.target.checked });
+                setFieldErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.site_confirmed;
+                  return next;
+                });
+              }}
+            />
+            <span>
+              أُقرّ بأن المكتب الهندسي تحقق ميدانياً وأن بيانات التقرير المساحي
+              المرفوع <strong>صحيحة ودقيقة</strong>.
+            </span>
+          </label>
+        )}
+        {fieldErrors.site_confirmed ? (
+          <p className="mt-1 text-[11px] text-[#a5432e]">
+            {fieldErrors.site_confirmed}
+          </p>
+        ) : null}
+      </div>
 
       <EngSection>نموذج التحقق الميداني — 13 بنداً</EngSection>
-      <EngineeringSurveyChecklist
-        rows={draft.checklist}
-        disabled={formDisabled}
-        onChange={(checklist) => {
-          persist({ checklist });
-          void syncCaseStudyFromChecklist(checklist);
-          setFieldErrors((prev) => {
-            const next = { ...prev };
-            delete next.checklist;
-            return next;
-          });
-        }}
-      />
-      {fieldErrors.checklist ? (
-        <p className="mt-1 text-[11px] text-[#a5432e]">{fieldErrors.checklist}</p>
-      ) : null}
+      <div
+        id="eng-checklist"
+        className={cn(
+          fieldErrors.checklist && engineeringInvalidControlClass,
+        )}
+      >
+        <EngineeringSurveyChecklist
+          rows={draft.checklist}
+          disabled={formDisabled}
+          onChange={(checklist) => {
+            persist({ checklist });
+            void syncCaseStudyFromChecklist(checklist);
+            setFieldErrors((prev) => {
+              const next = { ...prev };
+              delete next.checklist;
+              return next;
+            });
+          }}
+        />
+        {fieldErrors.checklist ? (
+          <p className="mt-1 text-[11px] text-[#a5432e]">
+            {fieldErrors.checklist}
+          </p>
+        ) : null}
+      </div>
 
       {!formDisabled ? (
         <div className="mt-[18px] flex justify-start">

@@ -52,7 +52,7 @@ function queueConfig(
     tableHint: def.tableHint,
     partyAssignee: true,
     assigneeRole: def.roleId,
-    queueSort: "newest-first",
+    queueSort: "distributed-newest-first",
     getBasePath: () => partyTaskPath(def.pageId),
     getTaskPath: (taskId) => partyTaskTaskPath(def.pageId, taskId),
     filterListed: baseFilter,

@@ -85,8 +85,8 @@ const POST_LOGIN_LANDING: Record<string, { path: string; title: string }> = {
   [RELEASE_USERS.cdo]: { path: "/dashboard", title: "لوحة التحكم" },
   [RELEASE_USERS.caseSpecialist]: { path: "/po", title: "أوامر العمل" },
   [RELEASE_USERS.fieldInspector]: {
-    path: "/all-transactions",
-    title: "جميع المعاملات",
+    path: "/favorites",
+    title: "المفضلة",
   },
   [RELEASE_USERS.appraiser]: { path: "/po", title: "أوامر العمل" },
   [RELEASE_USERS.governmentReviewer]: {
@@ -94,8 +94,8 @@ const POST_LOGIN_LANDING: Record<string, { path: string; title: string }> = {
     title: "المهام",
   },
   [RELEASE_USERS.engineeringOffice]: {
-    path: "/active-survey",
-    title: "الرفع المساحي",
+    path: "/operations-tasks",
+    title: "المهام",
   },
   [RELEASE_USERS.financialOfficer]: {
     path: "/financial",
@@ -201,6 +201,7 @@ export const MODULE_PAGES: { id: string; title: string }[] = [
   { id: "active-primary-data", title: "البيانات الأولية" },
   { id: "active-distribution", title: "توزيع المعاملات" },
   { id: "active-case-study", title: "دراسة حالة العقارات" },
+  { id: "system-upload", title: "الرفع على النظام" },
   { id: "po", title: "أوامر العمل" },
   { id: "bourse-inquiry", title: "استعلام بورصة" },
   { id: "keys", title: "إدارة المفاتيح" },
@@ -233,12 +234,13 @@ export const ROLE_MODULE_PAGES: Record<string, string[]> = {
     "bourse-inquiry",
     "active-distribution",
     "active-case-study",
+    "system-upload",
     "failures",
     "suspended-transactions",
     "system-screen-catalog",
   ],
   [RELEASE_USERS.fieldInspector]: [
-    "all-transactions",
+    "favorites",
     "operations-tasks",
     "active-inspection",
     "party-fees",
@@ -256,6 +258,10 @@ export const ROLE_MODULE_PAGES: Record<string, string[]> = {
     "keys",
     "system-screen-catalog",
   ],
-  [RELEASE_USERS.engineeringOffice]: ["active-survey", "system-screen-catalog"],
+  [RELEASE_USERS.engineeringOffice]: [
+    "operations-tasks",
+    "active-survey",
+    "system-screen-catalog",
+  ],
   [RELEASE_USERS.financialOfficer]: ["financial", "system-screen-catalog"],
 };

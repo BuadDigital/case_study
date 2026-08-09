@@ -134,7 +134,14 @@ export function GovernmentReviewKeysProofUpload({
   };
 
   return (
-    <FormGroup className="mb-3 flex flex-col gap-1.5">
+    <FormGroup
+      id="gov-keys-proof"
+      className={cn(
+        "mb-3 flex flex-col gap-1.5 rounded-lg p-1",
+        error &&
+          "border border-danger bg-danger-bg/40 ring-2 ring-[color-mix(in_srgb,var(--danger)_28%,transparent)]",
+      )}
+    >
       <Label htmlFor="gov-keys-proof-upload" className="text-[11px] font-semibold text-text-2">
         {label}
       </Label>

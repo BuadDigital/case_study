@@ -15,6 +15,11 @@ import {
   mergeFieldErrors,
   type FieldErrors,
 } from "@platform/app-shared/registration/registration-utils";
+import {
+  firstPoHeaderErrorMessage,
+  PO_HEADER_EDIT_FIELD_IDS,
+  scheduleScrollToFirstPoHeaderError,
+} from "../../lib/domain/po-intake/po-field-error-targets";
 import { Label, Note } from "@platform/design-system";
 import { AssignmentTypeFields } from "./AssignmentTypeFields";
 import { PoEditShell } from "./PoEditShell";
@@ -119,7 +124,8 @@ export function PoHeaderEdit({
     }
     if (hasFieldErrors(errors)) {
       setFieldErrors(errors);
-      setFormError("يرجى تعبئة الحقول المطلوبة");
+      setFormError(firstPoHeaderErrorMessage(errors));
+      scheduleScrollToFirstPoHeaderError(errors, PO_HEADER_EDIT_FIELD_IDS);
       return;
     }
 

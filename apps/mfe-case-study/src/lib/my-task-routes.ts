@@ -19,6 +19,10 @@ export function activeCaseStudyPath(): string {
   return "/active-case-study";
 }
 
+export function systemUploadPath(): string {
+  return "/system-upload";
+}
+
 export function caseStudyWorkspacePath(taskId: string): string {
   return `/case-study/${encodeURIComponent(taskId)}`;
 }

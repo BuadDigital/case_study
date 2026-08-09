@@ -32,7 +32,7 @@ const PRIMARY_DATA_QUEUE: ActiveTransactionQueueConfig = {
   panelId: "primary-data-panel",
   getBasePath: myTasksPath,
   getTaskPath: primaryDataTaskPath,
-  queueSort: "newest-first",
+  queueSort: "distributed-newest-first",
   statusColumnLabel: "المدة المتبقية",
   filterListed: (mine, poByNumber) => filterTasksForPrimaryData(mine, poByNumber),
   allowCopyFromPrior: true,

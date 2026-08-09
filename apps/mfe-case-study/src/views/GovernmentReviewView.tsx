@@ -250,8 +250,10 @@ export function GovernmentReviewView() {
     }
 
     return list.sort((a, b) => {
-      const createdCmp = b.task.createdAt.localeCompare(a.task.createdAt);
-      if (createdCmp !== 0) return createdCmp;
+      const dateA = (a.task.updatedAt || a.task.createdAt || "").trim();
+      const dateB = (b.task.updatedAt || b.task.createdAt || "").trim();
+      const dateCmp = dateB.localeCompare(dateA);
+      if (dateCmp !== 0) return dateCmp;
       return a.deed.localeCompare(b.deed, "ar", { numeric: true });
     });
   }, [mine, poByNumber, reviewerScope]);

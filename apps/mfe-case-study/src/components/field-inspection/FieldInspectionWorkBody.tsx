@@ -51,7 +51,14 @@ import {
 } from "../../lib/prototype/inspector-workspace-data";
 import { finalizeInspectorWorkspace } from "../../lib/prototype/finalize-field-inspection-submission";
 import { getOrCreateInspectorWorkspace, saveInspectorWorkspaceDraft, updateInspectorWorkspace } from "../../lib/prototype/inspector-workspace-storage";
-import { firstInspectorWorkspaceError, validateInspectorWorkspace, type InspectorWorkspaceFieldErrors } from "../../lib/prototype/inspector-workspace-validation";
+import {
+  firstInspectorWorkspaceError,
+  firstInspectorWorkspaceErrorTarget,
+  inspectorInvalidControlClass,
+  scrollToInspectorField,
+  validateInspectorWorkspace,
+  type InspectorWorkspaceFieldErrors,
+} from "../../lib/prototype/inspector-workspace-validation";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 
 const BOUNDARY_KEYS: InspectorBoundaryKey[] = [
@@ -399,6 +406,8 @@ export function FieldInspectionWorkBody({
   const persist = useCallback(
     (patch: Parameters<typeof updateInspectorWorkspace>[1]) => {
       if (!task.id || workLocked) return;
+      setFieldErrors({});
+      setFormError(null);
       void updateInspectorWorkspace(task.id, patch)
         .then((next) => {
           if (next) setDraft(next);
@@ -452,10 +461,17 @@ export function FieldInspectionWorkBody({
       boundariesUnavailable,
     });
     setFieldErrors(errors);
-    if (Object.keys(errors).length > 0) {
+    if (
+      Object.keys(errors).length > 0 ||
+      (errors.emptyFeatureKeys?.length ?? 0) > 0
+    ) {
       const message = firstInspectorWorkspaceError(errors);
       setFormError(message);
       showToast(message ?? "يرجى تصحيح الحقول", "error");
+      const targetId = firstInspectorWorkspaceErrorTarget(errors);
+      if (targetId) {
+        window.setTimeout(() => scrollToInspectorField(targetId), 60);
+      }
       return false;
     }
 
@@ -481,6 +497,12 @@ export function FieldInspectionWorkBody({
 
     if (result.errors) {
       setFieldErrors(result.errors as InspectorWorkspaceFieldErrors);
+      const targetId = firstInspectorWorkspaceErrorTarget(
+        result.errors as InspectorWorkspaceFieldErrors,
+      );
+      if (targetId) {
+        window.setTimeout(() => scrollToInspectorField(targetId), 60);
+      }
     }
     setFormError(result.message);
     showToast(result.message, "error");
@@ -532,43 +554,7 @@ export function FieldInspectionWorkBody({
   }, [persist, showToast]);
 
   const scrollToErrorTarget = useCallback((targetId: string) => {
-    const target = document.getElementById(targetId);
-    if (!target) return;
-
-    let scrollContainer = target.parentElement;
-    while (scrollContainer) {
-      const overflowY = window.getComputedStyle(scrollContainer).overflowY;
-      if (overflowY === "auto" || overflowY === "scroll") break;
-      scrollContainer = scrollContainer.parentElement;
-    }
-
-    if (scrollContainer) {
-      const targetRect = target.getBoundingClientRect();
-      const containerRect = scrollContainer.getBoundingClientRect();
-      const centeredOffset = Math.max(
-        0,
-        (containerRect.height - targetRect.height) / 2,
-      );
-      const top =
-        scrollContainer.scrollTop +
-        targetRect.top -
-        containerRect.top -
-        centeredOffset;
-
-      scrollContainer.scrollTo({
-        top: Math.max(0, top),
-        behavior: "smooth",
-      });
-    }
-
-    if (
-      target instanceof HTMLInputElement ||
-      target instanceof HTMLTextAreaElement ||
-      target instanceof HTMLSelectElement ||
-      target instanceof HTMLButtonElement
-    ) {
-      target.focus({ preventScroll: true });
-    }
+    scrollToInspectorField(targetId);
   }, []);
 
   const errorLinks: {
@@ -597,11 +583,36 @@ export function FieldInspectionWorkBody({
       targetId: "ins-map-section",
     });
   }
+  if (fieldErrors.features) {
+    errorLinks.push({
+      key: "features",
+      message: fieldErrors.features,
+      targetId: fieldErrors.emptyFeatureKeys?.[0]
+        ? `ins-feature-${fieldErrors.emptyFeatureKeys[0]}`
+        : "ins-features-section",
+    });
+  }
+  if (fieldErrors.featurePhotos) {
+    errorLinks.push({
+      key: "featurePhotos",
+      message: fieldErrors.featurePhotos,
+      targetId: fieldErrors.missingFeaturePhotoKey
+        ? `ins-feature-photo-${fieldErrors.missingFeaturePhotoKey}`
+        : "ins-features-section",
+    });
+  }
   if (fieldErrors.definedPhotos) {
     errorLinks.push({
       key: "definedPhotos",
       message: fieldErrors.definedPhotos,
       targetId: "ins-defined-photos",
+    });
+  }
+  if (fieldErrors.componentPhotos) {
+    errorLinks.push({
+      key: "componentPhotos",
+      message: fieldErrors.componentPhotos,
+      targetId: "ins-components-section",
     });
   }
   if (fieldErrors.observations) {
@@ -630,48 +641,6 @@ export function FieldInspectionWorkBody({
 
   return (
     <div className={cn(mobile ? "min-h-full bg-[var(--bg)] pb-2" : "pb-4")}>
-      {/* Case Study.html pdInspectionHtml edit banner */}
-      {!mobile && !locked ? (
-        <div className="mb-3.5 flex flex-col gap-3 rounded-lg border border-[color-mix(in_srgb,var(--gold)_35%,transparent)] bg-[color-mix(in_srgb,var(--gold)_10%,transparent)] px-3.5 py-[11px] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2.5">
-          <div className="text-xs leading-relaxed text-text-2">
-            <strong className="text-gold-d">وضع الإدخال</strong> — تُدخل
-            بيانات المعاينة الميدانية وتُرسل بعد اكتمالها.
-          </div>
-          <div className="flex shrink-0 flex-wrap gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="primary"
-              loading={submitting}
-              disabled={submitting || workLocked}
-              onClick={() => void hostRef.current?.submit?.()}
-            >
-              حفظ وإرسال
-            </Button>
-            {onRegisterFailure ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={submitting || workLocked}
-                onClick={onRegisterFailure}
-              >
-                تسجيل تعذر
-              </Button>
-            ) : null}
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={submitting || workLocked}
-              onClick={() => void saveDraft()}
-            >
-              حفظ مسودة
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
       {locked ? (
         <Note tone="success" className={cn("mb-4", mobile && "mx-4 mt-3")}>
           تم إرسال المعاينة — النموذج للقراءة فقط.
@@ -688,11 +657,14 @@ export function FieldInspectionWorkBody({
       {formError ? (
         <Note tone="warn" role="alert" className={cn("mb-4", mobile && "mx-4 mt-3")}>
           <div className="flex flex-col gap-2">
-            <p className="m-0">{formError}</p>
+            <p className="m-0 font-semibold">{formError}</p>
+            <p className="m-0 text-[11px] text-text-2">
+              تم توجيهك لأول حقل ناقص — الحقول باللون الأحمر مطلوبة.
+            </p>
             {errorLinks.length > 0 ? (
               <div className="flex flex-col gap-1.5">
                 <span className="text-[11px] text-text-2">
-                  اضغط على الخطأ للانتقال مباشرة إلى مكانه:
+                  أو اضغط على الخطأ للانتقال مباشرة:
                 </span>
                 <div className="flex flex-col gap-2">
                   {errorLinks.map((item) => (
@@ -794,10 +766,95 @@ export function FieldInspectionWorkBody({
             </div>
           ) : null}
           {fieldErrors.mapLatitude ? (
-            <p className="mb-3 text-[11px] text-danger-text" role="alert">
+            <p className="mb-3 text-[11px] font-semibold text-danger-text" role="alert">
               {fieldErrors.mapLatitude}
             </p>
           ) : null}
+          {!mobile ? (
+            <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="min-w-0">
+                <Label htmlFor="ins-date" className="mb-1 text-[11px] font-semibold text-text-2">
+                  تاريخ المعاينة
+                </Label>
+                <Input
+                  id="ins-date"
+                  type="date"
+                  dir="ltr"
+                  className={cn(
+                    EDIT_CONTROL_CLASS,
+                    fieldErrors.inspectionDate && inspectorInvalidControlClass,
+                  )}
+                  disabled={locked}
+                  value={draft.inspectionDate}
+                  onChange={(e) => persist({ inspectionDate: e.target.value })}
+                />
+                {fieldErrors.inspectionDate ? (
+                  <p className="mt-1 text-[11px] font-semibold text-danger" role="alert">
+                    {fieldErrors.inspectionDate}
+                  </p>
+                ) : null}
+              </div>
+              <div className="min-w-0">
+                <Label htmlFor="ins-time" className="mb-1 text-[11px] font-semibold text-text-2">
+                  وقت المعاينة
+                </Label>
+                <Input
+                  id="ins-time"
+                  type="time"
+                  dir="ltr"
+                  className={cn(
+                    EDIT_CONTROL_CLASS,
+                    fieldErrors.inspectionTime && inspectorInvalidControlClass,
+                  )}
+                  disabled={locked}
+                  value={draft.inspectionTime}
+                  onChange={(e) => persist({ inspectionTime: e.target.value })}
+                />
+                {fieldErrors.inspectionTime ? (
+                  <p className="mt-1 text-[11px] font-semibold text-danger" role="alert">
+                    {fieldErrors.inspectionTime}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          ) : (
+            <div className="mb-2.5 grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor="ins-date" className="mb-1 text-[11px] text-text-2">
+                  التاريخ
+                </Label>
+                <Input
+                  id="ins-date"
+                  type="date"
+                  dir="ltr"
+                  className={cn(
+                    mobileControlClassName,
+                    fieldErrors.inspectionDate && inspectorInvalidControlClass,
+                  )}
+                  disabled={locked}
+                  value={draft.inspectionDate}
+                  onChange={(e) => persist({ inspectionDate: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="ins-time" className="mb-1 text-[11px] text-text-2">
+                  الوقت
+                </Label>
+                <Input
+                  id="ins-time"
+                  type="time"
+                  dir="ltr"
+                  className={cn(
+                    mobileControlClassName,
+                    fieldErrors.inspectionTime && inspectorInvalidControlClass,
+                  )}
+                  disabled={locked}
+                  value={draft.inspectionTime}
+                  onChange={(e) => persist({ inspectionTime: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
           <MobileInspectOsmMap
             latitude={draft.mapLatitude}
             longitude={draft.mapLongitude}
@@ -822,8 +879,16 @@ export function FieldInspectionWorkBody({
           subtitle={mobile ? `${INSPECTOR_FEATURE_FIELDS.length} خاصية` : undefined}
           defaultOpen={!mobile}
         >
+          {fieldErrors.features || fieldErrors.featurePhotos ? (
+            <p
+              className="mb-2 rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-[12px] font-semibold text-danger"
+              role="alert"
+            >
+              {fieldErrors.features ?? fieldErrors.featurePhotos}
+            </p>
+          ) : null}
           {/* Desktop: table */}
-          <div className={cn("overflow-x-auto", mobile && "hidden")}>
+          <div className={cn("overflow-x-auto", mobile && "hidden")} id="ins-features-section">
             <p className="mb-2 text-[11px] leading-relaxed text-text-3">
               عمود «صورة» لإثبات قيمة الحقل عند الحاجة (مثل «نعم» أو نوع الأصل).{" "}
               <strong className="font-semibold text-text-2">صور أنواع العقار</strong>{" "}
@@ -843,20 +908,48 @@ export function FieldInspectionWorkBody({
                   const value = draft.featureValues[field.key] ?? "";
                   const attachment = draft.featurePhotoAttachments[field.key];
                   const photoRef = `feature:${field.key}`;
+                  const valueMissing = Boolean(
+                    fieldErrors.emptyFeatureKeys?.includes(field.key),
+                  );
+                  const photoMissing =
+                    fieldErrors.missingFeaturePhotoKey === field.key;
                   return (
-                    <tr key={field.key}>
+                    <tr
+                      key={field.key}
+                      id={`ins-feature-${field.key}`}
+                      className={cn(
+                        (valueMissing || photoMissing) && "bg-danger-bg/45",
+                      )}
+                    >
                       <td className={cn(TABLE_TD, "text-center text-[11px] text-text-3")}>
                         {index + 1}
                       </td>
-                      <td className={TABLE_TD}>
+                      <td
+                        className={cn(
+                          TABLE_TD,
+                          (valueMissing || photoMissing) &&
+                            "font-semibold text-danger",
+                        )}
+                      >
                         {field.label}
                         {field.shared ? (
                           <InsBadge label="مشترك" tone="purple" />
+                        ) : null}
+                        {valueMissing ? (
+                          <span className="ms-1.5 text-[10px] font-bold text-danger">
+                            مطلوب
+                          </span>
+                        ) : null}
+                        {photoMissing ? (
+                          <span className="ms-1.5 text-[10px] font-bold text-danger">
+                            صورة مطلوبة
+                          </span>
                         ) : null}
                       </td>
                       <td className={TABLE_TD}>
                         <Select
                           value={value}
+                          aria-invalid={valueMissing || undefined}
                           onChange={(e) => {
                             const next = e.target.value;
                             persist({
@@ -879,6 +972,7 @@ export function FieldInspectionWorkBody({
                           className={cn(
                             formControlClassName,
                             "w-full appearance-none rounded-md border border-border-md bg-surface px-[9px] py-[5px] text-[12px] text-text font-inherit",
+                            valueMissing && inspectorInvalidControlClass,
                           )}
                         >
                           <option value="">— اختر —</option>
@@ -889,7 +983,14 @@ export function FieldInspectionWorkBody({
                           ))}
                         </Select>
                       </td>
-                      <td className={cn(TABLE_TD, "text-center text-text-3")}>
+                      <td
+                        id={`ins-feature-photo-${field.key}`}
+                        className={cn(
+                          TABLE_TD,
+                          "text-center text-text-3",
+                          photoMissing && "bg-danger-bg",
+                        )}
+                      >
                         <DesktopFeaturePhotoCell
                           needsPhoto={inspectorFeatureRequiresPhoto(field, value)}
                           hasPhoto={Boolean(attachment?.fileName)}
@@ -933,6 +1034,11 @@ export function FieldInspectionWorkBody({
               const photoRef = `feature:${field.key}`;
               const needsPhoto = inspectorFeatureRequiresPhoto(field, value);
               const usePills = featureUsesPills(field);
+              const valueMissing = Boolean(
+                fieldErrors.emptyFeatureKeys?.includes(field.key),
+              );
+              const photoMissing =
+                fieldErrors.missingFeaturePhotoKey === field.key;
 
               function setFeatureValue(next: string) {
                 persist({
@@ -953,9 +1059,22 @@ export function FieldInspectionWorkBody({
               }
 
               return (
-                <div key={field.key} className="mb-4">
+                <div
+                  key={field.key}
+                  id={`ins-feature-${field.key}`}
+                  className={cn(
+                    "mb-4 rounded-xl p-2",
+                    (valueMissing || photoMissing) &&
+                      "border border-danger/40 bg-danger-bg/40",
+                  )}
+                >
                   <MobileFieldLabel shared={field.shared}>
                     {field.label}
+                    {valueMissing ? (
+                      <span className="ms-1 text-[11px] font-bold text-danger">
+                        (مطلوب)
+                      </span>
+                    ) : null}
                   </MobileFieldLabel>
                   {usePills ? (
                     <MobilePills
@@ -1151,6 +1270,7 @@ export function FieldInspectionWorkBody({
           )}
         </InspectorCard>
 
+        <div id="ins-components-section">
         <InspectorCard
           title="مكوّنات العقار"
           icon="ti-building-estate"
@@ -1362,6 +1482,7 @@ export function FieldInspectionWorkBody({
             </p>
           ) : null}
         </InspectorCard>
+        </div>
 
         <InspectorCard
           title={mobile ? "مساحات المباني" : "مساحات المباني"}
@@ -2144,6 +2265,47 @@ export function FieldInspectionWorkBody({
         </div>
 
         {beforeSubmitFooter}
+
+        {!mobile && !locked ? (
+          <div className="mt-3.5 flex flex-col gap-3 rounded-lg border border-[color-mix(in_srgb,var(--gold)_35%,transparent)] bg-[color-mix(in_srgb,var(--gold)_10%,transparent)] px-3.5 py-[11px] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2.5">
+            <div className="text-xs leading-relaxed text-text-2">
+              <strong className="text-gold-d">وضع الإدخال</strong> — تُدخل
+              بيانات المعاينة الميدانية وتُرسل بعد اكتمالها.
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="primary"
+                loading={submitting}
+                disabled={submitting || workLocked}
+                onClick={() => void hostRef.current?.submit?.()}
+              >
+                حفظ وإرسال
+              </Button>
+              {onRegisterFailure ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={submitting || workLocked}
+                  onClick={onRegisterFailure}
+                >
+                  تسجيل تعذر
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={submitting || workLocked}
+                onClick={() => void saveDraft()}
+              >
+                حفظ مسودة
+              </Button>
+            </div>
+          </div>
+        ) : null}
 
         {!hideSubmitFooter ? (
           <InspectorSubmitFooter

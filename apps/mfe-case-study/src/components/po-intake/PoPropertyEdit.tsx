@@ -32,6 +32,7 @@ import {
   mergePropertyEnfathValidation,
 } from "../../lib/domain/po-intake/property-enfath-validation";
 import { contactsForApi } from "../../lib/domain/po-intake/property-validation";
+import { scheduleScrollToFirstPoPropertyError } from "../../lib/domain/po-intake/po-field-error-targets";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { canDeleteProperty } from "../../lib/prototype/po-roles";
 
@@ -93,58 +94,6 @@ export function PoPropertyEdit({
     },
     [],
   );
-
-  function findFirstInvalidFieldId(
-    errors: FieldErrors,
-    prop: PoPropertyIntake,
-  ): string | null {
-    const keys = Object.keys(errors);
-    const isBourse = isBourseInquiryIdentifier(prop.identifierType);
-    for (const key of keys) {
-      if (key === "deedNumber") return isBourse ? "deed_number_bourse" : "deed_number";
-      if (key === "requestNumber") return isBourse ? "task_number_bourse" : "task_number";
-      if (key === "deedDate") return isBourse ? "deed_date_bourse" : "deed_date";
-      if (key === "realEstateRegNumber") return "real_estate_reg_number";
-      if (key === "realEstateRegDate") return "real_estate_reg_date";
-      if (key === "ownerName") return isBourse ? "owner_name_bourse" : "owner_name";
-      if (key === "court") return isBourse ? "court_bourse" : "court";
-      if (key === "circuit") return isBourse ? "circuit_bourse" : "circuit";
-      if (key === "delegationLetterFileNames") return `delegation_${prop.id}`;
-      if (key === "realEstateRegFileName") return `real_estate_reg_${prop.id}`;
-      if (key === "assignmentDocFileNames") return `assignment_doc_${prop.id}`;
-      if (key.startsWith("contact_phone_")) {
-        const idx = key.replace("contact_phone_", "");
-        return `po_contact_phone_${idx}`;
-      }
-      if (key.startsWith("contact_role_")) {
-        const idx = key.replace("contact_role_", "");
-        return `po_contact_role_${idx}`;
-      }
-      if (key.startsWith("contact_name_")) {
-        const idx = key.replace("contact_name_", "");
-        return `po_contact_name_${idx}`;
-      }
-    }
-    return null;
-  }
-
-  function scrollToInvalidField(errors: FieldErrors, prop: PoPropertyIntake) {
-    const fieldId = findFirstInvalidFieldId(errors, prop);
-    if (!fieldId) return;
-    requestAnimationFrame(() => {
-      const el = document.getElementById(fieldId);
-      if (!el) return;
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      if (
-        el instanceof HTMLInputElement ||
-        el instanceof HTMLSelectElement ||
-        el instanceof HTMLTextAreaElement ||
-        el instanceof HTMLButtonElement
-      ) {
-        el.focus();
-      }
-    });
-  }
 
   if (loading) {
     return (
@@ -220,7 +169,7 @@ export function PoPropertyEdit({
         firstEnfathValidationMessage(errors) ||
           firstBourseValidationMessage(errors),
       );
-      scrollToInvalidField(errors, property);
+      scheduleScrollToFirstPoPropertyError(errors, property);
       return;
     }
 
@@ -236,7 +185,10 @@ export function PoPropertyEdit({
     if (!result.ok) {
       setSaving(false);
       setFormError(result.error);
-      if (result.errors) setFieldErrors(result.errors);
+      if (result.errors) {
+        setFieldErrors(result.errors);
+        scheduleScrollToFirstPoPropertyError(result.errors, property);
+      }
       showToast(result.error, "error");
       return;
     }

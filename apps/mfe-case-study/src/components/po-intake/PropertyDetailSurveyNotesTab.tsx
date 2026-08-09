@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { InlineLoadingSkeleton, useToast } from "@platform/design-system";
 import {
   EmptyState,
-  SectionHeader,
   ltrValueClass,
 } from "./PropertyDetailFields";
 import {
@@ -207,10 +206,7 @@ export function PropertyDetailSurveyNotesTab({
       </div>
 
       {engRows.length > 0 ? (
-        <>
-          <SectionHeader>ملاحظات المكتب الهندسي</SectionHeader>
-          <EngineeringPartyNotesSection remarks={engRows} />
-        </>
+        <EngineeringPartyNotesSection remarks={engRows} />
       ) : null}
     </>
   );
