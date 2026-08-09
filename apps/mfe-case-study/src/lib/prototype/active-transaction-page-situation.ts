@@ -202,31 +202,35 @@ export const PAGE_SITUATION_CARDS: Partial<Record<PageId, PageSituationCardDef[]
         icon: "check",
       },
     ],
-    /** HTML Case Study «الأتعاب والصرف» KPI vocabulary. */
+    /** Supervisor / ops «فوترة الأتعاب» KPI band. */
     "party-fees": [
       {
         key: "total",
         label: "إجمالي المطالبات",
         sub: "سجلات الأتعاب",
         tone: "blue",
+        icon: "clipboard",
       },
       {
         key: "toSupervisor",
-        label: "بانتظار موافقة",
-        sub: "مكتب أو مشرف",
+        label: "بانتظار الاعتماد",
+        sub: "مشرف أو مكتب",
         tone: "warn",
+        icon: "clock",
       },
       {
         key: "atFinance",
-        label: "جاهزة للفوترة",
-        sub: "لدى المالية",
-        tone: "green",
+        label: "لدى المالية",
+        sub: "جاهزة / ضمن كشف",
+        tone: "blue",
+        icon: "card",
       },
       {
         key: "disbursed",
-        label: "مفوترة / مدفوعة",
+        label: "مصروفة",
         sub: "أُغلقت مالياً",
         tone: "green",
+        icon: "currency",
       },
     ],
   };
@@ -424,9 +428,11 @@ export function computeFeesPageSituation(
  * Case Study.html `renderEngFees` KPI sums (SAR) for المكتب الهندسي.
  * Matches FEE_ST buckets: pending_office → pending; ready|carried → ready;
  * listed (in-statement) is outstanding but not “جاهزة للفوترة”.
+ * Paid matches HTML `ENG_FNS` with `paidAt` when `closedStatementsPaidSar` is provided.
  */
 export function computeEngineeringFeesSituation(
   rows: InspectorFeeRowDto[],
+  opts?: { closedStatementsPaidSar?: number },
 ): Pick<
   PageSituationValues,
   "outstanding" | "pending" | "ready" | "paid"
@@ -434,7 +440,7 @@ export function computeEngineeringFeesSituation(
   let outstanding = 0;
   let pending = 0;
   let ready = 0;
-  let paid = 0;
+  let paidFromLedgers = 0;
 
   for (const row of rows) {
     const net = Number(row.netFeeSar) || 0;
@@ -448,9 +454,14 @@ export function computeEngineeringFeesSituation(
     ) {
       ready += net;
     } else if (row.billingStatus === "disbursed") {
-      paid += net;
+      paidFromLedgers += net;
     }
   }
+
+  const paid =
+    opts?.closedStatementsPaidSar !== undefined
+      ? opts.closedStatementsPaidSar
+      : paidFromLedgers;
 
   return { outstanding, pending, ready, paid };
 }

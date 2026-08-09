@@ -16,12 +16,6 @@ export const ORPHAN_SCREENS_NAV: OrphanScreenNavItem[] = [
     available: true,
   },
   {
-    id: "government-review",
-    label: "المراجعة الحكومية (يتيم)",
-    icon: "M3 21h18M6 21V7l6-4 6 4M12 3v18",
-    available: true,
-  },
-  {
     id: "property-inspection",
     label: "معاينة العقار (يتيم)",
     icon: "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zM12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",

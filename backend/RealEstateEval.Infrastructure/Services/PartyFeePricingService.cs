@@ -249,6 +249,9 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
 
         var now = DateTime.UtcNow;
         var sourceBefore = Snapshot(source);
+        var wasSourceActive = source.IsActive;
+        // Insert the revision inactive first. Postgres rejects an INSERT of an active row while
+        // the previous category default is still active (IX_PartyFeePricingTables_Category_OneActive).
         var revision = new PartyFeePricingTable
         {
             Id = Guid.NewGuid(),
@@ -256,7 +259,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             Name = NormalizeName(request.Name, source.Category),
             PricingKind = source.PricingKind,
             ManagedBy = source.ManagedBy,
-            IsActive = source.IsActive,
+            IsActive = false,
             GovernmentReviewFeeSar = source.GovernmentReviewFeeSar,
             FieldInspectorIndividualFeeSar = source.FieldInspectorIndividualFeeSar,
             FieldInspectorOrganizationFeeSar = source.FieldInspectorOrganizationFeeSar,
@@ -266,7 +269,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
 
         ApplyRatesInMemory(revision, request);
 
-        if (source.IsActive)
+        if (wasSourceActive)
         {
             source.IsActive = false;
             source.UpdatedAtUtc = now;
@@ -315,6 +318,22 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             categoryAfter);
 
         await _db.SaveChangesAsync(cancellationToken);
+
+        if (wasSourceActive)
+        {
+            var revisionBeforeActivate = Snapshot(revision);
+            revision.IsActive = true;
+            revision.UpdatedAtUtc = DateTime.UtcNow;
+            AddAudit(
+                actorId,
+                "PRICING_TABLE_ACTIVATED",
+                nameof(PartyFeePricingTable),
+                revision.Id,
+                revisionBeforeActivate,
+                Snapshot(revision));
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+
         var reloaded = await LoadTableAsync(revision.Id, tracking: false, cancellationToken)
             ?? throw new KeyNotFoundException(
                 $"Pricing table revision {revision.Id} was not found after save.");
@@ -342,11 +361,16 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             .Include(x => x.AreaTiers)
             .Where(x => x.Id != id && x.Category == table.Category && x.IsActive)
             .ToListAsync(cancellationToken);
-        var targetBefore = Snapshot(table);
+
+        // Postgres filtered unique index IX_PartyFeePricingTables_Category_OneActive is checked
+        // per statement. Activating before demoting the previous default in the same SaveChanges
+        // batch briefly leaves two active rows and fails with 23505.
+        var now = DateTime.UtcNow;
         foreach (var other in others)
         {
             var before = Snapshot(other);
             other.IsActive = false;
+            other.UpdatedAtUtc = now;
             AddAudit(
                 actorId,
                 "PRICING_TABLE_DEACTIVATED",
@@ -356,16 +380,24 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
                 Snapshot(other));
         }
 
-        table.IsActive = true;
-        table.UpdatedAtUtc = DateTime.UtcNow;
-        AddAudit(
-            actorId,
-            "PRICING_TABLE_ACTIVATED",
-            nameof(PartyFeePricingTable),
-            table.Id,
-            targetBefore,
-            Snapshot(table));
-        await _db.SaveChangesAsync(cancellationToken);
+        if (others.Count > 0)
+            await _db.SaveChangesAsync(cancellationToken);
+
+        if (!table.IsActive)
+        {
+            var targetBefore = Snapshot(table);
+            table.IsActive = true;
+            table.UpdatedAtUtc = now;
+            AddAudit(
+                actorId,
+                "PRICING_TABLE_ACTIVATED",
+                nameof(PartyFeePricingTable),
+                table.Id,
+                targetBefore,
+                Snapshot(table));
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+
         return await ToDtoAsync(table, cancellationToken);
     }
 

@@ -84,6 +84,8 @@ export type EngineeringSurveySubmissionSnapshot = {
   westBoundary: string;
   westBoundaryLengthM: string;
   surveyNotes: string;
+  /** ملاحظة تبويب «ملاحظة» في مساحة المكتب الهندسي */
+  transactionNote: string;
   updatedAtUtc: string;
   submittedAtUtc?: string;
 };

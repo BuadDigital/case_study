@@ -29,6 +29,7 @@ import {
 } from "@platform/design-system";
 import type { PartyBillingStatementDto } from "@platform/api-client";
 import { EngFeesSectionTitle } from "./EngFeesHtmlTabs";
+import { VendorInvoicePdfField } from "./VendorInvoicePdfField";
 
 function fmtSar(n: number): string {
   return `${Number(n || 0).toLocaleString("en-US")} ر.س`;
@@ -185,7 +186,7 @@ export function PartyOfficeBillingStatementsPanel({
         sub="يُصدرها المحاسب نهاية الشهر من البنود الجاهزة فقط — مستند داخلي لتحديد نطاق الصرف؛ الفاتورة من البرنامج المحاسبي. للاطلاع ومتابعة الصرف فقط."
       />
 
-      <PageToolbar className="shrink-0 flex-wrap items-center justify-between gap-2.5 border-b border-border bg-surface-2">
+      <PageToolbar className="mt-0 shrink-0 flex-wrap items-center justify-between gap-2.5 border-b border-border bg-surface-2">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
           <OperationalToolbarSearch
             type="search"
@@ -391,20 +392,13 @@ export function PartyOfficeBillingStatementsPanel({
                                     }
                                   />
                                 </label>
-                                <label className="text-[12px] text-text-2">
-                                  PDF الفاتورة *
-                                  <Input
-                                    className="mt-1"
-                                    type="file"
-                                    accept="application/pdf,image/*"
-                                    disabled={busyId === s.id}
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      e.target.value = "";
-                                      void submitInvoice(s, file);
-                                    }}
-                                  />
-                                </label>
+                                <VendorInvoicePdfField
+                                  busy={busyId === s.id}
+                                  disabled={busyId === s.id}
+                                  onPick={(file) => {
+                                    void submitInvoice(s, file);
+                                  }}
+                                />
                               </div>
                             ) : null}
                             {s.status === "invoice_received" ? (
@@ -456,8 +450,10 @@ export function PartyOfficeBillingStatementsPanel({
       </div>
 
       <div className="border border-t-0 border-border px-4 py-[11px] text-[12px] text-text-3">
-        دورة المورّد: مسير مُعد ← أُرسل ← فاتورة واردة (قيمة مقفلة على المسير) ←
-        مطابقة المالية ← صرف. لا يُدخل مبلغ الفاتورة يدوياً.
+        دورة الكشف: مسودة ← صادر ← محال للمالية ← مصروف. الفاتورة تصدر من البرنامج
+        المحاسبي خارج النظام، ويُوثَّق الصرف هنا برقم الفاتورة وإيصال التحويل
+        والتاريخ. البنود المتحفَّظ عليها تُعالَج بالتنسيق مع المشرف قبل إحالتها
+        للمالية.
       </div>
     </div>
   );

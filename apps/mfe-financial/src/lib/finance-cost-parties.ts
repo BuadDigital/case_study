@@ -149,6 +149,47 @@ export function statementDisplayTotal(s: {
   );
 }
 
+/**
+ * تسمية تشغيلية لحالة المسير/أمر الصرف — أوضح من status الخام بعد المطابقة.
+ */
+export function partyBillingWorkflowLabel(s: {
+  status: string;
+  statusLabel?: string | null;
+  payeeType?: string | null;
+  vendorInvoiceMatched?: boolean;
+}): string {
+  if (s.status === "closed") return "مدفوع";
+  if (s.status === "cancelled") return "ملغى";
+  if (s.status === "draft") {
+    return s.payeeType === "individual" ? "مسودة أمر صرف" : "مسودة مسير";
+  }
+  if (s.status === "issued") {
+    return s.payeeType === "individual"
+      ? "بانتظار توثيق الصرف"
+      : "بانتظار فاتورة المورّد";
+  }
+  if (s.status === "invoice_received") {
+    return s.vendorInvoiceMatched
+      ? "مطابق — بانتظار توثيق الصرف"
+      : "فاتورة واردة — بانتظار المطابقة";
+  }
+  return (s.statusLabel || "").trim() || s.status;
+}
+
+/** tone لـ finStatusFor */
+export function partyBillingWorkflowTone(s: {
+  status: string;
+  vendorInvoiceMatched?: boolean;
+}): string {
+  if (s.status === "closed") return "closed";
+  if (s.status === "cancelled") return "cancelled";
+  if (s.status === "invoice_received" && s.vendorInvoiceMatched) return "ready";
+  if (s.status === "invoice_received") return "invoice_received";
+  if (s.status === "issued") return "issued";
+  if (s.status === "draft") return "draft";
+  return s.status;
+}
+
 export function daysSinceIsoCost(iso: string | null | undefined): number | null {
   if (!iso) return null;
   const t = Date.parse(iso);

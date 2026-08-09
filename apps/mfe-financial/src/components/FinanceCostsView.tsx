@@ -9,7 +9,6 @@ import {
 } from "@platform/app-shared/prototype/party-billing-statements-api";
 import { resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
-import { cn } from "@platform/design-system";
 import {
   applyCostTax,
   buildFinanceCostParties,
@@ -17,7 +16,6 @@ import {
 } from "../lib/finance-cost-parties";
 import { COSTS_ACCOUNT_TABS, type CostsSection } from "../lib/finance-nav";
 import {
-  finGhost,
   finNote,
   finStatus,
   finStatusTeal,
@@ -104,14 +102,20 @@ export function FinanceCostsView({
   onFocusStatement,
   focusPartyId: focusPartyIdProp,
   onFocusParty,
+  onEnsureParty,
   excludedCount,
 }: {
   section: CostsSection;
   onSectionChange: (section: CostsSection) => void;
   focusStatementId: string | null;
-  onFocusStatement: (id: string | null) => void;
+  onFocusStatement: (id: string | null, partyId?: string | null) => void;
   focusPartyId: string | null;
-  onFocusParty: (id: string | null) => void;
+  onFocusParty: (
+    id: string | null,
+    preferredSection?: "dues" | "statements" | CostsSection,
+  ) => void;
+  /** يثبت party في الرابط عند فتح statement بدون party أو بقيمة خاطئة */
+  onEnsureParty?: (partyId: string) => void;
   /** متوافق مع الاستدعاء السابق — غير مستخدم (التقارير أُزيلت) */
   summary?: unknown;
   summaryReady?: boolean;
@@ -149,12 +153,31 @@ export function FinanceCostsView({
     setViewSection(section);
   }, [section]);
 
-  const focusPartyId =
-    focusPartyIdProp?.trim() ||
-    (focusStatementId
-      ? (statementsQuery.data ?? []).find((s) => s.id === focusStatementId)
-          ?.assigneeId ?? null
-      : null);
+  const statementResolvedParty = useMemo(() => {
+    if (!focusStatementId) return null;
+    const s = (statementsQuery.data ?? []).find(
+      (x) => x.id === focusStatementId,
+    );
+    return s?.assigneeId?.trim() || null;
+  }, [focusStatementId, statementsQuery.data]);
+
+  /** ثبّت party في URL عند فتح statement بدون party أو بقيمة غير متطابقة */
+  useEffect(() => {
+    if (!statementResolvedParty || !onEnsureParty) return;
+    if ((focusPartyIdProp ?? "").trim() === statementResolvedParty) return;
+    onEnsureParty(statementResolvedParty);
+  }, [statementResolvedParty, focusPartyIdProp, onEnsureParty]);
+
+  /** deep-link: افتح مسيرات عند وجود statement */
+  useEffect(() => {
+    if (!focusStatementId) return;
+    if (viewSection === "statements" || viewSection === "paid") return;
+    setViewSection("statements");
+    onSectionChange("statements");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to statement id
+  }, [focusStatementId]);
+
+  const focusPartyId = focusPartyIdProp?.trim() || statementResolvedParty;
 
   const wantsAccountTab =
     viewSection === "dues" ||
@@ -163,10 +186,10 @@ export function FinanceCostsView({
     viewSection === "excluded";
 
   const activeParty = focusPartyId
-    ? parties.find((p) => p.assigneeId === focusPartyId) ?? null
+    ? (parties.find((p) => p.assigneeId === focusPartyId) ?? null)
     : null;
 
-  /** وجود party في الرابط = شاشة حساب (حتى لو تأخر section) */
+  /** وجود party = شاشة حساب */
   const inPartyAccount = Boolean(focusPartyId);
   const accountSection: CostsSection = wantsAccountTab
     ? viewSection
@@ -181,19 +204,21 @@ export function FinanceCostsView({
     }));
   }, [activeParty?.payeeType]);
 
+  const partyKey = focusPartyId;
   const partyCounts = useMemo(() => {
-    if (!focusPartyId) return {};
+    if (!partyKey) return {};
     const due = (readyQuery.data ?? []).filter(
-      (l) => (l.assigneeId?.trim() || "—") === focusPartyId && l.netFeeSar > 0,
+      (l) => (l.assigneeId?.trim() || "—") === partyKey && l.netFeeSar > 0,
     ).length;
     const stmts = (statementsQuery.data ?? []).filter(
       (s) =>
-        s.assigneeId === focusPartyId &&
+        (s.assigneeId?.trim() || "") === partyKey &&
         s.status !== "closed" &&
         s.status !== "cancelled",
     ).length;
     const paid = (statementsQuery.data ?? []).filter(
-      (s) => s.assigneeId === focusPartyId && s.status === "closed",
+      (s) =>
+        (s.assigneeId?.trim() || "") === partyKey && s.status === "closed",
     ).length;
     return {
       dues: due,
@@ -201,12 +226,7 @@ export function FinanceCostsView({
       paid,
       excluded: excludedCount ?? 0,
     } as Partial<Record<CostsSection, number>>;
-  }, [
-    focusPartyId,
-    readyQuery.data,
-    statementsQuery.data,
-    excludedCount,
-  ]);
+  }, [partyKey, readyQuery.data, statementsQuery.data, excludedCount]);
 
   const partyName =
     activeParty?.name ??
@@ -215,10 +235,10 @@ export function FinanceCostsView({
   if (!inPartyAccount) {
     return (
       <FinanceCostPartiesList
-        onSelectParty={(id) => {
-          setViewSection("dues");
-          onFocusParty(id);
-          onSectionChange("dues");
+        onSelectParty={(id, preferred) => {
+          const next = preferred ?? "dues";
+          setViewSection(next);
+          onFocusParty(id, next);
         }}
       />
     );
@@ -243,36 +263,6 @@ export function FinanceCostsView({
 
   return (
     <div>
-      <div className="mb-2.5">
-        <button
-          type="button"
-          className={cn(finGhost, "h-auto px-2.5 py-1.5 text-[11.5px]")}
-          onClick={() => {
-            setViewSection("parties");
-            onFocusParty(null);
-            onFocusStatement(null);
-            onSectionChange("parties");
-          }}
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden
-          >
-            <path
-              d="M18 15l-6-6-6 6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          رجوع
-        </button>
-      </div>
-
       <AccountHeader party={headerParty} />
 
       <FinanceStagePills
@@ -297,8 +287,8 @@ export function FinanceCostsView({
                   ? "أوامر الصرف المدفوعة للأفراد — للمطابقة فقط: المعاملات وسند الصرف وإيصال التحويل."
                   : "مسيرات الصرف المدفوعة — للمطابقة فقط: المعاملات وفاتورة المورّد وسند الصرف وإيصال التحويل."
                 : headerParty.payeeType === "individual"
-                  ? "أوامر صرف قيد الإجراء للأفراد — لا فاتورة ولا مسير. تحتاج توثيق الدفع ورفع إيصال التحويل. اضغط أمر الصرف لعرض معاملاته."
-                  : "مسيرات الصرف قيد الإجراء: «بانتظار فاتورة المورّد» أُرسل المسير للمورّد ليرفع فاتورة مطابقة · «فاتورة واردة» تحتاج إقرار مطابقتكم · «أمر صرف» يحتاج توثيق الدفع. اضغط المستند لعرض معاملاته."}
+                  ? "أوامر صرف قيد الإجراء للأفراد — لا فاتورة. تحتاج توثيق الدفع ورفع إيصال التحويل. اضغط أمر الصرف لعرضه."
+                  : "مسيرات قيد الإجراء: «بانتظار فاتورة المورّد» · «فاتورة واردة — بانتظار المطابقة» · «مطابق — بانتظار توثيق الصرف». اضغط المسير لإكمال الإجراء."}
             </p>
           ) : null}
           <FinancePartyBillingStatements
@@ -311,7 +301,9 @@ export function FinanceCostsView({
             }
             assigneeId={focusPartyId}
             focusStatementId={focusStatementId}
-            onFocusStatement={onFocusStatement}
+            onFocusStatement={(id, partyId) =>
+              onFocusStatement(id, partyId ?? focusPartyId)
+            }
             onCreatedStatement={() => onSectionChange("statements")}
           />
         </>

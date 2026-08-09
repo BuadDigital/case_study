@@ -41,10 +41,13 @@ import {
   type InspectorBoundaryKey,
   type InspectorComponentPhotoKey,
   type InspectorPhotoAttachment,
+  type InspectorSlotPhoto,
   type InspectorWorkspaceDraft,
 } from "../../lib/prototype/inspector-workspace-data";
 import {
   clearInspectorPhotoDataUrl,
+  getInspectorPhotoDataUrl,
+  prefetchInspectorPhoto,
   uploadInspectorPhotoFromFile,
 } from "../../lib/prototype/inspector-photo-upload";
 import { InspectorDefinedPhotosSection } from "../field-inspection/InspectorDefinedPhotosSection";
@@ -346,14 +349,49 @@ function ChipRow({
 function PhotoTile({
   label,
   filled,
+  none,
+  taskId,
+  photoRef,
+  photo,
   locationFlag,
   distanceM,
 }: {
   label: string;
   filled: boolean;
+  none?: boolean;
+  taskId?: string;
+  photoRef?: string;
+  photo?: InspectorSlotPhoto | null;
   locationFlag?: string | null;
   distanceM?: number | null;
 }) {
+  const [dataUrl, setDataUrl] = useState<string | undefined>(() =>
+    taskId && photoRef ? getInspectorPhotoDataUrl(taskId, photoRef) : undefined,
+  );
+
+  useEffect(() => {
+    if (!filled || !taskId || !photoRef || !photo) {
+      setDataUrl(undefined);
+      return;
+    }
+    const cached = getInspectorPhotoDataUrl(taskId, photoRef);
+    if (cached) {
+      setDataUrl(cached);
+      return;
+    }
+    let cancelled = false;
+    void prefetchInspectorPhoto(taskId, photoRef, photo)
+      .then((url) => {
+        if (!cancelled && url) setDataUrl(url);
+      })
+      .catch(() => {
+        if (!cancelled) setDataUrl(undefined);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [filled, taskId, photoRef, photo]);
+
   const flagLabel = photoLocationFlagLabel(locationFlag);
   const flagTone =
     locationFlag === "outside_property"
@@ -365,8 +403,15 @@ function PhotoTile({
           : null;
 
   return (
-    <div className="relative grid h-[100px] place-items-center overflow-hidden rounded-lg border border-border bg-surface-2">
-      {filled ? (
+    <div
+      className={cn(
+        "relative grid h-[100px] place-items-center overflow-hidden rounded-lg border border-border bg-surface-2 bg-cover bg-center",
+        none && "border-dashed",
+      )}
+      style={dataUrl && filled ? { backgroundImage: `url(${dataUrl})` } : undefined}
+      title={label}
+    >
+      {filled && !dataUrl ? (
         <svg
           width="24"
           height="24"
@@ -380,9 +425,12 @@ function PhotoTile({
           <circle cx="8.5" cy="9.5" r="1.5" />
           <path d="m4 17 5-5 4 4 3-2 4 4" />
         </svg>
-      ) : (
-        <span className="text-[10.5px] text-[#d9694f]">بانتظار الرفع</span>
-      )}
+      ) : null}
+      {!filled ? (
+        <span className="text-[10.5px] text-[#d9694f]">
+          {none ? "غير متوفر" : "بانتظار الرفع"}
+        </span>
+      ) : null}
       {flagTone && flagLabel ? (
         <span
           className={`absolute inset-x-1 top-1 z-[1] rounded px-1 py-0.5 text-center text-[9px] font-semibold text-white ${flagTone}`}
@@ -1748,20 +1796,24 @@ export function PropertyDetailInspectionTab({
               <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2">
                 {photoSlots.map((def) => {
                   const slot = draft.definedPhotos[def.id];
-                  const filled = isServiceAmenityPhotoSlotComplete(slot);
-                  const worst =
-                    slot?.photos?.find(
-                      (p) =>
-                        p.locationFlag === "outside_property" ||
-                        p.locationFlag === "location_unavailable",
-                    ) ?? slot?.photos?.[0];
+                  const none = Boolean(slot?.none);
+                  const firstPhoto = slot?.photos?.[0];
+                  const showPhoto = !none && Boolean(firstPhoto);
                   return (
                     <PhotoTile
                       key={def.id}
                       label={def.label}
-                      filled={filled && !slot?.none}
-                      locationFlag={worst?.locationFlag}
-                      distanceM={worst?.distanceM}
+                      filled={showPhoto}
+                      none={none}
+                      taskId={draft.taskId}
+                      photoRef={
+                        firstPhoto
+                          ? `slot:${def.id}:${firstPhoto.id}`
+                          : undefined
+                      }
+                      photo={firstPhoto}
+                      locationFlag={firstPhoto?.locationFlag}
+                      distanceM={firstPhoto?.distanceM}
                     />
                   );
                 })}
@@ -1817,6 +1869,18 @@ export function PropertyDetailInspectionTab({
                             });
                             return true;
                           }}
+                        />
+                      ) : obs.photo ? (
+                        <InspectorStampedPhotoThumb
+                          stamp={inspectorPhotoStampText(
+                            draft,
+                            property.deedNumber,
+                          )}
+                          compact
+                          className="!block h-full w-full [&_button]:h-full [&_button]:min-h-[74px] [&_button]:w-full"
+                          taskId={draft.taskId}
+                          photoRef={`observation:${obs.id}`}
+                          attachment={obs.photo}
                         />
                       ) : (
                         <svg

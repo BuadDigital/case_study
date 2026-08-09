@@ -374,15 +374,16 @@ export function GovernmentReviewWorkBody({
 
     hostRef.current?.onSavingChange?.(true);
     setFormError(null);
-    const submitted = await finalizeGovernmentReviewSubmission(task.id);
+    const result = await finalizeGovernmentReviewSubmission(task.id);
     hostRef.current?.onSavingChange?.(false);
 
-    if (submitted) {
-      setDraft(submitted);
+    if (result.ok) {
+      setDraft(result.data);
       hostRef.current?.onSubmitted?.();
       return true;
     }
-    const message = "تعذر إتمام المراجعة — حاول مرة أخرى";
+    const message =
+      result.error.trim() || "تعذر إتمام المراجعة — حاول مرة أخرى";
     setFormError(message);
     showToast(message, "error");
     return false;

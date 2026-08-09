@@ -694,7 +694,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
                     Body = $"{statement.ReferenceNumber} — فاتورة {invoiceNo} بمبلغ مقفل {statement.TotalNetSar:0.##} ر.س",
                     Category = "financial",
                     Tone = "info",
-                    Href = $"/financial?area=costs&section=statements&statement={statement.Id}",
+                    Href = $"/financial?area=costs&section=statements&statement={statement.Id}&party={Uri.EscapeDataString(statement.AssigneeId ?? "")}",
                 },
                 cancellationToken);
         }

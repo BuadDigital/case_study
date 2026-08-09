@@ -287,7 +287,7 @@ function StudyTable({
           ]}
         />
         {groups.map(({ poNumber, rows: group }) => {
-          const open = collapsed[poNumber] !== true;
+          const open = collapsed[poNumber] === true;
           const totalInPo = poTotals.get(poNumber) ?? group.length;
           const studyInPo = group.length;
           let feesSum = 0;
@@ -524,7 +524,7 @@ function BillingAssistantTable({
           ]}
         />
         {groups.map(({ poNumber, rows: group }) => {
-          const open = collapsed[poNumber] !== true;
+          const open = collapsed[poNumber] === true;
           let sBase = 0;
           let sVat = 0;
           let sKey = 0;
@@ -722,7 +722,7 @@ function CollectionTable({
         />
         {groups.map((group) => {
           const key = group.invoiceKey;
-          const open = collapsed[key] !== true;
+          const open = collapsed[key] === true;
           const iv = group.invoiceNumber;
           const age = rowAgeDays(group.rows[0]!) ?? 0;
           const fu = group.rows[0]?.followupCount ?? 0;

@@ -1,9 +1,6 @@
 "use client";
 import type { ReactNode } from "react";
-import {
-  PageShell,
-  cn,
-} from "@platform/design-system";
+import { PageShell, cn } from "@platform/design-system";
 import type { PageId } from "@platform/types";
 import { ActiveTransactionsSituationBar } from "./ActiveTransactionsSituationBar";
 
@@ -14,6 +11,7 @@ export function ActiveTransactionPageLayout({
   reserveRail = false,
   railGridClassName,
   aboveSituation,
+  hideSituation = false,
   queuePanel,
   sidePanel,
 }: {
@@ -24,6 +22,8 @@ export function ActiveTransactionPageLayout({
   railGridClassName?: string;
   /** Office banner etc. — rendered above KPI situation cards (eng2). */
   aboveSituation?: ReactNode;
+  /** When true, skip situation KPI band (e.g. eng fees HTML embeds its own). */
+  hideSituation?: boolean;
   queuePanel: ReactNode;
   sidePanel?: ReactNode;
 }) {
@@ -36,7 +36,9 @@ export function ActiveTransactionPageLayout({
   return (
     <PageShell variant="canvas" className="h-fit min-w-0 max-w-full">
       {aboveSituation}
-      <ActiveTransactionsSituationBar pageId={pageId} />
+      {hideSituation ? null : (
+        <ActiveTransactionsSituationBar pageId={pageId} />
+      )}
 
       {split ? (
         <div

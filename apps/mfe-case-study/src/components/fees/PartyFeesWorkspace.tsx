@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { EmptyState, QueueTableHint } from "@platform/design-system";
+import { QueueTableHint } from "@platform/design-system";
 import { KeyEnvelopeFeesPanel } from "@keys/mfe/components/KeyEnvelopeFeesPanel";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
@@ -11,13 +11,22 @@ import { loadPartyBillingStatements } from "@platform/app-shared/prototype/party
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import { InspectorFeesBillingTable } from "../field-inspection/InspectorFeesBillingTable";
 import { PartyFeeWorkflowTable } from "./PartyFeeWorkflowTable";
-import { EngOfficeFeesBillingTable, engFeeUiStatus } from "./EngOfficeFeesBillingTable";
-import { PartyReturnedQueue } from "./PartyReturnedQueue";
+import {
+  EngOfficeFeesBillingTable,
+  engFeeUiStatus,
+} from "./EngOfficeFeesBillingTable";
 import { SupervisorEnfazTracking } from "./SupervisorEnfazTracking";
 import { CourtVisitFeesPanel } from "./CourtVisitFeesPanel";
 import { PartyOfficeBillingStatementsPanel } from "./PartyOfficeBillingStatementsPanel";
 import { EngFeesHtmlTabs, EngFeesSectionTitle } from "./EngFeesHtmlTabs";
+import { EngFeesHtmlScreen } from "./EngFeesHtmlScreen";
+import {
+  SUPERVISOR_ENG_SURVEY_PENDING_ACCEPT_KEY,
+  SupervisorEngSurveyFeeAcceptPanel,
+  loadSupervisorEngSurveyPendingAcceptRows,
+} from "./SupervisorEngSurveyFeeAcceptPanel";
 import { sortInspectorFeeRowsNewestFirst } from "@platform/app-shared/fees/party-fee-meta";
+import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 
 type PartyFeesTab =
   | "action"
@@ -51,6 +60,14 @@ export function PartyFeesWorkspace({
     { enabled: isSupervisor || Boolean(assigneeId) },
   );
 
+  const { data: tasks } = useWorkflowTasksQuery();
+  const { data: engAcceptPending = [] } = useQuery({
+    queryKey: SUPERVISOR_ENG_SURVEY_PENDING_ACCEPT_KEY,
+    queryFn: () => loadSupervisorEngSurveyPendingAcceptRows(tasks ?? []),
+    enabled: isSupervisor && Boolean(tasks && tasks.length > 0),
+    staleTime: 15_000,
+  });
+
   const rows = useMemo(
     () => sortInspectorFeeRowsNewestFirst(summary?.rows ?? []),
     [summary?.rows],
@@ -77,6 +94,7 @@ export function PartyFeesWorkspace({
   );
 
   const supervisorAttentionCount =
+    engAcceptPending.length +
     supReviewRows.length +
     returnedToSup.length +
     disputedRows.length +
@@ -122,6 +140,11 @@ export function PartyFeesWorkspace({
   const showVisitAndKeyFees =
     variant === "government-review" || isSupervisor;
 
+  /* Case Study.html `renderEngFees` — exact port for engineering office */
+  if (!isSupervisor && variant === "engineering-survey") {
+    return <EngFeesHtmlScreen assigneeId={assigneeId} />;
+  }
+
   if (isSupervisor) {
     const supTab: PartyFeesTab =
       tab === "fees" ||
@@ -132,8 +155,9 @@ export function PartyFeesWorkspace({
         : "financial";
 
     return (
-      <div className="flex flex-col gap-0 px-3 pb-3 sm:px-4 sm:pb-4">
+      <div className="px-[30px] pb-11 pt-[26px]">
         <EngFeesHtmlTabs
+          className="!mb-4 !mt-0"
           active={supTab}
           onChange={(id) => setTab(id as PartyFeesTab)}
           tabs={[
@@ -155,64 +179,70 @@ export function PartyFeesWorkspace({
         />
 
         {supTab === "financial" ? (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-0">
             <section>
               <EngFeesSectionTitle
-                title="الواردة للاعتماد"
-                sub="بنود بانتظار اعتماد المشرف قبل المسار المالي."
+                title="قبول مخرجات الرفع المساحي"
+                sub="استحقاق أتعاب المكتب يبدأ بعد قبول المخرجات المرسلة (سعر جدول التسعير)."
               />
-              {supReviewRows.length === 0 ? (
-                <EmptyState line="لا معاملات بانتظار الاعتماد." />
-              ) : (
-                <PartyFeeWorkflowTable rows={supReviewRows} role="supervisor" />
-              )}
+              <SupervisorEngSurveyFeeAcceptPanel />
             </section>
-            <section>
-              <EngFeesSectionTitle
-                title="خلاف تسعير (مكتب هندسي)"
-                sub="تحفّظات المكتب قيد المعالجة."
-              />
-              {disputedRows.length === 0 ? (
-                <EmptyState line="لا بنود خلاف تسعير." />
-              ) : (
+
+            {supReviewRows.length > 0 ? (
+              <section>
+                <EngFeesSectionTitle
+                  title="الواردة للاعتماد"
+                  sub="بنود بانتظار اعتماد المشرف قبل المسار المالي."
+                />
+                <PartyFeeWorkflowTable
+                  rows={supReviewRows}
+                  role="supervisor"
+                />
+              </section>
+            ) : null}
+
+            {disputedRows.length > 0 ? (
+              <section>
+                <EngFeesSectionTitle
+                  title="خلاف تسعير (مكتب هندسي)"
+                  sub="تحفّظات المكتب قيد المعالجة."
+                />
                 <PartyFeeWorkflowTable rows={disputedRows} role="supervisor" />
-              )}
-            </section>
-            <section>
-              <EngFeesSectionTitle
-                title="الموقوفة"
-                sub="بنود معلّقة بقرار المشرف."
-              />
-              {suspendedRows.length === 0 ? (
-                <EmptyState line="لا بنود موقوفة." />
-              ) : (
-                <PartyFeeWorkflowTable rows={suspendedRows} role="supervisor" />
-              )}
-            </section>
-            <section>
-              <EngFeesSectionTitle
-                title="المُعاد من المالية"
-                sub="بنود أعادتها المالية للمعالجة."
-              />
-              {returnedToSup.length === 0 ? (
-                <EmptyState line="لا معاملات مُعادة من المالية." />
-              ) : (
-                <PartyFeeWorkflowTable rows={returnedToSup} role="supervisor" />
-              )}
-            </section>
+              </section>
+            ) : null}
+
+            {suspendedRows.length > 0 ? (
+              <section>
+                <EngFeesSectionTitle
+                  title="الموقوفة"
+                  sub="بنود معلّقة بقرار المشرف."
+                />
+                <PartyFeeWorkflowTable
+                  rows={suspendedRows}
+                  role="supervisor"
+                />
+              </section>
+            ) : null}
+
+            {returnedToSup.length > 0 ? (
+              <section>
+                <EngFeesSectionTitle
+                  title="المُعاد من المالية"
+                  sub="بنود أعادتها المالية للمعالجة."
+                />
+                <PartyFeeWorkflowTable
+                  rows={returnedToSup}
+                  role="supervisor"
+                />
+              </section>
+            ) : null}
+
             <section>
               <EngFeesSectionTitle
                 title="متابعة فوترة إنفاذ"
                 sub="حالة أوامر العمل لدى إنفاذ."
               />
               <SupervisorEnfazTracking />
-            </section>
-            <section>
-              <EngFeesSectionTitle
-                title="كشوف فوترة الأطراف"
-                sub="الكشوف الصادرة لجميع الأطراف."
-              />
-              <PartyOfficeBillingStatementsPanel issuedOrLaterOnly />
             </section>
           </div>
         ) : null}
@@ -316,31 +346,18 @@ export function PartyFeesWorkspace({
       />
 
       {partyTab === "action" ? (
-        <>
-          <EngFeesSectionTitle
-            title="الكشف المبدئي — بنود تتطلب إجراءكم"
-            sub="تعديلات تسعير بانتظار إفادتكم، وتحفّظاتكم قيد المعالجة، وما أعادته المالية لكم."
-          />
-          <EngOfficeFeesBillingTable
-            rows={rows}
-            tab="action"
-            pending={isLoading && !isFetched}
-          />
-          <div className="mt-2">
-            <EngFeesSectionTitle
-              title="المُعاد لي / استفسارات المالية"
-              sub="عالجها ثم أعد رفعها للمشرف عند الحاجة."
-            />
-            <PartyReturnedQueue rows={rows} />
-          </div>
-        </>
+        <EngOfficeFeesBillingTable
+          rows={rows}
+          tab="action"
+          pending={isLoading && !isFetched}
+        />
       ) : null}
 
       {partyTab === "ready" ? (
         <>
           <EngFeesSectionTitle
             title="المعاملات الجاهزة للفوترة"
-            sub="بنود مستحقة بانتظار كشف المحاسب — تشمل المرحَّلة من أشهر سابقة."
+            sub="بنود مستحقة بانتظار كشف المحاسب نهاية الشهر — تشمل المرحَّلة من أشهر سابقة."
           />
           <EngOfficeFeesBillingTable
             rows={rows}

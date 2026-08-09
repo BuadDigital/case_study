@@ -9,3 +9,7 @@ export {
   type RevenueStage,
   type CostsSection,
 } from "./lib/finance-nav";
+export {
+  buildFinanceMyTasks,
+  buildFinanceMyTasksKpis,
+} from "./lib/finance-my-tasks";

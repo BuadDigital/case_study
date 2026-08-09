@@ -55,29 +55,14 @@ public sealed class OperationsTaskQueryService : IOperationsTaskQuery
 
         if (!OperationsTaskLifecycleRules.IsManager(actorRole))
         {
+            // Executor queue is independent: only tasks assigned to the actor
+            // (or rare cases they themselves created). Do not pull other
+            // assignees' tasks that merely share a PO.
             var userId = actorUserId.Trim();
             var myAssignee = actorAssigneeId?.Trim() ?? "";
-            var relatedPos = myAssignee.Length == 0
-                ? new List<string>()
-                : await _db.WorkflowTasks.AsNoTracking()
-                    .Where(t => t.AssigneeId == myAssignee && t.PoNumber != null && t.PoNumber != "")
-                    .Select(t => t.PoNumber!)
-                    .Distinct()
-                    .ToListAsync(cancellationToken);
-
-            if (relatedPos.Count == 0)
-            {
-                query = query.Where(t =>
-                    (myAssignee.Length > 0 && t.AssigneeId == myAssignee)
-                    || (userId.Length > 0 && t.CreatedBy == userId));
-            }
-            else
-            {
-                query = query.Where(t =>
-                    (myAssignee.Length > 0 && t.AssigneeId == myAssignee)
-                    || (userId.Length > 0 && t.CreatedBy == userId)
-                    || (t.PoNumber != null && relatedPos.Contains(t.PoNumber)));
-            }
+            query = query.Where(t =>
+                (myAssignee.Length > 0 && t.AssigneeId == myAssignee)
+                || (userId.Length > 0 && t.CreatedBy == userId));
         }
 
         var rows = await query

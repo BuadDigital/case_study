@@ -398,16 +398,25 @@ export function buildFromEngineeringSurvey(
     });
   }
 
-  const returnNote = submission.returnNote?.trim() ?? "";
-  const remarks = returnNote
-    ? [{ label: "ملاحظة الإرجاع", value: returnNote }, ...checklistRemarks]
-    : [...checklistRemarks];
+  const remarks: PropertyDetailPartySubmission["remarks"] = [];
+  // تبويب «ملاحظة» في مساحة المكتب
+  if (submission.transactionNote?.trim()) {
+    remarks.push({
+      label: "ملاحظة على المعاملة",
+      value: submission.transactionNote.trim(),
+    });
+  }
   if (submission.surveyNotes?.trim()) {
-    remarks.unshift({
+    remarks.push({
       label: INFATH_FIELD_LABELS.surveyNotes,
       value: submission.surveyNotes.trim(),
     });
   }
+  const returnNote = submission.returnNote?.trim() ?? "";
+  if (returnNote) {
+    remarks.push({ label: "ملاحظة الإرجاع", value: returnNote });
+  }
+  remarks.push(...checklistRemarks);
 
   const hasData =
     submission.status !== "draft" ||
@@ -636,26 +645,38 @@ export function buildFromEvaluator(
     });
   }
 
-  const remarks = notes
-    ? [{ label: "ملاحظات المقيّم", value: notes }]
-    : [];
+  const remarks: PropertyDetailPartySubmission["remarks"] = [];
+  // «ملاحظات على العقار (اختياري)» في نافذة التقييم
+  if (notes) {
+    remarks.push({ label: "ملاحظات على العقار", value: notes });
+  }
+  // «ملاحظات التباين (إن وُجدت)»
+  if (submission.assetDataVarianceNotes?.trim()) {
+    remarks.push({
+      label: "ملاحظات التباين",
+      value: submission.assetDataVarianceNotes.trim(),
+    });
+  }
   if (submission.searchScopeNotes?.trim()) {
     remarks.push({
       label: INFATH_FIELD_LABELS.searchScope,
       value: submission.searchScopeNotes.trim(),
     });
   }
-  if (submission.assetDataVarianceNotes?.trim()) {
+  const technicalNotes = String(
+    submission.checklist?.technical_notes_text ?? "",
+  ).trim();
+  if (technicalNotes) {
     remarks.push({
-      label: INFATH_FIELD_LABELS.assetDataVarianceNotes,
-      value: submission.assetDataVarianceNotes.trim(),
+      label: "ملاحظات فنية",
+      value: technicalNotes,
     });
   }
 
   const hasData =
     submission.status !== "draft" ||
     Boolean(price) ||
-    Boolean(notes) ||
+    remarks.length > 0 ||
     Boolean(submission.reportFileName?.trim()) ||
     answers.length > 0;
 

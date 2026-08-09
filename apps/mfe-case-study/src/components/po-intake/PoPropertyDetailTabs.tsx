@@ -30,7 +30,7 @@ import { PropertyDetailCaseStudyReport } from "./PropertyDetailCaseStudyReport";
 import { PropertyDetailPropertyKeys } from "./PropertyDetailPropertyKeys";
 import { PropertyDetailEnfathUpload } from "./PropertyDetailEnfathUpload";
 import { PropertyDetailFinanceTab } from "./PropertyDetailFinanceTab";
-import { PropertyDetailSurveyNotesTab } from "./PropertyDetailSurveyNotesTab";
+import { PropertyDetailSurveyNotesTab, buildPartyRemarksSections } from "./PropertyDetailSurveyNotesTab";
 import { PropertyTransactionTimeline } from "./PropertyTransactionTimeline";
 import { PropertyDetailMobileGlance } from "./PropertyDetailMobileGlance";
 import { PropertyDetailMediaGlance } from "./PropertyDetailMediaGlance";
@@ -78,9 +78,7 @@ import { usePropertyDetailDocuments } from "../../query/property-detail-document
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import { usePropertyDetailPartySubmissionsQuery } from "../../query/property-detail-party-submissions-queries";
-import {
-  operationsTasksPath,
-} from "../../lib/my-task-routes";
+import { governmentReviewWorkspacePath } from "../../lib/my-task-routes";
 import { poPropertyPath } from "../../lib/po-routes";
 import {
   loadSeenPropertyTabs,
@@ -708,7 +706,15 @@ export function PoPropertyDetailTabs({
     enabled: true,
   });
 
-  const engineeringPartyNotes = partySubmissionsQuery.data?.survey?.remarks ?? [];
+  const partyRemarksSections = useMemo(
+    () =>
+      buildPartyRemarksSections({
+        survey: partySubmissionsQuery.data?.survey ?? null,
+        inspection: partySubmissionsQuery.data?.inspection ?? null,
+        appraisal: partySubmissionsQuery.data?.appraisal ?? null,
+      }),
+    [partySubmissionsQuery.data],
+  );
 
   const logEventsQuery = usePropertyTimelineQuery(poNumber, property.id);
   const fallbackLogEvents = useMemo(
@@ -974,7 +980,9 @@ export function PoPropertyDetailTabs({
               }
               description="المراجعات الحكومية والبيانات والمستندات والمواعيد الخاصة بالمراجع تظهر هنا."
               actionHref={
-                governmentTask ? operationsTasksPath() : undefined
+                governmentTask
+                  ? governmentReviewWorkspacePath(governmentTask.id)
+                  : undefined
               }
               actionLabel="فتح مساحة عمل المراجعة الحكومية"
             />
@@ -1067,13 +1075,11 @@ export function PoPropertyDetailTabs({
 
           {tab === "survey-notes" ? (
             <PropertyDetailSurveyNotesTab
-              remarks={engineeringPartyNotes}
+              sections={partyRemarksSections}
               loading={
                 partySubmissionsQuery.isLoading ||
                 partySubmissionsQuery.isFetching
               }
-              poNumber={poNumber}
-              propertyId={property.id}
             />
           ) : null}
           </TabPanel>

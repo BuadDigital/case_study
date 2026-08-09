@@ -217,11 +217,13 @@ export function FinancePartyFeePricing() {
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
     void (async () => {
       try {
         const id = await refreshTables(selectedCategory);
         if (cancelled) return;
         if (id) await loadTable(id, selectedCategory);
+        else setDraft(emptyDraft(selectedCategory));
       } catch {
         if (!cancelled) showToast("تعذّر تحميل تسعير الأتعاب", "error");
       } finally {
@@ -231,33 +233,23 @@ export function FinancePartyFeePricing() {
     return () => {
       cancelled = true;
     };
-  }, [showToast, selectedCategory]);
+  }, [selectedCategory, showToast]);
 
-  const selectCategory = async (category: PartyFeePricingCategory) => {
+  const selectCategory = (category: PartyFeePricingCategory) => {
     if (category === selectedCategory) return;
     setSelectedCategory(category);
-    setLoading(true);
-    try {
-      const id = await refreshTables(category);
-      if (id) await loadTable(id, category);
-      else setDraft(emptyDraft(category));
-    } catch {
-      showToast("تعذّر تحميل الفئة", "error");
-    } finally {
-      setLoading(false);
-    }
   };
 
   const selectTable = async (id: string) => {
     if (id === selectedId) return;
     setSelectedId(id);
-    setLoading(true);
+    setBusy(true);
     try {
       await loadTable(id, selectedCategory);
     } catch {
       showToast("تعذّر تحميل الجدول", "error");
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   };
 
@@ -475,7 +467,7 @@ export function FinancePartyFeePricing() {
                   <button
                     type="button"
                     disabled={loading || busy}
-                    onClick={() => void selectCategory(cat.id)}
+                    onClick={() => selectCategory(cat.id)}
                     className={cn(
                       "w-full rounded px-2.5 py-2 text-start transition-colors",
                       selected

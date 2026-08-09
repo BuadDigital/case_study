@@ -127,6 +127,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     bg: "var(--orange-bg)",
     tc: "var(--orange)",
     pages: [
+      "government-review",
       "operations-tasks",
       "keys",
       "po",
