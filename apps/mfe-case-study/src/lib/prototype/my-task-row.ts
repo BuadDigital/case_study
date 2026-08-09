@@ -363,6 +363,23 @@ export function compareQueueTasksNewestFirst(
   return a.propertyOrdinal - b.propertyOrdinal;
 }
 
+/**
+ * Most recently updated task first (confirmation of distribution, reassignment…).
+ * Use for دراسة حالة العقارات so newly distributed cases float to the top.
+ */
+export function compareQueueTasksByUpdatedNewestFirst(
+  a: WorkflowTask,
+  b: WorkflowTask,
+  _poByNumber?: Map<string, PoIntakeRecord>,
+): number {
+  const dateA = (a.updatedAt || a.createdAt || "").trim();
+  const dateB = (b.updatedAt || b.createdAt || "").trim();
+  if (dateA !== dateB) return dateB.localeCompare(dateA);
+  const poCmp = a.poNumber.trim().localeCompare(b.poNumber.trim(), "ar");
+  if (poCmp !== 0) return poCmp;
+  return a.propertyOrdinal - b.propertyOrdinal;
+}
+
 /** Next task in queue order after `currentTaskId` (listed must already be sorted). */
 export function nextPrimaryDataTaskId(
   listed: WorkflowTask[],
@@ -377,7 +394,7 @@ export function nextPrimaryDataTaskId(
   if (!pivot) return null;
   return (
     listed.find(
-      (t) => compareQueueTasksNewestFirst(pivot, t, poByNumber) < 0,
+      (t) => compareQueueTasksByUpdatedNewestFirst(pivot, t, poByNumber) < 0,
     )?.id ?? null
   );
 }

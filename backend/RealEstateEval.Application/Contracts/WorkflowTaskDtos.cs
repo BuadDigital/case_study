@@ -12,6 +12,9 @@ public class TaskDistributionDraftDto
     public string ValuatorId { get; set; } = "";
     public bool EngineeringOffice { get; set; }
     public string EngineeringOfficeId { get; set; } = "";
+    /// <summary>Assign a normal case specialist (not section supervisor) as study owner.</summary>
+    public bool CaseSpecialist { get; set; }
+    public string CaseSpecialistId { get; set; } = "";
 }
 
 public class WorkflowTaskDto

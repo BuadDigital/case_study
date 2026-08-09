@@ -53,7 +53,11 @@ import { InspectorStampedPhotoThumb } from "../field-inspection/InspectorStamped
 import { photoLocationFlagLabel } from "@platform/app-shared/media/photo-location";
 import {
   firstInspectorWorkspaceError,
+  firstInspectorWorkspaceErrorTarget,
+  inspectorInvalidControlClass,
+  scrollToInspectorField,
   validateInspectorWorkspace,
+  type InspectorWorkspaceFieldErrors,
 } from "../../lib/prototype/inspector-workspace-validation";
 import { finalizeInspectorWorkspace } from "../../lib/prototype/finalize-field-inspection-submission";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
@@ -116,6 +120,8 @@ function InsEditField({
   type = "text",
   placeholder,
   className,
+  invalid,
+  errorMessage,
 }: {
   id?: string;
   label: string;
@@ -126,21 +132,40 @@ function InsEditField({
   type?: string;
   placeholder?: string;
   className?: string;
+  invalid?: boolean;
+  errorMessage?: string;
 }) {
   return (
-    <div className={cn("min-w-0", className)}>
+    <div className={cn("min-w-0", className)} id={id ? `${id}-wrap` : undefined}>
       <div className="mb-1 flex flex-wrap items-center gap-1.5">
-        <span className="text-[11px] font-semibold text-text-2">{label}</span>
+        <span
+          className={cn(
+            "text-[11px] font-semibold",
+            invalid ? "text-danger" : "text-text-2",
+          )}
+        >
+          {label}
+        </span>
         {badge}
       </div>
       <input
         id={id}
         type={type}
-        className={cn(EDIT_CONTROL_CLASS, ltr && "[direction:ltr]")}
+        aria-invalid={invalid || undefined}
+        className={cn(
+          EDIT_CONTROL_CLASS,
+          ltr && "[direction:ltr]",
+          invalid && inspectorInvalidControlClass,
+        )}
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
       />
+      {invalid && errorMessage ? (
+        <p className="mt-1 text-[11px] font-semibold text-danger" role="alert">
+          {errorMessage}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -605,6 +630,9 @@ export function PropertyDetailInspectionTab({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<InspectorWorkspaceFieldErrors>(
+    {},
+  );
   const [returnOpen, setReturnOpen] = useState(false);
   const [returnNote, setReturnNote] = useState("");
   const [returnError, setReturnError] = useState<string | null>(null);
@@ -662,6 +690,7 @@ export function PropertyDetailInspectionTab({
   useEffect(() => {
     if (editMode) {
       setFormError(null);
+      setFieldErrors({});
     }
   }, [editMode]);
 
@@ -683,6 +712,8 @@ export function PropertyDetailInspectionTab({
 
   function patchDraft(patch: Parameters<typeof updateInspectorWorkspace>[1]) {
     if (!inspectionTask || locked) return;
+    setFieldErrors({});
+    setFormError(null);
     void updateInspectorWorkspace(inspectionTask.id, patch)
       .then((next) => {
         if (next) setDraft(next);
@@ -707,6 +738,7 @@ export function PropertyDetailInspectionTab({
       setLoading(false);
     }
     setFormError(null);
+    setFieldErrors({});
     onEditModeChange?.(false);
   }
 
@@ -727,22 +759,39 @@ export function PropertyDetailInspectionTab({
           property.boundariesAvailability,
         ),
       });
-      if (Object.keys(errors).length > 0) {
+      // Confirmation is set above — don't block on it for this path.
+      delete errors.inspectionConfirmed;
+      if (Object.keys(errors).length > 0 || (errors.emptyFeatureKeys?.length ?? 0) > 0) {
+        setFieldErrors(errors);
         const message =
           firstInspectorWorkspaceError(errors) ?? "يرجى مراجعة بيانات المعاينة";
         setFormError(message);
         showToast(message, "error");
+        const targetId = firstInspectorWorkspaceErrorTarget(errors);
+        if (targetId) {
+          window.setTimeout(() => scrollToInspectorField(targetId), 60);
+        }
         return;
       }
 
       const result = await finalizeInspectorWorkspace(inspectionTask.id);
       if (!result.ok) {
+        if (result.errors) {
+          setFieldErrors(result.errors as InspectorWorkspaceFieldErrors);
+          const targetId = firstInspectorWorkspaceErrorTarget(
+            result.errors as InspectorWorkspaceFieldErrors,
+          );
+          if (targetId) {
+            window.setTimeout(() => scrollToInspectorField(targetId), 60);
+          }
+        }
         setFormError(result.message);
         showToast(result.message, "error");
         return;
       }
 
       setDraft(result.draft);
+      setFieldErrors({});
       showToast("تم حفظ بيانات المعاينة وإرسالها.", "success");
       onSubmitted?.();
       if (!lockEditMode) {
@@ -799,37 +848,7 @@ export function PropertyDetailInspectionTab({
 
   return (
     <div id="pdInspection">
-      {showEditFields ? (
-        <div className="mb-3.5 flex flex-col gap-3 rounded-lg border border-[color-mix(in_srgb,var(--gold)_35%,transparent)] bg-[color-mix(in_srgb,var(--gold)_10%,transparent)] px-3.5 py-[11px] max-lg:gap-3.5 max-lg:rounded-[14px] max-lg:px-4 max-lg:py-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2.5">
-          <div className="text-xs leading-relaxed text-text-2 max-lg:text-[13px]">
-            <strong className="text-gold-d">وضع الإدخال</strong> — تُدخل
-            بيانات المعاينة الميدانية وتُرسل بعد اكتمالها.
-          </div>
-          <div className="flex shrink-0 flex-wrap gap-2 max-lg:w-full max-lg:flex-col">
-            <Button
-              type="button"
-              size="sm"
-              variant="primary"
-              loading={saving}
-              disabled={saving}
-              className="max-lg:min-h-12 max-lg:w-full max-lg:rounded-[12px] max-lg:text-[14px] max-lg:font-bold"
-              onClick={() => void handleSaveAndSubmit()}
-            >
-              حفظ وإرسال
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={saving}
-              className="max-lg:min-h-11 max-lg:w-full max-lg:rounded-[12px] max-lg:text-[13px]"
-              onClick={() => void handleCancelEdit()}
-            >
-              إلغاء
-            </Button>
-          </div>
-        </div>
-      ) : canReturn && !returnOpen ? (
+      {!showEditFields && canReturn && !returnOpen ? (
         <div className="mb-3.5 flex justify-end">
           <button
             type="button"
@@ -845,8 +864,14 @@ export function PropertyDetailInspectionTab({
       ) : null}
 
       {formError ? (
-        <div className="mb-3 rounded-lg border border-danger border-e-[3px] border-e-danger bg-danger-bg px-3.5 py-2.5 text-xs leading-relaxed text-danger-text">
-          {formError}
+        <div
+          className="mb-3 rounded-lg border border-danger border-e-[3px] border-e-danger bg-danger-bg px-3.5 py-2.5 text-xs leading-relaxed text-danger-text"
+          role="alert"
+        >
+          <p className="m-0 font-semibold">{formError}</p>
+          <p className="m-0 mt-1 text-[11px] opacity-90">
+            تم توجيهك لأول حقل ناقص — الحقول باللون الأحمر مطلوبة.
+          </p>
         </div>
       ) : null}
 
@@ -919,19 +944,25 @@ export function PropertyDetailInspectionTab({
                 — إثبات النزول الميداني
               </span>
             </div>
+            <div id="ins-map-section">
             <InsFieldsGrid>
               {showEditFields ? (
                 <>
                   <InsEditField
+                    id="ins-lat"
                     label="خط العرض"
                     value={draft.mapLatitude}
                     ltr
+                    invalid={Boolean(fieldErrors.mapLatitude)}
+                    errorMessage={fieldErrors.mapLatitude}
                     onChange={(v) => patchDraft({ mapLatitude: v })}
                   />
                   <InsEditField
+                    id="ins-lng"
                     label="خط الطول"
                     value={draft.mapLongitude}
                     ltr
+                    invalid={Boolean(fieldErrors.mapLatitude)}
                     onChange={(v) => patchDraft({ mapLongitude: v })}
                   />
                 </>
@@ -950,6 +981,7 @@ export function PropertyDetailInspectionTab({
                 </>
               )}
             </InsFieldsGrid>
+            </div>
             <div className="relative mt-2.5 h-[200px] overflow-hidden rounded-lg border border-border">
               {osmEmbed ? (
                 <iframe
@@ -964,22 +996,28 @@ export function PropertyDetailInspectionTab({
                 </div>
               )}
             </div>
-            <div className="mt-3">
+            <div className="mt-3" id="ins-date-time">
               <InsFieldsGrid>
                 {showEditFields ? (
                   <>
                     <InsEditField
+                      id="ins-date"
                       label="تاريخ المعاينة"
                       type="date"
                       ltr
                       value={draft.inspectionDate}
+                      invalid={Boolean(fieldErrors.inspectionDate)}
+                      errorMessage={fieldErrors.inspectionDate}
                       onChange={(v) => patchDraft({ inspectionDate: v })}
                     />
                     <InsEditField
+                      id="ins-time"
                       label="وقت المعاينة"
                       type="time"
                       ltr
                       value={draft.inspectionTime}
+                      invalid={Boolean(fieldErrors.inspectionTime)}
+                      errorMessage={fieldErrors.inspectionTime}
                       onChange={(v) => patchDraft({ inspectionTime: v })}
                     />
                   </>
@@ -1002,10 +1040,18 @@ export function PropertyDetailInspectionTab({
           </InsCard>
 
           <InsCard title="نموذج التحقق الميداني — خصائص العقار">
+            {fieldErrors.features || fieldErrors.featurePhotos ? (
+              <p
+                className="mb-2 rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-[12px] font-semibold text-danger"
+                role="alert"
+              >
+                {fieldErrors.features ?? fieldErrors.featurePhotos}
+              </p>
+            ) : null}
             <p className="mb-2 text-[11px] leading-relaxed text-text-3">
               عمود «صورة» لإثبات قيمة الحقل عند الحاجة. صور الخدمات/المرافق تُرفع من قسم «توثيق الخدمات والمرافق» أدناه.
             </p>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto" id="ins-features-section">
               <table className="w-full min-w-[520px] border-collapse text-[12px]">
                 <thead>
                   <tr>
@@ -1032,23 +1078,56 @@ export function PropertyDetailInspectionTab({
                       field,
                       rawVal,
                     );
+                    const valueMissing = Boolean(
+                      fieldErrors.emptyFeatureKeys?.includes(field.key),
+                    );
+                    const photoMissing =
+                      fieldErrors.missingFeaturePhotoKey === field.key;
                     return (
-                      <tr key={field.key}>
+                      <tr
+                        key={field.key}
+                        id={`ins-feature-${field.key}`}
+                        className={cn(
+                          (valueMissing || photoMissing) && "bg-danger-bg/50",
+                        )}
+                      >
                         <td className="border border-border px-2 py-1.5 text-center text-text-3">
                           {index + 1}
                         </td>
-                        <td className="border border-border px-2.5 py-1.5">
+                        <td
+                          className={cn(
+                            "border border-border px-2.5 py-1.5",
+                            (valueMissing || photoMissing) &&
+                              "font-semibold text-danger",
+                          )}
+                        >
                           {field.label}
                           {field.shared ? (
                             <span className="ms-1 inline-block align-middle">
                               <SharedBadge />
                             </span>
                           ) : null}
+                          {valueMissing ? (
+                            <span className="ms-1.5 text-[10px] font-bold text-danger">
+                              مطلوب
+                            </span>
+                          ) : null}
+                          {photoMissing ? (
+                            <span className="ms-1.5 text-[10px] font-bold text-danger">
+                              صورة مطلوبة
+                            </span>
+                          ) : null}
                         </td>
                         <td className="border border-border px-2 py-1.5 text-center font-semibold text-heading">
                           {showEditFields ? (
                             <select
-                              className={cn(EDIT_CONTROL_CLASS, "text-center")}
+                              id={`ins-feature-select-${field.key}`}
+                              aria-invalid={valueMissing || undefined}
+                              className={cn(
+                                EDIT_CONTROL_CLASS,
+                                "text-center",
+                                valueMissing && inspectorInvalidControlClass,
+                              )}
                               value={rawVal}
                               onChange={(e) => {
                                 const next = e.target.value;
@@ -1088,7 +1167,13 @@ export function PropertyDetailInspectionTab({
                             rawVal || "—"
                           )}
                         </td>
-                        <td className="border border-border px-2 py-1.5 text-center text-text-3">
+                        <td
+                          id={`ins-feature-photo-${field.key}`}
+                          className={cn(
+                            "border border-border px-2 py-1.5 text-center text-text-3",
+                            photoMissing && "bg-danger-bg",
+                          )}
+                        >
                           {showEditFields ? (
                             <EditableFeaturePhotoCell
                               needsPhoto={needsPhoto}
@@ -1853,6 +1938,38 @@ export function PropertyDetailInspectionTab({
           </InsCard>
         </>
       )}
+
+      {showEditFields ? (
+        <div className="mt-3.5 flex flex-col gap-3 rounded-lg border border-[color-mix(in_srgb,var(--gold)_35%,transparent)] bg-[color-mix(in_srgb,var(--gold)_10%,transparent)] px-3.5 py-[11px] max-lg:gap-3.5 max-lg:rounded-[14px] max-lg:px-4 max-lg:py-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2.5">
+          <div className="text-xs leading-relaxed text-text-2 max-lg:text-[13px]">
+            <strong className="text-gold-d">وضع الإدخال</strong> — تُدخل
+            بيانات المعاينة الميدانية وتُرسل بعد اكتمالها.
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2 max-lg:w-full max-lg:flex-col">
+            <Button
+              type="button"
+              size="sm"
+              variant="primary"
+              loading={saving}
+              disabled={saving}
+              className="max-lg:min-h-12 max-lg:w-full max-lg:rounded-[12px] max-lg:text-[14px] max-lg:font-bold"
+              onClick={() => void handleSaveAndSubmit()}
+            >
+              حفظ وإرسال
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={saving}
+              className="max-lg:min-h-11 max-lg:w-full max-lg:rounded-[12px] max-lg:text-[13px]"
+              onClick={() => void handleCancelEdit()}
+            >
+              إلغاء
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

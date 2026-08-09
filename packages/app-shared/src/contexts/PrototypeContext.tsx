@@ -94,7 +94,8 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
   const rolePages = useMemo(() => {
     if (!permissionsResolved) return [];
     const baseline = ROLES[role].pages.filter((page) => {
-      if (role === "case-specialist" && page === "all-transactions") return false;
+      // «جميع المعاملات» — للمسؤول فقط (مرآة لـ pagesFromPermissions)
+      if (role !== "cdo" && page === "all-transactions") return false;
       return true;
     });
     if (permissions?.pages?.length) {

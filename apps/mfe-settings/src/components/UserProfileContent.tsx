@@ -9,8 +9,16 @@ import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { supervisingDepartmentLabel } from "@platform/app-shared/users/admin-staff-roles";
 import { getAuthSession } from "@platform/auth-client";
 import { Badge, Spinner, Table, TBody, Td, Th, THead, Tr } from "@platform/design-system";
+import { PartyOfficeBillingStatementsPanel } from "@case-study/mfe/components/fees/PartyOfficeBillingStatementsPanel";
+import { ProfileInspectorDuesPanel } from "./ProfileInspectorDuesPanel";
 
-type ProfileTab = "basic" | "login" | "activity" | "financial";
+type ProfileTab =
+  | "basic"
+  | "login"
+  | "activity"
+  | "eng_statements"
+  | "inspector_dues"
+  | "financial";
 
 function statusTone(status: string | undefined): "success" | "danger" | "default" {
   if (status === "Active") return "success";
@@ -30,6 +38,31 @@ function typeLabel(type: StaffUser["type"]): string {
   if (type === "internal") return "داخلي";
   if (type === "freelance") return "متعاون";
   return "خارجي";
+}
+
+/** حساب مكتب هندسي — تظهر له تبويبة مسيرات الصرف */
+function isEngineeringOfficeProfile(user: StaffUser): boolean {
+  if ((user.roleId ?? "").trim() === "engineering-office") return true;
+  if ((user.distributionAssigneeId ?? "").trim().toLowerCase().startsWith("eo-"))
+    return true;
+  if ((user.role ?? "").trim() === "مقدم خدمة — جهة") return true;
+  if (/مكتب.*مساح|مقدم خدمة\s*[—\-]\s*جهة/i.test(user.role ?? "")) return true;
+  return (user.details ?? []).some((d) =>
+    /engineering-office/i.test(d.value),
+  );
+}
+
+/** حساب معاين ميداني — تظهر له تبويبة المستحقات */
+function isFieldInspectorProfile(user: StaffUser): boolean {
+  if ((user.roleId ?? "").trim() === "field-inspector") return true;
+  const assignee = (user.distributionAssigneeId ?? "").trim().toLowerCase();
+  if (assignee.startsWith("fi-")) return true;
+  if ((user.role ?? "").trim() === "معاين ميداني") return true;
+  if (user.inspectorType === "employee" || user.inspectorType === "contractor")
+    return true;
+  return (user.details ?? []).some((d) =>
+    /field-inspector/i.test(d.value),
+  );
 }
 
 function formatAt(iso: string | null | undefined): string {
@@ -76,6 +109,8 @@ function completedRows(rows: InspectorFeeRowDto[]): InspectorFeeRowDto[] {
 
 export function UserProfileContent({ user }: { user: StaffUser }) {
   const showFinancial = Boolean(user.hasCompensation);
+  const showEngStatements = isEngineeringOfficeProfile(user);
+  const showInspectorDues = isFieldInspectorProfile(user);
   const [tab, setTab] = useState<ProfileTab>("basic");
   const [feeRows, setFeeRows] = useState<InspectorFeeRowDto[]>([]);
   const [feesLoading, setFeesLoading] = useState(false);
@@ -97,9 +132,22 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
       { id: "login", label: "بيانات الدخول" },
       { id: "activity", label: "سجل الأعمال" },
     ];
+    // بجانب سجل الأعمال — مسيرات المكتب / مستحقات المعاين
+    if (showEngStatements) {
+      items.push({ id: "eng_statements", label: "مسيرات الصرف" });
+    }
+    if (showInspectorDues) {
+      items.push({ id: "inspector_dues", label: "المستحقات" });
+    }
     if (showFinancial) items.push({ id: "financial", label: "المالية" });
     return items;
-  }, [showFinancial]);
+  }, [showEngStatements, showInspectorDues, showFinancial]);
+
+  useEffect(() => {
+    if (tab === "eng_statements" && !showEngStatements) setTab("basic");
+    if (tab === "inspector_dues" && !showInspectorDues) setTab("basic");
+    if (tab === "financial" && !showFinancial) setTab("basic");
+  }, [tab, showEngStatements, showInspectorDues, showFinancial]);
 
   useEffect(() => {
     if (tab !== "activity" && tab !== "financial") return;
@@ -341,6 +389,29 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
               </Table>
             </div>
           )}
+        </section>
+      ) : null}
+
+      {tab === "eng_statements" && showEngStatements ? (
+        <section className="space-y-3">
+          <p className="m-0 rounded-[10px] border border-dashed border-border-md bg-surface-2 px-[15px] py-[11px] text-[12.5px] leading-[1.7] text-text-3">
+            مسيرات محوّلة إلى مكتبكم — ارفعوا فاتورة مطابقة لكل مسير بانتظار
+            الفاتورة. القيمة مقفلة على المسير ولا تُدخل يدوياً.
+          </p>
+          <PartyOfficeBillingStatementsPanel
+            assigneeId={user.distributionAssigneeId || undefined}
+            issuedOrLaterOnly
+          />
+        </section>
+      ) : null}
+
+      {tab === "inspector_dues" && showInspectorDues ? (
+        <section className="space-y-3">
+          <p className="m-0 rounded-[10px] border border-dashed border-border-md bg-surface-2 px-[15px] py-[11px] text-[12.5px] leading-[1.7] text-text-3">
+            مستحقاتكم كفرد — جاهزة للصرف أو ضمن أمر صرف أو مدفوعة. لا فاتورة
+            مورّد لمعاين الميدان.
+          </p>
+          <ProfileInspectorDuesPanel user={user} />
         </section>
       ) : null}
 

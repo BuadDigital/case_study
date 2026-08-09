@@ -26,7 +26,7 @@ const DISTRIBUTION_QUEUE: ActiveTransactionQueueConfig = {
   panelId: "distribution-panel",
   getBasePath: activeDistributionPath,
   getTaskPath: distributionTaskPath,
-  queueSort: "newest-first",
+  queueSort: "distributed-newest-first",
   filterListed: (mine, poByNumber) =>
     filterTasksForDistribution(mine, poByNumber),
   allowPhaseRevert: true,

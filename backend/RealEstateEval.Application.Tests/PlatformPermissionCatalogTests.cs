@@ -43,6 +43,8 @@ public class PlatformPermissionCatalogTests
     [InlineData("government-reviewer", "party-fees")]
     [InlineData("government-reviewer", "po")]
     [InlineData("government-reviewer", "operations-tasks")]
+    [InlineData("general-manager", "operations-tasks")]
+    [InlineData("engineering-office", "operations-tasks")]
     [InlineData("section-supervisor", "failures")]
     [InlineData("financial-officer", "financial")]
     public void Prototype_role_grants_expected_page(string role, string page)
@@ -69,24 +71,30 @@ public class PlatformPermissionCatalogTests
         Assert.Contains("operations-tasks", PlatformPermissionCatalog.AllPages);
     }
 
-    [Fact]
-    public void Case_specialist_excludes_all_transactions()
-    {
-        var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        PlatformPermissionCatalog.ApplyPrototypeRole("case-specialist", pages, capabilities);
-        Assert.DoesNotContain("all-transactions", pages);
-    }
-
     [Theory]
-    [InlineData("government-reviewer")]
+    [InlineData("case-specialist")]
     [InlineData("section-supervisor")]
-    public void Role_excludes_all_transactions(string role)
+    [InlineData("government-reviewer")]
+    [InlineData("general-manager")]
+    [InlineData("real-estate-appraiser")]
+    [InlineData("field-inspector")]
+    [InlineData("engineering-office")]
+    [InlineData("financial-officer")]
+    public void Non_cdo_roles_exclude_all_transactions(string role)
     {
         var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         PlatformPermissionCatalog.ApplyPrototypeRole(role, pages, capabilities);
         Assert.DoesNotContain("all-transactions", pages);
+    }
+
+    [Fact]
+    public void Cdo_includes_all_transactions()
+    {
+        var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        PlatformPermissionCatalog.ApplyPrototypeRole("cdo", pages, capabilities);
+        Assert.Contains("all-transactions", pages);
     }
 
     [Theory]

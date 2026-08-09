@@ -31,12 +31,8 @@ export function pagesFromPermissions(
       merged.delete(pageId);
     }
   }
-  // أخصائي/مشرف دراسة الحالة والمراجع الحكومي — بدون «جميع المعاملات»
-  if (
-    role === "case-specialist" ||
-    role === "section-supervisor" ||
-    role === "government-reviewer"
-  ) {
+  // «جميع المعاملات» — للمسؤول (CDO) فقط
+  if (role !== "cdo") {
     merged.delete("all-transactions");
   }
   // المراجع الحكومي يعمل من المهام التشغيلية — لا يُدفع لقائمة المراجعة الحكومية القديمة

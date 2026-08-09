@@ -47,7 +47,7 @@ export function ActiveCaseStudyView() {
     getBasePath: activeCaseStudyPath,
     getTaskPath: caseStudyTaskPath,
     fullPageTaskPath: caseStudyWorkspacePath,
-    queueSort: "newest-first",
+    queueSort: "distributed-newest-first",
     filterListed: (mine) => filterTasksForCaseStudy(mine),
     buildRowMoreItems: ({ task, propertyId, router: rowRouter, viewerRole }) =>
       buildCaseStudyQueueRowMoreItems({

@@ -79,9 +79,7 @@ import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import { usePropertyDetailPartySubmissionsQuery } from "../../query/property-detail-party-submissions-queries";
 import {
-  activeSurveyWorkspacePath,
   operationsTasksPath,
-  propertyAppraisalWorkspacePath,
 } from "../../lib/my-task-routes";
 import { poPropertyPath } from "../../lib/po-routes";
 import {
@@ -122,7 +120,7 @@ function PartyWorkTab({
   card: PropertyDetailPartyCard | null;
   submission: PropertyDetailPartySubmission | null;
   loading: boolean;
-  description: string;
+  description?: string;
   actionHref?: string;
   actionLabel?: string;
 }) {
@@ -148,9 +146,11 @@ function PartyWorkTab({
           {partyCardStatusLabel(card)}
         </DetailBadge>
       </div>
-      <div className="rounded-xl border border-dashed border-border-md bg-surface px-5 py-4 text-center text-[12px] leading-relaxed text-text-3">
-        {description}
-      </div>
+      {description ? (
+        <div className="rounded-xl border border-dashed border-border-md bg-surface px-5 py-4 text-center text-[12px] leading-relaxed text-text-3">
+          {description}
+        </div>
+      ) : null}
       {actionHref && actionLabel ? (
         <Link
           href={actionHref}
@@ -926,19 +926,21 @@ export function PoPropertyDetailTabs({
           ) : null}
 
           {tab === "survey" ? (
-            <PartyWorkTab
-              card={surveyCard}
-              submission={partySubmissionsQuery.data?.survey ?? null}
-              loading={
-                partySubmissionsQuery.isLoading ||
-                partySubmissionsQuery.isFetching
-              }
-              description="الرفع المساحي ينفذه المكتب الهندسي — تأكيد حدود العقار وقد يتبعه تعديل التقييم."
-              actionHref={
-                surveyTask ? activeSurveyWorkspacePath(surveyTask.id) : undefined
-              }
-              actionLabel="رفع التقرير المساحي — مساحة عمل المكتب"
-            />
+            surveyCard ? (
+              <PartyRoleDetailPanel
+                card={surveyCard}
+                submission={partySubmissionsQuery.data?.survey ?? null}
+                loading={
+                  partySubmissionsQuery.isLoading ||
+                  partySubmissionsQuery.isFetching
+                }
+              />
+            ) : (
+              <EmptyState
+                title="لم يُعيَّن طرف لهذا الدور"
+                sub="سيظهر هنا الطرف وبيانات عمله بعد التعيين."
+              />
+            )
           ) : null}
 
           {tab === "inspection" ? (
@@ -986,15 +988,7 @@ export function PoPropertyDetailTabs({
             />
           ) : null}
 
-          {tab === "appraisal" ? (
-            <PropertyDetailAppraisalTab
-              workspaceHref={
-                appraisalTask
-                  ? propertyAppraisalWorkspacePath(appraisalTask.id)
-                  : undefined
-              }
-            />
-          ) : null}
+          {tab === "appraisal" ? <PropertyDetailAppraisalTab /> : null}
 
           {tab === "photos" ? (
             <PropertyDetailPhotosTab photos={propertyPhotos} />

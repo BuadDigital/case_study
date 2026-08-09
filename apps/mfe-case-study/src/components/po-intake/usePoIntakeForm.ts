@@ -21,6 +21,11 @@ import {
   mergeFieldErrors,
   type FieldErrors,
 } from "@platform/app-shared/registration/registration-utils";
+import {
+  firstPoHeaderErrorMessage,
+  PO_HEADER_MODAL_FIELD_IDS,
+  scheduleScrollToFirstPoHeaderError,
+} from "../../lib/domain/po-intake/po-field-error-targets";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -152,11 +157,15 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
     }
     if (hasFieldErrors(errors)) {
       setFieldErrors(errors);
-      setFormError("يرجى تعبئة بيانات أمر العمل");
+      setFormError(firstPoHeaderErrorMessage(errors));
+      scheduleScrollToFirstPoHeaderError(errors, PO_HEADER_MODAL_FIELD_IDS);
       return false;
     }
     if (await poRecordExists(poNumber)) {
-      setFieldErrors({ poNumber: "رقم PO مسجّل مسبقاً في النظام" });
+      const dup = { poNumber: "رقم PO مسجّل مسبقاً في النظام" };
+      setFieldErrors(dup);
+      setFormError(dup.poNumber);
+      scheduleScrollToFirstPoHeaderError(dup, PO_HEADER_MODAL_FIELD_IDS);
       return false;
     }
     return true;

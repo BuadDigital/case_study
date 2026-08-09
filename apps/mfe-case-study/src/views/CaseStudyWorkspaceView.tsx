@@ -2,7 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, type ReactNode } from "react";
-import { Button, Note, PageShell, PanelSkeleton } from "@platform/design-system";
+import {
+  Button,
+  Note,
+  PageShell,
+  PanelSkeleton,
+} from "@platform/design-system";
 import { CaseStudyForm } from "../components/case-study/CaseStudyForm";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
 import { PropertyTransactionTimeline } from "../components/po-intake/PropertyTransactionTimeline";
@@ -107,7 +112,7 @@ export function CaseStudyWorkspaceView({
 
   if (loading) {
     return (
-      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg">
+      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee]">
         <PanelSkeleton />
       </div>
     );
@@ -115,7 +120,7 @@ export function CaseStudyWorkspaceView({
 
   if (hasLoadError) {
     return (
-      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg p-4">
+      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee] p-4">
         <Note tone="warn">{loadErrorMessage}</Note>
         <div className="mt-3">
           <Button
@@ -136,7 +141,7 @@ export function CaseStudyWorkspaceView({
 
   if (shouldRedirect || !task) {
     return (
-      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg">
+      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee]">
         <PanelSkeleton />
       </div>
     );
@@ -144,43 +149,50 @@ export function CaseStudyWorkspaceView({
 
   if (!record || !property || propertyIndex < 0) {
     return (
-      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg">
+      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee]">
         <PanelSkeleton />
       </div>
     );
   }
 
+  // Same chrome as تفاصيل العقار — canvas + card + timeline
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg">
-      <PageShell>
+    <div
+      id="view-case-study-workspace"
+      className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee] [zoom:0.85]"
+    >
+      <PageShell
+        variant="canvas"
+        className="gap-0 overflow-y-auto bg-[#f5f3ee] px-[30px] py-[26px] max-sm:px-4 max-sm:py-4"
+      >
         <PropertyDetailHero
           record={record}
           property={property}
           propertyIndex={propertyIndex + 1}
+          actionsCaption="نموذج دراسة الحالة"
+          hideOpenCaseStudy
         />
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="flex min-h-0 flex-1 flex-row items-stretch overflow-hidden max-lg:flex-col">
-            <div className="min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:p-5">
-              <CaseStudyForm
-                taskId={taskId}
-                task={task}
-                property={property}
-                poRecord={record}
-                requestDateSeed={record.receivedFromEnfathAt}
-              />
-              {renderPartiesExtras ? (
-                <div className="mt-4 border-t border-border pt-4">
-                  {renderPartiesExtras({
-                    task,
-                    property,
-                    tasks: tasks ?? [],
-                  })}
-                </div>
-              ) : null}
-            </div>
-            <PropertyTransactionTimeline record={record} property={property} />
+        <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3.5 lg:grid-cols-[minmax(0,1fr)_250px]">
+          <div className="min-w-0 overflow-hidden rounded-[12px] border border-border bg-surface px-5 pb-5 shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]">
+            <CaseStudyForm
+              taskId={taskId}
+              task={task}
+              property={property}
+              poRecord={record}
+              requestDateSeed={record.receivedFromEnfathAt}
+            />
+            {renderPartiesExtras ? (
+              <div className="mt-4 border-t border-border pt-4">
+                {renderPartiesExtras({
+                  task,
+                  property,
+                  tasks: tasks ?? [],
+                })}
+              </div>
+            ) : null}
           </div>
+          <PropertyTransactionTimeline record={record} property={property} />
         </div>
       </PageShell>
     </div>

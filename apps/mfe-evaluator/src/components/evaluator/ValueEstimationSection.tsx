@@ -7,6 +7,7 @@ import {
   parseEvaluatorAmount,
 } from "../../lib/evaluator/value-estimation";
 import { cn } from "@platform/design-system";
+import { evaluatorInvalidControlClass } from "../../lib/evaluator/evaluator-validation";
 
 type ValueEstimationSectionProps = {
   landValue: string;
@@ -65,7 +66,7 @@ export function ValueEstimationSection({
         <div
           className={cn(
             "flex overflow-hidden rounded-[10px] border border-border bg-surface",
-            error && "border-[#f87171]",
+            error && evaluatorInvalidControlClass,
             disabled && "opacity-65",
           )}
         >

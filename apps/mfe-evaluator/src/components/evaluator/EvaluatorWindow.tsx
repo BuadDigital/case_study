@@ -26,8 +26,11 @@ import {
   type EvaluatorReportMetadata,
 } from "../../lib/evaluator/evaluator-submission-storage";
 import type { EvaluatorSubmission } from "../../lib/evaluator/evaluator-window-data";
+import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import {
+  evaluatorInvalidControlClass,
   firstEvaluatorError,
+  firstEvaluatorErrorTarget,
   validateEvaluatorSubmission,
   type EvaluatorValidationErrors,
 } from "../../lib/evaluator/evaluator-validation";
@@ -271,6 +274,8 @@ export function EvaluatorWindow({
         firstEvaluatorError(errors) ?? "تحقق من الحقول المطلوبة";
       setFormError(message);
       showToast(message, "error");
+      setActiveTab("valuation");
+      scheduleScrollToFormField(firstEvaluatorErrorTarget(errors), 120);
       return false;
     }
 
@@ -613,7 +618,7 @@ export function EvaluatorWindow({
                   placeholder="مثال: RPT-2026-1045"
                   className={cn(
                     valInputClassName,
-                    fieldErrors.report_no && "border-[#f87171]",
+                    fieldErrors.report_no && evaluatorInvalidControlClass,
                   )}
                   onChange={(e) => {
                     const reportNo = e.target.value;
@@ -633,10 +638,11 @@ export function EvaluatorWindow({
                 ) : null}
               </div>
               <div
+                id="val-report-file"
                 className={cn(
                   "flex flex-col gap-1.5",
                   fieldErrors.evaluator_report_file &&
-                    "[&_.file-zone]:border-danger",
+                    "[&_.file-zone]:border-danger [&_.file-zone]:bg-danger-bg/40 [&_.file-zone]:ring-2 [&_.file-zone]:ring-[color-mix(in_srgb,var(--danger)_28%,transparent)]",
                 )}
               >
                 <div
@@ -776,7 +782,14 @@ export function EvaluatorWindow({
               />
 
               <EngSection>مراجعة بيانات الأصل</EngSection>
-              <div className="flex flex-col gap-3 rounded-[10px] border border-border bg-surface-2/60 p-3">
+              <div
+                id="val-asset-data"
+                className={cn(
+                  "flex flex-col gap-3 rounded-[10px] border border-border bg-surface-2/60 p-3",
+                  fieldErrors.asset_data_confirmed &&
+                    evaluatorInvalidControlClass,
+                )}
+              >
                 <p className="text-[12px] leading-relaxed text-text-2">
                   راجع بيانات الأصل من المعاينة / الرفع المساحي / دراسة الحالة.
                   أكّد مطابقتها، أو دوّن ملاحظات التباين إن وُجدت اختلافات.

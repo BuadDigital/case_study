@@ -21,16 +21,33 @@ export function pagePathFromId(pageId: PageId): string {
 /** First permitted page in sidebar order — post-login and access-denied redirect. */
 export function defaultLandingPage(rolePages: readonly PageId[]): PageId {
   if (rolePages.includes("dashboard")) return "dashboard";
-  // Government reviewer (and similar): work from ops tasks, not legacy /government-review or PO.
-  if (
-    rolePages.includes("operations-tasks") &&
-    rolePages.includes("keys") &&
-    !rolePages.includes("government-review") &&
-    !rolePages.includes("all-transactions") &&
-    !rolePages.includes("active-case-study")
-  ) {
-    return "operations-tasks";
+
+  // Task hub first (same idea as المراجع الحكومي):
+  // - مدير الإدارة: has valuation-requests + ops tasks
+  // - المراجع الحكومي: ops + keys, no case-study queues
+  // - المكتب الهندسي: ops + active-survey, no PO list
+  if (rolePages.includes("operations-tasks")) {
+    const isGeneralManagerHub =
+      rolePages.includes("valuation-requests") &&
+      rolePages.includes("active-case-study");
+    const isGovernmentReviewerHub =
+      rolePages.includes("keys") &&
+      !rolePages.includes("government-review") &&
+      !rolePages.includes("all-transactions") &&
+      !rolePages.includes("active-case-study");
+    const isEngineeringOfficeHub =
+      rolePages.includes("active-survey") &&
+      !rolePages.includes("active-case-study") &&
+      !rolePages.includes("po");
+    if (
+      isGeneralManagerHub ||
+      isGovernmentReviewerHub ||
+      isEngineeringOfficeHub
+    ) {
+      return "operations-tasks";
+    }
   }
+
   for (const pageId of NAV_PAGE_ORDER) {
     if (rolePages.includes(pageId)) return pageId;
   }
@@ -113,6 +130,8 @@ const PROPERTY_DETAIL_WITHOUT_PO_LIST: readonly PageId[] = [
   "all-transactions",
   "favorites",
   "failures",
+  "system-upload",
+  "active-case-study",
 ];
 
 /** Case-study specialist queues — may open property edit without full PO list. */
@@ -121,6 +140,7 @@ const PROPERTY_EDIT_WITHOUT_PO_LIST: readonly PageId[] = [
   "bourse-inquiry",
   "active-distribution",
   "active-case-study",
+  "system-upload",
 ];
 
 export function canAccessPage(

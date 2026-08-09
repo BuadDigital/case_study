@@ -677,7 +677,7 @@ export function PoPropertyEnfathForm({
       ) : null}
 
       {showExtended ? (
-      <div className="mt-5">
+      <div id="po_contacts_section" className="mt-5">
         <h3 className="mb-2.5 text-[13px] font-bold">
           ضباط الاتصال
           {contactsRequired ? (

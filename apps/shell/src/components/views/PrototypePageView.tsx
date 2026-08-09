@@ -31,6 +31,10 @@ const ActiveCaseStudyView = dynamic(
   () => import("@case-study/mfe").then((m) => m.ActiveCaseStudyView),
   { ssr: false },
 );
+const SystemUploadView = dynamic(
+  () => import("@case-study/mfe").then((m) => m.SystemUploadView),
+  { ssr: false },
+);
 const BourseInquiryView = dynamic(
   () => import("@case-study/mfe").then((m) => m.BourseInquiryView),
   { ssr: false },
@@ -137,6 +141,7 @@ const VIEWS: Partial<Record<PageId, ComponentType>> = {
   "bourse-inquiry": BourseInquiryView,
   "active-distribution": ActiveDistributionView,
   "active-case-study": ActiveCaseStudyView,
+  "system-upload": SystemUploadView,
   keys: KeysView,
   "field-sync-board": FieldSyncSupervisorView,
   failures: FailuresView,

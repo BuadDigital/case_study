@@ -30,8 +30,9 @@ export const FINANCE_AREAS: {
   { id: "tasks", label: "مهامي" },
   { id: "revenue", label: "الإيرادات" },
   { id: "costs", label: "التكاليف" },
-  { id: "eng_portal", label: "المكتب الهندسي" },
   { id: "inspector_portal", label: "المعاين" },
+  /** بوابة المكتب — مسار URL فقط؛ السايدبار من إعدادات النظام */
+  { id: "eng_portal", label: "المكتب الهندسي" },
 ];
 
 export const REVENUE_STAGES: {

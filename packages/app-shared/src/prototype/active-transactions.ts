@@ -28,6 +28,12 @@ export const CASE_STUDY_ACTIVE_TRANSACTIONS_NAV: ActiveTransactionNavItem[] = [
     icon: "M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11",
     available: true,
   },
+  {
+    id: "system-upload",
+    label: "الرفع على النظام",
+    icon: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12",
+    available: true,
+  },
 ];
 
 export function taskMatchesCaseStudy(task: WorkflowTask): boolean {
@@ -39,6 +45,17 @@ export function filterTasksForCaseStudy(
   tasks: WorkflowTask[],
 ): WorkflowTask[] {
   return tasks.filter((t) => taskMatchesCaseStudy(t));
+}
+
+/** Properties ready for packing/upload on the system (Enfath handoff). */
+export function taskMatchesSystemUpload(task: WorkflowTask): boolean {
+  return taskMatchesCaseStudy(task);
+}
+
+export function filterTasksForSystemUpload(
+  tasks: WorkflowTask[],
+): WorkflowTask[] {
+  return tasks.filter((t) => taskMatchesSystemUpload(t));
 }
 
 /** فوترة الأتعاب — تحت المعاملات النشطة لكل أدوار الأطراف والمشرف. */

@@ -65,13 +65,10 @@ import {
   FINANCIAL_GROUP_ICON,
   FINANCIAL_NAV_LEAVES,
   FINANCIAL_TOGGLE_LABEL,
-  PARTY_PORTAL_NAV_LEAVES,
-  PARTY_PORTALS_GROUP,
   financeLeafForArea,
   financialHref,
   isFinanceCoreArea,
   isInFinancialSection,
-  isPartyPortalArea,
   parseFinanceNavArea,
   showFinancialNavGroup,
   type FinanceNavArea,
@@ -446,16 +443,14 @@ function FinanceHtmlNav({
 }) {
   const inSection = isInFinancialSection(currentPage);
   const onCore = inSection && isFinanceCoreArea(activeArea);
-  const onPortal = inSection && isPartyPortalArea(activeArea);
-  /** افتح الشجرة عند العمل في مهامي/إيراد/تكاليف فقط — لا على البوابات (مثل HTML) */
+  /** افتح الشجرة عند العمل في مهامي/إيراد/تكاليف */
   const [open, setOpen] = useState(onCore);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- open/close with route.
     if (onCore) setOpen(true);
-    if (onPortal && !rail) setOpen(false);
-  }, [onCore, onPortal, rail]);
+  }, [onCore]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -557,45 +552,6 @@ function FinanceHtmlNav({
           </NavFlyoutPanel>
         </>
       ) : null}
-
-      {/* .nav-group: بوابات – لتجربة الأثر */}
-      <div
-        className={cn(
-          "mt-2 border-t border-white/[0.06] px-3 pb-1.5 pt-3 text-[11px] font-bold tracking-[0.04em] text-[#6f7b90]",
-          rail && "lg:mt-1.5 lg:border-0 lg:hidden lg:pt-0",
-        )}
-      >
-        {PARTY_PORTALS_GROUP}
-      </div>
-      {rail ? (
-        <div
-          className="mx-auto my-1.5 hidden h-px w-6 bg-white/10 lg:block"
-          aria-hidden
-        />
-      ) : null}
-
-      {PARTY_PORTAL_NAV_LEAVES.map((leaf) => {
-        const active = inSection && activeArea === leaf.area;
-        const count = badges[leaf.area];
-        return (
-          <Link
-            key={leaf.area}
-            href={financialHref(leaf.area)}
-            className={navItemClasses({
-              active,
-              rail,
-            })}
-            title={rail ? leaf.label : undefined}
-            prefetch
-          >
-            <NavIcon d={leaf.icon} size={16} />
-            <span className={navLabelClasses(rail)}>{leaf.label}</span>
-            {count != null && count > 0 ? (
-              <span className={navBadgeClasses(rail)}>{count}</span>
-            ) : null}
-          </Link>
-        );
-      })}
     </div>
   );
 }
@@ -1392,6 +1348,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     insertActiveTxAtNavStart && showActiveTransactionsGroup;
   let generalNavInserted = false;
   let orphanScreensInserted = false;
+  let financialNavInserted = false;
 
   const onActiveSurveyPropertyDetail = onActiveSurveyEntry;
   // Keys HTML setHeader: list / fees report / envelope file.
@@ -1526,15 +1483,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               rail={desktopRail}
             />
           ) : null}
-          {showFinancialGroup ? (
-            <FinanceHtmlNav
-              key="finance-html-nav"
-              currentPage={currentPage}
-              activeArea={financeArea}
-              badges={financeNavBadges}
-              rail={desktopRail}
-            />
-          ) : null}
           {navRuns.map((run, ri) => {
             const blocks: React.ReactNode[] = [];
             blocks.push(
@@ -1572,6 +1520,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       rail={desktopRail}
                     />,
                   );
+                  // المالية وبوابات الأطراف — مباشرة تحت «المعاملات المعلقة»
+                  if (
+                    item.id === "suspended-transactions" &&
+                    showFinancialGroup &&
+                    !financialNavInserted
+                  ) {
+                    // eslint-disable-next-line react-hooks/immutability -- render-local marker used only within this render pass.
+                    financialNavInserted = true;
+                    nodes.push(
+                      <FinanceHtmlNav
+                        key="finance-html-nav"
+                        currentPage={currentPage}
+                        activeArea={financeArea}
+                        badges={financeNavBadges}
+                        rail={desktopRail}
+                      />,
+                    );
+                  }
                   const shouldInsertGeneral =
                     !generalNavInserted &&
                     showGeneralGroup &&
@@ -1660,6 +1626,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onPrefetch={prefetchPage}
               badges={activeTxBadges}
               role={role}
+              rail={desktopRail}
+            />
+          ) : null}
+          {!financialNavInserted && showFinancialGroup ? (
+            <FinanceHtmlNav
+              key="finance-html-nav-fallback"
+              currentPage={currentPage}
+              activeArea={financeArea}
+              badges={financeNavBadges}
               rail={desktopRail}
             />
           ) : null}

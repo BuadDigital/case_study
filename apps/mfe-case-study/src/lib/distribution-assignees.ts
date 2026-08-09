@@ -32,9 +32,16 @@ function employmentSubtitle(user: StaffUser): string | undefined {
   return user.role;
 }
 
+const PARTY_ROLE_IDS = new Set<string>(Object.values(EXACT_JOB_TITLE_TO_ROLE));
+
 export function partyRoleForStaffUser(user: StaffUser): RoleId | null {
   if (user.distributionAssigneeId?.startsWith("eo-")) {
     return "engineering-office";
+  }
+  // Prefer RoleId (source of truth); job title is display metadata only.
+  const roleId = user.roleId?.trim();
+  if (roleId && PARTY_ROLE_IDS.has(roleId)) {
+    return roleId as RoleId;
   }
   const t = user.role.trim();
   if (!t) return null;
@@ -97,6 +104,11 @@ export function getEngineeringOffices(
   users: StaffUser[],
 ): DistributionAssignee[] {
   return staffUsersForPartyRole(users, "engineering-office");
+}
+
+/** Normal case specialists only — supervisors are never listed. */
+export function getCaseSpecialists(users: StaffUser[]): DistributionAssignee[] {
+  return staffUsersForPartyRole(users, "case-specialist");
 }
 
 export function getPrototypeRoleAssigneeId(

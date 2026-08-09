@@ -1,4 +1,4 @@
-import { filterTasksForCaseStudy } from "@platform/app-shared/prototype/active-transactions";
+import { filterTasksForCaseStudy, filterTasksForSystemUpload } from "@platform/app-shared/prototype/active-transactions";
 import { filterTasksForPartyKind } from "@platform/app-shared/prototype/party-task-pages";
 import type { PageId } from "@platform/types";
 import type {
@@ -136,6 +136,7 @@ export const PAGE_SITUATION_CARDS: Partial<Record<PageId, PageSituationCardDef[]
     ],
     "active-distribution": workflowCards("بانتظار التوزيع"),
     "active-case-study": workflowCards("دراسات مفتوحة"),
+    "system-upload": workflowCards("جاهزة للرفع"),
     "property-inspection": partyCards("مكتملة"),
     "active-inspection": partyCards("مكتملة"),
     "property-appraisal": appraisalCards(),
@@ -510,6 +511,8 @@ export function filterTasksForPage(
       return filterTasksForDistribution(tasks, poByNumber);
     case "active-case-study":
       return filterTasksForCaseStudy(tasks);
+    case "system-upload":
+      return filterTasksForSystemUpload(tasks);
     case "bourse-inquiry":
       return filterTasksForBourseInquiry(tasks, poByNumber);
     case "government-review":

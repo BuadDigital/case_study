@@ -149,7 +149,14 @@ export function PoPropertyBourseForm({
 
       {!obstructionPath ? (
         <>
-          <div className="mt-3 w-full">
+          <div
+            id="restrictions_present"
+            className={cn(
+              "mt-3 w-full rounded-lg p-1",
+              fieldErrors.restrictionsPresent &&
+                "border border-danger bg-danger-bg/40 ring-2 ring-[color-mix(in_srgb,var(--danger)_28%,transparent)]",
+            )}
+          >
             <Label className="mb-1 text-[11px]">القيود على العقار</Label>
             <div className="flex flex-wrap gap-1.5">
               {RESTRICTIONS_PRESENT_OPTIONS.map((opt) => (
@@ -169,8 +176,20 @@ export function PoPropertyBourseForm({
                 </button>
               ))}
             </div>
+            {fieldErrors.restrictionsPresent ? (
+              <p className="mt-1 text-[10px] text-danger-text" role="alert">
+                {fieldErrors.restrictionsPresent}
+              </p>
+            ) : null}
             {property.restrictionsPresent === "yes" ? (
-              <div className="mt-3 space-y-3">
+              <div
+                id="restriction_type"
+                className={cn(
+                  "mt-3 space-y-3 rounded-lg p-1",
+                  fieldErrors.restrictionType &&
+                    "border border-danger bg-danger-bg/40 ring-2 ring-[color-mix(in_srgb,var(--danger)_28%,transparent)]",
+                )}
+              >
                 <div>
                   <Label className="mb-1 text-[11px]">
                     نوع القيد <span className="text-danger-text">*</span>
@@ -227,7 +246,14 @@ export function PoPropertyBourseForm({
             ) : null}
           </div>
 
-          <div className="mt-3 w-full">
+          <div
+            id="boundaries_availability"
+            className={cn(
+              "mt-3 w-full rounded-lg p-1",
+              fieldErrors.boundariesAvailability &&
+                "border border-danger bg-danger-bg/40 ring-2 ring-[color-mix(in_srgb,var(--danger)_28%,transparent)]",
+            )}
+          >
             <Label className="mb-1 text-[11px]">توفر الحدود</Label>
             <div className="flex flex-wrap gap-1.5">
               {BOUNDARIES_AVAILABILITY_OPTIONS.map((opt) => (

@@ -46,7 +46,7 @@ export function FavoriteTransactionsView() {
       assigneeRole: isPartyRole ? role : undefined,
       getBasePath: favoritesPath,
       getTaskPath: favoritesTaskPath,
-      queueSort: "newest-first",
+      queueSort: "distributed-newest-first",
       includeAllStatuses: true,
       statusColumnLabel: "المرحلة",
       buildRowMoreItems: (ctx) => {

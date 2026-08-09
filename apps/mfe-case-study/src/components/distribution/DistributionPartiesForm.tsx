@@ -5,6 +5,7 @@ import { RegSelect } from "@platform/app-shared/registration/FormFields";
 import { useDistributionAssigneesQuery } from "@settings/mfe/query/settings-queries";
 import { Card, Note, cn } from "@platform/design-system";
 import {
+  getCaseSpecialists,
   getEngineeringOffices,
   getFieldInspectors,
   getValuators,
@@ -90,6 +91,11 @@ export function DistributionPartiesForm({
     () => getEngineeringOffices(staffUsers),
     [staffUsers],
   );
+  /** أخصائي عادي فقط — المشرف غير مدرج في قائمة التوزيع */
+  const caseSpecialists = useMemo(
+    () => getCaseSpecialists(staffUsers),
+    [staffUsers],
+  );
 
   return (
     <div className="flex flex-col gap-3">
@@ -98,6 +104,29 @@ export function DistributionPartiesForm({
           {loadError}
         </Note>
       ) : null}
+
+      <PartyBlock
+        readOnly={readOnly}
+        enabled={distribution.caseSpecialist}
+        title="أخصائي دراسة الحالة"
+        onEnabledChange={(checked) =>
+          onPatch({
+            caseSpecialist: checked,
+            caseSpecialistId: checked ? distribution.caseSpecialistId : "",
+          })
+        }
+      >
+        <RegSelect
+          id="dist_case_specialist"
+          label="الأخصائي"
+          required={distribution.caseSpecialist}
+          disabled={readOnly || !distribution.caseSpecialist}
+          options={toOptions(caseSpecialists)}
+          value={distribution.caseSpecialistId}
+          placeholder="اختر أخصائي دراسة الحالة…"
+          onChange={(v) => onPatch({ caseSpecialistId: v })}
+        />
+      </PartyBlock>
 
       <PartyBlock
         readOnly={readOnly}

@@ -1627,8 +1627,8 @@ export function OperationsTasksView() {
       const ra = rank(a.status);
       const rb = rank(b.status);
       if (ra !== rb) return ra - rb;
-      if (ra === 2) return new Date(b.dueAt).getTime() - new Date(a.dueAt).getTime();
-      return new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime();
+      // newest first within the same status band
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
   }, [tasks, search, statusFilter, scopeFilter, showAll]);
 

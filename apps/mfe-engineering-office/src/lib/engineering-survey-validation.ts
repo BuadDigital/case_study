@@ -1,3 +1,9 @@
+import {
+  invalidControlClass,
+  resolveFirstErrorMessage,
+  resolveFirstErrorTarget,
+  type FormErrorTarget,
+} from "@platform/app-shared/form-ux";
 import type { EngineeringSurveySubmission } from "./engineering-survey-data";
 import { normalizeEngineeringSurveyChecklist } from "./engineering-survey-data";
 
@@ -15,6 +21,32 @@ export type EngineeringSurveyFieldErrors = Partial<
     string
   >
 >;
+
+/** Document order for scroll + first error message. */
+export const ENGINEERING_SURVEY_ERROR_TARGETS: readonly FormErrorTarget[] = [
+  { key: "latitude", targetId: "eng-lat" },
+  { key: "longitude", targetId: "eng-lng" },
+  { key: "survey_report", targetId: "eng-survey-report" },
+  { key: "on_site_area", targetId: "eng-on-site-area" },
+  { key: "deed_matches_nature", targetId: "eng-deed-matches" },
+  { key: "nature_on_site_area", targetId: "eng-nature-on-site-area" },
+  { key: "site_letter", targetId: "eng-site-letter" },
+  { key: "site_confirmed", targetId: "eng-site-confirm" },
+  { key: "checklist", targetId: "eng-checklist" },
+] as const;
+
+const ENGINEERING_SURVEY_ERROR_KEYS = ENGINEERING_SURVEY_ERROR_TARGETS.map(
+  (t) => t.key,
+);
+
+export function firstEngineeringSurveyErrorTarget(
+  errors: EngineeringSurveyFieldErrors,
+): string | null {
+  return resolveFirstErrorTarget(
+    errors as Record<string, unknown>,
+    ENGINEERING_SURVEY_ERROR_TARGETS,
+  );
+}
 
 export function validateEngineeringSurveySubmission(
   submission: EngineeringSurveySubmission,
@@ -75,15 +107,11 @@ export function firstEngineeringSurveyError(
   errors: EngineeringSurveyFieldErrors,
 ): string {
   return (
-    errors.latitude ??
-    errors.longitude ??
-    errors.deed_matches_nature ??
-    errors.on_site_area ??
-    errors.nature_on_site_area ??
-    errors.survey_report ??
-    errors.site_letter ??
-    errors.site_confirmed ??
-    errors.checklist ??
-    "تحقق من الحقول المطلوبة"
+    resolveFirstErrorMessage(
+      errors as Record<string, unknown>,
+      ENGINEERING_SURVEY_ERROR_KEYS,
+    ) ?? "تحقق من الحقول المطلوبة"
   );
 }
+
+export { invalidControlClass as engineeringInvalidControlClass };

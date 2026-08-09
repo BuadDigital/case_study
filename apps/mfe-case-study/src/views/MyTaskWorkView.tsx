@@ -15,6 +15,8 @@ import {
   firstBourseValidationMessage,
   validatePropertyBourseFields,
 } from "../lib/domain/po-intake/property-bourse-validation";
+import { scheduleScrollToFirstPoPropertyError } from "../lib/domain/po-intake/po-field-error-targets";
+import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import {
   hasFieldErrors,
   type FieldErrors,
@@ -228,6 +230,7 @@ export function CaseStudyTaskWork({
     if (hasFieldErrors(errors)) {
       setFieldErrors(errors);
       setFormError(firstEnfathValidationMessage(errors));
+      scheduleScrollToFirstPoPropertyError(errors, property);
       return;
     }
     if (
@@ -238,7 +241,12 @@ export function CaseStudyTaskWork({
         task.propertyId,
       ))
     ) {
-      setFormError("رقم الصك مسجّل مسبقاً في هذا أمر العمل.");
+      const deedErr = {
+        deedNumber: "رقم الصك مسجّل مسبقاً في هذا أمر العمل.",
+      };
+      setFieldErrors(deedErr);
+      setFormError(deedErr.deedNumber);
+      scheduleScrollToFirstPoPropertyError(deedErr, property);
       return;
     }
 
@@ -305,6 +313,7 @@ export function CaseStudyTaskWork({
       if (obstructionError) {
         setObstructionReasonError(obstructionError);
         setFormError(obstructionError);
+        scheduleScrollToFormField("obstruction_reason");
         return;
       }
       if (!task.propertyId) {
@@ -343,6 +352,7 @@ export function CaseStudyTaskWork({
       if (hasFieldErrors(enfathErrors)) {
         setFieldErrors(enfathErrors);
         setFormError(firstEnfathValidationMessage(enfathErrors));
+        scheduleScrollToFirstPoPropertyError(enfathErrors, property);
         return;
       }
       if (
@@ -353,7 +363,12 @@ export function CaseStudyTaskWork({
           task.propertyId,
         ))
       ) {
-        setFormError("رقم الصك مسجّل مسبقاً في هذا أمر العمل.");
+        const deedErr = {
+          deedNumber: "رقم الصك مسجّل مسبقاً في هذا أمر العمل.",
+        };
+        setFieldErrors(deedErr);
+        setFormError(deedErr.deedNumber);
+        scheduleScrollToFirstPoPropertyError(deedErr, property);
         return;
       }
     }
@@ -362,6 +377,7 @@ export function CaseStudyTaskWork({
     if (hasFieldErrors(errors)) {
       setFieldErrors(errors);
       setFormError(firstBourseValidationMessage(errors));
+      scheduleScrollToFirstPoPropertyError(errors, property);
       return;
     }
 

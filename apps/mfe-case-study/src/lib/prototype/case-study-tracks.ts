@@ -2,6 +2,7 @@ import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import type { CaseStudyInfoPartyId } from "@settings/mfe/lib/prototype/case-study-info-roles-data";
 import {
   assigneeLabel,
+  getCaseSpecialists,
   getEngineeringOffices,
   getFieldInspectors,
   getGovernmentAuditors,
@@ -80,6 +81,12 @@ function distributionAssignee(
   }
   if (trackId === "appraisal") {
     return assigneeLabel(getValuators(staffUsers), distribution.valuatorId);
+  }
+  if (trackId === "caseStudy") {
+    return assigneeLabel(
+      getCaseSpecialists(staffUsers),
+      distribution.caseSpecialistId,
+    );
   }
   return "";
 }

@@ -36,6 +36,7 @@ import {
 } from "./po-intake-data";
 import {
   assigneeLabel,
+  getCaseSpecialists,
   getEngineeringOffices,
   getFieldInspectors,
   getGovernmentAuditors,
@@ -73,6 +74,8 @@ export type TaskDistributionDraft = {
   valuatorId: string;
   engineeringOffice: boolean;
   engineeringOfficeId: string;
+  caseSpecialist: boolean;
+  caseSpecialistId: string;
 };
 
 type LegacyDistribution = {
@@ -81,6 +84,8 @@ type LegacyDistribution = {
   engineeringOffice?: boolean;
   fieldInspectorRecommendedVisit?: boolean;
   operationsCoordinatorId?: string;
+  caseSpecialist?: boolean;
+  caseSpecialistId?: string;
 };
 
 export function migrateDistribution(
@@ -103,6 +108,8 @@ export function migrateDistribution(
       valuatorId: full.valuatorId,
       engineeringOffice: full.engineeringOffice,
       engineeringOfficeId: full.engineeringOfficeId,
+      caseSpecialist: full.caseSpecialist ?? false,
+      caseSpecialistId: full.caseSpecialistId ?? "",
     };
   } else {
     const legacy = raw as LegacyDistribution;
@@ -127,6 +134,8 @@ export function migrateDistribution(
         legacy.engineeringOffice && getEngineeringOffices(staffUsers)[0]
           ? getEngineeringOffices(staffUsers)[0].id
           : "",
+      caseSpecialist: legacy.caseSpecialist ?? false,
+      caseSpecialistId: legacy.caseSpecialistId ?? "",
     };
   }
 
@@ -212,6 +221,8 @@ function distributionToDto(
     valuatorId: distribution.valuatorId,
     engineeringOffice: distribution.engineeringOffice,
     engineeringOfficeId: distribution.engineeringOfficeId,
+    caseSpecialist: distribution.caseSpecialist,
+    caseSpecialistId: distribution.caseSpecialistId,
   };
 }
 
@@ -305,6 +316,8 @@ export function defaultDistribution(): TaskDistributionDraft {
     valuatorId: "",
     engineeringOffice: false,
     engineeringOfficeId: "",
+    caseSpecialist: false,
+    caseSpecialistId: "",
   };
 }
 
@@ -323,9 +336,16 @@ export function distributionValidationError(
   },
 ): string | null {
   const anyParty =
-    distribution.valuationDepartment || distribution.engineeringOffice;
+    distribution.valuationDepartment ||
+    distribution.engineeringOffice ||
+    distribution.caseSpecialist;
   if (!anyParty) {
     return "فعّل طرفاً واحداً على الأقل ثم اختر المسؤول من القائمة.";
+  }
+  if (distribution.caseSpecialist) {
+    if (!distribution.caseSpecialistId.trim()) {
+      return "اختر أخصائي دراسة الحالة.";
+    }
   }
   if (distribution.valuationDepartment) {
     if (!distribution.inspectorId.trim()) {
@@ -611,6 +631,14 @@ function buildAssigneeNames(
       distribution.engineeringOfficeId,
     );
   }
+  if (distribution.caseSpecialist) {
+    const label = assigneeLabel(
+      getCaseSpecialists(staffUsers),
+      distribution.caseSpecialistId,
+    );
+    names["case-study-property"] = label;
+    names["case-specialist"] = label;
+  }
   return names;
 }
 
@@ -831,8 +859,10 @@ export function compareWorkflowTasks(
   a: WorkflowTask,
   b: WorkflowTask,
 ): number {
-  const createdCmp = b.createdAt.localeCompare(a.createdAt);
-  if (createdCmp !== 0) return createdCmp;
+  const dateA = (a.updatedAt || a.createdAt || "").trim();
+  const dateB = (b.updatedAt || b.createdAt || "").trim();
+  const dateCmp = dateB.localeCompare(dateA);
+  if (dateCmp !== 0) return dateCmp;
   const poCmp = a.poNumber.localeCompare(b.poNumber, undefined, {
     numeric: true,
   });

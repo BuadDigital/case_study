@@ -1,8 +1,33 @@
+import {
+  invalidControlClass,
+  resolveFirstErrorMessage,
+  resolveFirstErrorTarget,
+  type FormErrorTarget,
+} from "@platform/app-shared/form-ux";
 import { getCachedEvaluatorReport } from "./evaluator-report-attachments";
 import { parseEvaluatorAmount } from "./value-estimation";
 import type { EvaluatorReportWorker } from "./evaluator-window-data";
 
 export type EvaluatorValidationErrors = Record<string, string>;
+
+/** Document order on the valuation tab for scroll + first message. */
+export const EVALUATOR_ERROR_TARGETS: readonly FormErrorTarget[] = [
+  { key: "report_no", targetId: "val-report-no" },
+  { key: "evaluator_report_file", targetId: "val-report-file" },
+  { key: "land_value", targetId: "inf-land" },
+  { key: "building_value", targetId: "inf-building" },
+  { key: "evaluator_price", targetId: "inf-total" },
+  { key: "forced_sale_discount", targetId: "inf-discount" },
+  { key: "asset_data_confirmed", targetId: "val-asset-data" },
+] as const;
+
+const EVALUATOR_ERROR_KEYS = EVALUATOR_ERROR_TARGETS.map((t) => t.key);
+
+export function firstEvaluatorErrorTarget(
+  errors: EvaluatorValidationErrors,
+): string | null {
+  return resolveFirstErrorTarget(errors, EVALUATOR_ERROR_TARGETS);
+}
 
 export function validateEvaluatorSubmission(input: {
   taskId: string;
@@ -79,6 +104,7 @@ export function validateEvaluatorSubmission(input: {
 export function firstEvaluatorError(
   errors: EvaluatorValidationErrors,
 ): string | null {
-  const values = Object.values(errors);
-  return values[0] ?? null;
+  return resolveFirstErrorMessage(errors, EVALUATOR_ERROR_KEYS);
 }
+
+export { invalidControlClass as evaluatorInvalidControlClass };

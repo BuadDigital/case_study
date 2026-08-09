@@ -72,6 +72,7 @@ public static class WorkflowTaskPhaseRules
             dto.ValuatorId = "";
         }
         if (!dto.EngineeringOffice) dto.EngineeringOfficeId = "";
+        if (!dto.CaseSpecialist) dto.CaseSpecialistId = "";
         return dto;
     }
 

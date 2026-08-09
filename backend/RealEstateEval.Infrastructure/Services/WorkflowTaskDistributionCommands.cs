@@ -111,6 +111,25 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
 
         var distribution = WorkflowTaskPhaseRules.NormalizeDistribution(request.Distribution);
 
+        if (!distribution.ValuationDepartment &&
+            !distribution.EngineeringOffice &&
+            !distribution.CaseSpecialist &&
+            !distribution.GovernmentAuditor)
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "فعّل طرفاً واحداً على الأقل ثم اختر المسؤول من القائمة.",
+            });
+        }
+
+        if (distribution.CaseSpecialist && string.IsNullOrWhiteSpace(distribution.CaseSpecialistId))
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = "اختر أخصائي دراسة الحالة.",
+            });
+        }
+
         if (distribution.GovernmentAuditor)
         {
             var property = await _db.WorkOrderProperties.AsNoTracking()
@@ -192,6 +211,23 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
                 now));
         }
 
+        if (distribution.CaseSpecialist)
+        {
+            var specialistName =
+                names.TryGetValue("case-study-property", out var named) &&
+                !string.IsNullOrWhiteSpace(named)
+                    ? named.Trim()
+                    : names.TryGetValue("case-specialist", out var named2) &&
+                      !string.IsNullOrWhiteSpace(named2)
+                        ? named2.Trim()
+                        : "أخصائي دراسة حالة";
+            parent.Assign(
+                distribution.CaseSpecialistId,
+                specialistName,
+                "case-specialist",
+                now);
+        }
+
         parent.ConfirmDistribution(
             $"دراسة حالة — {(string.IsNullOrEmpty(deed) ? parent.PoNumber : deed)}",
             WorkflowTaskMapper.SerializeDistribution(distribution),
@@ -221,6 +257,17 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
                     "active",
                     now),
             };
+            if (distribution.CaseSpecialist)
+            {
+                timelineEvents.Add(new PropertyTimelineRecordRequest(
+                    parent.PoNumber,
+                    propertyId,
+                    $"task:{parent.Id}:specialist-assigned",
+                    "تعيين أخصائي دراسة الحالة",
+                    parent.AssigneeName,
+                    "active",
+                    now));
+            }
             timelineEvents.AddRange(children.Select(child => new PropertyTimelineRecordRequest(
                 parent.PoNumber,
                 propertyId,
@@ -233,6 +280,8 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         }
 
         await NotifyDistributionAssignedAsync(parent, children, deed, cancellationToken);
+        if (distribution.CaseSpecialist)
+            await NotifyCaseSpecialistAssignedAsync(parent, deed, cancellationToken);
 
         return (new ConfirmTaskDistributionResponseDto
         {
@@ -316,6 +365,39 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         var changed = new List<WorkflowTask>();
         var timelineEvents = new List<PropertyTimelineRecordRequest>();
 
+        if (distribution.CaseSpecialist)
+        {
+            var newAssigneeId = string.IsNullOrWhiteSpace(distribution.CaseSpecialistId)
+                ? null
+                : distribution.CaseSpecialistId.Trim();
+            if (!string.Equals(parent.AssigneeId, newAssigneeId, StringComparison.Ordinal))
+            {
+                var specialistName =
+                    names.TryGetValue("case-study-property", out var named) &&
+                    !string.IsNullOrWhiteSpace(named)
+                        ? named.Trim()
+                        : names.TryGetValue("case-specialist", out var named2) &&
+                          !string.IsNullOrWhiteSpace(named2)
+                            ? named2.Trim()
+                            : "أخصائي دراسة حالة";
+                parent.Assign(newAssigneeId, specialistName, "case-specialist", now);
+                if (parent.PropertyId is Guid propertyId)
+                {
+                    var detail = string.IsNullOrWhiteSpace(actorName)
+                        ? $"{specialistName} — {reason}"
+                        : $"{actorName}: {specialistName} — {reason}";
+                    timelineEvents.Add(new PropertyTimelineRecordRequest(
+                        parent.PoNumber,
+                        propertyId,
+                        $"task:{parent.Id}:specialist-redistributed:{now.Ticks}",
+                        "إعادة إسناد — أخصائي دراسة الحالة",
+                        detail,
+                        "active",
+                        now));
+                }
+            }
+        }
+
         foreach (var mapping in mappings)
         {
             if (!mapping.Enabled) continue;
@@ -366,7 +448,53 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
             await NotifyDistributionAssignedAsync(parent, changed, deed, cancellationToken);
         }
 
+        if (distribution.CaseSpecialist &&
+            !string.IsNullOrWhiteSpace(parent.AssigneeId))
+        {
+            var deed = "";
+            if (parent.PropertyId is Guid deedPropertyId)
+            {
+                var prop = await _db.WorkOrderProperties.AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.Id == deedPropertyId, cancellationToken);
+                deed = prop?.DeedNumber?.Trim() ?? "";
+            }
+            await NotifyCaseSpecialistAssignedAsync(parent, deed, cancellationToken);
+        }
+
         return (WorkflowTaskMapper.ToDto(parent), null);
+    }
+
+    private async Task NotifyCaseSpecialistAssignedAsync(
+        WorkflowTask parent,
+        string deed,
+        CancellationToken cancellationToken)
+    {
+        var assigneeId = parent.AssigneeId?.Trim();
+        if (string.IsNullOrWhiteSpace(assigneeId)) return;
+
+        var usersByAssignee = await _recipients.ResolveUserIdsForDistributionAssigneesAsync(
+            [assigneeId],
+            cancellationToken);
+        if (!usersByAssignee.TryGetValue(assigneeId, out var userId)) return;
+
+        var refLabel = string.IsNullOrWhiteSpace(deed) ? parent.PoNumber : deed.Trim();
+        var id = Uri.EscapeDataString(parent.Id.ToString());
+        await _notifications.CreateForUsersAsync(
+            new Dictionary<string, CreateUserNotificationRequest>(StringComparer.Ordinal)
+            {
+                [userId] = new CreateUserNotificationRequest
+                {
+                    Title = "معاملة دراسة حالة بانتظارك",
+                    Body = $"أُسندت إليك دراسة حالة العقار على {refLabel}.",
+                    Tone = "info",
+                    Href = $"/case-study/{id}",
+                    Category = "workflow",
+                    EntityType = "task",
+                    EntityId = parent.Id.ToString(),
+                    SourceEvent = $"distribution-assigned-specialist:{parent.Id}",
+                },
+            },
+            cancellationToken);
     }
 
     private async Task NotifyDistributionAssignedAsync(
@@ -454,7 +582,7 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
             WorkflowTaskKind.FieldInspection => $"/property-inspection/{id}",
             WorkflowTaskKind.PropertyAppraisal => $"/property-appraisal/{id}",
             WorkflowTaskKind.GovernmentReview => "/operations-tasks",
-            _ => "/all-transactions",
+            _ => "/operations-tasks",
         };
     }
 }

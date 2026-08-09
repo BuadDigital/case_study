@@ -17,6 +17,7 @@ import {
   RegTextarea,
 } from "@platform/app-shared/registration/FormFields";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
+import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
@@ -45,6 +46,8 @@ import {
 } from "../../lib/prototype/government-review-work-data";
 import {
   firstGovernmentReviewError,
+  firstGovernmentReviewErrorTarget,
+  governmentReviewInvalidControlClass,
   listGovernmentReviewDocumentaryErrors,
   validateGovernmentReviewKeyHandoffPendingSave,
   validateGovernmentReviewPendingSave,
@@ -54,6 +57,23 @@ import {
 import { governmentReviewSubmitFieldErrors } from "../../lib/prototype/documentary-workflow-gates";
 import { GovernmentReviewKeysProofUpload } from "./GovernmentReviewKeysProofUpload";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+
+function reportGovernmentReviewFieldErrors(
+  errors: GovernmentReviewFieldErrors & Record<string, string>,
+  setFieldErrors: (
+    errors: GovernmentReviewFieldErrors & Record<string, string>,
+  ) => void,
+  setFormError: (message: string | null) => void,
+  showToast: (message: string, tone?: "error" | "success" | "info" | "progress") => void,
+): boolean {
+  if (Object.keys(errors).length === 0) return false;
+  setFieldErrors(errors);
+  const message = firstGovernmentReviewError(errors);
+  setFormError(message);
+  showToast(message, "error");
+  scheduleScrollToFormField(firstGovernmentReviewErrorTarget(errors));
+  return true;
+}
 
 export type GovernmentReviewWorkHostRef = {
   submit?: () => Promise<boolean>;
@@ -120,9 +140,9 @@ export function GovernmentReviewWorkBody({
   const property = record?.properties.find((p) => p.id === propertyId);
 
   const [draft, setDraft] = useState<GovernmentReviewSubmission | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<GovernmentReviewFieldErrors>(
-    {},
-  );
+  const [fieldErrors, setFieldErrors] = useState<
+    GovernmentReviewFieldErrors & Record<string, string>
+  >({});
   const [formError, setFormError] = useState<string | null>(null);
   const [envelopeMissingWarning, setEnvelopeMissingWarning] = useState(false);
   const [keyGate, setKeyGate] = useState<GovernmentReviewKeyGateOverlay | null>(
@@ -222,11 +242,14 @@ export function GovernmentReviewWorkBody({
 
     if (awaitingVisit) {
       const errors = validateGovernmentReviewPendingSave(draft);
-      setFieldErrors(errors);
-      if (Object.keys(errors).length > 0) {
-        const message = firstGovernmentReviewError(errors);
-        setFormError(message);
-        showToast(message, "error");
+      if (
+        reportGovernmentReviewFieldErrors(
+          errors,
+          setFieldErrors,
+          setFormError,
+          showToast,
+        )
+      ) {
         return false;
       }
 
@@ -258,11 +281,14 @@ export function GovernmentReviewWorkBody({
 
     if (awaitingKeyHandoff) {
       const errors = validateGovernmentReviewKeyHandoffPendingSave(draft);
-      setFieldErrors(errors);
-      if (Object.keys(errors).length > 0) {
-        const message = firstGovernmentReviewError(errors);
-        setFormError(message);
-        showToast(message, "error");
+      if (
+        reportGovernmentReviewFieldErrors(
+          errors,
+          setFieldErrors,
+          setFormError,
+          showToast,
+        )
+      ) {
         return false;
       }
 
@@ -291,12 +317,32 @@ export function GovernmentReviewWorkBody({
     }
 
     if (!canFinalizeGovernmentReviewWithGate(draft, keyGate)) {
+      const errors = validateGovernmentReviewSubmission(
+        draft,
+        undefined,
+        keyGate,
+      );
+      if (
+        reportGovernmentReviewFieldErrors(
+          errors,
+          setFieldErrors,
+          setFormError,
+          showToast,
+        )
+      ) {
+        return false;
+      }
       const message =
         draft.visitStatus !== "completed"
           ? "حدّد «تمت الزيارة» لإتمام المراجعة"
           : "حدّد هل تم تسليم المفتاح للمعاين الميداني — اختر «نعم» للإتمام أو «لا» للحفظ قيد التنفيذ";
       setFormError(message);
       showToast(message, "error");
+      scheduleScrollToFormField(
+        draft.visitStatus !== "completed"
+          ? "gov-visit-status"
+          : "gov-key-handed",
+      );
       return false;
     }
 
@@ -315,11 +361,14 @@ export function GovernmentReviewWorkBody({
       },
       keyGate,
     );
-    setFieldErrors(errors);
-    if (Object.keys(errors).length > 0) {
-      const message = firstGovernmentReviewError(errors);
-      setFormError(message);
-      showToast(message, "error");
+    if (
+      reportGovernmentReviewFieldErrors(
+        errors,
+        setFieldErrors,
+        setFormError,
+        showToast,
+      )
+    ) {
       return false;
     }
 
@@ -405,7 +454,12 @@ export function GovernmentReviewWorkBody({
       ) : null}
 
       {!locked && documentaryGaps.length > 0 ? (
-        <Note tone="warn" role="status" className="mb-3">
+        <Note
+          id="gov-documentary-banner"
+          tone="warn"
+          role="status"
+          className="mb-3"
+        >
           <strong>لا يمكن إتمام التسليم بعد.</strong> بيانات العقار/التعميد
           ناقصة (يملأها أخصائي دراسة الحالة):
           <ul className="mb-0 mt-2 list-disc pr-5">
@@ -414,7 +468,9 @@ export function GovernmentReviewWorkBody({
             ))}
           </ul>
         </Note>
-      ) : null}
+      ) : (
+        <div id="gov-documentary-banner" className="sr-only" aria-hidden />
+      )}
 
       {formError ? (
         <Note tone="warn" role="alert">
@@ -431,7 +487,13 @@ export function GovernmentReviewWorkBody({
         )}
       >
         <RegistrationFormCard title="زيارة المحكمة">
-          <FormGroup className="mb-3 flex flex-col gap-1">
+          <FormGroup
+            id="gov-visit-status"
+            className={cn(
+              "mb-3 flex flex-col gap-1 rounded-lg p-1",
+              fieldErrors.visitStatus && governmentReviewInvalidControlClass,
+            )}
+          >
             <Label className="text-[11px] font-semibold text-text-2">حالة الزيارة</Label>
             <div className={RADIO_GROUP}>
               {VISIT_OPTIONS.map((opt) => (
@@ -492,7 +554,13 @@ export function GovernmentReviewWorkBody({
         </RegistrationFormCard>
 
         <RegistrationFormCard title="جمع المفاتيح">
-          <FormGroup className="mb-3 flex flex-col gap-1">
+          <FormGroup
+            id="gov-keys-status"
+            className={cn(
+              "mb-3 flex flex-col gap-1 rounded-lg p-1",
+              fieldErrors.keysStatus && governmentReviewInvalidControlClass,
+            )}
+          >
             <Label className="text-[11px] font-semibold text-text-2">
               حالة استلام المفاتيح
             </Label>
@@ -509,6 +577,7 @@ export function GovernmentReviewWorkBody({
                         const next = { ...prev };
                         delete next.keysStatus;
                         delete next.keysDescription;
+                        delete next.keysProofFiles;
                         delete next.accessBlockReason;
                         return next;
                       });
@@ -576,7 +645,14 @@ export function GovernmentReviewWorkBody({
           ) : null}
 
           {showKeyHandoff ? (
-            <FormGroup className="mb-3 mt-3 flex flex-col gap-1">
+            <FormGroup
+              id="gov-key-handed"
+              className={cn(
+                "mb-3 mt-3 flex flex-col gap-1 rounded-lg p-1",
+                fieldErrors.keyHandedToInspector &&
+                  governmentReviewInvalidControlClass,
+              )}
+            >
               <Label className="text-[11px] font-semibold text-text-2">
                 هل تم تسليم المفتاح للمعاين الميداني؟
               </Label>
@@ -655,7 +731,13 @@ export function GovernmentReviewWorkBody({
             onChange={(v) => persist({ reviewNotes: v })}
           />
 
-          <FormGroup className="mb-3 mt-3 flex flex-col gap-1">
+          <FormGroup
+            id="gov-confirmed"
+            className={cn(
+              "mb-3 mt-3 flex flex-col gap-1 rounded-lg p-1",
+              fieldErrors.confirmed && governmentReviewInvalidControlClass,
+            )}
+          >
             {showCompletionConfirm ? (
             <label className={CHECKBOX_OPT}>
               <input
@@ -680,7 +762,8 @@ export function GovernmentReviewWorkBody({
                   ? "المفتاح لم يُسلَّم بعد — احفظ لإبقاء المعاملة قيد التنفيذ، ثم اختر «نعم» بعد التسليم لإتمامها."
                   : "عند اختيار «بانتظار الموعد» أو «تعذر الوصول» يُحفظ العمل بالانتظار — لإتمام المراجعة عد لاحقاً واختر «تمت الزيارة» وسَلِّم المفتاح للمعاين."}
               </p>
-            )}            {fieldErrors.confirmed ? (
+            )}
+            {fieldErrors.confirmed ? (
               <p className="mt-1 text-[10px] text-danger-text" role="alert">
                 {fieldErrors.confirmed}
               </p>

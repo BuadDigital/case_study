@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -518,6 +519,8 @@ public static class DataSeeder
             ["ahmed@ejadah.dev"] = "fi-ahmed",
             ["abdullah.abdulmane@ejadah.dev"] = "fi-abdullah-abdulmane",
             ["survey.jeddah@ejadah.dev"] = "eo-jeddah",
+            // Case specialists must be assignable on «توزيع المعاملات» (supervisors stay without ids).
+            ["osama@ejadah.dev"] = "cs-osama",
         };
 
     /// <summary>HR membership / badge numbers shown as «رقم العضوية».</summary>
@@ -643,7 +646,60 @@ public static class DataSeeder
             profile.DistributionAssigneeId = assigneeId;
         }
 
+        // Any other active case specialist without an assignee id (not only seed email).
+        var specialists = await db.UserProfiles
+            .Where(p =>
+                p.Status == UserStatus.Active
+                && p.RoleId == "case-specialist"
+                && (p.DistributionAssigneeId == null || p.DistributionAssigneeId == ""))
+            .ToListAsync(cancellationToken);
+        foreach (var profile in specialists)
+        {
+            var user = await userManager.FindByIdAsync(profile.UserId);
+            if (user is null) continue;
+            var userName = user.UserName ?? user.Email ?? profile.UserId;
+            profile.DistributionAssigneeId =
+                BuildSeedDistributionAssigneeId("case-specialist", userName);
+        }
+
         await db.SaveChangesAsync(cancellationToken);
+    }
+
+    private static string BuildSeedDistributionAssigneeId(string roleId, string userName)
+    {
+        var prefix = roleId switch
+        {
+            "case-specialist" => "cs",
+            "field-inspector" => "fi",
+            "real-estate-appraiser" => "val",
+            "government-reviewer" => "gov",
+            "engineering-office" => "eo",
+            _ => "usr",
+        };
+        var slug = Regex.Replace(userName.ToLowerInvariant(), @"[^a-z0-9]+", "-").Trim('-');
+        if (string.IsNullOrWhiteSpace(slug))
+            slug = "user";
+        return $"{prefix}-{slug}";
+    }
+
+    /// <summary>
+    /// Prefer stable seed map, then keep an existing id, then generate for party-assignable roles.
+    /// Never clear a previously stored id when the email is absent from the map.
+    /// </summary>
+    private static string? ResolveSeedDistributionAssigneeId(
+        string email,
+        string? roleId,
+        string userName,
+        string? existing)
+    {
+        if (DistributionAssigneeIdsByEmail.TryGetValue(email.Trim(), out var mapped)
+            && !string.IsNullOrWhiteSpace(mapped))
+            return mapped.Trim();
+        if (!string.IsNullOrWhiteSpace(existing))
+            return existing.Trim();
+        if (string.Equals(roleId, "case-specialist", StringComparison.OrdinalIgnoreCase))
+            return BuildSeedDistributionAssigneeId("case-specialist", userName);
+        return null;
     }
 
     private static async Task BackfillFieldInspectorEmployeeNumbersAsync(
@@ -968,7 +1024,11 @@ public static class DataSeeder
                     ? seed.ContractType == ContractType.Internal ? "employee" : "contractor"
                     : null,
 
-                DistributionAssigneeId = DistributionAssigneeIdsByEmail.GetValueOrDefault(normalizedEmail),
+                DistributionAssigneeId = ResolveSeedDistributionAssigneeId(
+                    normalizedEmail,
+                    PrototypeRoleResolver.LegacyRoleIdForJobTitle(seed.JobTitle),
+                    seed.LoginUsername,
+                    existing: null),
 
                 HasCompensation = seed.JobTitle is "معاين ميداني",
                 FeeValueSar = seed.JobTitle == "معاين ميداني"
@@ -1024,8 +1084,11 @@ public static class DataSeeder
                 ? seed.ContractType == ContractType.Internal ? "employee" : "contractor"
                 : null;
 
-            profile.DistributionAssigneeId =
-                DistributionAssigneeIdsByEmail.GetValueOrDefault(normalizedEmail);
+            profile.DistributionAssigneeId = ResolveSeedDistributionAssigneeId(
+                normalizedEmail,
+                PrototypeRoleResolver.LegacyRoleIdForJobTitle(seed.JobTitle),
+                seed.LoginUsername,
+                profile.DistributionAssigneeId);
 
             if (seed.JobTitle == "معاين ميداني")
             {
