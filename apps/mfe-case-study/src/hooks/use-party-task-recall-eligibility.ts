@@ -3,7 +3,6 @@ import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "@evaluator/mfe";
 import { ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT } from "@engineering-office/mfe";
 import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/prototype/party-task-recall-storage";
 import type { WorkflowTask } from "../lib/prototype/tasks-storage";
-import { GOVERNMENT_REVIEW_SUBMISSION_CHANGED_EVENT } from "../lib/prototype/government-review-work-storage";
 import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../lib/prototype/inspector-workspace-storage";
 import {
   isPartyTaskSubmissionSubmitted,
@@ -18,8 +17,6 @@ function submissionEventsForKind(kind: string): string[] {
       return [ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT];
     case "field-inspection":
       return [FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT];
-    case "government-review":
-      return [GOVERNMENT_REVIEW_SUBMISSION_CHANGED_EVENT];
     default:
       return [];
   }

@@ -1107,8 +1107,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   /** Workspace pages lock `#content` scroll — disable shell PTR there. */
   const contentScrollLocked =
     ((pathParts[0] === "property-inspection" ||
-      pathParts[0] === "active-inspection" ||
-      pathParts[0] === "government-review") &&
+      pathParts[0] === "active-inspection") &&
       pathParts.length >= 2);
 
   const silentRefresh = useCallback(
@@ -1167,18 +1166,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const onPropertyInspectionWorkspace = pathParts[0] === "property-inspection" && pathParts.length >= 2;
   const onFieldInspectionWorkspace =
     onActiveInspectionWorkspace || onPropertyInspectionWorkspace;
-  const onGovernmentReviewWorkspace = pathParts[0] === "government-review" && pathParts.length >= 2;
   /**
-   * Party workspaces (معاينة + مراجعة): keep app sidebar like GR;
-   * hide shell topbar so the in-page back/title card is the only header.
+   * Field inspection workspace: hide shell topbar so the in-page back/title card is the only header.
    */
-  const hideShellTopbar =
-    onFieldInspectionWorkspace || onGovernmentReviewWorkspace;
+  const hideShellTopbar = onFieldInspectionWorkspace;
   const caseStudyTaskId = onCaseStudyWorkspace ? (pathParts[1] ?? null) : null;
   const activeSurveyTaskId = onActiveSurveyRoute ? (pathParts[1] ?? null) : null;
   const propertyAppraisalTaskId = onPropertyAppraisalWorkspace ? (pathParts[1] ?? null) : null;
   const fieldInspectionTaskId = onFieldInspectionWorkspace ? (pathParts[1] ?? null) : null;
-  const governmentReviewTaskId = onGovernmentReviewWorkspace ? (pathParts[1] ?? null) : null;
 
   const { data: workflowTasks } = useWorkflowTasksQuery();
 
@@ -1254,7 +1249,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onActiveSurveyRoute ||
               onPropertyAppraisalWorkspace ||
               onFieldInspectionWorkspace ||
-              onGovernmentReviewWorkspace ||
               isPartyTaskPage(currentPage)
               ? onCaseStudyWorkspace
                 ? caseStudyTaskId
@@ -1264,9 +1258,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     ? propertyAppraisalTaskId
                     : onFieldInspectionWorkspace
                       ? fieldInspectionTaskId
-                      : onGovernmentReviewWorkspace
-                        ? governmentReviewTaskId
-                        : taskQuery
+                      : taskQuery
               : null,
             {
               ...(onCaseStudyWorkspace
@@ -1284,12 +1276,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       onActiveSurveyRoute,
       onPropertyAppraisalWorkspace,
       onFieldInspectionWorkspace,
-      onGovernmentReviewWorkspace,
       caseStudyTaskId,
       activeSurveyTaskId,
       propertyAppraisalTaskId,
       fieldInspectionTaskId,
-      governmentReviewTaskId,
       caseStudyDeedLabel,
       opsTaskDeepLink,
       opsTaskTitle,
@@ -1303,7 +1293,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     onActiveSurveyRoute ||
     onPropertyAppraisalWorkspace ||
     onFieldInspectionWorkspace ||
-    onGovernmentReviewWorkspace ||
     (pathname ? isPartyTaskWorkPath(pathname) && Boolean(taskQuery) : false);
 
   const def = ROLES[role];

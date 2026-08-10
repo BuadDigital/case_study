@@ -26,6 +26,7 @@ export function PropertyDetailMobileGlance({
   feeRows,
   failureCount,
   onOpenTab,
+  allowedTabs,
 }: {
   poNumber: string;
   property: PoPropertyIntake;
@@ -34,7 +35,11 @@ export function PropertyDetailMobileGlance({
   feeRows: InspectorFeeRowDto[];
   failureCount: number;
   onOpenTab: (tab: GlanceTabId) => void;
+  /** When set, only show glance chips for these tab ids. */
+  allowedTabs?: readonly string[];
 }) {
+  const canOpen = (tab: GlanceTabId) =>
+    !allowedTabs || allowedTabs.includes(tab);
   const { data: opsTasks = [] } = useOperationsTasksQuery({ live: true });
   const deedNumber = property.deedNumber.trim();
   const deedDisplay = formatPropertyDeedDisplay(property) || deedNumber;
@@ -87,31 +92,45 @@ export function PropertyDetailMobileGlance({
       className="lg:hidden shrink-0 border-b border-border/60 bg-surface-2/80 px-4 py-3"
       aria-label="ملخص سريع للمراجع"
     >
-      <div className="grid grid-cols-3 gap-2">
-        <GlanceChip
-          label="المفاتيح"
-          value={keysLabel}
-          tone={keysHasData ? "teal" : "gray"}
-          onClick={() => onOpenTab("keys")}
-        />
-        <GlanceChip
-          label="الأتعاب"
-          value={feeLabel}
-          tone={pendingFees > 0 ? "amber" : feeRows.length > 0 ? "teal" : "gray"}
-          onClick={() => onOpenTab("finance")}
-        />
-        <GlanceChip
-          label="التعذرات"
-          value={
-            failureCount > 0
-              ? `${failureCount} مسجّل`
-              : "لا تعذرات"
-          }
-          tone={failureCount > 0 ? "amber" : "gray"}
-          onClick={() => onOpenTab("failures")}
-        />
+      <div
+        className={cn(
+          "grid gap-2",
+          canOpen("finance") || canOpen("failures")
+            ? "grid-cols-3"
+            : "grid-cols-1",
+        )}
+      >
+        {canOpen("keys") ? (
+          <GlanceChip
+            label="المفاتيح"
+            value={keysLabel}
+            tone={keysHasData ? "teal" : "gray"}
+            onClick={() => onOpenTab("keys")}
+          />
+        ) : null}
+        {canOpen("finance") ? (
+          <GlanceChip
+            label="الأتعاب"
+            value={feeLabel}
+            tone={pendingFees > 0 ? "amber" : feeRows.length > 0 ? "teal" : "gray"}
+            onClick={() => onOpenTab("finance")}
+          />
+        ) : null}
+        {canOpen("failures") ? (
+          <GlanceChip
+            label="التعذرات"
+            value={
+              failureCount > 0
+                ? `${failureCount} مسجّل`
+                : "لا تعذرات"
+            }
+            tone={failureCount > 0 ? "amber" : "gray"}
+            onClick={() => onOpenTab("failures")}
+          />
+        ) : null}
       </div>
 
+      {canOpen("linked") || primaryOps ? (
       <div className="mt-2.5">
         {primaryOps ? (
           <Link
@@ -137,7 +156,7 @@ export function PropertyDetailMobileGlance({
               فتح
             </span>
           </Link>
-        ) : (
+        ) : canOpen("linked") ? (
           <button
             type="button"
             onClick={() => onOpenTab("linked")}
@@ -155,8 +174,9 @@ export function PropertyDetailMobileGlance({
               عرض
             </span>
           </button>
-        )}
+        ) : null}
       </div>
+      ) : null}
     </div>
   );
 }

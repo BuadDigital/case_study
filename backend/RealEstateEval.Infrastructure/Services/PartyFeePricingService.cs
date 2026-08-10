@@ -14,7 +14,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
     public static readonly Guid DefaultEngineeringTableId =
         Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
 
-    public static readonly Guid DefaultGovernmentTableId =
+    public static readonly Guid DefaultCourtVisitTableId =
         Guid.Parse("b2c3d4e5-f6a7-8901-bcde-f12345678901");
 
     public static readonly Guid DefaultInspectorTableId =
@@ -164,7 +164,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             PricingKind = pricingKind,
             ManagedBy = managedBy,
             IsActive = isActive,
-            GovernmentReviewFeeSar = source?.GovernmentReviewFeeSar ?? 0m,
+            CourtVisitFeeSar = source?.CourtVisitFeeSar ?? 0m,
             FieldInspectorIndividualFeeSar = source?.FieldInspectorIndividualFeeSar ?? 0m,
             FieldInspectorOrganizationFeeSar = source?.FieldInspectorOrganizationFeeSar ?? 0m,
             FlatAmountSar = pricingKind == PartyFeePricingKinds.Flat
@@ -260,7 +260,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             PricingKind = source.PricingKind,
             ManagedBy = source.ManagedBy,
             IsActive = false,
-            GovernmentReviewFeeSar = source.GovernmentReviewFeeSar,
+            CourtVisitFeeSar = source.CourtVisitFeeSar,
             FieldInspectorIndividualFeeSar = source.FieldInspectorIndividualFeeSar,
             FieldInspectorOrganizationFeeSar = source.FieldInspectorOrganizationFeeSar,
             FlatAmountSar = source.FlatAmountSar,
@@ -656,7 +656,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             return null;
 
         if (taskKind == WorkflowTaskKind.GovernmentReview)
-            return Configured(pricing.GovernmentReviewFeeSar);
+            return Configured(pricing.CourtVisitFeeSar);
 
         return partyType switch
         {
@@ -678,7 +678,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
     private static string? CategoryForTaskKind(WorkflowTaskKind taskKind) => taskKind switch
     {
         WorkflowTaskKind.EngineeringSurvey => PartyFeePricingCategories.EngineeringSurvey,
-        WorkflowTaskKind.GovernmentReview => PartyFeePricingCategories.GovernmentReview,
+        WorkflowTaskKind.GovernmentReview => PartyFeePricingCategories.CourtVisit,
         WorkflowTaskKind.FieldInspection => PartyFeePricingCategories.FieldInspector,
         _ => null,
     };
@@ -724,8 +724,8 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             "افتراضي",
             cancellationToken);
         await EnsureCategorySeededAsync(
-            PartyFeePricingCategories.GovernmentReview,
-            DefaultGovernmentTableId,
+            PartyFeePricingCategories.CourtVisit,
+            DefaultCourtVisitTableId,
             "افتراضي",
             cancellationToken);
         await EnsureCategorySeededAsync(
@@ -800,7 +800,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             .Include(x => x.AreaTiers)
             .FirstAsync(x => x.Category == PartyFeePricingCategories.EngineeringSurvey && x.IsActive, cancellationToken);
         var government = await _db.PartyFeePricingTables.AsNoTracking()
-            .FirstAsync(x => x.Category == PartyFeePricingCategories.GovernmentReview && x.IsActive, cancellationToken);
+            .FirstAsync(x => x.Category == PartyFeePricingCategories.CourtVisit && x.IsActive, cancellationToken);
         var inspector = await _db.PartyFeePricingTables.AsNoTracking()
             .FirstAsync(x => x.Category == PartyFeePricingCategories.FieldInspector && x.IsActive, cancellationToken);
 
@@ -814,7 +814,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             ManagedBy = engineering.ManagedBy,
             IsActive = true,
             AreaTiers = engDto.AreaTiers,
-            GovernmentReviewFeeSar = government.GovernmentReviewFeeSar,
+            CourtVisitFeeSar = government.CourtVisitFeeSar,
             FieldInspectorIndividualFeeSar = inspector.FieldInspectorIndividualFeeSar,
             FieldInspectorOrganizationFeeSar = inspector.FieldInspectorOrganizationFeeSar,
             FlatAmountSar = 0m,
@@ -923,7 +923,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             table.PricingKind,
             table.ManagedBy,
             table.IsActive,
-            table.GovernmentReviewFeeSar,
+            table.CourtVisitFeeSar,
             table.FieldInspectorIndividualFeeSar,
             table.FieldInspectorOrganizationFeeSar,
             table.FlatAmountSar,
@@ -964,7 +964,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             if (amount <= 0m)
                 throw new InvalidOperationException("مبلغ الحافز المقطوع مطلوب.");
             table.FlatAmountSar = amount;
-            table.GovernmentReviewFeeSar = 0m;
+            table.CourtVisitFeeSar = 0m;
             table.FieldInspectorIndividualFeeSar = 0m;
             table.FieldInspectorOrganizationFeeSar = 0m;
             await ReplaceTiersAsync(table, [], cancellationToken);
@@ -977,8 +977,8 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             case PartyFeePricingCategories.EngineeringSurvey:
                 await ReplaceTiersAsync(table, NormalizeRequestedTiers(request), cancellationToken);
                 break;
-            case PartyFeePricingCategories.GovernmentReview:
-                table.GovernmentReviewFeeSar = Math.Max(0m, request.GovernmentReviewFeeSar);
+            case PartyFeePricingCategories.CourtVisit:
+                table.CourtVisitFeeSar = Math.Max(0m, request.CourtVisitFeeSar);
                 break;
             case PartyFeePricingCategories.FieldInspector:
                 table.FieldInspectorIndividualFeeSar =
@@ -997,7 +997,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             if (amount <= 0m)
                 throw new InvalidOperationException("مبلغ الحافز المقطوع مطلوب.");
             table.FlatAmountSar = amount;
-            table.GovernmentReviewFeeSar = 0m;
+            table.CourtVisitFeeSar = 0m;
             table.FieldInspectorIndividualFeeSar = 0m;
             table.FieldInspectorOrganizationFeeSar = 0m;
             table.AreaTiers.Clear();
@@ -1010,8 +1010,8 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
             case PartyFeePricingCategories.EngineeringSurvey:
                 ApplyTiersInMemory(table, NormalizeRequestedTiers(request));
                 break;
-            case PartyFeePricingCategories.GovernmentReview:
-                table.GovernmentReviewFeeSar = Math.Max(0m, request.GovernmentReviewFeeSar);
+            case PartyFeePricingCategories.CourtVisit:
+                table.CourtVisitFeeSar = Math.Max(0m, request.CourtVisitFeeSar);
                 break;
             case PartyFeePricingCategories.FieldInspector:
                 table.FieldInspectorIndividualFeeSar =
@@ -1049,7 +1049,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         string PricingKind,
         string ManagedBy,
         bool IsActive,
-        decimal GovernmentReviewFeeSar,
+        decimal CourtVisitFeeSar,
         decimal FieldInspectorIndividualFeeSar,
         decimal FieldInspectorOrganizationFeeSar,
         decimal FlatAmountSar,
@@ -1108,7 +1108,7 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
                     FeeSar = t.FeeSar,
                 })
                 .ToList(),
-            GovernmentReviewFeeSar = table.GovernmentReviewFeeSar,
+            CourtVisitFeeSar = table.CourtVisitFeeSar,
             FieldInspectorIndividualFeeSar = table.FieldInspectorIndividualFeeSar,
             FieldInspectorOrganizationFeeSar = table.FieldInspectorOrganizationFeeSar,
             FlatAmountSar = table.FlatAmountSar,

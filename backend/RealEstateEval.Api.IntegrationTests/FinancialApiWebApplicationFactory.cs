@@ -171,7 +171,7 @@ internal sealed class StubPartyFeePricingService : IPartyFeePricingService
             new PartyFeePricingTierDto { SortOrder = 3, MaxAreaM2 = 10000, FeeSar = 1500 },
             new PartyFeePricingTierDto { SortOrder = 4, MaxAreaM2 = null, FeeSar = 4000 },
         ],
-        GovernmentReviewFeeSar = 350,
+        CourtVisitFeeSar = 350,
         FieldInspectorIndividualFeeSar = 400,
         FieldInspectorOrganizationFeeSar = 500,
     };

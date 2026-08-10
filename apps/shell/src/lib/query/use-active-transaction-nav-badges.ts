@@ -15,9 +15,7 @@ import {
 } from "@case-study/mfe";
 import { isTaskOnSuspendedProperty } from "@case-study/mfe/lib/prototype/suspended-transactions-storage";
 import { listedTasksForPage } from "@case-study/mfe/lib/prototype/active-transaction-page-situation";
-import { countGovernmentReviewOpenPos } from "@case-study/mfe";
 import { PARTY_TASK_PAGES } from "@platform/app-shared/prototype/party-task-pages";
-import { reviewerScopeForRole } from "@case-study/mfe/lib/prototype/reviewer-coverage";
 import {
   seesAllCaseStudyWorkflowTasks,
   tasksForPartyAssignee,
@@ -108,15 +106,6 @@ export function useActiveTransactionNavBadges(): Partial<Record<PageId, number>>
 
     for (const def of Object.values(PARTY_TASK_PAGES)) {
       if (def.roleId !== role) continue;
-      if (def.pageId === "government-review") {
-        const open = countGovernmentReviewOpenPos(
-          partyMine,
-          poByNumber,
-          reviewerScopeForRole(role, staffUsers),
-        );
-        if (open > 0) badges[def.pageId] = open;
-        continue;
-      }
       const open = listedTasksForPage(def.pageId, partyMine, poByNumber).length;
       if (open > 0) badges[def.pageId] = open;
     }

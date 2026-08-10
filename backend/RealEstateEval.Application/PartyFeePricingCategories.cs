@@ -3,18 +3,19 @@ namespace RealEstateEval.Application;
 public static class PartyFeePricingCategories
 {
     public const string EngineeringSurvey = "engineering-survey";
-    public const string GovernmentReview = "government-review";
+    /// <summary>أتعاب زيارة المحكمة — priced when specialist/supervisor creates court_visit.</summary>
+    public const string CourtVisit = "court-visit";
     public const string FieldInspector = "field-inspector";
 
     public static readonly string[] All =
     [
         EngineeringSurvey,
-        GovernmentReview,
+        CourtVisit,
         FieldInspector,
     ];
 
     public static bool IsValid(string? value) =>
-        value is EngineeringSurvey or GovernmentReview or FieldInspector;
+        value is EngineeringSurvey or CourtVisit or FieldInspector;
 
     /// <summary>
     /// There is deliberately no lenient normaliser. Coercing an unknown value to a default silently

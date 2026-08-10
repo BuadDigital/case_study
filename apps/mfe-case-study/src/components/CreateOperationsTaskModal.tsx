@@ -42,15 +42,7 @@ import {
   opsLetterSub,
   opsLetterTitle,
   opsLetterRow,
-  opsTdCourt,
-  opsTdDeed,
-  opsTdPlain,
-  opsTdPo,
-  opsThStart,
   opsFileSize,
-  opsTd,
-  opsTdC,
-  opsTh,
   opsThead,
   opsTfChip,
   opsTfChipActive,
@@ -65,7 +57,13 @@ import {
 } from "../lib/prototype/ops-tasks-tw";
 
 const LETTER_COLS =
-  "44px minmax(84px,.9fr) minmax(120px,1.2fr) minmax(100px,1fr) minmax(78px,.8fr) minmax(160px,1.5fr)";
+  "2.75rem minmax(5.75rem,0.9fr) minmax(9.5rem,1.35fr) minmax(7rem,1.05fr) minmax(5.5rem,0.85fr) minmax(11rem,1.55fr)";
+
+const letterTh =
+  "flex items-center justify-start px-3 py-3 text-start text-[11.5px] font-bold leading-snug text-heading";
+const letterTd =
+  "flex min-w-0 items-center justify-start overflow-hidden px-3 py-3 text-start text-[12.5px] leading-snug";
+const letterCellLtr = "inline-block max-w-full truncate tabular-nums tracking-tight";
 
 const TASK_TYPES = ["court_visit", "general"] as const;
 
@@ -379,13 +377,13 @@ export function CreateOperationsTaskModal({
     if (!config) return;
 
     void (async () => {
-      const tables = await fetchPartyFeePricingTables(config, "government-review");
+      const tables = await fetchPartyFeePricingTables(config, "court-visit");
       if (!tables.ok || cancelled) return;
       const active = tables.data.find((t) => t.isActive) ?? tables.data[0];
       if (!active) return;
       const detail = await fetchPartyFeePricingById(config, active.id);
       if (!detail.ok || cancelled) return;
-      const amount = detail.data.governmentReviewFeeSar;
+      const amount = detail.data.courtVisitFeeSar;
       if (typeof amount === "number" && amount > 0) {
         setVisitFeeAmountSar(String(amount));
       }
@@ -822,7 +820,7 @@ export function CreateOperationsTaskModal({
                 </div>
                 <div className="px-3.5 py-3">
                   <div className="overflow-x-auto rounded-[12px] border border-border bg-surface">
-                    <div className="min-w-[640px]">
+                    <div className="min-w-[760px]" dir="rtl">
                       <div
                         className={opsThead}
                         style={{ gridTemplateColumns: LETTER_COLS }}
@@ -837,7 +835,10 @@ export function CreateOperationsTaskModal({
                         ].map((h, i) => (
                           <div
                             key={h}
-                            className={i === 0 ? cn(opsTh, opsTdC) : opsThStart}
+                            className={cn(
+                              letterTh,
+                              i === 0 && "justify-center text-center",
+                            )}
                           >
                             {h}
                           </div>
@@ -849,20 +850,43 @@ export function CreateOperationsTaskModal({
                           className={opsLetterRow}
                           style={{ gridTemplateColumns: LETTER_COLS }}
                         >
-                          <div className={cn(opsTd, opsTdC, "text-text-2")}>{i + 1}</div>
-                          <div className={opsTdPo} dir="ltr">
-                            {row.po}
+                          <div
+                            className={cn(
+                              letterTd,
+                              "justify-center text-center text-text-2",
+                            )}
+                          >
+                            {i + 1}
                           </div>
-                          <div className={opsTdDeed} dir="ltr">
-                            صك {row.deed}
+                          <div className={cn(letterTd, "font-semibold text-text-2")}>
+                            <span dir="ltr" className={letterCellLtr}>
+                              {row.po}
+                            </span>
                           </div>
-                          <div className={opsTdPlain}>{row.owner}</div>
-                          <div className={opsTdPlain} dir="ltr">
-                            {row.request}
+                          <div className={cn(letterTd, "font-bold text-gold-d")}>
+                            <span dir="ltr" className={letterCellLtr}>
+                              صك {row.deed}
+                            </span>
                           </div>
-                          <div className={opsTdCourt}>
-                            <span className="font-semibold text-text">{row.court}</span>{" "}
-                            <span className="text-text-3">· {row.circuit}</span>
+                          <div className={cn(letterTd, "font-medium text-heading")}>
+                            <span className="line-clamp-2 break-words">
+                              {row.owner}
+                            </span>
+                          </div>
+                          <div className={cn(letterTd, "font-semibold text-text-2")}>
+                            <span dir="ltr" className={letterCellLtr}>
+                              {row.request || "—"}
+                            </span>
+                          </div>
+                          <div className={letterTd}>
+                            <span className="line-clamp-2 break-words">
+                              <span className="font-semibold text-text">
+                                {row.court}
+                              </span>
+                              {row.circuit ? (
+                                <span className="text-text-3"> · {row.circuit}</span>
+                              ) : null}
+                            </span>
                           </div>
                         </div>
                       ))}

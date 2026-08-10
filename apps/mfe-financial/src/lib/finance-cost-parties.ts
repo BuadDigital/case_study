@@ -30,7 +30,8 @@ export type FinanceCostParty = {
 const TASK_KIND_AR: Record<string, string> = {
   "field-inspection": "المعاين",
   "engineering-survey": "المكتب الهندسي",
-  "government-review": "المراجع الحكومي",
+  "court-visit": "زيارة المحكمة",
+  "government-review": "زيارة محكمة (قديم)",
   valuation: "المقيّم",
 };
 

@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { RoleId } from "@platform/types";
 import {
-  governmentReviewAssignmentBlockReason,
-  governmentReviewSubmitFieldErrors,
   inspectorKeySubmitGate,
   isInformalSettlement,
   roleBypassesDocumentaryGates,
@@ -165,54 +163,4 @@ describe("documentary workflow gates — role matrix", () => {
     ).toBe(true);
   });
 
-  it("gov reviewer submit requires documentary fields; supervisor skips", () => {
-    const blocked = governmentReviewSubmitFieldErrors({
-      role: "government-reviewer",
-      deedNumber: "1",
-      requestNumber: "",
-      city: "جدة",
-      district: "الروضة",
-      circuit: "1",
-      poNumber: "PO-1",
-      assignmentMandateNumber: "M-1",
-      assignmentMandateDate: "2026-01-01",
-    });
-    expect(blocked.requestNumber).toBeTruthy();
-
-    const bypassed = governmentReviewSubmitFieldErrors({
-      role: "section-supervisor",
-      deedNumber: "",
-      requestNumber: "",
-    });
-    expect(bypassed).toEqual({});
-  });
-
-  it("blocks government-review assignment when circuit/mandate missing", () => {
-    const blocked = governmentReviewAssignmentBlockReason({
-      deedNumber: "1",
-      requestNumber: "R-1",
-      city: "جدة",
-      district: "الروضة",
-      circuit: "",
-      poNumber: "PO-1",
-      assignmentMandateNumber: "",
-      assignmentMandateDate: "2026-01-01",
-    });
-    expect(blocked).toContain("الدائرة");
-    expect(blocked).toContain("رقم التكليف");
-    expect(blocked).toContain("لا يمكن إرسال المعاملة للمراجع الحكومي");
-
-    expect(
-      governmentReviewAssignmentBlockReason({
-        deedNumber: "1",
-        requestNumber: "R-1",
-        city: "جدة",
-        district: "الروضة",
-        circuit: "1",
-        poNumber: "PO-1",
-        assignmentMandateNumber: "M-1",
-        assignmentMandateDate: "2026-01-01",
-      }),
-    ).toBeNull();
-  });
 });

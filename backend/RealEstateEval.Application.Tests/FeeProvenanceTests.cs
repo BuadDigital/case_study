@@ -228,10 +228,10 @@ public class FeeProvenanceTests
         db.PartyFeePricingTables.Add(new PartyFeePricingTable
         {
             Id = tableId,
-            Category = PartyFeePricingCategories.GovernmentReview,
+            Category = PartyFeePricingCategories.CourtVisit,
             Name = "اختبار",
             IsActive = true,
-            GovernmentReviewFeeSar = rate,
+            CourtVisitFeeSar = rate,
             UpdatedAtUtc = DateTime.UtcNow,
         });
         await db.SaveChangesAsync();

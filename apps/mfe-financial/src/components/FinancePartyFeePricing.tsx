@@ -64,9 +64,9 @@ const CATEGORIES: {
     partyLabel: "المكاتب",
   },
   {
-    id: "government-review",
-    label: "المراجعين الحكوميين",
-    hint: "أتعاب الزيارة واستلام المفاتيح",
+    id: "court-visit",
+    label: "زيارات المحكمة",
+    hint: "أتعاب الزيارة للمراجع المتعاون",
     partyLabel: "المراجعون",
   },
   {
@@ -82,7 +82,7 @@ function partiesForCategory(
   staffUsers: Parameters<typeof getEngineeringOffices>[0],
 ): DistributionAssignee[] {
   if (category === "engineering-survey") return getEngineeringOffices(staffUsers);
-  if (category === "government-review") return getGovernmentAuditors(staffUsers);
+  if (category === "court-visit") return getGovernmentAuditors(staffUsers);
   return getFieldInspectors(staffUsers);
 }
 
@@ -104,7 +104,7 @@ function emptyDraft(
             { sortOrder: 1, maxAreaM2: null, feeSar: 0 },
           ]
         : [],
-    governmentReviewFeeSar: 0,
+    courtVisitFeeSar: 0,
     fieldInspectorIndividualFeeSar: 0,
     fieldInspectorOrganizationFeeSar: 0,
     ...partial,
@@ -763,11 +763,11 @@ export function FinancePartyFeePricing() {
                   </section>
                 ) : null}
 
-                {selectedCategory === "government-review" ? (
+                {selectedCategory === "court-visit" ? (
                   <section className="space-y-3">
                     <div>
                       <h3 className="m-0 text-[13px] font-semibold text-text">
-                        أتعاب المراجع الحكومي
+                        أتعاب زيارة المحكمة
                       </h3>
                       <p className="m-0 mt-0.5 text-[11px] text-text-3">
                         أتعاب الزيارة تُستحق بإكمال مهمة زيارة محكمة. متعاون فرد
@@ -777,19 +777,19 @@ export function FinancePartyFeePricing() {
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <FormGroup>
                         <Label
-                          htmlFor="fee-gov-review"
+                          htmlFor="fee-court-visit"
                           className="mb-1 text-[11px] font-semibold text-text-2"
                         >
                           أتعاب الزيارة — فرد (ر.س)
                         </Label>
                         <MoneyInput
-                          id="fee-gov-review"
-                          value={draft.governmentReviewFeeSar}
+                          id="fee-court-visit"
+                          value={draft.courtVisitFeeSar}
                           locked={locked}
                           onChange={(n) =>
                             setDraft((d) => ({
                               ...d,
-                              governmentReviewFeeSar: n,
+                              courtVisitFeeSar: n,
                             }))
                           }
                         />

@@ -29,7 +29,7 @@ public partial class AddPartyFeePricingCategory : Migration
 
             INSERT INTO financial."PartyFeePricingTables" (
                 "Id", "Name", "Category", "IsActive",
-                "GovernmentReviewFeeSar", "KeyReceiptFeeSar",
+                "CourtVisitFeeSar", "KeyReceiptFeeSar",
                 "FieldInspectorIndividualFeeSar", "FieldInspectorOrganizationFeeSar",
                 "UpdatedAtUtc"
             )
@@ -38,8 +38,8 @@ public partial class AddPartyFeePricingCategory : Migration
                 'المراجع الحكومي — افتراضي',
                 'government-review',
                 true,
-                COALESCE(src."GovernmentReviewFeeSar", 350),
-                COALESCE(NULLIF(src."KeyReceiptFeeSar", 0), src."GovernmentReviewFeeSar", 350),
+                COALESCE(src."CourtVisitFeeSar", 350),
+                COALESCE(NULLIF(src."KeyReceiptFeeSar", 0), src."CourtVisitFeeSar", 350),
                 0, 0,
                 NOW() AT TIME ZONE 'utc'
             FROM (
@@ -55,7 +55,7 @@ public partial class AddPartyFeePricingCategory : Migration
 
             INSERT INTO financial."PartyFeePricingTables" (
                 "Id", "Name", "Category", "IsActive",
-                "GovernmentReviewFeeSar", "KeyReceiptFeeSar",
+                "CourtVisitFeeSar", "KeyReceiptFeeSar",
                 "FieldInspectorIndividualFeeSar", "FieldInspectorOrganizationFeeSar",
                 "UpdatedAtUtc"
             )

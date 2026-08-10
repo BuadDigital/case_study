@@ -3,13 +3,13 @@ using RealEstateEval.Domain;
 namespace RealEstateEval.Application.Rules;
 
 /// <summary>
-/// Government-review party-task fees and ops court-visit pricing.
-/// Reviewers are either employees (no visit fee — incentives via ج٦) or individual
+/// Court-visit ops fee rules (formerly government-review pricing).
+/// Reviewers are either employees (no visit fee — incentives via flat table) or individual
 /// cooperators (specialist sets the visit amount at create; stamped on complete).
 /// </summary>
-public static class GovernmentReviewFeeRules
+public static class CourtVisitFeeRules
 {
-    /// <summary>Cooperator individual — the party type priced by <c>GovernmentReviewFeeSar</c>.</summary>
+    /// <summary>Cooperator individual — the party type priced by <c>CourtVisitFeeSar</c>.</summary>
     public const string PartyType = InspectorFeeRules.TypeCooperatorIndividual;
 
     public static string ResolveReviewerType(

@@ -5,16 +5,9 @@ import {
   useMemo,
   useRef,
   useState,
-  useEffect,
-  type RefObject,
 } from "react";
 import { useRouter } from "next/navigation";
 import { TaskCompletionSuccess } from "../components/party-tasks/TaskCompletionSuccess";
-import {
-  GovernmentReviewWorkBody,
-  type GovernmentReviewWorkHostRef,
-} from "../components/government-review/GovernmentReviewWorkBody";
-import { InspectorFeesTab } from "../components/field-inspection/InspectorFeesTab";
 import { TaskWorkChrome } from "../components/primary-data/TaskWorkChrome";
 import { FieldInspectionMobileShell } from "../components/field-inspection/FieldInspectionMobileShell";
 import {
@@ -25,7 +18,6 @@ import { PropertyDetailInspectionTab } from "../components/po-intake/PropertyDet
 import type { PropertyDetailPartyCard } from "../lib/prototype/property-detail-parties";
 import { useFieldInspectionWorkspacesQuery } from "../query/field-inspection-workspaces-queries";
 import { isFieldInspectionLocked } from "../lib/prototype/field-inspection-work-queue";
-import { isGovernmentReviewLocked } from "../lib/prototype/government-review-work-queue";
 import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
 import { partyTaskPath } from "../lib/my-task-routes";
 import {
@@ -68,7 +60,6 @@ import { failureRaiserRoleForParty } from "@failures/mfe/lib/failure-party-roles
 const PARTY_FAILURE_RAISE_KINDS = new Set([
   "field-inspection",
   "property-appraisal",
-  "government-review",
   "engineering-survey",
 ]);
 
@@ -208,18 +199,14 @@ export function PartyActiveTaskWork({
   const { data: allWorkflowTasks = [] } = useWorkflowTasksQuery();
   const [saving, setSaving] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
-  const [governmentFooterTick, setGovernmentFooterTick] = useState(0);
   const [workTab, setWorkTab] = useState<"task" | "case-study">("task");
 
   const isAppraisal = def.kind === "property-appraisal";
   const isEngineeringSurvey = def.kind === "engineering-survey";
   const isFieldInspection = def.kind === "field-inspection";
-  const isGovernmentReview = def.kind === "government-review";
-  const usesStructuredWorkForm = isGovernmentReview;
 
   const evaluatorHostRef = useRef<PartyEvaluatorWorkHostRef>({});
   const surveyHostRef = useRef<PartyEngineeringSurveyWorkHostRef>({});
-  const governmentHostRef = useRef<GovernmentReviewWorkHostRef>({});
   const fieldInspectionHostRef = useRef<FieldInspectionWorkHostRef>({});
 
   // Form UIs often already toast; avoid double toast for those paths.
@@ -230,23 +217,9 @@ export function PartyActiveTaskWork({
   surveyHostRef.current.onSubmitted = () =>
     completePartyTaskSubmit(def.completeMessage, { showToast: true });
   surveyHostRef.current.onSavingChange = setSaving;
-  governmentHostRef.current.onSubmitted = () =>
-    completePartyTaskSubmit(def.completeMessage, { showToast: false });
-  governmentHostRef.current.onPendingSaved = () => {
-    refresh();
-    exit();
-  };
-  governmentHostRef.current.onSavingChange = setSaving;
-  governmentHostRef.current.onVisitStatusChange = () =>
-    setGovernmentFooterTick((n) => n + 1);
   fieldInspectionHostRef.current.onSubmitted = () =>
     completePartyTaskSubmit(def.completeMessage, { showToast: false });
   fieldInspectionHostRef.current.onSavingChange = setSaving;
-
-  const governmentLocked = useMemo(
-    () => isGovernmentReviewLocked(task.id, task.status),
-    [task.id, task.status],
-  );
 
   const isFieldInspectionPage = def.kind === "field-inspection";
   const { data: inspectionWorkspaces = [] } = useFieldInspectionWorkspacesQuery(
@@ -282,30 +255,6 @@ export function PartyActiveTaskWork({
       location: "—",
     };
   }, [record, task]);
-
-  async function runHostSubmit(
-    locked: boolean,
-    submitHostRef: RefObject<{ submit?: () => Promise<boolean> } | null>,
-  ) {
-    if (locked) {
-      exit();
-      return;
-    }
-    setSaving(true);
-    await submitHostRef.current?.submit?.();
-    setSaving(false);
-  }
-
-  async function submitStructuredWork(
-    locked: boolean,
-    submitHostRef: RefObject<{ submit?: () => Promise<boolean> } | null>,
-  ) {
-    await runHostSubmit(locked, submitHostRef);
-  }
-
-  async function submitGovernmentReview() {
-    await submitStructuredWork(governmentLocked, governmentHostRef);
-  }
 
   async function submitWork() {
     setSaving(true);
@@ -457,7 +406,6 @@ export function PartyActiveTaskWork({
 
   if (
     task.status === "completed" &&
-    !isGovernmentReview &&
     !isAppraisal &&
     !isFieldInspection
   ) {
@@ -621,118 +569,6 @@ export function PartyActiveTaskWork({
           />
         </div>
       </>
-    );
-  }
-
-  if (usesStructuredWorkForm) {
-    const locked = governmentLocked;
-    void governmentFooterTick;
-    const governmentSaveLabel =
-      governmentHostRef.current.getFooterSaveLabel?.() ?? def.saveLabel;
-    const saveLabel = locked ? "رجوع" : governmentSaveLabel;
-
-    const governmentBody = (
-      <div className="flex flex-col gap-4">
-        <div className="grid min-w-0 gap-4 xl:grid-cols-2">
-          <section className="min-w-0 rounded-xl border border-border bg-surface p-[18px_20px] shadow-card">
-            <div className="mb-3.5 border-b border-border pb-2.5">
-              <h3 className="m-0 text-[13px] font-bold text-heading">
-                المراجعة الحكومية
-              </h3>
-              {def.workIntro ? (
-                <p className="m-0 mt-1 text-[11.5px] leading-relaxed text-text-3">
-                  {def.workIntro}
-                </p>
-              ) : null}
-            </div>
-            <GovernmentReviewWorkBody
-              def={def}
-              task={task}
-              hostRef={governmentHostRef}
-            />
-            <div>
-              <PartyTaskFailureRaise
-                def={def}
-                task={task}
-                deedNumber={deedLabel}
-                onSubmitted={refresh}
-              />
-            </div>
-          </section>
-
-          <section className="min-w-0 rounded-xl border border-border bg-surface p-[18px_20px] shadow-card">
-            <h3 className="m-0 mb-2.5 border-b border-border pb-2.5 text-[13px] font-bold text-heading">
-              نموذج الدراسة
-            </h3>
-            <PartyCaseStudyFormTab
-              def={def}
-              childTask={task}
-              forceReadOnly={locked}
-            />
-          </section>
-        </div>
-
-        <section className="min-w-0 overflow-hidden rounded-xl border border-border bg-surface shadow-card">
-          <InspectorFeesTab tasks={[task]} variant="government-review" />
-        </section>
-      </div>
-    );
-
-    /* Title + صك/PO card (no back — use sidebar nav). */
-    if (layout === "page") {
-      return (
-        <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee]">
-          <header className="flex shrink-0 items-center border-b border-border bg-surface px-5 py-3.5">
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-[15px] font-bold text-heading">
-                {def.workTitle}
-              </div>
-              <div className="mt-0.5 truncate text-[12px] text-text-3">
-                صك {deedLabel}
-                <span className="mx-1.5 text-border-md">·</span>
-                {formatPoDisplay(task.poNumber)}
-                {location && location !== "—" ? (
-                  <>
-                    <span className="mx-1.5 text-border-md">·</span>
-                    {location}
-                  </>
-                ) : null}
-              </div>
-            </div>
-          </header>
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-8">
-            <div className="mx-auto max-w-[1100px]">{governmentBody}</div>
-          </div>
-          <footer className="flex shrink-0 justify-start border-t border-border bg-surface px-5 py-3 sm:px-8">
-            <button
-              type="button"
-              disabled={saving}
-              onClick={() => void submitGovernmentReview()}
-              className="inline-flex h-10 cursor-pointer items-center justify-center rounded-lg border-none bg-ink px-5 text-[13px] font-bold text-white shadow-[0_6px_16px_-8px_rgba(18,40,76,.55)] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {saving ? "جاري الحفظ…" : saveLabel}
-            </button>
-          </footer>
-        </div>
-      );
-    }
-
-    return (
-      <TaskWorkChrome
-        layout={layout}
-        title={def.workTitle}
-        subtitle={`صك ${deedLabel} · ${formatPoDisplay(task.poNumber)}${
-          location && location !== "—" ? ` · ${location}` : ""
-        }`}
-        deedBadge={deedLabel}
-        saving={saving}
-        onClose={exit}
-        onSave={submitGovernmentReview}
-        saveLabel={saveLabel}
-        showFooter
-      >
-        {governmentBody}
-      </TaskWorkChrome>
     );
   }
 

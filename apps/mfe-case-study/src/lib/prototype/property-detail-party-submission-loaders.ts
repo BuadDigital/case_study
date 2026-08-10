@@ -1,13 +1,10 @@
 import { getPartyTaskSubmission, type PartyTaskSubmissionDto } from "@platform/api-client";
 import { resolveApiError, workOrdersApiConfig } from "../work-orders-api-config";
-import { fetchGovernmentReviewSubmission } from "./government-review-work-storage";
-import type { WorkflowTask } from "./tasks-storage";
 import type {
   EngineeringSurveyChecklistRow,
   EngineeringSurveySubmissionSnapshot,
   EvaluatorChecklist,
   EvaluatorSubmissionSnapshot,
-  GovernmentReviewSubmissionSnapshot,
 } from "./property-detail-party-submission-types";
 
 function parseEvaluatorPayload(
@@ -122,28 +119,5 @@ export async function loadEngineeringSurveySubmissionSnapshot(
       typeof payload.submittedAtUtc === "string"
         ? payload.submittedAtUtc
         : result.data.submittedAtUtc,
-  };
-}
-
-export async function loadGovernmentReviewSubmissionSnapshot(
-  child: WorkflowTask,
-): Promise<GovernmentReviewSubmissionSnapshot | null> {
-  if (!child.propertyId) return null;
-  const submission = await fetchGovernmentReviewSubmission(child.id);
-  if (!submission) return null;
-  return {
-    status: submission.status,
-    visitStatus: submission.visitStatus,
-    visitDate: submission.visitDate,
-    courtName: submission.courtName,
-    keysStatus: submission.keysStatus,
-    keysDescription: submission.keysDescription,
-    keyHandedToInspector: submission.keyHandedToInspector,
-    accessBlockReason: submission.accessBlockReason,
-    reviewNotes: submission.reviewNotes,
-    propertyZoneStatus: submission.propertyZoneStatus,
-    keysProofFiles: submission.keysProofFiles,
-    submittedAtUtc: submission.submittedAtUtc,
-    updatedAtUtc: submission.updatedAtUtc,
   };
 }

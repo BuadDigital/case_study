@@ -109,7 +109,6 @@ export function prefetchPrototypePage(
     case "system-upload":
     case "property-inspection":
     case "active-inspection":
-    case "government-review":
     case "property-appraisal":
     case "active-survey":
     case "party-fees":

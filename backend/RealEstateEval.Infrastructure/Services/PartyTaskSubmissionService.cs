@@ -13,17 +13,11 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 {
-    private static readonly JsonSerializerOptions JsonOpts = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
-
     /// <summary>Party kinds that submit work through this service — everything but the parent.</summary>
     private static readonly HashSet<WorkflowTaskKind> AllowedKinds =
     [
         WorkflowTaskKind.EngineeringSurvey,
         WorkflowTaskKind.PropertyAppraisal,
-        WorkflowTaskKind.GovernmentReview,
         WorkflowTaskKind.FieldInspection,
     ];
 
@@ -33,7 +27,6 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
     private readonly IPropertyTimelineService _timeline;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IPermissionService _permissions;
-    private readonly IKeyEnvelopesService _keyEnvelopes;
     private readonly IInspectorFeeService _inspectorFees;
     private readonly INotificationService _notifications;
     private readonly NotificationRecipientResolver _recipients;
@@ -45,7 +38,6 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         IPropertyTimelineService timeline,
         IHttpContextAccessor httpContextAccessor,
         IPermissionService permissions,
-        IKeyEnvelopesService keyEnvelopes,
         IInspectorFeeService inspectorFees,
         INotificationService notifications,
         NotificationRecipientResolver recipients)
@@ -56,7 +48,6 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         _timeline = timeline;
         _httpContextAccessor = httpContextAccessor;
         _permissions = permissions;
-        _keyEnvelopes = keyEnvelopes;
         _inspectorFees = inspectorFees;
         _notifications = notifications;
         _recipients = recipients;
@@ -194,9 +185,6 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             ? entity.PayloadJson
             : request.Payload.GetRawText();
 
-        if (task.Kind == WorkflowTaskKind.GovernmentReview)
-            payloadJson = StripLegacyKeysProofDataUrls(payloadJson);
-
         var status = PartyTaskSubmissionPayloadRules.ExtractStatus(payloadJson) ?? entity.Status;
         if (status is PartyTaskSubmissionStatus.Submitted)
             return (null, new Dictionary<string, string> { ["_"] = "استخدم نقطة الإرسال لتقديم العمل" });
@@ -213,9 +201,6 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             await SyncFieldInspectionWorkspaceAsync(entity, cancellationToken);
 
         await _db.SaveChangesAsync(cancellationToken);
-
-        if (task.Kind == WorkflowTaskKind.GovernmentReview)
-            await BridgeGovernmentReviewToEnvelopeAsync(task, payloadJson, cancellationToken);
 
         return (await ToDtoAsync(entity, cancellationToken), null);
     }
@@ -291,11 +276,6 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             },
             cancellationToken);
 
-        // Side effects after the durable state is committed. Key-envelope bridging clears
-        // the change tracker, so it must not run inside the transaction above.
-        if (entity.Kind == "government-review")
-            await BridgeGovernmentReviewToEnvelopeAsync(task, entity.PayloadJson, cancellationToken);
-
         if (task.PropertyId is Guid propertyId)
         {
             var actorLabel = entity.SubmittedByName
@@ -328,8 +308,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
         if (task.Kind is not (WorkflowTaskKind.EngineeringSurvey
             or WorkflowTaskKind.PropertyAppraisal
-            or WorkflowTaskKind.FieldInspection
-            or WorkflowTaskKind.GovernmentReview))
+            or WorkflowTaskKind.FieldInspection))
         {
             return (null, new Dictionary<string, string> { ["_"] = "إعادة الفتح غير مدعومة لهذا النوع" });
         }
@@ -338,9 +317,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             return (null, new Dictionary<string, string> { ["_"] = "ليس لديك صلاحية إعادة فتح إرسال الطرف" });
 
         var returnNote = request.ReturnNote?.Trim() ?? "";
-        if (task.Kind is WorkflowTaskKind.EngineeringSurvey
-                or WorkflowTaskKind.FieldInspection
-                or WorkflowTaskKind.GovernmentReview
+        if ((task.Kind is WorkflowTaskKind.EngineeringSurvey or WorkflowTaskKind.FieldInspection)
             && string.IsNullOrWhiteSpace(returnNote))
         {
             return (null, new Dictionary<string, string> { ["returnNote"] = "ملاحظة الإرجاع مطلوبة" });
@@ -546,16 +523,6 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 foreach (var (key, message) in attachmentErrors)
                     errors[key] = message;
             }
-            else if (entity.Kind == "government-review")
-            {
-                foreach (var (key, message) in await VerifyGovernmentReviewAttachmentsAsync(
-                             entity.WorkflowTaskId,
-                             doc.RootElement,
-                             cancellationToken))
-                {
-                    errors[key] = message;
-                }
-            }
         }
         catch
         {
@@ -563,108 +530,6 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         }
 
         return errors;
-    }
-
-    private async Task<Dictionary<string, string>> VerifyGovernmentReviewAttachmentsAsync(
-        Guid workflowTaskId,
-        JsonElement root,
-        CancellationToken cancellationToken)
-    {
-        var errors = new Dictionary<string, string>();
-        var refs = GovernmentReviewPayloadAttachments.Collect(root);
-        if (refs.Count == 0)
-        {
-            // Legacy dataUrl-only proofs remain acceptable until fully migrated,
-            // but prefer rejecting empty attachment ids when keysProofFiles exist
-            // without any durable reference and without legacy dataUrl.
-            if (root.TryGetProperty("keysProofFiles", out var files)
-                && files.ValueKind == JsonValueKind.Array
-                && files.GetArrayLength() > 0
-                && !GovernmentReviewPayloadAttachments.HasLegacyDataUrlWithoutAttachment(root))
-            {
-                errors["keysProofFiles"] = "مرفقات إثبات المفتاح غير مرتبطة بالخادم";
-            }
-            return errors;
-        }
-
-        var ids = refs.Select(r => r.AttachmentId).Distinct().ToArray();
-        var rows = await _db.FileAttachments.AsNoTracking()
-            .Where(x => ids.Contains(x.Id))
-            .ToDictionaryAsync(x => x.Id, cancellationToken);
-
-        foreach (var reference in refs)
-        {
-            if (!rows.TryGetValue(reference.AttachmentId, out var row))
-            {
-                errors["keysProofFiles"] = "مرفق إثبات المفتاح غير موجود في قاعدة البيانات";
-                return errors;
-            }
-
-            if (!string.Equals(row.Scope, GovernmentReviewPayloadAttachments.Scope, StringComparison.Ordinal))
-            {
-                errors["keysProofFiles"] = "مرفق إثبات المفتاح لا يخص المراجعة الحكومية";
-                return errors;
-            }
-
-            var expected = GovernmentReviewPayloadAttachments.ScopeKey(workflowTaskId, reference.ProofId);
-            if (!string.Equals(row.ScopeKey, expected, StringComparison.Ordinal))
-            {
-                errors["keysProofFiles"] = "مرفق إثبات المفتاح مرتبط بمهمة أخرى";
-                return errors;
-            }
-        }
-
-        return errors;
-    }
-
-    /// <summary>
-    /// Persist metadata + attachmentId only — drop embedded dataUrl bytes when a server id exists.
-    /// Legacy entries without attachmentId keep dataUrl for backward compatibility.
-    /// </summary>
-    private static string StripLegacyKeysProofDataUrls(string payloadJson)
-    {
-        try
-        {
-            using var doc = JsonDocument.Parse(payloadJson);
-            if (!doc.RootElement.TryGetProperty("keysProofFiles", out var files)
-                || files.ValueKind != JsonValueKind.Array)
-            {
-                return payloadJson;
-            }
-
-            var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(payloadJson, JsonOpts)
-                       ?? new Dictionary<string, JsonElement>();
-            var mutable = dict.ToDictionary(
-                kv => kv.Key,
-                kv => (object?)PartyTaskSubmissionPayloadRules.DeserializeElement(kv.Value));
-
-            var cleaned = new List<Dictionary<string, object?>>();
-            foreach (var file in files.EnumerateArray())
-            {
-                if (file.ValueKind != JsonValueKind.Object) continue;
-                var entry = new Dictionary<string, object?>();
-                foreach (var prop in file.EnumerateObject())
-                {
-                    if (prop.NameEquals("dataUrl")
-                        && file.TryGetProperty("attachmentId", out var aid)
-                        && aid.ValueKind == JsonValueKind.String
-                        && Guid.TryParse(aid.GetString(), out var gid)
-                        && gid != Guid.Empty)
-                    {
-                        continue;
-                    }
-                    entry[prop.Name] = PartyTaskSubmissionPayloadRules.DeserializeElement(prop.Value);
-                }
-                cleaned.Add(entry);
-            }
-
-            mutable["keysProofFiles"] = cleaned;
-            return JsonSerializer.Serialize(mutable, JsonOpts);
-        }
-        catch
-        {
-            return payloadJson;
-        }
     }
 
     private async Task<Dictionary<string, string>> ValidateDocumentaryGatesAsync(
@@ -741,25 +606,6 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                     errors["clientDeclarationSigned"] = phoneBlock;
                 break;
             }
-
-            case "government-review":
-            {
-                if (property is null) break;
-                foreach (var (key, message) in DocumentaryWorkflowRules.GovernmentReviewSubmitFieldErrors(
-                             bypass,
-                             property.DeedNumber,
-                             property.RequestNumber,
-                             property.City,
-                             property.District,
-                             property.Circuit,
-                             property.WorkOrder?.PoNumber ?? entity.PoNumber,
-                             property.AssignmentMandateNumber,
-                             property.AssignmentMandateDate))
-                {
-                    errors[key] = message;
-                }
-                break;
-            }
         }
 
         return errors;
@@ -771,103 +617,6 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (string.IsNullOrWhiteSpace(userId)) return false;
         var perms = await _permissions.GetForUserIdAsync(userId, cancellationToken);
         return DocumentaryWorkflowRules.RoleBypassesDocumentaryGates(perms?.PrototypeRole);
-    }
-
-    /// <summary>
-    /// Light write bridge: when gov-review marks keys received/handed, sync envelope assignment/handoff.
-    /// Missing envelope is a UI warning only — never blocks finalize.
-    /// </summary>
-    private async Task BridgeGovernmentReviewToEnvelopeAsync(
-        WorkflowTask task,
-        string payloadJson,
-        CancellationToken cancellationToken)
-    {
-        if (task.PropertyId is not Guid propertyId) return;
-
-        string keysStatus;
-        string handed;
-        try
-        {
-            using var doc = JsonDocument.Parse(payloadJson);
-            keysStatus = PartyTaskSubmissionPayloadRules.GetString(doc.RootElement, "keysStatus")?.Trim() ?? "";
-            handed = PartyTaskSubmissionPayloadRules.GetString(doc.RootElement, "keyHandedToInspector")?.Trim() ?? "";
-        }
-        catch
-        {
-            return;
-        }
-
-        if (!string.Equals(keysStatus, "received", StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(handed, "yes", StringComparison.OrdinalIgnoreCase))
-            return;
-
-        var property = await _db.WorkOrderProperties.AsNoTracking()
-            .FirstOrDefaultAsync(p => p.Id == propertyId && !p.IsRemoved, cancellationToken);
-        if (property is null) return;
-
-        var requestNumber = property.RequestNumber?.Trim() ?? "";
-        if (requestNumber.Length == 0) return;
-
-        var envelope = await _db.KeyEnvelopes.AsNoTracking()
-            .Include(e => e.Assignments)
-            .Include(e => e.Handoffs)
-            .Where(e => e.RequestNumber == requestNumber)
-            .OrderByDescending(e => e.CreatedAtUtc)
-            .FirstOrDefaultAsync(cancellationToken);
-        if (envelope is null) return;
-
-        var actorId = _httpContextAccessor.HttpContext?.User
-            ?.FindFirstValue(ClaimTypes.NameIdentifier) ?? "system";
-        var actorName = task.AssigneeName?.Trim();
-        if (string.IsNullOrWhiteSpace(actorName))
-            actorName = _httpContextAccessor.HttpContext?.User?.FindFirstValue("name") ?? "مراجع حكومي";
-
-        if (string.Equals(keysStatus, "received", StringComparison.OrdinalIgnoreCase))
-        {
-            var deed = property.DeedNumber?.Trim() ?? "";
-            var hasAssignment = envelope.Assignments.Any(a =>
-                string.Equals(a.DeedNumber, deed, StringComparison.OrdinalIgnoreCase)
-                || a.PropertyId == propertyId);
-            if (!hasAssignment && deed.Length > 0)
-            {
-                await _keyEnvelopes.AddAssignmentAsync(
-                    envelope.Id,
-                    new AddKeyEnvelopeAssignmentRequest
-                    {
-                        DeedNumber = deed,
-                        PropertyId = propertyId,
-                        Notes = "مزامنة من المراجعة الحكومية",
-                    },
-                    actorId,
-                    actorName,
-                    cancellationToken);
-            }
-        }
-
-        if (string.Equals(handed, "yes", StringComparison.OrdinalIgnoreCase)
-            && envelope.Status == KeyEnvelopeStatuses.Reviewer)
-        {
-            var hasPendingOrConfirmed = envelope.Handoffs.Any(h =>
-                h.Kind == KeyHandoffKinds.Internal
-                && h.Status is KeyHandoffStatuses.PendingConfirm
-                    or KeyHandoffStatuses.Confirmed
-                    or KeyHandoffStatuses.Completed);
-            if (!hasPendingOrConfirmed)
-            {
-                await _keyEnvelopes.CreateHandoffAsync(
-                    envelope.Id,
-                    new CreateKeyEnvelopeHandoffRequest
-                    {
-                        Kind = KeyHandoffKinds.Internal,
-                        FromParty = "مراجع حكومي",
-                        ToParty = "معاين ميداني",
-                        Notes = "مزامنة من المراجعة الحكومية (تسليم للمعاين)",
-                    },
-                    actorId,
-                    actorName,
-                    cancellationToken);
-            }
-        }
     }
 
     private async Task SyncFieldInspectionWorkspaceAsync(
@@ -971,6 +720,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         "field-inspection" => "إتمام المعاينة الميدانية",
         "engineering-survey" => "إتمام الرفع المساحي",
         "property-appraisal" => "إتمام التقييم العقاري",
+        // Legacy government-review submissions (product surface removed).
         "government-review" => "إتمام المراجعة الحكومية",
         _ => "إتمام عمل الطرف",
     };

@@ -20,7 +20,7 @@ public class PartyFeePricingTable
     public bool IsActive { get; set; }
 
     /// <summary>أتعاب الزيارة — earned on ops <c>court_visit</c> complete (متعاون فرد).</summary>
-    public decimal GovernmentReviewFeeSar { get; set; }
+    public decimal CourtVisitFeeSar { get; set; }
 
     // Key-receipt fees are deliberately absent. They are company revenue billed to إنفاذ, not a rate
     // owed to a party, and finance enters the amount by hand during enforcement billing. Registering

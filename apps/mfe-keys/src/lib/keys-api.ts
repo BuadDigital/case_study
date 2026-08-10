@@ -47,17 +47,18 @@ function courtLabel(
 }
 
 function reviewerForProperty(
-  tasks: { kind: string; propertyId?: string; poNumber: string; assigneeName: string }[],
+  tasks: { kind: string; propertyId?: string; poNumber: string; assigneeName: string; assigneeRole?: string }[],
   propertyId: string,
   po: string,
 ): string {
-  const task = tasks.find(
+  // Prefer active gov-reviewer assignees on property tasks (ops/case), not removed workflow kind.
+  const byReviewer = tasks.find(
     (t) =>
-      t.kind === "government-review" &&
+      t.assigneeRole === "government-reviewer" &&
       t.propertyId === propertyId &&
       t.poNumber === po,
   );
-  return task?.assigneeName?.trim() ?? "";
+  return byReviewer?.assigneeName?.trim() ?? "";
 }
 
 function loadCourtDelegates(

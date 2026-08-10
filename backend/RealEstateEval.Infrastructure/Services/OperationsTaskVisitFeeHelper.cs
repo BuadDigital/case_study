@@ -31,13 +31,13 @@ public sealed class OperationsTaskVisitFeeHelper
             .Include(p => p.HrEmployee)
             .Include(p => p.ProcProvider)
             .FirstOrDefaultAsync(p => p.DistributionAssigneeId == assigneeId, cancellationToken);
-        var reviewerType = GovernmentReviewFeeRules.ResolveReviewerType(
+        var reviewerType = CourtVisitFeeRules.ResolveReviewerType(
             profile?.ContractType,
             profile?.ProcProvider?.ProviderKind,
             profile?.HrEmployee?.EmploymentType,
             assigneeId);
 
-        if (!GovernmentReviewFeeRules.RequiresVisitFee(reviewerType))
+        if (!CourtVisitFeeRules.RequiresVisitFee(reviewerType))
         {
             if (requestedAmount is not null)
                 return (null, null, "المراجع الموظف لا يستحق أتعاب زيارة — الحوافز عبر جدول flat.");
@@ -49,7 +49,7 @@ public sealed class OperationsTaskVisitFeeHelper
             // Keep provenance when the specialist edited a table default.
             var tableHint = await _pricing.ResolveDefaultFeeAsync(
                 WorkflowTaskKind.GovernmentReview,
-                GovernmentReviewFeeRules.PartyType,
+                CourtVisitFeeRules.PartyType,
                 areaM2: null,
                 assigneeId,
                 cancellationToken);
@@ -61,7 +61,7 @@ public sealed class OperationsTaskVisitFeeHelper
 
         var fromTable = await _pricing.ResolveDefaultFeeAsync(
             WorkflowTaskKind.GovernmentReview,
-            GovernmentReviewFeeRules.PartyType,
+            CourtVisitFeeRules.PartyType,
             areaM2: null,
             assigneeId,
             cancellationToken);

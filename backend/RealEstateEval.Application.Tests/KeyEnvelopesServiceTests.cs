@@ -448,9 +448,9 @@ public class KeyEnvelopesServiceTests
         {
             Id = Guid.NewGuid(),
             Name = "gov-test",
-            Category = "government-review",
+            Category = PartyFeePricingCategories.CourtVisit,
             IsActive = true,
-            GovernmentReviewFeeSar = 400m,
+            CourtVisitFeeSar = 400m,
             UpdatedAtUtc = DateTime.UtcNow,
         });
         await db.SaveChangesAsync();

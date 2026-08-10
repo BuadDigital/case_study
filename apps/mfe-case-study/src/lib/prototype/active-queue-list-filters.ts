@@ -9,7 +9,6 @@ import {
 import type { PoIntakeRecord } from "./po-intake-data";
 import type { WorkflowTask } from "./tasks-storage";
 import { fieldInspectionTaskStatusBadge } from "./field-inspection-work-queue";
-import { governmentReviewTaskStatusBadge } from "./government-review-work-queue";
 
 export type QueueTaskStatusBadge = { label: string; className: string };
 
@@ -21,15 +20,13 @@ export function resolveQueueTaskStatusBadge(
     partySubmission?: PartyTaskSubmissionDto | null;
   },
 ): QueueTaskStatusBadge | null {
+  void options.partySubmission;
   if (task.kind === "field-inspection") {
     return fieldInspectionTaskStatusBadge(
       task.id,
       task.status,
       options.inspectionWorkspace,
     );
-  }
-  if (task.kind === "government-review") {
-    return governmentReviewTaskStatusBadge(task, options.partySubmission ?? null);
   }
   return options.getTaskStatusBadge?.(task) ?? null;
 }

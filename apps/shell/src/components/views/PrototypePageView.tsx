@@ -39,10 +39,6 @@ const BourseInquiryView = dynamic(
   () => import("@case-study/mfe").then((m) => m.BourseInquiryView),
   { ssr: false },
 );
-const GovernmentReviewView = dynamic(
-  () => import("@case-study/mfe").then((m) => m.GovernmentReviewView),
-  { ssr: false },
-);
 const OperationsTasksView = dynamic(
   () => import("@case-study/mfe").then((m) => m.OperationsTasksView),
   { ssr: false },
@@ -147,7 +143,6 @@ const VIEWS: Partial<Record<PageId, ComponentType>> = {
   failures: FailuresView,
   "suspended-transactions": SuspendedTransactionsView,
   "valuation-requests": ValuationRequestsView,
-  "government-review": GovernmentReviewView,
   "operations-tasks": OperationsTasksView,
   "system-fields-catalog": SystemFieldsCatalogView,
   "system-screen-catalog": SystemScreenCatalogView,
@@ -166,7 +161,6 @@ const VIEWS: Partial<Record<PageId, ComponentType>> = {
 };
 
 for (const pageId of PARTY_TASK_PAGE_IDS) {
-  if (pageId === "government-review") continue;
   VIEWS[pageId] = function PartyTaskPage() {
     return <PartyActiveTaskViewHost pageId={pageId} />;
   };

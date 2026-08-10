@@ -31,7 +31,6 @@ const CHILD_KIND_PARTY: Partial<
   Record<WorkflowTaskKind, CaseStudyInfoPartyId>
 > = {
   "field-inspection": "insp",
-  "government-review": "gov",
   "property-appraisal": "val",
   "engineering-survey": "eng",
 };

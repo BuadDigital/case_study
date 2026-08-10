@@ -88,20 +88,8 @@ public class ReportingController : ControllerBase
 
         var specialistLoad = BuildTeamLoad(allTasks);
 
-        var governmentReviews = allTasks
-            .Where(t => t.Kind == "government-review")
-            .OrderBy(t => WorkflowTaskStatusValues.IsTerminalValue(t.Status))
-            .ThenByDescending(t => t.UpdatedAt)
-            .Take(6)
-            .Select(t => new ReportingGovernmentReviewRowDto
-            {
-                TaskId = t.Id,
-                PoNumber = t.PoNumber,
-                Title = t.Title,
-                ReviewerName = t.AssigneeName,
-                Status = WorkflowTaskStatusValues.IsTerminalValue(t.Status) ? "done" : "progress",
-            })
-            .ToList();
+        // Government-review workflow surface removed; keep DTO slot empty for API compat.
+        var governmentReviews = Array.Empty<ReportingGovernmentReviewRowDto>();
 
         var failures = (await _upstream.GetFailuresAsync(ct))
             .Where(f => f.Status is not "resolved" and not "suspended")
@@ -257,6 +245,7 @@ public class ReportingController : ControllerBase
         {
             "case-specialist" =>
                 task.Kind == "case-study-property" && task.Phase == "case-study",
+            // Legacy only: government-review children are no longer spawned.
             "government-reviewer" => task.Kind == "government-review",
             "field-inspector" => task.Kind == "field-inspection",
             "engineering-office" => task.Kind == "engineering-survey",

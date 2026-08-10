@@ -282,16 +282,6 @@ function buildTaskWorkRoutes(): SystemScreenEntry[] {
         "مسار عمل قديم للقائمة الكاملة — الإدخال الأساسي داخل تفاصيل العقار أو عبر active-inspection.",
     }),
     taskWorkEntry({
-      id: "government-review-work",
-      name: "إنجاز المراجعة الحكومية",
-      path: "/government-review/{taskId}",
-      whereToFind:
-        "الشاشات (Draft) ← المراجعة الحكومية (يتيم) ← اختيار مهمة (مسار عميق للمسؤول)",
-      pageId: "government-review",
-      notes:
-        "مسار عمل قديم للمعاملات الجارية — القائمة تحت الشاشات (Draft) للمسؤول فقط.",
-    }),
-    taskWorkEntry({
       id: "property-appraisal-work",
       name: "إنجاز تقييم العقار",
       path: "/property-appraisal/{taskId}",

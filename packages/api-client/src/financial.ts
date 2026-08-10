@@ -32,7 +32,7 @@ export type FinancialSummaryDto = {
 
 export type PartyFeePricingCategory =
   | "engineering-survey"
-  | "government-review"
+  | "court-visit"
   | "field-inspector";
 
 export type PartyFeePricingKind = "tiered" | "party-rates" | "flat";
@@ -66,7 +66,7 @@ export type PartyFeePricingDto = {
   assignedCount?: number;
   assignedAssigneeIds?: string[];
   areaTiers: PartyFeePricingTierDto[];
-  governmentReviewFeeSar: number;
+  courtVisitFeeSar: number;
   fieldInspectorIndividualFeeSar: number;
   fieldInspectorOrganizationFeeSar: number;
   flatAmountSar?: number;

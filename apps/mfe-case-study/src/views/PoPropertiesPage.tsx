@@ -46,7 +46,6 @@ import {
   isPastDue,
 } from "../lib/prototype/po-intake-data";
 import { poPropertyPath, poListPath } from "../lib/po-routes";
-import { governmentReviewWorkspacePath } from "../lib/my-task-routes";
 import { buildCopyPriorTargetOptions } from "../lib/prototype/po-intake-storage";
 import {
   buildPoPropertiesRowMoreItems,
@@ -67,21 +66,6 @@ import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
 import type { PropertyWorkflowStage } from "@platform/app-shared/prototype/constants";
 import type { PoPropertyIntake } from "../lib/prototype/po-intake-data";
-import type { WorkflowTask } from "../lib/prototype/tasks-storage";
-
-function governmentReviewTaskForProperty(
-  tasks: WorkflowTask[],
-  poNumber: string,
-  propertyId: string,
-): WorkflowTask | undefined {
-  const po = poNumber.trim();
-  return tasks.find(
-    (t) =>
-      t.kind === "government-review" &&
-      t.poNumber.trim() === po &&
-      t.propertyId === propertyId,
-  );
-}
 
 function deedLabel(property: PoPropertyIntake): string {
   return (
@@ -122,7 +106,6 @@ export function PoPropertiesPage({
   const router = useRouter();
   const queryClient = useQueryClient();
   const { role } = usePrototype();
-  const isGovernmentReviewer = role === "government-reviewer";
   const showEdit = canEditProperty(role);
   const showFailureRaise = canRaisePropertyFailure(role);
   const showEye = canViewPoEye(role);
@@ -336,14 +319,6 @@ export function PoPropertiesPage({
                     : typeLine || "—";
                 const detailHref = poPropertyPath(poNumber, prop.id);
                 const label = deedLabel(prop);
-                const govReviewTask = isGovernmentReviewer
-                  ? governmentReviewTaskForProperty(
-                      workflowTasks,
-                      poNumber,
-                      prop.id,
-                    )
-                  : undefined;
-                const deedOpensReview = Boolean(govReviewTask);
                 const workflowStyle = prop.isRemoved
                   ? propertyWorkflowStatusStyle("removed")
                   : boursePending
@@ -359,12 +334,6 @@ export function PoPropertiesPage({
                   <PpRow
                     key={prop.id}
                     onClick={() => {
-                      if (deedOpensReview && govReviewTask) {
-                        router.push(
-                          governmentReviewWorkspacePath(govReviewTask.id),
-                        );
-                        return;
-                      }
                       router.push(detailHref);
                     }}
                   >
@@ -372,7 +341,6 @@ export function PoPropertiesPage({
                       <PpDeedCell
                         index={index + 1}
                         deed={label}
-                        emphasize={deedOpensReview}
                       />
                     </PpTd>
                     <PpTd muted>

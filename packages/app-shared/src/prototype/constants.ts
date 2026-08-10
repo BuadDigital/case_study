@@ -127,7 +127,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
     bg: "var(--orange-bg)",
     tc: "var(--orange)",
     pages: [
-      "government-review",
       "operations-tasks",
       "keys",
       "po",
@@ -251,7 +250,6 @@ export const PAGE_TITLES: Record<PageId, string> = {
   "valuation-requests": "طلبات التقييم",
   "property-inspection": "معاينة العقار (يتيم)",
   "active-inspection": "معاينة العقار",
-  "government-review": "المراجعة الحكومية",
   "operations-tasks": "المهام",
   "property-appraisal": "تقييم العقار",
   "active-survey": "الرفع المساحي",
@@ -295,7 +293,6 @@ export const PAGE_BREADCRUMB: Record<PageId, string> = {
   "valuation-requests": "لوحة التحكم / طلبات التقييم",
   "property-inspection": "الشاشات (Draft) / معاينة العقار",
   "active-inspection": "لوحة التحكم / معاينة العقار",
-  "government-review": "دراسة الحالة / المعاملات النشطة / المراجعة الحكومية",
   "operations-tasks": "لوحة التحكم / المهام",
   "property-appraisal": "لوحة التحكم / تقييم العقار",
   "active-survey": "لوحة التحكم / الرفع المساحي",

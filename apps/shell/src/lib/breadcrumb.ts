@@ -32,7 +32,6 @@ const BREADCRUMB_LABEL_HREF: Record<string, string> = {
   "إدارة المفاتيح": "/keys",
   "إدارة التعذرات": "/failures",
   "المعاملات المعلقة": "/suspended-transactions",
-  "المراجعة الحكومية": "/government-review",
   "التقارير المالية": "/financial",
   "المالية والفوترة": "/financial",
   الإيرادات: "/financial?area=revenue",

@@ -934,6 +934,7 @@ public static class DataSeeder
     {
         return kind switch
         {
+            // Legacy government-review children — backfill only; new distribution no longer spawns them.
             WorkflowTaskKind.GovernmentReview => distribution.GovernmentAuditorId,
             WorkflowTaskKind.FieldInspection => distribution.InspectorId,
             WorkflowTaskKind.PropertyAppraisal => distribution.ValuatorId,

@@ -10,7 +10,6 @@ import {
   ENGINEERING_SURVEY_SUBMITTED_EVENT,
   EVALUATOR_SUBMITTED_EVENT,
   FIELD_INSPECTION_SUBMITTED_EVENT,
-  GOVERNMENT_REVIEW_SUBMITTED_EVENT,
 } from "@platform/app-shared/prototype/party-workflow-events";
 import type { PushNotificationInput } from "@platform/app-shared/notifications/notification-store";
 
@@ -133,20 +132,6 @@ export const DOMAIN_NOTIFICATION_RULES: DomainNotificationRule[] = [
     },
     auditAction: "طلب استرجاع معاملة",
     auditEntity: "party-task",
-  },
-  {
-    event: GOVERNMENT_REVIEW_SUBMITTED_EVENT,
-    notification: {
-      title: "مراجعة حكومية",
-      body: "تم إرسال المراجعة الحكومية.",
-      tone: "success",
-      href: "/operations-tasks",
-      category: "workflow",
-      entityType: "task",
-      sourceEvent: GOVERNMENT_REVIEW_SUBMITTED_EVENT,
-    },
-    auditAction: "إرسال مراجعة حكومية",
-    auditEntity: "government-review",
   },
   {
     event: SUSPENDED_TRANSACTIONS_CHANGED_EVENT,

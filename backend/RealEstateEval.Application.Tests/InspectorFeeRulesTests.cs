@@ -128,7 +128,7 @@ public class InspectorFeeRulesTests
     [Fact]
     public void Government_review_table_party_type_is_individual_cooperator()
     {
-        Assert.Equal(InspectorFeeRules.TypeCooperatorIndividual, GovernmentReviewFeeRules.PartyType);
+        Assert.Equal(InspectorFeeRules.TypeCooperatorIndividual, CourtVisitFeeRules.PartyType);
     }
 
     [Fact]
@@ -136,21 +136,21 @@ public class InspectorFeeRulesTests
     {
         Assert.Equal(
             InspectorFeeRules.TypeEmployee,
-            GovernmentReviewFeeRules.ResolveReviewerType(
+            CourtVisitFeeRules.ResolveReviewerType(
                 ContractType.Internal,
                 providerKind: null,
                 employmentType: null,
                 "gov-1"));
         Assert.Equal(
             InspectorFeeRules.TypeCooperatorIndividual,
-            GovernmentReviewFeeRules.ResolveReviewerType(
+            CourtVisitFeeRules.ResolveReviewerType(
                 ContractType.Freelance,
                 providerKind: null,
                 employmentType: null,
                 "gov-2"));
-        Assert.True(GovernmentReviewFeeRules.RequiresVisitFee(
+        Assert.True(CourtVisitFeeRules.RequiresVisitFee(
             InspectorFeeRules.TypeCooperatorIndividual));
-        Assert.False(GovernmentReviewFeeRules.RequiresVisitFee(
+        Assert.False(CourtVisitFeeRules.RequiresVisitFee(
             InspectorFeeRules.TypeEmployee));
     }
 
@@ -160,7 +160,7 @@ public class InspectorFeeRulesTests
     /// creeping back as a "temporary" constant.
     /// </summary>
     [Theory]
-    [InlineData(typeof(GovernmentReviewFeeRules))]
+    [InlineData(typeof(CourtVisitFeeRules))]
     [InlineData(typeof(InspectorFeeRules))]
     [InlineData(typeof(EngineeringSurveyFeeRules))]
     public void Fee_rules_hold_no_hard_coded_amounts(Type rulesType)

@@ -4,7 +4,8 @@ import type { StaffUser } from "../prototype/constants";
 const TASK_KIND_CATEGORY: Record<string, string> = {
   "field-inspection": "المعاينون",
   "engineering-survey": "المكاتب الهندسية",
-  "government-review": "المراجعون الحكوميون",
+  "court-visit": "أتعاب زيارة المحكمة",
+  "government-review": "أتعاب زيارة المحكمة",
 };
 
 export type PartyFeeGroup = {

@@ -7,29 +7,18 @@ import {
   getPropertyKeyGate,
   type PropertyKeyGateDto,
 } from "@platform/api-client";
-import { Badge, Button, Note, cn } from "@platform/design-system";
+import { Button, Note, cn } from "@platform/design-system";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 import {
   FieldBox,
   FieldsGrid,
   SectionHeader,
 } from "../po-intake/PropertyDetailFields";
-import {
-  governmentReviewKeyHandedToInspectorLabel,
-  governmentReviewKeysStatusLabel,
-  type GovernmentReviewKeyHandedToInspector,
-  type GovernmentReviewKeysStatus,
-} from "../../lib/prototype/government-review-work-data";
-import {
-  fetchGovernmentReviewSubmission,
-  GOVERNMENT_REVIEW_SUBMISSION_CHANGED_EVENT,
-} from "../../lib/prototype/government-review-work-storage";
-import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 
 export type InspectorKeyAvailability = {
-  keyHandedToInspector: GovernmentReviewKeyHandedToInspector | "";
-  keysStatus: GovernmentReviewKeysStatus | "";
+  keyHandedToInspector: string;
+  keysStatus: string;
   /** جاهز لإتمام المعاينة من ناحية المفتاح */
   keyAvailable: boolean;
   source?: string;
@@ -40,11 +29,25 @@ export type InspectorKeyAvailability = {
   studyHoldStatus?: string;
 };
 
+function keyHandedLabel(value: string): string {
+  if (value === "yes") return "تم التسليم";
+  if (value === "no") return "لم يُسلَّم";
+  if (value === "not_required") return "غير مطلوب";
+  return value || "لم تُحدَّد بعد";
+}
+
+function keysStatusLabel(value: string): string {
+  if (value === "received") return "مستلَمة";
+  if (value === "not_required") return "غير مطلوبة";
+  if (value === "pending") return "بانتظار";
+  if (value === "blocked") return "متعذّر";
+  return value || "لم تُحدَّد بعد";
+}
+
 function mapGate(gate: PropertyKeyGateDto): InspectorKeyAvailability {
   return {
-    keyHandedToInspector:
-      (gate.keyHandedToInspector as GovernmentReviewKeyHandedToInspector) || "",
-    keysStatus: (gate.keysStatus as GovernmentReviewKeysStatus) || "",
+    keyHandedToInspector: gate.keyHandedToInspector || "",
+    keysStatus: gate.keysStatus || "",
     keyAvailable: gate.keyAvailable,
     source: gate.source,
     envelopeId: gate.envelopeId,
@@ -55,11 +58,10 @@ function mapGate(gate: PropertyKeyGateDto): InspectorKeyAvailability {
   };
 }
 
-/** حالة المفتاح من ظرف المفاتيح (مع fallback للمراجعة الحكومية) */
+/** حالة المفتاح من ظرف المفاتيح فقط */
 export function useInspectorKeyAvailability(
   task: WorkflowTask,
 ): InspectorKeyAvailability {
-  const { data: allTasks } = useWorkflowTasksQuery();
   const [state, setState] = useState<InspectorKeyAvailability>({
     keyHandedToInspector: "",
     keysStatus: "",
@@ -85,46 +87,16 @@ export function useInspectorKeyAvailability(
         setState(mapGate(result.data));
         return;
       }
-
-      const govTask = allTasks?.find(
-        (t) =>
-          t.kind === "government-review" &&
-          t.propertyId === task.propertyId &&
-          t.poNumber === task.poNumber,
-      );
-      if (!govTask) {
-        setState({
-          keyHandedToInspector: "",
-          keysStatus: "",
-          keyAvailable: false,
-        });
-        return;
-      }
-      void fetchGovernmentReviewSubmission(govTask.id).then((sub) => {
-        const keyHandedToInspector = sub?.keyHandedToInspector ?? "";
-        const keysStatus = sub?.keysStatus ?? "";
-        setState({
-          keyHandedToInspector,
-          keysStatus,
-          keyAvailable:
-            keyHandedToInspector === "yes" ||
-            keysStatus === "not_required" ||
-            keysStatus === "received",
-          source: "legacy",
-        });
+      setState({
+        keyHandedToInspector: "",
+        keysStatus: "",
+        keyAvailable: false,
       });
     });
-  }, [allTasks, task.poNumber, task.propertyId]);
+  }, [task.poNumber, task.propertyId]);
 
   useEffect(() => {
     reload();
-    window.addEventListener(GOVERNMENT_REVIEW_SUBMISSION_CHANGED_EVENT, reload);
-    return () => {
-      window.removeEventListener(
-        GOVERNMENT_REVIEW_SUBMISSION_CHANGED_EVENT,
-        reload,
-      );
-    };
   }, [reload]);
 
   return state;
@@ -189,19 +161,10 @@ export function InspectorKeyStatusTab({
     setLocal(availability);
   }, [availability]);
 
-  const handedLabel =
-    (local.keyHandedToInspector || keyHandedToInspector) === ""
-      ? "لم تُحدَّد بعد"
-      : governmentReviewKeyHandedToInspectorLabel(
-          (local.keyHandedToInspector ||
-            keyHandedToInspector) as GovernmentReviewKeyHandedToInspector,
-        );
-  const keysLabel =
-    (local.keysStatus || keysStatus) === ""
-      ? "لم تُحدَّد بعد"
-      : governmentReviewKeysStatusLabel(
-          (local.keysStatus || keysStatus) as GovernmentReviewKeysStatus,
-        );
+  const handedLabel = keyHandedLabel(
+    local.keyHandedToInspector || keyHandedToInspector,
+  );
+  const keysLabel = keysStatusLabel(local.keysStatus || keysStatus);
   const available = local.keyAvailable || keyAvailable;
   const keyNotOnHand = !vacantLand && !available;
   const status = local.assignmentStatus || assignmentStatus;
@@ -264,7 +227,7 @@ export function InspectorKeyStatusTab({
     <div>
       <SectionHeader>المفتاح</SectionHeader>
       <Note tone="info" className="mb-4">
-        حالة المفتاح من ظرف المفاتيح / المراجع الحكومي إلى المعاين الميداني.
+        حالة المفتاح من ظرف المفاتيح إلى المعاين الميداني.
       </Note>
       <FieldsGrid>
         <FieldBox label="حالة المفاتيح" value={keysLabel} />

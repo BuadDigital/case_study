@@ -299,6 +299,17 @@ public sealed class OperationsTaskNotifier
         OperationsTask entity,
         CancellationToken cancellationToken)
     {
+        // Notify active government-reviewers by role (court visits), not legacy GR workflow assignees.
+        var userIds = await _db.UserProfiles.AsNoTracking()
+            .Where(p =>
+                p.Status == UserStatus.Active
+                && p.RoleId == "government-reviewer")
+            .Select(p => p.UserId)
+            .Where(id => id != null && id != "")
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        if (userIds.Count == 0) return;
+
         var pos = new HashSet<string>(StringComparer.Ordinal);
         var primary = entity.PoNumber?.Trim();
         if (!string.IsNullOrEmpty(primary)) pos.Add(primary);
@@ -307,25 +318,8 @@ public sealed class OperationsTaskNotifier
             var p = row.Po?.Trim();
             if (!string.IsNullOrEmpty(p)) pos.Add(p);
         }
-        if (pos.Count == 0) return;
+        var poLabel = pos.Count > 0 ? string.Join("، ", pos) : entity.DisplayId;
 
-        var userIds = await (
-                from task in _db.WorkflowTasks.AsNoTracking()
-                join profile in _db.UserProfiles.AsNoTracking()
-                    on task.AssigneeId equals profile.DistributionAssigneeId
-                where task.PoNumber != null
-                      && pos.Contains(task.PoNumber)
-                      && task.Kind == WorkflowTaskKind.GovernmentReview
-                      && task.Status != WorkflowTaskStatus.Completed
-                      && task.Status != WorkflowTaskStatus.Cancelled
-                      && task.AssigneeId != null
-                      && task.AssigneeId != ""
-                select profile.UserId)
-            .Distinct()
-            .ToListAsync(cancellationToken);
-        if (userIds.Count == 0) return;
-
-        var poLabel = string.Join("، ", pos);
         await _notifications.CreateForUsersAsync(
             userIds,
             new CreateUserNotificationRequest

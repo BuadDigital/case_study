@@ -533,7 +533,6 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         WorkflowTaskKind.FieldInspection => "معاينة العقار",
         WorkflowTaskKind.EngineeringSurvey => "الرفع المساحي",
         WorkflowTaskKind.PropertyAppraisal => "تقييم العقار",
-        WorkflowTaskKind.GovernmentReview => "المراجعة الحكومية",
         _ => "مهمة جديدة",
     };
 
@@ -545,7 +544,6 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
             WorkflowTaskKind.EngineeringSurvey => $"/active-survey/{id}",
             WorkflowTaskKind.FieldInspection => $"/property-inspection/{id}",
             WorkflowTaskKind.PropertyAppraisal => $"/property-appraisal/{id}",
-            WorkflowTaskKind.GovernmentReview => $"/government-review/{id}",
             _ => "/operations-tasks",
         };
     }

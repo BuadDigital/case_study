@@ -184,8 +184,7 @@ export async function requestPartyTaskRecall(input: {
 
 /**
  * The recall reason is optional for the party, but the server requires a
- * non-empty return note to reopen engineering-survey, field-inspection and
- * government-review work.
+ * non-empty return note to reopen engineering-survey and field-inspection work.
  */
 const DEFAULT_RECALL_RETURN_NOTE = "طلب استرجاع من الطرف";
 

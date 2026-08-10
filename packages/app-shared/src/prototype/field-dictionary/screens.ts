@@ -25,9 +25,10 @@ const SCREEN_PAGE_MAP: Record<string, PageId[]> = {
   "evaluator-checklist": ["property-appraisal"],
   "evaluator-infath": ["property-appraisal"],
   "evaluator-form-keys": ["property-appraisal"],
-  government: ["government-review"],
-  "government-form-keys": ["government-review"],
-  "keys-tab": ["keys", "government-review"],
+  /** Government reviewer work lives under operations tasks after GR page removal. */
+  government: ["operations-tasks"],
+  "government-form-keys": ["operations-tasks"],
+  "keys-tab": ["keys"],
   "case-study-meta": ["active-case-study"],
   "case-study-deed": ["active-case-study"],
   "case-study-survey": ["active-case-study"],
