@@ -237,8 +237,13 @@ export const ROLE_MODULE_PAGES: Record<string, string[]> = {
     "active-distribution",
     "active-case-study",
     "system-upload",
+    "keys",
+    "field-sync-board",
     "failures",
     "suspended-transactions",
+    "failure-types",
+    "party-fees",
+    "fee-pricing",
     "system-screen-catalog",
   ],
   [RELEASE_USERS.fieldInspector]: [

@@ -75,6 +75,7 @@ export function isPartyFeesUnderActiveTransactions(role?: RoleId): boolean {
     role === "field-inspector" ||
     role === "government-reviewer" ||
     role === "section-supervisor" ||
+    role === "case-specialist" ||
     role === "cdo"
   );
 }

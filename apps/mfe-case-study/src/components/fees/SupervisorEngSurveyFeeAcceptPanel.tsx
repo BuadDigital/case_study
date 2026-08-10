@@ -132,7 +132,6 @@ export function SupervisorEngSurveyFeeAcceptPanel() {
         showToast(result.error, "error");
         return;
       }
-      showToast("تم قبول المخرجات واستحقاق الأتعاب من جدول التسعير.", "success");
       await refreshAfterMutation();
     } finally {
       setBusyId(null);
@@ -211,7 +210,12 @@ export function SupervisorEngSurveyFeeAcceptPanel() {
               ].map((h) => (
                 <div
                   key={h}
-                  className="flex min-w-0 items-center justify-center overflow-hidden px-4 py-3.5 text-center text-[12px] font-bold text-heading"
+                  className={cn(
+                    "flex min-w-0 items-center overflow-hidden px-4 py-3.5 text-[12px] font-bold text-heading",
+                    h === "الصك / العقار"
+                      ? "justify-center text-center"
+                      : "justify-start text-start",
+                  )}
                 >
                   {h}
                 </div>
@@ -226,22 +230,22 @@ export function SupervisorEngSurveyFeeAcceptPanel() {
                   className="grid min-h-[38px] items-center border-b border-border transition-colors hover:bg-[var(--row-hover,#faf6ee)]"
                   style={{ gridTemplateColumns: COLS }}
                 >
-                  <div className="px-4 py-3">
+                  <div className="flex min-w-0 items-center justify-start overflow-hidden px-4 py-3">
                     <PoNumber value={row.poNumber} link />
                   </div>
                   <div
                     dir="ltr"
-                    className="px-4 py-3 text-end text-[13px] font-bold text-gold-d"
+                    className="flex min-w-0 items-center justify-center overflow-hidden px-4 py-3 text-center text-[13px] font-bold tabular-nums text-gold-d [unicode-bidi:isolate]"
                   >
                     {row.deedLabel}
                   </div>
-                  <div className="px-4 py-3 text-[12.5px] text-text-2">
+                  <div className="flex min-w-0 items-center justify-start overflow-hidden px-4 py-3 text-start text-[12.5px] text-text-2">
                     {row.assigneeName}
                   </div>
-                  <div className="px-4 py-3 text-[12px] tabular-nums text-text-2">
+                  <div className="flex min-w-0 items-center justify-start overflow-hidden px-4 py-3 text-start text-[12px] tabular-nums text-text-2">
                     {formatWhen(row.submittedAtUtc)}
                   </div>
-                  <div className="px-4 py-3">
+                  <div className="flex min-w-0 items-center justify-start overflow-hidden px-4 py-3">
                     {returning ? (
                       <div className="flex min-w-[200px] flex-col gap-2">
                         <textarea

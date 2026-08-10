@@ -7,7 +7,7 @@ public class PartyBillingReadyLineDto
     public string PropertyLabel { get; set; } = "";
     public string PoNumber { get; set; } = "";
     public string? AssigneeId { get; set; }
-    /// <summary>engineering-survey | field-inspection | government-review</summary>
+    /// <summary>engineering-survey | field-inspection | government-review | court-visit</summary>
     public string TaskKind { get; set; } = "";
     /// <summary>vendor | individual</summary>
     public string PayeeType { get; set; } = "vendor";

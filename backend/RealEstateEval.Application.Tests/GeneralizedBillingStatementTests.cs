@@ -11,7 +11,7 @@ using RealEstateEval.Infrastructure.Services;
 namespace RealEstateEval.Application.Tests;
 
 /// <summary>
-/// ج٩: billing statements cover field-inspection and government-review, not only engineering survey.
+/// ج٩: billing statements cover field-inspection, engineering-survey, and court-visit fees.
 /// </summary>
 public class GeneralizedBillingStatementTests
 {
@@ -191,6 +191,150 @@ public class GeneralizedBillingStatementTests
             "finance-1");
 
         Assert.Contains("نفس نوع المهمة", result.Error);
+        Assert.Null(result.Statement);
+    }
+
+    [Fact]
+    public async Task CreateStatement_accepts_court_visit_fee_charges()
+    {
+        await using var db = CreateDb();
+        var now = DateTime.UtcNow;
+        var opsTaskId = Guid.NewGuid();
+        var chargeId = Guid.NewGuid();
+        db.CourtVisitFeeCharges.Add(new CourtVisitFeeCharge
+        {
+            Id = chargeId,
+            OperationsTaskId = opsTaskId,
+            TaskDisplayId = "CV-1",
+            PoNumber = "PO-CV",
+            CreditAssigneeId = "gov-firas",
+            CreditAssigneeName = "فراس",
+            AmountSar = 350m,
+            Status = CourtVisitFeeStatuses.Open,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+        });
+        await db.SaveChangesAsync();
+
+        var service = CreateStatementService(db);
+        var ready = await service.ListReadyLinesAsync();
+        Assert.Contains(ready, r => r.WorkflowTaskId == chargeId.ToString()
+            && r.TaskKind == "court-visit"
+            && r.PayeeType == PartyBillingPayeeType.Individual
+            && r.NetFeeSar == 350m);
+
+        var result = await service.CreateStatementAsync(
+            new CreatePartyBillingStatementRequest
+            {
+                WorkflowTaskIds = [chargeId.ToString()],
+            },
+            "finance-1");
+
+        Assert.Null(result.Error);
+        Assert.NotNull(result.Statement);
+        Assert.Equal("court-visit", result.Statement!.TaskKind);
+        Assert.Equal(PartyBillingPayeeType.Individual, result.Statement.PayeeType);
+        Assert.Equal(350m, result.Statement.TotalNetSar);
+
+        // Once on a statement line, not ready again.
+        var readyAfter = await service.ListReadyLinesAsync();
+        Assert.DoesNotContain(readyAfter, r => r.WorkflowTaskId == chargeId.ToString());
+    }
+
+    [Fact]
+    public async Task CloseStatement_settles_court_visit_fee_charges()
+    {
+        await using var db = CreateDb();
+        var now = DateTime.UtcNow;
+        var chargeId = Guid.NewGuid();
+        db.CourtVisitFeeCharges.Add(new CourtVisitFeeCharge
+        {
+            Id = chargeId,
+            OperationsTaskId = Guid.NewGuid(),
+            TaskDisplayId = "CV-2",
+            PoNumber = "PO-CV2",
+            CreditAssigneeId = "gov-firas",
+            CreditAssigneeName = "فراس",
+            AmountSar = 200m,
+            Status = CourtVisitFeeStatuses.Open,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+        });
+        var receiptId = Guid.NewGuid();
+        db.FileAttachments.Add(new FileAttachment
+        {
+            Id = receiptId,
+            Scope = "transfer-receipt",
+            ScopeKey = "test",
+            FileName = "r.pdf",
+            ContentType = "application/pdf",
+            SizeBytes = 10,
+            StorageKey = "test/r.pdf",
+            UploadedByUserId = "finance-1",
+            CreatedAtUtc = now,
+        });
+        await db.SaveChangesAsync();
+
+        var service = CreateStatementService(db);
+        var created = await service.CreateStatementAsync(
+            new CreatePartyBillingStatementRequest
+            {
+                WorkflowTaskIds = [chargeId.ToString()],
+            },
+            "finance-1");
+        Assert.Null(created.Error);
+        var statementId = Guid.Parse(created.Statement!.Id);
+
+        var issued = await service.IssueStatementAsync(statementId, "finance-1");
+        Assert.Null(issued.Error);
+
+        var (closed, closeError) = await service.CloseStatementAsync(
+            statementId,
+            new ClosePartyBillingStatementRequest
+            {
+                DisbursementVoucher = "V-CV-1",
+                TransferReference = "TR-CV-1",
+                TransferReceiptAttachmentId = receiptId.ToString(),
+            },
+            "finance-1");
+        Assert.Null(closeError);
+        Assert.NotNull(closed);
+        Assert.Equal(PartyBillingStatementStatus.Closed, closed!.Status);
+
+        var charge = await db.CourtVisitFeeCharges.SingleAsync(c => c.Id == chargeId);
+        Assert.Equal(CourtVisitFeeStatuses.Settled, charge.Status);
+    }
+
+    [Fact]
+    public async Task CreateStatement_rejects_mix_of_court_visit_and_ledger_line()
+    {
+        await using var db = CreateDb();
+        var fieldId = await SeedReadyLedgerAsync(db, WorkflowTaskKind.FieldInspection, "fi-1");
+        var now = DateTime.UtcNow;
+        var chargeId = Guid.NewGuid();
+        db.CourtVisitFeeCharges.Add(new CourtVisitFeeCharge
+        {
+            Id = chargeId,
+            OperationsTaskId = Guid.NewGuid(),
+            TaskDisplayId = "CV-M",
+            CreditAssigneeId = "gov-firas",
+            CreditAssigneeName = "فراس",
+            AmountSar = 100m,
+            Status = CourtVisitFeeStatuses.Open,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+        });
+        await db.SaveChangesAsync();
+
+        var service = CreateStatementService(db);
+        var result = await service.CreateStatementAsync(
+            new CreatePartyBillingStatementRequest
+            {
+                WorkflowTaskIds = [fieldId.ToString(), chargeId.ToString()],
+            },
+            "finance-1");
+
+        Assert.Contains("لا تُخلط", result.Error);
         Assert.Null(result.Statement);
     }
 

@@ -67,7 +67,7 @@ public class FinancialController : ControllerBase
     }
 
     [HttpPost("party-fee-pricing")]
-    [Authorize(Policy = CapabilityPolicyNames.ManageSystemConfig)]
+    [Authorize(Policy = CapabilityPolicyNames.ManagePartyFeePricing)]
     public async Task<ActionResult<PartyFeePricingDto>> CreatePartyFeePricing(
         [FromBody] CreatePartyFeePricingTableRequest request,
         CancellationToken ct)
@@ -87,7 +87,7 @@ public class FinancialController : ControllerBase
     }
 
     [HttpPut("party-fee-pricing/{id:guid}")]
-    [Authorize(Policy = CapabilityPolicyNames.ManageSystemConfig)]
+    [Authorize(Policy = CapabilityPolicyNames.ManagePartyFeePricing)]
     public async Task<ActionResult<PartyFeePricingDto>> SavePartyFeePricing(
         Guid id,
         [FromBody] PartyFeePricingDto request,
@@ -109,7 +109,7 @@ public class FinancialController : ControllerBase
     }
 
     [HttpPost("party-fee-pricing/{id:guid}/revision")]
-    [Authorize(Policy = CapabilityPolicyNames.ManageSystemConfig)]
+    [Authorize(Policy = CapabilityPolicyNames.ManagePartyFeePricing)]
     public async Task<ActionResult<PartyFeePricingDto>> RevisePartyFeePricing(
         Guid id,
         [FromBody] PartyFeePricingDto request,
@@ -131,7 +131,7 @@ public class FinancialController : ControllerBase
     }
 
     [HttpPost("party-fee-pricing/{id:guid}/activate")]
-    [Authorize(Policy = CapabilityPolicyNames.ManageSystemConfig)]
+    [Authorize(Policy = CapabilityPolicyNames.ManagePartyFeePricing)]
     public async Task<ActionResult<PartyFeePricingDto>> ActivatePartyFeePricing(
         Guid id,
         CancellationToken ct)
@@ -151,7 +151,7 @@ public class FinancialController : ControllerBase
     }
 
     [HttpPut("party-fee-pricing/{id:guid}/assignments")]
-    [Authorize(Policy = CapabilityPolicyNames.ManageSystemConfig)]
+    [Authorize(Policy = CapabilityPolicyNames.ManagePartyFeePricing)]
     public async Task<ActionResult<PartyFeePricingDto>> SetPartyFeePricingAssignments(
         Guid id,
         [FromBody] SetPartyFeePricingAssignmentsRequest request,
@@ -172,7 +172,7 @@ public class FinancialController : ControllerBase
     }
 
     [HttpDelete("party-fee-pricing/{id:guid}")]
-    [Authorize(Policy = CapabilityPolicyNames.ManageSystemConfig)]
+    [Authorize(Policy = CapabilityPolicyNames.ManagePartyFeePricing)]
     public async Task<IActionResult> DeletePartyFeePricing(Guid id, CancellationToken ct)
     {
         try

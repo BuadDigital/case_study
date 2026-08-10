@@ -159,8 +159,8 @@ function FeeFlags({ row }: { row: EnfazTrackingRowDto }) {
       <span
         title={
           hasSurvey
-            ? "أتعاب مكتب هندسي — رفع مساحي"
-            : "أتعاب مكتب هندسي — غير مفعّل"
+            ? "بند رفع مساحي في فوترة إنفاذ"
+            : "بند رفع مساحي (إنفاذ) — غير معبّأ"
         }
         className={cn(
           "inline-grid place-items-center",

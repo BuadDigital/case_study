@@ -7,7 +7,19 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { KpiBand, KpiCell, StatusPill, cn, useToast } from "@platform/design-system";
+import {
+  KpiBand,
+  KpiCell,
+  ModalBody,
+  ModalCard,
+  ModalClose,
+  ModalHeader,
+  ModalOverlay,
+  ModalTitle,
+  StatusPill,
+  cn,
+  useToast,
+} from "@platform/design-system";
 import type { StatusPillStyle } from "@platform/design-system";
 import {
   type InspectorFeeAction,
@@ -35,6 +47,10 @@ type TabId = "action" | "ready" | "statements";
 
 const FEE_COLS =
   "minmax(125px,1.1fr) minmax(85px,.8fr) minmax(85px,.8fr) minmax(170px,1.5fr) minmax(90px,.8fr) minmax(140px,1fr) 130px";
+
+/** كشوف الفوترة الصادرة — نفس أعمدة الرأس والصف */
+const STATEMENT_COLS =
+  "minmax(150px,1.2fr) minmax(90px,.8fr) minmax(70px,.6fr) minmax(90px,.8fr) minmax(110px,1fr) minmax(170px,1.4fr)";
 
 function fmtSar(n: number): string {
   return `${Number(n || 0).toLocaleString("en-US")} ر.س`;
@@ -191,6 +207,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
   const [invoiceDate, setInvoiceDate] = useState(() =>
     new Date().toISOString().slice(0, 10),
   );
+  const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
 
   const { data: summary, isPending: feesPending } = useInspectorFeesQuery(
     {
@@ -310,18 +327,18 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
     }
   };
 
-  const submitInvoice = async (s: PartyBillingStatementDto, file?: File) => {
+  const submitInvoice = async (s: PartyBillingStatementDto) => {
     if (!invoiceNo.trim()) {
       showToast("رقم الفاتورة مطلوب", "error");
       return;
     }
-    if (!file) {
-      showToast("ارفع PDF الفاتورة", "error");
+    if (!invoiceFile) {
+      showToast("اختر ملف الفاتورة أولاً", "error");
       return;
     }
     setBusyId(s.id);
     try {
-      const upload = await uploadPartyBillingVendorInvoice(s.id, file);
+      const upload = await uploadPartyBillingVendorInvoice(s.id, invoiceFile);
       if (!upload.ok) {
         showToast(upload.error, "error");
         return;
@@ -339,6 +356,8 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
       }
       showToast(`رُفعت الفاتورة — ${fmtSar(s.totalNetSar)}`, "success");
       setInvoiceNo("");
+      setInvoiceFile(null);
+      setOpenFn(null);
       await invalidate();
     } finally {
       setBusyId(null);
@@ -350,6 +369,23 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
     setSearch("");
     setStFilter("");
     setFnSearch("");
+    setOpenFn(null);
+    setInvoiceFile(null);
+  };
+
+  const openStatement = useMemo(
+    () =>
+      openFn
+        ? (filteredFns.find((s) => s.referenceNumber === openFn) ??
+          statements.find((s) => s.referenceNumber === openFn) ??
+          null)
+        : null,
+    [openFn, filteredFns, statements],
+  );
+
+  const closeStatementModal = () => {
+    setOpenFn(null);
+    setInvoiceFile(null);
   };
 
   return (
@@ -554,15 +590,17 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                             </span>
                           </div>
                         </div>
-                        <div
-                          dir="ltr"
-                          className="flex min-w-0 items-center px-3.5 py-1.5 text-[12px] text-text-2"
-                        >
-                          {formatYmd(
-                            row.accruedAtUtc ??
-                              row.workSubmittedAtUtc ??
-                              row.updatedAtUtc,
-                          )}
+                        <div className="flex min-w-0 items-center justify-start overflow-hidden px-3.5 py-1.5 text-start text-[12px] text-text-2">
+                          <span
+                            dir="ltr"
+                            className="tabular-nums [unicode-bidi:isolate]"
+                          >
+                            {formatYmd(
+                              row.accruedAtUtc ??
+                                row.workSubmittedAtUtc ??
+                                row.updatedAtUtc,
+                            )}
+                          </span>
                         </div>
                         <div className="flex min-w-0 items-center px-3.5 py-1.5 text-[12.5px] text-text-2">
                           {fmtSar(row.agreedFeeSar)}
@@ -709,8 +747,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                 <div
                   className="grid border-b-2 border-gold bg-surface-2"
                   style={{
-                    gridTemplateColumns:
-                      "minmax(150px,1.2fr) minmax(90px,.8fr) minmax(70px,.6fr) minmax(90px,.8fr) minmax(110px,1fr) minmax(170px,1.4fr)",
+                    gridTemplateColumns: STATEMENT_COLS,
                   }}
                 >
                   {[
@@ -723,7 +760,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                   ].map((h) => (
                     <div
                       key={h}
-                      className="flex items-center justify-center px-4 py-3.5 text-center text-[12px] font-bold text-heading"
+                      className="flex min-w-0 items-center justify-start overflow-hidden px-4 py-3.5 text-start text-[12px] font-bold text-heading"
                     >
                       {h}
                     </div>
@@ -736,207 +773,99 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                   </div>
                 ) : (
                   filteredFns.map((s) => {
-                    const open = openFn === s.referenceNumber;
+                    const selected = openFn === s.referenceNumber;
                     const meta = statementMeta(s);
                     return (
-                      <div key={s.id}>
-                        <div
-                          role="button"
-                          tabIndex={0}
-                          onClick={() =>
-                            setOpenFn(open ? null : s.referenceNumber)
+                      <div
+                        key={s.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setOpenFn(s.referenceNumber)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setOpenFn(s.referenceNumber);
                           }
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              setOpenFn(open ? null : s.referenceNumber);
-                            }
-                          }}
-                          className={cn(
-                            "grid min-h-11 cursor-pointer items-center border-b border-border transition-colors",
-                            open && "bg-[var(--row-hover,#faf6ee)]",
-                            "hover:bg-[var(--row-hover,#faf6ee)]",
-                          )}
-                          style={{
-                            gridTemplateColumns:
-                              "minmax(150px,1.2fr) minmax(90px,.8fr) minmax(70px,.6fr) minmax(90px,.8fr) minmax(110px,1fr) minmax(170px,1.4fr)",
-                          }}
-                        >
-                          <div className="flex items-center px-4 py-3.5">
-                            <span className="inline-flex items-center gap-1.5">
-                              <svg
-                                width="13"
-                                height="13"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className={cn(
-                                  "text-text-3 transition-transform duration-150",
-                                  open && "rotate-90",
-                                )}
-                                aria-hidden
-                              >
-                                <path d="m9 18 6-6-6-6" />
-                              </svg>
-                              <span
-                                dir="ltr"
-                                className="text-[12.5px] font-bold text-gold-d"
-                              >
-                                {s.referenceNumber}
-                              </span>
+                        }}
+                        className={cn(
+                          "grid min-h-11 cursor-pointer items-center border-b border-border transition-colors",
+                          selected && "bg-[var(--row-hover,#faf6ee)]",
+                          "hover:bg-[var(--row-hover,#faf6ee)]",
+                        )}
+                        style={{
+                          gridTemplateColumns: STATEMENT_COLS,
+                        }}
+                      >
+                        <div className="flex min-w-0 items-center justify-start overflow-hidden px-4 py-3.5">
+                          <span className="inline-flex min-w-0 items-center gap-1.5">
+                            <svg
+                              width="13"
+                              height="13"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="shrink-0 text-text-3"
+                              aria-hidden
+                            >
+                              <path d="M15 3h6v6M14 10l7-7M9 21H3v-6M10 14l-7 7" />
+                            </svg>
+                            <span
+                              dir="ltr"
+                              className="truncate text-start text-[12.5px] font-bold text-gold-d [unicode-bidi:isolate]"
+                            >
+                              {s.referenceNumber}
                             </span>
-                          </div>
-                          <div
+                          </span>
+                        </div>
+                        <div className="flex min-w-0 items-center justify-start overflow-hidden px-4 py-3.5 text-start text-[12px] text-text-2">
+                          <span
                             dir="ltr"
-                            className="flex items-center px-4 py-3.5 text-[12px] text-text-2"
+                            className="tabular-nums [unicode-bidi:isolate]"
                           >
                             {formatYmd(s.issuedAtUtc ?? s.createdAtUtc)}
-                          </div>
-                          <div className="flex items-center px-4 py-3.5 text-[12.5px]">
-                            {s.lines.length} معاملات
-                          </div>
-                          <div className="flex items-center px-4 py-3.5 text-[13px] font-bold text-heading">
-                            {fmtSar(s.totalNetSar)}
-                          </div>
-                          <div className="flex items-center px-4 py-3.5">
-                            <StatusPill
-                              label={meta.label}
-                              style={meta.style}
-                            />
-                          </div>
-                          <div className="flex items-center px-4 py-3.5 text-[11px] text-text-2">
-                            {s.status === "closed" && s.paidAtUtc ? (
-                              <span className="inline-flex min-w-0 flex-col gap-px">
-                                <span>
-                                  صُرف {formatYmd(s.paidAtUtc)}
-                                  {s.externalInvoiceNumber ||
-                                  s.vendorInvoiceNumber ? (
-                                    <>
-                                      {" "}
-                                      — فاتورة{" "}
-                                      <b dir="ltr">
-                                        {s.externalInvoiceNumber ||
-                                          s.vendorInvoiceNumber}
-                                      </b>
-                                    </>
-                                  ) : null}
-                                </span>
-                                <span className="truncate text-text-3">
-                                  📎{" "}
-                                  {s.transferReceiptRef ||
-                                    "إيصال التحويل"}
-                                  {s.transferReference
-                                    ? ` · مرجع ${s.transferReference}`
-                                    : ""}
-                                </span>
-                              </span>
-                            ) : (
-                              "بانتظار الصرف"
-                            )}
-                          </div>
+                          </span>
                         </div>
-
-                        {open ? (
-                          <div className="border-b border-border bg-surface-2 px-[18px] py-3">
-                            <div className="mb-2 text-[11.5px] font-bold text-text-2">
-                              معاملات الكشف {s.referenceNumber}
-                            </div>
-                            <div className="grid gap-1.5">
-                              {s.lines.map((line) => (
-                                <div
-                                  key={line.id}
-                                  className="grid items-center gap-2.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-[12px]"
-                                  style={{
-                                    gridTemplateColumns:
-                                      "minmax(115px,1fr) minmax(105px,1.1fr) minmax(95px,.9fr) minmax(85px,.8fr) minmax(145px,1.4fr) minmax(85px,.8fr)",
-                                  }}
-                                >
-                                  <span
-                                    dir="ltr"
-                                    className="text-end font-bold text-gold-d"
-                                  >
-                                    {line.propertyLabel}
-                                  </span>
-                                  <span className="text-text-2">
-                                    {line.poNumber || "—"}
-                                  </span>
-                                  <span className="text-[11px] text-text-3">
-                                    {line.billingStatusLabel || "—"}
-                                  </span>
-                                  <span className="text-text-2">
-                                    {fmtSar(line.netFeeSar)}
-                                  </span>
-                                  <span className="text-[11px] text-text-3">
-                                    بسعر الجدول
-                                  </span>
-                                  <span className="font-bold text-heading">
-                                    {fmtSar(line.netFeeSar)}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                            {s.status === "issued" &&
-                            s.payeeType !== "individual" ? (
-                              <div
-                                className="mt-3 flex flex-col gap-2 rounded-lg border border-border bg-surface p-3"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <div className="text-[12px] font-semibold">
-                                  رفع فاتورة مطابقة للمسير (القيمة مقفلة{" "}
-                                  {fmtSar(s.totalNetSar)})
-                                </div>
-                                <label className="text-[12px] text-text-2">
-                                  رقم الفاتورة *
-                                  <input
-                                    className="mt-1 w-full rounded-lg border border-border-md bg-surface px-3 py-2 text-[13px]"
-                                    value={invoiceNo}
-                                    onChange={(e) =>
-                                      setInvoiceNo(e.target.value)
-                                    }
-                                    dir="ltr"
-                                  />
-                                </label>
-                                <label className="text-[12px] text-text-2">
-                                  تاريخ الفاتورة
-                                  <input
-                                    type="date"
-                                    className="mt-1 w-full rounded-lg border border-border-md bg-surface px-3 py-2 text-[13px]"
-                                    value={invoiceDate}
-                                    onChange={(e) =>
-                                      setInvoiceDate(e.target.value)
-                                    }
-                                  />
-                                </label>
-                                <VendorInvoicePdfField
-                                  busy={busyId === s.id}
-                                  disabled={busyId === s.id}
-                                  onPick={(file) => {
-                                    void submitInvoice(s, file);
-                                  }}
-                                />
-                              </div>
-                            ) : null}
-                            {s.transferReceiptAttachmentId ? (
-                              <button
-                                type="button"
-                                className="mt-2 cursor-pointer border-none bg-transparent p-0 text-[12px] text-primary underline"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  void openPartyBillingAttachment(
-                                    s.transferReceiptAttachmentId!,
-                                  ).then((r) => {
-                                    if (!r.ok) showToast(r.error, "error");
-                                  });
-                                }}
-                              >
-                                عرض إيصال التحويل
-                              </button>
-                            ) : null}
-                          </div>
-                        ) : null}
+                        <div className="flex min-w-0 items-center justify-start overflow-hidden px-4 py-3.5 text-start text-[12.5px] text-text">
+                          {s.lines.length} معاملات
+                        </div>
+                        <div className="flex min-w-0 items-center justify-start overflow-hidden px-4 py-3.5 text-start text-[13px] font-bold tabular-nums text-heading">
+                          {fmtSar(s.totalNetSar)}
+                        </div>
+                        <div className="flex min-w-0 items-center justify-start overflow-hidden px-4 py-3.5">
+                          <StatusPill label={meta.label} style={meta.style} />
+                        </div>
+                        <div className="flex min-w-0 items-center justify-start overflow-hidden px-4 py-3.5 text-start text-[11px] text-text-2">
+                          {s.status === "closed" && s.paidAtUtc ? (
+                            <span className="inline-flex min-w-0 flex-col gap-px text-start">
+                              <span>
+                                صُرف {formatYmd(s.paidAtUtc)}
+                                {s.externalInvoiceNumber ||
+                                s.vendorInvoiceNumber ? (
+                                  <>
+                                    {" "}
+                                    — فاتورة{" "}
+                                    <b dir="ltr">
+                                      {s.externalInvoiceNumber ||
+                                        s.vendorInvoiceNumber}
+                                    </b>
+                                  </>
+                                ) : null}
+                              </span>
+                              <span className="truncate text-text-3">
+                                📎{" "}
+                                {s.transferReceiptRef || "إيصال التحويل"}
+                                {s.transferReference
+                                  ? ` · مرجع ${s.transferReference}`
+                                  : ""}
+                              </span>
+                            </span>
+                          ) : (
+                            "بانتظار الصرف"
+                          )}
+                        </div>
                       </div>
                     );
                   })
@@ -947,9 +876,242 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
               دورة الكشف: مسودة ← صادر ← محال للمالية ← مصروف. الفاتورة تصدر من
               البرنامج المحاسبي خارج النظام، ويُوثَّق الصرف هنا برقم الفاتورة
               وإيصال التحويل والتاريخ. البنود المتحفَّظ عليها تُعالَج بالتنسيق مع
-              المشرف قبل إحالتها للمالية.
+              المشرف قبل إحالتها للمالية. اضغط صفاً لفتح تفاصيل الكشف.
             </div>
           </div>
+
+          {openStatement ? (
+            <ModalOverlay
+              role="presentation"
+              className="!items-center !justify-center bg-[rgba(16,43,78,0.42)] backdrop-blur-[2px] max-lg:!items-center"
+              onClick={closeStatementModal}
+            >
+              <ModalCard
+                wide
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="eng-statement-modal-title"
+                className="max-w-[560px] overflow-hidden rounded-2xl border border-border shadow-[0_24px_60px_-18px_rgba(16,43,78,0.45)] max-lg:max-w-[min(100%,560px)] max-lg:rounded-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ModalHeader className="relative flex-col items-stretch gap-0 border-b border-border bg-[linear-gradient(180deg,color-mix(in_srgb,var(--gold)_10%,transparent),transparent)] px-5 pb-4 pt-5">
+                  <ModalClose
+                    onClick={closeStatementModal}
+                    aria-label="إغلاق"
+                    className="absolute start-3 top-3 grid h-8 w-8 place-items-center rounded-lg bg-surface text-[15px] text-text-2 hover:bg-surface-2 hover:text-heading"
+                  >
+                    ✕
+                  </ModalClose>
+                  <div className="flex flex-col items-center gap-2.5 px-6 text-center">
+                    <StatusPill
+                      label={statementMeta(openStatement).label}
+                      style={statementMeta(openStatement).style}
+                    />
+                    <ModalTitle
+                      id="eng-statement-modal-title"
+                      className="m-0 flex-none text-center text-[17px] font-extrabold tracking-tight text-heading"
+                    >
+                      كشف{" "}
+                      <span
+                        dir="ltr"
+                        className="inline-block font-extrabold text-gold-d [unicode-bidi:isolate]"
+                      >
+                        {openStatement.referenceNumber}
+                      </span>
+                    </ModalTitle>
+                    <div className="flex flex-wrap items-center justify-center gap-1.5 text-[12px] text-text-2">
+                      <span
+                        dir="ltr"
+                        className="rounded-full bg-surface px-2.5 py-0.5 tabular-nums [unicode-bidi:isolate]"
+                      >
+                        {formatYmd(
+                          openStatement.issuedAtUtc ??
+                            openStatement.createdAtUtc,
+                        )}
+                      </span>
+                      <span className="rounded-full bg-surface px-2.5 py-0.5">
+                        {openStatement.lines.length} معاملات
+                      </span>
+                      <span className="rounded-full bg-surface px-2.5 py-0.5 font-bold tabular-nums text-heading">
+                        {fmtSar(openStatement.totalNetSar)}
+                      </span>
+                    </div>
+                  </div>
+                </ModalHeader>
+
+                <ModalBody className="max-h-[min(68vh,520px)] space-y-4 px-5 py-5">
+                  <div className="text-center text-[12px] font-bold text-text-2">
+                    معاملات الكشف
+                  </div>
+                  <div className="grid gap-2.5">
+                    {openStatement.lines.map((line) => (
+                      <div
+                        key={line.id}
+                        className="rounded-xl border border-border bg-surface-2 px-3.5 py-3"
+                      >
+                        <div className="mb-2.5 text-center">
+                          <div
+                            dir="ltr"
+                            className="text-[13px] font-extrabold text-gold-d [unicode-bidi:isolate]"
+                          >
+                            {line.propertyLabel}
+                          </div>
+                          {line.poNumber ? (
+                            <div
+                              dir="ltr"
+                              className="mt-0.5 text-[11.5px] text-text-3 [unicode-bidi:isolate]"
+                            >
+                              {line.poNumber}
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 border-t border-border/80 pt-2.5">
+                          <div className="text-center">
+                            <div className="mb-0.5 text-[10px] text-text-3">
+                              الحالة
+                            </div>
+                            <div className="text-[11.5px] font-semibold text-text-2">
+                              {line.billingStatusLabel || "—"}
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <div className="mb-0.5 text-[10px] text-text-3">
+                              المصدر
+                            </div>
+                            <div className="text-[11.5px] font-semibold text-text-2">
+                              بسعر الجدول
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <div className="mb-0.5 text-[10px] text-text-3">
+                              الصافي
+                            </div>
+                            <div className="text-[13px] font-extrabold tabular-nums text-heading">
+                              {fmtSar(line.netFeeSar)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {openStatement.status === "issued" &&
+                  openStatement.payeeType !== "individual" ? (
+                    <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-surface p-3.5 text-start">
+                      <div className="text-center text-[12.5px] font-semibold text-heading">
+                        رفع فاتورة مطابقة للمسير
+                        <span className="mt-0.5 block text-[11px] font-normal text-text-3">
+                          القيمة مقفلة {fmtSar(openStatement.totalNetSar)}
+                        </span>
+                      </div>
+                      <label className="text-[12px] text-text-2">
+                        رقم الفاتورة *
+                        <input
+                          className="mt-1 w-full rounded-lg border border-border-md bg-surface px-3 py-2 text-center text-[13px]"
+                          value={invoiceNo}
+                          onChange={(e) => setInvoiceNo(e.target.value)}
+                          dir="ltr"
+                        />
+                      </label>
+                      <label className="text-[12px] text-text-2">
+                        تاريخ الفاتورة
+                        <input
+                          type="date"
+                          className="mt-1 w-full rounded-lg border border-border-md bg-surface px-3 py-2 text-center text-[13px]"
+                          value={invoiceDate}
+                          onChange={(e) => setInvoiceDate(e.target.value)}
+                        />
+                      </label>
+                      <VendorInvoicePdfField
+                        busy={busyId === openStatement.id}
+                        disabled={busyId === openStatement.id}
+                        file={invoiceFile}
+                        onPick={setInvoiceFile}
+                        onClear={() => setInvoiceFile(null)}
+                      />
+                      <button
+                        type="button"
+                        disabled={
+                          busyId === openStatement.id ||
+                          !invoiceFile ||
+                          !invoiceNo.trim()
+                        }
+                        className="mt-0.5 w-full cursor-pointer rounded-lg border-none bg-[var(--ink,#102B4E)] px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_6px_16px_-8px_rgba(18,40,76,.55)] disabled:cursor-not-allowed disabled:opacity-45"
+                        onClick={() => void submitInvoice(openStatement)}
+                      >
+                        {busyId === openStatement.id
+                          ? "جاري الإرسال…"
+                          : "إرسال الفاتورة"}
+                      </button>
+                    </div>
+                  ) : null}
+
+                  {openStatement.status === "closed" ? (
+                    <div className="rounded-xl border border-[color-mix(in_srgb,#3f8f5f_28%,transparent)] bg-[color-mix(in_srgb,#3f8f5f_10%,transparent)] px-3.5 py-3 text-center">
+                      <div className="text-[13px] font-bold text-[#2f7a4d]">
+                        تم صرف هذا الكشف
+                      </div>
+                      {openStatement.vendorInvoiceNumber ? (
+                        <div className="mt-1 text-[12px] text-text-2">
+                          رقم الفاتورة:{" "}
+                          <b
+                            dir="ltr"
+                            className="tabular-nums [unicode-bidi:isolate]"
+                          >
+                            {openStatement.vendorInvoiceNumber}
+                          </b>
+                        </div>
+                      ) : null}
+                      {openStatement.paidAtUtc ? (
+                        <div className="mt-0.5 text-[11.5px] text-text-3">
+                          تاريخ الصرف:{" "}
+                          <span
+                            dir="ltr"
+                            className="tabular-nums [unicode-bidi:isolate]"
+                          >
+                            {formatYmd(openStatement.paidAtUtc)}
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : openStatement.status === "invoice_received" ? (
+                    <div className="rounded-xl border border-[color-mix(in_srgb,#4a7ab5_30%,transparent)] bg-[color-mix(in_srgb,#4a7ab5_10%,transparent)] px-3.5 py-3 text-center text-[12.5px] text-text-2">
+                      وُجدت فاتورة واردة — بانتظار صرف المالية.
+                      {openStatement.vendorInvoiceNumber ? (
+                        <div className="mt-1">
+                          رقم الفاتورة:{" "}
+                          <b
+                            dir="ltr"
+                            className="tabular-nums [unicode-bidi:isolate]"
+                          >
+                            {openStatement.vendorInvoiceNumber}
+                          </b>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {openStatement.transferReceiptAttachmentId ? (
+                    <div className="flex justify-center">
+                      <button
+                        type="button"
+                        className="cursor-pointer rounded-lg border border-border-md bg-surface px-4 py-2 text-[12.5px] font-semibold text-heading transition-colors hover:border-gold hover:bg-[color-mix(in_srgb,var(--gold)_10%,transparent)]"
+                        onClick={() => {
+                          void openPartyBillingAttachment(
+                            openStatement.transferReceiptAttachmentId!,
+                          ).then((r) => {
+                            if (!r.ok) showToast(r.error, "error");
+                          });
+                        }}
+                      >
+                        عرض إيصال التحويل
+                      </button>
+                    </div>
+                  ) : null}
+                </ModalBody>
+              </ModalCard>
+            </ModalOverlay>
+          ) : null}
         </>
       )}
     </div>

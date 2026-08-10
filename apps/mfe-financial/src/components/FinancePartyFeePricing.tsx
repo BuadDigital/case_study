@@ -2,10 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  Badge,
   Button,
-  Card,
-  CardBody,
   FormGroup,
   Input,
   Label,
@@ -17,16 +14,10 @@ import {
   ModalOverlay,
   ModalTitle,
   Note,
-  Table,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr,
   cn,
   useToast,
 } from "@platform/design-system";
-import { Can, useCapability } from "@platform/app-shared/components/Can";
+import { useCapability } from "@platform/app-shared/components/Can";
 import type {
   PartyFeePricingCategory,
   PartyFeePricingDto,
@@ -166,7 +157,11 @@ function MoneyInput({
 
 export function FinancePartyFeePricing() {
   const { showToast } = useToast();
-  const canEdit = useCapability("manage-system-config");
+  const isSystemAdmin = useCapability("manage-system-config");
+  const canEditOps = useCapability("manage-operations");
+  const canEditSpecialist = useCapability("manage-work-orders");
+  /** مسؤول النظام · مشرف · أخصائي دراسة حالة */
+  const canEdit = isSystemAdmin || canEditOps || canEditSpecialist;
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
   const [selectedCategory, setSelectedCategory] =
@@ -181,11 +176,19 @@ export function FinancePartyFeePricing() {
   const [busy, setBusy] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignDraft, setAssignDraft] = useState<string[]>([]);
+  /** After data lands, drive a short enter animation */
+  const [panelEpoch, setPanelEpoch] = useState(0);
   const locked = loading || saving || busy || !canEdit;
 
+  /** Category that the on-screen draft belongs to (kept while the next fetch runs). */
+  const contentCategory: PartyFeePricingCategory =
+    draft.id && draft.category
+      ? (draft.category as PartyFeePricingCategory)
+      : selectedCategory;
+
   const categoryParties = useMemo(
-    () => partiesForCategory(selectedCategory, staffUsers),
-    [selectedCategory, staffUsers],
+    () => partiesForCategory(contentCategory, staffUsers),
+    [contentCategory, staffUsers],
   );
 
   const assignedNames = useMemo(() => {
@@ -193,16 +196,29 @@ export function FinancePartyFeePricing() {
     return categoryParties.filter((p) => ids.has(p.id));
   }, [categoryParties, draft.assignedAssigneeIds]);
 
+  const draftMatchesCategory =
+    Boolean(draft.id) &&
+    (draft.category === selectedCategory || !draft.category);
+
+  /** Keep previous panel while the next category loads — no layout flash. */
+  const holdingPrevious = loading && Boolean(draft.id);
+  const isInitialLoad = loading && !draft.id;
+
+  const pickTableId = (
+    list: PartyFeePricingTableSummaryDto[],
+    preferId?: string,
+  ) =>
+    preferId && list.some((t) => t.id === preferId)
+      ? preferId
+      : (list.find((t) => t.isActive)?.id ?? list[0]?.id ?? "");
+
   const refreshTables = async (
     category: PartyFeePricingCategory,
     preferId?: string,
   ) => {
     const list = await loadPartyFeePricingTables(category);
     setTables(list);
-    const nextId =
-      preferId && list.some((t) => t.id === preferId)
-        ? preferId
-        : list.find((t) => t.isActive)?.id ?? list[0]?.id ?? "";
+    const nextId = pickTableId(list, preferId);
     setSelectedId(nextId);
     return nextId;
   };
@@ -217,35 +233,50 @@ export function FinancePartyFeePricing() {
 
   useEffect(() => {
     let cancelled = false;
+    const category = selectedCategory;
     setLoading(true);
+
     void (async () => {
       try {
-        const id = await refreshTables(selectedCategory);
+        const list = await loadPartyFeePricingTables(category);
         if (cancelled) return;
-        if (id) await loadTable(id, selectedCategory);
-        else setDraft(emptyDraft(selectedCategory));
+        setTables(list);
+        const id = pickTableId(list);
+        setSelectedId(id);
+        if (id) {
+          const detail = await loadPartyFeePricingById(id);
+          if (cancelled) return;
+          setDraft(detail);
+        } else {
+          setDraft(emptyDraft(category));
+        }
+        if (!cancelled) setPanelEpoch((n) => n + 1);
       } catch {
         if (!cancelled) showToast("تعذّر تحميل تسعير الأتعاب", "error");
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
+
     return () => {
       cancelled = true;
     };
   }, [selectedCategory, showToast]);
 
   const selectCategory = (category: PartyFeePricingCategory) => {
-    if (category === selectedCategory) return;
+    if (category === selectedCategory || busy || saving) return;
+    // Do not wipe draft/tables — keep previous content for a smooth hold until fetch lands.
     setSelectedCategory(category);
+    setLoading(true);
   };
 
   const selectTable = async (id: string) => {
-    if (id === selectedId) return;
+    if (!id || id === selectedId || loading) return;
     setSelectedId(id);
     setBusy(true);
     try {
       await loadTable(id, selectedCategory);
+      setPanelEpoch((n) => n + 1);
     } catch {
       showToast("تعذّر تحميل الجدول", "error");
     } finally {
@@ -446,473 +477,484 @@ export function FinancePartyFeePricing() {
   };
 
   const activeCategory = CATEGORIES.find((c) => c.id === selectedCategory);
+  const hasAssignments = (draft.assignedCount ?? 0) > 0;
+  /** Show held previous content while switching, or matched content when ready. */
+  const showEditor = Boolean(draft.id) && (draftMatchesCategory || holdingPrevious);
+  const showEmpty = !loading && !draft.id && !holdingPrevious;
+  const selectValue =
+    !loading && selectedId && tables.some((t) => t.id === selectedId)
+      ? selectedId
+      : "";
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
-      {!canEdit ? (
-        <Note tone="default">
-          عرض فقط — تعديل التسعيرة مقصور على المسؤول.
-        </Note>
-      ) : null}
+    <div className="w-full pb-8">
+      {/* رأس بسيط — خطوة واحدة واضحة */}
+      <header className="mb-6 space-y-1">
+        <h1 className="m-0 text-[1.35rem] font-bold tracking-tight text-heading">
+          التسعيرة
+        </h1>
+        <p className="m-0 text-[13px] leading-relaxed text-text-2">
+          اختر الفئة، عدّل الأسعار، احفظ. الإسناد للمستحقين اختياري من زر «من يخصّه
+          الجدول».
+        </p>
+        {!canEdit ? (
+          <p className="m-0 pt-1 text-[12px] text-text-3">
+            وضع العرض فقط — لا صلاحية للتعديل.
+          </p>
+        ) : null}
+      </header>
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-        {/* يمين في RTL */}
-        <aside className="w-full shrink-0 lg:w-60">
-          <h2 className="m-0 mb-2 text-[13px] font-semibold text-text">الفئات</h2>
-          <ul className="m-0 list-none space-y-1 rounded-md border border-border bg-surface p-1">
-            {CATEGORIES.map((cat) => {
-              const selected = cat.id === selectedCategory;
-              return (
-                <li key={cat.id}>
+      {/* 1) الفئة — شريط أفقي بدل قائمة جانبية */}
+      <div
+        className="mb-5 flex flex-wrap gap-2"
+        role="tablist"
+        aria-label="فئة التسعيرة"
+      >
+        {CATEGORIES.map((cat) => {
+          const on = cat.id === selectedCategory;
+          return (
+            <button
+              key={cat.id}
+              type="button"
+              role="tab"
+              aria-selected={on}
+              disabled={busy || saving}
+              onClick={() => selectCategory(cat.id)}
+              className={cn(
+                "rounded-full border px-3.5 py-2 text-[13px] font-semibold transition-colors duration-200 ease-out",
+                on
+                  ? "border-heading bg-heading text-white"
+                  : "border-border bg-surface text-text-2 hover:border-border-md hover:bg-surface-2",
+              )}
+            >
+              {cat.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 2) الجدول — صف واحد: قائمة + إضافة */}
+      <div
+        className={cn(
+          "mb-5 flex flex-col gap-2 transition-opacity duration-200 sm:flex-row sm:items-center",
+          holdingPrevious ? "opacity-55" : "opacity-100",
+        )}
+      >
+        <label className="sr-only" htmlFor="pricing-table-select">
+          الجدول
+        </label>
+        <select
+          id="pricing-table-select"
+          className={cn(
+            "min-h-11 w-full flex-1 rounded-lg border border-border bg-surface px-3 text-[13px] font-medium text-text",
+            "transition-[border-color,box-shadow] duration-200",
+            "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary",
+          )}
+          value={selectValue}
+          disabled={
+            loading || busy || tables.length === 0 || !draftMatchesCategory
+          }
+          onChange={(e) => void selectTable(e.target.value)}
+        >
+          {loading ? (
+            <option value="">
+              جاري تحميل {activeCategory?.label ?? "الجداول"}…
+            </option>
+          ) : tables.length === 0 ? (
+            <option value="">لا جداول بعد</option>
+          ) : (
+            tables.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name || "بدون اسم"}
+                {t.isActive ? " · افتراضي" : ""}
+                {(t.assignedCount ?? 0) > 0 ? ` · ${t.assignedCount} مسند` : ""}
+              </option>
+            ))
+          )}
+        </select>
+        {canEdit ? (
+          <div className="flex shrink-0 gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={locked}
+              onClick={() => void createTable("party-rates")}
+            >
+              جدول جديد
+            </Button>
+            {selectedCategory === "field-inspector" && draftMatchesCategory ? (
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={locked}
+                onClick={() => void createTable("flat")}
+              >
+                جدول حوافز
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
+      {/* 3) مساحة العمل — hold + fade بدل skeleton عند التنقل */}
+      <div
+        className={cn(
+          "relative min-h-[240px] overflow-hidden rounded-xl border border-border bg-surface",
+          "transition-[box-shadow,border-color] duration-300 ease-out",
+          holdingPrevious && "border-border-md shadow-none",
+        )}
+        aria-busy={loading || busy}
+      >
+        {isInitialLoad ? (
+          <div className="space-y-3 px-5 py-10" aria-live="polite">
+            <div className="mx-auto h-3 w-32 animate-pulse rounded bg-surface-2" />
+            <div className="mx-auto h-10 max-w-md animate-pulse rounded-lg bg-surface-2" />
+            <div className="mx-auto h-10 max-w-md animate-pulse rounded-lg bg-surface-2" />
+            <p className="m-0 pt-2 text-center text-[12px] text-text-3">
+              جاري تحميل {activeCategory?.label ?? "التسعيرة"}…
+            </p>
+          </div>
+        ) : showEmpty ? (
+          <div
+            key={`empty-${panelEpoch}`}
+            className="px-5 py-12 text-center animate-[pricing-panel-in_0.28s_ease-out]"
+          >
+            <p className="m-0 text-[14px] font-medium text-text">
+              لا يوجد جدول في هذه الفئة
+            </p>
+            {canEdit ? (
+              <Button
+                type="button"
+                variant="primary"
+                className="mt-4"
+                disabled={locked}
+                onClick={() => void createTable("party-rates")}
+              >
+                إنشاء أول جدول
+              </Button>
+            ) : null}
+          </div>
+        ) : showEditor ? (
+          <div
+            key={`${draft.id}-${panelEpoch}`}
+            className={cn(
+              "divide-y divide-border transition-opacity duration-200 ease-out",
+              holdingPrevious
+                ? "pointer-events-none select-none opacity-45"
+                : "animate-[pricing-panel-in_0.28s_ease-out] opacity-100",
+            )}
+          >
+            {/* هوية الجدول */}
+            <div className="space-y-4 px-5 py-5">
+              <FormGroup>
+                <Label
+                  htmlFor="pricing-name"
+                  className="mb-1.5 text-[12px] font-semibold text-text-2"
+                >
+                  اسم الجدول
+                </Label>
+                <Input
+                  id="pricing-name"
+                  className="text-[15px]"
+                  value={draft.name}
+                  readOnly={locked}
+                  disabled={locked}
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, name: e.target.value }))
+                  }
+                />
+              </FormGroup>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {draft.isActive ? (
+                  <span className="rounded-md bg-success-bg px-2.5 py-1 text-[11px] font-semibold text-success">
+                    الافتراضي للفئة
+                  </span>
+                ) : canEdit ? (
                   <button
                     type="button"
-                    disabled={loading || busy}
-                    onClick={() => selectCategory(cat.id)}
-                    className={cn(
-                      "w-full rounded px-2.5 py-2 text-start transition-colors",
-                      selected
-                        ? "bg-primary/10 text-text"
-                        : "text-text-2 hover:bg-surface-2",
-                    )}
-                  >
-                    <span className="block text-[12.5px] font-semibold">
-                      {cat.label}
-                    </span>
-                    <span className="mt-0.5 block text-[10px] text-text-3">
-                      {cat.hint}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-
-          <div className="mt-4 flex items-center justify-between gap-2">
-            <h3 className="m-0 text-[12px] font-semibold text-text">
-              جداول {activeCategory?.label}
-            </h3>
-            <Can capability="manage-system-config">
-              <div className="flex flex-wrap gap-1">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={locked}
-                  onClick={() => void createTable("party-rates")}
-                >
-                  إضافة
-                </Button>
-                {selectedCategory === "field-inspector" ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
                     disabled={locked}
-                    onClick={() => void createTable("flat")}
+                    onClick={() => void activate()}
+                    className="rounded-md border border-border px-2.5 py-1 text-[11px] font-semibold text-text-2 hover:bg-surface-2 disabled:opacity-50"
                   >
-                    حوافز
-                  </Button>
+                    اجعله الافتراضي
+                  </button>
+                ) : null}
+
+                {canEdit ? (
+                  <button
+                    type="button"
+                    disabled={locked}
+                    onClick={openAssign}
+                    className="rounded-md border border-border px-2.5 py-1 text-[11px] font-semibold text-text-2 hover:bg-surface-2 disabled:opacity-50"
+                  >
+                    من يخصّه الجدول
+                    {hasAssignments ? ` (${draft.assignedCount})` : ""}
+                  </button>
+                ) : null}
+
+                {canEdit ? (
+                  <button
+                    type="button"
+                    disabled={
+                      locked || tables.length <= 1 || hasAssignments
+                    }
+                    onClick={() => void removeTable()}
+                    className="ms-auto rounded-md px-2.5 py-1 text-[11px] font-semibold text-danger-text hover:bg-danger-bg disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    حذف الجدول
+                  </button>
                 ) : null}
               </div>
-            </Can>
-          </div>
 
-          <ul className="mt-2 list-none space-y-1 rounded-md border border-border bg-surface p-1">
-            {tables.length === 0 ? (
-              <li className="px-3 py-4 text-center text-[12px] text-text-3">
-                لا توجد جداول — أضف واحدًا
-              </li>
-            ) : (
-              tables.map((t) => {
-                const selected = t.id === selectedId;
-                return (
-                  <li key={t.id}>
-                    <button
-                      type="button"
-                      disabled={loading || busy}
-                      onClick={() => void selectTable(t.id)}
-                      className={cn(
-                        "flex w-full items-center justify-between gap-2 rounded px-2.5 py-2 text-start transition-colors",
-                        selected
-                          ? "bg-primary/10 text-text"
-                          : "text-text-2 hover:bg-surface-2",
-                      )}
+              {assignedNames.length > 0 ? (
+                <p className="m-0 text-[12px] text-text-3">
+                  مسند إلى: {assignedNames.map((p) => p.name).join("، ")}
+                </p>
+              ) : contentCategory === "engineering-survey" ? (
+                <p className="m-0 text-[12px] text-amber">
+                  لم يُسند لأي مكتب — لن يُستخدم حتى تسنده من «من يخصّه الجدول».
+                </p>
+              ) : (
+                <p className="m-0 text-[12px] text-text-3">
+                  بلا إسناد — يُستخدم الافتراضي عند الاحتساب.
+                </p>
+              )}
+            </div>
+
+            {/* الأسعار */}
+            <div className="space-y-4 px-5 py-5">
+              {hasAssignments ? (
+                <p className="m-0 rounded-lg bg-surface-2 px-3 py-2.5 text-[12px] leading-relaxed text-text-2">
+                  مرتبط بمستحقين: الحفظ ينشئ{" "}
+                  <strong className="font-semibold">نسخة جديدة</strong> وينقل
+                  الإسناد إليها (بدون كسر الأرقام السابقة).
+                </p>
+              ) : null}
+
+              {contentCategory === "engineering-survey" ? (
+                <>
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="m-0 text-[14px] font-bold text-heading">
+                      شرائح المساحة
+                    </h2>
+                    {canEdit ? (
+                      <button
+                        type="button"
+                        disabled={locked}
+                        onClick={addTier}
+                        className="text-[12px] font-semibold text-primary hover:underline disabled:opacity-50"
+                      >
+                        + شريحة
+                      </button>
+                    ) : null}
+                  </div>
+                  <p className="m-0 -mt-2 text-[12px] text-text-3">
+                    من / حتى بالمتر، والسعر بالريال. الأخير = فأكثر.
+                  </p>
+
+                  <div className="space-y-2">
+                    {draft.areaTiers.map((tier, index) => {
+                      const isLast = index === draft.areaTiers.length - 1;
+                      return (
+                        <div
+                          key={`${tier.sortOrder}-${index}`}
+                          className="grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-2 rounded-lg border border-border bg-bg/40 px-3 py-3 sm:gap-3"
+                        >
+                          <div>
+                            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-text-3">
+                              من
+                            </span>
+                            <MoneyInput
+                              id={`tier-from-${index}`}
+                              value={tierFromValue(draft.areaTiers, index)}
+                              locked={locked || index === 0}
+                              onChange={(n) => updateTierFrom(index, n)}
+                            />
+                          </div>
+                          <div>
+                            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-text-3">
+                              حتى
+                            </span>
+                            {isLast ? (
+                              <div className="flex h-10 items-center text-[13px] font-medium text-text-2">
+                                فأكثر
+                              </div>
+                            ) : (
+                              <MoneyInput
+                                id={`tier-max-${index}`}
+                                value={tier.maxAreaM2 ?? 0}
+                                locked={locked}
+                                onChange={(n) =>
+                                  updateTier(index, { maxAreaM2: n })
+                                }
+                              />
+                            )}
+                          </div>
+                          <div>
+                            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-text-3">
+                              أتعاب
+                            </span>
+                            <MoneyInput
+                              id={`tier-fee-${index}`}
+                              value={tier.feeSar}
+                              locked={locked}
+                              onChange={(n) =>
+                                updateTier(index, { feeSar: n })
+                              }
+                            />
+                          </div>
+                          <div className="pb-1">
+                            {canEdit ? (
+                              <button
+                                type="button"
+                                title="حذف الشريحة"
+                                disabled={
+                                  locked || draft.areaTiers.length <= 1
+                                }
+                                onClick={() => removeTier(index)}
+                                className="flex h-10 w-9 items-center justify-center rounded-md text-text-3 hover:bg-danger-bg hover:text-danger-text disabled:opacity-30"
+                              >
+                                ×
+                              </button>
+                            ) : (
+                              <span className="inline-block w-9" />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : null}
+
+              {contentCategory === "court-visit" ? (
+                <>
+                  <h2 className="m-0 text-[14px] font-bold text-heading">
+                    أتعاب زيارة المحكمة
+                  </h2>
+                  <p className="m-0 -mt-2 text-[12px] text-text-3">
+                    للمراجع المتعاون عند إكمال الزيارة. الموظف بلا أتعاب زيارة
+                    هنا.
+                  </p>
+                  <FormGroup className="max-w-xs">
+                    <Label
+                      htmlFor="fee-court-visit"
+                      className="mb-1.5 text-[12px] font-semibold text-text-2"
                     >
-                      <span className="min-w-0 truncate text-[12px] font-medium">
-                        {t.name || "بدون اسم"}
-                      </span>
-                      <span className="flex shrink-0 items-center gap-1">
-                        {(t.assignedCount ?? 0) > 0 ? (
-                          <Badge tone="info" className="text-[10px]">
-                            {t.assignedCount}
-                          </Badge>
-                        ) : null}
-                        {t.isActive ? (
-                          <Badge tone="success" className="text-[10px]">
-                            افتراضي
-                          </Badge>
-                        ) : null}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })
-            )}
-          </ul>
-          <p className="mt-2 m-0 text-[11px] leading-relaxed text-text-3">
-            أسند الجدول للمستحقين المطلوبين. بدون إسناد: المكاتب الهندسية بلا
-            تسعيرة، وباقي الفئات تستخدم الجدول الافتراضي.
-          </p>
-        </aside>
-
-        <Card className="min-w-0 flex-1 overflow-hidden shadow-none">
-          <CardBody className="space-y-6">
-            {loading && !draft.id ? (
-              <p className="m-0 text-[13px] text-text-3">جاري التحميل…</p>
-            ) : !draft.id ? (
-              <p className="m-0 text-[13px] text-text-3">
-                اختر فئة وأضف جدولًا للبدء.
-              </p>
-            ) : (
-              <>
-                <div className="space-y-2 border-b border-border pb-4">
-                  <Label
-                    htmlFor="pricing-name"
-                    className="m-0 text-[11px] font-semibold text-text-2"
-                  >
-                    اسم الجدول
-                  </Label>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Input
-                      id="pricing-name"
-                      className="min-w-0 flex-1"
-                      value={draft.name}
-                      readOnly={locked}
-                      disabled={locked}
-                      onChange={(e) =>
-                        setDraft((d) => ({ ...d, name: e.target.value }))
+                      المبلغ (ر.س)
+                    </Label>
+                    <MoneyInput
+                      id="fee-court-visit"
+                      value={draft.courtVisitFeeSar}
+                      locked={locked}
+                      onChange={(n) =>
+                        setDraft((d) => ({ ...d, courtVisitFeeSar: n }))
                       }
                     />
-                    {draft.isActive ? (
-                      <Badge tone="success" className="shrink-0">
-                        افتراضي للفئة
-                      </Badge>
-                    ) : (
-                      <Can capability="manage-system-config">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="shrink-0"
-                          disabled={locked}
-                          onClick={() => void activate()}
-                        >
-                          تعيين كافتراضي
-                        </Button>
-                      </Can>
-                    )}
-                    <Can capability="manage-system-config">
-                      <Button
-                        type="button"
-                        variant="accent"
-                        size="sm"
-                        className="shrink-0"
-                        disabled={locked}
-                        onClick={openAssign}
-                      >
-                        إسناد
-                        {(draft.assignedCount ?? 0) > 0
-                          ? ` (${draft.assignedCount})`
-                          : ""}
-                      </Button>
-                    </Can>
-                    <Can capability="manage-system-config">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="shrink-0"
-                        disabled={
-                          locked ||
-                          tables.length <= 1 ||
-                          (draft.assignedCount ?? 0) > 0
-                        }
-                        onClick={() => void removeTable()}
-                      >
-                        حذف
-                      </Button>
-                    </Can>
-                  </div>
-                  {assignedNames.length > 0 ? (
-                    <p className="m-0 text-[11px] text-text-3">
-                      مسند إلى:{" "}
-                      {assignedNames.map((p) => p.name).join("، ")}
-                    </p>
-                  ) : selectedCategory === "engineering-survey" ? (
-                    <p className="m-0 text-[11px] text-amber">
-                      لم يُسند لأي مكتب بعد — المكتب لا يستخدم هذا الجدول حتى
-                      الإسناد.
-                    </p>
-                  ) : (
-                    <p className="m-0 text-[11px] text-text-3">
-                      بلا إسناد — يُستخدم الافتراضي عند الاحتساب إن وُجد.
-                    </p>
-                  )}
-                </div>
+                  </FormGroup>
+                </>
+              ) : null}
 
-                {(draft.assignedCount ?? 0) > 0 ? (
-                  <Note tone="info">
-                    هذا الجدول مرتبط بمستحقين، لذلك لا يتغير تاريخيًا. عند الحفظ
-                    ستُنشأ نسخة جديدة وتُنقل الإسنادات إليها في عملية ذرّية.
-                  </Note>
-                ) : null}
+              {contentCategory === "field-inspector" &&
+              draft.pricingKind === "flat" ? (
+                <>
+                  <h2 className="m-0 text-[14px] font-bold text-heading">
+                    حافز موظف (مقطوع)
+                  </h2>
+                  <FormGroup className="max-w-xs">
+                    <Label
+                      htmlFor="fee-flat"
+                      className="mb-1.5 text-[12px] font-semibold text-text-2"
+                    >
+                      المبلغ (ر.س)
+                    </Label>
+                    <MoneyInput
+                      id="fee-flat"
+                      value={draft.flatAmountSar ?? 0}
+                      locked={locked}
+                      onChange={(n) =>
+                        setDraft((d) => ({ ...d, flatAmountSar: n }))
+                      }
+                    />
+                  </FormGroup>
+                </>
+              ) : null}
 
-                {selectedCategory === "engineering-survey" ? (
-                  <section className="space-y-3">
-                    <div className="flex items-end justify-between gap-3">
-                      <div>
-                        <h3 className="m-0 text-[13px] font-semibold text-text">
-                          شرائح المساحة
-                        </h3>
-                        <p className="m-0 mt-0.5 text-[11px] text-text-3">
-                          حدّد من/حتى والأتعاب. الصف الأخير لما فوقه.
-                        </p>
-                      </div>
-                      <Can capability="manage-system-config">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={locked}
-                          onClick={addTier}
-                        >
-                          إضافة شريحة
-                        </Button>
-                      </Can>
-                    </div>
-                    <div className="overflow-x-auto rounded-md border border-border">
-                      <Table>
-                        <THead>
-                          <Tr>
-                            <Th className="w-[28%]">من (م²)</Th>
-                            <Th className="w-[28%]">حتى (م²)</Th>
-                            <Th className="w-[32%]">الأتعاب (ر.س)</Th>
-                            <Th className="w-[12%]" />
-                          </Tr>
-                        </THead>
-                        <TBody>
-                          {draft.areaTiers.map((tier, index) => {
-                            const isLast = index === draft.areaTiers.length - 1;
-                            return (
-                              <Tr key={`${tier.sortOrder}-${index}`}>
-                                <Td className="align-middle">
-                                  <MoneyInput
-                                    id={`tier-from-${index}`}
-                                    value={tierFromValue(draft.areaTiers, index)}
-                                    locked={locked || index === 0}
-                                    onChange={(n) => updateTierFrom(index, n)}
-                                  />
-                                </Td>
-                                <Td className="align-middle">
-                                  {isLast ? (
-                                    <span className="block px-1 text-[12.5px] text-text-2">
-                                      فأكثر
-                                    </span>
-                                  ) : (
-                                    <MoneyInput
-                                      id={`tier-max-${index}`}
-                                      value={tier.maxAreaM2 ?? 0}
-                                      locked={locked}
-                                      onChange={(n) =>
-                                        updateTier(index, { maxAreaM2: n })
-                                      }
-                                    />
-                                  )}
-                                </Td>
-                                <Td className="align-middle">
-                                  <MoneyInput
-                                    id={`tier-fee-${index}`}
-                                    value={tier.feeSar}
-                                    locked={locked}
-                                    onChange={(n) =>
-                                      updateTier(index, { feeSar: n })
-                                    }
-                                  />
-                                </Td>
-                                <Td className="align-middle text-center">
-                                  <Can capability="manage-system-config">
-                                    <button
-                                      type="button"
-                                      title="حذف الشريحة"
-                                      disabled={
-                                        locked || draft.areaTiers.length <= 1
-                                      }
-                                      onClick={() => removeTier(index)}
-                                      className="rounded px-2 py-1 text-[12px] text-danger-text hover:bg-danger-bg disabled:cursor-not-allowed disabled:opacity-40"
-                                    >
-                                      حذف
-                                    </button>
-                                  </Can>
-                                </Td>
-                              </Tr>
-                            );
-                          })}
-                        </TBody>
-                      </Table>
-                    </div>
-                  </section>
-                ) : null}
-
-                {selectedCategory === "court-visit" ? (
-                  <section className="space-y-3">
-                    <div>
-                      <h3 className="m-0 text-[13px] font-semibold text-text">
-                        أتعاب زيارة المحكمة
-                      </h3>
-                      <p className="m-0 mt-0.5 text-[11px] text-text-3">
-                        أتعاب الزيارة تُستحق بإكمال مهمة زيارة محكمة. متعاون فرد
-                        فقط.
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <FormGroup>
-                        <Label
-                          htmlFor="fee-court-visit"
-                          className="mb-1 text-[11px] font-semibold text-text-2"
-                        >
-                          أتعاب الزيارة — فرد (ر.س)
-                        </Label>
-                        <MoneyInput
-                          id="fee-court-visit"
-                          value={draft.courtVisitFeeSar}
-                          locked={locked}
-                          onChange={(n) =>
-                            setDraft((d) => ({
-                              ...d,
-                              courtVisitFeeSar: n,
-                            }))
-                          }
-                        />
-                      </FormGroup>
-                    </div>
-                    <p className="m-0 rounded-lg border border-border bg-surface-2 px-3 py-2 text-[11px] text-text-3">
-                      أتعاب استلام المفاتيح خارج التسعيرة — إيراد للشركة من إنفاذ
-                      يثبت استحقاقه بتسجيل الظرف، والمبلغ تُدخله المالية ضمن
-                      فوترة إنفاذ.
-                    </p>
-                  </section>
-                ) : null}
-
-                {selectedCategory === "field-inspector"
-                && draft.pricingKind === "flat" ? (
-                  <section className="space-y-3">
-                    <div>
-                      <h3 className="m-0 text-[13px] font-semibold text-text">
-                        حافز موظف مقطوع
-                      </h3>
-                      <p className="m-0 mt-0.5 text-[11px] text-text-3">
-                        يُسند للموظفين الذين لديهم حوافز مفعّلة، ويسري على
-                        الاستحقاقات الجديدة فقط.
-                      </p>
-                    </div>
+              {contentCategory === "field-inspector" &&
+              draft.pricingKind !== "flat" ? (
+                <>
+                  <h2 className="m-0 text-[14px] font-bold text-heading">
+                    أتعاب المعاين
+                  </h2>
+                  <div className="grid max-w-lg grid-cols-1 gap-4 sm:grid-cols-2">
                     <FormGroup>
                       <Label
-                        htmlFor="fee-flat"
-                        className="mb-1 text-[11px] font-semibold text-text-2"
+                        htmlFor="fee-insp-ind"
+                        className="mb-1.5 text-[12px] font-semibold text-text-2"
                       >
-                        مبلغ الحافز (ر.س)
+                        متعاون فرد (ر.س)
                       </Label>
                       <MoneyInput
-                        id="fee-flat"
-                        value={draft.flatAmountSar ?? 0}
+                        id="fee-insp-ind"
+                        value={draft.fieldInspectorIndividualFeeSar}
                         locked={locked}
                         onChange={(n) =>
                           setDraft((d) => ({
                             ...d,
-                            flatAmountSar: n,
+                            fieldInspectorIndividualFeeSar: n,
                           }))
                         }
                       />
                     </FormGroup>
-                  </section>
-                ) : null}
-
-                {selectedCategory === "field-inspector"
-                && draft.pricingKind !== "flat" ? (
-                  <section className="space-y-3">
-                    <div>
-                      <h3 className="m-0 text-[13px] font-semibold text-text">
-                        أتعاب المعاين الميداني
-                      </h3>
-                      <p className="m-0 mt-0.5 text-[11px] text-text-3">
-                        أسعار المتعاونين. حوافز الموظف من زر «حوافز» كجدول
-                        مقطوع مُسند.
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <FormGroup>
-                        <Label
-                          htmlFor="fee-insp-ind"
-                          className="mb-1 text-[11px] font-semibold text-text-2"
-                        >
-                          معاين — فرد (ر.س)
-                        </Label>
-                        <MoneyInput
-                          id="fee-insp-ind"
-                          value={draft.fieldInspectorIndividualFeeSar}
-                          locked={locked}
-                          onChange={(n) =>
-                            setDraft((d) => ({
-                              ...d,
-                              fieldInspectorIndividualFeeSar: n,
-                            }))
-                          }
-                        />
-                      </FormGroup>
-                      <FormGroup>
-                        <Label
-                          htmlFor="fee-insp-org"
-                          className="mb-1 text-[11px] font-semibold text-text-2"
-                        >
-                          معاين — منشأة (ر.س)
-                        </Label>
-                        <MoneyInput
-                          id="fee-insp-org"
-                          value={draft.fieldInspectorOrganizationFeeSar}
-                          locked={locked}
-                          onChange={(n) =>
-                            setDraft((d) => ({
-                              ...d,
-                              fieldInspectorOrganizationFeeSar: n,
-                            }))
-                          }
-                        />
-                      </FormGroup>
-                    </div>
-                  </section>
-                ) : null}
-
-                <Can capability="manage-system-config">
-                  <div className="flex justify-end border-t border-border pt-4">
-                    <Button
-                      type="button"
-                      variant="primary"
-                      size="lg"
-                      loading={saving}
-                      disabled={locked || !draft.id}
-                      showActionToast={false}
-                      onClick={() => void save()}
-                    >
-                      {(draft.assignedCount ?? 0) > 0
-                        ? "حفظ كنسخة جديدة"
-                        : "حفظ التسعيرة"}
-                    </Button>
+                    <FormGroup>
+                      <Label
+                        htmlFor="fee-insp-org"
+                        className="mb-1.5 text-[12px] font-semibold text-text-2"
+                      >
+                        منشأة (ر.س)
+                      </Label>
+                      <MoneyInput
+                        id="fee-insp-org"
+                        value={draft.fieldInspectorOrganizationFeeSar}
+                        locked={locked}
+                        onChange={(n) =>
+                          setDraft((d) => ({
+                            ...d,
+                            fieldInspectorOrganizationFeeSar: n,
+                          }))
+                        }
+                      />
+                    </FormGroup>
                   </div>
-                </Can>
-              </>
-            )}
-          </CardBody>
-        </Card>
+                </>
+              ) : null}
+            </div>
+
+            {/* حفظ واضح */}
+            {canEdit ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-surface-2/60 px-5 py-4">
+                <p className="m-0 text-[12px] text-text-3">
+                  {
+                    CATEGORIES.find((c) => c.id === contentCategory)?.hint ??
+                    activeCategory?.hint
+                  }
+                </p>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="lg"
+                  loading={saving}
+                  disabled={locked || !draft.id}
+                  showActionToast={false}
+                  onClick={() => void save()}
+                >
+                  {hasAssignments ? "حفظ كنسخة جديدة" : "حفظ"}
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       {assignOpen ? (
@@ -927,10 +969,10 @@ export function FinancePartyFeePricing() {
             <ModalHeader>
               <div className="min-w-0 flex-1">
                 <ModalTitle id="pricing-assign-title">
-                  إسناد «{draft.name}»
+                  من يخصّه «{draft.name}»
                 </ModalTitle>
                 <p className="m-0 mt-1 text-[12px] text-text-3">
-                  اختر {activeCategory?.partyLabel ?? "المستحقين"} لهذا الجدول
+                  {activeCategory?.partyLabel ?? "المستحقون"}
                 </p>
               </div>
               <ModalClose onClick={() => setAssignOpen(false)} />
@@ -938,7 +980,7 @@ export function FinancePartyFeePricing() {
             <ModalBody className="max-h-[50vh] space-y-1 overflow-y-auto">
               {categoryParties.length === 0 ? (
                 <Note tone="warn">
-                  لا يوجد مستحقون متاحون لهذه الفئة (تحقق من معرّف التوزيع).
+                  لا يوجد مستحقون لهذه الفئة (تحقق من معرّف التوزيع).
                 </Note>
               ) : (
                 categoryParties.map((party) => {
@@ -947,15 +989,15 @@ export function FinancePartyFeePricing() {
                     <label
                       key={party.id}
                       className={cn(
-                        "flex cursor-pointer items-start gap-2.5 rounded-md border px-3 py-2.5 transition-colors",
+                        "flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-3 transition-colors",
                         checked
-                          ? "border-primary/40 bg-primary/5"
+                          ? "border-heading/30 bg-heading/5"
                           : "border-border hover:bg-surface-2",
                       )}
                     >
                       <input
                         type="checkbox"
-                        className="mt-1"
+                        className="size-4"
                         checked={checked}
                         onChange={() => toggleAssignee(party.id)}
                       />
@@ -989,7 +1031,7 @@ export function FinancePartyFeePricing() {
                 showActionToast={false}
                 onClick={() => void saveAssignments()}
               >
-                حفظ الإسناد
+                تم
               </Button>
             </ModalFooter>
           </ModalCard>

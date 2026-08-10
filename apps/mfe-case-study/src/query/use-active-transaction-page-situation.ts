@@ -75,7 +75,11 @@ export function useActiveTransactionPageSituation(
   const needsPartyPrefetch = Boolean(pageId && PARTY_PAGE_IDS.has(pageId));
 
   const isSupervisorFees =
-    isFeesPage && (role === "section-supervisor" || role === "cdo" || role === "general-manager");
+    isFeesPage &&
+    (role === "section-supervisor" ||
+      role === "case-specialist" ||
+      role === "cdo" ||
+      role === "general-manager");
   const feesTaskKind =
     isFeesPage && !isSupervisorFees
       ? feesTaskKindForRole(role)

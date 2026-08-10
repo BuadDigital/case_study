@@ -430,10 +430,12 @@ export function computeFeesPageSituation(
 export function computeEngineeringFeesSituation(
   rows: InspectorFeeRowDto[],
   opts?: { closedStatementsPaidSar?: number },
-): Pick<
-  PageSituationValues,
-  "outstanding" | "pending" | "ready" | "paid"
-> {
+): {
+  outstanding: number;
+  pending: number;
+  ready: number;
+  paid: number;
+} {
   let outstanding = 0;
   let pending = 0;
   let ready = 0;

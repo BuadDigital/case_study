@@ -46,5 +46,10 @@ public static class CapabilityPolicyNames
     /// </summary>
     public const string ListDistributionAssignees = "Capability:list-distribution-assignees";
 
+    /// <summary>
+    /// Edit party-fee pricing tables: system admin, section supervisor (ops), or case specialist.
+    /// </summary>
+    public const string ManagePartyFeePricing = "Capability:manage-party-fee-pricing";
+
     public static string For(string capability) => $"Capability:{capability}";
 }

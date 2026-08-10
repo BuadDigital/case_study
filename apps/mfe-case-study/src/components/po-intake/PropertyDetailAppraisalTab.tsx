@@ -56,7 +56,7 @@ export function PropertyDetailAppraisalTab({
       <PartyRoleDetailPanel
         card={appraisalCard}
         submission={submission}
-        loading={loading}
+        loading={loading ?? false}
       />
     </>
   );

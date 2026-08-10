@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react";
 import { cn } from "../lib/cn";
 
 export function ModalOverlay({
@@ -67,11 +67,12 @@ export function ModalTitle({
 
 export function ModalClose({
   className,
+  type = "button",
   ...props
-}: HTMLAttributes<HTMLButtonElement>) {
+}: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
-      type="button"
+      type={type}
       className={cn(
         "shrink-0 cursor-pointer rounded-[var(--radius-sm)] border-none bg-transparent px-2 py-1 text-[22px] leading-none text-text-3 hover:bg-surface-2 hover:text-text",
         className,

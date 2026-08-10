@@ -250,11 +250,12 @@ public class InspectorFeesController : ControllerBase
             PrototypeRole is "cdo" or "general-manager";
 
         public bool CanSuperviseAnyDepartment =>
-            CanManageAllDepartments || PrototypeRole == "section-supervisor";
+            CanManageAllDepartments
+            || PrototypeRole is "section-supervisor" or "case-specialist";
 
         public string? VisibleDepartment =>
-            PrototypeRole == "section-supervisor"
-                // Fail closed: a supervisor without a resolved department must not see every queue.
+            PrototypeRole is "section-supervisor" or "case-specialist"
+                // Fail closed: without department, do not open every queue.
                 ? Department ?? SupervisingDepartments.Unassigned
                 : null;
 

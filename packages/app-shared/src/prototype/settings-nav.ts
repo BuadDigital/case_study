@@ -8,7 +8,7 @@ export type SettingsNavItem = {
   placeholder?: boolean;
 };
 
-/** عناصر قائمة الإعدادات — التسعيرة للمسؤول فقط عبر صلاحية الصفحة */
+/** عناصر قائمة الإعدادات — التسعيرة تظهر حسب صلاحية الصفحة (مسؤول/مشرف/أخصائي…) */
 export const SETTINGS_NAV: SettingsNavItem[] = [
   {
     id: "users",

@@ -685,7 +685,7 @@ export default function LoginPage() {
 
           {step === "otp" ? (
             <section key="otp" className={stepAnim}>
-              <div className="mb-5">
+              <div className="mb-5 flex justify-end">
                 <button
                   type="button"
                   className="inline-flex cursor-pointer items-center gap-[7px] border-0 bg-transparent p-0 text-[13px] font-bold text-text-2 hover:text-ink"
@@ -700,6 +700,7 @@ export default function LoginPage() {
                     window.setTimeout(() => mobileRef.current?.focus(), 50);
                   }}
                 >
+                  تغيير رقم الجوال
                   <svg
                     className="size-4"
                     viewBox="0 0 24 24"
@@ -710,9 +711,8 @@ export default function LoginPage() {
                     strokeLinejoin="round"
                     aria-hidden
                   >
-                    <path d="M9 18l6-6-6-6" />
+                    <path d="M15 18l-6-6 6-6" />
                   </svg>
-                  تغيير رقم الجوال
                 </button>
               </div>
               <span className={stepTag}>
