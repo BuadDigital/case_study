@@ -13,7 +13,9 @@ public class PartyTaskSubmission
     public string PayloadJson { get; set; } = "{}";
     public string? ReturnNote { get; set; }
     public DateTime? SubmittedAtUtc { get; set; }
-    /// <summary>Set when a specialist accepts the outputs (engineering-survey fee accrual).</summary>
+    /// <summary>
+    /// Set when a specialist accepts party outputs (survey fee accrual; inspection → إنفاذ package gate).
+    /// </summary>
     public DateTime? AcceptedAtUtc { get; set; }
     public string? SubmittedByUserId { get; set; }
     public string? SubmittedByName { get; set; }

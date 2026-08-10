@@ -10,8 +10,7 @@ export type PropertyDetailPartyRoleKey =
   | "specialist"
   | "inspection"
   | "survey"
-  | "appraisal"
-  | "government";
+  | "appraisal";
 
 export type PropertyDetailPartyCard = {
   roleKey: PropertyDetailPartyRoleKey;

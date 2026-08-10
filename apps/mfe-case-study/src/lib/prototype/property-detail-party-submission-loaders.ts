@@ -47,6 +47,12 @@ function parseEvaluatorPayload(
       typeof raw.signedAppraisalFileName === "string"
         ? raw.signedAppraisalFileName
         : null,
+    acceptedAtUtc: dto.acceptedAtUtc ?? null,
+    acceptedByName: dto.acceptedByName ?? null,
+    returnNote:
+      typeof raw.returnNote === "string"
+        ? raw.returnNote
+        : dto.returnNote ?? null,
   };
 }
 
@@ -119,5 +125,7 @@ export async function loadEngineeringSurveySubmissionSnapshot(
       typeof payload.submittedAtUtc === "string"
         ? payload.submittedAtUtc
         : result.data.submittedAtUtc,
+    acceptedAtUtc: result.data.acceptedAtUtc ?? null,
+    acceptedByName: result.data.acceptedByName ?? null,
   };
 }

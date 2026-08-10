@@ -14,11 +14,13 @@ import {
   PROPERTY_BOUNDARY_ROWS,
   approximatePropertyGeo,
   boundariesMarkedUnavailable,
+  formatDateAr,
   formatPropertyDeedDisplay,
   type PoPropertyIntake,
 } from "../../lib/prototype/po-intake-data";
 import {
   FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
+  acceptInspectorWorkspace,
   getOrCreateInspectorWorkspace,
   loadInspectorWorkspaceSnapshot,
   reopenInspectorWorkspace,
@@ -33,6 +35,7 @@ import {
   inspectorFeatureRequiresPhoto,
   inspectorPhotoCoverageLabel,
   inspectorPhotoStampText,
+  isInspectorWorkspaceAccepted,
   isInspectorWorkspaceLocked,
   isServiceAmenityPhotoSlotComplete,
   listServiceAmenityPhotoSlots,
@@ -69,6 +72,11 @@ import type { PropertyDetailPartyCard } from "../../lib/prototype/property-detai
 /** Shared control style for in-tab edit inputs — matches InsField typography. */
 const EDIT_CONTROL_CLASS =
   "w-full appearance-none rounded-lg border border-border-md bg-surface px-[11px] py-[7px] text-[12.5px] text-text font-inherit";
+
+function formatAcceptedDate(iso: string): string {
+  const day = iso.trim().slice(0, 10);
+  return day ? formatDateAr(day) : iso.trim();
+}
 
 function SharedBadge() {
   return (
@@ -685,6 +693,7 @@ export function PropertyDetailInspectionTab({
   const [returnNote, setReturnNote] = useState("");
   const [returnError, setReturnError] = useState<string | null>(null);
   const [returning, setReturning] = useState(false);
+  const [accepting, setAccepting] = useState(false);
 
   useEffect(() => {
     if (!inspectionTask) {
@@ -874,9 +883,21 @@ export function PropertyDetailInspectionTab({
     setReturnOpen(false);
     setReturnNote("");
     showToast("أُعيدت مهمة المعاينة للتصحيح", "success");
-    window.dispatchEvent(
-      new CustomEvent(FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT),
-    );
+    onSubmitted?.();
+  }
+
+  async function handleAcceptInspection() {
+    if (!inspectionTask) return;
+    setAccepting(true);
+    const accepted = await acceptInspectorWorkspace(inspectionTask.id);
+    setAccepting(false);
+    if (!accepted.ok) {
+      showToast(accepted.error, "error");
+      return;
+    }
+    setDraft(accepted.data);
+    showToast("تم اعتماد بيانات المعاينة — تظهر في حزمة إنفاذ", "success");
+    onSubmitted?.();
   }
 
   if (!inspectionCard) {
@@ -891,23 +912,66 @@ export function PropertyDetailInspectionTab({
   if (loading) return <InlineLoadingSkeleton />;
 
   const photoSlots = draft ? listServiceAmenityPhotoSlots(draft) : [];
-  const canReturn =
+  const canReviewPackage =
     !editMode && Boolean(inspectionTask) && draft?.status === "submitted";
+  const inspectionAccepted = isInspectorWorkspaceAccepted(draft);
+  const canAccept = canReviewPackage && !inspectionAccepted;
+  const canReturn = canReviewPackage && !inspectionAccepted;
 
   return (
     <div id="pdInspection">
-      {!showEditFields && canReturn && !returnOpen ? (
-        <div className="mb-3.5 flex justify-end">
-          <button
-            type="button"
-            className="rounded-lg border border-border-md bg-surface px-3.5 py-1.5 text-[11.5px] font-bold text-text-2 max-lg:min-h-11 max-lg:w-full max-lg:rounded-[12px] max-lg:text-[13px]"
-            onClick={() => {
-              setReturnOpen(true);
-              setReturnError(null);
-            }}
-          >
-            إعادة للتصحيح
-          </button>
+      {!showEditFields && canReviewPackage && !returnOpen ? (
+        <div className="mb-3.5 flex flex-wrap items-center justify-end gap-2">
+          {inspectionAccepted ? (
+            <div className="me-auto rounded-lg border border-[color-mix(in_srgb,var(--success)_35%,var(--border))] bg-[var(--success-bg)] px-3 py-1.5 text-[11.5px] font-semibold text-[var(--success)] max-lg:w-full">
+              معتمد
+              {draft?.acceptedByName?.trim()
+                ? ` — ${draft.acceptedByName.trim()}`
+                : ""}
+              {draft?.acceptedAtUtc
+                ? ` · ${formatAcceptedDate(draft.acceptedAtUtc)}`
+                : ""}
+            </div>
+          ) : null}
+          {canAccept ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="primary"
+              loading={accepting}
+              showActionToast={false}
+              className="max-lg:min-h-11 max-lg:flex-1"
+              onClick={() => void handleAcceptInspection()}
+            >
+              اعتماد البيانات
+            </Button>
+          ) : null}
+          {canReturn ? (
+            <button
+              type="button"
+              className="rounded-lg border border-border-md bg-surface px-3.5 py-1.5 text-[11.5px] font-bold text-text-2 max-lg:min-h-11 max-lg:flex-1 max-lg:rounded-[12px] max-lg:text-[13px]"
+              disabled={accepting}
+              onClick={() => {
+                setReturnOpen(true);
+                setReturnError(null);
+              }}
+            >
+              إعادة للتصحيح
+            </button>
+          ) : null}
+          {inspectionAccepted ? (
+            <button
+              type="button"
+              className="rounded-lg border border-border-md bg-surface px-3.5 py-1.5 text-[11.5px] font-bold text-text-2 max-lg:min-h-11 max-lg:w-full max-lg:rounded-[12px] max-lg:text-[13px]"
+              disabled={accepting}
+              onClick={() => {
+                setReturnOpen(true);
+                setReturnError(null);
+              }}
+            >
+              إلغاء الاعتماد وإعادة للتصحيح
+            </button>
+          ) : null}
         </div>
       ) : null}
 

@@ -7,280 +7,285 @@ import {
   InfoBox,
   SectionHeader,
   DetailBadge,
-  ltrValueClass,
 } from "./PropertyDetailFields";
-import type { PropertyDetailPartySubmission } from "../../lib/prototype/property-detail-party-submissions";
-import type { PropertyDetailPartyCard } from "../../lib/prototype/property-detail-parties";
-import type { PoPropertyIntake } from "../../lib/prototype/po-intake-data";
 import { Badge, InlineLoadingSkeleton, type BadgeTone } from "@platform/design-system";
+import {
+  formatPropertyDeedDisplay,
+  type PoPropertyIntake,
+} from "../../lib/prototype/po-intake-data";
+import {
+  courtVisitResultKindLabel,
+} from "../../lib/prototype/operations-task-property-scope";
+import {
+  operationsTaskStatusLabel,
+} from "../../lib/prototype/operations-task-display";
+import { usePropertyOperationsTasks } from "../../query/use-property-operations-tasks";
+import {
+  keyGateSourceLabelAr,
+  keyHandedLabelAr,
+  keysStatusLabelAr,
+  resolveEnvelopeIdFromSources,
+  usePropertyKeyGateQuery,
+} from "../../query/use-property-key-gate-query";
+import { canManageOperationsTasks } from "../../lib/prototype/operations-task-roles";
+import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import Link from "next/link";
 
-function keysStatusBadgeTone(
-  submission: PropertyDetailPartySubmission | null,
-): BadgeTone {
-  const statusField = submission?.fields.find((f) => f.label === "حالة المفاتيح");
-  const value = statusField?.value ?? "";
-  if (value.includes("استلام")) return "primary";
-  if (value.includes("لم")) return "warning";
+function keysBadgeTone(status: string): BadgeTone {
+  if (status === "received") return "primary";
+  if (status === "pending" || status === "blocked") return "warning";
+  if (status === "not_required") return "default";
   return "default";
+}
+
+/**
+ * مفاتيح العقار — listens to key-envelope gate + court_visit ops (linked envelope).
+ */
+export function PropertyDetailPropertyKeys({
+  poNumber,
+  property,
+}: {
+  poNumber: string;
+  property: PoPropertyIntake;
+}) {
+  const { role } = usePrototype();
+  const canCreateOps = canManageOperationsTasks(role);
+  const deedNumber = property.deedNumber.trim();
+  const deedDisplay = formatPropertyDeedDisplay(property) || deedNumber;
+  const requestNumber = property.requestNumber.trim();
+
+  const {
+    courtVisits,
+    primaryCourtVisit,
+    isLoading: opsLoading,
+  } = usePropertyOperationsTasks(
+    { poNumber, deedNumber, deedDisplay },
+    { live: true },
+  );
+
+  const {
+    data: gate,
+    isLoading: gateLoading,
+    isFetching: gateFetching,
+  } = usePropertyKeyGateQuery({
+    propertyId: property.id,
+    poNumber,
+    deedNumber,
+    requestNumber: requestNumber || undefined,
+    enabled: true,
+  });
+
+  const loading = opsLoading || gateLoading || gateFetching;
+
+  if (loading) return <InlineLoadingSkeleton />;
+
+  const visitWithEnvelope =
+    courtVisits.find((t) => t.linkedEnvelopeId?.trim()) ?? null;
+  const envelopeId = resolveEnvelopeIdFromSources(
+    gate,
+    primaryCourtVisit?.linkedEnvelopeId ?? visitWithEnvelope?.linkedEnvelopeId,
+  );
+
+  const keysStatus = gate?.keysStatus ?? "";
+  const keysLabel = keysStatusLabelAr(keysStatus);
+  const handedLabel = keyHandedLabelAr(gate?.keyHandedToInspector ?? "");
+  const sourceLabel = keyGateSourceLabelAr(gate?.source ?? "none");
+
+  const primaryVisit = primaryCourtVisit;
+  const resultKind = primaryVisit?.courtVisitResult?.kind;
+  const visitLinkedCreate =
+    resultKind === "received" && !envelopeId
+      ? `/operations-tasks?task=${encodeURIComponent(primaryVisit?.id ?? "")}`
+      : null;
+
+  const createCourtHref = `/operations-tasks?create=1&type=court_visit&scope=transaction&po=${encodeURIComponent(poNumber)}&deed=${encodeURIComponent(deedDisplay)}`;
+  const keysHref = envelopeId
+    ? `/keys?envelope=${encodeURIComponent(envelopeId)}`
+    : "/keys";
+
+  const hasAny =
+    Boolean(keysStatus) ||
+    Boolean(envelopeId) ||
+    Boolean(primaryVisit) ||
+    gate?.source === "court_access";
+
+  if (!hasAny) {
+    return (
+      <>
+        <EmptyState
+          title="لا بيانات مفاتيح بعد"
+          sub="تُجلب الحالة من ظرف المفاتيح (إدارة المفاتيح) وزيارات المحكمة في المهام."
+        />
+        <div className="mt-3 flex flex-wrap gap-2">
+          {canCreateOps ? (
+            <Link
+              href={createCourtHref}
+              className="inline-flex min-h-9 items-center justify-center rounded-lg bg-ink px-[18px] py-2 text-[12.5px] font-bold text-white no-underline max-lg:min-h-11 max-lg:w-full"
+            >
+              إنشاء زيارة محكمة
+            </Link>
+          ) : null}
+          <Link
+            href="/keys"
+            className="inline-flex min-h-9 items-center justify-center rounded-lg border border-border-md bg-surface px-[18px] py-2 text-[12.5px] font-bold text-text-2 no-underline max-lg:min-h-11 max-lg:w-full"
+          >
+            إدارة المفاتيح
+          </Link>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <InfoBox icon="ℹ">
+        مصدر التبويب: بوابة المفاتيح (الظرف / تمكين المحكمة) + ربط مهام زيارة
+        المحكمة — وليس حزمة المراجعة الحكومية القديمة.
+      </InfoBox>
+
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface-2 px-3.5 py-2.5">
+        <div>
+          <div className="text-[13px] font-bold text-heading">حالة المفاتيح</div>
+          <div className="mt-0.5 text-[11px] text-text-2">
+            المصدر: {sourceLabel}
+            {primaryVisit?.assigneeName
+              ? ` · آخر زيارة: ${primaryVisit.assigneeName}`
+              : ""}
+          </div>
+        </div>
+        <Badge tone={keysBadgeTone(keysStatus)}>{keysLabel}</Badge>
+      </div>
+
+      <SectionHeader>ملخص</SectionHeader>
+      <div className="mb-3 grid gap-2 sm:grid-cols-3">
+        <SummaryCard label="حالة المفاتيح" value={keysLabel} />
+        <SummaryCard label="تسليم للمُعاين" value={handedLabel} />
+        <SummaryCard
+          label="جاهز للمعاينة (مفتاح)"
+          value={gate?.keyAvailable ? "نعم" : "لا"}
+        />
+      </div>
+
+      <FieldsGrid>
+        <FieldBox
+          label="رقم الطلب"
+          value={gate?.requestNumber?.trim() || requestNumber || "—"}
+          emptyLabel="—"
+          ltr
+        />
+        <FieldBox
+          label="رقم الصك"
+          value={gate?.deedNumber?.trim() || deedDisplay}
+          emptyLabel="—"
+          ltr
+        />
+        <FieldBox label="مصدر الحالة" value={sourceLabel} emptyLabel="—" />
+        <FieldBox
+          label="حالة الإسناد"
+          value={gate?.assignmentStatus?.trim() || "—"}
+          emptyLabel="—"
+        />
+        {envelopeId ? (
+          <FieldBox label="معرّف الظرف" value={envelopeId} emptyLabel="—" ltr />
+        ) : null}
+        {gate?.studyHoldStatus && gate.studyHoldStatus !== "none" ? (
+          <FieldBox
+            label="إيقاف دراسة"
+            value={gate.studyHoldStatus}
+            emptyLabel="—"
+          />
+        ) : null}
+      </FieldsGrid>
+
+      {gate?.envelopeMissingWarning ? (
+        <div className="mt-3 rounded-lg border border-amber border-e-[3px] border-e-amber bg-amber-light px-3.5 py-2.5 text-xs text-amber-text">
+          تنبيه: يُتوقع وجود ظرف للمفاتيح ولم يُربط بعد.
+        </div>
+      ) : null}
+
+      {resultKind === "received" && !envelopeId ? (
+        <div className="mt-3 rounded-lg border border-amber border-e-[3px] border-e-amber bg-amber-light px-3.5 py-2.5 text-xs text-amber-text">
+          نتيجة الزيارة: استلام ظرف — سجّل الظرف من المهام («تسجيل الظرف
+          الآن») لربط الحالة.
+          {visitLinkedCreate ? (
+            <>
+              {" "}
+              <Link href={visitLinkedCreate} className="font-bold underline">
+                فتح المهمة
+              </Link>
+            </>
+          ) : null}
+        </div>
+      ) : null}
+
+      {primaryVisit ? (
+        <div className="mt-4">
+          <SectionHeader>زيارة المحكمة المرتبطة</SectionHeader>
+          <div className="rounded-lg border border-border bg-surface px-3.5 py-2.5 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-semibold text-heading">
+                {primaryVisit.displayId || primaryVisit.title}
+              </span>
+              <DetailBadge
+                tone={
+                  primaryVisit.status === "completed" ? "teal" : "amber"
+                }
+              >
+                {operationsTaskStatusLabel(primaryVisit.status)}
+              </DetailBadge>
+            </div>
+            <div className="mt-1 text-text-2">
+              {primaryVisit.assigneeName || "—"}
+              {resultKind
+                ? ` · ${courtVisitResultKindLabel(resultKind)}`
+                : ""}
+              {primaryVisit.linkedEnvelopeId
+                ? ` · ظرف: ${primaryVisit.linkedEnvelopeId}`
+                : ""}
+            </div>
+            <p className="mt-2 mb-0">
+              <Link
+                href={`/operations-tasks?task=${encodeURIComponent(primaryVisit.id)}`}
+                className="font-bold text-heading underline"
+              >
+                فتح في المهام
+              </Link>
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Link
+          href={keysHref}
+          className="inline-flex min-h-9 items-center justify-center rounded-lg bg-ink px-[18px] py-2 text-[12.5px] font-bold text-white no-underline max-lg:min-h-11"
+        >
+          {envelopeId ? "فتح الظرف في إدارة المفاتيح" : "إدارة المفاتيح"}
+        </Link>
+        {canCreateOps && courtVisits.length === 0 ? (
+          <Link
+            href={createCourtHref}
+            className="inline-flex min-h-9 items-center justify-center rounded-lg border border-border-md bg-surface px-[18px] py-2 text-[12.5px] font-bold text-text-2 no-underline max-lg:min-h-11"
+          >
+            إنشاء زيارة محكمة
+          </Link>
+        ) : null}
+      </div>
+    </>
+  );
 }
 
 function SummaryCard({
   label,
   value,
-  hint,
 }: {
   label: string;
   value: string;
-  hint?: string;
 }) {
   return (
     <div className="rounded-[10px] border border-border bg-surface-2 px-3.5 py-3">
       <div className="mb-1 text-[10.5px] text-text-3">{label}</div>
       <div className="text-[13px] font-bold text-heading">{value || "—"}</div>
-      {hint ? (
-        <div className="mt-1 text-[11px] text-text-3">{hint}</div>
-      ) : null}
     </div>
-  );
-}
-
-function GatewayPill({
-  label,
-  active,
-  tone = "gray",
-}: {
-  label: string;
-  active?: boolean;
-  tone?: "gray" | "teal" | "amber" | "red";
-}) {
-  return (
-    <span
-      className={
-        active
-          ? undefined
-          : "rounded-md border border-border bg-surface px-2.5 py-1 text-[11px] text-text-3"
-      }
-    >
-      {active ? <DetailBadge tone={tone}>{label}</DetailBadge> : label}
-    </span>
-  );
-}
-
-export function PropertyDetailPropertyKeys({
-  property,
-  governmentCard,
-  submission,
-  loading,
-}: {
-  property: PoPropertyIntake;
-  governmentCard: PropertyDetailPartyCard | null;
-  submission: PropertyDetailPartySubmission | null;
-  loading: boolean;
-}) {
-  const court =
-    submission?.fields.find((f) => f.label === "المحكمة")?.value?.trim() ||
-    property.court?.trim() ||
-    "";
-
-  const keysStatus =
-    submission?.fields.find((f) => f.label === "حالة المفاتيح")?.value ?? "";
-  const keysDescription =
-    submission?.remarks.find((r) => r.label === "المفاتيح / موقع الحفظ")
-      ?.value ?? "";
-  const accessNote =
-    submission?.remarks.find((r) => r.label === "سبب التعذر / المتابعة")
-      ?.value ?? "";
-
-  const visitStatus =
-    submission?.fields.find((f) => f.label === "حالة الزيارة")?.value ?? "";
-  const visitDate =
-    submission?.fields.find((f) => f.label === "تاريخ الزيارة")?.value ?? "";
-
-  const requestNumber = property.requestNumber.trim();
-  const hasKeysData =
-    Boolean(keysStatus) ||
-    Boolean(keysDescription.trim()) ||
-    Boolean(court);
-
-  const fieldMatch = keysStatus.includes("مطابق")
-    ? "مطابق"
-    : keysStatus.includes("غير")
-      ? "غير مطابق"
-      : visitStatus
-        ? "بانتظار"
-        : "بانتظار";
-
-  const gatewayNoKey = keysStatus.includes("بدون") || keysStatus.includes("تمكين");
-  const gatewaySuspended =
-    keysStatus.includes("محظر") || keysStatus.includes("إخلاء");
-  const gatewayMissing =
-    !keysStatus.trim() || keysStatus.includes("لا يوجد") || keysStatus.includes("لم");
-
-  return (
-    <>
-      <SectionHeader>مفاتيح العقار</SectionHeader>
-
-      {loading ? (
-        <InlineLoadingSkeleton />
-      ) : !governmentCard?.enabled ? (
-        <EmptyState
-          icon="🔑"
-          title="لم يُعيَّن مراجع حكومي"
-          sub="يظهر سجل المفاتيح بعد توزيع المراجع الحكومي على هذا العقار."
-        />
-      ) : !requestNumber ? (
-        <EmptyState
-          icon="🔑"
-          title="لا يوجد ظرف مفاتيح مرتبط بهذا العقار بعد"
-          sub="يظهر الظرف بعد تسجيل رقم الطلب وربط ظرف المفاتيح."
-        />
-      ) : !submission || !hasKeysData ? (
-        <>
-          <InfoBox icon="ℹ">
-            {governmentCard.unassigned
-              ? "لم يُعيَّن مراجع حكومي بعد."
-              : `المراجع: ${governmentCard.name} — لم تُسجَّل بيانات المفاتيح بعد.`}
-          </InfoBox>
-          <div className="mb-3 grid gap-2 sm:grid-cols-3">
-            <SummaryCard
-              label="الظرف التابع له"
-              value={requestNumber || "—"}
-              hint="برقم الطلب"
-            />
-            <SummaryCard
-              label="العهدة الحالية"
-              value={
-                governmentCard.unassigned ? "—" : governmentCard.name || "—"
-              }
-              hint="المراجع الحكومي"
-            />
-            <SummaryCard label="نتيجة التجربة الميدانية" value="بانتظار" />
-          </div>
-          <FieldsGrid>
-            <FieldBox label="المحكمة" value={court} emptyLabel="—" />
-            <FieldBox label="حالة المفاتيح" emptyLabel="لم تُحدَّد بعد" />
-            <FieldBox label="حالة الزيارة" emptyLabel="—" />
-            <FieldBox label="تاريخ الزيارة" emptyLabel="—" ltr />
-          </FieldsGrid>
-        </>
-      ) : (
-        <>
-          <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
-            <Badge tone={keysStatusBadgeTone(submission)}>
-              {keysStatus || "—"}
-            </Badge>
-            {governmentCard.name && !governmentCard.unassigned ? (
-              <span className="text-xs text-text-2">
-                المراجع الحكومي: {governmentCard.name}
-              </span>
-            ) : null}
-          </div>
-
-          <div className="mb-3 grid gap-2 sm:grid-cols-3">
-            <SummaryCard
-              label="الظرف التابع له"
-              value={requestNumber}
-              hint="برقم الطلب"
-            />
-            <SummaryCard
-              label="العهدة الحالية"
-              value={governmentCard.name || "—"}
-              hint="المراجع الحكومي"
-            />
-            <SummaryCard
-              label="نتيجة التجربة الميدانية"
-              value={fieldMatch}
-            />
-          </div>
-
-          <div className="mb-4 rounded-[10px] border border-border bg-surface-2 px-3.5 py-3">
-            <div className="mb-2 text-[12px] font-bold text-heading">
-              بوابة حالة المفاتيح
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <GatewayPill
-                label="لا يوجد"
-                active={gatewayMissing && !gatewayNoKey && !gatewaySuspended}
-                tone="gray"
-              />
-              <GatewayPill
-                label="تمكين بدون مفتاح"
-                active={gatewayNoKey}
-                tone="amber"
-              />
-              <GatewayPill
-                label="محظر إخلاء"
-                active={gatewaySuspended}
-                tone="red"
-              />
-            </div>
-            {gatewaySuspended ? (
-              <p className="mt-2 mb-0 text-[11px] text-danger-text">
-                العقار تحت محظر إخلاء — راجِع تعليمات المراجعة الحكومية.
-              </p>
-            ) : null}
-          </div>
-
-          <FieldsGrid>
-            <FieldBox label="المحكمة" value={court} emptyLabel="—" />
-            <FieldBox label="حالة المفاتيح" value={keysStatus} emptyLabel="—" />
-            <FieldBox label="حالة الزيارة" value={visitStatus} emptyLabel="—" />
-            <FieldBox
-              label="تاريخ الزيارة"
-              value={visitDate}
-              emptyLabel="—"
-              ltr
-            />
-            <FieldBox
-              label="المفاتيح / موقع الحفظ"
-              value={keysDescription}
-              span={2}
-              emptyLabel="—"
-            />
-            {accessNote ? (
-              <FieldBox
-                label="سبب التعذر / المتابعة"
-                value={accessNote}
-                span={2}
-              />
-            ) : null}
-          </FieldsGrid>
-
-          <div className="mt-4">
-            <div className="mb-2 text-[12px] font-bold text-heading">
-              التسلسل الزمني للمفتاح
-            </div>
-            <ul className="m-0 flex list-none flex-col gap-2 p-0">
-              {[
-                "استلام وتسجيل الظرف",
-                "إسناد المفتاح للصك",
-                visitStatus ? `زيارة: ${visitStatus}` : "مناولة / زيارة ميدانية",
-                `التجربة الميدانية: ${fieldMatch}`,
-              ].map((step, index) => (
-                <li
-                  key={step}
-                  className="flex items-start gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-[12px]"
-                >
-                  <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-ink text-[10px] font-bold text-white">
-                    {index + 1}
-                  </span>
-                  <span className="text-text">
-                    {step}
-                    {index === 3 && visitDate ? (
-                      <>
-                        {" · "}
-                        <bdi dir="ltr" className={ltrValueClass}>
-                          {visitDate}
-                        </bdi>
-                      </>
-                    ) : null}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </>
-      )}
-    </>
   );
 }

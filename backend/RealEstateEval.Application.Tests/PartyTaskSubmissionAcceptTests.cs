@@ -76,6 +76,64 @@ public class PartyTaskSubmissionAcceptTests
         Assert.Null(dto!.AcceptedAtUtc);
     }
 
+    [Fact]
+    public async Task Accept_field_inspection_sets_AcceptedAtUtc_without_fee_ledger()
+    {
+        var bundle = CreateDb();
+        var db = bundle.App;
+        SeedAcceptedableFieldInspection(db);
+        var service = CreateService(db, bundle.Failures, bundle.Ops);
+
+        var (result, errors) = await service.AcceptAsync(
+            TaskId,
+            new PartySubmissionActor
+            {
+                UserId = "specialist-1",
+                DisplayName = "أخصائي",
+                PrototypeRole = "case-specialist",
+            });
+
+        Assert.Null(errors);
+        Assert.NotNull(result);
+        Assert.False(string.IsNullOrWhiteSpace(result!.AcceptedAtUtc));
+
+        var entity = await db.PartyTaskSubmissions.AsNoTracking()
+            .SingleAsync(s => s.WorkflowTaskId == TaskId);
+        Assert.NotNull(entity.AcceptedAtUtc);
+        Assert.Equal("specialist-1", entity.AcceptedByUserId);
+        Assert.Equal("أخصائي", entity.AcceptedByName);
+
+        Assert.False(await db.InspectorFeeLedgers.AnyAsync(l => l.WorkflowTaskId == TaskId));
+    }
+
+    private static void SeedAcceptedableFieldInspection(ApplicationDbContext db)
+    {
+        var now = DateTime.UtcNow;
+        db.WorkflowTasks.Add(WorkflowTask.Create(
+            WorkflowTaskKind.FieldInspection,
+            "PO-501",
+            now,
+            title: "معاينة",
+            phase: WorkflowTaskPhase.Done,
+            status: WorkflowTaskStatus.Completed,
+            id: TaskId,
+            propertyId: PropertyId));
+        db.PartyTaskSubmissions.Add(new PartyTaskSubmission
+        {
+            Id = Guid.NewGuid(),
+            WorkflowTaskId = TaskId,
+            Kind = "field-inspection",
+            Status = PartyTaskSubmissionStatus.Submitted,
+            PropertyId = PropertyId,
+            PoNumber = "PO-501",
+            PayloadJson = "{}",
+            SubmittedAtUtc = now,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+        });
+        db.SaveChanges();
+    }
+
     private static void SeedAcceptedableSurvey(ApplicationDbContext db)
     {
         var now = DateTime.UtcNow;

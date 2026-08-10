@@ -34,7 +34,6 @@ export const PROPERTY_DETAIL_PARTY_ROLE_KEYS = [
   "inspection",
   "survey",
   "appraisal",
-  "government",
 ] as const satisfies readonly PropertyDetailPartyRoleKey[];
 
 export type PropertyDetailPartySubmissionsMap = Record<
@@ -125,9 +124,6 @@ export async function loadPropertyDetailPartySubmission(input: {
     return buildFromFieldInspection(submission, child);
   }
 
-  const draft = await loadPartyCaseStudyFormDraft(child.id);
-  if (!draft) {
-    return emptySubmission(roleKey, "لم يُقدَّم بعد");
-  }
-  return buildFromFormDraft(roleKey, draft, child);
+  const _exhaustive: never = roleKey;
+  return emptySubmission(_exhaustive, "لم يُقدَّم بعد");
 }

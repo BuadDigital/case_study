@@ -14,7 +14,8 @@ import {
 import { failureStatusLabel } from "@failures/mfe/lib/failures-labels";
 import type { FailureRecord } from "@failures/mfe";
 import { Button, cn, Tab, TabBar, TabPanel } from "@platform/design-system";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";import {
+import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import {
   DetailBadge,
   EmptyState,
   FieldBox,
@@ -27,6 +28,7 @@ import { PropertyDetailAppraisalTab } from "./PropertyDetailAppraisalTab";
 import { PropertyDetailPhotosTab } from "./PropertyDetailPhotosTab";
 import { PropertyDetailLinkedTab } from "./PropertyDetailLinkedTab";
 import { PropertyDetailCaseStudyReport } from "./PropertyDetailCaseStudyReport";
+import { PropertyDetailGovernmentReviewsTab } from "./PropertyDetailGovernmentReviewsTab";
 import { PropertyDetailPropertyKeys } from "./PropertyDetailPropertyKeys";
 import { PropertyDetailEnfathUpload } from "./PropertyDetailEnfathUpload";
 import { PropertyDetailFinanceTab } from "./PropertyDetailFinanceTab";
@@ -35,10 +37,12 @@ import { PropertyTransactionTimeline } from "./PropertyTransactionTimeline";
 import { PropertyDetailMobileGlance } from "./PropertyDetailMobileGlance";
 import { PropertyDetailMediaGlance } from "./PropertyDetailMediaGlance";
 import { PropertyDetailInspectionTab } from "./PropertyDetailInspectionTab";
+import { PropertyDetailPartyPackageReview } from "./PropertyDetailPartyPackageReview";
 import {
   boundariesAvailabilityLabel,
   boundariesMarkedUnavailable,
   formatDateAr,
+  formatPropertyDeedDisplay,
   hasBourseDetailFields,
   ownershipStatusLabel,
   formatPropertyRestrictionsLine,
@@ -54,10 +58,8 @@ import { isValidContactEntry } from "../../lib/domain/po-intake/property-validat
 import { PartyRoleDetailPanel } from "./PartyRoleDetailPanel";
 import {
   buildPropertyDetailPartyCards,
-  partyCardStatusLabel,
   type PropertyDetailPartyCard,
 } from "../../lib/prototype/property-detail-parties";
-import type { PropertyDetailPartySubmission } from "../../lib/prototype/property-detail-party-submissions";
 import { poPropertyFailurePath } from "../../lib/po-routes";
 import {
   buildPropertyDetailTimeline,
@@ -80,6 +82,11 @@ import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import { usePropertyDetailPartySubmissionsQuery } from "../../query/property-detail-party-submissions-queries";
 import { poPropertyPath } from "../../lib/po-routes";
+import { usePropertyOperationsTasks } from "../../query/use-property-operations-tasks";
+import {
+  keysStatusLabelAr,
+  usePropertyKeyGateQuery,
+} from "../../query/use-property-key-gate-query";
 import {
   loadSeenPropertyTabs,
   markPropertyTabSeen,
@@ -132,61 +139,6 @@ function isAllowedPropertyTab(
 ): tabId is TabId {
   if (!tabId) return false;
   return propertyDetailTabsForRole(role).some((t) => t.id === tabId);
-}
-
-function PartyWorkTab({
-  card,
-  submission,
-  loading,
-  description,
-  actionHref,
-  actionLabel,
-}: {
-  card: PropertyDetailPartyCard | null;
-  submission: PropertyDetailPartySubmission | null;
-  loading: boolean;
-  description?: string;
-  actionHref?: string;
-  actionLabel?: string;
-}) {
-  if (!card) {
-    return (
-      <EmptyState
-        title="لم يُعيَّن طرف لهذا الدور"
-        sub="سيظهر هنا الطرف وبيانات عمله بعد التعيين."
-      />
-    );
-  }
-
-  return (
-    <>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface-2 px-3.5 py-2.5">
-        <div>
-          <div className="text-[13px] font-bold text-heading">{card.role}</div>
-          <div className={cn("mt-0.5 text-[11px]", card.unassigned ? "text-text-3" : "text-text-2")}>
-            {card.name}
-          </div>
-        </div>
-        <DetailBadge tone={card.unassigned ? "gray" : card.state === "done" ? "teal" : "amber"}>
-          {partyCardStatusLabel(card)}
-        </DetailBadge>
-      </div>
-      {description ? (
-        <div className="rounded-xl border border-dashed border-border-md bg-surface px-5 py-4 text-center text-[12px] leading-relaxed text-text-3">
-          {description}
-        </div>
-      ) : null}
-      {actionHref && actionLabel ? (
-        <Link
-          href={actionHref}
-          className="mt-3 inline-flex min-h-9 items-center justify-center rounded-lg bg-ink px-[18px] py-2 text-[12.5px] font-bold text-white no-underline shadow-[0_6px_16px_-8px_rgba(18,40,76,0.6)] hover:bg-[#22406e] max-lg:min-h-11 max-lg:w-full"
-        >
-          {actionLabel}
-        </Link>
-      ) : null}
-      <PartyRoleDetailPanel card={card} submission={submission} loading={loading} />
-    </>
-  );
 }
 
 function docExtLabel(doc: PropertyDetailDocumentEntry): string {
@@ -731,9 +683,6 @@ export function PoPropertyDetailTabs({
       : null);
   const surveyCard = partyCards.find((c) => c.roleKey === "survey") ?? null;
 
-  const governmentCard =
-    partyCards.find((c) => c.roleKey === "government") ?? null;
-
   const partySubmissionsQuery = usePropertyDetailPartySubmissionsQuery({
     parentTask: task ?? null,
     allTasks: tasks,
@@ -790,14 +739,28 @@ export function PoPropertyDetailTabs({
     [propertyFeesSummary?.rows, propertyFeeTaskIds],
   );
 
-  const govSubmission = partySubmissionsQuery.data?.government ?? null;
-  const keysStatusField = govSubmission?.fields.find(
-    (f: { label: string; value: string }) => f.label === "حالة المفاتيح",
+  const deedDisplay =
+    formatPropertyDeedDisplay(property) || property.deedNumber.trim();
+  const { primaryCourtVisit } = usePropertyOperationsTasks(
+    {
+      poNumber,
+      deedNumber: property.deedNumber.trim(),
+      deedDisplay,
+    },
+    { live: true },
   );
-  const keysStatus = keysStatusField?.value?.trim() ?? "";
+  const { data: keyGate } = usePropertyKeyGateQuery({
+    propertyId: property.id,
+    poNumber,
+    deedNumber: property.deedNumber.trim(),
+    requestNumber: property.requestNumber.trim() || undefined,
+  });
+  const keysStatus = keysStatusLabelAr(keyGate?.keysStatus ?? "");
   const keysHasData = Boolean(
-    keysStatus ||
-      govSubmission?.remarks.some((r) => r.label === "المفاتيح / موقع الحفظ"),
+    keyGate?.keysStatus ||
+      keyGate?.envelopeId ||
+      primaryCourtVisit?.linkedEnvelopeId ||
+      primaryCourtVisit,
   );
 
   return (
@@ -974,14 +937,36 @@ export function PoPropertyDetailTabs({
 
           {tab === "survey" ? (
             surveyCard ? (
-              <PartyRoleDetailPanel
-                card={surveyCard}
-                submission={partySubmissionsQuery.data?.survey ?? null}
-                loading={
-                  partySubmissionsQuery.isLoading ||
-                  partySubmissionsQuery.isFetching
-                }
-              />
+              <>
+                <PropertyDetailPartyPackageReview
+                  taskId={surveyTask?.id}
+                  submissionStatus={
+                    partySubmissionsQuery.data?.survey?.packageStatus ?? "draft"
+                  }
+                  acceptedAtUtc={
+                    partySubmissionsQuery.data?.survey?.acceptedAtUtc
+                  }
+                  acceptedByName={
+                    partySubmissionsQuery.data?.survey?.acceptedByName
+                  }
+                  acceptLabel="قبول المخرجات"
+                  returnPlaceholder="صف ما يجب تصحيحه في الرفع المساحي…"
+                  acceptSuccessToast="تم قبول مخرجات الرفع المساحي"
+                  returnSuccessToast="أُعيد الرفع المساحي للتصحيح"
+                  hint="قبول المخرجات يستحق أتعاب المكتب من جدول التسعير، ويُظهر البيانات المعتمدة في حزمة إنفاذ."
+                  onChanged={() => {
+                    void partySubmissionsQuery.refetch();
+                  }}
+                />
+                <PartyRoleDetailPanel
+                  card={surveyCard}
+                  submission={partySubmissionsQuery.data?.survey ?? null}
+                  loading={
+                    partySubmissionsQuery.isLoading ||
+                    partySubmissionsQuery.isFetching
+                  }
+                />
+              </>
             ) : (
               <EmptyState
                 title="لم يُعيَّن طرف لهذا الدور"
@@ -1006,20 +991,16 @@ export function PoPropertyDetailTabs({
                 replaceInspectQuery(edit ? "edit" : null);
               }}
               onSubmitted={() => {
+                void partySubmissionsQuery.refetch();
                 inspectorWorkspace?.onSubmitted?.();
               }}
             />
           ) : null}
 
           {tab === "government" ? (
-            <PartyWorkTab
-              card={governmentCard}
-              submission={partySubmissionsQuery.data?.government ?? null}
-              loading={
-                partySubmissionsQuery.isLoading ||
-                partySubmissionsQuery.isFetching
-              }
-              description="المراجعات الحكومية والبيانات والمستندات والمواعيد الخاصة بالمراجع تظهر هنا."
+            <PropertyDetailGovernmentReviewsTab
+              poNumber={poNumber}
+              property={property}
             />
           ) : null}
 
@@ -1031,7 +1012,20 @@ export function PoPropertyDetailTabs({
             />
           ) : null}
 
-          {tab === "appraisal" ? <PropertyDetailAppraisalTab /> : null}
+          {tab === "appraisal" ? (
+            <PropertyDetailAppraisalTab
+              appraisalTaskId={appraisalTask?.id}
+              appraisalCard={appraisalCard}
+              submission={partySubmissionsQuery.data?.appraisal ?? null}
+              loading={
+                partySubmissionsQuery.isLoading ||
+                partySubmissionsQuery.isFetching
+              }
+              onReviewChanged={() => {
+                void partySubmissionsQuery.refetch();
+              }}
+            />
+          ) : null}
 
           {tab === "photos" ? (
             <PropertyDetailPhotosTab photos={propertyPhotos} />
@@ -1076,13 +1070,8 @@ export function PoPropertyDetailTabs({
 
           {tab === "keys" ? (
             <PropertyDetailPropertyKeys
+              poNumber={poNumber}
               property={property}
-              governmentCard={governmentCard}
-              submission={partySubmissionsQuery.data?.government ?? null}
-              loading={
-                partySubmissionsQuery.isLoading ||
-                partySubmissionsQuery.isFetching
-              }
             />
           ) : null}
 

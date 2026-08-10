@@ -286,25 +286,6 @@ const evaluatorFormKeyFields: PropertyFieldCatalogEntry[] = [
   { key: "planImageFileName", label: "صورة المخطط — مفتاح النموذج" },
 ];
 
-const governmentFields: PropertyFieldCatalogEntry[] = [
-  { key: "visitStatus", label: "حالة الزيارة" },
-  { key: "visitDate", label: "تاريخ الزيارة" },
-  { key: "courtName", label: "اسم المحكمة" },
-  { key: "keysStatus", label: "حالة المفاتيح" },
-  { key: "keysDescription", label: "وصف المفاتيح" },
-  { key: "accessBlockReason", label: "سبب تعذّر الوصول" },
-  { key: "reviewNotes", label: "ملاحظات المراجعة" },
-  { key: "zoneStatus", label: "حالة منطقة العقار (وقف)" },
-  { key: "keysProof", label: "إثبات استلام المفتاح (خطاب أو صورة)" },
-  { key: "keysReceived", label: "هل تم استلام المفتاح من الدائرة؟" },
-  { key: "confirmed", label: "تأكيد المراجعة" },
-];
-
-const governmentFormKeyFields: PropertyFieldCatalogEntry[] = [
-  { key: "propertyZoneStatus", label: "حالة منطقة العقار — مفتاح النموذج" },
-  { key: "keysProofFiles", label: "إثبات المفتاح — مرفقات النموذج" },
-];
-
 const caseStudyMetaFields: PropertyFieldCatalogEntry[] = [
   { key: "requestNumber", label: "رقم الطلب" },
   { key: "requestDate", label: "تاريخ الطلب" },
@@ -435,7 +416,7 @@ const workflowMetaFields: PropertyFieldCatalogEntry[] = [
   { key: "surveySubmissionStatus", label: "حالة الرفع المساحي" },
   { key: "inspectionSubmissionStatus", label: "حالة المعاينة" },
   { key: "appraisalSubmissionStatus", label: "حالة التقييم" },
-  { key: "governmentReviewStatus", label: "حالة المراجعة الحكومية" },
+  { key: "courtVisitOpsStatus", label: "حالة زيارة المحكمة (مهام)" },
 ];
 
 const partyPanelDerivedFields: PropertyFieldCatalogEntry[] = [
@@ -476,13 +457,13 @@ const propertyDocumentsFields: PropertyFieldCatalogEntry[] = [
 ];
 
 const keysTabFields: PropertyFieldCatalogEntry[] = [
-  { key: "keysTabCourt", label: "المحكمة (مفاتيح العقار)" },
-  { key: "keysTabStatus", label: "حالة المفاتيح (تبويب)" },
-  { key: "keysTabVisitStatus", label: "حالة الزيارة (تبويب)" },
-  { key: "keysTabVisitDate", label: "تاريخ الزيارة (تبويب)" },
-  { key: "keysTabStorageLocation", label: "المفاتيح / موقع الحفظ (تبويب)" },
-  { key: "keysTabAccessNote", label: "سبب التعذر / المتابعة (تبويب)" },
-  { key: "keysTabReviewer", label: "المراجع الحكومي (تبويب)" },
+  { key: "keysTabCourt", label: "المحكمة (من زيارة المحكمة)" },
+  { key: "keysTabStatus", label: "حالة المفاتيح (بوابة الظرف)" },
+  { key: "keysTabEnvelopeId", label: "معرّف الظرف" },
+  { key: "keysTabSource", label: "مصدر الحالة (ظرف / تمكين)" },
+  { key: "keysTabHanded", label: "تسليم للمُعاين" },
+  { key: "keysTabVisitKind", label: "نتيجة زيارة المحكمة" },
+  { key: "keysTabAssignee", label: "منفّذ الزيارة (مهام)" },
 ];
 
 const backendApiFields: PropertyFieldCatalogEntry[] = [
@@ -632,20 +613,8 @@ export const PROPERTY_FIELDS_CATALOG: PropertyFieldCatalogGroup[] = [
     fields: evaluatorFormKeyFields,
   },
   {
-    id: "government",
-    sourceRole: "مراجع حكومي",
-    screen: "المراجعة الحكومية",
-    fields: governmentFields,
-  },
-  {
-    id: "government-form-keys",
-    sourceRole: "مراجع حكومي",
-    screen: "المراجعة الحكومية — مفاتيح التخزين",
-    fields: governmentFormKeyFields,
-  },
-  {
     id: "keys-tab",
-    sourceRole: "مراجع حكومي",
+    sourceRole: "عمليات / مفاتيح",
     screen: "مفاتيح العقار (تبويب)",
     fields: keysTabFields,
   },
