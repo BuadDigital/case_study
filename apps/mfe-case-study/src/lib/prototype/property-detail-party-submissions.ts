@@ -10,14 +10,12 @@ import type { PropertyDetailPartyRoleKey } from "./property-detail-parties";
 import {
   loadEngineeringSurveySubmissionSnapshot,
   loadEvaluatorSubmissionSnapshot,
-  loadGovernmentReviewSubmissionSnapshot,
 } from "./property-detail-party-submission-loaders";
 import {
   buildFromEngineeringSurvey,
   buildFromEvaluator,
   buildFromFieldInspection,
   buildFromFormDraft,
-  buildFromGovernmentReview,
   childForRole,
   emptySubmission,
 } from "./property-detail-party-submission-builders";
@@ -117,14 +115,6 @@ export async function loadPropertyDetailPartySubmission(input: {
       return emptySubmission(roleKey, "لم يُقدَّم بعد");
     }
     return buildFromEngineeringSurvey(submission, child);
-  }
-
-  if (roleKey === "government") {
-    const submission = await loadGovernmentReviewSubmissionSnapshot(child);
-    if (!submission) {
-      return emptySubmission(roleKey, "لم يُقدَّم بعد");
-    }
-    return buildFromGovernmentReview(submission, child);
   }
 
   if (roleKey === "inspection") {

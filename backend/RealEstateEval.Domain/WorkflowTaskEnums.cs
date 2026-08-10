@@ -8,6 +8,7 @@ namespace RealEstateEval.Domain;
 public enum WorkflowTaskKind
 {
     CaseStudyProperty = 0,
+    /// <summary>Legacy only — no longer spawned; government-reviewer works via court visits.</summary>
     GovernmentReview = 1,
     /// <summary>Legacy only — no longer spawned or shown as a product role.</summary>
     ValuationCoordination = 2,
@@ -45,6 +46,7 @@ public enum WorkflowTaskStatus
 public static class WorkflowTaskKindValues
 {
     public const string CaseStudyProperty = "case-study-property";
+    /// <summary>Legacy wire value — kept for existing DB rows; not spawned.</summary>
     public const string GovernmentReview = "government-review";
     public const string ValuationCoordination = "valuation-coordination";
     public const string FieldInspection = "field-inspection";
@@ -54,7 +56,6 @@ public static class WorkflowTaskKindValues
     /// <summary>Party kinds that may still be spawned as children of a case-study parent.</summary>
     public static readonly IReadOnlyList<WorkflowTaskKind> PartyKinds =
     [
-        WorkflowTaskKind.GovernmentReview,
         WorkflowTaskKind.FieldInspection,
         WorkflowTaskKind.PropertyAppraisal,
         WorkflowTaskKind.EngineeringSurvey,

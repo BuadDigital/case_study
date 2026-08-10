@@ -5,7 +5,7 @@
 const CACHE_VERSION = "ejada-shell-v4";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const OFFLINE_URL = "/offline.html";
-const FIELD_ROUTE_PREFIXES = ["/property-inspection", "/government-review"];
+const FIELD_ROUTE_PREFIXES = ["/property-inspection"];
 
 const PRECACHE = [
   OFFLINE_URL,

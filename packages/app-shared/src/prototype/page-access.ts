@@ -22,27 +22,16 @@ export function pagePathFromId(pageId: PageId): string {
 export function defaultLandingPage(rolePages: readonly PageId[]): PageId {
   if (rolePages.includes("dashboard")) return "dashboard";
 
-  // Party government reviewer: queue first (party form completes the workflow task).
-  if (
-    rolePages.includes("government-review") &&
-    rolePages.includes("keys") &&
-    !rolePages.includes("all-transactions") &&
-    !rolePages.includes("active-case-study")
-  ) {
-    return "government-review";
-  }
-
   // Independent operations-task hubs:
   // - مدير الإدارة (valuation-requests + case-study suite)
-  // - أطراف التنفيذ (معاين / مكتب / مقيم / …) — ops without case-study manager pages
+  // - أطراف التنفيذ (معاين / مكتب / مقيم / مراجع حكومي / …) — ops without case-study manager pages
   if (rolePages.includes("operations-tasks")) {
     const isGeneralManagerHub =
       rolePages.includes("valuation-requests") &&
       rolePages.includes("active-case-study");
     const isIndependentExecutorHub =
       !rolePages.includes("dashboard") &&
-      !rolePages.includes("active-case-study") &&
-      !rolePages.includes("government-review");
+      !rolePages.includes("active-case-study");
     if (isGeneralManagerHub || isIndependentExecutorHub) {
       return "operations-tasks";
     }
@@ -76,8 +65,6 @@ export function pageIdFromPathname(pathname: string): PageId | null {
       return "property-appraisal";
     case "property-inspection":
       return "property-inspection";
-    case "government-review":
-      return "government-review";
     case "login":
       return null;
     case "audit-log":
@@ -121,7 +108,6 @@ export function isPoPropertyEditPath(pathname: string): boolean {
 
 /** Party / queue roles that may open property detail without PO list access. */
 const PROPERTY_DETAIL_WITHOUT_PO_LIST: readonly PageId[] = [
-  "government-review",
   "property-inspection",
   "active-inspection",
   "property-appraisal",
@@ -132,6 +118,8 @@ const PROPERTY_DETAIL_WITHOUT_PO_LIST: readonly PageId[] = [
   "failures",
   "system-upload",
   "active-case-study",
+  "operations-tasks",
+  "keys",
 ];
 
 /** Case-study specialist queues — may open property edit without full PO list. */

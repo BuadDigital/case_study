@@ -4,7 +4,7 @@
  * Party fees shell (same module shape as EngFeesHtmlScreen: KPI → tabs → table | docs)
  * with a per-role slot. Each party only sees its lane:
  *   - field-inspection  → معاين: submit-to-supervisor, individual voucher, no invoice
- *   - government-review → مراجع: same individual flow + visit/key fee tabs
+ *   - court-visit → مراجع: same individual flow + visit/key fee tabs
  * Never share eng (vendor) actions or statements across variants.
  */
 
@@ -38,7 +38,7 @@ import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import { EngFeesHtmlTabs, EngFeesSectionTitle } from "./EngFeesHtmlTabs";
 import { CourtVisitFeesPanel } from "./CourtVisitFeesPanel";
 
-export type IndividualFeesVariant = "field-inspection" | "government-review";
+export type IndividualFeesVariant = "field-inspection" | "court-visit";
 
 type TabId = "action" | "tracking" | "ready" | "statements" | "visit-fees" | "key-fees";
 
@@ -320,7 +320,7 @@ const COPY: Record<
     actionCol: "إجراءكم",
     dateCol: "تاريخ الإنجاز",
   },
-  "government-review": {
+  "court-visit": {
     roleLabel: "المراجع الحكومي",
     actionTitle: "أتعاب مراجعة حكومية بانتظار رفعكم",
     actionSub:
@@ -355,7 +355,7 @@ export function PartyIndividualFeesHtmlScreen({
   const { showToast } = useToast();
   const { hasCapability } = usePrototype();
   const copy = COPY[variant];
-  const showVisitKey = variant === "government-review";
+  const showVisitKey = variant === "court-visit";
 
   const [tab, setTab] = useState<TabId>("action");
   const [search, setSearch] = useState("");

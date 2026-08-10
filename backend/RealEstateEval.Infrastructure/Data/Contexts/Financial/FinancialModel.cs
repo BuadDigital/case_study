@@ -158,7 +158,7 @@ internal static class FinancialModel
             e.Property(x => x.Category).HasMaxLength(32).IsRequired();
             e.Property(x => x.PricingKind).HasMaxLength(32).IsRequired();
             e.Property(x => x.ManagedBy).HasMaxLength(32).IsRequired();
-            e.Property(x => x.GovernmentReviewFeeSar).HasPrecision(12, 2);
+            e.Property(x => x.CourtVisitFeeSar).HasPrecision(12, 2);
             e.Property(x => x.FieldInspectorIndividualFeeSar).HasPrecision(12, 2);
             e.Property(x => x.FieldInspectorOrganizationFeeSar).HasPrecision(12, 2);
             e.Property(x => x.FlatAmountSar).HasPrecision(12, 2);

@@ -43,7 +43,7 @@ export type OfflineDraftRecord = {
   id: string;
   userId: string;
   taskId: string;
-  kind: "field-inspection" | "government-review";
+  kind: "field-inspection";
   payloadJson: string;
   updatedAtUtc: string;
 };

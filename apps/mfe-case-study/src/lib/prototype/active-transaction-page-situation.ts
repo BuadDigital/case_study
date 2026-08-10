@@ -6,7 +6,6 @@ import type {
   InspectorFeeRowDto,
   PendingBoursePropertyDto,
 } from "@platform/api-client";
-import { getCachedPartySubmission } from "@platform/app-shared/prototype/party-submission-api";
 import { filterEngineeringSurveyListedTasks } from "@engineering-office/mfe/lib/engineering-survey-queue";
 import {
   appraiserQueueStatusGroup,
@@ -194,37 +193,6 @@ export const PAGE_SITUATION_CARDS: Partial<Record<PageId, PageSituationCardDef[]
         tone: "blue",
         icon: "card",
         href: "/party-fees",
-      },
-    ],
-    /** Case Study.html `renderGovReview` KPI vocabulary. */
-    "government-review": [
-      {
-        key: "total",
-        label: "عقارات في طابور المراجعة",
-        sub: "صكوك مسجّلة",
-        tone: "blue",
-        icon: "building",
-      },
-      {
-        key: "received",
-        label: "مفاتيح مستلمة",
-        sub: "من اختيار المراجع",
-        tone: "green",
-        icon: "key",
-      },
-      {
-        key: "waiting",
-        label: "بانتظار الظرف",
-        sub: "مستلمة دون ظرف مسجّل",
-        tone: "warn",
-        icon: "alert",
-      },
-      {
-        key: "done",
-        label: "مراجعات منتهية",
-        sub: "من إجمالي الطابور",
-        tone: "green",
-        icon: "check",
       },
     ],
     /** Supervisor / ops «فوترة الأتعاب» KPI band. */
@@ -554,8 +522,6 @@ export function filterTasksForPage(
       return filterTasksForSystemUpload(tasks);
     case "bourse-inquiry":
       return filterTasksForBourseInquiry(tasks, poByNumber);
-    case "government-review":
-      return tasks.filter((t) => t.kind === "government-review");
     case "property-inspection":
     case "active-inspection":
       return filterTasksForPartyKind(tasks, "field-inspection");
@@ -645,10 +611,6 @@ export function computePageSituationValues(
     );
   }
 
-  if (pageId === "government-review") {
-    return computeGovernmentReviewSituation(workflowSituationTasks);
-  }
-
   if (pageId === "system-upload") {
     const ready = listedTasksForPage(pageId, input.tasks, input.poByNumber);
     const now = input.now ?? new Date();
@@ -710,39 +672,4 @@ function computeAppraisalSituation(
   }
 
   return { ready, gated, submitted, reopened };
-}
-
-/**
- * Case Study.html `renderGovReview` KPI counts.
- * Envelope waiting uses submission keysStatus only (gate overlay is view-local).
- */
-function computeGovernmentReviewSituation(
-  govTasks: WorkflowTask[],
-): Pick<PageSituationValues, "total" | "received" | "waiting" | "done"> {
-  let received = 0;
-  let waiting = 0;
-  let done = 0;
-
-  for (const task of govTasks) {
-    const dto = getCachedPartySubmission(task.id);
-    const payload = (dto?.payload ?? {}) as { keysStatus?: string; status?: string };
-    const keysStatus = payload.keysStatus ?? "";
-    const submitted =
-      task.status === "completed" ||
-      dto?.status === "submitted" ||
-      payload.status === "submitted";
-    if (submitted) done += 1;
-    if (keysStatus === "received") {
-      received += 1;
-      // Without gate overlay, treat received-open as awaiting envelope (HTML soft sync).
-      if (!submitted) waiting += 1;
-    }
-  }
-
-  return {
-    total: govTasks.length,
-    received,
-    waiting,
-    done,
-  };
 }

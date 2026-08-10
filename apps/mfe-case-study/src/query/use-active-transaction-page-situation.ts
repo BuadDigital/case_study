@@ -37,7 +37,8 @@ import { useInspectorFeesQuery } from "./inspector-fees-queries";
 function feesTaskKindForRole(role: RoleId): string | undefined {
   if (role === "field-inspector") return "field-inspection";
   if (role === "engineering-office") return "engineering-survey";
-  if (role === "government-reviewer") return "government-review";
+  // Court-visit charges (no workflow task kind) — reviewer fees use visit ledger.
+  if (role === "government-reviewer") return "court-visit";
   return undefined;
 }
 
@@ -169,7 +170,6 @@ export function useActiveTransactionPageSituation(
       "party-task-recall-changed",
       "party-task-recall-hydrated",
       "field-inspection-submission-changed",
-      "government-review-submission-changed",
       "engineering-survey-submission-changed",
     ];
     const handler = () => setPartySubmissionGen((n) => n + 1);

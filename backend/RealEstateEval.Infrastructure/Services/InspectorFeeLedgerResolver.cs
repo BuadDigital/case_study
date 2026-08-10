@@ -131,7 +131,7 @@ public sealed class InspectorFeeLedgerResolver : IInspectorFeeLedgerResolver
 
         if (task.Kind == WorkflowTaskKind.GovernmentReview)
         {
-            return GovernmentReviewFeeRules.ResolveReviewerType(
+            return CourtVisitFeeRules.ResolveReviewerType(
                 profile?.ContractType,
                 profile?.ProcProvider?.ProviderKind,
                 profile?.HrEmployee?.EmploymentType,

@@ -13,7 +13,6 @@ import {
 import {
   activeSurveyWorkspacePath,
   decodeTaskParam,
-  governmentReviewWorkspacePath,
   partyTaskPath,
   partyTaskTaskPath,
   propertyAppraisalWorkspacePath,
@@ -28,10 +27,6 @@ import {
   FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
 } from "../lib/case-study-field-inspection-events";
 import { fieldInspectionTaskStatusBadge } from "../lib/prototype/field-inspection-work-queue";
-import {
-  GOVERNMENT_REVIEW_SUBMISSION_CHANGED_EVENT,
-} from "../lib/prototype/government-review-work-storage";
-import { governmentReviewTaskStatusBadge } from "../lib/prototype/government-review-work-queue";
 
 function queueConfig(
   def: PartyTaskPageDef,
@@ -77,18 +72,6 @@ function queueConfig(
       getTaskStatusBadge: (task) =>
         fieldInspectionTaskStatusBadge(task.id, task.status),
       refreshOnWindowEvents: [FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT],
-    };
-  }
-
-  if (def.kind === "government-review") {
-    return {
-      ...base,
-      hidePageTitle: true,
-      tableHint: "اضغط الصف لفتح مهمة المراجعة في صفحة مستقلة.",
-      fullPageTaskPath: governmentReviewWorkspacePath,
-      statusColumnLabel: "الحالة",
-      getTaskStatusBadge: (task) => governmentReviewTaskStatusBadge(task),
-      refreshOnWindowEvents: [GOVERNMENT_REVIEW_SUBMISSION_CHANGED_EVENT],
     };
   }
 
@@ -140,10 +123,6 @@ function PartyActiveTaskViewBody({
     }
     if (def?.kind === "field-inspection") {
       router.replace(fieldInspectionWorkspacePath(def.pageId, taskId));
-      return;
-    }
-    if (def?.kind === "government-review") {
-      router.replace(governmentReviewWorkspacePath(taskId));
     }
   }, [def?.kind, def?.pageId, legacyTask, router]);
 
@@ -156,10 +135,6 @@ function PartyActiveTaskViewBody({
   }
 
   if (def?.kind === "field-inspection" && legacyTask) {
-    return <PanelSkeleton className="p-4" />;
-  }
-
-  if (def?.kind === "government-review" && legacyTask) {
     return <PanelSkeleton className="p-4" />;
   }
 

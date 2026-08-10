@@ -915,10 +915,10 @@ public class OperationsTaskServiceTests
         db.PartyFeePricingTables.Add(new PartyFeePricingTable
         {
             Id = tableId,
-            Category = PartyFeePricingCategories.GovernmentReview,
+            Category = PartyFeePricingCategories.CourtVisit,
             Name = "اختبار",
             IsActive = true,
-            GovernmentReviewFeeSar = amountSar,
+            CourtVisitFeeSar = amountSar,
             UpdatedAtUtc = DateTime.UtcNow,
         });
         await db.SaveChangesAsync();

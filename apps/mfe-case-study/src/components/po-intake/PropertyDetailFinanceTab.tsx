@@ -27,7 +27,7 @@ import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
 const FEE_KINDS = new Set([
   "field-inspection",
   "engineering-survey",
-  "government-review",
+  "court-visit",
 ]);
 
 export function PropertyDetailFinanceTab({

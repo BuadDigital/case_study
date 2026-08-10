@@ -166,7 +166,7 @@ public class FieldInspectionSubmissionIntegrationTests
     private static TestBoundedContexts.Bundle CreateDb() =>
         TestBoundedContexts.Create($"field-inspection-{Guid.NewGuid():N}");
 
-    private static PartyTaskSubmissionService CreateService(ApplicationDbContext db, FailuresDbContext failures, OperationsDbContext ops)
+    private static PartyTaskSubmissionService CreateService(ApplicationDbContext db, FailuresDbContext _, OperationsDbContext __)
     {
         var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db);
         var (notifications, recipients) = TestInspectorFeeServiceFactory.CreateNotificationDeps(db);
@@ -177,7 +177,6 @@ public class FieldInspectionSubmissionIntegrationTests
             timeline,
             new NullHttpContextAccessor(),
             new NullPermissionService(),
-            TestBoundedContexts.CreateKeyEnvelopesService(db, failures, ops),
             TestInspectorFeeServiceFactory.Create(db),
             notifications,
             recipients);

@@ -14,7 +14,7 @@ function isStatementBillingPath(row: InspectorFeeRowDto): boolean {
   const statementKind =
     row.taskKind === "engineering-survey" ||
     row.taskKind === "field-inspection" ||
-    row.taskKind === "government-review";
+    row.taskKind === "court-visit";
   return (
     statementKind &&
     (row.billingStatus === "at-finance" ||

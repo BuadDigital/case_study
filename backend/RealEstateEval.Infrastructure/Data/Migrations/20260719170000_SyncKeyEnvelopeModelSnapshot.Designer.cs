@@ -1400,7 +1400,7 @@ namespace RealEstateEval.Infrastructure.Data.Migrations
                         .HasPrecision(12, 2)
                         .HasColumnType("numeric(12,2)");
 
-                    b.Property<decimal>("GovernmentReviewFeeSar")
+                    b.Property<decimal>("CourtVisitFeeSar")
                         .HasPrecision(12, 2)
                         .HasColumnType("numeric(12,2)");
 

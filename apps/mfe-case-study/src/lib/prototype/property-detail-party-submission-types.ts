@@ -1,5 +1,4 @@
 import type { PropertyDetailPartyRoleKey } from "./property-detail-parties";
-import type { GovernmentReviewKeysProofFile } from "./government-review-work-data";
 
 export type PartyAnswerRow = {
   question: string;
@@ -88,22 +87,4 @@ export type EngineeringSurveySubmissionSnapshot = {
   transactionNote: string;
   updatedAtUtc: string;
   submittedAtUtc?: string;
-};
-
-export type GovernmentReviewSubmissionSnapshot = {
-  status: "draft" | "submitted" | "reopened";
-  visitStatus: "completed" | "scheduled" | "blocked" | "";
-  visitDate: string;
-  courtName: string;
-  keysStatus: "received" | "pending" | "not_required" | "";
-  keysDescription: string;
-  keyHandedToInspector: "yes" | "no" | "";
-  accessBlockReason: string;
-  reviewNotes: string;
-  returnNote?: string;
-  propertyZoneStatus?: string;
-  keysProofFiles?: GovernmentReviewKeysProofFile[];
-  keysProofFileName?: string;
-  submittedAtUtc: string | null;
-  updatedAtUtc: string;
 };

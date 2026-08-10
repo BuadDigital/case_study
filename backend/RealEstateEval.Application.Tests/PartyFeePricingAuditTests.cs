@@ -24,7 +24,7 @@ public class PartyFeePricingAuditTests
         var created = await service.CreateAsync(
             new CreatePartyFeePricingTableRequest
             {
-                Category = PartyFeePricingCategories.GovernmentReview,
+                Category = PartyFeePricingCategories.CourtVisit,
                 Name = "عقد المراجعين",
             },
             actorId: "admin-1");
@@ -38,7 +38,7 @@ public class PartyFeePricingAuditTests
         using var after = JsonDocument.Parse(audit.AfterJson);
         Assert.Equal("عقد المراجعين", after.RootElement.GetProperty("name").GetString());
         Assert.Equal(
-            PartyFeePricingCategories.GovernmentReview,
+            PartyFeePricingCategories.CourtVisit,
             after.RootElement.GetProperty("category").GetString());
     }
 
@@ -82,11 +82,11 @@ public class PartyFeePricingAuditTests
         await using var db = CreateDb();
         var service = new PartyFeePricingService(db);
         await service.ListAsync();
-        var first = PartyFeePricingService.DefaultGovernmentTableId;
+        var first = PartyFeePricingService.DefaultCourtVisitTableId;
         var second = await service.CreateAsync(
             new CreatePartyFeePricingTableRequest
             {
-                Category = PartyFeePricingCategories.GovernmentReview,
+                Category = PartyFeePricingCategories.CourtVisit,
                 Name = "ثانٍ",
             });
         await service.SetAssignmentsAsync(first, ["reviewer-1"], actorId: "admin-2");

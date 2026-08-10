@@ -61,7 +61,7 @@ public class PartyFeePricingServiceTests
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             service.CreateAsync(new CreatePartyFeePricingTableRequest
             {
-                Category = PartyFeePricingCategories.GovernmentReview,
+                Category = PartyFeePricingCategories.CourtVisit,
                 Name = "جدول",
                 CopyFromTableId = Guid.NewGuid(),
             }));
@@ -85,7 +85,7 @@ public class PartyFeePricingServiceTests
             {
                 Category = PartyFeePricingCategories.FieldInspector,
                 Name = "جدول",
-                CopyFromTableId = PartyFeePricingService.DefaultGovernmentTableId,
+                CopyFromTableId = PartyFeePricingService.DefaultCourtVisitTableId,
             }));
 
         Assert.Contains("تصنيف", error.Message);
@@ -124,12 +124,12 @@ public class PartyFeePricingServiceTests
 
         var copy = await service.CreateAsync(new CreatePartyFeePricingTableRequest
         {
-            Category = PartyFeePricingCategories.GovernmentReview,
+            Category = PartyFeePricingCategories.CourtVisit,
             Name = "نسخة",
             CopyFromTableId = source.Id,
         });
 
-        Assert.Equal(GovernmentRate, copy.GovernmentReviewFeeSar);
+        Assert.Equal(GovernmentRate, copy.CourtVisitFeeSar);
         Assert.False(copy.IsActive);
     }
 
@@ -151,7 +151,7 @@ public class PartyFeePricingServiceTests
         Assert.Equal(PartyFeePricingCategories.All.Length, tables.Count);
         Assert.All(tables, table =>
         {
-            Assert.Equal(0m, table.GovernmentReviewFeeSar);
+            Assert.Equal(0m, table.CourtVisitFeeSar);
             Assert.Equal(0m, table.FieldInspectorIndividualFeeSar);
             Assert.Equal(0m, table.FieldInspectorOrganizationFeeSar);
             Assert.Empty(table.AreaTiers);
@@ -252,7 +252,7 @@ public class PartyFeePricingServiceTests
             InspectorFeeRules.TypeCooperatorIndividual);
 
         Assert.Equal(GovernmentRate, fee.FeeSar);
-        Assert.Equal(PartyFeePricingService.DefaultGovernmentTableId, fee.PricingTableId);
+        Assert.Equal(PartyFeePricingService.DefaultCourtVisitTableId, fee.PricingTableId);
     }
 
     [Fact]
@@ -309,14 +309,14 @@ public class PartyFeePricingServiceTests
 
         var special = await service.CreateAsync(new CreatePartyFeePricingTableRequest
         {
-            Category = PartyFeePricingCategories.GovernmentReview,
+            Category = PartyFeePricingCategories.CourtVisit,
             Name = "خاص",
         });
         await service.SaveAsync(special.Id, new PartyFeePricingDto
         {
             Id = special.Id,
             Name = special.Name,
-            GovernmentReviewFeeSar = 700m,
+            CourtVisitFeeSar = 700m,
         });
         await service.SetAssignmentsAsync(special.Id, ["gr-special"]);
 
@@ -434,7 +434,7 @@ public class PartyFeePricingServiceTests
         await using var db = CreateDb();
         var service = new PartyFeePricingService(db);
         await SetGovernmentRateAsync(service, GovernmentRate);
-        var tableId = PartyFeePricingService.DefaultGovernmentTableId;
+        var tableId = PartyFeePricingService.DefaultCourtVisitTableId;
         await service.SetAssignmentsAsync(tableId, ["reviewer-1"]);
 
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -442,12 +442,12 @@ public class PartyFeePricingServiceTests
             {
                 Id = tableId,
                 Name = "تعديل مباشر",
-                GovernmentReviewFeeSar = 700m,
+                CourtVisitFeeSar = 700m,
             }));
 
         Assert.Contains("نسخة جديدة", error.Message);
         var unchanged = await service.GetByIdAsync(tableId);
-        Assert.Equal(GovernmentRate, unchanged!.GovernmentReviewFeeSar);
+        Assert.Equal(GovernmentRate, unchanged!.CourtVisitFeeSar);
         Assert.Equal("افتراضي", unchanged.Name);
     }
 
@@ -461,24 +461,24 @@ public class PartyFeePricingServiceTests
         await using var db = CreateDb();
         var service = new PartyFeePricingService(db);
         await SetGovernmentRateAsync(service, GovernmentRate);
-        var sourceId = PartyFeePricingService.DefaultGovernmentTableId;
+        var sourceId = PartyFeePricingService.DefaultCourtVisitTableId;
         await service.SetAssignmentsAsync(sourceId, ["reviewer-1", "reviewer-2"]);
 
         var revision = await service.ReviseAsync(sourceId, new PartyFeePricingDto
         {
             Id = sourceId,
             Name = "عقد ٢٠٢٧",
-            GovernmentReviewFeeSar = 700m,
+            CourtVisitFeeSar = 700m,
         });
 
         Assert.NotEqual(sourceId, revision.Id);
-        Assert.Equal(700m, revision.GovernmentReviewFeeSar);
+        Assert.Equal(700m, revision.CourtVisitFeeSar);
         Assert.True(revision.IsActive);
         Assert.Equal(["reviewer-1", "reviewer-2"], revision.AssignedAssigneeIds);
 
         var source = await service.GetByIdAsync(sourceId);
         Assert.NotNull(source);
-        Assert.Equal(GovernmentRate, source!.GovernmentReviewFeeSar);
+        Assert.Equal(GovernmentRate, source!.CourtVisitFeeSar);
         Assert.False(source.IsActive);
         Assert.Empty(source.AssignedAssigneeIds);
         Assert.Equal(
@@ -519,11 +519,11 @@ public class PartyFeePricingServiceTests
         await using var db = CreateDb();
         var service = new PartyFeePricingService(db);
         await service.ListAsync();
-        var sourceId = PartyFeePricingService.DefaultGovernmentTableId;
+        var sourceId = PartyFeePricingService.DefaultCourtVisitTableId;
         await service.SetAssignmentsAsync(sourceId, ["reviewer-1"]);
         await service.CreateAsync(new CreatePartyFeePricingTableRequest
         {
-            Category = PartyFeePricingCategories.GovernmentReview,
+            Category = PartyFeePricingCategories.CourtVisit,
             Name = "ثانٍ",
         });
 
@@ -544,7 +544,7 @@ public class PartyFeePricingServiceTests
         await service.ListAsync();
         var second = await service.CreateAsync(new CreatePartyFeePricingTableRequest
         {
-            Category = PartyFeePricingCategories.GovernmentReview,
+            Category = PartyFeePricingCategories.CourtVisit,
             Name = "ثانٍ",
         });
 
@@ -556,7 +556,7 @@ public class PartyFeePricingServiceTests
             .ToListAsync();
         Assert.Equal(PartyFeePricingCategories.All.Length, active.Count);
         Assert.Contains(active, a => a.Id == second.Id);
-        Assert.DoesNotContain(active, a => a.Id == PartyFeePricingService.DefaultGovernmentTableId);
+        Assert.DoesNotContain(active, a => a.Id == PartyFeePricingService.DefaultCourtVisitTableId);
     }
 
     [Fact]
@@ -567,7 +567,7 @@ public class PartyFeePricingServiceTests
         await service.ListAsync();
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            service.DeleteAsync(PartyFeePricingService.DefaultGovernmentTableId));
+            service.DeleteAsync(PartyFeePricingService.DefaultCourtVisitTableId));
     }
 
     /// <summary>
@@ -582,14 +582,14 @@ public class PartyFeePricingServiceTests
         await service.ListAsync();
         var second = await service.CreateAsync(new CreatePartyFeePricingTableRequest
         {
-            Category = PartyFeePricingCategories.GovernmentReview,
+            Category = PartyFeePricingCategories.CourtVisit,
             Name = "ثانٍ",
         });
 
-        Assert.True(await service.DeleteAsync(PartyFeePricingService.DefaultGovernmentTableId));
+        Assert.True(await service.DeleteAsync(PartyFeePricingService.DefaultCourtVisitTableId));
 
         var remaining = await db.PartyFeePricingTables
-            .SingleAsync(t => t.Category == PartyFeePricingCategories.GovernmentReview);
+            .SingleAsync(t => t.Category == PartyFeePricingCategories.CourtVisit);
         Assert.Equal(second.Id, remaining.Id);
         Assert.True(remaining.IsActive);
     }
@@ -611,12 +611,12 @@ public class PartyFeePricingServiceTests
     {
         await service.ListAsync();
         return await service.SaveAsync(
-            PartyFeePricingService.DefaultGovernmentTableId,
+            PartyFeePricingService.DefaultCourtVisitTableId,
             new PartyFeePricingDto
             {
-                Id = PartyFeePricingService.DefaultGovernmentTableId,
+                Id = PartyFeePricingService.DefaultCourtVisitTableId,
                 Name = "افتراضي",
-                GovernmentReviewFeeSar = rate,
+                CourtVisitFeeSar = rate,
             });
     }
 

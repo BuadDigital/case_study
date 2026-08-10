@@ -514,6 +514,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
         WorkflowTaskKind.FieldInspection => "تعيين المعاين الميداني",
         WorkflowTaskKind.EngineeringSurvey => "تعيين المكتب الهندسي",
         WorkflowTaskKind.PropertyAppraisal => "تعيين المقيّم العقاري",
+        // Legacy government-review child tasks (no longer spawned).
         WorkflowTaskKind.GovernmentReview => "تعيين المراجع الحكومي",
         _ => "تعيين طرف",
     };
@@ -523,6 +524,7 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
         "field-inspection" => "إتمام المعاينة الميدانية",
         "engineering-survey" => "إتمام الرفع المساحي",
         "property-appraisal" => "إتمام التقييم العقاري",
+        // Legacy government-review submissions (product surface removed).
         "government-review" => "إتمام المراجعة الحكومية",
         _ => "إتمام عمل الطرف",
     };

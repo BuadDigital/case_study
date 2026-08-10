@@ -5,8 +5,7 @@ import { countOpenFailures } from "./failures-types";
 
 /** Roles that see only failures they raised from their party workspace. */
 const PARTY_SCOPED_FAILURE_RAISER: Partial<Record<RoleId, string>> = {
-  "government-reviewer":
-    FAILURE_RAISER_LABEL_BY_KIND["government-review"] ?? "المراجع الحكومي",
+  "government-reviewer": "المراجع الحكومي",
   "engineering-office":
     FAILURE_RAISER_LABEL_BY_KIND["engineering-survey"] ?? "المكتب الهندسي",
   "field-inspector": FAILURE_RAISER_LABEL_BY_KIND["field-inspection"] ?? "المعاين",

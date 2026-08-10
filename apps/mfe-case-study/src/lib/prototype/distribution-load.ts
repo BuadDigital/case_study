@@ -25,8 +25,6 @@ export function taskCountsTowardDistributionLoad(task: WorkflowTask): boolean {
       return task.kind === "property-appraisal";
     case "engineering-office":
       return task.kind === "engineering-survey";
-    case "government-reviewer":
-      return task.kind === "government-review";
     default:
       return false;
   }

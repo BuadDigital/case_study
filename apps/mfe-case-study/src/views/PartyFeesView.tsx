@@ -11,7 +11,7 @@ import type { PartyFeesVariant } from "../components/field-inspection/InspectorF
 function feesVariantForRole(role: RoleId): PartyFeesVariant | null {
   if (role === "field-inspector") return "field-inspection";
   if (role === "engineering-office") return "engineering-survey";
-  if (role === "government-reviewer") return "government-review";
+  if (role === "government-reviewer") return "court-visit";
   return null;
 }
 
@@ -24,7 +24,7 @@ export function PartyFeesView() {
     !isSupervisor &&
     (variant === "engineering-survey" ||
       variant === "field-inspection" ||
-      variant === "government-review");
+      variant === "court-visit");
 
   if (!variant && !isSupervisor) {
     return (

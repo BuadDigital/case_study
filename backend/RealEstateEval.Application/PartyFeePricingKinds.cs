@@ -6,7 +6,7 @@ public static class PartyFeePricingKinds
     /// <summary>Engineering survey — area tiers.</summary>
     public const string Tiered = "tiered";
 
-    /// <summary>Cooperator / government-review party rates (existing columns).</summary>
+    /// <summary>Cooperator / court-visit party rates (existing columns).</summary>
     public const string PartyRates = "party-rates";
 
     /// <summary>Employee incentive — single flat amount managed for assignees with compensation.</summary>

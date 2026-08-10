@@ -142,7 +142,7 @@ public class PartyTaskSubmissionReadAuthorizationTests
     private static TestBoundedContexts.Bundle CreateDb() =>
         TestBoundedContexts.Create($"party-read-{Guid.NewGuid():N}");
 
-    private static PartyTaskSubmissionService CreateService(ApplicationDbContext db, FailuresDbContext failures, OperationsDbContext ops)
+    private static PartyTaskSubmissionService CreateService(ApplicationDbContext db, FailuresDbContext _, OperationsDbContext __)
     {
         var (notifications, recipients) = TestInspectorFeeServiceFactory.CreateNotificationDeps(db);
         return new(
@@ -152,7 +152,6 @@ public class PartyTaskSubmissionReadAuthorizationTests
             TestInspectorFeeServiceFactory.CreateTimeline(db),
             new NullHttpContextAccessor(),
             new NullPermissionService(),
-            TestBoundedContexts.CreateKeyEnvelopesService(db, failures, ops),
             TestInspectorFeeServiceFactory.Create(db),
             notifications,
             recipients);

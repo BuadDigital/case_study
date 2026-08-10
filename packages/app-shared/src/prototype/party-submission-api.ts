@@ -39,16 +39,9 @@ export function setCachedPartySubmission(
 
 function detectSubmissionKind(
   payload: Record<string, unknown>,
-): "field-inspection" | "government-review" {
-  if (
-    payload.slotPhotos != null ||
-    payload.freePhotos != null ||
-    payload.boundaryMatches != null ||
-    payload.mapLatitude != null
-  ) {
-    return "field-inspection";
-  }
-  return "government-review";
+): "field-inspection" {
+  void payload;
+  return "field-inspection";
 }
 
 export async function fetchPartySubmission(
@@ -57,22 +50,15 @@ export async function fetchPartySubmission(
   const config = workOrdersApiConfig();
   if (!config) {
     const queued = await loadQueuedDraftPayload<Record<string, unknown>>(
-      "government-review",
+      "field-inspection",
       taskId,
     );
-    const fieldQueued =
-      queued ??
-      (await loadQueuedDraftPayload<Record<string, unknown>>(
-        "field-inspection",
-        taskId,
-      ));
-    if (fieldQueued) {
-      const kind = detectSubmissionKind(fieldQueued);
+    if (queued) {
       const local: PartyTaskSubmissionDto = {
         taskId,
-        kind,
+        kind: detectSubmissionKind(queued),
         status: "draft",
-        payload: fieldQueued,
+        payload: queued,
         updatedAtUtc: new Date().toISOString(),
       };
       setCachedPartySubmission(local, taskId);
@@ -86,16 +72,10 @@ export async function fetchPartySubmission(
     return result.data;
   }
   if (result.kind === "not_found" || result.kind === "network") {
-    const queuedGov = await loadQueuedDraftPayload<Record<string, unknown>>(
-      "government-review",
+    const queued = await loadQueuedDraftPayload<Record<string, unknown>>(
+      "field-inspection",
       taskId,
     );
-    const queued =
-      queuedGov ??
-      (await loadQueuedDraftPayload<Record<string, unknown>>(
-        "field-inspection",
-        taskId,
-      ));
     if (queued) {
       const local: PartyTaskSubmissionDto = {
         taskId,
@@ -202,11 +182,12 @@ export async function submitPartySubmission(
 ): Promise<PartySubmissionMutationResult> {
   const config = workOrdersApiConfig();
   const cached = getCachedPartySubmission(taskId);
+  const kind = "field-inspection" as const;
   if (!config) {
     if (cached) {
       const queued = await submitWithOfflineFallback({
         taskId,
-        kind: "government-review",
+        kind,
         payload: cached.payload ?? {},
         onlineSubmit: async () => {
           throw new Error(apiErrorMessage("auth"));
@@ -220,7 +201,7 @@ export async function submitPartySubmission(
   try {
     const queued = await submitWithOfflineFallback({
       taskId,
-      kind: "government-review",
+      kind,
       payload: cached?.payload ?? {},
       onlineSubmit: async () => {
         const result = await submitPartyTaskSubmission(config, taskId);
@@ -241,7 +222,7 @@ export async function submitPartySubmission(
         ok: true,
         data: cached ?? {
           taskId,
-          kind: "government-review",
+          kind: "field-inspection",
           status: "draft",
           payload: {},
           updatedAtUtc: new Date().toISOString(),

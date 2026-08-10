@@ -51,17 +51,8 @@ function requestUrl(request: ApiWriteRequest): string {
 }
 
 function detectDraftKind(payload: unknown): OfflineDraftRecord["kind"] {
-  if (!payload || typeof payload !== "object") return "government-review";
-  const record = payload as Record<string, unknown>;
-  if (
-    record.slotPhotos != null ||
-    record.freePhotos != null ||
-    record.boundaryMatches != null ||
-    record.mapLatitude != null
-  ) {
-    return "field-inspection";
-  }
-  return "government-review";
+  void payload;
+  return "field-inspection";
 }
 
 function parseBody(request: ApiWriteRequest): Record<string, unknown> {

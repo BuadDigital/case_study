@@ -49,6 +49,7 @@ public static class WorkflowTaskPhaseRules
         WorkflowTaskKind.FieldInspection => "تعيين المعاين الميداني",
         WorkflowTaskKind.EngineeringSurvey => "تعيين المكتب الهندسي",
         WorkflowTaskKind.PropertyAppraisal => "تعيين المقيّم العقاري",
+        // Legacy government-review children (no longer spawned).
         WorkflowTaskKind.GovernmentReview => "تعيين المراجع الحكومي",
         _ => "تعيين طرف",
     };
@@ -112,6 +113,7 @@ public static class WorkflowTaskPhaseRules
     public static string PartyTaskTitle(WorkflowTaskKind kind, string refLabel) => kind switch
     {
         WorkflowTaskKind.FieldInspection => $"معاينة ميدانية — {refLabel}",
+        // Legacy government-review children (no longer spawned).
         WorkflowTaskKind.GovernmentReview => $"مراجعة حكومية — {refLabel}",
         WorkflowTaskKind.PropertyAppraisal => $"تقييم عقاري — {refLabel}",
         _ => $"رفع مساحي — {refLabel}",

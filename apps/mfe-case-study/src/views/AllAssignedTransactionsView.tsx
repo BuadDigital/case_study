@@ -19,7 +19,6 @@ import {
 import { ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-engineering-survey-events";
 import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-evaluator-events";
 import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-field-inspection-events";
-import { GOVERNMENT_REVIEW_SUBMISSION_CHANGED_EVENT } from "../lib/prototype/government-review-work-storage";
 import { useWorkflowTasksQuery } from "../query/case-study-queries";
 import {
   allTransactionsPath,
@@ -37,7 +36,6 @@ const PARTY_QUEUE_REFRESH_EVENTS = [
   FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
   ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
   EVALUATOR_SUBMISSION_CHANGED_EVENT,
-  GOVERNMENT_REVIEW_SUBMISSION_CHANGED_EVENT,
 ];
 
 function assignedListedTasks(tasks: WorkflowTask[]): WorkflowTask[] {

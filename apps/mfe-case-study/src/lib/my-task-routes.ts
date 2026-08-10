@@ -100,16 +100,6 @@ export function fieldInspectionWorkspacePath(
     : activeInspectionWorkspacePath(taskId);
 }
 
-/** Full-page workspace for distributed party government-review tasks. */
-export function governmentReviewWorkspacePath(taskId: string): string {
-  return `/government-review/${encodeURIComponent(taskId)}`;
-}
-
-export function isGovernmentReviewWorkspacePath(pathname: string): boolean {
-  const parts = pathname.split("/").filter(Boolean);
-  return parts[0] === "government-review" && parts.length >= 2;
-}
-
 /** Operations tasks hub (court visits / reviewer work). */
 export function operationsTasksPath(): string {
   return "/operations-tasks";
@@ -158,8 +148,6 @@ export function partyTaskWorkspacePath(task: WorkflowTask): string | undefined {
       return activeSurveyWorkspacePath(task.id);
     case "property-appraisal":
       return propertyAppraisalWorkspacePath(task.id);
-    case "government-review":
-      return governmentReviewWorkspacePath(task.id);
     default:
       return undefined;
   }

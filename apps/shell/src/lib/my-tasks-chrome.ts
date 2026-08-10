@@ -69,15 +69,6 @@ export function resolveMyTasksChrome(
     };
   }
 
-  if (page === "government-review" && parts[1]) {
-    decodeTaskParam(parts[1]);
-    return {
-      breadcrumb:
-        "دراسة الحالة / المعاملات النشطة / المراجعة الحكومية / مساحة العمل",
-      title: "المراجعة الحكومية",
-    };
-  }
-
   if (page === "operations-tasks" && taskId) {
     const id = decodeTaskParam(taskId);
     const title = options?.opsTaskTitle?.trim() || id;
@@ -101,13 +92,6 @@ export function resolveMyTasksChrome(
         return {
           breadcrumb: "لوحة التحكم / الرفع المساحي / مساحة العمل",
           title: "المكتب الهندسي — الرفع المساحي",
-        };
-      }
-      if (page === "government-review") {
-        return {
-          breadcrumb:
-            "دراسة الحالة / المعاملات النشطة / المراجعة الحكومية / مساحة العمل",
-          title: "المراجعة الحكومية",
         };
       }
       return {

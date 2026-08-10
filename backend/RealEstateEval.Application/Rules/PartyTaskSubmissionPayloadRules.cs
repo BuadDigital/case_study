@@ -41,8 +41,8 @@ public static class PartyTaskSubmissionPayloadRules
                     break;
 
                 case "government-review":
-                    foreach (var (key, message) in GovernmentReviewSubmissionValidator.Validate(root))
-                        errors[key] = message;
+                    // Legacy kind — product surface removed; reject new submits.
+                    errors["_"] = "مسار المراجعة الحكومية لم يعد مدعوماً";
                     break;
 
                 case "field-inspection":

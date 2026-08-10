@@ -18,7 +18,7 @@ public partial class AddPartyFeePricingConfig : Migration
             CREATE TABLE IF NOT EXISTS financial."PartyFeePricingConfigs" (
                 "Id" uuid NOT NULL,
                 "EngineeringSurveyFeeSar" numeric(12,2) NOT NULL,
-                "GovernmentReviewFeeSar" numeric(12,2) NOT NULL,
+                "CourtVisitFeeSar" numeric(12,2) NOT NULL,
                 "FieldInspectorIndividualFeeSar" numeric(12,2) NOT NULL,
                 "FieldInspectorOrganizationFeeSar" numeric(12,2) NOT NULL,
                 "FieldInspectorEmployeeFeeSar" numeric(12,2) NOT NULL,
@@ -29,7 +29,7 @@ public partial class AddPartyFeePricingConfig : Migration
             INSERT INTO financial."PartyFeePricingConfigs" (
                 "Id",
                 "EngineeringSurveyFeeSar",
-                "GovernmentReviewFeeSar",
+                "CourtVisitFeeSar",
                 "FieldInspectorIndividualFeeSar",
                 "FieldInspectorOrganizationFeeSar",
                 "FieldInspectorEmployeeFeeSar",

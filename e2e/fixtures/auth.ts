@@ -213,7 +213,6 @@ export const MODULE_PAGES: { id: string; title: string }[] = [
   { id: "valuation-requests", title: "طلبات التقييم" },
   { id: "property-inspection", title: "معاينة العقار (يتيم)" },
   { id: "active-inspection", title: "معاينة العقار" },
-  { id: "government-review", title: "المراجعة الحكومية" },
   { id: "operations-tasks", title: "المهام" },
   { id: "property-appraisal", title: "تقييم العقار" },
   { id: "active-survey", title: "الرفع المساحي" },
@@ -257,7 +256,6 @@ export const ROLE_MODULE_PAGES: Record<string, string[]> = {
     "system-screen-catalog",
   ],
   [RELEASE_USERS.governmentReviewer]: [
-    "government-review",
     "operations-tasks",
     "keys",
     "po",

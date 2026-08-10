@@ -162,47 +162,6 @@ public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
             };
         }
 
-        // Legacy fallback: government-review submission keysStatus
-        if (resolvedPropertyId is Guid legacyPid && resolvedPo.Length > 0)
-        {
-            var govTask = await _caseStudy.WorkflowTasks.AsNoTracking()
-                .Where(t =>
-                    t.Kind == WorkflowTaskKind.GovernmentReview
-                    && t.PropertyId == legacyPid
-                    && t.PoNumber == resolvedPo)
-                .OrderByDescending(t => t.CreatedAtUtc)
-                .FirstOrDefaultAsync(cancellationToken);
-
-            if (govTask is not null)
-            {
-                var submission = await _caseStudy.PartyTaskSubmissions.AsNoTracking()
-                    .FirstOrDefaultAsync(
-                        s => s.Kind == "government-review" && s.WorkflowTaskId == govTask.Id,
-                        cancellationToken);
-                if (submission is not null)
-                {
-                    var (keysStatus, handed) = ParseLegacy(submission.PayloadJson);
-                    var available =
-                        handed == "yes"
-                        || keysStatus is "received" or "not_required";
-                    return new PropertyKeyGateDto
-                    {
-                        PropertyId = resolvedPropertyId,
-                        PoNumber = resolvedPo,
-                        DeedNumber = resolvedDeed,
-                        RequestNumber = resolvedRequest,
-                        KeysStatus = keysStatus,
-                        KeyHandedToInspector = handed,
-                        KeyAvailable = available,
-                        Source = "legacy",
-                        StudyHoldStatus = access?.StudyHoldStatus ?? PropertyCourtAccessStatuses.None,
-                        EnvelopeMissingWarning =
-                            keysStatus == "received" && resolvedRequest.Length > 0,
-                    };
-                }
-            }
-        }
-
         return new PropertyKeyGateDto
         {
             PropertyId = resolvedPropertyId,
@@ -213,25 +172,5 @@ public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
             StudyHoldStatus = access?.StudyHoldStatus ?? PropertyCourtAccessStatuses.None,
             EnvelopeMissingWarning = false,
         };
-    }
-
-    private static (string KeysStatus, string Handed) ParseLegacy(string payloadJson)
-    {
-        try
-        {
-            using var doc = System.Text.Json.JsonDocument.Parse(payloadJson);
-            var root = doc.RootElement;
-            var keys = root.TryGetProperty("keysStatus", out var ks)
-                ? ks.GetString()?.Trim() ?? ""
-                : "";
-            var handed = root.TryGetProperty("keyHandedToInspector", out var kh)
-                ? kh.GetString()?.Trim() ?? ""
-                : "";
-            return (keys, handed);
-        }
-        catch
-        {
-            return ("", "");
-        }
     }
 }

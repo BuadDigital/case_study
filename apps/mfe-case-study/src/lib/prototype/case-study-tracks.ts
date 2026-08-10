@@ -32,7 +32,6 @@ const TRACK_KIND: Record<
   survey: "engineering-survey",
   inspection: "field-inspection",
   appraisal: "property-appraisal",
-  government: "government-review",
   caseStudy: "parent",
 };
 
@@ -90,7 +89,6 @@ function distributionAssigneeId(
   trackId: string,
 ): string | null {
   if (trackId === "survey") return distribution.engineeringOfficeId || null;
-  if (trackId === "government") return distribution.governmentAuditorId || null;
   if (trackId === "inspection") return distribution.inspectorId || null;
   if (trackId === "appraisal") return distribution.valuatorId || null;
   if (trackId === "caseStudy") return distribution.caseSpecialistId || null;
@@ -104,11 +102,6 @@ export function buildCaseStudyTracks(
 ): CaseStudyTrack[] {
   const distribution = migrateDistribution(parent.distribution);
   const children = allTasks.filter((t) => t.parentTaskId === parent.id);
-
-  // المرحلة الحكومية لا تُفعَّل من التوزيع — تظهر إذا وُجدت مهمة طرف (مثلاً من العمليات).
-  const governmentSpawned = Boolean(
-    findChild(children, "government-review"),
-  );
 
   const defs: { id: string; label: string; spawned: boolean }[] = [
     {
@@ -125,11 +118,6 @@ export function buildCaseStudyTracks(
       id: "appraisal",
       label: "التقييم العقاري",
       spawned: distribution.valuationDepartment,
-    },
-    {
-      id: "government",
-      label: "المراجعة الحكومية",
-      spawned: governmentSpawned,
     },
     { id: "caseStudy", label: "دراسة الحالة", spawned: true },
   ];

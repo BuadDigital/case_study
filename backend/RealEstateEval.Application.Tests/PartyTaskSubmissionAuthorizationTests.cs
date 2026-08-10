@@ -5,7 +5,6 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
-using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
@@ -21,7 +20,7 @@ public class PartyTaskSubmissionAuthorizationTests
         var bundle = CreateDb();
         var db = bundle.App;
         SeedTask(db, assigneeId: "dist-owner");
-        var service = CreateService(db, bundle.Failures, bundle.Ops);
+        var service = CreateService(db);
 
         var payload = JsonDocument.Parse("""{"status":"draft","visitStatus":""}""").RootElement;
         var (result, errors) = await service.SaveDraftAsync(
@@ -46,7 +45,7 @@ public class PartyTaskSubmissionAuthorizationTests
         var bundle = CreateDb();
         var db = bundle.App;
         SeedTask(db, assigneeId: "dist-owner");
-        var service = CreateService(db, bundle.Failures, bundle.Ops);
+        var service = CreateService(db);
 
         var payload = JsonDocument.Parse("""{"status":"draft","visitStatus":""}""").RootElement;
         var (result, errors) = await service.SaveDraftAsync(
@@ -56,7 +55,7 @@ public class PartyTaskSubmissionAuthorizationTests
             {
                 UserId = "user-owner",
                 DisplayName = "المكلف",
-                PrototypeRole = "government-reviewer",
+                PrototypeRole = "field-inspector",
                 DistributionAssigneeId = "dist-owner",
             });
 
@@ -71,7 +70,7 @@ public class PartyTaskSubmissionAuthorizationTests
         var bundle = CreateDb();
         var db = bundle.App;
         SeedAcceptedableSurvey(db);
-        var service = CreateService(db, bundle.Failures, bundle.Ops);
+        var service = CreateService(db);
 
         var (result, errors) = await service.AcceptAsync(
             TaskId,
@@ -91,13 +90,13 @@ public class PartyTaskSubmissionAuthorizationTests
     {
         var now = DateTime.UtcNow;
         db.WorkflowTasks.Add(WorkflowTask.Create(
-            WorkflowTaskKind.GovernmentReview,
+            WorkflowTaskKind.FieldInspection,
             "PO-AUTH",
             now,
-            title: "مراجعة",
+            title: "معاينة",
             phase: WorkflowTaskPhase.Done,
-            assigneeRole: "government-reviewer",
-            assigneeName: "مراجع",
+            assigneeRole: "field-inspector",
+            assigneeName: "معاين",
             id: TaskId,
             propertyId: PropertyId,
             assigneeId: assigneeId));
@@ -148,7 +147,7 @@ public class PartyTaskSubmissionAuthorizationTests
     private static TestBoundedContexts.Bundle CreateDb() =>
         TestBoundedContexts.Create($"party-auth-{Guid.NewGuid():N}");
 
-    private static PartyTaskSubmissionService CreateService(ApplicationDbContext db, FailuresDbContext failures, OperationsDbContext ops)
+    private static PartyTaskSubmissionService CreateService(ApplicationDbContext db)
     {
         var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db);
         var (notifications, recipients) = TestInspectorFeeServiceFactory.CreateNotificationDeps(db);
@@ -159,7 +158,6 @@ public class PartyTaskSubmissionAuthorizationTests
             timeline,
             new NullHttpContextAccessor(),
             new NullPermissionService(),
-            TestBoundedContexts.CreateKeyEnvelopesService(db, failures, ops),
             TestInspectorFeeServiceFactory.Create(db),
             notifications,
             recipients);

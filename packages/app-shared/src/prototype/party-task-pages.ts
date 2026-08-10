@@ -22,27 +22,6 @@ export type PartyTaskPageDef = {
 };
 
 const PARTY_TASK_PAGES_MAP = {
-  /** Official queue under المعاملات النشطة (government-reviewer). */
-  "government-review": {
-    pageId: "government-review",
-    kind: "government-review",
-    roleId: "government-reviewer",
-    pageTitle: "المراجعة الحكومية",
-    emptyLine: "لا توجد عقارات مسجّلة بعد",
-    emptyHint:
-      "تظهر هنا بعد تأكيد التوزيع عند تفعيل المراجع الحكومي واختيار المسؤول.",
-    tableHint:
-      "الإنهاء لا يُمنع عند غياب الظرف — تبقى شارة «بانتظار الظرف» وتتم مزامنة ناعمة مع الظرف إن وُجد.",
-    breadcrumbTitle: "المراجعة الحكومية",
-    workTitle: "المراجعة الحكومية",
-    workIntro:
-      "زيارة المحكمة وجمع المفاتيح — أكمل التحقق ثم أرسل النتيجة.",
-    saveLabel: "حفظ وإتمام المراجعة",
-    completeTitle: "تم إتمام المراجعة",
-    completeMessage: "اكتملت المراجعة الحكومية لهذا العقار.",
-    assigneeSubtitle: "مراجع حكومي",
-    icon: "M3 21h18M6 21V7l6-4 6 4M12 3v18",
-  },
   /** Official queue under المعاملات النشطة (field-inspector). */
   "active-inspection": {
     pageId: "active-inspection",

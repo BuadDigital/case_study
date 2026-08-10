@@ -40,7 +40,7 @@ export function PartyFeesWorkspace({
   assigneeId,
   isSupervisor,
 }: {
-  variant: "field-inspection" | "engineering-survey" | "government-review";
+  variant: "field-inspection" | "engineering-survey" | "court-visit";
   assigneeId?: string;
   isSupervisor: boolean;
 }) {
@@ -53,7 +53,11 @@ export function PartyFeesWorkspace({
     {
       assigneeId: isSupervisor ? undefined : assigneeId,
       submittedOnly: false,
-      taskKind: isSupervisor ? undefined : variant,
+      taskKind: isSupervisor
+        ? undefined
+        : variant === "court-visit"
+          ? undefined
+          : variant,
     },
     { enabled: isSupervisor || Boolean(assigneeId) },
   );
@@ -99,7 +103,7 @@ export function PartyFeesWorkspace({
     suspendedRows.length;
 
   const isIndividualParty =
-    variant === "field-inspection" || variant === "government-review";
+    variant === "field-inspection" || variant === "court-visit";
 
   const { data: issuedStatements = [] } = useQuery({
     queryKey: [
@@ -121,7 +125,7 @@ export function PartyFeesWorkspace({
    * One fees module, three party slots — never mix lanes:
    *   engineering-survey  → vendor (accept/dispute + invoice)
    *   field-inspection    → individual inspector (submit supervisor)
-   *   government-review   → individual reviewer (+ visit/keys)
+   *   court-visit         → individual reviewer (+ visit fees)
    */
   if (!isSupervisor && variant === "engineering-survey") {
     return <EngFeesHtmlScreen assigneeId={assigneeId} />;

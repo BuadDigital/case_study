@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { cn } from "@platform/design-system";
 import { PoNumber } from "../ui/PoNumber";
-import { PoPropertyDetailTopbarActions } from "./PoPropertyDetailTopbarActions";
 import { DetailBadge, ltrValueClass } from "./PropertyDetailFields";
 import {
   assignmentCompositeTag,
@@ -185,17 +184,11 @@ export function PropertyDetailHero({
   record,
   property,
   propertyIndex,
-  actionsCaption,
-  hideOpenCaseStudy = false,
 }: {
   record: PoIntakeRecord;
   property: PoPropertyIntake;
   /** 1-based index in PO properties list */
   propertyIndex: number;
-  /** Override the actions strip caption under the meta row. */
-  actionsCaption?: string;
-  /** Hide «فتح دراسة الحالة» (already on workspace). */
-  hideOpenCaseStudy?: boolean;
 }) {
   const { data: tasks = [] } = useWorkflowTasksQuery();
   const { data: failures = [] } = useFailuresQuery();
@@ -231,7 +224,6 @@ export function PropertyDetailHero({
     const inspection = children.find((t) => t.kind === "field-inspection");
     const survey = children.find((t) => t.kind === "engineering-survey");
     const appraisal = children.find((t) => t.kind === "property-appraisal");
-    const gov = children.find((t) => t.kind === "government-review");
     const doneish = (status: string | undefined) => status === "completed";
 
     return estimateCaseStudyCompletion({
@@ -244,8 +236,8 @@ export function PropertyDetailHero({
       surveyDone: doneish(survey?.status),
       hasAppraisal: Boolean(appraisal),
       appraisalDone: doneish(appraisal?.status),
-      hasGov: Boolean(gov),
-      govDone: doneish(gov?.status),
+      hasGov: false,
+      govDone: false,
       hasKeysHint: Boolean(property.requestNumber.trim()),
       enfathDone: false,
     });
@@ -369,19 +361,6 @@ export function PropertyDetailHero({
               "—"
             )}
           </StripCell>
-        </div>
-
-        <div className="flex flex-col gap-2 py-3 max-lg:pb-3.5 lg:flex-row lg:flex-wrap lg:items-center lg:gap-2 lg:py-[11px]">
-          <span className="text-[11px] font-semibold leading-relaxed text-text-3 lg:shrink-0">
-            {actionsCaption ??
-              "الصفحة للاطلاع — الإجراءات حسب صلاحيات دورك:"}
-          </span>
-          <PoPropertyDetailTopbarActions
-            poNumber={record.poNumber}
-            propertyId={property.id}
-            variant="hero"
-            hideOpenCaseStudy={hideOpenCaseStudy}
-          />
         </div>
       </header>
     </>

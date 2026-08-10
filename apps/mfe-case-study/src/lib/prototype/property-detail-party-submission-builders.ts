@@ -35,14 +35,12 @@ import {
 } from "@evaluator/mfe/lib/evaluator/evaluator-checklist-case-study-sync";
 import type { EvaluatorChecklistAnswers } from "@evaluator/mfe/lib/evaluator/evaluator-window-data";
 import type { CaseStudyInfoRolesMatrix } from "@settings/mfe";
-import { formatGovernmentReviewKeysProofLabel } from "./government-review-work-data";
 import type {
   EngineeringSurveyChecklistAnswer,
   EngineeringSurveyChecklistRow,
   EngineeringSurveySubmissionSnapshot,
   EvaluatorChecklist,
   EvaluatorSubmissionSnapshot,
-  GovernmentReviewSubmissionSnapshot,
   PartyAnswerRow,
   PropertyDetailPartySubmission,
 } from "./property-detail-party-submission-types";
@@ -70,7 +68,6 @@ const ROLE_CHILD_KIND: Partial<
   inspection: "field-inspection",
   survey: "engineering-survey",
   appraisal: "property-appraisal",
-  government: "government-review",
 };
 
 export function formStatusLabel(status: CaseStudyFormStatus): string {
@@ -840,138 +837,6 @@ export function buildFromFieldInspection(
       ? workflowStatusLabel(childTask.status)
       : undefined,
     submittedAtUtc: submission.submittedAtUtc ?? null,
-    fields,
-    answers: [],
-    remarks,
-  };
-}
-
-export function buildFromGovernmentReview(
-  submission: GovernmentReviewSubmissionSnapshot,
-  childTask?: WorkflowTask | null,
-): PropertyDetailPartySubmission {
-  const visitLabels: Record<string, string> = {
-    completed: "تمت الزيارة",
-    scheduled: "بانتظار الموعد",
-    blocked: "تعذر الوصول",
-  };
-  const keysLabels: Record<string, string> = {
-    received: "تم استلام المفاتيح",
-    pending: "لم تُسلَّم بعد",
-    not_required: "غير مطلوبة",
-  };
-
-  const fields: PropertyDetailPartySubmission["fields"] = [
-    {
-      label: "حالة المراجعة",
-      value: submission.status === "submitted" ? "مُرسَل" : "قيد العمل",
-    },
-  ];
-
-  if (submission.visitStatus) {
-    fields.push({
-      label: "حالة الزيارة",
-      value: visitLabels[submission.visitStatus] ?? submission.visitStatus,
-    });
-  }
-  if (submission.visitDate.trim()) {
-    fields.push({
-      label: "تاريخ الزيارة",
-      value: formatDateAr(submission.visitDate),
-      ltr: true,
-    });
-  }
-  if (submission.courtName.trim()) {
-    fields.push({ label: "المحكمة", value: submission.courtName.trim() });
-  }
-  if (submission.keysStatus) {
-    fields.push({
-      label: INFATH_FIELD_LABELS.keysReceived,
-      value:
-        submission.keysStatus === "received"
-          ? "نعم"
-          : submission.keysStatus === "pending"
-            ? "لا"
-            : keysLabels[submission.keysStatus] ?? submission.keysStatus,
-    });
-    fields.push({
-      label: "حالة المفاتيح",
-      value: keysLabels[submission.keysStatus] ?? submission.keysStatus,
-    });
-  }
-  if (submission.keyHandedToInspector) {
-    fields.push({
-      label: "تسليم المفتاح للمعاين",
-      value:
-        submission.keyHandedToInspector === "yes"
-          ? "نعم — تم التسليم"
-          : "لا — لم يُسلَّم بعد",
-    });
-  }
-  if (submission.propertyZoneStatus?.trim()) {
-    fields.push({
-      label: INFATH_FIELD_LABELS.zoneStatus,
-      value: submission.propertyZoneStatus.trim(),
-    });
-  }
-  const keysProofLabel = formatGovernmentReviewKeysProofLabel(
-    submission.keysProofFiles ?? [],
-  );
-  if (keysProofLabel) {
-    fields.push({
-      label: INFATH_FIELD_LABELS.keysProof,
-      value: keysProofLabel,
-    });
-  }
-  if (submission.submittedAtUtc) {
-    fields.push({
-      label: "تاريخ الإرسال",
-      value: formatDateAr(submission.submittedAtUtc.slice(0, 10)),
-      ltr: true,
-    });
-  }
-  if (childTask) {
-    fields.push({
-      label: "حالة المهمة",
-      value: workflowStatusLabel(childTask.status),
-    });
-  }
-
-  const remarks: PropertyDetailPartySubmission["remarks"] = [];
-  if (submission.keysDescription.trim()) {
-    remarks.push({
-      label: "المفاتيح / موقع الحفظ",
-      value: submission.keysDescription.trim(),
-    });
-  }
-  if (submission.accessBlockReason.trim()) {
-    remarks.push({
-      label: "سبب التعذر / المتابعة",
-      value: submission.accessBlockReason.trim(),
-    });
-  }
-  if (submission.reviewNotes.trim()) {
-    remarks.push({
-      label: "ملاحظات المراجعة",
-      value: submission.reviewNotes.trim(),
-    });
-  }
-
-  const hasData =
-    submission.status !== "draft" ||
-    Boolean(submission.visitStatus) ||
-    Boolean(submission.keysStatus) ||
-    remarks.length > 0;
-
-  return {
-    roleKey: "government",
-    hasData,
-    emptyReason: hasData ? undefined : "لم يُقدَّم بعد",
-    statusLabel: submission.status === "submitted" ? "مُرسَل" : "مسودة",
-    taskStatusLabel: childTask
-      ? workflowStatusLabel(childTask.status)
-      : undefined,
-    submittedAtUtc: submission.submittedAtUtc,
     fields,
     answers: [],
     remarks,

@@ -19,7 +19,7 @@ public partial class PartyFeePricingTables : Migration
                 "Id" uuid NOT NULL,
                 "Name" character varying(128) NOT NULL,
                 "IsActive" boolean NOT NULL DEFAULT false,
-                "GovernmentReviewFeeSar" numeric(12,2) NOT NULL DEFAULT 0,
+                "CourtVisitFeeSar" numeric(12,2) NOT NULL DEFAULT 0,
                 "KeyReceiptFeeSar" numeric(12,2) NOT NULL DEFAULT 0,
                 "FieldInspectorIndividualFeeSar" numeric(12,2) NOT NULL DEFAULT 0,
                 "FieldInspectorOrganizationFeeSar" numeric(12,2) NOT NULL DEFAULT 0,
@@ -47,7 +47,7 @@ public partial class PartyFeePricingTables : Migration
 
             INSERT INTO financial."PartyFeePricingTables" (
                 "Id", "Name", "IsActive",
-                "GovernmentReviewFeeSar", "KeyReceiptFeeSar",
+                "CourtVisitFeeSar", "KeyReceiptFeeSar",
                 "FieldInspectorIndividualFeeSar", "FieldInspectorOrganizationFeeSar",
                 "UpdatedAtUtc"
             )
@@ -55,8 +55,8 @@ public partial class PartyFeePricingTables : Migration
                 c."Id",
                 'التسعيرة الافتراضية',
                 true,
-                c."GovernmentReviewFeeSar",
-                CASE WHEN c."KeyReceiptFeeSar" > 0 THEN c."KeyReceiptFeeSar" ELSE c."GovernmentReviewFeeSar" END,
+                c."CourtVisitFeeSar",
+                CASE WHEN c."KeyReceiptFeeSar" > 0 THEN c."KeyReceiptFeeSar" ELSE c."CourtVisitFeeSar" END,
                 c."FieldInspectorIndividualFeeSar",
                 c."FieldInspectorOrganizationFeeSar",
                 c."UpdatedAtUtc"
@@ -67,7 +67,7 @@ public partial class PartyFeePricingTables : Migration
 
             INSERT INTO financial."PartyFeePricingTables" (
                 "Id", "Name", "IsActive",
-                "GovernmentReviewFeeSar", "KeyReceiptFeeSar",
+                "CourtVisitFeeSar", "KeyReceiptFeeSar",
                 "FieldInspectorIndividualFeeSar", "FieldInspectorOrganizationFeeSar",
                 "UpdatedAtUtc"
             )
@@ -121,7 +121,7 @@ public partial class PartyFeePricingTables : Migration
                 "EngineeringSurveyAreaTier3FeeSar" numeric(12,2) NOT NULL DEFAULT 0,
                 "EngineeringSurveyAreaTier4FeeSar" numeric(12,2) NOT NULL DEFAULT 0,
                 "EngineeringSurveyAreaTier5FeeSar" numeric(12,2) NOT NULL DEFAULT 0,
-                "GovernmentReviewFeeSar" numeric(12,2) NOT NULL DEFAULT 0,
+                "CourtVisitFeeSar" numeric(12,2) NOT NULL DEFAULT 0,
                 "KeyReceiptFeeSar" numeric(12,2) NOT NULL DEFAULT 0,
                 "FieldInspectorIndividualFeeSar" numeric(12,2) NOT NULL DEFAULT 0,
                 "FieldInspectorOrganizationFeeSar" numeric(12,2) NOT NULL DEFAULT 0,
@@ -142,7 +142,7 @@ public partial class PartyFeePricingTables : Migration
                 "EngineeringSurveyAreaTier3FeeSar",
                 "EngineeringSurveyAreaTier4FeeSar",
                 "EngineeringSurveyAreaTier5FeeSar",
-                "GovernmentReviewFeeSar",
+                "CourtVisitFeeSar",
                 "KeyReceiptFeeSar",
                 "FieldInspectorIndividualFeeSar",
                 "FieldInspectorOrganizationFeeSar",
@@ -161,7 +161,7 @@ public partial class PartyFeePricingTables : Migration
                 COALESCE((SELECT tr."FeeSar" FROM financial."PartyFeePricingTiers" tr WHERE tr."TableId" = t."Id" AND tr."SortOrder" = 2), 0),
                 COALESCE((SELECT tr."FeeSar" FROM financial."PartyFeePricingTiers" tr WHERE tr."TableId" = t."Id" AND tr."SortOrder" = 3), 0),
                 COALESCE((SELECT tr."FeeSar" FROM financial."PartyFeePricingTiers" tr WHERE tr."TableId" = t."Id" ORDER BY tr."SortOrder" DESC LIMIT 1), 0),
-                t."GovernmentReviewFeeSar",
+                t."CourtVisitFeeSar",
                 t."KeyReceiptFeeSar",
                 t."FieldInspectorIndividualFeeSar",
                 t."FieldInspectorOrganizationFeeSar",

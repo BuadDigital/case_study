@@ -1,10 +1,10 @@
-import { FAILURE_RAISER_LABEL_BY_KIND } from "./failure-party-roles";
+import {
+  GOVERNMENT_REVIEWER_FAILURE_RAISER,
+} from "./failure-party-roles";
 import type { FailureRecord } from "./failures-types";
 import { countOpenFailures } from "./failures-types";
 
-/** Label stored on failures raised from the government-review workspace. */
-export const GOVERNMENT_REVIEWER_FAILURE_RAISER =
-  FAILURE_RAISER_LABEL_BY_KIND["government-review"] ?? "المراجع الحكومي";
+export { GOVERNMENT_REVIEWER_FAILURE_RAISER };
 
 /** Government reviewers see only failures they raised — not the full case-study queue. */
 export function failuresForGovernmentReviewer(

@@ -39,7 +39,6 @@ public class PlatformPermissionCatalogTests
     }
 
     [Theory]
-    [InlineData("government-reviewer", "government-review")]
     [InlineData("government-reviewer", "failures")]
     [InlineData("government-reviewer", "party-fees")]
     [InlineData("government-reviewer", "po")]
@@ -57,14 +56,16 @@ public class PlatformPermissionCatalogTests
     }
 
     [Fact]
-    public void Government_reviewer_includes_government_review_party_queue()
+    public void Government_reviewer_uses_operations_tasks_not_government_review_page()
     {
         var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         PlatformPermissionCatalog.ApplyPrototypeRole("government-reviewer", pages, capabilities);
-        Assert.Contains("government-review", pages);
+        Assert.DoesNotContain("government-review", pages);
         Assert.Contains("operations-tasks", pages);
         Assert.Contains("keys", pages);
+        Assert.Contains("manage-operations", capabilities);
+        Assert.Contains("submit-party-work", capabilities);
     }
 
     [Fact]

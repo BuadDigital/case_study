@@ -7,9 +7,10 @@ export const FAILURE_RAISER_LABEL_BY_KIND: Partial<
 > = {
   "field-inspection": "المعاين",
   "property-appraisal": "المقيم",
-  "government-review": "المراجع الحكومي",
   "engineering-survey": "المكتب الهندسي",
 };
+
+export const GOVERNMENT_REVIEWER_FAILURE_RAISER = "المراجع الحكومي";
 
 const RAISER_LABEL_BY_KIND = FAILURE_RAISER_LABEL_BY_KIND;
 

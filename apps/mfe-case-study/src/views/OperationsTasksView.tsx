@@ -136,11 +136,6 @@ import {
   opsBulkCount,
   opsListCount,
   opsLetterRow,
-  opsTdPo,
-  opsTdDeed,
-  opsTdPlain,
-  opsTdCourt,
-  opsThStart,
   opsTypeIconSm,
   opsRowTitle,
   opsRowMeta,
@@ -200,7 +195,13 @@ import {
 import "./operations-tasks-look.css";
 
 const LETTER_COLS =
-  "44px minmax(84px,.9fr) minmax(120px,1.2fr) minmax(100px,1fr) minmax(78px,.8fr) minmax(160px,1.5fr)";
+  "2.75rem minmax(5.75rem,0.9fr) minmax(9.5rem,1.35fr) minmax(7rem,1.05fr) minmax(5.5rem,0.85fr) minmax(11rem,1.55fr)";
+
+const letterTh =
+  "flex items-center justify-start px-3 py-3 text-start text-[11.5px] font-bold leading-snug text-heading";
+const letterTd =
+  "flex min-w-0 items-center justify-start overflow-hidden px-3 py-3 text-start text-[12.5px] leading-snug";
+const letterCellLtr = "inline-block max-w-full truncate tabular-nums tracking-tight";
 
 const PRIORITY_OFFSET_MS: Record<string, number> = {
   high: 4 * 3_600_000,
@@ -1381,18 +1382,23 @@ function LetterTable({ rows }: { rows: OperationsTask["letterRows"] }) {
   return (
     <>
       <div className="hidden overflow-x-auto rounded-[12px] border border-border bg-surface shadow-card lg:block">
-        <div className="min-w-[720px]">
+        <div className="min-w-[760px]" dir="rtl">
           <div className={opsThead} style={{ gridTemplateColumns: LETTER_COLS }}>
-            {["م", "أمر العمل", PROPERTY_IDENTIFIER_COLUMN_LABEL, "المالك", "رقم الطلب", "المحكمة / الدائرة"].map(
-              (h, i) => (
-                <div
-                  key={h}
-                  className={i === 0 ? cn(opsTh, opsTdC) : opsThStart}
-                >
-                  {h}
-                </div>
-              ),
-            )}
+            {[
+              "م",
+              "أمر العمل",
+              PROPERTY_IDENTIFIER_COLUMN_LABEL,
+              "المالك",
+              "رقم الطلب",
+              "المحكمة / الدائرة",
+            ].map((h, i) => (
+              <div
+                key={h}
+                className={cn(letterTh, i === 0 && "justify-center text-center")}
+              >
+                {h}
+              </div>
+            ))}
           </div>
           {rows.map((row, i) => (
             <div
@@ -1400,20 +1406,34 @@ function LetterTable({ rows }: { rows: OperationsTask["letterRows"] }) {
               className={opsLetterRow}
               style={{ gridTemplateColumns: LETTER_COLS }}
             >
-              <div className={cn(opsTd, opsTdC, "text-text-2")}>{i + 1}</div>
-              <div className={opsTdPo} dir="ltr">
-                {row.po}
+              <div className={cn(letterTd, "justify-center text-center text-text-2")}>
+                {i + 1}
               </div>
-              <div className={opsTdDeed} dir="ltr">
-                صك {row.deed}
+              <div className={cn(letterTd, "font-semibold text-text-2")}>
+                <span dir="ltr" className={letterCellLtr}>
+                  {row.po}
+                </span>
               </div>
-              <div className={opsTdPlain}>{row.owner}</div>
-              <div className={opsTdPlain} dir="ltr">
-                {row.request}
+              <div className={cn(letterTd, "font-bold text-gold-d")}>
+                <span dir="ltr" className={letterCellLtr}>
+                  صك {row.deed}
+                </span>
               </div>
-              <div className={opsTdCourt}>
-                <span className="font-semibold text-text">{row.court}</span>{" "}
-                <span className="text-text-3">· {row.circuit}</span>
+              <div className={cn(letterTd, "font-medium text-heading")}>
+                <span className="line-clamp-2 break-words">{row.owner}</span>
+              </div>
+              <div className={cn(letterTd, "font-semibold text-text-2")}>
+                <span dir="ltr" className={letterCellLtr}>
+                  {row.request || "—"}
+                </span>
+              </div>
+              <div className={letterTd}>
+                <span className="line-clamp-2 break-words">
+                  <span className="font-semibold text-text">{row.court}</span>
+                  {row.circuit ? (
+                    <span className="text-text-3"> · {row.circuit}</span>
+                  ) : null}
+                </span>
               </div>
             </div>
           ))}
@@ -1447,7 +1467,7 @@ function LetterTable({ rows }: { rows: OperationsTask["letterRows"] }) {
               <div className="flex justify-between gap-3">
                 <span className="text-text-3">رقم الطلب</span>
                 <span className="font-semibold text-text-2" dir="ltr">
-                  {row.request}
+                  {row.request || "—"}
                 </span>
               </div>
               <div className="pt-1 text-[12px] text-text-2">
@@ -2518,21 +2538,6 @@ export function OperationsTasksView() {
         ) : null}
 
         <div className={opsTfActions}>
-          {detail.status === "created" && isAssignee ? (
-            <button
-              type="button"
-              className={cn(
-                opsBtnGhost,
-                "border-gold font-bold text-gold-d hover:bg-gold-soft",
-              )}
-              disabled={busy}
-              aria-busy={busy || undefined}
-              onClick={() => void runStatus(detail.id, "in_progress")}
-            >
-              {busy ? <Spinner /> : null}
-              <span>{busy ? "جاري التأكيد…" : "✓ تأكيد الاستلام"}</span>
-            </button>
-          ) : null}
           {(detail.status === "in_progress" && isAssignee) ||
           (canCreate &&
             (detail.status === "in_progress" ||

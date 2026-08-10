@@ -14,7 +14,7 @@ import {
 import { failureStatusLabel } from "@failures/mfe/lib/failures-labels";
 import type { FailureRecord } from "@failures/mfe";
 import { Button, cn, Tab, TabBar, TabPanel } from "@platform/design-system";
-import {
+import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";import {
   DetailBadge,
   EmptyState,
   FieldBox,
@@ -79,7 +79,6 @@ import { usePropertyDetailDocuments } from "../../query/property-detail-document
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import { usePropertyDetailPartySubmissionsQuery } from "../../query/property-detail-party-submissions-queries";
-import { governmentReviewWorkspacePath } from "../../lib/my-task-routes";
 import { poPropertyPath } from "../../lib/po-routes";
 import {
   loadSeenPropertyTabs,
@@ -107,6 +106,33 @@ const TABS = [
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
+
+/** مراجعي حكومي: only the tabs they need for court-visit / keys work. */
+const GOVERNMENT_REVIEWER_TAB_IDS: readonly TabId[] = [
+  "basic",
+  "government",
+  "keys",
+  "survey-notes",
+];
+
+function propertyDetailTabsForRole(
+  role: string,
+): readonly (typeof TABS)[number][] {
+  if (role === "government-reviewer") {
+    return TABS.filter((t) =>
+      (GOVERNMENT_REVIEWER_TAB_IDS as readonly string[]).includes(t.id),
+    );
+  }
+  return TABS;
+}
+
+function isAllowedPropertyTab(
+  role: string,
+  tabId: string | null | undefined,
+): tabId is TabId {
+  if (!tabId) return false;
+  return propertyDetailTabsForRole(role).some((t) => t.id === tabId);
+}
 
 function PartyWorkTab({
   card,
@@ -532,14 +558,18 @@ export function PoPropertyDetailTabs({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { role } = usePrototype();
+  const visibleTabs = useMemo(() => propertyDetailTabsForRole(role), [role]);
+  /** Timeline + party status rail — case specialist and section supervisor only. */
+  const showCaseStudySideRail =
+    role === "case-specialist" || role === "section-supervisor";
   const initialTab = searchParams.get("tab");
   const inspectParam = searchParams.get("inspect");
   const workspaceForced = Boolean(inspectorWorkspace);
   const [tab, setTab] = useState<TabId>(() => {
     if (workspaceForced) return "inspection";
-    return TABS.some((t) => t.id === initialTab)
-      ? (initialTab as TabId)
-      : "basic";
+    if (isAllowedPropertyTab(role, initialTab)) return initialTab;
+    return visibleTabs[0]?.id ?? "basic";
   });
   const [inspectEdit, setInspectEdit] = useState(() => {
     if (workspaceForced) return inspectorWorkspace?.forceEdit !== false;
@@ -569,13 +599,20 @@ export function PoPropertyDetailTabs({
       return;
     }
     const nextTab = searchParams.get("tab");
-    if (TABS.some((t) => t.id === nextTab)) {
-      setTab(nextTab as TabId);
+    if (isAllowedPropertyTab(role, nextTab)) {
+      setTab(nextTab);
     }
     const nextInspect = searchParams.get("inspect");
     /* وضع الإدخال فقط عند ?inspect=edit (من الزر) — لا من مجرد فتح التبويب. */
     setInspectEdit(nextInspect === "edit");
-  }, [searchParams, workspaceForced, inspectorWorkspace?.forceEdit]);
+  }, [searchParams, workspaceForced, inspectorWorkspace?.forceEdit, role]);
+
+  useEffect(() => {
+    if (workspaceForced) return;
+    if (!visibleTabs.some((t) => t.id === tab)) {
+      setTab(visibleTabs[0]?.id ?? "basic");
+    }
+  }, [visibleTabs, tab, workspaceForced]);
 
   useEffect(() => {
     setSeenTabs(loadSeenPropertyTabs(property.id));
@@ -641,16 +678,6 @@ export function PoPropertyDetailTabs({
       ) ?? null
     );
   }, [inspectorWorkspace?.task, task, tasks, poNumber, property.id]);
-
-  const governmentTask = useMemo(
-    () =>
-      task
-        ? childTasksForCaseStudyParent(task.id, tasks).find(
-            (t) => t.kind === "government-review",
-          ) ?? null
-        : null,
-    [task, tasks],
-  );
 
   const propertyDocumentSections = usePropertyDetailDocuments({
     property,
@@ -782,8 +809,10 @@ export function PoPropertyDetailTabs({
         keysHasData={keysHasData}
         feeRows={propertyFeeRows}
         failureCount={propertyFailures.length}
+        allowedTabs={visibleTabs.map((t) => t.id)}
         onOpenTab={(next) => {
-          setTab(next as typeof tab);
+          if (!isAllowedPropertyTab(role, next)) return;
+          setTab(next);
           if (inspectEdit) {
             setInspectEdit(false);
             replaceInspectQuery(null);
@@ -791,14 +820,19 @@ export function PoPropertyDetailTabs({
         }}
       />
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3.5 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_250px]">
+      <div
+        className={cn(
+          "grid min-h-0 flex-1 grid-cols-1 items-start gap-3.5 overflow-y-auto",
+          showCaseStudySideRail && "lg:grid-cols-[minmax(0,1fr)_250px]",
+        )}
+      >
         <div className="min-w-0 overflow-hidden rounded-[12px] border border-border bg-surface px-5 pb-5 shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]">
           {/* Case Study.html `.tabs` inside card: margin 0 -20px, padding 0 14px, wrap, gap 2px */}
           <TabBar
             className="z-10 mx-[-20px] mb-0 flex flex-wrap gap-x-0.5 gap-y-0 overflow-visible whitespace-nowrap border-b border-border bg-transparent px-3.5 sm:px-3.5"
             aria-label="أقسام تفاصيل العقار"
           >
-            {TABS.map((t) => {
+            {visibleTabs.map((t) => {
               const active = tab === t.id;
               const hasNew = propertyTabHasNewDot(property.id, t.id, seenTabs);
               return (
@@ -986,12 +1020,6 @@ export function PoPropertyDetailTabs({
                 partySubmissionsQuery.isFetching
               }
               description="المراجعات الحكومية والبيانات والمستندات والمواعيد الخاصة بالمراجع تظهر هنا."
-              actionHref={
-                governmentTask
-                  ? governmentReviewWorkspacePath(governmentTask.id)
-                  : undefined
-              }
-              actionLabel="فتح مساحة عمل المراجعة الحكومية"
             />
           ) : null}
 
@@ -1092,9 +1120,11 @@ export function PoPropertyDetailTabs({
           </TabPanel>
         </div>
 
-        <div className="sticky top-0 max-lg:hidden">
-          <PropertyTransactionTimeline record={record} property={property} />
-        </div>
+        {showCaseStudySideRail ? (
+          <div className="sticky top-0 max-lg:hidden">
+            <PropertyTransactionTimeline record={record} property={property} />
+          </div>
+        ) : null}
       </div>
     </div>
   );

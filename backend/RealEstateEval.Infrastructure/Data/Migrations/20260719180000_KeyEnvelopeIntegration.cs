@@ -19,7 +19,7 @@ public partial class KeyEnvelopeIntegration : Migration
             ADD COLUMN IF NOT EXISTS "KeyReceiptFeeSar" numeric(12,2) NOT NULL DEFAULT 350;
 
             UPDATE financial."PartyFeePricingConfigs"
-            SET "KeyReceiptFeeSar" = "GovernmentReviewFeeSar"
+            SET "KeyReceiptFeeSar" = "CourtVisitFeeSar"
             WHERE "KeyReceiptFeeSar" = 0 OR "KeyReceiptFeeSar" IS NULL;
             """);
 
