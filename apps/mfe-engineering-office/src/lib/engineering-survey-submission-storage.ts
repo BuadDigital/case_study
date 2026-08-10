@@ -61,13 +61,13 @@ function dtoToSubmission(
         ? payload.transactionNote
         : "",
     checklist,
-    deedMatchesNature:
-      payload.deedMatchesNature === "yes" || payload.deedMatchesNature === true
-        ? "yes"
-        : payload.deedMatchesNature === "no" ||
-            payload.deedMatchesNature === false
-          ? "no"
-          : null,
+    deedMatchesNature: (() => {
+      // Legacy payloads may still store a boolean; model is "yes" | "no" | null.
+      const raw = payload.deedMatchesNature as unknown;
+      if (raw === "yes" || raw === true) return "yes";
+      if (raw === "no" || raw === false) return "no";
+      return null;
+    })(),
     natureOnSiteAreaSqm:
       typeof payload.natureOnSiteAreaSqm === "string"
         ? payload.natureOnSiteAreaSqm

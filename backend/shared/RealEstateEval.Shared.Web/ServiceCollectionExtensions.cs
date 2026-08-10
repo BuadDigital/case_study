@@ -76,6 +76,14 @@ public static class AuthorizationExtensions
                     ctx,
                     PlatformCapabilities.ManageWorkOrders,
                     PlatformCapabilities.ManageOperations)));
+
+            options.AddPolicy(
+                CapabilityPolicyNames.ManagePartyFeePricing,
+                policy => policy.RequireAssertion(ctx => HasAnyCapability(
+                    ctx,
+                    PlatformCapabilities.ManageSystemConfig,
+                    PlatformCapabilities.ManageOperations,
+                    PlatformCapabilities.ManageWorkOrders)));
         });
 
         return services;

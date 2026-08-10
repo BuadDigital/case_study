@@ -58,12 +58,16 @@ public static class PlatformPermissionCatalog
             "po", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "system-upload", "operations-tasks", "keys", "field-sync-board", "failures", "suspended-transactions", "failure-types",
             "party-fees",
+            "fee-pricing",
             "system-screen-catalog",
         ],
+        // مطابقة المشرف (صفحات + أتعاب + تسعيرة) — بلا financial / manage-financial
         ["case-specialist"] =
         [
             "po", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
-            "active-case-study", "system-upload", "operations-tasks", "failures", "suspended-transactions",
+            "active-case-study", "system-upload", "operations-tasks", "keys", "field-sync-board", "failures", "suspended-transactions", "failure-types",
+            "party-fees",
+            "fee-pricing",
             "system-screen-catalog",
         ],
         ["real-estate-appraiser"] =
@@ -111,9 +115,11 @@ public static class PlatformPermissionCatalog
             "manage-failures", "manage-work-orders", "submit-party-work",
             "manage-attachments", "manage-operations", "courts.manage",
         ],
+        // مطابقة قدرات المشرف بدون manage-financial
         ["case-specialist"] =
         [
-            "manage-failures", "manage-work-orders", "submit-party-work", "manage-attachments",
+            "manage-failures", "manage-work-orders", "submit-party-work",
+            "manage-attachments", "manage-operations", "courts.manage",
         ],
         ["real-estate-appraiser"] =
         [

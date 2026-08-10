@@ -99,6 +99,7 @@ export function PartyOfficeBillingStatementsPanel({
   const [invoiceDate, setInvoiceDate] = useState(() =>
     new Date().toISOString().slice(0, 10),
   );
+  const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const { data: statements = [], isPending, isFetched } = useQuery({
@@ -116,18 +117,18 @@ export function PartyOfficeBillingStatementsPanel({
       }),
   });
 
-  const submitInvoice = async (s: PartyBillingStatementDto, file?: File) => {
+  const submitInvoice = async (s: PartyBillingStatementDto) => {
     if (!invoiceNo.trim()) {
       showToast("رقم الفاتورة مطلوب", "error");
       return;
     }
-    if (!file) {
-      showToast("ارفع PDF الفاتورة", "error");
+    if (!invoiceFile) {
+      showToast("اختر ملف الفاتورة أولاً", "error");
       return;
     }
     setBusyId(s.id);
     try {
-      const upload = await uploadPartyBillingVendorInvoice(s.id, file);
+      const upload = await uploadPartyBillingVendorInvoice(s.id, invoiceFile);
       if (!upload.ok) {
         showToast(upload.error, "error");
         return;
@@ -148,6 +149,7 @@ export function PartyOfficeBillingStatementsPanel({
         "success",
       );
       setInvoiceNo("");
+      setInvoiceFile(null);
       await queryClient.invalidateQueries({
         queryKey: [...prototypeKeys.all, "party-billing"],
       });
@@ -395,10 +397,24 @@ export function PartyOfficeBillingStatementsPanel({
                                 <VendorInvoicePdfField
                                   busy={busyId === s.id}
                                   disabled={busyId === s.id}
-                                  onPick={(file) => {
-                                    void submitInvoice(s, file);
-                                  }}
+                                  file={invoiceFile}
+                                  onPick={setInvoiceFile}
+                                  onClear={() => setInvoiceFile(null)}
                                 />
+                                <button
+                                  type="button"
+                                  disabled={
+                                    busyId === s.id ||
+                                    !invoiceFile ||
+                                    !invoiceNo.trim()
+                                  }
+                                  className="mt-0.5 w-full cursor-pointer rounded-lg border-none bg-[var(--ink,#102B4E)] px-4 py-2.5 text-[13px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-45"
+                                  onClick={() => void submitInvoice(s)}
+                                >
+                                  {busyId === s.id
+                                    ? "جاري الإرسال…"
+                                    : "إرسال الفاتورة"}
+                                </button>
                               </div>
                             ) : null}
                             {s.status === "invoice_received" ? (

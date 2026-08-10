@@ -71,7 +71,7 @@ export function CourtVisitFeesPanel({
                     colSpan={5}
                     className="cursor-default py-10 text-center text-[13px] text-text-3"
                   >
-                    <EmptyState line="لا بنود أتعاب زيارة بعد. تُستحق عند إنجاز مهمة زيارة محكمة." />
+                    <EmptyState line="لا بنود أتعاب زيارة بعد. تُستحق عند إنجاز مهمة زيارة محكمة (متعاون) ثم تظهر للمالية في التكاليف للصرف." />
                   </Td>
                 </Tr>
               ) : (
@@ -98,7 +98,7 @@ export function CourtVisitFeesPanel({
                       </Td>
                       <Td>
                         <StatusPill
-                          label={settled ? "مُسوّاة" : "مفتوحة"}
+                          label={settled ? "مصروف" : "جاهز للصرف"}
                           style={{ base: c, fg: c }}
                         />
                       </Td>
@@ -122,7 +122,7 @@ export function CourtVisitFeesPanel({
             </div>
           ) : rows.length === 0 ? (
             <div className="px-3 py-10">
-              <EmptyState line="لا بنود أتعاب زيارة بعد. تُستحق عند إنجاز مهمة زيارة محكمة." />
+              <EmptyState line="لا بنود أتعاب زيارة بعد. تُستحق عند إنجاز مهمة زيارة محكمة (متعاون) ثم تظهر للمالية في التكاليف للصرف." />
             </div>
           ) : (
             <ul className="m-0 flex list-none flex-col gap-2.5 p-3">
@@ -139,7 +139,7 @@ export function CourtVisitFeesPanel({
                         {row.taskDisplayId || "—"}
                       </span>
                       <StatusPill
-                        label={settled ? "مُسوّاة" : "مفتوحة"}
+                        label={settled ? "مصروف" : "جاهز للصرف"}
                         style={{ base: c, fg: c }}
                       />
                     </div>

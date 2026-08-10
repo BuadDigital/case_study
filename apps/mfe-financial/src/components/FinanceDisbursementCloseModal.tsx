@@ -173,7 +173,6 @@ export function FinanceDisbursementCloseModal({
             </ModalTitle>
           </div>
           <ModalClose
-            type="button"
             disabled={busy || uploading}
             onClick={onClose}
             aria-label="إغلاق"

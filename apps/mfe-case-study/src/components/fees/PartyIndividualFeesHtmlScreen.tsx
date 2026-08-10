@@ -4,7 +4,8 @@
  * Party fees shell (same module shape as EngFeesHtmlScreen: KPI → tabs → table | docs)
  * with a per-role slot. Each party only sees its lane:
  *   - field-inspection  → معاين: submit-to-supervisor, individual voucher, no invoice
- *   - court-visit → مراجع: same individual flow + visit/key fee tabs
+ *   - court-visit → مراجع: أتعاب الزيارة (CourtVisitFeeCharges) + أوامر الصرف + مفاتيح
+ *     (لا مسار ledger/رفع مشرف — المنتج ألغى government-review workflow)
  * Never share eng (vendor) actions or statements across variants.
  */
 
@@ -35,6 +36,7 @@ import { sortInspectorFeeRowsNewestFirst } from "@platform/app-shared/fees/party
 import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
 import { KeyEnvelopeFeesPanel } from "@keys/mfe/components/KeyEnvelopeFeesPanel";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
+import { useCourtVisitFeesQuery } from "../../query/operations-tasks-queries";
 import { EngFeesHtmlTabs, EngFeesSectionTitle } from "./EngFeesHtmlTabs";
 import { CourtVisitFeesPanel } from "./CourtVisitFeesPanel";
 
@@ -322,25 +324,25 @@ const COPY: Record<
   },
   "court-visit": {
     roleLabel: "المراجع الحكومي",
-    actionTitle: "أتعاب مراجعة حكومية بانتظار رفعكم",
+    actionTitle: "أتعاب الزيارة",
     actionSub:
-      "بعد إنجاز المراجعة ارفع للمشرف. أتعاب الزيارة/المفاتيح من تبويباتها. الصرف أمر فرد بدون فاتورة مورّد.",
-    trackingTitle: "قيد الإجراء",
-    trackingSub: "مسودات غير منجزة، أو عند المشرف، أو موقوفة.",
+      "تُستحق أتعاب الزيارة عند إنجاز مهمة زيارة المحكمة (متعاون). المالية تصرفها كفرد من التكاليف.",
+    trackingTitle: "—",
+    trackingSub: "—",
     readyTitle: "لدى المالية",
-    readySub: "اعتمدها المشرف — أوامر الصرف من التكاليف (فرد).",
+    readySub: "بنود زيارة مفتوحة بانتظار أمر صرف من المالية.",
     statementsLabel: "أوامر الصرف الصادرة",
     statementsFooter:
-      "دورة الفرد: رفع للمشرف ← اعتماد ← أمر صرف ← توثيق الصرف. لا رفع فاتورة من بوابتكم.",
-    outstandingSub: "استحقاقات المراجعة غير المصروفة",
-    actionKpiLabel: "بانتظار رفعكم",
-    actionKpiSub: "مراجعة مكتملة جاهزة للرفع",
-    readyKpiLabel: "لدى المالية",
-    readyKpiSub: "بعد الاعتماد — قبل الإقفال",
-    paidKpiLabel: "مصروف / مدفوع",
-    paidKpiSub: "أُغلق بعد توثيق الصرف",
-    actionCol: "إجراءكم",
-    dateCol: "تاريخ الإنجاز",
+      "دورة الزيارة: إنجاز → جاهز في التكاليف → أمر صرف فرد → توثيق الصرف (بدون فاتورة مورّد).",
+    outstandingSub: "أتعاب زيارة غير مصروفة",
+    actionKpiLabel: "مفتوحة",
+    actionKpiSub: "بانتظار الصرف",
+    readyKpiLabel: "في مسير/أمر",
+    readyKpiSub: "مُدرجة ولم تُقفل بعد",
+    paidKpiLabel: "مصروف",
+    paidKpiSub: "مقفلة ومدفوعة",
+    actionCol: "—",
+    dateCol: "تاريخ الاستحقاق",
   },
 };
 
@@ -355,30 +357,41 @@ export function PartyIndividualFeesHtmlScreen({
   const { showToast } = useToast();
   const { hasCapability } = usePrototype();
   const copy = COPY[variant];
-  const showVisitKey = variant === "court-visit";
+  const isCourtVisit = variant === "court-visit";
+  const showVisitKey = isCourtVisit;
 
-  const [tab, setTab] = useState<TabId>("action");
+  const [tab, setTab] = useState<TabId>(
+    isCourtVisit ? "visit-fees" : "action",
+  );
   const [search, setSearch] = useState("");
   const [stFilter, setStFilter] = useState("");
   const [fnSearch, setFnSearch] = useState("");
   const [openFn, setOpenFn] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
+  // المعاين: مسار ledger. المراجع: CourtVisitFeeCharges فقط (لا taskKind court-visit على الـ ledger).
   const { data: summary, isPending: feesPending } = useInspectorFeesQuery(
     {
       assigneeId,
       submittedOnly: false,
-      taskKind: variant,
+      taskKind: "field-inspection",
     },
-    { enabled: Boolean(assigneeId) },
+    { enabled: Boolean(assigneeId) && variant === "field-inspection" },
   );
+
+  const { data: visitFees = [] } = useCourtVisitFeesQuery({
+    creditAssigneeId: assigneeId,
+    enabled: Boolean(assigneeId) && isCourtVisit,
+  });
 
   const rows = useMemo(
     () =>
-      sortInspectorFeeRowsNewestFirst(summary?.rows ?? []).filter(
-        isIndividualPartyFeeLaneRow,
-      ),
-    [summary?.rows],
+      variant === "field-inspection"
+        ? sortInspectorFeeRowsNewestFirst(summary?.rows ?? []).filter(
+            isIndividualPartyFeeLaneRow,
+          )
+        : [],
+    [summary?.rows, variant],
   );
 
   const { data: statementsRaw = [] } = useQuery({
@@ -404,13 +417,43 @@ export function PartyIndividualFeesHtmlScreen({
     () =>
       statementsRaw.filter((s) => {
         if (s.payeeType === "vendor") return false;
-        if (s.taskKind && s.taskKind !== variant) return false;
+        const kind = (s.taskKind ?? "").trim();
+        if (variant === "court-visit") {
+          return (
+            kind === "court-visit" ||
+            kind === "government-review" ||
+            kind === ""
+          );
+        }
+        if (kind && kind !== variant) return false;
         return true;
       }),
     [statementsRaw, variant],
   );
 
   const kpi = useMemo(() => {
+    if (isCourtVisit) {
+      let openSar = 0;
+      let settledSar = 0;
+      for (const row of visitFees) {
+        const amt = Number(row.amountSar) || 0;
+        if (row.status === "settled") settledSar += amt;
+        else openSar += amt;
+      }
+      const closedPaid = statements
+        .filter((s) => s.status === "closed")
+        .reduce((sum, s) => sum + (Number(s.totalNetSar) || 0), 0);
+      const openStmts = statements
+        .filter((s) => s.status !== "closed" && s.status !== "cancelled")
+        .reduce((sum, s) => sum + (Number(s.totalNetSar) || 0), 0);
+      return {
+        outstanding: openSar + openStmts,
+        actionSar: openSar,
+        readySar: openStmts,
+        paidSar: closedPaid > 0 ? closedPaid : settledSar,
+      };
+    }
+
     let outstanding = 0;
     let actionSar = 0;
     let readySar = 0;
@@ -432,7 +475,7 @@ export function PartyIndividualFeesHtmlScreen({
       readySar,
       paidSar: closedPaid > 0 ? closedPaid : paidSar,
     };
-  }, [rows, statements]);
+  }, [rows, statements, isCourtVisit, visitFees]);
 
   const actionRows = useMemo(
     () => rows.filter((r) => individualFeeUiStatus(r) === "needs_submit"),
@@ -539,38 +582,46 @@ export function PartyIndividualFeesHtmlScreen({
     setFnSearch("");
   };
 
-  const tabs = [
-    {
-      id: "action",
-      label: "رفع للمشرف",
-      count: actionRows.length,
-      countWarnWhenActive: true,
-    },
-    {
-      id: "tracking",
-      label: "قيد الإجراء",
-      count: trackingRows.length,
-    },
-    {
-      id: "ready",
-      label: "لدى المالية",
-      count: readyRows.filter((r) => {
-        const st = individualFeeUiStatus(r);
-        return st === "at_finance" || st === "listed";
-      }).length,
-    },
-    {
-      id: "statements",
-      label: copy.statementsLabel,
-      count: statements.length,
-    },
-    ...(showVisitKey
-      ? [
-          { id: "visit-fees", label: "أتعاب الزيارة" },
-          { id: "key-fees", label: "أتعاب استلام المفاتيح" },
-        ]
-      : []),
-  ];
+  const tabs = isCourtVisit
+    ? [
+        {
+          id: "visit-fees" as const,
+          label: "أتعاب الزيارة",
+          count: visitFees.filter((r) => r.status !== "settled").length,
+        },
+        {
+          id: "statements" as const,
+          label: copy.statementsLabel,
+          count: statements.length,
+        },
+        { id: "key-fees" as const, label: "أتعاب استلام المفاتيح" },
+      ]
+    : [
+        {
+          id: "action",
+          label: "رفع للمشرف",
+          count: actionRows.length,
+          countWarnWhenActive: true,
+        },
+        {
+          id: "tracking",
+          label: "قيد الإجراء",
+          count: trackingRows.length,
+        },
+        {
+          id: "ready",
+          label: "لدى المالية",
+          count: readyRows.filter((r) => {
+            const st = individualFeeUiStatus(r);
+            return st === "at_finance" || st === "listed";
+          }).length,
+        },
+        {
+          id: "statements",
+          label: copy.statementsLabel,
+          count: statements.length,
+        },
+      ];
 
   return (
     <div className="px-[30px] pb-11 pt-[26px]">
@@ -631,7 +682,8 @@ export function PartyIndividualFeesHtmlScreen({
         tabs={tabs}
       />
 
-      {tab === "action" || tab === "tracking" || tab === "ready" ? (
+      {!isCourtVisit &&
+      (tab === "action" || tab === "tracking" || tab === "ready") ? (
         <>
           <EngFeesSectionTitle
             title={

@@ -15,13 +15,16 @@ public class PartyBillingStatementService : IPartyBillingStatementService
     private const string RefDept = "FN";
     private const string RefType = "CS";
 
-    /// <summary>ج٩ — one statement path for all party fee kinds that accrue on InspectorFeeLedger.</summary>
+    /// <summary>ج٩ — ledger-backed party fee kinds (workflow + inspector fee ledger).</summary>
     private static readonly HashSet<WorkflowTaskKind> StatementKinds =
     [
         WorkflowTaskKind.FieldInspection,
         WorkflowTaskKind.GovernmentReview,
         WorkflowTaskKind.EngineeringSurvey,
     ];
+
+    /// <summary>Ops court-visit fee charges — individual payee, same statement close path as individuals.</summary>
+    public const string CourtVisitTaskKind = WorkflowTaskKindValues.CourtVisit;
 
     private readonly ApplicationDbContext _db;
     private readonly INotificationService _notifications;
@@ -46,6 +49,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
     {
         // WorkflowTaskId is unique on statement lines — once billed (even paid/cancelled line),
         // twin reassignment ledgers must not reappear as dues.
+        // Court-visit charges reuse the same column with charge.Id as the line key.
         var claimedTaskIds = await _db.PartyBillingStatementLines.AsNoTracking()
             .Select(l => l.WorkflowTaskId)
             .Distinct()
@@ -89,9 +93,34 @@ public class PartyBillingStatementService : IPartyBillingStatementService
 
         var labels = await LoadPropertyLabelsAsync(propertyIds, cancellationToken);
 
-        return ledgers
+        var ledgerReady = ledgers
             .OrderByDescending(l => l.UpdatedAtUtc)
             .Select(l => ToReadyDto(l, labels, kindByTask.GetValueOrDefault(l.WorkflowTaskId)))
+            .ToList();
+
+        var remaining = Math.Max(0, MaxListRows - ledgerReady.Count);
+        if (remaining == 0)
+            return ledgerReady;
+
+        var visitQuery = _db.CourtVisitFeeCharges.AsNoTracking()
+            .Where(c => c.Status == CourtVisitFeeStatuses.Open
+                && c.AmountSar > 0
+                && !claimed.Contains(c.Id));
+        if (!string.IsNullOrWhiteSpace(assigneeId))
+        {
+            var aid = assigneeId.Trim();
+            visitQuery = visitQuery.Where(c => c.CreditAssigneeId == aid);
+        }
+
+        var visitCharges = await visitQuery
+            .OrderByDescending(c => c.UpdatedAtUtc)
+            .Take(remaining)
+            .ToListAsync(cancellationToken);
+
+        var visitReady = visitCharges.Select(ToCourtVisitReadyDto).ToList();
+        return ledgerReady
+            .Concat(visitReady)
+            .OrderByDescending(l => l.UpdatedAtUtc ?? l.AccruedAtUtc ?? DateTime.MinValue)
             .ToList();
     }
 
@@ -162,6 +191,30 @@ public class PartyBillingStatementService : IPartyBillingStatementService
             };
         }
 
+        // Court-visit open charges use charge.Id as the ready-line key (same column as workflow task id).
+        var openCharges = await _db.CourtVisitFeeCharges
+            .Where(c => taskIds.Contains(c.Id)
+                && c.Status == CourtVisitFeeStatuses.Open
+                && c.AmountSar > 0)
+            .ToListAsync(cancellationToken);
+        if (openCharges.Count > 0)
+        {
+            if (openCharges.Count != taskIds.Count)
+            {
+                return new CreatePartyBillingStatementResult
+                {
+                    Error = "لا تُخلط أتعاب زيارة المحكمة مع بنود أخرى في نفس أمر الصرف.",
+                };
+            }
+
+            return await CreateCourtVisitStatementAsync(
+                taskIds,
+                openCharges,
+                request,
+                actorUserId,
+                cancellationToken);
+        }
+
         var candidates = await _db.InspectorFeeLedgers
             .Where(l => taskIds.Contains(l.WorkflowTaskId))
             .ToListAsync(cancellationToken);
@@ -229,7 +282,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         {
             return new CreatePartyBillingStatementResult
             {
-                Error = "كشف الفوترة يقبل بنود المعاينة والمراجع والرفع المساحي فقط.",
+                Error = "كشف الفوترة يقبل بنود المعاينة والرفع المساحي وزيارة المحكمة (وأتعاب المراجعة القديمة إن وُجدت).",
             };
         }
 
@@ -486,9 +539,12 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         var lines = await _db.PartyBillingStatementLines
             .Where(l => l.StatementId == statementId)
             .ToListAsync(cancellationToken);
-        var taskIds = lines.Select(l => l.WorkflowTaskId).ToList();
+        var lineKeys = lines.Select(l => l.WorkflowTaskId).ToList();
         var ledgers = await _db.InspectorFeeLedgers
-            .Where(l => taskIds.Contains(l.WorkflowTaskId))
+            .Where(l => lineKeys.Contains(l.WorkflowTaskId))
+            .ToListAsync(cancellationToken);
+        var visitCharges = await _db.CourtVisitFeeCharges
+            .Where(c => lineKeys.Contains(c.Id) && c.Status == CourtVisitFeeStatuses.Open)
             .ToListAsync(cancellationToken);
 
         var now = DateTime.UtcNow;
@@ -526,8 +582,17 @@ public class PartyBillingStatementService : IPartyBillingStatementService
             });
         }
 
+        foreach (var charge in visitCharges)
+        {
+            charge.Status = CourtVisitFeeStatuses.Settled;
+            charge.UpdatedAtUtc = now;
+        }
+
         await _db.SaveChangesAsync(cancellationToken);
-        await NotifyStatementClosedAsync(statement, ledgers.Count, cancellationToken);
+        await NotifyStatementClosedAsync(
+            statement,
+            ledgers.Count + visitCharges.Count,
+            cancellationToken);
 
         var dto = await GetStatementAsync(statementId, cancellationToken);
         return (dto, null);
@@ -886,6 +951,10 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         var ledgerRows = await _db.InspectorFeeLedgers.AsNoTracking()
             .Where(l => taskIds.Contains(l.WorkflowTaskId))
             .ToListAsync(cancellationToken);
+        var chargeRows = await _db.CourtVisitFeeCharges.AsNoTracking()
+            .Where(c => taskIds.Contains(c.Id))
+            .ToListAsync(cancellationToken);
+        var chargeById = chargeRows.ToDictionary(c => c.Id);
 
         // Twin ledgers share WorkflowTaskId; pick by statement binding when available.
         static InspectorFeeLedger? ResolveLedger(
@@ -948,6 +1017,29 @@ public class PartyBillingStatementService : IPartyBillingStatementService
                 CancelReason = s.CancelReason,
                 Lines = stmtLines.Select(line =>
                 {
+                    if (chargeById.TryGetValue(line.WorkflowTaskId, out var charge))
+                    {
+                        var chargeStatus = charge.Status == CourtVisitFeeStatuses.Settled
+                            || s.Status == PartyBillingStatementStatus.Closed
+                            ? InspectorFeeBillingStatus.Disbursed
+                            : s.Status == PartyBillingStatementStatus.Cancelled
+                                ? InspectorFeeBillingStatus.AtFinance
+                                : InspectorFeeBillingStatus.InStatement;
+                        return new PartyBillingStatementLineDto
+                        {
+                            Id = line.Id.ToString(),
+                            WorkflowTaskId = line.WorkflowTaskId.ToString(),
+                            PropertyId = null,
+                            PropertyLabel = string.IsNullOrWhiteSpace(charge.TaskDisplayId)
+                                ? "زيارة محكمة"
+                                : charge.TaskDisplayId.Trim(),
+                            PoNumber = charge.PoNumber ?? "",
+                            NetFeeSar = line.NetFeeSar,
+                            BillingStatus = chargeStatus,
+                            BillingStatusLabel = InspectorFeeBillingRules.StatusLabel(chargeStatus),
+                        };
+                    }
+
                     var ledger = ResolveLedger(s.Id, line.WorkflowTaskId, ledgerRows);
                     var status = ledger?.BillingStatus ?? InspectorFeeBillingStatus.InStatement;
                     return new PartyBillingStatementLineDto
@@ -1023,6 +1115,125 @@ public class PartyBillingStatementService : IPartyBillingStatementService
             BillingStatusLabel = InspectorFeeBillingRules.StatusLabel(ledger.BillingStatus),
             AccruedAtUtc = ledger.AccruedAtUtc,
             UpdatedAtUtc = ledger.UpdatedAtUtc,
+        };
+    }
+
+    private static PartyBillingReadyLineDto ToCourtVisitReadyDto(CourtVisitFeeCharge charge)
+    {
+        var label = string.IsNullOrWhiteSpace(charge.TaskDisplayId)
+            ? "زيارة محكمة"
+            : charge.TaskDisplayId.Trim();
+        if (!string.IsNullOrWhiteSpace(charge.CreditAssigneeName))
+            label = $"{label} — {charge.CreditAssigneeName.Trim()}";
+
+        return new PartyBillingReadyLineDto
+        {
+            WorkflowTaskId = charge.Id.ToString(),
+            PropertyId = null,
+            PropertyLabel = label,
+            PoNumber = charge.PoNumber ?? "",
+            AssigneeId = charge.CreditAssigneeId,
+            TaskKind = CourtVisitTaskKind,
+            PayeeType = PartyBillingPayeeType.Individual,
+            PayeeTypeLabel = PartyBillingPayeeType.Label(PartyBillingPayeeType.Individual),
+            AgreedFeeSar = charge.AmountSar,
+            SupervisorDiscountSar = 0m,
+            NetFeeSar = charge.AmountSar,
+            BillingStatus = InspectorFeeBillingStatus.AtFinance,
+            BillingStatusLabel = InspectorFeeBillingRules.StatusLabel(InspectorFeeBillingStatus.AtFinance),
+            AccruedAtUtc = charge.CreatedAtUtc,
+            UpdatedAtUtc = charge.UpdatedAtUtc,
+        };
+    }
+
+    private async Task<CreatePartyBillingStatementResult> CreateCourtVisitStatementAsync(
+        IReadOnlyList<Guid> chargeIds,
+        IReadOnlyList<CourtVisitFeeCharge> charges,
+        CreatePartyBillingStatementRequest request,
+        string actorUserId,
+        CancellationToken cancellationToken)
+    {
+        var alreadyLined = await _db.PartyBillingStatementLines.AsNoTracking()
+            .Where(l => chargeIds.Contains(l.WorkflowTaskId))
+            .Select(l => l.WorkflowTaskId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        if (alreadyLined.Count > 0)
+        {
+            return new CreatePartyBillingStatementResult
+            {
+                Error = "أحد بنود زيارة المحكمة مُدرج مسبقاً في مسير صرف (مدفوع أو قائم).",
+            };
+        }
+
+        var assignees = charges
+            .Select(c => c.CreditAssigneeId?.Trim() ?? "")
+            .Where(a => a.Length > 0)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (assignees.Count != 1)
+        {
+            return new CreatePartyBillingStatementResult
+            {
+                Error = "يجب أن تكون كل بنود زيارة المحكمة لنفس المستحق.",
+            };
+        }
+
+        var assigneeId = assignees[0];
+        var now = DateTime.UtcNow;
+        string reference;
+        try
+        {
+            reference = await NextReferenceAsync(now, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Failed to allocate billing statement reference for court-visit assignee {AssigneeId}",
+                assigneeId);
+            return new CreatePartyBillingStatementResult
+            {
+                Error = "تعذر إنشاء كشف الفوترة. حاول مرة أخرى، وإذا تكرر الخطأ راجع الدعم الفني.",
+            };
+        }
+
+        var statementId = Guid.NewGuid();
+        var total = charges.Sum(c => c.AmountSar);
+        var statementLines = charges.Select(c => new PartyBillingStatementLine
+        {
+            Id = Guid.NewGuid(),
+            StatementId = statementId,
+            // Statement line unique key = charge id (not workflow task id).
+            WorkflowTaskId = c.Id,
+            NetFeeSar = c.AmountSar,
+        }).ToList();
+
+        foreach (var charge in charges)
+            charge.UpdatedAtUtc = now;
+
+        _db.PartyBillingStatements.Add(new PartyBillingStatement
+        {
+            Id = statementId,
+            ReferenceNumber = reference,
+            AssigneeId = assigneeId,
+            PayeeType = PartyBillingPayeeType.Individual,
+            TaskKind = CourtVisitTaskKind,
+            Status = PartyBillingStatementStatus.Draft,
+            TotalNetSar = total,
+            CreatedByUserId = actorUserId,
+            CreatedAtUtc = now,
+            Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
+            Lines = statementLines,
+        });
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        var dto = await GetStatementAsync(statementId, cancellationToken);
+        return new CreatePartyBillingStatementResult
+        {
+            Statement = dto,
+            DeferredLines = [],
         };
     }
 

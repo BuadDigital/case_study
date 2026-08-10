@@ -17,6 +17,9 @@ public class PlatformPermissionCatalogTests
     [InlineData("case-specialist", "manage-work-orders")]
     [InlineData("case-specialist", "submit-party-work")]
     [InlineData("case-specialist", "manage-attachments")]
+    [InlineData("case-specialist", "manage-operations")]
+    [InlineData("case-specialist", "courts.manage")]
+    [InlineData("section-supervisor", "manage-operations")]
     [InlineData("field-inspector", "submit-party-work")]
     [InlineData("financial-officer", "manage-financial")]
     [InlineData("government-reviewer", "manage-operations")]
@@ -38,6 +41,30 @@ public class PlatformPermissionCatalogTests
         Assert.DoesNotContain(PlatformCapabilities.ManageUsers, capabilities);
     }
 
+    [Fact]
+    public void Case_specialist_matches_section_supervisor_pages_and_capabilities()
+    {
+        var supervisorPages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var supervisorCaps = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        PlatformPermissionCatalog.ApplyPrototypeRole(
+            "section-supervisor", supervisorPages, supervisorCaps);
+
+        var specialistPages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var specialistCaps = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        PlatformPermissionCatalog.ApplyPrototypeRole(
+            "case-specialist", specialistPages, specialistCaps);
+
+        Assert.Equal(
+            supervisorPages.OrderBy(p => p, StringComparer.OrdinalIgnoreCase),
+            specialistPages.OrderBy(p => p, StringComparer.OrdinalIgnoreCase));
+        Assert.Equal(
+            supervisorCaps.OrderBy(c => c, StringComparer.OrdinalIgnoreCase),
+            specialistCaps.OrderBy(c => c, StringComparer.OrdinalIgnoreCase));
+        Assert.Contains("fee-pricing", specialistPages);
+        Assert.DoesNotContain("financial", specialistPages);
+        Assert.DoesNotContain("manage-financial", specialistCaps);
+    }
+
     [Theory]
     [InlineData("government-reviewer", "failures")]
     [InlineData("government-reviewer", "party-fees")]
@@ -46,6 +73,10 @@ public class PlatformPermissionCatalogTests
     [InlineData("general-manager", "operations-tasks")]
     [InlineData("engineering-office", "operations-tasks")]
     [InlineData("section-supervisor", "failures")]
+    [InlineData("section-supervisor", "fee-pricing")]
+    [InlineData("section-supervisor", "party-fees")]
+    [InlineData("case-specialist", "fee-pricing")]
+    [InlineData("case-specialist", "party-fees")]
     [InlineData("financial-officer", "financial")]
     public void Prototype_role_grants_expected_page(string role, string page)
     {

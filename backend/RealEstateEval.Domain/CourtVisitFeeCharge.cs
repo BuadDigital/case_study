@@ -19,7 +19,10 @@ public class CourtVisitFeeCharge
     /// not a foreign key — the id has to keep naming its source even if the table is later removed.
     /// </summary>
     public Guid? PricingTableId { get; set; }
-    /// <summary>open | settled (settled reserved for future disbursement).</summary>
+    /// <summary>
+    /// <c>open</c> = accrued / ready for costs (or on an open statement line keyed by <see cref="Id"/>);
+    /// <c>settled</c> = paid with a closed party billing statement.
+    /// </summary>
     public string Status { get; set; } = CourtVisitFeeStatuses.Open;
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }

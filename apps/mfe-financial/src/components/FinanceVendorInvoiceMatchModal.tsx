@@ -152,7 +152,7 @@ export function FinanceVendorInvoiceMatchModal({
   return (
     <ModalOverlay
       role="presentation"
-      className="items-start bg-[rgba(16,43,78,0.42)] pt-[6vh] backdrop-blur-[2px] !z-[200]"
+      className="!items-center !justify-center bg-[rgba(16,43,78,0.42)] backdrop-blur-[2px] !z-[200] max-lg:!items-center"
       onClick={() => {
         if (!busy) onClose();
       }}
@@ -175,7 +175,6 @@ export function FinanceVendorInvoiceMatchModal({
             </ModalTitle>
           </div>
           <ModalClose
-            type="button"
             disabled={busy}
             onClick={onClose}
             aria-label="إغلاق"
@@ -223,23 +222,23 @@ export function FinanceVendorInvoiceMatchModal({
               ).map(([label, value]) => (
                 <div
                   key={label}
-                  className="border-b border-border px-3.5 py-3 sm:border-e sm:last:border-e-0"
+                  className="flex flex-col items-center justify-center border-b border-border px-3.5 py-3 text-center sm:border-e sm:border-b-0"
                 >
                   <div className="mb-1 text-[11px] text-text-3">{label}</div>
                   <div
-                    className="text-[13px] font-bold text-heading"
+                    className="text-[13px] font-bold tabular-nums text-heading"
                     dir="ltr"
                   >
                     {value}
                   </div>
                 </div>
               ))}
-              <div className="border-b border-border px-3.5 py-3 sm:border-b-0">
+              <div className="flex flex-col items-center justify-center border-b border-border px-3.5 py-3 text-center sm:border-b-0">
                 <div className="mb-1 text-[11px] text-text-3">المرفق</div>
                 {hasAttachment ? (
                   <button
                     type="button"
-                    className="max-w-full cursor-pointer truncate border-none bg-transparent p-0 text-start text-[12.5px] font-semibold text-[#8c7857] underline underline-offset-2 hover:text-[#102B4E]"
+                    className="max-w-full cursor-pointer truncate border-none bg-transparent p-0 text-center text-[12.5px] font-semibold text-[#8c7857] underline underline-offset-2 hover:text-[#102B4E]"
                     dir="ltr"
                     disabled={busy}
                     onClick={() => void openAttachment()}
