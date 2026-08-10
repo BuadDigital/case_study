@@ -8,6 +8,28 @@ const TASK_KIND_CATEGORY: Record<string, string> = {
   "government-review": "أتعاب زيارة المحكمة",
 };
 
+/** Seed / distribution assignee ids → Arabic display when staff lookup is empty. */
+const ASSIGNEE_DISPLAY_FALLBACKS: Record<string, string> = {
+  "fi-abdullah-abdulmane": "عبدالله عبدالمانع",
+  "fi-ahmed": "أحمد سعيد",
+  "gov-firas": "فراس كمرين",
+  "val-abdullah": "عبدالله الكثيري",
+  "eo-jeddah": "مكتب جدة للمساحة",
+  "vc-mohammed-diab": "محمد دياب",
+};
+
+/**
+ * Reject machine assignee ids used as “names” (e.g. fi-abdullah-abdulmane).
+ */
+function looksLikeAssigneeIdCode(name: string): boolean {
+  const t = name.trim();
+  if (!t) return false;
+  if (/^(fi|gov|val|eo|vc|cs|insp|office)-/i.test(t)) return true;
+  // Pure latin technical tokens without Arabic letters
+  if (/^[a-z0-9._-]+$/i.test(t) && !/[\u0600-\u06FF]/.test(t)) return true;
+  return false;
+}
+
 export type PartyFeeGroup = {
   assigneeId: string;
   name: string;
@@ -36,7 +58,9 @@ export function resolvePartyName(
 ): string {
   const key = assigneeId?.trim();
   if (!key) return "—";
-  return buildAssigneeStaffIndex(staffUsers).get(key)?.name ?? key;
+  const staffName = buildAssigneeStaffIndex(staffUsers).get(key)?.name?.trim();
+  if (staffName && isUsableAssigneeDisplayName(staffName)) return staffName;
+  return ASSIGNEE_DISPLAY_FALLBACKS[key] ?? (looksLikeAssigneeIdCode(key) ? "—" : key);
 }
 
 /** Generic role labels stored as AssigneeName instead of a person/office name. */
@@ -66,6 +90,7 @@ export function isUsableAssigneeDisplayName(
   const t = (name ?? "").trim();
   if (!t) return false;
   if (GENERIC_ASSIGNEE_LABELS.has(t)) return false;
+  if (looksLikeAssigneeIdCode(t)) return false;
   // Encoding corruption often lands as "???? ????"
   const nonSpace = t.replace(/\s+/g, "");
   if (!nonSpace) return false;
@@ -92,7 +117,9 @@ export function resolveAssigneeDisplayName(input: {
     const staffName = buildAssigneeStaffIndex(input.staffUsers)
       .get(key)
       ?.name?.trim();
-    if (staffName) return staffName;
+    if (staffName && isUsableAssigneeDisplayName(staffName)) return staffName;
+    const known = ASSIGNEE_DISPLAY_FALLBACKS[key];
+    if (known) return known;
   }
   const fb = input.fallback?.trim();
   if (fb && isUsableAssigneeDisplayName(fb)) return fb;

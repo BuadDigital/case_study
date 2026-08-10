@@ -149,7 +149,7 @@ export function PartyFeesWorkspace({
         : "financial";
 
     return (
-      <div className="px-[30px] pb-11 pt-[26px]">
+      <div className="px-[30px] pb-11 pt-2">
         <EngFeesHtmlTabs
           className="!mb-4 !mt-0"
           active={supTab}
@@ -173,8 +173,8 @@ export function PartyFeesWorkspace({
         />
 
         {supTab === "financial" ? (
-          <div className="flex flex-col gap-0">
-            <section>
+          <div className="flex flex-col gap-9">
+            <section className="min-w-0">
               <EngFeesSectionTitle
                 title="قبول مخرجات الرفع المساحي"
                 sub="استحقاق أتعاب المكتب يبدأ بعد قبول المخرجات المرسلة (سعر جدول التسعير)."
@@ -183,7 +183,7 @@ export function PartyFeesWorkspace({
             </section>
 
             {supReviewRows.length > 0 ? (
-              <section>
+              <section className="min-w-0">
                 <EngFeesSectionTitle
                   title="الواردة للاعتماد"
                   sub="معاينة / مراجعة حكومية / أطراف — بانتظار اعتماد المشرف قبل المالية."
@@ -194,7 +194,7 @@ export function PartyFeesWorkspace({
                 />
               </section>
             ) : (
-              <section>
+              <section className="min-w-0">
                 <EngFeesSectionTitle
                   title="الواردة للاعتماد"
                   sub="معاينة / مراجعة حكومية / أطراف — بانتظار اعتماد المشرف قبل المالية."
@@ -206,7 +206,7 @@ export function PartyFeesWorkspace({
             )}
 
             {disputedRows.length > 0 ? (
-              <section>
+              <section className="min-w-0">
                 <EngFeesSectionTitle
                   title="خلاف تسعير (مكتب هندسي)"
                   sub="تحفّظات المكتب قيد المعالجة."
@@ -216,7 +216,7 @@ export function PartyFeesWorkspace({
             ) : null}
 
             {suspendedRows.length > 0 ? (
-              <section>
+              <section className="min-w-0">
                 <EngFeesSectionTitle
                   title="الموقوفة"
                   sub="بنود معلّقة بقرار المشرف."
@@ -229,7 +229,7 @@ export function PartyFeesWorkspace({
             ) : null}
 
             {returnedToSup.length > 0 ? (
-              <section>
+              <section className="min-w-0">
                 <EngFeesSectionTitle
                   title="المُعاد من المالية"
                   sub="بنود أعادتها المالية للمعالجة."
@@ -241,7 +241,7 @@ export function PartyFeesWorkspace({
               </section>
             ) : null}
 
-            <section>
+            <section className="min-w-0">
               <EngFeesSectionTitle
                 title="متابعة فوترة إنفاذ"
                 sub="حالة أوامر العمل لدى إنفاذ."
