@@ -1347,30 +1347,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   let financialNavInserted = false;
 
   const onActiveSurveyPropertyDetail = onActiveSurveyEntry;
-  // Keys HTML setHeader: list / fees report / envelope file.
+  // Keys: leaf-only breadcrumb for envelope / fees subviews.
   const keysChrome = useMemo(() => {
     if (currentPage !== "keys") return null;
     const envelope = searchParams.get("envelope")?.trim();
     if (envelope) {
       return {
         title: "ملف الظرف",
-        breadcrumb: "دراسة الحالة / محفظة المفاتيح / ملف الظرف",
+        breadcrumb: "ملف الظرف",
       };
     }
     if (searchParams.get("tab") === "fees") {
       return {
         title: "تقرير الأتعاب",
-        breadcrumb: "دراسة الحالة / محفظة المفاتيح / تقرير الأتعاب",
+        breadcrumb: "تقرير الأتعاب",
       };
     }
     return null;
   }, [currentPage, searchParams]);
 
-  // Case Study.html renderEngFees:
-  // setHeader('فوترة الأتعاب', crumb(['لوحة التحكم','فوترة الأتعاب']))
+  // Engineering fees under active-transactions — same parent group as other active queues.
   const engineeringFeesCrumb =
     currentPage === "party-fees" && isPartyFeesUnderActiveTransactions(role)
-      ? slashTrailToSegments("لوحة التحكم / فوترة الأتعاب")
+      ? slashTrailToSegments("المعاملات النشطة / فوترة الأتعاب")
       : null;
 
   const financeLeaf =

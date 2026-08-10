@@ -2,7 +2,7 @@
 @import "@platform/design-system/tokens.css";
 @import "@platform/design-system/animations.css";
 @import "@platform/design-system/operational-toolbar.css";
-/* Scan all MFE + shared packages for utility classes */
+@import "./animation.css";
 @source "../../../../apps/**/*.{ts,tsx}";
 @source "../../../../packages/**/*.{ts,tsx}";
 
@@ -76,15 +76,11 @@
 @layer base {
 
   html {
-
     @apply font-sans antialiased text-sm;
-
   }
 
   body {
-
     @apply min-h-full bg-bg text-text text-sm;
-
   }
 
   /* Custom scrollbars (docs/new look) */
@@ -111,13 +107,11 @@
   button:focus,
 
   [role="tab"]:focus {
-
     outline: none;
-
   }
 
   a:focus-visible,
-
+  
   button:focus-visible,
 
   [role="tab"]:focus-visible {
@@ -185,10 +179,8 @@ html:has(#app) body {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
-  /* App shell: scroll without a permanent track (RTL puts it on the left). */
   scrollbar-width: none;
   -ms-overflow-style: none;
-  /* Block layout so page shells size to content instead of stretching. */
   display: block;
 }
 
@@ -203,32 +195,3 @@ html:has(#app) body {
   flex-direction: column;
   overflow: hidden;
 }
-
-/* Login page step transitions (docs/new look login HTML) */
-@keyframes login-rise {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-}
-
-@keyframes login-pop {
-  from {
-    transform: scale(0.5);
-    opacity: 0;
-  }
-}
-
-/* Fee pricing panel enter (no bright progress streak) */
-@keyframes pricing-panel-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-

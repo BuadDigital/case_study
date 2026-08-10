@@ -1,0 +1,28 @@
+/* App-shell page motion (login, fee pricing, …) */
+
+/* Login page step transitions (docs/new look login HTML) */
+@keyframes login-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes login-pop {
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+}
+
+/* Fee pricing panel enter */
+@keyframes pricing-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

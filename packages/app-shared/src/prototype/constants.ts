@@ -238,7 +238,7 @@ ROLES.cdo.pages = ALL_PROTOTYPE_PAGES;
 
 /**
  * Top-bar titles — Case Study.html `setHeader(title, …)`.
- * Keep in sync with PAGE_BREADCRUMB trails below.
+ * Breadcrumb leaf labels live in PAGE_BREADCRUMB (current page only).
  */
 export const PAGE_TITLES: Record<PageId, string> = {
   dashboard: "لوحة التحكم",
@@ -277,45 +277,42 @@ export const PAGE_TITLES: Record<PageId, string> = {
 };
 
 /**
- * Full crumb trails including the current page (last segment), matching
- * Case Study.html `crumb([...])` / `renderGeneric` / `renderList`
- * (`setHeader(label, crumb(['لوحة التحكم', label]))`).
- * Intermediate labels that are real routes get `href` via shell
- * `slashTrailToSegments`.
+ * Header breadcrumb — current page label only (no parent trail).
+ * Nested workspace/detail chrome is resolved separately in the shell.
  */
 export const PAGE_BREADCRUMB: Record<PageId, string> = {
-  dashboard: "الرئيسية / لوحة التحكم",
-  "active-primary-data": "لوحة التحكم / البيانات الأولية",
-  "active-distribution": "لوحة التحكم / توزيع المعاملات",
-  "active-case-study": "لوحة التحكم / دراسة حالة العقارات",
-  "system-upload": "لوحة التحكم / الرفع على النظام",
-  po: "لوحة التحكم / دراسة الحالة / أوامر العمل",
-  "all-transactions": "لوحة التحكم / جميع المعاملات",
-  favorites: "لوحة التحكم / المفضلة",
-  "bourse-inquiry": "لوحة التحكم / استعلام بورصة",
-  keys: "لوحة التحكم / دراسة الحالة / محفظة المفاتيح",
-  "field-sync-board": "لوحة التحكم / دراسة الحالة / ظروف معلّقة",
-  failures: "لوحة التحكم / إدارة التعذرات",
-  "suspended-transactions": "لوحة التحكم / المعاملات المعلقة",
-  "valuation-requests": "لوحة التحكم / طلبات التقييم",
-  "property-inspection": "الشاشات (Draft) / معاينة العقار",
-  "active-inspection": "لوحة التحكم / معاينة العقار",
-  "operations-tasks": "لوحة التحكم / المهام",
-  "property-appraisal": "لوحة التحكم / تقييم العقار",
-  "active-survey": "لوحة التحكم / الرفع المساحي",
-  survey: "لوحة التحكم / مكاتب الرفع الهندسي",
-  "party-fees": "لوحة التحكم / فوترة الأتعاب",
-  "system-fields-catalog": "لوحة التحكم / قاموس الحقول المركزي",
-  "system-screen-catalog": "لوحة التحكم / دليل الشاشات",
-  financial: "عام / المالية والفوترة",
-  users: "لوحة التحكم / المستخدمون",
-  courts: "لوحة التحكم",
-  "location-pending": "لوحة التحكم / مراجعة المسميات",
-  "failure-types": "لوحة التحكم / أنواع التعذرات",
-  "case-study-info-roles": "لوحة التحكم / علاقة المستخدم بالمعلومة",
-  "audit-log": "لوحة التحكم / سجل التدقيق",
-  "fee-pricing": "لوحة التحكم / التسعيرة",
-  "organization-settings": "لوحة التحكم / إعدادات المنشأة",
+  dashboard: "لوحة التحكم",
+  "active-primary-data": "المعاملات النشطة / البيانات الأولية",
+  "active-distribution": "المعاملات النشطة / توزيع المعاملات",
+  "active-case-study": "المعاملات النشطة / دراسة حالة العقارات",
+  "system-upload": "المعاملات النشطة / الرفع على النظام",
+  po: "أوامر العمل",
+  "all-transactions": "جميع المعاملات",
+  favorites: "المفضلة",
+  "bourse-inquiry": "المعاملات النشطة / استعلام بورصة",
+  keys: "محفظة المفاتيح",
+  "field-sync-board": "ظروف معلّقة",
+  failures: "إدارة التعذرات",
+  "suspended-transactions": "المعاملات المعلقة",
+  "valuation-requests": "طلبات التقييم",
+  "property-inspection": "معاينة العقار",
+  "active-inspection": "معاينة العقار",
+  "operations-tasks": "المهام",
+  "property-appraisal": "تقييم العقار",
+  "active-survey": "الرفع المساحي",
+  survey: "مكاتب الرفع الهندسي",
+  "party-fees": "المعاملات النشطة / فوترة الأتعاب",
+  "system-fields-catalog": "قاموس الحقول المركزي",
+  "system-screen-catalog": "دليل الشاشات",
+  financial: "المالية والفوترة",
+  users: "المستخدمون",
+  courts: "المحاكم والدوائر",
+  "location-pending": "مراجعة المسميات",
+  "failure-types": "أنواع التعذرات",
+  "case-study-info-roles": "علاقة المستخدم بالمعلومة",
+  "audit-log": "سجل التدقيق",
+  "fee-pricing": "التسعيرة",
+  "organization-settings": "إعدادات المنشأة",
   profile: "البروفايل",
 };
 
