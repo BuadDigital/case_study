@@ -48,8 +48,7 @@ public sealed class ClaimsPermissionService(IHttpContextAccessor httpContextAcce
             .OrderBy(c => c, StringComparer.Ordinal)
             .ToList();
 
-        if (pages.Count == 0)
-            pages.Add("system-screen-catalog");
+        // Empty page set is intentional; screen catalog is CDO/super-admin only.
 
         if (!capabilities.Contains("authenticated", StringComparer.OrdinalIgnoreCase))
             capabilities.Add("authenticated");

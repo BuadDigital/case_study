@@ -312,6 +312,8 @@ public static class DataSeeder
 
             "Editor"),
 
+        // Freelance cooperator: court-visit tasks stamp visit fees and bill via CourtVisitFeeCharges.
+        // Internal reviewers complete visits without a visit charge (incentives via flat tables).
         new(
 
             "feras",
@@ -324,7 +326,7 @@ public static class DataSeeder
 
             "مراجع حكومي",
 
-            "دوام كامل",
+            "متعاون فرد",
 
             "إدارة التقييم العقاري",
 
@@ -332,7 +334,7 @@ public static class DataSeeder
 
             "محرر",
 
-            ContractType.Internal,
+            ContractType.Freelance,
 
             DepartmentRoles.Hr,
 

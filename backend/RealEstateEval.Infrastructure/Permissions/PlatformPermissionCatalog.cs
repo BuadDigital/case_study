@@ -38,9 +38,10 @@ public static class PlatformPermissionCatalog
     private static readonly Dictionary<string, string[]> IdentityRolePages = new(StringComparer.OrdinalIgnoreCase)
     {
         ["CDO"] = AllPages.ToArray(),
-        ["HR"] = ["system-screen-catalog"],
-        ["PROC"] = ["system-screen-catalog"],
-        ["CRM"] = ["system-screen-catalog"],
+        // Department admins: no prototype shell surfaces by default (screen catalog is CDO-only).
+        ["HR"] = [],
+        ["PROC"] = [],
+        ["CRM"] = [],
     };
 
     private static readonly Dictionary<string, string[]> PrototypeRolePages = new(StringComparer.OrdinalIgnoreCase)
@@ -50,7 +51,7 @@ public static class PlatformPermissionCatalog
         [
             "po", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "system-upload", "operations-tasks", "keys", "failures", "suspended-transactions",
-            "valuation-requests", "system-screen-catalog",
+            "valuation-requests",
             "financial", "courts", "failure-types", "case-study-info-roles",
         ],
         ["section-supervisor"] =
@@ -59,7 +60,6 @@ public static class PlatformPermissionCatalog
             "active-case-study", "system-upload", "operations-tasks", "keys", "field-sync-board", "failures", "suspended-transactions", "failure-types",
             "party-fees",
             "fee-pricing",
-            "system-screen-catalog",
         ],
         // مطابقة المشرف (صفحات + أتعاب + تسعيرة) — بلا financial / manage-financial
         ["case-specialist"] =
@@ -68,32 +68,26 @@ public static class PlatformPermissionCatalog
             "active-case-study", "system-upload", "operations-tasks", "keys", "field-sync-board", "failures", "suspended-transactions", "failure-types",
             "party-fees",
             "fee-pricing",
-            "system-screen-catalog",
         ],
         ["real-estate-appraiser"] =
         [
             "po", "favorites", "operations-tasks", "property-appraisal", "failures", "suspended-transactions",
-            "system-screen-catalog",
         ],
         ["field-inspector"] =
         [
             "favorites", "operations-tasks", "active-inspection", "party-fees", "failures",
-            "system-screen-catalog",
         ],
         ["government-reviewer"] =
         [
             "po", "favorites", "operations-tasks", "party-fees", "keys", "failures",
-            "system-screen-catalog",
         ],
         ["engineering-office"] =
         [
             "operations-tasks", "favorites", "active-survey", "party-fees", "failures",
-            "system-screen-catalog",
         ],
         ["financial-officer"] =
         [
             "financial",
-            "system-screen-catalog",
         ],
     };
 

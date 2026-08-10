@@ -68,13 +68,11 @@ import {
 } from "../lib/prototype/operations-task-roles";
 import { agentInfoFromStaff } from "../lib/prototype/internal-delegation-letters";
 import {
-  getFieldInspectors,
-  getGovernmentAuditors,
-  getValuators,
   partyAccountForRole,
   partyAccountForViewer,
   type DistributionAssignee,
 } from "../lib/prototype/distribution-parties";
+import { assigneesForOperationsTaskType } from "../lib/prototype/operations-task-assignees";
 import {
   downloadTaskAttachmentAsync,
   uploadTaskScopedAttachment,
@@ -1014,34 +1012,7 @@ function assigneesForType(
   type: string,
   staffUsers: StaffUser[],
 ): DistributionAssignee[] {
-  let list: DistributionAssignee[] = [];
-  if (type === "court_visit") list = getGovernmentAuditors(staffUsers);
-  else if (type === "reshoot" || type === "field_visit") {
-    list = getFieldInspectors(staffUsers);
-  } else {
-    const seen = new Set<string>();
-    for (const a of [
-      ...getGovernmentAuditors(staffUsers),
-      ...getFieldInspectors(staffUsers),
-      ...getValuators(staffUsers),
-    ]) {
-      if (seen.has(a.id)) continue;
-      seen.add(a.id);
-      list.push(a);
-    }
-  }
-  if (list.length > 0) return list;
-  return staffUsers
-    .filter(
-      (u) =>
-        u.status === "Active" && Boolean(u.distributionAssigneeId?.trim()),
-    )
-    .map((u) => ({
-      id: u.distributionAssigneeId!.trim(),
-      name: u.name,
-      subtitle: u.role,
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name, "ar"));
+  return assigneesForOperationsTaskType(type, staffUsers);
 }
 
 function assigneeRoleLabel(staffUsers: StaffUser[], assigneeId: string): string {
@@ -1494,8 +1465,9 @@ export function OperationsTasksView() {
   const { showToast } = useToast();
 
   const { role, viewerEmail, viewerDisplayName } = usePrototype();
-  const { data: staffResult } = useStaffUsersQuery();
-  const { data: distResult } = useDistributionAssigneesQuery();
+  const { data: staffResult, isPending: staffPending } = useStaffUsersQuery();
+  const { data: distResult, isPending: distPending } =
+    useDistributionAssigneesQuery();
   const staffUsers = useMemo(() => {
     const byId = new Map<string, StaffUser>();
     for (const u of staffResult?.users ?? []) byId.set(u.id, u);
@@ -1506,6 +1478,7 @@ export function OperationsTasksView() {
   }, [staffResult?.users, distResult?.users]);
   const staffLoadError =
     staffResult?.loadError ?? distResult?.loadError ?? null;
+  const staffLoading = staffPending || distPending;
   const { data: poRecords = [] } = usePoRecordsQuery();
 
   const canCreate = canManageOperationsTasks(role);
@@ -1599,8 +1572,10 @@ export function OperationsTasksView() {
     if (!canCreate) return;
     if (createFlag !== "1" && createFlag !== "true") return;
     setCreatePrefill({
-      type: prefillType || "court_visit",
-      scope: prefillScope || (prefillType === "court_visit" || !prefillType ? "work_order" : "transaction"),
+      type: prefillType || "general",
+      scope:
+        prefillScope ||
+        (prefillType === "court_visit" ? "work_order" : prefillPo ? "transaction" : "work_order"),
       poNumber: prefillPo,
       deed: prefillDeed,
     });
@@ -3159,6 +3134,7 @@ export function OperationsTasksView() {
         poRecords={poRecords}
         staffUsers={staffUsers}
         staffLoadError={staffLoadError}
+        staffLoading={staffLoading}
         prefill={createPrefill}
         onClose={() => {
           setCreateOpen(false);

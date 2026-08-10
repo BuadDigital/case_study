@@ -40,7 +40,7 @@ export function defaultLandingPage(rolePages: readonly PageId[]): PageId {
   for (const pageId of NAV_PAGE_ORDER) {
     if (rolePages.includes(pageId)) return pageId;
   }
-  return rolePages[0] ?? "system-screen-catalog";
+  return rolePages[0] ?? "dashboard";
 }
 
 export function defaultLandingPath(rolePages: readonly PageId[]): string {
