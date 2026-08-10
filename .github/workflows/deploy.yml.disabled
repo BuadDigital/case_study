@@ -1,3 +1,5 @@
+# DISABLED — not loaded by GitHub Actions while named *.yml.disabled
+# To re-enable: rename this file to deploy.yml
 name: CI/CD Pipeline
 
 on:
