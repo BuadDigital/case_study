@@ -63,7 +63,7 @@ public static class InspectorFeeWorkStatusRules
             return workspace.SubmittedAtUtc ?? workspace.UpdatedAtUtc;
         }
 
-        if (task.Kind == WorkflowTaskKind.EngineeringSurvey &&
+        if (task.Kind is WorkflowTaskKind.EngineeringSurvey or WorkflowTaskKind.GovernmentReview &&
             submissions.TryGetValue(task.Id, out var submission) &&
             submission.Status == PartyTaskSubmissionStatus.Submitted)
         {

@@ -556,16 +556,75 @@ public sealed class PartyFeePricingService : IPartyFeePricingService
         var category = CategoryForTaskKind(taskKind);
         if (category is null) return ResolvedPartyFee.Unresolved;
 
-        var pricing = await ResolveTableDtoForAssigneeAsync(
-            category,
-            assigneeId,
-            cancellationToken);
+        // Employee incentives may only come from flat tables. An accidental party-rates assignment
+        // (or the cooperator category default) must not silently leave the employee unpriced —
+        // and must not price them from cooperator columns.
+        PartyFeePricingDto? pricing;
+        if (InspectorFeeRules.IsEmployee(partyType)
+            && taskKind is WorkflowTaskKind.FieldInspection
+                or WorkflowTaskKind.GovernmentReview)
+        {
+            pricing = await ResolveEmployeeIncentiveTableAsync(
+                category,
+                assigneeId,
+                cancellationToken);
+        }
+        else
+        {
+            pricing = await ResolveTableDtoForAssigneeAsync(
+                category,
+                assigneeId,
+                cancellationToken);
+        }
+
         if (pricing is null) return ResolvedPartyFee.Unresolved;
 
         var fee = ResolveFromDto(pricing, taskKind, partyType, areaM2);
 
         // A table that priced nothing is not the source of anything, so it is not recorded as one.
         return fee is > 0m ? new ResolvedPartyFee(fee, pricing.Id) : ResolvedPartyFee.Unresolved;
+    }
+
+    /// <summary>
+    /// Flat table assigned to the employee, else any flat incentive table for the category.
+    /// Never returns the cooperator party-rates default.
+    /// </summary>
+    private async Task<PartyFeePricingDto?> ResolveEmployeeIncentiveTableAsync(
+        string category,
+        string? assigneeId,
+        CancellationToken cancellationToken)
+    {
+        await EnsureAllCategoriesSeededAsync(cancellationToken);
+        var trimmed = assigneeId?.Trim();
+
+        if (!string.IsNullOrEmpty(trimmed))
+        {
+            var assignedTableId = await _db.PartyFeePricingAssignments.AsNoTracking()
+                .Where(a => a.Category == category && a.AssigneeId == trimmed)
+                .Select(a => (Guid?)a.TableId)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (assignedTableId is Guid tableId)
+            {
+                var assigned = await LoadTableAsync(tableId, tracking: false, cancellationToken);
+                if (assigned is not null
+                    && assigned.PricingKind == PartyFeePricingKinds.Flat
+                    && assigned.FlatAmountSar > 0m)
+                {
+                    return await ToDtoAsync(assigned, cancellationToken);
+                }
+            }
+        }
+
+        var flat = await _db.PartyFeePricingTables.AsNoTracking()
+            .Where(x =>
+                x.Category == category
+                && x.PricingKind == PartyFeePricingKinds.Flat
+                && x.FlatAmountSar > 0m)
+            .OrderBy(x => x.Name)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return flat is null ? null : await ToDtoAsync(flat, cancellationToken);
     }
 
     public static decimal? ResolveFromDto(

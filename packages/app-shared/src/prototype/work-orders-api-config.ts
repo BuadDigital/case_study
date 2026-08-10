@@ -54,6 +54,8 @@ export function apiErrorMessage(
   if (kind === "validation") return "يرجى مراجعة الحقول المطلوبة";
   if (kind === "server") return "حدث خطأ في الخادم — حاول لاحقاً";
   if (kind === "not_found") return "لم يُعثر على أمر العمل";
+  if (kind === "conflict")
+    return "تم تحديث السجل من جلسة أخرى. حدّث الصفحة ثم أعد المحاولة.";
   return fallback;
 }
 
@@ -70,7 +72,12 @@ export function resolveApiError(
 
 export type ApiResult<T> =
   | { ok: true; data: T }
-  | { ok: false; kind: string; errors?: Record<string, unknown> };
+  | {
+      ok: false;
+      kind: string;
+      errors?: Record<string, unknown>;
+      message?: string;
+    };
 
 export function requireWorkOrdersApiConfig(): WorkOrdersApiConfig {
   const config = workOrdersApiConfig();
@@ -80,7 +87,9 @@ export function requireWorkOrdersApiConfig(): WorkOrdersApiConfig {
 
 export function unwrapApiResult<T>(result: ApiResult<T>, fallback: string): T {
   if (result.ok) return result.data;
-  throw new Error(resolveApiError(result.kind, result.errors, fallback));
+  throw new Error(
+    resolveApiError(result.kind, result.errors, fallback, result.message),
+  );
 }
 
 export type MutationResult<T> =
@@ -94,6 +103,11 @@ export function mutationFromApiResult<T>(
   if (result.ok) return { ok: true, data: result.data };
   return {
     ok: false,
-    error: resolveApiError(result.kind, result.errors, fallback),
+    error: resolveApiError(
+      result.kind,
+      result.errors,
+      fallback,
+      result.message,
+    ),
   };
 }

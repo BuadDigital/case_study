@@ -217,6 +217,8 @@ export async function saveCaseStudyFormDraft(
       error: resolveApiError(
         result.kind,
         "errors" in result ? result.errors : undefined,
+        undefined,
+        "message" in result ? result.message : undefined,
       ),
     };
   }
@@ -283,7 +285,12 @@ export async function savePartyCaseStudyFormDraft(
   if (!result.ok) {
     return {
       ok: false,
-      error: resolveApiError(result.kind, "errors" in result ? result.errors : undefined),
+      error: resolveApiError(
+        result.kind,
+        "errors" in result ? result.errors : undefined,
+        undefined,
+        "message" in result ? result.message : undefined,
+      ),
     };
   }
   const saved = dtoToDraft(result.data);

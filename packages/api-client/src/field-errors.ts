@@ -26,8 +26,17 @@ export async function parseFieldErrorsFromResponse(
   res: Response,
 ): Promise<Record<string, string>> {
   try {
-    const body = (await res.json()) as { errors?: Record<string, string | string[]> };
-    return normalizeFieldErrors(body.errors);
+    const body = (await res.json()) as {
+      errors?: Record<string, string | string[]>;
+      detail?: string;
+      message?: string;
+    };
+    const normalized = normalizeFieldErrors(body.errors);
+    if (!normalized._) {
+      const detail = body.detail?.trim() || body.message?.trim();
+      if (detail) normalized._ = detail;
+    }
+    return normalized;
   } catch {
     return {};
   }

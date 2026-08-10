@@ -136,7 +136,32 @@ export const PAGE_SITUATION_CARDS: Partial<Record<PageId, PageSituationCardDef[]
     ],
     "active-distribution": workflowCards("بانتظار التوزيع"),
     "active-case-study": workflowCards("دراسات مفتوحة"),
-    "system-upload": workflowCards("جاهزة للرفع"),
+    "system-upload": [
+      {
+        key: "open",
+        label: "جاهزة للرفع",
+        sub: "دراسة مكتملة",
+        tone: "blue",
+      },
+      {
+        key: "arrivedToday",
+        label: "اكتملت اليوم",
+        sub: SUB_TODAY,
+        tone: "warn",
+      },
+      {
+        key: "doneToday",
+        label: "—",
+        sub: "مخصصة للحزمة",
+        tone: "green",
+      },
+      {
+        key: "overdue",
+        label: "—",
+        sub: "—",
+        tone: "red",
+      },
+    ],
     "property-inspection": partyCards("مكتملة"),
     "active-inspection": partyCards("مكتملة"),
     "property-appraisal": appraisalCards(),
@@ -245,9 +270,12 @@ export function listedTasksForPage(
   tasks: WorkflowTask[],
   poByNumber: Map<string, PoIntakeRecord>,
 ): WorkflowTask[] {
-  return filterTasksForPage(pageId, tasks, poByNumber).filter((t) =>
-    isListedQueueTask(t),
-  );
+  const filtered = filterTasksForPage(pageId, tasks, poByNumber);
+  // System upload is specifically the completed case-study set (include closed statuses).
+  if (pageId === "system-upload") {
+    return filtered.filter((t) => !isTaskOnSuspendedProperty(t));
+  }
+  return filtered.filter((t) => isListedQueueTask(t));
 }
 
 function openWorkflowTasks(tasks: WorkflowTask[]): WorkflowTask[] {
@@ -619,6 +647,24 @@ export function computePageSituationValues(
 
   if (pageId === "government-review") {
     return computeGovernmentReviewSituation(workflowSituationTasks);
+  }
+
+  if (pageId === "system-upload") {
+    const ready = listedTasksForPage(pageId, input.tasks, input.poByNumber);
+    const now = input.now ?? new Date();
+    let arrivedToday = 0;
+    for (const task of ready) {
+      // Use completion moment when possible (updatedAt after submit).
+      if (isInstantTodayInRiyadh(task.updatedAt || task.createdAt, now)) {
+        arrivedToday += 1;
+      }
+    }
+    return {
+      open: ready.length,
+      arrivedToday,
+      doneToday: 0,
+      overdue: 0,
+    };
   }
 
   if (

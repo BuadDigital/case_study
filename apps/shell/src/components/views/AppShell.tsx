@@ -1106,9 +1106,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   /** Workspace pages lock `#content` scroll — disable shell PTR there. */
   const contentScrollLocked =
-    (pathParts[0] === "property-inspection" ||
-      pathParts[0] === "active-inspection") &&
-    pathParts.length >= 2;
+    ((pathParts[0] === "property-inspection" ||
+      pathParts[0] === "active-inspection" ||
+      pathParts[0] === "government-review") &&
+      pathParts.length >= 2);
 
   const silentRefresh = useCallback(
     () => refresh({ silent: true }),
@@ -1167,6 +1168,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const onFieldInspectionWorkspace =
     onActiveInspectionWorkspace || onPropertyInspectionWorkspace;
   const onGovernmentReviewWorkspace = pathParts[0] === "government-review" && pathParts.length >= 2;
+  /**
+   * Party workspaces (معاينة + مراجعة): keep app sidebar like GR;
+   * hide shell topbar so the in-page back/title card is the only header.
+   */
+  const hideShellTopbar =
+    onFieldInspectionWorkspace || onGovernmentReviewWorkspace;
   const caseStudyTaskId = onCaseStudyWorkspace ? (pathParts[1] ?? null) : null;
   const activeSurveyTaskId = onActiveSurveyRoute ? (pathParts[1] ?? null) : null;
   const propertyAppraisalTaskId = onPropertyAppraisalWorkspace ? (pathParts[1] ?? null) : null;
@@ -1412,8 +1419,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div id="app" className="flex h-full max-h-dvh min-h-0 overflow-hidden bg-bg">
-      {/* Field-inspection workspace = standalone page (no shell chrome). */}
-      {!onFieldInspectionWorkspace && mobileNavOpen ? (
+      {/* Side nav stays for inspection + government review (mobile off-canvas). */}
+      {mobileNavOpen ? (
         <button
           type="button"
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
@@ -1421,7 +1428,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onClick={() => setMobileNavOpen(false)}
         />
       ) : null}
-        {!onFieldInspectionWorkspace ? (
         <div
           id="sidebar"
           data-collapsed={desktopRail ? "true" : undefined}
@@ -1678,10 +1684,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
         </div>
       </div>
-        ) : null}
       <div id="main" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-bg">
-        {/* Field-inspection workspace = standalone page (no shell topbar/sidebar). */}
-        {!onFieldInspectionWorkspace ? (
+        {/* Mobile nav access when party work hides the full topbar. */}
+        {hideShellTopbar ? (
+          <div className="flex shrink-0 items-center gap-2 border-b border-border bg-surface px-3 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] lg:hidden">
+            <button
+              type="button"
+              className={cn(mobileTopbarIconBtn, "text-text-2")}
+              aria-label="فتح القائمة"
+              onClick={() => setMobileNavOpen(true)}
+            >
+              <TopbarSvgIcon>
+                <MenuIcon />
+              </TopbarSvgIcon>
+            </button>
+            <span className="truncate text-[13px] font-bold text-heading">
+              {resolvedPageTitle || "مساحة العمل"}
+            </span>
+          </div>
+        ) : null}
+        {/* Inspection + government review: sidebar on; in-page task card owns the header. */}
+        {!hideShellTopbar ? (
         <div
           id="topbar"
           className="flex min-h-topbar shrink-0 items-center justify-between gap-2 border-b-[0.5px] border-border bg-surface px-4 py-3.5 pt-[max(0.875rem,env(safe-area-inset-top))] sm:gap-3 sm:px-[30px]"
@@ -1759,13 +1782,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           id="content"
           ref={contentRef}
           data-workspace-scroll={
-            onFieldInspectionWorkspace ? "locked" : undefined
+            hideShellTopbar ? "locked" : undefined
           }
           className={cn(
             /* Block layout so tall list pages scroll on #content; workspaces use flex + inner scroll. */
             "relative min-h-0 min-w-0 flex-1 bg-bg p-0",
-            onFieldInspectionWorkspace
-              ? /* Standalone inspect page — fullscreen content, no shell chrome. */
+            hideShellTopbar
+              ? /* Party work page owns scroll (back/title card inside). */
                 "flex flex-col overflow-hidden"
               : "overflow-x-hidden overflow-y-auto max-lg:pb-[env(safe-area-inset-bottom)]",
           )}

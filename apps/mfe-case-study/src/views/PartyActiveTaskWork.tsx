@@ -14,6 +14,7 @@ import {
   GovernmentReviewWorkBody,
   type GovernmentReviewWorkHostRef,
 } from "../components/government-review/GovernmentReviewWorkBody";
+import { InspectorFeesTab } from "../components/field-inspection/InspectorFeesTab";
 import { TaskWorkChrome } from "../components/primary-data/TaskWorkChrome";
 import { FieldInspectionMobileShell } from "../components/field-inspection/FieldInspectionMobileShell";
 import {
@@ -336,15 +337,7 @@ export function PartyActiveTaskWork({
     const desktopStandalone =
       record && surveyProperty ? (
         <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee]">
-          <header className="flex shrink-0 items-center gap-3 border-b border-border bg-surface px-5 py-3.5">
-            <button
-              type="button"
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border-md bg-surface px-3 text-[12.5px] font-semibold text-text-2 transition-colors hover:bg-surface-2 hover:text-heading"
-              onClick={exit}
-            >
-              <span aria-hidden>←</span>
-              رجوع
-            </button>
+          <header className="flex shrink-0 items-center border-b border-border bg-surface px-5 py-3.5">
             <div className="min-w-0 flex-1">
               <div className="truncate text-[15px] font-bold text-heading">
                 {def.workTitle}
@@ -636,19 +629,10 @@ export function PartyActiveTaskWork({
     void governmentFooterTick;
     const governmentSaveLabel =
       governmentHostRef.current.getFooterSaveLabel?.() ?? def.saveLabel;
+    const saveLabel = locked ? "رجوع" : governmentSaveLabel;
 
-    return (
-      <TaskWorkChrome
-        layout={layout}
-        title={`${def.workTitle} — ${deedLabel}`}
-        subtitle={`${def.assigneeSubtitle} · ${formatPoDisplay(task.poNumber)} · ${location}`}
-        deedBadge={deedLabel}
-        saving={saving}
-        onClose={exit}
-        onSave={submitGovernmentReview}
-        saveLabel={locked ? "رجوع" : governmentSaveLabel}
-        showFooter
-      >
+    const governmentBody = (
+      <div className="flex flex-col gap-4">
         <div className="grid min-w-0 gap-4 xl:grid-cols-2">
           <section className="min-w-0 rounded-xl border border-border bg-surface p-[18px_20px] shadow-card">
             <div className="mb-3.5 border-b border-border pb-2.5">
@@ -687,6 +671,67 @@ export function PartyActiveTaskWork({
             />
           </section>
         </div>
+
+        <section className="min-w-0 overflow-hidden rounded-xl border border-border bg-surface shadow-card">
+          <InspectorFeesTab tasks={[task]} variant="government-review" />
+        </section>
+      </div>
+    );
+
+    /* Title + صك/PO card (no back — use sidebar nav). */
+    if (layout === "page") {
+      return (
+        <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee]">
+          <header className="flex shrink-0 items-center border-b border-border bg-surface px-5 py-3.5">
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[15px] font-bold text-heading">
+                {def.workTitle}
+              </div>
+              <div className="mt-0.5 truncate text-[12px] text-text-3">
+                صك {deedLabel}
+                <span className="mx-1.5 text-border-md">·</span>
+                {formatPoDisplay(task.poNumber)}
+                {location && location !== "—" ? (
+                  <>
+                    <span className="mx-1.5 text-border-md">·</span>
+                    {location}
+                  </>
+                ) : null}
+              </div>
+            </div>
+          </header>
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-8">
+            <div className="mx-auto max-w-[1100px]">{governmentBody}</div>
+          </div>
+          <footer className="flex shrink-0 justify-start border-t border-border bg-surface px-5 py-3 sm:px-8">
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => void submitGovernmentReview()}
+              className="inline-flex h-10 cursor-pointer items-center justify-center rounded-lg border-none bg-ink px-5 text-[13px] font-bold text-white shadow-[0_6px_16px_-8px_rgba(18,40,76,.55)] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {saving ? "جاري الحفظ…" : saveLabel}
+            </button>
+          </footer>
+        </div>
+      );
+    }
+
+    return (
+      <TaskWorkChrome
+        layout={layout}
+        title={def.workTitle}
+        subtitle={`صك ${deedLabel} · ${formatPoDisplay(task.poNumber)}${
+          location && location !== "—" ? ` · ${location}` : ""
+        }`}
+        deedBadge={deedLabel}
+        saving={saving}
+        onClose={exit}
+        onSave={submitGovernmentReview}
+        saveLabel={saveLabel}
+        showFooter
+      >
+        {governmentBody}
       </TaskWorkChrome>
     );
   }

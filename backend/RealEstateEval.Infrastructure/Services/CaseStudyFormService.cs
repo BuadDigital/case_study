@@ -80,6 +80,48 @@ public class CaseStudyFormService : ICaseStudyFormService
         CaseStudyFormActor? actor = null,
         CancellationToken cancellationToken = default)
     {
+        // Autosave / multi-tab can race on xmin — retry with a fresh load instead of 409 noise.
+        const int maxAttempts = 3;
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            try
+            {
+                return await SaveOnceAsync(
+                    taskId,
+                    party,
+                    form,
+                    actor,
+                    cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException) when (attempt < maxAttempts)
+            {
+                _db.ChangeTracker.Clear();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                _db.ChangeTracker.Clear();
+                return (null, new Dictionary<string, string>
+                {
+                    ["_"] =
+                        "تم تحديث النموذج من جلسة أخرى. أعد المحاولة — إن استمر الأمر حدّث الصفحة ثم احفظ.",
+                });
+            }
+        }
+
+        return (null, new Dictionary<string, string>
+        {
+            ["_"] =
+                "تم تحديث النموذج من جلسة أخرى. أعد المحاولة — إن استمر الأمر حدّث الصفحة ثم احفظ.",
+        });
+    }
+
+    private async Task<(CaseStudyFormDto? Result, Dictionary<string, string>? Errors)> SaveOnceAsync(
+        Guid taskId,
+        bool party,
+        CaseStudyFormDto form,
+        CaseStudyFormActor? actor,
+        CancellationToken cancellationToken)
+    {
         var entity = await _db.CaseStudyForms.FirstOrDefaultAsync(
             f => f.TaskId == taskId && f.IsPartyForm == party,
             cancellationToken);

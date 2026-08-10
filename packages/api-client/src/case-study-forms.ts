@@ -87,6 +87,18 @@ export async function saveCaseStudyForm(
       const errors = await parseFieldErrorsFromResponse(res);
       return { ok: false, kind: "validation", errors };
     }
+    if (res.status === 409) {
+      const errors = await parseFieldErrorsFromResponse(res);
+      const message =
+        errors._?.trim() ||
+        "تم تحديث النموذج من جلسة أخرى. حدّث الصفحة ثم أعد الحفظ.";
+      return {
+        ok: false,
+        kind: "validation",
+        message,
+        errors: { _: message, ...errors },
+      };
+    }
     if (!res.ok) return { ok: false, kind: "server" };
     return { ok: true, data: (await res.json()) as CaseStudyFormDto };
   } catch {
@@ -128,6 +140,18 @@ export async function savePartyCaseStudyForm(
     if (res.status === 400) {
       const errors = await parseFieldErrorsFromResponse(res);
       return { ok: false, kind: "validation", errors };
+    }
+    if (res.status === 409) {
+      const errors = await parseFieldErrorsFromResponse(res);
+      const message =
+        errors._?.trim() ||
+        "تم تحديث النموذج من جلسة أخرى. حدّث الصفحة ثم أعد الحفظ.";
+      return {
+        ok: false,
+        kind: "validation",
+        message,
+        errors: { _: message, ...errors },
+      };
     }
     if (!res.ok) return { ok: false, kind: "server" };
     return { ok: true, data: (await res.json()) as CaseStudyFormDto };

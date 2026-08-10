@@ -175,6 +175,51 @@ public class FlatIncentivePricingTests
                 InspectorFeeRules.TypeCooperatorIndividual));
     }
 
+    [Fact]
+    public async Task Party_rates_assignment_does_not_block_employee_when_flat_table_exists()
+    {
+        await using var store = new TestInspectorFeeServiceFactory.Store("flat-wrong-assign");
+        await SeedFlatAssignmentAsync(store, amount: 350m, hasCompensation: true);
+
+        // Accidental cooperator-table assignment (the production symptom for عبدالله).
+        var partyRatesId = Guid.NewGuid();
+        store.Fin.PartyFeePricingTables.Add(new PartyFeePricingTable
+        {
+            Id = partyRatesId,
+            Category = PartyFeePricingCategories.FieldInspector,
+            Name = "متعاونين",
+            PricingKind = PartyFeePricingKinds.PartyRates,
+            ManagedBy = PartyFeePricingManagers.SystemAdmin,
+            IsActive = true,
+            FieldInspectorIndividualFeeSar = 400m,
+            UpdatedAtUtc = DateTime.UtcNow,
+        });
+        var assign = store.Fin.PartyFeePricingAssignments.Local
+            .Single(a => a.AssigneeId == "insp-emp-1");
+        assign.TableId = partyRatesId;
+        await store.Fin.SaveChangesAsync();
+
+        var taskId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        var task = WorkflowTask.Create(
+            WorkflowTaskKind.FieldInspection,
+            "PO-FLAT",
+            now,
+            assigneeRole: "field-inspector",
+            assigneeName: "معاين",
+            assigneeId: "insp-emp-1",
+            id: taskId,
+            status: WorkflowTaskStatus.Completed);
+        store.App.WorkflowTasks.Add(task);
+        await store.App.SaveChangesAsync();
+
+        await store.Fees().EnsureLedgersForTasksAsync([task]);
+
+        var ledger = await store.App.InspectorFeeLedgers.AsNoTracking()
+            .SingleAsync(l => l.WorkflowTaskId == taskId);
+        Assert.Equal(350m, ledger.AgreedFeeSar);
+    }
+
     private static async Task SeedFlatAssignmentAsync(
         TestInspectorFeeServiceFactory.Store store,
         decimal amount,

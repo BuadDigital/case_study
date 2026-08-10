@@ -59,7 +59,13 @@ public sealed class GlobalExceptionHandlerMiddleware
                 type = "https://httpstatuses.com/409",
                 title = "Conflict",
                 status = 409,
-                detail = "The record was changed by another request. Reload it and try again.",
+                detail =
+                    "تم تحديث السجل من طلب آخر. حدّث الصفحة ثم أعد المحاولة.",
+                errors = new Dictionary<string, string>
+                {
+                    ["_"] =
+                        "تم تحديث السجل من طلب آخر. حدّث الصفحة ثم أعد المحاولة.",
+                },
                 traceId = context.TraceIdentifier,
             };
 

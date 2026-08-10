@@ -49,6 +49,7 @@ import {
   type PoPropertyIntake,
 } from "../../lib/prototype/po-intake-data";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
+import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
 import { isValidContactEntry } from "../../lib/domain/po-intake/property-validation";
 import { PartyRoleDetailPanel } from "./PartyRoleDetailPanel";
 import {
@@ -689,7 +690,13 @@ export function PoPropertyDetailTabs({
       ? {
           roleKey: "inspection",
           role: "المعاين",
-          name: inspectionTask.assigneeName?.trim() || "المعاين",
+          name:
+            resolveAssigneeDisplayName({
+              assigneeName: inspectionTask.assigneeName,
+              assigneeId: inspectionTask.assigneeId,
+              staffUsers,
+              fallback: "المعاين",
+            }) || "المعاين",
           unassigned: false,
           state: "progress",
           enabled: true,

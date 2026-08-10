@@ -32,7 +32,7 @@ import {
   collectPartyAnswersByQuestion,
   type PartyQuestionContribution,
 } from "../../lib/prototype/case-study-party-answers";
-import { useCaseStudyInfoRolesQuery } from "@settings/mfe/query/settings-queries";
+import { useCaseStudyInfoRolesQuery, useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import {
   emptyCaseStudyFormDraft,
   loadCaseStudyFormDraft,
@@ -290,6 +290,8 @@ export function CaseStudyForm({
     () => new Set(),
   );
   const { data: workflowTasks } = useWorkflowTasksQuery();
+  const { data: staffResult } = useStaffUsersQuery();
+  const staffUsers = staffResult?.users;
   const [partyAnswersByKey, setPartyAnswersByKey] = useState<
     Record<string, PartyQuestionContribution[]>
   >({});
@@ -302,6 +304,7 @@ export function CaseStudyForm({
       taskId,
       infoRolesMatrix,
       workflowTasks ?? [],
+      staffUsers ?? [],
     ).then((result) => {
       if (!cancelled) setPartyAnswersByKey(result);
     });
@@ -316,6 +319,7 @@ export function CaseStudyForm({
     hydrated,
     infoRolesReady,
     workflowTasks,
+    staffUsers,
   ]);
 
   const isQuestionVisible = useCallback(

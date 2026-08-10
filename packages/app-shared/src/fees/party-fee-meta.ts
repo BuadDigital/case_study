@@ -38,6 +38,66 @@ export function resolvePartyName(
   return buildAssigneeStaffIndex(staffUsers).get(key)?.name ?? key;
 }
 
+/** Generic role labels stored as AssigneeName instead of a person/office name. */
+const GENERIC_ASSIGNEE_LABELS = new Set(
+  [
+    "معاين ميداني",
+    "المعاين",
+    "المعاين الميداني",
+    "المعاين العقاري",
+    "مراجع حكومي",
+    "المراجع الحكومي",
+    "مقيم عقاري",
+    "المقيم العقاري",
+    "المقيّم العقاري",
+    "المكتب الهندسي",
+    "أخصائي دراسة الحالة",
+    "—",
+  ].map((s) => s.trim()),
+);
+
+/**
+ * True when the stored assignee name is usable for display (not blank, corrupted, or a role stub).
+ */
+export function isUsableAssigneeDisplayName(
+  name: string | null | undefined,
+): boolean {
+  const t = (name ?? "").trim();
+  if (!t) return false;
+  if (GENERIC_ASSIGNEE_LABELS.has(t)) return false;
+  // Encoding corruption often lands as "???? ????"
+  const nonSpace = t.replace(/\s+/g, "");
+  if (!nonSpace) return false;
+  const q = (nonSpace.match(/\?/g) ?? []).length;
+  if (q > 0 && q / nonSpace.length >= 0.4) return false;
+  if (/^[\uFFFD?.\-_/|·\s]+$/.test(t)) return false;
+  return true;
+}
+
+/**
+ * Prefer a real stored name; otherwise resolve from staff by distribution assignee id.
+ */
+export function resolveAssigneeDisplayName(input: {
+  assigneeName?: string | null;
+  assigneeId?: string | null;
+  staffUsers: StaffUser[];
+  fallback?: string;
+}): string {
+  if (isUsableAssigneeDisplayName(input.assigneeName)) {
+    return input.assigneeName!.trim();
+  }
+  const key = input.assigneeId?.trim();
+  if (key) {
+    const staffName = buildAssigneeStaffIndex(input.staffUsers)
+      .get(key)
+      ?.name?.trim();
+    if (staffName) return staffName;
+  }
+  const fb = input.fallback?.trim();
+  if (fb && isUsableAssigneeDisplayName(fb)) return fb;
+  return fb || "—";
+}
+
 export function resolvePartyCategory(
   assigneeId: string,
   rows: InspectorFeeRowDto[],

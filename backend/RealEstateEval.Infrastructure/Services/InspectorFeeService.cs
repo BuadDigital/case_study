@@ -396,10 +396,17 @@ public class InspectorFeeService : IInspectorFeeService
         string? actorDepartment = null,
         bool canManageAllDepartments = false)
     {
-        var ledger = await _db.InspectorFeeLedgers
-            .FirstOrDefaultAsync(x => x.WorkflowTaskId == workflowTaskId, cancellationToken);
-        if (ledger is null)
+        var candidates = await _db.InspectorFeeLedgers
+            .Where(x => x.WorkflowTaskId == workflowTaskId)
+            .OrderByDescending(x => x.UpdatedAtUtc)
+            .ThenByDescending(x => x.CreatedAtUtc)
+            .ToListAsync(cancellationToken);
+        if (candidates.Count == 0)
             return (null, "سجل الأتعاب غير موجود.");
+
+        var action = request.Action.Trim().ToLowerInvariant();
+        var ledger = PickLedgerForTransition(candidates, action, actorAssigneeId)
+            ?? candidates[0];
 
         var error = await _transitions.ApplyAsync(
             ledger,
@@ -415,8 +422,68 @@ public class InspectorFeeService : IInspectorFeeService
             return (null, error);
 
         await _db.SaveChangesAsync(cancellationToken);
+        // Return the row for the ledger we just transitioned (not an arbitrary FirstOrDefault).
         var row = await GetByWorkflowTaskIdAsync(workflowTaskId, cancellationToken);
         return (row, null);
+    }
+
+    /// <summary>
+    /// Multiple identity lines can share one workflow task (reassign / legacy UserId).
+    /// Prefer the row the actor can legally transition — not an arbitrary insert order.
+    /// </summary>
+    public static InspectorFeeLedger? PickLedgerForTransition(
+        IReadOnlyList<InspectorFeeLedger> candidates,
+        string action,
+        string? actorAssigneeId)
+    {
+        if (candidates.Count == 0) return null;
+        if (candidates.Count == 1) return candidates[0];
+
+        bool Actionable(InspectorFeeLedger ledger)
+        {
+            if (!InspectorFeeBillingRules.TryResolveTransition(
+                    ledger.BillingStatus,
+                    action,
+                    out _,
+                    out _,
+                    out _,
+                    ledger.PreSuspensionStatus))
+            {
+                return false;
+            }
+
+            if (action is InspectorFeeActions.SubmitToSupervisor
+                or InspectorFeeActions.CreateDisbursementRequest
+                or InspectorFeeActions.OfficeApproveDiscount
+                or InspectorFeeActions.OfficeDispute)
+            {
+                if (string.IsNullOrWhiteSpace(actorAssigneeId)) return false;
+                if (!string.Equals(
+                        ledger.AssigneeId?.Trim(),
+                        actorAssigneeId.Trim(),
+                        StringComparison.Ordinal))
+                {
+                    return false;
+                }
+
+                if (action == InspectorFeeActions.SubmitToSupervisor)
+                {
+                    if (ledger.ExcludedFromBatch) return false;
+                    if (!InspectorFeeRules.HasBillableAgreedFee(ledger.AgreedFeeSar))
+                        return false;
+                    if (ledger.BillingStatus == InspectorFeeBillingStatus.Returned
+                        && ledger.ReturnTo != InspectorFeeReturnTo.Office)
+                        return false;
+                    if (ledger.BillingStatus == InspectorFeeBillingStatus.Inquiry
+                        && ledger.ReturnTo != InspectorFeeReturnTo.Office)
+                        return false;
+                }
+            }
+
+            return true;
+        }
+
+        return candidates.FirstOrDefault(Actionable);
     }
 
     public async Task<BatchInspectorFeeTransitionResult> BatchTransitionAsync(

@@ -1,13 +1,24 @@
 "use client";
 
 /**
- * Faithful port of Case Study.html `renderEngFees()` for المكتب الهندسي.
- * Layout: KPI → tabs → (secT + toolbar + card) | statements.
+ * Party fees shell (same module shape as EngFeesHtmlScreen: KPI → tabs → table | docs)
+ * with a per-role slot. Each party only sees its lane:
+ *   - field-inspection  → معاين: submit-to-supervisor, individual voucher, no invoice
+ *   - government-review → مراجع: same individual flow + visit/key fee tabs
+ * Never share eng (vendor) actions or statements across variants.
  */
 
 import { useCallback, useMemo, useState } from "react";
+import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { KpiBand, KpiCell, StatusPill, cn, useToast } from "@platform/design-system";
+import {
+  KpiBand,
+  KpiCell,
+  QueueTableHint,
+  StatusPill,
+  cn,
+  useToast,
+} from "@platform/design-system";
 import type { StatusPillStyle } from "@platform/design-system";
 import {
   type InspectorFeeAction,
@@ -19,22 +30,34 @@ import { runInspectorFeeTransition } from "@platform/app-shared/prototype/inspec
 import {
   loadPartyBillingStatements,
   openPartyBillingAttachment,
-  runSubmitVendorInvoice,
-  uploadPartyBillingVendorInvoice,
 } from "@platform/app-shared/prototype/party-billing-statements-api";
 import { sortInspectorFeeRowsNewestFirst } from "@platform/app-shared/fees/party-fee-meta";
+import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { KeyEnvelopeFeesPanel } from "@keys/mfe/components/KeyEnvelopeFeesPanel";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
-import {
-  computeEngineeringFeesSituation,
-} from "../../lib/prototype/active-transaction-page-situation";
-import { engFeeUiStatus } from "./EngOfficeFeesBillingTable";
 import { EngFeesHtmlTabs, EngFeesSectionTitle } from "./EngFeesHtmlTabs";
-import { VendorInvoicePdfField } from "./VendorInvoicePdfField";
+import { CourtVisitFeesPanel } from "./CourtVisitFeesPanel";
 
-type TabId = "action" | "ready" | "statements";
+export type IndividualFeesVariant = "field-inspection" | "government-review";
+
+type TabId = "action" | "tracking" | "ready" | "statements" | "visit-fees" | "key-fees";
+
+type UiStatus =
+  | "needs_submit"
+  | "draft_work"
+  | "returned_to_party"
+  | "returned_to_supervisor"
+  | "inquiry_to_party"
+  | "inquiry_at_supervisor"
+  | "sup_review"
+  | "at_finance"
+  | "listed"
+  | "paid"
+  | "suspended"
+  | "other";
 
 const FEE_COLS =
-  "minmax(125px,1.1fr) minmax(85px,.8fr) minmax(85px,.8fr) minmax(170px,1.5fr) minmax(90px,.8fr) minmax(140px,1fr) 130px";
+  "minmax(125px,1.1fr) minmax(95px,.85fr) minmax(85px,.8fr) minmax(120px,1.1fr) minmax(90px,.8fr) minmax(150px,1.2fr) 130px";
 
 function fmtSar(n: number): string {
   return `${Number(n || 0).toLocaleString("en-US")} ر.س`;
@@ -58,42 +81,117 @@ function deedParts(row: InspectorFeeRowDto): { deed: string; region: string } {
         : null;
   if (sep) {
     const [a, ...rest] = label.split(sep);
-    return { deed: a.trim() || label, region: rest.join(sep).trim() || row.poNumber || "—" };
+    return {
+      deed: a.trim() || label,
+      region: rest.join(sep).trim() || row.poNumber || "—",
+    };
   }
   return { deed: label || "—", region: row.poNumber || "—" };
 }
 
-function statusMeta(st: ReturnType<typeof engFeeUiStatus>): {
-  label: string;
-  style: StatusPillStyle;
-} {
-  const map: Record<string, { label: string; style: StatusPillStyle }> = {
-    pending_office: {
-      label: "بانتظار إفادتكم",
+/**
+ * Individual-party status bucket (not eng office-review).
+ * `returned` / `inquiry` are NOT "work pending" — that was a misleading label for
+ * finance/supervisor loops (e.g. returnTo=supervisor).
+ */
+export function individualFeeUiStatus(row: InspectorFeeRowDto): UiStatus {
+  if (row.canSubmitToSupervisor) return "needs_submit";
+  const returnTo = (row.returnTo ?? "").trim().toLowerCase();
+  switch (row.billingStatus) {
+    case "draft":
+      return "draft_work";
+    case "returned":
+      if (returnTo === "supervisor") return "returned_to_supervisor";
+      if (returnTo === "office" || returnTo === "party") return "returned_to_party";
+      return "returned_to_party";
+    case "inquiry":
+      if (returnTo === "supervisor") return "inquiry_at_supervisor";
+      return "inquiry_to_party";
+    case "sup-review":
+      return "sup_review";
+    case "at-finance":
+    case "deferred":
+    case "disb-req":
+      return "at_finance";
+    case "in-statement":
+      return "listed";
+    case "disbursed":
+      return "paid";
+    case "suspended":
+      return "suspended";
+    default:
+      return "other";
+  }
+}
+
+/**
+ * Finance → supervisor bounce is the supervisor queue (PartyFeesWorkspace returnedToSup),
+ * not the individual party's action/tracking lane.
+ */
+export function isSupervisorOnlyFeeStatus(st: UiStatus): boolean {
+  return st === "returned_to_supervisor" || st === "inquiry_at_supervisor";
+}
+
+/**
+ * Rows that belong on the individual party's fees screen.
+ * Supervisor-only returns are handled on the supervisor workspace.
+ */
+export function isIndividualPartyFeeLaneRow(row: InspectorFeeRowDto): boolean {
+  return !isSupervisorOnlyFeeStatus(individualFeeUiStatus(row));
+}
+
+function statusMeta(st: UiStatus): { label: string; style: StatusPillStyle } {
+  const map: Record<UiStatus, { label: string; style: StatusPillStyle }> = {
+    needs_submit: {
+      label: "جاهز للرفع للمشرف",
       style: { base: "#d9a441", fg: "#8a5e14" },
     },
-    dispute: {
-      label: "تحفّظ على التسعير",
-      style: { base: "#d9694f", fg: "#a5432e" },
+    draft_work: {
+      label: "بانتظار إنجاز العمل",
+      style: { base: "#6b7c8f", fg: "#4a5568" },
     },
-    carried: {
-      label: "مرحَّل — متأخر عن دورته",
-      style: { base: "#8a5e14", fg: "#8a5e14" },
+    returned_to_party: {
+      label: "مُعاد إليكم",
+      style: { base: "#d9a441", fg: "#8a5e14" },
     },
-    ready: {
-      label: "جاهز للفوترة",
+    returned_to_supervisor: {
+      label: "أعادته المالية للمشرف",
+      style: { base: "#22406e", fg: "#102B4E" },
+    },
+    inquiry_to_party: {
+      label: "استفسار بانتظار ردكم",
+      style: { base: "#d9a441", fg: "#8a5e14" },
+    },
+    inquiry_at_supervisor: {
+      label: "استفسار عند المشرف",
+      style: { base: "#22406e", fg: "#102B4E" },
+    },
+    sup_review: {
+      label: "عند المشرف",
+      style: { base: "#22406e", fg: "#102B4E" },
+    },
+    at_finance: {
+      label: "لدى المالية",
       style: { base: "var(--ink)", fg: "var(--ink)" },
     },
     listed: {
-      label: "مدرج في كشف",
+      label: "في أمر صرف",
       style: { base: "#d9a441", fg: "#8a5e14" },
     },
     paid: {
-      label: "مفوترة / مدفوعة",
+      label: "مصروف / مدفوع",
       style: { base: "#3f8f5f", fg: "#2f7a4d" },
     },
+    suspended: {
+      label: "موقوف",
+      style: { base: "#d9694f", fg: "#a5432e" },
+    },
+    other: {
+      label: "—",
+      style: { base: "#6b7c8f", fg: "#4a5568" },
+    },
   };
-  return map[st] ?? { label: "—", style: { base: "#6b7c8f", fg: "#4a5568" } };
+  return map[st];
 }
 
 function statementMeta(s: PartyBillingStatementDto): {
@@ -102,7 +200,7 @@ function statementMeta(s: PartyBillingStatementDto): {
 } {
   if (s.status === "closed") {
     return {
-      label: s.statusLabel || "مصروف",
+      label: s.statusLabel || "مدفوع",
       style: { base: "#3f8f5f", fg: "#2f7a4d" },
     };
   }
@@ -176,43 +274,122 @@ function CardIcon() {
   );
 }
 
-export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
+const COPY: Record<
+  IndividualFeesVariant,
+  {
+    roleLabel: string;
+    actionTitle: string;
+    actionSub: string;
+    trackingTitle: string;
+    trackingSub: string;
+    readyTitle: string;
+    readySub: string;
+    statementsLabel: string;
+    statementsFooter: string;
+    outstandingSub: string;
+    actionKpiLabel: string;
+    actionKpiSub: string;
+    readyKpiLabel: string;
+    readyKpiSub: string;
+    paidKpiLabel: string;
+    paidKpiSub: string;
+    actionCol: string;
+    dateCol: string;
+  }
+> = {
+  "field-inspection": {
+    roleLabel: "المعاين",
+    actionTitle: "أتعاب معاينة بانتظار رفعكم",
+    actionSub:
+      "بعد إنجاز المعاينة ارفع البند للمشرف. الصرف لاحقاً من المالية بأمر صرف (فرد) — بلا فاتورة مورّد.",
+    trackingTitle: "قيد الإجراء",
+    trackingSub: "مسودات العمل، الاعتماد عند المشرف، المعاد/الاستفسار إليكم، والموقوف.",
+    readyTitle: "لدى المالية",
+    readySub:
+      "اعتمدها المشرف — أوامر الصرف من شاشة التكاليف. تظهر هنا المتابعة فقط.",
+    statementsLabel: "أوامر الصرف الصادرة",
+    statementsFooter:
+      "دورة الفرد: رفع للمشرف ← اعتماد ← أمر صرف ← توثيق الصرف (سند + تحويل + إيصال). لا يُطلب منكم رفع فاتورة.",
+    outstandingSub: "كل استحقاقاتكم التي لم تُصرف بعد",
+    actionKpiLabel: "بانتظار رفعكم",
+    actionKpiSub: "عمل مكتمل جاهز للرفع للمشرف",
+    readyKpiLabel: "لدى المالية",
+    readyKpiSub: "بعد الاعتماد — قبل الإقفال",
+    paidKpiLabel: "مصروف / مدفوع",
+    paidKpiSub: "أُغلق بعد توثيق الصرف",
+    actionCol: "إجراءكم",
+    dateCol: "تاريخ الإنجاز",
+  },
+  "government-review": {
+    roleLabel: "المراجع الحكومي",
+    actionTitle: "أتعاب مراجعة حكومية بانتظار رفعكم",
+    actionSub:
+      "بعد إنجاز المراجعة ارفع للمشرف. أتعاب الزيارة/المفاتيح من تبويباتها. الصرف أمر فرد بدون فاتورة مورّد.",
+    trackingTitle: "قيد الإجراء",
+    trackingSub: "مسودات غير منجزة، أو عند المشرف، أو موقوفة.",
+    readyTitle: "لدى المالية",
+    readySub: "اعتمدها المشرف — أوامر الصرف من التكاليف (فرد).",
+    statementsLabel: "أوامر الصرف الصادرة",
+    statementsFooter:
+      "دورة الفرد: رفع للمشرف ← اعتماد ← أمر صرف ← توثيق الصرف. لا رفع فاتورة من بوابتكم.",
+    outstandingSub: "استحقاقات المراجعة غير المصروفة",
+    actionKpiLabel: "بانتظار رفعكم",
+    actionKpiSub: "مراجعة مكتملة جاهزة للرفع",
+    readyKpiLabel: "لدى المالية",
+    readyKpiSub: "بعد الاعتماد — قبل الإقفال",
+    paidKpiLabel: "مصروف / مدفوع",
+    paidKpiSub: "أُغلق بعد توثيق الصرف",
+    actionCol: "إجراءكم",
+    dateCol: "تاريخ الإنجاز",
+  },
+};
+
+export function PartyIndividualFeesHtmlScreen({
+  assigneeId,
+  variant,
+}: {
+  assigneeId?: string;
+  variant: IndividualFeesVariant;
+}) {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
+  const { hasCapability } = usePrototype();
+  const copy = COPY[variant];
+  const showVisitKey = variant === "government-review";
+
   const [tab, setTab] = useState<TabId>("action");
   const [search, setSearch] = useState("");
   const [stFilter, setStFilter] = useState("");
   const [fnSearch, setFnSearch] = useState("");
   const [openFn, setOpenFn] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [objectOpenId, setObjectOpenId] = useState<string | null>(null);
-  const [objectText, setObjectText] = useState("");
-  const [invoiceNo, setInvoiceNo] = useState("");
-  const [invoiceDate, setInvoiceDate] = useState(() =>
-    new Date().toISOString().slice(0, 10),
-  );
 
   const { data: summary, isPending: feesPending } = useInspectorFeesQuery(
     {
       assigneeId,
       submittedOnly: false,
-      taskKind: "engineering-survey",
+      taskKind: variant,
     },
     { enabled: Boolean(assigneeId) },
   );
 
   const rows = useMemo(
-    () => sortInspectorFeeRowsNewestFirst(summary?.rows ?? []),
+    () =>
+      sortInspectorFeeRowsNewestFirst(summary?.rows ?? []).filter(
+        isIndividualPartyFeeLaneRow,
+      ),
     [summary?.rows],
   );
 
-  const { data: statements = [] } = useQuery({
+  const { data: statementsRaw = [] } = useQuery({
     queryKey: [
       ...prototypeKeys.all,
       "party-billing",
       "statements",
       assigneeId ?? "none",
       "issued+",
+      variant,
+      "individual-lane",
     ],
     queryFn: () =>
       loadPartyBillingStatements({
@@ -222,46 +399,87 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
     enabled: Boolean(assigneeId),
   });
 
-  const closedPaid = useMemo(
+  /** Own lane only: individual payee + this party's taskKind (never vendor/eng). */
+  const statements = useMemo(
     () =>
-      statements
-        .filter((s) => s.status === "closed")
-        .reduce((sum, s) => sum + (Number(s.totalNetSar) || 0), 0),
-    [statements],
-  );
-
-  const kpi = useMemo(
-    () =>
-      computeEngineeringFeesSituation(rows, {
-        closedStatementsPaidSar: closedPaid,
+      statementsRaw.filter((s) => {
+        if (s.payeeType === "vendor") return false;
+        if (s.taskKind && s.taskKind !== variant) return false;
+        return true;
       }),
-    [rows, closedPaid],
+    [statementsRaw, variant],
   );
 
-  const actionCount = rows.filter((r) => {
-    const st = engFeeUiStatus(r);
-    return st === "pending_office" || st === "dispute";
-  }).length;
-  const readyCount = rows.filter((r) => {
-    const st = engFeeUiStatus(r);
-    return st === "ready" || st === "carried";
-  }).length;
+  const kpi = useMemo(() => {
+    let outstanding = 0;
+    let actionSar = 0;
+    let readySar = 0;
+    let paidSar = 0;
+    for (const row of rows) {
+      const net = Number(row.netFeeSar) || 0;
+      const st = individualFeeUiStatus(row);
+      if (st !== "paid") outstanding += net;
+      if (st === "needs_submit") actionSar += net;
+      if (st === "at_finance" || st === "listed") readySar += net;
+      if (st === "paid") paidSar += net;
+    }
+    const closedPaid = statements
+      .filter((s) => s.status === "closed")
+      .reduce((sum, s) => sum + (Number(s.totalNetSar) || 0), 0);
+    return {
+      outstanding,
+      actionSar,
+      readySar,
+      paidSar: closedPaid > 0 ? closedPaid : paidSar,
+    };
+  }, [rows, statements]);
+
+  const actionRows = useMemo(
+    () => rows.filter((r) => individualFeeUiStatus(r) === "needs_submit"),
+    [rows],
+  );
+  const trackingRows = useMemo(
+    () =>
+      rows.filter((r) => {
+        const st = individualFeeUiStatus(r);
+        return (
+          st === "draft_work" ||
+          st === "sup_review" ||
+          st === "returned_to_party" ||
+          st === "inquiry_to_party" ||
+          st === "suspended"
+        );
+      }),
+    [rows],
+  );
+  const readyRows = useMemo(
+    () =>
+      rows.filter((r) => {
+        const st = individualFeeUiStatus(r);
+        return st === "at_finance" || st === "listed" || st === "paid";
+      }),
+    [rows],
+  );
+
+  const feeBucketRows =
+    tab === "action"
+      ? actionRows
+      : tab === "tracking"
+        ? trackingRows
+        : tab === "ready"
+          ? readyRows
+          : [];
 
   const filteredFees = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return rows.filter((row) => {
-      const st = engFeeUiStatus(row);
-      const inTab =
-        tab === "action"
-          ? st === "pending_office" || st === "dispute"
-          : st === "ready" || st === "carried";
-      if (!inTab) return false;
+    return feeBucketRows.filter((row) => {
+      const st = individualFeeUiStatus(row);
       if (stFilter && st !== stFilter) return false;
       if (!q) return true;
       const { deed, region } = deedParts(row);
       return `${deed} ${region} ${row.poNumber}`.toLowerCase().includes(q);
     });
-  }, [rows, tab, search, stFilter]);
+  }, [feeBucketRows, search, stFilter]);
 
   const filteredFns = useMemo(() => {
     const q = fnSearch.trim().toLowerCase();
@@ -302,43 +520,12 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
         );
         return;
       }
-      await invalidate();
-      setObjectOpenId(null);
-      setObjectText("");
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const submitInvoice = async (s: PartyBillingStatementDto, file?: File) => {
-    if (!invoiceNo.trim()) {
-      showToast("رقم الفاتورة مطلوب", "error");
-      return;
-    }
-    if (!file) {
-      showToast("ارفع PDF الفاتورة", "error");
-      return;
-    }
-    setBusyId(s.id);
-    try {
-      const upload = await uploadPartyBillingVendorInvoice(s.id, file);
-      if (!upload.ok) {
-        showToast(upload.error, "error");
-        return;
-      }
-      const result = await runSubmitVendorInvoice(s.id, {
-        invoiceNumber: invoiceNo.trim(),
-        invoiceDate: invoiceDate
-          ? new Date(`${invoiceDate}T12:00:00`).toISOString()
-          : undefined,
-        attachmentId: upload.id,
-      });
-      if (!result.ok) {
-        showToast(result.error, "error");
-        return;
-      }
-      showToast(`رُفعت الفاتورة — ${fmtSar(s.totalNetSar)}`, "success");
-      setInvoiceNo("");
+      showToast(
+        action === "submit-to-supervisor"
+          ? "رُفع للمشرف بنجاح"
+          : "تم تنفيذ الإجراء",
+        "success",
+      );
       await invalidate();
     } finally {
       setBusyId(null);
@@ -352,56 +539,88 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
     setFnSearch("");
   };
 
+  const tabs = [
+    {
+      id: "action",
+      label: "رفع للمشرف",
+      count: actionRows.length,
+      countWarnWhenActive: true,
+    },
+    {
+      id: "tracking",
+      label: "قيد الإجراء",
+      count: trackingRows.length,
+    },
+    {
+      id: "ready",
+      label: "لدى المالية",
+      count: readyRows.filter((r) => {
+        const st = individualFeeUiStatus(r);
+        return st === "at_finance" || st === "listed";
+      }).length,
+    },
+    {
+      id: "statements",
+      label: copy.statementsLabel,
+      count: statements.length,
+    },
+    ...(showVisitKey
+      ? [
+          { id: "visit-fees", label: "أتعاب الزيارة" },
+          { id: "key-fees", label: "أتعاب استلام المفاتيح" },
+        ]
+      : []),
+  ];
+
   return (
     <div className="px-[30px] pb-11 pt-[26px]">
-      {/* Case Study.html `.kpi` */}
       <KpiBand className="mb-6">
         <KpiCell
           first
           icon={<CurrencyIcon />}
           iconClass="bg-gold-soft text-gold-d"
-          label="إجمالي المستحق غير المفوتر"
+          label="إجمالي المستحق غير المصروف"
           value={
             <span className="text-[20px] font-extrabold tabular-nums">
               {fmtSar(kpi.outstanding)}
             </span>
           }
-          sub="كل استحقاقاتكم التي لم تُصرف بعد"
+          sub={copy.outstandingSub}
           dot
         />
         <KpiCell
           icon={<ClockIcon />}
           iconClass="bg-[color-mix(in_srgb,#d9a441_14%,transparent)] text-[#8a5e14]"
-          label="بانتظار إفادتكم"
+          label={copy.actionKpiLabel}
           value={
             <span className="text-[20px] font-extrabold tabular-nums">
-              {fmtSar(kpi.pending)}
+              {fmtSar(kpi.actionSar)}
             </span>
           }
-          sub="تعديلات تسعير تنتظر إفادتكم"
+          sub={copy.actionKpiSub}
         />
         <KpiCell
           icon={<CardIcon />}
           iconClass="bg-navy-soft text-ink"
-          label="جاهزة للفوترة"
+          label={copy.readyKpiLabel}
           value={
             <span className="text-[20px] font-extrabold tabular-nums">
-              {fmtSar(kpi.ready)}
+              {fmtSar(kpi.readySar)}
             </span>
           }
-          sub="تشمل المرحَّل — بانتظار كشف المحاسب"
+          sub={copy.readyKpiSub}
         />
         <KpiCell
           last
           icon={<CurrencyIcon />}
           iconClass="bg-[color-mix(in_srgb,#3f8f5f_14%,transparent)] text-[#2f7a4d]"
-          label="مفوترة / مدفوعة"
+          label={copy.paidKpiLabel}
           value={
             <span className="text-[20px] font-extrabold tabular-nums">
-              {fmtSar(kpi.paid)}
+              {fmtSar(kpi.paidSar)}
             </span>
           }
-          sub="إجمالي الكشوف المصروفة الموثَّقة"
+          sub={copy.paidKpiSub}
         />
       </KpiBand>
 
@@ -409,37 +628,28 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
         className="!mb-4 !mt-0"
         active={tab}
         onChange={onTabChange}
-        tabs={[
-          {
-            id: "action",
-            label: "تتطلب إجراءكم",
-            count: actionCount,
-            countWarnWhenActive: true,
-          },
-          { id: "ready", label: "جاهزة للفوترة", count: readyCount },
-          {
-            id: "statements",
-            label: "كشوف الفوترة الصادرة",
-            count: statements.length,
-          },
-        ]}
+        tabs={tabs}
       />
 
-      {tab !== "statements" ? (
+      {tab === "action" || tab === "tracking" || tab === "ready" ? (
         <>
-          {tab === "action" ? (
-            <EngFeesSectionTitle
-              title="الكشف المبدئي — بنود تتطلب إجراءكم"
-              sub="تعديلات تسعير بانتظار إفادتكم، وتحفّظاتكم قيد المعالجة مع المشرف. الاستحقاق ينشأ بقبول الأخصائي بسعر جدول التسعير."
-            />
-          ) : (
-            <EngFeesSectionTitle
-              title="المعاملات الجاهزة للفوترة"
-              sub="بنود مستحقة بانتظار كشف المحاسب نهاية الشهر — تشمل المرحَّلة من أشهر سابقة."
-            />
-          )}
+          <EngFeesSectionTitle
+            title={
+              tab === "action"
+                ? copy.actionTitle
+                : tab === "tracking"
+                  ? copy.trackingTitle
+                  : copy.readyTitle
+            }
+            sub={
+              tab === "action"
+                ? copy.actionSub
+                : tab === "tracking"
+                  ? copy.trackingSub
+                  : copy.readySub
+            }
+          />
 
-          {/* `.toolbar` > `.filters` — separate from card */}
           <div className="mb-3.5 flex flex-wrap items-center justify-between gap-4">
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
               <div className="relative flex items-center">
@@ -476,16 +686,24 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                 >
                   <option value="">جميع الحالات</option>
                   {tab === "action" ? (
+                    <option value="needs_submit">جاهز للرفع</option>
+                  ) : null}
+                  {tab === "tracking" ? (
                     <>
-                      <option value="pending_office">بانتظار إفادتكم</option>
-                      <option value="dispute">تحفّظ على التسعير</option>
+                      <option value="draft_work">بانتظار العمل</option>
+                      <option value="returned_to_party">مُعاد إليكم</option>
+                      <option value="inquiry_to_party">استفسار بانتظار ردكم</option>
+                      <option value="sup_review">عند المشرف</option>
+                      <option value="suspended">موقوف</option>
                     </>
-                  ) : (
+                  ) : null}
+                  {tab === "ready" ? (
                     <>
-                      <option value="ready">جاهز للفوترة</option>
-                      <option value="carried">مرحَّل — متأخر</option>
+                      <option value="at_finance">لدى المالية</option>
+                      <option value="listed">في أمر صرف</option>
+                      <option value="paid">مصروف</option>
                     </>
-                  )}
+                  ) : null}
                 </select>
               </div>
               <span className="ms-auto rounded-full bg-gold-soft px-3 py-[5px] text-[12px] font-bold text-gold-d">
@@ -503,12 +721,12 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                 >
                   {[
                     "الصك",
-                    "تاريخ القبول",
+                    copy.dateCol,
                     "سعر الجدول",
-                    "تعديل التسعير ومبرره",
+                    "تعديل / مبرر",
                     "الصافي",
                     "الحالة",
-                    "إجراء المكتب",
+                    copy.actionCol,
                   ].map((h) => (
                     <div
                       key={h}
@@ -529,20 +747,22 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                   </div>
                 ) : (
                   filteredFees.map((row) => {
-                    const st = engFeeUiStatus(row);
+                    const st = individualFeeUiStatus(row);
                     const meta = statusMeta(st);
                     const { deed, region } = deedParts(row);
                     const ded = row.supervisorDiscountSar > 0;
                     const busy = busyId === row.workflowTaskId;
-                    const objOpen = objectOpenId === row.workflowTaskId;
                     return (
                       <div
-                        key={row.workflowTaskId}
+                        key={
+                          row.id ||
+                          `${row.workflowTaskId}-${row.billingStatus}-${row.netFeeSar}`
+                        }
                         className="grid min-h-[38px] items-center border-b border-border transition-colors hover:bg-[var(--row-hover,#faf6ee)]"
                         style={{ gridTemplateColumns: FEE_COLS }}
                       >
                         <div className="flex min-w-0 items-center overflow-hidden px-3.5 py-1.5">
-                          <div className="flex flex-col gap-0.5">
+                          <div className="flex min-w-0 flex-col gap-0.5">
                             <span
                               dir="ltr"
                               className="text-end text-[13px] font-bold text-gold-d"
@@ -556,24 +776,30 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                         </div>
                         <div
                           dir="ltr"
-                          className="flex min-w-0 items-center px-3.5 py-1.5 text-[12px] text-text-2"
+                          className="flex min-w-0 items-center justify-center px-3.5 py-1.5 text-center text-[12px] tabular-nums text-text-2"
                         >
                           {formatYmd(
-                            row.accruedAtUtc ??
-                              row.workSubmittedAtUtc ??
+                            row.workSubmittedAtUtc ??
+                              row.accruedAtUtc ??
                               row.updatedAtUtc,
                           )}
                         </div>
-                        <div className="flex min-w-0 items-center px-3.5 py-1.5 text-[12.5px] text-text-2">
+                        <div
+                          dir="ltr"
+                          className="flex min-w-0 items-center justify-center px-3.5 py-1.5 text-center text-[12.5px] tabular-nums text-text-2"
+                        >
                           {fmtSar(row.agreedFeeSar)}
                         </div>
-                        <div className="flex min-w-0 items-center overflow-hidden px-3.5 py-1.5">
+                        <div className="flex min-w-0 items-center justify-center overflow-hidden px-3.5 py-1.5 text-center">
                           {ded ? (
                             <span
-                              className="inline-flex min-w-0 items-center gap-1.5"
+                              className="inline-flex min-w-0 max-w-full items-center justify-center gap-1.5"
                               title={row.discountReason ?? undefined}
                             >
-                              <span className="shrink-0 text-[12.5px] font-bold text-[#a5432e]">
+                              <span
+                                dir="ltr"
+                                className="shrink-0 text-[12.5px] font-bold tabular-nums text-[#a5432e]"
+                              >
                                 − {fmtSar(row.supervisorDiscountSar)}
                               </span>
                               <span className="truncate text-[10.5px] text-text-3">
@@ -586,75 +812,49 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                             </span>
                           )}
                         </div>
-                        <div className="flex min-w-0 items-center px-3.5 py-1.5 text-[13px] font-bold text-heading">
+                        <div
+                          dir="ltr"
+                          className="flex min-w-0 items-center justify-center px-3.5 py-1.5 text-center text-[13px] font-bold tabular-nums text-heading"
+                        >
                           {fmtSar(row.netFeeSar)}
                         </div>
-                        <div className="flex min-w-0 items-center px-3.5 py-1.5">
+                        <div className="flex min-w-0 items-center justify-center px-3.5 py-1.5">
                           <StatusPill label={meta.label} style={meta.style} />
                         </div>
-                        <div className="flex min-w-0 items-center overflow-visible px-3.5 py-1.5">
-                          {st === "pending_office" ? (
-                            <div className="flex w-full flex-col gap-1.5">
-                              <div className="flex gap-1.5">
-                                <button
-                                  type="button"
-                                  disabled={
-                                    busy || !row.canOfficeApproveDiscount
-                                  }
-                                  className="cursor-pointer whitespace-nowrap rounded-lg border-none bg-ink px-[11px] py-1 text-[11px] font-bold text-white shadow-[0_6px_16px_-8px_rgba(18,40,76,.6)] disabled:opacity-50"
-                                  onClick={() =>
-                                    void act(row, "office-approve-discount")
-                                  }
-                                >
-                                  قبول
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={busy || !row.canOfficeDispute}
-                                  className="cursor-pointer whitespace-nowrap rounded-lg border border-[color-mix(in_srgb,#d9694f_40%,transparent)] bg-surface px-[11px] py-1 text-[11px] font-bold text-[#a5432e] disabled:opacity-50"
-                                  onClick={() => {
-                                    setObjectOpenId(
-                                      objOpen ? null : row.workflowTaskId,
-                                    );
-                                    setObjectText("");
-                                  }}
-                                >
-                                  تحفّظ
-                                </button>
-                              </div>
-                              {objOpen ? (
-                                <div>
-                                  <textarea
-                                    rows={2}
-                                    value={objectText}
-                                    onChange={(e) =>
-                                      setObjectText(e.target.value)
-                                    }
-                                    placeholder="مبررات التحفّظ (إلزامي)…"
-                                    className="w-full resize-y rounded-lg border border-border-md bg-surface-2 px-3 py-2 text-[11.5px] text-text outline-none"
-                                  />
-                                  <button
-                                    type="button"
-                                    disabled={busy || !objectText.trim()}
-                                    className="mt-[5px] cursor-pointer rounded-lg border-none bg-ink px-3 py-[5px] text-[11px] font-bold text-white disabled:opacity-50"
-                                    onClick={() => {
-                                      if (!objectText.trim()) return;
-                                      void act(row, "office-dispute", {
-                                        reason: objectText.trim(),
-                                      });
-                                    }}
-                                  >
-                                    إرسال التحفّظ
-                                  </button>
-                                </div>
-                              ) : null}
-                            </div>
-                          ) : (
+                        <div className="flex min-w-0 items-center justify-center overflow-visible px-3.5 py-1.5">
+                          {st === "needs_submit" ? (
+                            <button
+                              type="button"
+                              disabled={busy || !row.canSubmitToSupervisor}
+                              className="cursor-pointer whitespace-nowrap rounded-lg border-none bg-ink px-[11px] py-1 text-[11px] font-bold text-white shadow-[0_6px_16px_-8px_rgba(18,40,76,.6)] disabled:opacity-50"
+                              onClick={() =>
+                                void act(row, "submit-to-supervisor")
+                              }
+                            >
+                              رفع للمشرف
+                            </button>
+                          ) : st === "sup_review" ? (
                             <span className="text-[11px] text-text-3">
-                              {st === "dispute"
-                                ? "قيد المعالجة"
-                                : "لا إجراء مطلوب"}
+                              بانتظار الاعتماد
                             </span>
+                          ) : st === "returned_to_party" || st === "inquiry_to_party" ? (
+                            <span className="text-[11px] text-text-3">
+                              راجع الملاحظات وأعِد الرفع
+                            </span>
+                          ) : st === "draft_work" ? (
+                            <span className="text-[11px] text-text-3">
+                              بعد إنجاز العمل يظهر للرفع
+                            </span>
+                          ) : st === "at_finance" || st === "listed" ? (
+                            <span className="text-[11px] text-text-3">
+                              المالية تتولى أمر الصرف
+                            </span>
+                          ) : st === "paid" ? (
+                            <span className="text-[11px] font-semibold text-[#2f7a4d]">
+                              ✓ مصروف
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-text-3">—</span>
                           )}
                         </div>
                       </div>
@@ -663,17 +863,21 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                 )}
               </div>
             </div>
+            <div className="border-t border-border px-4 py-[11px] text-[12px] text-text-3">
+              {copy.roleLabel}: {copy.statementsFooter}
+            </div>
           </div>
         </>
-      ) : (
+      ) : null}
+
+      {tab === "statements" ? (
         <>
           <EngFeesSectionTitle
-            title="كشوف الفوترة الصادرة"
-            sub="يُصدرها المحاسب نهاية الشهر من البنود الجاهزة فقط — مستند داخلي لتحديد نطاق الصرف؛ الفاتورة من البرنامج المحاسبي. للاطلاع ومتابعة الصرف فقط."
+            title={copy.statementsLabel}
+            sub="متابعة أوامر الصرف بعد اعتماد المشرف — بلا رفع فاتورة منكم."
           />
-
           <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
-            <div className="relative flex min-w-0 flex-1 items-center">
+            <div className="relative flex items-center">
               <svg
                 width="15"
                 height="15"
@@ -681,8 +885,6 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
                 className="pointer-events-none absolute start-3 text-text-3"
                 aria-hidden
               >
@@ -693,13 +895,12 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                 type="search"
                 value={fnSearch}
                 onChange={(e) => setFnSearch(e.target.value)}
-                placeholder="رقم الكشف أو رقم صك ضمنه…"
-                aria-label="بحث كشوف الفوترة"
-                className="w-full max-w-[320px] rounded-lg border border-border-md bg-surface py-2 pe-3.5 ps-[38px] text-[13px] text-text outline-none focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_22%,transparent)]"
+                placeholder="رقم أمر الصرف…"
+                className="w-[248px] max-w-full rounded-lg border border-border-md bg-surface py-2 pe-3.5 ps-[38px] text-[13px] outline-none focus:border-gold"
               />
             </div>
             <span className="ms-auto rounded-full bg-gold-soft px-3 py-[5px] text-[12px] font-bold text-gold-d">
-              {filteredFns.length} كشف
+              {filteredFns.length} مستند
             </span>
           </div>
 
@@ -714,7 +915,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                   }}
                 >
                   {[
-                    "رقم الكشف",
+                    "رقم الأمر",
                     "تاريخ الإصدار",
                     "المعاملات",
                     "الإجمالي",
@@ -732,7 +933,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
 
                 {filteredFns.length === 0 ? (
                   <div className="px-4 py-10 text-center text-[13px] text-text-3">
-                    لا توجد كشوف مطابقة.
+                    لا توجد مستندات مطابقة.
                   </div>
                 ) : (
                   filteredFns.map((s) => {
@@ -753,9 +954,8 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                             }
                           }}
                           className={cn(
-                            "grid min-h-11 cursor-pointer items-center border-b border-border transition-colors",
+                            "grid min-h-11 cursor-pointer items-center border-b border-border transition-colors hover:bg-[var(--row-hover,#faf6ee)]",
                             open && "bg-[var(--row-hover,#faf6ee)]",
-                            "hover:bg-[var(--row-hover,#faf6ee)]",
                           )}
                           style={{
                             gridTemplateColumns:
@@ -763,30 +963,11 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                           }}
                         >
                           <div className="flex items-center px-4 py-3.5">
-                            <span className="inline-flex items-center gap-1.5">
-                              <svg
-                                width="13"
-                                height="13"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className={cn(
-                                  "text-text-3 transition-transform duration-150",
-                                  open && "rotate-90",
-                                )}
-                                aria-hidden
-                              >
-                                <path d="m9 18 6-6-6-6" />
-                              </svg>
-                              <span
-                                dir="ltr"
-                                className="text-[12.5px] font-bold text-gold-d"
-                              >
-                                {s.referenceNumber}
-                              </span>
+                            <span
+                              dir="ltr"
+                              className="text-[12.5px] font-bold text-gold-d"
+                            >
+                              {s.referenceNumber}
                             </span>
                           </div>
                           <div
@@ -808,69 +989,27 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                             />
                           </div>
                           <div className="flex items-center px-4 py-3.5 text-[11px] text-text-2">
-                            {s.status === "closed" && s.paidAtUtc ? (
-                              <span className="inline-flex min-w-0 flex-col gap-px">
-                                <span>
-                                  صُرف {formatYmd(s.paidAtUtc)}
-                                  {s.externalInvoiceNumber ||
-                                  s.vendorInvoiceNumber ? (
-                                    <>
-                                      {" "}
-                                      — فاتورة{" "}
-                                      <b dir="ltr">
-                                        {s.externalInvoiceNumber ||
-                                          s.vendorInvoiceNumber}
-                                      </b>
-                                    </>
-                                  ) : null}
-                                </span>
-                                <span className="truncate text-text-3">
-                                  📎{" "}
-                                  {s.transferReceiptRef ||
-                                    "إيصال التحويل"}
-                                  {s.transferReference
-                                    ? ` · مرجع ${s.transferReference}`
-                                    : ""}
-                                </span>
-                              </span>
-                            ) : (
-                              "بانتظار الصرف"
-                            )}
+                            {s.status === "closed" && s.paidAtUtc
+                              ? `صُرف ${formatYmd(s.paidAtUtc)}`
+                              : "بانتظار الصرف"}
                           </div>
                         </div>
-
                         {open ? (
                           <div className="border-b border-border bg-surface-2 px-[18px] py-3">
                             <div className="mb-2 text-[11.5px] font-bold text-text-2">
-                              معاملات الكشف {s.referenceNumber}
+                              بنود {s.referenceNumber}
                             </div>
                             <div className="grid gap-1.5">
                               {s.lines.map((line) => (
                                 <div
                                   key={line.id}
-                                  className="grid items-center gap-2.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-[12px]"
-                                  style={{
-                                    gridTemplateColumns:
-                                      "minmax(115px,1fr) minmax(105px,1.1fr) minmax(95px,.9fr) minmax(85px,.8fr) minmax(145px,1.4fr) minmax(85px,.8fr)",
-                                  }}
+                                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-[12px]"
                                 >
                                   <span
                                     dir="ltr"
-                                    className="text-end font-bold text-gold-d"
+                                    className="font-bold text-gold-d"
                                   >
                                     {line.propertyLabel}
-                                  </span>
-                                  <span className="text-text-2">
-                                    {line.poNumber || "—"}
-                                  </span>
-                                  <span className="text-[11px] text-text-3">
-                                    {line.billingStatusLabel || "—"}
-                                  </span>
-                                  <span className="text-text-2">
-                                    {fmtSar(line.netFeeSar)}
-                                  </span>
-                                  <span className="text-[11px] text-text-3">
-                                    بسعر الجدول
                                   </span>
                                   <span className="font-bold text-heading">
                                     {fmtSar(line.netFeeSar)}
@@ -878,47 +1017,6 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
                                 </div>
                               ))}
                             </div>
-                            {s.status === "issued" &&
-                            s.payeeType !== "individual" ? (
-                              <div
-                                className="mt-3 flex flex-col gap-2 rounded-lg border border-border bg-surface p-3"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <div className="text-[12px] font-semibold">
-                                  رفع فاتورة مطابقة للمسير (القيمة مقفلة{" "}
-                                  {fmtSar(s.totalNetSar)})
-                                </div>
-                                <label className="text-[12px] text-text-2">
-                                  رقم الفاتورة *
-                                  <input
-                                    className="mt-1 w-full rounded-lg border border-border-md bg-surface px-3 py-2 text-[13px]"
-                                    value={invoiceNo}
-                                    onChange={(e) =>
-                                      setInvoiceNo(e.target.value)
-                                    }
-                                    dir="ltr"
-                                  />
-                                </label>
-                                <label className="text-[12px] text-text-2">
-                                  تاريخ الفاتورة
-                                  <input
-                                    type="date"
-                                    className="mt-1 w-full rounded-lg border border-border-md bg-surface px-3 py-2 text-[13px]"
-                                    value={invoiceDate}
-                                    onChange={(e) =>
-                                      setInvoiceDate(e.target.value)
-                                    }
-                                  />
-                                </label>
-                                <VendorInvoicePdfField
-                                  busy={busyId === s.id}
-                                  disabled={busyId === s.id}
-                                  onPick={(file) => {
-                                    void submitInvoice(s, file);
-                                  }}
-                                />
-                              </div>
-                            ) : null}
                             {s.transferReceiptAttachmentId ? (
                               <button
                                 type="button"
@@ -944,14 +1042,38 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
               </div>
             </div>
             <div className="border-t border-border px-4 py-[11px] text-[12px] text-text-3">
-              دورة الكشف: مسودة ← صادر ← محال للمالية ← مصروف. الفاتورة تصدر من
-              البرنامج المحاسبي خارج النظام، ويُوثَّق الصرف هنا برقم الفاتورة
-              وإيصال التحويل والتاريخ. البنود المتحفَّظ عليها تُعالَج بالتنسيق مع
-              المشرف قبل إحالتها للمالية.
+              {copy.statementsFooter}
             </div>
           </div>
         </>
-      )}
+      ) : null}
+
+      {tab === "visit-fees" && showVisitKey ? (
+        <CourtVisitFeesPanel creditAssigneeId={assigneeId} />
+      ) : null}
+
+      {tab === "key-fees" && showVisitKey ? (
+        <>
+          <KeyEnvelopeFeesPanel
+            canCollect={hasCapability("manage-financial")}
+            onOpenEnvelope={(envelopeId) => {
+              window.location.assign(
+                `/keys?envelope=${encodeURIComponent(envelopeId)}`,
+              );
+            }}
+          />
+          <QueueTableHint className="mt-3">
+            أتعاب استلام ظرف المفاتيح — التفاصيل من{" "}
+            <Link
+              href="/keys?tab=fees"
+              className="font-semibold text-primary underline underline-offset-2"
+            >
+              إدارة المفاتيح → تقرير الأتعاب
+            </Link>
+            .
+          </QueueTableHint>
+        </>
+      ) : null}
     </div>
   );
 }

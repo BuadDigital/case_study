@@ -61,6 +61,7 @@ public sealed class ClaimsPermissionService(IHttpContextAccessor httpContextAcce
             PrototypeRole = principal.FindFirstValue("prototypeRole"),
             DisplayName = principal.FindFirstValue("displayName"),
             DistributionAssigneeId = principal.FindFirstValue("distributionAssigneeId"),
+            Department = principal.FindFirstValue("department"),
             Pages = pages,
             Capabilities = capabilities,
         };

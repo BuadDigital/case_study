@@ -24,6 +24,7 @@ public static class InspectorFeeRowMapper
 
         return new InspectorFeeRowDto
         {
+            Id = ledger.Id.ToString(),
             WorkflowTaskId = ledger.WorkflowTaskId.ToString(),
             PropertyId = ledger.PropertyId?.ToString(),
             PropertyLabel = propertyLabel,

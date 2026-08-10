@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
@@ -749,7 +750,9 @@ public static class DataSeeder
         // Cooperator fee rates on the active field-inspector pricing table.
         var fiTable = await db.PartyFeePricingTables
             .FirstOrDefaultAsync(
-                t => t.Category == "field-inspector" && t.IsActive,
+                t => t.Category == "field-inspector"
+                    && t.IsActive
+                    && t.PricingKind != PartyFeePricingKinds.Flat,
                 cancellationToken);
         if (fiTable is not null
             && fiTable.FieldInspectorIndividualFeeSar <= 0
@@ -760,6 +763,73 @@ public static class DataSeeder
             fiTable.UpdatedAtUtc = DateTime.UtcNow;
         }
 
+        // Employee incentives require a flat table (not the cooperator party-rates default).
+        const string flatName = "حوافز المعاينين الموظفين";
+        var flatTable = await db.PartyFeePricingTables
+            .FirstOrDefaultAsync(
+                t => t.Category == "field-inspector"
+                    && t.PricingKind == PartyFeePricingKinds.Flat
+                    && t.FlatAmountSar > 0m,
+                cancellationToken);
+        if (flatTable is null)
+        {
+            flatTable = new PartyFeePricingTable
+            {
+                Id = Guid.NewGuid(),
+                Category = "field-inspector",
+                Name = flatName,
+                PricingKind = PartyFeePricingKinds.Flat,
+                ManagedBy = PartyFeePricingManagers.Supervisor,
+                IsActive = false,
+                FlatAmountSar = 400m,
+                UpdatedAtUtc = DateTime.UtcNow,
+            };
+            db.PartyFeePricingTables.Add(flatTable);
+        }
+
+        // Assign compensated field inspectors to the employee flat table (never to party-rates).
+        var employeeInspectorIds = await db.UserProfiles.AsNoTracking()
+            .Where(p =>
+                p.HasCompensation
+                && p.DistributionAssigneeId != null
+                && p.DistributionAssigneeId.StartsWith("fi-"))
+            .Select(p => p.DistributionAssigneeId!)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        foreach (var assigneeId in employeeInspectorIds)
+        {
+            var existing = await db.PartyFeePricingAssignments
+                .FirstOrDefaultAsync(
+                    a => a.Category == "field-inspector" && a.AssigneeId == assigneeId,
+                    cancellationToken);
+            if (existing is null)
+            {
+                db.PartyFeePricingAssignments.Add(new PartyFeePricingAssignment
+                {
+                    Id = Guid.NewGuid(),
+                    TableId = flatTable.Id,
+                    Category = "field-inspector",
+                    AssigneeId = assigneeId,
+                    UpdatedAtUtc = DateTime.UtcNow,
+                });
+            }
+            else if (existing.TableId != flatTable.Id)
+            {
+                // Re-point off a party-rates / wrong table so accrual can resolve.
+                var pointed = await db.PartyFeePricingTables.AsNoTracking()
+                    .FirstOrDefaultAsync(t => t.Id == existing.TableId, cancellationToken);
+                if (pointed is null
+                    || pointed.PricingKind != PartyFeePricingKinds.Flat
+                    || pointed.FlatAmountSar <= 0m)
+                {
+                    existing.TableId = flatTable.Id;
+                    existing.UpdatedAtUtc = DateTime.UtcNow;
+                }
+            }
+        }
+
+        // Cooperator demo assignment (ahmed as cooperator path stays on party-rates when present).
         if (fiTable is not null)
         {
             var hasAhmed = await db.PartyFeePricingAssignments.AnyAsync(
