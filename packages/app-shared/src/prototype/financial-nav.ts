@@ -35,21 +35,21 @@ export const FINANCIAL_NAV_LEAVES: FinanceNavLeaf[] = [
     label: "مهامي",
     icon: "M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-6 9l2 2 4-4",
     pageTitle: "مهامي",
-    crumb: "عام / المالية والفوترة / مهامي",
+    crumb: "مهامي",
   },
   {
     area: "revenue",
     label: "الإيرادات",
     icon: "M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6",
     pageTitle: "الإيرادات — فوترة مركز التصفية",
-    crumb: "عام / المالية والفوترة / الإيرادات",
+    crumb: "الإيرادات",
   },
   {
     area: "costs",
     label: "التكاليف",
     icon: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",
     pageTitle: "التكاليف — صرف المستحقات",
-    crumb: "عام / المالية والفوترة / التكاليف",
+    crumb: "التكاليف",
   },
 ];
 
@@ -62,7 +62,7 @@ export const ENG_OFFICE_PORTAL_LEAF: FinanceNavLeaf = {
   label: "المكتب الهندسي",
   icon: "M4 4v16h16M4 20 20 4M8 20v-3M12 20v-3M16 20v-3",
   pageTitle: "بوابة المكتب الهندسي",
-  crumb: "البروفايل / مسيرات الصرف",
+  crumb: "مسيرات الصرف",
 };
 
 /** ورقة legacy — مسار URL `/financial?area=inspector_portal` إن لزم */
@@ -71,7 +71,7 @@ export const INSPECTOR_PORTAL_LEAF: FinanceNavLeaf = {
   label: "المعاين",
   icon: "M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM2.46 12C3.73 7.94 7.52 5 12 5s8.27 2.94 9.54 7c-1.27 4.06-5.06 7-9.54 7s-8.27-2.94-9.54-7z",
   pageTitle: "بوابة المعاين",
-  crumb: "البروفايل / المستحقات",
+  crumb: "المستحقات",
 };
 
 export function parseFinanceNavArea(

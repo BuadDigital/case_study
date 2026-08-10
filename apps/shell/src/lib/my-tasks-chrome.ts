@@ -15,12 +15,8 @@ export type MyTasksChromeOptions = {
 };
 
 /**
- * Workspace / task-detail topbar chrome.
- * Matches Case Study.html where known:
- * - appraisal: setHeader('المقيم العقاري — نافذة التقييم', crumb(['لوحة التحكم','تقييم العقار','نافذة التقييم']))
- * - survey: setHeader('المكتب الهندسي — الرفع المساحي', crumb(['لوحة التحكم','الرفع المساحي','مساحة العمل']))
- * - ops detail: setHeader(t.title, crumb(['لوحة التحكم','المهام',t.id]))
- * Other workspaces follow the same لوحة التحكم / {list} / مساحة العمل pattern.
+ * Workspace / task-detail topbar chrome — current leaf label only
+ * (no لوحة التحكم / section parents).
  */
 export function resolveMyTasksChrome(
   pathname: string,
@@ -35,12 +31,12 @@ export function resolveMyTasksChrome(
     const isEntry = parts[2] === "entry";
     if (isEntry) {
       return {
-        breadcrumb: "لوحة التحكم / الرفع المساحي / إدخال الرفع المساحي",
+        breadcrumb: "إدخال الرفع المساحي",
         title: "ابدأ الرفع المساحي",
       };
     }
     return {
-      breadcrumb: "لوحة التحكم / الرفع المساحي / مساحة العمل",
+      breadcrumb: "مساحة العمل",
       title: "المكتب الهندسي — الرفع المساحي",
     };
   }
@@ -48,7 +44,7 @@ export function resolveMyTasksChrome(
   if (page === "property-appraisal" && parts[1]) {
     decodeTaskParam(parts[1]);
     return {
-      breadcrumb: "لوحة التحكم / تقييم العقار / نافذة التقييم",
+      breadcrumb: "نافذة التقييم",
       title: "المقيم العقاري — نافذة التقييم",
     };
   }
@@ -56,7 +52,7 @@ export function resolveMyTasksChrome(
   if (page === "active-inspection" && parts[1]) {
     decodeTaskParam(parts[1]);
     return {
-      breadcrumb: "لوحة التحكم / معاينة العقار / مساحة العمل",
+      breadcrumb: "مساحة العمل",
       title: "معاينة العقار",
     };
   }
@@ -64,7 +60,7 @@ export function resolveMyTasksChrome(
   if (page === "property-inspection" && parts[1]) {
     decodeTaskParam(parts[1]);
     return {
-      breadcrumb: "لوحة التحكم / معاينة العقار / مساحة العمل",
+      breadcrumb: "مساحة العمل",
       title: "معاينة العقار",
     };
   }
@@ -73,7 +69,7 @@ export function resolveMyTasksChrome(
     const id = decodeTaskParam(taskId);
     const title = options?.opsTaskTitle?.trim() || id;
     return {
-      breadcrumb: `لوحة التحكم / المهام / ${id}`,
+      breadcrumb: title,
       title,
     };
   }
@@ -84,18 +80,18 @@ export function resolveMyTasksChrome(
       decodeTaskParam(taskId);
       if (page === "property-appraisal") {
         return {
-          breadcrumb: "لوحة التحكم / تقييم العقار / نافذة التقييم",
+          breadcrumb: "نافذة التقييم",
           title: "المقيم العقاري — نافذة التقييم",
         };
       }
       if (page === "active-survey") {
         return {
-          breadcrumb: "لوحة التحكم / الرفع المساحي / مساحة العمل",
+          breadcrumb: "مساحة العمل",
           title: "المكتب الهندسي — الرفع المساحي",
         };
       }
       return {
-        breadcrumb: `لوحة التحكم / ${party.breadcrumbTitle} / مساحة العمل`,
+        breadcrumb: "مساحة العمل",
         title: party.workTitle,
       };
     }
@@ -103,7 +99,7 @@ export function resolveMyTasksChrome(
 
   if (parts[0] === "all-transactions" && taskId) {
     return {
-      breadcrumb: "لوحة التحكم / جميع المعاملات / تنفيذ المعاملة",
+      breadcrumb: "تنفيذ المعاملة",
       title: "تنفيذ المعاملة",
     };
   }
@@ -111,21 +107,21 @@ export function resolveMyTasksChrome(
   if (parts[0] === "active-primary-data" && taskId) {
     decodeTaskParam(taskId);
     return {
-      breadcrumb: "لوحة التحكم / البيانات الأولية / تنفيذ المعاملة",
+      breadcrumb: "المعاملات النشطة / البيانات الأولية / تنفيذ المعاملة",
       title: "تنفيذ المعاملة",
     };
   }
   if (parts[0] === "active-distribution" && taskId) {
     decodeTaskParam(taskId);
     return {
-      breadcrumb: "لوحة التحكم / توزيع المعاملات / توزيع المعاملة",
+      breadcrumb: "المعاملات النشطة / توزيع المعاملات / توزيع المعاملة",
       title: "توزيع المعاملة",
     };
   }
   if (parts[0] === "active-case-study" && taskId) {
     decodeTaskParam(taskId);
     return {
-      breadcrumb: "لوحة التحكم / دراسة حالة العقارات / تنفيذ المعاملة",
+      breadcrumb: "المعاملات النشطة / دراسة حالة العقارات / دراسة حالة العقار",
       title: "دراسة حالة العقار",
     };
   }
@@ -133,9 +129,7 @@ export function resolveMyTasksChrome(
     decodeTaskParam(parts[1]);
     const deed = options?.deedLabel?.trim();
     return {
-      breadcrumb: deed
-        ? `دراسة الحالة / المعاملات النشطة / دراسة حالة العقار / ${deed}`
-        : "",
+      breadcrumb: deed || "دراسة حالة العقار",
       title: "",
     };
   }
