@@ -37,6 +37,145 @@ public class GeneralizedBillingStatementTests
     }
 
     [Fact]
+    public async Task CreateStatement_collapses_reassignment_twins_for_same_task_and_deed()
+    {
+        await using var db = CreateDb();
+        var now = DateTime.UtcNow;
+        var taskId = Guid.NewGuid();
+        var propertyId = Guid.NewGuid();
+        db.WorkflowTasks.Add(WorkflowTask.Create(
+            WorkflowTaskKind.FieldInspection,
+            "PO-DUP",
+            now,
+            assigneeRole: "field-inspector",
+            assigneeName: "طرف",
+            assigneeId: "fi-1",
+            id: taskId,
+            status: WorkflowTaskStatus.Completed));
+
+        // Legacy UserId + current assignee twins (same task + property).
+        db.InspectorFeeLedgers.Add(new InspectorFeeLedger
+        {
+            WorkflowTaskId = taskId,
+            PoNumber = "PO-DUP",
+            PropertyId = propertyId,
+            DeedId = propertyId,
+            UserId = "fi-legacy",
+            AssigneeId = "fi-1",
+            InspectorType = InspectorFeeRules.TypeCooperatorIndividual,
+            AgreedFeeSar = 400m,
+            BillingStatus = InspectorFeeBillingStatus.AtFinance,
+            AccruedAtUtc = now.AddHours(-2),
+            CreatedAtUtc = now.AddHours(-2),
+            UpdatedAtUtc = now.AddHours(-1),
+        });
+        db.InspectorFeeLedgers.Add(new InspectorFeeLedger
+        {
+            WorkflowTaskId = taskId,
+            PoNumber = "PO-DUP",
+            PropertyId = propertyId,
+            DeedId = propertyId,
+            UserId = "fi-1",
+            AssigneeId = "fi-1",
+            InspectorType = InspectorFeeRules.TypeCooperatorIndividual,
+            AgreedFeeSar = 400m,
+            BillingStatus = InspectorFeeBillingStatus.AtFinance,
+            AccruedAtUtc = now,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+        });
+        await db.SaveChangesAsync();
+
+        var service = CreateStatementService(db);
+        var ready = await service.ListReadyLinesAsync();
+        Assert.Single(ready);
+        Assert.Equal(taskId.ToString(), ready[0].WorkflowTaskId);
+
+        var result = await service.CreateStatementAsync(
+            new CreatePartyBillingStatementRequest
+            {
+                WorkflowTaskIds = [taskId.ToString()],
+            },
+            "finance-1");
+
+        Assert.Null(result.Error);
+        Assert.NotNull(result.Statement);
+        Assert.Single(result.Statement!.Lines);
+        var inStatement = await db.InspectorFeeLedgers
+            .Where(l => l.BillingStatus == InspectorFeeBillingStatus.InStatement)
+            .ToListAsync();
+        Assert.Single(inStatement);
+        Assert.Equal("fi-1", inStatement[0].UserId);
+    }
+
+    [Fact]
+    public async Task CreateStatement_rejects_when_workflow_task_already_on_a_statement_line()
+    {
+        await using var db = CreateDb();
+        var now = DateTime.UtcNow;
+        var taskId = Guid.NewGuid();
+        db.WorkflowTasks.Add(WorkflowTask.Create(
+            WorkflowTaskKind.FieldInspection,
+            "PO-PAID",
+            now,
+            assigneeRole: "field-inspector",
+            assigneeName: "طرف",
+            assigneeId: "fi-1",
+            id: taskId,
+            status: WorkflowTaskStatus.Completed));
+        var closedStatementId = Guid.NewGuid();
+        db.PartyBillingStatements.Add(new PartyBillingStatement
+        {
+            Id = closedStatementId,
+            ReferenceNumber = "FN-CS-000",
+            AssigneeId = "fi-legacy",
+            PayeeType = PartyBillingPayeeType.Individual,
+            TaskKind = "field-inspection",
+            Status = PartyBillingStatementStatus.Closed,
+            TotalNetSar = 400m,
+            CreatedByUserId = "fin",
+            CreatedAtUtc = now.AddDays(-1),
+            ClosedAtUtc = now.AddDays(-1),
+        });
+        db.PartyBillingStatementLines.Add(new PartyBillingStatementLine
+        {
+            Id = Guid.NewGuid(),
+            StatementId = closedStatementId,
+            WorkflowTaskId = taskId,
+            NetFeeSar = 400m,
+        });
+        // Twin still looks "ready" in ledger table.
+        db.InspectorFeeLedgers.Add(new InspectorFeeLedger
+        {
+            WorkflowTaskId = taskId,
+            PoNumber = "PO-PAID",
+            UserId = "fi-1",
+            AssigneeId = "fi-1",
+            InspectorType = InspectorFeeRules.TypeCooperatorIndividual,
+            AgreedFeeSar = 400m,
+            BillingStatus = InspectorFeeBillingStatus.AtFinance,
+            AccruedAtUtc = now,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+        });
+        await db.SaveChangesAsync();
+
+        var service = CreateStatementService(db);
+        var ready = await service.ListReadyLinesAsync();
+        Assert.DoesNotContain(ready, l => l.WorkflowTaskId == taskId.ToString());
+
+        var result = await service.CreateStatementAsync(
+            new CreatePartyBillingStatementRequest
+            {
+                WorkflowTaskIds = [taskId.ToString()],
+            },
+            "finance-1");
+
+        Assert.Contains("مُدرج مسبقاً", result.Error);
+        Assert.Null(result.Statement);
+    }
+
+    [Fact]
     public async Task CreateStatement_rejects_mixed_task_kinds()
     {
         await using var db = CreateDb();

@@ -14,10 +14,7 @@ const toneIconClass: Record<SituationTone, string> = {
   red: "bg-[color-mix(in_srgb,var(--red)_12%,transparent)] text-red",
 };
 
-/** Case Study.html first appraisal / eng KPI uses gold soft icon. */
 const goldSoftIconClass = "bg-gold-soft text-gold-d";
-
-/** Case Study.html navy/ink KPI icon (جاهزة للفوترة / غير مفوترة). */
 const inkIconClass = "bg-navy-soft text-ink";
 
 const toneValueClass: Partial<Record<SituationTone, string>> = {
@@ -37,8 +34,7 @@ const mobileToneRail: Record<SituationTone, string> = {
 const mobileToneWash: Record<SituationTone, string> = {
   blue: "bg-[radial-gradient(120%_90%_at_100%_0%,color-mix(in_srgb,var(--ink)_8%,transparent),transparent_60%)]",
   warn: "bg-[radial-gradient(120%_90%_at_100%_0%,color-mix(in_srgb,var(--gold)_16%,transparent),transparent_60%)]",
-  green:
-    "bg-[radial-gradient(120%_90%_at_100%_0%,color-mix(in_srgb,var(--gold)_12%,transparent),transparent_60%)]",
+  green: "bg-[radial-gradient(120%_90%_at_100%_0%,color-mix(in_srgb,var(--gold)_12%,transparent),transparent_60%)]",
   red: "bg-[radial-gradient(120%_90%_at_100%_0%,color-mix(in_srgb,var(--red)_10%,transparent),transparent_60%)]",
 };
 

@@ -44,7 +44,15 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         string? assigneeId = null,
         CancellationToken cancellationToken = default)
     {
-        var ledgers = await (
+        // WorkflowTaskId is unique on statement lines — once billed (even paid/cancelled line),
+        // twin reassignment ledgers must not reappear as dues.
+        var claimedTaskIds = await _db.PartyBillingStatementLines.AsNoTracking()
+            .Select(l => l.WorkflowTaskId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var claimed = claimedTaskIds.ToHashSet();
+
+        var rows = await (
             from ledger in _db.InspectorFeeLedgers.AsNoTracking()
             join task in _db.WorkflowTasks.AsNoTracking() on ledger.WorkflowTaskId equals task.Id
             where StatementKinds.Contains(task.Kind)
@@ -57,8 +65,23 @@ public class PartyBillingStatementService : IPartyBillingStatementService
             select new { ledger, task }
         ).Take(MaxListRows).ToListAsync(cancellationToken);
 
+        rows = rows.Where(x => !claimed.Contains(x.ledger.WorkflowTaskId)).ToList();
+
+        // Reassignment twins + multi-deed share one statement line (unique WorkflowTaskId).
+        // Surface one ready row per task.
+        var ledgers = CollapseReadyLedgers(rows.Select(x => x.ledger))
+            .GroupBy(l => l.WorkflowTaskId)
+            .Select(g => g
+                .OrderByDescending(l => l.UpdatedAtUtc)
+                .ThenByDescending(l => l.CreatedAtUtc)
+                .First())
+            .ToList();
+        var kindByTask = rows
+            .GroupBy(x => x.ledger.WorkflowTaskId)
+            .ToDictionary(g => g.Key, g => g.First().task.Kind);
+
         var propertyIds = ledgers
-            .Select(x => x.ledger.PropertyId)
+            .Select(l => l.PropertyId)
             .Where(id => id.HasValue)
             .Select(id => id!.Value)
             .Distinct()
@@ -66,7 +89,10 @@ public class PartyBillingStatementService : IPartyBillingStatementService
 
         var labels = await LoadPropertyLabelsAsync(propertyIds, cancellationToken);
 
-        return ledgers.Select(x => ToReadyDto(x.ledger, labels, x.task.Kind)).ToList();
+        return ledgers
+            .OrderByDescending(l => l.UpdatedAtUtc)
+            .Select(l => ToReadyDto(l, labels, kindByTask.GetValueOrDefault(l.WorkflowTaskId)))
+            .ToList();
     }
 
     public async Task<IReadOnlyList<PartyBillingStatementDto>> ListStatementsAsync(
@@ -136,17 +162,62 @@ public class PartyBillingStatementService : IPartyBillingStatementService
             };
         }
 
-        var ledgers = await _db.InspectorFeeLedgers
+        var candidates = await _db.InspectorFeeLedgers
             .Where(l => taskIds.Contains(l.WorkflowTaskId))
             .ToListAsync(cancellationToken);
 
-        if (ledgers.Count != taskIds.Count)
+        var missingTaskIds = taskIds
+            .Where(id => candidates.All(l => l.WorkflowTaskId != id))
+            .ToList();
+        if (missingTaskIds.Count > 0)
         {
             return new CreatePartyBillingStatementResult
             {
                 Error = "بعض البنود المحددة غير موجودة في سجل الأتعاب.",
             };
         }
+
+        // Unique IX on PartyBillingStatementLines.WorkflowTaskId — cannot re-bill a task.
+        var alreadyLined = await _db.PartyBillingStatementLines.AsNoTracking()
+            .Where(l => taskIds.Contains(l.WorkflowTaskId))
+            .Select(l => l.WorkflowTaskId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        if (alreadyLined.Count > 0)
+        {
+            return new CreatePartyBillingStatementResult
+            {
+                Error = "أحد البنود مُدرج مسبقاً في مسير صرف (مدفوع أو قائم).",
+            };
+        }
+
+        // Ready ledgers only; twin reassignments collapse; multi-deed stays one line per task
+        // (unique WorkflowTaskId) with summed net.
+        var readyForSelected = candidates
+            .Where(l =>
+                !l.ExcludedFromBatch
+                && !l.PartyBillingStatementId.HasValue
+                && InspectorFeeBillingRules.IsReadyForEngStatement(l.BillingStatus))
+            .ToList();
+        var ledgerGroups = CollapseReadyLedgers(readyForSelected)
+            .GroupBy(l => l.WorkflowTaskId)
+            .ToList();
+
+        var notReadyTasks = taskIds
+            .Where(id => ledgerGroups.All(g => g.Key != id))
+            .ToList();
+        if (notReadyTasks.Count > 0)
+        {
+            return new CreatePartyBillingStatementResult
+            {
+                Error = "لا يُدرج في كشف الفوترة إلا البنود الجاهزة أو المرحَّلة.",
+            };
+        }
+
+        var chosenIds = ledgerGroups.SelectMany(g => g).Select(l => l.Id).ToHashSet();
+        var trackedLedgers = candidates.Where(l => chosenIds.Contains(l.Id)).ToList();
+        var trackedByTask = trackedLedgers.GroupBy(l => l.WorkflowTaskId)
+            .ToDictionary(g => g.Key, g => g.ToList());
 
         var taskKinds = await _db.WorkflowTasks.AsNoTracking()
             .Where(t => taskIds.Contains(t.Id))
@@ -172,7 +243,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
 
         var statementKind = taskKinds[0].Kind;
 
-        var assignees = ledgers
+        var assignees = trackedLedgers
             .Select(l => l.AssigneeId?.Trim() ?? "")
             .Where(a => a.Length > 0)
             .Distinct(StringComparer.Ordinal)
@@ -187,32 +258,6 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         }
 
         var assigneeId = assignees[0];
-        foreach (var ledger in ledgers)
-        {
-            if (ledger.ExcludedFromBatch)
-            {
-                return new CreatePartyBillingStatementResult
-                {
-                    Error = "لا يمكن إدراج بند مستبعد في كشف الفوترة.",
-                };
-            }
-
-            if (!InspectorFeeBillingRules.IsReadyForEngStatement(ledger.BillingStatus))
-            {
-                return new CreatePartyBillingStatementResult
-                {
-                    Error = "لا يُدرج في كشف الفوترة إلا البنود الجاهزة أو المرحَّلة.",
-                };
-            }
-
-            if (ledger.PartyBillingStatementId.HasValue)
-            {
-                return new CreatePartyBillingStatementResult
-                {
-                    Error = "أحد البنود مُدرج مسبقاً في كشف فوترة.",
-                };
-            }
-        }
 
         var now = DateTime.UtcNow;
         string reference;
@@ -238,32 +283,37 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         var total = 0m;
         var statementLines = new List<PartyBillingStatementLine>();
 
-        foreach (var ledger in ledgers)
+        foreach (var group in ledgerGroups)
         {
-            var net = InspectorFeeRules.NetFee(ledger.AgreedFeeSar, ledger.SupervisorDiscountSar);
+            var groupLedgers = trackedByTask[group.Key];
+            var net = groupLedgers.Sum(l =>
+                InspectorFeeRules.NetFee(l.AgreedFeeSar, l.SupervisorDiscountSar));
             total += net;
-            var fromStatus = ledger.BillingStatus;
-            ledger.BillingStatus = InspectorFeeBillingStatus.InStatement;
-            ledger.PartyBillingStatementId = statementId;
-            ledger.UpdatedAtUtc = now;
+
+            foreach (var ledger in groupLedgers)
+            {
+                var fromStatus = ledger.BillingStatus;
+                ledger.BillingStatus = InspectorFeeBillingStatus.InStatement;
+                ledger.PartyBillingStatementId = statementId;
+                ledger.UpdatedAtUtc = now;
+                _db.InspectorFeeTransitions.Add(new InspectorFeeTransition
+                {
+                    Id = Guid.NewGuid(),
+                    WorkflowTaskId = ledger.WorkflowTaskId,
+                    FromStatus = fromStatus,
+                    ToStatus = InspectorFeeBillingStatus.InStatement,
+                    Reason = $"إدراج في كشف {reference}",
+                    ActorUserId = actorUserId,
+                    CreatedAtUtc = now,
+                });
+            }
 
             statementLines.Add(new PartyBillingStatementLine
             {
                 Id = Guid.NewGuid(),
                 StatementId = statementId,
-                WorkflowTaskId = ledger.WorkflowTaskId,
+                WorkflowTaskId = group.Key,
                 NetFeeSar = net,
-            });
-
-            _db.InspectorFeeTransitions.Add(new InspectorFeeTransition
-            {
-                Id = Guid.NewGuid(),
-                WorkflowTaskId = ledger.WorkflowTaskId,
-                FromStatus = fromStatus,
-                ToStatus = InspectorFeeBillingStatus.InStatement,
-                Reason = $"إدراج في كشف {reference}",
-                ActorUserId = actorUserId,
-                CreatedAtUtc = now,
             });
         }
 
@@ -833,11 +883,24 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         CancellationToken cancellationToken)
     {
         var taskIds = lines.Select(l => l.WorkflowTaskId).Distinct().ToList();
-        var ledgers = await _db.InspectorFeeLedgers.AsNoTracking()
+        var ledgerRows = await _db.InspectorFeeLedgers.AsNoTracking()
             .Where(l => taskIds.Contains(l.WorkflowTaskId))
-            .ToDictionaryAsync(l => l.WorkflowTaskId, cancellationToken);
+            .ToListAsync(cancellationToken);
 
-        var propertyIds = ledgers.Values
+        // Twin ledgers share WorkflowTaskId; pick by statement binding when available.
+        static InspectorFeeLedger? ResolveLedger(
+            Guid statementId,
+            Guid workflowTaskId,
+            IReadOnlyList<InspectorFeeLedger> rows)
+        {
+            var forTask = rows.Where(l => l.WorkflowTaskId == workflowTaskId).ToList();
+            if (forTask.Count == 0) return null;
+            var bound = forTask.FirstOrDefault(l => l.PartyBillingStatementId == statementId);
+            if (bound is not null) return bound;
+            return CollapseReadyLedgers(forTask).FirstOrDefault();
+        }
+
+        var propertyIds = ledgerRows
             .Where(l => l.PropertyId.HasValue)
             .Select(l => l.PropertyId!.Value)
             .Distinct()
@@ -885,7 +948,7 @@ public class PartyBillingStatementService : IPartyBillingStatementService
                 CancelReason = s.CancelReason,
                 Lines = stmtLines.Select(line =>
                 {
-                    ledgers.TryGetValue(line.WorkflowTaskId, out var ledger);
+                    var ledger = ResolveLedger(s.Id, line.WorkflowTaskId, ledgerRows);
                     var status = ledger?.BillingStatus ?? InspectorFeeBillingStatus.InStatement;
                     return new PartyBillingStatementLineDto
                     {
@@ -989,6 +1052,32 @@ public class PartyBillingStatementService : IPartyBillingStatementService
             .Select(g => g!.Value)
             .Distinct()
             .ToList();
+
+    /// <summary>
+    /// Keeps one ledger per workflow-task + property/deed so legacy reassignment twins
+    /// (same task+property, different <see cref="InspectorFeeLedger.UserId"/>) do not
+    /// duplicate ready lines or break statement creation counts.
+    /// Prefers rows where UserId matches AssigneeId, then newest update.
+    /// </summary>
+    internal static IEnumerable<InspectorFeeLedger> CollapseReadyLedgers(
+        IEnumerable<InspectorFeeLedger> ledgers) =>
+        ledgers
+            .GroupBy(l => (
+                l.WorkflowTaskId,
+                PropertyKey: l.PropertyId
+                    ?? (l.DeedId == Guid.Empty ? l.Id : l.DeedId)))
+            .Select(g => g
+                .OrderByDescending(l =>
+                    !string.IsNullOrWhiteSpace(l.AssigneeId)
+                    && string.Equals(
+                        l.UserId?.Trim(),
+                        l.AssigneeId.Trim(),
+                        StringComparison.Ordinal)
+                        ? 1
+                        : 0)
+                .ThenByDescending(l => l.UpdatedAtUtc)
+                .ThenByDescending(l => l.CreatedAtUtc)
+                .First());
 
     private async Task<string> NextReferenceAsync(
         DateTime nowUtc,

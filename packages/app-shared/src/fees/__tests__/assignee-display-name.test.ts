@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isUsableAssigneeDisplayName,
   resolveAssigneeDisplayName,
+  resolvePartyName,
 } from "../party-fee-meta";
 import type { StaffUser } from "../../prototype/constants";
 
@@ -17,13 +18,14 @@ const staff: StaffUser[] = [
 ];
 
 describe("assignee display name", () => {
-  it("rejects corruption and role stubs", () => {
+  it("rejects corruption, role stubs, and technical ids", () => {
     expect(isUsableAssigneeDisplayName("???? ????")).toBe(false);
     expect(isUsableAssigneeDisplayName("معاين ميداني")).toBe(false);
+    expect(isUsableAssigneeDisplayName("fi-abdullah-abdulmane")).toBe(false);
     expect(isUsableAssigneeDisplayName("عبدالله عبدالمانع")).toBe(true);
   });
 
-  it("resolves staff when stored name is bad", () => {
+  it("resolves staff when stored name is bad or is the assignee id", () => {
     expect(
       resolveAssigneeDisplayName({
         assigneeName: "???? ????",
@@ -38,5 +40,21 @@ describe("assignee display name", () => {
         staffUsers: staff,
       }),
     ).toBe("عبدالله عبدالمانع");
+    expect(
+      resolveAssigneeDisplayName({
+        assigneeName: "fi-abdullah-abdulmane",
+        assigneeId: "fi-abdullah-abdulmane",
+        staffUsers: [],
+      }),
+    ).toBe("عبدالله عبدالمانع");
+  });
+
+  it("resolvePartyName uses staff then seed Arabic fallback", () => {
+    expect(resolvePartyName("fi-abdullah-abdulmane", staff)).toBe(
+      "عبدالله عبدالمانع",
+    );
+    expect(resolvePartyName("fi-abdullah-abdulmane", [])).toBe(
+      "عبدالله عبدالمانع",
+    );
   });
 });

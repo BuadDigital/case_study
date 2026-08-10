@@ -70,14 +70,16 @@ export function EngFeesHtmlTabs({
 export function EngFeesSectionTitle({
   title,
   sub,
+  className,
 }: {
   title: string;
   sub: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="mb-2.5 mt-[22px] first:mt-0">
+    <div className={cn("mb-3.5", className)}>
       <div className="text-[14px] font-bold text-heading">{title}</div>
-      <div className="mt-0.5 text-[11.5px] text-text-3">{sub}</div>
+      <div className="mt-1 text-[11.5px] leading-snug text-text-3">{sub}</div>
     </div>
   );
 }

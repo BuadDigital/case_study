@@ -614,9 +614,10 @@ export function FinancePartyBillingStatements({
                   const ded = line.supervisorDiscountSar || 0;
                   const list = line.agreedFeeSar || line.netFeeSar;
                   const selectable = line.netFeeSar > 0;
+                  const rowKey = `${line.workflowTaskId}:${line.propertyId ?? "po"}`;
                   return (
                     <div
-                      key={line.workflowTaskId}
+                      key={rowKey}
                       role={selectable ? "button" : undefined}
                       tabIndex={selectable ? 0 : undefined}
                       className={cn(
@@ -686,24 +687,22 @@ export function FinancePartyBillingStatements({
                           </span>
                         </div>
                       </div>
-                      <div className={finTd}>
-                        <span className="text-[12.5px] text-text-2">
+                      <div className={cn(finTd, "!justify-center")}>
+                        <span className="text-[12.5px] text-text-2 tabular-nums">
                           {formatSar(list)}
                         </span>
                       </div>
-                      <div className={finTd}>
+                      <div className={cn(finTd, "!justify-center")}>
                         {ded > 0 ? (
-                          <div className="flex flex-col items-center gap-0.5">
-                            <span className="text-xs font-bold text-[#c0553d]">
-                              −{formatSar(ded)}
-                            </span>
-                          </div>
+                          <span className="text-xs font-bold text-[#c0553d] tabular-nums">
+                            −{formatSar(ded)}
+                          </span>
                         ) : (
                           <span className="text-xs text-text-3">—</span>
                         )}
                       </div>
-                      <div className={finTd}>
-                        <span className="text-[13px] font-bold text-heading">
+                      <div className={cn(finTd, "!justify-center")}>
+                        <span className="text-[13px] font-bold text-heading tabular-nums">
                           {formatSar(line.netFeeSar)}
                         </span>
                       </div>
