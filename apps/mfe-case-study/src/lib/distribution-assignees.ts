@@ -9,7 +9,7 @@ export type DistributionAssignee = {
 
 /**
  * Exact JobTitle values from seeded prototype users → English RoleId.
- * No fuzzy / contains matching.
+ * No fuzzy / contains matching (except soft fallbacks below).
  */
 const EXACT_JOB_TITLE_TO_ROLE: Record<string, RoleId> = {
   "مسؤول التحول الرقمي (CDO)": "cdo",
@@ -21,7 +21,32 @@ const EXACT_JOB_TITLE_TO_ROLE: Record<string, RoleId> = {
   "معاين ميداني": "field-inspector",
   "موظف الشؤون المالية": "financial-officer",
   "مقدم خدمة — جهة": "engineering-office",
+  // en-dash / hyphen variants from HR import
+  "مقدم خدمة - جهة": "engineering-office",
+  "مقدم خدمة – جهة": "engineering-office",
 };
+
+/** Roles that can appear in distribution / ops assignment pickers. */
+const KNOWN_ROLE_IDS = new Set<string>([
+  ...Object.values(EXACT_JOB_TITLE_TO_ROLE),
+  "government-reviewer",
+  "field-inspector",
+  "real-estate-appraiser",
+  "engineering-office",
+  "case-specialist",
+  "section-supervisor",
+  "general-manager",
+  "financial-officer",
+  "cdo",
+]);
+
+/** Active enough to assign work (API may send casing variants). */
+export function isStaffAssignable(user: StaffUser): boolean {
+  if (!user.distributionAssigneeId?.trim()) return false;
+  const s = String(user.status ?? "Active").trim().toLowerCase();
+  // Accept Active / active / numeric 0 / empty (treat as active)
+  return s === "" || s === "active" || s === "0" || user.status === "Active";
+}
 
 function employmentSubtitle(user: StaffUser): string | undefined {
   const employment = user.details?.find(
@@ -32,20 +57,26 @@ function employmentSubtitle(user: StaffUser): string | undefined {
   return user.role;
 }
 
-const PARTY_ROLE_IDS = new Set<string>(Object.values(EXACT_JOB_TITLE_TO_ROLE));
-
 export function partyRoleForStaffUser(user: StaffUser): RoleId | null {
   if (user.distributionAssigneeId?.startsWith("eo-")) {
     return "engineering-office";
   }
   // Prefer RoleId (source of truth); job title is display metadata only.
   const roleId = user.roleId?.trim();
-  if (roleId && PARTY_ROLE_IDS.has(roleId)) {
+  if (roleId && KNOWN_ROLE_IDS.has(roleId)) {
     return roleId as RoleId;
   }
   const t = user.role.trim();
   if (!t) return null;
-  return EXACT_JOB_TITLE_TO_ROLE[t] ?? null;
+  if (EXACT_JOB_TITLE_TO_ROLE[t]) return EXACT_JOB_TITLE_TO_ROLE[t];
+  // Soft match common labels (API/job title drift)
+  if (t.includes("معاين")) return "field-inspector";
+  if (t.includes("مراجع")) return "government-reviewer";
+  if (t.includes("مقيم")) return "real-estate-appraiser";
+  if (t.includes("مكتب") || t.includes("مساح") || t.includes("جهة")) {
+    return "engineering-office";
+  }
+  return null;
 }
 
 export function staffUsersForPartyRole(
@@ -53,12 +84,7 @@ export function staffUsersForPartyRole(
   roleId: RoleId,
 ): DistributionAssignee[] {
   return users
-    .filter(
-      (u) =>
-        u.status === "Active" &&
-        u.distributionAssigneeId?.trim() &&
-        partyRoleForStaffUser(u) === roleId,
-    )
+    .filter((u) => isStaffAssignable(u) && partyRoleForStaffUser(u) === roleId)
     .map((u) => ({
       id: u.distributionAssigneeId!.trim(),
       name: u.name,
@@ -82,9 +108,7 @@ export function staffUserForViewer(
     if (byEmail) return byEmail;
   }
   return users.find(
-    (u) =>
-      u.distributionAssigneeId?.trim() &&
-      partyRoleForStaffUser(u) === roleId,
+    (u) => isStaffAssignable(u) && partyRoleForStaffUser(u) === roleId,
   );
 }
 

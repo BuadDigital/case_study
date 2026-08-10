@@ -244,7 +244,6 @@ export const ROLE_MODULE_PAGES: Record<string, string[]> = {
     "failure-types",
     "party-fees",
     "fee-pricing",
-    "system-screen-catalog",
   ],
   [RELEASE_USERS.fieldInspector]: [
     "favorites",
@@ -252,13 +251,11 @@ export const ROLE_MODULE_PAGES: Record<string, string[]> = {
     "active-inspection",
     "party-fees",
     "failures",
-    "system-screen-catalog",
   ],
   [RELEASE_USERS.appraiser]: [
     "po",
     "property-appraisal",
     "suspended-transactions",
-    "system-screen-catalog",
   ],
   [RELEASE_USERS.governmentReviewer]: [
     "operations-tasks",
@@ -267,12 +264,10 @@ export const ROLE_MODULE_PAGES: Record<string, string[]> = {
     "favorites",
     "party-fees",
     "failures",
-    "system-screen-catalog",
   ],
   [RELEASE_USERS.engineeringOffice]: [
     "operations-tasks",
     "active-survey",
-    "system-screen-catalog",
   ],
-  [RELEASE_USERS.financialOfficer]: ["financial", "system-screen-catalog"],
+  [RELEASE_USERS.financialOfficer]: ["financial"],
 };

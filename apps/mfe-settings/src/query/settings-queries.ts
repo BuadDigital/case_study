@@ -41,19 +41,19 @@ export function useStaffUsersQuery() {
   const { authReady, capabilities } = usePrototype();
   const userId = getAuthSession()?.user.id ?? "anonymous";
   const canManageUsers = capabilities.includes("manage-users");
-  const canListDistributionAssignees =
-    capabilities.includes("manage-work-orders") ||
-    capabilities.includes("manage-operations");
+  // List is authorized on the API via manage-work-orders | manage-operations.
+  // Always attempt distribution-assignees when not a users-admin so we never
+  // cache a silent empty list while capabilities are still hydrating.
   return useQuery({
     queryKey: [
       ...prototypeKeys.staffUsers(),
       userId,
-      canManageUsers ? "manage" : canListDistributionAssignees ? "assignees" : "none",
+      canManageUsers ? "manage" : "assignees",
     ],
     queryFn: () =>
       fetchStaffUsers({
         canManageUsers,
-        canListDistributionAssignees,
+        canListDistributionAssignees: true,
       }),
     enabled: authReady,
     ...queryDefaults,

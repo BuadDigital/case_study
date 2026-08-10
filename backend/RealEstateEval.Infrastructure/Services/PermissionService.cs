@@ -52,8 +52,7 @@ public sealed class PermissionService : IPermissionService
                 PlatformPermissionCatalog.ApplyPrototypeRole(prototypeRole, pages, capabilities);
         }
 
-        if (pages.Count == 0)
-            pages.Add("system-screen-catalog");
+        // Empty page set is intentional for department-only identity roles; do not invent shell pages.
 
         capabilities.Add("authenticated");
 

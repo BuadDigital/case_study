@@ -29,17 +29,20 @@ public class PartyBillingStatementService : IPartyBillingStatementService
     private readonly ApplicationDbContext _db;
     private readonly INotificationService _notifications;
     private readonly NotificationRecipientResolver _recipients;
+    private readonly OperationsTaskVisitFeeHelper _visitFees;
     private readonly ILogger<PartyBillingStatementService> _logger;
 
     public PartyBillingStatementService(
         ApplicationDbContext db,
         INotificationService notifications,
         NotificationRecipientResolver recipients,
+        OperationsTaskVisitFeeHelper visitFees,
         ILogger<PartyBillingStatementService> logger)
     {
         _db = db;
         _notifications = notifications;
         _recipients = recipients;
+        _visitFees = visitFees;
         _logger = logger;
     }
 
@@ -47,6 +50,16 @@ public class PartyBillingStatementService : IPartyBillingStatementService
         string? assigneeId = null,
         CancellationToken cancellationToken = default)
     {
+        // Cooperator visits that completed without a charge become ready on first costs load.
+        try
+        {
+            await _visitFees.BackfillMissingChargesForCompletedVisitsAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Court-visit fee backfill before ready-lines failed");
+        }
+
         // WorkflowTaskId is unique on statement lines — once billed (even paid/cancelled line),
         // twin reassignment ledgers must not reappear as dues.
         // Court-visit charges reuse the same column with charge.Id as the line key.

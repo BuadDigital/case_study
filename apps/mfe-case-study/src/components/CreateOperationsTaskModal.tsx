@@ -12,12 +12,12 @@ import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
 import { AppModal } from "./ui/AppModal";
 import {
-  getFieldInspectors,
-  getGovernmentAuditors,
-  getValuators,
-  getEngineeringOffices,
   type DistributionAssignee,
 } from "../lib/prototype/distribution-parties";
+import {
+  assigneesForOperationsTaskType,
+  groupAssigneesForSelect,
+} from "../lib/prototype/operations-task-assignees";
 import {
   formatPropertyDeedDisplay,
   showsCourtFields,
@@ -65,7 +65,7 @@ const letterTd =
   "flex min-w-0 items-center justify-start overflow-hidden px-3 py-3 text-start text-[12.5px] leading-snug";
 const letterCellLtr = "inline-block max-w-full truncate tabular-nums tracking-tight";
 
-const TASK_TYPES = ["court_visit", "general"] as const;
+const TASK_TYPES = ["general", "court_visit"] as const;
 
 /** نطاق الربط موحّد لزيارة محكمة والمهمة العامة (يشمل عامة). */
 const LINK_SCOPES = ["work_order", "transaction", "multi", "general"] as const;
@@ -187,36 +187,7 @@ function assigneesForType(
   type: string,
   staffUsers: StaffUser[],
 ): DistributionAssignee[] {
-  let list: DistributionAssignee[] = [];
-  if (type === "court_visit") list = getGovernmentAuditors(staffUsers);
-  else if (type === "reshoot" || type === "field_visit") {
-    list = getFieldInspectors(staffUsers);
-  }   else {
-    const seen = new Set<string>();
-    for (const a of [
-      ...getGovernmentAuditors(staffUsers),
-      ...getFieldInspectors(staffUsers),
-      ...getValuators(staffUsers),
-      ...getEngineeringOffices(staffUsers),
-    ]) {
-      if (seen.has(a.id)) continue;
-      seen.add(a.id);
-      list.push(a);
-    }
-  }
-  if (list.length > 0) return list;
-  // Fallback: anyone with a distribution assignee id (demo / incomplete job titles)
-  return staffUsers
-    .filter(
-      (u) =>
-        u.status === "Active" && Boolean(u.distributionAssigneeId?.trim()),
-    )
-    .map((u) => ({
-      id: u.distributionAssigneeId!.trim(),
-      name: u.name,
-      subtitle: u.role,
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name, "ar"));
+  return assigneesForOperationsTaskType(type, staffUsers);
 }
 
 function deedOptions(record: PoIntakeRecord | undefined): string[] {
@@ -233,6 +204,8 @@ type Props = {
   staffUsers: StaffUser[];
   staffLoadError?: string | null;
   prefill?: CreateOperationsTaskPrefill | null;
+  /** true while staff / distribution queries are loading */
+  staffLoading?: boolean;
   onClose: () => void;
   onCreated: (taskId: string) => void;
 };
@@ -243,12 +216,13 @@ export function CreateOperationsTaskModal({
   staffUsers,
   staffLoadError = null,
   prefill,
+  staffLoading = false,
   onClose,
   onCreated,
 }: Props) {
-  const [type, setType] = useState("court_visit");
+  const [type, setType] = useState("general");
   const [scope, setScope] = useState("work_order");
-  const [title, setTitle] = useState(DEFAULT_TITLES.court_visit);
+  const [title, setTitle] = useState(DEFAULT_TITLES.general);
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("medium");
   const [poNumber, setPoNumber] = useState("");
@@ -268,6 +242,11 @@ export function CreateOperationsTaskModal({
   const assignees = useMemo(
     () => assigneesForType(type, staffUsers),
     [type, staffUsers],
+  );
+
+  const assigneeGroups = useMemo(
+    () => groupAssigneesForSelect(assignees, staffUsers),
+    [assignees, staffUsers],
   );
 
   const selectedAssigneeUser = useMemo(
@@ -314,10 +293,10 @@ export function CreateOperationsTaskModal({
 
   useEffect(() => {
     if (!open) return;
-    const rawType = prefill?.type?.trim() || "court_visit";
+    const rawType = prefill?.type?.trim() || "general";
     const nextType = (TASK_TYPES as readonly string[]).includes(rawType)
       ? rawType
-      : "court_visit";
+      : "general";
     const nextScope = prefill?.scope?.trim() || "work_order";
     const nextPo = prefill?.poNumber?.trim() || "";
     const nextDeed = prefill?.deed?.trim() || "";
@@ -354,6 +333,7 @@ export function CreateOperationsTaskModal({
   };
 
   useEffect(() => {
+    if (staffLoading) return;
     if (assignees.length === 0) {
       setAssigneeId("");
       setAssigneeName("");
@@ -364,7 +344,7 @@ export function CreateOperationsTaskModal({
     const first = assignees[0]!;
     setAssigneeId(first.id);
     setAssigneeName(first.name);
-  }, [assignees, assigneeId]);
+  }, [assignees, assigneeId, staffLoading]);
 
   useEffect(() => {
     if (!needsVisitFee) {
@@ -591,39 +571,77 @@ export function CreateOperationsTaskModal({
                 </option>
               ))}
             </select>
+            {type === "general" ? (
+              <span className="mt-1 block text-[11px] leading-snug text-text-3">
+                تكليف تشغيلي لأي طرف منفّذ: معاين، مقيم، مكتب هندسي، أو مراجع.
+              </span>
+            ) : type === "court_visit" ? (
+              <span className="mt-1 block text-[11px] leading-snug text-text-3">
+                زيارة محكمة — تُسند للمراجع الحكومي فقط (مع أتعاب الزيارة للمتعاون).
+              </span>
+            ) : null}
           </div>
 
           <div className={opsFld}>
             <label className={opsTfLblInFld}>مُسندة إلى *</label>
             <select
               className={opsFldControl}
-              value={assigneeId}
+              value={staffLoading ? "" : assigneeId}
+              disabled={staffLoading || assignees.length === 0}
               onChange={(e) => {
                 const id = e.target.value;
                 setAssigneeId(id);
                 setAssigneeName(assignees.find((a) => a.id === id)?.name ?? "");
               }}
             >
-              <option value="">اختر المنفّذ…</option>
-              {assignees.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                  {a.subtitle ? ` — ${a.subtitle}` : ""}
-                </option>
-              ))}
+              {staffLoading ? (
+                <option value="">جاري تحميل المنفّذين…</option>
+              ) : (
+                <>
+                  <option value="">اختر المنفّذ…</option>
+                  {assigneeGroups.length > 1
+                    ? assigneeGroups.map((g) => (
+                        <optgroup key={g.key} label={g.label}>
+                          {g.items.map((a) => (
+                            <option key={a.id} value={a.id}>
+                              {a.name}
+                              {a.subtitle ? ` — ${a.subtitle}` : ""}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))
+                    : assignees.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name}
+                          {a.subtitle ? ` — ${a.subtitle}` : ""}
+                        </option>
+                      ))}
+                </>
+              )}
             </select>
-            {assignees.length === 0 ? (
+            {staffLoading ? (
+              <span className="mt-1 block text-[11px] text-text-3">
+                جاري جلب قائمة المعاينين والمقيمين والمكاتب والمراجعين…
+              </span>
+            ) : assignees.length === 0 ? (
               <span className="text-[11px] text-text-3">
                 {staffLoadError
                   ? staffLoadError
                   : staffUsers.length === 0
-                    ? "تعذّر تحميل المنفّذين — تحقق من تشغيل خادم الهوية وصلاحية إدارة أوامر العمل."
-                    : "لا يوجد منفّذون بمُعرّف توزيع لهذا النوع. تأكد أن للموظفين DistributionAssigneeId ومسمى وظيفي صحيح."}
+                    ? "تعذّر تحميل المنفّذين — تحقق من تسجيل الدخول وخادم الهوية (صلاحية manage-work-orders)."
+                    : "لا يوجد منفّذون بمُعرّف توزيع لهذا النوع. تأكد أن للموظفين DistributionAssigneeId ودور طرف صحيح."}
+              </span>
+            ) : type === "general" ? (
+              <span className="mt-1 block text-[11px] leading-snug text-text-3">
+                {assignees.length} منفّذ متاح
+                {assigneeGroups.length > 1
+                  ? ` · ${assigneeGroups.map((g) => g.label).join(" · ")}`
+                  : ""}
               </span>
             ) : null}
           </div>
 
-          {needsVisitFee ? (
+          {type === "court_visit" && assigneeId && needsVisitFee ? (
             <div className={opsFld}>
               <label className={opsTfLblInFld}>أتعاب الزيارة (ر.س) *</label>
               <input
@@ -636,6 +654,19 @@ export function CreateOperationsTaskModal({
                 onChange={(e) => setVisitFeeAmountSar(e.target.value)}
                 placeholder="المبلغ الافتراضي من جدول التسعير قابل للتعديل"
               />
+              <span className="mt-1 block text-[11px] leading-snug text-text-3">
+                يُختم عند الإنشاء ويُرحَّل إلى التكاليف عند إكمال الزيارة.
+              </span>
+            </div>
+          ) : null}
+
+          {type === "court_visit" && assigneeId && !needsVisitFee ? (
+            <div className={opsFldFull}>
+              <p className="m-0 rounded-md border border-border/70 bg-surface-2/60 px-3 py-2 text-[12px] leading-snug text-text-2">
+                المراجع الموظف لا يستحق أتعاب زيارة — لا يظهر بند في التكاليف.
+                الحوافز عبر جداول flat (إن وُجدت). للمتعاون اختر منفّذاً بنوع
+                عقد متعاون/خارجي لتمكين مبلغ الزيارة.
+              </p>
             </div>
           ) : null}
 

@@ -27,15 +27,7 @@ public sealed class OperationsTaskVisitFeeHelper
         decimal? requestedAmount,
         CancellationToken cancellationToken)
     {
-        var profile = await _db.UserProfiles.AsNoTracking()
-            .Include(p => p.HrEmployee)
-            .Include(p => p.ProcProvider)
-            .FirstOrDefaultAsync(p => p.DistributionAssigneeId == assigneeId, cancellationToken);
-        var reviewerType = CourtVisitFeeRules.ResolveReviewerType(
-            profile?.ContractType,
-            profile?.ProcProvider?.ProviderKind,
-            profile?.HrEmployee?.EmploymentType,
-            assigneeId);
+        var reviewerType = await ResolveReviewerTypeAsync(assigneeId, cancellationToken);
 
         if (!CourtVisitFeeRules.RequiresVisitFee(reviewerType))
         {
@@ -72,8 +64,9 @@ public sealed class OperationsTaskVisitFeeHelper
     }
 
     /// <summary>
-    /// Stamps the create-time agreed amount on complete. Employees and already-charged visits
-    /// return unresolved with no error so completion can proceed without a second charge.
+    /// Resolves the fee to charge on complete. Employees and already-charged visits return
+    /// unresolved with no error. Cooperators require a positive amount (stamped on create, or
+    /// recovered from the active table if the stamp is missing) — never complete silently unpaid.
     /// </summary>
     public async Task<(ResolvedPartyFee Fee, string? Error)> ResolveCourtVisitFeeAsync(
         OperationsTask entity,
@@ -83,13 +76,43 @@ public sealed class OperationsTaskVisitFeeHelper
             .AnyAsync(c => c.OperationsTaskId == entity.Id, cancellationToken);
         if (alreadyCharged) return (ResolvedPartyFee.Unresolved, null);
 
-        if (entity.AgreedVisitFeeSar is null)
-            return (ResolvedPartyFee.Unresolved, null);
+        var payeeId = (entity.CreditAssigneeId ?? entity.AssigneeId).Trim();
+        var reviewerType = await ResolveReviewerTypeAsync(payeeId, cancellationToken);
 
-        if (entity.AgreedVisitFeeSar <= 0m)
+        if (!CourtVisitFeeRules.RequiresVisitFee(reviewerType))
+        {
+            // Employee path: no visit charge (incentives are out of band).
+            if (entity.AgreedVisitFeeSar is > 0m)
+            {
+                // Stale stamp after classification changed — do not invent a charge for an employee.
+                return (ResolvedPartyFee.Unresolved, null);
+            }
+
+            return (ResolvedPartyFee.Unresolved, null);
+        }
+
+        if (entity.AgreedVisitFeeSar is > 0m)
+            return (new ResolvedPartyFee(entity.AgreedVisitFeeSar, entity.VisitFeePricingTableId), null);
+
+        if (entity.AgreedVisitFeeSar is <= 0m)
             return (ResolvedPartyFee.Unresolved, PricingErrors.FeeUnresolved);
 
-        return (new ResolvedPartyFee(entity.AgreedVisitFeeSar, entity.VisitFeePricingTableId), null);
+        // Cooperator task left without a create-time stamp — recover from the active table once.
+        var fromTable = await _pricing.ResolveDefaultFeeAsync(
+            WorkflowTaskKind.GovernmentReview,
+            CourtVisitFeeRules.PartyType,
+            areaM2: null,
+            payeeId,
+            cancellationToken);
+        if (!fromTable.IsResolved)
+            return (ResolvedPartyFee.Unresolved, PricingErrors.FeeUnresolved);
+
+        entity.StampAgreedVisitFee(
+            fromTable.FeeSar!.Value,
+            fromTable.PricingTableId,
+            DateTime.UtcNow);
+
+        return (fromTable, null);
     }
 
     public void AddCourtVisitFeeCharge(OperationsTask entity, ResolvedPartyFee fee)
@@ -111,5 +134,61 @@ public sealed class OperationsTaskVisitFeeHelper
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         });
+    }
+
+    /// <summary>
+    /// Opens charges for completed cooperator court visits that finished without a stamp
+    /// (employee→cooperator classification change, or pre-fix silent complete). Idempotent.
+    /// </summary>
+    public async Task<int> BackfillMissingChargesForCompletedVisitsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var chargedTaskIds = await _db.CourtVisitFeeCharges.AsNoTracking()
+            .Select(c => c.OperationsTaskId)
+            .ToListAsync(cancellationToken);
+        var charged = chargedTaskIds.ToHashSet();
+
+        var orphans = await _db.OperationsTasks
+            .Where(t => t.Type == OperationsTaskType.CourtVisit
+                && t.Status == OperationsTaskStatus.Completed
+                && !charged.Contains(t.Id))
+            .OrderBy(t => t.UpdatedAtUtc)
+            .Take(100)
+            .ToListAsync(cancellationToken);
+
+        if (orphans.Count == 0)
+            return 0;
+
+        var added = 0;
+        foreach (var task in orphans)
+        {
+            var (fee, error) = await ResolveCourtVisitFeeAsync(task, cancellationToken);
+            if (error is not null || !fee.IsResolved)
+                continue;
+
+            AddCourtVisitFeeCharge(task, fee);
+            added++;
+        }
+
+        if (added > 0)
+            await _db.SaveChangesAsync(cancellationToken);
+
+        return added;
+    }
+
+    private async Task<string> ResolveReviewerTypeAsync(
+        string assigneeId,
+        CancellationToken cancellationToken)
+    {
+        var profile = await _db.UserProfiles.AsNoTracking()
+            .Include(p => p.HrEmployee)
+            .Include(p => p.ProcProvider)
+            .FirstOrDefaultAsync(p => p.DistributionAssigneeId == assigneeId, cancellationToken);
+
+        return CourtVisitFeeRules.ResolveReviewerType(
+            profile?.ContractType,
+            profile?.ProcProvider?.ProviderKind,
+            profile?.HrEmployee?.EmploymentType,
+            assigneeId);
     }
 }

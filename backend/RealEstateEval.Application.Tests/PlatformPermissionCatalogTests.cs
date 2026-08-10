@@ -171,4 +171,30 @@ public class PlatformPermissionCatalogTests
         PlatformPermissionCatalog.ApplyPrototypeRole("general-manager", pages, capabilities);
         Assert.DoesNotContain("survey", pages);
     }
+
+    [Fact]
+    public void Cdo_includes_system_screen_catalog()
+    {
+        var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        PlatformPermissionCatalog.ApplyPrototypeRole("cdo", pages, capabilities);
+        Assert.Contains("system-screen-catalog", pages);
+    }
+
+    [Theory]
+    [InlineData("case-specialist")]
+    [InlineData("section-supervisor")]
+    [InlineData("government-reviewer")]
+    [InlineData("general-manager")]
+    [InlineData("real-estate-appraiser")]
+    [InlineData("field-inspector")]
+    [InlineData("engineering-office")]
+    [InlineData("financial-officer")]
+    public void Non_cdo_roles_exclude_system_screen_catalog(string role)
+    {
+        var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        PlatformPermissionCatalog.ApplyPrototypeRole(role, pages, capabilities);
+        Assert.DoesNotContain("system-screen-catalog", pages);
+    }
 }

@@ -704,6 +704,89 @@ public class OperationsTaskServiceTests
         Assert.Empty(db.CourtVisitFeeCharges);
     }
 
+    /// <summary>
+    /// If create left the stamp empty (legacy / API gap) but the cooperator is still priced,
+    /// complete must recover the table amount, stamp it, and open a charge — never stay unpaid silently.
+    /// </summary>
+    [Fact]
+    public async Task PatchAsync_complete_recovers_missing_stamp_from_pricing_table()
+    {
+        var (ops, db) = CreateDbPair();
+        await SeedCooperatorAsync(db, "a1");
+        var pricingTableId = await SetVisitPriceAsync(db, 350m);
+        var service = CreateService(ops, db);
+        var (created, createError) = await service.CreateAsync(
+            new CreateOperationsTaskRequest
+            {
+                Type = "court_visit",
+                Title = "زيارة محكمة",
+                Scope = "work_order",
+                PoNumber = "PO-RECOVER",
+                AssigneeId = "a1",
+                AssigneeName = "مراجع",
+                VisitFeeAmountSar = 350m,
+                LetterRows =
+                [
+                    new OperationsTaskLetterRowDto
+                    {
+                        Po = "PO-RECOVER",
+                        Deed = "D-R",
+                        Owner = "مالك",
+                        Request = "REQ-R",
+                        Court = "محكمة",
+                        Circuit = "دائرة",
+                    },
+                ],
+            },
+            "creator-1",
+            "منشئ");
+
+        Assert.Null(createError);
+        Assert.NotNull(created);
+
+        // Simulate a legacy row: fee never stamped though the assignee is a cooperator.
+        var row = await ops.OperationsTasks.SingleAsync(t => t.Id == Guid.Parse(created!.Id));
+        typeof(OperationsTask)
+            .GetProperty(nameof(OperationsTask.AgreedVisitFeeSar))!
+            .SetValue(row, null);
+        typeof(OperationsTask)
+            .GetProperty(nameof(OperationsTask.VisitFeePricingTableId))!
+            .SetValue(row, null);
+        await ops.SaveChangesAsync();
+        ops.ChangeTracker.Clear();
+
+        await service.PatchAsync(
+            Guid.Parse(created.Id),
+            new PatchOperationsTaskRequest { Status = "in_progress" },
+            "a1",
+            "مراجع",
+            "government-reviewer",
+            "user-1");
+
+        var (done, error) = await service.PatchAsync(
+            Guid.Parse(created.Id),
+            new PatchOperationsTaskRequest
+            {
+                Status = "completed",
+                CourtVisitResult = new OperationsTaskCourtVisitResultDto
+                {
+                    Kind = "none",
+                    Statement = "لا مفاتيح",
+                },
+            },
+            "a1",
+            "مراجع",
+            "government-reviewer",
+            "user-1");
+
+        Assert.Null(error);
+        Assert.Equal(350m, done!.VisitFeeAmountSar);
+        Assert.Single(db.CourtVisitFeeCharges);
+        var charge = await db.CourtVisitFeeCharges.SingleAsync();
+        Assert.Equal(350m, charge.AmountSar);
+        Assert.Equal(pricingTableId, charge.PricingTableId);
+    }
+
     [Fact]
     public async Task Employee_court_visit_completes_without_a_visit_charge()
     {

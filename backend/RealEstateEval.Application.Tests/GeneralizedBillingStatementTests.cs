@@ -400,6 +400,7 @@ public class GeneralizedBillingStatementTests
             db,
             new NullNotificationService(),
             TestInspectorFeeServiceFactory.CreateRecipients(db),
+            new OperationsTaskVisitFeeHelper(db, new PartyFeePricingService(TestInspectorFeeServiceFactory.ShareFinancial(db))),
             NullLogger<PartyBillingStatementService>.Instance);
 
     private static ApplicationDbContext CreateDb() =>

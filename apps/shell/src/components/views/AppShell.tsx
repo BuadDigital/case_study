@@ -31,8 +31,6 @@ import {
 import {
   SYSTEM_SETTINGS_GROUP,
   SYSTEM_SETTINGS_GROUP_ICON,
-  SYSTEM_FIELDS_GROUP,
-  SYSTEM_FIELDS_GROUP_ICON,
   systemSettingsPrimaryNavForRole,
   systemSettingsFieldsNavForRole,
   isInSystemSettingsSection,
@@ -716,13 +714,8 @@ function SystemSettingsNavDropdown({
           onPrefetch={onPrefetch}
         />
       ))}
-      {fieldsItems.length > 0 ? (
-        <>
-          <div className="mx-2 mb-0.5 mt-1.5 flex items-center gap-1.5 px-2.5 pb-1 pt-1 text-[10px] font-medium tracking-wider text-[#6f7b90]">
-            <NavIcon d={SYSTEM_FIELDS_GROUP_ICON} size={11} />
-            <span>{SYSTEM_FIELDS_GROUP}</span>
-          </div>
-          {fieldsItems.map((item) => (
+      {fieldsItems.length > 0
+        ? fieldsItems.map((item) => (
             <ActiveTransactionNavRow
               key={item.id}
               id={item.id}
@@ -732,9 +725,8 @@ function SystemSettingsNavDropdown({
               active={currentPage === item.id}
               onPrefetch={onPrefetch}
             />
-          ))}
-        </>
-      ) : null}
+          ))
+        : null}
     </>
   );
 

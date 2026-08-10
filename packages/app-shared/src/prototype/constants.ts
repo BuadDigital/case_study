@@ -37,7 +37,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
       "failures",
       "suspended-transactions",
       "valuation-requests",
-      "system-screen-catalog",
       "financial",
       "courts",
       "location-pending",
@@ -67,7 +66,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
       "failure-types",
       "party-fees",
       "fee-pricing",
-      "system-screen-catalog",
     ],
   },
   "case-specialist": {
@@ -93,7 +91,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
       "failure-types",
       "party-fees",
       "fee-pricing",
-      "system-screen-catalog",
     ],
   },
   "real-estate-appraiser": {
@@ -109,7 +106,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
       "property-appraisal",
       "failures",
       "suspended-transactions",
-      "system-screen-catalog",
     ],
   },
   "field-inspector": {
@@ -124,7 +120,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
       "active-inspection",
       "party-fees",
       "failures",
-      "system-screen-catalog",
     ],
   },
   "government-reviewer": {
@@ -140,7 +135,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
       "favorites",
       "party-fees",
       "failures",
-      "system-screen-catalog",
     ],
   },
   "engineering-office": {
@@ -155,7 +149,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
       "active-survey",
       "party-fees",
       "failures",
-      "system-screen-catalog",
     ],
   },
   "financial-officer": {
@@ -164,7 +157,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "إن",
     bg: "var(--danger-bg)",
     tc: "var(--danger)",
-    pages: ["financial", "system-screen-catalog"],
+    pages: ["financial"],
   },
 };
 
@@ -198,7 +191,7 @@ export const NAV: NavItem[] = [
     id: "keys",
     label: "إدارة المفاتيح",
     icon: "M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4",
-    grp: null,
+    grp: "قسم دراسة الحالة",
   },
   {
     id: "field-sync-board",
@@ -210,13 +203,13 @@ export const NAV: NavItem[] = [
     id: "failures",
     label: "إدارة التعذرات",
     icon: "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z",
-    grp: null,
+    grp: "قسم دراسة الحالة",
   },
   {
     id: "suspended-transactions",
     label: "المعاملات المعلقة",
     icon: "M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z",
-    grp: null,
+    grp: "قسم دراسة الحالة",
   },
 ];
 

@@ -278,6 +278,27 @@ public class OperationsTask
         Touch(nowUtc);
     }
 
+    /// <summary>
+    /// Stamps (or recovers) the cooperator visit fee. Create normally writes this; complete may
+    /// call it when a legacy task was left without an amount but pricing still resolves.
+    /// </summary>
+    public void StampAgreedVisitFee(decimal amountSar, Guid? pricingTableId, DateTime nowUtc)
+    {
+        if (!IsCourtVisit)
+        {
+            throw new InvalidOperationException(
+                "A visit fee can only be stamped on a court-visit task.");
+        }
+
+        if (amountSar <= 0m)
+            throw new ArgumentOutOfRangeException(nameof(amountSar));
+
+        AgreedVisitFeeSar = amountSar;
+        if (pricingTableId.HasValue)
+            VisitFeePricingTableId = pricingTableId;
+        Touch(nowUtc);
+    }
+
     public void ReplaceComments(string? commentsJson, DateTime nowUtc)
     {
         CommentsJson = commentsJson;

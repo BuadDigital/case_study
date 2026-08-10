@@ -29,10 +29,10 @@ export function buildPoListRowMoreItems(options: {
   if (options.showCreateOperationsTask) {
     items.push({
       id: "create-operations-task",
-      label: "إنشاء مهمة (زيارة محكمة)",
+      label: "إنشاء مهمة تشغيلية",
       onClick: () =>
         options.router.push(
-          `/operations-tasks?create=1&type=court_visit&po=${encodeURIComponent(po)}`,
+          `/operations-tasks?create=1&type=general&po=${encodeURIComponent(po)}`,
         ),
     });
   }
