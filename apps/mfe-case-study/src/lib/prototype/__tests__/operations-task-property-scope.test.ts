@@ -4,6 +4,7 @@ import {
   filterOperationsTasksForProperty,
   primaryCourtVisitTask,
   courtVisitResultKindLabel,
+  letterRowForProperty,
 } from "../operations-task-property-scope";
 import type { OperationsTaskDto } from "@platform/api-client";
 
@@ -73,5 +74,34 @@ describe("operations-task-property-scope", () => {
   it("labels court visit result kinds", () => {
     expect(courtVisitResultKindLabel("received")).toContain("ظرف");
     expect(courtVisitResultKindLabel("")).toBe("—");
+  });
+
+  it("picks letter row for the scoped deed on work_order visits", () => {
+    const t = task({
+      id: "wo",
+      scope: "work_order",
+      deeds: ["111", "222"],
+      letterRows: [
+        {
+          po: "PO-1",
+          deed: "111",
+          owner: "A",
+          request: "R1",
+          court: "محكمة أ",
+          circuit: "1",
+        },
+        {
+          po: "PO-1",
+          deed: "222",
+          owner: "B",
+          request: "R2",
+          court: "محكمة ب",
+          circuit: "2",
+        },
+      ],
+    });
+    const row = letterRowForProperty(t, { poNumber: "PO-1", deedNumber: "222" });
+    expect(row?.court).toBe("محكمة ب");
+    expect(row?.owner).toBe("B");
   });
 });

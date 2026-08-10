@@ -1,4 +1,7 @@
-import type { OperationsTaskDto } from "@platform/api-client";
+import type {
+  OperationsTaskDto,
+  OperationsTaskLetterRowDto,
+} from "@platform/api-client";
 import { deedsMatch } from "./deed-number";
 
 export type PropertyOpsScopeInput = {
@@ -8,33 +11,48 @@ export type PropertyOpsScopeInput = {
   deedDisplay?: string;
 };
 
+function deedMatchesScope(
+  deedOnTask: string,
+  scope: PropertyOpsScopeInput,
+): boolean {
+  const deedNumber = scope.deedNumber.trim();
+  const deedDisplay = (scope.deedDisplay ?? deedNumber).trim() || deedNumber;
+  return (
+    deedsMatch(deedOnTask, deedDisplay) ||
+    deedsMatch(deedOnTask, deedNumber) ||
+    Boolean(deedNumber && deedOnTask.includes(deedNumber))
+  );
+}
+
+/**
+ * Letter row for this property on a multi-deed (work_order) court visit.
+ * Avoids always showing letterRows[0], which may be a sibling property.
+ */
+export function letterRowForProperty(
+  task: OperationsTaskDto | null | undefined,
+  scope: PropertyOpsScopeInput,
+): OperationsTaskLetterRowDto | null {
+  if (!task?.letterRows?.length) return null;
+  const match = task.letterRows.find((row) => deedMatchesScope(row.deed, scope));
+  return match ?? (task.letterRows.length === 1 ? task.letterRows[0]! : null);
+}
+
 /** Same property/deed scope rule as PropertyDetailLinkedTab / MobileGlance. */
 export function filterOperationsTasksForProperty(
   tasks: readonly OperationsTaskDto[],
   scope: PropertyOpsScopeInput,
 ): OperationsTaskDto[] {
   const poNumber = scope.poNumber.trim();
-  const deedNumber = scope.deedNumber.trim();
-  const deedDisplay = (scope.deedDisplay ?? deedNumber).trim() || deedNumber;
 
   return tasks.filter((t) => {
     if (t.poNumber?.trim() === poNumber) {
+      // Work-order / multi: whole PO applies to every property on that order.
       if (t.scope === "work_order" || t.scope === "multi") return true;
       if (t.scope === "transaction") {
-        return t.deeds.some(
-          (d) =>
-            deedsMatch(d, deedDisplay) ||
-            deedsMatch(d, deedNumber) ||
-            (deedNumber && d.includes(deedNumber)),
-        );
+        return t.deeds.some((d) => deedMatchesScope(d, scope));
       }
     }
-    return t.deeds.some(
-      (d) =>
-        deedsMatch(d, deedDisplay) ||
-        deedsMatch(d, deedNumber) ||
-        (deedNumber && d.includes(deedNumber)),
-    );
+    return t.deeds.some((d) => deedMatchesScope(d, scope));
   });
 }
 

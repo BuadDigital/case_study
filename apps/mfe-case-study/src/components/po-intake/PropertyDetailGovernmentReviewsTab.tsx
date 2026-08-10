@@ -17,6 +17,7 @@ import {
 } from "../../lib/prototype/po-intake-data";
 import {
   courtVisitResultKindLabel,
+  letterRowForProperty,
 } from "../../lib/prototype/operations-task-property-scope";
 import {
   operationsTaskStatusLabel,
@@ -42,16 +43,15 @@ export function PropertyDetailGovernmentReviewsTab({
   const deedNumber = property.deedNumber.trim();
   const deedDisplay = formatPropertyDeedDisplay(property) || deedNumber;
 
-  const { courtVisits, primaryCourtVisit, isLoading, isFetching } =
-    usePropertyOperationsTasks(
-      { poNumber, deedNumber, deedDisplay },
-      { live: true },
-    );
+  const opsScope = { poNumber, deedNumber, deedDisplay };
+  const { courtVisits, primaryCourtVisit, isLoading, isPending, data } =
+    usePropertyOperationsTasks(opsScope, { live: true });
 
   const createHref = `/operations-tasks?create=1&type=court_visit&scope=transaction&po=${encodeURIComponent(poNumber)}&deed=${encodeURIComponent(deedDisplay)}`;
   const listHref = "/operations-tasks";
 
-  if (isLoading || isFetching) {
+  // Initial load only — do not blank the tab on live refetch.
+  if ((isLoading || isPending) && data === undefined) {
     return <InlineLoadingSkeleton />;
   }
 
@@ -84,7 +84,7 @@ export function PropertyDetailGovernmentReviewsTab({
 
   const primary = primaryCourtVisit ?? courtVisits[0]!;
   const result = primary.courtVisitResult;
-  const letter = primary.letterRows[0];
+  const letter = letterRowForProperty(primary, opsScope);
   const visitDoneAt =
     primary.status === "completed"
       ? primary.updatedAt?.slice(0, 10)
