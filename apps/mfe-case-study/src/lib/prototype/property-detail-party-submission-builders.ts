@@ -152,9 +152,13 @@ export function childForRole(
   );
 }
 
-export function evaluatorStatusLabel(status: string): string {
+export function evaluatorStatusLabel(
+  status: string,
+  options?: { accepted?: boolean },
+): string {
   if (status === "draft") return "مسودة";
-  if (status === "submitted") return "مُرسَل للأخصائي";
+  if (status === "submitted" && options?.accepted) return "معتمد";
+  if (status === "submitted") return "مُرسَل للأخصائي — بانتظار الاعتماد";
   if (status === "reopened") return "مُعاد للتعديل";
   if (status === "completed") return "مكتمل";
   return status;
@@ -162,8 +166,10 @@ export function evaluatorStatusLabel(status: string): string {
 
 export function engineeringSurveyStatusLabel(
   status: EngineeringSurveySubmissionSnapshot["status"],
+  options?: { accepted?: boolean },
 ): string {
-  if (status === "submitted") return "مُرسَل";
+  if (status === "submitted" && options?.accepted) return "معتمد";
+  if (status === "submitted") return "مُرسَل — بانتظار الاعتماد";
   if (status === "reopened") return "مُعاد للتصحيح";
   return "قيد العمل";
 }
@@ -323,7 +329,9 @@ export function buildFromEngineeringSurvey(
   const fields: PropertyDetailPartySubmission["fields"] = [
     {
       label: "حالة الرفع المساحي",
-      value: engineeringSurveyStatusLabel(submission.status),
+      value: engineeringSurveyStatusLabel(submission.status, {
+        accepted: Boolean(submission.acceptedAtUtc?.trim()),
+      }),
     },
   ];
 
@@ -415,6 +423,16 @@ export function buildFromEngineeringSurvey(
   }
   remarks.push(...checklistRemarks);
 
+  const surveyAccepted = Boolean(submission.acceptedAtUtc?.trim());
+  if (surveyAccepted) {
+    fields.push({
+      label: "اعتماد الأخصائي",
+      value: submission.acceptedByName?.trim()
+        ? `معتمد — ${submission.acceptedByName.trim()}`
+        : "معتمد",
+    });
+  }
+
   const hasData =
     submission.status !== "draft" ||
     Boolean(coords) ||
@@ -427,11 +445,16 @@ export function buildFromEngineeringSurvey(
     roleKey: "survey",
     hasData,
     emptyReason: hasData ? undefined : "لم يُقدَّم بعد",
-    statusLabel: engineeringSurveyStatusLabel(submission.status),
+    statusLabel: engineeringSurveyStatusLabel(submission.status, {
+      accepted: surveyAccepted,
+    }),
     taskStatusLabel: childTask
       ? workflowStatusLabel(childTask.status)
       : undefined,
     submittedAtUtc: submission.submittedAtUtc ?? null,
+    acceptedAtUtc: submission.acceptedAtUtc ?? null,
+    acceptedByName: submission.acceptedByName ?? null,
+    packageStatus: submission.status,
     fields,
     answers,
     remarks,
@@ -557,7 +580,12 @@ export function buildFromEvaluator(
   const notes = submission.evaluatorNotes.trim();
 
   const fields: PropertyDetailPartySubmission["fields"] = [
-    { label: "حالة التقييم", value: evaluatorStatusLabel(submission.status) },
+    {
+      label: "حالة التقييم",
+      value: evaluatorStatusLabel(submission.status, {
+        accepted: Boolean(submission.acceptedAtUtc?.trim()),
+      }),
+    },
   ];
   if (price) fields.push({ label: "سعر التقييم", value: price, ltr: true });
   if (submission.reportFileName?.trim()) {
@@ -669,6 +697,20 @@ export function buildFromEvaluator(
       value: technicalNotes,
     });
   }
+  const appraisalReturn = submission.returnNote?.trim() ?? "";
+  if (appraisalReturn) {
+    remarks.push({ label: "ملاحظة الإرجاع", value: appraisalReturn });
+  }
+
+  const appraisalAccepted = Boolean(submission.acceptedAtUtc?.trim());
+  if (appraisalAccepted) {
+    fields.push({
+      label: "اعتماد الأخصائي",
+      value: submission.acceptedByName?.trim()
+        ? `معتمد — ${submission.acceptedByName.trim()}`
+        : "معتمد",
+    });
+  }
 
   const hasData =
     submission.status !== "draft" ||
@@ -681,8 +723,13 @@ export function buildFromEvaluator(
     roleKey: "appraisal",
     hasData,
     emptyReason: hasData ? undefined : "لم يُقدَّم بعد",
-    statusLabel: evaluatorStatusLabel(submission.status),
+    statusLabel: evaluatorStatusLabel(submission.status, {
+      accepted: appraisalAccepted,
+    }),
     submittedAtUtc: submission.submittedAtUtc,
+    acceptedAtUtc: submission.acceptedAtUtc ?? null,
+    acceptedByName: submission.acceptedByName ?? null,
+    packageStatus: submission.status,
     fields,
     answers,
     remarks,
@@ -696,7 +743,9 @@ export function buildFromFieldInspection(
   const fields: PropertyDetailPartySubmission["fields"] = [
     {
       label: "حالة المعاينة",
-      value: inspectorWorkspaceStatusLabel(submission.status),
+      value: inspectorWorkspaceStatusLabel(submission.status, {
+        accepted: Boolean(submission.acceptedAtUtc?.trim()),
+      }),
     },
   ];
 
@@ -782,6 +831,16 @@ export function buildFromFieldInspection(
     });
   }
 
+  const inspectionAccepted = Boolean(submission.acceptedAtUtc?.trim());
+  if (inspectionAccepted) {
+    fields.push({
+      label: "اعتماد الأخصائي",
+      value: submission.acceptedByName?.trim()
+        ? `معتمد — ${submission.acceptedByName.trim()}`
+        : "معتمد",
+    });
+  }
+
   if (childTask) {
     fields.push({
       label: "حالة المهمة",
@@ -832,11 +891,16 @@ export function buildFromFieldInspection(
     roleKey: "inspection",
     hasData,
     emptyReason: hasData ? undefined : "لم يُقدَّم بعد",
-    statusLabel: inspectorWorkspaceStatusLabel(submission.status),
+    statusLabel: inspectorWorkspaceStatusLabel(submission.status, {
+      accepted: inspectionAccepted,
+    }),
     taskStatusLabel: childTask
       ? workflowStatusLabel(childTask.status)
       : undefined,
     submittedAtUtc: submission.submittedAtUtc ?? null,
+    acceptedAtUtc: submission.acceptedAtUtc ?? null,
+    acceptedByName: submission.acceptedByName ?? null,
+    packageStatus: submission.status,
     fields,
     answers: [],
     remarks,

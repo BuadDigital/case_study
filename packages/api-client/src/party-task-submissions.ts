@@ -190,7 +190,7 @@ export async function reopenPartyTaskSubmission(
   }
 }
 
-/** Specialist accepts engineering-survey outputs — accrues office fee from pricing table. */
+/** Specialist accepts party outputs (survey fee accrual; inspection → إنفاذ package). */
 export async function acceptPartyTaskSubmission(
   config: WorkOrdersApiConfig,
   taskId: string,

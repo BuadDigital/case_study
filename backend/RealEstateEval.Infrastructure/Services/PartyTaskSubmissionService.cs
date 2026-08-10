@@ -317,7 +317,9 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             return (null, new Dictionary<string, string> { ["_"] = "ليس لديك صلاحية إعادة فتح إرسال الطرف" });
 
         var returnNote = request.ReturnNote?.Trim() ?? "";
-        if ((task.Kind is WorkflowTaskKind.EngineeringSurvey or WorkflowTaskKind.FieldInspection)
+        if ((task.Kind is WorkflowTaskKind.EngineeringSurvey
+            or WorkflowTaskKind.FieldInspection
+            or WorkflowTaskKind.PropertyAppraisal)
             && string.IsNullOrWhiteSpace(returnNote))
         {
             return (null, new Dictionary<string, string> { ["returnNote"] = "ملاحظة الإرجاع مطلوبة" });
@@ -370,7 +372,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             cancellationToken);
 
         if (task.Kind == WorkflowTaskKind.EngineeringSurvey)
-            await NotifyEngineeringSurveyAssigneeAsync(
+            await NotifyPartyAssigneeAsync(
                 task,
                 title: "إعادة الرفع المساحي للتصحيح",
                 body: string.IsNullOrWhiteSpace(returnNote)
@@ -378,6 +380,29 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                     : $"أُعيدت مخرجات الرفع المساحي للتصحيح: {returnNote.Trim()}",
                 tone: "warn",
                 sourceEvent: $"engineering-survey-returned:{taskId}",
+                href: $"/active-survey/{Uri.EscapeDataString(task.Id.ToString())}",
+                cancellationToken);
+        else if (task.Kind == WorkflowTaskKind.FieldInspection)
+            await NotifyPartyAssigneeAsync(
+                task,
+                title: "إعادة المعاينة للتصحيح",
+                body: string.IsNullOrWhiteSpace(returnNote)
+                    ? "أُعيدت بيانات المعاينة للتصحيح."
+                    : $"أُعيدت بيانات المعاينة للتصحيح: {returnNote.Trim()}",
+                tone: "warn",
+                sourceEvent: $"field-inspection-returned:{taskId}",
+                href: $"/active-inspection/{Uri.EscapeDataString(task.Id.ToString())}",
+                cancellationToken);
+        else if (task.Kind == WorkflowTaskKind.PropertyAppraisal)
+            await NotifyPartyAssigneeAsync(
+                task,
+                title: "إعادة التقييم للتصحيح",
+                body: string.IsNullOrWhiteSpace(returnNote)
+                    ? "أُعيد تقييم العقار للتصحيح."
+                    : $"أُعيد تقييم العقار للتصحيح: {returnNote.Trim()}",
+                tone: "warn",
+                sourceEvent: $"property-appraisal-returned:{taskId}",
+                href: $"/property-appraisal/{Uri.EscapeDataString(task.Id.ToString())}",
                 cancellationToken);
 
         return (await ToDtoAsync(entity, cancellationToken), null);
@@ -394,8 +419,10 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (task is null)
             return (null, new Dictionary<string, string> { ["_"] = "المهمة غير موجودة" });
 
-        if (task.Kind != WorkflowTaskKind.EngineeringSurvey)
-            return (null, new Dictionary<string, string> { ["_"] = "قبول المخرجات متاح لمهام الرفع المساحي فقط" });
+        if (task.Kind is not (WorkflowTaskKind.EngineeringSurvey
+            or WorkflowTaskKind.FieldInspection
+            or WorkflowTaskKind.PropertyAppraisal))
+            return (null, new Dictionary<string, string> { ["_"] = "قبول المخرجات غير متاح لهذا النوع من المهام" });
 
         if (!PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
             return (null, new Dictionary<string, string> { ["_"] = "ليس لديك صلاحية قبول مخرجات الطرف" });
@@ -407,39 +434,51 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             return (null, new Dictionary<string, string> { ["_"] = "لا يوجد إرسال مكتمل لقبوله" });
 
         if (task.Status != WorkflowTaskStatus.Completed)
-            return (null, new Dictionary<string, string> { ["_"] = "مهمة الرفع المساحي غير مكتملة" });
+            return (null, new Dictionary<string, string> { ["_"] = "المهمة غير مكتملة بعد" });
 
         var actorUserId = string.IsNullOrWhiteSpace(actor.UserId) ? "system" : actor.UserId;
-
-        // Fee accrual and acceptance timestamp must succeed or fail together.
         var alreadyAccepted = entity.AcceptedAtUtc is not null;
-        var feeError = await DbContextTransaction.ExecuteInTransactionAsync(
-            _db,
-            async ct =>
-            {
-                var (_, error) = await _inspectorFees.AccrueEngineeringSurveyFeeAsync(
-                    taskId,
-                    actorUserId,
-                    ct);
-                if (error is not null)
-                    return (Commit: false, Result: error);
 
-                if (!alreadyAccepted)
+        if (task.Kind == WorkflowTaskKind.EngineeringSurvey)
+        {
+            // Fee accrual and acceptance timestamp must succeed or fail together.
+            var feeError = await DbContextTransaction.ExecuteInTransactionAsync(
+                _db,
+                async ct =>
                 {
-                    entity.AcceptedAtUtc = DateTime.UtcNow;
-                    entity.AcceptedByUserId = actorUserId;
-                    entity.AcceptedByName = string.IsNullOrWhiteSpace(actor.DisplayName)
-                        ? null
-                        : actor.DisplayName.Trim();
-                    await _db.SaveChangesAsync(ct);
-                }
+                    var (_, error) = await _inspectorFees.AccrueEngineeringSurveyFeeAsync(
+                        taskId,
+                        actorUserId,
+                        ct);
+                    if (error is not null)
+                        return (Commit: false, Result: error);
 
-                return (Commit: true, Result: (string?)null);
-            },
-            cancellationToken);
+                    if (!alreadyAccepted)
+                    {
+                        StampAcceptance(entity, actorUserId, actor.DisplayName);
+                        await _db.SaveChangesAsync(ct);
+                    }
 
-        if (feeError is not null)
-            return (null, new Dictionary<string, string> { ["_"] = feeError });
+                    return (Commit: true, Result: (string?)null);
+                },
+                cancellationToken);
+
+            if (feeError is not null)
+                return (null, new Dictionary<string, string> { ["_"] = feeError });
+        }
+        else if (!alreadyAccepted)
+        {
+            // Field inspection / appraisal: package gate for إنفاذ (no fee accrual on accept).
+            StampAcceptance(entity, actorUserId, actor.DisplayName);
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+
+        var timelineTitle = task.Kind switch
+        {
+            WorkflowTaskKind.FieldInspection => "اعتماد بيانات المعاينة",
+            WorkflowTaskKind.PropertyAppraisal => "اعتماد بيانات التقييم",
+            _ => "قبول مخرجات الرفع المساحي",
+        };
 
         if (task.PropertyId is Guid propertyId)
         {
@@ -447,7 +486,7 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 task.PoNumber,
                 propertyId,
                 $"party:{taskId}:accepted",
-                "قبول مخرجات الرفع المساحي",
+                timelineTitle,
                 entity.AcceptedByName ?? task.AssigneeName,
                 "done",
                 DateTime.UtcNow,
@@ -455,23 +494,64 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
         }
 
         if (!alreadyAccepted)
-            await NotifyEngineeringSurveyAssigneeAsync(
-                task,
-                title: "قبول مخرجات الرفع المساحي",
-                body: "تم قبول مخرجات الرفع المساحي واستحقاق الأتعاب.",
-                tone: "success",
-                sourceEvent: $"engineering-survey-accepted:{taskId}",
-                cancellationToken);
+        {
+            if (task.Kind == WorkflowTaskKind.EngineeringSurvey)
+            {
+                await NotifyPartyAssigneeAsync(
+                    task,
+                    title: "قبول مخرجات الرفع المساحي",
+                    body: "تم قبول مخرجات الرفع المساحي واستحقاق الأتعاب.",
+                    tone: "success",
+                    sourceEvent: $"engineering-survey-accepted:{taskId}",
+                    href: $"/active-survey/{Uri.EscapeDataString(task.Id.ToString())}",
+                    cancellationToken);
+            }
+            else if (task.Kind == WorkflowTaskKind.FieldInspection)
+            {
+                await NotifyPartyAssigneeAsync(
+                    task,
+                    title: "اعتماد بيانات المعاينة",
+                    body: "اعتمد الأخصائي بيانات المعاينة. تظهر البيانات المعتمدة في حزمة الرفع على إنفاذ.",
+                    tone: "success",
+                    sourceEvent: $"field-inspection-accepted:{taskId}",
+                    href: $"/active-inspection/{Uri.EscapeDataString(task.Id.ToString())}",
+                    cancellationToken);
+            }
+            else if (task.Kind == WorkflowTaskKind.PropertyAppraisal)
+            {
+                await NotifyPartyAssigneeAsync(
+                    task,
+                    title: "اعتماد بيانات التقييم",
+                    body: "اعتمد الأخصائي بيانات التقييم. تظهر البيانات المعتمدة في حزمة الرفع على إنفاذ.",
+                    tone: "success",
+                    sourceEvent: $"property-appraisal-accepted:{taskId}",
+                    href: $"/property-appraisal/{Uri.EscapeDataString(task.Id.ToString())}",
+                    cancellationToken);
+            }
+        }
 
         return (await ToDtoAsync(entity, cancellationToken), null);
     }
 
-    private async Task NotifyEngineeringSurveyAssigneeAsync(
+    private static void StampAcceptance(
+        PartyTaskSubmission entity,
+        string actorUserId,
+        string? displayName)
+    {
+        entity.AcceptedAtUtc = DateTime.UtcNow;
+        entity.AcceptedByUserId = actorUserId;
+        entity.AcceptedByName = string.IsNullOrWhiteSpace(displayName)
+            ? null
+            : displayName.Trim();
+    }
+
+    private async Task NotifyPartyAssigneeAsync(
         WorkflowTask task,
         string title,
         string body,
         string tone,
         string sourceEvent,
+        string href,
         CancellationToken cancellationToken)
     {
         var assigneeId = task.AssigneeId?.Trim();
@@ -482,7 +562,6 @@ public class PartyTaskSubmissionService : IPartyTaskSubmissionService
             cancellationToken);
         if (string.IsNullOrWhiteSpace(userId)) return;
 
-        var href = $"/active-survey/{Uri.EscapeDataString(task.Id.ToString())}";
         await _notifications.CreateForUserAsync(
             userId,
             new CreateUserNotificationRequest

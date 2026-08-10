@@ -25,6 +25,16 @@ import {
 } from "./infath-upload-types";
 import { INFATH_FIELD_LABELS as L } from "./infath-field-labels";
 
+/** Court visit + key envelope inputs for إنفاذ (from المهام / keys gate). */
+export type InfathOpsContext = {
+  courtVisitCompletedAt?: string | null;
+  courtVisitResultKind?: string | null;
+  courtVisitAssigneeName?: string | null;
+  keysStatus?: string | null;
+  keyAvailable?: boolean;
+  envelopeId?: string | null;
+};
+
 function partyField(
   party: PropertyDetailPartySubmission | null | undefined,
   label: string,
@@ -37,6 +47,16 @@ function partyRemark(
   label: string,
 ): string {
   return party?.remarks.find((r) => r.label === label)?.value?.trim() ?? "";
+}
+
+/** Only specialist-accepted party packages feed إنفاذ; pending/returned stay empty. */
+export function partyPackageFeedsInfath(
+  party: PropertyDetailPartySubmission | null | undefined,
+): PropertyDetailPartySubmission | null {
+  if (!party?.hasData) return null;
+  const stamp = party.acceptedAtUtc?.trim();
+  if (!stamp) return null;
+  return party;
 }
 
 function txt(
@@ -131,7 +151,6 @@ function findDoc(
 
 function buildAttachments(
   sections: PropertyDetailDocumentSection[],
-  government: PropertyDetailPartySubmission | null | undefined,
   keysReceived: boolean,
 ): InfathUploadAttachment[] {
   const caseStudy = findDoc(sections, (n) => n.includes("دراسة"));
@@ -227,12 +246,15 @@ export function buildInfathUploadModel(input: {
   property: PoPropertyIntake;
   parties: Record<string, PropertyDetailPartySubmission | undefined> | null;
   documentSections: PropertyDetailDocumentSection[];
+  /** Court visits + key gate (ops/keys product — not legacy GR package). */
+  opsContext?: InfathOpsContext | null;
 }): InfathUploadModel {
   const { record, property, parties, documentSections } = input;
-  const inspection = parties?.inspection ?? null;
-  const survey = parties?.survey ?? null;
-  const appraisal = parties?.appraisal ?? null;
-  const government = parties?.government ?? null;
+  const ops = input.opsContext ?? null;
+  // Gate party packages into إنفاذ only after specialist acceptance.
+  const inspection = partyPackageFeedsInfath(parties?.inspection ?? null);
+  const survey = partyPackageFeedsInfath(parties?.survey ?? null);
+  const appraisal = partyPackageFeedsInfath(parties?.appraisal ?? null);
   const specialist = parties?.specialist ?? null;
 
   const deed = property.deedNumber.trim() || "—";
@@ -244,7 +266,9 @@ export function buildInfathUploadModel(input: {
 
   const inspectionDate = partyField(inspection, L.inspectionDate);
   const appraisalDate = partyField(appraisal, L.appraisalDate) || partyField(appraisal, "تاريخ الإرسال");
-  const visitDate = partyField(government, "تاريخ الزيارة");
+  const visitDate = ops?.courtVisitCompletedAt?.trim()
+    ? formatDateAr(ops.courtVisitCompletedAt.trim().slice(0, 10))
+    : "";
   const visitDateForReport = inspectionDate || visitDate;
   const appraisalPrice = partyField(appraisal, "سعر التقييم");
   const landValue = partyField(appraisal, L.landValue);
@@ -253,16 +277,21 @@ export function buildInfathUploadModel(input: {
   const valueBasis = partyField(appraisal, L.valueBasis);
   const forcedDiscountRaw = partyField(appraisal, L.forcedDiscount);
   const reportIssueDate = partyField(appraisal, L.reportIssueDate);
-  const zoneStatus = firstNonEmpty(
-    partyField(government, L.zoneStatus),
-    partyField(inspection, L.zoneStatus),
-  );
+  const zoneStatus = partyField(inspection, L.zoneStatus);
   const linkedAssetsAnswer = partyField(specialist, L.linkedAssets);
   const workerName = partyField(appraisal, "المقيم العقاري") || partyField(appraisal, "اسم المقيّم");
   const appraisalNotes = partyRemark(appraisal, "ملاحظات المقيّم");
-  const keysStatus = partyField(government, "حالة المفاتيح");
   const keysReceived =
-    keysStatus.includes("استلام") || keysStatus.includes("تم استلام");
+    ops?.keysStatus === "received" ||
+    ops?.courtVisitResultKind === "received" ||
+    Boolean(ops?.keyAvailable);
+  const keysReceivedSel = keysReceived
+    ? "نعم"
+    : ops?.keysStatus === "not_required"
+      ? "لا"
+      : ops?.keysStatus
+        ? "لا"
+        : "";
   const specialistRemarks =
     partyRemark(specialist, "ملاحظات") ||
     specialist?.remarks.map((r) => r.value).join("\n") ||
@@ -595,7 +624,7 @@ export function buildInfathUploadModel(input: {
         sel(
           "keys-received",
           L.keysReceived,
-          partyField(government, L.keysReceived) || (keysReceived ? "نعم" : keysStatus ? "لا" : ""),
+          keysReceivedSel,
           "GR",
         ),
         ...(keysReceived
@@ -603,7 +632,9 @@ export function buildInfathUploadModel(input: {
               file(
                 "keys-proof",
                 L.keysProof,
-                partyField(government, L.keysProof),
+                ops?.envelopeId?.trim()
+                  ? `ظرف: ${ops.envelopeId.trim()}`
+                  : "",
                 "GR",
               ),
             ]
@@ -627,7 +658,7 @@ export function buildInfathUploadModel(input: {
         area(
           "closing-notes",
           L.closingNotes,
-          partyRemark(specialist, L.closingNotes) || partyRemark(government, "ملاحظات المراجعة"),
+          partyRemark(specialist, L.closingNotes),
           "SP",
         ),
       ],
@@ -675,7 +706,6 @@ export function buildInfathUploadModel(input: {
 
   const attachments = buildAttachments(
     documentSections,
-    government,
     keysReceived,
   );
   const stats = computeStats(sections);

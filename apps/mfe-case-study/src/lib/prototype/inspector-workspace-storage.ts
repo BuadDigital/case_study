@@ -13,7 +13,7 @@ import {
   submitWithOfflineFallback,
   loadQueuedDraftPayload,
 } from "@platform/app-shared/offline/offline-write";
-import { reopenPartySubmission, type PartyWorkMutationResult } from "@platform/app-shared/prototype/party-submission-api";
+import { reopenPartySubmission, acceptPartySubmission, type PartyWorkMutationResult } from "@platform/app-shared/prototype/party-submission-api";
 import { dispatchPartySubmissionChanged } from "@platform/app-shared/prototype/party-submission-changed-event";
 import { dispatchWorkflowSubmitted, FIELD_INSPECTION_SUBMITTED_EVENT } from "@platform/app-shared/prototype/party-workflow-events";
 import { resolveApiError, workOrdersApiConfig } from "../work-orders-api-config";
@@ -339,6 +339,8 @@ function payloadToDraft(
       readString(payload.returnNote) ||
       (typeof dto.returnNote === "string" ? dto.returnNote : undefined),
     submittedAtUtc: dto.submittedAtUtc ?? null,
+    acceptedAtUtc: dto.acceptedAtUtc ?? null,
+    acceptedByName: dto.acceptedByName ?? null,
     updatedAtUtc: dto.updatedAtUtc || draft.updatedAtUtc,
   };
 }
@@ -699,6 +701,19 @@ export async function reopenInspectorWorkspace(
   if (!reopened.ok) return { ok: false, error: reopened.error };
   const next = payloadToDraft(reopened.data);
   writeCache(next);
+  notifyChanged();
+  return { ok: true, data: next };
+}
+
+/** Specialist acceptance — stamps AcceptedAtUtc so data may feed إنفاذ. */
+export async function acceptInspectorWorkspace(
+  taskId: string,
+): Promise<PartyWorkMutationResult<InspectorWorkspaceDraft>> {
+  const accepted = await acceptPartySubmission(taskId);
+  if (!accepted.ok) return { ok: false, error: accepted.error };
+  const next = payloadToDraft(accepted.data);
+  writeCache(next);
+  notifyChanged();
   return { ok: true, data: next };
 }
 

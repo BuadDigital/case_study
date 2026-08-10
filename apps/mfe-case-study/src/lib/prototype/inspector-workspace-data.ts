@@ -335,6 +335,9 @@ export type InspectorWorkspaceDraft = {
   status: InspectorWorkspaceStatus;
   returnNote?: string;
   submittedAtUtc: string | null;
+  /** Specialist acceptance stamp — gates package into إنفاذ. */
+  acceptedAtUtc?: string | null;
+  acceptedByName?: string | null;
   updatedAtUtc: string;
 };
 
@@ -420,10 +423,20 @@ export function isInspectorWorkspaceLocked(
   return status === "submitted";
 }
 
+/** True when a specialist stamped acceptance on the submitted package. */
+export function isInspectorWorkspaceAccepted(
+  draft: Pick<InspectorWorkspaceDraft, "acceptedAtUtc"> | null | undefined,
+): boolean {
+  const stamp = draft?.acceptedAtUtc;
+  return typeof stamp === "string" && stamp.trim().length > 0;
+}
+
 export function inspectorWorkspaceStatusLabel(
   status: InspectorWorkspaceStatus,
+  options?: { accepted?: boolean },
 ): string {
-  if (status === "submitted") return "مُرسَل";
+  if (status === "submitted" && options?.accepted) return "معتمد";
+  if (status === "submitted") return "مُرسَل — بانتظار الاعتماد";
   if (status === "reopened") return "مُعاد للتصحيح";
   return "قيد العمل";
 }

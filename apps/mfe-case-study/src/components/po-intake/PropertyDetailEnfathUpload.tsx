@@ -7,6 +7,7 @@ import {
   buildInfathUploadModel,
   copyInfathText,
   downloadInfathDocument,
+  type InfathOpsContext,
 } from "../../lib/prototype/infath-upload-model";
 import type {
   InfathUploadAttachment,
@@ -15,8 +16,17 @@ import type {
 } from "../../lib/prototype/infath-upload-types";
 import type { PropertyDetailDocumentSection } from "../../lib/prototype/property-detail-documents";
 import type { PropertyDetailPartySubmissionsMap } from "../../lib/prototype/property-detail-party-submissions";
-import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/prototype/po-intake-data";
+import {
+  formatPropertyDeedDisplay,
+  type PoIntakeRecord,
+  type PoPropertyIntake,
+} from "../../lib/prototype/po-intake-data";
 import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+import { usePropertyOperationsTasks } from "../../query/use-property-operations-tasks";
+import {
+  resolveEnvelopeIdFromSources,
+  usePropertyKeyGateQuery,
+} from "../../query/use-property-key-gate-query";
 
 type CopyKey = string;
 
@@ -421,6 +431,38 @@ export function PropertyDetailEnfathUpload({
   documentSections: PropertyDetailDocumentSection[];
   loading?: boolean;
 }) {
+  const poNumber = record.poNumber.trim();
+  const deedNumber = property.deedNumber.trim();
+  const deedDisplay = formatPropertyDeedDisplay(property) || deedNumber;
+
+  const { primaryCourtVisit } = usePropertyOperationsTasks(
+    { poNumber, deedNumber, deedDisplay },
+    { live: true },
+  );
+  const { data: keyGate } = usePropertyKeyGateQuery({
+    propertyId: property.id,
+    poNumber,
+    deedNumber,
+    requestNumber: property.requestNumber.trim() || undefined,
+  });
+
+  const opsContext = useMemo((): InfathOpsContext => {
+    const visit = primaryCourtVisit;
+    const envelopeId = resolveEnvelopeIdFromSources(
+      keyGate,
+      visit?.linkedEnvelopeId,
+    );
+    return {
+      courtVisitCompletedAt:
+        visit?.status === "completed" ? visit.updatedAt : null,
+      courtVisitResultKind: visit?.courtVisitResult?.kind ?? null,
+      courtVisitAssigneeName: visit?.assigneeName ?? null,
+      keysStatus: keyGate?.keysStatus ?? null,
+      keyAvailable: keyGate?.keyAvailable,
+      envelopeId,
+    };
+  }, [primaryCourtVisit, keyGate]);
+
   const model = useMemo(
     () =>
       buildInfathUploadModel({
@@ -428,9 +470,86 @@ export function PropertyDetailEnfathUpload({
         property,
         parties: parties ?? null,
         documentSections,
+        opsContext,
       }),
-    [record, property, parties, documentSections],
+    [record, property, parties, documentSections, opsContext],
   );
+
+  const inspectionFeed = parties?.inspection;
+  const surveyFeed = parties?.survey;
+  const appraisalFeed = parties?.appraisal;
+
+  const packageStatusLine = useMemo(() => {
+    const lines: { kind: "await" | "ok"; text: string }[] = [];
+    if (inspectionFeed?.hasData) {
+      if (inspectionFeed.acceptedAtUtc?.trim()) {
+        lines.push({
+          kind: "ok",
+          text: "بيانات المعاينة معتمدة — تُعرض ضمن حقول المُعاين.",
+        });
+      } else if (inspectionFeed.statusLabel?.includes("بانتظار")) {
+        lines.push({
+          kind: "await",
+          text: "بيانات المعاينة بانتظار اعتماد الأخصائي — حقول المُعاين فارغة حتى الاعتماد.",
+        });
+      }
+    }
+    if (surveyFeed?.hasData) {
+      if (surveyFeed.acceptedAtUtc?.trim()) {
+        lines.push({
+          kind: "ok",
+          text: "بيانات الرفع المساحي معتمدة — تُعرض ضمن الحزمة.",
+        });
+      } else if (
+        surveyFeed.statusLabel?.includes("بانتظار") ||
+        surveyFeed.statusLabel?.includes("مُرسَل")
+      ) {
+        lines.push({
+          kind: "await",
+          text: "بيانات الرفع المساحي بانتظار قبول الأخصائي — حقول المكتب فارغة حتى القبول.",
+        });
+      }
+    }
+    if (appraisalFeed?.hasData) {
+      if (appraisalFeed.acceptedAtUtc?.trim()) {
+        lines.push({
+          kind: "ok",
+          text: "بيانات التقييم معتمدة — تُعرض ضمن الحزمة.",
+        });
+      } else if (
+        appraisalFeed.statusLabel?.includes("بانتظار") ||
+        appraisalFeed.statusLabel?.includes("مُرسَل")
+      ) {
+        lines.push({
+          kind: "await",
+          text: "بيانات التقييم بانتظار اعتماد الأخصائي — حقول المقيم فارغة حتى الاعتماد.",
+        });
+      }
+    }
+    if (opsContext.courtVisitResultKind || opsContext.courtVisitCompletedAt) {
+      lines.push({
+        kind: "ok",
+        text: "زيارة المحكمة من المهام — تُستخدم لتاريخ/نتيجة الزيارة عند توفرها.",
+      });
+    } else {
+      lines.push({
+        kind: "await",
+        text: "لا توجد زيارة محكمة منجزة في المهام — حقول الزيارة الحكومية فارغة.",
+      });
+    }
+    if (opsContext.keysStatus === "received" || opsContext.keyAvailable) {
+      lines.push({
+        kind: "ok",
+        text: "حالة المفاتيح من بوابة الظرف / المهام.",
+      });
+    } else if (!opsContext.keysStatus && !opsContext.envelopeId) {
+      lines.push({
+        kind: "await",
+        text: "لا بيانات مفاتيح من المهام / الظرف بعد.",
+      });
+    }
+    return lines;
+  }, [inspectionFeed, surveyFeed, appraisalFeed, opsContext]);
 
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(
     () => new Set(),
@@ -560,6 +679,19 @@ export function PropertyDetailEnfathUpload({
 
   return (
     <div className="flex flex-col gap-4">
+      {packageStatusLine.map((line) => (
+        <div
+          key={line.text}
+          className={
+            line.kind === "await"
+              ? "rounded-lg border border-[color-mix(in_srgb,var(--warning)_40%,var(--border))] bg-[var(--warning-bg)] px-3.5 py-2.5 text-xs leading-relaxed text-[var(--amber-text)]"
+              : "rounded-lg border border-[color-mix(in_srgb,var(--success)_35%,var(--border))] bg-[var(--success-bg)] px-3.5 py-2.5 text-xs leading-relaxed text-[var(--success)]"
+          }
+        >
+          {line.text}
+        </div>
+      ))}
+
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={() => setAllCollapsed(false)}>
           <InfazIcon name="expand" />

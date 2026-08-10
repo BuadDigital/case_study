@@ -17,6 +17,11 @@ export type PropertyDetailPartySubmission = {
   taskStatusLabel?: string;
   /** ISO timestamp when the party submitted (for party cards / timeline). */
   submittedAtUtc?: string | null;
+  /** Specialist acceptance — only accepted packages feed إنفاذ. */
+  acceptedAtUtc?: string | null;
+  acceptedByName?: string | null;
+  /** Raw package workflow status for accept/return actions. */
+  packageStatus?: "draft" | "submitted" | "reopened" | string;
   fields: { label: string; value: string; ltr?: boolean }[];
   answers: PartyAnswerRow[];
   remarks: { label: string; value: string }[];
@@ -55,6 +60,9 @@ export type EvaluatorSubmissionSnapshot = {
   assetDataConfirmed?: boolean;
   assetDataVarianceNotes?: string;
   signedAppraisalFileName?: string | null;
+  acceptedAtUtc?: string | null;
+  acceptedByName?: string | null;
+  returnNote?: string | null;
 };
 
 export type EngineeringSurveyChecklistAnswer = "yes" | "no" | null;
@@ -87,4 +95,6 @@ export type EngineeringSurveySubmissionSnapshot = {
   transactionNote: string;
   updatedAtUtc: string;
   submittedAtUtc?: string;
+  acceptedAtUtc?: string | null;
+  acceptedByName?: string | null;
 };

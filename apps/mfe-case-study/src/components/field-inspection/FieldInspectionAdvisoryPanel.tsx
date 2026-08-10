@@ -190,7 +190,9 @@ export function FieldInspectionAdvisoryPanel({
         <div className="flex justify-between gap-3 border-b border-border py-2">
           <span className="text-text-3">الحالة</span>
           <span className="font-medium text-text">
-            {inspectorWorkspaceStatusLabel(submission.status)}
+            {inspectorWorkspaceStatusLabel(submission.status, {
+              accepted: Boolean(submission.acceptedAtUtc?.trim()),
+            })}
           </span>
         </div>
         <div className="flex justify-between gap-3 border-b border-border py-2">
