@@ -262,11 +262,11 @@ export function InspectorFeesBillingTable({
         reason: extra?.reason,
         disbursementVoucher: extra?.disbursementVoucher,
       });
-      if (result) {
+      if (result.ok) {
         await invalidate();
         return;
       }
-      showToast("تعذّر تنفيذ الإجراء — حاول مرة أخرى", "error");
+      showToast(result.error || "تعذّر تنفيذ الإجراء — حاول مرة أخرى", "error");
     } finally {
       setBusyId(null);
     }

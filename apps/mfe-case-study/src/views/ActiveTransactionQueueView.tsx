@@ -1639,6 +1639,7 @@ export function ActiveTransactionQueueView({
                               task,
                               tasks ?? [],
                               partyProgressByTask.get(task.id) ?? {},
+                              staffUsers,
                             )
                           : [];
                         const active = selectedId === task.id;

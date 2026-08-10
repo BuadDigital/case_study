@@ -35,8 +35,10 @@ public static class SupervisingDepartments
 
     public static string ForTaskKind(WorkflowTaskKind taskKind) => taskKind switch
     {
-        WorkflowTaskKind.FieldInspection
-            or WorkflowTaskKind.EngineeringSurvey
+        // Field inspectors bill through case-study fee ops after study acceptance;
+        // the seeded section supervisor is case-study and owns that party-fees queue.
+        WorkflowTaskKind.FieldInspection => CaseStudy,
+        WorkflowTaskKind.EngineeringSurvey
             or WorkflowTaskKind.PropertyAppraisal
             or WorkflowTaskKind.ValuationCoordination => Valuation,
         _ => CaseStudy,

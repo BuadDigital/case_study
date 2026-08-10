@@ -11,15 +11,12 @@ import { loadPartyBillingStatements } from "@platform/app-shared/prototype/party
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import { InspectorFeesBillingTable } from "../field-inspection/InspectorFeesBillingTable";
 import { PartyFeeWorkflowTable } from "./PartyFeeWorkflowTable";
-import {
-  EngOfficeFeesBillingTable,
-  engFeeUiStatus,
-} from "./EngOfficeFeesBillingTable";
 import { SupervisorEnfazTracking } from "./SupervisorEnfazTracking";
 import { CourtVisitFeesPanel } from "./CourtVisitFeesPanel";
 import { PartyOfficeBillingStatementsPanel } from "./PartyOfficeBillingStatementsPanel";
 import { EngFeesHtmlTabs, EngFeesSectionTitle } from "./EngFeesHtmlTabs";
 import { EngFeesHtmlScreen } from "./EngFeesHtmlScreen";
+import { PartyIndividualFeesHtmlScreen } from "./PartyIndividualFeesHtmlScreen";
 import {
   SUPERVISOR_ENG_SURVEY_PENDING_ACCEPT_KEY,
   SupervisorEngSurveyFeeAcceptPanel,
@@ -30,6 +27,7 @@ import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 
 type PartyFeesTab =
   | "action"
+  | "tracking"
   | "ready"
   | "statements"
   | "visit-fees"
@@ -100,26 +98,8 @@ export function PartyFeesWorkspace({
     disputedRows.length +
     suspendedRows.length;
 
-  const actionCount = useMemo(
-    () =>
-      rows.filter((r) => {
-        const st = engFeeUiStatus(r);
-        if (st === "pending_office" || st === "dispute") return true;
-        return (
-          (r.billingStatus === "returned" || r.billingStatus === "inquiry") &&
-          r.returnTo === "office"
-        );
-      }).length,
-    [rows],
-  );
-  const readyCount = useMemo(
-    () =>
-      rows.filter((r) => {
-        const st = engFeeUiStatus(r);
-        return st === "ready" || st === "carried";
-      }).length,
-    [rows],
-  );
+  const isIndividualParty =
+    variant === "field-inspection" || variant === "government-review";
 
   const { data: issuedStatements = [] } = useQuery({
     queryKey: [
@@ -137,12 +117,22 @@ export function PartyFeesWorkspace({
     enabled: isSupervisor || Boolean(assigneeId),
   });
 
-  const showVisitAndKeyFees =
-    variant === "government-review" || isSupervisor;
-
-  /* Case Study.html `renderEngFees` — exact port for engineering office */
+  /*
+   * One fees module, three party slots — never mix lanes:
+   *   engineering-survey  → vendor (accept/dispute + invoice)
+   *   field-inspection    → individual inspector (submit supervisor)
+   *   government-review   → individual reviewer (+ visit/keys)
+   */
   if (!isSupervisor && variant === "engineering-survey") {
     return <EngFeesHtmlScreen assigneeId={assigneeId} />;
+  }
+  if (!isSupervisor && isIndividualParty) {
+    return (
+      <PartyIndividualFeesHtmlScreen
+        assigneeId={assigneeId}
+        variant={variant}
+      />
+    );
   }
 
   if (isSupervisor) {
@@ -192,14 +182,24 @@ export function PartyFeesWorkspace({
               <section>
                 <EngFeesSectionTitle
                   title="الواردة للاعتماد"
-                  sub="بنود بانتظار اعتماد المشرف قبل المسار المالي."
+                  sub="معاينة / مراجعة حكومية / أطراف — بانتظار اعتماد المشرف قبل المالية."
                 />
                 <PartyFeeWorkflowTable
                   rows={supReviewRows}
                   role="supervisor"
                 />
               </section>
-            ) : null}
+            ) : (
+              <section>
+                <EngFeesSectionTitle
+                  title="الواردة للاعتماد"
+                  sub="معاينة / مراجعة حكومية / أطراف — بانتظار اعتماد المشرف قبل المالية."
+                />
+                <QueueTableHint className="mt-1">
+                  لا بنود واردة للاعتماد حالياً.
+                </QueueTableHint>
+              </section>
+            )}
 
             {disputedRows.length > 0 ? (
               <section>
@@ -304,102 +304,5 @@ export function PartyFeesWorkspace({
     );
   }
 
-  const partyTab: PartyFeesTab =
-    tab === "ready" ||
-    tab === "statements" ||
-    tab === "visit-fees" ||
-    tab === "key-fees"
-      ? tab
-      : "action";
-
-  const partyTabs = [
-    {
-      id: "action",
-      label: "تتطلب إجراءكم",
-      count: actionCount,
-      countWarnWhenActive: true,
-    },
-    {
-      id: "ready",
-      label: "جاهزة للفوترة",
-      count: readyCount,
-    },
-    {
-      id: "statements",
-      label: "كشوف الفوترة الصادرة",
-      count: issuedStatements.length,
-    },
-    ...(showVisitAndKeyFees
-      ? [
-          { id: "visit-fees", label: "أتعاب الزيارة" },
-          { id: "key-fees", label: "أتعاب استلام المفاتيح" },
-        ]
-      : []),
-  ];
-
-  return (
-    <div className="flex flex-col gap-0 px-3 pb-3 sm:px-4 sm:pb-4">
-      <EngFeesHtmlTabs
-        active={partyTab}
-        onChange={(id) => setTab(id as PartyFeesTab)}
-        tabs={partyTabs}
-      />
-
-      {partyTab === "action" ? (
-        <EngOfficeFeesBillingTable
-          rows={rows}
-          tab="action"
-          pending={isLoading && !isFetched}
-        />
-      ) : null}
-
-      {partyTab === "ready" ? (
-        <>
-          <EngFeesSectionTitle
-            title="المعاملات الجاهزة للفوترة"
-            sub="بنود مستحقة بانتظار كشف المحاسب نهاية الشهر — تشمل المرحَّلة من أشهر سابقة."
-          />
-          <EngOfficeFeesBillingTable
-            rows={rows}
-            tab="ready"
-            pending={isLoading && !isFetched}
-          />
-        </>
-      ) : null}
-
-      {partyTab === "statements" ? (
-        <PartyOfficeBillingStatementsPanel
-          assigneeId={assigneeId}
-          issuedOrLaterOnly
-        />
-      ) : null}
-
-      {partyTab === "visit-fees" && showVisitAndKeyFees ? (
-        <CourtVisitFeesPanel creditAssigneeId={assigneeId} />
-      ) : null}
-
-      {partyTab === "key-fees" && showVisitAndKeyFees ? (
-        <>
-          <KeyEnvelopeFeesPanel
-            canCollect={hasCapability("manage-financial")}
-            onOpenEnvelope={(envelopeId) => {
-              window.location.assign(
-                `/keys?envelope=${encodeURIComponent(envelopeId)}`,
-              );
-            }}
-          />
-          <QueueTableHint className="mt-3">
-            أتعاب استلام ظرف المفاتيح (سيناريو المحكمة + صورة). التفاصيل من{" "}
-            <Link
-              href="/keys?tab=fees"
-              className="font-semibold text-primary underline underline-offset-2"
-            >
-              إدارة المفاتيح → تقرير الأتعاب
-            </Link>
-            .
-          </QueueTableHint>
-        </>
-      ) : null}
-    </div>
-  );
+  return null;
 }

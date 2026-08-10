@@ -49,7 +49,9 @@ export function filterTasksForCaseStudy(
 
 /** Properties ready for packing/upload on the system (Enfath handoff). */
 export function taskMatchesSystemUpload(task: WorkflowTask): boolean {
-  return taskMatchesCaseStudy(task);
+  // Only properties whose case-study form was completed/accepted — not open studies.
+  if (task.kind !== "case-study-property") return false;
+  return task.status === "completed";
 }
 
 export function filterTasksForSystemUpload(

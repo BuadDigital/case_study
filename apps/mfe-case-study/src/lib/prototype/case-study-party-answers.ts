@@ -10,6 +10,8 @@ import {
   partyRoleOnQuestion,
   type CaseStudyInfoRolesMatrix,
 } from "@settings/mfe/lib/prototype/case-study-info-roles-storage";
+import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
+import type { StaffUser } from "@platform/app-shared/prototype/constants";
 import { loadPartyCaseStudyFormDraft } from "./case-study-form-storage";
 import type { WorkflowTask, WorkflowTaskKind } from "./tasks-storage";
 
@@ -70,6 +72,7 @@ export async function collectPartyAnswersByQuestion(
   parentTaskId: string,
   matrix: CaseStudyInfoRolesMatrix,
   tasks: WorkflowTask[],
+  staffUsers: StaffUser[] = [],
 ): Promise<Record<string, PartyQuestionContribution[]>> {
   const byKey: Record<string, PartyQuestionContribution[]> = {};
   const children = childTasksForCaseStudyParent(parentTaskId, tasks);
@@ -101,10 +104,13 @@ export async function collectPartyAnswersByQuestion(
         partyId,
         partyName: partyDef?.name ?? meta.name,
         partyColor: partyDef?.color ?? meta.color,
-        assigneeName:
-          provenance?.answeredByName?.trim() ||
-          child.assigneeName.trim() ||
-          meta.name,
+        assigneeName: resolveAssigneeDisplayName({
+          assigneeName:
+            provenance?.answeredByName?.trim() || child.assigneeName,
+          assigneeId: child.assigneeId,
+          staffUsers,
+          fallback: meta.name,
+        }),
         roleType: roleType ?? null,
         roleLabel: roleLabel(roleType),
         answer,

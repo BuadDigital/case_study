@@ -2,6 +2,8 @@
 
 public class InspectorFeeRowDto
 {
+    /// <summary>Ledger row id (identity when multiple rows share a workflow task).</summary>
+    public string Id { get; set; } = "";
     public string WorkflowTaskId { get; set; } = "";
     public string? PropertyId { get; set; }
     public string PropertyLabel { get; set; } = "";

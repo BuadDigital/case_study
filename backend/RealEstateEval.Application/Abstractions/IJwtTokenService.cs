@@ -10,5 +10,6 @@ public interface IJwtTokenService
         IEnumerable<string>? capabilities = null,
         string? prototypeRole = null,
         string? distributionAssigneeId = null,
-        IEnumerable<string>? pages = null);
+        IEnumerable<string>? pages = null,
+        string? department = null);
 }

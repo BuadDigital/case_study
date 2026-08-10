@@ -1,4 +1,5 @@
 import type { StaffUser } from "@platform/app-shared/prototype/constants";
+import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
 import type { CaseStudyInfoPartyId } from "@settings/mfe/lib/prototype/case-study-info-roles-data";
 import {
   assigneeLabel,
@@ -84,6 +85,18 @@ function distributionAssignee(
   return "";
 }
 
+function distributionAssigneeId(
+  distribution: TaskDistributionDraft,
+  trackId: string,
+): string | null {
+  if (trackId === "survey") return distribution.engineeringOfficeId || null;
+  if (trackId === "government") return distribution.governmentAuditorId || null;
+  if (trackId === "inspection") return distribution.inspectorId || null;
+  if (trackId === "appraisal") return distribution.valuatorId || null;
+  if (trackId === "caseStudy") return distribution.caseSpecialistId || null;
+  return null;
+}
+
 export function buildCaseStudyTracks(
   parent: WorkflowTask,
   allTasks: WorkflowTask[],
@@ -135,11 +148,13 @@ export function buildCaseStudyTracks(
             ? "progress"
             : "new"
         : trackStateFromTask(child, spawned);
-    const assigneeName =
-      child?.assigneeName?.trim() ||
-      distributionAssignee(distribution, id, staffUsers) ||
-      (kind === "parent" ? parent.assigneeName : "") ||
-      "—";
+    const distName = distributionAssignee(distribution, id, staffUsers);
+    const assigneeName = resolveAssigneeDisplayName({
+      assigneeName: child?.assigneeName,
+      assigneeId: child?.assigneeId || distributionAssigneeId(distribution, id),
+      staffUsers,
+      fallback: distName || "—",
+    });
 
     return {
       id,
@@ -190,8 +205,9 @@ export function buildCaseStudyPartyAssignees(
   parent: WorkflowTask,
   allTasks: WorkflowTask[],
   progressByParty?: Partial<Record<CaseStudyInfoPartyId, number>>,
+  staffUsers: StaffUser[] = [],
 ): CaseStudyPartyAssignee[] {
-  const tracks = buildCaseStudyTracks(parent, allTasks);
+  const tracks = buildCaseStudyTracks(parent, allTasks, staffUsers);
   const distribution = migrateDistribution(parent.distribution);
 
   return CASE_STUDY_PARTY_DEFS.map((def) => {
@@ -223,4 +239,3 @@ export function buildCaseStudyPartyAssignees(
     };
   });
 }
-

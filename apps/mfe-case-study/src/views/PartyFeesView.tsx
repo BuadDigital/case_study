@@ -7,6 +7,7 @@ import { ActiveTransactionPageLayout } from "../components/active-transactions/A
 import { PartyFeesWorkspace } from "../components/fees/PartyFeesWorkspace";
 import type { PartyFeesVariant } from "../components/field-inspection/InspectorFeesTab";
 
+/** Role → party fees lane (one module shell, per-party content). */
 function feesVariantForRole(role: RoleId): PartyFeesVariant | null {
   if (role === "field-inspector") return "field-inspection";
   if (role === "engineering-office") return "engineering-survey";
@@ -19,8 +20,11 @@ export function PartyFeesView() {
   const variant = feesVariantForRole(role);
   // Party roles keep office UI even if they also hold manage-operations.
   const isSupervisor = hasCapability("manage-operations") && !variant;
-  const engHtml =
-    !isSupervisor && variant === "engineering-survey";
+  const fullBleedParty =
+    !isSupervisor &&
+    (variant === "engineering-survey" ||
+      variant === "field-inspection" ||
+      variant === "government-review");
 
   if (!variant && !isSupervisor) {
     return (
@@ -40,9 +44,9 @@ export function PartyFeesView() {
   return (
     <ActiveTransactionPageLayout
       pageId="party-fees"
-      hideSituation={engHtml || isSupervisor}
+      hideSituation={fullBleedParty || isSupervisor}
       queuePanel={
-        engHtml || isSupervisor ? (
+        fullBleedParty || isSupervisor ? (
           <PartyFeesWorkspace
             variant={variant ?? "field-inspection"}
             assigneeId={

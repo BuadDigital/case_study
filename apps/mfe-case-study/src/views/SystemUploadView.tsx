@@ -20,12 +20,14 @@ export function SystemUploadView() {
       pageTitle: "الرفع على النظام",
       hidePageTitle: true,
       tableLayout: "case-study",
-      emptyLine: "لا توجد معاملات جاهزة للرفع على النظام.",
+      emptyLine: "لا توجد عقارات مكتملة الدراسة جاهزة للرفع.",
       emptyHint:
-        "تظهر هنا معاملات دراسة الحالة لتعبئة حزمة الرفع ونسخها إلى المنصة/إنفاذ. اضغط الصف لفتح تبويب الرفع.",
+        "تظهر هنا فقط العقارات التي اكتملت دراستها (قبول الأخصائي). اضغط الصف لفتح تبويب حزمة الرفع/إنفاذ.",
       panelId: "system-upload-panel",
       getBasePath: systemUploadPath,
       getTaskPath: caseStudyWorkspacePath,
+      /** Completed case-study tasks are the source queue for this page. */
+      includeAllStatuses: true,
       resolveFullPageTaskPath: (task) => {
         if (task.poNumber?.trim() && task.propertyId?.trim()) {
           return `${poPropertyPath(task.poNumber, task.propertyId)}?tab=enfath-upload`;

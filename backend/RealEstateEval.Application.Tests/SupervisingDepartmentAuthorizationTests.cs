@@ -9,7 +9,7 @@ public class SupervisingDepartmentAuthorizationTests
 {
     [Theory]
     [InlineData(WorkflowTaskKind.GovernmentReview, SupervisingDepartments.CaseStudy)]
-    [InlineData(WorkflowTaskKind.FieldInspection, SupervisingDepartments.Valuation)]
+    [InlineData(WorkflowTaskKind.FieldInspection, SupervisingDepartments.CaseStudy)]
     [InlineData(WorkflowTaskKind.EngineeringSurvey, SupervisingDepartments.Valuation)]
     public void Financial_items_follow_the_transaction_department(
         WorkflowTaskKind kind,

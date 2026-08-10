@@ -172,7 +172,7 @@ export function InspectorFeesTab({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 sm:p-5">
       <div>
         <h2 className="text-sm font-semibold text-text">{copy.title}</h2>
         <p className="mt-1 text-xs leading-relaxed text-text-3">{copy.intro}</p>
@@ -199,7 +199,7 @@ export function InspectorFeesTab({
         </StatCard>
       </StatGrid>
 
-      <OperationalPanel className="min-h-0 flex-1">
+      <OperationalPanel className="min-h-0 flex-1 !shadow-none">
         <div className="mb-3 flex items-center justify-between gap-2">
           <h3 className="text-[13px] font-semibold text-text">أتعاب العقارات</h3>
           <Badge tone="default">

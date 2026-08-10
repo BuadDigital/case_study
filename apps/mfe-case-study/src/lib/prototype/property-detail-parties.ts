@@ -57,7 +57,9 @@ export function buildPropertyDetailPartyCards(input: {
   staffUsers?: StaffUser[];
 }): PropertyDetailPartyCard[] {
   const { task, allTasks } = input;
-  const assignees = task ? buildCaseStudyPartyAssignees(task, allTasks) : [];
+  const assignees = task
+    ? buildCaseStudyPartyAssignees(task, allTasks, undefined, input.staffUsers)
+    : [];
 
   const byTrack = (trackId: string) =>
     assignees.find((p) => p.trackId === trackId);
@@ -108,7 +110,9 @@ export function buildPropertyDetailTimelinePartyRows(input: {
   staffUsers?: StaffUser[];
 }): PropertyDetailPartyStatusRow[] {
   const { task, allTasks } = input;
-  const assignees = task ? buildCaseStudyPartyAssignees(task, allTasks) : [];
+  const assignees = task
+    ? buildCaseStudyPartyAssignees(task, allTasks, undefined, input.staffUsers)
+    : [];
   const byTrack = (trackId: string) =>
     assignees.find((p) => p.trackId === trackId);
 

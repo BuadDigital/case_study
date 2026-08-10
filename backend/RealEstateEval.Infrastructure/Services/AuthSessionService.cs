@@ -167,7 +167,8 @@ public sealed class AuthSessionService(
             userPermissions?.Capabilities ?? [],
             userPermissions?.PrototypeRole,
             userPermissions?.DistributionAssigneeId,
-            userPermissions?.Pages);
+            userPermissions?.Pages,
+            userPermissions?.Department);
 
         var nowUtc = DateTime.UtcNow;
         var refreshToken = CreateTokenValue();

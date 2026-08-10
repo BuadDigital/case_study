@@ -70,6 +70,7 @@ export type InspectorFeeAction =
   | "lift-suspension";
 
 export type InspectorFeeRowDto = {
+  id: string;
   workflowTaskId: string;
   propertyId: string | null;
   propertyLabel: string;
@@ -194,6 +195,7 @@ function headers(token: string): HeadersInit {
 
 function normalizeRow(raw: Record<string, unknown>): InspectorFeeRowDto {
   return {
+    id: String(raw.id ?? raw.Id ?? ""),
     workflowTaskId: String(raw.workflowTaskId ?? raw.WorkflowTaskId ?? ""),
     propertyId: (raw.propertyId ?? raw.PropertyId ?? null) as string | null,
     propertyLabel: String(raw.propertyLabel ?? raw.PropertyLabel ?? ""),
